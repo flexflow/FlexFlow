@@ -12,28 +12,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "ops.h"
 
 CnnHandle init_cudnn(const Task *task,
                      const std::vector<PhysicalRegion> &regions,
                      Context ctx, HighLevelRuntime *runtime)
 {
   assert(regions.size() == 0);
+  assert(task->arglen == sizeof(size_t));
+  size_t workSpaceSize = *(const size_t*) task->args;
   CnnHandle handle;
+  handle.workSpaceSize = workSpaceSize;
   checkCUDA(cublasCreate(&handle.blas));
   checkCUDNN(cudnnCreate(&handle.dnn));
+  checkCUDA(cudaMalloc(&handle.workSpace, workSpaceSize));
   return handle;
 }
 
-Op::Op(Op* _pre_op)
+Op::Op(Tensor input)
 {
-  pre_ops.push_back(_pre_op);
-  inputs.push_back(_pre_op.output);
+  inputs[0] = input;
 }
 
-Op::Op(std::vector<Op*> _pre_ops)
-: pre_ops(_pre_ops)
-{
-  for (int i = 0; i < pre_ops.size(); i++) {
-    inputs.push_back(pre_ops[i].output);
-  }
-}
