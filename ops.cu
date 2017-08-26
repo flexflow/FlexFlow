@@ -82,3 +82,148 @@ CnnModel::CnnModel(int num_images, int height, int width,
   input_image.partition = image_lp;
 };
 
+Tensor CnnModel::add_flat_layer(Tensor input)
+{
+  assert(input.numDim == 4);
+  Flat *flat = new Flat(config, input, part_is, fc_part_is);
+  layers.push_back(flat);
+  return flat->output;
+}
+
+Flat::Flat(CnnConfig config, Tensor input,
+           IndexSpaceT<3> part_is_3d,
+           IndexSpaceT<2> part_is_2d)
+: Op(input)
+{
+  Context ctx = config.lg_ctx;
+  HighLevelRuntime* runtime = config.lg_hlr;
+  FieldSpace fs = runtime->create_field_space(ctx);
+  {
+    FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
+    allocator.allocate_field(sizeof(float), FID_DATA);
+  }
+  
+  int output_c = input.adim[0] * input.adim[1] * input.adim[2];
+  int output_n = input.adim[3];
+  Realm::ZRect<2, coord_t> output_rect(Realm::ZPoint<2>(0, 0),
+                     Realm::ZPoint<2>(output_c-1, output_n-1));
+  IndexSpaceT<2> output_is = runtime->create_index_space(ctx, output_rect);
+  LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
+  Realm::ZMatrix<2, 2, coord_t> transform;
+  int extent_c = input.pdim[0] * input.pdim[1] * input.pdim[2];
+  int extent_n = input.pdim[3];
+  Realm::ZRect<2, coord_t> extent(Realm::ZPoint<2>(0, 0),
+                     Realm::ZPoint<2>(extent_c-1,extent_n-1));
+  transform[0][0] = extent_c; transform[0][1] = 0;
+  transform[1][0] = 0; transform[1][1] = extent_n;
+  IndexPartition output_ip =
+    runtime->create_partition_by_restriction(ctx, output_is, part_is_2d, transform, extent);
+  LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
+  output.numDim = 2;
+  output.adim[0] = output_c;
+  output.adim[1] = output_n;
+  output.pdim[0] = extent_c;
+  output.pdim[1] = extent_n;
+  output.region = output_lr;
+  output.partition = output_lp;
+
+  Realm::ZMatrix<2, 3, coord_t> flat_trans;
+  flat_trans[0][0] = input.pdim[0] * input.pdim[1] * input.adim[2];
+  flat_trans[0][1] = input.adim[0] * input.pdim[1] * input.adim[2];
+  flat_trans[0][2] = 0;
+  flat_trans[1][0] = 0;
+  flat_trans[1][1] = 0;
+  flat_trans[1][2] = input.pdim[3];
+  IndexPartition flat_ip =
+    runtime->create_partition_by_restriction(ctx, output_is, part_is, flat_trans, extent);
+  flat_lp = runtime->get_logical_partition(ctx, output_lr, flat_ip);
+}
+
+OpMeta* Flat::init_task(const Task *task,
+                        const std::vector<PhysicalRegion> &regions,
+                        Context ctx, Runtime *runtime)
+{
+  FlatMeta* m = new FlatMeta(handle);
+  return m;
+}
+
+void Flat::init(const CnnModel& model)
+{
+  ArgumentMap argmap;
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  IndexLauncher init_launcher(FLAT_INIT_TASK_ID, model.part_is,
+                              TaskArgument(this, sizeof(Flat)), argmap);
+  Futuremap fm = runtime->execute_index_space(ctx, init_launcher);
+  fm.wait_all_results();
+  idx = 0;
+  for (PointInRectIterator<3> it(rect); it(); it++) {
+    meta[idx++] = fm.get_result<OpMeta*>(*it);
+  }
+}
+
+/*
+  regions[0](I): input
+  regions[1](I): output
+*/  
+void Flat::forward_task(const Task *task,
+                        const std::vector<PhysicalRegion> &regions,
+                        Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 4);
+  const FieldAccessor<READ_ONLY, float, 3> acc_input(regions[0], FID_DATA);
+  const FieldAccessor<WRITE_DISCARD, float, 2> acc_output(regions[1], FID_DATA);
+  Realm::ZRect<3> rect_input;
+  Realm::ZRect<2> rect_output;
+  rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
+  assert(acc_output.accessor.is_dense_arbitrary(rect_output));
+  const float *input_ptr = acc_input.ptr(rect_input.lo);
+  float *output_ptr = acc_output.ptr(rect_output.lo);
+  assert(rect_input.volume() == rect_output.volume());
+
+  checkCUDA(cudaMemcpy(output_ptr, input_ptr,
+                       rect_input.volume() * sizeof(float),
+                       cudaMemcpyDeviceToDevice));
+}
+
+void Flat::forward(const CnnModel& model)
+{
+  ArgumentMap argmap;
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  Realm::ZRect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  int idx = 0;
+  for (PointInRectIterator<3> it(rect); it(); it++) {
+    OpMeta* mp = meta[idx++];
+    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
+  }
+  IndexLauncher launcher(FLAT_FWD_TASK_ID, model.part_is,
+                         TaskArgument(NULL, 0), argmap);
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0].partition, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(flat_lp /*3D->2D partitions*/, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, output.region));
+  launcher.add_field(1, FID_DATA);
+
+  runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](O) : input
+  regions[1](I) : output
+*/
+void Flat::backward_task(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx, Runtime *runtime)
+{
+}
+
+void Flat::backward(const CnnModel& model)
+{
+}

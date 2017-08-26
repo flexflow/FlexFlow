@@ -58,6 +58,9 @@ enum TaskIDs {
   CONV2D_INIT_TASK_ID,
   CONV2D_FWD_TASK_ID,
   CONV2D_BWD_TASK_ID,
+  POOL2D_INIT_TASK_ID,
+  POOL2D_FWD_TASK_ID,
+  POOL2D_BWD_TASK_ID,
 };
 
 enum FieldIDs {
@@ -146,9 +149,12 @@ public:
   }
 
   Tensor add_conv_layer(Tensor input, int out_channels, int kernel_x, int kernel_y,
-                        int stride_x, int stride_y, int padding_x, int padding_y);
+                        int stride_x, int stride_y, int padding_x, int padding_y, bool relu);
 
-  Tensor add_pooling_layer(Tensor input);
+  Tensor add_pooling_layer(Tensor input, int kernel_h, int kernel_w,
+                           int stride_h, int stride_w, int padding_h, int padding_w, bool relu);
+
+  Tensor add_linear_layer(Tensor input, int output_channels, bool relu);
 public:
   IndexSpaceT<3> part_is;
   Tensor input_image;
@@ -165,7 +171,7 @@ class Conv2D : public Op {
 public:
   Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
          int in_channels, int out_channels, int kernel_x, int kernel_y,
-         int stride_x, int stride_y, int padding_x, int padding_y);
+         int stride_x, int stride_y, int padding_x, int padding_y, bool relu);
 
   void init(const CnnModel&);
 
@@ -185,7 +191,8 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, HighLevelRuntime *runtime);
 public:
-  int in_channels, out_channels, kernel[2], stride[2], padding[2];
+  int in_channels, out_channels;
+  int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
 };
 
 class Conv2DMeta : public OpMeta {
@@ -199,26 +206,73 @@ public:
   cudnnConvolutionBwdDataAlgo_t bwdDataAlgo;
 };
 
-/*
 class Pooling2D : public Op {
 public:
-  Pooling2D(int kernel_h, int kernel_w, int stride_h = 0, int stride_w = 0,
-          int padding_h = 0, int padding_w = 0);
+  Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
+            int kernel_h, int kernel_w, int stride_h, int stride_w,
+            int padding_h, int padding_w, bool relu);
 
-  void init(const Task *task,
-            const std::vector<PhysicalRegion> &regions,
-            Context ctx, HighLevelRuntime *runtime);
+  void init(const CnnModel&);
 
-  void forward(const Task *task,
-               const std::vector<PhysicalRegion> &regions,
-               Context ctx, HighLevelRuntime *runtime);
+  void forward(const CnnModel&);
 
-  void backward(const Task *task,
-                const std::vector<PhysicalRegion> &regions,
-                Context ctx, HighLevelRuntime *runtime);
+  void backward(const CnnModel&);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
 
 public:
-  int kernel[2], stride[2], padding[2];
+  int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
 };
-*/
+
+class Pooling2DMeta : public OpMeta {
+public:
+  Pooling2DMeta(CnnHandle handle) : OpMeta(handle) {};
+  cudnnTensorDescriptor_t inputTensor, outputTensor;
+  cudnnPoolingDescriptor_t poolDesc;
+};
+
+class Linear : public Op {
+public:
+  Linear(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
+         int output_channels, bool relu);
+
+  void init(const CnnModel&);
+
+  void forward(const CnnModel&);
+
+  void backward(const CnnModel&);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+
+};
+
+class LinearMeta : public OpMeta {
+public:
+  LinearMeta(Cnnhandle handle) : OpMeta(handle) {};
+};
+
+class Flat : public Op {
+public:
+  Flat(CnnConfig config, Tensor input);
+};
 #endif // _LEGION_CNN_OPS_H_

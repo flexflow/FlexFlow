@@ -38,19 +38,15 @@ locals[1] = bias
 */
 Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
                int _in_channels, int _out_channels,
-               int kernel_h, int kernel_w,
-               int stride_h, int stride_w,
-               int padding_h, int padding_w)
-: Op(input), in_channels(_in_channels), out_channels(_out_channels)
+               int _kernel_h, int _kernel_w,
+               int _stride_h, int _stride_w,
+               int _padding_h, int _padding_w)
+: Op(input), in_channels(_in_channels), out_channels(_out_channels),
+  kernel_h(_kernel_h), kernel_w(_kernel_w), stride_h(_stride_h),
+  stride_w(_stride_w), padding_h(_padding_h), padding_w(_padding_w)
 {
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
-  kernel[0] = kernel_w;
-  kernel[1] = kernel_h;
-  stride[0] = stride_w;
-  stride[1] = stride_h;
-  padding[0] = padding_w;
-  padding[1] = padding_h;
   // Create output tensor
   int input_w = input.adim[0];
   int input_h = input.adim[1];
@@ -104,7 +100,6 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   bias_tensor.partition = bias_lp;
   locals[1] = bias_tensor;
 
-  inputs[0] = input;
   output.numDim = 4;
   output.adim[0] = output_w;
   output.adim[1] = output_h;
@@ -155,8 +150,8 @@ OpMeta* Conv2D::init_task(const Task *task,
   curandCreateGenerator(&genGPU, CURAND_RNG_PSEUDO_DEFAULT);
   curandSetPseudoRandomGeneratorSeed(genGPU, 1234ULL);
   coord_t filter_elements = conv->inputs[0].adim[2] * conv->output.adim[2] 
-                          * conv->kernel[0] * conv->kernel[1];
-  float factor = 1.0f / sqrt(filter_elements / conv->output.pdim[2]);
+                          * conv->kernel_h * conv->kernel_w;
+  float factor = 1.0f / sqrt(filter_elements / conv->output.adim[2]);
   printf("factor = %.4f elements = %d\n", factor, filter_elements / conv->output.adim[2]);
   assert(filter_elements == (coord_t) rect_filter.volume());
   curandGenerateUniform(genGPU, filter_ptr, filter_elements);
@@ -171,6 +166,7 @@ OpMeta* Conv2D::init_task(const Task *task,
   m->fwdAlgo = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED;
   m->bwdFilterAlgo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED;
   m->bwdDataAlgo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED;
+  m->relu = conv->relu;
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&m->biasTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
@@ -197,21 +193,21 @@ OpMeta* Conv2D::init_task(const Task *task,
                                         1,
                                         1));
 
-  printf("filterDim: kernel(%d %d) c_out(%d)\n", conv->kernel[0], conv->kernel[1], conv->output.pdim[2]);
+  printf("filterDim: kernel(%d %d) c_out(%d)\n", conv->kernel_h, conv->kernel_w, conv->output.pdim[2]);
   checkCUDNN(cudnnSetFilter4dDescriptor(m->filterDesc,
                                         CUDNN_DATA_FLOAT,
                                         CUDNN_TENSOR_NCHW,
                                         conv->output.pdim[2],
                                         conv->inputs[0].pdim[2],
-                                        conv->kernel[0],
-                                        conv->kernel[1]));
+                                        conv->kernel_h,
+                                        conv->kernel_w));
 
-  printf("convDim: padding(%d %d) stride(%d %d)\n", conv->padding[0], conv->padding[1], conv->stride[0], conv->stride[1]);
+  printf("convDim: padding(%d %d) stride(%d %d)\n", conv->padding_h, conv->padding_w, conv->stride_h, conv->stride_w);
   checkCUDNN(cudnnSetConvolution2dDescriptor(m->convDesc,
-                                             conv->padding[0],
-                                             conv->padding[1],
-                                             conv->stride[0],
-                                             conv->stride[1],
+                                             conv->padding_h,
+                                             conv->padding_w,
+                                             conv->stride_h,
+                                             conv->stride_w,
                                              1/*upscale_x*/,
                                              1/*upscale_y*/,
                                              CUDNN_CROSS_CORRELATION));
@@ -230,6 +226,12 @@ OpMeta* Conv2D::init_task(const Task *task,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
                                         n, c, h, w));
+  
+  if (m->relu) {
+    checkCUDNN(cudnnCreateActivationDescriptor(&m->actiDesc));
+    checkCUDNN(cudnnSetActivationDescriptor(&m->actiDesc, CUDNN_ACTIVATION_RELU,
+                                            CUDNN_PROPAGATE_NAN, 0.0));
+  }
   return m;
 }
 
@@ -312,6 +314,11 @@ void Conv2D::forward_task(const Task *task,
 
   checkCUDNN(cudnnAddTensor(m->handle.dnn, &alpha, m->biasTensor,
                             bias_ptr, &alpha, m->outputTensor, output_ptr));
+  if (m->relu) {
+    checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
+                                      &alpha, m->outputTensor, output_ptr,
+                                      &beta, m->outputTensor, output_ptr));
+  }
 }
 
 void Conv2D::forward(const CnnModel& model)
