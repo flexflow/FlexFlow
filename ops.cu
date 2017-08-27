@@ -37,6 +37,7 @@ Op::Op(Tensor input)
 
 CnnModel::CnnModel(int num_images, int height, int width,
                    int image_par, int height_par, int width_par,
+                   int fc_par_n, int fc_par_c,
                    Context ctx, Runtime* runtime)
 {
   config.lg_ctx = ctx;
@@ -45,9 +46,14 @@ CnnModel::CnnModel(int num_images, int height, int width,
   config.num_par_h = height_par;
   config.num_par_n = image_par;
   config.num_workers = width_par * height_par * image_par;
+  config.fc_num_par_c = fc_par_c;
+  config.fc_num_par_n = fc_par_n;
   Realm::ZRect<3, coord_t> part_bounds(Realm::ZPoint<3>(0, 0, 0),
                              Realm::ZPoint<3>(width_par-1, height_par-1, image_par-1));
   part_is = runtime->create_index_space(ctx, part_bounds);
+  Realm::ZRect<2, coord_t> fc_part_bounds(Realm::ZPoint<2>(0, 0),
+                             Realm::ZPoint<2>(fc_par_c-1, fc_par_n-1));
+  fc_part_is = runtime->create_index_space(ctx, fc_part_bounds);
   Realm::ZRect<3, coord_t> image_rect(Realm::ZPoint<3>(0, 0, 0),
                                       Realm::ZPoint<3>(width-1, height-1, num_images*3-1));
   IndexSpaceT<3> image_is = runtime->create_index_space(ctx, image_rect);
@@ -135,7 +141,7 @@ Flat::Flat(CnnConfig config, Tensor input,
   flat_trans[1][1] = 0;
   flat_trans[1][2] = input.pdim[3];
   IndexPartition flat_ip =
-    runtime->create_partition_by_restriction(ctx, output_is, part_is, flat_trans, extent);
+    runtime->create_partition_by_restriction(ctx, output_is, part_is_3d, flat_trans, extent);
   flat_lp = runtime->get_logical_partition(ctx, output_lr, flat_ip);
 }
 
@@ -143,6 +149,7 @@ OpMeta* Flat::init_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime *runtime)
 {
+  CnnHandle handle = *((const CnnHandle*) task->local_args);
   FlatMeta* m = new FlatMeta(handle);
   return m;
 }
@@ -152,9 +159,16 @@ void Flat::init(const CnnModel& model)
   ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
+  Realm::ZRect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  int idx = 0;
+  for (PointInRectIterator<3> it(rect); it(); it++) {
+    CnnHandle handle = model.cnn_handlers[idx++];
+    argmap.set_point(*it, TaskArgument(&handle, sizeof(CnnHandle)));
+  }
+
   IndexLauncher init_launcher(FLAT_INIT_TASK_ID, model.part_is,
                               TaskArgument(this, sizeof(Flat)), argmap);
-  Futuremap fm = runtime->execute_index_space(ctx, init_launcher);
+  FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
   idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {

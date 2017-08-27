@@ -21,20 +21,20 @@
 Tensor CnnModel::add_pooling_layer(Tensor input,
                                    int kernel_h, int kernel_w,
                                    int stride_h, int stride_w,
-                                   int padding_h, int padding_w)
+                                   int padding_h, int padding_w, bool relu)
 {
   assert(input.numDim == 4); /*NCHW*/
   Pooling2D *pool = new Pooling2D(config, input, part_is, kernel_h, kernel_w,
-                                  stride_h, stride_w, padding_h, padding_w);
+                                  stride_h, stride_w, padding_h, padding_w, relu);
   layers.push_back(pool);
   return pool->output;
 }
 
 Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
                      int _kernel_h, int _kernel_w, int _stride_h, int _stride_w,
-                     int _padding_h, int _padding_w)
+                     int _padding_h, int _padding_w, bool _relu)
 : Op(input), kernel_h(_kernel_h), kernel_w(_kernel_w), stride_h(_stride_h),
-  stride_w(_stride_w), padding_h(_padding_h), padding_w(_padding_w)
+  stride_w(_stride_w), padding_h(_padding_h), padding_w(_padding_w), relu(_relu)
 {
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
@@ -79,6 +79,9 @@ Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   output.pdim[3] = output.adim[3];
   output.region = output_lr;
   output.partition = output_lp;
+
+  // For now: the input lps are identical to inputs.partition
+  input_lps[0] = inputs[0].partition;
 }
 
 /*
@@ -198,7 +201,7 @@ void Pooling2D::forward(const CnnModel& model)
   IndexLauncher launcher(POOL2D_FWD_TASK_ID, model.part_is,
                          TaskArgument(NULL, 0), argmap);
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0].partition, 0/*projection id*/,
+      RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(

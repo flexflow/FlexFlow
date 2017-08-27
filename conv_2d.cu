@@ -14,6 +14,7 @@
  */
 
 #include "ops.h"
+#include "cnn_helper.h"
 #include <cuda_runtime.h>
 #include <cudnn.h>
 #include <curand.h>
@@ -21,13 +22,13 @@
 Tensor CnnModel::add_conv_layer(Tensor input, int out_channels,
                                 int kernel_x, int kernel_y,
                                 int stride_x, int stride_y,
-                                int padding_x, int padding_y)
+                                int padding_x, int padding_y, bool relu)
 {
   assert(input.numDim == 4); /*NCHW*/
   int in_channels = input.adim[2];
   Conv2D *conv = new Conv2D(config, input, part_is,
                             in_channels, out_channels, kernel_x, kernel_y,
-                            stride_x, stride_y, padding_x, padding_y);
+                            stride_x, stride_y, padding_x, padding_y, relu);
   layers.push_back(conv);
   return conv->output;
 }
@@ -40,10 +41,10 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
                int _in_channels, int _out_channels,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
-               int _padding_h, int _padding_w)
+               int _padding_h, int _padding_w, bool _relu)
 : Op(input), in_channels(_in_channels), out_channels(_out_channels),
   kernel_h(_kernel_h), kernel_w(_kernel_w), stride_h(_stride_h),
-  stride_w(_stride_w), padding_h(_padding_h), padding_w(_padding_w)
+  stride_w(_stride_w), padding_h(_padding_h), padding_w(_padding_w), relu(_relu)
 {
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
@@ -111,15 +112,9 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   output.pdim[3] = input.adim[3];
   output.region = output_lr;
   output.partition = output_lp;
-}
 
-__global__
-void scale_kernel(float* ptr, coord_t size, float a, float b)
-{
-  const coord_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-  if (tid < size) {
-    ptr[tid] = (b - a) * ptr[tid] + a;
-  }
+  // For now: the input lps are identical to inputs.partition
+  input_lps[0] = inputs[0].partition;
 }
 
 /*
@@ -229,7 +224,7 @@ OpMeta* Conv2D::init_task(const Task *task,
   
   if (m->relu) {
     checkCUDNN(cudnnCreateActivationDescriptor(&m->actiDesc));
-    checkCUDNN(cudnnSetActivationDescriptor(&m->actiDesc, CUDNN_ACTIVATION_RELU,
+    checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
                                             CUDNN_PROPAGATE_NAN, 0.0));
   }
   return m;
@@ -338,7 +333,7 @@ void Conv2D::forward(const CnnModel& model)
   IndexLauncher launcher(CONV2D_FWD_TASK_ID, model.part_is,
                          TaskArgument(NULL, 0), argmap);
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0].partition, 0/*projection id*/,
+      RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(

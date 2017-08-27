@@ -14,6 +14,7 @@
  */
 
 #include "ops.h"
+#include "cnn_helper.h"
 #include <cuda_runtime.h>
 #include <cudnn.h>
 #include <curand.h>
@@ -21,7 +22,7 @@
 Tensor CnnModel::add_linear_layer(Tensor input, int output_channels, bool relu)
 {
   assert(input.numDim == 2);
-  Linear *li = new Linear(config, input, part_is, output_channels, relu);
+  Linear *li = new Linear(config, input, fc_part_is, output_channels, relu);
   layers.push_back(li);
   return li->output;
 }
@@ -42,7 +43,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
 
   Realm::ZRect<2, coord_t> output_rect(Realm::ZPoint<2>(0, 0),
                      Realm::ZPoint<2>(output_channels-1, input.adim[1]-1));
-  IndexSpaceT<2> output_is = runtime->create_index_space(ctx, outut_rect);
+  IndexSpaceT<2> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   Realm::ZMatrix<2, 2, coord_t> transform;
   int extent_c = (output_channels + config.fc_num_par_c - 1) / config.fc_num_par_c;
@@ -57,14 +58,13 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   
   int input_channels = input.adim[0];
   Realm::ZRect<2, coord_t> kernel_rect(Realm::ZPoint<2>(0, 0),
-    Realm::ZPoint<2>(Realm::ZPoint<2>(output_channels * input_channels-1,
-                                      config.fc_num_par_n));
+         Realm::ZPoint<2>(output_channels * input_channels-1, config.fc_num_par_n));
   IndexSpaceT<2> kernel_is = runtime->create_index_space(ctx, kernel_rect);
-  LogicalRegion kernel_lr = runtime->create_logical_regions(ctx, kernel_is, fs);
+  LogicalRegion kernel_lr = runtime->create_logical_region(ctx, kernel_is, fs);
   transform[0][0] = extent_c * input_channels;
-  transform[1][1] = extent_n;
+  transform[1][1] = 1;
   Realm::ZRect<2, coord_t> extent_k(Realm::ZPoint<2>(0, 0),
-                    Realm::ZPoint<2>(extent_c*input_channels-1, extent_n-1));
+                    Realm::ZPoint<2>(extent_c*input_channels-1, 0));
   IndexPartition kernel_ip =
     runtime->create_partition_by_restriction(ctx, kernel_is, part_is, transform, extent_k);
   LogicalPartition kernel_lp = runtime->get_logical_partition(ctx, kernel_lr, kernel_ip);
@@ -73,6 +73,22 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   kernel_tensor.partition = kernel_lp;
   locals[0] = kernel_tensor;
 
+  Realm::ZRect<2, coord_t> bias_rect(Realm::ZPoint<2>(0, 0),
+         Realm::ZPoint<2>(output_channels-1, config.fc_num_par_n-1));
+  IndexSpaceT<2> bias_is = runtime->create_index_space(ctx, bias_rect);
+  LogicalRegion bias_lr = runtime->create_logical_region(ctx, bias_is, fs);
+  transform[0][0] = extent_c;
+  transform[1][1] = 1;
+  Realm::ZRect<2, coord_t> extent_b(Realm::ZPoint<2>(0, 0),
+                    Realm::ZPoint<2>(extent_c-1,0));
+  IndexPartition bias_ip =
+    runtime->create_partition_by_restriction(ctx, bias_is, part_is, transform, extent_b);
+  LogicalPartition bias_lp = runtime->get_logical_partition(ctx, bias_lr, bias_ip);
+  TensorWithGrad bias_tensor;
+  bias_tensor.region = bias_lr;
+  bias_tensor.partition = bias_lp;
+  locals[1] = bias_tensor;
+
   output.numDim = 2;
   output.adim[0] = output_channels;
   output.adim[1] = input.adim[1];
@@ -80,15 +96,16 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   output.pdim[1] = extent_n;
   output.region = output_lr;
   output.partition = output_lp;
-}
 
-__global__
-void scale_kernel(float* ptr, coord_t size, float a, float b)
-{
-  const coord_t tid = blockIdx.x * blockDim.x + threadIdx.x;
-  if (tid < size) {
-    ptr[tid] = (b - a) * ptr[tid] + a;
-  }
+  // Every partition reads all input_channels
+  transform[0][0] = 0;
+  transform[1][1] = extent_n;
+  Realm::ZRect<2, coord_t> extent_i(Realm::ZPoint<2>(0, 0),
+                    Realm::ZPoint<2>(input_channels-1, extent_n-1));
+  IndexSpaceT<2> input_is = IndexSpaceT<2>(inputs[0].region.get_index_space());
+  IndexPartition input_ip 
+     = runtime->create_partition_by_restriction(ctx, input_is, part_is, transform, extent_i);
+  input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
 }
 
 /*
@@ -100,8 +117,9 @@ OpMeta* Linear::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
+  const int BLKSIZE = 512;
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
   const Linear* linear = (Linear*) task->args;
   CnnHandle handle = *((const CnnHandle*) task->local_args);
   const FieldAccessor<WRITE_DISCARD, float, 2> acc_kernel(regions[1], FID_DATA);
@@ -125,20 +143,26 @@ OpMeta* Linear::init_task(const Task *task,
   assert(kernel_elements == rect_kernel.volume());
   curandGenerateUniform(genGPU, kernel_ptr, kernel_elements);
   int num_blocks = (kernel_elements + BLKSIZE - 1) / BLKSIZE;
-  scale_kernel<<<num_blocks, BLKSIZE>>>(kernel_ptr, kernel_elemens, -factor, factor);
-  curandGenerateUniform(genGPU, bias_ptr, conv->output.pdim[0]);
-  num_blocks = (conv->output.pdim[0] + BLKSIZE - 1) / BLKSIZE;
-  scale_kernel<<<num_blocks, BLKSIZE>>>(bias_ptr, conv->output.pdim[0], -factor, factor);
+  scale_kernel<<<num_blocks, BLKSIZE>>>(kernel_ptr, kernel_elements, -factor, factor);
+  curandGenerateUniform(genGPU, bias_ptr, linear->output.pdim[0]);
+  num_blocks = (linear->output.pdim[0] + BLKSIZE - 1) / BLKSIZE;
+  scale_kernel<<<num_blocks, BLKSIZE>>>(bias_ptr, linear->output.pdim[0], -factor, factor);
   curandDestroyGenerator(genGPU);
 
   LinearMeta* m = new LinearMeta(handle);
   m->relu = linear->relu;
   m->input_channels = input_channels;
   m->output_channels = output_channels;
-  m->batch_size = batch-size;
+  m->batch_size = batch_size;
+  float* dram_one_ptr = (float *) malloc(sizeof(float) * batch_size);
+  for (int i = 0; i < batch_size; i++)
+    dram_one_ptr[i] = 1.0f;
+  checkCUDA(cudaMalloc(&m->one_ptr, sizeof(float) * batch_size));
+  checkCUDA(cudaMemcpy(m->one_ptr, dram_one_ptr,
+                       sizeof(float) * batch_size, cudaMemcpyDeviceToDevice));
   if (m->relu) {
     checkCUDNN(cudnnCreateActivationDescriptor(&m->actiDesc));
-    checkCUDNN(cudnnSetActivationDescriptor(&m->actiDesc, CUDNN_ACTIVATION_RELU,
+    checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
                                             CUDNN_PROPAGATE_NAN, 0.0));
     checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
     checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
@@ -151,7 +175,7 @@ OpMeta* Linear::init_task(const Task *task,
 
 void Linear::init(const CnnModel& model)
 {
-  Argumentmap argmap;
+  ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Realm::ZRect<2> rect = runtime->get_index_space_domain(ctx, model.fc_part_is);
@@ -161,7 +185,7 @@ void Linear::init(const CnnModel& model)
     argmap.set_point(*it, TaskArgument(&handle, sizeof(CnnHandle)));
   }
   IndexLauncher init_launcher(LINEAR_INIT_TASK_ID, model.fc_part_is,
-                              TaskArgument(this, sizeof(Linear), argmap));
+                              TaskArgument(this, sizeof(Linear)), argmap);
   init_launcher.add_region_requirement(
       RegionRequirement(output.partition, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, output.region));
@@ -196,10 +220,11 @@ void Linear::forward_task(const Task *task,
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   float alpha = 1.0f, beta = 0.0f;
-  const LinearMeta* m = *((Linear**) task->local_args);
+  const LinearMeta* m = *((LinearMeta**) task->local_args);
   int input_channels = m->input_channels;
   int output_channels = m->output_channels;
   int batch_size = m->batch_size;
+  const float *one_ptr = m->one_ptr;
   const FieldAccessor<READ_ONLY, float, 2> acc_input(regions[0], FID_DATA);
   const FieldAccessor<WRITE_DISCARD, float, 2> acc_output(regions[1], FID_DATA);
   const FieldAccessor<READ_ONLY, float, 2> acc_kernel(regions[2], FID_DATA);
@@ -254,7 +279,7 @@ void Linear::forward(const CnnModel& model)
   IndexLauncher launcher(LINEAR_FWD_TASK_ID, model.fc_part_is,
                          TaskArgument(NULL, 0), argmap);
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0].partition, 0/*projection id*/,
+      RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(

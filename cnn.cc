@@ -29,9 +29,13 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int num_par_w = 2;
   int num_par_n = 1;
   int num_images = 32; // per_batch
+  int fc_num_par_c = 4;
+  int fc_num_par_n = 1;
   int height = 224;
   int width = 224;
-  CnnModel model(num_images, height, width, num_par_n, num_par_h, num_par_w, ctx, runtime);
+  assert(num_par_h * num_par_w * num_par_n == fc_num_par_c * fc_num_par_n);
+  CnnModel model(num_images, height, width, num_par_n, num_par_h, num_par_w,
+                 fc_num_par_n, fc_num_par_c, ctx, runtime);
   int num_workers = num_par_h * num_par_w * num_par_n;
   // First, create cnnContexts
   ArgumentMap local_args;
@@ -47,7 +51,11 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   }
 
   // Construct model
-  model.add_conv_layer(model.input_image, 64, 3, 3, 1, 1, 1, 1);
+  Tensor t = model.add_conv_layer(model.input_image, 64, 3, 3, 1, 1, 1, 1);
+  t = model.add_flat_layer(t);
+  t = model.add_linear_layer(t, 4096);
+  t = model.add_linear_layer(t, 4096);
+  t = model.add_linear_layer(t, 1000);
 
   // Initialize every layer
   model.init_layers();
@@ -111,6 +119,46 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Pooling2D::backward_task>(registrar, "pooling2d_bwd_task");
+  }
+
+  // Linear task
+  {
+    TaskVariantRegistrar registrar(LINEAR_INIT_TASK_ID, "linear_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Linear::init_task>(registrar, "linear_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(LINEAR_FWD_TASK_ID, "linear_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Linear::forward_task>(registrar, "linear_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(LINEAR_BWD_TASK_ID, "linear_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Linear::backward_task>(registrar, "linear_bwd_task");
+  }
+
+  // Flat task
+  {
+    TaskVariantRegistrar registrar(FLAT_INIT_TASK_ID, "flat_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Flat::init_task>(registrar, "flat_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(FLAT_FWD_TASK_ID, "flat_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Flat::forward_task>(registrar, "flat_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(FLAT_BWD_TASK_ID, "flat_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Flat::backward_task>(registrar, "flat_bwd_task");
   }
 
   return Runtime::start(argc, argv);
