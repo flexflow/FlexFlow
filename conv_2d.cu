@@ -114,11 +114,11 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   output.partition = output_lp;
 
   // For now: the input lps are identical to inputs.partition
-  IndexSpaceT<3, coord_t> input_is = IndexSpaceT<3, coord_t>(inputs[0].region);
+  IndexSpaceT<3> input_is = IndexSpaceT<3>(inputs[0].region.get_index_space());
   extent_w = stride_w * (output.pdim[0]-1) + kernel_w - 2 * padding_w;
   extent_h = stride_h * (output.pdim[1]-1) + kernel_h - 2 * padding_h;
   extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / config.num_par_n;
-  assert(inputs[0].adim[2] * inputs[0].adim[3] == config.num_par_n);
+  assert(inputs[0].adim[2] * inputs[0].adim[3] % config.num_par_n == 0);
   Realm::ZRect<3, coord_t> extent_i(Realm::ZPoint<3>(0, 0, 0),
                       Realm::ZPoint<3>(extent_w-1, extent_h-1, extent_nc-1));
   transform[0][0] = stride_w * output.pdim[0];
@@ -147,8 +147,9 @@ OpMeta* Conv2D::init_task(const Task *task,
   const FieldAccessor<WRITE_DISCARD, float, 1> acc_filter(regions[2], FID_DATA);
   const FieldAccessor<WRITE_DISCARD, float, 1> acc_bias(regions[3], FID_DATA);
   Realm::ZRect<1> rect_filter, rect_bias;
-  Realm::ZRect<3> rect_input;
+  Realm::ZRect<3> rect_input, rect_output;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   rect_filter = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
   rect_bias = runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
   assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
@@ -185,10 +186,12 @@ OpMeta* Conv2D::init_task(const Task *task,
 
   int input_w = rect_input.hi[0] - rect_input.lo[0] + 1;
   int input_h = rect_input.hi[1] - rect_input.lo[1] + 1;
+  int output_w = rect_output.hi[0] - rect_output.lo[0] + 1;
+  int output_h = rect_output.hi[1] - rect_output.lo[1] + 1;
   printf("inputDim: n(%d) c(%d) h(%d) w(%d)\n", conv->inputs[0].pdim[3],
          conv->inputs[0].pdim[2], input_h, input_w);
   printf("outputDim: n(%d) c_out(%d) h(%d) w(%d)\n", conv->output.pdim[3],
-         conv->output.pdim[2], conv->output.pdim[1], conv->output.pdim[0]);
+         conv->output.pdim[2], output_h, output_w);
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
@@ -231,8 +234,8 @@ OpMeta* Conv2D::init_task(const Task *task,
                                                    &n, &c, &h, &w));
   assert(n == conv->output.pdim[3]);
   assert(c == conv->output.pdim[2]);
-  assert(h == conv->output.pdim[1]);
-  assert(w == conv->output.pdim[0]);
+  assert(h == output_h);
+  assert(w == output_w);
 
   checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
                                         CUDNN_TENSOR_NCHW,
@@ -261,17 +264,21 @@ void Conv2D::init(const CnnModel& model)
   IndexLauncher init_launcher(CONV2D_INIT_TASK_ID, model.part_is,
                               TaskArgument(this, sizeof(Conv2D)), argmap);
   init_launcher.add_region_requirement(
+      RegionRequirement(input_lps[0], 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+  init_launcher.add_field(0, FID_DATA);
+  init_launcher.add_region_requirement(
       RegionRequirement(output.partition, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, output.region));
-  init_launcher.add_field(0, FID_DATA);
+  init_launcher.add_field(1, FID_DATA);
   init_launcher.add_region_requirement(
       RegionRequirement(locals[0].partition, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, locals[0].region));
-  init_launcher.add_field(1, FID_DATA);
+  init_launcher.add_field(2, FID_DATA);
   init_launcher.add_region_requirement(
       RegionRequirement(locals[1].partition, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, locals[1].region));
-  init_launcher.add_field(2, FID_DATA);
+  init_launcher.add_field(3, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
   idx = 0;
