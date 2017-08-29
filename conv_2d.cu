@@ -114,28 +114,43 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   output.partition = output_lp;
 
   // For now: the input lps are identical to inputs.partition
-  input_lps[0] = inputs[0].partition;
+  IndexSpaceT<3, coord_t> input_is = IndexSpaceT<3, coord_t>(inputs[0].region);
+  extent_w = stride_w * (output.pdim[0]-1) + kernel_w - 2 * padding_w;
+  extent_h = stride_h * (output.pdim[1]-1) + kernel_h - 2 * padding_h;
+  extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / config.num_par_n;
+  assert(inputs[0].adim[2] * inputs[0].adim[3] == config.num_par_n);
+  Realm::ZRect<3, coord_t> extent_i(Realm::ZPoint<3>(0, 0, 0),
+                      Realm::ZPoint<3>(extent_w-1, extent_h-1, extent_nc-1));
+  transform[0][0] = stride_w * output.pdim[0];
+  transform[1][1] = stride_h * output.pdim[1];
+  transform[2][2] = extent_nc;
+  IndexPartition input_ip =
+    runtime->create_partition_by_restriction(ctx, input_is, part_is, transform, extent_i);
+  input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
 }
 
 /*
-  regions[0]: output
-  regions[1]: filter
-  regions[2]: bias
+  regions[0]: input
+  regions[1]: output
+  regions[2]: filter
+  regions[3]: bias
 */
 OpMeta* Conv2D::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
   const int BLKSIZE = 512;
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
   const Conv2D* conv = (Conv2D*) task->args;
   CnnHandle handle = *((const CnnHandle*) task->local_args);
-  const FieldAccessor<WRITE_DISCARD, float, 1> acc_filter(regions[1], FID_DATA);
-  const FieldAccessor<WRITE_DISCARD, float, 1> acc_bias(regions[2], FID_DATA);
+  const FieldAccessor<WRITE_DISCARD, float, 1> acc_filter(regions[2], FID_DATA);
+  const FieldAccessor<WRITE_DISCARD, float, 1> acc_bias(regions[3], FID_DATA);
   Realm::ZRect<1> rect_filter, rect_bias;
-  rect_filter = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  rect_bias = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
+  Realm::ZRect<3> rect_input;
+  rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_filter = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
+  rect_bias = runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
   assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
   assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
   float *filter_ptr = acc_filter.ptr(rect_filter.lo);
@@ -168,8 +183,10 @@ OpMeta* Conv2D::init_task(const Task *task,
   checkCUDNN(cudnnCreateFilterDescriptor(&m->filterDesc));
   checkCUDNN(cudnnCreateConvolutionDescriptor(&m->convDesc));
 
+  int input_w = rect_input.hi[0] - rect_input.lo[0] + 1;
+  int input_h = rect_input.hi[1] - rect_input.lo[1] + 1;
   printf("inputDim: n(%d) c(%d) h(%d) w(%d)\n", conv->inputs[0].pdim[3],
-         conv->inputs[0].pdim[2], conv->inputs[0].pdim[1], conv->inputs[0].pdim[0]);
+         conv->inputs[0].pdim[2], input_h, input_w);
   printf("outputDim: n(%d) c_out(%d) h(%d) w(%d)\n", conv->output.pdim[3],
          conv->output.pdim[2], conv->output.pdim[1], conv->output.pdim[0]);
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
@@ -177,8 +194,8 @@ OpMeta* Conv2D::init_task(const Task *task,
                                         CUDNN_DATA_FLOAT,
                                         conv->inputs[0].pdim[3],
                                         conv->inputs[0].pdim[2],
-                                        conv->inputs[0].pdim[1],
-                                        conv->inputs[0].pdim[0]));
+                                        input_h,
+                                        input_w));
   
   checkCUDNN(cudnnSetTensor4dDescriptor(m->biasTensor,
                                         CUDNN_TENSOR_NCHW,

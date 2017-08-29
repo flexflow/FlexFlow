@@ -132,7 +132,9 @@ Flat::Flat(CnnConfig config, Tensor input,
   output.pdim[1] = extent_n;
   output.region = output_lr;
   output.partition = output_lp;
-
+  printf("flat: input(N=%d C=%d H=%d W=%d) -> output(N=%d C=%d)\n",
+         input.pdim[3], input.pdim[2], input.pdim[1], input.pdim[0], output.pdim[1], output.pdim[0]);
+ 
   Realm::ZMatrix<2, 3, coord_t> flat_trans;
   flat_trans[0][0] = input.pdim[0] * input.pdim[1] * input.adim[2];
   flat_trans[0][1] = input.adim[0] * input.pdim[1] * input.adim[2];

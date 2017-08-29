@@ -58,13 +58,14 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   
   int input_channels = input.adim[0];
   Realm::ZRect<2, coord_t> kernel_rect(Realm::ZPoint<2>(0, 0),
-         Realm::ZPoint<2>(output_channels * input_channels-1, config.fc_num_par_n));
+         Realm::ZPoint<2>(output_channels * input_channels-1, config.fc_num_par_n-1));
   IndexSpaceT<2> kernel_is = runtime->create_index_space(ctx, kernel_rect);
   LogicalRegion kernel_lr = runtime->create_logical_region(ctx, kernel_is, fs);
   transform[0][0] = extent_c * input_channels;
   transform[1][1] = 1;
   Realm::ZRect<2, coord_t> extent_k(Realm::ZPoint<2>(0, 0),
                     Realm::ZPoint<2>(extent_c*input_channels-1, 0));
+  printf("extent_k(%dx%d %d)\n", extent_c, input_channels, 1);
   IndexPartition kernel_ip =
     runtime->create_partition_by_restriction(ctx, kernel_is, part_is, transform, extent_k);
   LogicalPartition kernel_lp = runtime->get_logical_partition(ctx, kernel_lr, kernel_ip);

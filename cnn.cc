@@ -51,7 +51,14 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   }
 
   // Construct model
-  Tensor t = model.add_conv_layer(model.input_image, 64, 3, 3, 1, 1, 1, 1);
+  Tensor t = model.add_conv_layer(model.input_image, 64, 11, 11, 4, 4, 2, 2);
+  t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
+  t = model.add_conv_layer(t, 192, 5, 5, 1, 1, 2, 2);
+  t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
+  t = model.add_conv_layer(t, 384, 3, 3, 1, 1, 1, 1);
+  t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
+  t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
+  t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
   t = model.add_flat_layer(t);
   t = model.add_linear_layer(t, 4096);
   t = model.add_linear_layer(t, 4096);
