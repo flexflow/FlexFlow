@@ -80,36 +80,57 @@ Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   output.region = output_lr;
   output.partition = output_lp;
 
-  // For now: the input lps are identical to inputs.partition
-  input_lps[0] = inputs[0].partition;
+  // Compute partition bound for input
+  IndexSpaceT<3> input_is = IndexSpaceT<3>(inputs[0].region.get_index_space());
+  extent_w = stride_w * (output.pdim[0]-1) + kernel_w - 2 * padding_w;
+  extent_h = stride_h * (output.pdim[1]-1) + kernel_h - 2 * padding_h;
+  extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / config.num_par_n;
+  assert(inputs[0].adim[2] * inputs[0].adim[3] % config.num_par_n == 0);
+  Realm::ZRect<3, coord_t> extent_i(Realm::ZPoint<3>(0, 0, 0),
+                      Realm::ZPoint<3>(extent_w-1, extent_h-1, extent_nc-1));
+  transform[0][0] = stride_w * output.pdim[0];
+  transform[1][1] = stride_h * output.pdim[1];
+  transform[2][2] = extent_nc;
+  IndexPartition input_ip =
+    runtime->create_partition_by_restriction(ctx, input_is, part_is, transform, extent_i);
+  input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
 }
 
 /*
+  regions[0]: input
+  regions[1]: output
 */
 OpMeta* Pooling2D::init_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, Runtime *runtime)
 {
+  assert(regions.size() == 2);
+  assert(regions.size() == 2);
   const Pooling2D* pool = (Pooling2D*) task->args;
-  assert(regions.size() == 0);
-  assert(regions.size() == 0);
   CnnHandle handle = *((const CnnHandle*) task->local_args);
   Pooling2DMeta* m = new Pooling2DMeta(handle);
+  Realm::ZRect<3> rect_input, rect_output;
+  rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
   checkCUDNN(cudnnCreatePoolingDescriptor(&m->poolDesc));
 
+  int input_w = rect_input.hi[0] - rect_input.lo[0] + 1;
+  int input_h = rect_input.hi[1] - rect_input.lo[1] + 1;
+  int output_w = rect_output.hi[0] - rect_output.lo[0] + 1;
+  int output_h = rect_output.hi[1] - rect_output.lo[1] + 1;
   printf("pool(inputDim): n(%d) c(%d) h(%d) w(%d)\n", pool->inputs[0].pdim[3],
-        pool->inputs[0].pdim[2], pool->inputs[0].pdim[1], pool->inputs[0].pdim[0]);
+        pool->inputs[0].pdim[2], input_h, input_w);
   printf("pool(outputDim): n(%d) c(%d) h(%d) w(%d)\n", pool->output.pdim[3],
-        pool->output.pdim[2], pool->output.pdim[1], pool->output.pdim[0]);
+        pool->output.pdim[2], output_h, output_w);
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
                                         pool->inputs[0].pdim[3],
                                         pool->inputs[0].pdim[2],
-                                        pool->inputs[0].pdim[1],
-                                        pool->inputs[0].pdim[0]));
+                                        input_h,
+                                        input_w));
 
   checkCUDNN(cudnnSetPooling2dDescriptor(m->poolDesc,
                                          CUDNN_POOLING_MAX,
@@ -126,8 +147,8 @@ OpMeta* Pooling2D::init_task(const Task *task,
                                                &n, &c, &h, &w));
   assert(n == pool->output.pdim[3]);
   assert(c == pool->output.pdim[2]);
-  assert(h == pool->output.pdim[1]);
-  assert(w == pool->output.pdim[0]);
+  assert(h == output_h);
+  assert(w == output_w);
 
 
   checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
@@ -150,9 +171,17 @@ void Pooling2D::init(const CnnModel& model)
   }
   IndexLauncher init_launcher(POOL2D_INIT_TASK_ID, model.part_is,
                               TaskArgument(this, sizeof(Pooling2D)), argmap);
-  idx = 0;
+  init_launcher.add_region_requirement(
+      RegionRequirement(input_lps[0], 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+  init_launcher.add_field(0, FID_DATA);
+  init_launcher.add_region_requirement(
+      RegionRequirement(output.partition, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, output.region));
+  init_launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
+  idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     meta[idx++] = fm.get_result<OpMeta*>(*it);
   }

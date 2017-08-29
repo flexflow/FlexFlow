@@ -112,8 +112,10 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   output.pdim[3] = input.adim[3];
   output.region = output_lr;
   output.partition = output_lp;
+  printf("Create conv layer: output(n=%d c=%d h=%d w=%d)\n",
+         output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
-  // For now: the input lps are identical to inputs.partition
+  // Compute partition bound for input
   IndexSpaceT<3> input_is = IndexSpaceT<3>(inputs[0].region.get_index_space());
   extent_w = stride_w * (output.pdim[0]-1) + kernel_w - 2 * padding_w;
   extent_h = stride_h * (output.pdim[1]-1) + kernel_h - 2 * padding_h;
@@ -188,9 +190,9 @@ OpMeta* Conv2D::init_task(const Task *task,
   int input_h = rect_input.hi[1] - rect_input.lo[1] + 1;
   int output_w = rect_output.hi[0] - rect_output.lo[0] + 1;
   int output_h = rect_output.hi[1] - rect_output.lo[1] + 1;
-  printf("inputDim: n(%d) c(%d) h(%d) w(%d)\n", conv->inputs[0].pdim[3],
+  printf("init pool (input): n(%d) c(%d) h(%d) w(%d)\n", conv->inputs[0].pdim[3],
          conv->inputs[0].pdim[2], input_h, input_w);
-  printf("outputDim: n(%d) c_out(%d) h(%d) w(%d)\n", conv->output.pdim[3],
+  printf("init pool (output): n(%d) c_out(%d) h(%d) w(%d)\n", conv->output.pdim[3],
          conv->output.pdim[2], output_h, output_w);
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
