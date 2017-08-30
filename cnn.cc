@@ -58,16 +58,16 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   t = model.add_conv_layer(t, 384, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
-  t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
-  t = model.add_flat_layer(t);
-  t = model.add_linear_layer(t, 4096);
-  t = model.add_linear_layer(t, 4096);
-  t = model.add_linear_layer(t, 1000);
+  //t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
+  //t = model.add_flat_layer(t);
+  //t = model.add_linear_layer(t, 4096);
+  //t = model.add_linear_layer(t, 4096);
+  //t = model.add_linear_layer(t, 1000);
 
   // Initialize every layer
   model.init_layers();
 
-  model.forward();
+  //model.forward();
 }
 
 int main(int argc, char **argv)
@@ -85,7 +85,7 @@ int main(int argc, char **argv)
     TaskVariantRegistrar registrar(CNN_INIT_TASK_ID, "cnn_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<CnnHandle, init_cudnn>(registrar, "init_task");
+    Runtime::preregister_task_variant<CnnHandle, init_cudnn>(registrar, "cnn_init_task");
   }
 
   // Conv2D task
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     TaskVariantRegistrar registrar(CONV2D_INIT_TASK_ID, "conv2d_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta*, Conv2D::init_task>(registrar, "init_task");
+    Runtime::preregister_task_variant<OpMeta*, Conv2D::init_task>(registrar, "conv2d_init_task");
   }
   {
     TaskVariantRegistrar registrar(CONV2D_FWD_TASK_ID, "conv2d_fwd_task");
