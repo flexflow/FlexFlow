@@ -6,4 +6,7 @@ using namespace Legion;
 __global__
 void scale_kernel(float* ptr, coord_t size, float a, float b);
 
+__global__
+void ones_kernel(float* ptr, coord_t size);
+
 #endif

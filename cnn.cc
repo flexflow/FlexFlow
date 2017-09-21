@@ -14,8 +14,8 @@
  */
 
 #include <cstdio>
-#include "legion.h"
 #include "ops.h"
+#include "cnn_mapper.h"
 
 using namespace Legion;
 
@@ -28,7 +28,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int num_par_h = 2;
   int num_par_w = 2;
   int num_par_n = 1;
-  int num_images = 32; // per_batch
+  int num_images = 128; // per_batch
   int fc_num_par_c = 4;
   int fc_num_par_n = 1;
   int height = 224;
@@ -39,35 +39,59 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int num_workers = num_par_h * num_par_w * num_par_n;
   // First, create cnnContexts
   ArgumentMap local_args;
-  size_t workSpaceSize = (size_t) 2 * 1024 * 1024 * 1024;
+  size_t workSpaceSize = (size_t) 4 * 1024 * 1024 * 1024;
   IndexLauncher init_launcher(CNN_INIT_TASK_ID, model.part_is,
                               TaskArgument(&workSpaceSize, sizeof(workSpaceSize)), local_args);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
-  Realm::ZRect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     model.cnn_handlers[idx++] = fm.get_result<CnnHandle>(*it);
   }
 
-  // Construct model
-  Tensor t = model.add_conv_layer(model.input_image, 64, 11, 11, 4, 4, 2, 2);
-  t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
-  t = model.add_conv_layer(t, 192, 5, 5, 1, 1, 2, 2);
-  t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
-  t = model.add_conv_layer(t, 384, 3, 3, 1, 1, 1, 1);
-  t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
-  t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
+  // Construct model (AlexNet)
+  //Tensor t = model.add_conv_layer(model.input_image, 64, 11, 11, 4, 4, 2, 2);
+  //t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
+  //t = model.add_conv_layer(t, 192, 5, 5, 1, 1, 2, 2);
+  //t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
+  //t = model.add_conv_layer(t, 384, 3, 3, 1, 1, 1, 1);
+  //t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
+  //t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
   //t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
   //t = model.add_flat_layer(t);
   //t = model.add_linear_layer(t, 4096);
   //t = model.add_linear_layer(t, 4096);
   //t = model.add_linear_layer(t, 1000);
 
+  // Construct model (VGG-16Net)
+  Tensor t = model.add_conv_layer(model.input_image, 64, 3, 3, 1, 1, 1, 1);
+  t = model.add_conv_layer(t, 64, 3, 3, 1, 1, 1, 1);
+  t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  //t = model.add_conv_layer(t, 128, 3, 3, 1, 1, 1, 1);
+  //t = model.add_conv_layer(t, 128, 3, 3, 1, 1, 1, 1);
+  //t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  //t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
+  //t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
+  //t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
+  //t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  //t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
+  //t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
+  //t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
+  //t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  //t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
+  //t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
+  //t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
+  //t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  //t = model.add_flat_layer(t);
+  //t = model.add_linear_layer(t, 4096);
+  //t = model.add_linear_layer(t, 4096);
+  //t = model.add_linear_layer(t, 1000);
+  
   // Initialize every layer
   model.init_layers();
 
-  //model.forward();
+  model.forward();
 }
 
 int main(int argc, char **argv)
@@ -86,6 +110,14 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<CnnHandle, init_cudnn>(registrar, "cnn_init_task");
+  }
+
+  // IMAGE_INIT_TASK
+  {
+    TaskVariantRegistrar registrar(IMAGE_INIT_TASK_ID, "image_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<CnnModel::init_images_task>(registrar, "image_init_task");
   }
 
   // Conv2D task
@@ -168,5 +200,6 @@ int main(int argc, char **argv)
     Runtime::preregister_task_variant<Flat::backward_task>(registrar, "flat_bwd_task");
   }
 
+  Runtime::add_registration_callback(update_mappers);
   return Runtime::start(argc, argv);
 }

@@ -18,6 +18,8 @@
 #include <cuda_runtime.h>
 #include <cudnn.h>
 #include <curand.h>
+#include <unistd.h>
+#define PARAMETER_ALL_ONES
 
 Tensor CnnModel::add_conv_layer(Tensor input, int out_channels,
                                 int kernel_x, int kernel_y,
@@ -61,17 +63,16 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
     allocator.allocate_field(sizeof(float), FID_DATA);
   }
 
-  Realm::ZRect<3, coord_t> output_rect(Realm::ZPoint<3>(0, 0, 0),
-                      Realm::ZPoint<3>(output_w-1, output_h-1, output_nc-1));
+  Rect<3, coord_t> output_rect(Point<3>(0, 0, 0),
+                      Point<3>(output_w-1, output_h-1, output_nc-1));
   IndexSpaceT<3> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
-  Realm::ZMatrix<3, 3, coord_t> transform;
+  Transform<3, 3, coord_t> transform;
   int extent_w = (output_w + config.num_par_w - 1) / config.num_par_w;
   int extent_h = (output_h + config.num_par_h - 1) / config.num_par_h;
   int extent_nc = output_nc / config.num_par_n;
   assert(output_nc % config.num_par_n == 0);
-  Realm::ZRect<3, coord_t> extent(Realm::ZPoint<3>(0, 0, 0),
-                    Realm::ZPoint<3>(extent_w - 1, extent_h - 1, extent_nc - 1));
+  Rect<3, coord_t> extent(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
   transform[0][0] = extent_w; transform[0][1] = 0; transform[0][2] = 0;
   transform[1][0] = 0; transform[1][1] = extent_h; transform[1][2] = 0;
   transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = extent_nc;
@@ -80,7 +81,7 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
 
   int kernel_nc = config.num_workers * in_channels * out_channels;
-  Realm::ZRect<1, coord_t> kernel_rect(0, kernel_w * kernel_h * kernel_nc - 1);
+  Rect<1, coord_t> kernel_rect(0, kernel_w * kernel_h * kernel_nc - 1);
   IndexSpaceT<1> kernel_is = runtime->create_index_space(ctx, kernel_rect);
   LogicalRegion kernel_lr = runtime->create_logical_region(ctx, kernel_is, fs);
   IndexPartition kernel_ip = runtime->create_equal_partition(ctx, kernel_is, part_is);
@@ -91,7 +92,7 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   locals[0] = kernel_tensor;
 
   int bias_nc = config.num_workers * out_channels;
-  Realm::ZRect<1, coord_t> bias_rect(0, bias_nc - 1);
+  Rect<1, coord_t> bias_rect(0, bias_nc - 1);
   IndexSpaceT<1> bias_is = runtime->create_index_space(ctx, bias_rect);
   LogicalRegion bias_lr = runtime->create_logical_region(ctx, bias_is, fs);
   IndexPartition bias_ip = runtime->create_equal_partition(ctx, bias_is, part_is);
@@ -121,8 +122,7 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   extent_h = stride_h * (output.pdim[1]-1) + kernel_h - 2 * padding_h;
   extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / config.num_par_n;
   assert(inputs[0].adim[2] * inputs[0].adim[3] % config.num_par_n == 0);
-  Realm::ZRect<3, coord_t> extent_i(Realm::ZPoint<3>(0, 0, 0),
-                      Realm::ZPoint<3>(extent_w-1, extent_h-1, extent_nc-1));
+  Rect<3, coord_t> extent_i(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
   transform[0][0] = stride_w * output.pdim[0];
   transform[1][1] = stride_h * output.pdim[1];
   transform[2][2] = extent_nc;
@@ -131,12 +131,20 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
 }
 
+cudnnConvolutionFwdAlgo_t
+selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
+                                  const cudnnTensorDescriptor_t xDesc, const void* x,
+                                  const cudnnFilterDescriptor_t wDesc, const void* w,
+                                  const cudnnConvolutionDescriptor_t convDesc,
+                                  void* workSpace, size_t workSpaceSize,
+                                  const cudnnTensorDescriptor_t yDesc, void* y);
 /*
   regions[0]: input
   regions[1]: output
   regions[2]: filter
   regions[3]: bias
 */
+__host__
 OpMeta* Conv2D::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
@@ -146,19 +154,32 @@ OpMeta* Conv2D::init_task(const Task *task,
   assert(task->regions.size() == 4);
   const Conv2D* conv = (Conv2D*) task->args;
   CnnHandle handle = *((const CnnHandle*) task->local_args);
-  const FieldAccessor<WRITE_DISCARD, float, 1> acc_filter(regions[2], FID_DATA);
-  const FieldAccessor<WRITE_DISCARD, float, 1> acc_bias(regions[3], FID_DATA);
-  Realm::ZRect<1> rect_filter, rect_bias;
-  Realm::ZRect<3> rect_input, rect_output;
+  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 3> acc_output(regions[1], FID_DATA);
+  const AccessorWO<float, 1> acc_filter(regions[2], FID_DATA);
+  const AccessorWO<float, 1> acc_bias(regions[3], FID_DATA);
+  Rect<1> rect_filter, rect_bias;
+  Rect<3> rect_input, rect_output;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   rect_filter = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
   rect_bias = runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
+  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
+  assert(acc_output.accessor.is_dense_arbitrary(rect_output));
   assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
   assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
+  const float *input_ptr = acc_input.ptr(rect_input.lo);
+  float *output_ptr = acc_output.ptr(rect_output.lo);
   float *filter_ptr = acc_filter.ptr(rect_filter.lo);
   float *bias_ptr = acc_bias.ptr(rect_bias.lo);
 
+#ifdef PARAMETER_ALL_ONES
+  coord_t filter_elements = conv->inputs[0].adim[2] * conv->output.adim[2] * conv->kernel_h * conv->kernel_w;
+  int num_blocks = (filter_elements + BLKSIZE - 1) / BLKSIZE;
+  ones_kernel<<<num_blocks, BLKSIZE>>>(filter_ptr, filter_elements);
+  num_blocks = (conv->output.pdim[2] + BLKSIZE - 1) / BLKSIZE;
+  ones_kernel<<<num_blocks, BLKSIZE>>>(bias_ptr, conv->output.pdim[2]);
+#else
   curandGenerator_t genGPU;
   curandCreateGenerator(&genGPU, CURAND_RNG_PSEUDO_DEFAULT);
   curandSetPseudoRandomGeneratorSeed(genGPU, 1234ULL);
@@ -174,11 +195,8 @@ OpMeta* Conv2D::init_task(const Task *task,
   num_blocks = (conv->output.pdim[2] + BLKSIZE - 1) / BLKSIZE;
   scale_kernel<<<num_blocks, BLKSIZE>>>(bias_ptr, conv->output.pdim[2], -factor, factor);
   curandDestroyGenerator(genGPU);
-
+#endif
   Conv2DMeta* m = new Conv2DMeta(handle);
-  m->fwdAlgo = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED;
-  m->bwdFilterAlgo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED;
-  m->bwdDataAlgo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED;
   m->relu = conv->relu;
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&m->biasTensor));
@@ -243,7 +261,13 @@ OpMeta* Conv2D::init_task(const Task *task,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
                                         n, c, h, w));
-  
+  // select forward algorithm
+  m->fwdAlgo = selectConvolutionForwardAlgorithm(m->handle.dnn, m->inputTensor, input_ptr,
+                                                 m->filterDesc, filter_ptr, m->convDesc,
+                                                 m->handle.workSpace, m->handle.workSpaceSize,
+                                                 m->outputTensor, output_ptr);
+  m->bwdFilterAlgo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3;
+  m->bwdDataAlgo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
   if (m->relu) {
     checkCUDNN(cudnnCreateActivationDescriptor(&m->actiDesc));
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
@@ -252,12 +276,13 @@ OpMeta* Conv2D::init_task(const Task *task,
   return m;
 }
 
+__host__
 void Conv2D::init(const CnnModel& model)
 {
   ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  Realm::ZRect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     CnnHandle handle = model.cnn_handlers[idx++];
@@ -304,12 +329,12 @@ void Conv2D::forward_task(const Task *task,
   assert(task->regions.size() == 4);
   float alpha = 1.0f, beta = 0.0f;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
-  const FieldAccessor<READ_ONLY, float, 3> acc_input(regions[0], FID_DATA);
-  const FieldAccessor<WRITE_DISCARD, float, 3> acc_output(regions[1], FID_DATA);
-  const FieldAccessor<READ_ONLY, float, 1> acc_filter(regions[2], FID_DATA);
-  const FieldAccessor<READ_ONLY, float, 1> acc_bias(regions[3], FID_DATA);
-  Realm::ZRect<3> rect_input, rect_output;
-  Realm::ZRect<1> rect_filter, rect_bias;
+  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 3> acc_output(regions[1], FID_DATA);
+  const AccessorRO<float, 1> acc_filter(regions[2], FID_DATA);
+  const AccessorRO<float, 1> acc_bias(regions[3], FID_DATA);
+  Rect<3> rect_input, rect_output;
+  Rect<1> rect_filter, rect_bias;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   rect_filter = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
@@ -326,6 +351,11 @@ void Conv2D::forward_task(const Task *task,
   const float *bias_ptr = acc_bias.ptr(rect_bias.lo);  
 
   printf("fwdAlgo(%d), bwdFilterALgo(%d), bwdDataAlgo(%d)\n", (int)m->fwdAlgo,(int) m->bwdFilterAlgo,(int) m->bwdDataAlgo);
+  cudaEvent_t t_start, t_end;
+  cudaEventCreate(&t_start);
+  cudaEventCreate(&t_end);
+  cudaEventRecord(t_start);
+  double cp_1 = Realm::Clock::current_time_in_microseconds();
   checkCUDNN(cudnnConvolutionForward(m->handle.dnn, &alpha,
                                      m->inputTensor, input_ptr,
                                      m->filterDesc, filter_ptr,
@@ -335,20 +365,33 @@ void Conv2D::forward_task(const Task *task,
 
   checkCUDNN(cudnnAddTensor(m->handle.dnn, &alpha, m->biasTensor,
                             bias_ptr, &alpha, m->outputTensor, output_ptr));
+  double cp_2 = Realm::Clock::current_time_in_microseconds();
   if (m->relu) {
     checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
                                       &alpha, m->outputTensor, output_ptr,
                                       &beta, m->outputTensor, output_ptr));
   }
+  cudaEventRecord(t_end);
+  checkCUDA(cudaEventSynchronize(t_end));
+  cudaDeviceSynchronize();
+  double cp_3 = Realm::Clock::current_time_in_microseconds();
+  float elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+
+  printf("Conv2D forward time (CF) = %.2fus elapsed(%.2fms)\n", cp_2 - cp_1, elapsed);
+  printf("Conv2D forward time (AF) = %.2fus\n", cp_3 - cp_2);
 }
 
+__host__
 void Conv2D::forward(const CnnModel& model)
 {
   ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   printf("CP#1\n");
-  Realm::ZRect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
   printf("CP#2\n");
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
@@ -394,6 +437,125 @@ void Conv2D::backward_task(const Task *task,
   float alpha = 1.0f, beta = 0.0f;
 }
 
+__host__
 void Conv2D::backward(const CnnModel& model)
 {
+}
+
+bool checkConvolutionForwardAlgorithm(cudnnConvolutionFwdAlgo_t algo,
+                                      int kernel_h, int kernel_w,
+                                      int pad_h, int pad_w, int str_h, int str_w)
+{
+  switch (algo) {
+    case CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM:
+    //case CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMPUTED_GEMM:
+    case CUDNN_CONVOLUTION_FWD_ALGO_GEMM:
+      return true;
+    case CUDNN_CONVOLUTION_FWD_ALGO_DIRECT:
+      return false;
+    case CUDNN_CONVOLUTION_FWD_ALGO_FFT:
+      if ((str_h != 1)||(str_w != 1)) return false;
+      if ((kernel_h < pad_h)||(kernel_w < pad_w)) return false;
+      return true;
+    case CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING:
+      if ((kernel_h > 32)||(kernel_w > 32)) return false;
+      if ((str_h != 1)||(str_w != 1)) return false;
+      if ((kernel_h < pad_h)||(kernel_w < pad_w)) return false;
+      return true;
+    case CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD:
+      if ((str_h != 1)||(str_w != 1)) return false;
+      if ((kernel_h != 3)||(kernel_w != 3)) return false;
+      return true;
+    case CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED:
+      if ((str_h != 1)||(str_w != 1)) return false;
+      if ((kernel_h == 3)&&(kernel_w == 3)) return true;
+      if ((kernel_h == 5)&&(kernel_w == 5)) return true;
+      return false;
+    default:
+      assert(0);
+  }
+  return false;
+}
+
+const int fwdAlgoCnt = 7;
+const cudnnConvolutionFwdAlgo_t fwdAlgo[fwdAlgoCnt] = {
+    CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM, 
+    //CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMPUTED_GEMM,
+    CUDNN_CONVOLUTION_FWD_ALGO_GEMM,
+    CUDNN_CONVOLUTION_FWD_ALGO_DIRECT,
+    CUDNN_CONVOLUTION_FWD_ALGO_FFT,
+    CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING,
+    CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD,
+    CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED};
+
+cudnnConvolutionFwdAlgo_t
+selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
+                                  const cudnnTensorDescriptor_t xDesc, const void* x,
+                                  const cudnnFilterDescriptor_t wDesc, const void* w,
+                                  const cudnnConvolutionDescriptor_t convDesc,
+                                  void* workSpace, size_t workSpaceSize,
+                                  const cudnnTensorDescriptor_t yDesc, void* y)
+{
+  const int reqAlgCnt = 8;
+  int cnt = 0;
+  cudnnConvolutionFwdAlgoPerf_t perfResults[reqAlgCnt];
+  checkCUDNN(cudnnFindConvolutionForwardAlgorithmEx(
+      handle, xDesc, x, wDesc, w, convDesc, yDesc, y,
+      reqAlgCnt, &cnt, perfResults, workSpace, workSpaceSize));
+  assert(cnt > 0);
+  checkCUDNN(perfResults[0].status);
+  printf("algo(%d) time(%.2lf)\n", perfResults[0].algo, perfResults[0].time);
+  //for (int i = 0; i < cnt; i++) {
+  //  printf("algo[%d] : algo(%d) time(%.2lf)\n", i, (int)perfResults[i].algo, perfResults[i].time);
+  //};
+  return perfResults[0].algo;
+#ifdef DEADCODE
+  long long cp_1, cp_2, best_time = LLONG_MAX;
+  float alpha = 1.0f, beta = 0.0f, times[fwdAlgoCnt];
+  cudnnConvolutionFwdAlgo_t best_algo;
+  int pad_h, pad_w, str_h, str_w, upscale_x, upscale_y;
+  cudnnConvolutionMode_t mode;
+  int out_c, in_c, kernel_h, kernel_w;
+  cudnnDataType_t type;
+  cudnnTensorFormat_t format;
+  checkCUDNN(cudnnGetConvolution2dDescriptor(convDesc, &pad_h, &pad_w, &str_h, &str_w,
+                                             &upscale_x, &upscale_y, &mode));
+  checkCUDNN(cudnnGetFilter4dDescriptor(wDesc, &type, &format, &out_c, &in_c, &kernel_h, &kernel_w));
+  for (int i = 0; i < fwdAlgoCnt; i++) {
+    if (!checkConvolutionForwardAlgorithm(fwdAlgo[i], kernel_h, kernel_w, pad_h, pad_w, str_h, str_w))
+      continue;
+    size_t size;
+    checkCUDNN(cudnnGetConvolutionForwardWorkspaceSize(handle, xDesc, wDesc,
+                                                       convDesc, yDesc, fwdAlgo[i], &size));
+    if (size > workSpaceSize) continue;
+    //checkCUDA(cudaDeviceSynchronize());
+    cudaEvent_t t_start, t_end;
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, 0);
+    cp_1 = Realm::Clock::current_time_in_microseconds();
+    checkCUDNN(cudnnConvolutionForward(handle, &alpha, xDesc, x, wDesc, w,
+                                       convDesc, fwdAlgo[i], workSpace, workSpaceSize,
+                                       &beta, yDesc, y));
+    //checkCUDA(cudaDeviceSynchronize());
+    cudaEventRecord(t_end, 0);
+    float elapsed;
+    checkCUDA(cudaEventSynchronize(t_end));
+    cudaEventElapsedTime(&elapsed, t_start, t_end);
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end); 
+    cp_2 = Realm::Clock::current_time_in_microseconds();
+    //printf("fwdAlgo[%d]: c_in(%d) c_out(%d) kernel(%d %d) stride(%d %d) time(%lld)\n", i, in_c, out_c, kernel_h, kernel_w, str_h, str_w, cp_2 - cp_1);
+    //printf("Elapsed = %.2lfms\n", elapsed);
+    times[i] = elapsed;
+    if ((i == 0) || (cp_2 - cp_1 < best_time)) {
+      best_time = cp_2 - cp_1;
+      best_algo = fwdAlgo[i];
+    }
+  }
+  for (int i = 0; i < fwdAlgoCnt; i++)
+    printf("times[i] = %.2lfms\n", i, times[i]);
+  printf("bestAlgo = %d\n", (int)best_algo);
+  return best_algo;
+#endif
 }

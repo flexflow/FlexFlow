@@ -41,15 +41,13 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
     allocator.allocate_field(sizeof(float), FID_DATA);
   }
 
-  Realm::ZRect<2, coord_t> output_rect(Realm::ZPoint<2>(0, 0),
-                     Realm::ZPoint<2>(output_channels-1, input.adim[1]-1));
+  Rect<2, coord_t> output_rect(Point<2>(0, 0), Point<2>(output_channels-1, input.adim[1]-1));
   IndexSpaceT<2> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
-  Realm::ZMatrix<2, 2, coord_t> transform;
+  Transform<2, 2, coord_t> transform;
   int extent_c = (output_channels + config.fc_num_par_c - 1) / config.fc_num_par_c;
   int extent_n = (input.adim[3] + config.fc_num_par_n - 1) / config.fc_num_par_n;
-  Realm::ZRect<2, coord_t> extent(Realm::ZPoint<2>(0, 0),
-                    Realm::ZPoint<2>(extent_c-1, extent_n-1));
+  Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
   transform[0][0] = extent_c; transform[0][1] = 0;
   transform[1][0] = 0; transform[1][1] = extent_n;
   IndexPartition output_ip =
@@ -57,14 +55,12 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
   
   int input_channels = input.adim[0];
-  Realm::ZRect<2, coord_t> kernel_rect(Realm::ZPoint<2>(0, 0),
-         Realm::ZPoint<2>(output_channels * input_channels-1, config.fc_num_par_n-1));
+  Rect<2, coord_t> kernel_rect(Point<2>(0, 0), Point<2>(output_channels * input_channels-1, config.fc_num_par_n-1));
   IndexSpaceT<2> kernel_is = runtime->create_index_space(ctx, kernel_rect);
   LogicalRegion kernel_lr = runtime->create_logical_region(ctx, kernel_is, fs);
   transform[0][0] = extent_c * input_channels;
   transform[1][1] = 1;
-  Realm::ZRect<2, coord_t> extent_k(Realm::ZPoint<2>(0, 0),
-                    Realm::ZPoint<2>(extent_c*input_channels-1, 0));
+  Rect<2, coord_t> extent_k(Point<2>(0, 0), Point<2>(extent_c*input_channels-1, 0));
   printf("extent_k(%dx%d %d)\n", extent_c, input_channels, 1);
   IndexPartition kernel_ip =
     runtime->create_partition_by_restriction(ctx, kernel_is, part_is, transform, extent_k);
@@ -74,14 +70,12 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   kernel_tensor.partition = kernel_lp;
   locals[0] = kernel_tensor;
 
-  Realm::ZRect<2, coord_t> bias_rect(Realm::ZPoint<2>(0, 0),
-         Realm::ZPoint<2>(output_channels-1, config.fc_num_par_n-1));
+  Rect<2, coord_t> bias_rect(Point<2>(0, 0), Point<2>(output_channels-1, config.fc_num_par_n-1));
   IndexSpaceT<2> bias_is = runtime->create_index_space(ctx, bias_rect);
   LogicalRegion bias_lr = runtime->create_logical_region(ctx, bias_is, fs);
   transform[0][0] = extent_c;
   transform[1][1] = 1;
-  Realm::ZRect<2, coord_t> extent_b(Realm::ZPoint<2>(0, 0),
-                    Realm::ZPoint<2>(extent_c-1,0));
+  Rect<2, coord_t> extent_b(Point<2>(0, 0), Point<2>(extent_c-1,0));
   IndexPartition bias_ip =
     runtime->create_partition_by_restriction(ctx, bias_is, part_is, transform, extent_b);
   LogicalPartition bias_lp = runtime->get_logical_partition(ctx, bias_lr, bias_ip);
@@ -101,8 +95,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   // Every partition reads all input_channels
   transform[0][0] = 0;
   transform[1][1] = extent_n;
-  Realm::ZRect<2, coord_t> extent_i(Realm::ZPoint<2>(0, 0),
-                    Realm::ZPoint<2>(input_channels-1, extent_n-1));
+  Rect<2, coord_t> extent_i(Point<2>(0, 0), Point<2>(input_channels-1, extent_n-1));
   IndexSpaceT<2> input_is = IndexSpaceT<2>(inputs[0].region.get_index_space());
   IndexPartition input_ip 
      = runtime->create_partition_by_restriction(ctx, input_is, part_is, transform, extent_i);
@@ -123,9 +116,9 @@ OpMeta* Linear::init_task(const Task *task,
   assert(task->regions.size() == 3);
   const Linear* linear = (Linear*) task->args;
   CnnHandle handle = *((const CnnHandle*) task->local_args);
-  const FieldAccessor<WRITE_DISCARD, float, 2> acc_kernel(regions[1], FID_DATA);
-  const FieldAccessor<WRITE_DISCARD, float, 2> acc_bias(regions[2], FID_DATA);
-  Realm::ZRect<2> rect_kernel, rect_bias;
+  const AccessorWO<float, 2> acc_kernel(regions[1], FID_DATA);
+  const AccessorWO<float, 2> acc_bias(regions[2], FID_DATA);
+  Rect<2> rect_kernel, rect_bias;
   rect_kernel = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   rect_bias = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
   assert(acc_kernel.accessor.is_dense_arbitrary(rect_kernel));
@@ -179,7 +172,7 @@ void Linear::init(const CnnModel& model)
   ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  Realm::ZRect<2> rect = runtime->get_index_space_domain(ctx, model.fc_part_is);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, model.fc_part_is);
   int idx;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     CnnHandle handle = model.cnn_handlers[idx++];
@@ -226,11 +219,11 @@ void Linear::forward_task(const Task *task,
   int output_channels = m->output_channels;
   int batch_size = m->batch_size;
   const float *one_ptr = m->one_ptr;
-  const FieldAccessor<READ_ONLY, float, 2> acc_input(regions[0], FID_DATA);
-  const FieldAccessor<WRITE_DISCARD, float, 2> acc_output(regions[1], FID_DATA);
-  const FieldAccessor<READ_ONLY, float, 2> acc_kernel(regions[2], FID_DATA);
-  const FieldAccessor<READ_ONLY, float, 2> acc_bias(regions[3], FID_DATA);
-  Realm::ZRect<2> rect_input, rect_output, rect_kernel, rect_bias;
+  const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 2> acc_output(regions[1], FID_DATA);
+  const AccessorRO<float, 2> acc_kernel(regions[2], FID_DATA);
+  const AccessorRO<float, 2> acc_bias(regions[3], FID_DATA);
+  Rect<2> rect_input, rect_output, rect_kernel, rect_bias;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   rect_kernel = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
@@ -271,7 +264,7 @@ void Linear::forward(const CnnModel& model)
   ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  Realm::ZRect<2> rect = runtime->get_index_space_domain(ctx, model.fc_part_is);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, model.fc_part_is);
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];

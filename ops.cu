@@ -48,14 +48,11 @@ CnnModel::CnnModel(int num_images, int height, int width,
   config.num_workers = width_par * height_par * image_par;
   config.fc_num_par_c = fc_par_c;
   config.fc_num_par_n = fc_par_n;
-  Realm::ZRect<3, coord_t> part_bounds(Realm::ZPoint<3>(0, 0, 0),
-                             Realm::ZPoint<3>(width_par-1, height_par-1, image_par-1));
+  Rect<3, coord_t> part_bounds(Point<3>(0, 0, 0), Point<3>(width_par-1, height_par-1, image_par-1));
   part_is = runtime->create_index_space(ctx, part_bounds);
-  Realm::ZRect<2, coord_t> fc_part_bounds(Realm::ZPoint<2>(0, 0),
-                             Realm::ZPoint<2>(fc_par_c-1, fc_par_n-1));
+  Rect<2, coord_t> fc_part_bounds(Point<2>(0, 0), Point<2>(fc_par_c-1, fc_par_n-1));
   fc_part_is = runtime->create_index_space(ctx, fc_part_bounds);
-  Realm::ZRect<3, coord_t> image_rect(Realm::ZPoint<3>(0, 0, 0),
-                                      Realm::ZPoint<3>(width-1, height-1, num_images*3-1));
+  Rect<3, coord_t> image_rect(Point<3>(0, 0, 0), Point<3>(width-1, height-1, num_images*3-1));
   IndexSpaceT<3> image_is = runtime->create_index_space(ctx, image_rect);
   FieldSpace fs = runtime->create_field_space(ctx);
   {
@@ -63,12 +60,11 @@ CnnModel::CnnModel(int num_images, int height, int width,
     allocator.allocate_field(sizeof(float), FID_DATA);
   }
   LogicalRegion image_lr = runtime->create_logical_region(ctx, image_is, fs);
-  Realm::ZMatrix<3, 3, coord_t> transform;
+  Transform<3, 3, coord_t> transform;
   int extent_w = width / width_par;
   int extent_h = height / height_par;
   int extent_nc = 3 * num_images / image_par;
-  Realm::ZRect<3, coord_t> extent(Realm::ZPoint<3>(0, 0, 0),
-                                  Realm::ZPoint<3>(extent_w - 1, extent_h - 1, extent_nc - 1));
+  Rect<3, coord_t> extent(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
   transform[0][0] = extent_w; transform[0][1] = 0; transform[0][2] = 0;
   transform[1][0] = 0; transform[1][1] = extent_h; transform[1][2] = 0;
   transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = extent_nc;
@@ -87,6 +83,43 @@ CnnModel::CnnModel(int num_images, int height, int width,
   input_image.region = image_lr;
   input_image.partition = image_lp;
 };
+
+__global__
+void init_image_kernel(float* ptr, coord_t size)
+{
+  const coord_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid < size) {
+    ptr[tid] = 1.0f;
+  }
+}
+
+void CnnModel::init_images_task(const Task *task,
+                                const std::vector<PhysicalRegion> &regions,
+                                Context ctx, Runtime *runtime)
+{
+  const int BLKSIZE = 512;
+  const AccessorWO<float, 3> acc_image(regions[0], FID_DATA);
+  Rect<3> rect_image;
+  rect_image = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  assert(acc_image.accessor.is_dense_arbitrary(rect_image));
+  float *image_ptr = acc_image.ptr(rect_image.lo);
+  int num_blocks = (rect_image.volume() + BLKSIZE - 1) / BLKSIZE;
+  init_image_kernel<<<num_blocks, BLKSIZE>>>(image_ptr, rect_image.volume());
+}
+
+void CnnModel::init_images()
+{
+  ArgumentMap argmap;
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  IndexLauncher launcher(IMAGE_INIT_TASK_ID, part_is,
+                         TaskArgument(NULL, 0), argmap);
+  launcher.add_region_requirement(
+      RegionRequirement(input_image.partition, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, input_image.region));
+  launcher.add_field(0, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
 
 Tensor CnnModel::add_flat_layer(Tensor input)
 {
@@ -111,15 +144,13 @@ Flat::Flat(CnnConfig config, Tensor input,
   
   int output_c = input.adim[0] * input.adim[1] * input.adim[2];
   int output_n = input.adim[3];
-  Realm::ZRect<2, coord_t> output_rect(Realm::ZPoint<2>(0, 0),
-                     Realm::ZPoint<2>(output_c-1, output_n-1));
+  Rect<2, coord_t> output_rect(Point<2>(0, 0), Point<2>(output_c-1, output_n-1));
   IndexSpaceT<2> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
-  Realm::ZMatrix<2, 2, coord_t> transform;
+  Transform<2, 2, coord_t> transform;
   int extent_c = input.pdim[0] * input.pdim[1] * input.pdim[2];
   int extent_n = input.pdim[3];
-  Realm::ZRect<2, coord_t> extent(Realm::ZPoint<2>(0, 0),
-                     Realm::ZPoint<2>(extent_c-1,extent_n-1));
+  Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1,extent_n-1));
   transform[0][0] = extent_c; transform[0][1] = 0;
   transform[1][0] = 0; transform[1][1] = extent_n;
   IndexPartition output_ip =
@@ -135,7 +166,7 @@ Flat::Flat(CnnConfig config, Tensor input,
   printf("flat: input(N=%d C=%d H=%d W=%d) -> output(N=%d C=%d)\n",
          input.pdim[3], input.pdim[2], input.pdim[1], input.pdim[0], output.pdim[1], output.pdim[0]);
  
-  Realm::ZMatrix<2, 3, coord_t> flat_trans;
+  Transform<2, 3, coord_t> flat_trans;
   flat_trans[0][0] = input.pdim[0] * input.pdim[1] * input.adim[2];
   flat_trans[0][1] = input.adim[0] * input.pdim[1] * input.adim[2];
   flat_trans[0][2] = 0;
@@ -161,7 +192,7 @@ void Flat::init(const CnnModel& model)
   ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  Realm::ZRect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     CnnHandle handle = model.cnn_handlers[idx++];
@@ -188,10 +219,10 @@ void Flat::forward_task(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 4);
-  const FieldAccessor<READ_ONLY, float, 3> acc_input(regions[0], FID_DATA);
-  const FieldAccessor<WRITE_DISCARD, float, 2> acc_output(regions[1], FID_DATA);
-  Realm::ZRect<3> rect_input;
-  Realm::ZRect<2> rect_output;
+  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 2> acc_output(regions[1], FID_DATA);
+  Rect<3> rect_input;
+  Rect<2> rect_output;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
@@ -210,7 +241,7 @@ void Flat::forward(const CnnModel& model)
   ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  Realm::ZRect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];

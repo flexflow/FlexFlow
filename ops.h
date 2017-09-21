@@ -13,13 +13,18 @@
  * limitations under the License.
  */
 
+#ifndef _LEGION_CNN_OPS_H_
+#define _LEGION_CNN_OPS_H_
+
 #include "legion.h"
 #include <cudnn.h>
 #include <cublas_v2.h>
 
-#ifndef _LEGION_CNN_OPS_H_
-#define _LEGION_CNN_OPS_H_
 using namespace Legion;
+
+template<typename FT, int N, typename T = coord_t> using AccessorRO = FieldAccessor<READ_ONLY,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
+template<typename FT, int N, typename T = coord_t> using AccessorRW = FieldAccessor<READ_WRITE,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
+template<typename FT, int N, typename T = coord_t> using AccessorWO = FieldAccessor<WRITE_ONLY,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
 
 #define FatalError(s) do {                                             \
     std::stringstream _where, _message;                                \
@@ -53,6 +58,7 @@ using namespace Legion;
 enum TaskIDs {
   TOP_LEVEL_TASK_ID,
   CNN_INIT_TASK_ID,
+  IMAGE_INIT_TASK_ID,
   CONV2D_INIT_TASK_ID,
   CONV2D_FWD_TASK_ID,
   CONV2D_BWD_TASK_ID,
@@ -141,8 +147,14 @@ public:
            int fc_par_n, int fc_par_c,
            Context ctx, Runtime* runtime);
 
+  static void init_images_task(const Task *task,
+                               const std::vector<PhysicalRegion> &regions,
+                               Context ctx, Runtime *runtime);
+  void init_images();
+
   void init_layers()
   {
+    init_images();
     for (size_t i = 0; i < layers.size(); i++) {
       layers[i]->init(*this);
     }
@@ -324,4 +336,5 @@ class FlatMeta : public OpMeta {
 public:
   FlatMeta(CnnHandle handle) : OpMeta(handle) {};
 };
+
 #endif // _LEGION_CNN_OPS_H_

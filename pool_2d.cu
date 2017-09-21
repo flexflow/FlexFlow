@@ -50,17 +50,15 @@ Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
     allocator.allocate_field(sizeof(float), FID_DATA);
   }
 
-  Realm::ZRect<3, coord_t> output_rect(Realm::ZPoint<3>(0, 0, 0),
-                      Realm::ZPoint<3>(output_w-1, output_h-1, output_nc-1));
+  Rect<3, coord_t> output_rect(Point<3>(0, 0, 0), Point<3>(output_w-1, output_h-1, output_nc-1));
   IndexSpaceT<3> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
-  Realm::ZMatrix<3, 3, coord_t> transform;
+  Transform<3, 3, coord_t> transform;
   int extent_w = (output_w + config.num_par_w - 1) / config.num_par_w;
   int extent_h = (output_h + config.num_par_h - 1) / config.num_par_h;
   int extent_nc = output_nc / config.num_par_n;
   assert(output_nc % config.num_par_n == 0);
-  Realm::ZRect<3, coord_t> extent(Realm::ZPoint<3>(0, 0, 0),
-                      Realm::ZPoint<3>(extent_w-1, extent_h-1, extent_nc-1));
+  Rect<3, coord_t> extent(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
   transform[0][0] = extent_w; transform[0][1] = 0; transform[0][2] = 0;
   transform[1][0] = 0; transform[1][1] = extent_h; transform[1][2] = 0;
   transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = extent_nc;
@@ -88,8 +86,7 @@ Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   extent_h = stride_h * (output.pdim[1]-1) + kernel_h - 2 * padding_h;
   extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / config.num_par_n;
   assert(inputs[0].adim[2] * inputs[0].adim[3] % config.num_par_n == 0);
-  Realm::ZRect<3, coord_t> extent_i(Realm::ZPoint<3>(0, 0, 0),
-                      Realm::ZPoint<3>(extent_w-1, extent_h-1, extent_nc-1));
+  Rect<3, coord_t> extent_i(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
   transform[0][0] = stride_w * output.pdim[0];
   transform[1][1] = stride_h * output.pdim[1];
   transform[2][2] = extent_nc;
@@ -111,7 +108,7 @@ OpMeta* Pooling2D::init_task(const Task *task,
   const Pooling2D* pool = (Pooling2D*) task->args;
   CnnHandle handle = *((const CnnHandle*) task->local_args);
   Pooling2DMeta* m = new Pooling2DMeta(handle);
-  Realm::ZRect<3> rect_input, rect_output;
+  Rect<3> rect_input, rect_output;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
@@ -164,7 +161,7 @@ void Pooling2D::init(const CnnModel& model)
   ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  Realm::ZRect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     CnnHandle handle = model.cnn_handlers[idx++];
@@ -201,9 +198,9 @@ void Pooling2D::forward_task(const Task *task,
   assert(task->regions.size() == 2);
   float alpha = 1.0f, beta = 0.0f;
   const Pooling2DMeta* m = *((Pooling2DMeta**) task->local_args);
-  const FieldAccessor<READ_ONLY, float, 3> acc_input(regions[0], FID_DATA);
-  const FieldAccessor<WRITE_DISCARD, float, 3> acc_output(regions[1], FID_DATA);
-  Realm::ZRect<3> rect_input, rect_output;
+  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 3> acc_output(regions[1], FID_DATA);
+  Rect<3> rect_input, rect_output;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
@@ -221,7 +218,7 @@ void Pooling2D::forward(const CnnModel& model)
   ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  Realm::ZRect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
