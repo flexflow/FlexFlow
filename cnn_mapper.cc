@@ -21,8 +21,7 @@ CnnMapper::CnnMapper(MapperRuntime *rt, Machine machine, Processor local,
                      std::map<Processor, Memory>* _proc_fbmems)
   : DefaultMapper(rt, machine, local, mapper_name),
     gpus(*_gpus), proc_fbmems(*_proc_fbmems)
-{
-}
+{}
 
 void CnnMapper::slice_task(const MapperContext ctx,
                            const Task& task,
@@ -117,10 +116,24 @@ void update_mappers(Machine machine, Runtime *runtime,
 {
   std::vector<Processor>* gpus = new std::vector<Processor>();
   std::map<Processor, Memory>* proc_fbmems = new std::map<Processor, Memory>();
-  std::map<Processor, Memory>* proc_zcmems = new std::map<Processor, Memory>();
+  //std::map<Processor, Memory>* proc_zcmems = new std::map<Processor, Memory>();
   std::vector<Machine::ProcessorMemoryAffinity> proc_mem_affinities;
   machine.get_proc_mem_affinity(proc_mem_affinities);
+  Machine::ProcessorQuery proc_query(machine);
+  for (Machine::ProcessorQuery::iterator it = proc_query.begin();
+      it != proc_query.end(); it++)
+  {
+    if (it->kind() == Processor::TOC_PROC) {
+      gpus->push_back(*it);
+      Machine::MemoryQuery fb_query(machine);
+      fb_query.only_kind(Memory::GPU_FB_MEM);
+      fb_query.best_affinity_to(*it);
+      assert(fb_query.count() == 1);
+      (*proc_fbmems)[*it] = *(fb_query.begin());
+    }
+  }
 
+/*
   for (unsigned idx = 0; idx < proc_mem_affinities.size(); ++idx) {
     Machine::ProcessorMemoryAffinity& affinity = proc_mem_affinities[idx];
     if (affinity.p.kind() == Processor::TOC_PROC) {
@@ -137,6 +150,7 @@ void update_mappers(Machine machine, Runtime *runtime,
        it != proc_fbmems->end(); it++) {
     gpus->push_back(it->first); 
   }
+*/
 
   for (std::set<Processor>::const_iterator it = local_procs.begin();
         it != local_procs.end(); it++)

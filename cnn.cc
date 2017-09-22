@@ -28,7 +28,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int num_par_h = 2;
   int num_par_w = 2;
   int num_par_n = 1;
-  int num_images = 128; // per_batch
+  int num_images = 32; // per_batch
   int fc_num_par_c = 4;
   int fc_num_par_n = 1;
   int height = 224;
