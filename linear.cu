@@ -46,7 +46,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   Transform<2, 2, coord_t> transform;
   int extent_c = (output_channels + config.fc_num_par_c - 1) / config.fc_num_par_c;
-  int extent_n = (input.adim[3] + config.fc_num_par_n - 1) / config.fc_num_par_n;
+  int extent_n = (input.adim[1] + config.fc_num_par_n - 1) / config.fc_num_par_n;
   Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
   transform[0][0] = extent_c; transform[0][1] = 0;
   transform[1][0] = 0; transform[1][1] = extent_n;
@@ -103,24 +103,29 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
 }
 
 /*
-  regions[0]: output
-  regions[1]: kernel
-  regions[2]: bias
+  regions[0]: input
+  regions[1]: output
+  regions[2]: kernel
+  regions[3]: bias
 */
 OpMeta* Linear::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
   const int BLKSIZE = 512;
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
   const Linear* linear = (Linear*) task->args;
   CnnHandle handle = *((const CnnHandle*) task->local_args);
-  const AccessorWO<float, 2> acc_kernel(regions[1], FID_DATA);
-  const AccessorWO<float, 2> acc_bias(regions[2], FID_DATA);
-  Rect<2> rect_kernel, rect_bias;
-  rect_kernel = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  rect_bias = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
+  const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
+  const AccessorRO<float, 2> acc_output(regions[1], FID_DATA);
+  const AccessorWO<float, 2> acc_kernel(regions[2], FID_DATA);
+  const AccessorWO<float, 2> acc_bias(regions[3], FID_DATA);
+  Rect<2> rect_input, rect_output, rect_kernel, rect_bias;
+  rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  rect_kernel = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
+  rect_bias = runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
   assert(acc_kernel.accessor.is_dense_arbitrary(rect_kernel));
   assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
   float* kernel_ptr = acc_kernel.ptr(rect_kernel.lo);
@@ -128,9 +133,10 @@ OpMeta* Linear::init_task(const Task *task,
   curandGenerator_t genGPU;
   curandCreateGenerator(&genGPU, CURAND_RNG_PSEUDO_DEFAULT);
   curandSetPseudoRandomGeneratorSeed(genGPU, 1234ULL);
-  int input_channels = linear->inputs[0].adim[0];
-  int output_channels = linear->output.pdim[0];
+  int input_channels = rect_input.hi[0] - rect_input.lo[0] + 1;
+  int output_channels = rect_output.hi[0] - rect_output.lo[0] + 1;
   int batch_size = linear->output.pdim[1];
+  printf("init linear (input): in_c(%d) out_c(%d) batch_size(%d)\n", input_channels, output_channels, batch_size);
 
   coord_t kernel_elements = input_channels * linear->output.pdim[0];
   float factor = 1.0f / sqrt(input_channels);
@@ -181,17 +187,21 @@ void Linear::init(const CnnModel& model)
   IndexLauncher init_launcher(LINEAR_INIT_TASK_ID, model.fc_part_is,
                               TaskArgument(this, sizeof(Linear)), argmap);
   init_launcher.add_region_requirement(
+      RegionRequirement(input_lps[0], 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+  init_launcher.add_field(0, FID_DATA);
+  init_launcher.add_region_requirement(
       RegionRequirement(output.partition, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, output.region));
-  init_launcher.add_field(0, FID_DATA);
+  init_launcher.add_field(1, FID_DATA);
   init_launcher.add_region_requirement(
       RegionRequirement(locals[0].partition, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, locals[0].region));
-  init_launcher.add_field(1, FID_DATA);
+  init_launcher.add_field(2, FID_DATA);
   init_launcher.add_region_requirement(
       RegionRequirement(locals[1].partition, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, locals[1].region));
-  init_launcher.add_field(2, FID_DATA);
+  init_launcher.add_field(3, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
   idx = 0;

@@ -164,8 +164,48 @@ Flat::Flat(CnnConfig config, Tensor input,
   output.region = output_lr;
   output.partition = output_lp;
   printf("flat: input(N=%d C=%d H=%d W=%d) -> output(N=%d C=%d)\n",
-         input.pdim[3], input.pdim[2], input.pdim[1], input.pdim[0], output.pdim[1], output.pdim[0]);
+         input.adim[3], input.adim[2], input.adim[1], input.adim[0], output.adim[1], output.adim[0]);
  
+  FieldSpace proj_fs = runtime->create_field_space(ctx);
+  {
+    FieldAllocator allocator = runtime->create_field_allocator(ctx, proj_fs);
+    allocator.allocate_field(sizeof(Rect<2>), FID_DATA);
+  }
+  LogicalRegion proj_lr = runtime->create_logical_region(ctx, part_is_3d, proj_fs);
+  InlineLauncher launcher(RegionRequirement(proj_lr, WRITE_DISCARD, EXCLUSIVE, proj_lr)
+                                           .add_field(FID_DATA));
+  PhysicalRegion proj_pr = runtime->map_region(ctx, launcher);
+  proj_pr.wait_until_valid();
+  coord_t subtotal = 0;
+  {
+    const FieldAccessor<WRITE_DISCARD, Rect<2>, 3, coord_t,
+              Realm::AffineAccessor<Rect<2>, 3, coord_t> > ra(proj_pr, FID_DATA);
+    Rect<3> rect = runtime->get_index_space_domain(ctx, part_is_3d);
+    for(PointInRectIterator<3> pir(rect); pir(); ++pir) {
+      IndexSpace subspace = runtime->get_index_subspace(input.partition.get_index_partition(), *pir);
+      Rect<3> subrect = runtime->get_index_space_domain(ctx, subspace);
+      // Currently we assume the size of each subregion is divisible by output_n (i.e., batch size)
+      assert(subrect.volume() % output_n == 0);
+      coord_t subsize = subrect.volume() / output_n;
+      ra[*pir] = Rect<2>(Point<2>(subtotal, 0), Point<2>(subtotal + subsize - 1, output_n - 1));
+      subtotal += subsize;
+    }
+  }
+  runtime->unmap_region(ctx, proj_pr);
+  Transform<3, 3, coord_t> proj_trans;
+  proj_trans[0][0] = 1; proj_trans[0][1] = 0; proj_trans[0][2] = 0;
+  proj_trans[1][0] = 0; proj_trans[1][1] = 1; proj_trans[1][2] = 0;
+  proj_trans[2][0] = 0; proj_trans[2][1] = 0; proj_trans[2][2] = 1;
+  Rect<3, coord_t> proj_extent(Point<3>(0, 0, 0), Point<3>(0, 0, 0));
+  IndexPartition proj_ip =
+    runtime->create_partition_by_restriction(ctx, part_is_3d, part_is_3d, proj_trans, proj_extent);
+  LogicalPartition proj_lp = runtime->get_logical_partition(ctx, proj_lr, proj_ip);
+  IndexPartition flat_ip =
+    runtime->create_partition_by_image_range(ctx, output_is,
+                         proj_lp, proj_lr, FID_DATA, part_is_3d);
+  flat_lp = runtime->get_logical_partition(ctx, output_lr, flat_ip);
+  return;
+/*
   Transform<2, 3, coord_t> flat_trans;
   flat_trans[0][0] = input.pdim[0] * input.pdim[1] * input.adim[2];
   flat_trans[0][1] = input.adim[0] * input.pdim[1] * input.adim[2];
@@ -176,6 +216,7 @@ Flat::Flat(CnnConfig config, Tensor input,
   IndexPartition flat_ip =
     runtime->create_partition_by_restriction(ctx, output_is, part_is_3d, flat_trans, extent);
   flat_lp = runtime->get_logical_partition(ctx, output_lr, flat_ip);
+*/
 }
 
 OpMeta* Flat::init_task(const Task *task,
@@ -218,18 +259,18 @@ void Flat::forward_task(const Task *task,
                         Context ctx, Runtime *runtime)
 {
   assert(regions.size() == 2);
-  assert(task->regions.size() == 4);
+  assert(task->regions.size() == 2);
   const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
   const AccessorWO<float, 2> acc_output(regions[1], FID_DATA);
   Rect<3> rect_input;
   Rect<2> rect_output;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  assert(rect_input.volume() == rect_output.volume());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
   assert(acc_output.accessor.is_dense_arbitrary(rect_output));
   const float *input_ptr = acc_input.ptr(rect_input.lo);
   float *output_ptr = acc_output.ptr(rect_output.lo);
-  assert(rect_input.volume() == rect_output.volume());
 
   checkCUDA(cudaMemcpy(output_ptr, input_ptr,
                        rect_input.volume() * sizeof(float),

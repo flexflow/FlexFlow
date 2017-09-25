@@ -39,7 +39,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int num_workers = num_par_h * num_par_w * num_par_n;
   // First, create cnnContexts
   ArgumentMap local_args;
-  size_t workSpaceSize = (size_t) 4 * 1024 * 1024 * 1024;
+  size_t workSpaceSize = (size_t) 2 * 1024 * 1024 * 1024;
   IndexLauncher init_launcher(CNN_INIT_TASK_ID, model.part_is,
                               TaskArgument(&workSpaceSize, sizeof(workSpaceSize)), local_args);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
@@ -68,23 +68,23 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   Tensor t = model.add_conv_layer(model.input_image, 64, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 64, 3, 3, 1, 1, 1, 1);
   t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
-  //t = model.add_conv_layer(t, 128, 3, 3, 1, 1, 1, 1);
-  //t = model.add_conv_layer(t, 128, 3, 3, 1, 1, 1, 1);
-  //t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
-  //t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
-  //t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
-  //t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
-  //t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
-  //t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
-  //t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
-  //t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
-  //t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
-  //t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
-  //t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
-  //t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
-  //t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
-  //t = model.add_flat_layer(t);
-  //t = model.add_linear_layer(t, 4096);
+  t = model.add_conv_layer(t, 128, 3, 3, 1, 1, 1, 1);
+  t = model.add_conv_layer(t, 128, 3, 3, 1, 1, 1, 1);
+  t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
+  t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
+  t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
+  t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
+  t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
+  t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
+  t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
+  t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
+  t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
+  t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  t = model.add_flat_layer(t);
+  t = model.add_linear_layer(t, 4096);
   //t = model.add_linear_layer(t, 4096);
   //t = model.add_linear_layer(t, 1000);
   

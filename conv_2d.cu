@@ -117,6 +117,8 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
          output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
   // Compute partition bound for input
+  input_lps[0] = input.partition;
+  return;
   IndexSpaceT<3> input_is = IndexSpaceT<3>(inputs[0].region.get_index_space());
   extent_w = stride_w * (output.pdim[0]-1) + kernel_w - 2 * padding_w;
   extent_h = stride_h * (output.pdim[1]-1) + kernel_h - 2 * padding_h;

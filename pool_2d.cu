@@ -81,6 +81,8 @@ Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
          output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
   // Compute partition bound for input
+  input_lps[0] = input.partition;
+  return;
   IndexSpaceT<3> input_is = IndexSpaceT<3>(inputs[0].region.get_index_space());
   extent_w = stride_w * (output.pdim[0]-1) + kernel_w - 2 * padding_w;
   extent_h = stride_h * (output.pdim[1]-1) + kernel_h - 2 * padding_h;
@@ -130,14 +132,19 @@ OpMeta* Pooling2D::init_task(const Task *task,
                                         pool->inputs[0].pdim[2],
                                         input_h,
                                         input_w));
-
+  int pad_h = ((output_h - 1) * pool->stride_h + pool->kernel_h - input_h + 1) / 2;
+  int pad_w = ((output_w - 1) * pool->stride_w + pool->kernel_w - input_w + 1) / 2;
+  if (pad_h != pool->padding_h)
+    printf("Warning: changing padding_h to satisfy output_h size\n");
+  if (pad_w != pool->padding_w)
+    printf("Warning: changing padding_w to satisfy output_w size\n");
   checkCUDNN(cudnnSetPooling2dDescriptor(m->poolDesc,
                                          CUDNN_POOLING_MAX,
                                          CUDNN_PROPAGATE_NAN,
                                          pool->kernel_h,
                                          pool->kernel_w,
-                                         pool->padding_h,
-                                         pool->padding_w,
+                                         pad_h,//pool->padding_h,
+                                         pad_w,//pool->padding_w,
                                          pool->stride_h,
                                          pool->stride_w));
   int n, c, h, w;
