@@ -28,7 +28,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int num_par_h = 2;
   int num_par_w = 2;
   int num_par_n = 1;
-  int num_images = 32; // per_batch
+  int num_images = 128; // per_batch
   int fc_num_par_c = 4;
   int fc_num_par_n = 1;
   int height = 224;
@@ -85,8 +85,8 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
   t = model.add_flat_layer(t);
   t = model.add_linear_layer(t, 4096);
-  //t = model.add_linear_layer(t, 4096);
-  //t = model.add_linear_layer(t, 1000);
+  t = model.add_linear_layer(t, 4096);
+  t = model.add_linear_layer(t, 1000);
   
   // Initialize every layer
   model.init_layers();

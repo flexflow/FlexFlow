@@ -179,7 +179,7 @@ void Linear::init(const CnnModel& model)
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Rect<2> rect = runtime->get_index_space_domain(ctx, model.fc_part_is);
-  int idx;
+  int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     CnnHandle handle = model.cnn_handlers[idx++];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(CnnHandle)));
