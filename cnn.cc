@@ -87,6 +87,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   t = model.add_linear_layer(t, 4096);
   t = model.add_linear_layer(t, 4096);
   t = model.add_linear_layer(t, 1000);
+  t = model.add_softmax_layer(t);
   
   // Initialize every layer
   model.init_layers();
@@ -198,6 +199,26 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Flat::backward_task>(registrar, "flat_bwd_task");
+  }
+
+  // Softmax task
+  {
+    TaskVariantRegistrar registrar(SOFTMAX_INIT_TASK_ID, "softmax_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Softmax::init_task>(registrar, "softmax_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(SOFTMAX_FWD_TASK_ID, "softmax_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Softmax::forward_task>(registrar, "softmax_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(SOFTMAX_BWD_TASK_ID, "softmax_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Softmax::backward_task>(registrar, "softmax_bwd_task");
   }
 
   Runtime::add_registration_callback(update_mappers);

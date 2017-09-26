@@ -71,6 +71,9 @@ enum TaskIDs {
   FLAT_INIT_TASK_ID,
   FLAT_FWD_TASK_ID,
   FLAT_BWD_TASK_ID,
+  SOFTMAX_INIT_TASK_ID,
+  SOFTMAX_FWD_TASK_ID,
+  SOFTMAX_BWD_TASK_ID,
 };
 
 enum FieldIDs {
@@ -109,6 +112,7 @@ struct CnnConfig {
   HighLevelRuntime *lg_hlr;
   int num_par_h, num_par_w, num_par_n, num_workers;
   int fc_num_par_c, fc_num_par_n;
+  int sm_num_par;
 };
 
 class OpMeta {
@@ -167,6 +171,10 @@ public:
     }
   }
 
+  void backward()
+  {
+  }
+
   Tensor add_conv_layer(Tensor input, int out_channels, int kernel_x, int kernel_y,
                         int stride_x, int stride_y, int padding_x, int padding_y, bool relu = true);
 
@@ -176,9 +184,12 @@ public:
   Tensor add_linear_layer(Tensor input, int output_channels, bool relu = true);
 
   Tensor add_flat_layer(Tensor input);
+
+  Tensor add_softmax_layer(Tensor input);
 public:
   IndexSpaceT<3> part_is;
   IndexSpaceT<2> fc_part_is;
+  IndexSpaceT<1> sm_part_is;
   Tensor input_image;
   CnnConfig config;
   std::vector<Op*> layers;
@@ -335,6 +346,36 @@ public:
 class FlatMeta : public OpMeta {
 public:
   FlatMeta(CnnHandle handle) : OpMeta(handle) {};
+};
+
+class Softmax : public Op {
+public:
+  Softmax(CnnConfig config, Tensor input,
+          IndexSpaceT<1> part_is);
+
+  void init(const CnnModel&);
+
+  void forward(const CnnModel&);
+
+  void backward(const CnnModel&);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+};
+
+class SoftmaxMeta : public OpMeta {
+public:
+  SoftmaxMeta(CnnHandle handle) : OpMeta(handle) {};
+  cudnnTensorDescriptor_t inputTensor;
 };
 
 #endif // _LEGION_CNN_OPS_H_
