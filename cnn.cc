@@ -93,6 +93,8 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   model.init_layers();
 
   model.forward();
+
+  model.backward();
 }
 
 int main(int argc, char **argv)
@@ -119,6 +121,14 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<CnnModel::init_images_task>(registrar, "image_init_task");
+  }
+
+  // LABEL_INIT_TASK
+  {
+    TaskVariantRegistrar registrar(LABEL_INIT_TASK_ID, "label_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<CnnModel::init_labels_task>(registrar, "label_init_task");
   }
 
   // Conv2D task

@@ -59,6 +59,7 @@ enum TaskIDs {
   TOP_LEVEL_TASK_ID,
   CNN_INIT_TASK_ID,
   IMAGE_INIT_TASK_ID,
+  LABEL_INIT_TASK_ID,
   CONV2D_INIT_TASK_ID,
   CONV2D_FWD_TASK_ID,
   CONV2D_BWD_TASK_ID,
@@ -156,9 +157,15 @@ public:
                                Context ctx, Runtime *runtime);
   void init_images();
 
+  static void init_labels_task(const Task *task,
+                               const std::vector<PhysicalRegion> &regions,
+                               Context ctx, Runtime *runtime); 
+  void init_labels();
+
   void init_layers()
   {
     init_images();
+    init_labels();
     for (size_t i = 0; i < layers.size(); i++) {
       layers[i]->init(*this);
     }
@@ -173,6 +180,9 @@ public:
 
   void backward()
   {
+    for (int i = layers.size() - 1; i >= 0; i--) {
+      layers[i]->backward(*this);
+    }
   }
 
   Tensor add_conv_layer(Tensor input, int out_channels, int kernel_x, int kernel_y,
@@ -190,7 +200,7 @@ public:
   IndexSpaceT<3> part_is;
   IndexSpaceT<2> fc_part_is;
   IndexSpaceT<1> sm_part_is;
-  Tensor input_image;
+  Tensor input_image, input_label;
   CnnConfig config;
   std::vector<Op*> layers;
   CnnHandle cnn_handlers[MAX_NUM_WORKERS];

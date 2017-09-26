@@ -55,14 +55,16 @@ CnnModel::CnnModel(int num_images, int height, int width,
   fc_part_is = runtime->create_index_space(ctx, fc_part_bounds);
   Rect<1, coord_t> sm_part_bounds(Point<1>(0), Point<1>(config.sm_num_par-1));
   sm_part_is = runtime->create_index_space(ctx, sm_part_bounds);
+
+  // input_images
   Rect<3, coord_t> image_rect(Point<3>(0, 0, 0), Point<3>(width-1, height-1, num_images*3-1));
   IndexSpaceT<3> image_is = runtime->create_index_space(ctx, image_rect);
-  FieldSpace fs = runtime->create_field_space(ctx);
+  FieldSpace image_fs = runtime->create_field_space(ctx);
   {
-    FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
+    FieldAllocator allocator = runtime->create_field_allocator(ctx, image_fs);
     allocator.allocate_field(sizeof(float), FID_DATA);
   }
-  LogicalRegion image_lr = runtime->create_logical_region(ctx, image_is, fs);
+  LogicalRegion image_lr = runtime->create_logical_region(ctx, image_is, image_fs);
   Transform<3, 3, coord_t> transform;
   int extent_w = width / width_par;
   int extent_h = height / height_par;
@@ -85,6 +87,28 @@ CnnModel::CnnModel(int num_images, int height, int width,
   input_image.pdim[3] = extent_nc / 3;
   input_image.region = image_lr;
   input_image.partition = image_lp;
+
+  // input_label
+  Rect<1, coord_t> label_rect(Point<1>(0), Point<1>(num_images-1));
+  IndexSpaceT<1> label_is = runtime->create_index_space(ctx, label_rect);
+  FieldSpace label_fs = runtime->create_field_space(ctx);
+  {
+    FieldAllocator allocator = runtime->create_field_allocator(ctx, label_fs);
+    allocator.allocate_field(sizeof(int), FID_DATA);
+  }
+  LogicalRegion label_lr = runtime->create_logical_region(ctx, label_is, label_fs);
+  Transform<1, 1, coord_t> label_trans;
+  int extent_n = (num_images + config.sm_num_par - 1) / config.sm_num_par;
+  Rect<1, coord_t> label_extent(Point<1>(0), Point<1>(extent_n-1));
+  label_trans[0][0] = extent_n;
+  IndexPartition label_ip = runtime->create_partition_by_restriction(
+                 ctx, label_is, sm_part_is, label_trans, label_extent);
+  LogicalPartition label_lp = runtime->get_logical_partition(ctx, label_lr, label_ip);
+  input_label.numDim = 1;
+  input_label.adim[0] = num_images;
+  input_label.pdim[0] = extent_n;
+  input_label.region = label_lr;
+  input_label.partition = label_lp;
 };
 
 __global__
@@ -93,6 +117,15 @@ void init_image_kernel(float* ptr, coord_t size)
   const coord_t tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid < size) {
     ptr[tid] = 1.0f;
+  }
+}
+
+__global__
+void init_label_kernel(int* ptr, coord_t size)
+{
+  const coord_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid < size) {
+    ptr[tid] = 1;
   }
 }
 
@@ -122,6 +155,35 @@ void CnnModel::init_images()
                         WRITE_DISCARD, EXCLUSIVE, input_image.region));
   launcher.add_field(0, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+void CnnModel::init_labels_task(const Task *task,
+                                const std::vector<PhysicalRegion> &regions,
+                                Context ctx, Runtime *runtime)
+{
+  const int BLKSIZE = 512;
+  const AccessorWO<int, 1> acc_label(regions[0], FID_DATA);
+  Rect<1> rect_label;
+  rect_label = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  assert(acc_label.accessor.is_dense_arbitrary(rect_label));
+  int *label_ptr = acc_label.ptr(rect_label.lo);
+  int num_blocks = (rect_label.volume() + BLKSIZE - 1) / BLKSIZE;
+  init_label_kernel<<<num_blocks, BLKSIZE>>>(label_ptr, rect_label.volume());
+}
+
+void CnnModel::init_labels()
+{
+  ArgumentMap argmap;
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  IndexLauncher launcher(LABEL_INIT_TASK_ID, sm_part_is,
+                         TaskArgument(NULL, 0), argmap);
+  launcher.add_region_requirement(
+      RegionRequirement(input_label.partition, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, input_label.region));
+  launcher.add_field(0, FID_DATA);
+  //FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  //fm.wait_all_results();
 }
 
 Tensor CnnModel::add_flat_layer(Tensor input)
@@ -166,7 +228,7 @@ Flat::Flat(CnnConfig config, Tensor input,
   output.pdim[1] = extent_n;
   output.region = output_lr;
   output.partition = output_lp;
-  printf("flat: input(N=%d C=%d H=%d W=%d) -> output(N=%d C=%d)\n",
+  printf("Create flat layer: input(N=%d C=%d H=%d W=%d) -> output(N=%d C=%d)\n",
          input.adim[3], input.adim[2], input.adim[1], input.adim[0], output.adim[1], output.adim[0]);
  
   FieldSpace proj_fs = runtime->create_field_space(ctx);
