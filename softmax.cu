@@ -232,8 +232,8 @@ void Softmax::backward_task(const Task *task,
   SoftmaxLossBackprop<<<num_blocks, BLK_SIZE>>>(input_ptr, label_ptr, num_labels, num_images);
 
   // Accouting for batch size in SGD
-  float scalVal = 1.0f / static_case<float>(num_images);
-  checkCUDA(cublasSscale(m->handle.blas, rect_input.volume(), &scalVal, input_ptr, 1));
+  float scalVal = 1.0f / static_cast<float>(num_images);
+  checkCUDA(cublasSscal(m->handle.blas, rect_input.volume(), &scalVal, input_ptr, 1));
 }
 
 __host__

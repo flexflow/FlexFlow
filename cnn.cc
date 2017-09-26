@@ -86,7 +86,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   t = model.add_flat_layer(t);
   t = model.add_linear_layer(t, 4096);
   t = model.add_linear_layer(t, 4096);
-  t = model.add_linear_layer(t, 1000);
+  t = model.add_linear_layer(t, 1000, false/*relu*/);
   t = model.add_softmax_layer(t);
   
   // Initialize every layer
