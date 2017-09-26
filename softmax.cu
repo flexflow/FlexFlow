@@ -203,7 +203,7 @@ void Softmax::backward_task(const Task *task,
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   float alpha = 1.0f, beta = 0.0f;
-  //const SoftmaxMeta* m = *((SoftmaxMeta**) task->local_args);
+  const SoftmaxMeta* m = *((SoftmaxMeta**) task->local_args);
   const AccessorRW<float, 2> acc_input(regions[0], FID_DATA);
   const AccessorRO<float, 2> acc_output(regions[1], FID_DATA);
   const AccessorRO<int, 1> acc_label(regions[2], FID_DATA);
@@ -230,6 +230,10 @@ void Softmax::backward_task(const Task *task,
                        cudaMemcpyDeviceToDevice));
   int num_blocks = (num_images + BLK_SIZE - 1) / BLK_SIZE;
   SoftmaxLossBackprop<<<num_blocks, BLK_SIZE>>>(input_ptr, label_ptr, num_labels, num_images);
+
+  // Accouting for batch size in SGD
+  float scalVal = 1.0f / static_case<float>(num_images);
+  checkCUDA(cublasSscale(m->handle.blas, rect_input.volume(), &scalVal, input_ptr, 1));
 }
 
 __host__
