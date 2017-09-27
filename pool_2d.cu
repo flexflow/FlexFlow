@@ -74,7 +74,8 @@ Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   output.pdim[0] = extent_w;
   output.pdim[1] = extent_h;
   output.pdim[2] = output.adim[2];
-  output.pdim[3] = output.adim[3];
+  output.pdim[3] = extent_nc / output.adim[2];
+  assert(extent_nc % output.adim[2] == 0);
   output.region = output_lr;
   output.partition = output_lp;
   printf("Create pool2d layer: output(n=%d c=%d h=%d w=%d)\n",
@@ -135,9 +136,9 @@ OpMeta* Pooling2D::init_task(const Task *task,
   int pad_h = ((output_h - 1) * pool->stride_h + pool->kernel_h - input_h + 1) / 2;
   int pad_w = ((output_w - 1) * pool->stride_w + pool->kernel_w - input_w + 1) / 2;
   if (pad_h != pool->padding_h)
-    printf("Warning: changing padding_h to satisfy output_h size\n");
+    printf("Warning: changing pool_padding_h to satisfy output_h size\n");
   if (pad_w != pool->padding_w)
-    printf("Warning: changing padding_w to satisfy output_w size\n");
+    printf("Warning: changing pool_padding_w to satisfy output_w size\n");
   checkCUDNN(cudnnSetPooling2dDescriptor(m->poolDesc,
                                          CUDNN_POOLING_MAX,
                                          CUDNN_PROPAGATE_NAN,

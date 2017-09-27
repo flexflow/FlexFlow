@@ -110,7 +110,8 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   output.pdim[0] = extent_w;
   output.pdim[1] = extent_h;
   output.pdim[2] = out_channels;
-  output.pdim[3] = input.adim[3];
+  output.pdim[3] = extent_nc / out_channels;
+  assert(extent_nc % out_channels == 0);
   output.region = output_lr;
   output.partition = output_lp;
   printf("Create conv layer: output(n=%d c=%d h=%d w=%d)\n",
@@ -239,10 +240,17 @@ OpMeta* Conv2D::init_task(const Task *task,
                                         conv->kernel_h,
                                         conv->kernel_w));
 
-  printf("convDim: padding(%d %d) stride(%d %d)\n", conv->padding_h, conv->padding_w, conv->stride_h, conv->stride_w);
+  //printf("convDim: padding(%d %d) stride(%d %d)\n", conv->padding_h, conv->padding_w, conv->stride_h, conv->stride_w);
+  int pad_h = ((output_h - 1) * conv->stride_h + conv->kernel_h - input_h + 1) / 2;
+  int pad_w = ((output_w - 1) * conv->stride_w + conv->kernel_w - input_w + 1) / 2;
+  if (pad_h != conv->padding_h)
+    printf("Warning: changing conv_padding_h to satisfy output_h size\n");
+  if (pad_w != conv->padding_w)
+    printf("Warning: changing conv_padding_w to satisfy output_w size\n");
+
   checkCUDNN(cudnnSetConvolution2dDescriptor(m->convDesc,
-                                             conv->padding_h,
-                                             conv->padding_w,
+                                             pad_h,//conv->padding_h,
+                                             pad_w,//conv->padding_w,
                                              conv->stride_h,
                                              conv->stride_w,
                                              1/*upscale_x*/,
