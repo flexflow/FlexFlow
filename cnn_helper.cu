@@ -16,3 +16,12 @@ void ones_kernel(float* ptr, coord_t size)
     ptr[tid] = 1.0f;
   }
 }
+
+__global__
+void reluBackward(float *grad_ptr, const float *input, int n)
+{
+  CUDA_KERNEL_LOOP(i, n)
+  {
+    grad_ptr[i] = (input[i] > 0) ? grad_ptr[i] : 0;
+  }
+}

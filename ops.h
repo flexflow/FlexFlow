@@ -51,7 +51,7 @@ template<typename FT, int N, typename T = coord_t> using AccessorWO = FieldAcces
 } while(0)
 
 #define MAX_NUM_INPUTS 3
-#define MAX_NUM_LOCALS 2
+#define MAX_NUM_LOCALS 3
 #define MAX_NUM_WORKERS 16
 #define MAX_DIM 4
 
@@ -69,6 +69,7 @@ enum TaskIDs {
   LINEAR_INIT_TASK_ID,
   LINEAR_FWD_TASK_ID,
   LINEAR_BWD_TASK_ID,
+  LINEAR_BWD2_TASK_ID,
   FLAT_INIT_TASK_ID,
   FLAT_FWD_TASK_ID,
   FLAT_BWD_TASK_ID,
@@ -312,8 +313,13 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+
+  static void backward2_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
 public:
   bool relu;
+  LogicalPartition replica_sub_lps[MAX_NUM_WORKERS];
 };
 
 class LinearMeta : public OpMeta {
@@ -323,7 +329,7 @@ public:
   cudnnActivationDescriptor_t actiDesc;
   int input_channels, output_channels, batch_size;
   bool relu;
-  float *one_ptr;
+  float *one_ptr, *pre_relu;
 };
 
 class Flat : public Op {
