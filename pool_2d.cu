@@ -53,6 +53,7 @@ Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   Rect<3, coord_t> output_rect(Point<3>(0, 0, 0), Point<3>(output_w-1, output_h-1, output_nc-1));
   IndexSpaceT<3> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
+  LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
   Transform<3, 3, coord_t> transform;
   int extent_w = (output_w + config.num_par_w - 1) / config.num_par_w;
   int extent_h = (output_h + config.num_par_h - 1) / config.num_par_h;
@@ -65,6 +66,8 @@ Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   IndexPartition output_ip =
     runtime->create_partition_by_restriction(ctx, output_is, part_is, transform, extent);
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
+  LogicalParititon output_grad_lp =
+    runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
 
   output.numDim = 4;
   output.adim[0] = output_w;
@@ -78,6 +81,8 @@ Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   assert(extent_nc % output.adim[2] == 0);
   output.region = output_lr;
   output.partition = output_lp;
+  output.region_grad = output_grad_lr;
+  output.partition_grad = output_grad_lp;
   printf("Create pool2d layer: output(n=%d c=%d h=%d w=%d)\n",
          output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
@@ -247,12 +252,82 @@ void Pooling2D::forward(const CnnModel& model)
   runtime->execute_index_space(ctx, launcher);
 }
 
+/*
+  regions[0](I): input
+  regions[1](O): input_grad
+  regions[2](I): output
+  regions[3](I): output_grad
+*/
 void Pooling2D::backward_task(const Task *task,
                               const std::vector<PhysicalRegion> &regions,
                               Context ctx, Runtime *runtime)
 {
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
+  float alpha = 1.0f, beta = 0.0f;
+  const Pooling2DMeta* m = *((Pooling2DMeta**) task->local_args);
+  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 3> acc_input_grad(regions[1], FID_DATA);
+  const AccessorRO<float, 3> acc_output(regions[2], FID_DATA);
+  const AccessorRO<float, 3> acc_output_grad(regions[3], FID_DATA);
+  Rect<3> rect_input, rect_input_grad, rect_output, rect_output_grad;
+  rect_input =
+    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_input_grad =
+    runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  rect_output =
+    runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
+  rect_output_grad =
+    runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
+  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
+  assert(acc_input_grad.accessor.is_dense_arbitrary(rect_input_grad));
+  assert(acc_output.accessor.is_dense_arbitrary(rect_output));
+  assert(acc_output_grad.accessor.is_dense_arbitrary(rect_output_grad));
+  const float *input_ptr = acc_input.ptr(rect_input.lo);
+  float *input_grad_ptr = acc_input_grad.ptr(rect_input_grad.lo);
+  const float *output_ptr = acc_output.ptr(rect_output.lo);
+  const float *output_grad_ptr = acc_output_grad.ptr(rect_output_grad.lo);
+
+  checkCUDNN(cudnnPoolingBackward(m->handle.dnn, m->poolDesc,
+                                  &alpha, m->outputTensor, output_ptr,
+                                  m->outputTensor, output_grad_ptr,
+                                  m->inputTensor, input_ptr,
+                                  &beta, m->inputTensor, input_grad_ptr));
 }
 
 void Pooling2D::backward(const CnnModel& model)
 {
+  ArgumentMap argmap;
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  int idx = 0;
+  for (PointInRectIterator<3> it(rect); it(); it++) {
+    OpMeta* mp = meta[idx++];
+    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
+  }
+  IndexLauncher launcher(POOL2D_BWD_TASK_ID, model.part_is,
+                         TaskArgument(NULL, 0), argmap);
+  // regions[0](I): input
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0].partition, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+  launcher.add_field(0, FID_DATA);
+  // regions[1](O): input_grad
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0].partition_grad, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, inputs[0].region_grad));
+  launcher.add_field(1, FID_DATA);
+  // regions[2](I): output
+  launcher.add_region_requirement(
+      RegionRequirement(output.partition, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, output.region));
+  launcher.add_field(2, FID_DATA);
+  // regions[3](I): output_grad
+  launcher.add_region_requirement(
+      RegionRequirement(output.partition_grad, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, output.region_grad));
+  launcher.add_field(3, FID_DATA);
+
+  runtime->execute_index_space(ctx, launcher);
 }
