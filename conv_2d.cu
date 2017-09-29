@@ -141,6 +141,20 @@ selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
                                   const cudnnConvolutionDescriptor_t convDesc,
                                   void* workSpace, size_t workSpaceSize,
                                   const cudnnTensorDescriptor_t yDesc, void* y);
+cudnnConvolutionBwdFilterAlgo_t
+selectConvolutionBackwardFilterAlgorithm(cudnnHandle_t handle,
+                                         const cudnnTensorDescriptor_t xDesc, const void* x,
+                                         const cudnnTensorDescriptor_t dyDesc, const void* dy,
+                                         const cudnnConvolutionDescriptor_t convDesc,
+                                         void* workSpace, size_t workSpaceSize,
+                                         const cudnnFilterDescriptor_t dwDesc, void* dw);
+cudnnConvolutionBwdDataAlgo_t
+selectConvolutionBackwardDataAlgorithm(cudnnHandle_t handle,
+                                       const cudnnFilterDescriptor_t wDesc, const void* w,
+                                       const cudnnTensorDescriptor_t dyDesc, const void* dy,
+                                       const cudnnConvolutionDescriptor_t convDesc,
+                                       void* workSpace, size_t workSpaceSize,
+                                       const cudnnTensorDescriptor_t dxDesc, void* dx);
 /*
   regions[0]: input
   regions[1]: output
@@ -176,29 +190,6 @@ OpMeta* Conv2D::init_task(const Task *task,
   float *filter_ptr = acc_filter.ptr(rect_filter.lo);
   float *bias_ptr = acc_bias.ptr(rect_bias.lo);
 
-#ifdef PARAMETER_ALL_ONES
-  coord_t filter_elements = conv->inputs[0].adim[2] * conv->output.adim[2] * conv->kernel_h * conv->kernel_w;
-  int num_blocks = (filter_elements + BLKSIZE - 1) / BLKSIZE;
-  ones_kernel<<<num_blocks, BLKSIZE>>>(filter_ptr, filter_elements);
-  num_blocks = (conv->output.pdim[2] + BLKSIZE - 1) / BLKSIZE;
-  ones_kernel<<<num_blocks, BLKSIZE>>>(bias_ptr, conv->output.pdim[2]);
-#else
-  curandGenerator_t genGPU;
-  curandCreateGenerator(&genGPU, CURAND_RNG_PSEUDO_DEFAULT);
-  curandSetPseudoRandomGeneratorSeed(genGPU, 1234ULL);
-  coord_t filter_elements = conv->inputs[0].adim[2] * conv->output.adim[2] 
-                          * conv->kernel_h * conv->kernel_w;
-  float factor = 1.0f / sqrt(filter_elements / conv->output.adim[2]);
-  printf("factor = %.4f elements = %d\n", factor, filter_elements / conv->output.adim[2]);
-  assert(filter_elements == (coord_t) rect_filter.volume());
-  curandGenerateUniform(genGPU, filter_ptr, filter_elements);
-  int num_blocks = (filter_elements + BLKSIZE - 1) / BLKSIZE;
-  scale_kernel<<<num_blocks, BLKSIZE>>>(filter_ptr, filter_elements, -factor, factor);
-  curandGenerateUniform(genGPU, bias_ptr, conv->output.pdim[2]);
-  num_blocks = (conv->output.pdim[2] + BLKSIZE - 1) / BLKSIZE;
-  scale_kernel<<<num_blocks, BLKSIZE>>>(bias_ptr, conv->output.pdim[2], -factor, factor);
-  curandDestroyGenerator(genGPU);
-#endif
   Conv2DMeta* m = new Conv2DMeta(handle);
   m->relu = conv->relu;
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
@@ -276,13 +267,45 @@ OpMeta* Conv2D::init_task(const Task *task,
                                                  m->filterDesc, filter_ptr, m->convDesc,
                                                  m->handle.workSpace, m->handle.workSpaceSize,
                                                  m->outputTensor, output_ptr);
-  m->bwdFilterAlgo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3;
-  m->bwdDataAlgo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
+  // select backward filter algorithm
+  m->bwdFilterAlgo = selectConvolutionBackwardFilterAlgorithm(
+                         m->handle.dnn, m->inputTensor, input_ptr, m->outputTensor, output_ptr,
+                         m->convDesc, m->handle.workSpace, m->handle.workSpaceSize,
+                         m->filterDesc, filter_ptr);
+  // select backward data algorithm
+  m->bwdDataAlgo = selectConvolutionBackwardDataAlgorithm(
+                       m->handle.dnn, m->filterDesc, filter_ptr, m->outputTensor, output_ptr,
+                       m->convDesc, m->handle.workSpace, m->handle.workSpaceSize,
+                       m->inputTensor, (void*)input_ptr);
   if (m->relu) {
     checkCUDNN(cudnnCreateActivationDescriptor(&m->actiDesc));
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
                                             CUDNN_PROPAGATE_NAN, 0.0));
   }
+  // init kernel and bias
+#ifdef PARAMETER_ALL_ONES
+  coord_t filter_elements = conv->inputs[0].adim[2] * conv->output.adim[2] * conv->kernel_h * conv->kernel_w;
+  int num_blocks = (filter_elements + BLKSIZE - 1) / BLKSIZE;
+  ones_kernel<<<num_blocks, BLKSIZE>>>(filter_ptr, filter_elements);
+  num_blocks = (conv->output.pdim[2] + BLKSIZE - 1) / BLKSIZE;
+  ones_kernel<<<num_blocks, BLKSIZE>>>(bias_ptr, conv->output.pdim[2]);
+#else
+  curandGenerator_t genGPU;
+  curandCreateGenerator(&genGPU, CURAND_RNG_PSEUDO_DEFAULT);
+  curandSetPseudoRandomGeneratorSeed(genGPU, 1234ULL);
+  coord_t filter_elements = conv->inputs[0].adim[2] * conv->output.adim[2] 
+                          * conv->kernel_h * conv->kernel_w;
+  float factor = 1.0f / sqrt(filter_elements / conv->output.adim[2]);
+  printf("factor = %.4f elements = %d\n", factor, filter_elements / conv->output.adim[2]);
+  assert(filter_elements == (coord_t) rect_filter.volume());
+  curandGenerateUniform(genGPU, filter_ptr, filter_elements);
+  int num_blocks = (filter_elements + BLKSIZE - 1) / BLKSIZE;
+  scale_kernel<<<num_blocks, BLKSIZE>>>(filter_ptr, filter_elements, -factor, factor);
+  curandGenerateUniform(genGPU, bias_ptr, conv->output.pdim[2]);
+  num_blocks = (conv->output.pdim[2] + BLKSIZE - 1) / BLKSIZE;
+  scale_kernel<<<num_blocks, BLKSIZE>>>(bias_ptr, conv->output.pdim[2], -factor, factor);
+  curandDestroyGenerator(genGPU);
+#endif
   return m;
 }
 
@@ -452,52 +475,6 @@ void Conv2D::backward(const CnnModel& model)
 {
 }
 
-bool checkConvolutionForwardAlgorithm(cudnnConvolutionFwdAlgo_t algo,
-                                      int kernel_h, int kernel_w,
-                                      int pad_h, int pad_w, int str_h, int str_w)
-{
-  switch (algo) {
-    case CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM:
-    //case CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMPUTED_GEMM:
-    case CUDNN_CONVOLUTION_FWD_ALGO_GEMM:
-      return true;
-    case CUDNN_CONVOLUTION_FWD_ALGO_DIRECT:
-      return false;
-    case CUDNN_CONVOLUTION_FWD_ALGO_FFT:
-      if ((str_h != 1)||(str_w != 1)) return false;
-      if ((kernel_h < pad_h)||(kernel_w < pad_w)) return false;
-      return true;
-    case CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING:
-      if ((kernel_h > 32)||(kernel_w > 32)) return false;
-      if ((str_h != 1)||(str_w != 1)) return false;
-      if ((kernel_h < pad_h)||(kernel_w < pad_w)) return false;
-      return true;
-    case CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD:
-      if ((str_h != 1)||(str_w != 1)) return false;
-      if ((kernel_h != 3)||(kernel_w != 3)) return false;
-      return true;
-    case CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED:
-      if ((str_h != 1)||(str_w != 1)) return false;
-      if ((kernel_h == 3)&&(kernel_w == 3)) return true;
-      if ((kernel_h == 5)&&(kernel_w == 5)) return true;
-      return false;
-    default:
-      assert(0);
-  }
-  return false;
-}
-
-const int fwdAlgoCnt = 7;
-const cudnnConvolutionFwdAlgo_t fwdAlgo[fwdAlgoCnt] = {
-    CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM, 
-    //CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMPUTED_GEMM,
-    CUDNN_CONVOLUTION_FWD_ALGO_GEMM,
-    CUDNN_CONVOLUTION_FWD_ALGO_DIRECT,
-    CUDNN_CONVOLUTION_FWD_ALGO_FFT,
-    CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING,
-    CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD,
-    CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED};
-
 cudnnConvolutionFwdAlgo_t
 selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
                                   const cudnnTensorDescriptor_t xDesc, const void* x,
@@ -514,58 +491,47 @@ selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
       reqAlgCnt, &cnt, perfResults, workSpace, workSpaceSize));
   assert(cnt > 0);
   checkCUDNN(perfResults[0].status);
-  printf("algo(%d) time(%.2lf)\n", perfResults[0].algo, perfResults[0].time);
-  //for (int i = 0; i < cnt; i++) {
-  //  printf("algo[%d] : algo(%d) time(%.2lf)\n", i, (int)perfResults[i].algo, perfResults[i].time);
-  //};
+  printf("forwardAlgo(%d) time(%.2lf)\n", perfResults[0].algo, perfResults[0].time);
   return perfResults[0].algo;
-#ifdef DEADCODE
-  long long cp_1, cp_2, best_time = LLONG_MAX;
-  float alpha = 1.0f, beta = 0.0f, times[fwdAlgoCnt];
-  cudnnConvolutionFwdAlgo_t best_algo;
-  int pad_h, pad_w, str_h, str_w, upscale_x, upscale_y;
-  cudnnConvolutionMode_t mode;
-  int out_c, in_c, kernel_h, kernel_w;
-  cudnnDataType_t type;
-  cudnnTensorFormat_t format;
-  checkCUDNN(cudnnGetConvolution2dDescriptor(convDesc, &pad_h, &pad_w, &str_h, &str_w,
-                                             &upscale_x, &upscale_y, &mode));
-  checkCUDNN(cudnnGetFilter4dDescriptor(wDesc, &type, &format, &out_c, &in_c, &kernel_h, &kernel_w));
-  for (int i = 0; i < fwdAlgoCnt; i++) {
-    if (!checkConvolutionForwardAlgorithm(fwdAlgo[i], kernel_h, kernel_w, pad_h, pad_w, str_h, str_w))
-      continue;
-    size_t size;
-    checkCUDNN(cudnnGetConvolutionForwardWorkspaceSize(handle, xDesc, wDesc,
-                                                       convDesc, yDesc, fwdAlgo[i], &size));
-    if (size > workSpaceSize) continue;
-    //checkCUDA(cudaDeviceSynchronize());
-    cudaEvent_t t_start, t_end;
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, 0);
-    cp_1 = Realm::Clock::current_time_in_microseconds();
-    checkCUDNN(cudnnConvolutionForward(handle, &alpha, xDesc, x, wDesc, w,
-                                       convDesc, fwdAlgo[i], workSpace, workSpaceSize,
-                                       &beta, yDesc, y));
-    //checkCUDA(cudaDeviceSynchronize());
-    cudaEventRecord(t_end, 0);
-    float elapsed;
-    checkCUDA(cudaEventSynchronize(t_end));
-    cudaEventElapsedTime(&elapsed, t_start, t_end);
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end); 
-    cp_2 = Realm::Clock::current_time_in_microseconds();
-    //printf("fwdAlgo[%d]: c_in(%d) c_out(%d) kernel(%d %d) stride(%d %d) time(%lld)\n", i, in_c, out_c, kernel_h, kernel_w, str_h, str_w, cp_2 - cp_1);
-    //printf("Elapsed = %.2lfms\n", elapsed);
-    times[i] = elapsed;
-    if ((i == 0) || (cp_2 - cp_1 < best_time)) {
-      best_time = cp_2 - cp_1;
-      best_algo = fwdAlgo[i];
-    }
-  }
-  for (int i = 0; i < fwdAlgoCnt; i++)
-    printf("times[i] = %.2lfms\n", i, times[i]);
-  printf("bestAlgo = %d\n", (int)best_algo);
-  return best_algo;
-#endif
 }
+
+cudnnConvolutionBwdFilterAlgo_t
+selectConvolutionBackwardFilterAlgorithm(cudnnHandle_t handle,
+                                         const cudnnTensorDescriptor_t xDesc, const void* x,
+                                         const cudnnTensorDescriptor_t dyDesc, const void* dy,
+                                         const cudnnConvolutionDescriptor_t convDesc,
+                                         void* workSpace, size_t workSpaceSize,
+                                         const cudnnFilterDescriptor_t dwDesc, void* dw)
+{
+  const int reqAlgCnt = 8;
+  int cnt = 0;
+  cudnnConvolutionBwdFilterAlgoPerf_t perfResults[reqAlgCnt];
+  checkCUDNN(cudnnFindConvolutionBackwardFilterAlgorithmEx(
+      handle, xDesc, x, dyDesc, dy, convDesc, dwDesc, dw,
+      reqAlgCnt, &cnt, perfResults, workSpace, workSpaceSize));
+  assert(cnt > 0);
+  checkCUDNN(perfResults[0].status);
+  printf("bwdFilterAlgo(%d) time(%.2lf)\n", perfResults[0].algo, perfResults[0].time);
+  return perfResults[0].algo;
+}
+
+cudnnConvolutionBwdDataAlgo_t
+selectConvolutionBackwardDataAlgorithm(cudnnHandle_t handle,
+                                       const cudnnFilterDescriptor_t wDesc, const void* w,
+                                       const cudnnTensorDescriptor_t dyDesc, const void* dy,
+                                       const cudnnConvolutionDescriptor_t convDesc,
+                                       void* workSpace, size_t workSpaceSize,
+                                       const cudnnTensorDescriptor_t dxDesc, void* dx)
+{
+  const int reqAlgCnt = 8;
+  int cnt = 0;
+  cudnnConvolutionBwdDataAlgoPerf_t perfResults[reqAlgCnt];
+  checkCUDNN(cudnnFindConvolutionBackwardDataAlgorithmEx(
+      handle, wDesc, w, dyDesc, dy, convDesc, dxDesc, dx,
+      reqAlgCnt, &cnt, perfResults, workSpace, workSpaceSize));
+  assert(cnt > 0);
+  checkCUDNN(perfResults[0].status);
+  printf("bwdDataAlgo(%d) time(%.2lf)\n", perfResults[0].algo, perfResults[0].time);
+  return perfResults[0].algo;
+}
+
