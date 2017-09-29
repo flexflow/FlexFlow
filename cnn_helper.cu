@@ -22,6 +22,6 @@ void reluBackward(float *grad_ptr, const float *input, int n)
 {
   CUDA_KERNEL_LOOP(i, n)
   {
-    grad_ptr[i] = (input[i] > 0) ? grad_ptr[i] : 0;
+    grad_ptr[i] = (input[i] > 0.0f) ? grad_ptr[i] : 0;
   }
 }

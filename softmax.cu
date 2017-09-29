@@ -55,7 +55,10 @@ Softmax::Softmax(CnnConfig config, Tensor input, IndexSpaceT<1> part_is)
   output.pdim[0] = extent_c;
   output.pdim[1] = extent_n;
   output.region = output_lr;
-  output.partition = output_lp;    
+  output.partition = output_lp;
+  // Note: we use the same regions/partitions for forward and back prop
+  output.region_grad = output_lr;
+  output.partition_grad = output_lp;
   // Every partition reads all input_channels
   // Use the same partitioning as outputs
   IndexPartition input_ip = output_ip;
@@ -190,7 +193,7 @@ __global__ void SoftmaxLossBackprop(float *input, const int *label, int num_labe
 }
 
 /*
-  regions[0](I/O): input
+  regions[0](O): input_grad
   regions[1](I): output
   regions[2](I): labels
 */
@@ -252,7 +255,7 @@ void Softmax::backward(const CnnModel& model)
                          TaskArgument(NULL, 0), argmap);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0].region));
+                        WRITE_DISCARD, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(output.partition, 0/*projection id*/,

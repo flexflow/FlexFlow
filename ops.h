@@ -99,8 +99,8 @@ struct Tensor {
 //    partition = lp;
 //  }
   int numDim, adim[MAX_DIM], pdim[MAX_DIM];
-  LogicalRegion region;
-  LogicalPartition partition;
+  LogicalRegion region, region_grad;
+  LogicalPartition partition, partition_grad;
 };
 
 struct TensorWithGrad {
