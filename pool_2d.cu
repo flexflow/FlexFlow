@@ -66,7 +66,7 @@ Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   IndexPartition output_ip =
     runtime->create_partition_by_restriction(ctx, output_is, part_is, transform, extent);
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
-  LogicalParititon output_grad_lp =
+  LogicalPartition output_grad_lp =
     runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
 
   output.numDim = 4;

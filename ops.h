@@ -215,7 +215,8 @@ class Conv2D : public Op {
 public:
   Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
          int in_channels, int out_channels, int kernel_x, int kernel_y,
-         int stride_x, int stride_y, int padding_x, int padding_y, bool relu);
+         int stride_x, int stride_y, int padding_x, int padding_y,
+         bool relu, bool first_layer);
 
   void init(const CnnModel&);
 
@@ -237,7 +238,7 @@ public:
 public:
   int in_channels, out_channels;
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
-  bool relu;
+  bool relu, first_layer;
 };
 
 class Conv2DMeta : public OpMeta {
@@ -250,7 +251,7 @@ public:
   cudnnConvolutionFwdAlgo_t fwdAlgo;
   cudnnConvolutionBwdFilterAlgo_t bwdFilterAlgo;
   cudnnConvolutionBwdDataAlgo_t bwdDataAlgo;
-  bool relu;
+  bool relu, first_layer;
 };
 
 class Pooling2D : public Op {
