@@ -14,6 +14,7 @@
  */
 
 #include "ops.h"
+#include "cnn_helper.h"
 #include <cuda_runtime.h>
 #include <cudnn.h>
 
@@ -63,6 +64,7 @@ Softmax::Softmax(CnnConfig config, Tensor input, IndexSpaceT<1> part_is)
   // Use the same partitioning as outputs
   IndexPartition input_ip = output_ip;
   input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
+  input_grad_lp = runtime->get_logical_partition(ctx, inputs[0].region_grad, input_ip);
 }
 
 /*
@@ -185,11 +187,11 @@ void Softmax::forward(const CnnModel& model)
 
 __global__ void SoftmaxLossBackprop(float *input, const int *label, int num_labels, int batch_size)
 {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= batch_size)
-    return;
-  int label_idx = label[idx];
-  input[idx * num_labels + label_idx] -= 1.0f;
+  CUDA_KERNEL_LOOP(i, batch_size)
+  {
+    int label_idx = label[i];
+    input[i * num_labels + label_idx] -= 1.0f;
+  }
 }
 
 /*
@@ -202,20 +204,21 @@ void Softmax::backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime)
 {
-  const int BLK_SIZE = 512;
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  float alpha = 1.0f, beta = 0.0f;
   const SoftmaxMeta* m = *((SoftmaxMeta**) task->local_args);
-  const AccessorRW<float, 2> acc_input(regions[0], FID_DATA);
+  const AccessorRW<float, 2> acc_input_grad(regions[0], FID_DATA);
   const AccessorRO<float, 2> acc_output(regions[1], FID_DATA);
   const AccessorRO<int, 1> acc_label(regions[2], FID_DATA);
-  Rect<2> rect_input, rect_output;
+  Rect<2> rect_input_grad, rect_output;
   Rect<1> rect_label;
-  rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  rect_label = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
-  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
+  rect_input_grad =
+    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_output =
+    runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  rect_label =
+    runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
+  assert(acc_input_grad.accessor.is_dense_arbitrary(rect_input_grad));
   assert(acc_output.accessor.is_dense_arbitrary(rect_output));
   assert(acc_label.accessor.is_dense_arbitrary(rect_label));
   // make sure the image indices match!
@@ -225,18 +228,19 @@ void Softmax::backward_task(const Task *task,
   int num_labels = rect_output.hi[0] - rect_output.lo[0] + 1;
   assert(num_labels == 1000); // check that we have 1000 different labels
 
-  float *input_ptr = acc_input.ptr(rect_input.lo);
+  float *input_grad_ptr = acc_input_grad.ptr(rect_input_grad.lo);
   const float *output_ptr = acc_output.ptr(rect_output.lo);
   const int *label_ptr = acc_label.ptr(rect_label.lo);
-  checkCUDA(cudaMemcpy(input_ptr, output_ptr,
-                       rect_input.volume() * sizeof(float),
+  checkCUDA(cudaMemcpy(input_grad_ptr, output_ptr,
+                       rect_input_grad.volume() * sizeof(float),
                        cudaMemcpyDeviceToDevice));
-  int num_blocks = (num_images + BLK_SIZE - 1) / BLK_SIZE;
-  SoftmaxLossBackprop<<<num_blocks, BLK_SIZE>>>(input_ptr, label_ptr, num_labels, num_images);
+  SoftmaxLossBackprop<<<GET_BLOCKS(num_images), CUDA_NUM_THREADS>>>(
+      input_grad_ptr, label_ptr, num_labels, num_images);
 
   // Accouting for batch size in SGD
   float scalVal = 1.0f / static_cast<float>(num_images);
-  checkCUDA(cublasSscal(m->handle.blas, rect_input.volume(), &scalVal, input_ptr, 1));
+  checkCUDA(cublasSscal(m->handle.blas, rect_input_grad.volume(),
+                        &scalVal, input_grad_ptr, 1));
 }
 
 __host__
@@ -254,8 +258,8 @@ void Softmax::backward(const CnnModel& model)
   IndexLauncher launcher(SOFTMAX_BWD_TASK_ID, model.sm_part_is,
                          TaskArgument(NULL, 0), argmap);
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, inputs[0].region));
+      RegionRequirement(input_grad_lp, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(output.partition, 0/*projection id*/,

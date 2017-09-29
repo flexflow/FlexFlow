@@ -386,6 +386,8 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+public:
+  LogicalPartition input_grad_lp;
 };
 
 class SoftmaxMeta : public OpMeta {
