@@ -227,6 +227,8 @@ Flat::Flat(CnnConfig config, Tensor input,
   transform[1][0] = 0; transform[1][1] = extent_n;
   IndexPartition output_ip =
     runtime->create_partition_by_restriction(ctx, output_is, part_is_2d, transform, extent);
+  assert(runtime->is_index_partition_disjoint(ctx, output_ip));
+  assert(runtime->is_index_partition_complete(ctx, output_ip));
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
   LogicalPartition output_grad_lp =
     runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
@@ -279,6 +281,8 @@ Flat::Flat(CnnConfig config, Tensor input,
   IndexPartition flat_ip =
     runtime->create_partition_by_image_range(ctx, output_is,
                          proj_lp, proj_lr, FID_DATA, part_is_3d);
+  assert(runtime->is_index_partition_disjoint(ctx, flat_ip));
+  assert(runtime->is_index_partition_complete(ctx, flat_ip));
   flat_lp = runtime->get_logical_partition(ctx, output_lr, flat_ip);
   flat_grad_lp = runtime->get_logical_partition(ctx, output_grad_lr, flat_ip);
   return;

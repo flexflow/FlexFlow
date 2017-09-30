@@ -85,6 +85,8 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = extent_nc;
   IndexPartition output_ip =
     runtime->create_partition_by_restriction(ctx, output_is, part_is, transform, extent);
+  assert(runtime->is_index_partition_disjoint(ctx, output_ip));
+  assert(runtime->is_index_partition_complete(ctx, output_ip));
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
   LogicalPartition output_grad_lp =
     runtime->get_logical_partition(ctx, output_grad_lr, output_ip);

@@ -54,6 +54,8 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   transform[1][0] = 0; transform[1][1] = extent_n;
   IndexPartition output_ip =
     runtime->create_partition_by_restriction(ctx, output_is, part_is, transform, extent);
+  assert(runtime->is_index_partition_disjoint(ctx, output_ip));
+  assert(runtime->is_index_partition_complete(ctx, output_ip));
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
   LogicalPartition output_grad_lp = runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
   
@@ -67,6 +69,8 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   Rect<2, coord_t> extent_r(Point<2>(0, 0), Point<2>(input_channels-1, extent_n-1));
   IndexPartition replica_ip =
     runtime->create_partition_by_restriction(ctx, replica_is, part_is, transform, extent_r);
+  assert(runtime->is_index_partition_disjoint(ctx, replica_ip));
+  assert(runtime->is_index_partition_complete(ctx, replica_ip));
   LogicalPartition replica_lp = runtime->get_logical_partition(ctx, replica_lr, replica_ip);
   TensorWithGrad replica_tensor;
   replica_tensor.region_grad = replica_lr;
@@ -80,6 +84,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
                          Point<2>(input_channels*i+input.pdim[0]-1, input.pdim[1]));
     IndexPartition ip =
       runtime->create_partition_by_restriction(ctx, replica_is, part_is, transform, ext);
+    assert(runtime->is_index_partition_disjoint(ctx, ip));
     replica_sub_lps[i] = runtime->get_logical_partition(ctx, replica_lr, ip);
   }
 
@@ -93,6 +98,8 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   printf("extent_k(%dx%d %d)\n", extent_c, input_channels, 1);
   IndexPartition kernel_ip =
     runtime->create_partition_by_restriction(ctx, kernel_is, part_is, transform, extent_k);
+  assert(runtime->is_index_partition_disjoint(ctx, kernel_ip));
+  assert(runtime->is_index_partition_complete(ctx, kernel_ip));
   LogicalPartition kernel_lp = runtime->get_logical_partition(ctx, kernel_lr, kernel_ip);
   LogicalPartition kernel_grad_lp = runtime->get_logical_partition(ctx, kernel_grad_lr, kernel_ip);
   TensorWithGrad kernel_tensor;
@@ -111,6 +118,8 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   Rect<2, coord_t> extent_b(Point<2>(0, 0), Point<2>(extent_c-1,0));
   IndexPartition bias_ip =
     runtime->create_partition_by_restriction(ctx, bias_is, part_is, transform, extent_b);
+  assert(runtime->is_index_partition_disjoint(ctx, bias_ip));
+  assert(runtime->is_index_partition_complete(ctx, bias_ip));
   LogicalPartition bias_lp = runtime->get_logical_partition(ctx, bias_lr, bias_ip);
   LogicalPartition bias_grad_lp = runtime->get_logical_partition(ctx, bias_grad_lr, bias_ip);
   TensorWithGrad bias_tensor;

@@ -49,6 +49,7 @@ Softmax::Softmax(CnnConfig config, Tensor input, IndexSpaceT<1> part_is)
   transform[1][0] = extent_n;
   IndexPartition output_ip
     = runtime->create_partition_by_restriction(ctx, output_is, part_is, transform, extent);
+  assert(runtime->is_index_partition_disjoint(ctx, output_ip));
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
   output.numDim = 2;
   output.adim[0] = input.adim[0];
