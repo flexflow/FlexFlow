@@ -65,6 +65,7 @@ CnnModel::CnnModel(int num_images, int height, int width,
     allocator.allocate_field(sizeof(float), FID_DATA);
   }
   LogicalRegion image_lr = runtime->create_logical_region(ctx, image_is, image_fs);
+  LogicalRegion image_grad_lr = runtime->create_logical_region(ctx, image_is, image_fs);
   Transform<3, 3, coord_t> transform;
   int extent_w = width / width_par;
   int extent_h = height / height_par;
@@ -76,6 +77,8 @@ CnnModel::CnnModel(int num_images, int height, int width,
   IndexPartition image_ip = 
     runtime->create_partition_by_restriction(ctx, image_is, part_is, transform, extent);
   LogicalPartition image_lp = runtime->get_logical_partition(ctx, image_lr, image_ip);
+  LogicalPartition image_grad_lp =
+    runtime->get_logical_partition(ctx, image_grad_lr, image_ip);
   input_image.numDim = 4;
   input_image.adim[0] = width;
   input_image.adim[1] = height;
@@ -86,7 +89,9 @@ CnnModel::CnnModel(int num_images, int height, int width,
   input_image.pdim[2] = 3;
   input_image.pdim[3] = extent_nc / 3;
   input_image.region = image_lr;
+  input_image.region_grad = image_grad_lr;
   input_image.partition = image_lp;
+  input_image.partition_grad = image_grad_lp;
 
   // input_label
   Rect<1, coord_t> label_rect(Point<1>(0), Point<1>(num_images-1));
@@ -182,7 +187,7 @@ void CnnModel::init_labels()
       RegionRequirement(input_label.partition, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, input_label.region));
   launcher.add_field(0, FID_DATA);
-  //FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
   //fm.wait_all_results();
 }
 
@@ -212,6 +217,8 @@ Flat::Flat(CnnConfig config, Tensor input,
   Rect<2, coord_t> output_rect(Point<2>(0, 0), Point<2>(output_c-1, output_n-1));
   IndexSpaceT<2> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
+  LogicalRegion output_grad_lr =
+    runtime->create_logical_region(ctx, output_is, fs);
   Transform<2, 2, coord_t> transform;
   int extent_c = input.pdim[0] * input.pdim[1] * input.pdim[2];
   int extent_n = input.pdim[3];
@@ -221,13 +228,17 @@ Flat::Flat(CnnConfig config, Tensor input,
   IndexPartition output_ip =
     runtime->create_partition_by_restriction(ctx, output_is, part_is_2d, transform, extent);
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
+  LogicalPartition output_grad_lp =
+    runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
   output.numDim = 2;
   output.adim[0] = output_c;
   output.adim[1] = output_n;
   output.pdim[0] = extent_c;
   output.pdim[1] = extent_n;
   output.region = output_lr;
+  output.region_grad = output_lr;
   output.partition = output_lp;
+  output.partition_grad = output_grad_lp;
   printf("Create flat layer: input(N=%d C=%d H=%d W=%d) -> output(N=%d C=%d)\n",
          input.adim[3], input.adim[2], input.adim[1], input.adim[0], output.adim[1], output.adim[0]);
  
@@ -269,6 +280,7 @@ Flat::Flat(CnnConfig config, Tensor input,
     runtime->create_partition_by_image_range(ctx, output_is,
                          proj_lp, proj_lr, FID_DATA, part_is_3d);
   flat_lp = runtime->get_logical_partition(ctx, output_lr, flat_ip);
+  flat_grad_lp = runtime->get_logical_partition(ctx, output_grad_lr, flat_ip);
   return;
 /*
   Transform<2, 3, coord_t> flat_trans;
@@ -368,15 +380,55 @@ void Flat::forward(const CnnModel& model)
 }
 
 /*
-  regions[0](O) : input
-  regions[1](I) : output
+  regions[0](O) : input_grad
+  regions[1](I) : output_grad
 */
 void Flat::backward_task(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx, Runtime *runtime)
 {
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  const AccessorWO<float, 3> acc_input_grad(regions[0], FID_DATA);
+  const AccessorRO<float, 2> acc_output_grad(regions[1], FID_DATA);
+  Rect<3> rect_input_grad;
+  Rect<2> rect_output_grad;
+  rect_input_grad =
+    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_output_grad =
+    runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  assert(rect_input_grad.volume() == rect_output_grad.volume());
+  assert(acc_input_grad.accessor.is_dense_arbitrary(rect_input_grad));
+  assert(acc_output_grad.accessor.is_dense_arbitrary(rect_output_grad));
+  float *input_grad_ptr = acc_input_grad.ptr(rect_input_grad.lo);
+  const float *output_grad_ptr = acc_output_grad.ptr(rect_output_grad.lo);
+
+  checkCUDA(cudaMemcpy(input_grad_ptr, output_grad_ptr,
+                       rect_input_grad.volume() * sizeof(float),
+                       cudaMemcpyDeviceToDevice));
 }
 
 void Flat::backward(const CnnModel& model)
 {
+  ArgumentMap argmap;
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  int idx = 0;
+  for (PointInRectIterator<3> it(rect); it(); it++) {
+    OpMeta* mp = meta[idx++];
+    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
+  }
+  IndexLauncher launcher(FLAT_BWD_TASK_ID, model.part_is,
+                         TaskArgument(NULL, 0), argmap);
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0].partition_grad, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, inputs[0].region_grad));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(flat_grad_lp /*3D->2D partitions*/, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, output.region_grad));
+  launcher.add_field(1, FID_DATA);
+
+  runtime->execute_index_space(ctx, launcher);
 }

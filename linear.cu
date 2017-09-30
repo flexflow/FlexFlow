@@ -236,8 +236,8 @@ void Linear::init(const CnnModel& model)
                         WRITE_DISCARD, EXCLUSIVE, output.region));
   init_launcher.add_field(1, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(locals[0].partition, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, locals[0].region));
+      RegionRequirement(locals[0].partition_grad, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, locals[0].region_grad));
   init_launcher.add_field(2, FID_DATA);
   init_launcher.add_region_requirement(
       RegionRequirement(locals[1].partition, 0/*projection id*/,
@@ -543,7 +543,7 @@ void Linear::backward(const CnnModel& model)
     for (int i = 0; i < model.config.fc_num_par_c; i++) {
       launcher2.add_region_requirement(
           RegionRequirement(replica_sub_lps[i], 0/*partition id*/,
-                            READ_ONLY, EXCLUSIVE, locals[0].region));
+                            READ_ONLY, EXCLUSIVE, locals[0].region_grad));
       launcher2.add_field(i + 1, FID_DATA);
     }
     runtime->execute_index_space(ctx, launcher2);

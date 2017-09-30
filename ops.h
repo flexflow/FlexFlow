@@ -357,7 +357,7 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
 public:
-  LogicalPartition flat_lp;
+  LogicalPartition flat_lp, flat_grad_lp;
 };
 
 class FlatMeta : public OpMeta {
