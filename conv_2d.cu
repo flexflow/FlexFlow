@@ -214,6 +214,7 @@ OpMeta* Conv2D::init_task(const Task *task,
   float *bias_ptr = acc_bias.ptr(rect_bias.lo);
 
   Conv2DMeta* m = new Conv2DMeta(handle);
+#ifndef DISABLE_COMPUTATION
   m->relu = conv->relu;
   m->first_layer = conv->first_layer;
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
@@ -330,6 +331,7 @@ OpMeta* Conv2D::init_task(const Task *task,
   scale_kernel<<<num_blocks, BLKSIZE>>>(bias_ptr, conv->output.pdim[2], -factor, factor);
   curandDestroyGenerator(genGPU);
 #endif
+#endif // DISABLE_COMPUTATION
   return m;
 }
 
@@ -382,6 +384,7 @@ void Conv2D::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
+#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   float alpha = 1.0f, beta = 0.0f;
@@ -439,6 +442,7 @@ void Conv2D::forward_task(const Task *task,
 
   printf("Conv2D forward time (CF) = %.2fus elapsed(%.2fms)\n", cp_2 - cp_1, elapsed);
   printf("Conv2D forward time (AF) = %.2fus\n", cp_3 - cp_2);
+#endif
 }
 
 __host__
@@ -489,6 +493,7 @@ void Conv2D::backward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime)
 {
+#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   float alpha = 1.0f, beta = 0.0f;
@@ -569,6 +574,7 @@ void Conv2D::backward_task(const Task *task,
   cudaEventDestroy(t_start);
   cudaEventDestroy(t_end);
   printf("Conv2D backward time = %.2fms\n", elapsed);
+#endif
 }
 
 __host__
@@ -624,6 +630,7 @@ void Conv2D::backward(const CnnModel& model)
   runtime->execute_index_space(ctx, launcher);
 }
 
+#ifndef DISABLE_COMPUTATION
 cudnnConvolutionFwdAlgo_t
 selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
                                   const cudnnTensorDescriptor_t xDesc, const void* x,
@@ -683,4 +690,4 @@ selectConvolutionBackwardDataAlgorithm(cudnnHandle_t handle,
   printf("bwdDataAlgo(%d) time(%.2lf)\n", perfResults[0].algo, perfResults[0].time);
   return perfResults[0].algo;
 }
-
+#endif

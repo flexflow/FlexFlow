@@ -116,6 +116,7 @@ OpMeta* Pooling2D::init_task(const Task *task,
   const Pooling2D* pool = (Pooling2D*) task->args;
   CnnHandle handle = *((const CnnHandle*) task->local_args);
   Pooling2DMeta* m = new Pooling2DMeta(handle);
+#ifndef DISABLE_COMPUTATION
   Rect<3> rect_input, rect_output;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
@@ -166,6 +167,7 @@ OpMeta* Pooling2D::init_task(const Task *task,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
                                         n, c, h, w));
+#endif
   return m;
 }
 
@@ -207,6 +209,7 @@ void Pooling2D::forward_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, Runtime *runtime)
 {
+#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   float alpha = 1.0f, beta = 0.0f;
@@ -224,6 +227,7 @@ void Pooling2D::forward_task(const Task *task,
   checkCUDNN(cudnnPoolingForward(m->handle.dnn, m->poolDesc,
                                  &alpha, m->inputTensor, input_ptr,
                                  &beta, m->outputTensor, output_ptr));
+#endif
 }
 
 void Pooling2D::forward(const CnnModel& model)
@@ -262,6 +266,7 @@ void Pooling2D::backward_task(const Task *task,
                               const std::vector<PhysicalRegion> &regions,
                               Context ctx, Runtime *runtime)
 {
+#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   float alpha = 1.0f, beta = 0.0f;
@@ -293,6 +298,7 @@ void Pooling2D::backward_task(const Task *task,
                                   m->outputTensor, output_grad_ptr,
                                   m->inputTensor, input_ptr,
                                   &beta, m->inputTensor, input_grad_ptr));
+#endif
 }
 
 void Pooling2D::backward(const CnnModel& model)

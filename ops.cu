@@ -24,8 +24,10 @@ CnnHandle init_cudnn(const Task *task,
   CnnHandle handle;
   handle.workSpaceSize = workSpaceSize;
   printf("workSpaceSize = %zu\n", workSpaceSize);
+#ifndef DISABLE_COMPUTATION
   checkCUDA(cublasCreate(&handle.blas));
   checkCUDNN(cudnnCreate(&handle.dnn));
+#endif
   checkCUDA(cudaMalloc(&handle.workSpace, workSpaceSize));
   return handle;
 }
@@ -154,6 +156,7 @@ void CnnModel::init_images_task(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
                                 Context ctx, Runtime *runtime)
 {
+#ifndef DISABLE_COMPUTATION
   const int BLKSIZE = 512;
   const AccessorWO<float, 3> acc_image(regions[0], FID_DATA);
   Rect<3> rect_image;
@@ -162,6 +165,7 @@ void CnnModel::init_images_task(const Task *task,
   float *image_ptr = acc_image.ptr(rect_image.lo);
   int num_blocks = (rect_image.volume() + BLKSIZE - 1) / BLKSIZE;
   init_image_kernel<<<num_blocks, BLKSIZE>>>(image_ptr, rect_image.volume());
+#endif
 }
 
 void CnnModel::init_images()
@@ -355,6 +359,7 @@ void Flat::forward_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime *runtime)
 {
+#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
@@ -372,6 +377,7 @@ void Flat::forward_task(const Task *task,
   checkCUDA(cudaMemcpy(output_ptr, input_ptr,
                        rect_input.volume() * sizeof(float),
                        cudaMemcpyDeviceToDevice));
+#endif
 }
 
 void Flat::forward(const CnnModel& model)
@@ -407,6 +413,7 @@ void Flat::backward_task(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx, Runtime *runtime)
 {
+#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   const AccessorWO<float, 3> acc_input_grad(regions[0], FID_DATA);
@@ -426,6 +433,7 @@ void Flat::backward_task(const Task *task,
   checkCUDA(cudaMemcpy(input_grad_ptr, output_grad_ptr,
                        rect_input_grad.volume() * sizeof(float),
                        cudaMemcpyDeviceToDevice));
+#endif
 }
 
 void Flat::backward(const CnnModel& model)

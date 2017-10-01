@@ -187,6 +187,12 @@ OpMeta* Linear::init_task(const Task *task,
   int output_channels = rect_output.hi[0] - rect_output.lo[0] + 1;
   int batch_size = linear->output.pdim[1];
   printf("init linear (input): in_c(%d) out_c(%d) batch_size(%d)\n", input_channels, output_channels, batch_size);
+  LinearMeta* m = new LinearMeta(handle);
+#ifndef DISABLE_COMPUTATION
+  m->relu = linear->relu;
+  m->input_channels = input_channels;
+  m->output_channels = output_channels;
+  m->batch_size = batch_size;
 
   coord_t kernel_elements = input_channels * linear->output.pdim[0];
   float factor = 1.0f / sqrt(input_channels);
@@ -199,11 +205,6 @@ OpMeta* Linear::init_task(const Task *task,
   scale_kernel<<<num_blocks, BLKSIZE>>>(bias_ptr, linear->output.pdim[0], -factor, factor);
   curandDestroyGenerator(genGPU);
 
-  LinearMeta* m = new LinearMeta(handle);
-  m->relu = linear->relu;
-  m->input_channels = input_channels;
-  m->output_channels = output_channels;
-  m->batch_size = batch_size;
   float* dram_one_ptr = (float *) malloc(sizeof(float) * batch_size);
   for (int i = 0; i < batch_size; i++)
     dram_one_ptr[i] = 1.0f;
@@ -220,6 +221,7 @@ OpMeta* Linear::init_task(const Task *task,
                                           CUDNN_DATA_FLOAT,
                                           batch_size, output_channels, 1, 1));
   }
+#endif
   return m;
 }
 
@@ -275,6 +277,7 @@ void Linear::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
+#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   float alpha = 1.0f, beta = 0.0f;
@@ -337,6 +340,7 @@ void Linear::forward_task(const Task *task,
   cudaEventDestroy(t_start);
   cudaEventDestroy(t_end);
   printf("Linear forward time = %.2lfms\n", elapsed);
+#endif
 }
 
 void Linear::forward(const CnnModel& model)
@@ -390,6 +394,7 @@ void Linear::backward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime)
 {
+#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   float alpha = 1.0f, beta = 0.0f;
@@ -479,6 +484,7 @@ void Linear::backward_task(const Task *task,
   cudaEventDestroy(t_start);
   cudaEventDestroy(t_end);
   printf("Linear backward time = %.2lfms\n", elapsed);
+#endif
 }
 
 /*
@@ -490,6 +496,7 @@ void Linear::backward2_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime)
 {
+#ifndef DISABLE_COMPUTATION
   float alpha = 1.0f;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
   const AccessorWO<float, 2> acc_input(regions[0], FID_DATA);
@@ -510,6 +517,7 @@ void Linear::backward2_task(const Task *task,
       checkCUDA(cublasSaxpy(m->handle.blas, rect_input.volume(),
                             &alpha, replica_ptr, 1, input_ptr, 1));
   }
+#endif
 }
 
 void Linear::backward(const CnnModel& model)

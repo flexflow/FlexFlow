@@ -88,6 +88,7 @@ OpMeta* Softmax::init_task(const Task *task,
   assert(acc_output.accessor.is_dense_arbitrary(rect_output));
   CnnHandle handle = *((const CnnHandle*) task->local_args);
   SoftmaxMeta* m = new SoftmaxMeta(handle);
+#ifndef DISABLE_COMPUTATION
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
   //checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
   assert(rect_input == rect_output);
@@ -97,6 +98,7 @@ OpMeta* Softmax::init_task(const Task *task,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
                                         input_n, input_c, 1, 1));
+#endif
   return m;
 }
 
@@ -139,6 +141,7 @@ void Softmax::forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime)
 {
+#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   float alpha = 1.0f, beta = 0.0f;
@@ -169,6 +172,7 @@ void Softmax::forward_task(const Task *task,
   cudaEventDestroy(t_start);
   cudaEventDestroy(t_end);
   printf("Softmax forward time = %.2fms\n", elapsed);
+#endif
 }
 
 __host__
@@ -216,6 +220,7 @@ void Softmax::backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime)
 {
+#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   const SoftmaxMeta* m = *((SoftmaxMeta**) task->local_args);
@@ -265,6 +270,7 @@ void Softmax::backward_task(const Task *task,
   cudaEventDestroy(t_start);
   cudaEventDestroy(t_end);
   printf("Softmax backward time = %.2fms\n", elapsed);
+#endif
 }
 
 __host__
