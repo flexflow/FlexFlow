@@ -14,9 +14,6 @@
  */
 
 #include "ops.h"
-#include <cuda_runtime.h>
-#include <cudnn.h>
-#include <curand.h>
 
 Tensor CnnModel::add_pooling_layer(Tensor input,
                                    int kernel_h, int kernel_w,

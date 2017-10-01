@@ -15,10 +15,6 @@
 
 #include "ops.h"
 #include "cnn_helper.h"
-#include <cuda_runtime.h>
-#include <cudnn.h>
-#include <curand.h>
-#include <unistd.h>
 #define PARAMETER_ALL_ONES
 
 Tensor CnnModel::add_conv_layer(Tensor input, int out_channels,
@@ -157,6 +153,7 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
 }
 
+#ifndef DISABLE_COMPUTATION
 cudnnConvolutionFwdAlgo_t
 selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
                                   const cudnnTensorDescriptor_t xDesc, const void* x,
@@ -178,6 +175,7 @@ selectConvolutionBackwardDataAlgorithm(cudnnHandle_t handle,
                                        const cudnnConvolutionDescriptor_t convDesc,
                                        void* workSpace, size_t workSpaceSize,
                                        const cudnnTensorDescriptor_t dxDesc, void* dx);
+#endif
 /*
   regions[0]: input
   regions[1]: output

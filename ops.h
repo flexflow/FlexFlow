@@ -16,10 +16,12 @@
 #ifndef _LEGION_CNN_OPS_H_
 #define _LEGION_CNN_OPS_H_
 
+#define DISABLE_COMPUTATION
 #include "legion.h"
-#include <cudnn.h>
+#include <cuda_runtime.h>
+#include <curand.h>
 #include <cublas_v2.h>
-
+#include <unistd.h>
 using namespace Legion;
 
 template<typename FT, int N, typename T = coord_t> using AccessorRO = FieldAccessor<READ_ONLY,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
@@ -34,6 +36,7 @@ template<typename FT, int N, typename T = coord_t> using AccessorWO = FieldAcces
     exit(1);                                                           \
 } while(0)
 
+#ifndef DISABLE_COMPUTATION
 #define checkCUDNN(status) do {                                        \
     std::stringstream _error;                                          \
     if (status != CUDNN_STATUS_SUCCESS) {                              \
@@ -41,6 +44,7 @@ template<typename FT, int N, typename T = coord_t> using AccessorWO = FieldAcces
       FatalError(_error.str());                                        \
     }                                                                  \
 } while(0)
+#endif
 
 #define checkCUDA(status) do {                                         \
     std::stringstream _error;                                          \
@@ -83,8 +87,10 @@ enum FieldIDs {
 };
 
 struct CnnHandle {
+#ifndef DISABLE_COMPUTATION
   cudnnHandle_t dnn;
   cublasHandle_t blas;
+#endif
   void *workSpace;
   size_t workSpaceSize;
 };
@@ -234,6 +240,7 @@ public:
 class Conv2DMeta : public OpMeta {
 public:
   Conv2DMeta(CnnHandle handle) : OpMeta(handle) {};
+#ifndef DISABLE_COMPUTATION
   cudnnTensorDescriptor_t inputTensor, biasTensor, outputTensor;
   cudnnFilterDescriptor_t filterDesc;
   cudnnActivationDescriptor_t actiDesc;
@@ -241,6 +248,7 @@ public:
   cudnnConvolutionFwdAlgo_t fwdAlgo;
   cudnnConvolutionBwdFilterAlgo_t bwdFilterAlgo;
   cudnnConvolutionBwdDataAlgo_t bwdDataAlgo;
+#endif
   bool relu, first_layer;
 };
 
@@ -276,9 +284,11 @@ public:
 class Pooling2DMeta : public OpMeta {
 public:
   Pooling2DMeta(CnnHandle handle) : OpMeta(handle) {};
+#ifndef DISABLE_COMPUTATION
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
   cudnnPoolingDescriptor_t poolDesc;
+#endif
   bool relu;
 };
 
@@ -316,8 +326,10 @@ public:
 class LinearMeta : public OpMeta {
 public:
   LinearMeta(CnnHandle handle) : OpMeta(handle) {};
+#ifndef DISABLE_COMPUTATION
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;
+#endif
   int input_channels, output_channels, batch_size;
   bool relu;
   float *one_ptr, *pre_relu;
@@ -384,7 +396,9 @@ public:
 class SoftmaxMeta : public OpMeta {
 public:
   SoftmaxMeta(CnnHandle handle) : OpMeta(handle) {};
+#ifndef DISABLE_COMPUTATION
   cudnnTensorDescriptor_t inputTensor;
+#endif
 };
 
 #endif // _LEGION_CNN_OPS_H_

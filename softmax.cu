@@ -15,8 +15,6 @@
 
 #include "ops.h"
 #include "cnn_helper.h"
-#include <cuda_runtime.h>
-#include <cudnn.h>
 
 Tensor CnnModel::add_softmax_layer(Tensor input)
 {

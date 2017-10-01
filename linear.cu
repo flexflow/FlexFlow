@@ -15,9 +15,6 @@
 
 #include "ops.h"
 #include "cnn_helper.h"
-#include <cuda_runtime.h>
-#include <cudnn.h>
-#include <curand.h>
 
 Tensor CnnModel::add_linear_layer(Tensor input, int output_channels, bool relu)
 {
