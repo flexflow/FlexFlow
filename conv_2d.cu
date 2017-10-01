@@ -447,13 +447,10 @@ void Conv2D::forward(const CnnModel& model)
   ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  printf("CP#1\n");
   Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
-  printf("CP#2\n");
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
-    printf("mp.pointer = %llx\n", mp);
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(CONV2D_FWD_TASK_ID, model.part_is,
@@ -535,6 +532,10 @@ void Conv2D::backward_task(const Task *task,
   float *kernel_grad_ptr = acc_kernel_grad.ptr(rect_kernel_grad.lo);
   float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
 
+  cudaEvent_t t_start, t_end;
+  cudaEventCreate(&t_start);
+  cudaEventCreate(&t_end);
+  cudaEventRecord(t_start);
   if (m->relu) {
     int n = rect_output.volume();
     reluBackward<<<GET_BLOCKS(n), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, n);
@@ -552,14 +553,22 @@ void Conv2D::backward_task(const Task *task,
                                           m->outputTensor, output_grad_ptr,
                                           &beta, m->biasTensor, bias_grad_ptr));
   // no need to compute input_grad if we are the first layer
-  if (m->first_layer) return; 
-  // Compute data gradiant
-  checkCUDNN(cudnnConvolutionBackwardData(m->handle.dnn, &alpha,
-                                          m->filterDesc, kernel_ptr,
-                                          m->outputTensor, output_grad_ptr,
-                                          m->convDesc, m->bwdDataAlgo,
-                                          m->handle.workSpace, m->handle.workSpaceSize,
-                                          &beta, m->inputTensor, input_grad_ptr));
+  if (!m->first_layer) {
+    // Compute data gradiant
+    checkCUDNN(cudnnConvolutionBackwardData(m->handle.dnn, &alpha,
+                                            m->filterDesc, kernel_ptr,
+                                            m->outputTensor, output_grad_ptr,
+                                            m->convDesc, m->bwdDataAlgo,
+                                            m->handle.workSpace, m->handle.workSpaceSize,
+                                            &beta, m->inputTensor, input_grad_ptr));
+  }
+  cudaEventRecord(t_end);
+  checkCUDA(cudaEventSynchronize(t_end));
+  float elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+  printf("Conv2D backward time = %.2fms\n", elapsed);
 }
 
 __host__

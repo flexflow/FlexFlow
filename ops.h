@@ -172,19 +172,9 @@ public:
     }
   }
 
-  void forward()
-  {
-    for (size_t i = 0; i < layers.size(); i++) {
-      layers[i]->forward(*this);
-    }
-  }
+  void forward();
 
-  void backward()
-  {
-    for (int i = layers.size() - 1; i >= 0; i--) {
-      layers[i]->backward(*this);
-    }
-  }
+  void backward();
 
   Tensor add_conv_layer(Tensor input, int out_channels, int kernel_x, int kernel_y,
                         int stride_x, int stride_y, int padding_x, int padding_y, bool relu = true);

@@ -311,6 +311,10 @@ void Linear::forward_task(const Task *task,
 
   //checkCUDA(cudaMemcpy(replica_ptr, input_ptr, rect_input.volume() * sizeof(float),
   //                     cudaMemcpyDeviceToDevice));
+  cudaEvent_t t_start, t_end;
+  cudaEventCreate(&t_start);
+  cudaEventCreate(&t_end);
+  cudaEventRecord(t_start);
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
                         output_channels, batch_size, input_channels,
                         &alpha, kernel_ptr, input_channels,
@@ -326,6 +330,13 @@ void Linear::forward_task(const Task *task,
                                       &alpha, m->outputTensor, output_ptr,
                                       &beta, m->outputTensor, output_ptr));
   }
+  cudaEventRecord(t_end);
+  checkCUDA(cudaEventSynchronize(t_end));
+  float elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+  printf("Linear forward time = %.2lfms\n", elapsed);
 }
 
 void Linear::forward(const CnnModel& model)
@@ -434,6 +445,10 @@ void Linear::backward_task(const Task *task,
   float *kernel_grad_ptr = acc_kernel_grad.ptr(rect_kernel_grad.lo);
   float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
 
+  cudaEvent_t t_start, t_end;
+  cudaEventCreate(&t_start);
+  cudaEventCreate(&t_end);
+  cudaEventRecord(t_start);
   if (m->relu) {
     int n = rect_output.volume();
     reluBackward<<<GET_BLOCKS(n), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, n);
@@ -457,6 +472,13 @@ void Linear::backward_task(const Task *task,
                         &alpha, kernel_ptr, input_channels,
                         output_grad_ptr, output_channels,
                         &beta, replica_grad_ptr, input_channels));
+  cudaEventRecord(t_end);
+  checkCUDA(cudaEventSynchronize(t_end));
+  float elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+  printf("Linear backward time = %.2lfms\n", elapsed);
 }
 
 /*

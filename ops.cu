@@ -116,6 +116,22 @@ CnnModel::CnnModel(int num_images, int height, int width,
   input_label.partition = label_lp;
 };
 
+void CnnModel::forward()
+{
+  for (size_t i = 0; i < layers.size(); i++) {
+    layers[i]->forward(*this);
+  }
+}
+
+void CnnModel::backward()
+{
+  int cm = 0;
+  for (int i = layers.size() - 1; i >= 0; i--) {
+    if (cm ++ == 6) break;
+    layers[i]->backward(*this);
+  }
+}
+
 __global__
 void init_image_kernel(float* ptr, coord_t size)
 {

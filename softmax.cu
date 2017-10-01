@@ -153,11 +153,22 @@ void Softmax::forward_task(const Task *task,
   const float *input_ptr = acc_input.ptr(rect_input.lo);
   float *output_ptr = acc_output.ptr(rect_output.lo);
 
+  cudaEvent_t t_start, t_end;
+  cudaEventCreate(&t_start);
+  cudaEventCreate(&t_end);
+  cudaEventRecord(t_start);
   checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
                                  CUDNN_SOFTMAX_ACCURATE,
                                  CUDNN_SOFTMAX_MODE_CHANNEL,
                                  &alpha, m->inputTensor, input_ptr,
                                  &beta, m->inputTensor, output_ptr));
+  cudaEventRecord(t_end);
+  checkCUDA(cudaEventSynchronize(t_end));
+  float elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+  printf("Softmax forward time = %.2fms\n", elapsed);
 }
 
 __host__
@@ -232,6 +243,11 @@ void Softmax::backward_task(const Task *task,
   float *input_grad_ptr = acc_input_grad.ptr(rect_input_grad.lo);
   const float *output_ptr = acc_output.ptr(rect_output.lo);
   const int *label_ptr = acc_label.ptr(rect_label.lo);
+
+  cudaEvent_t t_start, t_end;
+  cudaEventCreate(&t_start);
+  cudaEventCreate(&t_end);
+  cudaEventRecord(t_start);
   checkCUDA(cudaMemcpy(input_grad_ptr, output_ptr,
                        rect_input_grad.volume() * sizeof(float),
                        cudaMemcpyDeviceToDevice));
@@ -242,6 +258,13 @@ void Softmax::backward_task(const Task *task,
   float scalVal = 1.0f / static_cast<float>(num_images);
   checkCUDA(cublasSscal(m->handle.blas, rect_input_grad.volume(),
                         &scalVal, input_grad_ptr, 1));
+  cudaEventRecord(t_end);
+  checkCUDA(cudaEventSynchronize(t_end));
+  float elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+  printf("Softmax backward time = %.2fms\n", elapsed);
 }
 
 __host__

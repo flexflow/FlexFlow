@@ -16,6 +16,7 @@
 #include <cstdio>
 #include "ops.h"
 #include "cnn_mapper.h"
+#define USE_ALEXNET
 
 using namespace Legion;
 
@@ -28,7 +29,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int num_par_h = 2;
   int num_par_w = 2;
   int num_par_n = 1;
-  int num_images = 128; // per_batch
+  int num_images = 256; // per_batch
   int fc_num_par_c = 4;
   int fc_num_par_n = 1;
   int height = 224;
@@ -51,6 +52,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   }
 
   // Construct model (AlexNet)
+#ifdef USE_ALEXNET
   Tensor t = model.add_conv_layer(model.input_image, 64, 11, 11, 4, 4, 2, 2);
   t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
   t = model.add_conv_layer(t, 192, 5, 5, 1, 1, 2, 2);
@@ -64,6 +66,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   t = model.add_linear_layer(t, 4096);
   t = model.add_linear_layer(t, 1000, false/*relu*/);
   t = model.add_softmax_layer(t);
+#endif
 
   // Construct model (VGG-16Net)
 #ifdef USE_VGG
