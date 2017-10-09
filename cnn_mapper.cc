@@ -38,7 +38,7 @@ void CnnMapper::slice_task(const MapperContext ctx,
         Rect<1> rect = input.domain;
         for (PointInRectIterator<1> pir(rect); pir(); pir++, idx++) {
           Rect<1> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, gpus[idx],
+          output.slices[idx] = TaskSlice(slice, gpus[idx % gpus.size()],
                                          false/*recurse*/, false/*stealable*/);
         }
         break;
@@ -48,7 +48,7 @@ void CnnMapper::slice_task(const MapperContext ctx,
         Rect<2> rect = input.domain;
         for (PointInRectIterator<2> pir(rect); pir(); pir++, idx++) {
           Rect<2> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, gpus[idx],
+          output.slices[idx] = TaskSlice(slice, gpus[idx % gpus.size()],
                                          false/*recurse*/, false/*stealable*/);
         }
         break;
@@ -58,7 +58,7 @@ void CnnMapper::slice_task(const MapperContext ctx,
         Rect<3> rect = input.domain;
         for (PointInRectIterator<3> pir(rect); pir(); pir++, idx++) {
           Rect<3> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, gpus[idx],
+          output.slices[idx] = TaskSlice(slice, gpus[idx % gpus.size()],
                                          false/*recurse*/, false/*stealable*/);
         }
         break;

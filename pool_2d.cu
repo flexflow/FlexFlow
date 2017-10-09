@@ -15,23 +15,26 @@
 
 #include "ops.h"
 
-Tensor CnnModel::add_pooling_layer(Tensor input,
-                                   int kernel_h, int kernel_w,
-                                   int stride_h, int stride_w,
-                                   int padding_h, int padding_w, bool relu)
+Tensor CnnModel::add_pool_layer(Tensor input,
+                                int kernel_h, int kernel_w,
+                                int stride_h, int stride_w,
+                                int padding_h, int padding_w,
+                                Pool2DType type, bool relu)
 {
   assert(input.numDim == 4); /*NCHW*/
   Pooling2D *pool = new Pooling2D(config, input, part_is, kernel_h, kernel_w,
-                                  stride_h, stride_w, padding_h, padding_w, relu);
+                                  stride_h, stride_w, padding_h, padding_w,
+                                  type, relu);
   layers.push_back(pool);
   return pool->output;
 }
 
 Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
                      int _kernel_h, int _kernel_w, int _stride_h, int _stride_w,
-                     int _padding_h, int _padding_w, bool _relu)
+                     int _padding_h, int _padding_w, Pool2DType _type, bool _relu)
 : Op(input), kernel_h(_kernel_h), kernel_w(_kernel_w), stride_h(_stride_h),
-  stride_w(_stride_w), padding_h(_padding_h), padding_w(_padding_w), relu(_relu)
+  stride_w(_stride_w), padding_h(_padding_h), padding_w(_padding_w),
+  pool_type(_type), relu(_relu)
 {
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
@@ -142,8 +145,16 @@ OpMeta* Pooling2D::init_task(const Task *task,
     printf("Warning: changing pool_padding_h to satisfy output_h size\n");
   if (pad_w != pool->padding_w)
     printf("Warning: changing pool_padding_w to satisfy output_w size\n");
+  
+  cudnnPoolingMode_t mode;
+  if (pool->pool_type == POOL2D_MAX)
+    mode = CUDNN_POOLING_MAX;
+  else {
+    assert(pool->pool_type == POOL2D_AVG);
+    mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+  }
   checkCUDNN(cudnnSetPooling2dDescriptor(m->poolDesc,
-                                         CUDNN_POOLING_MAX,
+                                         mode,
                                          CUDNN_PROPAGATE_NAN,
                                          pool->kernel_h,
                                          pool->kernel_w,
@@ -290,11 +301,22 @@ void Pooling2D::backward_task(const Task *task,
   const float *output_ptr = acc_output.ptr(rect_output.lo);
   const float *output_grad_ptr = acc_output_grad.ptr(rect_output_grad.lo);
 
+  cudaEvent_t t_start, t_end;
+  cudaEventCreate(&t_start);
+  cudaEventCreate(&t_end);
+  cudaEventRecord(t_start);
   checkCUDNN(cudnnPoolingBackward(m->handle.dnn, m->poolDesc,
                                   &alpha, m->outputTensor, output_ptr,
                                   m->outputTensor, output_grad_ptr,
                                   m->inputTensor, input_ptr,
                                   &beta, m->inputTensor, input_grad_ptr));
+  cudaEventRecord(t_end);
+  checkCUDA(cudaEventSynchronize(t_end));
+  float elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+  printf("Pool2D backward time = %.2fms\n", elapsed);
 #endif
 }
 

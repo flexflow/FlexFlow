@@ -55,7 +55,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   assert(runtime->is_index_partition_complete(ctx, output_ip));
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
   LogicalPartition output_grad_lp = runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
-  
+
   // Note: we only need replica's grad, so no need to create lr/lp for forward
   Rect<2, coord_t> replica_rect(Point<2>(0, 0),
                        Point<2>(input_channels*config.fc_num_par_c-1, input.adim[1]-1));
@@ -504,6 +504,10 @@ void Linear::backward2_task(const Task *task,
   for (int i = 1; i < task->regions.size(); i++) {
     const AccessorRO<float, 2> acc_replica(regions[i], FID_DATA);
     rect_replica = runtime->get_index_space_domain(ctx, task->regions[i].region.get_index_space());
+    printf("rect_replica.hi = %lld lo = %lld\n", rect_replica.hi[0], rect_replica.lo[0]);
+    printf("rect_replica.hi = %lld lo = %lld\n", rect_replica.hi[1], rect_replica.lo[1]);
+    printf("rect_input.hi = %lld lo = %lld\n", rect_input.hi[0], rect_input.lo[0]);
+    printf("rect_input.hi = %lld lo = %lld\n", rect_input.hi[1], rect_input.lo[1]);
     assert(rect_replica.volume() == rect_input.volume());
     assert(acc_replica.accessor.is_dense_arbitrary(rect_replica));
     const float *replica_ptr = acc_replica.ptr(rect_replica.lo);

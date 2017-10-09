@@ -132,7 +132,7 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   output.region = output_lr;
   output.partition = output_lp;
   output.region_grad = output_grad_lr;
-  output.partition = output_grad_lp;
+  output.partition_grad = output_grad_lp;
   printf("Create conv layer: output(n=%d c=%d h=%d w=%d)\n",
          output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
@@ -496,15 +496,15 @@ void Conv2D::backward_task(const Task *task,
   assert(task->regions.size() == 7);
   float alpha = 1.0f, beta = 0.0f;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
-  const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 2> acc_input_grad(regions[1], FID_DATA);
-  const AccessorRO<float, 2> acc_output(regions[2], FID_DATA);
-  const AccessorRW<float, 2> acc_output_grad(regions[3], FID_DATA);
-  const AccessorRO<float, 2> acc_kernel(regions[4], FID_DATA);
-  const AccessorWO<float, 2> acc_kernel_grad(regions[5], FID_DATA);
-  const AccessorWO<float, 2> acc_bias_grad(regions[6], FID_DATA);
-  Rect<2> rect_input, rect_input_grad, rect_output, rect_output_grad,
-          rect_kernel, rect_kernel_grad, rect_bias_grad;
+  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 3> acc_input_grad(regions[1], FID_DATA);
+  const AccessorRO<float, 3> acc_output(regions[2], FID_DATA);
+  const AccessorRW<float, 3> acc_output_grad(regions[3], FID_DATA);
+  const AccessorRO<float, 1> acc_kernel(regions[4], FID_DATA);
+  const AccessorWO<float, 1> acc_kernel_grad(regions[5], FID_DATA);
+  const AccessorWO<float, 1> acc_bias_grad(regions[6], FID_DATA);
+  Rect<3> rect_input, rect_input_grad, rect_output, rect_output_grad;
+  Rect<1> rect_kernel, rect_kernel_grad, rect_bias_grad;
   rect_input =
     runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_input_grad =

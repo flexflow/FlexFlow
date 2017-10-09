@@ -16,8 +16,9 @@
 #ifndef _LEGION_CNN_OPS_H_
 #define _LEGION_CNN_OPS_H_
 
-#define DISABLE_COMPUTATION
+//#define DISABLE_COMPUTATION
 #include "legion.h"
+#include <cudnn.h>
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <cublas_v2.h>
@@ -54,7 +55,7 @@ template<typename FT, int N, typename T = coord_t> using AccessorWO = FieldAcces
     }                                                                  \
 } while(0)
 
-#define MAX_NUM_INPUTS 3
+#define MAX_NUM_INPUTS 6
 #define MAX_NUM_LOCALS 3
 #define MAX_NUM_WORKERS 16
 #define MAX_DIM 4
@@ -80,6 +81,14 @@ enum TaskIDs {
   SOFTMAX_INIT_TASK_ID,
   SOFTMAX_FWD_TASK_ID,
   SOFTMAX_BWD_TASK_ID,
+  CONCAT_INIT_TASK_ID,
+  CONCAT_FWD_TASK_ID,
+  CONCAT_BWD_TASK_ID,
+};
+
+enum Pool2DType {
+  POOL2D_MAX,
+  POOL2D_AVG,
 };
 
 enum FieldIDs {
@@ -135,7 +144,7 @@ class CnnModel;
 class Op {
 public:
   Op(Tensor input);
-
+  Op(int num, Tensor* inputs);
   virtual void init(const CnnModel&) = 0;
 
   virtual void forward(const CnnModel&) = 0;
@@ -185,10 +194,13 @@ public:
   Tensor add_conv_layer(Tensor input, int out_channels, int kernel_x, int kernel_y,
                         int stride_x, int stride_y, int padding_x, int padding_y, bool relu = true);
 
-  Tensor add_pooling_layer(Tensor input, int kernel_h, int kernel_w,
-                           int stride_h, int stride_w, int padding_h, int padding_w, bool relu = true);
+  Tensor add_pool_layer(Tensor input, int kernel_h, int kernel_w,
+                        int stride_h, int stride_w, int padding_h, int padding_w,
+                        Pool2DType type = POOL2D_MAX, bool relu = false);
 
   Tensor add_linear_layer(Tensor input, int output_channels, bool relu = true);
+
+  Tensor add_concat_layer(int n, Tensor* tensors);
 
   Tensor add_flat_layer(Tensor input);
 
@@ -256,7 +268,7 @@ class Pooling2D : public Op {
 public:
   Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
             int kernel_h, int kernel_w, int stride_h, int stride_w,
-            int padding_h, int padding_w, bool relu);
+            int padding_h, int padding_w, Pool2DType type, bool relu);
 
   void init(const CnnModel&);
 
@@ -278,6 +290,7 @@ public:
 
 public:
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
+  Pool2DType pool_type;
   bool relu;
 };
 
@@ -401,4 +414,34 @@ public:
 #endif
 };
 
+class Concat : public Op {
+public:
+  Concat(CnnConfig config, int n, Tensor* inputs,
+         IndexSpaceT<3> part_is);
+
+  void init(const CnnModel&);
+
+  void forward(const CnnModel&);
+
+  void backward(const CnnModel&);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+public:
+  int num_inputs;
+};
+
+class ConcatMeta : public OpMeta {
+public:
+  ConcatMeta(CnnHandle handle) : OpMeta(handle) {};
+};
 #endif // _LEGION_CNN_OPS_H_

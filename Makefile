@@ -18,7 +18,7 @@ $(error LG_RT_DIR variable is not defined, aborting build)
 endif
 
 # Flags for directing the runtime makefile what to include
-DEBUG           ?= 1		# Include debugging symbols
+DEBUG           ?= 0		# Include debugging symbols
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
@@ -29,7 +29,7 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 OUTFILE		?= cnn
 # List all the application source files here
 GEN_SRC		?= cnn.cc cnn_mapper.cc	# .cc files
-GEN_GPU_SRC	?= conv_2d.cu ops.cu pool_2d.cu linear.cu softmax.cu cnn_helper.cu# .cu files
+GEN_GPU_SRC	?= conv_2d.cu ops.cu pool_2d.cu linear.cu softmax.cu concat.cu cnn_helper.cu# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
 INC_FLAGS	?= 

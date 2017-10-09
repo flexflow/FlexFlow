@@ -16,7 +16,8 @@
 #include <cstdio>
 #include "ops.h"
 #include "cnn_mapper.h"
-#define USE_ALEXNET
+#include "inception.h"
+#define USE_INCEPTION
 
 using namespace Legion;
 
@@ -29,7 +30,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int num_par_h = 2;
   int num_par_w = 2;
   int num_par_n = 1;
-  int num_images = 256; // per_batch
+  int num_images = 512; // per_batch
   int fc_num_par_c = 4;
   int fc_num_par_n = 1;
   int height = 224;
@@ -54,13 +55,13 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   // Construct model (AlexNet)
 #ifdef USE_ALEXNET
   Tensor t = model.add_conv_layer(model.input_image, 64, 11, 11, 4, 4, 2, 2);
-  t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
+  t = model.add_pool_layer(t, 3, 3, 2, 2, 0, 0);
   t = model.add_conv_layer(t, 192, 5, 5, 1, 1, 2, 2);
-  t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
+  t = model.add_pool_layer(t, 3, 3, 2, 2, 0, 0);
   t = model.add_conv_layer(t, 384, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
-  t = model.add_pooling_layer(t, 3, 3, 2, 2, 0, 0);
+  t = model.add_pool_layer(t, 3, 3, 2, 2, 0, 0);
   t = model.add_flat_layer(t);
   t = model.add_linear_layer(t, 4096);
   t = model.add_linear_layer(t, 4096);
@@ -72,25 +73,51 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
 #ifdef USE_VGG
   Tensor t = model.add_conv_layer(model.input_image, 64, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 64, 3, 3, 1, 1, 1, 1);
-  t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  t = model.add_pool_layer(t, 2, 2, 2, 2, 0, 0);
   t = model.add_conv_layer(t, 128, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 128, 3, 3, 1, 1, 1, 1);
-  t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  t = model.add_pool_layer(t, 2, 2, 2, 2, 0, 0);
   t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
-  t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  t = model.add_pool_layer(t, 2, 2, 2, 2, 0, 0);
   t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
-  t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  t = model.add_pool_layer(t, 2, 2, 2, 2, 0, 0);
   t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 512, 3, 3, 1, 1, 1, 1);
-  t = model.add_pooling_layer(t, 2, 2, 2, 2, 0, 0);
+  t = model.add_pool_layer(t, 2, 2, 2, 2, 0, 0);
   t = model.add_flat_layer(t);
   t = model.add_linear_layer(t, 4096);
   t = model.add_linear_layer(t, 4096);
+  t = model.add_linear_layer(t, 1000, false/*relu*/);
+  t = model.add_softmax_layer(t);
+#endif
+
+  // Construct model (Inception-V3)
+#ifdef USE_INCEPTION
+  Tensor t = model.add_conv_layer(model.input_image, 32, 3, 3, 2, 2, 1, 1);
+  t = model.add_conv_layer(t, 32, 3, 3, 1, 1, 1, 1);
+  t = model.add_conv_layer(t, 64, 3, 3, 1, 1, 1, 1);
+  t = model.add_pool_layer(t, 3, 3, 2, 2, 0, 0);
+  t = model.add_conv_layer(t, 80, 1, 1, 1, 1, 0, 0);
+  t = model.add_conv_layer(t, 192, 3, 3, 1, 1, 1, 1);
+  t = model.add_pool_layer(t, 3, 3, 2, 2, 0, 0);
+  t = InceptionA(model, t, 32);
+  t = InceptionA(model, t, 64);
+  t = InceptionA(model, t, 64);
+  t = InceptionB(model, t);
+  t = InceptionC(model, t, 128);
+  t = InceptionC(model, t, 160);
+  t = InceptionC(model, t, 160);
+  t = InceptionC(model, t, 192);
+  t = InceptionD(model, t);
+  t = InceptionE(model, t);
+  t = InceptionE(model, t);
+  t = model.add_pool_layer(t, 8, 8, 1, 1, 0, 0, POOL2D_AVG);
+  t = model.add_flat_layer(t);
   t = model.add_linear_layer(t, 1000, false/*relu*/);
   t = model.add_softmax_layer(t);
 #endif
@@ -241,6 +268,26 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Softmax::backward_task>(registrar, "softmax_bwd_task");
+  }
+
+  // Concat task
+  {
+    TaskVariantRegistrar registrar(CONCAT_INIT_TASK_ID, "concat_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Concat::init_task>(registrar, "concat_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(CONCAT_FWD_TASK_ID, "concat_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Concat::forward_task>(registrar, "concat_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(CONCAT_BWD_TASK_ID, "concat_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Concat::backward_task>(registrar, "concat_bwd_task");
   }
 
   Runtime::add_registration_callback(update_mappers);

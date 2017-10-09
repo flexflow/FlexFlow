@@ -37,6 +37,13 @@ Op::Op(Tensor input)
   inputs[0] = input;
 }
 
+Op::Op(int n, Tensor *_inputs)
+{
+  for (int i = 0; i < n; i++) {
+    inputs[i] = _inputs[i];
+  }
+}
+
 CnnModel::CnnModel(int num_images, int height, int width,
                    int image_par, int height_par, int width_par,
                    int fc_par_n, int fc_par_c,
@@ -127,9 +134,7 @@ void CnnModel::forward()
 
 void CnnModel::backward()
 {
-  int cm = 0;
   for (int i = layers.size() - 1; i >= 0; i--) {
-    if (cm ++ == 6) break;
     layers[i]->backward(*this);
   }
 }
@@ -240,8 +245,13 @@ Flat::Flat(CnnConfig config, Tensor input,
   LogicalRegion output_grad_lr =
     runtime->create_logical_region(ctx, output_is, fs);
   Transform<2, 2, coord_t> transform;
-  int extent_c = input.pdim[0] * input.pdim[1] * input.pdim[2];
-  int extent_n = input.pdim[3];
+  //int extent_c = input.pdim[0] * input.pdim[1] * input.pdim[2];
+  //int extent_n = input.pdim[3];
+  // We assume equal partition for load balancing
+  assert(output_c % config.fc_num_par_c == 0);
+  assert(output_n % config.fc_num_par_n == 0);
+  int extent_c = output_c / config.fc_num_par_c;
+  int extent_n = output_n / config.fc_num_par_n;
   Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1,extent_n-1));
   transform[0][0] = extent_c; transform[0][1] = 0;
   transform[1][0] = 0; transform[1][1] = extent_n;
@@ -258,7 +268,7 @@ Flat::Flat(CnnConfig config, Tensor input,
   output.pdim[0] = extent_c;
   output.pdim[1] = extent_n;
   output.region = output_lr;
-  output.region_grad = output_lr;
+  output.region_grad = output_grad_lr;
   output.partition = output_lp;
   output.partition_grad = output_grad_lp;
   printf("Create flat layer: input(N=%d C=%d H=%d W=%d) -> output(N=%d C=%d)\n",
@@ -353,7 +363,7 @@ void Flat::init(const CnnModel& model)
 
 /*
   regions[0](I): input
-  regions[1](I): output
+  regions[1](O): output
 */  
 void Flat::forward_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,
