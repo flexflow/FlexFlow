@@ -29,32 +29,6 @@ template<typename FT, int N, typename T = coord_t> using AccessorRO = FieldAcces
 template<typename FT, int N, typename T = coord_t> using AccessorRW = FieldAccessor<READ_WRITE,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
 template<typename FT, int N, typename T = coord_t> using AccessorWO = FieldAccessor<WRITE_ONLY,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
 
-#define FatalError(s) do {                                             \
-    std::stringstream _where, _message;                                \
-    _where << __FILE__ << ':' << __LINE__;                             \
-    _message << std::string(s) + "\n" << __FILE__ << ':' << __LINE__;  \
-    std::cerr << _message.str() << "\nAborting...\n";                  \
-    exit(1);                                                           \
-} while(0)
-
-#ifndef DISABLE_COMPUTATION
-#define checkCUDNN(status) do {                                        \
-    std::stringstream _error;                                          \
-    if (status != CUDNN_STATUS_SUCCESS) {                              \
-      _error << "CUDNN failure: " << cudnnGetErrorString(status);      \
-      FatalError(_error.str());                                        \
-    }                                                                  \
-} while(0)
-#endif
-
-#define checkCUDA(status) do {                                         \
-    std::stringstream _error;                                          \
-    if (status != 0) {                                                 \
-      _error << "Cuda failure: " << status;                            \
-      FatalError(_error.str());                                        \
-    }                                                                  \
-} while(0)
-
 #define MAX_NUM_INPUTS 6
 #define MAX_NUM_LOCALS 3
 #define MAX_NUM_WORKERS 16
@@ -68,6 +42,7 @@ enum TaskIDs {
   CONV2D_INIT_TASK_ID,
   CONV2D_FWD_TASK_ID,
   CONV2D_BWD_TASK_ID,
+  CONV2D_UPD_TASK_ID,
   POOL2D_INIT_TASK_ID,
   POOL2D_FWD_TASK_ID,
   POOL2D_BWD_TASK_ID,
@@ -75,6 +50,7 @@ enum TaskIDs {
   LINEAR_FWD_TASK_ID,
   LINEAR_BWD_TASK_ID,
   LINEAR_BWD2_TASK_ID,
+  LINEAR_UPD_TASK_ID,
   FLAT_INIT_TASK_ID,
   FLAT_FWD_TASK_ID,
   FLAT_BWD_TASK_ID,
@@ -152,6 +128,7 @@ public:
 
   virtual void backward(const CnnModel&) = 0;
 
+  virtual void update(const CnnModel&) = 0;
 public:
   Tensor output;
   //Op* pre_ops[MAX_NUM_INPUTS];
@@ -191,6 +168,8 @@ public:
   void forward();
 
   void backward();
+
+  void update();
 
   Tensor add_conv_layer(Tensor input, int out_channels, int kernel_x, int kernel_y,
                         int stride_x, int stride_y, int padding_x, int padding_y, bool relu = true);
@@ -233,6 +212,8 @@ public:
 
   void backward(const CnnModel&);
 
+  void update(const CnnModel&);
+
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -244,10 +225,15 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, HighLevelRuntime *runtime);
+
+  static void update_task(const Task *task,
+                          const std::vector<PhysicalRegion> &regions,
+                          Context ctx, HighLevelRuntime *runtime);
 public:
   int in_channels, out_channels;
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   bool relu, first_layer, profiling_runtime;
+  int num_replica;
 };
 
 class Conv2DMeta : public OpMeta {
@@ -276,6 +262,8 @@ public:
   void forward(const CnnModel&);
 
   void backward(const CnnModel&);
+
+  void update(const CnnModel&);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -317,6 +305,8 @@ public:
 
   void backward(const CnnModel&);
 
+  void update(const CnnModel&);
+
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -332,9 +322,14 @@ public:
   static void backward2_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+
+  static void update_task(const Task *task,
+                          const std::vector<PhysicalRegion> &regions,
+                          Context ctx, Runtime *runtime);
 public:
   LogicalPartition replica_sub_lps[MAX_NUM_WORKERS];
   bool relu, profiling_runtime;
+  int in_channels, out_channels, num_replica;
 };
 
 class LinearMeta : public OpMeta {
@@ -360,6 +355,8 @@ public:
   void forward(const CnnModel&);
 
   void backward(const CnnModel&);
+
+  void update(const CnnModel&);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -391,6 +388,8 @@ public:
   void forward(const CnnModel&);
 
   void backward(const CnnModel&);
+
+  void update(const CnnModel&);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -426,6 +425,8 @@ public:
   void forward(const CnnModel&);
 
   void backward(const CnnModel&);
+
+  void update(const CnnModel&);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,

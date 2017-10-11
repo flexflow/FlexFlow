@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 #include "ops.h"
-
+#include "cnn_helper.h"
 CnnHandle init_cudnn(const Task *task,
                      const std::vector<PhysicalRegion> &regions,
                      Context ctx, HighLevelRuntime *runtime)
@@ -137,6 +137,13 @@ void CnnModel::backward()
 {
   for (int i = layers.size() - 1; i >= 0; i--) {
     layers[i]->backward(*this);
+  }
+}
+
+void CnnModel::update()
+{
+  for (int i = 0; i < layers.size(); i++) {
+    layers[i]->update(*this);
   }
 }
 
@@ -385,9 +392,9 @@ void Flat::forward_task(const Task *task,
   const float *input_ptr = acc_input.ptr(rect_input.lo);
   float *output_ptr = acc_output.ptr(rect_output.lo);
 
-  checkCUDA(cudaMemcpy(output_ptr, input_ptr,
-                       rect_input.volume() * sizeof(float),
-                       cudaMemcpyDeviceToDevice));
+  checkCUDA(cudaMemcpyAsync(output_ptr, input_ptr,
+                            rect_input.volume() * sizeof(float),
+                            cudaMemcpyDeviceToDevice));
 #endif
 }
 
@@ -441,9 +448,9 @@ void Flat::backward_task(const Task *task,
   float *input_grad_ptr = acc_input_grad.ptr(rect_input_grad.lo);
   const float *output_grad_ptr = acc_output_grad.ptr(rect_output_grad.lo);
 
-  checkCUDA(cudaMemcpy(input_grad_ptr, output_grad_ptr,
-                       rect_input_grad.volume() * sizeof(float),
-                       cudaMemcpyDeviceToDevice));
+  checkCUDA(cudaMemcpyAsync(input_grad_ptr, output_grad_ptr,
+                            rect_input_grad.volume() * sizeof(float),
+                            cudaMemcpyDeviceToDevice));
 #endif
 }
 
@@ -470,4 +477,8 @@ void Flat::backward(const CnnModel& model)
   launcher.add_field(1, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
+}
+
+void Flat::update(const CnnModel& model)
+{
 }

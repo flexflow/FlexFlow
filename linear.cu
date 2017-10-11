@@ -26,7 +26,8 @@ Tensor CnnModel::add_linear_layer(Tensor input, int output_channels, bool relu)
 
 Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
                int output_channels, bool _relu)
-: Op(input), relu(_relu), profiling_runtime(config.profiling)
+: Op(input), relu(_relu), profiling_runtime(config.profiling),
+  in_channels(input.adim[0]), out_channels(output_channels), num_replica(config.num_par_n)
 {
   assert(input.numDim == 2);
   Context ctx = config.lg_ctx;
@@ -38,14 +39,13 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
     allocator.allocate_field(sizeof(float), FID_DATA);
   }
 
-  Rect<2, coord_t> output_rect(Point<2>(0, 0), Point<2>(output_channels-1, input.adim[1]-1));
+  Rect<2, coord_t> output_rect(Point<2>(0, 0), Point<2>(out_channels-1, input.adim[1]-1));
   IndexSpaceT<2> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
   Transform<2, 2, coord_t> transform;
-  int extent_c = (output_channels + config.fc_num_par_c - 1) / config.fc_num_par_c;
+  int extent_c = (out_channels + config.fc_num_par_c - 1) / config.fc_num_par_c;
   int extent_n = (input.adim[1] + config.fc_num_par_n - 1) / config.fc_num_par_n;
-  int input_channels = input.adim[0];
   Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
   transform[0][0] = extent_c; transform[0][1] = 0;
   transform[1][0] = 0; transform[1][1] = extent_n;
@@ -58,12 +58,12 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
 
   // Note: we only need replica's grad, so no need to create lr/lp for forward
   Rect<2, coord_t> replica_rect(Point<2>(0, 0),
-                       Point<2>(input_channels*config.fc_num_par_c-1, input.adim[1]-1));
+                       Point<2>(in_channels*config.fc_num_par_c-1, input.adim[1]-1));
   IndexSpaceT<2> replica_is = runtime->create_index_space(ctx, replica_rect);
   LogicalRegion replica_lr = runtime->create_logical_region(ctx, replica_is, fs);
-  transform[0][0] = input_channels;
+  transform[0][0] = in_channels;
   transform[1][1] = extent_n;
-  Rect<2, coord_t> extent_r(Point<2>(0, 0), Point<2>(input_channels-1, extent_n-1));
+  Rect<2, coord_t> extent_r(Point<2>(0, 0), Point<2>(in_channels-1, extent_n-1));
   IndexPartition replica_ip =
     runtime->create_partition_by_restriction(ctx, replica_is, part_is, transform, extent_r);
   assert(runtime->is_index_partition_disjoint(ctx, replica_ip));
@@ -77,22 +77,22 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   for (int i = 0; i < config.fc_num_par_c; i++) {
     transform[0][0] = input.pdim[0];
     transform[1][1] = input.pdim[1];
-    Rect<2, coord_t> ext(Point<2>(input_channels*i, 0),
-                         Point<2>(input_channels*i+input.pdim[0]-1, input.pdim[1]));
+    Rect<2, coord_t> ext(Point<2>(in_channels*i, 0),
+                         Point<2>(in_channels*i+input.pdim[0]-1, input.pdim[1]));
     IndexPartition ip =
       runtime->create_partition_by_restriction(ctx, replica_is, part_is, transform, ext);
     assert(runtime->is_index_partition_disjoint(ctx, ip));
     replica_sub_lps[i] = runtime->get_logical_partition(ctx, replica_lr, ip);
   }
 
-  Rect<2, coord_t> kernel_rect(Point<2>(0, 0), Point<2>(output_channels * input_channels-1, config.fc_num_par_n-1));
+  Rect<2, coord_t> kernel_rect(Point<2>(0, 0), Point<2>(out_channels * in_channels-1, config.fc_num_par_n-1));
   IndexSpaceT<2> kernel_is = runtime->create_index_space(ctx, kernel_rect);
   LogicalRegion kernel_lr = runtime->create_logical_region(ctx, kernel_is, fs);
   LogicalRegion kernel_grad_lr = runtime->create_logical_region(ctx, kernel_is, fs);
-  transform[0][0] = extent_c * input_channels;
+  transform[0][0] = extent_c * in_channels;
   transform[1][1] = 1;
-  Rect<2, coord_t> extent_k(Point<2>(0, 0), Point<2>(extent_c*input_channels-1, 0));
-  printf("extent_k(%dx%d %d)\n", extent_c, input_channels, 1);
+  Rect<2, coord_t> extent_k(Point<2>(0, 0), Point<2>(extent_c*in_channels-1, 0));
+  printf("extent_k(%dx%d %d)\n", extent_c, in_channels, 1);
   IndexPartition kernel_ip =
     runtime->create_partition_by_restriction(ctx, kernel_is, part_is, transform, extent_k);
   assert(runtime->is_index_partition_disjoint(ctx, kernel_ip));
@@ -106,7 +106,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   kernel_tensor.partition_grad = kernel_grad_lp;
   locals[1] = kernel_tensor;
 
-  Rect<2, coord_t> bias_rect(Point<2>(0, 0), Point<2>(output_channels-1, config.fc_num_par_n-1));
+  Rect<2, coord_t> bias_rect(Point<2>(0, 0), Point<2>(out_channels-1, config.fc_num_par_n-1));
   IndexSpaceT<2> bias_is = runtime->create_index_space(ctx, bias_rect);
   LogicalRegion bias_lr = runtime->create_logical_region(ctx, bias_is, fs);
   LogicalRegion bias_grad_lr = runtime->create_logical_region(ctx, bias_is, fs);
@@ -127,7 +127,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   locals[2] = bias_tensor;
 
   output.numDim = 2;
-  output.adim[0] = output_channels;
+  output.adim[0] = out_channels;
   output.adim[1] = input.adim[1];
   output.pdim[0] = extent_c;
   output.pdim[1] = extent_n;
@@ -136,10 +136,10 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   output.region_grad = output_grad_lr;
   output.partition_grad = output_grad_lp;
 
-  // Every partition reads all input_channels
+  // Every partition reads all in_channels
   transform[0][0] = 0;
   transform[1][1] = extent_n;
-  Rect<2, coord_t> extent_i(Point<2>(0, 0), Point<2>(input_channels-1, extent_n-1));
+  Rect<2, coord_t> extent_i(Point<2>(0, 0), Point<2>(in_channels-1, extent_n-1));
   IndexSpaceT<2> input_is = IndexSpaceT<2>(inputs[0].region.get_index_space());
   IndexPartition input_ip 
      = runtime->create_partition_by_restriction(ctx, input_is, part_is, transform, extent_i);
@@ -600,3 +600,52 @@ void Linear::backward(const CnnModel& model)
   }
 }
 
+/*
+  regions[0](I/O): filter_grad
+  regions[1](I/O): bias_grad
+*/
+__host__
+void Linear::update_task(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  const Linear* linear = (Linear*) task->args;
+  const AccessorRW<float, 2> acc_filter(regions[0], FID_DATA);
+  const AccessorRW<float, 2> acc_bias(regions[1], FID_DATA);
+  Rect<2> rect_filter, rect_bias;
+  rect_filter =
+    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_bias =
+    runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  size_t filter_size = rect_filter.volume() / linear->num_replica;
+  size_t bias_size = rect_bias.volume() / linear->num_replica;
+  assert(filter_size == linear->in_channels * linear->out_channels);
+  assert(bias_size == linear->out_channels);
+  assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
+  assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
+  float *filter_ptr = acc_filter.ptr(rect_filter.lo);
+  float *bias_ptr = acc_bias.ptr(rect_bias.lo);
+  updateGAS(filter_ptr, filter_size, linear->num_replica);
+  updateGAS(bias_ptr, bias_size, linear->num_replica);
+}
+
+__host__
+void Linear::update(const CnnModel& model)
+{
+  assert(num_replica > 0);
+  // Only aggregate parameters if more than one replica
+  if (num_replica > 1) {
+    Context ctx = model.config.lg_ctx;
+    Runtime* runtime = model.config.lg_hlr;
+    TaskLauncher launcher(LINEAR_UPD_TASK_ID, TaskArgument(this, sizeof(Linear)));
+    launcher.add_region_requirement(
+      RegionRequirement(locals[1].region, READ_WRITE, EXCLUSIVE, locals[1].region));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+      RegionRequirement(locals[2].region, READ_WRITE, EXCLUSIVE, locals[2].region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_task(ctx, launcher);
+  }
+}

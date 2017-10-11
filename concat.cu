@@ -237,3 +237,7 @@ void Concat::backward(const CnnModel& model)
   }
   runtime->execute_index_space(ctx, launcher);
 }
+
+void Concat::update(const CnnModel& model)
+{
+}

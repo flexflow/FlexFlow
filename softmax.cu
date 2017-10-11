@@ -259,9 +259,9 @@ void Softmax::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
-  checkCUDA(cudaMemcpy(input_grad_ptr, output_ptr,
-                       rect_input_grad.volume() * sizeof(float),
-                       cudaMemcpyDeviceToDevice));
+  checkCUDA(cudaMemcpyAsync(input_grad_ptr, output_ptr,
+                            rect_input_grad.volume() * sizeof(float),
+                            cudaMemcpyDeviceToDevice));
   SoftmaxLossBackprop<<<GET_BLOCKS(num_images), CUDA_NUM_THREADS>>>(
       input_grad_ptr, label_ptr, num_labels, num_images);
 
@@ -309,4 +309,8 @@ void Softmax::backward(const CnnModel& model)
   launcher.add_field(2, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
+}
+
+void Softmax::update(const CnnModel& model)
+{
 }

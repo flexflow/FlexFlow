@@ -52,6 +52,8 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
 {
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
+  Rect<3> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  num_replica = part_rect.volume();
   // Create output tensor
   int input_w = input.adim[0];
   int input_h = input.adim[1];
@@ -87,7 +89,7 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   LogicalPartition output_grad_lp =
     runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
 
-  int kernel_nc = config.num_workers * in_channels * out_channels;
+  int kernel_nc = num_replica * in_channels * out_channels;
   Rect<1, coord_t> kernel_rect(0, kernel_w * kernel_h * kernel_nc - 1);
   IndexSpaceT<1> kernel_is = runtime->create_index_space(ctx, kernel_rect);
   LogicalRegion kernel_lr = runtime->create_logical_region(ctx, kernel_is, fs);
@@ -103,7 +105,7 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   kernel_tensor.partition_grad = kernel_grad_lp;
   locals[0] = kernel_tensor;
 
-  int bias_nc = config.num_workers * out_channels;
+  int bias_nc = num_replica * out_channels;
   Rect<1, coord_t> bias_rect(0, bias_nc - 1);
   IndexSpaceT<1> bias_is = runtime->create_index_space(ctx, bias_rect);
   LogicalRegion bias_lr = runtime->create_logical_region(ctx, bias_is, fs);
@@ -630,6 +632,57 @@ void Conv2D::backward(const CnnModel& model)
                         WRITE_DISCARD, EXCLUSIVE, locals[1].region_grad));
   launcher.add_field(6, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I/O): filter_grad
+  regions[0](I/O): bias_grad
+*/
+__host__
+void Conv2D::update_task(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  const Conv2D* conv = (Conv2D*) task->args;
+  const AccessorRW<float, 1> acc_filter(regions[0], FID_DATA);
+  const AccessorRW<float, 1> acc_bias(regions[1], FID_DATA);
+  Rect<1> rect_filter, rect_bias;
+  rect_filter =
+    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_bias =
+    runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  size_t filter_size = rect_filter.volume() / conv->num_replica;
+  size_t bias_size = rect_bias.volume() / conv->num_replica;
+  assert(filter_size == conv->in_channels * conv->out_channels
+                        * conv->kernel_w * conv->kernel_h);
+  assert(bias_size == conv->out_channels);
+  assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
+  assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
+  float *filter_ptr = acc_filter.ptr(rect_filter.lo);
+  float *bias_ptr = acc_bias.ptr(rect_bias.lo);
+  updateGAS(filter_ptr, filter_size, conv->num_replica);
+  updateGAS(bias_ptr, bias_size, conv->num_replica);
+}
+
+__host__
+void Conv2D::update(const CnnModel& model)
+{
+  assert(num_replica > 0);
+  // Only aggregate parameters if more than one replica
+  if (num_replica > 1) {
+    Context ctx = model.config.lg_ctx;
+    Runtime* runtime = model.config.lg_hlr;
+    TaskLauncher launcher(CONV2D_UPD_TASK_ID, TaskArgument(this, sizeof(Conv2D)));
+    launcher.add_region_requirement(
+      RegionRequirement(locals[0].region, READ_WRITE, EXCLUSIVE, locals[0].region));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+      RegionRequirement(locals[1].region, READ_WRITE, EXCLUSIVE, locals[1].region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_task(ctx, launcher);
+  }
 }
 
 #ifndef DISABLE_COMPUTATION

@@ -1,6 +1,33 @@
 #ifndef _LEGION_CNN_HELPER_H_
 #define _LEGION_CNN_HELPER_H_
 #include "legion.h"
+
+#define FatalError(s) do {                                             \
+    std::stringstream _where, _message;                                \
+    _where << __FILE__ << ':' << __LINE__;                             \
+    _message << std::string(s) + "\n" << __FILE__ << ':' << __LINE__;  \
+    std::cerr << _message.str() << "\nAborting...\n";                  \
+    exit(1);                                                           \
+} while(0)
+
+#ifndef DISABLE_COMPUTATION
+#define checkCUDNN(status) do {                                        \
+    std::stringstream _error;                                          \
+    if (status != CUDNN_STATUS_SUCCESS) {                              \
+      _error << "CUDNN failure: " << cudnnGetErrorString(status);      \
+      FatalError(_error.str());                                        \
+    }                                                                  \
+} while(0)
+#endif
+
+#define checkCUDA(status) do {                                         \
+    std::stringstream _error;                                          \
+    if (status != 0) {                                                 \
+      _error << "Cuda failure: " << status;                            \
+      FatalError(_error.str());                                        \
+    }                                                                  \
+} while(0)
+
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n) \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); i += blockDim.x * gridDim.x)
@@ -26,4 +53,6 @@ void ones_kernel(float* ptr, coord_t size);
 __global__
 void reluBackward(float* grad_ptr, const float* input, int n);
 
+__host__
+void updateGAS(float* ptr, size_t replica_size, int num_replica);
 #endif

@@ -184,6 +184,12 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<Conv2D::backward_task>(registrar, "conv2d_bwd_task");
   }
+  {
+    TaskVariantRegistrar registrar(CONV2D_UPD_TASK_ID, "conv2d_upd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Conv2D::update_task>(registrar, "conv2d_upd_task");
+  }
 
   // Pooling2D task
   {
@@ -229,6 +235,12 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Linear::backward2_task>(registrar, "linear_bwd_task (aggregate replica)");
+  }
+  {
+    TaskVariantRegistrar registrar(LINEAR_UPD_TASK_ID, "linear_upd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Linear::update_task>(registrar, "linear_upd_task");
   }
 
   // Flat task

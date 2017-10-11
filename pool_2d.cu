@@ -14,7 +14,7 @@
  */
 
 #include "ops.h"
-
+#include "cnn_helper.h"
 Tensor CnnModel::add_pool_layer(Tensor input,
                                 int kernel_h, int kernel_w,
                                 int stride_h, int stride_w,
@@ -359,4 +359,8 @@ void Pooling2D::backward(const CnnModel& model)
   launcher.add_field(3, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
+}
+
+void Pooling2D::update(const CnnModel& model)
+{
 }
