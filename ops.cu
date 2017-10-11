@@ -46,7 +46,7 @@ Op::Op(int n, Tensor *_inputs)
 
 CnnModel::CnnModel(int num_images, int height, int width,
                    int image_par, int height_par, int width_par,
-                   int fc_par_n, int fc_par_c,
+                   int fc_par_n, int fc_par_c, bool profiling,
                    Context ctx, Runtime* runtime)
 {
   config.lg_ctx = ctx;
@@ -58,6 +58,7 @@ CnnModel::CnnModel(int num_images, int height, int width,
   config.fc_num_par_c = fc_par_c;
   config.fc_num_par_n = fc_par_n;
   config.sm_num_par = fc_par_c * fc_par_n;
+  config.profiling = profiling;
   Rect<3, coord_t> part_bounds(Point<3>(0, 0, 0), Point<3>(width_par-1, height_par-1, image_par-1));
   part_is = runtime->create_index_space(ctx, part_bounds);
   Rect<2, coord_t> fc_part_bounds(Point<2>(0, 0), Point<2>(fc_par_c-1, fc_par_n-1));

@@ -146,8 +146,9 @@ void Concat::forward_task(const Task *task,
       runtime->get_index_space_domain(ctx, task->regions[i+1].region.get_index_space());
     assert(acc_input.accessor.is_dense_arbitrary(rect_input));
     const float *input_ptr = acc_input.ptr(rect_input.lo);
-    checkCUDA(cudaMemcpy(output_ptr, input_ptr, rect_input.volume() * sizeof(float),
-                         cudaMemcpyDeviceToDevice));
+    checkCUDA(cudaMemcpyAsync(output_ptr, input_ptr,
+                              rect_input.volume() * sizeof(float),
+                              cudaMemcpyDeviceToDevice));
     output_ptr += rect_input.volume();
   }
   assert(output_ptr == output_bound);
@@ -203,8 +204,9 @@ void Concat::backward_task(const Task *task,
       runtime->get_index_space_domain(ctx, task->regions[i+1].region.get_index_space());
     assert(acc_input.accessor.is_dense_arbitrary(rect_input));
     float *input_ptr = acc_input.ptr(rect_input.lo);
-    checkCUDA(cudaMemcpy(input_ptr, output_ptr, rect_input.volume() * sizeof(float),
-                         cudaMemcpyDeviceToDevice));
+    checkCUDA(cudaMemcpyAsync(input_ptr, output_ptr,
+                              rect_input.volume() * sizeof(float),
+                              cudaMemcpyDeviceToDevice));
     output_ptr += rect_input.volume();
   }
   assert(output_ptr == output_bound);

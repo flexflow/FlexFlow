@@ -130,6 +130,7 @@ struct CnnConfig {
   int num_par_h, num_par_w, num_par_n, num_workers;
   int fc_num_par_c, fc_num_par_n;
   int sm_num_par;
+  bool profiling;
 };
 
 class OpMeta {
@@ -165,7 +166,7 @@ class CnnModel {
 public:
   CnnModel(int num_images, int height, int width,
            int image_par, int height_par, int width_par,
-           int fc_par_n, int fc_par_c,
+           int fc_par_n, int fc_par_c, bool profiling,
            Context ctx, Runtime* runtime);
 
   static void init_images_task(const Task *task,
@@ -246,7 +247,7 @@ public:
 public:
   int in_channels, out_channels;
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
-  bool relu, first_layer;
+  bool relu, first_layer, profiling_runtime;
 };
 
 class Conv2DMeta : public OpMeta {
@@ -291,7 +292,7 @@ public:
 public:
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   Pool2DType pool_type;
-  bool relu;
+  bool relu, profiling_runtime;
 };
 
 class Pooling2DMeta : public OpMeta {
@@ -332,8 +333,8 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
 public:
-  bool relu;
   LogicalPartition replica_sub_lps[MAX_NUM_WORKERS];
+  bool relu, profiling_runtime;
 };
 
 class LinearMeta : public OpMeta {
@@ -404,6 +405,7 @@ public:
                             Context ctx, Runtime *runtime);
 public:
   LogicalPartition input_grad_lp;
+  bool profiling_runtime;
 };
 
 class SoftmaxMeta : public OpMeta {

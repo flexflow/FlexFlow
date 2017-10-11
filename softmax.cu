@@ -25,7 +25,7 @@ Tensor CnnModel::add_softmax_layer(Tensor input)
 }
 
 Softmax::Softmax(CnnConfig config, Tensor input, IndexSpaceT<1> part_is)
-: Op(input)
+: Op(input), profiling_runtime(config.profiling)
 {
   assert(input.numDim == 2);
   Context ctx = config.lg_ctx;
@@ -143,6 +143,7 @@ void Softmax::forward_task(const Task *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   float alpha = 1.0f, beta = 0.0f;
+  const Softmax* softmax = (Softmax*) task->args;
   const SoftmaxMeta* m = *((SoftmaxMeta**) task->local_args);
   const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
   const AccessorWO<float, 2> acc_output(regions[1], FID_DATA);
@@ -155,21 +156,25 @@ void Softmax::forward_task(const Task *task,
   float *output_ptr = acc_output.ptr(rect_output.lo);
 
   cudaEvent_t t_start, t_end;
-  cudaEventCreate(&t_start);
-  cudaEventCreate(&t_end);
-  cudaEventRecord(t_start);
+  if (softmax->profiling_runtime) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start);
+  }
   checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
                                  CUDNN_SOFTMAX_ACCURATE,
                                  CUDNN_SOFTMAX_MODE_CHANNEL,
                                  &alpha, m->inputTensor, input_ptr,
                                  &beta, m->inputTensor, output_ptr));
-  cudaEventRecord(t_end);
-  checkCUDA(cudaEventSynchronize(t_end));
-  float elapsed = 0;
-  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end);
-  printf("Softmax forward time = %.2fms\n", elapsed);
+  if (softmax->profiling_runtime) {
+    cudaEventRecord(t_end);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("Softmax forward time = %.2fms\n", elapsed);
+  }
 #endif
 }
 
@@ -186,7 +191,7 @@ void Softmax::forward(const CnnModel& model)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(SOFTMAX_FWD_TASK_ID, model.sm_part_is,
-                         TaskArgument(NULL, 0), argmap);
+                         TaskArgument(this, sizeof(Softmax)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
@@ -221,6 +226,7 @@ void Softmax::backward_task(const Task *task,
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
+  const Softmax* softmax = (Softmax*) task->args;
   const SoftmaxMeta* m = *((SoftmaxMeta**) task->local_args);
   const AccessorRW<float, 2> acc_input_grad(regions[0], FID_DATA);
   const AccessorRO<float, 2> acc_output(regions[1], FID_DATA);
@@ -248,9 +254,11 @@ void Softmax::backward_task(const Task *task,
   const int *label_ptr = acc_label.ptr(rect_label.lo);
 
   cudaEvent_t t_start, t_end;
-  cudaEventCreate(&t_start);
-  cudaEventCreate(&t_end);
-  cudaEventRecord(t_start);
+  if (softmax->profiling_runtime) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start);
+  }
   checkCUDA(cudaMemcpy(input_grad_ptr, output_ptr,
                        rect_input_grad.volume() * sizeof(float),
                        cudaMemcpyDeviceToDevice));
@@ -261,13 +269,15 @@ void Softmax::backward_task(const Task *task,
   float scalVal = 1.0f / static_cast<float>(num_images);
   checkCUDA(cublasSscal(m->handle.blas, rect_input_grad.volume(),
                         &scalVal, input_grad_ptr, 1));
-  cudaEventRecord(t_end);
-  checkCUDA(cudaEventSynchronize(t_end));
-  float elapsed = 0;
-  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end);
-  printf("Softmax backward time = %.2fms\n", elapsed);
+  if (softmax->profiling_runtime) {
+    cudaEventRecord(t_end);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("Softmax backward time = %.2fms\n", elapsed);
+  }
 #endif
 }
 

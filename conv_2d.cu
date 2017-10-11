@@ -48,7 +48,7 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
 : Op(input), in_channels(_in_channels), out_channels(_out_channels),
   kernel_h(_kernel_h), kernel_w(_kernel_w), stride_h(_stride_h),
   stride_w(_stride_w), padding_h(_padding_h), padding_w(_padding_w),
-  relu(_relu), first_layer(_first_layer)
+  relu(_relu), first_layer(_first_layer), profiling_runtime(config.profiling)
 {
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
@@ -386,6 +386,7 @@ void Conv2D::forward_task(const Task *task,
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   float alpha = 1.0f, beta = 0.0f;
+  const Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
   const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
   const AccessorWO<float, 3> acc_output(regions[1], FID_DATA);
@@ -397,8 +398,8 @@ void Conv2D::forward_task(const Task *task,
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   rect_filter = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
   rect_bias = runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
-  for (int i = 0; i < 3; i++) printf("rect_input.hi = %lld lo = %lld\n", rect_input.hi[i], rect_input.lo[i]);
-  for (int i = 0; i < 3; i++) printf("rect_output.hi = %lld lo = %lld\n", rect_output.hi[i], rect_output.lo[i]);
+  //for (int i = 0; i < 3; i++) printf("rect_input.hi = %lld lo = %lld\n", rect_input.hi[i], rect_input.lo[i]);
+  //for (int i = 0; i < 3; i++) printf("rect_output.hi = %lld lo = %lld\n", rect_output.hi[i], rect_output.lo[i]);
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
   assert(acc_output.accessor.is_dense_arbitrary(rect_output));
   assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
@@ -408,12 +409,13 @@ void Conv2D::forward_task(const Task *task,
   const float *filter_ptr = acc_filter.ptr(rect_filter.lo);
   const float *bias_ptr = acc_bias.ptr(rect_bias.lo);  
 
-  printf("fwdAlgo(%d), bwdFilterALgo(%d), bwdDataAlgo(%d)\n", (int)m->fwdAlgo,(int) m->bwdFilterAlgo,(int) m->bwdDataAlgo);
+  //printf("fwdAlgo(%d), bwdFilterALgo(%d), bwdDataAlgo(%d)\n", (int)m->fwdAlgo,(int) m->bwdFilterAlgo,(int) m->bwdDataAlgo);
   cudaEvent_t t_start, t_end;
-  cudaEventCreate(&t_start);
-  cudaEventCreate(&t_end);
-  cudaEventRecord(t_start);
-  double cp_1 = Realm::Clock::current_time_in_microseconds();
+  if (conv->profiling_runtime) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start);
+  }
   checkCUDNN(cudnnConvolutionForward(m->handle.dnn, &alpha,
                                      m->inputTensor, input_ptr,
                                      m->filterDesc, filter_ptr,
@@ -423,23 +425,20 @@ void Conv2D::forward_task(const Task *task,
 
   checkCUDNN(cudnnAddTensor(m->handle.dnn, &alpha, m->biasTensor,
                             bias_ptr, &alpha, m->outputTensor, output_ptr));
-  double cp_2 = Realm::Clock::current_time_in_microseconds();
   if (m->relu) {
     checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
                                       &alpha, m->outputTensor, output_ptr,
                                       &beta, m->outputTensor, output_ptr));
   }
-  cudaEventRecord(t_end);
-  checkCUDA(cudaEventSynchronize(t_end));
-  cudaDeviceSynchronize();
-  double cp_3 = Realm::Clock::current_time_in_microseconds();
-  float elapsed = 0;
-  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end);
-
-  printf("Conv2D forward time (CF) = %.2fus elapsed(%.2fms)\n", cp_2 - cp_1, elapsed);
-  printf("Conv2D forward time (AF) = %.2fus\n", cp_3 - cp_2);
+  if (conv->profiling_runtime) {
+    cudaEventRecord(t_end);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("Conv2D forward time (CF) = %.2fms\n", elapsed);
+  }
 #endif
 }
 
@@ -456,7 +455,7 @@ void Conv2D::forward(const CnnModel& model)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(CONV2D_FWD_TASK_ID, model.part_is,
-                         TaskArgument(NULL, 0), argmap);
+                         TaskArgument(this, sizeof(Conv2D)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
@@ -495,6 +494,7 @@ void Conv2D::backward_task(const Task *task,
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   float alpha = 1.0f, beta = 0.0f;
+  const Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
   const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
   const AccessorWO<float, 3> acc_input_grad(regions[1], FID_DATA);
@@ -536,9 +536,11 @@ void Conv2D::backward_task(const Task *task,
   float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
 
   cudaEvent_t t_start, t_end;
-  cudaEventCreate(&t_start);
-  cudaEventCreate(&t_end);
-  cudaEventRecord(t_start);
+  if (conv->profiling_runtime) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start);
+  }
   if (m->relu) {
     int n = rect_output.volume();
     reluBackward<<<GET_BLOCKS(n), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, n);
@@ -565,13 +567,15 @@ void Conv2D::backward_task(const Task *task,
                                             m->handle.workSpace, m->handle.workSpaceSize,
                                             &beta, m->inputTensor, input_grad_ptr));
   }
-  cudaEventRecord(t_end);
-  checkCUDA(cudaEventSynchronize(t_end));
-  float elapsed = 0;
-  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end);
-  printf("Conv2D backward time = %.2fms\n", elapsed);
+  if (conv->profiling_runtime) {
+    cudaEventRecord(t_end);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("Conv2D backward time = %.2fms\n", elapsed);
+  }
 #endif
 }
 
@@ -589,7 +593,7 @@ void Conv2D::backward(const CnnModel& model)
   }
 
   IndexLauncher launcher(CONV2D_BWD_TASK_ID, model.part_is,
-                         TaskArgument(NULL, 0), argmap);
+                         TaskArgument(this, sizeof(Conv2D)), argmap);
   // regions[0](I): input
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,

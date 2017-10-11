@@ -34,7 +34,7 @@ Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
                      int _padding_h, int _padding_w, Pool2DType _type, bool _relu)
 : Op(input), kernel_h(_kernel_h), kernel_w(_kernel_w), stride_h(_stride_h),
   stride_w(_stride_w), padding_h(_padding_h), padding_w(_padding_w),
-  pool_type(_type), relu(_relu)
+  pool_type(_type), relu(_relu), profiling_runtime(config.profiling)
 {
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
@@ -247,11 +247,10 @@ void Pooling2D::forward(const CnnModel& model)
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
-    printf("mp.pointer = %llx\n", mp);
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(POOL2D_FWD_TASK_ID, model.part_is,
-                         TaskArgument(NULL, 0), argmap);
+                         TaskArgument(this, sizeof(Pooling2D)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
@@ -278,6 +277,7 @@ void Pooling2D::backward_task(const Task *task,
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   float alpha = 1.0f, beta = 0.0f;
+  const Pooling2D* pool = (Pooling2D*) task->args;
   const Pooling2DMeta* m = *((Pooling2DMeta**) task->local_args);
   const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
   const AccessorWO<float, 3> acc_input_grad(regions[1], FID_DATA);
@@ -302,21 +302,25 @@ void Pooling2D::backward_task(const Task *task,
   const float *output_grad_ptr = acc_output_grad.ptr(rect_output_grad.lo);
 
   cudaEvent_t t_start, t_end;
-  cudaEventCreate(&t_start);
-  cudaEventCreate(&t_end);
-  cudaEventRecord(t_start);
+  if (pool->profiling_runtime) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start);
+  }
   checkCUDNN(cudnnPoolingBackward(m->handle.dnn, m->poolDesc,
                                   &alpha, m->outputTensor, output_ptr,
                                   m->outputTensor, output_grad_ptr,
                                   m->inputTensor, input_ptr,
                                   &beta, m->inputTensor, input_grad_ptr));
-  cudaEventRecord(t_end);
-  checkCUDA(cudaEventSynchronize(t_end));
-  float elapsed = 0;
-  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end);
-  printf("Pool2D backward time = %.2fms\n", elapsed);
+  if (pool->profiling_runtime) {
+    cudaEventRecord(t_end);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("Pool2D backward time = %.2fms\n", elapsed);
+  }
 #endif
 }
 
@@ -332,7 +336,7 @@ void Pooling2D::backward(const CnnModel& model)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(POOL2D_BWD_TASK_ID, model.part_is,
-                         TaskArgument(NULL, 0), argmap);
+                         TaskArgument(this, sizeof(Pooling2D)), argmap);
   // regions[0](I): input
   launcher.add_region_requirement(
       RegionRequirement(inputs[0].partition, 0/*projection id*/,

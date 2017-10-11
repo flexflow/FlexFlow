@@ -26,7 +26,7 @@ Tensor CnnModel::add_linear_layer(Tensor input, int output_channels, bool relu)
 
 Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
                int output_channels, bool _relu)
-: Op(input), relu(_relu)
+: Op(input), relu(_relu), profiling_runtime(config.profiling)
 {
   assert(input.numDim == 2);
   Context ctx = config.lg_ctx;
@@ -278,6 +278,7 @@ void Linear::forward_task(const Task *task,
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   float alpha = 1.0f, beta = 0.0f;
+  const Linear* linear = (Linear*) task->args;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
   int input_channels = m->input_channels;
   int output_channels = m->output_channels;
@@ -312,9 +313,11 @@ void Linear::forward_task(const Task *task,
   //checkCUDA(cudaMemcpy(replica_ptr, input_ptr, rect_input.volume() * sizeof(float),
   //                     cudaMemcpyDeviceToDevice));
   cudaEvent_t t_start, t_end;
-  cudaEventCreate(&t_start);
-  cudaEventCreate(&t_end);
-  cudaEventRecord(t_start);
+  if (linear->profiling_runtime) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start);
+  }
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
                         output_channels, batch_size, input_channels,
                         &alpha, kernel_ptr, input_channels,
@@ -330,13 +333,15 @@ void Linear::forward_task(const Task *task,
                                       &alpha, m->outputTensor, output_ptr,
                                       &beta, m->outputTensor, output_ptr));
   }
-  cudaEventRecord(t_end);
-  checkCUDA(cudaEventSynchronize(t_end));
-  float elapsed = 0;
-  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end);
-  printf("Linear forward time = %.2lfms\n", elapsed);
+  if (linear->profiling_runtime) {
+    cudaEventRecord(t_end);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("Linear forward time = %.2lfms\n", elapsed);
+  }
 #endif
 }
 
@@ -352,7 +357,7 @@ void Linear::forward(const CnnModel& model)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(LINEAR_FWD_TASK_ID, model.fc_part_is,
-                         TaskArgument(NULL, 0), argmap);
+                         TaskArgument(this, sizeof(Linear)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
@@ -395,6 +400,7 @@ void Linear::backward_task(const Task *task,
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   float alpha = 1.0f, beta = 0.0f;
+  const Linear* linear = (Linear*) task->args;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
   int input_channels = m->input_channels;
   int output_channels = m->output_channels;
@@ -448,9 +454,11 @@ void Linear::backward_task(const Task *task,
   float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
 
   cudaEvent_t t_start, t_end;
-  cudaEventCreate(&t_start);
-  cudaEventCreate(&t_end);
-  cudaEventRecord(t_start);
+  if (linear->profiling_runtime) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start);
+  }
   if (m->relu) {
     int n = rect_output.volume();
     reluBackward<<<GET_BLOCKS(n), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, n);
@@ -474,13 +482,15 @@ void Linear::backward_task(const Task *task,
                         &alpha, kernel_ptr, input_channels,
                         output_grad_ptr, output_channels,
                         &beta, replica_grad_ptr, input_channels));
-  cudaEventRecord(t_end);
-  checkCUDA(cudaEventSynchronize(t_end));
-  float elapsed = 0;
-  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end);
-  printf("Linear backward time = %.2lfms\n", elapsed);
+  if (linear->profiling_runtime) {
+    cudaEventRecord(t_end);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("Linear backward time = %.2lfms\n", elapsed);
+  }
 #endif
 }
 
@@ -504,10 +514,10 @@ void Linear::backward2_task(const Task *task,
   for (int i = 1; i < task->regions.size(); i++) {
     const AccessorRO<float, 2> acc_replica(regions[i], FID_DATA);
     rect_replica = runtime->get_index_space_domain(ctx, task->regions[i].region.get_index_space());
-    printf("rect_replica.hi = %lld lo = %lld\n", rect_replica.hi[0], rect_replica.lo[0]);
-    printf("rect_replica.hi = %lld lo = %lld\n", rect_replica.hi[1], rect_replica.lo[1]);
-    printf("rect_input.hi = %lld lo = %lld\n", rect_input.hi[0], rect_input.lo[0]);
-    printf("rect_input.hi = %lld lo = %lld\n", rect_input.hi[1], rect_input.lo[1]);
+    //printf("rect_replica.hi = %lld lo = %lld\n", rect_replica.hi[0], rect_replica.lo[0]);
+    //printf("rect_replica.hi = %lld lo = %lld\n", rect_replica.hi[1], rect_replica.lo[1]);
+    //printf("rect_input.hi = %lld lo = %lld\n", rect_input.hi[0], rect_input.lo[0]);
+    //printf("rect_input.hi = %lld lo = %lld\n", rect_input.hi[1], rect_input.lo[1]);
     assert(rect_replica.volume() == rect_input.volume());
     assert(acc_replica.accessor.is_dense_arbitrary(rect_replica));
     const float *replica_ptr = acc_replica.ptr(rect_replica.lo);
@@ -534,7 +544,7 @@ void Linear::backward(const CnnModel& model)
   }
   {
     IndexLauncher launcher(LINEAR_BWD_TASK_ID, model.fc_part_is,
-                           TaskArgument(NULL, 0), argmap);
+                           TaskArgument(this, sizeof(Linear)), argmap);
     // regions[0](I): input
     launcher.add_region_requirement(
         RegionRequirement(input_lps[0], 0/*projection id*/,
@@ -575,7 +585,7 @@ void Linear::backward(const CnnModel& model)
   {
     // We aggregate parameters from replica tensor to input tensor
     IndexLauncher launcher2(LINEAR_BWD2_TASK_ID, model.fc_part_is,
-                            TaskArgument(NULL, 0), argmap);
+                            TaskArgument(this, sizeof(Linear)), argmap);
     launcher2.add_region_requirement(
         RegionRequirement(inputs[0].partition_grad, 0/*projection id*/,
                           WRITE_DISCARD, EXCLUSIVE, inputs[0].region_grad));

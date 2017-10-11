@@ -17,7 +17,7 @@
 #include "ops.h"
 #include "cnn_mapper.h"
 #include "inception.h"
-#define USE_INCEPTION
+#define USE_ALEXNET
 
 using namespace Legion;
 
@@ -27,17 +27,18 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
                     Context ctx, Runtime *runtime)
 {
   // Set up config parameters
-  int num_par_h = 2;
-  int num_par_w = 2;
-  int num_par_n = 1;
-  int num_images = 512; // per_batch
+  int num_par_h = 1;
+  int num_par_w = 1;
+  int num_par_n = 8;
+  int num_images = 256; // per_batch
   int fc_num_par_c = 4;
   int fc_num_par_n = 1;
   int height = 224;
   int width = 224;
-  assert(num_par_h * num_par_w * num_par_n == fc_num_par_c * fc_num_par_n);
+  bool profiling = false;
+  //assert(num_par_h * num_par_w * num_par_n == fc_num_par_c * fc_num_par_n);
   CnnModel model(num_images, height, width, num_par_n, num_par_h, num_par_w,
-                 fc_num_par_n, fc_num_par_c, ctx, runtime);
+                 fc_num_par_n, fc_num_par_c, profiling, ctx, runtime);
   int num_workers = num_par_h * num_par_w * num_par_n;
   // First, create cnnContexts
   ArgumentMap local_args;
@@ -98,8 +99,8 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
 
   // Construct model (Inception-V3)
 #ifdef USE_INCEPTION
-  Tensor t = model.add_conv_layer(model.input_image, 32, 3, 3, 2, 2, 1, 1);
-  t = model.add_conv_layer(t, 32, 3, 3, 1, 1, 1, 1);
+  Tensor t = model.add_conv_layer(model.input_image, 32, 3, 3, 2, 2, 0, 0);
+  t = model.add_conv_layer(t, 32, 3, 3, 1, 1, 0, 0);
   t = model.add_conv_layer(t, 64, 3, 3, 1, 1, 1, 1);
   t = model.add_pool_layer(t, 3, 3, 2, 2, 0, 0);
   t = model.add_conv_layer(t, 80, 1, 1, 1, 1, 0, 0);
