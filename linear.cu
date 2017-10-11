@@ -627,13 +627,15 @@ void Linear::update_task(const Task *task,
   assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
   float *filter_ptr = acc_filter.ptr(rect_filter.lo);
   float *bias_ptr = acc_bias.ptr(rect_bias.lo);
-  updateGAS(filter_ptr, filter_size, linear->num_replica);
-  updateGAS(bias_ptr, bias_size, linear->num_replica);
+  updateGAS(filter_ptr, filter_size, linear->num_replica, linear->learning_rate);
+  updateGAS(bias_ptr, bias_size, linear->num_replica, linear->learning_rate);
 }
 
 __host__
 void Linear::update(const CnnModel& model)
 {
+  // Synchronize the learning rate
+  learning_rate = model.config.learning_rate;
   assert(num_replica > 0);
   // Only aggregate parameters if more than one replica
   if (num_replica > 1) {
@@ -641,10 +643,10 @@ void Linear::update(const CnnModel& model)
     Runtime* runtime = model.config.lg_hlr;
     TaskLauncher launcher(LINEAR_UPD_TASK_ID, TaskArgument(this, sizeof(Linear)));
     launcher.add_region_requirement(
-      RegionRequirement(locals[1].region, READ_WRITE, EXCLUSIVE, locals[1].region));
+      RegionRequirement(locals[1].region_grad, READ_WRITE, EXCLUSIVE, locals[1].region_grad));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-      RegionRequirement(locals[2].region, READ_WRITE, EXCLUSIVE, locals[2].region));
+      RegionRequirement(locals[2].region_grad, READ_WRITE, EXCLUSIVE, locals[2].region_grad));
     launcher.add_field(1, FID_DATA);
     runtime->execute_task(ctx, launcher);
   }

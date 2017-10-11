@@ -107,6 +107,7 @@ struct CnnConfig {
   int fc_num_par_c, fc_num_par_n;
   int sm_num_par;
   bool profiling;
+  float learning_rate;
 };
 
 class OpMeta {
@@ -144,6 +145,7 @@ public:
   CnnModel(int num_images, int height, int width,
            int image_par, int height_par, int width_par,
            int fc_par_n, int fc_par_c, bool profiling,
+           float learning_rate,
            Context ctx, Runtime* runtime);
 
   static void init_images_task(const Task *task,
@@ -234,6 +236,7 @@ public:
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   bool relu, first_layer, profiling_runtime;
   int num_replica;
+  float learning_rate;
 };
 
 class Conv2DMeta : public OpMeta {
@@ -330,6 +333,7 @@ public:
   LogicalPartition replica_sub_lps[MAX_NUM_WORKERS];
   bool relu, profiling_runtime;
   int in_channels, out_channels, num_replica;
+  float learning_rate;
 };
 
 class LinearMeta : public OpMeta {

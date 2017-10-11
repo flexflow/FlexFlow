@@ -36,7 +36,7 @@ void apply_add(float *data_ptr, float *replica_ptr, size_t size)
 }
 
 __host__
-void updateGAS(float *data, size_t replica_size, int num_replica)
+void updateGAS(float *data, size_t replica_size, int num_replica, float learning_rate)
 {
   // Step 1: gater gradients to the first replica
   for (int i = 1; i < num_replica; i++) {
@@ -45,7 +45,7 @@ void updateGAS(float *data, size_t replica_size, int num_replica)
         data, replica, replica_size);
   }
   // Step 2: scale the first replica
-  float scale_factor = 1.0f / num_replica;
+  float scale_factor = 1.0f / num_replica * (-learning_rate);
   scale_kernel<<<GET_BLOCKS(replica_size), CUDA_NUM_THREADS>>>(
       data, replica_size, 0, scale_factor);
   // Step 3: copy parameters back to each replica
