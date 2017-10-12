@@ -54,5 +54,6 @@ __global__
 void reluBackward(float* grad_ptr, const float* input, int n);
 
 __host__
-void updateGAS(float* ptr, size_t replica_size, int num_replica, float learning_rate);
+void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
+               int num_replica, float learning_rate);
 #endif

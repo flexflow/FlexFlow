@@ -27,7 +27,7 @@ void reluBackward(float *grad_ptr, const float *input, int n)
 }
 
 __global__
-void apply_add(float *data_ptr, float *replica_ptr, size_t size)
+void apply_add(float *data_ptr, const float *replica_ptr, size_t size)
 {
   CUDA_KERNEL_LOOP(i, size)
   {
@@ -35,24 +35,28 @@ void apply_add(float *data_ptr, float *replica_ptr, size_t size)
   }
 }
 
+__global__
+void apply_add_with_scale(float *data_ptr, const float *grad_ptr,
+                          size_t size, float scale)
+{
+  CUDA_KERNEL_LOOP(i, size)
+  {
+    data_ptr[i] += grad_ptr[i] * scale;
+  }
+}
+
 __host__
-void updateGAS(float *data, size_t replica_size, int num_replica, float learning_rate)
+void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
+               int num_replica, float learning_rate)
 {
   // Step 1: gater gradients to the first replica
   for (int i = 1; i < num_replica; i++) {
-    float *replica = data + i * replica_size;
+    const float *replica = grad_ptr + i * replica_size;
     apply_add<<<GET_BLOCKS(replica_size), CUDA_NUM_THREADS>>>(
-        data, replica, replica_size);
+        (float*)grad_ptr, replica, replica_size);
   }
   // Step 2: scale the first replica
   float scale_factor = 1.0f / num_replica * (-learning_rate);
-  scale_kernel<<<GET_BLOCKS(replica_size), CUDA_NUM_THREADS>>>(
-      data, replica_size, 0, scale_factor);
-  // Step 3: copy parameters back to each replica
-  for (int i = 1; i < num_replica; i++) {
-    float *replica = data + i * replica_size;
-    checkCUDA(cudaMemcpyAsync(replica, data,
-                              replica_size * sizeof(float),
-                              cudaMemcpyDeviceToDevice));
-  }
+  apply_add_with_scale<<<GET_BLOCKS(replica_size), CUDA_NUM_THREADS>>>(
+      para_ptr, grad_ptr, replica_size, scale_factor);
 }

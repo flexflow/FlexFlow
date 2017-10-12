@@ -90,34 +90,39 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
     runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
 
   int kernel_nc = num_replica * in_channels * out_channels;
-  Rect<1, coord_t> kernel_rect(0, kernel_w * kernel_h * kernel_nc - 1);
+  Rect<1, coord_t> kernel_rect(0, kernel_w * kernel_h * in_channels * out_channels - 1);
+  Rect<1, coord_t> kernel_grad_rect(0, kernel_w * kernel_h * kernel_nc - 1);
   IndexSpaceT<1> kernel_is = runtime->create_index_space(ctx, kernel_rect);
+  IndexSpaceT<1> kernel_grad_is = runtime->create_index_space(ctx, kernel_grad_rect);
   LogicalRegion kernel_lr = runtime->create_logical_region(ctx, kernel_is, fs);
-  LogicalRegion kernel_grad_lr = runtime->create_logical_region(ctx, kernel_is, fs);
-  IndexPartition kernel_ip = runtime->create_equal_partition(ctx, kernel_is, part_is);
-  LogicalPartition kernel_lp = runtime->get_logical_partition(ctx, kernel_lr, kernel_ip);
+  LogicalRegion kernel_grad_lr = runtime->create_logical_region(ctx, kernel_grad_is, fs);
+  IndexPartition kernel_grad_ip =
+    runtime->create_equal_partition(ctx, kernel_grad_is, part_is);
   LogicalPartition kernel_grad_lp =
-    runtime->get_logical_partition(ctx, kernel_grad_lr, kernel_ip);
+    runtime->get_logical_partition(ctx, kernel_grad_lr, kernel_grad_ip);
   TensorWithGrad kernel_tensor;
   kernel_tensor.region = kernel_lr;
   kernel_tensor.region_grad = kernel_grad_lr;
-  kernel_tensor.partition = kernel_lp;
+  kernel_tensor.partition = LogicalPartition::NO_PART;
   kernel_tensor.partition_grad = kernel_grad_lp;
   locals[0] = kernel_tensor;
 
   int bias_nc = num_replica * out_channels;
-  Rect<1, coord_t> bias_rect(0, bias_nc - 1);
+  Rect<1, coord_t> bias_grad_rect(0, bias_nc - 1);
+  Rect<1, coord_t> bias_rect(0, out_channels - 1);
   IndexSpaceT<1> bias_is = runtime->create_index_space(ctx, bias_rect);
+  IndexSpaceT<1> bias_grad_is = runtime->create_index_space(ctx, bias_grad_rect);
   LogicalRegion bias_lr = runtime->create_logical_region(ctx, bias_is, fs);
-  LogicalRegion bias_grad_lr = runtime->create_logical_region(ctx, bias_is, fs);
-  IndexPartition bias_ip = runtime->create_equal_partition(ctx, bias_is, part_is);
-  LogicalPartition bias_lp = runtime->get_logical_partition(ctx, bias_lr, bias_ip);
+  LogicalRegion bias_grad_lr =
+    runtime->create_logical_region(ctx, bias_grad_is, fs);
+  IndexPartition bias_grad_ip =
+    runtime->create_equal_partition(ctx, bias_grad_is, part_is);
   LogicalPartition bias_grad_lp =
-    runtime->get_logical_partition(ctx, bias_grad_lr, bias_ip);
+    runtime->get_logical_partition(ctx, bias_grad_lr, bias_grad_ip);
   TensorWithGrad bias_tensor;
   bias_tensor.region = bias_lr;
   bias_tensor.region_grad = bias_grad_lr;
-  bias_tensor.partition = bias_lp;
+  bias_tensor.partition = LogicalPartition::NO_PART;
   bias_tensor.partition_grad = bias_grad_lp;
   locals[1] = bias_tensor;
 
@@ -181,23 +186,22 @@ selectConvolutionBackwardDataAlgorithm(cudnnHandle_t handle,
 /*
   regions[0]: input
   regions[1]: output
-  regions[2]: filter
-  regions[3]: bias
+  regions[2](I): filter
+  regions[3](I): bias
 */
 __host__
 OpMeta* Conv2D::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-  const int BLKSIZE = 512;
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   const Conv2D* conv = (Conv2D*) task->args;
   CnnHandle handle = *((const CnnHandle*) task->local_args);
   const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
   const AccessorWO<float, 3> acc_output(regions[1], FID_DATA);
-  const AccessorWO<float, 1> acc_filter(regions[2], FID_DATA);
-  const AccessorWO<float, 1> acc_bias(regions[3], FID_DATA);
+  const AccessorRO<float, 1> acc_filter(regions[2], FID_DATA);
+  const AccessorRO<float, 1> acc_bias(regions[3], FID_DATA);
   Rect<1> rect_filter, rect_bias;
   Rect<3> rect_input, rect_output;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
@@ -210,8 +214,8 @@ OpMeta* Conv2D::init_task(const Task *task,
   assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
   const float *input_ptr = acc_input.ptr(rect_input.lo);
   float *output_ptr = acc_output.ptr(rect_output.lo);
-  float *filter_ptr = acc_filter.ptr(rect_filter.lo);
-  float *bias_ptr = acc_bias.ptr(rect_bias.lo);
+  const float *filter_ptr = acc_filter.ptr(rect_filter.lo);
+  const float *bias_ptr = acc_bias.ptr(rect_bias.lo);
 
   Conv2DMeta* m = new Conv2DMeta(handle);
 #ifndef DISABLE_COMPUTATION
@@ -296,7 +300,7 @@ OpMeta* Conv2D::init_task(const Task *task,
   m->bwdFilterAlgo = selectConvolutionBackwardFilterAlgorithm(
                          m->handle.dnn, m->inputTensor, input_ptr, m->outputTensor, output_ptr,
                          m->convDesc, m->handle.workSpace, m->handle.workSpaceSize,
-                         m->filterDesc, filter_ptr);
+                         m->filterDesc, (void*)filter_ptr);
   // select backward data algorithm
   m->bwdDataAlgo = selectConvolutionBackwardDataAlgorithm(
                        m->handle.dnn, m->filterDesc, filter_ptr, m->outputTensor, output_ptr,
@@ -307,13 +311,38 @@ OpMeta* Conv2D::init_task(const Task *task,
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
                                             CUDNN_PROPAGATE_NAN, 0.0));
   }
+#endif // DISABLE_COMPUTATION
+  return m;
+}
+
+/*
+  regions[0](O): filter
+  regions[1](O): bias
+*/
+__host__
+void Conv2D::init_para_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  const Conv2D* conv = (Conv2D*) task->args;
+  const AccessorWO<float, 1> acc_filter(regions[0], FID_DATA);
+  const AccessorWO<float, 1> acc_bias(regions[1], FID_DATA);
+  Rect<1> rect_filter, rect_bias;
+  rect_filter = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_bias = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
+  assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
+  float *filter_ptr = acc_filter.ptr(rect_filter.lo);
+  float *bias_ptr = acc_bias.ptr(rect_bias.lo);
   // init kernel and bias
 #ifdef PARAMETER_ALL_ONES
   coord_t filter_elements = conv->inputs[0].adim[2] * conv->output.adim[2] * conv->kernel_h * conv->kernel_w;
-  int num_blocks = (filter_elements + BLKSIZE - 1) / BLKSIZE;
-  ones_kernel<<<num_blocks, BLKSIZE>>>(filter_ptr, filter_elements);
-  num_blocks = (conv->output.pdim[2] + BLKSIZE - 1) / BLKSIZE;
-  ones_kernel<<<num_blocks, BLKSIZE>>>(bias_ptr, conv->output.pdim[2]);
+  ones_kernel<<<GET_BLOCKS(filter_elements), CUDA_NUM_THREADS>>>(
+      filter_ptr, filter_elements);
+  ones_kernel<<<GET_BLOCKS(filter_elements), CUDA_NUM_THREADS>>>(
+      bias_ptr, conv->output.pdim[2]);
 #else
   curandGenerator_t genGPU;
   curandCreateGenerator(&genGPU, CURAND_RNG_PSEUDO_DEFAULT);
@@ -324,15 +353,13 @@ OpMeta* Conv2D::init_task(const Task *task,
   printf("factor = %.4f elements = %d\n", factor, filter_elements / conv->output.adim[2]);
   assert(filter_elements == (coord_t) rect_filter.volume());
   curandGenerateUniform(genGPU, filter_ptr, filter_elements);
-  int num_blocks = (filter_elements + BLKSIZE - 1) / BLKSIZE;
-  scale_kernel<<<num_blocks, BLKSIZE>>>(filter_ptr, filter_elements, -factor, factor);
+  scale_kernel<<<GET_BLOCKS(filter_elements), CUDA_NUM_THREADS>>>(
+      filter_ptr, filter_elements, -factor, factor);
   curandGenerateUniform(genGPU, bias_ptr, conv->output.pdim[2]);
-  num_blocks = (conv->output.pdim[2] + BLKSIZE - 1) / BLKSIZE;
-  scale_kernel<<<num_blocks, BLKSIZE>>>(bias_ptr, conv->output.pdim[2], -factor, factor);
+  scale_kernel<<<GET_BLOCKS(conv->output.pdim[2]), CUDA_NUM_THREADS>>>(
+      bias_ptr, conv->output.pdim[2], -factor, factor);
   curandDestroyGenerator(genGPU);
 #endif
-#endif // DISABLE_COMPUTATION
-  return m;
 }
 
 __host__
@@ -341,6 +368,19 @@ void Conv2D::init(const CnnModel& model)
   ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
+
+  // First we initialize the filter and bias parameters
+  {
+    TaskLauncher para_launcher(CONV2D_INIT_PARA_TASK_ID, TaskArgument(this, sizeof(Conv2D)));
+    para_launcher.add_region_requirement(
+        RegionRequirement(locals[0].region, WRITE_DISCARD, EXCLUSIVE, locals[0].region));
+    para_launcher.add_field(0, FID_DATA);
+    para_launcher.add_region_requirement(
+        RegionRequirement(locals[1].region, WRITE_DISCARD, EXCLUSIVE, locals[1].region));
+    para_launcher.add_field(1, FID_DATA);
+    runtime->execute_task(ctx, para_launcher);
+  }
+
   Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
@@ -358,12 +398,12 @@ void Conv2D::init(const CnnModel& model)
                         WRITE_DISCARD, EXCLUSIVE, output.region));
   init_launcher.add_field(1, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(locals[0].partition, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, locals[0].region));
+      RegionRequirement(locals[0].region, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, locals[0].region));
   init_launcher.add_field(2, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(locals[1].partition, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, locals[1].region));
+      RegionRequirement(locals[1].region, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, locals[1].region));
   init_launcher.add_field(3, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
@@ -467,11 +507,11 @@ void Conv2D::forward(const CnnModel& model)
                         WRITE_DISCARD, EXCLUSIVE, output.region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(locals[0].partition, 0/*projection id*/,
+      RegionRequirement(locals[0].region, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, locals[0].region));
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(locals[1].partition, 0/*projection id*/,
+      RegionRequirement(locals[1].region, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, locals[1].region));
   launcher.add_field(3, FID_DATA);
 
@@ -618,7 +658,7 @@ void Conv2D::backward(const CnnModel& model)
   launcher.add_field(3, FID_DATA);
   // regions[4](I): filter
   launcher.add_region_requirement(
-      RegionRequirement(locals[0].partition, 0/*projection id*/,
+      RegionRequirement(locals[0].region, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, locals[0].region));
   launcher.add_field(4, FID_DATA);
   // regions[5](O): filter_grad
@@ -635,35 +675,51 @@ void Conv2D::backward(const CnnModel& model)
 }
 
 /*
-  regions[0](I/O): filter_grad
-  regions[0](I/O): bias_grad
+  regions[0](I/O): filter
+  regions[1](I): filter_grad
+  regions[2](I/O): bias
+  regions[3](I): bias_grad
 */
 __host__
 void Conv2D::update_task(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx, Runtime *runtime)
 {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
   const Conv2D* conv = (Conv2D*) task->args;
   const AccessorRW<float, 1> acc_filter(regions[0], FID_DATA);
-  const AccessorRW<float, 1> acc_bias(regions[1], FID_DATA);
-  Rect<1> rect_filter, rect_bias;
+  const AccessorRO<float, 1> acc_filter_grad(regions[1], FID_DATA);
+  const AccessorRW<float, 1> acc_bias(regions[2], FID_DATA);
+  const AccessorRO<float, 1> acc_bias_grad(regions[3], FID_DATA);
+  Rect<1> rect_filter, rect_filter_grad, rect_bias, rect_bias_grad;
   rect_filter =
     runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  rect_bias =
+  rect_filter_grad =
     runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  size_t filter_size = rect_filter.volume() / conv->num_replica;
-  size_t bias_size = rect_bias.volume() / conv->num_replica;
+  rect_bias =
+    runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
+  rect_bias_grad =
+    runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
+  size_t filter_size = rect_filter.volume();
+  size_t bias_size = rect_bias.volume();
   assert(filter_size == conv->in_channels * conv->out_channels
                         * conv->kernel_w * conv->kernel_h);
   assert(bias_size == conv->out_channels);
+  assert(filter_size * conv->num_replica == rect_filter_grad.volume());
+  assert(bias_size * conv->num_replica == rect_bias_grad.volume());
   assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
+  assert(acc_filter_grad.accessor.is_dense_arbitrary(rect_filter_grad));
   assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
+  assert(acc_bias_grad.accessor.is_dense_arbitrary(rect_bias_grad));
   float *filter_ptr = acc_filter.ptr(rect_filter.lo);
+  const float *filter_grad_ptr = acc_filter_grad.ptr(rect_filter_grad.lo);
   float *bias_ptr = acc_bias.ptr(rect_bias.lo);
-  updateGAS(filter_ptr, filter_size, conv->num_replica, conv->learning_rate);
-  updateGAS(bias_ptr, bias_size, conv->num_replica, conv->learning_rate);
+  const float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
+  updateGAS(filter_ptr, filter_grad_ptr, filter_size,
+            conv->num_replica, conv->learning_rate);
+  updateGAS(bias_ptr, bias_grad_ptr, bias_size,
+            conv->num_replica, conv->learning_rate);
 }
 
 __host__
@@ -678,11 +734,17 @@ void Conv2D::update(const CnnModel& model)
     Runtime* runtime = model.config.lg_hlr;
     TaskLauncher launcher(CONV2D_UPD_TASK_ID, TaskArgument(this, sizeof(Conv2D)));
     launcher.add_region_requirement(
-      RegionRequirement(locals[0].region_grad, READ_WRITE, EXCLUSIVE, locals[0].region_grad));
+      RegionRequirement(locals[0].region, READ_WRITE, EXCLUSIVE, locals[0].region));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-      RegionRequirement(locals[1].region_grad, READ_WRITE, EXCLUSIVE, locals[1].region_grad));
+      RegionRequirement(locals[0].region_grad, READ_ONLY, EXCLUSIVE, locals[0].region_grad));
     launcher.add_field(1, FID_DATA);
+    launcher.add_region_requirement(
+      RegionRequirement(locals[1].region, READ_WRITE, EXCLUSIVE, locals[1].region));
+    launcher.add_field(2, FID_DATA);
+    launcher.add_region_requirement(
+      RegionRequirement(locals[1].region_grad, READ_ONLY, EXCLUSIVE, locals[1].region_grad));
+    launcher.add_field(3, FID_DATA);
     runtime->execute_task(ctx, launcher);
   }
 }

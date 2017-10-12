@@ -17,7 +17,7 @@
 #include "ops.h"
 #include "cnn_mapper.h"
 #include "inception.h"
-#define USE_ALEXNET
+#define USE_VGG
 
 using namespace Legion;
 
@@ -29,8 +29,8 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   // Set up config parameters
   int num_par_h = 1;
   int num_par_w = 1;
-  int num_par_n = 8;
-  int num_images = 256; // per_batch
+  int num_par_n = 4;
+  int num_images = 128; // per_batch
   int fc_num_par_c = 4;
   int fc_num_par_n = 1;
   int height = 224;
@@ -130,6 +130,8 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   model.forward();
 
   model.backward();
+
+  model.update();
 }
 
 int main(int argc, char **argv)
@@ -172,6 +174,12 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta*, Conv2D::init_task>(registrar, "conv2d_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(CONV2D_INIT_PARA_TASK_ID, "conv2d_init_para_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Conv2D::init_para_task>(registrar, "conv2d_init_para_task");
   }
   {
     TaskVariantRegistrar registrar(CONV2D_FWD_TASK_ID, "conv2d_fwd_task");
@@ -218,6 +226,12 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta*, Linear::init_task>(registrar, "linear_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(LINEAR_INIT_PARA_TASK_ID, "linear_init_para_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Linear::init_para_task>(registrar, "linear_init_para_task");
   }
   {
     TaskVariantRegistrar registrar(LINEAR_FWD_TASK_ID, "linear_fwd_task");

@@ -144,7 +144,7 @@ void CnnModel::backward()
 
 void CnnModel::update()
 {
-  for (int i = 0; i < layers.size(); i++) {
+  for (int i = layers.size() - 1; i >= 0; i--) {
     layers[i]->update(*this);
   }
 }

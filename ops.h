@@ -40,6 +40,7 @@ enum TaskIDs {
   IMAGE_INIT_TASK_ID,
   LABEL_INIT_TASK_ID,
   CONV2D_INIT_TASK_ID,
+  CONV2D_INIT_PARA_TASK_ID,
   CONV2D_FWD_TASK_ID,
   CONV2D_BWD_TASK_ID,
   CONV2D_UPD_TASK_ID,
@@ -47,6 +48,7 @@ enum TaskIDs {
   POOL2D_FWD_TASK_ID,
   POOL2D_BWD_TASK_ID,
   LINEAR_INIT_TASK_ID,
+  LINEAR_INIT_PARA_TASK_ID,
   LINEAR_FWD_TASK_ID,
   LINEAR_BWD_TASK_ID,
   LINEAR_BWD2_TASK_ID,
@@ -219,6 +221,9 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+  static void init_para_task(const Task *task,
+                             const std::vector<PhysicalRegion> &regions,
+                             Context ctx, Runtime *runtime);
 
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -313,6 +318,9 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+  static void init_para_task(const Task *task,
+                             const std::vector<PhysicalRegion> &regions,
+                             Context ctx, Runtime *runtime);
 
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,

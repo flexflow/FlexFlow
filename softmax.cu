@@ -294,7 +294,7 @@ void Softmax::backward(const CnnModel& model)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(SOFTMAX_BWD_TASK_ID, model.sm_part_is,
-                         TaskArgument(NULL, 0), argmap);
+                         TaskArgument(this, sizeof(Softmax)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(input_grad_lp, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, inputs[0].region_grad));

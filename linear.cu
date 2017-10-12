@@ -27,7 +27,7 @@ Tensor CnnModel::add_linear_layer(Tensor input, int output_channels, bool relu)
 Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
                int output_channels, bool _relu)
 : Op(input), relu(_relu), profiling_runtime(config.profiling),
-  in_channels(input.adim[0]), out_channels(output_channels), num_replica(config.num_par_n)
+  in_channels(input.adim[0]), out_channels(output_channels), num_replica(config.fc_num_par_n)
 {
   assert(input.numDim == 2);
   Context ctx = config.lg_ctx;
@@ -78,27 +78,37 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
     transform[0][0] = input.pdim[0];
     transform[1][1] = input.pdim[1];
     Rect<2, coord_t> ext(Point<2>(in_channels*i, 0),
-                         Point<2>(in_channels*i+input.pdim[0]-1, input.pdim[1]));
+                         Point<2>(in_channels*i+input.pdim[0]-1, input.pdim[1]-1));
     IndexPartition ip =
       runtime->create_partition_by_restriction(ctx, replica_is, part_is, transform, ext);
     assert(runtime->is_index_partition_disjoint(ctx, ip));
     replica_sub_lps[i] = runtime->get_logical_partition(ctx, replica_lr, ip);
   }
 
-  Rect<2, coord_t> kernel_rect(Point<2>(0, 0), Point<2>(out_channels * in_channels-1, config.fc_num_par_n-1));
-  IndexSpaceT<2> kernel_is = runtime->create_index_space(ctx, kernel_rect);
+  Rect<1, coord_t> kernel_rect(0, in_channels * out_channels - 1);
+  Rect<2, coord_t> kernel_grad_rect(Point<2>(0, 0), Point<2>(out_channels * in_channels-1, config.fc_num_par_n-1));
+  IndexSpaceT<1> kernel_is = runtime->create_index_space(ctx, kernel_rect);
+  IndexSpaceT<2> kernel_grad_is = runtime->create_index_space(ctx, kernel_grad_rect);
   LogicalRegion kernel_lr = runtime->create_logical_region(ctx, kernel_is, fs);
-  LogicalRegion kernel_grad_lr = runtime->create_logical_region(ctx, kernel_is, fs);
+  LogicalRegion kernel_grad_lr = runtime->create_logical_region(ctx, kernel_grad_is, fs);
   transform[0][0] = extent_c * in_channels;
   transform[1][1] = 1;
-  Rect<2, coord_t> extent_k(Point<2>(0, 0), Point<2>(extent_c*in_channels-1, 0));
+  Rect<2, coord_t> extent_k_grad(Point<2>(0, 0), Point<2>(extent_c*in_channels-1, 0));
   printf("extent_k(%dx%d %d)\n", extent_c, in_channels, 1);
+  IndexPartition kernel_grad_ip =
+    runtime->create_partition_by_restriction(ctx, kernel_grad_is, part_is,
+                                             transform, extent_k_grad);
+  assert(runtime->is_index_partition_disjoint(ctx, kernel_grad_ip));
+  assert(runtime->is_index_partition_complete(ctx, kernel_grad_ip));
+  LogicalPartition kernel_grad_lp =
+    runtime->get_logical_partition(ctx, kernel_grad_lr, kernel_grad_ip);
+  Transform<1, 2, coord_t> trans;
+  trans[0][0] = extent_c * in_channels; trans[0][1] = 0;
+  Rect<1, coord_t> extent_k(0, extent_c*in_channels-1);
   IndexPartition kernel_ip =
-    runtime->create_partition_by_restriction(ctx, kernel_is, part_is, transform, extent_k);
-  assert(runtime->is_index_partition_disjoint(ctx, kernel_ip));
-  assert(runtime->is_index_partition_complete(ctx, kernel_ip));
-  LogicalPartition kernel_lp = runtime->get_logical_partition(ctx, kernel_lr, kernel_ip);
-  LogicalPartition kernel_grad_lp = runtime->get_logical_partition(ctx, kernel_grad_lr, kernel_ip);
+    runtime->create_partition_by_restriction(ctx, kernel_is, part_is, trans, extent_k);
+  LogicalPartition kernel_lp =
+    runtime->get_logical_partition(ctx, kernel_lr, kernel_ip);
   TensorWithGrad kernel_tensor;
   kernel_tensor.region = kernel_lr;
   kernel_tensor.partition = kernel_lp;
@@ -106,19 +116,28 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   kernel_tensor.partition_grad = kernel_grad_lp;
   locals[1] = kernel_tensor;
 
-  Rect<2, coord_t> bias_rect(Point<2>(0, 0), Point<2>(out_channels-1, config.fc_num_par_n-1));
-  IndexSpaceT<2> bias_is = runtime->create_index_space(ctx, bias_rect);
+  Rect<1, coord_t> bias_rect(0, out_channels-1);
+  Rect<2, coord_t> bias_grad_rect(Point<2>(0, 0), Point<2>(out_channels-1, config.fc_num_par_n-1));
+  IndexSpaceT<1> bias_is = runtime->create_index_space(ctx, bias_rect);
+  IndexSpaceT<2> bias_grad_is = runtime->create_index_space(ctx, bias_grad_rect);
   LogicalRegion bias_lr = runtime->create_logical_region(ctx, bias_is, fs);
-  LogicalRegion bias_grad_lr = runtime->create_logical_region(ctx, bias_is, fs);
+  LogicalRegion bias_grad_lr = runtime->create_logical_region(ctx, bias_grad_is, fs);
   transform[0][0] = extent_c;
   transform[1][1] = 1;
-  Rect<2, coord_t> extent_b(Point<2>(0, 0), Point<2>(extent_c-1,0));
+  Rect<2, coord_t> extent_b_grad(Point<2>(0, 0), Point<2>(extent_c-1,0));
+  IndexPartition bias_grad_ip =
+    runtime->create_partition_by_restriction(ctx, bias_grad_is, part_is,
+                                             transform, extent_b_grad);
+  assert(runtime->is_index_partition_disjoint(ctx, bias_grad_ip));
+  assert(runtime->is_index_partition_complete(ctx, bias_grad_ip));
+  LogicalPartition bias_grad_lp =
+    runtime->get_logical_partition(ctx, bias_grad_lr, bias_grad_ip);
+  trans[0][0] = extent_c; trans[0][1] = 0;
+  Rect<1, coord_t> extent_b(0, extent_c-1);
   IndexPartition bias_ip =
-    runtime->create_partition_by_restriction(ctx, bias_is, part_is, transform, extent_b);
-  assert(runtime->is_index_partition_disjoint(ctx, bias_ip));
-  assert(runtime->is_index_partition_complete(ctx, bias_ip));
-  LogicalPartition bias_lp = runtime->get_logical_partition(ctx, bias_lr, bias_ip);
-  LogicalPartition bias_grad_lp = runtime->get_logical_partition(ctx, bias_grad_lr, bias_ip);
+    runtime->create_partition_by_restriction(ctx, bias_is, part_is, trans, extent_b);
+  LogicalPartition bias_lp =
+    runtime->get_logical_partition(ctx, bias_lr, bias_ip);
   TensorWithGrad bias_tensor;
   bias_tensor.region = bias_lr;
   bias_tensor.partition = bias_lp;
@@ -147,39 +166,36 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
 }
 
 /*
-  regions[0]: input
-  regions[1]: output
+  regions[0](I): input
+  regions[1](O): output
   regions[2]: replica
-  regions[3]: kernel
-  regions[4]: bias
+  regions[3](I): kernel
+  regions[4](I): bias
 */
 OpMeta* Linear::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-  const int BLKSIZE = 512;
   assert(regions.size() == 5);
   assert(task->regions.size() == 5);
   const Linear* linear = (Linear*) task->args;
   CnnHandle handle = *((const CnnHandle*) task->local_args);
-  const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
-  const AccessorRO<float, 2> acc_output(regions[1], FID_DATA);
-  const AccessorWO<float, 2> acc_kernel(regions[3], FID_DATA);
-  const AccessorWO<float, 2> acc_bias(regions[4], FID_DATA);
-  Rect<2> rect_input, rect_output, rect_replica, rect_kernel, rect_bias;
+  //const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
+  //const AccessorWO<float, 2> acc_output(regions[1], FID_DATA);
+  //const AccessorRO<float, 1> acc_kernel(regions[3], FID_DATA);
+  //const AccessorRO<float, 1> acc_bias(regions[4], FID_DATA);
+  Rect<2> rect_input, rect_output, rect_replica;
+  Rect<1> rect_kernel, rect_bias;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   rect_replica = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
   rect_kernel = runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
   rect_bias = runtime->get_index_space_domain(ctx, task->regions[4].region.get_index_space());
   assert(rect_replica.volume() == rect_input.volume());
-  assert(acc_kernel.accessor.is_dense_arbitrary(rect_kernel));
-  assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
-  float* kernel_ptr = acc_kernel.ptr(rect_kernel.lo);
-  float* bias_ptr = acc_bias.ptr(rect_bias.lo);
-  curandGenerator_t genGPU;
-  curandCreateGenerator(&genGPU, CURAND_RNG_PSEUDO_DEFAULT);
-  curandSetPseudoRandomGeneratorSeed(genGPU, 1234ULL);
+  //assert(acc_kernel.accessor.is_dense_arbitrary(rect_kernel));
+  //assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
+  //const float* kernel_ptr = acc_kernel.ptr(rect_kernel.lo);
+  //const float* bias_ptr = acc_bias.ptr(rect_bias.lo);
   int input_channels = rect_input.hi[0] - rect_input.lo[0] + 1;
   int output_channels = rect_output.hi[0] - rect_output.lo[0] + 1;
   int batch_size = linear->output.pdim[1];
@@ -190,17 +206,6 @@ OpMeta* Linear::init_task(const Task *task,
   m->input_channels = input_channels;
   m->output_channels = output_channels;
   m->batch_size = batch_size;
-
-  coord_t kernel_elements = input_channels * linear->output.pdim[0];
-  float factor = 1.0f / sqrt(input_channels);
-  assert(kernel_elements == rect_kernel.volume());
-  curandGenerateUniform(genGPU, kernel_ptr, kernel_elements);
-  int num_blocks = (kernel_elements + BLKSIZE - 1) / BLKSIZE;
-  scale_kernel<<<num_blocks, BLKSIZE>>>(kernel_ptr, kernel_elements, -factor, factor);
-  curandGenerateUniform(genGPU, bias_ptr, linear->output.pdim[0]);
-  num_blocks = (linear->output.pdim[0] + BLKSIZE - 1) / BLKSIZE;
-  scale_kernel<<<num_blocks, BLKSIZE>>>(bias_ptr, linear->output.pdim[0], -factor, factor);
-  curandDestroyGenerator(genGPU);
 
   float* dram_one_ptr = (float *) malloc(sizeof(float) * batch_size);
   for (int i = 0; i < batch_size; i++)
@@ -222,11 +227,62 @@ OpMeta* Linear::init_task(const Task *task,
   return m;
 }
 
+/*
+  regions[0](O): filter
+  regions[1](O): bias
+*/
+__host__
+void Linear::init_para_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  const Linear* linear = (Linear*) task->args;
+  const AccessorWO<float, 1> acc_filter(regions[0], FID_DATA);
+  const AccessorWO<float, 1> acc_bias(regions[1], FID_DATA);
+  Rect<1> rect_filter, rect_bias;
+  rect_filter = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_bias = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
+  assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
+  float *filter_ptr = acc_filter.ptr(rect_filter.lo);
+  float *bias_ptr = acc_bias.ptr(rect_bias.lo);
+  // init filter and bias
+  curandGenerator_t genGPU;
+  curandCreateGenerator(&genGPU, CURAND_RNG_PSEUDO_DEFAULT);
+  curandSetPseudoRandomGeneratorSeed(genGPU, 1234ULL);
+  coord_t filter_elements = linear->in_channels * linear->out_channels;
+  float factor = 1.0f / sqrt(linear->in_channels);
+  assert(filter_elements == rect_filter.volume());
+  curandGenerateUniform(genGPU, filter_ptr, filter_elements);
+  scale_kernel<<<GET_BLOCKS(filter_elements), CUDA_NUM_THREADS>>>(
+      filter_ptr, filter_elements, -factor, factor);
+  curandGenerateUniform(genGPU, bias_ptr, linear->out_channels);
+  assert(linear->out_channels == rect_bias.volume());
+  scale_kernel<<<GET_BLOCKS(linear->out_channels), CUDA_NUM_THREADS>>>(
+      bias_ptr, linear->out_channels, -factor, factor);
+  curandDestroyGenerator(genGPU);
+}
+
 void Linear::init(const CnnModel& model)
 {
   ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
+
+  // First we initialize the filter and bias parameters
+  {
+    TaskLauncher para_launcher(LINEAR_INIT_PARA_TASK_ID, TaskArgument(this, sizeof(Linear)));
+    para_launcher.add_region_requirement(
+        RegionRequirement(locals[1].region, WRITE_DISCARD, EXCLUSIVE, locals[1].region));
+    para_launcher.add_field(0, FID_DATA);
+    para_launcher.add_region_requirement(
+        RegionRequirement(locals[2].region, WRITE_DISCARD, EXCLUSIVE, locals[2].region));
+    para_launcher.add_field(1, FID_DATA);
+    runtime->execute_task(ctx, para_launcher);
+  }
+
   Rect<2> rect = runtime->get_index_space_domain(ctx, model.fc_part_is);
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
@@ -249,11 +305,11 @@ void Linear::init(const CnnModel& model)
   init_launcher.add_field(2, FID_DATA);
   init_launcher.add_region_requirement(
       RegionRequirement(locals[1].partition, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, locals[1].region));
+                        READ_ONLY, EXCLUSIVE, locals[1].region));
   init_launcher.add_field(3, FID_DATA);
   init_launcher.add_region_requirement(
       RegionRequirement(locals[2].partition, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, locals[2].region));
+                        READ_ONLY, EXCLUSIVE, locals[2].region));
   init_launcher.add_field(4, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
@@ -286,9 +342,10 @@ void Linear::forward_task(const Task *task,
   const float *one_ptr = m->one_ptr;
   const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
   const AccessorWO<float, 2> acc_output(regions[1], FID_DATA);
-  const AccessorRO<float, 2> acc_kernel(regions[2], FID_DATA);
-  const AccessorRO<float, 2> acc_bias(regions[3], FID_DATA);
-  Rect<2> rect_input, rect_output, rect_kernel, rect_bias;
+  const AccessorRO<float, 1> acc_kernel(regions[2], FID_DATA);
+  const AccessorRO<float, 1> acc_bias(regions[3], FID_DATA);
+  Rect<2> rect_input, rect_output;
+  Rect<1> rect_kernel, rect_bias;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   rect_kernel = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
@@ -410,11 +467,12 @@ void Linear::backward_task(const Task *task,
   const AccessorWO<float, 2> acc_replica_grad(regions[1], FID_DATA);
   const AccessorRO<float, 2> acc_output(regions[2], FID_DATA);
   const AccessorRW<float, 2> acc_output_grad(regions[3], FID_DATA);
-  const AccessorRO<float, 2> acc_kernel(regions[4], FID_DATA);
+  const AccessorRO<float, 1> acc_kernel(regions[4], FID_DATA);
   const AccessorWO<float, 2> acc_kernel_grad(regions[5], FID_DATA);
   const AccessorWO<float, 2> acc_bias_grad(regions[6], FID_DATA);
   Rect<2> rect_input, rect_replica_grad, rect_output, rect_output_grad,
-          rect_kernel, rect_kernel_grad, rect_bias_grad;
+          rect_kernel_grad, rect_bias_grad;
+  Rect<1> rect_kernel;
   rect_input =
     runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_replica_grad =
@@ -601,34 +659,52 @@ void Linear::backward(const CnnModel& model)
 }
 
 /*
-  regions[0](I/O): filter_grad
-  regions[1](I/O): bias_grad
+  regions[0](I/O): filter
+  regions[1](I): filter_grad
+  regions[2](I/O): bias
+  regions[3](I): bias_grad
 */
 __host__
 void Linear::update_task(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx, Runtime *runtime)
 {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
   const Linear* linear = (Linear*) task->args;
-  const AccessorRW<float, 2> acc_filter(regions[0], FID_DATA);
-  const AccessorRW<float, 2> acc_bias(regions[1], FID_DATA);
-  Rect<2> rect_filter, rect_bias;
+  const AccessorRW<float, 1> acc_filter(regions[0], FID_DATA);
+  const AccessorRO<float, 2> acc_filter_grad(regions[1], FID_DATA);
+  const AccessorRW<float, 1> acc_bias(regions[2], FID_DATA);
+  const AccessorRO<float, 2> acc_bias_grad(regions[3], FID_DATA);
+  Rect<1> rect_filter, rect_bias;
+  Rect<2> rect_filter_grad, rect_bias_grad;
   rect_filter =
     runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  rect_bias =
+  rect_filter_grad =
     runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  size_t filter_size = rect_filter.volume() / linear->num_replica;
-  size_t bias_size = rect_bias.volume() / linear->num_replica;
+  rect_bias =
+    runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
+  rect_bias_grad =
+    runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
+  size_t filter_size = rect_filter.volume();
+  size_t bias_size = rect_bias.volume();
   assert(filter_size == linear->in_channels * linear->out_channels);
   assert(bias_size == linear->out_channels);
+  printf("filter_size(%d) linear->num_replica(%d) rect_filter_grad(%d)\n", filter_size, linear->num_replica, rect_filter_grad.volume());
+  assert(filter_size * linear->num_replica == rect_filter_grad.volume());
+  assert(bias_size * linear->num_replica == rect_bias_grad.volume());
   assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
+  assert(acc_filter_grad.accessor.is_dense_arbitrary(rect_filter_grad));
   assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
+  assert(acc_bias_grad.accessor.is_dense_arbitrary(rect_bias_grad));
   float *filter_ptr = acc_filter.ptr(rect_filter.lo);
+  const float *filter_grad_ptr = acc_filter_grad.ptr(rect_filter_grad.lo);
   float *bias_ptr = acc_bias.ptr(rect_bias.lo);
-  updateGAS(filter_ptr, filter_size, linear->num_replica, linear->learning_rate);
-  updateGAS(bias_ptr, bias_size, linear->num_replica, linear->learning_rate);
+  const float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
+  updateGAS(filter_ptr, filter_grad_ptr, filter_size,
+            linear->num_replica, linear->learning_rate);
+  updateGAS(bias_ptr, bias_grad_ptr, bias_size,
+            linear->num_replica, linear->learning_rate);
 }
 
 __host__
@@ -643,11 +719,17 @@ void Linear::update(const CnnModel& model)
     Runtime* runtime = model.config.lg_hlr;
     TaskLauncher launcher(LINEAR_UPD_TASK_ID, TaskArgument(this, sizeof(Linear)));
     launcher.add_region_requirement(
-      RegionRequirement(locals[1].region_grad, READ_WRITE, EXCLUSIVE, locals[1].region_grad));
+      RegionRequirement(locals[1].region, READ_WRITE, EXCLUSIVE, locals[1].region));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-      RegionRequirement(locals[2].region_grad, READ_WRITE, EXCLUSIVE, locals[2].region_grad));
+      RegionRequirement(locals[1].region_grad, READ_ONLY, EXCLUSIVE, locals[1].region_grad));
     launcher.add_field(1, FID_DATA);
+    launcher.add_region_requirement(
+      RegionRequirement(locals[2].region, READ_WRITE, EXCLUSIVE, locals[2].region));
+    launcher.add_field(2, FID_DATA);
+    launcher.add_region_requirement(
+      RegionRequirement(locals[2].region_grad, READ_ONLY, EXCLUSIVE, locals[2].region_grad));
+    launcher.add_field(3, FID_DATA);
     runtime->execute_task(ctx, launcher);
   }
 }
