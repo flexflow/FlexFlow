@@ -105,8 +105,8 @@ struct TensorWithGrad {
 struct CnnConfig {
   Context lg_ctx;
   HighLevelRuntime *lg_hlr;
-  int num_par_h, num_par_w, num_par_n, num_workers;
-  int fc_num_par_c, fc_num_par_n;
+  //int num_par_h, num_par_w, num_par_n, num_workers;
+  //int fc_num_par_c, fc_num_par_n;
   int sm_num_par;
   bool profiling;
   float learning_rate;
@@ -340,7 +340,7 @@ public:
 public:
   LogicalPartition replica_sub_lps[MAX_NUM_WORKERS];
   bool relu, profiling_runtime;
-  int in_channels, out_channels, num_replica;
+  int in_channels, out_channels, num_replica, fc_num_par_c;
   float learning_rate;
 };
 

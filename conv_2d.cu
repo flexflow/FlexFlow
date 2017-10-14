@@ -60,6 +60,10 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
   int output_nc = input.adim[3] * out_channels;
+  int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
+  int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
+  int num_par_n = part_rect.hi[2] - part_rect.lo[2] + 1;
+ 
   FieldSpace fs;
   fs = runtime->create_field_space(ctx);
   {
@@ -73,10 +77,10 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
   Transform<3, 3, coord_t> transform;
-  int extent_w = (output_w + config.num_par_w - 1) / config.num_par_w;
-  int extent_h = (output_h + config.num_par_h - 1) / config.num_par_h;
-  int extent_nc = output_nc / config.num_par_n;
-  assert(output_nc % config.num_par_n == 0);
+  int extent_w = (output_w + num_par_w - 1) / num_par_w;
+  int extent_h = (output_h + num_par_h - 1) / num_par_h;
+  int extent_nc = output_nc / num_par_n;
+  assert(output_nc % num_par_n == 0);
   Rect<3, coord_t> extent(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
   transform[0][0] = extent_w; transform[0][1] = 0; transform[0][2] = 0;
   transform[1][0] = 0; transform[1][1] = extent_h; transform[1][2] = 0;
@@ -144,20 +148,34 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
          output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
   // Compute partition bound for input
-  input_lps[0] = input.partition;
-  return;
-  IndexSpaceT<3> input_is = IndexSpaceT<3>(inputs[0].region.get_index_space());
-  extent_w = stride_w * (output.pdim[0]-1) + kernel_w - 2 * padding_w;
-  extent_h = stride_h * (output.pdim[1]-1) + kernel_h - 2 * padding_h;
-  extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / config.num_par_n;
-  assert(inputs[0].adim[2] * inputs[0].adim[3] % config.num_par_n == 0);
-  Rect<3, coord_t> extent_i(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
-  transform[0][0] = stride_w * output.pdim[0];
-  transform[1][1] = stride_h * output.pdim[1];
-  transform[2][2] = extent_nc;
-  IndexPartition input_ip =
-    runtime->create_partition_by_restriction(ctx, input_is, part_is, transform, extent_i);
-  input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
+  Rect<3> input_part_rect =
+    runtime->get_index_partition_color_space(ctx, inputs[0].partition.get_index_partition());
+  if (input_part_rect == part_rect) {
+    input_lps[0] = input.partition;
+  } else {
+    printf("WARNING: input has a different partition!!!\n");
+    IndexSpaceT<3> input_is = IndexSpaceT<3>(inputs[0].region.get_index_space());
+    //extent_w = stride_w * (output.pdim[0]-1) + kernel_w - 2 * padding_w;
+    //extent_h = stride_h * (output.pdim[1]-1) + kernel_h - 2 * padding_h;
+    //extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / num_par_n;
+    extent_w = (inputs[0].adim[0] + num_par_w - 1) / num_par_w;
+    extent_h = (inputs[0].adim[1] + num_par_h - 1) / num_par_h;
+    extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / num_par_n;
+    assert(inputs[0].adim[2] * inputs[0].adim[3] % num_par_n == 0);
+    Rect<3, coord_t> extent_i(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
+    //transform[0][0] = stride_w * output.pdim[0];
+    //transform[1][1] = stride_h * output.pdim[1];
+    //transform[2][2] = extent_nc;
+    transform[0][0] = extent_w;
+    transform[1][1] = extent_h;
+    transform[2][2] = extent_nc;
+
+    IndexPartition input_ip =
+      runtime->create_partition_by_restriction(ctx, input_is, part_is, transform, extent_i);
+    assert(runtime->is_index_partition_disjoint(ctx, input_ip));
+    assert(runtime->is_index_partition_complete(ctx, input_ip));
+    input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
+  }
 }
 
 #ifndef DISABLE_COMPUTATION

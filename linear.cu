@@ -27,12 +27,16 @@ Tensor CnnModel::add_linear_layer(Tensor input, int output_channels, bool relu)
 Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
                int output_channels, bool _relu)
 : Op(input), relu(_relu), profiling_runtime(config.profiling),
-  in_channels(input.adim[0]), out_channels(output_channels), num_replica(config.fc_num_par_n)
-{
+  in_channels(input.adim[0]), out_channels(output_channels){
   assert(input.numDim == 2);
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
+  Rect<2> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  fc_num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
+  int fc_num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
+  num_replica = fc_num_par_n;
 
+  printf("Linear fc_num_par_c(%d) fc_num_par_n(%d)\n", fc_num_par_c, fc_num_par_n);
   FieldSpace fs = runtime->create_field_space(ctx);
   {
     FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
@@ -44,8 +48,8 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
   Transform<2, 2, coord_t> transform;
-  int extent_c = (out_channels + config.fc_num_par_c - 1) / config.fc_num_par_c;
-  int extent_n = (input.adim[1] + config.fc_num_par_n - 1) / config.fc_num_par_n;
+  int extent_c = (out_channels + fc_num_par_c - 1) / fc_num_par_c;
+  int extent_n = (input.adim[1] + fc_num_par_n - 1) / fc_num_par_n;
   Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
   transform[0][0] = extent_c; transform[0][1] = 0;
   transform[1][0] = 0; transform[1][1] = extent_n;
@@ -58,7 +62,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
 
   // Note: we only need replica's grad, so no need to create lr/lp for forward
   Rect<2, coord_t> replica_rect(Point<2>(0, 0),
-                       Point<2>(in_channels*config.fc_num_par_c-1, input.adim[1]-1));
+                       Point<2>(in_channels*fc_num_par_c-1, input.adim[1]-1));
   IndexSpaceT<2> replica_is = runtime->create_index_space(ctx, replica_rect);
   LogicalRegion replica_lr = runtime->create_logical_region(ctx, replica_is, fs);
   transform[0][0] = in_channels;
@@ -74,7 +78,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   replica_tensor.partition_grad = replica_lp;
   locals[0] = replica_tensor;
   // Create subpartitions for backward prop aggregation
-  for (int i = 0; i < config.fc_num_par_c; i++) {
+  for (int i = 0; i < fc_num_par_c; i++) {
     transform[0][0] = input.pdim[0];
     transform[1][1] = input.pdim[1];
     Rect<2, coord_t> ext(Point<2>(in_channels*i, 0),
@@ -86,7 +90,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   }
 
   Rect<1, coord_t> kernel_rect(0, in_channels * out_channels - 1);
-  Rect<2, coord_t> kernel_grad_rect(Point<2>(0, 0), Point<2>(out_channels * in_channels-1, config.fc_num_par_n-1));
+  Rect<2, coord_t> kernel_grad_rect(Point<2>(0, 0), Point<2>(out_channels * in_channels-1, fc_num_par_n-1));
   IndexSpaceT<1> kernel_is = runtime->create_index_space(ctx, kernel_rect);
   IndexSpaceT<2> kernel_grad_is = runtime->create_index_space(ctx, kernel_grad_rect);
   LogicalRegion kernel_lr = runtime->create_logical_region(ctx, kernel_is, fs);
@@ -117,7 +121,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   locals[1] = kernel_tensor;
 
   Rect<1, coord_t> bias_rect(0, out_channels-1);
-  Rect<2, coord_t> bias_grad_rect(Point<2>(0, 0), Point<2>(out_channels-1, config.fc_num_par_n-1));
+  Rect<2, coord_t> bias_grad_rect(Point<2>(0, 0), Point<2>(out_channels-1, fc_num_par_n-1));
   IndexSpaceT<1> bias_is = runtime->create_index_space(ctx, bias_rect);
   IndexSpaceT<2> bias_grad_is = runtime->create_index_space(ctx, bias_grad_rect);
   LogicalRegion bias_lr = runtime->create_logical_region(ctx, bias_is, fs);
@@ -648,7 +652,7 @@ void Linear::backward(const CnnModel& model)
         RegionRequirement(inputs[0].partition_grad, 0/*projection id*/,
                           WRITE_DISCARD, EXCLUSIVE, inputs[0].region_grad));
     launcher2.add_field(0, FID_DATA);
-    for (int i = 0; i < model.config.fc_num_par_c; i++) {
+    for (int i = 0; i < fc_num_par_c; i++) {
       launcher2.add_region_requirement(
           RegionRequirement(replica_sub_lps[i], 0/*partition id*/,
                             READ_ONLY, EXCLUSIVE, locals[0].region_grad));

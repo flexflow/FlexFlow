@@ -36,6 +36,10 @@ Concat::Concat(CnnConfig config, int n, Tensor* tensors,
     allocator.allocate_field(sizeof(float), FID_DATA);
   }
 
+  Rect<3> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
+  int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
+  int num_par_n = part_rect.hi[2] - part_rect.lo[2] + 1;
   int input_w = inputs[0].adim[0];
   int input_h = inputs[0].adim[1];
   int input_c = 0;
@@ -53,10 +57,10 @@ Concat::Concat(CnnConfig config, int n, Tensor* tensors,
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
   Transform<3, 3, coord_t> transform;
-  int extent_w = (input_w + config.num_par_w - 1) / config.num_par_w;
-  int extent_h = (input_h + config.num_par_h - 1) / config.num_par_h;
-  int extent_nc = input_nc / config.num_par_n;
-  assert(input_nc % config.num_par_n == 0);
+  int extent_w = (input_w + num_par_w - 1) / num_par_w;
+  int extent_h = (input_h + num_par_h - 1) / num_par_h;
+  int extent_nc = input_nc / num_par_n;
+  assert(input_nc % num_par_n == 0);
   Rect<3, coord_t> extent(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
   transform[0][0] = extent_w; transform[0][1] = 0; transform[0][2] = 0;
   transform[1][0] = 0; transform[1][1] = extent_h; transform[1][2] = 0;
@@ -86,6 +90,10 @@ Concat::Concat(CnnConfig config, int n, Tensor* tensors,
   printf("Create concat layer: output(n=%d c=%d h=%d w=%d)\n",
          output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
   for (int i = 0; i < num_inputs; i++) {
+    // For now, we assume our output has the same partition as all inputs
+    Rect<3> input_part_rect =
+      runtime->get_index_partition_color_space(ctx, inputs[i].partition.get_index_partition());
+    assert(part_rect == input_part_rect);
     input_lps[i] = inputs[i].partition;
   }
   return;

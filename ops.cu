@@ -52,12 +52,12 @@ CnnModel::CnnModel(int num_images, int height, int width,
 {
   config.lg_ctx = ctx;
   config.lg_hlr = runtime;
-  config.num_par_w = width_par;
-  config.num_par_h = height_par;
-  config.num_par_n = image_par;
-  config.num_workers = width_par * height_par * image_par;
-  config.fc_num_par_c = fc_par_c;
-  config.fc_num_par_n = fc_par_n;
+  //config.num_par_w = width_par;
+  //config.num_par_h = height_par;
+  //config.num_par_n = image_par;
+  //config.num_workers = width_par * height_par * image_par;
+  //config.fc_num_par_c = fc_par_c;
+  //config.fc_num_par_n = fc_par_n;
   config.sm_num_par = fc_par_c * fc_par_n;
   config.profiling = profiling;
   config.learning_rate = learning_rate;
@@ -241,6 +241,10 @@ Flat::Flat(CnnConfig config, Tensor input,
 {
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
+  Rect<2> part_rect_2d = runtime->get_index_space_domain(ctx, part_is_2d);
+  int fc_num_par_c = part_rect_2d.hi[0] - part_rect_2d.lo[0] + 1;
+  int fc_num_par_n = part_rect_2d.hi[1] - part_rect_2d.lo[1] + 1;
+ 
   FieldSpace fs = runtime->create_field_space(ctx);
   {
     FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
@@ -258,10 +262,10 @@ Flat::Flat(CnnConfig config, Tensor input,
   //int extent_c = input.pdim[0] * input.pdim[1] * input.pdim[2];
   //int extent_n = input.pdim[3];
   // We assume equal partition for load balancing
-  assert(output_c % config.fc_num_par_c == 0);
-  assert(output_n % config.fc_num_par_n == 0);
-  int extent_c = output_c / config.fc_num_par_c;
-  int extent_n = output_n / config.fc_num_par_n;
+  assert(output_c % fc_num_par_c == 0);
+  assert(output_n % fc_num_par_n == 0);
+  int extent_c = output_c / fc_num_par_c;
+  int extent_n = output_n / fc_num_par_n;
   Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1,extent_n-1));
   transform[0][0] = extent_c; transform[0][1] = 0;
   transform[1][0] = 0; transform[1][1] = extent_n;

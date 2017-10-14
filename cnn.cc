@@ -17,7 +17,7 @@
 #include "ops.h"
 #include "cnn_mapper.h"
 #include "inception.h"
-#define USE_VGG
+#define USE_ALEXNET
 
 using namespace Legion;
 
@@ -37,10 +37,10 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int width = 224;
   bool profiling = false;
   float learning_rate = 0.01;
+  int num_iterations = 5;
   //assert(num_par_h * num_par_w * num_par_n == fc_num_par_c * fc_num_par_n);
   CnnModel model(num_images, height, width, num_par_n, num_par_h, num_par_w,
                  fc_num_par_n, fc_num_par_c, profiling, learning_rate, ctx, runtime);
-  int num_workers = num_par_h * num_par_w * num_par_n;
   // First, create cnnContexts
   ArgumentMap local_args;
   size_t workSpaceSize = (size_t) 2 * 1024 * 1024 * 1024;
@@ -127,11 +127,13 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   // Initialize every layer
   model.init_layers();
 
-  model.forward();
+  for (int i = 0; i < num_iterations; i++) {
+    model.forward();
 
-  model.backward();
+    model.backward();
 
-  model.update();
+    model.update();
+  }
 }
 
 int main(int argc, char **argv)
