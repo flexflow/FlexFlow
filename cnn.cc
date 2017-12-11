@@ -17,11 +17,15 @@
 #include "ops.h"
 #include "cnn_mapper.h"
 #include "inception.h"
-#define USE_ALEXNET
+#define USE_INCEPTION
 
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_cnn("cnn");
+
+void parse_input_args(char **argv, int argc,
+                      int &num_par_h, int &num_par_w, int& num_par_n,
+                      int &batch_size, int &fc_num_par_c, int &fc_num_par_n);
 
 void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime)
@@ -29,15 +33,26 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   // Set up config parameters
   int num_par_h = 1;
   int num_par_w = 1;
-  int num_par_n = 4;
-  int num_images = 128; // per_batch
+  int num_par_n = 16;
+  int num_images = 512; // per_batch
   int fc_num_par_c = 4;
   int fc_num_par_n = 1;
-  int height = 224;
-  int width = 224;
+  int height = 299;
+  int width = 299;
   bool profiling = false;
   float learning_rate = 0.01;
   int num_iterations = 5;
+  // parse input arguments
+  {
+    const InputArgs &command_args = HighLevelRuntime::get_input_args();
+    char **argv = command_args.argv;
+    int argc = command_args.argc;
+    parse_input_args(argv, argc, num_par_h, num_par_w, num_par_n,
+                     num_images, fc_num_par_c, fc_num_par_n);
+    printf("batch_size(%d) par_h(%d) par_w(%d) par_n(%d)\n",
+           num_images, num_par_h, num_par_w, num_par_n);
+    printf("par_fc_c(%d) par_fc_n(%d)\n", fc_num_par_c, fc_num_par_n);
+  }
   //assert(num_par_h * num_par_w * num_par_n == fc_num_par_c * fc_num_par_n);
   CnnModel model(num_images, height, width, num_par_n, num_par_h, num_par_w,
                  fc_num_par_n, fc_num_par_c, profiling, learning_rate, ctx, runtime);
@@ -322,4 +337,43 @@ int main(int argc, char **argv)
 
   Runtime::add_registration_callback(update_mappers);
   return Runtime::start(argc, argv);
+}
+
+void parse_input_args(char **argv, int argc,
+                      int &num_par_h, int &num_par_w, int& num_par_n,
+                      int &batch_size, int &fc_num_par_c, int &fc_num_par_n)
+{
+  for (int i = 1; i < argc; i++)
+  {
+    if (!strcmp(argv[i], "-ph"))
+    {
+      num_par_h = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-pw"))
+    {
+      num_par_w = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-pn"))
+    {
+      num_par_n = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-pfc"))
+    {
+      fc_num_par_c = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-pfn"))
+    {
+      fc_num_par_n = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-b"))
+    {
+      batch_size = atoi(argv[++i]);
+      continue;
+    }
+  }
 }

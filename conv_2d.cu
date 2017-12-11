@@ -689,7 +689,10 @@ void Conv2D::backward(const CnnModel& model)
       RegionRequirement(locals[1].partition_grad, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, locals[1].region_grad));
   launcher.add_field(6, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  // TODO: remove this line
+  //if (first_layer)
+    //fm.wait_all_results();
 }
 
 /*
