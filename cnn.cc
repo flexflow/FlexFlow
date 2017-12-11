@@ -17,7 +17,7 @@
 #include "ops.h"
 #include "cnn_mapper.h"
 #include "inception.h"
-#define USE_INCEPTION
+#define USE_VGG
 
 using namespace Legion;
 
@@ -33,12 +33,12 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   // Set up config parameters
   int num_par_h = 1;
   int num_par_w = 1;
-  int num_par_n = 16;
-  int num_images = 512; // per_batch
+  int num_par_n = 4;
+  int num_images = 128; // per_batch
   int fc_num_par_c = 4;
   int fc_num_par_n = 1;
-  int height = 299;
-  int width = 299;
+  int height = 224;
+  int width = 224;
   bool profiling = false;
   float learning_rate = 0.01;
   int num_iterations = 5;
@@ -142,6 +142,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   // Initialize every layer
   model.init_layers();
 
+  double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int i = 0; i < num_iterations; i++) {
     model.forward();
 
@@ -149,6 +150,13 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
 
     model.update();
   }
+  runtime->issue_execution_fence(ctx);
+  TimingLauncher timer(MEASURE_MICRO_SECONDS);
+  Future future = runtime->issue_timing_measurement(ctx, timer);
+  future.get_void_result();
+  double ts_end = Realm::Clock::current_time_in_microseconds();
+  double run_time = 1e-6 * (ts_end - ts_start);
+  printf("time = %.4fs, tp = %.2f images/s", run_time, num_images * num_iterations / run_time);
 }
 
 int main(int argc, char **argv)
