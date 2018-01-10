@@ -36,7 +36,7 @@ INC_FLAGS	?=
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcudnn -lcublas -lcurand
+LD_FLAGS	?= -lcudnn -lcublas -lcurand -lhdf5 -lhdf5_hl
 # For Point and Rect typedefs
 CC_FLAGS	+= -std=c++11
 NVCC_FLAGS  += -std=c++11

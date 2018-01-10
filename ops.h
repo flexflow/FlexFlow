@@ -23,6 +23,8 @@
 #include <curand.h>
 #include <cublas_v2.h>
 #include <unistd.h>
+#include "hdf5.h"
+#include "hdf5_hl.h"
 using namespace Legion;
 
 template<typename FT, int N, typename T = coord_t> using AccessorRO = FieldAccessor<READ_ONLY,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
@@ -33,12 +35,14 @@ template<typename FT, int N, typename T = coord_t> using AccessorWO = FieldAcces
 #define MAX_NUM_LOCALS 3
 #define MAX_NUM_WORKERS 16
 #define MAX_DIM 4
+#define MAX_FILENAME 200
 
 enum TaskIDs {
   TOP_LEVEL_TASK_ID,
   CNN_INIT_TASK_ID,
   IMAGE_INIT_TASK_ID,
   LABEL_INIT_TASK_ID,
+  LOAD_IMAGES_TASK_ID,
   CONV2D_INIT_TASK_ID,
   CONV2D_INIT_PARA_TASK_ID,
   CONV2D_FWD_TASK_ID,
@@ -120,6 +124,7 @@ public:
 };
 
 class CnnModel;
+class DataLoader;
 
 class Op {
 public:
@@ -169,6 +174,12 @@ public:
     }
   }
 
+  static void load_images_task(const Task *task,
+                               const std::vector<PhysicalRegion> &regions,
+			       Context ctx, Runtime *runtime);
+
+  void load_images();
+
   void forward();
 
   void backward();
@@ -197,6 +208,7 @@ public:
   CnnConfig config;
   std::vector<Op*> layers;
   CnnHandle cnn_handlers[MAX_NUM_WORKERS];
+  DataLoader *dataLoader;
 };
 
 CnnHandle init_cudnn(const Task *task,
@@ -459,4 +471,26 @@ class ConcatMeta : public OpMeta {
 public:
   ConcatMeta(CnnHandle handle) : OpMeta(handle) {};
 };
+
+// class DataLoader
+
+struct HDFFile {
+  char filename[MAX_FILENAME];
+  hsize_t numImages, start, end;
+};
+
+struct DataLoadMeta {
+  int cnt;
+  HDFFile datasets[2];
+};
+
+class DataLoader {
+public:
+  DataLoader(std::string filename);
+  void get_images(int numImages, DataLoadMeta &meta);
+public:
+  std::vector<HDFFile> datasets;
+  int fileIdx, imageIdx;
+};
+
 #endif // _LEGION_CNN_OPS_H_

@@ -27,7 +27,8 @@ class CnnMapper : public DefaultMapper {
 public:
   CnnMapper(MapperRuntime *rt, Machine machine, Processor local,
             const char *mapper_name, std::vector<Processor>* gpus,
-            std::map<Processor, Memory>* proc_fbmems);
+            std::map<Processor, Memory>* proc_fbmems,
+            std::vector<Processor>* cpus);
 public:
   virtual void slice_task(const MapperContext ctx,
                           const Task& task,
@@ -40,6 +41,7 @@ public:
 protected:
   std::vector<Processor>& gpus;
   std::map<Processor, Memory>& proc_fbmems;
+  std::vector<Processor>& cpus;
 };
 
 void update_mappers(Machine machine, Runtime *rt, const std::set<Processor> &local_procs);

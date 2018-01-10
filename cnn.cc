@@ -144,10 +144,9 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
 
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int i = 0; i < num_iterations; i++) {
+    model.load_images();
     model.forward();
-
     model.backward();
-
     model.update();
   }
   runtime->issue_execution_fence(ctx);
@@ -183,6 +182,14 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<CnnModel::init_images_task>(registrar, "image_init_task");
+  }
+
+  // LOAD_IMAGES_TASK
+  {
+    TaskVariantRegistrar registrar(LOAD_IMAGES_TASK_ID, "load_images_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<CnnModel::load_images_task>(registrar, "load_images_task");
   }
 
   // LABEL_INIT_TASK

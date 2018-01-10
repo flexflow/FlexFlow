@@ -18,9 +18,10 @@
 CnnMapper::CnnMapper(MapperRuntime *rt, Machine machine, Processor local,
                      const char *mapper_name,
                      std::vector<Processor>* _gpus,
-                     std::map<Processor, Memory>* _proc_fbmems)
+                     std::map<Processor, Memory>* _proc_fbmems,
+                     std::vector<Processor>* _cpus)
   : DefaultMapper(rt, machine, local, mapper_name),
-    gpus(*_gpus), proc_fbmems(*_proc_fbmems)
+    gpus(*_gpus), proc_fbmems(*_proc_fbmems), cpus(*_cpus)
 {}
 
 void CnnMapper::slice_task(const MapperContext ctx,
@@ -28,7 +29,19 @@ void CnnMapper::slice_task(const MapperContext ctx,
                            const SliceTaskInput& input,
                            SliceTaskOutput& output)
 {
-  if (task.task_id != TOP_LEVEL_TASK_ID) {
+  if (task.task_id == LOAD_IMAGES_TASK_ID) {
+    output.slices.resize(input.domain.get_volume());
+    unsigned idx = 0;
+    assert(input.domain.get_dim() == 3);
+    Rect<3> rect = input.domain;
+    for (PointInRectIterator<3> pir(rect); pir(); pir++, idx++) {
+      Rect<3> slice(*pir, *pir);
+      output.slices[idx] = TaskSlice(slice, cpus[idx % cpus.size()],
+                                     false/*recurse*/, false/*stealable*/);
+    }
+  }
+  else if (task.task_id != TOP_LEVEL_TASK_ID)
+  {
     output.slices.resize(input.domain.get_volume());
     unsigned idx = 0;
     switch (input.domain.get_dim())
@@ -116,6 +129,7 @@ void update_mappers(Machine machine, Runtime *runtime,
 {
   std::vector<Processor>* gpus = new std::vector<Processor>();
   std::map<Processor, Memory>* proc_fbmems = new std::map<Processor, Memory>();
+  std::vector<Processor>* cpus = new std::vector<Processor>();
   //std::map<Processor, Memory>* proc_zcmems = new std::map<Processor, Memory>();
   std::vector<Machine::ProcessorMemoryAffinity> proc_mem_affinities;
   machine.get_proc_mem_affinity(proc_mem_affinities);
@@ -130,6 +144,9 @@ void update_mappers(Machine machine, Runtime *runtime,
       fb_query.best_affinity_to(*it);
       assert(fb_query.count() == 1);
       (*proc_fbmems)[*it] = *(fb_query.begin());
+    }
+    else if (it->kind() == Processor::LOC_PROC) {
+      cpus->push_back(*it);
     }
   }
 
@@ -157,7 +174,7 @@ void update_mappers(Machine machine, Runtime *runtime,
   {
     CnnMapper* mapper = new CnnMapper(runtime->get_mapper_runtime(),
                                       machine, *it, "cnn_mapper",
-                                      gpus, proc_fbmems);
+                                      gpus, proc_fbmems, cpus);
     runtime->replace_default_mapper(mapper, *it);
   }
 }
