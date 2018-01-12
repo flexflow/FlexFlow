@@ -49,6 +49,7 @@ CnnModel::CnnModel(int num_images, int height, int width,
                    int image_par, int height_par, int width_par,
                    int fc_par_n, int fc_par_c, bool profiling,
                    float learning_rate,
+                   int num_loaders_per_node, int num_nodes,
                    Context ctx, Runtime* runtime)
 {
   config.lg_ctx = ctx;
@@ -62,12 +63,16 @@ CnnModel::CnnModel(int num_images, int height, int width,
   config.sm_num_par = fc_par_c * fc_par_n;
   config.profiling = profiling;
   config.learning_rate = learning_rate;
+  config.num_loaders = num_loaders_per_node;
+  config.num_nodes = num_nodes;
   Rect<3, coord_t> part_bounds(Point<3>(0, 0, 0), Point<3>(width_par-1, height_par-1, image_par-1));
   part_is = runtime->create_index_space(ctx, part_bounds);
   Rect<2, coord_t> fc_part_bounds(Point<2>(0, 0), Point<2>(fc_par_c-1, fc_par_n-1));
   fc_part_is = runtime->create_index_space(ctx, fc_part_bounds);
   Rect<1, coord_t> sm_part_bounds(Point<1>(0), Point<1>(config.sm_num_par-1));
   sm_part_is = runtime->create_index_space(ctx, sm_part_bounds);
+  Rect<1, coord_t> load_part_bounds(Point<1>(0), Point<1>(config.num_loaders-1));
+  load_part_is = runtime->create_index_space(ctx, load_part_bounds);
 
   // input_images
   Rect<3, coord_t> image_rect(Point<3>(0, 0, 0), Point<3>(width-1, height-1, num_images*3-1));
@@ -105,6 +110,24 @@ CnnModel::CnnModel(int num_images, int height, int width,
   input_image.region_grad = image_grad_lr;
   input_image.partition = image_lp;
   input_image.partition_grad = image_grad_lp;
+
+  // rgb_images (has same index space as input_images
+  FieldSpace rgb_fs = runtime->create_field_space(ctx);
+  {
+    FieldAllocator allocator = runtime->create_field_allocator(ctx, rgb_fs);
+    allocator.allocate_field(sizeof(unsigned char), FID_DATA);
+  }
+  rgb_lr = runtime->create_logical_region(ctx, image_is, rgb_fs);
+  rgb_image_lp = runtime->get_logical_partition(ctx, rgb_lr, image_ip);
+  // Create a partition based on num_loaders and num_nodes
+  assert(num_images * 3 % (config.num_loaders * config.num_nodes) == 0);
+  int extent_images = num_images * 3 / (config.num_loaders * config.num_nodes);
+  Transform<3, 1, coord_t> trans;
+  trans[0][0] = 0; trans[1][0] = 0; trans[2][0] = extent_images;
+  Rect<3, coord_t> ext(Point<3>(0, 0, 0), Point<3>(width-1, height-1, extent_images-1));
+  IndexPartition rgb_ip =
+    runtime->create_partition_by_restriction(ctx, image_is, load_part_is, trans, ext);
+  rgb_load_lp = runtime->get_logical_partition(ctx, rgb_lr, rgb_ip);
 
   // input_label
   Rect<1, coord_t> label_rect(Point<1>(0), Point<1>(num_images-1));
@@ -144,107 +167,217 @@ void bilinear_interpolation(unsigned char* buffer, float *image,
                             int input_height, int input_width,
                             float height_scale, float width_scale)
 {
-  printf("h_in(%d) w_in(%d) h_out(%d) w_out(%d) h_scale(%.2lf) w_scale(%.2lf)\n",
-         input_height, input_width, height, width, height_scale, width_scale);
-  int offset = 0;
-  float mean[3] = {0.485, 0.456, 0.406};
-  float variance[3] = {0.229, 0.224, 0.225};
-  for (int c = 0; c < 3; c++)
-    for (int y = 0; y < height; y++) {
-      float input_y = y * height_scale;
-      int y0 = static_cast<int>(std::floor(input_y));
-      int y1 = std::min(y0 + 1, input_height - 1);
-      for (int x = 0; x < width; x++) {
-        float input_x = x * width_scale;
-        int x0 = static_cast<int>(input_x);
-        int x1 = std::min(x0 + 1, input_width - 1);
+  //printf("h_in(%d) w_in(%d) h_out(%d) w_out(%d) h_scale(%.2lf) w_scale(%.2lf)\n",
+  //       input_height, input_width, height, width, height_scale, width_scale);
+  //float mean[3] = {0.485, 0.456, 0.406};
+  //float variance[3] = {0.229, 0.224, 0.225};
+  for (int y = 0; y < height; y++) {
+    float input_y = y * height_scale;
+    int y0 = static_cast<int>(std::floor(input_y));
+    int y1 = std::min(y0 + 1, input_height - 1);
+    for (int x = 0; x < width; x++) {
+      float input_x = x * width_scale;
+      int x0 = static_cast<int>(input_x);
+      int x1 = std::min(x0 + 1, input_width - 1);
 
-        // Run kernel on the 4 corners of the bilinear resize algorithm
-        image[offset] = 0;
+      // Run kernel on the 4 corners of the bilinear resize algorithm
+      float scale = (1 - (input_y - y0)) * (1 - (input_x - x0));
+      for (int c = 0; c < 3; c++) {
         int input_offset = calc_offset(c, y0, x0, input_height, input_width);
-        float scale = (1 - (input_y - y0)) * (1 - (input_x - x0));
-        image[offset] += scale * static_cast<float>(buffer[input_offset]) / 256;
+        int offset = calc_offset(c, y, x, height, width);
+        image[offset] = scale * static_cast<float>(buffer[input_offset]);
+      }
 
-        input_offset = calc_offset(c, y0, x1, input_height, input_width);
-        scale = (1 - (input_y - y0)) * (input_x - x0);
-        image[offset] += scale * static_cast<float>(buffer[input_offset]) / 256;
+      scale = (1 - (input_y - y0)) * (input_x - x0);
+      for (int c = 0; c < 3; c++) {
+        int input_offset = calc_offset(c, y0, x1, input_height, input_width);
+        int offset = calc_offset(c, y, x, height, width);
+        image[offset] += scale * static_cast<float>(buffer[input_offset]);
+      }
 
-        input_offset = calc_offset(c, y1, x0, input_height, input_width);
-        scale = (input_y - y0) * (1 - (input_x - x0));
-        image[offset] += scale * static_cast<float>(buffer[input_offset]) / 256;
+      scale = (input_y - y0) * (1 - (input_x - x0));
+      for (int c = 0; c < 3; c++) {
+        int input_offset = calc_offset(c, y1, x0, input_height, input_width);
+        int offset = calc_offset(c, y, x, height, width);
+        image[offset] += scale * static_cast<float>(buffer[input_offset]);
+      }
 
-        input_offset = calc_offset(c, y1, x1, input_height, input_width);
-        scale = (input_y - y0) * (input_x - x0);
-        image[offset] += scale * static_cast<float>(buffer[input_offset]) / 256;
+      scale = (input_y - y0) * (input_x - x0);
+      for (int c = 0; c < 3; c++) {
+        int input_offset = calc_offset(c, y1, x1, input_height, input_width);
+        int offset = calc_offset(c, y, x, height, width);
+        image[offset] += scale * static_cast<float>(buffer[input_offset]);
+      }
 
-        image[offset] = (image[offset] - mean[c]) / variance[c];
-        offset ++;
+      //image[offset] = (image[offset] - mean[c]) / variance[c];
+    }
+  }
+}
+
+// Note: the layout is CHW in both buffer and image
+void nearest_neighbor(unsigned char* buffer, unsigned char *image,
+                      int height, int width,
+                      int input_height, int input_width,
+                      float height_scale, float width_scale)
+{
+  //const float mean[3] = {0.485, 0.456, 0.406};
+  //const float variance[3] = {0.229, 0.224, 0.225};
+  for (int y = 0; y < height; y++) {
+    int y0 = std::min(static_cast<int>(roundf(y * height_scale)), input_height - 1);
+    for (int x = 0; x < width; x++) {
+      int x0 = std::min(static_cast<int>(roundf(x * width_scale)), input_width - 1);
+      for (int c = 0; c < 3; c++) {
+        int input_offset = calc_offset(c, y0, x0, input_height, input_width);
+        int offset = calc_offset(c, y, x, height, width);
+        image[offset] = buffer[input_offset];
+        //image[offset] = (static_cast<float>(buffer[input_offset]) / 256 - mean[c]) / variance[c];
       }
     }
+  }
 }
+
+/*
+  regions[0]: image (unsigned char)
+  regions[1]: label (int)
+*/
 
 void CnnModel::load_images_task(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
                                 Context ctx, HighLevelRuntime *runtime)
 {
+  long long start_time = Realm::Clock::current_time_in_microseconds();
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
-  const AccessorWO<float, 3> acc_image(regions[0], FID_DATA);
+  const AccessorWO<unsigned char, 3> acc_image(regions[0], FID_DATA);
   Rect<3> rect_image;
-  unsigned char buffer[2000 * 2000 * 3];
+  unsigned char *buffer = (unsigned char*) malloc(2000 * 2000 * 3);
   rect_image = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   assert(acc_image.accessor.is_dense_arbitrary(rect_image));
-  float *image_ptr = acc_image.ptr(rect_image.lo);
+  unsigned char *image_ptr = acc_image.ptr(rect_image.lo);
   const DataLoadMeta* meta = (DataLoadMeta*) task->local_args;
   int height = rect_image.hi[0] - rect_image.lo[0] + 1;
   int width = rect_image.hi[1] - rect_image.lo[1] + 1;
   int numImages = (rect_image.hi[2] - rect_image.lo[2] + 1) / 3;
   assert((rect_image.hi[2] - rect_image.lo[2] + 1) % 3 == 0);
   for (int fileIdx = 0; fileIdx < meta->cnt; fileIdx ++) {
+    //printf("fileIdx = %d filename = %s, start = %d, end = %d\n", fileIdx, meta->datasets[fileIdx].filename, meta->datasets[fileIdx].start, meta->datasets[fileIdx].end);
     hid_t fileId = H5Fopen(meta->datasets[fileIdx].filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+    //hid_t fileId = meta->datasets[fileIdx].fid;
+    //printf("fileId = %d\n", fileId);
     char name[100];
     for (int i = meta->datasets[fileIdx].start; i <= meta->datasets[fileIdx].end; i++) {
       H5Gget_objname_by_idx(fileId, i, name, 100);
-      hsize_t input_height, input_width, input_planes;
-      hssize_t input_npals;
-      char interlace[100];
-      H5IMget_image_info(fileId, name, &input_width, &input_height, &input_planes,
-                         interlace, &input_npals);
-      H5IMread_image(fileId, name, buffer);
+      hid_t datasetId = H5Dopen2(fileId, name, H5P_DEFAULT);
+      hid_t dataspaceId = H5Dget_space(datasetId);
+      hsize_t dims[3];
+      H5Sget_simple_extent_dims(dataspaceId, dims, NULL);
+      H5Dread(datasetId, H5T_NATIVE_UCHAR, H5S_ALL, H5S_ALL, H5P_DEFAULT, buffer);
+      H5Sclose(dataspaceId);
+      H5Dclose(datasetId);
+      hsize_t input_height = dims[1];
+      hsize_t input_width = dims[2];
+      //char interlace[100];
+      //hsize_t input_height, input_width, input_planes;
+      //hssize_t input_npals;
+      //H5IMget_image_info(fileId, name, &input_width, &input_height, &input_planes,
+      //                   interlace, &input_npals);
+      //printf("h = %zu, w = %zu, planes = %zu, npals = %zu\n", input_height, input_width, input_planes, input_npals);
+      //H5IMread_image(fileId, name, buffer);
       float height_scale = static_cast<float>(input_height) / height;
       float width_scale = static_cast<float>(input_width) / width;
-      bilinear_interpolation(buffer, image_ptr, height, width,
-                             input_height, input_width, height_scale, width_scale);
+      nearest_neighbor(buffer, image_ptr, height, width,
+                       input_height, input_width, height_scale, width_scale);
+      //bilinear_interpolation(buffer, image_ptr, height, width,
+      //                       input_height, input_width, height_scale, width_scale);
       image_ptr += 3 * height * width;
     }
     H5Fclose(fileId);
   }
+  long long end_time = Realm::Clock::current_time_in_microseconds();
+  printf("exe time = %lld\n", end_time - start_time);
+  free(buffer);
+}
+
+__global__
+void apply_normalize(float *tensor_ptr, const unsigned char *rgb_ptr,
+                     size_t size, size_t hxw)
+{
+  const float mean[3] = {0.485, 0.456, 0.406};
+  const float var[3] = {0.229, 0.224, 0.225};
+
+  CUDA_KERNEL_LOOP(i, size)
+  {
+    // decide the color of the current position by assuming NCHW layout
+    int c = (i / hxw) % 3;
+    tensor_ptr[i] = (static_cast<float>(rgb_ptr[i]) / 256 - mean[c]) / var[c];
+  }
+}
+
+/*
+  regions[0](O): input_images
+  regions[1](I): input_rgb
+*/
+__host__
+void CnnModel::normalize_images_task(const Task *task,
+                                     const std::vector<PhysicalRegion> &regions,
+                                     Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  const AccessorWO<float, 3> acc_tensor(regions[0], FID_DATA);
+  const AccessorRO<unsigned char, 3> acc_rgb(regions[1], FID_DATA);
+  Rect<3> rect_tensor, rect_rgb;
+  rect_tensor = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_rgb = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  assert(acc_tensor.accessor.is_dense_arbitrary(rect_tensor));
+  assert(acc_rgb.accessor.is_dense_arbitrary(rect_rgb));
+  assert(rect_tensor == rect_rgb);
+  size_t w = rect_tensor.hi[0] - rect_tensor.lo[0] + 1;
+  size_t h = rect_tensor.hi[1] - rect_tensor.lo[1] + 1;
+  float *tensor_ptr = acc_tensor.ptr(rect_tensor.lo);
+  const unsigned char *rgb_ptr = acc_rgb.ptr(rect_rgb.lo);
+  apply_normalize<<<GET_BLOCKS(rect_tensor.volume()), CUDA_NUM_THREADS>>>(
+      tensor_ptr, rgb_ptr, rect_tensor.volume(), h * w);
 }
 
 void CnnModel::load_images()
 {
-  //TODO: use a new partition to load images, for now we reuse image_part
-  // by assuming par_h == par_w == 1
-  int image_per_task = input_image.pdim[3];
-  assert(input_image.pdim[0] == input_image.adim[0]);
-  assert(input_image.pdim[1] == input_image.adim[1]);
   ArgumentMap argmap;
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
 
-  Rect<3> rect = runtime->get_index_space_domain(ctx, part_is);
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  Rect<1> rect = runtime->get_index_space_domain(ctx, load_part_is);
+  int total_loaders = config.num_loaders * config.num_nodes;
+  assert(input_image.adim[3] % total_loaders == 0);
+  int image_per_loader = input_image.adim[3] / total_loaders;
+  for (PointInRectIterator<1> it(rect); it(); it++) {
     DataLoadMeta meta;
-    dataLoader->get_images(image_per_task, meta);
+    dataLoader->get_images(image_per_loader, meta);
     argmap.set_point(*it, TaskArgument(&meta, sizeof(meta)));
   }
-  IndexLauncher launcher(LOAD_IMAGES_TASK_ID, part_is,
+
+  // Load the rgb images
+  IndexLauncher launcher(LOAD_IMAGES_TASK_ID, load_part_is,
                          TaskArgument(NULL, 0), argmap);
   launcher.add_region_requirement(
-      RegionRequirement(input_image.partition, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, input_image.region));
+      RegionRequirement(rgb_load_lp, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, rgb_lr));
   launcher.add_field(0, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+
+  // Conver to float input tensor
+  ArgumentMap argmap_dummy;
+  IndexLauncher launcher2(NORMALIZE_IMAGES_TASK_ID, part_is,
+                         TaskArgument(NULL, 0), argmap_dummy);
+  launcher2.add_region_requirement(
+      RegionRequirement(input_image.partition, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, input_image.region));
+  launcher2.add_field(0, FID_DATA);
+  launcher2.add_region_requirement(
+      RegionRequirement(rgb_image_lp, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, rgb_lr));
+  launcher2.add_field(1, FID_DATA);
+  runtime->execute_index_space(ctx, launcher2);
 }
 
 void CnnModel::forward()
@@ -620,7 +753,8 @@ DataLoader::DataLoader(std::string filename)
     printf("filename = %s\n", hdf.filename);
     hid_t fileId = H5Fopen(hdf.filename, H5F_ACC_RDONLY, H5P_DEFAULT);
     H5Gget_num_objs(fileId, &hdf.numImages);
-    H5Fclose(fileId);
+    hdf.fid = fileId;
+    //H5Fclose(fileId);
     datasets.push_back(hdf);
   }
 }
@@ -633,6 +767,7 @@ void DataLoader::get_images(int numImages, DataLoadMeta &meta)
     fileIdx = (fileIdx + 1) % datasets.size();
   }
   memcpy(meta.datasets[0].filename, datasets[fileIdx].filename, MAX_FILENAME);
+  meta.datasets[0].fid = datasets[fileIdx].fid;
   meta.datasets[0].start = imageIdx;
   meta.datasets[0].end = imageIdx;
   for (int i = 0; i < numImages; i++) {
@@ -643,7 +778,8 @@ void DataLoader::get_images(int numImages, DataLoadMeta &meta)
       imageIdx = 0;
       fileIdx = (fileIdx + 1) % datasets.size();
       idx++;
-      memcpy(meta.datasets[0].filename, datasets[fileIdx].filename, MAX_FILENAME);
+      memcpy(meta.datasets[idx].filename, datasets[fileIdx].filename, MAX_FILENAME);
+      meta.datasets[idx].fid = datasets[fileIdx].fid;
       meta.datasets[idx].start = imageIdx;
       meta.datasets[idx].end = imageIdx;
     }

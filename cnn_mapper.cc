@@ -32,10 +32,10 @@ void CnnMapper::slice_task(const MapperContext ctx,
   if (task.task_id == LOAD_IMAGES_TASK_ID) {
     output.slices.resize(input.domain.get_volume());
     unsigned idx = 0;
-    assert(input.domain.get_dim() == 3);
-    Rect<3> rect = input.domain;
-    for (PointInRectIterator<3> pir(rect); pir(); pir++, idx++) {
-      Rect<3> slice(*pir, *pir);
+    assert(input.domain.get_dim() == 1);
+    Rect<1> rect = input.domain;
+    for (PointInRectIterator<1> pir(rect); pir(); pir++, idx++) {
+      Rect<1> slice(*pir, *pir);
       output.slices[idx] = TaskSlice(slice, cpus[idx % cpus.size()],
                                      false/*recurse*/, false/*stealable*/);
     }

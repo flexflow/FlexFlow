@@ -25,7 +25,8 @@ LegionRuntime::Logger::Category log_cnn("cnn");
 
 void parse_input_args(char **argv, int argc,
                       int &num_par_h, int &num_par_w, int& num_par_n,
-                      int &batch_size, int &fc_num_par_c, int &fc_num_par_n);
+                      int &batch_size, int &fc_num_par_c, int &fc_num_par_n,
+                      int &num_loaders, int &num_nodes);
 
 void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime)
@@ -41,21 +42,26 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int width = 224;
   bool profiling = false;
   float learning_rate = 0.01;
-  int num_iterations = 5;
+  int num_iterations = 50;
+  int num_loaders_per_node = 4;
+  int num_nodes = 1;
   // parse input arguments
   {
     const InputArgs &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
     parse_input_args(argv, argc, num_par_h, num_par_w, num_par_n,
-                     num_images, fc_num_par_c, fc_num_par_n);
+                     num_images, fc_num_par_c, fc_num_par_n,
+                     num_loaders_per_node, num_nodes);
     printf("batch_size(%d) par_h(%d) par_w(%d) par_n(%d)\n",
            num_images, num_par_h, num_par_w, num_par_n);
     printf("par_fc_c(%d) par_fc_n(%d)\n", fc_num_par_c, fc_num_par_n);
+    printf("num_loaders_per_node(%d) num_nodes(%d)\n", num_loaders_per_node, num_nodes);
   }
   //assert(num_par_h * num_par_w * num_par_n == fc_num_par_c * fc_num_par_n);
   CnnModel model(num_images, height, width, num_par_n, num_par_h, num_par_w,
-                 fc_num_par_n, fc_num_par_c, profiling, learning_rate, ctx, runtime);
+                 fc_num_par_n, fc_num_par_c, profiling, learning_rate,
+                 num_loaders_per_node, num_nodes, ctx, runtime);
   // First, create cnnContexts
   ArgumentMap local_args;
   size_t workSpaceSize = (size_t) 2 * 1024 * 1024 * 1024;
@@ -190,6 +196,14 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<CnnModel::load_images_task>(registrar, "load_images_task");
+  }
+
+  // LOAD_IMAGES_TASK
+  {
+    TaskVariantRegistrar registrar(NORMALIZE_IMAGES_TASK_ID, "normalize_images_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<CnnModel::normalize_images_task>(registrar, "normalize_images_task");
   }
 
   // LABEL_INIT_TASK
@@ -356,7 +370,8 @@ int main(int argc, char **argv)
 
 void parse_input_args(char **argv, int argc,
                       int &num_par_h, int &num_par_w, int& num_par_n,
-                      int &batch_size, int &fc_num_par_c, int &fc_num_par_n)
+                      int &batch_size, int &fc_num_par_c, int &fc_num_par_n,
+                      int &num_loaders, int &num_nodes)
 {
   for (int i = 1; i < argc; i++)
   {
@@ -388,6 +403,16 @@ void parse_input_args(char **argv, int argc,
     if (!strcmp(argv[i], "-b"))
     {
       batch_size = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-num_loaders"))
+    {
+      num_loaders = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-num_nodes"))
+    {
+      num_nodes = atoi(argv[++i]);
       continue;
     }
   }

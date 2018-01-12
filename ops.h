@@ -24,7 +24,6 @@
 #include <cublas_v2.h>
 #include <unistd.h>
 #include "hdf5.h"
-#include "hdf5_hl.h"
 using namespace Legion;
 
 template<typename FT, int N, typename T = coord_t> using AccessorRO = FieldAccessor<READ_ONLY,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
@@ -43,6 +42,7 @@ enum TaskIDs {
   IMAGE_INIT_TASK_ID,
   LABEL_INIT_TASK_ID,
   LOAD_IMAGES_TASK_ID,
+  NORMALIZE_IMAGES_TASK_ID,
   CONV2D_INIT_TASK_ID,
   CONV2D_INIT_PARA_TASK_ID,
   CONV2D_FWD_TASK_ID,
@@ -111,7 +111,7 @@ struct CnnConfig {
   HighLevelRuntime *lg_hlr;
   //int num_par_h, num_par_w, num_par_n, num_workers;
   //int fc_num_par_c, fc_num_par_n;
-  int sm_num_par;
+  int sm_num_par, num_loaders, num_nodes;
   bool profiling;
   float learning_rate;
 };
@@ -153,6 +153,7 @@ public:
            int image_par, int height_par, int width_par,
            int fc_par_n, int fc_par_c, bool profiling,
            float learning_rate,
+           int num_loaders_per_node, int num_nodes,
            Context ctx, Runtime* runtime);
 
   static void init_images_task(const Task *task,
@@ -177,6 +178,10 @@ public:
   static void load_images_task(const Task *task,
                                const std::vector<PhysicalRegion> &regions,
 			       Context ctx, Runtime *runtime);
+
+  static void normalize_images_task(const Task *task,
+                                    const std::vector<PhysicalRegion> &regions,
+			            Context ctx, Runtime *runtime);
 
   void load_images();
 
@@ -204,11 +209,15 @@ public:
   IndexSpaceT<3> part_is;
   IndexSpaceT<2> fc_part_is;
   IndexSpaceT<1> sm_part_is;
+  IndexSpaceT<1> load_part_is;
   Tensor input_image, input_label;
   CnnConfig config;
   std::vector<Op*> layers;
   CnnHandle cnn_handlers[MAX_NUM_WORKERS];
   DataLoader *dataLoader;
+  // regions/partitions for loading input images
+  LogicalRegion rgb_lr;
+  LogicalPartition rgb_image_lp, rgb_load_lp;
 };
 
 CnnHandle init_cudnn(const Task *task,
@@ -476,6 +485,7 @@ public:
 
 struct HDFFile {
   char filename[MAX_FILENAME];
+  hid_t fid;
   hsize_t numImages, start, end;
 };
 
