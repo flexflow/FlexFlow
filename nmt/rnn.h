@@ -38,7 +38,7 @@ class RnnModel;
 class RnnOp {
 public:
   RnnOp(Tensor input);
-  RnnOp(Tensor t1, Tensor t2, Tensor t3);
+  RnnOp(Tensor t1, Tensor t2, Tensor t3, SharedVariable _params);
   RnnOp(int num, Tensor* inputs);
   virtual void init(const RnnModel&) = 0;
 
@@ -64,7 +64,7 @@ public:
            int hidden_size, int embed_size, int num_parts, int num_workers,
            Context ctx, Runtime *runtime);
 
-  void init_layers();
+  void init();
 
   void forward();
 
@@ -88,7 +88,7 @@ public:
 class LSTM : public RnnOp {
 public:
   LSTM(RnnConfig config, Tensor x, Tensor hx, Tensor cx,
-       IndexSpaceT<1> part_is,
+       SharedVariable params, IndexSpaceT<1> part_is,
        int batch_size, int input_size, int output_size);
 
   void init(const RnnModel&);

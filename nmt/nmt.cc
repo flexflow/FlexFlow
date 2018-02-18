@@ -30,7 +30,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
 {
   int batch_size = 128;
   int num_layers = 1;
-  int seq_length = 10;
+  int seq_length = 1;
   int hidden_size = 1024;
   int embed_size = 1024;
   int num_workers = 1;
@@ -56,6 +56,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   for (PointInRectIterator<1> it(workers_rect); it(); it++)
     model.dnn_handlers[idx++] = fm.get_result<DnnHandle>(*it);
 
+  model.init();
   for (int i = 0; i < num_iterations; i++) {
     model.forward();
   }
@@ -134,3 +135,4 @@ void parse_input_args(char **argv, int argc,
     }
   }
 }
+

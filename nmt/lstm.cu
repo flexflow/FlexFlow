@@ -17,6 +17,13 @@
 #include "rnn.h"
 #include "../cnn_helper.h"
 
+#define DUMMY_ID 0
+
+struct LSTMInitParams {
+  DnnHandle handle;
+  int batchSize, inputSize, outputSize;
+};
+
 LSTMTensors RnnModel::add_lstm_node(Tensor x, Tensor hx, Tensor cx, SharedVariable params)
 {
   assert(x.numDim == 2);
@@ -28,7 +35,7 @@ LSTMTensors RnnModel::add_lstm_node(Tensor x, Tensor hx, Tensor cx, SharedVariab
   int input_size = x.adim[0];
   int output_size = hx.adim[0];
   assert(cx.adim[0] == output_size);
-  LSTM* node = new LSTM(config, x, hx, cx, part_is,
+  LSTM* node = new LSTM(config, x, hx, cx, params, part_is,
                         batch_size, input_size, output_size);
   layers.push_back(node);
   LSTMTensors output;
@@ -44,9 +51,9 @@ LSTMTensors RnnModel::add_lstm_node(Tensor x, Tensor hx, Tensor cx, SharedVariab
  output[2]: cy
  */
 LSTM::LSTM(RnnConfig config, Tensor x, Tensor hx, Tensor cx,
-           IndexSpaceT<1> part_is,
+           SharedVariable _params, IndexSpaceT<1> part_is,
            int _batch_size, int _input_size, int _output_size)
-: RnnOp(x, hx, cx), batch_size(_batch_size),
+: RnnOp(x, hx, cx, _params), batch_size(_batch_size),
   input_size(_input_size), output_size(_output_size)
 {
   printf("LSTM node: batch(%d) input(%d) output(%d)\n",
@@ -65,10 +72,12 @@ LSTM::LSTM(RnnConfig config, Tensor x, Tensor hx, Tensor cx,
   int extent_n = batch_size / num_par_n;
   int extent_c = output_size;
   Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
-  Transform<1, 2, coord_t> trans;
-  trans[0][0] = 0; trans[0][1] = extent_n;
+  Transform<2, 1, coord_t> trans;
+  trans[0][0] = 0; trans[1][0] = extent_n;
   IndexPartition y_ip =
     runtime->create_partition_by_restriction(ctx, y_is, part_is, trans, extent);
+  assert(runtime->is_index_partition_disjoint(ctx, y_ip));
+  assert(runtime->is_index_partition_complete(ctx, y_ip));
   LogicalPartition y_lp = runtime->get_logical_partition(ctx, y_lr, y_ip);
   LogicalPartition y_grad_lp = runtime->get_logical_partition(ctx, y_grad_lr, y_ip);
   outputs[0].region = y_lr;
@@ -117,13 +126,13 @@ OpMeta* LSTM::init_task(const Task *task,
 {
   const int numLayers = 1;
   const int seqLength = 1;
+  const float dropoutRate = 0.2f;
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   Rect<1> para_rect =
     runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
-  const LSTM* lstm = (LSTM*) task->args;
-  DnnHandle handle = *((const DnnHandle*) task->local_args);
-  LSTMMeta* m = new LSTMMeta(handle);
+  const LSTMInitParams* lstm = (LSTMInitParams*) task->args;
+  LSTMMeta* m = new LSTMMeta(lstm->handle);
 #ifndef DISABLE_COMPUTATION
   checkCUDNN(cudnnCreateRNNDescriptor(&m->rnnDesc));
   checkCUDNN(cudnnCreateDropoutDescriptor(&m->dropoutDesc));
@@ -131,12 +140,14 @@ OpMeta* LSTM::init_task(const Task *task,
   void *dropoutStates;
   checkCUDNN(cudnnDropoutGetStatesSize(m->handle.dnn, &dropoutSize));
   checkCUDA(cudaMalloc(&dropoutStates, dropoutSize));
-  checkCUDNN(cudnnSetRNNDescriptor(m->rnnDesc, lstm->output_size, numLayers, m->dropoutDesc,
+  checkCUDNN(cudnnSetDropoutDescriptor(m->dropoutDesc, m->handle.dnn, dropoutRate,
+                                       dropoutStates, dropoutSize, 10/*seed*/));
+  checkCUDNN(cudnnSetRNNDescriptor(m->rnnDesc, lstm->outputSize, numLayers, m->dropoutDesc,
                                    CUDNN_LINEAR_INPUT, CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
                                    CUDNN_DATA_FLOAT));
   for (int i = 0; i < seqLength; i++) {
     checkCUDNN(cudnnCreateTensorDescriptor(&m->xDescs[i]));
-    int dims[] = {lstm->batch_size, lstm->input_size, 1};
+    int dims[] = {lstm->batchSize, lstm->inputSize, 1};
     int strides[] = {dims[1] * dims[2], dims[2], 1};
     checkCUDNN(cudnnSetTensorNdDescriptor(m->xDescs[i], CUDNN_DATA_FLOAT, 
                                           3, dims, strides));
@@ -152,7 +163,7 @@ OpMeta* LSTM::init_task(const Task *task,
   size_t paramsSize;
   checkCUDNN(cudnnGetRNNParamsSize(m->handle.dnn, m->rnnDesc, m->xDescs[0],
                                    &paramsSize, CUDNN_DATA_FLOAT));
-  assert(paramsSize == para_rect.volume());
+  assert(paramsSize == sizeof(float) * para_rect.volume());
   {
     int dims[] = {(int)paramsSize, 1, 1};
     checkCUDNN(cudnnCreateFilterDescriptor(&m->wDesc));
@@ -164,7 +175,7 @@ OpMeta* LSTM::init_task(const Task *task,
     checkCUDNN(cudnnCreateTensorDescriptor(&m->cxDesc));
     checkCUDNN(cudnnCreateTensorDescriptor(&m->hyDesc));
     checkCUDNN(cudnnCreateTensorDescriptor(&m->cyDesc));
-    int dims[] = {numLayers, lstm->batch_size, lstm->output_size};
+    int dims[] = {numLayers, lstm->batchSize, lstm->outputSize};
     int strides[] = {dims[1] * dims[2], dims[2], 1};
     checkCUDNN(cudnnSetTensorNdDescriptor(m->hxDesc, CUDNN_DATA_FLOAT,
                                           3, dims, strides));
@@ -177,7 +188,7 @@ OpMeta* LSTM::init_task(const Task *task,
   }
   for (int i = 0; i < seqLength; i++) {
     checkCUDNN(cudnnCreateTensorDescriptor(&m->yDescs[i]));
-    int dims[] = {lstm->batch_size, lstm->output_size, 1};
+    int dims[] = {lstm->batchSize, lstm->outputSize, 1};
     int strides[] = {dims[1] * dims[2], dims[2], 1};
     checkCUDNN(cudnnSetTensorNdDescriptor(m->yDescs[i], CUDNN_DATA_FLOAT,
                                           3, dims, strides));
@@ -190,6 +201,35 @@ void LSTM::init(const RnnModel& model)
 {
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
+  int idx = 0;
+  for (PointInRectIterator<1> it(part_rect); it(); it++) {
+    LSTMInitParams initParams;
+    initParams.handle = model.dnn_handlers[DUMMY_ID];
+    initParams.batchSize = batch_size;
+    initParams.inputSize = input_size;
+    initParams.outputSize = output_size;
+   
+    TaskLauncher launcher(LSTM_INIT_TASK_ID, TaskArgument(&initParams, sizeof(initParams)));
+    DomainPoint dp(*it);
+    // add region requirements for x, hx, cx
+    for (int i = 0; i < 3; i++) {
+      LogicalRegion x =
+        runtime->get_logical_subregion_by_color(inputs[i].partition, dp);
+      launcher.add_region_requirement(RegionRequirement(x, READ_ONLY, EXCLUSIVE, x));
+      launcher.add_field(i, FID_DATA);
+    }
+    launcher.add_region_requirement(
+        RegionRequirement(params.region, READ_ONLY, EXCLUSIVE, params.region));
+    launcher.add_field(3, FID_DATA);
+    for (int i = 0; i < 3; i++) {
+      LogicalRegion x =
+        runtime->get_logical_subregion_by_color(outputs[i].partition, dp);
+      launcher.add_region_requirement(RegionRequirement(x, WRITE_ONLY, EXCLUSIVE, x));
+      launcher.add_field(4 + i, FID_DATA);
+    }
+    Future f = runtime->execute_task(ctx, launcher);
+    meta[idx++] = f.get_result<OpMeta*>();
+  }
 }
 
 /*
@@ -249,6 +289,7 @@ void LSTM::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+  printf("reserveSpaceSize = %zu\n", m->reserveSpaceSize);
   checkCUDNN(cudnnRNNForwardTraining(m->handle.dnn, m->rnnDesc, 1/*seqLength*/,
                                      m->xDescs, x_ptr, m->hxDesc, hx_ptr,
                                      m->cxDesc, cx_ptr, m->wDesc, w_ptr,

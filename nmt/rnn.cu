@@ -39,7 +39,8 @@ RnnOp::RnnOp(Tensor input)
   inputs[0] = input;
 }
 
-RnnOp::RnnOp(Tensor t1, Tensor t2, Tensor t3)
+RnnOp::RnnOp(Tensor t1, Tensor t2, Tensor t3, SharedVariable _params)
+: params(_params)
 {
   inputs[0] = t1;
   inputs[1] = t2;
@@ -81,14 +82,22 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
   int extent_c = embed_size;
   int extent_n = batch_size / num_parts;
   Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
-  Transform<1, 2, coord_t> trans;
-  trans[0][0] = 0; trans[0][1] = extent_n;
+  Transform<2, 1, coord_t> trans;
+  trans[0][0] = 0; trans[1][0] = extent_n;
   IndexPartition word_ip =
     runtime->create_partition_by_restriction(ctx, word_is, part_is, trans, extent);
+  assert(runtime->is_index_partition_disjoint(ctx, word_ip));
+  assert(runtime->is_index_partition_complete(ctx, word_ip));
   for (int i = 0; i < seqLength; i++) {
+    srcs[i].numDim = 2;
+    srcs[i].adim[0] = embed_size;
+    srcs[i].adim[1] = batch_size;
+    srcs[i].pdim[0] = extent_c;
+    srcs[i].pdim[1] = extent_n;
     srcs[i].region = runtime->create_logical_region(ctx, word_is, config.field_space);
     srcs[i].partition =
       runtime->get_logical_partition(ctx, srcs[i].region, word_ip);
+    dsts[i] = srcs[i];
     dsts[i].region = runtime->create_logical_region(ctx, word_is, config.field_space);
     dsts[i].partition =
       runtime->get_logical_partition(ctx, dsts[i].region, word_ip);
@@ -99,28 +108,36 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
   extent_c = hidden_size;
   extent_n = batch_size / num_parts;
   Rect<2> hx_ext(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
-  Transform<1, 2, coord_t> hx_trans;
-  hx_trans[0][0] = 0; hx_trans[0][1] = extent_n;
+  Transform<2, 1, coord_t> hx_trans;
+  hx_trans[0][0] = 0; hx_trans[1][0] = extent_n;
   IndexPartition hx_ip =
     runtime->create_partition_by_restriction(ctx, hx_is, part_is, hx_trans, hx_ext);
+  assert(runtime->is_index_partition_disjoint(ctx, hx_ip));
+  assert(runtime->is_index_partition_complete(ctx, hx_ip));
   LSTMTensors zero[MAX_NUM_LAYERS], lstm[MAX_NUM_LAYERS][2*MAX_SEQ_LENGTH];
   for (int i = 0; i < numLayers; i++) {
-    zero[i].hx.region = runtime->create_logical_region(ctx, hx_is, config.field_space);
-    zero[i].hx.partition = runtime->get_logical_partition(ctx, zero[i].hx.region, hx_ip);
-    zero[i].hx.region_grad = runtime->create_logical_region(ctx, hx_is, config.field_space);
-    zero[i].hx.partition_grad =
-      runtime->get_logical_partition(ctx, zero[i].hx.region_grad, hx_ip);
-    zero[i].cx.region = runtime->create_logical_region(ctx, hx_is, config.field_space);
-    zero[i].cx.partition = runtime->get_logical_partition(ctx, zero[i].cx.region, hx_ip);
-    zero[i].cx.region_grad = runtime->create_logical_region(ctx, hx_is, config.field_space);
-    zero[i].cx.partition_grad =
-      runtime->get_logical_partition(ctx, zero[i].cx.region_grad, hx_ip);
+    for (int j = 0; j < 2; j++) {
+      Tensor t;
+      t.numDim = 2;
+      t.adim[0] = hidden_size;
+      t.adim[1] = batch_size;
+      t.pdim[0] = extent_c;
+      t.pdim[1] = extent_n;
+      t.region = runtime->create_logical_region(ctx, hx_is, config.field_space);
+      t.partition = runtime->get_logical_partition(ctx, t.region, hx_ip);
+      t.region_grad = runtime->create_logical_region(ctx, hx_is, config.field_space);
+      t.partition_grad = runtime->get_logical_partition(ctx, t.region_grad, hx_ip);
+      if (j == 0)
+        zero[i].hx = t;
+      else
+        zero[i].cx = t;
+    }
   }
   SharedVariable encoders[MAX_NUM_LAYERS], decoders[MAX_NUM_LAYERS];
   for (int i = 0; i < numLayers; i++) {
     int input_size = (i==0) ? embed_size : hidden_size;
     int output_size = hidden_size;
-    int numParams = (input_size + 1) * output_size * 4;
+    int numParams = (input_size + 1 + output_size + 1) * output_size * 4;
     Rect<1> params_rect(Point<1>(0), Point<1>(numParams-1));
     IndexSpaceT<1> params_is = runtime->create_index_space(ctx, params_rect);
     encoders[i].region =
@@ -150,6 +167,12 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
       lstm[i][j] = add_lstm_node(x, hx, cx, decoders[i]);
     }
   }
+}
+
+void RnnModel::init()
+{
+  for (size_t i = 0; i < layers.size(); i++)
+    layers[i]->init(*this);
 }
 
 void RnnModel::forward()
