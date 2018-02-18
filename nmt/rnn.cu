@@ -1,0 +1,167 @@
+/* Copyright 2018 Stanford
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "rnn.h"
+#include "../cnn_helper.h"
+
+DnnHandle init_cudnn(const Task *task,
+                     const std::vector<PhysicalRegion> &regions,
+                     Context ctx, HighLevelRuntime *runtime)
+{
+  assert(regions.size() == 0);
+  assert(task->arglen == sizeof(size_t));
+  size_t workSpaceSize = *(const size_t*) task->args;
+  DnnHandle handle;
+  handle.workSpaceSize = workSpaceSize;
+  printf("workSpaceSize = %zu\n", workSpaceSize);
+#ifndef DISABLE_COMPUTATION
+  checkCUDA(cublasCreate(&handle.blas));
+  checkCUDNN(cudnnCreate(&handle.dnn));
+#endif
+  checkCUDA(cudaMalloc(&handle.workSpace, workSpaceSize));
+  return handle;
+}
+
+RnnOp::RnnOp(Tensor input)
+{
+  inputs[0] = input;
+}
+
+RnnOp::RnnOp(Tensor t1, Tensor t2, Tensor t3)
+{
+  inputs[0] = t1;
+  inputs[1] = t2;
+  inputs[2] = t3;
+}
+
+RnnOp::RnnOp(int n, Tensor *_inputs)
+{
+  for (int i = 0; i < n; i++) {
+    inputs[i] = _inputs[i];
+  }
+}
+
+RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
+                   int hidden_size, int embed_size, int num_parts, int num_workers,
+                   Context ctx, Runtime *runtime)
+{
+  config.lg_ctx = ctx;
+  config.lg_hlr = runtime;
+  config.batchSize = batch_size;
+  config.hiddenSize = hidden_size;
+  config.embedSize = embed_size;
+  config.numLayers = numLayers;
+  config.seqLength = seqLength;
+  config.numParts = num_parts;
+  config.numWorkers = num_workers;
+  config.field_space = runtime->create_field_space(ctx);
+  {
+    FieldAllocator allocator =
+      runtime->create_field_allocator(ctx, config.field_space);
+    allocator.allocate_field(sizeof(float), FID_DATA);
+  }
+  Rect<1> part_rect(Point<1>(0), Point<1>(num_parts-1));
+  part_is = runtime->create_index_space(ctx, part_rect);
+  assert(seqLength <= MAX_SEQ_LENGTH);
+  assert(numLayers <= MAX_NUM_LAYERS);
+  Rect<2> word_rect(Point<2>(0, 0), Point<2>(embed_size-1, batch_size-1));
+  IndexSpaceT<2> word_is = runtime->create_index_space(ctx, word_rect);
+  int extent_c = embed_size;
+  int extent_n = batch_size / num_parts;
+  Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
+  Transform<1, 2, coord_t> trans;
+  trans[0][0] = 0; trans[0][1] = extent_n;
+  IndexPartition word_ip =
+    runtime->create_partition_by_restriction(ctx, word_is, part_is, trans, extent);
+  for (int i = 0; i < seqLength; i++) {
+    srcs[i].region = runtime->create_logical_region(ctx, word_is, config.field_space);
+    srcs[i].partition =
+      runtime->get_logical_partition(ctx, srcs[i].region, word_ip);
+    dsts[i].region = runtime->create_logical_region(ctx, word_is, config.field_space);
+    dsts[i].partition =
+      runtime->get_logical_partition(ctx, dsts[i].region, word_ip);
+  }
+  // Create a zeroed tensor
+  Rect<2> hx_rect(Point<2>(0, 0), Point<2>(hidden_size-1, batch_size-1));
+  IndexSpaceT<2> hx_is = runtime->create_index_space(ctx, hx_rect);
+  extent_c = hidden_size;
+  extent_n = batch_size / num_parts;
+  Rect<2> hx_ext(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
+  Transform<1, 2, coord_t> hx_trans;
+  hx_trans[0][0] = 0; hx_trans[0][1] = extent_n;
+  IndexPartition hx_ip =
+    runtime->create_partition_by_restriction(ctx, hx_is, part_is, hx_trans, hx_ext);
+  LSTMTensors zero[MAX_NUM_LAYERS], lstm[MAX_NUM_LAYERS][2*MAX_SEQ_LENGTH];
+  for (int i = 0; i < numLayers; i++) {
+    zero[i].hx.region = runtime->create_logical_region(ctx, hx_is, config.field_space);
+    zero[i].hx.partition = runtime->get_logical_partition(ctx, zero[i].hx.region, hx_ip);
+    zero[i].hx.region_grad = runtime->create_logical_region(ctx, hx_is, config.field_space);
+    zero[i].hx.partition_grad =
+      runtime->get_logical_partition(ctx, zero[i].hx.region_grad, hx_ip);
+    zero[i].cx.region = runtime->create_logical_region(ctx, hx_is, config.field_space);
+    zero[i].cx.partition = runtime->get_logical_partition(ctx, zero[i].cx.region, hx_ip);
+    zero[i].cx.region_grad = runtime->create_logical_region(ctx, hx_is, config.field_space);
+    zero[i].cx.partition_grad =
+      runtime->get_logical_partition(ctx, zero[i].cx.region_grad, hx_ip);
+  }
+  SharedVariable encoders[MAX_NUM_LAYERS], decoders[MAX_NUM_LAYERS];
+  for (int i = 0; i < numLayers; i++) {
+    int input_size = (i==0) ? embed_size : hidden_size;
+    int output_size = hidden_size;
+    int numParams = (input_size + 1) * output_size * 4;
+    Rect<1> params_rect(Point<1>(0), Point<1>(numParams-1));
+    IndexSpaceT<1> params_is = runtime->create_index_space(ctx, params_rect);
+    encoders[i].region =
+      runtime->create_logical_region(ctx, params_is, config.field_space);
+    decoders[i].region =
+      runtime->create_logical_region(ctx, params_is, config.field_space);
+    for (int j = 0; j < num_workers; j++) {
+      encoders[i].gradients[j] =
+        runtime->create_logical_region(ctx, params_is, config.field_space);
+      decoders[i].gradients[j] =
+        runtime->create_logical_region(ctx, params_is, config.field_space);
+    }
+  }
+  for (int i = 0; i < numLayers; i++) {
+    // Add encoder lstm nodes
+    for (int j = 0; j < seqLength; j++) {
+      Tensor x = (i==0) ? srcs[j] : lstm[i-1][j].x;
+      Tensor hx = (j==0) ? zero[i].hx : lstm[i][j-1].hx;
+      Tensor cx = (j==0) ? zero[i].cx : lstm[i][j-1].cx;
+      lstm[i][j] = add_lstm_node(x, hx, cx, encoders[i]);
+    }
+    // Add decoder lstm nodes
+    for (int j = seqLength; j < 2*seqLength; j++) {
+      Tensor x = (i==0) ? dsts[j-seqLength] : lstm[i-1][j].x;
+      Tensor hx = lstm[i][j-1].hx;
+      Tensor cx = lstm[i][j-1].cx;
+      lstm[i][j] = add_lstm_node(x, hx, cx, decoders[i]);
+    }
+  }
+}
+
+void RnnModel::forward()
+{
+  for (size_t i = 0; i < layers.size(); i++) {
+    layers[i]->forward(*this);
+  }
+}
+
+void RnnModel::backward()
+{
+  for (int i = layers.size() - 1; i >=0; i--) {
+    layers[i]->backward(*this); 
+  }
+}
