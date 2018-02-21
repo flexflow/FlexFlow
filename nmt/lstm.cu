@@ -168,7 +168,7 @@ OpMeta* LSTM::init_task(const Task *task,
     int dims[] = {(int)paramsSize, 1, 1};
     checkCUDNN(cudnnCreateFilterDescriptor(&m->wDesc));
     checkCUDNN(cudnnSetFilterNdDescriptor(m->wDesc, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW,
-                                          sizeof(dims) / sizeof(dims[0]), dims));
+                                          3, dims));
   }
   {
     checkCUDNN(cudnnCreateTensorDescriptor(&m->hxDesc));
@@ -193,6 +193,7 @@ OpMeta* LSTM::init_task(const Task *task,
     checkCUDNN(cudnnSetTensorNdDescriptor(m->yDescs[i], CUDNN_DATA_FLOAT,
                                           3, dims, strides));
   }
+  m->profiling_runtime = true;
   return m;
 #endif
 }
@@ -289,7 +290,6 @@ void LSTM::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
-  printf("reserveSpaceSize = %zu\n", m->reserveSpaceSize);
   checkCUDNN(cudnnRNNForwardTraining(m->handle.dnn, m->rnnDesc, 1/*seqLength*/,
                                      m->xDescs, x_ptr, m->hxDesc, hx_ptr,
                                      m->cxDesc, cx_ptr, m->wDesc, w_ptr,
@@ -316,7 +316,8 @@ void LSTM::forward(const RnnModel& model)
   int idx = 0;
   for (PointInRectIterator<1> it(part_rect); it(); it++) {
     OpMeta* mp = meta[idx++];
-    TaskLauncher launcher(LSTM_FWD_TASK_ID, TaskArgument(&mp, sizeof(OpMeta*)));
+    TaskLauncher launcher(LSTM_FWD_TASK_ID, TaskArgument(&mp, sizeof(OpMeta*)),
+                          Predicate::TRUE_PRED, 0/*MapperID*/, 0);
     DomainPoint dp(*it);
     // add region requirements for x, hx, cx
     for (int i = 0; i < 3; i++) {

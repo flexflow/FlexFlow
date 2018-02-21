@@ -29,7 +29,7 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 OUTFILE		?= nmt
 # List all the application source files here
 GEN_SRC		?= nmt.cc rnn_mapper.cc	# .cc files
-GEN_GPU_SRC	?= lstm.cu rnn.cu # .cu files
+GEN_GPU_SRC	?= lstm.cu rnn.cu ../cnn_helper.cu# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
 INC_FLAGS	?= 

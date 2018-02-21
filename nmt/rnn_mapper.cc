@@ -24,6 +24,21 @@ RnnMapper::RnnMapper(MapperRuntime *rt, Machine machine, Processor local,
     gpus(*_gpus), proc_fbmems(*_proc_fbmems), cpus(*_cpus)
 {}
 
+void RnnMapper::select_task_options(const MapperContext ctx,
+                                    const Task& task,
+                                    TaskOptions& output)
+{
+  if ((task.task_id == LSTM_FWD_TASK_ID)) {
+    output.inline_task = false;
+    output.stealable = false;
+    output.map_locally = false;
+    output.initial_proc = gpus[task.tag % gpus.size()];
+    printf("GPU id = %lu\n", task.tag);
+  } else {
+    DefaultMapper::select_task_options(ctx, task, output);
+  }
+}
+
 void update_mappers(Machine machine, Runtime *runtime,
                     const std::set<Processor> &local_procs)
 {

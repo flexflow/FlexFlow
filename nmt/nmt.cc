@@ -33,8 +33,8 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int seq_length = 1;
   int hidden_size = 1024;
   int embed_size = 1024;
-  int num_workers = 1;
-  int num_parts = 1;
+  int num_workers = 2;
+  int num_parts = 2;
   int num_iterations = 10;
   {
     const InputArgs &command_args = HighLevelRuntime::get_input_args();

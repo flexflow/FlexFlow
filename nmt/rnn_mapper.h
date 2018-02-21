@@ -17,6 +17,7 @@
 #define __RNN_MAPPER_H__
 
 #include "legion.h"
+#include "ops.h"
 #include "default_mapper.h"
 
 using namespace Legion;
@@ -29,6 +30,9 @@ public:
             std::map<Processor, Memory>* proc_fbmems,
             std::vector<Processor>* cpus);
 public:
+  virtual void select_task_options(const MapperContext ctx,
+                                   const Task& task,
+                                   TaskOptions& output);
   //virtual void slice_task(const MapperContext ctx,
     //                      const Task& task,
       //                    const SliceTaskInput& input,
