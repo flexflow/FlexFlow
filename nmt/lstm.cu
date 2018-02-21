@@ -210,7 +210,8 @@ void LSTM::init(const RnnModel& model)
     initParams.inputSize = input_size;
     initParams.outputSize = output_size;
    
-    TaskLauncher launcher(LSTM_INIT_TASK_ID, TaskArgument(&initParams, sizeof(initParams)));
+    TaskLauncher launcher(LSTM_INIT_TASK_ID, TaskArgument(&initParams, sizeof(initParams)),
+                          Predicate::TRUE_PRED, 0/*MapperID*/, idx);
     DomainPoint dp(*it);
     // add region requirements for x, hx, cx
     for (int i = 0; i < 3; i++) {
@@ -317,7 +318,7 @@ void LSTM::forward(const RnnModel& model)
   for (PointInRectIterator<1> it(part_rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     TaskLauncher launcher(LSTM_FWD_TASK_ID, TaskArgument(&mp, sizeof(OpMeta*)),
-                          Predicate::TRUE_PRED, 0/*MapperID*/, 0);
+                          Predicate::TRUE_PRED, 0/*MapperID*/, idx-1);
     DomainPoint dp(*it);
     // add region requirements for x, hx, cx
     for (int i = 0; i < 3; i++) {
@@ -456,11 +457,11 @@ void LSTM::backward_task(const Task *task,
                                   m->handle.workSpace, m->handle.workSpaceSize,
                                   m->reserveSpace, m->reserveSpaceSize));
   checkCUDNN(cudnnRNNBackwardWeights(m->handle.dnn, m->rnnDesc, 1/*seqLength*/,
-                                    m->xDescs, x_ptr, m->hxDesc, hx_ptr,
-                                    m->yDescs, y_ptr,
-                                    m->handle.workSpace, m->handle.workSpaceSize,
-                                    m->wDesc, w_grad_ptr,
-                                    m->reserveSpace, m->reserveSpaceSize));
+                                     m->xDescs, x_ptr, m->hxDesc, hx_ptr,
+                                     m->yDescs, y_ptr,
+                                     m->handle.workSpace, m->handle.workSpaceSize,
+                                     m->wDesc, w_grad_ptr,
+                                     m->reserveSpace, m->reserveSpaceSize));
   if (m->profiling_runtime) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -481,7 +482,8 @@ void LSTM::backward(const RnnModel& model)
   for (PointInRectIterator<1> it(part_rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     DomainPoint dp(*it);
-    TaskLauncher launcher(LSTM_BWD_TASK_ID, TaskArgument(&mp, sizeof(OpMeta*)));
+    TaskLauncher launcher(LSTM_BWD_TASK_ID, TaskArgument(&mp, sizeof(OpMeta*)),
+                          Predicate::TRUE_PRED, 0/*MapperID*/, idx-1);
     // add region requirements for x, hx, cx
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =
@@ -506,7 +508,7 @@ void LSTM::backward(const RnnModel& model)
       launcher.add_field(7+i, FID_DATA);
     }
     launcher.add_region_requirement(
-        RegionRequirement(params.gradients[0], READ_WRITE, EXCLUSIVE, params.gradients[0]));
+        RegionRequirement(params.gradients[idx-1], READ_WRITE, EXCLUSIVE, params.gradients[idx-1]));
     launcher.add_field(10, FID_DATA);
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =
@@ -514,6 +516,7 @@ void LSTM::backward(const RnnModel& model)
       launcher.add_region_requirement(RegionRequirement(x, READ_ONLY, EXCLUSIVE, x));
       launcher.add_field(11 + i, FID_DATA);
     }
+    runtime->execute_task(ctx, launcher);
   }
 }
 

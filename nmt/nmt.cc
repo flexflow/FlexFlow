@@ -30,7 +30,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
 {
   int batch_size = 128;
   int num_layers = 1;
-  int seq_length = 1;
+  int seq_length = 40;
   int hidden_size = 1024;
   int embed_size = 1024;
   int num_workers = 2;
@@ -57,9 +57,18 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
     model.dnn_handlers[idx++] = fm.get_result<DnnHandle>(*it);
 
   model.init();
+  double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int i = 0; i < num_iterations; i++) {
     model.forward();
+    model.backward();
   }
+  runtime->issue_execution_fence(ctx);
+  TimingLauncher timer(MEASURE_MICRO_SECONDS);
+  Future future = runtime->issue_timing_measurement(ctx, timer);
+  future.get_void_result();
+  double ts_end = Realm::Clock::current_time_in_microseconds();
+  double run_time = 1e-6 * (ts_end - ts_start);
+  printf("time = %.4fs\n", run_time);
 }
 
 int main(int argc, char **argv)

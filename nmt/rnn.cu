@@ -97,10 +97,18 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
     srcs[i].region = runtime->create_logical_region(ctx, word_is, config.field_space);
     srcs[i].partition =
       runtime->get_logical_partition(ctx, srcs[i].region, word_ip);
+    srcs[i].region_grad =
+      runtime->create_logical_region(ctx, word_is, config.field_space);
+    srcs[i].partition_grad =
+      runtime->get_logical_partition(ctx, srcs[i].region_grad, word_ip);
     dsts[i] = srcs[i];
     dsts[i].region = runtime->create_logical_region(ctx, word_is, config.field_space);
     dsts[i].partition =
       runtime->get_logical_partition(ctx, dsts[i].region, word_ip);
+    dsts[i].region_grad =
+      runtime->create_logical_region(ctx, word_is, config.field_space);
+    dsts[i].partition_grad =
+      runtime->get_logical_partition(ctx, dsts[i].region_grad, word_ip);
   }
   // Create a zeroed tensor
   Rect<2> hx_rect(Point<2>(0, 0), Point<2>(hidden_size-1, batch_size-1));
