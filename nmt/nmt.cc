@@ -30,7 +30,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
 {
   int batch_size = 128;
   int num_layers = 1;
-  int seq_length = 40;
+  int seq_length = 20;
   int hidden_size = 1024;
   int embed_size = 1024;
   int num_workers = 2;
@@ -47,14 +47,14 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   ArgumentMap local_args;
   size_t workSpaceSize = (size_t) 2 * 1024 * 1024 * 1024;
   Rect<1> workers_rect(Point<1>(0), Point<1>(num_workers-1));
-  IndexSpaceT<1> workers_is = runtime->create_index_space(ctx, workers_rect);
-  IndexLauncher init_launcher(CUDNN_INIT_TASK_ID, workers_is,
-                    TaskArgument(&workSpaceSize, sizeof(workSpaceSize)), local_args);
-  FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
-  fm.wait_all_results();
   int idx = 0;
-  for (PointInRectIterator<1> it(workers_rect); it(); it++)
-    model.dnn_handlers[idx++] = fm.get_result<DnnHandle>(*it);
+  for (PointInRectIterator<1> it(workers_rect); it(); it++) {
+    TaskLauncher launcher(CUDNN_INIT_TASK_ID,
+                          TaskArgument(&workSpaceSize, sizeof(workSpaceSize)),
+                          Predicate::TRUE_PRED, 0/*MapperID*/, idx);
+    Future f = runtime->execute_task(ctx, launcher);
+    model.dnn_handlers[idx++] = f.get_result<DnnHandle>();
+  }
 
   model.init();
   double ts_start = Realm::Clock::current_time_in_microseconds();

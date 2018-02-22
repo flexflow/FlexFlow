@@ -193,7 +193,7 @@ OpMeta* LSTM::init_task(const Task *task,
     checkCUDNN(cudnnSetTensorNdDescriptor(m->yDescs[i], CUDNN_DATA_FLOAT,
                                           3, dims, strides));
   }
-  m->profiling_runtime = true;
+  m->profiling_runtime = false;
   return m;
 #endif
 }
@@ -203,9 +203,9 @@ void LSTM::init(const RnnModel& model)
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   int idx = 0;
-  for (PointInRectIterator<1> it(part_rect); it(); it++) {
+  for (PointInRectIterator<1> it(part_rect); it(); it++, idx++) {
     LSTMInitParams initParams;
-    initParams.handle = model.dnn_handlers[DUMMY_ID];
+    initParams.handle = model.dnn_handlers[idx];
     initParams.batchSize = batch_size;
     initParams.inputSize = input_size;
     initParams.outputSize = output_size;
@@ -230,7 +230,7 @@ void LSTM::init(const RnnModel& model)
       launcher.add_field(4 + i, FID_DATA);
     }
     Future f = runtime->execute_task(ctx, launcher);
-    meta[idx++] = f.get_result<OpMeta*>();
+    meta[idx] = f.get_result<OpMeta*>();
   }
 }
 
@@ -315,10 +315,10 @@ void LSTM::forward(const RnnModel& model)
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   int idx = 0;
-  for (PointInRectIterator<1> it(part_rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
+  for (PointInRectIterator<1> it(part_rect); it(); it++, idx++) {
+    OpMeta* mp = meta[idx];
     TaskLauncher launcher(LSTM_FWD_TASK_ID, TaskArgument(&mp, sizeof(OpMeta*)),
-                          Predicate::TRUE_PRED, 0/*MapperID*/, idx-1);
+                          Predicate::TRUE_PRED, 0/*MapperID*/, idx);
     DomainPoint dp(*it);
     // add region requirements for x, hx, cx
     for (int i = 0; i < 3; i++) {
@@ -479,11 +479,11 @@ void LSTM::backward(const RnnModel& model)
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   int idx = 0;
-  for (PointInRectIterator<1> it(part_rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
+  for (PointInRectIterator<1> it(part_rect); it(); it++, idx++) {
+    OpMeta* mp = meta[idx];
     DomainPoint dp(*it);
     TaskLauncher launcher(LSTM_BWD_TASK_ID, TaskArgument(&mp, sizeof(OpMeta*)),
-                          Predicate::TRUE_PRED, 0/*MapperID*/, idx-1);
+                          Predicate::TRUE_PRED, 0/*MapperID*/, idx);
     // add region requirements for x, hx, cx
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =
@@ -508,7 +508,7 @@ void LSTM::backward(const RnnModel& model)
       launcher.add_field(7+i, FID_DATA);
     }
     launcher.add_region_requirement(
-        RegionRequirement(params.gradients[idx-1], READ_WRITE, EXCLUSIVE, params.gradients[idx-1]));
+        RegionRequirement(params.gradients[idx], READ_WRITE, EXCLUSIVE, params.gradients[idx]));
     launcher.add_field(10, FID_DATA);
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =

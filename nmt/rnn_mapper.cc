@@ -28,12 +28,14 @@ void RnnMapper::select_task_options(const MapperContext ctx,
                                     const Task& task,
                                     TaskOptions& output)
 {
-  if ((task.task_id == LSTM_FWD_TASK_ID)) {
+  if ((task.task_id == CUDNN_INIT_TASK_ID)
+     ||(task.task_id == LSTM_FWD_TASK_ID)
+     ||(task.task_id == LSTM_BWD_TASK_ID)
+     ||(task.task_id == LSTM_INIT_TASK_ID)) {
     output.inline_task = false;
     output.stealable = false;
-    output.map_locally = false;
+    output.map_locally = true;
     output.initial_proc = gpus[task.tag % gpus.size()];
-    printf("GPU id = %lu\n", task.tag);
   } else {
     DefaultMapper::select_task_options(ctx, task, output);
   }
