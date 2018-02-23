@@ -28,9 +28,9 @@ void parse_input_args(char **argv, int argc,
 void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime)
 {
-  int batch_size = 128;
-  int num_layers = 1;
-  int seq_length = 20;
+  int batch_size = 256;
+  int num_layers = 2;
+  int seq_length = 40;
   int hidden_size = 1024;
   int embed_size = 1024;
   int num_workers = 2;

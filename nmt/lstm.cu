@@ -26,9 +26,11 @@ struct LSTMInitParams {
 
 LSTMTensors RnnModel::add_lstm_node(Tensor x, Tensor hx, Tensor cx, SharedVariable params)
 {
-  assert(x.numDim == 2);
+  assert(x.numDim == 3);
   assert(hx.numDim == 2);
   assert(cx.numDim == 2);
+  assert(x.adim[2] == LSTM_PER_NODE_LENGTH);
+  assert(x.pdim[2] == LSTM_PER_NODE_LENGTH);
   int batch_size = x.adim[1];
   assert(hx.adim[1] == batch_size);
   assert(cx.adim[1] == batch_size);
@@ -62,18 +64,18 @@ LSTM::LSTM(RnnConfig config, Tensor x, Tensor hx, Tensor cx,
   HighLevelRuntime* runtime = config.lg_hlr;
   part_rect = runtime->get_index_space_domain(ctx, part_is);
   FieldSpace fs = config.field_space;
-  Rect<2, coord_t> y_rect(Point<2>(0, 0),
-                          Point<2>(output_size-1, batch_size-1));
-  IndexSpaceT<2> y_is = runtime->create_index_space(ctx, y_rect);
+  Rect<3, coord_t> y_rect(Point<3>(0, 0, 0),
+                          Point<3>(output_size-1, batch_size-1, LSTM_PER_NODE_LENGTH-1));
+  IndexSpaceT<3> y_is = runtime->create_index_space(ctx, y_rect);
   LogicalRegion y_lr = runtime->create_logical_region(ctx, y_is, fs);
   LogicalRegion y_grad_lr = runtime->create_logical_region(ctx, y_is, fs);
   int num_par_n = part_rect.hi[0] - part_rect.lo[0] + 1;
   assert(batch_size % num_par_n == 0);
   int extent_n = batch_size / num_par_n;
   int extent_c = output_size;
-  Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
-  Transform<2, 1, coord_t> trans;
-  trans[0][0] = 0; trans[1][0] = extent_n;
+  Rect<3, coord_t> extent(Point<3>(0, 0, 0), Point<3>(extent_c-1, extent_n-1, LSTM_PER_NODE_LENGTH-1));
+  Transform<3, 1, coord_t> trans;
+  trans[0][0] = 0; trans[1][0] = extent_n; trans[2][0] = 0;
   IndexPartition y_ip =
     runtime->create_partition_by_restriction(ctx, y_is, part_is, trans, extent);
   assert(runtime->is_index_partition_disjoint(ctx, y_ip));
@@ -84,27 +86,43 @@ LSTM::LSTM(RnnConfig config, Tensor x, Tensor hx, Tensor cx,
   outputs[0].region_grad = y_grad_lr;
   outputs[0].partition = y_lp;
   outputs[0].partition_grad = y_grad_lp;
-  outputs[0].numDim = 2;
+  outputs[0].numDim = 3;
   outputs[0].adim[0] = output_size;
   outputs[0].adim[1] = batch_size;
+  outputs[0].adim[2] = LSTM_PER_NODE_LENGTH;
   outputs[0].pdim[0] = extent_c;
   outputs[0].pdim[1] = extent_n;
+  outputs[0].pdim[2] = LSTM_PER_NODE_LENGTH;
 
-  LogicalRegion hy_lr = runtime->create_logical_region(ctx, y_is, fs);
-  LogicalRegion hy_grad_lr = runtime->create_logical_region(ctx, y_is, fs);
-  LogicalPartition hy_lp = runtime->get_logical_partition(ctx, hy_lr, y_ip);
-  LogicalPartition hy_grad_lp = runtime->get_logical_partition(ctx, hy_grad_lr, y_ip);
-  outputs[1] = outputs[0];
+  Rect<2, coord_t> hy_rect(Point<2>(0, 0),
+                           Point<2>(output_size-1, batch_size-1));
+  IndexSpaceT<2> hy_is = runtime->create_index_space(ctx, hy_rect);
+  LogicalRegion hy_lr = runtime->create_logical_region(ctx, hy_is, fs);
+  LogicalRegion hy_grad_lr = runtime->create_logical_region(ctx, hy_is, fs);
+  Rect<2, coord_t> hy_ext(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
+  Transform<2, 1, coord_t> hy_trans;
+  hy_trans[0][0] = 0; hy_trans[1][0] = extent_n;
+  IndexPartition hy_ip =
+    runtime->create_partition_by_restriction(ctx, hy_is, part_is, hy_trans, hy_ext);
+  assert(runtime->is_index_partition_disjoint(ctx, hy_ip));
+  assert(runtime->is_index_partition_complete(ctx, hy_ip));
+  LogicalPartition hy_lp = runtime->get_logical_partition(ctx, hy_lr, hy_ip);
+  LogicalPartition hy_grad_lp = runtime->get_logical_partition(ctx, hy_grad_lr, hy_ip);
   outputs[1].region = hy_lr;
   outputs[1].region_grad = hy_grad_lr;
   outputs[1].partition = hy_lp;
   outputs[1].partition_grad = hy_grad_lp;
+  outputs[1].numDim = 2;
+  outputs[1].adim[0] = output_size;
+  outputs[1].adim[1] = batch_size;
+  outputs[1].pdim[0] = extent_c;
+  outputs[1].pdim[1] = extent_n;
 
-  LogicalRegion cy_lr = runtime->create_logical_region(ctx, y_is, fs);
-  LogicalRegion cy_grad_lr = runtime->create_logical_region(ctx, y_is, fs);
-  LogicalPartition cy_lp = runtime->get_logical_partition(ctx, cy_lr, y_ip);
-  LogicalPartition cy_grad_lp = runtime->get_logical_partition(ctx, cy_grad_lr, y_ip);
-  outputs[2] = outputs[0];
+  LogicalRegion cy_lr = runtime->create_logical_region(ctx, hy_is, fs);
+  LogicalRegion cy_grad_lr = runtime->create_logical_region(ctx, hy_is, fs);
+  LogicalPartition cy_lp = runtime->get_logical_partition(ctx, cy_lr, hy_ip);
+  LogicalPartition cy_grad_lp = runtime->get_logical_partition(ctx, cy_grad_lr, hy_ip);
+  outputs[2] = outputs[1];
   outputs[2].region = cy_lr;
   outputs[2].region_grad = cy_grad_lr;
   outputs[2].partition = cy_lp;
@@ -125,7 +143,7 @@ OpMeta* LSTM::init_task(const Task *task,
                         Context ctx, Runtime *runtime)
 {
   const int numLayers = 1;
-  const int seqLength = 1;
+  const int seqLength = LSTM_PER_NODE_LENGTH;
   const float dropoutRate = 0.2f;
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
@@ -193,7 +211,7 @@ OpMeta* LSTM::init_task(const Task *task,
     checkCUDNN(cudnnSetTensorNdDescriptor(m->yDescs[i], CUDNN_DATA_FLOAT,
                                           3, dims, strides));
   }
-  m->profiling_runtime = false;
+  m->profiling_runtime = true;
   return m;
 #endif
 }
@@ -253,14 +271,15 @@ void LSTM::forward_task(const Task *task,
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   const LSTMMeta* m = *((LSTMMeta**) task->args);
-  const AccessorRO<float, 2> acc_x(regions[0], FID_DATA);
+  const AccessorRO<float, 3> acc_x(regions[0], FID_DATA);
   const AccessorRO<float, 2> acc_hx(regions[1], FID_DATA);
   const AccessorRO<float, 2> acc_cx(regions[2], FID_DATA);
   const AccessorRO<float, 1> acc_w(regions[3], FID_DATA);
-  const AccessorWO<float, 2> acc_y(regions[4], FID_DATA);
+  const AccessorWO<float, 3> acc_y(regions[4], FID_DATA);
   const AccessorWO<float, 2> acc_hy(regions[5], FID_DATA);
   const AccessorWO<float, 2> acc_cy(regions[6], FID_DATA);
-  Rect<2> rect_x, rect_hx, rect_cx, rect_y, rect_hy, rect_cy;
+  Rect<3> rect_x, rect_y;
+  Rect<2> rect_hx, rect_cx, rect_hy, rect_cy;
   Rect<1> rect_w;
   rect_x = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_hx = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
@@ -277,7 +296,6 @@ void LSTM::forward_task(const Task *task,
   assert(acc_hy.accessor.is_dense_arbitrary(rect_hy));
   assert(acc_cy.accessor.is_dense_arbitrary(rect_cy));
   assert(rect_hx == rect_cx);
-  assert(rect_hx == rect_y);
   assert(rect_hx == rect_hy);
   assert(rect_hx == rect_cy);
   const float *x_ptr = acc_x.ptr(rect_x.lo);
@@ -293,7 +311,8 @@ void LSTM::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
-  checkCUDNN(cudnnRNNForwardTraining(m->handle.dnn, m->rnnDesc, 1/*seqLength*/,
+  checkCUDNN(cudnnRNNForwardTraining(m->handle.dnn, m->rnnDesc,
+                                     LSTM_PER_NODE_LENGTH/*seqLength*/,
                                      m->xDescs, x_ptr, m->hxDesc, hx_ptr,
                                      m->cxDesc, cx_ptr, m->wDesc, w_ptr,
                                      m->yDescs, y_ptr, m->hyDesc, hy_ptr,
@@ -366,24 +385,25 @@ void LSTM::backward_task(const Task *task,
   assert(regions.size() == 14);
   assert(task->regions.size() == 14);
   const LSTMMeta* m = *((LSTMMeta**) task->args);
-  const AccessorRO<float, 2> acc_x(regions[0], FID_DATA);
+  const AccessorRO<float, 3> acc_x(regions[0], FID_DATA);
   const AccessorRO<float, 2> acc_hx(regions[1], FID_DATA);
   const AccessorRO<float, 2> acc_cx(regions[2], FID_DATA);
   const AccessorRO<float, 1> acc_w(regions[3], FID_DATA);
-  const AccessorRO<float, 2> acc_y(regions[4], FID_DATA);
+  const AccessorRO<float, 3> acc_y(regions[4], FID_DATA);
   const AccessorRO<float, 2> acc_hy(regions[5], FID_DATA);
   const AccessorRO<float, 2> acc_cy(regions[6], FID_DATA);
-  const AccessorWO<float, 2> acc_x_grad(regions[7], FID_DATA);
+  const AccessorWO<float, 3> acc_x_grad(regions[7], FID_DATA);
   const AccessorWO<float, 2> acc_hx_grad(regions[8], FID_DATA);
   const AccessorWO<float, 2> acc_cx_grad(regions[9], FID_DATA);
   const AccessorRW<float, 1> acc_w_grad(regions[10], FID_DATA);
-  const AccessorRO<float, 2> acc_y_grad(regions[11], FID_DATA);
+  const AccessorRO<float, 3> acc_y_grad(regions[11], FID_DATA);
   const AccessorRO<float, 2> acc_hy_grad(regions[12], FID_DATA);
   const AccessorRO<float, 2> acc_cy_grad(regions[13], FID_DATA);
 
-  Rect<2> rect_x, rect_hx, rect_cx, rect_y, rect_hy, rect_cy,
-          rect_x_grad, rect_hx_grad, rect_cx_grad,
-          rect_y_grad, rect_hy_grad, rect_cy_grad;
+  Rect<3> rect_x, rect_y, rect_x_grad, rect_y_grad;
+  Rect<2> rect_hx, rect_cx, rect_hy, rect_cy,
+          rect_hx_grad, rect_cx_grad,
+          rect_hy_grad, rect_cy_grad;
   Rect<1> rect_w, rect_w_grad;
   rect_x =
     runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
@@ -450,7 +470,8 @@ void LSTM::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
-  checkCUDNN(cudnnRNNBackwardData(m->handle.dnn, m->rnnDesc, 1/*seqLength*/,
+  checkCUDNN(cudnnRNNBackwardData(m->handle.dnn, m->rnnDesc,
+                                  LSTM_PER_NODE_LENGTH/*seqLength*/,
                                   m->yDescs, y_ptr, m->yDescs, y_grad_ptr,
                                   m->hyDesc, hy_grad_ptr, m->cyDesc, cy_grad_ptr,
                                   m->wDesc, w_ptr, m->hxDesc, hx_ptr,
@@ -458,7 +479,8 @@ void LSTM::backward_task(const Task *task,
                                   m->hxDesc, hx_grad_ptr, m->cxDesc, cx_grad_ptr,
                                   m->handle.workSpace, m->handle.workSpaceSize,
                                   m->reserveSpace, m->reserveSpaceSize));
-  checkCUDNN(cudnnRNNBackwardWeights(m->handle.dnn, m->rnnDesc, 1/*seqLength*/,
+  checkCUDNN(cudnnRNNBackwardWeights(m->handle.dnn, m->rnnDesc,
+                                     LSTM_PER_NODE_LENGTH/*seqLength*/,
                                      m->xDescs, x_ptr, m->hxDesc, hx_ptr,
                                      m->yDescs, y_ptr,
                                      m->handle.workSpace, m->handle.workSpaceSize,

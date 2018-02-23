@@ -77,23 +77,29 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
   part_is = runtime->create_index_space(ctx, part_rect);
   assert(seqLength <= MAX_SEQ_LENGTH);
   assert(numLayers <= MAX_NUM_LAYERS);
-  Rect<2> word_rect(Point<2>(0, 0), Point<2>(embed_size-1, batch_size-1));
-  IndexSpaceT<2> word_is = runtime->create_index_space(ctx, word_rect);
+  Rect<3> word_rect(Point<3>(0, 0, 0),
+                    Point<3>(embed_size-1, batch_size-1, LSTM_PER_NODE_LENGTH-1));
+  IndexSpaceT<3> word_is = runtime->create_index_space(ctx, word_rect);
   int extent_c = embed_size;
   int extent_n = batch_size / num_parts;
-  Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
-  Transform<2, 1, coord_t> trans;
-  trans[0][0] = 0; trans[1][0] = extent_n;
+  Rect<3, coord_t> extent(Point<3>(0, 0, 0),
+                          Point<3>(extent_c-1, extent_n-1, LSTM_PER_NODE_LENGTH-1));
+  Transform<3, 1, coord_t> trans;
+  trans[0][0] = 0; trans[1][0] = extent_n; trans[2][0] = 0;
   IndexPartition word_ip =
     runtime->create_partition_by_restriction(ctx, word_is, part_is, trans, extent);
   assert(runtime->is_index_partition_disjoint(ctx, word_ip));
   assert(runtime->is_index_partition_complete(ctx, word_ip));
-  for (int i = 0; i < seqLength; i++) {
-    srcs[i].numDim = 2;
+  assert(seqLength % LSTM_PER_NODE_LENGTH == 0);
+  int nodes_per_layer = seqLength / LSTM_PER_NODE_LENGTH;
+  for (int i = 0; i < nodes_per_layer; i++) {
+    srcs[i].numDim = 3;
     srcs[i].adim[0] = embed_size;
     srcs[i].adim[1] = batch_size;
+    srcs[i].adim[2] = LSTM_PER_NODE_LENGTH;
     srcs[i].pdim[0] = extent_c;
     srcs[i].pdim[1] = extent_n;
+    srcs[i].pdim[2] = LSTM_PER_NODE_LENGTH;
     srcs[i].region = runtime->create_logical_region(ctx, word_is, config.field_space);
     srcs[i].partition =
       runtime->get_logical_partition(ctx, srcs[i].region, word_ip);
@@ -161,15 +167,15 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
   }
   for (int i = 0; i < numLayers; i++) {
     // Add encoder lstm nodes
-    for (int j = 0; j < seqLength; j++) {
+    for (int j = 0; j < nodes_per_layer; j++) {
       Tensor x = (i==0) ? srcs[j] : lstm[i-1][j].x;
       Tensor hx = (j==0) ? zero[i].hx : lstm[i][j-1].hx;
       Tensor cx = (j==0) ? zero[i].cx : lstm[i][j-1].cx;
       lstm[i][j] = add_lstm_node(x, hx, cx, encoders[i]);
     }
     // Add decoder lstm nodes
-    for (int j = seqLength; j < 2*seqLength; j++) {
-      Tensor x = (i==0) ? dsts[j-seqLength] : lstm[i-1][j].x;
+    for (int j = nodes_per_layer; j < 2*nodes_per_layer; j++) {
+      Tensor x = (i==0) ? dsts[j-nodes_per_layer] : lstm[i-1][j].x;
       Tensor hx = lstm[i][j-1].hx;
       Tensor cx = lstm[i][j-1].cx;
       lstm[i][j] = add_lstm_node(x, hx, cx, decoders[i]);

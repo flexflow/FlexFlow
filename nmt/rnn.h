@@ -20,7 +20,7 @@
 
 #define MAX_SEQ_LENGTH 40
 #define MAX_NUM_LAYERS 4
-#define LSTM_PER_NODE_LENGTH 10
+#define LSTM_PER_NODE_LENGTH 5
 
 struct RnnConfig {
   Context lg_ctx;
@@ -125,7 +125,9 @@ public:
   LSTMMeta(DnnHandle handle) : OpMeta(handle) {};
   cudnnRNNDescriptor_t rnnDesc;
   cudnnDropoutDescriptor_t dropoutDesc;
-  cudnnTensorDescriptor_t xDescs[1], yDescs[1], cxDesc, hxDesc, cyDesc, hyDesc;
+  cudnnTensorDescriptor_t xDescs[LSTM_PER_NODE_LENGTH],
+                          yDescs[LSTM_PER_NODE_LENGTH],
+                          cxDesc, hxDesc, cyDesc, hyDesc;
   cudnnFilterDescriptor_t wDesc;
   size_t reserveSpaceSize;
   void* reserveSpace;
