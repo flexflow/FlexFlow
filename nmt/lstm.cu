@@ -206,9 +206,11 @@ void LSTM::init(const RnnModel& model)
   for (PointInRectIterator<1> it(part_rect); it(); it++, idx++) {
     LSTMInitParams initParams;
     initParams.handle = model.dnn_handlers[idx];
-    initParams.batchSize = batch_size;
-    initParams.inputSize = input_size;
-    initParams.outputSize = output_size;
+    initParams.batchSize = outputs[0].pdim[1];
+    initParams.inputSize = inputs[0].pdim[0];
+    initParams.outputSize = outputs[0].pdim[0];
+    // For now assume batch sizes equal
+    assert(inputs[0].pdim[1] == outputs[0].pdim[1]);
    
     TaskLauncher launcher(LSTM_INIT_TASK_ID, TaskArgument(&initParams, sizeof(initParams)),
                           Predicate::TRUE_PRED, 0/*MapperID*/, idx);
@@ -217,7 +219,7 @@ void LSTM::init(const RnnModel& model)
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =
         runtime->get_logical_subregion_by_color(inputs[i].partition, dp);
-      launcher.add_region_requirement(RegionRequirement(x, READ_ONLY, EXCLUSIVE, x));
+      launcher.add_region_requirement(RegionRequirement(x, READ_ONLY, EXCLUSIVE, inputs[i].region));
       launcher.add_field(i, FID_DATA);
     }
     launcher.add_region_requirement(
@@ -226,7 +228,7 @@ void LSTM::init(const RnnModel& model)
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =
         runtime->get_logical_subregion_by_color(outputs[i].partition, dp);
-      launcher.add_region_requirement(RegionRequirement(x, WRITE_ONLY, EXCLUSIVE, x));
+      launcher.add_region_requirement(RegionRequirement(x, WRITE_ONLY, EXCLUSIVE, outputs[i].region));
       launcher.add_field(4 + i, FID_DATA);
     }
     Future f = runtime->execute_task(ctx, launcher);
@@ -324,7 +326,7 @@ void LSTM::forward(const RnnModel& model)
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =
         runtime->get_logical_subregion_by_color(inputs[i].partition, dp);
-      launcher.add_region_requirement(RegionRequirement(x, READ_ONLY, EXCLUSIVE, x));
+      launcher.add_region_requirement(RegionRequirement(x, READ_ONLY, EXCLUSIVE, inputs[i].region));
       launcher.add_field(i, FID_DATA);
     }
     launcher.add_region_requirement(
@@ -333,7 +335,7 @@ void LSTM::forward(const RnnModel& model)
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =
         runtime->get_logical_subregion_by_color(outputs[i].partition, dp);
-      launcher.add_region_requirement(RegionRequirement(x, WRITE_ONLY, EXCLUSIVE, x));
+      launcher.add_region_requirement(RegionRequirement(x, WRITE_ONLY, EXCLUSIVE, outputs[i].region));
       launcher.add_field(4 + i, FID_DATA);
     }
     runtime->execute_task(ctx, launcher);
@@ -488,7 +490,7 @@ void LSTM::backward(const RnnModel& model)
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =
         runtime->get_logical_subregion_by_color(inputs[i].partition, dp);
-      launcher.add_region_requirement(RegionRequirement(x, READ_ONLY, EXCLUSIVE, x));
+      launcher.add_region_requirement(RegionRequirement(x, READ_ONLY, EXCLUSIVE, inputs[i].region));
       launcher.add_field(i, FID_DATA);
     }
     launcher.add_region_requirement(
@@ -497,14 +499,14 @@ void LSTM::backward(const RnnModel& model)
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =
         runtime->get_logical_subregion_by_color(outputs[i].partition, dp);
-      launcher.add_region_requirement(RegionRequirement(x, READ_ONLY, EXCLUSIVE, x));
+      launcher.add_region_requirement(RegionRequirement(x, READ_ONLY, EXCLUSIVE, outputs[i].region));
       launcher.add_field(4 + i, FID_DATA);
     }
     // add region requirements for gradients
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =
         runtime->get_logical_subregion_by_color(inputs[i].partition_grad, dp);
-      launcher.add_region_requirement(RegionRequirement(x, WRITE_ONLY, EXCLUSIVE, x));
+      launcher.add_region_requirement(RegionRequirement(x, WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
       launcher.add_field(7+i, FID_DATA);
     }
     launcher.add_region_requirement(
@@ -513,7 +515,7 @@ void LSTM::backward(const RnnModel& model)
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =
         runtime->get_logical_subregion_by_color(outputs[i].partition_grad, dp);
-      launcher.add_region_requirement(RegionRequirement(x, READ_ONLY, EXCLUSIVE, x));
+      launcher.add_region_requirement(RegionRequirement(x, READ_ONLY, EXCLUSIVE, outputs[i].region_grad));
       launcher.add_field(11 + i, FID_DATA);
     }
     runtime->execute_task(ctx, launcher);

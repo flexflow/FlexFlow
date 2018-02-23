@@ -20,6 +20,7 @@
 
 #define MAX_SEQ_LENGTH 40
 #define MAX_NUM_LAYERS 4
+#define LSTM_PER_NODE_LENGTH 10
 
 struct RnnConfig {
   Context lg_ctx;
