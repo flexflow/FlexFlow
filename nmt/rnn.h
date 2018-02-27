@@ -32,14 +32,26 @@ struct RnnConfig {
 
 struct SharedVariable {
   LogicalRegion region, gradients[MAX_NUM_WORKERS];
+  LogicalRegion subregions[2*MAX_NUM_PARTS];
+};
+
+struct ParallelConfig {
+  int nDims, dim[MAX_DIM];
+  int gpu[MAX_NUM_WORKERS];
+};
+
+struct GlobalConfig {
+  ParallelConfig linear[MAX_SEQ_LENGTH];
+  ParallelConfig lstm[MAX_NUM_LAYERS][2*MAX_SEQ_LENGTH];
+  ParallelConfig embed[2*MAX_SEQ_LENGTH];
 };
 
 class RnnModel;
 
 class RnnOp {
 public:
-  RnnOp(Tensor input);
-  RnnOp(Tensor t1, Tensor t2, Tensor t3, SharedVariable _params);
+  RnnOp(Tensor input, ParallelConfig pc, SharedVariable _params);
+  RnnOp(Tensor t1, Tensor t2, Tensor t3, ParallelConfig pc, SharedVariable _params);
   RnnOp(int num, Tensor* inputs);
   virtual void init(const RnnModel&) = 0;
 
@@ -52,6 +64,7 @@ public:
   Tensor outputs[MAX_NUM_OUTPUTS];
   Tensor inputs[MAX_NUM_INPUTS];
   OpMeta* meta[MAX_NUM_WORKERS];
+  ParallelConfig paraConfig;
   SharedVariable params;
 };
 
@@ -59,10 +72,12 @@ struct LSTMTensors {
   Tensor x, hx, cx;
 };
 
-class RnnModel{
+class RnnModel {
 public:
   RnnModel(int batch_size, int numLayers, int seqLength,
-           int hidden_size, int embed_size, int num_parts, int num_workers,
+           int hidden_size, int embed_size, int vocab_size,
+           int num_parts, int num_workers,
+           GlobalConfig global,
            Context ctx, Runtime *runtime);
 
   void init();
@@ -73,7 +88,11 @@ public:
 
   void update();
 
-  LSTMTensors add_lstm_node(Tensor x, Tensor hx, Tensor cx, SharedVariable params);
+  LSTMTensors add_lstm_node(Tensor x, Tensor hx, Tensor cx,
+                            ParallelConfig pc, SharedVariable params);
+
+  Tensor add_linear_node(Tensor x, int output_size,
+                         ParallelConfig pc, SharedVariable params);
 public:
   RnnConfig config;
   std::vector<RnnOp*> layers;
@@ -89,8 +108,8 @@ public:
 class LSTM : public RnnOp {
 public:
   LSTM(RnnConfig config, Tensor x, Tensor hx, Tensor cx,
-       SharedVariable params, IndexSpaceT<1> part_is,
-       int batch_size, int input_size, int output_size);
+       int batch_size, int input_size, int output_size,
+       ParallelConfig pc, SharedVariable params);
 
   void init(const RnnModel&);
 
@@ -131,6 +150,52 @@ public:
   cudnnFilterDescriptor_t wDesc;
   size_t reserveSpaceSize;
   void* reserveSpace;
+  bool profiling_runtime;
+};
+
+class Linear : public RnnOp {
+public:
+  Linear(RnnConfig config, Tensor input, int output_channels,
+         ParallelConfig pc, SharedVariable params,
+         IndexSpaceT<1> input_part_is);
+
+  void init(const RnnModel&);
+
+  void forward(const RnnModel&);
+
+  void backward(const RnnModel&);
+
+  void update(const RnnModel &);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, HighLevelRuntime *runtime);
+
+  static void update_task(const Task *task,
+                          const std::vector<PhysicalRegion> &regions,
+                          Context ctx, HighLevelRuntime *runtime);
+public:
+  int batch_size, input_size, output_size;
+  Tensor replica;
+  // each replica_sub_lps[i] is a disjoint partition
+  LogicalPartition replica_sub_lps[MAX_NUM_WORKERS];
+  // input_lp may be an aliased partition if num_par_c > 1
+  LogicalPartition input_lp;
+  Rect<2> part_rect;
+};
+
+class LinearMeta : public OpMeta {
+public:
+  LinearMeta(DnnHandle handle) : OpMeta(handle) {};
+  float* one_ptr;
   bool profiling_runtime;
 };
 

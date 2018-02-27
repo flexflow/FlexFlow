@@ -24,6 +24,8 @@ LegionRuntime::Logger::Category log_nmt("nmt");
 void parse_input_args(char **argv, int argc,
                       int &batch_size, int &num_layers, int &seq_length,
                       int &hidden_size, int &embed_size);
+void set_global_config(GlobalConfig &global, int num_layers,
+                       int seq_length, int num_parts);
 
 void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime)
@@ -33,6 +35,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int seq_length = 40;
   int hidden_size = 1024;
   int embed_size = 1024;
+  int vocab_size = 32 * 1024;
   int num_workers = 2;
   int num_parts = 2;
   int num_iterations = 10;
@@ -43,7 +46,10 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
     parse_input_args(argv, argc, batch_size, num_layers, seq_length,
                      hidden_size, embed_size);
   }
-  RnnModel model(batch_size, num_layers, seq_length, hidden_size, embed_size, num_parts, num_workers, ctx, runtime);
+  GlobalConfig global;
+  set_global_config(global, num_layers, seq_length, num_parts);
+  RnnModel model(batch_size, num_layers, seq_length, hidden_size, embed_size,
+                 vocab_size, num_parts, num_workers, global, ctx, runtime);
   ArgumentMap local_args;
   size_t workSpaceSize = (size_t) 2 * 1024 * 1024 * 1024;
   Rect<1> workers_rect(Point<1>(0), Point<1>(num_workers-1));
@@ -87,7 +93,7 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<DnnHandle, init_cudnn>(registrar, "cudnn_init_task");
   }
-  // Pooling2D task
+  // LSTM task
   {
     TaskVariantRegistrar registrar(LSTM_INIT_TASK_ID, "lstm_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
@@ -106,7 +112,26 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<LSTM::backward_task>(registrar, "lstm_bwd_task");
   }
-  
+  // Rnn Linear task
+  {
+    TaskVariantRegistrar registrar(RNN_LINEAR_INIT_TASK_ID, "linear_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Linear::init_task>(registrar, "lnear_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(RNN_LINEAR_FWD_TASK_ID, "linar_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Linear::forward_task>(registrar, "linear_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(RNN_LINEAR_BWD_TASK_ID, "linear_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Linear::backward_task>(registrar, "linear_bwd_task");
+  }
+
   Runtime::add_registration_callback(update_mappers);
   return Runtime::start(argc, argv);
 }
@@ -142,6 +167,28 @@ void parse_input_args(char **argv, int argc,
       embed_size = atoi(argv[++i]);
       continue;
     }
+  }
+}
+
+void set_global_config(GlobalConfig &global, int num_layers, int seq_length, int num_parts)
+{
+  for (int i = 0; i < num_layers; i++)
+    for (int j = 0; j * LSTM_PER_NODE_LENGTH < 2 * seq_length; j++) {
+      ParallelConfig pc;
+      pc.nDims = 1;
+      pc.dim[0] = num_parts;
+      for (int k = 0; k < num_parts; k++)
+        pc.gpu[k] = k;
+      global.lstm[i][j] = pc;
+    }
+  for (int i = 0; i * LSTM_PER_NODE_LENGTH < seq_length; i++) {
+    ParallelConfig pc;
+    pc.nDims = 2;
+    pc.dim[0] = num_parts;
+    pc.dim[1] = 1;
+    for (int j = 0; j < num_parts; j++)
+      pc.gpu[j] = j;
+    global.linear[i] = pc;
   }
 }
 

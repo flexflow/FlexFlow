@@ -34,13 +34,14 @@ DnnHandle init_cudnn(const Task *task,
   return handle;
 }
 
-RnnOp::RnnOp(Tensor input)
+RnnOp::RnnOp(Tensor input, ParallelConfig pc, SharedVariable _params)
+: paraConfig(pc), params(_params)
 {
   inputs[0] = input;
 }
 
-RnnOp::RnnOp(Tensor t1, Tensor t2, Tensor t3, SharedVariable _params)
-: params(_params)
+RnnOp::RnnOp(Tensor t1, Tensor t2, Tensor t3, ParallelConfig pc, SharedVariable _params)
+: paraConfig(pc), params(_params)
 {
   inputs[0] = t1;
   inputs[1] = t2;
@@ -55,7 +56,9 @@ RnnOp::RnnOp(int n, Tensor *_inputs)
 }
 
 RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
-                   int hidden_size, int embed_size, int num_parts, int num_workers,
+                   int hidden_size, int embed_size, int vocab_size,
+                   int num_parts, int num_workers,
+                   GlobalConfig global,
                    Context ctx, Runtime *runtime)
 {
   config.lg_ctx = ctx;
@@ -165,21 +168,70 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
         runtime->create_logical_region(ctx, params_is, config.field_space);
     }
   }
+  SharedVariable linear;
+  {
+    int numParams = (hidden_size + 1) * vocab_size;
+    Rect<1> params_rect(Point<1>(0), Point<1>(numParams-1));
+    IndexSpaceT<1> params_is = runtime->create_index_space(ctx, params_rect);
+    linear.region = runtime->create_logical_region(ctx, params_is, config.field_space);
+    // Create subregions for the shared variable linear
+    for (int parts = 1; parts <= MAX_NUM_PARTS; parts *= 2) {
+      Rect<1> rect(Point<1>(0), Point<1>(parts-1));
+      IndexSpaceT<1> is = runtime->create_index_space(ctx, rect);
+      IndexPartition ip = runtime->create_equal_partition(ctx, params_is, is);
+      LogicalPartition lp = runtime->get_logical_partition(ctx, linear.region, ip);
+      int idx = 0;
+      for (PointInRectIterator<1> it(rect); it(); it++, idx++) {
+        DomainPoint dp(*it);
+        linear.subregions[parts+idx]
+          = runtime->get_logical_subregion_by_color(ctx, lp, dp);
+      }
+    }
+    // Compute bboxes for the shared variable linear
+    std::map<int, Rect<1> > bboxes;
+    for (int i = 0; i < nodes_per_layer; i++) {
+      ParallelConfig pc = global.linear[i];
+      assert(pc.nDims == 2);
+      for (int j = 0; j < pc.dim[1]; j++)
+        for (int k = 0; k < pc.dim[0]; k++) {
+          int gpuIdx = pc.gpu[j * pc.dim[0] +k];
+          Rect<1> rect = runtime->get_index_space_domain(ctx,
+                             linear.subregions[pc.dim[0]+k].get_index_space());
+          if (bboxes.find(gpuIdx) == bboxes.end())
+            bboxes[gpuIdx] = rect;
+          else
+            bboxes[gpuIdx] = bboxes[gpuIdx].union_bbox(rect);
+        }
+    }
+    // TODO: Manually set bbox for the first GPU on each node
+    for (int i = 0; i < num_workers; i++) 
+      if (bboxes.find(i) != bboxes.end()) {
+        IndexSpaceT<1> params_is = runtime->create_index_space(ctx, bboxes[i]);
+        linear.gradients[i] =
+          runtime->create_logical_region(ctx, params_is, config.field_space);
+      } else
+        linear.gradients[i] = LogicalRegion::NO_REGION;
+  }
   for (int i = 0; i < numLayers; i++) {
     // Add encoder lstm nodes
     for (int j = 0; j < nodes_per_layer; j++) {
       Tensor x = (i==0) ? srcs[j] : lstm[i-1][j].x;
       Tensor hx = (j==0) ? zero[i].hx : lstm[i][j-1].hx;
       Tensor cx = (j==0) ? zero[i].cx : lstm[i][j-1].cx;
-      lstm[i][j] = add_lstm_node(x, hx, cx, encoders[i]);
+      lstm[i][j] = add_lstm_node(x, hx, cx, global.lstm[i][j], encoders[i]);
     }
     // Add decoder lstm nodes
     for (int j = nodes_per_layer; j < 2*nodes_per_layer; j++) {
       Tensor x = (i==0) ? dsts[j-nodes_per_layer] : lstm[i-1][j].x;
       Tensor hx = lstm[i][j-1].hx;
       Tensor cx = lstm[i][j-1].cx;
-      lstm[i][j] = add_lstm_node(x, hx, cx, decoders[i]);
+      lstm[i][j] = add_lstm_node(x, hx, cx, global.lstm[i][j], decoders[i]);
     }
+  }
+  // Add linear nodes
+  for (int j = nodes_per_layer; j < 2*nodes_per_layer; j++) {
+    add_linear_node(lstm[numLayers-1][j].x, vocab_size,
+                    global.linear[j-nodes_per_layer], linear);
   }
 }
 

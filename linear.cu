@@ -216,7 +216,7 @@ OpMeta* Linear::init_task(const Task *task,
     dram_one_ptr[i] = 1.0f;
   checkCUDA(cudaMalloc(&m->one_ptr, sizeof(float) * batch_size));
   checkCUDA(cudaMemcpy(m->one_ptr, dram_one_ptr,
-                       sizeof(float) * batch_size, cudaMemcpyDeviceToDevice));
+                       sizeof(float) * batch_size, cudaMemcpyHostToDevice));
   if (m->relu) {
     checkCUDNN(cudnnCreateActivationDescriptor(&m->actiDesc));
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,

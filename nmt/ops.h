@@ -33,6 +33,7 @@ template<typename FT, int N, typename T = coord_t> using AccessorWO = FieldAcces
 #define MAX_NUM_OUTPUTS 6
 #define MAX_NUM_LOCALS 3
 #define MAX_NUM_WORKERS 16
+#define MAX_NUM_PARTS 16
 #define MAX_DIM 4
 #define MAX_FILENAME 200
 
@@ -70,7 +71,13 @@ enum TaskIDs {
   LSTM_INIT_TASK_ID,
   LSTM_FWD_TASK_ID,
   LSTM_BWD_TASK_ID,
-  LSTM_UPD_TASK_ID
+  LSTM_UPD_TASK_ID,
+  RNN_LINEAR_INIT_TASK_ID,
+  RNN_LINEAR_FWD_TASK_ID,
+  RNN_LINEAR_BWD_TASK_ID,
+  RNN_LINEAR_BWD2_TASK_ID,
+  RNN_LINEAR_UPD_TASK_ID
+
 };
 
 enum Pool2DType {

@@ -17,14 +17,13 @@
 #include "rnn.h"
 #include "../cnn_helper.h"
 
-#define DUMMY_ID 0
-
 struct LSTMInitParams {
   DnnHandle handle;
   int batchSize, inputSize, outputSize;
 };
 
-LSTMTensors RnnModel::add_lstm_node(Tensor x, Tensor hx, Tensor cx, SharedVariable params)
+LSTMTensors RnnModel::add_lstm_node(Tensor x, Tensor hx, Tensor cx,
+                                    ParallelConfig pc, SharedVariable params)
 {
   assert(x.numDim == 3);
   assert(hx.numDim == 2);
@@ -37,8 +36,8 @@ LSTMTensors RnnModel::add_lstm_node(Tensor x, Tensor hx, Tensor cx, SharedVariab
   int input_size = x.adim[0];
   int output_size = hx.adim[0];
   assert(cx.adim[0] == output_size);
-  LSTM* node = new LSTM(config, x, hx, cx, params, part_is,
-                        batch_size, input_size, output_size);
+  LSTM* node = new LSTM(config, x, hx, cx, batch_size, 
+                        input_size, output_size, pc, params);
   layers.push_back(node);
   LSTMTensors output;
   output.x = node->outputs[0];
@@ -53,16 +52,21 @@ LSTMTensors RnnModel::add_lstm_node(Tensor x, Tensor hx, Tensor cx, SharedVariab
  output[2]: cy
  */
 LSTM::LSTM(RnnConfig config, Tensor x, Tensor hx, Tensor cx,
-           SharedVariable _params, IndexSpaceT<1> part_is,
-           int _batch_size, int _input_size, int _output_size)
-: RnnOp(x, hx, cx, _params), batch_size(_batch_size),
+           int _batch_size, int _input_size, int _output_size,
+           ParallelConfig pc, SharedVariable _params)
+: RnnOp(x, hx, cx, pc, _params), batch_size(_batch_size),
   input_size(_input_size), output_size(_output_size)
 {
   printf("LSTM node: batch(%d) input(%d) output(%d)\n",
          batch_size, input_size, output_size);
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
-  part_rect = runtime->get_index_space_domain(ctx, part_is);
+  assert(pc.nDims == 1);
+  {
+    Rect<1> rect(Point<1>(0), Point<1>(pc.dim[0]-1));
+    part_rect = rect;
+  }
+  IndexSpaceT<1> part_is = runtime->create_index_space(ctx, part_rect);
   FieldSpace fs = config.field_space;
   Rect<3, coord_t> y_rect(Point<3>(0, 0, 0),
                           Point<3>(output_size-1, batch_size-1, LSTM_PER_NODE_LENGTH-1));
