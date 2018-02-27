@@ -27,7 +27,8 @@ struct RnnConfig {
   HighLevelRuntime *lg_hlr;
   FieldSpace field_space;
   int batchSize, hiddenSize, embedSize;
-  int numLayers, seqLength, numParts, numWorkers;
+  int numLayers, seqLength, numParts;
+  int numNodes, workersPerNode;
 };
 
 struct SharedVariable {
@@ -76,7 +77,7 @@ class RnnModel {
 public:
   RnnModel(int batch_size, int numLayers, int seqLength,
            int hidden_size, int embed_size, int vocab_size,
-           int num_parts, int num_workers,
+           int num_parts, int num_nodes, int num_workers_per_node,
            GlobalConfig global,
            Context ctx, Runtime *runtime);
 
@@ -88,6 +89,12 @@ public:
 
   void update();
 
+  void update_shared_variable(SharedVariable params);
+
+  static void params_update_task(const Task *task,
+                                 const std::vector<PhysicalRegion> &regions,
+                                 Context ctx, HighLevelRuntime *runtime);
+
   LSTMTensors add_lstm_node(Tensor x, Tensor hx, Tensor cx,
                             ParallelConfig pc, SharedVariable params);
 
@@ -96,6 +103,7 @@ public:
 public:
   RnnConfig config;
   std::vector<RnnOp*> layers;
+  std::vector<SharedVariable> sharedVariables;
   DnnHandle dnn_handlers[MAX_NUM_WORKERS];
   Tensor srcs[MAX_SEQ_LENGTH], dsts[MAX_SEQ_LENGTH];
   IndexSpaceT<1> part_is;

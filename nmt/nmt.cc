@@ -36,7 +36,8 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int hidden_size = 1024;
   int embed_size = 1024;
   int vocab_size = 32 * 1024;
-  int num_workers = 2;
+  int num_nodes = 1;
+  int workers_per_node = 2;
   int num_parts = 2;
   int num_iterations = 10;
   {
@@ -49,10 +50,11 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   GlobalConfig global;
   set_global_config(global, num_layers, seq_length, num_parts);
   RnnModel model(batch_size, num_layers, seq_length, hidden_size, embed_size,
-                 vocab_size, num_parts, num_workers, global, ctx, runtime);
+                 vocab_size, num_parts, num_nodes, workers_per_node,
+                 global, ctx, runtime);
   ArgumentMap local_args;
   size_t workSpaceSize = (size_t) 2 * 1024 * 1024 * 1024;
-  Rect<1> workers_rect(Point<1>(0), Point<1>(num_workers-1));
+  Rect<1> workers_rect(Point<1>(0), Point<1>(num_nodes * workers_per_node-1));
   int idx = 0;
   for (PointInRectIterator<1> it(workers_rect); it(); it++) {
     TaskLauncher launcher(CUDNN_INIT_TASK_ID,
@@ -67,6 +69,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   for (int i = 0; i < num_iterations; i++) {
     model.forward();
     model.backward();
+    model.update();
   }
   runtime->issue_execution_fence(ctx);
   TimingLauncher timer(MEASURE_MICRO_SECONDS);
@@ -130,6 +133,13 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Linear::backward_task>(registrar, "linear_bwd_task");
+  }
+  // Params update task
+  {
+    TaskVariantRegistrar registrar(PARAMS_UPD_TASK_ID, "params_upd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<RnnModel::params_update_task>(registrar, "params_upd_task");
   }
 
   Runtime::add_registration_callback(update_mappers);

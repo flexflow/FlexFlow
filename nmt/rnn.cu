@@ -14,6 +14,7 @@
  */
 
 #include "rnn.h"
+#include "rnn_mapper.h"
 #include "../cnn_helper.h"
 
 DnnHandle init_cudnn(const Task *task,
@@ -57,7 +58,7 @@ RnnOp::RnnOp(int n, Tensor *_inputs)
 
 RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
                    int hidden_size, int embed_size, int vocab_size,
-                   int num_parts, int num_workers,
+                   int num_parts, int num_nodes, int num_gpus_per_node,
                    GlobalConfig global,
                    Context ctx, Runtime *runtime)
 {
@@ -69,7 +70,8 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
   config.numLayers = numLayers;
   config.seqLength = seqLength;
   config.numParts = num_parts;
-  config.numWorkers = num_workers;
+  config.numNodes = num_nodes;
+  config.workersPerNode = num_gpus_per_node;
   config.field_space = runtime->create_field_space(ctx);
   {
     FieldAllocator allocator =
@@ -161,7 +163,7 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
       runtime->create_logical_region(ctx, params_is, config.field_space);
     decoders[i].region =
       runtime->create_logical_region(ctx, params_is, config.field_space);
-    for (int j = 0; j < num_workers; j++) {
+    for (int j = 0; j < config.numNodes * config.workersPerNode; j++) {
       encoders[i].gradients[j] =
         runtime->create_logical_region(ctx, params_is, config.field_space);
       decoders[i].gradients[j] =
@@ -204,7 +206,7 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
         }
     }
     // TODO: Manually set bbox for the first GPU on each node
-    for (int i = 0; i < num_workers; i++) 
+    for (int i = 0; i < config.numNodes * config.workersPerNode; i++) 
       if (bboxes.find(i) != bboxes.end()) {
         IndexSpaceT<1> params_is = runtime->create_index_space(ctx, bboxes[i]);
         linear.gradients[i] =
@@ -233,6 +235,12 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
     add_linear_node(lstm[numLayers-1][j].x, vocab_size,
                     global.linear[j-nodes_per_layer], linear);
   }
+  // Add shared variables
+  for (int i = 0; i < config.numLayers; i++) {
+    sharedVariables.push_back(encoders[i]);
+    sharedVariables.push_back(decoders[i]);
+  }
+  sharedVariables.push_back(linear);
 }
 
 void RnnModel::init()
@@ -254,3 +262,76 @@ void RnnModel::backward()
     layers[i]->backward(*this); 
   }
 }
+
+void RnnModel::update()
+{
+  for (int i = 0; i < sharedVariables.size(); i++)
+    update_shared_variable(sharedVariables[i]);
+}
+
+/*
+  regions[0]: (I/O): w
+  regions[1..]: (O): w_grad
+ */
+void RnnModel::params_update_task(const Task *task,
+                                  const std::vector<PhysicalRegion> &regions,
+                                  Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == task->regions.size());
+  float rate = *((float*)task->args);
+  const AccessorRW<float, 1> acc_w(regions[0], FID_DATA);
+  Rect<1> rect_w =
+    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  assert(acc_w.accessor.is_dense_arbitrary(rect_w));
+  for (int i = 1; i < regions.size(); i++) {
+    const AccessorRO<float, 1> acc_w_grad(regions[i], FID_DATA);
+    Rect<1> rect_w_grad =
+      runtime->get_index_space_domain(ctx, task->regions[i].region.get_index_space());
+    assert(rect_w.contains(rect_w_grad));
+    assert(acc_w_grad.accessor.is_dense_arbitrary(rect_w_grad));
+    float *w_ptr = acc_w.ptr(rect_w_grad.lo);
+    const float *w_grad_ptr = acc_w_grad.ptr(rect_w_grad.lo);
+    apply_add_with_scale<<<GET_BLOCKS(rect_w_grad.volume()), CUDA_NUM_THREADS>>>(
+        w_ptr, w_grad_ptr, rect_w_grad.volume(), rate);
+  }
+}
+
+void RnnModel::update_shared_variable(SharedVariable params)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  float rate = 1.0f;
+  for (int node = 0; node < config.numNodes; node++) {
+    TaskLauncher launcher(PARAMS_UPD_TASK_ID, TaskArgument(&rate, sizeof(rate)),
+                          Predicate::TRUE_PRED, 0/*MapperID*/,
+                          RnnMapper::assign_to_gpu(node * config.workersPerNode));
+    int cnt = 0;
+    for (int idx = 0; idx < config.workersPerNode; idx++) {
+      int gpuIdx = node * config.workersPerNode + idx;
+      LogicalRegion grad = params.gradients[gpuIdx];
+      if (grad == LogicalRegion::NO_REGION) continue;
+      launcher.add_region_requirement(
+        RegionRequirement(grad, idx == 0 ? READ_WRITE:READ_ONLY, EXCLUSIVE, grad));
+      launcher.add_field(cnt++, FID_DATA);
+    }
+    runtime->execute_task(ctx, launcher);
+  }
+
+  rate = 0.001f;
+  TaskLauncher launcher(PARAMS_UPD_TASK_ID, TaskArgument(&rate, sizeof(rate)),
+                        Predicate::TRUE_PRED, 0/*MapperID*/);
+  launcher.add_region_requirement(
+    RegionRequirement(params.region, READ_WRITE, EXCLUSIVE, params.region));
+  launcher.add_field(0, FID_DATA);
+  for (int node = 0; node < config.numNodes; node++) {
+    int gpuIdx = node * config.workersPerNode;
+    LogicalRegion grad = params.gradients[gpuIdx];
+    int cnt = 1;
+    if (grad == LogicalRegion::NO_REGION) continue;
+    launcher.add_region_requirement(
+      RegionRequirement(grad, READ_ONLY, EXCLUSIVE, grad));
+    launcher.add_field(cnt++, FID_DATA);
+  }
+  runtime->execute_task(ctx, launcher);
+}
+

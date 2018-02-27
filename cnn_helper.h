@@ -53,6 +53,10 @@ void ones_kernel(float* ptr, coord_t size);
 __global__
 void reluBackward(float* grad_ptr, const float* input, int n);
 
+__global__
+void apply_add_with_scale(float *data_ptr, const float *grad_ptr,
+                          size_t size, float scale);
+
 __host__
 void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
                int num_replica, float learning_rate);

@@ -41,11 +41,13 @@ public:
     //                    const Task& task,
       //                  const MapTaskInput& input,
         //                MapTaskOutput& output);
+  static MappingTagID assign_to_gpu(int gpuIdx);
 protected:
   std::vector<Processor>& gpus;
   std::map<Processor, Memory>& proc_fbmems;
   std::vector<Processor>& cpus;
 };
+
 
 void update_mappers(Machine machine, Runtime *rt, const std::set<Processor> &local_procs);
 #endif

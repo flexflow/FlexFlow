@@ -14,6 +14,7 @@
  */
 
 #include "rnn_mapper.h"
+#define ASSIGN_TO_GPU_MASK 0xABCD0000
 
 RnnMapper::RnnMapper(MapperRuntime *rt, Machine machine, Processor local,
                      const char *mapper_name,
@@ -28,10 +29,7 @@ void RnnMapper::select_task_options(const MapperContext ctx,
                                     const Task& task,
                                     TaskOptions& output)
 {
-  if ((task.task_id == CUDNN_INIT_TASK_ID)
-     ||(task.task_id == LSTM_FWD_TASK_ID)
-     ||(task.task_id == LSTM_BWD_TASK_ID)
-     ||(task.task_id == LSTM_INIT_TASK_ID)) {
+  if ((task.tag & ASSIGN_TO_GPU_MASK) == ASSIGN_TO_GPU_MASK) {
     output.inline_task = false;
     output.stealable = false;
     output.map_locally = true;
@@ -95,3 +93,10 @@ void update_mappers(Machine machine, Runtime *runtime,
     runtime->replace_default_mapper(mapper, *it);
   }
 }
+
+MappingTagID RnnMapper::assign_to_gpu(int idx)
+{
+  assert(idx <= 0xFFFF);
+  return (ASSIGN_TO_GPU_MASK | idx);
+}
+

@@ -15,6 +15,7 @@
 
 
 #include "rnn.h"
+#include "rnn_mapper.h"
 #include "../cnn_helper.h"
 
 struct LSTMInitParams {
@@ -235,7 +236,8 @@ void LSTM::init(const RnnModel& model)
     assert(inputs[0].pdim[1] == outputs[0].pdim[1]);
    
     TaskLauncher launcher(LSTM_INIT_TASK_ID, TaskArgument(&initParams, sizeof(initParams)),
-                          Predicate::TRUE_PRED, 0/*MapperID*/, idx);
+                          Predicate::TRUE_PRED, 0/*MapperID*/,
+                          RnnMapper::assign_to_gpu(paraConfig.gpu[idx]));
     DomainPoint dp(*it);
     // add region requirements for x, hx, cx
     for (int i = 0; i < 3; i++) {
@@ -343,7 +345,8 @@ void LSTM::forward(const RnnModel& model)
   for (PointInRectIterator<1> it(part_rect); it(); it++, idx++) {
     OpMeta* mp = meta[idx];
     TaskLauncher launcher(LSTM_FWD_TASK_ID, TaskArgument(&mp, sizeof(OpMeta*)),
-                          Predicate::TRUE_PRED, 0/*MapperID*/, idx);
+                          Predicate::TRUE_PRED, 0/*MapperID*/,
+                          RnnMapper::assign_to_gpu(paraConfig.gpu[idx]));
     DomainPoint dp(*it);
     // add region requirements for x, hx, cx
     for (int i = 0; i < 3; i++) {
@@ -511,7 +514,8 @@ void LSTM::backward(const RnnModel& model)
     OpMeta* mp = meta[idx];
     DomainPoint dp(*it);
     TaskLauncher launcher(LSTM_BWD_TASK_ID, TaskArgument(&mp, sizeof(OpMeta*)),
-                          Predicate::TRUE_PRED, 0/*MapperID*/, idx);
+                          Predicate::TRUE_PRED, 0/*MapperID*/,
+                          RnnMapper::assign_to_gpu(paraConfig.gpu[idx]));
     // add region requirements for x, hx, cx
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =
@@ -551,3 +555,4 @@ void LSTM::backward(const RnnModel& model)
 void LSTM::update(const RnnModel& model)
 {
 }
+

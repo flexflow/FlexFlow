@@ -14,6 +14,7 @@
  */
 
 #include "rnn.h"
+#include "rnn_mapper.h"
 #include "../cnn_helper.h"
 
 struct LinearInitParams {
@@ -176,7 +177,8 @@ void Linear::init(const RnnModel& model)
     assert(outputs[0].pdim[1] == inputs[0].pdim[1]);
     TaskLauncher launcher(RNN_LINEAR_INIT_TASK_ID,
                           TaskArgument(&initParams, sizeof(initParams)),
-                          Predicate::TRUE_PRED, 0/*MapperID*/, idx);
+                          Predicate::TRUE_PRED, 0/*MapperID*/,
+                          RnnMapper::assign_to_gpu(paraConfig.gpu[idx]));
     DomainPoint dp(*it);
     // Add input
     {
@@ -271,7 +273,8 @@ void Linear::forward(const RnnModel &model)
     OpMeta* mp = meta[idx];
     TaskLauncher launcher(RNN_LINEAR_FWD_TASK_ID,
                           TaskArgument(&mp, sizeof(OpMeta*)),
-                          Predicate::TRUE_PRED, 0/*MapperID*/, idx);
+                          Predicate::TRUE_PRED, 0/*MapperID*/,
+                          RnnMapper::assign_to_gpu(paraConfig.gpu[idx]));
     DomainPoint dp(*it);
     // Add input
     {
