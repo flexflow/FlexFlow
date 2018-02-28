@@ -205,7 +205,23 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
             bboxes[gpuIdx] = bboxes[gpuIdx].union_bbox(rect);
         }
     }
-    // TODO: Manually set bbox for the first GPU on each node
+    // The first bbox on each node is a superset of all bboxes on that node
+    for (int n = 0; n < config.numNodes; n++) {
+      if (bboxes.find(n * config.workersPerNode) == bboxes.end()) {
+        // First find a non empty bbox on that node
+        for (int j = 0; j < config.workersPerNode; j++)
+          if (bboxes.find(n * config.workersPerNode + j) != bboxes.end())
+            bboxes[n * config.workersPerNode] =
+              bboxes[n * config.workersPerNode + j];
+      }
+      for (int j = 1; j < config.workersPerNode; j++)
+        if (bboxes.find(n * config.workersPerNode + j) != bboxes.end()) {
+          assert(bboxes.find(n * config.workersPerNode) != bboxes.end());
+          Rect<1> rect = bboxes[n * config.workersPerNode + j];
+          bboxes[n * config.workersPerNode] =
+            bboxes[n * config.workersPerNode].union_bbox(rect);
+        }
+    }
     for (int i = 0; i < config.numNodes * config.workersPerNode; i++) 
       if (bboxes.find(i) != bboxes.end()) {
         IndexSpaceT<1> params_is = runtime->create_index_space(ctx, bboxes[i]);

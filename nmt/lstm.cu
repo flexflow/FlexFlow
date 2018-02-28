@@ -228,7 +228,7 @@ void LSTM::init(const RnnModel& model)
   int idx = 0;
   for (PointInRectIterator<1> it(part_rect); it(); it++, idx++) {
     LSTMInitParams initParams;
-    initParams.handle = model.dnn_handlers[idx];
+    initParams.handle = model.dnn_handlers[paraConfig.gpu[idx]];
     initParams.batchSize = outputs[0].pdim[1];
     initParams.inputSize = inputs[0].pdim[0];
     initParams.outputSize = outputs[0].pdim[0];
@@ -256,7 +256,7 @@ void LSTM::init(const RnnModel& model)
       launcher.add_field(4 + i, FID_DATA);
     }
     Future f = runtime->execute_task(ctx, launcher);
-    meta[idx] = f.get_result<OpMeta*>();
+    meta[paraConfig.gpu[idx]] = f.get_result<OpMeta*>();
   }
 }
 
@@ -343,7 +343,7 @@ void LSTM::forward(const RnnModel& model)
   Runtime* runtime = model.config.lg_hlr;
   int idx = 0;
   for (PointInRectIterator<1> it(part_rect); it(); it++, idx++) {
-    OpMeta* mp = meta[idx];
+    OpMeta* mp = meta[paraConfig.gpu[idx]];
     TaskLauncher launcher(LSTM_FWD_TASK_ID, TaskArgument(&mp, sizeof(OpMeta*)),
                           Predicate::TRUE_PRED, 0/*MapperID*/,
                           RnnMapper::assign_to_gpu(paraConfig.gpu[idx]));
@@ -511,7 +511,7 @@ void LSTM::backward(const RnnModel& model)
   Runtime* runtime = model.config.lg_hlr;
   int idx = 0;
   for (PointInRectIterator<1> it(part_rect); it(); it++, idx++) {
-    OpMeta* mp = meta[idx];
+    OpMeta* mp = meta[paraConfig.gpu[idx]];
     DomainPoint dp(*it);
     TaskLauncher launcher(LSTM_BWD_TASK_ID, TaskArgument(&mp, sizeof(OpMeta*)),
                           Predicate::TRUE_PRED, 0/*MapperID*/,
@@ -540,7 +540,8 @@ void LSTM::backward(const RnnModel& model)
       launcher.add_field(7+i, FID_DATA);
     }
     launcher.add_region_requirement(
-        RegionRequirement(params.gradients[idx], READ_WRITE, EXCLUSIVE, params.gradients[idx]));
+        RegionRequirement(params.gradients[paraConfig.gpu[idx]], READ_WRITE, EXCLUSIVE,
+                          params.gradients[paraConfig.gpu[idx]]));
     launcher.add_field(10, FID_DATA);
     for (int i = 0; i < 3; i++) {
       LogicalRegion x =

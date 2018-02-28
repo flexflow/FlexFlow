@@ -30,15 +30,15 @@ void set_global_config(GlobalConfig &global, int num_layers,
 void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime)
 {
-  int batch_size = 256;
+  int batch_size = 512;
   int num_layers = 2;
   int seq_length = 40;
   int hidden_size = 1024;
   int embed_size = 1024;
   int vocab_size = 32 * 1024;
   int num_nodes = 1;
-  int workers_per_node = 2;
-  int num_parts = 2;
+  int workers_per_node = 4;
+  int num_parts = 4;
   int num_iterations = 10;
   {
     const InputArgs &command_args = HighLevelRuntime::get_input_args();
@@ -59,7 +59,8 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   for (PointInRectIterator<1> it(workers_rect); it(); it++) {
     TaskLauncher launcher(CUDNN_INIT_TASK_ID,
                           TaskArgument(&workSpaceSize, sizeof(workSpaceSize)),
-                          Predicate::TRUE_PRED, 0/*MapperID*/, idx);
+                          Predicate::TRUE_PRED, 0/*MapperID*/,
+                          RnnMapper::assign_to_gpu(idx));
     Future f = runtime->execute_task(ctx, launcher);
     model.dnn_handlers[idx++] = f.get_result<DnnHandle>();
   }
@@ -120,7 +121,7 @@ int main(int argc, char **argv)
     TaskVariantRegistrar registrar(RNN_LINEAR_INIT_TASK_ID, "linear_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta*, Linear::init_task>(registrar, "lnear_init_task");
+    Runtime::preregister_task_variant<OpMeta*, Linear::init_task>(registrar, "linear_init_task");
   }
   {
     TaskVariantRegistrar registrar(RNN_LINEAR_FWD_TASK_ID, "linar_fwd_task");
@@ -134,6 +135,13 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<Linear::backward_task>(registrar, "linear_bwd_task");
   }
+  {
+    TaskVariantRegistrar registrar(RNN_LINEAR_BWD2_TASK_ID, "linear_bwd2_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Linear::backward2_task>(registrar, "linear_bwd2_task");
+  }
+
   // Params update task
   {
     TaskVariantRegistrar registrar(PARAMS_UPD_TASK_ID, "params_upd_task");

@@ -43,6 +43,7 @@ Linear::Linear(RnnConfig config, Tensor input, int _output_size,
   assert(pc.nDims == 2);
   int num_par_n = pc.dim[1];
   int num_par_c = pc.dim[0];
+  input_part_rect = runtime->get_index_space_domain(ctx, input_part_is);
   {
     Rect<2> rect(Point<2>(0, 0), Point<2>(num_par_c-1, num_par_n-1));
     part_rect = rect;
@@ -89,14 +90,15 @@ Linear::Linear(RnnConfig config, Tensor input, int _output_size,
   assert(runtime->is_index_partition_complete(ctx, replica_ip));
   replica.partition_grad = runtime->get_logical_partition(ctx, replica.region_grad, replica_ip);
   for (int i = 0; i < num_par_c; i++) {
-    trans[0][0] = inputs[0].pdim[0]; trans[0][1] = 0;
-    trans[1][0] = 0; trans[1][1] = inputs[0].pdim[1];
-    trans[2][0] = 0; trans[2][1] = 0;
+    Transform<3, 1, coord_t> input_trans;
+    input_trans[0][0] = 0;
+    input_trans[1][0] = inputs[0].pdim[1];
+    input_trans[2][0] = 0;
     Rect<3, coord_t> ext(Point<3>(0, 0, LSTM_PER_NODE_LENGTH*i),
                          Point<3>(inputs[0].pdim[0]-1, inputs[0].pdim[1]-1,
                                   LSTM_PER_NODE_LENGTH*(i+1)-1));
     IndexPartition ip =
-      runtime->create_partition_by_restriction(ctx, replica_is, part_is, trans, ext);
+      runtime->create_partition_by_restriction(ctx, replica_is, input_part_is, input_trans, ext);
     assert(runtime->is_index_partition_disjoint(ctx, ip));
     replica_sub_lps[i] = runtime->get_logical_partition(ctx, replica.region_grad, ip);
   }
@@ -151,6 +153,7 @@ OpMeta* Linear::init_task(const Task *task,
   assert(rect_y.hi[2] - rect_y.lo[2] + 1 == LSTM_PER_NODE_LENGTH);
   assert(rect_w.hi[0] - rect_w.lo[0] + 1 == linear->outputSize*(linear->inputSize+1));
   LinearMeta* m = new LinearMeta(linear->handle);
+  m->profiling_runtime = true;
 #ifndef DISABLE_COMPUTATION
   int batch_size = linear->batchSize;
   float* dram_one_ptr = (float*) malloc(sizeof(float) * batch_size);
@@ -168,13 +171,13 @@ void Linear::init(const RnnModel& model)
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   int idx = 0;
+  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
   for (PointInRectIterator<2> it(part_rect); it(); it++, idx++) {
     LinearInitParams initParams;
-    initParams.handle = model.dnn_handlers[idx];
+    initParams.handle = model.dnn_handlers[paraConfig.gpu[idx]];
     initParams.batchSize = outputs[0].pdim[1];
     initParams.inputSize = inputs[0].pdim[0];
     initParams.outputSize = outputs[0].pdim[0];
-    assert(outputs[0].pdim[1] == inputs[0].pdim[1]);
     TaskLauncher launcher(RNN_LINEAR_INIT_TASK_ID,
                           TaskArgument(&initParams, sizeof(initParams)),
                           Predicate::TRUE_PRED, 0/*MapperID*/,
@@ -188,7 +191,8 @@ void Linear::init(const RnnModel& model)
       launcher.add_field(0, FID_DATA);
     }
     launcher.add_region_requirement(
-        RegionRequirement(params.subregions[dp[0]], READ_ONLY, EXCLUSIVE, params.region));
+        RegionRequirement(params.subregions[num_par_c+dp[0]], READ_ONLY, EXCLUSIVE,
+                          params.region));
     launcher.add_field(1, FID_DATA);
     // Add output
     {
@@ -199,7 +203,7 @@ void Linear::init(const RnnModel& model)
       launcher.add_field(2, FID_DATA);
     }
     Future f = runtime->execute_task(ctx, launcher);
-    meta[idx] = f.get_result<OpMeta*>();
+    meta[paraConfig.gpu[idx]] = f.get_result<OpMeta*>();
   }
 }
 
@@ -269,8 +273,9 @@ void Linear::forward(const RnnModel &model)
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   int idx = 0;
+  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
   for (PointInRectIterator<2> it(part_rect); it(); it++, idx++) {
-    OpMeta* mp = meta[idx];
+    OpMeta* mp = meta[paraConfig.gpu[idx]];
     TaskLauncher launcher(RNN_LINEAR_FWD_TASK_ID,
                           TaskArgument(&mp, sizeof(OpMeta*)),
                           Predicate::TRUE_PRED, 0/*MapperID*/,
@@ -284,7 +289,7 @@ void Linear::forward(const RnnModel &model)
       launcher.add_field(0, FID_DATA);
     }
     launcher.add_region_requirement(
-        RegionRequirement(params.subregions[dp[0]], READ_ONLY, EXCLUSIVE, params.region));
+        RegionRequirement(params.subregions[num_par_c+dp[0]], READ_ONLY, EXCLUSIVE, params.region));
     launcher.add_field(1, FID_DATA);
     // Add output
     {
@@ -385,8 +390,121 @@ void Linear::backward_task(const Task *task,
 #endif
 }
 
+/*
+  regions[0](O): input
+  regions[1..num_par_c](I): replicas
+*/
+void Linear::backward2_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime)
+{
+#ifndef DISABLE_COMPUTATION
+  float alpha = 1.0f;
+  const LinearMeta* m = *((LinearMeta**) task->args);
+  const AccessorWO<float, 3> acc_input(regions[0], FID_DATA);
+  Rect<3> rect_input =
+    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
+  float *input_ptr = acc_input.ptr(rect_input.lo);
+  for (int i = 1; i < task->regions.size(); i++) {
+    const AccessorRO<float, 3> acc_replica(regions[i], FID_DATA);
+    Rect<3> rect_replica =
+      runtime->get_index_space_domain(ctx, task->regions[i].region.get_index_space());
+    assert(rect_replica.volume() == rect_input.volume());
+    assert(acc_replica.accessor.is_dense_arbitrary(rect_replica));
+    const float *replica_ptr = acc_replica.ptr(rect_replica.lo);
+    if (i == 1)
+      checkCUDA(cublasScopy(m->handle.blas, rect_input.volume(),
+                            replica_ptr, 1, input_ptr, 1));
+    else
+      checkCUDA(cublasSaxpy(m->handle.blas, rect_input.volume(),
+                            &alpha, replica_ptr, 1, input_ptr, 1));
+  }
+#endif
+}
+
 void Linear::backward(const RnnModel& model)
-{}
+{
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  int idx = 0;
+  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
+  for (PointInRectIterator<2> it(part_rect); it(); it++, idx++) {
+    OpMeta* mp = meta[paraConfig.gpu[idx]];
+    TaskLauncher launcher(RNN_LINEAR_BWD_TASK_ID,
+                          TaskArgument(&mp, sizeof(OpMeta*)),
+                          Predicate::TRUE_PRED, 0/*MapperID*/,
+                          RnnMapper::assign_to_gpu(paraConfig.gpu[idx]));
+    DomainPoint dp(*it);
+    // Add x
+    {
+      LogicalRegion x = runtime->get_logical_subregion_by_color(input_lp, dp);
+      launcher.add_region_requirement(
+          RegionRequirement(x, READ_ONLY, EXCLUSIVE, inputs[0].region));
+      launcher.add_field(0, FID_DATA);
+    }
+    // Add w
+    launcher.add_region_requirement(
+        RegionRequirement(params.subregions[num_par_c+dp[0]], READ_ONLY, EXCLUSIVE, params.region));
+    launcher.add_field(1, FID_DATA);
+    // Add y
+    {
+      LogicalRegion y =
+        runtime->get_logical_subregion_by_color(outputs[0].partition, dp);
+      launcher.add_region_requirement(
+          RegionRequirement(y, READ_ONLY, EXCLUSIVE, outputs[0].region));
+      launcher.add_field(2, FID_DATA);
+    }
+    // Add replica_grad
+    {
+      LogicalRegion replica_grad =
+          runtime->get_logical_subregion_by_color(replica.partition_grad, dp);
+      launcher.add_region_requirement(
+          RegionRequirement(replica_grad, WRITE_ONLY, EXCLUSIVE, replica.region_grad));
+      launcher.add_field(3, FID_DATA);
+    }
+    // Add w_grad
+    launcher.add_region_requirement(
+        RegionRequirement(params.gradients[paraConfig.gpu[idx]],
+                          READ_WRITE, EXCLUSIVE,
+                          params.gradients[paraConfig.gpu[idx]]));
+    launcher.add_field(4, FID_DATA);
+    // Add y_grad
+    {
+      LogicalRegion y_grad =
+        runtime->get_logical_subregion_by_color(outputs[0].partition_grad, dp);
+      launcher.add_region_requirement(
+          RegionRequirement(y_grad, READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
+      launcher.add_field(5, FID_DATA);
+    }
+    runtime->execute_task(ctx, launcher);
+  }
+  
+  // We aggregate data from replica tensor to input tensor 
+  idx = 0;
+  for (PointInRectIterator<1> it(input_part_rect); it(); it++, idx++) {
+    OpMeta* mp = meta[paraConfig.gpu[idx]];
+    TaskLauncher launcher(RNN_LINEAR_BWD2_TASK_ID,
+                          TaskArgument(&mp, sizeof(OpMeta*)),
+                          Predicate::TRUE_PRED, 0/*MapperID*/,
+                          RnnMapper::assign_to_gpu(paraConfig.gpu[idx]));
+    DomainPoint dp(*it);
+    LogicalRegion input =
+        runtime->get_logical_subregion_by_color(inputs[0].partition_grad, dp);
+    launcher.add_region_requirement(
+        RegionRequirement(input, WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+    launcher.add_field(0, FID_DATA);
+    int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
+    for (int i = 0; i < num_par_c; i++) {
+      LogicalRegion r =
+          runtime->get_logical_subregion_by_color(replica_sub_lps[i], dp);
+      launcher.add_region_requirement(
+          RegionRequirement(r, READ_ONLY, EXCLUSIVE, replica.region_grad));
+      launcher.add_field(i+1, FID_DATA);
+    }
+    runtime->execute_task(ctx, launcher);
+  }
+}
 
 void Linear::update_task(const Task *task,
                          const std::vector<PhysicalRegion> &regions,

@@ -34,6 +34,13 @@ struct RnnConfig {
 struct SharedVariable {
   LogicalRegion region, gradients[MAX_NUM_WORKERS];
   LogicalRegion subregions[2*MAX_NUM_PARTS];
+  SharedVariable() {
+    region = LogicalRegion::NO_REGION;
+    for (int i = 0; i < MAX_NUM_WORKERS; i++)
+      gradients[i] = LogicalRegion::NO_REGION;
+    for (int i = 0; i < 2*MAX_NUM_PARTS; i++)
+      subregions[i] = LogicalRegion::NO_REGION;
+  }
 };
 
 struct ParallelConfig {
@@ -187,6 +194,10 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, HighLevelRuntime *runtime);
 
+  static void backward2_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, HighLevelRuntime *runtime);
+
   static void update_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, HighLevelRuntime *runtime);
@@ -198,6 +209,7 @@ public:
   // input_lp may be an aliased partition if num_par_c > 1
   LogicalPartition input_lp;
   Rect<2> part_rect;
+  Rect<1> input_part_rect;
 };
 
 class LinearMeta : public OpMeta {
