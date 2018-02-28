@@ -117,7 +117,7 @@ Linear::Linear(RnnConfig config, Tensor input, int _output_size,
 
   // Every partition reads all in_channels
   trans[0][0] = 0; trans[0][1] = 0;
-  trans[1][0] = 0; trans[1][1] = 0;
+  trans[1][0] = 0; trans[1][1] = extent_n;
   trans[2][0] = 0; trans[2][1] = 0;
   Rect<3, coord_t> input_ext(Point<3>(0, 0, 0),
                              Point<3>(input_size-1, extent_n-1, LSTM_PER_NODE_LENGTH));
@@ -203,7 +203,7 @@ void Linear::init(const RnnModel& model)
       launcher.add_field(2, FID_DATA);
     }
     Future f = runtime->execute_task(ctx, launcher);
-    meta[paraConfig.gpu[idx]] = f.get_result<OpMeta*>();
+    meta[idx] = f.get_result<OpMeta*>();
   }
 }
 
@@ -275,7 +275,7 @@ void Linear::forward(const RnnModel &model)
   int idx = 0;
   int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
   for (PointInRectIterator<2> it(part_rect); it(); it++, idx++) {
-    OpMeta* mp = meta[paraConfig.gpu[idx]];
+    OpMeta* mp = meta[idx];
     TaskLauncher launcher(RNN_LINEAR_FWD_TASK_ID,
                           TaskArgument(&mp, sizeof(OpMeta*)),
                           Predicate::TRUE_PRED, 0/*MapperID*/,
@@ -430,7 +430,7 @@ void Linear::backward(const RnnModel& model)
   int idx = 0;
   int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
   for (PointInRectIterator<2> it(part_rect); it(); it++, idx++) {
-    OpMeta* mp = meta[paraConfig.gpu[idx]];
+    OpMeta* mp = meta[idx];
     TaskLauncher launcher(RNN_LINEAR_BWD_TASK_ID,
                           TaskArgument(&mp, sizeof(OpMeta*)),
                           Predicate::TRUE_PRED, 0/*MapperID*/,
@@ -483,7 +483,7 @@ void Linear::backward(const RnnModel& model)
   // We aggregate data from replica tensor to input tensor 
   idx = 0;
   for (PointInRectIterator<1> it(input_part_rect); it(); it++, idx++) {
-    OpMeta* mp = meta[paraConfig.gpu[idx]];
+    OpMeta* mp = meta[idx];
     TaskLauncher launcher(RNN_LINEAR_BWD2_TASK_ID,
                           TaskArgument(&mp, sizeof(OpMeta*)),
                           Predicate::TRUE_PRED, 0/*MapperID*/,

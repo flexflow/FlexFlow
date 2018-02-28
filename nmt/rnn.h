@@ -219,4 +219,43 @@ public:
   bool profiling_runtime;
 };
 
+class Embed : public RnnOp {
+public:
+  Embed(RnnConfig config, Tensor input, int embed_size, int output_size,
+        ParallelConfig pc, SharedVariable params);
+
+  void init(const RnnModel&);
+
+  void forward(const RnnModel&);
+
+  void backward(const RnnModel&);
+
+  void update(const RnnModel&);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, HighLevelRuntime *runtime);
+
+  static void update_task(const Task *task,
+                          const std::vector<PhysicalRegion> &regions,
+                          Context ctx, HighLevelRuntime *runtime);
+public:
+  int batchSize, outputSize, embedSize;
+  Rect<1> part_rect;
+};
+
+class EmbedMeta : public OpMeta {
+public:
+  EmbedMeta(DnnHandle handle) : OpMeta(handle) {};
+  bool profiling_runtime;
+};
+
 #endif //_LEGION_RNN_H_
