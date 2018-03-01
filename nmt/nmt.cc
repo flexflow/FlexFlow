@@ -97,6 +97,32 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<DnnHandle, init_cudnn>(registrar, "cudnn_init_task");
   }
+  //
+  {
+    TaskVariantRegistrar registrar(WORD_INIT_TASK_ID, "word_init_task(dummy)");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<RnnModel::word_init_task>(registrar, "word_init_task(dummy)");
+  }
+  // Word Embedding task
+  {
+    TaskVariantRegistrar registrar(EMBED_INIT_TASK_ID, "embed_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Embed::init_task>(registrar, "embed_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(EMBED_FWD_TASK_ID, "embed_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Embed::forward_task>(registrar, "embed_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(EMBED_BWD_TASK_ID, "embed_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Embed::backward_task>(registrar, "embed_bwd_task");
+  }
   // LSTM task
   {
     TaskVariantRegistrar registrar(LSTM_INIT_TASK_ID, "lstm_init_task");
@@ -190,6 +216,14 @@ void parse_input_args(char **argv, int argc,
 
 void set_global_config(GlobalConfig &global, int num_layers, int seq_length, int num_parts)
 {
+  for (int i = 0; i * LSTM_PER_NODE_LENGTH < 2 * seq_length; i++) {
+    ParallelConfig pc;
+    pc.nDims = 1;
+    pc.dim[0] = num_parts;
+    for (int j = 0; j < num_parts; j++)
+      pc.gpu[j] = i * LSTM_PER_NODE_LENGTH < seq_length ? 0 : 1;
+    global.embed[i] = pc;
+  }
   for (int i = 0; i < num_layers; i++)
     for (int j = 0; j * LSTM_PER_NODE_LENGTH < 2 * seq_length; j++) {
       ParallelConfig pc;

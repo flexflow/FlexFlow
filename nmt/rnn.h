@@ -21,12 +21,13 @@
 #define MAX_SEQ_LENGTH 40
 #define MAX_NUM_LAYERS 4
 #define LSTM_PER_NODE_LENGTH 5
+#define MASTER_NOT_ASSIGNED -1
 
 struct RnnConfig {
   Context lg_ctx;
   HighLevelRuntime *lg_hlr;
   FieldSpace field_space;
-  int batchSize, hiddenSize, embedSize;
+  int batchSize, hiddenSize, embedSize, vocabSize;
   int numLayers, seqLength, numParts;
   int numNodes, workersPerNode;
 };
@@ -34,12 +35,15 @@ struct RnnConfig {
 struct SharedVariable {
   LogicalRegion region, gradients[MAX_NUM_WORKERS];
   LogicalRegion subregions[2*MAX_NUM_PARTS];
+  int masterOnNode[MAX_NUM_WORKERS];
   SharedVariable() {
     region = LogicalRegion::NO_REGION;
     for (int i = 0; i < MAX_NUM_WORKERS; i++)
       gradients[i] = LogicalRegion::NO_REGION;
     for (int i = 0; i < 2*MAX_NUM_PARTS; i++)
       subregions[i] = LogicalRegion::NO_REGION;
+    for (int i = 0; i < MAX_NUM_WORKERS; i++)
+      masterOnNode[i] = MASTER_NOT_ASSIGNED;
   }
 };
 
@@ -98,6 +102,10 @@ public:
 
   void update_shared_variable(SharedVariable params);
 
+  static void word_init_task(const Task *task,
+                             const std::vector<PhysicalRegion> &regions,
+                             Context ctx, HighLevelRuntime *runtime);
+
   static void params_update_task(const Task *task,
                                  const std::vector<PhysicalRegion> &regions,
                                  Context ctx, HighLevelRuntime *runtime);
@@ -107,6 +115,9 @@ public:
 
   Tensor add_linear_node(Tensor x, int output_size,
                          ParallelConfig pc, SharedVariable params);
+
+  Tensor add_embed_node(Tensor x, int vocab_size, int output_size,
+                        ParallelConfig pc, SharedVariable params);
 public:
   RnnConfig config;
   std::vector<RnnOp*> layers;
@@ -248,7 +259,7 @@ public:
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, HighLevelRuntime *runtime);
 public:
-  int batchSize, outputSize, embedSize;
+  int batchSize, outputSize, vocabSize;
   Rect<1> part_rect;
 };
 

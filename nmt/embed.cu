@@ -19,12 +19,23 @@
 
 struct EmbedInitParams {
   DnnHandle handle;
-  int batchSize, outputSize, embedSize;
+  int batchSize, outputSize, vocabSize;
 };
 
-Embed::Embed(RnnConfig config, Tensor x, int _embed_size, int _output_size,
+Tensor RnnModel::add_embed_node(Tensor x, int vocab_size, int output_size,
+                                ParallelConfig pc, SharedVariable params)
+{
+  assert(x.numDim == 2);
+  assert(x.adim[1] == LSTM_PER_NODE_LENGTH);
+  assert(x.pdim[1] == LSTM_PER_NODE_LENGTH);
+  Embed* node = new Embed(config, x, vocab_size, output_size, pc, params);
+  layers.push_back(node);
+  return node->outputs[0];
+}
+
+Embed::Embed(RnnConfig config, Tensor x, int _vocab_size, int _output_size,
              ParallelConfig pc, SharedVariable _params)
-: RnnOp(x, pc, _params), batchSize(x.adim[0]), embedSize(_embed_size),
+: RnnOp(x, pc, _params), batchSize(x.adim[0]), vocabSize(_vocab_size),
   outputSize(_output_size)
 {
   Context ctx = config.lg_ctx;
@@ -88,7 +99,7 @@ Embed::Embed(RnnConfig config, Tensor x, int _embed_size, int _output_size,
     runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
   assert(rect_x.hi[0] - rect_x.lo[0] + 1 == embed->batchSize);
   assert(rect_x.hi[1] - rect_x.lo[1] + 1 == LSTM_PER_NODE_LENGTH);
-  assert(rect_w.hi[0] - rect_w.lo[0] + 1 == embed->embedSize * embed->outputSize);
+  assert(rect_w.hi[0] - rect_w.lo[0] + 1 == embed->vocabSize * embed->outputSize);
   assert(rect_y.hi[0] - rect_y.lo[0] + 1 == embed->outputSize);
   assert(rect_y.hi[1] - rect_y.lo[1] + 1 == embed->batchSize);
   assert(rect_y.hi[2] - rect_y.lo[2] + 1 == LSTM_PER_NODE_LENGTH);
@@ -107,7 +118,7 @@ void Embed::init(const RnnModel& model)
     initParams.handle = model.dnn_handlers[paraConfig.gpu[idx]];
     initParams.batchSize = outputs[0].pdim[1];
     initParams.outputSize = outputs[0].pdim[0];
-    initParams.embedSize = embedSize;
+    initParams.vocabSize = vocabSize;
     // batch is the first dim of input and the second dim of output
     assert(inputs[0].pdim[0] == outputs[0].pdim[1]);
     TaskLauncher launcher(EMBED_INIT_TASK_ID,

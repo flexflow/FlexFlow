@@ -67,6 +67,7 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
   config.batchSize = batch_size;
   config.hiddenSize = hidden_size;
   config.embedSize = embed_size;
+  config.vocabSize = vocab_size;
   config.numLayers = numLayers;
   config.seqLength = seqLength;
   config.numParts = num_parts;
@@ -82,76 +83,115 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
   part_is = runtime->create_index_space(ctx, part_rect);
   assert(seqLength <= MAX_SEQ_LENGTH);
   assert(numLayers <= MAX_NUM_LAYERS);
-  Rect<3> word_rect(Point<3>(0, 0, 0),
-                    Point<3>(embed_size-1, batch_size-1, LSTM_PER_NODE_LENGTH-1));
-  IndexSpaceT<3> word_is = runtime->create_index_space(ctx, word_rect);
-  int extent_c = embed_size;
-  int extent_n = batch_size / num_parts;
-  Rect<3, coord_t> extent(Point<3>(0, 0, 0),
-                          Point<3>(extent_c-1, extent_n-1, LSTM_PER_NODE_LENGTH-1));
-  Transform<3, 1, coord_t> trans;
-  trans[0][0] = 0; trans[1][0] = extent_n; trans[2][0] = 0;
-  IndexPartition word_ip =
-    runtime->create_partition_by_restriction(ctx, word_is, part_is, trans, extent);
-  assert(runtime->is_index_partition_disjoint(ctx, word_ip));
-  assert(runtime->is_index_partition_complete(ctx, word_ip));
-  assert(seqLength % LSTM_PER_NODE_LENGTH == 0);
   int nodes_per_layer = seqLength / LSTM_PER_NODE_LENGTH;
-  for (int i = 0; i < nodes_per_layer; i++) {
-    srcs[i].numDim = 3;
-    srcs[i].adim[0] = embed_size;
-    srcs[i].adim[1] = batch_size;
-    srcs[i].adim[2] = LSTM_PER_NODE_LENGTH;
-    srcs[i].pdim[0] = extent_c;
-    srcs[i].pdim[1] = extent_n;
-    srcs[i].pdim[2] = LSTM_PER_NODE_LENGTH;
-    srcs[i].region = runtime->create_logical_region(ctx, word_is, config.field_space);
-    srcs[i].partition =
-      runtime->get_logical_partition(ctx, srcs[i].region, word_ip);
-    srcs[i].region_grad =
-      runtime->create_logical_region(ctx, word_is, config.field_space);
-    srcs[i].partition_grad =
-      runtime->get_logical_partition(ctx, srcs[i].region_grad, word_ip);
-    dsts[i] = srcs[i];
-    dsts[i].region = runtime->create_logical_region(ctx, word_is, config.field_space);
-    dsts[i].partition =
-      runtime->get_logical_partition(ctx, dsts[i].region, word_ip);
-    dsts[i].region_grad =
-      runtime->create_logical_region(ctx, word_is, config.field_space);
-    dsts[i].partition_grad =
-      runtime->get_logical_partition(ctx, dsts[i].region_grad, word_ip);
-  }
-  // Create a zeroed tensor
-  Rect<2> hx_rect(Point<2>(0, 0), Point<2>(hidden_size-1, batch_size-1));
-  IndexSpaceT<2> hx_is = runtime->create_index_space(ctx, hx_rect);
-  extent_c = hidden_size;
-  extent_n = batch_size / num_parts;
-  Rect<2> hx_ext(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
-  Transform<2, 1, coord_t> hx_trans;
-  hx_trans[0][0] = 0; hx_trans[1][0] = extent_n;
-  IndexPartition hx_ip =
-    runtime->create_partition_by_restriction(ctx, hx_is, part_is, hx_trans, hx_ext);
-  assert(runtime->is_index_partition_disjoint(ctx, hx_ip));
-  assert(runtime->is_index_partition_complete(ctx, hx_ip));
-  LSTMTensors zero[MAX_NUM_LAYERS], lstm[MAX_NUM_LAYERS][2*MAX_SEQ_LENGTH];
-  for (int i = 0; i < numLayers; i++) {
-    for (int j = 0; j < 2; j++) {
-      Tensor t;
-      t.numDim = 2;
-      t.adim[0] = hidden_size;
-      t.adim[1] = batch_size;
-      t.pdim[0] = extent_c;
-      t.pdim[1] = extent_n;
-      t.region = runtime->create_logical_region(ctx, hx_is, config.field_space);
-      t.partition = runtime->get_logical_partition(ctx, t.region, hx_ip);
-      t.region_grad = runtime->create_logical_region(ctx, hx_is, config.field_space);
-      t.partition_grad = runtime->get_logical_partition(ctx, t.region_grad, hx_ip);
-      if (j == 0)
-        zero[i].hx = t;
-      else
-        zero[i].cx = t;
+  {
+    Rect<2> word_rect(Point<2>(0, 0),
+                      Point<2>(batch_size-1, LSTM_PER_NODE_LENGTH-1));
+    IndexSpaceT<2> word_is = runtime->create_index_space(ctx, word_rect);
+    int extent_n = batch_size / num_parts;
+    Rect<2, coord_t> extent(Point<2>(0, 0),
+                            Point<2>(extent_n-1, LSTM_PER_NODE_LENGTH-1));
+    Transform<2, 1, coord_t> trans;
+    trans[0][0] = extent_n; trans[1][0] = 0;
+    IndexPartition word_ip =
+      runtime->create_partition_by_restriction(ctx, word_is, part_is, trans, extent);
+    assert(runtime->is_index_partition_disjoint(ctx, word_ip));
+    assert(runtime->is_index_partition_complete(ctx, word_ip));
+    assert(seqLength % LSTM_PER_NODE_LENGTH == 0);
+    for (int i = 0; i < nodes_per_layer; i++) {
+      srcs[i].numDim = 2;
+      srcs[i].adim[0] = batch_size;
+      srcs[i].adim[1] = LSTM_PER_NODE_LENGTH;
+      srcs[i].pdim[0] = extent_n;
+      srcs[i].pdim[1] = LSTM_PER_NODE_LENGTH;
+      srcs[i].region = runtime->create_logical_region(ctx, word_is, config.field_space);
+      srcs[i].partition =
+        runtime->get_logical_partition(ctx, srcs[i].region, word_ip);
+      srcs[i].region_grad =
+        runtime->create_logical_region(ctx, word_is, config.field_space);
+      srcs[i].partition_grad =
+        runtime->get_logical_partition(ctx, srcs[i].region_grad, word_ip);
+      dsts[i] = srcs[i];
+      dsts[i].region = runtime->create_logical_region(ctx, word_is, config.field_space);
+      dsts[i].partition =
+        runtime->get_logical_partition(ctx, dsts[i].region, word_ip);
+      dsts[i].region_grad =
+        runtime->create_logical_region(ctx, word_is, config.field_space);
+      dsts[i].partition_grad =
+        runtime->get_logical_partition(ctx, dsts[i].region_grad, word_ip);
     }
   }
+  // Create a zeroed tensor
+  LSTMTensors zero[MAX_NUM_LAYERS];
+  {
+    Rect<2> hx_rect(Point<2>(0, 0), Point<2>(hidden_size-1, batch_size-1));
+    IndexSpaceT<2> hx_is = runtime->create_index_space(ctx, hx_rect);
+    int extent_c = hidden_size;
+    int extent_n = batch_size / num_parts;
+    Rect<2> hx_ext(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
+    Transform<2, 1, coord_t> hx_trans;
+    hx_trans[0][0] = 0; hx_trans[1][0] = extent_n;
+    IndexPartition hx_ip =
+      runtime->create_partition_by_restriction(ctx, hx_is, part_is, hx_trans, hx_ext);
+    assert(runtime->is_index_partition_disjoint(ctx, hx_ip));
+    assert(runtime->is_index_partition_complete(ctx, hx_ip));
+    for (int i = 0; i < numLayers; i++) {
+      for (int j = 0; j < 2; j++) {
+        Tensor t;
+        t.numDim = 2;
+        t.adim[0] = hidden_size;
+        t.adim[1] = batch_size;
+        t.pdim[0] = extent_c;
+        t.pdim[1] = extent_n;
+        t.region = runtime->create_logical_region(ctx, hx_is, config.field_space);
+        t.partition = runtime->get_logical_partition(ctx, t.region, hx_ip);
+        t.region_grad = runtime->create_logical_region(ctx, hx_is, config.field_space);
+        t.partition_grad = runtime->get_logical_partition(ctx, t.region_grad, hx_ip);
+        if (j == 0)
+          zero[i].hx = t;
+        else
+          zero[i].cx = t;
+      }
+    }
+  }
+  // Embedding
+  SharedVariable srcEmbed, dstEmbed;
+  {
+    int numParams = config.vocabSize * config.embedSize;
+    Rect<1> params_rect(Point<1>(0), Point<1>(numParams-1));
+    IndexSpaceT<1> params_is = runtime->create_index_space(ctx, params_rect);
+    srcEmbed.region =
+      runtime->create_logical_region(ctx, params_is, config.field_space);
+    dstEmbed.region =
+      runtime->create_logical_region(ctx, params_is, config.field_space);
+    for (int i = 0; i < 2*nodes_per_layer; i++) {
+      ParallelConfig pc = global.embed[i];
+      assert(pc.nDims == 1);
+      for (int j = 0; j < pc.dim[0]; j++) {
+        int gpuId = pc.gpu[j];
+        if (i < nodes_per_layer) {
+          if (srcEmbed.gradients[gpuId] == LogicalRegion::NO_REGION)
+            srcEmbed.gradients[gpuId] =
+              runtime->create_logical_region(ctx, params_is, config.field_space);
+        } else {
+          if (dstEmbed.gradients[gpuId] == LogicalRegion::NO_REGION)
+            dstEmbed.gradients[gpuId] =
+              runtime->create_logical_region(ctx, params_is, config.field_space);
+        }
+      }
+    }
+    // Collect masterOnNode for srcEmbed/dstEmbed
+    for (int i = 0; i < config.numNodes; i++)
+      for (int j = config.workersPerNode-1; j >= 0; j--) {
+        int gpuId = i * config.workersPerNode + j;
+        if (srcEmbed.gradients[gpuId] != LogicalRegion::NO_REGION)
+          srcEmbed.masterOnNode[i] = gpuId;
+        if (dstEmbed.gradients[gpuId] != LogicalRegion::NO_REGION)
+          dstEmbed.masterOnNode[i] = gpuId;  
+      }
+  }
+
+  // Encoders/decoders
   SharedVariable encoders[MAX_NUM_LAYERS], decoders[MAX_NUM_LAYERS];
   for (int i = 0; i < numLayers; i++) {
     int input_size = (i==0) ? embed_size : hidden_size;
@@ -163,12 +203,31 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
       runtime->create_logical_region(ctx, params_is, config.field_space);
     decoders[i].region =
       runtime->create_logical_region(ctx, params_is, config.field_space);
-    for (int j = 0; j < config.numNodes * config.workersPerNode; j++) {
-      encoders[i].gradients[j] =
-        runtime->create_logical_region(ctx, params_is, config.field_space);
-      decoders[i].gradients[j] =
-        runtime->create_logical_region(ctx, params_is, config.field_space);
+    for (int j = 0; j < 2*nodes_per_layer; j++) {
+      ParallelConfig pc = global.lstm[i][j];
+      assert(pc.nDims == 1);
+      for (int k = 0; k < pc.dim[0]; k++) {
+        int gpuId = pc.gpu[k];
+        if (j < nodes_per_layer) {
+          if (encoders[i].gradients[gpuId] == LogicalRegion::NO_REGION)
+            encoders[i].gradients[gpuId] =
+              runtime->create_logical_region(ctx, params_is, config.field_space);
+        } else {
+          if (decoders[i].gradients[gpuId] == LogicalRegion::NO_REGION)
+            decoders[i].gradients[gpuId] =
+              runtime->create_logical_region(ctx, params_is, config.field_space);
+        }
+      }
     }
+    // Collect masterOnNode for encoders[i]/decoders[i]
+    for (int j = 0; j < config.numNodes; j++)
+      for (int k = config.workersPerNode-1; k >= 0; k--) {
+        int gpuId = i * config.workersPerNode + j;
+        if (encoders[i].gradients[gpuId] != LogicalRegion::NO_REGION)
+          encoders[i].masterOnNode[j] = gpuId;
+        if (decoders[i].gradients[gpuId] != LogicalRegion::NO_REGION)
+          decoders[i].masterOnNode[j] = gpuId;
+      }
   }
   SharedVariable linear;
   {
@@ -190,6 +249,7 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
       }
     }
     // Compute bboxes for the shared variable linear
+    // Also compute masterOnNode which is the largest gradients on each node
     std::map<int, Rect<1> > bboxes;
     for (int i = 0; i < nodes_per_layer; i++) {
       ParallelConfig pc = global.linear[i];
@@ -203,25 +263,26 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
             bboxes[gpuIdx] = rect;
           else
             bboxes[gpuIdx] = bboxes[gpuIdx].union_bbox(rect);
+          int nodeIdx = gpuIdx / config.workersPerNode;
+          if (linear.masterOnNode[nodeIdx] == MASTER_NOT_ASSIGNED)
+            linear.masterOnNode[nodeIdx] = gpuIdx;
+          else {
+            int masterIdx = linear.masterOnNode[nodeIdx];
+            if (bboxes[gpuIdx].volume() > bboxes[masterIdx].volume())
+              linear.masterOnNode[nodeIdx] = gpuIdx;
+          }
         }
     }
     // The first bbox on each node is a superset of all bboxes on that node
-    for (int n = 0; n < config.numNodes; n++) {
-      if (bboxes.find(n * config.workersPerNode) == bboxes.end()) {
-        // First find a non empty bbox on that node
+    for (int n = 0; n < config.numNodes; n++)
+      if (linear.masterOnNode[n] != MASTER_NOT_ASSIGNED) {
         for (int j = 0; j < config.workersPerNode; j++)
-          if (bboxes.find(n * config.workersPerNode + j) != bboxes.end())
-            bboxes[n * config.workersPerNode] =
-              bboxes[n * config.workersPerNode + j];
+          if (bboxes.find(n * config.workersPerNode + j) != bboxes.end()) {
+            Rect<1> rect = bboxes[n * config.workersPerNode + j];
+            bboxes[linear.masterOnNode[n]] =
+              bboxes[linear.masterOnNode[n]].union_bbox(rect);
+          }
       }
-      for (int j = 1; j < config.workersPerNode; j++)
-        if (bboxes.find(n * config.workersPerNode + j) != bboxes.end()) {
-          assert(bboxes.find(n * config.workersPerNode) != bboxes.end());
-          Rect<1> rect = bboxes[n * config.workersPerNode + j];
-          bboxes[n * config.workersPerNode] =
-            bboxes[n * config.workersPerNode].union_bbox(rect);
-        }
-    }
     for (int i = 0; i < config.numNodes * config.workersPerNode; i++) 
       if (bboxes.find(i) != bboxes.end()) {
         IndexSpaceT<1> params_is = runtime->create_index_space(ctx, bboxes[i]);
@@ -230,17 +291,25 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
       } else
         linear.gradients[i] = LogicalRegion::NO_REGION;
   }
+
+  LSTMTensors lstm[MAX_NUM_LAYERS][2*MAX_SEQ_LENGTH];
+  Tensor embed[2*MAX_SEQ_LENGTH];
+  for (int i = 0; i < 2*nodes_per_layer; i++) {
+    embed[i] = add_embed_node(i < nodes_per_layer ? srcs[i] : dsts[i-nodes_per_layer],
+                              config.vocabSize, config.embedSize, global.embed[i],
+                              i < nodes_per_layer ? srcEmbed : dstEmbed); 
+  }
   for (int i = 0; i < numLayers; i++) {
     // Add encoder lstm nodes
     for (int j = 0; j < nodes_per_layer; j++) {
-      Tensor x = (i==0) ? srcs[j] : lstm[i-1][j].x;
+      Tensor x = (i==0) ? embed[j] : lstm[i-1][j].x;
       Tensor hx = (j==0) ? zero[i].hx : lstm[i][j-1].hx;
       Tensor cx = (j==0) ? zero[i].cx : lstm[i][j-1].cx;
       lstm[i][j] = add_lstm_node(x, hx, cx, global.lstm[i][j], encoders[i]);
     }
     // Add decoder lstm nodes
     for (int j = nodes_per_layer; j < 2*nodes_per_layer; j++) {
-      Tensor x = (i==0) ? dsts[j-nodes_per_layer] : lstm[i-1][j].x;
+      Tensor x = (i==0) ? embed[j] : lstm[i-1][j].x;
       Tensor hx = lstm[i][j-1].hx;
       Tensor cx = lstm[i][j-1].cx;
       lstm[i][j] = add_lstm_node(x, hx, cx, global.lstm[i][j], decoders[i]);
@@ -252,6 +321,8 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
                     global.linear[j-nodes_per_layer], linear);
   }
   // Add shared variables
+  sharedVariables.push_back(srcEmbed);
+  sharedVariables.push_back(dstEmbed);
   for (int i = 0; i < config.numLayers; i++) {
     sharedVariables.push_back(encoders[i]);
     sharedVariables.push_back(decoders[i]);
@@ -259,8 +330,57 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
   sharedVariables.push_back(linear);
 }
 
+void RnnModel::word_init_task(const Task *task,
+                              const std::vector<PhysicalRegion> &regions,
+                              Context ctx, Runtime *runtime)
+{
+  Rect<2> rect0 =
+    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  int *host_ptr;
+  checkCUDA(cudaHostAlloc(&host_ptr, sizeof(int) * rect0.volume(),
+                          cudaHostAllocPortable | cudaHostAllocMapped));
+  for (int i = 0; i < rect0.volume(); i++)
+    host_ptr[i] = i;
+  for (int i = 0; i < regions.size(); i++) {
+    const AccessorWO<int, 2> acc(regions[i], FID_DATA);
+    Rect<2> rect =
+      runtime->get_index_space_domain(ctx, task->regions[i].region.get_index_space());
+    assert(acc.accessor.is_dense_arbitrary(rect));
+    assert(rect == rect0);
+    int *ptr = acc.ptr(rect.lo);
+    checkCUDA(cudaMemcpy(ptr, host_ptr, sizeof(int) * rect0.volume(),
+                         cudaMemcpyHostToDevice));
+  }
+}
+
 void RnnModel::init()
 {
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  Rect<1> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  for (PointInRectIterator<1> it(part_rect); it(); it++) {
+    int idx = 0;
+    TaskLauncher launcher(WORD_INIT_TASK_ID, TaskArgument(NULL, 0),
+                          Predicate::TRUE_PRED, 0/*MapperID*/,
+                          RnnMapper::assign_to_gpu(0));
+    DomainPoint dp(*it);
+    for (int i = 0; i * LSTM_PER_NODE_LENGTH < config.seqLength; i++) {
+      LogicalRegion x =
+        runtime->get_logical_subregion_by_color(srcs[i].partition, dp);
+      launcher.add_region_requirement(
+          RegionRequirement(x, WRITE_ONLY, EXCLUSIVE, srcs[i].region));
+      launcher.add_field(idx++, FID_DATA);
+    }
+    for (int i = 0; i * LSTM_PER_NODE_LENGTH < config.seqLength; i++) {
+      LogicalRegion x =
+        runtime->get_logical_subregion_by_color(dsts[i].partition, dp);
+      launcher.add_region_requirement(
+          RegionRequirement(x, WRITE_ONLY, EXCLUSIVE, dsts[i].region));
+      launcher.add_field(idx++, FID_DATA);
+    }
+    Future f = runtime->execute_task(ctx, launcher);
+    f.get_void_result();
+  }
   for (size_t i = 0; i < layers.size(); i++)
     layers[i]->init(*this);
 }
@@ -317,37 +437,45 @@ void RnnModel::update_shared_variable(SharedVariable params)
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   float rate = 1.0f;
-  for (int node = 0; node < config.numNodes; node++) {
+  for (int node = 0; node < config.numNodes; node++) 
+  if (params.masterOnNode[node] != MASTER_NOT_ASSIGNED) {
     TaskLauncher launcher(PARAMS_UPD_TASK_ID, TaskArgument(&rate, sizeof(rate)),
                           Predicate::TRUE_PRED, 0/*MapperID*/,
-                          RnnMapper::assign_to_gpu(node * config.workersPerNode));
-    int cnt = 0;
+                          RnnMapper::assign_to_gpu(params.masterOnNode[node]));
+    LogicalRegion masterGrad = params.gradients[params.masterOnNode[node]];
+    assert(masterGrad != LogicalRegion::NO_REGION);
+    launcher.add_region_requirement(
+        RegionRequirement(masterGrad, READ_WRITE, EXCLUSIVE, masterGrad));
+    int cnt = 1;
     for (int idx = 0; idx < config.workersPerNode; idx++) {
       int gpuIdx = node * config.workersPerNode + idx;
+      if (gpuIdx == params.masterOnNode[node]) continue;
       LogicalRegion grad = params.gradients[gpuIdx];
       if (grad == LogicalRegion::NO_REGION) continue;
       launcher.add_region_requirement(
-        RegionRequirement(grad, idx == 0 ? READ_WRITE:READ_ONLY, EXCLUSIVE, grad));
+          RegionRequirement(grad, READ_ONLY, EXCLUSIVE, grad));
       launcher.add_field(cnt++, FID_DATA);
     }
+    printf("Step 1: cnt = %d\n", cnt);
     runtime->execute_task(ctx, launcher);
   }
-
   rate = 0.001f;
   TaskLauncher launcher(PARAMS_UPD_TASK_ID, TaskArgument(&rate, sizeof(rate)),
                         Predicate::TRUE_PRED, 0/*MapperID*/);
   launcher.add_region_requirement(
     RegionRequirement(params.region, READ_WRITE, EXCLUSIVE, params.region));
   launcher.add_field(0, FID_DATA);
-  for (int node = 0; node < config.numNodes; node++) {
-    int gpuIdx = node * config.workersPerNode;
+  int cnt = 1;
+  for (int node = 0; node < config.numNodes; node++) 
+  if (params.masterOnNode[node] != MASTER_NOT_ASSIGNED) {
+    int gpuIdx = params.masterOnNode[node];
     LogicalRegion grad = params.gradients[gpuIdx];
-    int cnt = 1;
-    if (grad == LogicalRegion::NO_REGION) continue;
+    assert(grad != LogicalRegion::NO_REGION);
     launcher.add_region_requirement(
       RegionRequirement(grad, READ_ONLY, EXCLUSIVE, grad));
     launcher.add_field(cnt++, FID_DATA);
   }
+  printf("Step 2: cnt = %d\n", cnt);
   runtime->execute_task(ctx, launcher);
 }
 
