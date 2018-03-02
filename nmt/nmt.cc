@@ -167,6 +167,25 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<Linear::backward2_task>(registrar, "linear_bwd2_task");
   }
+  // Softmax (Data Parallel Implementation) task
+  {
+    TaskVariantRegistrar registrar(RNN_SOFTMAXDP_INIT_TASK_ID, "softmaxDP_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, SoftmaxDP::init_task>(registrar, "softmaxDP_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(RNN_SOFTMAXDP_FWD_TASK_ID, "softmaxDP_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<SoftmaxDP::forward_task>(registrar, "softmaxDP_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(RNN_SOFTMAXDP_BWD_TASK_ID, "softmaxDP_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<SoftmaxDP::backward_task>(registrar, "softmaxDP_bwd_task");
+  }
 
   // Params update task
   {
@@ -236,11 +255,19 @@ void set_global_config(GlobalConfig &global, int num_layers, int seq_length, int
   for (int i = 0; i * LSTM_PER_NODE_LENGTH < seq_length; i++) {
     ParallelConfig pc;
     pc.nDims = 2;
-    pc.dim[0] = num_parts;
-    pc.dim[1] = 1;
+    pc.dim[0] = 1;
+    pc.dim[1] = num_parts;
     for (int j = 0; j < num_parts; j++)
       pc.gpu[j] = j;
     global.linear[i] = pc;
+  }
+  for (int i = 0; i * LSTM_PER_NODE_LENGTH < seq_length; i++) {
+    ParallelConfig pc;
+    pc.nDims = 1;
+    pc.dim[0] = num_parts;
+    for (int j = 0; j < num_parts; j++)
+      pc.gpu[j] = j;
+    global.softmax[i] = pc;
   }
 }
 

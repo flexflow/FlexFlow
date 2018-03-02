@@ -35,6 +35,8 @@ DnnHandle init_cudnn(const Task *task,
   return handle;
 }
 
+const SharedVariable SharedVariable::NO_VARIABLE = SharedVariable();
+
 RnnOp::RnnOp(Tensor input, ParallelConfig pc, SharedVariable _params)
 : paraConfig(pc), params(_params)
 {
@@ -84,6 +86,7 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
   assert(seqLength <= MAX_SEQ_LENGTH);
   assert(numLayers <= MAX_NUM_LAYERS);
   int nodes_per_layer = seqLength / LSTM_PER_NODE_LENGTH;
+  // Create srcs/dsts tensors
   {
     Rect<2> word_rect(Point<2>(0, 0),
                       Point<2>(batch_size-1, LSTM_PER_NODE_LENGTH-1));
@@ -119,6 +122,10 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
         runtime->create_logical_region(ctx, word_is, config.field_space);
       dsts[i].partition_grad =
         runtime->get_logical_partition(ctx, dsts[i].region_grad, word_ip);
+      labels[i] = srcs[i];
+      labels[i].region = runtime->create_logical_region(ctx, word_is, config.field_space);
+      labels[i].partition =
+        runtime->get_logical_partition(ctx, labels[i].region, word_ip);
     }
   }
   // Create a zeroed tensor
@@ -222,7 +229,7 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
     // Collect masterOnNode for encoders[i]/decoders[i]
     for (int j = 0; j < config.numNodes; j++)
       for (int k = config.workersPerNode-1; k >= 0; k--) {
-        int gpuId = i * config.workersPerNode + j;
+        int gpuId = j * config.workersPerNode + k;
         if (encoders[i].gradients[gpuId] != LogicalRegion::NO_REGION)
           encoders[i].masterOnNode[j] = gpuId;
         if (decoders[i].gradients[gpuId] != LogicalRegion::NO_REGION)
@@ -317,9 +324,12 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
   }
   // Add linear nodes
   for (int j = nodes_per_layer; j < 2*nodes_per_layer; j++) {
-    add_linear_node(lstm[numLayers-1][j].x, vocab_size,
-                    global.linear[j-nodes_per_layer], linear);
+    Tensor logit = add_linear_node(lstm[numLayers-1][j].x, vocab_size,
+                                   global.linear[j-nodes_per_layer], linear);
+    add_softmaxDP_node(logit, labels[j-nodes_per_layer],
+                       global.softmax[j-nodes_per_layer]);
   }
+  
   // Add shared variables
   sharedVariables.push_back(srcEmbed);
   sharedVariables.push_back(dstEmbed);
@@ -376,6 +386,13 @@ void RnnModel::init()
         runtime->get_logical_subregion_by_color(dsts[i].partition, dp);
       launcher.add_region_requirement(
           RegionRequirement(x, WRITE_ONLY, EXCLUSIVE, dsts[i].region));
+      launcher.add_field(idx++, FID_DATA);
+    }
+    for (int i = 0; i * LSTM_PER_NODE_LENGTH < config.seqLength; i++) {
+      LogicalRegion x =
+        runtime->get_logical_subregion_by_color(labels[i].partition, dp);
+      launcher.add_region_requirement(
+          RegionRequirement(x, WRITE_ONLY, EXCLUSIVE, labels[i].region));
       launcher.add_field(idx++, FID_DATA);
     }
     Future f = runtime->execute_task(ctx, launcher);
@@ -436,6 +453,12 @@ void RnnModel::update_shared_variable(SharedVariable params)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
+  //for (int i = 0; i < config.workersPerNode; i++) 
+  //  if (params.gradients[i] != LogicalRegion::NO_REGION) {
+  //    Rect<1> rect = 
+  //      runtime->get_index_space_domain(ctx, params.gradients[i].get_index_space());
+  //    printf("rect[%d]: lo(%d) hi(%d)\n", i, rect.lo[0], rect.hi[0]);
+  //  }
   float rate = 1.0f;
   for (int node = 0; node < config.numNodes; node++) 
   if (params.masterOnNode[node] != MASTER_NOT_ASSIGNED) {
@@ -446,6 +469,7 @@ void RnnModel::update_shared_variable(SharedVariable params)
     assert(masterGrad != LogicalRegion::NO_REGION);
     launcher.add_region_requirement(
         RegionRequirement(masterGrad, READ_WRITE, EXCLUSIVE, masterGrad));
+    launcher.add_field(0, FID_DATA);
     int cnt = 1;
     for (int idx = 0; idx < config.workersPerNode; idx++) {
       int gpuIdx = node * config.workersPerNode + idx;
@@ -461,7 +485,8 @@ void RnnModel::update_shared_variable(SharedVariable params)
   }
   rate = 0.001f;
   TaskLauncher launcher(PARAMS_UPD_TASK_ID, TaskArgument(&rate, sizeof(rate)),
-                        Predicate::TRUE_PRED, 0/*MapperID*/);
+                        Predicate::TRUE_PRED, 0/*MapperID*/,
+                        RnnMapper::assign_to_gpu(params.masterOnNode[0]));
   launcher.add_region_requirement(
     RegionRequirement(params.region, READ_WRITE, EXCLUSIVE, params.region));
   launcher.add_field(0, FID_DATA);

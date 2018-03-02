@@ -33,6 +33,7 @@ struct RnnConfig {
 };
 
 struct SharedVariable {
+  static const SharedVariable NO_VARIABLE; /*empty SharedVariable handle*/
   LogicalRegion region, gradients[MAX_NUM_WORKERS];
   LogicalRegion subregions[2*MAX_NUM_PARTS];
   int masterOnNode[MAX_NUM_WORKERS];
@@ -56,6 +57,7 @@ struct GlobalConfig {
   ParallelConfig linear[MAX_SEQ_LENGTH];
   ParallelConfig lstm[MAX_NUM_LAYERS][2*MAX_SEQ_LENGTH];
   ParallelConfig embed[2*MAX_SEQ_LENGTH];
+  ParallelConfig softmax[MAX_SEQ_LENGTH];
 };
 
 class RnnModel;
@@ -118,12 +120,14 @@ public:
 
   Tensor add_embed_node(Tensor x, int vocab_size, int output_size,
                         ParallelConfig pc, SharedVariable params);
+
+  Tensor add_softmaxDP_node(Tensor x, Tensor label, ParallelConfig pc);
 public:
   RnnConfig config;
   std::vector<RnnOp*> layers;
   std::vector<SharedVariable> sharedVariables;
   DnnHandle dnn_handlers[MAX_NUM_WORKERS];
-  Tensor srcs[MAX_SEQ_LENGTH], dsts[MAX_SEQ_LENGTH];
+  Tensor srcs[MAX_SEQ_LENGTH], dsts[MAX_SEQ_LENGTH], labels[MAX_SEQ_LENGTH];
   IndexSpaceT<1> part_is;
 };
 
@@ -266,6 +270,82 @@ public:
 class EmbedMeta : public OpMeta {
 public:
   EmbedMeta(DnnHandle handle) : OpMeta(handle) {};
+  bool profiling_runtime;
+};
+
+/*class Softmax : public RnnOp {
+public:
+  Softmax(RnnConfig config, Tensor input, Tensor output,
+          ParallelConfig pc);
+
+  void init(const RnnModel&);
+
+  void forward(const RnnModel&);
+
+  void backward(const RnnModel&);
+
+  void update(const RnnModel&);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, HighLevelRuntime *runtime);
+public:
+  Rect<1> part_rect;
+};
+
+class SoftmaxMeta : public OpMeta {
+public:
+  SoftmaxMeta(DnnHandle handle) : OpMeta(handle) {};
+  size_t storage_bytes;
+  void* storage;
+  int* offsets;
+  bool profiling_runtime;
+};
+*/
+class SoftmaxDP : public RnnOp {
+public:
+  SoftmaxDP(RnnConfig config, Tensor logit, Tensor label,
+            ParallelConfig pc);
+
+  void init(const RnnModel&);
+
+  void forward(const RnnModel&);
+
+  void backward(const RnnModel&);
+
+  void update(const RnnModel&);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, HighLevelRuntime *runtime);
+public:
+  Rect<1> part_rect;
+  Tensor label;
+  LogicalPartition logit_lp, logit_grad_lp;
+};
+
+class SoftmaxDPMeta : public OpMeta {
+public:
+  SoftmaxDPMeta(DnnHandle handle) : OpMeta(handle) {};
+#ifndef DISABLE_COMPUTATION
+  cudnnTensorDescriptor_t inputTensor;
+#endif
   bool profiling_runtime;
 };
 
