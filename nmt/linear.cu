@@ -317,7 +317,7 @@ void Linear::backward_task(const Task *task,
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 6);
   assert(task->regions.size() == 6);
-  float alpha = 1.0f, beta = 0.0f;
+  float alpha = 1.0f, beta = 1.0f;
   const LinearMeta* m = *((LinearMeta**) task->args);
   const AccessorRO<float, 3> acc_x(regions[0], FID_DATA);
   const AccessorRO<float, 1> acc_w(regions[1], FID_DATA);
