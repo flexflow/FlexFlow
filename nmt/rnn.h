@@ -102,11 +102,17 @@ public:
 
   void update();
 
+  void init_shared_variable(SharedVariable params);
+
   void update_shared_variable(SharedVariable params);
 
   static void word_init_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, HighLevelRuntime *runtime);
+
+  static void params_init_task(const Task *task,
+                               const std::vector<PhysicalRegion> &regions,
+                               Context ctx, HighLevelRuntime *runtime);
 
   static void params_update_task(const Task *task,
                                  const std::vector<PhysicalRegion> &regions,

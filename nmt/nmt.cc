@@ -24,6 +24,7 @@ LegionRuntime::Logger::Category log_nmt("nmt");
 void parse_input_args(char **argv, int argc,
                       int &batch_size, int &num_layers, int &seq_length,
                       int &hidden_size, int &embed_size);
+
 void set_global_config(GlobalConfig &global, int num_layers,
                        int seq_length, int num_parts);
 
@@ -186,8 +187,13 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<SoftmaxDP::backward_task>(registrar, "softmaxDP_bwd_task");
   }
-
-  // Params update task
+  // Params related tasks
+  {
+    TaskVariantRegistrar registrar(PARAMS_INIT_TASK_ID, "params_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<RnnModel::params_init_task>(registrar, "params_init_task");
+  }
   {
     TaskVariantRegistrar registrar(PARAMS_UPD_TASK_ID, "params_upd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));

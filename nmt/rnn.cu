@@ -367,6 +367,7 @@ void RnnModel::init()
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
+  // Init words
   Rect<1> part_rect = runtime->get_index_space_domain(ctx, part_is);
   for (PointInRectIterator<1> it(part_rect); it(); it++) {
     int idx = 0;
@@ -398,6 +399,9 @@ void RnnModel::init()
     Future f = runtime->execute_task(ctx, launcher);
     f.get_void_result();
   }
+  // Init shared variables
+  for (int i = 0; i < sharedVariables.size(); i++)
+    init_shared_variable(sharedVariables[i]);
   for (size_t i = 0; i < layers.size(); i++)
     layers[i]->init(*this);
 }
@@ -420,6 +424,38 @@ void RnnModel::update()
 {
   for (int i = 0; i < sharedVariables.size(); i++)
     update_shared_variable(sharedVariables[i]);
+}
+
+/*
+  regions[0](O): w
+*/
+void RnnModel::params_init_task(const Task *task,
+                                const std::vector<PhysicalRegion> &regions,
+                                Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 1);
+  assert(task->regions.size() == 1);
+  const AccessorWO<float, 1> acc_w(regions[0], FID_DATA);
+  Rect<1> rect_w =
+    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  assert(acc_w.accessor.is_dense_arbitrary(rect_w));
+  float *w_ptr = acc_w.ptr(rect_w.lo);
+  ones_kernel<<<GET_BLOCKS(rect_w.volume()), CUDA_NUM_THREADS>>>(
+    w_ptr, rect_w.volume());
+}
+
+void RnnModel::init_shared_variable(SharedVariable params)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  TaskLauncher launcher(PARAMS_INIT_TASK_ID, TaskArgument(NULL, 0),
+                        Predicate::TRUE_PRED, 0/*MapperID*/,
+                        RnnMapper::assign_to_gpu(params.masterOnNode[0]));
+  launcher.add_region_requirement(
+      RegionRequirement(params.region, WRITE_ONLY, EXCLUSIVE, params.region));
+  launcher.add_field(0, FID_DATA);
+  Future f = runtime->execute_task(ctx, launcher);
+  f.get_void_result();
 }
 
 /*
