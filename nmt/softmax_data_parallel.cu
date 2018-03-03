@@ -79,15 +79,19 @@ SoftmaxDP::SoftmaxDP(RnnConfig config, Tensor logit, Tensor _label, ParallelConf
   outputs[0].partition_grad = y_grad_lp;
   // Every partition reads all input_channels
   // Use the same partitioning as outputs
-  if (inputs[0].pdim[0] == outputs[0].pdim[0]
-    && inputs[0].pdim[1] == outputs[0].pdim[1]) {
-    logit_lp = inputs[0].partition;
-    logit_grad_lp = inputs[0].partition_grad;
-  } else {
-    IndexPartition logit_ip = y_ip;
+  //if (inputs[0].pdim[0] == outputs[0].pdim[0]
+  //  && inputs[0].pdim[1] == outputs[0].pdim[1]) {
+  //  logit_lp = inputs[0].partition;
+  //  logit_grad_lp = inputs[0].partition_grad;
+  //} else {
+    IndexSpaceT<3> logit_is(inputs[0].region.get_index_space());
+    IndexPartition logit_ip =
+      runtime->create_partition_by_restriction(ctx, logit_is,
+                                               part_is, trans, extent);
     logit_lp = runtime->get_logical_partition(ctx, inputs[0].region, logit_ip);
-    logit_grad_lp = runtime->get_logical_partition(ctx, inputs[0].region_grad, logit_ip);
-  }
+    logit_grad_lp
+      = runtime->get_logical_partition(ctx, inputs[0].region_grad, logit_ip);
+  //}
 }
 
 /*
@@ -100,7 +104,7 @@ OpMeta* SoftmaxDP::init_task(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  SoftmaxDPInitParams* softmaxDP = (SoftmaxDPInitParams*) task->args;
+  const SoftmaxDPInitParams* softmaxDP = (SoftmaxDPInitParams*) task->args;
   const AccessorRO<float, 3> acc_x(regions[0], FID_DATA);
   const AccessorWO<float, 3> acc_y(regions[1], FID_DATA);
   Rect<3> rect_x =
