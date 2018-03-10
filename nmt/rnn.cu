@@ -122,14 +122,9 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
         runtime->create_logical_region(ctx, word_is, config.field_space);
       dsts[i].partition_grad =
         runtime->get_logical_partition(ctx, dsts[i].region_grad, word_ip);
-      labels[i] = srcs[i];
-      labels[i].region = runtime->create_logical_region(ctx, word_is, config.field_space);
-      labels[i].partition =
-        runtime->get_logical_partition(ctx, labels[i].region, word_ip);
     }
   }
-  // Create a zeroed tensor
-  LSTMTensors zero[MAX_NUM_LAYERS];
+  // Create zeroed tensors
   {
     Rect<2> hx_rect(Point<2>(0, 0), Point<2>(hidden_size-1, batch_size-1));
     IndexSpaceT<2> hx_is = runtime->create_index_space(ctx, hx_rect);
@@ -299,7 +294,6 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
         linear.gradients[i] = LogicalRegion::NO_REGION;
   }
 
-  LSTMTensors lstm[MAX_NUM_LAYERS][2*MAX_SEQ_LENGTH];
   Tensor embed[2*MAX_SEQ_LENGTH];
   for (int i = 0; i < 2*nodes_per_layer; i++) {
     embed[i] = add_embed_node(i < nodes_per_layer ? srcs[i] : dsts[i-nodes_per_layer],
@@ -326,7 +320,7 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
   for (int j = nodes_per_layer; j < 2*nodes_per_layer; j++) {
     Tensor logit = add_linear_node(lstm[numLayers-1][j].x, vocab_size,
                                    global.linear[j-nodes_per_layer], linear);
-    add_softmaxDP_node(logit, labels[j-nodes_per_layer],
+    add_softmaxDP_node(logit, dsts[j-nodes_per_layer],
                        global.softmax[j-nodes_per_layer]);
   }
   
@@ -347,10 +341,11 @@ void RnnModel::word_init_task(const Task *task,
   Rect<2> rect0 =
     runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   int *host_ptr;
+  bool same = *((bool*) task->args);
   checkCUDA(cudaHostAlloc(&host_ptr, sizeof(int) * rect0.volume(),
                           cudaHostAllocPortable | cudaHostAllocMapped));
   for (int i = 0; i < rect0.volume(); i++)
-    host_ptr[i] = i;
+    host_ptr[i] = same ? 1 : i % 16;
   for (int i = 0; i < regions.size(); i++) {
     const AccessorWO<int, 2> acc(regions[i], FID_DATA);
     Rect<2> rect =
@@ -361,6 +356,7 @@ void RnnModel::word_init_task(const Task *task,
     checkCUDA(cudaMemcpy(ptr, host_ptr, sizeof(int) * rect0.volume(),
                          cudaMemcpyHostToDevice));
   }
+  checkCUDA(cudaFreeHost(host_ptr));
 }
 
 void RnnModel::init()
@@ -371,7 +367,8 @@ void RnnModel::init()
   Rect<1> part_rect = runtime->get_index_space_domain(ctx, part_is);
   for (PointInRectIterator<1> it(part_rect); it(); it++) {
     int idx = 0;
-    TaskLauncher launcher(WORD_INIT_TASK_ID, TaskArgument(NULL, 0),
+    bool same = false;
+    TaskLauncher launcher(WORD_INIT_TASK_ID, TaskArgument(&same, sizeof(same)),
                           Predicate::TRUE_PRED, 0/*MapperID*/,
                           RnnMapper::assign_to_gpu(0));
     DomainPoint dp(*it);
@@ -389,11 +386,73 @@ void RnnModel::init()
           RegionRequirement(x, WRITE_ONLY, EXCLUSIVE, dsts[i].region));
       launcher.add_field(idx++, FID_DATA);
     }
-    for (int i = 0; i * LSTM_PER_NODE_LENGTH < config.seqLength; i++) {
-      LogicalRegion x =
-        runtime->get_logical_subregion_by_color(labels[i].partition, dp);
+    Future f = runtime->execute_task(ctx, launcher);
+    f.get_void_result();
+  }
+  // Init zero tensors
+  for (PointInRectIterator<1> it(part_rect); it(); it++) {
+    int idx = 0;
+    TaskLauncher launcher(ZERO_2D_INIT_TASK_ID, TaskArgument(NULL, 0),
+                          Predicate::TRUE_PRED, 0,
+                          RnnMapper::assign_to_gpu(0));
+    DomainPoint dp(*it);
+    for (int i = 0; i < config.numLayers; i++) {
+      LogicalRegion hx =
+        runtime->get_logical_subregion_by_color(zero[i].hx.partition, dp);
       launcher.add_region_requirement(
-          RegionRequirement(x, WRITE_ONLY, EXCLUSIVE, labels[i].region));
+          RegionRequirement(hx, WRITE_ONLY, EXCLUSIVE, zero[i].hx.region));
+      launcher.add_field(idx++, FID_DATA);
+    }
+    for (int i = 0; i < config.numLayers; i++) {
+      LogicalRegion cx =
+        runtime->get_logical_subregion_by_color(zero[i].cx.partition, dp);
+      launcher.add_region_requirement(
+          RegionRequirement(cx, WRITE_ONLY, EXCLUSIVE, zero[i].cx.region));
+      launcher.add_field(idx++, FID_DATA);
+    }
+    Future f = runtime->execute_task(ctx, launcher);
+    f.get_void_result();
+  }
+  // Init hx_grad/cx_grad for the last LSTM node on each layer
+  int nodes_per_layer = config.seqLength / LSTM_PER_NODE_LENGTH;                                      
+  for (PointInRectIterator<1> it(part_rect); it(); it++) {
+    int idx = 0;
+    TaskLauncher launcher(ZERO_2D_INIT_TASK_ID, TaskArgument(NULL, 0),
+                          Predicate::TRUE_PRED, 0,
+                          RnnMapper::assign_to_gpu(0));
+    DomainPoint dp(*it);
+    for (int i = 0; i < config.numLayers; i++) {
+      LSTMTensors last_lstm = lstm[i][2 * nodes_per_layer - 1];
+      // hx
+      LogicalRegion hx_grad =
+        runtime->get_logical_subregion_by_color(last_lstm.hx.partition_grad, dp);
+      launcher.add_region_requirement(
+        RegionRequirement(hx_grad, WRITE_ONLY, EXCLUSIVE, last_lstm.hx.region_grad));
+      launcher.add_field(idx++, FID_DATA);
+      // cx
+      LogicalRegion cx_grad =
+        runtime->get_logical_subregion_by_color(last_lstm.cx.partition_grad, dp);
+      launcher.add_region_requirement(
+        RegionRequirement(cx_grad, WRITE_ONLY, EXCLUSIVE, last_lstm.cx.region_grad));
+      launcher.add_field(idx++, FID_DATA);
+    }
+    Future f = runtime->execute_task(ctx, launcher);
+    f.get_void_result();
+  }
+  // TODO: to be removed when we have attention layers
+  // Init y_grad for the decoder lstm nodes
+  for (PointInRectIterator<1> it(part_rect); it(); it++) {
+    int idx = 0;
+    TaskLauncher launcher(ZERO_3D_INIT_TASK_ID, TaskArgument(NULL, 0),
+                          Predicate::TRUE_PRED, 0,
+                          RnnMapper::assign_to_gpu(0));
+    DomainPoint dp(*it);
+    for (int i = 0; i < nodes_per_layer; i++) {
+      LSTMTensors top_lstm = lstm[config.numLayers - 1][i];
+      LogicalRegion y_grad =
+        runtime->get_logical_subregion_by_color(top_lstm.x.partition_grad, dp);
+      launcher.add_region_requirement(
+        RegionRequirement(y_grad, WRITE_ONLY, EXCLUSIVE, top_lstm.x.region_grad));
       launcher.add_field(idx++, FID_DATA);
     }
     Future f = runtime->execute_task(ctx, launcher);
@@ -406,8 +465,67 @@ void RnnModel::init()
     layers[i]->init(*this);
 }
 
+void RnnModel::zero_3d_init_task(const Task *task,
+                                 const std::vector<PhysicalRegion> &regions,
+                                 Context ctx, Runtime *runtime)
+{
+  for (int i = 0; i < task->regions.size(); i++) {
+    const AccessorWO<float, 3> acc_w(regions[i], FID_DATA);
+    Rect<3> rect_w =
+      runtime->get_index_space_domain(ctx, task->regions[i].region.get_index_space());
+    assert(acc_w.accessor.is_dense_arbitrary(rect_w));
+    float *w_ptr = acc_w.ptr(rect_w.lo);
+    assign_kernel<<<GET_BLOCKS(rect_w.volume()), CUDA_NUM_THREADS>>>(
+      w_ptr, rect_w.volume(), 0.0f);
+  }
+}
+
+void RnnModel::zero_2d_init_task(const Task *task,
+                                 const std::vector<PhysicalRegion> &regions,
+                                 Context ctx, Runtime *runtime)
+{
+  for (int i = 0; i < task->regions.size(); i++) {
+    const AccessorWO<float, 2> acc_w(regions[i], FID_DATA);
+    Rect<2> rect_w =
+      runtime->get_index_space_domain(ctx, task->regions[i].region.get_index_space());
+    assert(acc_w.accessor.is_dense_arbitrary(rect_w));
+    float *w_ptr = acc_w.ptr(rect_w.lo);
+    assign_kernel<<<GET_BLOCKS(rect_w.volume()), CUDA_NUM_THREADS>>>(
+      w_ptr, rect_w.volume(), 0.0f);
+  }
+}
+
+void RnnModel::zero_1d_init_task(const Task *task,
+                                 const std::vector<PhysicalRegion> &regions,
+                                 Context ctx, Runtime *runtime)
+{
+  for (int i = 0; i < task->regions.size(); i++) {
+    const AccessorWO<float, 1> acc_w(regions[i], FID_DATA);
+    Rect<1> rect_w =
+      runtime->get_index_space_domain(ctx, task->regions[i].region.get_index_space());
+    assert(acc_w.accessor.is_dense_arbitrary(rect_w));
+    float *w_ptr = acc_w.ptr(rect_w.lo);
+    assign_kernel<<<GET_BLOCKS(rect_w.volume()), CUDA_NUM_THREADS>>>(
+      w_ptr, rect_w.volume(), 0.0f);
+  }
+}
+
 void RnnModel::forward()
 {
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  for (size_t i = 0; i < sharedVariables.size(); i++)
+    for (int j = 0; j < config.workersPerNode * config.numNodes; j++)
+      if (sharedVariables[i].gradients[j] != LogicalRegion::NO_REGION) {
+        TaskLauncher launcher(ZERO_1D_INIT_TASK_ID, TaskArgument(NULL, 0),
+                              Predicate::TRUE_PRED, 0,
+                              RnnMapper::assign_to_gpu(j));
+        LogicalRegion gradient = sharedVariables[i].gradients[j];
+        launcher.add_region_requirement(
+            RegionRequirement(gradient, WRITE_ONLY, EXCLUSIVE, gradient));
+        launcher.add_field(0, FID_DATA);
+        runtime->execute_task(ctx, launcher);
+      }
   for (size_t i = 0; i < layers.size(); i++) {
     layers[i]->forward(*this);
   }
@@ -422,7 +540,7 @@ void RnnModel::backward()
 
 void RnnModel::update()
 {
-  for (int i = 0; i < sharedVariables.size(); i++)
+  for (int i = sharedVariables.size() - 1; i >= 0; i--)
     update_shared_variable(sharedVariables[i]);
 }
 
@@ -435,20 +553,32 @@ void RnnModel::params_init_task(const Task *task,
 {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
+  float value = *((float*) task->args);
   const AccessorWO<float, 1> acc_w(regions[0], FID_DATA);
   Rect<1> rect_w =
     runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   assert(acc_w.accessor.is_dense_arbitrary(rect_w));
   float *w_ptr = acc_w.ptr(rect_w.lo);
-  ones_kernel<<<GET_BLOCKS(rect_w.volume()), CUDA_NUM_THREADS>>>(
-    w_ptr, rect_w.volume());
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  curandGenerator_t genGPU;
+  curandCreateGenerator(&genGPU, CURAND_RNG_PSEUDO_DEFAULT);
+  curandSetStream(genGPU, stream);
+  curandSetPseudoRandomGeneratorSeed(genGPU, 1234LL);
+  curandGenerateUniform(genGPU, w_ptr, rect_w.volume());
+  checkCUDA(cudaDeviceSynchronize());
+  scale_kernel<<<GET_BLOCKS(rect_w.volume()), CUDA_NUM_THREADS>>>(
+    w_ptr, rect_w.volume(), -value, value);
+  //assign_kernel<<<GET_BLOCKS(rect_w.volume()), CUDA_NUM_THREADS>>>(
+  //  w_ptr, rect_w.volume(), value);
 }
 
 void RnnModel::init_shared_variable(SharedVariable params)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
-  TaskLauncher launcher(PARAMS_INIT_TASK_ID, TaskArgument(NULL, 0),
+  float value = 0.1f;
+  TaskLauncher launcher(PARAMS_INIT_TASK_ID, TaskArgument(&value, sizeof(value)),
                         Predicate::TRUE_PRED, 0/*MapperID*/,
                         RnnMapper::assign_to_gpu(params.masterOnNode[0]));
   launcher.add_region_requirement(
@@ -482,7 +612,14 @@ void RnnModel::params_update_task(const Task *task,
     const float *w_grad_ptr = acc_w_grad.ptr(rect_w_grad.lo);
     apply_add_with_scale<<<GET_BLOCKS(rect_w_grad.volume()), CUDA_NUM_THREADS>>>(
         w_ptr, w_grad_ptr, rect_w_grad.volume(), rate);
+#ifdef PRINT_INTERMEDIATE_RESULT
+    print_tensor<1, float>(w_grad_ptr, rect_w_grad, "partial_w");
+#endif
   }
+#ifdef PRINT_INTERMEDIATE_RESULT
+  float *w_ptr = acc_w.ptr(rect_w.lo);
+  print_tensor<1, float>(w_ptr, rect_w, "final_w");
+#endif
 }
 
 void RnnModel::update_shared_variable(SharedVariable params)
@@ -519,7 +656,7 @@ void RnnModel::update_shared_variable(SharedVariable params)
     printf("Step 1: cnt = %d\n", cnt);
     runtime->execute_task(ctx, launcher);
   }
-  rate = 0.001f;
+  rate = -0.01f;
   TaskLauncher launcher(PARAMS_UPD_TASK_ID, TaskArgument(&rate, sizeof(rate)),
                         Predicate::TRUE_PRED, 0/*MapperID*/,
                         RnnMapper::assign_to_gpu(params.masterOnNode[0]));

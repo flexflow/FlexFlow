@@ -18,6 +18,15 @@ void ones_kernel(float* ptr, coord_t size)
 }
 
 __global__
+void assign_kernel(float* ptr, coord_t size, float value)
+{
+  CUDA_KERNEL_LOOP(i, size)
+  {
+    ptr[i] = value;
+  }
+}
+
+__global__
 void reluBackward(float *grad_ptr, const float *input, int n)
 {
   CUDA_KERNEL_LOOP(i, n)
@@ -60,3 +69,6 @@ void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
   apply_add_with_scale<<<GET_BLOCKS(replica_size), CUDA_NUM_THREADS>>>(
       para_ptr, grad_ptr, replica_size, scale_factor);
 }
+
+
+

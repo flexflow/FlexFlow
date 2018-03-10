@@ -195,6 +195,24 @@ int main(int argc, char **argv)
     Runtime::preregister_task_variant<RnnModel::params_init_task>(registrar, "params_init_task");
   }
   {
+    TaskVariantRegistrar registrar(ZERO_1D_INIT_TASK_ID, "zero_1d_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<RnnModel::zero_1d_init_task>(registrar, "zero_1d_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(ZERO_2D_INIT_TASK_ID, "zero_2d_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<RnnModel::zero_2d_init_task>(registrar, "zero_2d_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(ZERO_3D_INIT_TASK_ID, "zero_3d_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<RnnModel::zero_3d_init_task>(registrar, "zero_3d_init_task");
+  }
+  {
     TaskVariantRegistrar registrar(PARAMS_UPD_TASK_ID, "params_upd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();

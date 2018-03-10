@@ -155,7 +155,7 @@ OpMeta* Linear::init_task(const Task *task,
   LinearMeta* m = new LinearMeta(linear->handle);
   m->profiling_runtime = true;
 #ifndef DISABLE_COMPUTATION
-  int batch_size = linear->batchSize;
+  int batch_size = linear->batchSize * LSTM_PER_NODE_LENGTH;
   float* dram_one_ptr = (float*) malloc(sizeof(float) * batch_size);
   for (int i = 0; i < batch_size; i++)
     dram_one_ptr[i] = 1.0f;
@@ -235,7 +235,7 @@ void Linear::forward_task(const Task *task,
   assert(acc_y.accessor.is_dense_arbitrary(rect_y));
   int input_size = rect_x.hi[0] - rect_x.lo[0] + 1;
   int output_size = rect_y.hi[0] - rect_y.lo[0] + 1;
-  int batch_size = rect_x.hi[1] - rect_x.lo[1] + 1;
+  int batch_size = (rect_x.hi[1] - rect_x.lo[1] + 1) * LSTM_PER_NODE_LENGTH;
   const float *x_ptr = acc_x.ptr(rect_x.lo);
   const float *w_ptr = acc_w.ptr(rect_w.lo);
   const float *bias_ptr = w_ptr + input_size;
@@ -246,6 +246,9 @@ void Linear::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
                         output_size, batch_size, input_size,
                         &alpha, w_ptr, input_size + 1,
@@ -265,6 +268,9 @@ void Linear::forward_task(const Task *task,
     cudaEventDestroy(t_end);
     printf("Linear forward time = %.2lfms\n", elapsed);
   }
+#ifdef PRINT_INTERMEDIATE_RESULT
+  print_tensor<3, float>(y_ptr, rect_y, "linear(fwd):y");
+#endif
 #endif
 }
 
@@ -302,6 +308,7 @@ void Linear::forward(const RnnModel &model)
     runtime->execute_task(ctx, launcher);
   }
 }
+
 /*
   regions[0](I): x
   regions[1](I): w
@@ -317,7 +324,7 @@ void Linear::backward_task(const Task *task,
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 6);
   assert(task->regions.size() == 6);
-  float alpha = 1.0f, beta = 1.0f;
+  float alpha = 1.0f, beta = 0.0f;
   const LinearMeta* m = *((LinearMeta**) task->args);
   const AccessorRO<float, 3> acc_x(regions[0], FID_DATA);
   const AccessorRO<float, 1> acc_w(regions[1], FID_DATA);
@@ -346,11 +353,13 @@ void Linear::backward_task(const Task *task,
   assert(acc_y_grad.accessor.is_dense_arbitrary(rect_y_grad));
   int input_size = rect_x.hi[0] - rect_x.lo[0] + 1;
   int output_size = rect_y.hi[0] - rect_y.lo[0] + 1;
-  int batch_size = rect_x.hi[1] - rect_x.lo[1] + 1;
+  int batch_size = (rect_x.hi[1] - rect_x.lo[1] + 1) * LSTM_PER_NODE_LENGTH;
   const float *x_ptr = acc_x.ptr(rect_x.lo);
   const float *w_ptr = acc_w.ptr(rect_w.lo);
   const float *y_ptr = acc_y.ptr(rect_y.lo);
   float* replica_grad_ptr = acc_replica_grad.ptr(rect_replica_grad.lo);
+  // Note that w_grad might be bigger than w
+  assert(rect_w_grad.contains(rect_w));
   float* w_grad_ptr = acc_w_grad.ptr(rect_w_grad.lo);
   float* bias_grad_ptr = w_grad_ptr + input_size;
   const float* y_grad_ptr = acc_y_grad.ptr(rect_y_grad.lo);
@@ -360,22 +369,26 @@ void Linear::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
   // Compute weight gradient
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_T,
                         input_size, output_size, batch_size,
                         &alpha, x_ptr, input_size,
                         y_grad_ptr, output_size,
-                        &beta, w_grad_ptr, input_size+1));
+                        &alpha, w_grad_ptr, input_size+1));
   // Compute bias gradient
   checkCUDA(cublasSgemv(m->handle.blas, CUBLAS_OP_N,
                         output_size, batch_size,
                         &alpha, y_grad_ptr, output_size,
                         m->one_ptr, 1,
-                        &beta, bias_grad_ptr, input_size+1));
+                        &alpha, bias_grad_ptr, input_size+1));
   // Compute data gradient
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_N,
                         input_size, batch_size, output_size,
-                        &alpha, w_ptr, input_size,
+                        &alpha, w_ptr, input_size + 1,
                         y_grad_ptr, output_size,
                         &beta, replica_grad_ptr, input_size));
   if (m->profiling_runtime) {
@@ -387,6 +400,9 @@ void Linear::backward_task(const Task *task,
     cudaEventDestroy(t_end);
     printf("Linear backward time = %.2lfms\n", elapsed);
   }
+#ifdef PRINT_INTERMEDIATE_RESULT
+  print_tensor<1, float>(w_grad_ptr, rect_w_grad, "linear(bwd):w_grad");
+#endif
 #endif
 }
 
@@ -406,6 +422,9 @@ void Linear::backward2_task(const Task *task,
     runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
   float *input_ptr = acc_input.ptr(rect_input.lo);
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
   for (int i = 1; i < task->regions.size(); i++) {
     const AccessorRO<float, 3> acc_replica(regions[i], FID_DATA);
     Rect<3> rect_replica =

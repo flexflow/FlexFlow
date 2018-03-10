@@ -317,6 +317,9 @@ void LSTM::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   checkCUDNN(cudnnRNNForwardTraining(m->handle.dnn, m->rnnDesc,
                                      LSTM_PER_NODE_LENGTH/*seqLength*/,
                                      m->xDescs, x_ptr, m->hxDesc, hx_ptr,
@@ -334,6 +337,9 @@ void LSTM::forward_task(const Task *task,
     cudaEventDestroy(t_end);
     printf("LSTM forward time = %.2fms\n", elapsed);
   }
+#ifdef PRINT_INTERMEDIATE_RESULT
+  print_tensor<3, float>(y_ptr, rect_y, "lstm_fwd:y");
+#endif
 #endif
 }
 
@@ -477,6 +483,9 @@ void LSTM::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   checkCUDNN(cudnnRNNBackwardData(m->handle.dnn, m->rnnDesc,
                                   LSTM_PER_NODE_LENGTH/*seqLength*/,
                                   m->yDescs, y_ptr, m->yDescs, y_grad_ptr,
@@ -502,6 +511,12 @@ void LSTM::backward_task(const Task *task,
     cudaEventDestroy(t_end);
     printf("LSTM backward time = %.2fms\n", elapsed);
   }
+#ifdef PRINT_INTERMEDIATE_RESULT
+  print_tensor<1, float>(w_grad_ptr, rect_w_grad, "lstm_bwd:w_grad");
+  print_tensor<3, float>(x_grad_ptr, rect_x_grad, "lstm_bwd:x_grad");
+  print_tensor<2, float>(hx_grad_ptr, rect_hx_grad, "lstm_bwd:hx_grad");
+  print_tensor<2, float>(cx_grad_ptr, rect_cx_grad, "lstm_bwd:cx_grad");
+#endif
 #endif
 }
 

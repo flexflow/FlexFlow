@@ -19,6 +19,7 @@
 
 struct SoftmaxDPInitParams {
   DnnHandle handle;
+  int batchSize;
   bool profiling;
 };
 
@@ -115,11 +116,12 @@ OpMeta* SoftmaxDP::init_task(const Task *task,
   assert(acc_y.accessor.is_dense_arbitrary(rect_y));
   SoftmaxDPMeta* m = new SoftmaxDPMeta(softmaxDP->handle);
   m->profiling_runtime = softmaxDP->profiling;
+  m->batchSize = softmaxDP->batchSize;
 #ifndef DISABLE_COMPUTATION
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
   assert(rect_x == rect_y);
   int input_c = rect_x.hi[0] - rect_x.lo[0] + 1;
-  int input_n = rect_x.hi[1] - rect_x.lo[1] + 1;
+  int input_n = (rect_x.hi[1] - rect_x.lo[1] + 1) * LSTM_PER_NODE_LENGTH;
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor, CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT, input_n, input_c, 1, 1));
 #endif
@@ -134,6 +136,7 @@ void SoftmaxDP::init(const RnnModel& model)
   for (PointInRectIterator<1> it(part_rect); it(); it++, idx++) {
     SoftmaxDPInitParams initParams;
     initParams.handle = model.dnn_handlers[paraConfig.gpu[idx]];
+    initParams.batchSize = model.config.batchSize;
     initParams.profiling = true;
     TaskLauncher launcher(RNN_SOFTMAXDP_INIT_TASK_ID,
                           TaskArgument(&initParams, sizeof(initParams)),
@@ -189,6 +192,9 @@ void SoftmaxDP::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
                                  CUDNN_SOFTMAX_ACCURATE,
                                  CUDNN_SOFTMAX_MODE_CHANNEL,
@@ -203,6 +209,9 @@ void SoftmaxDP::forward_task(const Task *task,
     cudaEventDestroy(t_end);
     printf("SoftmaxDP forward time = %.2fms\n", elapsed);
   }
+#ifdef PRINT_INTERMEDIATE_RESULT
+  print_tensor<3, float>(y_ptr, rect_y, "softmax");
+#endif
 #endif
 }
 
@@ -290,12 +299,14 @@ void SoftmaxDP::backward_task(const Task *task,
                             rect_x_grad.volume() * sizeof(float),
                             cudaMemcpyDeviceToDevice));
   SoftmaxLossBackprop<<<GET_BLOCKS(num_labels), CUDA_NUM_THREADS>>>(
-      x_grad_ptr, label_ptr, vocab_size, num_labels);
+    x_grad_ptr, label_ptr, vocab_size, num_labels);
 
   // Accouting for batch size in SGD
-  float scalVal = 1.0f / static_cast<float>(num_labels);
-  checkCUDA(cublasSscal(m->handle.blas, rect_x_grad.volume(),
-                        &scalVal, x_grad_ptr, 1));
+  float scalVal = 1.0f / static_cast<float>(m->batchSize);
+  scale_kernel<<<GET_BLOCKS(rect_x_grad.volume()), CUDA_NUM_THREADS>>>(
+    x_grad_ptr, rect_x_grad.volume(), 0.0f, scalVal);
+  //checkCUDA(cublasSscal(m->handle.blas, rect_x_grad.volume(),
+  //                      &scalVal, x_grad_ptr, 1));
   if (m->profiling_runtime) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -305,6 +316,9 @@ void SoftmaxDP::backward_task(const Task *task,
     cudaEventDestroy(t_end);
     printf("Softmax backward time = %.2fms\n", elapsed);
   }
+#ifdef PRINT_INTERMEDIATE_RESULT
+  print_tensor<3, float>(x_grad_ptr, rect_x_grad, "softmax bwd:x_grad");
+#endif
 #endif
 }
 

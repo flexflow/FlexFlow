@@ -18,10 +18,11 @@
 
 #include "ops.h"
 
-#define MAX_SEQ_LENGTH 40
+#define MAX_SEQ_LENGTH 100
 #define MAX_NUM_LAYERS 4
 #define LSTM_PER_NODE_LENGTH 5
 #define MASTER_NOT_ASSIGNED -1
+#define PRINT_INTERMEDIATE_RESULT
 
 struct RnnConfig {
   Context lg_ctx;
@@ -110,6 +111,18 @@ public:
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, HighLevelRuntime *runtime);
 
+  static void zero_1d_init_task(const Task *task,
+                                const std::vector<PhysicalRegion> &regions,
+                                Context ctx, HighLevelRuntime *runtime);
+
+  static void zero_2d_init_task(const Task *task,
+                                const std::vector<PhysicalRegion> &regions,
+                                Context ctx, HighLevelRuntime *runtime);
+
+  static void zero_3d_init_task(const Task *task,
+                                const std::vector<PhysicalRegion> &regions,
+                                Context ctx, HighLevelRuntime *runtime);
+
   static void params_init_task(const Task *task,
                                const std::vector<PhysicalRegion> &regions,
                                Context ctx, HighLevelRuntime *runtime);
@@ -133,7 +146,9 @@ public:
   std::vector<RnnOp*> layers;
   std::vector<SharedVariable> sharedVariables;
   DnnHandle dnn_handlers[MAX_NUM_WORKERS];
-  Tensor srcs[MAX_SEQ_LENGTH], dsts[MAX_SEQ_LENGTH], labels[MAX_SEQ_LENGTH];
+  Tensor srcs[MAX_SEQ_LENGTH], dsts[MAX_SEQ_LENGTH];
+  LSTMTensors zero[MAX_NUM_LAYERS];
+  LSTMTensors lstm[MAX_NUM_LAYERS][2*MAX_SEQ_LENGTH];
   IndexSpaceT<1> part_is;
 };
 
@@ -352,6 +367,7 @@ public:
 #ifndef DISABLE_COMPUTATION
   cudnnTensorDescriptor_t inputTensor;
 #endif
+  int batchSize;
   bool profiling_runtime;
 };
 
