@@ -104,7 +104,7 @@ Embed::Embed(RnnConfig config, Tensor x, int _vocab_size, int _output_size,
   assert(rect_y.hi[1] - rect_y.lo[1] + 1 == embed->batchSize);
   assert(rect_y.hi[2] - rect_y.lo[2] + 1 == LSTM_PER_NODE_LENGTH);
   EmbedMeta* m = new EmbedMeta(embed->handle);
-  m->profiling_runtime = true;
+  m->profiling_runtime = false;
   return m;
 }
 

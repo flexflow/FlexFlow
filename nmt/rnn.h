@@ -22,7 +22,7 @@
 #define MAX_NUM_LAYERS 4
 #define LSTM_PER_NODE_LENGTH 5
 #define MASTER_NOT_ASSIGNED -1
-#define PRINT_INTERMEDIATE_RESULT
+//#define PRINT_INTERMEDIATE_RESULT
 
 struct RnnConfig {
   Context lg_ctx;
@@ -31,6 +31,7 @@ struct RnnConfig {
   int batchSize, hiddenSize, embedSize, vocabSize;
   int numLayers, seqLength, numParts;
   int numNodes, workersPerNode;
+  int iterator;
 };
 
 struct SharedVariable {

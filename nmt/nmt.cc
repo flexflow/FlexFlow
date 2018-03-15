@@ -37,9 +37,9 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int hidden_size = 1024;
   int embed_size = 1024;
   int vocab_size = 32 * 1024;
-  int num_nodes = 1;
+  int num_nodes = 2;
   int workers_per_node = 4;
-  int num_parts = 4;
+  int num_parts = 8;
   int num_iterations = 10;
   {
     const InputArgs &command_args = HighLevelRuntime::get_input_args();

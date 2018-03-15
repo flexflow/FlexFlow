@@ -137,7 +137,7 @@ void SoftmaxDP::init(const RnnModel& model)
     SoftmaxDPInitParams initParams;
     initParams.handle = model.dnn_handlers[paraConfig.gpu[idx]];
     initParams.batchSize = model.config.batchSize;
-    initParams.profiling = true;
+    initParams.profiling = false;
     TaskLauncher launcher(RNN_SOFTMAXDP_INIT_TASK_ID,
                           TaskArgument(&initParams, sizeof(initParams)),
                           Predicate::TRUE_PRED, 0/*MapperID*/,
@@ -319,6 +319,19 @@ void SoftmaxDP::backward_task(const Task *task,
 #ifdef PRINT_INTERMEDIATE_RESULT
   print_tensor<3, float>(x_grad_ptr, rect_x_grad, "softmax bwd:x_grad");
 #endif
+  float* host_ptr;
+  checkCUDA(cudaHostAlloc(&host_ptr, sizeof(float) * rect_x_grad.volume(),
+                          cudaHostAllocPortable | cudaHostAllocMapped));
+  checkCUDA(cudaMemcpy(host_ptr, x_grad_ptr, sizeof(float) * rect_x_grad.volume(),
+                       cudaMemcpyDeviceToHost));
+  int idx = 0;
+  float loss = 0.0f;
+  for (PointInRectIterator<3> it(rect_x_grad); it(); it++, idx++) {
+    if (host_ptr[idx] < 0) 
+      loss += -std::log(host_ptr[idx]+1);
+  }
+  printf("lost = %.4lf\n", loss);
+  checkCUDA(cudaFreeHost(host_ptr));
 #endif
 }
 

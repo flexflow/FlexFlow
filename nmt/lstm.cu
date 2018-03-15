@@ -216,7 +216,7 @@ OpMeta* LSTM::init_task(const Task *task,
     checkCUDNN(cudnnSetTensorNdDescriptor(m->yDescs[i], CUDNN_DATA_FLOAT,
                                           3, dims, strides));
   }
-  m->profiling_runtime = true;
+  m->profiling_runtime = false;
   return m;
 #endif
 }

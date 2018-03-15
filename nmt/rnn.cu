@@ -512,6 +512,7 @@ void RnnModel::zero_1d_init_task(const Task *task,
 
 void RnnModel::forward()
 {
+  config.iterator ++;
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   for (size_t i = 0; i < sharedVariables.size(); i++)
@@ -653,10 +654,10 @@ void RnnModel::update_shared_variable(SharedVariable params)
           RegionRequirement(grad, READ_ONLY, EXCLUSIVE, grad));
       launcher.add_field(cnt++, FID_DATA);
     }
-    printf("Step 1: cnt = %d\n", cnt);
+    //printf("Step 1: cnt = %d\n", cnt);
     runtime->execute_task(ctx, launcher);
   }
-  rate = -0.01f;
+  rate = -0.1f;
   TaskLauncher launcher(PARAMS_UPD_TASK_ID, TaskArgument(&rate, sizeof(rate)),
                         Predicate::TRUE_PRED, 0/*MapperID*/,
                         RnnMapper::assign_to_gpu(params.masterOnNode[0]));
@@ -673,7 +674,7 @@ void RnnModel::update_shared_variable(SharedVariable params)
       RegionRequirement(grad, READ_ONLY, EXCLUSIVE, grad));
     launcher.add_field(cnt++, FID_DATA);
   }
-  printf("Step 2: cnt = %d\n", cnt);
+  //printf("Step 2: cnt = %d\n", cnt);
   runtime->execute_task(ctx, launcher);
 }
 

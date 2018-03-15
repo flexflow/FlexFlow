@@ -153,7 +153,7 @@ OpMeta* Linear::init_task(const Task *task,
   assert(rect_y.hi[2] - rect_y.lo[2] + 1 == LSTM_PER_NODE_LENGTH);
   assert(rect_w.hi[0] - rect_w.lo[0] + 1 == linear->outputSize*(linear->inputSize+1));
   LinearMeta* m = new LinearMeta(linear->handle);
-  m->profiling_runtime = true;
+  m->profiling_runtime = false;
 #ifndef DISABLE_COMPUTATION
   int batch_size = linear->batchSize * LSTM_PER_NODE_LENGTH;
   float* dram_one_ptr = (float*) malloc(sizeof(float) * batch_size);
