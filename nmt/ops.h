@@ -87,6 +87,8 @@ enum TaskIDs {
   ZERO_1D_INIT_TASK_ID,
   ZERO_2D_INIT_TASK_ID,
   ZERO_3D_INIT_TASK_ID,
+  // Dummy task ID
+  DUMMY_TASK_ID,
 };
 
 enum Pool2DType {

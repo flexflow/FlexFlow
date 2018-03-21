@@ -41,6 +41,10 @@ public:
     //                    const Task& task,
       //                  const MapTaskInput& input,
         //                MapTaskOutput& output);
+  //virtual void select_task_sources(const MapperContext ctx,
+    //                               const Task& task,
+      //                             const SelectTaskSrcInput& input,
+        //                           SelectTaskSrcOutput& output); 
   static MappingTagID assign_to_gpu(int gpuIdx);
 protected:
   std::vector<Processor>& gpus;

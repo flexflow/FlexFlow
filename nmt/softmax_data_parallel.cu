@@ -318,7 +318,6 @@ void SoftmaxDP::backward_task(const Task *task,
   }
 #ifdef PRINT_INTERMEDIATE_RESULT
   print_tensor<3, float>(x_grad_ptr, rect_x_grad, "softmax bwd:x_grad");
-#endif
   float* host_ptr;
   checkCUDA(cudaHostAlloc(&host_ptr, sizeof(float) * rect_x_grad.volume(),
                           cudaHostAllocPortable | cudaHostAllocMapped));
@@ -332,6 +331,7 @@ void SoftmaxDP::backward_task(const Task *task,
   }
   printf("lost = %.4lf\n", loss);
   checkCUDA(cudaFreeHost(host_ptr));
+#endif
 #endif
 }
 

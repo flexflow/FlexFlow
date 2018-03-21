@@ -32,7 +32,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
                     Context ctx, Runtime *runtime)
 {
   int batch_size = 512;
-  int num_layers = 2;
+  int num_layers = 1;
   int seq_length = 40;
   int hidden_size = 1024;
   int embed_size = 1024;
@@ -71,7 +71,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   for (int i = 0; i < num_iterations; i++) {
     model.forward();
     model.backward();
-    model.update();
+    //model.update();
   }
   runtime->issue_execution_fence(ctx);
   TimingLauncher timer(MEASURE_MICRO_SECONDS);
@@ -88,6 +88,7 @@ int main(int argc, char **argv)
   {
     TaskVariantRegistrar registrar(TOP_LEVEL_TASK_ID, "top_level");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    //registrar.set_inner();
     Runtime::preregister_task_variant<top_level_task>(registrar, "top_level");
   }
 
@@ -218,6 +219,13 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<RnnModel::params_update_task>(registrar, "params_upd_task");
   }
+  // Dummy tasks
+  {
+    TaskVariantRegistrar registrar(DUMMY_TASK_ID, "dummy_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<RnnModel::dummy_task>(registrar, "dummy_task");
+  }
 
   Runtime::add_registration_callback(update_mappers);
   return Runtime::start(argc, argv);
@@ -264,7 +272,8 @@ void set_global_config(GlobalConfig &global, int num_layers, int seq_length, int
     pc.nDims = 1;
     pc.dim[0] = num_parts;
     for (int j = 0; j < num_parts; j++)
-      pc.gpu[j] = i * LSTM_PER_NODE_LENGTH < seq_length ? 0 : 1;
+      //pc.gpu[j] = i * LSTM_PER_NODE_LENGTH < seq_length ? 0 : 1;
+      pc.gpu[j] = j;
     global.embed[i] = pc;
   }
   for (int i = 0; i < num_layers; i++)

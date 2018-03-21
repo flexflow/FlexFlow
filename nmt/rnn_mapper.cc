@@ -33,11 +33,45 @@ void RnnMapper::select_task_options(const MapperContext ctx,
     output.inline_task = false;
     output.stealable = false;
     output.map_locally = true;
-    output.initial_proc = gpus[task.tag % gpus.size()];
+    unsigned long gpuId = task.tag ^ ASSIGN_TO_GPU_MASK;
+    output.initial_proc = gpus[gpuId % gpus.size()];
   } else {
     DefaultMapper::select_task_options(ctx, task, output);
   }
 }
+
+#ifdef DEADCODE
+void RnnMapper::map_task(const MapperContext ctx,
+                         const Task& task,
+                         const MapTaskInput& input,
+                         MapTaskOutput& output)
+{
+  printf("Task(%s %zx):", task.get_task_name(), task.tag);
+  for (size_t i = 0; i < input.valid_instances.size(); i++)
+  {
+    printf(" (");
+    for (size_t j = 0; j < input.valid_instances[i].size(); j++) {
+      printf("%zx ", input.valid_instances[i][j].get_location().id);
+    }
+    printf(")");
+  } 
+  printf("\n");
+  DefaultMapper::map_task(ctx, task, input, output);
+}
+
+void RnnMapper::select_task_sources(const MapperContext ctx,
+                                    const Task& task,
+                                    const SelectTaskSrcInput& input,
+                                    SelectTaskSrcOutput& output)
+{
+  printf("Slct(%s %zx)[%d]:", task.get_task_name(), task.tag, input.region_req_index);
+  for (size_t i = 0; i < input.source_instances.size(); i++) {
+    printf(" %zx", input.source_instances[i].get_location().id);
+  }
+  DefaultMapper::select_task_sources(ctx, task, input, output);
+  printf(" chosen = %zx\n", output.chosen_ranking.front().get_location().id);
+}
+#endif
 
 void update_mappers(Machine machine, Runtime *runtime,
                     const std::set<Processor> &local_procs)

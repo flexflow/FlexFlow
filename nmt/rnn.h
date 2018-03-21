@@ -20,7 +20,7 @@
 
 #define MAX_SEQ_LENGTH 100
 #define MAX_NUM_LAYERS 4
-#define LSTM_PER_NODE_LENGTH 5
+#define LSTM_PER_NODE_LENGTH 10
 #define MASTER_NOT_ASSIGNED -1
 //#define PRINT_INTERMEDIATE_RESULT
 
@@ -123,6 +123,10 @@ public:
   static void zero_3d_init_task(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
                                 Context ctx, HighLevelRuntime *runtime);
+
+  static void dummy_task(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx, HighLevelRuntime *runtime);
 
   static void params_init_task(const Task *task,
                                const std::vector<PhysicalRegion> &regions,

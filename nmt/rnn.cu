@@ -237,8 +237,9 @@ RnnModel::RnnModel(int batch_size, int numLayers, int seqLength,
     Rect<1> params_rect(Point<1>(0), Point<1>(numParams-1));
     IndexSpaceT<1> params_is = runtime->create_index_space(ctx, params_rect);
     linear.region = runtime->create_logical_region(ctx, params_is, config.field_space);
+    linear.subregions[1] = linear.region;
     // Create subregions for the shared variable linear
-    for (int parts = 1; parts <= MAX_NUM_PARTS; parts *= 2) {
+    for (int parts = 2; parts <= MAX_NUM_PARTS; parts *= 2) {
       Rect<1> rect(Point<1>(0), Point<1>(parts-1));
       IndexSpaceT<1> is = runtime->create_index_space(ctx, rect);
       IndexPartition ip = runtime->create_equal_partition(ctx, params_is, is);
@@ -510,11 +511,33 @@ void RnnModel::zero_1d_init_task(const Task *task,
   }
 }
 
+void RnnModel::dummy_task(const Task *task,
+                          const std::vector<PhysicalRegion> &regions,
+                          Context ctx, Runtime *runtime)
+{}
+
 void RnnModel::forward()
 {
   config.iterator ++;
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
+  // Step 1: launch dummy tasks to prefetch shared variables
+  for (size_t i = 0; i < sharedVariables.size(); i++) {
+    for (int n = 0; n < config.numNodes; n++)
+    if (sharedVariables[i].masterOnNode[n] != MASTER_NOT_ASSIGNED) {
+      int gpuId = sharedVariables[i].masterOnNode[n];
+      TaskLauncher launcher(DUMMY_TASK_ID, TaskArgument(NULL, 0),
+                            Predicate::TRUE_PRED, 0,
+                            RnnMapper::assign_to_gpu(gpuId));
+      launcher.add_region_requirement(
+          RegionRequirement(sharedVariables[i].region, READ_ONLY, EXCLUSIVE,
+                            sharedVariables[i].region));
+      launcher.add_field(0, FID_DATA);
+      runtime->execute_task(ctx, launcher);
+    }
+  }
+  //runtime->issue_mapping_fence(ctx);
+  // Step 2: zero gradients
   for (size_t i = 0; i < sharedVariables.size(); i++)
     for (int j = 0; j < config.workersPerNode * config.numNodes; j++)
       if (sharedVariables[i].gradients[j] != LogicalRegion::NO_REGION) {
@@ -527,6 +550,7 @@ void RnnModel::forward()
         launcher.add_field(0, FID_DATA);
         runtime->execute_task(ctx, launcher);
       }
+  // Step 3: launch forward tasks
   for (size_t i = 0; i < layers.size(); i++) {
     layers[i]->forward(*this);
   }
