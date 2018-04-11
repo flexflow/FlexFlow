@@ -31,12 +31,7 @@ Softmax::Softmax(CnnConfig config, Tensor input, IndexSpaceT<1> part_is)
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
 
-  FieldSpace fs = runtime->create_field_space(ctx);
-  {
-    FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
-    allocator.allocate_field(sizeof(float), FID_DATA);
-  }
-
+  FieldSpace fs = config.field_space;
   IndexSpaceT<2> output_is(input.region.get_index_space());
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   Transform<2, 1, coord_t> transform;

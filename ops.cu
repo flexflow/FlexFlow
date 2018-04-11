@@ -78,13 +78,8 @@ CnnModel::CnnModel(int num_images, int height, int width,
   // input_images
   Rect<3, coord_t> image_rect(Point<3>(0, 0, 0), Point<3>(width-1, height-1, num_images*3-1));
   IndexSpaceT<3> image_is = runtime->create_index_space(ctx, image_rect);
-  FieldSpace image_fs = runtime->create_field_space(ctx);
-  {
-    FieldAllocator allocator = runtime->create_field_allocator(ctx, image_fs);
-    allocator.allocate_field(sizeof(float), FID_DATA);
-  }
-  LogicalRegion image_lr = runtime->create_logical_region(ctx, image_is, image_fs);
-  LogicalRegion image_grad_lr = runtime->create_logical_region(ctx, image_is, image_fs);
+  LogicalRegion image_lr = runtime->create_logical_region(ctx, image_is, config.field_space);
+  LogicalRegion image_grad_lr = runtime->create_logical_region(ctx, image_is, config.field_space);
   Transform<3, 3, coord_t> transform;
   int extent_w = width / width_par;
   int extent_h = height / height_par;
@@ -113,12 +108,7 @@ CnnModel::CnnModel(int num_images, int height, int width,
   input_image.partition_grad = image_grad_lp;
 
   // rgb_images (has same index space as input_images
-  FieldSpace rgb_fs = runtime->create_field_space(ctx);
-  {
-    FieldAllocator allocator = runtime->create_field_allocator(ctx, rgb_fs);
-    allocator.allocate_field(sizeof(unsigned char), FID_DATA);
-  }
-  rgb_lr = runtime->create_logical_region(ctx, image_is, rgb_fs);
+  rgb_lr = runtime->create_logical_region(ctx, image_is, config.field_space);
   rgb_image_lp = runtime->get_logical_partition(ctx, rgb_lr, image_ip);
   // Create a partition based on num_loaders and num_nodes
   assert(num_images * 3 % (config.num_loaders * config.num_nodes) == 0);
@@ -133,12 +123,7 @@ CnnModel::CnnModel(int num_images, int height, int width,
   // input_label
   Rect<1, coord_t> label_rect(Point<1>(0), Point<1>(num_images-1));
   IndexSpaceT<1> label_is = runtime->create_index_space(ctx, label_rect);
-  FieldSpace label_fs = runtime->create_field_space(ctx);
-  {
-    FieldAllocator allocator = runtime->create_field_allocator(ctx, label_fs);
-    allocator.allocate_field(sizeof(int), FID_DATA);
-  }
-  LogicalRegion label_lr = runtime->create_logical_region(ctx, label_is, label_fs);
+  LogicalRegion label_lr = runtime->create_logical_region(ctx, label_is, config.field_space);
   Transform<1, 1, coord_t> label_trans;
   int extent_n = (num_images + config.sm_num_par - 1) / config.sm_num_par;
   Rect<1, coord_t> label_extent(Point<1>(0), Point<1>(extent_n-1));

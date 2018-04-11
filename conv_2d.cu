@@ -64,12 +64,7 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_n = part_rect.hi[2] - part_rect.lo[2] + 1;
  
-  FieldSpace fs;
-  fs = runtime->create_field_space(ctx);
-  {
-    FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
-    allocator.allocate_field(sizeof(float), FID_DATA);
-  }
+  FieldSpace fs = config.field_space;
 
   Rect<3, coord_t> output_rect(Point<3>(0, 0, 0),
                       Point<3>(output_w-1, output_h-1, output_nc-1));
