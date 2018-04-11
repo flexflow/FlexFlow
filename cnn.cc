@@ -17,7 +17,7 @@
 #include "ops.h"
 #include "cnn_mapper.h"
 #include "inception.h"
-#define USE_VGG
+#define USE_DENSENET
 
 using namespace Legion;
 
@@ -35,14 +35,14 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int num_par_h = 1;
   int num_par_w = 1;
   int num_par_n = 4;
-  int num_images = 128; // per_batch
-  int fc_num_par_c = 4;
+  int num_images = 256; // per_batch
+  int fc_num_par_c = 1;
   int fc_num_par_n = 1;
   int height = 224;
   int width = 224;
   bool profiling = false;
   float learning_rate = 0.01;
-  int num_iterations = 50;
+  int num_iterations = 10;
   int num_loaders_per_node = 4;
   int num_nodes = 1;
   // parse input arguments
@@ -144,13 +144,34 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   t = model.add_linear_layer(t, 1000, false/*relu*/);
   t = model.add_softmax_layer(t);
 #endif
+
+  // COnstruct model (DenseNet121)
+#ifdef USE_DENSENET
+  Tensor t = model.add_conv_layer(model.input_image, 64, 7, 7, 2, 2, 3, 3);
+  t = model.add_pool_layer(t, 3, 3, 2, 2, 1, 1);
+  int numFeatures = 64;
+  t = DenseBlock(model, t, 6, 32);
+  numFeatures = (numFeatures + 32 * 6) / 2;
+  t = Transition(model, t, numFeatures);
+  t = DenseBlock(model, t, 12, 32);
+  numFeatures = (numFeatures + 32 * 12) / 2;
+  t = Transition(model, t, numFeatures);
+  t = DenseBlock(model, t, 24, 32);
+  numFeatures = (numFeatures + 32 * 24) / 2;
+  t = Transition(model, t, numFeatures);
+  t = DenseBlock(model, t, 16, 32);
+  t = model.add_pool_layer(t, 7, 7, 1, 1, 0, 0, POOL2D_AVG);
+  t = model.add_flat_layer(t);
+  t = model.add_linear_layer(t, 1000, false/*relu*/);
+  t = model.add_softmax_layer(t);
+#endif
   
   // Initialize every layer
   model.init_layers();
 
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int i = 0; i < num_iterations; i++) {
-    model.load_images();
+    //model.load_images();
     model.forward();
     model.backward();
     model.update();
@@ -161,7 +182,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   future.get_void_result();
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("time = %.4fs, tp = %.2f images/s", run_time, num_images * num_iterations / run_time);
+  printf("time = %.4fs, tp = %.2f images/s\n", run_time, num_images * num_iterations / run_time);
 }
 
 int main(int argc, char **argv)

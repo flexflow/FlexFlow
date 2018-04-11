@@ -97,3 +97,22 @@ Tensor InceptionE(CnnModel &model, Tensor input)
   return output;
 }
 
+Tensor DenseBlock(CnnModel &model, Tensor input, int numLayers, int growthRate)
+{
+  Tensor t, last = input;
+  for (int i = 0; i < numLayers; i++) {
+    t = model.add_conv_layer(last, 4 * growthRate, 1, 1, 1, 1, 0, 0);
+    t = model.add_conv_layer(t, growthRate, 3, 3, 1, 1, 1, 1);
+    Tensor concat[2];
+    concat[0] = last; concat[1] = t;
+    last = model.add_concat_layer(2, concat);
+  }
+  return last;
+}
+
+Tensor Transition(CnnModel &model, Tensor input, int outputSize)
+{
+  Tensor t = model.add_conv_layer(input, outputSize, 1, 1, 1, 1, 0, 0);
+  t = model.add_pool_layer(t, 2, 2, 2, 2, 0, 0, POOL2D_AVG);
+  return t;
+}

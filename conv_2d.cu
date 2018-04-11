@@ -293,7 +293,8 @@ OpMeta* Conv2D::init_task(const Task *task,
                                              conv->stride_w,
                                              1/*upscale_x*/,
                                              1/*upscale_y*/,
-                                             CUDNN_CROSS_CORRELATION));
+                                             CUDNN_CROSS_CORRELATION,
+                                             CUDNN_DATA_FLOAT));
 
   int n, c, h, w;
   checkCUDNN(cudnnGetConvolution2dForwardOutputDim(m->convDesc,
@@ -362,8 +363,11 @@ void Conv2D::init_para_task(const Task *task,
   ones_kernel<<<GET_BLOCKS(filter_elements), CUDA_NUM_THREADS>>>(
       bias_ptr, conv->output.pdim[2]);
 #else
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
   curandGenerator_t genGPU;
   curandCreateGenerator(&genGPU, CURAND_RNG_PSEUDO_DEFAULT);
+  curandSetStream(genGPU, stream);
   curandSetPseudoRandomGeneratorSeed(genGPU, 1234ULL);
   coord_t filter_elements = conv->inputs[0].adim[2] * conv->output.adim[2] 
                           * conv->kernel_h * conv->kernel_w;
@@ -476,6 +480,9 @@ void Conv2D::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   checkCUDNN(cudnnConvolutionForward(m->handle.dnn, &alpha,
                                      m->inputTensor, input_ptr,
                                      m->filterDesc, filter_ptr,
@@ -601,11 +608,13 @@ void Conv2D::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   if (m->relu) {
     int n = rect_output.volume();
     reluBackward<<<GET_BLOCKS(n), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, n);
   }
-
   // Compute filter gradiant
   checkCUDNN(cudnnConvolutionBackwardFilter(m->handle.dnn, &alpha,
                                             m->inputTensor, input_ptr,

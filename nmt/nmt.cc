@@ -31,15 +31,15 @@ void set_global_config(GlobalConfig &global, int num_layers,
 void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime)
 {
-  int batch_size = 512;
+  int batch_size = 128;
   int num_layers = 2;
   int seq_length = 40;
   int hidden_size = 1024;
   int embed_size = 1024;
   int vocab_size = 32 * 1024;
-  int num_nodes = 2;
-  int workers_per_node = 4;
-  int num_parts = 8;
+  int num_nodes = 1;
+  int workers_per_node = 2;
+  int num_parts = 2;
   int num_iterations = 10;
   {
     const InputArgs &command_args = HighLevelRuntime::get_input_args();

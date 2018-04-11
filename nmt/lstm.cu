@@ -165,9 +165,9 @@ OpMeta* LSTM::init_task(const Task *task,
   checkCUDA(cudaMalloc(&dropoutStates, dropoutSize));
   checkCUDNN(cudnnSetDropoutDescriptor(m->dropoutDesc, m->handle.dnn, dropoutRate,
                                        dropoutStates, dropoutSize, 10/*seed*/));
-  checkCUDNN(cudnnSetRNNDescriptor(m->rnnDesc, lstm->outputSize, numLayers, m->dropoutDesc,
-                                   CUDNN_LINEAR_INPUT, CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
-                                   CUDNN_DATA_FLOAT));
+  checkCUDNN(cudnnSetRNNDescriptor_v5(m->rnnDesc, lstm->outputSize, numLayers, m->dropoutDesc,
+                                      CUDNN_LINEAR_INPUT, CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
+                                      CUDNN_DATA_FLOAT));
   for (int i = 0; i < seqLength; i++) {
     checkCUDNN(cudnnCreateTensorDescriptor(&m->xDescs[i]));
     int dims[] = {lstm->batchSize, lstm->inputSize, 1};
@@ -216,7 +216,7 @@ OpMeta* LSTM::init_task(const Task *task,
     checkCUDNN(cudnnSetTensorNdDescriptor(m->yDescs[i], CUDNN_DATA_FLOAT,
                                           3, dims, strides));
   }
-  m->profiling_runtime = false;
+  m->profiling_runtime = true;
   return m;
 #endif
 }
