@@ -51,6 +51,9 @@ enum TaskIDs {
   POOL2D_INIT_TASK_ID,
   POOL2D_FWD_TASK_ID,
   POOL2D_BWD_TASK_ID,
+  BATCHNORM_INIT_TASK_ID,
+  BATCHNORM_FWD_TASK_ID,
+  BATCHNORM_BWD_TASK_ID,
   LINEAR_INIT_TASK_ID,
   LINEAR_INIT_PARA_TASK_ID,
   LINEAR_FWD_TASK_ID,
@@ -109,6 +112,7 @@ struct TensorWithGrad {
 struct CnnConfig {
   Context lg_ctx;
   HighLevelRuntime *lg_hlr;
+  FieldSpace field_space;
   //int num_par_h, num_par_w, num_par_n, num_workers;
   //int fc_num_par_c, fc_num_par_n;
   int sm_num_par, num_loaders, num_nodes;
@@ -197,6 +201,8 @@ public:
   Tensor add_pool_layer(Tensor input, int kernel_h, int kernel_w,
                         int stride_h, int stride_w, int padding_h, int padding_w,
                         Pool2DType type = POOL2D_MAX, bool relu = false);
+
+  Tensor add_bn_layer(Tensor input, bool relu = true);
 
   Tensor add_linear_layer(Tensor input, int output_channels, bool relu = true);
 
@@ -319,6 +325,46 @@ public:
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
   cudnnPoolingDescriptor_t poolDesc;
+#endif
+  bool relu;
+};
+
+class BatchNorm : public Op {
+public:
+  BatchNorm(CnnConfig config, Tensor input, IndexSpaceT<3> part_is, bool relu);
+
+  void init(const CnnModel&);
+
+  void forward(const CnnModel&);
+
+  void backward(const CnnModel&);
+
+  void update(const CnnModel&);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+public:
+  bool relu, profiling_runtime;
+  int num_replica;
+};
+
+class BatchNormMeta : public OpMeta {
+public:
+  BatchNormMeta(CnnHandle handle) : OpMeta(handle) {};
+#ifndef DISABLE_COMPUTATION
+  cudnnTensorDescriptor_t inputTensor, outputTensor, biasTensor;
+  cudnnActivationDescriptor_t actiDesc;
+  cudnnBatchNormMode_t mode;
+  float *runningMean, *runningVar, *saveMean, *saveVar;
 #endif
   bool relu;
 };

@@ -234,7 +234,6 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<CnnModel::init_labels_task>(registrar, "label_init_task");
   }
-
   // Conv2D task
   {
     TaskVariantRegistrar registrar(CONV2D_INIT_TASK_ID, "conv2d_init_task");
@@ -266,7 +265,6 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<Conv2D::update_task>(registrar, "conv2d_upd_task");
   }
-
   // Pooling2D task
   {
     TaskVariantRegistrar registrar(POOL2D_INIT_TASK_ID, "pooling2d_init_task");
@@ -286,7 +284,25 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<Pooling2D::backward_task>(registrar, "pooling2d_bwd_task");
   }
-
+  // BatchNorm task
+  {
+    TaskVariantRegistrar registrar(BATCHNORM_INIT_TASK_ID, "bn_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, BatchNorm::init_task>(registrar, "bn_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(BATCHNORM_FWD_TASK_ID, "bn_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<BatchNorm::forward_task>(registrar, "bn_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(BATCHNORM_BWD_TASK_ID, "bn_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<BatchNorm::backward_task>(registrar, "bn_bwd_task");
+  }
   // Linear task
   {
     TaskVariantRegistrar registrar(LINEAR_INIT_TASK_ID, "linear_init_task");
@@ -324,7 +340,6 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<Linear::update_task>(registrar, "linear_upd_task");
   }
-
   // Flat task
   {
     TaskVariantRegistrar registrar(FLAT_INIT_TASK_ID, "flat_init_task");

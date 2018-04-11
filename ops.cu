@@ -54,6 +54,7 @@ CnnModel::CnnModel(int num_images, int height, int width,
 {
   config.lg_ctx = ctx;
   config.lg_hlr = runtime;
+  config.field_space = runtime->create_field_space(ctx);
   //config.num_par_w = width_par;
   //config.num_par_h = height_par;
   //config.num_par_n = image_par;

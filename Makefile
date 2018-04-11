@@ -29,7 +29,7 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 OUTFILE		?= cnn
 # List all the application source files here
 GEN_SRC		?= cnn.cc cnn_mapper.cc	# .cc files
-GEN_GPU_SRC	?= conv_2d.cu ops.cu pool_2d.cu linear.cu softmax.cu concat.cu cnn_helper.cu# .cu files
+GEN_GPU_SRC	?= conv_2d.cu ops.cu pool_2d.cu batch_norm.cu linear.cu softmax.cu concat.cu cnn_helper.cu# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
 INC_FLAGS	?= -I/home/users/zhihao/tools/CMake-hdf5-1.10.1/hdf5-1.10.1/hdf5/include
