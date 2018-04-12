@@ -31,12 +31,7 @@ Softmax::Softmax(CnnConfig config, Tensor input, IndexSpaceT<1> part_is)
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
 
-  FieldSpace fs = runtime->create_field_space(ctx);
-  {
-    FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
-    allocator.allocate_field(sizeof(float), FID_DATA);
-  }
-
+  FieldSpace fs = config.field_space;
   IndexSpaceT<2> output_is(input.region.get_index_space());
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   Transform<2, 1, coord_t> transform;
@@ -161,6 +156,10 @@ void Softmax::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
                                  CUDNN_SOFTMAX_ACCURATE,
                                  CUDNN_SOFTMAX_MODE_CHANNEL,
@@ -259,6 +258,10 @@ void Softmax::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+
   checkCUDA(cudaMemcpyAsync(input_grad_ptr, output_ptr,
                             rect_input_grad.volume() * sizeof(float),
                             cudaMemcpyDeviceToDevice));

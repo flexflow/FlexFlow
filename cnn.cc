@@ -17,7 +17,7 @@
 #include "ops.h"
 #include "cnn_mapper.h"
 #include "inception.h"
-#define USE_VGG
+#define USE_INCEPTION
 
 using namespace Legion;
 
@@ -35,14 +35,14 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int num_par_h = 1;
   int num_par_w = 1;
   int num_par_n = 4;
-  int num_images = 128; // per_batch
-  int fc_num_par_c = 4;
+  int num_images = 256; // per_batch
+  int fc_num_par_c = 1;
   int fc_num_par_n = 1;
-  int height = 224;
-  int width = 224;
-  bool profiling = false;
+  int height = 299;
+  int width = 299;
+  bool profiling = true;
   float learning_rate = 0.01;
-  int num_iterations = 50;
+  int num_iterations = 20;
   int num_loaders_per_node = 4;
   int num_nodes = 1;
   // parse input arguments
@@ -144,13 +144,58 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   t = model.add_linear_layer(t, 1000, false/*relu*/);
   t = model.add_softmax_layer(t);
 #endif
+
+  // Construct model (DenseNet121)
+#ifdef USE_DENSENET
+  Tensor t = model.add_conv_layer(model.input_image, 64, 7, 7, 2, 2, 3, 3, false/*relu*/);
+  t = model.add_bn_layer(t, true/*relu*/);
+  t = model.add_pool_layer(t, 3, 3, 2, 2, 1, 1);
+  int numFeatures = 64;
+  t = DenseBlock(model, t, 6, 32);
+  numFeatures = (numFeatures + 32 * 6) / 2;
+  t = Transition(model, t, numFeatures);
+  t = DenseBlock(model, t, 12, 32);
+  numFeatures = (numFeatures + 32 * 12) / 2;
+  t = Transition(model, t, numFeatures);
+  t = DenseBlock(model, t, 24, 32);
+  numFeatures = (numFeatures + 32 * 24) / 2;
+  t = Transition(model, t, numFeatures);
+  t = DenseBlock(model, t, 16, 32);
+  t = model.add_pool_layer(t, 7, 7, 1, 1, 0, 0, POOL2D_AVG);
+  t = model.add_flat_layer(t);
+  t = model.add_linear_layer(t, 1000, false/*relu*/);
+  t = model.add_softmax_layer(t);
+#endif
   
+  // Construct model (Resnet101)
+#ifdef USE_RESNET
+  Tensor t = model.add_conv_layer(model.input_image, 64, 7, 7, 2, 2, 3, 3);
+  t = model.add_pool_layer(t, 3, 3, 2, 2, 1, 1);
+  for (int i = 0; i < 3; i++)
+    t = BottleneckBlock(model, t, 256, 64, 1);
+  for (int i = 0; i < 4; i++) {
+    int stride = (i==0) ? 2 : 1;
+    t = BottleneckBlock(model, t, 512, 128, stride);
+  }
+  for (int i = 0; i < 23; i++) {
+    int stride = (i==0) ? 2 : 1;
+    t = BottleneckBlock(model, t, 1024, 256, stride);
+  }
+  for (int i = 0; i < 3; i++) {
+    int stride = (i==0) ? 2 : 1;
+    t = BottleneckBlock(model, t, 2048, 512, stride);
+  }
+  t = model.add_pool_layer(t, 7, 7, 1, 1, 0, 0, POOL2D_AVG);
+  t = model.add_flat_layer(t);
+  t = model.add_linear_layer(t, 1000, false/*relu*/);
+  t = model.add_softmax_layer(t);
+#endif
   // Initialize every layer
   model.init_layers();
 
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int i = 0; i < num_iterations; i++) {
-    model.load_images();
+    //model.load_images();
     model.forward();
     model.backward();
     model.update();
@@ -161,7 +206,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   future.get_void_result();
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("time = %.4fs, tp = %.2f images/s", run_time, num_images * num_iterations / run_time);
+  printf("time = %.4fs, tp = %.2f images/s\n", run_time, num_images * num_iterations / run_time);
 }
 
 int main(int argc, char **argv)
@@ -213,7 +258,6 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<CnnModel::init_labels_task>(registrar, "label_init_task");
   }
-
   // Conv2D task
   {
     TaskVariantRegistrar registrar(CONV2D_INIT_TASK_ID, "conv2d_init_task");
@@ -245,7 +289,6 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<Conv2D::update_task>(registrar, "conv2d_upd_task");
   }
-
   // Pooling2D task
   {
     TaskVariantRegistrar registrar(POOL2D_INIT_TASK_ID, "pooling2d_init_task");
@@ -265,7 +308,31 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<Pooling2D::backward_task>(registrar, "pooling2d_bwd_task");
   }
-
+  // BatchNorm task
+  {
+    TaskVariantRegistrar registrar(BATCHNORM_INIT_TASK_ID, "bn_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, BatchNorm::init_task>(registrar, "bn_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(BATCHNORM_INIT_PARA_TASK_ID, "bm_init_para_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<BatchNorm::init_para_task>(registrar, "bm_init_para_task");
+  }
+  {
+    TaskVariantRegistrar registrar(BATCHNORM_FWD_TASK_ID, "bn_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<BatchNorm::forward_task>(registrar, "bn_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(BATCHNORM_BWD_TASK_ID, "bn_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<BatchNorm::backward_task>(registrar, "bn_bwd_task");
+  }
   // Linear task
   {
     TaskVariantRegistrar registrar(LINEAR_INIT_TASK_ID, "linear_init_task");
@@ -303,7 +370,6 @@ int main(int argc, char **argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<Linear::update_task>(registrar, "linear_upd_task");
   }
-
   // Flat task
   {
     TaskVariantRegistrar registrar(FLAT_INIT_TASK_ID, "flat_init_task");

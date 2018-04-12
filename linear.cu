@@ -37,11 +37,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   num_replica = fc_num_par_n;
 
   printf("Linear fc_num_par_c(%d) fc_num_par_n(%d)\n", fc_num_par_c, fc_num_par_n);
-  FieldSpace fs = runtime->create_field_space(ctx);
-  {
-    FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
-    allocator.allocate_field(sizeof(float), FID_DATA);
-  }
+  FieldSpace fs = config.field_space;
 
   Rect<2, coord_t> output_rect(Point<2>(0, 0), Point<2>(out_channels-1, input.adim[1]-1));
   IndexSpaceT<2> output_is = runtime->create_index_space(ctx, output_rect);
@@ -253,8 +249,11 @@ void Linear::init_para_task(const Task *task,
   float *filter_ptr = acc_filter.ptr(rect_filter.lo);
   float *bias_ptr = acc_bias.ptr(rect_bias.lo);
   // init filter and bias
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
   curandGenerator_t genGPU;
   curandCreateGenerator(&genGPU, CURAND_RNG_PSEUDO_DEFAULT);
+  curandSetStream(genGPU, stream);
   curandSetPseudoRandomGeneratorSeed(genGPU, 1234ULL);
   coord_t filter_elements = linear->in_channels * linear->out_channels;
   float factor = 1.0f / sqrt(linear->in_channels);
@@ -379,6 +378,9 @@ void Linear::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
                         output_channels, batch_size, input_channels,
                         &alpha, kernel_ptr, input_channels,
@@ -521,6 +523,9 @@ void Linear::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
   if (m->relu) {
     int n = rect_output.volume();
     reluBackward<<<GET_BLOCKS(n), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, n);
@@ -573,6 +578,10 @@ void Linear::backward2_task(const Task *task,
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
   float *input_ptr = acc_input.ptr(rect_input.lo);
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+
   for (int i = 1; i < task->regions.size(); i++) {
     const AccessorRO<float, 2> acc_replica(regions[i], FID_DATA);
     rect_replica = runtime->get_index_space_domain(ctx, task->regions[i].region.get_index_space());

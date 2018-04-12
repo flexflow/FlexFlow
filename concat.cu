@@ -29,12 +29,7 @@ Concat::Concat(CnnConfig config, int n, Tensor* tensors,
 {
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
-  FieldSpace fs;
-  fs = runtime->create_field_space(ctx);
-  {
-    FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
-    allocator.allocate_field(sizeof(float), FID_DATA);
-  }
+  FieldSpace fs = config.field_space;
 
   Rect<3> part_rect = runtime->get_index_space_domain(ctx, part_is);
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;

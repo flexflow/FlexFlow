@@ -49,11 +49,7 @@ Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_n = part_rect.hi[2] - part_rect.lo[2] + 1;
 
-  FieldSpace fs = runtime->create_field_space(ctx);
-  {
-    FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
-    allocator.allocate_field(sizeof(float), FID_DATA);
-  }
+  FieldSpace fs = config.field_space;
 
   Rect<3, coord_t> output_rect(Point<3>(0, 0, 0), Point<3>(output_w-1, output_h-1, output_nc-1));
   IndexSpaceT<3> output_is = runtime->create_index_space(ctx, output_rect);
@@ -250,6 +246,9 @@ void Pooling2D::forward_task(const Task *task,
   assert(acc_output.accessor.is_dense_arbitrary(rect_output));
   const float *input_ptr = acc_input.ptr(rect_input.lo);
   float *output_ptr = acc_output.ptr(rect_output.lo);
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   checkCUDNN(cudnnPoolingForward(m->handle.dnn, m->poolDesc,
                                  &alpha, m->inputTensor, input_ptr,
@@ -326,6 +325,10 @@ void Pooling2D::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   checkCUDNN(cudnnPoolingBackward(m->handle.dnn, m->poolDesc,
                                   &alpha, m->outputTensor, output_ptr,
                                   m->outputTensor, output_grad_ptr,
