@@ -55,6 +55,11 @@ CnnModel::CnnModel(int num_images, int height, int width,
   config.lg_ctx = ctx;
   config.lg_hlr = runtime;
   config.field_space = runtime->create_field_space(ctx);
+  {
+    FieldAllocator allocator =
+      runtime->create_field_allocator(ctx, config.field_space);
+    allocator.allocate_field(sizeof(float), FID_DATA);
+  }
   //config.num_par_w = width_par;
   //config.num_par_h = height_par;
   //config.num_par_n = image_par;
@@ -483,11 +488,7 @@ Flat::Flat(CnnConfig config, Tensor input,
   int fc_num_par_c = part_rect_2d.hi[0] - part_rect_2d.lo[0] + 1;
   int fc_num_par_n = part_rect_2d.hi[1] - part_rect_2d.lo[1] + 1;
  
-  FieldSpace fs = runtime->create_field_space(ctx);
-  {
-    FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
-    allocator.allocate_field(sizeof(float), FID_DATA);
-  }
+  FieldSpace fs = config.field_space;
   
   int output_c = input.adim[0] * input.adim[1] * input.adim[2];
   int output_n = input.adim[3];

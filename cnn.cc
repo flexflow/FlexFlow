@@ -17,7 +17,7 @@
 #include "ops.h"
 #include "cnn_mapper.h"
 #include "inception.h"
-#define USE_DENSENET
+#define USE_INCEPTION
 
 using namespace Legion;
 
@@ -38,11 +38,11 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int num_images = 256; // per_batch
   int fc_num_par_c = 1;
   int fc_num_par_n = 1;
-  int height = 224;
-  int width = 224;
-  bool profiling = false;
+  int height = 299;
+  int width = 299;
+  bool profiling = true;
   float learning_rate = 0.01;
-  int num_iterations = 10;
+  int num_iterations = 20;
   int num_loaders_per_node = 4;
   int num_nodes = 1;
   // parse input arguments
@@ -145,9 +145,10 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   t = model.add_softmax_layer(t);
 #endif
 
-  // COnstruct model (DenseNet121)
+  // Construct model (DenseNet121)
 #ifdef USE_DENSENET
-  Tensor t = model.add_conv_layer(model.input_image, 64, 7, 7, 2, 2, 3, 3);
+  Tensor t = model.add_conv_layer(model.input_image, 64, 7, 7, 2, 2, 3, 3, false/*relu*/);
+  t = model.add_bn_layer(t, true/*relu*/);
   t = model.add_pool_layer(t, 3, 3, 2, 2, 1, 1);
   int numFeatures = 64;
   t = DenseBlock(model, t, 6, 32);
@@ -166,6 +167,29 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   t = model.add_softmax_layer(t);
 #endif
   
+  // Construct model (Resnet101)
+#ifdef USE_RESNET
+  Tensor t = model.add_conv_layer(model.input_image, 64, 7, 7, 2, 2, 3, 3);
+  t = model.add_pool_layer(t, 3, 3, 2, 2, 1, 1);
+  for (int i = 0; i < 3; i++)
+    t = BottleneckBlock(model, t, 256, 64, 1);
+  for (int i = 0; i < 4; i++) {
+    int stride = (i==0) ? 2 : 1;
+    t = BottleneckBlock(model, t, 512, 128, stride);
+  }
+  for (int i = 0; i < 23; i++) {
+    int stride = (i==0) ? 2 : 1;
+    t = BottleneckBlock(model, t, 1024, 256, stride);
+  }
+  for (int i = 0; i < 3; i++) {
+    int stride = (i==0) ? 2 : 1;
+    t = BottleneckBlock(model, t, 2048, 512, stride);
+  }
+  t = model.add_pool_layer(t, 7, 7, 1, 1, 0, 0, POOL2D_AVG);
+  t = model.add_flat_layer(t);
+  t = model.add_linear_layer(t, 1000, false/*relu*/);
+  t = model.add_softmax_layer(t);
+#endif
   // Initialize every layer
   model.init_layers();
 
@@ -290,6 +314,12 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta*, BatchNorm::init_task>(registrar, "bn_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(BATCHNORM_INIT_PARA_TASK_ID, "bm_init_para_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<BatchNorm::init_para_task>(registrar, "bm_init_para_task");
   }
   {
     TaskVariantRegistrar registrar(BATCHNORM_FWD_TASK_ID, "bn_fwd_task");

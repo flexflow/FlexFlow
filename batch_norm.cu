@@ -94,6 +94,7 @@ BatchNorm::BatchNorm(CnnConfig config, Tensor input, IndexSpaceT<3> part_is, boo
   bias_tensor.region_grad = bias_grad_lr;
   bias_tensor.partition = LogicalPartition::NO_PART;
   bias_tensor.partition_grad = bias_grad_lp;
+  locals[1] = bias_tensor;
 
   output = input;
   output.region = output_lr;
@@ -160,8 +161,7 @@ OpMeta* BatchNorm::init_task(const Task *task,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
                                         bm->inputs[0].pdim[3],
-                                        bm->inputs[0].pdim[2],
-                                        input_h, input_w));
+                                        channel, input_h, input_w));
   checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
@@ -186,12 +186,67 @@ OpMeta* BatchNorm::init_task(const Task *task,
   return m;
 }
 
+/*
+  regions[0](O): scale, initilized to ones
+  regions[1](O): bias, initilized to zeros
+*/
+__host__
+void BatchNorm::init_para_task(const Task *task,
+                               const std::vector<PhysicalRegion> &regions,
+                               Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  //const BatchNorm* bm = (BatchNorm*) task->args;
+  const AccessorWO<float, 1> acc_scale(regions[0], FID_DATA);
+  const AccessorWO<float, 1> acc_bias(regions[1], FID_DATA);
+  Rect<1> rect_scale, rect_bias;
+  rect_scale = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_bias = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  assert(acc_scale.accessor.is_dense_arbitrary(rect_scale));
+  assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
+  float *scale_ptr = acc_scale.ptr(rect_scale.lo);
+  float *bias_ptr = acc_bias.ptr(rect_bias.lo);
+  // init kernel and bias
+#ifdef PARAMETER_ALL_ONES
+  ones_kernel<<<GET_BLOCKS(rect_scale.volume()), CUDA_NUM_THREADS>>>(
+      scale_ptr, rect_scale.volume());
+  ones_kernel<<<GET_BLOCKS(rect_bias.volume()), CUDA_NUM_THREADS>>>(
+      bias_ptr, rect_bias.volume());
+#else
+  //cudaStream_t stream;
+  //checkCUDA(cudaStreamCreate(&stream));
+  //curandGenerator_t genGPU;
+  //curandCreateGenerator(&genGPU, CURAND_RNG_PSEUDO_DEFAULT);
+  //curandSetStream(genGPU, stream);
+  //curandSetPseudoRandomGeneratorSeed(genGPU, 1234ULL);
+  //curandGenerateUniform(genGPU, scale_ptr, rect_scale.volume());
+  assign_kernel<<<GET_BLOCKS(rect_scale.volume()), CUDA_NUM_THREADS>>>(
+      scale_ptr, rect_scale.volume(), 1.0f);
+  assign_kernel<<<GET_BLOCKS(rect_bias.volume()), CUDA_NUM_THREADS>>>(
+      bias_ptr, rect_bias.volume(), 0.0f);
+  //curandDestroyGenerator(genGPU);
+#endif
+}
+
+
 __host__
 void BatchNorm::init(const CnnModel& model)
 {
   ArgumentMap argmap;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
+  // First we initialize the scale and bias parameters
+  {
+    TaskLauncher para_launcher(BATCHNORM_INIT_PARA_TASK_ID, TaskArgument(NULL, 0));
+    para_launcher.add_region_requirement(
+        RegionRequirement(locals[0].region, WRITE_DISCARD, EXCLUSIVE, locals[0].region));
+    para_launcher.add_field(0, FID_DATA);
+    para_launcher.add_region_requirement(
+        RegionRequirement(locals[1].region, WRITE_DISCARD, EXCLUSIVE, locals[1].region));
+    para_launcher.add_field(1, FID_DATA);
+    runtime->execute_task(ctx, para_launcher);
+  }
   Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
@@ -269,7 +324,7 @@ void BatchNorm::forward_task(const Task *task,
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  coord_t numChannels = bm->inputs[0].adim[2];
+  coord_t numChannels = bm->inputs[0].pdim[2];
   assign_kernel<<<GET_BLOCKS(numChannels), CUDA_NUM_THREADS>>>(m->runningMean, numChannels, 0.0f);
   assign_kernel<<<GET_BLOCKS(numChannels), CUDA_NUM_THREADS>>>(m->runningVar, numChannels, 0.0f);
   checkCUDNN(cudnnBatchNormalizationForwardTraining(

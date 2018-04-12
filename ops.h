@@ -52,6 +52,7 @@ enum TaskIDs {
   POOL2D_FWD_TASK_ID,
   POOL2D_BWD_TASK_ID,
   BATCHNORM_INIT_TASK_ID,
+  BATCHNORM_INIT_PARA_TASK_ID,
   BATCHNORM_FWD_TASK_ID,
   BATCHNORM_BWD_TASK_ID,
   LINEAR_INIT_TASK_ID,
@@ -344,6 +345,9 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+  static void init_para_task(const Task *task,
+                             const std::vector<PhysicalRegion> &regions,
+                             Context ctx, Runtime *runtime);
 
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
