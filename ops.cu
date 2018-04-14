@@ -34,14 +34,60 @@ CnnHandle init_cudnn(const Task *task,
 }
 
 Op::Op(Tensor input)
+: numLocals(0)
 {
   inputs[0] = input;
 }
 
 Op::Op(int n, Tensor *_inputs)
+: numLocals(0)
 {
   for (int i = 0; i < n; i++) {
     inputs[i] = _inputs[i];
+  }
+}
+
+void Op::dummy_task(const Task *task,
+                    const std::vector<PhysicalRegion> &regions,
+                    Context ctx, Runtime *runtime)
+{}
+
+void Op::prefetch(const CnnModel& model)
+{
+  ArgumentMap argmap;
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  if (numLocals == 0)
+    return;
+  //FIXME: this is a hack, fix me later
+  if (numLocals == 3) {
+    // We must be an Linear operation
+    Rect<2> rect = runtime->get_index_space_domain(ctx, model.fc_part_is);
+    IndexLauncher launcher(DUMMY_TASK_ID, model.fc_part_is,
+                           TaskArgument(NULL, 0), argmap);
+    launcher.add_region_requirement(
+        RegionRequirement(locals[1].partition, 0/*projection*/,
+                          READ_ONLY, EXCLUSIVE, locals[1].region));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(locals[2].partition, 0/*projection*/,
+                          READ_ONLY, EXCLUSIVE, locals[2].region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  } else {
+    assert(numLocals == 2);
+    Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+    IndexLauncher launcher(DUMMY_TASK_ID, model.part_is,
+                            TaskArgument(NULL, 0), argmap);
+    launcher.add_region_requirement(
+        RegionRequirement(locals[0].region, 0/*projection*/,
+                          READ_ONLY, EXCLUSIVE, locals[0].region));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(locals[1].region, 0/*projection*/,
+                          READ_ONLY, EXCLUSIVE, locals[1].region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
   }
 }
 
@@ -369,6 +415,12 @@ void CnnModel::load_images()
                         READ_ONLY, EXCLUSIVE, rgb_lr));
   launcher2.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher2);
+}
+
+void CnnModel::prefetch()
+{
+  for (size_t i = 0; i < layers.size(); i++)
+    layers[i]->prefetch(*this);
 }
 
 void CnnModel::forward()

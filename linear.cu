@@ -70,6 +70,8 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   assert(runtime->is_index_partition_complete(ctx, replica_ip));
   LogicalPartition replica_lp = runtime->get_logical_partition(ctx, replica_lr, replica_ip);
   TensorWithGrad replica_tensor;
+  replica_tensor.region = LogicalRegion::NO_REGION;
+  replica_tensor.partition = LogicalPartition::NO_PART;
   replica_tensor.region_grad = replica_lr;
   replica_tensor.partition_grad = replica_lp;
   locals[0] = replica_tensor;
@@ -144,6 +146,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   bias_tensor.region_grad = bias_grad_lr;
   bias_tensor.partition_grad = bias_grad_lp;
   locals[2] = bias_tensor;
+  numLocals = 3;
 
   output.numDim = 2;
   output.adim[0] = out_channels;

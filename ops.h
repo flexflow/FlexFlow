@@ -70,6 +70,7 @@ enum TaskIDs {
   CONCAT_INIT_TASK_ID,
   CONCAT_FWD_TASK_ID,
   CONCAT_BWD_TASK_ID,
+  DUMMY_TASK_ID,
 };
 
 enum Pool2DType {
@@ -135,6 +136,13 @@ class Op {
 public:
   Op(Tensor input);
   Op(int num, Tensor* inputs);
+
+  static void dummy_task(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx, Runtime *runtime);
+
+  virtual void prefetch(const CnnModel&);
+
   virtual void init(const CnnModel&) = 0;
 
   virtual void forward(const CnnModel&) = 0;
@@ -149,6 +157,7 @@ public:
   LogicalPartition input_lps[MAX_NUM_INPUTS];
   TensorWithGrad locals[MAX_NUM_LOCALS];
   OpMeta* meta[MAX_NUM_WORKERS];
+  int numLocals;
   //std::vector<LogicalRegion> inputs, grads;
 };
 
@@ -189,6 +198,8 @@ public:
 			            Context ctx, Runtime *runtime);
 
   void load_images();
+
+  void prefetch();
 
   void forward();
 

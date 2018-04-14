@@ -95,6 +95,7 @@ BatchNorm::BatchNorm(CnnConfig config, Tensor input, IndexSpaceT<3> part_is, boo
   bias_tensor.partition = LogicalPartition::NO_PART;
   bias_tensor.partition_grad = bias_grad_lp;
   locals[1] = bias_tensor;
+  numLocals = 2;
 
   output = input;
   output.region = output_lr;

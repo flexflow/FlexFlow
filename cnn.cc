@@ -40,9 +40,9 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int fc_num_par_n = 1;
   int height = 299;
   int width = 299;
-  bool profiling = true;
+  bool profiling = false;
   float learning_rate = 0.01;
-  int num_iterations = 20;
+  int num_iterations = 50;
   int num_loaders_per_node = 4;
   int num_nodes = 1;
   // parse input arguments
@@ -196,6 +196,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int i = 0; i < num_iterations; i++) {
     //model.load_images();
+    model.prefetch();
     model.forward();
     model.backward();
     model.update();
@@ -428,6 +429,13 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Concat::backward_task>(registrar, "concat_bwd_task");
+  }
+  // DUMMY task
+  {
+    TaskVariantRegistrar registrar(DUMMY_TASK_ID, "dummy_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Op::dummy_task>(registrar, "dummy_task");
   }
 
   Runtime::add_registration_callback(update_mappers);
