@@ -16,18 +16,19 @@
 #define MAX_NUM_PARTS 16
 #define MAX_NUM_OPS 1000
 #define MAX_NUM_CONFIGS 20
-#define L2_FACTOR -0.01
+#define L2_FACTOR -0.0001
 #define NOT_USE_SIMULATE_OPT
 //#define VERBOSE
 
 const int SRC_LENGTH = 5;
 const int DST_LENGTH = 5;
+const int LSTM_PER_NODE_LENGTH = 8;
 const int NUM_LAYERS = 2;
 const int VOCAB_SIZE = 32000;
 const int LOCAL_BATCH_SIZE = 64;
 const int EMBEDDING_SIZE = 1024;
 const int HIDDEN_SIZE = 1024;
-const int NUM_NODES = 1;
+const int NUM_NODES = 4;
 const int WORKERS_PER_NODE = 4;
 const int NUM_WORKERS = NUM_NODES * WORKERS_PER_NODE; // NUM_WORKERS <= MAX_NUM_WORKERS
 const int NUM_PARTITIONS = NUM_NODES * WORKERS_PER_NODE; // NUM_PARTITIONS <= MAX_NUM_PARTS
@@ -460,6 +461,10 @@ public:
     nConfigs = 0;
     for (int i = 1; i <= NUM_PARTITIONS; i*=2)
       config_x[nConfigs++] = i;
+    for (int i = 0; i < nConfigs; i++) {
+      int b = batchSize / config_x[i];
+      computeTime[i] = measure_lstm_time(1, LSTM_PER_NODE_LENGTH, b, inputSize, hiddenSize);
+    }
   }
   float compute(OpConfig c);
   float update(const std::vector<OpConfig>& vec);
@@ -470,10 +475,17 @@ private:
   int batchSize, inputSize, hiddenSize;
   // params for configs
   int nConfigs, config_x[MAX_NUM_CONFIGS];
+  float computeTime[MAX_NUM_CONFIGS];
 };
 
 float LSTM::compute(OpConfig c) {
-  return 1.05 / c.nParts;
+  assert(c.nDims == 1);
+  int idx = 0;
+  for (; idx < nConfigs; idx++)
+    if (config_x[idx] == c.dim[0])
+      break;
+  assert(idx < nConfigs);
+  return computeTime[idx];
 };
 
 float LSTM::update(const std::vector<OpConfig>& vec)
@@ -482,58 +494,51 @@ float LSTM::update(const std::vector<OpConfig>& vec)
   for (int i = 0; i < NUM_WORKERS; i++)
     used[i] = 0;
   for (int i = 0; i < vec.size(); i++) {
-    assert(vec[i].dim[1] == 1);
-    for (int j = 0; j < vec[i].dim[0]; j++)
+    for (int j = 0; j < vec[i].nParts; j++)
       used[vec[i].map[j]] += 1;
   }
-  int cnt = 0, l2_cnt = 0;
-  for (int i = 0; i < NUM_WORKERS; i++) {
-    if (used[i] > 0) cnt++;
-    l2_cnt += used[i] * used[i];
+  int intra_cnt = 0, cross_cnt = 0, l2_cnt = 0;
+  for (int i = 0; i < NUM_NODES; i++) {
+    int cnt = 0;
+    for (int j = 0; j < WORKERS_PER_NODE; j++) {
+      if (used[i * WORKERS_PER_NODE + j] > 0) cnt++;
+      l2_cnt += used[i * WORKERS_PER_NODE + j] * used[i * WORKERS_PER_NODE + j];
+    }
+    if (cnt > intra_cnt) intra_cnt = cnt;
+    if (cnt > 0) cross_cnt ++;
   }
   float xfer = hiddenSize * inputSize * 8 * sizeof(float);
-  float ret = xfer * cnt / INTRA_NODE_BANDWIDTH + l2_cnt * L2_FACTOR;
-  //printf("update: %.2lf\n", ret);
+  assert(intra_cnt > 0);
+  assert(cross_cnt > 0);
+  //printf("intra(%.2lf) cross(%.2lf) epsilon(%.2lf)\n", xfer * (intra_cnt-1) / INTRA_NODE_BANDWIDTH, xfer * (cross_cnt-1) / CROSS_NODE_BANDWIDTH, l2_cnt * L2_FACTOR);
+  float ret = xfer * (intra_cnt-1) / INTRA_NODE_BANDWIDTH
+              + xfer * (cross_cnt-1) / CROSS_NODE_BANDWIDTH
+              + l2_cnt * L2_FACTOR;
+  //printf("LSTM::update: %.2lf\n", ret);
   return ret;
 };
 
 Rect LSTM::get_tensor_shape(OpConfig config, int idx, Tensor t, bool is_input)
 {
-  assert(config.dim[1] == 1);
+  assert(config.nDims == 1);
   assert(t.nDims == 2); // Assume 2-D tensors
   assert(idx < config.dim[0]);
   int extent = t.dim[0] / config.dim[0];
   Rect r;
   r.nDims = 2;
-  r.lo[1] = 0; r.hi[1] = t.dim[1] - 1;
   r.lo[0] = extent * idx; r.hi[0] = extent * (idx + 1) - 1;
+  r.lo[1] = 0; r.hi[1] = t.dim[1] - 1;
   return r;
 }
-
-/*
-float LSTM::xfer(Tensor t, OpConfig config, OpConfig preConfig, int idx) {
-  assert(t.nDims == 2);
-  assert(config.nParts == NUM_PARTITIONS);
-  assert(preConfig.nParts == NUM_PARTITIONS);
-  assert(config.dim[1] == 1);
-  assert(preConfig.dim[1] == 1);
-  float xfer = (float)(t.dim[0] / preConfig.dim[0]) * t.dim[1];
-  if (config.map[idx] == preConfig.map[idx])
-    return 0.0f
-  else
-    return xfer;
-};
-*/
 
 OpConfig LSTM::get_random_config()
 {
   OpConfig config;
-  config.nDims = 2;
-  //FIXME: int idx = std::rand() % nConfigs;
-  int idx = nConfigs - 1;
+  config.nDims = 1;
+  int idx = std::rand() % nConfigs;
+  //int idx = nConfigs - 1;
   config.nParts = config_x[idx];
   config.dim[0] = config.nParts;
-  config.dim[1] = 1;
   for (int i = 0; i < config.nParts; i++)
     config.map[i] = std::rand() % NUM_WORKERS;
   return config;
@@ -541,7 +546,7 @@ OpConfig LSTM::get_random_config()
 
 class Softmax : public Op {
 public:
-  Softmax(int _batchSize, int _inputSize, int _outputSize, Tensor x, std::string name)
+  Softmax(int _batchSize, int _inputSize, int _outputSize, bool softmax, bool lstm_linear, Tensor x, std::string name)
   : batchSize(_batchSize), inputSize(_inputSize), outputSize(_outputSize), Op(name) {
     assert(x.nDims == 2);
     assert(x.dim[0] == batchSize);
@@ -557,8 +562,9 @@ public:
       }
     for (int i = 0; i < nConfigs; i++) {
       int batch = batchSize / config_x[i];
+      if (lstm_linear) batch = batch * LSTM_PER_NODE_LENGTH;
       int output = outputSize / config_y[i];
-      computeTime[i] = measure_linear_time(batch, inputSize, output);
+      computeTime[i] = measure_linear_time(batch, inputSize, output, softmax);
     }
   }
 
@@ -618,6 +624,7 @@ float Softmax::update(const std::vector<OpConfig>& vec) {
     ret += (xfer * (intra_cnt-1)) / INTRA_NODE_BANDWIDTH
            + (xfer * (cross_cnt-1))/ CROSS_NODE_BANDWIDTH;
   }
+  //printf("Softmax::update = %.2lf\n", ret);
   return ret;
 };
 
@@ -674,6 +681,9 @@ public:
     assert(numInputs == 0);
     Tensor y(2, batchSize, outputSize, this, 0);
     outputTensors.push_back(y);
+    nConfigs = 0;
+    for (int i = 1; i <= NUM_PARTITIONS; i*=2)
+      config_x[nConfigs++] = i;
   }
 
   float compute(OpConfig c);
@@ -683,10 +693,11 @@ public:
   OpConfig get_random_config();
 private:
   int batchSize, vocabSize, outputSize;
+  int nConfigs, config_x[MAX_NUM_CONFIGS];
 };
 
 float Embed::compute(OpConfig c) {
-  return 0.02f / c.nParts;
+  return 0.04f / c.nParts + 0.01;
 }
 
 float Embed::update(const std::vector<OpConfig>& vec) {
@@ -694,25 +705,33 @@ float Embed::update(const std::vector<OpConfig>& vec) {
   for (int i = 0; i < NUM_WORKERS; i++)
     used[i] = 0;
   for (int i = 0; i < vec.size(); i++) {
-    assert(vec[i].dim[1] == 1);
-    for (int j = 0; j < vec[i].dim[0]; j++)
+    for (int j = 0; j < vec[i].nParts; j++)
       used[vec[i].map[j]] += 1;
   }
-  int cnt = 0, l2_cnt = 0;
-  for (int i = 0; i < NUM_WORKERS; i++) {
-    if (used[i] > 0) cnt++;
-    l2_cnt += used[i] * used[i];
+  int intra_cnt = 0, cross_cnt = 0, l2_cnt = 0;
+  for (int i = 0; i < NUM_NODES; i++) {
+    int cnt = 0;
+    for (int j = 0; j < WORKERS_PER_NODE; j++) {
+      if (used[i*WORKERS_PER_NODE + j] > 0) cnt++;
+      l2_cnt += used[i * WORKERS_PER_NODE + j] * used[i * WORKERS_PER_NODE + j];
+    }
+    if (cnt > 0) cross_cnt++;
+    if (cnt > intra_cnt) intra_cnt = cnt;
   }
   float xfer = vocabSize * outputSize * sizeof(float);
-  float ret = xfer * cnt / INTRA_NODE_BANDWIDTH + l2_cnt * L2_FACTOR;
-  //printf("update: %.2lf\n", ret);
+  assert(intra_cnt > 0);
+  assert(cross_cnt > 0);
+  float ret = xfer * (intra_cnt - 1) / INTRA_NODE_BANDWIDTH
+              + xfer * (cross_cnt - 1) / CROSS_NODE_BANDWIDTH
+              + l2_cnt * L2_FACTOR;
+  //printf("Embed::update: %.2lf\n", ret);
   return ret;
 }
 
 Rect Embed::get_tensor_shape(OpConfig config, int idx, Tensor t, bool is_input)
 {
   assert(t.nDims == 2);
-  assert(config.dim[1] == 1);
+  assert(config.nDims == 1);
   Rect r;
   r.nDims = 2;
   r.lo[1] = 0; r.hi[1] = t.dim[1] - 1;
@@ -739,10 +758,11 @@ float Embed::xfer(Tensor t, OpConfig config, OpConfig preConfig, int idx) {
 OpConfig Embed::get_random_config()
 {
   OpConfig config;
-  config.nDims = 2;
-  config.nParts = NUM_PARTITIONS;
-  config.dim[0] = NUM_PARTITIONS;
-  config.dim[1] = 1;
+  config.nDims = 1;
+  int idx = std::rand() % nConfigs;
+  //int idx = nConfigs - 1;
+  config.nParts = config_x[idx];
+  config.dim[0] = config.nParts;
   for (int i = 0; i < config.nParts; i++)
     config.map[i] = std::rand() % NUM_WORKERS;
   return config;
@@ -1028,9 +1048,9 @@ Tensor add_flat_layer(Tensor t, std::string name)
   return flat->outputTensors[0];
 }
 
-Tensor add_linear_layer(Tensor t, int outputSize, std::string name)
+Tensor add_linear_layer(Tensor t, int outputSize, bool softmaxLayer, std::string name)
 {
-  Softmax* softmax = new Softmax(t.dim[0], t.dim[1], outputSize, t, name);
+  Softmax* softmax = new Softmax(t.dim[0], t.dim[1], outputSize, softmaxLayer, false/*lstm_linear*/, t, name);
   assert(softmax->outputTensors.size() == 1);
   return softmax->outputTensors[0];
 }
@@ -1055,9 +1075,9 @@ void build_alexnet_model()
   t = add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1, "conv7");
   t = add_pool_layer(t, 3, 3, 2, 2, 0, 0, "pool8");
   t = add_flat_layer(t, "flat");
-  t = add_linear_layer(t, 4096, "linear9");
-  t = add_linear_layer(t, 4096, "linear10");
-  t = add_linear_layer(t, 1000, "linear11");
+  t = add_linear_layer(t, 4096, false, "linear9");
+  t = add_linear_layer(t, 4096, false, "linear10");
+  t = add_linear_layer(t, 1000, true, "linear11");
   std::vector<Op*> opList;
   for (int i = 0; i < op_global_guid; i++) {
     opList.clear();
@@ -1183,7 +1203,7 @@ void build_inception_model()
   printf("End of InceptionE2\n");
   t = add_pool_layer(t, 8, 8, 1, 1, 0, 0, "pool");
   t = add_flat_layer(t, "flat");
-  t = add_linear_layer(t, 2048, "linear");
+  t = add_linear_layer(t, 2048, true, "linear");
   std::vector<Op*> opList;
   for (int i = 0; i < op_global_guid - 1; i++) {
     opList.clear();
@@ -1231,7 +1251,7 @@ void build_densenet_model()
   t = DenseBlock(t, 16, 32, "dense4::");
   t = add_pool_layer(t, 7, 7, 1, 1, 0, 0, "pool");
   t = add_flat_layer(t, "flat");
-  t = add_linear_layer(t, 1000, "linear");
+  t = add_linear_layer(t, 1000, true, "linear");
   std::vector<Op*> opList;
   for (int i = 0; i < op_global_guid - 1; i++) {
     opList.clear();
@@ -1270,7 +1290,7 @@ void build_resnet_model()
   }
   t = add_pool_layer(t, 7, 7, 1, 1, 0, 0, "pool");
   t = add_flat_layer(t, "flat");
-  t = add_linear_layer(t, 1000, "linear");
+  t = add_linear_layer(t, 1000, true, "linear");
   std::vector<Op*> opList;
   for (int i = 0; i < op_global_guid - 1; i++) {
     opList.clear();
@@ -1303,7 +1323,7 @@ void build_nmt_model()
 
   Softmax* softmax[DST_LENGTH];
   for (int i = 0; i < DST_LENGTH; i++)
-    softmax[i] = new Softmax(BATCH_SIZE, HIDDEN_SIZE, VOCAB_SIZE,
+    softmax[i] = new Softmax(BATCH_SIZE, HIDDEN_SIZE, VOCAB_SIZE, true/*softmax*/, true/*lstm_linear*/,
                              lstm[NUM_LAYERS-1][i + SRC_LENGTH]->outputTensors[0], "linear");
   int idx = 0;
   std::vector<Op*> opList;
@@ -1340,17 +1360,18 @@ int main()
 {
   srand (time(NULL));
   //srand(1234);
-  build_inception_model();
+  build_nmt_model();
   std::map<Op*, OpConfig> current, next, optimal;
   generate_init_config(current);
   /*for (int i = 0; i < op_global_guid; i++) {
     OpConfig config;
-    config.nDims = (i >= op_global_guid - 1) ? 2 : 1;
+    config.nDims = (i >= op_global_guid - SRC_LENGTH) ? 2 : 1;
     config.nParts = NUM_PARTITIONS;
     config.dim[0] = NUM_PARTITIONS;
     config.dim[1] = 1;
     for (int j = 0; j < config.nParts; j++)
-      config.map[j] = j % NUM_WORKERS;
+      //config.map[j] = j % NUM_WORKERS;
+      config.map[j] = (i / SRC_LENGTH) % NUM_WORKERS;
     current[guidToOp[i]] = config;
   }*/
   optimal = current;

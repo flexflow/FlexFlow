@@ -39,7 +39,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int vocab_size = 32 * 1024;
   int num_nodes = 1;
   int workers_per_node = 2;
-  int num_parts = 2;
+  int num_parts = workers_per_node * num_nodes;
   int num_iterations = 10;
   {
     const InputArgs &command_args = HighLevelRuntime::get_input_args();
@@ -272,8 +272,8 @@ void set_global_config(GlobalConfig &global, int num_layers, int seq_length, int
     pc.nDims = 1;
     pc.dim[0] = num_parts;
     for (int j = 0; j < num_parts; j++)
-      //pc.gpu[j] = i * LSTM_PER_NODE_LENGTH < seq_length ? 0 : 1;
-      pc.gpu[j] = j;
+      pc.gpu[j] = i * LSTM_PER_NODE_LENGTH < seq_length ? 0 : 1;
+      //pc.gpu[j] = j;
     global.embed[i] = pc;
   }
   for (int i = 0; i < num_layers; i++)
