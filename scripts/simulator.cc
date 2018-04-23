@@ -115,6 +115,8 @@ public:
   std::vector<Op*> nextOps, preOps;
 };
 
+float maxV = 0.0f, minV = 0.0f;
+
 class Conv2D : public Op {
 public:
   Conv2D(int _outputSize, int _kernelH, int _kernelW, int _strideH, int _strideW,
@@ -147,6 +149,11 @@ public:
                                            kernelH, kernelW, strideH, strideW,
                                            paddingH, paddingW);
     }
+    maxV += computeTime[nConfigs-1] * config_x[nConfigs-1];
+    float bestV = computeTime[0] * config_x[0];
+    for (int i = 0; i < nConfigs; i++)
+      bestV = std::min(bestV, computeTime[i] * config_x[i]);
+    minV += bestV;
   }
   float compute(OpConfig c);
   float update(const std::vector<OpConfig>& vec);
@@ -254,6 +261,11 @@ public:
                                            kernelH, kernelW, strideH, strideW,
                                            paddingH, paddingW);
     }
+    maxV += computeTime[nConfigs-1] * config_x[nConfigs-1];
+    float bestV = computeTime[0] * config_x[0];
+    for (int i = 0; i < nConfigs; i++)
+      bestV = std::min(bestV, computeTime[i] * config_x[i]);
+    minV += bestV;
   }
   float compute(OpConfig c);
   float update(const std::vector<OpConfig>& vec);
@@ -775,7 +787,6 @@ int task_global_guid = 0;
 class Task;
 struct Edge {
   Task* task;
-  float cost;
 };
 class Task {
 public:
@@ -790,14 +801,12 @@ public:
     printf("new guid = %d\n", _guid);
     guid = _guid;
   }
-  void add_next_task(Task* next, float cost) {
+  void add_next_task(Task* next) {
     Edge nextEdge;
     nextEdge.task = next;
-    nextEdge.cost = cost;
     nextTasks.push_back(nextEdge);
     Edge preEdge;
     preEdge.task = this;
-    preEdge.cost = cost;
     next->preTasks.push_back(preEdge);
   }
 
@@ -825,8 +834,7 @@ public:
     readyTime = 0.0f;
     for (int i = 0; i < preTasks.size(); i++) {
       Task* pre = preTasks[i].task;
-      readyTime = std::max(readyTime,
-          pre->startTime + pre->computeTime + preTasks[i].cost);
+      readyTime = std::max(readyTime, pre->startTime + pre->computeTime);
     }
   }
   float readyTime, startTime, computeTime;
@@ -872,19 +880,21 @@ inline float bandwidth(int gpu1, int gpu2)
 }
 
 Task* tasks[MAX_NUM_OPS][NUM_PARTITIONS];
-Task* lastTask[MAX_NUM_WORKERS];
-std::set<Task*, TaskCompare> orders[MAX_NUM_WORKERS];
+Task* commTasks[MAX_NUM_OPS * NUM_PARTITIONS * NUM_PARTITIONS];
 float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
 {
   // We need to reset task_global_guid
   task_global_guid = 0;
+  int comm_task_id = 0;
   std::set<Task*, TaskCompare> readyQueue;
   float costDataXfer = 0.0f;
+  float accCompTime = 0.0f;
   for (int i = 0; i < op_global_guid; i++) {
     Op* op = guidToOp[i];
     OpConfig config = global.find(op)->second;
     for (int j = 0; j < config.nParts; j++) {
       tasks[i][j] = new Task(config.map[j], op->compute(config));
+      accCompTime += tasks[i][j]->computeTime;
     }
     // Build dependencies
     for (int j = 0; j < op->inputTensors.size(); j++) {
@@ -908,9 +918,14 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
             if (srcT->workerId != dstT->workerId) {
               cost = intersect(srcR, dstR) * 4 / bandwidth(srcT->workerId, dstT->workerId);
               costDataXfer += cost;
-              if (print) printf("costDataXfer = %.2lf cost = %.2lf\n", costDataXfer, cost);
+              int comm_device_id = (srcId + 1) * MAX_NUM_WORKERS + dstId;
+              Task* task = new Task(comm_device_id, cost);
+              commTasks[comm_task_id++] = task;
+              srcT->add_next_task(task);
+              task->add_next_task(dstT);
+            } else {
+              srcT->add_next_task(dstT);
             }
-            srcT->add_next_task(dstT, cost);
           }
         }
       }
@@ -921,12 +936,10 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
         readyQueue.insert(tasks[i][j]);
       }
   }
-
   std::vector<Task*> allTasks;
-  float gpuTime[MAX_NUM_WORKERS];
-  for (int i = 0; i < MAX_NUM_WORKERS; i++) {
+  float gpuTime[MAX_NUM_WORKERS * (MAX_NUM_WORKERS + 1)];
+  for (int i = 0; i < MAX_NUM_WORKERS * (MAX_NUM_WORKERS + 1); i++) {
     gpuTime[i] = 0.0f;
-    lastTask[i] = NULL;
   }
   while (!readyQueue.empty()) {
     // Find the task with earliest start time
@@ -934,17 +947,12 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
     allTasks.push_back(t);
     readyQueue.erase(readyQueue.begin());
     int gpuId = t->workerId;
-    orders[gpuId].insert(t);
     gpuTime[gpuId] = std::max(gpuTime[gpuId], t->readyTime);
     t->startTime = gpuTime[gpuId];
     gpuTime[gpuId] += t->computeTime;
-    t->previous = lastTask[gpuId];
-    if (lastTask[gpuId] != NULL)
-      lastTask[gpuId]->next = t;
-    lastTask[gpuId] = t;
     for (int i = 0; i < t->nextTasks.size(); i++) {
       Task* next = t->nextTasks[i].task;
-      float nextReadyTime = t->startTime + t->computeTime + t->nextTasks[i].cost;
+      float nextReadyTime = t->startTime + t->computeTime;
       next->readyTime = std::max(next->readyTime, nextReadyTime);
       next->counter ++;
       if (next->counter == next->preTasks.size()) {
@@ -954,7 +962,6 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
     }
     if (print)
       printf("[%zu] gpu(%.2lf %.2lf %.2lf %.2lf)\n", allTasks.size(), gpuTime[0], gpuTime[1], gpuTime[2], gpuTime[3]);
-
   }
   float totalTime = 0.0f;
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
@@ -1002,11 +1009,14 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
     for (int j = 0; j < config.nParts; j++)
       delete tasks[i][j];
   }
+  for (int i = 0; i < comm_task_id; i++)
+    delete commTasks[i];
 #endif
 
   if (print) {
     printf("totalTime = %.2lf\n", totalTime);
     printf("costDataXfer = %.2lf\n", costDataXfer);
+    printf("totalCompTime = %.2lf\n", accCompTime);
   }
 
   //return totalTime + costDataXfer * DATA_XFER_FACTOR;
@@ -1382,13 +1392,14 @@ void print_global_config(const std::map<Op*, OpConfig>& global)
 
 int main()
 {
-  srand (time(NULL));
-  build_inception_model();
+  srand(time(NULL));
+  build_alexnet_model();
+  printf("minV = %.2lf maxV = %.2lf\n", minV, maxV);
   std::map<Op*, OpConfig> current, next, optimal;
   generate_init_config(current);
   for (int i = 0; i < op_global_guid; i++) {
     OpConfig config;
-    config.nDims = (i >= op_global_guid - 1) ? 2 : 1;
+    config.nDims = (i >= op_global_guid - 3) ? 2 : 1;
     config.nParts = NUM_PARTITIONS;
     config.dim[0] = NUM_PARTITIONS;
     config.dim[1] = 1;
