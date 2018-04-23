@@ -17,6 +17,7 @@
 #define MAX_NUM_OPS 1000
 #define MAX_NUM_CONFIGS 20
 #define L2_FACTOR -0.0001
+#define DATA_XFER_FACTOR 0.01
 #define NOT_USE_SIMULATE_OPT
 //#define VERBOSE
 
@@ -114,6 +115,8 @@ public:
   std::vector<Op*> nextOps, preOps;
 };
 
+float maxV = 0.0f, minV = 0.0f;
+
 class Conv2D : public Op {
 public:
   Conv2D(int _outputSize, int _kernelH, int _kernelW, int _strideH, int _strideW,
@@ -146,6 +149,11 @@ public:
                                            kernelH, kernelW, strideH, strideW,
                                            paddingH, paddingW);
     }
+    maxV += computeTime[nConfigs-1] * config_x[nConfigs-1];
+    float bestV = computeTime[0] * config_x[0];
+    for (int i = 0; i < nConfigs; i++)
+      bestV = std::min(bestV, computeTime[i] * config_x[i]);
+    minV += bestV;
   }
   float compute(OpConfig c);
   float update(const std::vector<OpConfig>& vec);
@@ -253,6 +261,11 @@ public:
                                            kernelH, kernelW, strideH, strideW,
                                            paddingH, paddingW);
     }
+    maxV += computeTime[nConfigs-1] * config_x[nConfigs-1];
+    float bestV = computeTime[0] * config_x[0];
+    for (int i = 0; i < nConfigs; i++)
+      bestV = std::min(bestV, computeTime[i] * config_x[i]);
+    minV += bestV;
   }
   float compute(OpConfig c);
   float update(const std::vector<OpConfig>& vec);
@@ -592,10 +605,10 @@ float Softmax::compute(OpConfig c) {
 };
 
 float Softmax::update(const std::vector<OpConfig>& vec) {
-  bool used[NUM_WORKERS][NUM_PARTITIONS];
+  int used[NUM_WORKERS][NUM_PARTITIONS];
   for (int i = 0; i < NUM_WORKERS; i++)
     for (int j = 0; j < NUM_PARTITIONS; j++)
-      used[i][j] = false;
+      used[i][j] = 0;
   float xfer = ((float)inputSize) * outputSize / NUM_PARTITIONS * sizeof(float);
   for (int i = 0; i < vec.size(); i++) {
     for (int j = 0; j < vec[i].dim[0]; j++)
@@ -603,16 +616,17 @@ float Softmax::update(const std::vector<OpConfig>& vec) {
         for (int l = 0; l < vec[i].dim[0]; l++) {
           int gpuID = vec[i].map[j*vec[i].dim[1] + k];
           int parID = k * vec[i].dim[0] + l;
-          used[gpuID][parID] = true;
+          used[gpuID][parID] ++;
         }
   }
-  float ret = 0.0f;;
+  float ret = 0.0f;
   for (int k = 0; k < NUM_PARTITIONS; k++) {
-    int intra_cnt = 0, cross_cnt = 0;
+    int intra_cnt = 0, cross_cnt = 0, l2_cnt = 0;
     for (int i = 0; i < NUM_NODES; i++) {
       int cnt = 0;
       for (int j = 0; j < WORKERS_PER_NODE; j++) {
-        if (used[i*WORKERS_PER_NODE+j][k]) cnt++;
+        if (used[i*WORKERS_PER_NODE+j][k] > 0) cnt++;
+        l2_cnt += used[i * WORKERS_PER_NODE + j][k] * used[i * WORKERS_PER_NODE + j][k];
       }
       if (cnt > intra_cnt) intra_cnt = cnt;
       if (cnt > 0) cross_cnt ++;
@@ -622,7 +636,8 @@ float Softmax::update(const std::vector<OpConfig>& vec) {
     //printf("Linear[%d]: intra_cnt = %d cross_cnt = %d\n", k, intra_cnt, cross_cnt);
     //printf("Linear::intra_xfer = %.4lf cross_xfer = %.4lf\n", xfer * (intra_cnt-1)/ INTRA_NODE_BANDWIDTH, xfer * (cross_cnt-1) / CROSS_NODE_BANDWIDTH);
     ret += (xfer * (intra_cnt-1)) / INTRA_NODE_BANDWIDTH
-           + (xfer * (cross_cnt-1))/ CROSS_NODE_BANDWIDTH;
+           + (xfer * (cross_cnt-1))/ CROSS_NODE_BANDWIDTH
+           + L2_FACTOR * l2_cnt;
   }
   //printf("Softmax::update = %.2lf\n", ret);
   return ret;
@@ -772,7 +787,6 @@ int task_global_guid = 0;
 class Task;
 struct Edge {
   Task* task;
-  float cost;
 };
 class Task {
 public:
@@ -787,14 +801,12 @@ public:
     printf("new guid = %d\n", _guid);
     guid = _guid;
   }
-  void add_next_task(Task* next, float cost) {
+  void add_next_task(Task* next) {
     Edge nextEdge;
     nextEdge.task = next;
-    nextEdge.cost = cost;
     nextTasks.push_back(nextEdge);
     Edge preEdge;
     preEdge.task = this;
-    preEdge.cost = cost;
     next->preTasks.push_back(preEdge);
   }
 
@@ -822,8 +834,7 @@ public:
     readyTime = 0.0f;
     for (int i = 0; i < preTasks.size(); i++) {
       Task* pre = preTasks[i].task;
-      readyTime = std::max(readyTime,
-          pre->startTime + pre->computeTime + preTasks[i].cost);
+      readyTime = std::max(readyTime, pre->startTime + pre->computeTime);
     }
   }
   float readyTime, startTime, computeTime;
@@ -869,18 +880,21 @@ inline float bandwidth(int gpu1, int gpu2)
 }
 
 Task* tasks[MAX_NUM_OPS][NUM_PARTITIONS];
-Task* lastTask[MAX_NUM_WORKERS];
-std::set<Task*, TaskCompare> orders[MAX_NUM_WORKERS];
+Task* commTasks[MAX_NUM_OPS * NUM_PARTITIONS * NUM_PARTITIONS];
 float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
 {
   // We need to reset task_global_guid
   task_global_guid = 0;
+  int comm_task_id = 0;
   std::set<Task*, TaskCompare> readyQueue;
+  float costDataXfer = 0.0f;
+  float accCompTime = 0.0f;
   for (int i = 0; i < op_global_guid; i++) {
     Op* op = guidToOp[i];
     OpConfig config = global.find(op)->second;
     for (int j = 0; j < config.nParts; j++) {
       tasks[i][j] = new Task(config.map[j], op->compute(config));
+      accCompTime += tasks[i][j]->computeTime;
     }
     // Build dependencies
     for (int j = 0; j < op->inputTensors.size(); j++) {
@@ -901,9 +915,17 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
           if (intersect(srcR, dstR) > 0) {
             // Add dependency between srcT -> dstT
             float cost = 0.0f;
-            if (srcT->workerId != dstT->workerId)
+            if (srcT->workerId != dstT->workerId) {
               cost = intersect(srcR, dstR) * 4 / bandwidth(srcT->workerId, dstT->workerId);
-            srcT->add_next_task(dstT, cost);
+              costDataXfer += cost;
+              int comm_device_id = (srcId + 1) * MAX_NUM_WORKERS + dstId;
+              Task* task = new Task(comm_device_id, cost);
+              commTasks[comm_task_id++] = task;
+              srcT->add_next_task(task);
+              task->add_next_task(dstT);
+            } else {
+              srcT->add_next_task(dstT);
+            }
           }
         }
       }
@@ -914,12 +936,10 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
         readyQueue.insert(tasks[i][j]);
       }
   }
-
   std::vector<Task*> allTasks;
-  float gpuTime[MAX_NUM_WORKERS];
-  for (int i = 0; i < MAX_NUM_WORKERS; i++) {
+  float gpuTime[MAX_NUM_WORKERS * (MAX_NUM_WORKERS + 1)];
+  for (int i = 0; i < MAX_NUM_WORKERS * (MAX_NUM_WORKERS + 1); i++) {
     gpuTime[i] = 0.0f;
-    lastTask[i] = NULL;
   }
   while (!readyQueue.empty()) {
     // Find the task with earliest start time
@@ -927,17 +947,12 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
     allTasks.push_back(t);
     readyQueue.erase(readyQueue.begin());
     int gpuId = t->workerId;
-    orders[gpuId].insert(t);
     gpuTime[gpuId] = std::max(gpuTime[gpuId], t->readyTime);
     t->startTime = gpuTime[gpuId];
     gpuTime[gpuId] += t->computeTime;
-    t->previous = lastTask[gpuId];
-    if (lastTask[gpuId] != NULL)
-      lastTask[gpuId]->next = t;
-    lastTask[gpuId] = t;
     for (int i = 0; i < t->nextTasks.size(); i++) {
       Task* next = t->nextTasks[i].task;
-      float nextReadyTime = t->startTime + t->computeTime + t->nextTasks[i].cost;
+      float nextReadyTime = t->startTime + t->computeTime;
       next->readyTime = std::max(next->readyTime, nextReadyTime);
       next->counter ++;
       if (next->counter == next->preTasks.size()) {
@@ -947,7 +962,6 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
     }
     if (print)
       printf("[%zu] gpu(%.2lf %.2lf %.2lf %.2lf)\n", allTasks.size(), gpuTime[0], gpuTime[1], gpuTime[2], gpuTime[3]);
-
   }
   float totalTime = 0.0f;
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
@@ -964,7 +978,9 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
       it = global.find(opList[j]);
       configs.push_back(it->second);
     }
-    totalTime += opList[0]->update(configs);
+    float updateCost = opList[0]->update(configs);
+    totalTime += updateCost;
+    costDataXfer += updateCost;
   }
 #ifdef VERBOSE
   for (int i = 0; i < op_global_guid; i++) {
@@ -993,10 +1009,17 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
     for (int j = 0; j < config.nParts; j++)
       delete tasks[i][j];
   }
+  for (int i = 0; i < comm_task_id; i++)
+    delete commTasks[i];
 #endif
-  if (print)
-    printf("totalTime = %.2lf\n", totalTime);
 
+  if (print) {
+    printf("totalTime = %.2lf\n", totalTime);
+    printf("costDataXfer = %.2lf\n", costDataXfer);
+    printf("totalCompTime = %.2lf\n", accCompTime);
+  }
+
+  //return totalTime + costDataXfer * DATA_XFER_FACTOR;
   return totalTime;
 }
 
@@ -1321,10 +1344,17 @@ void build_nmt_model()
                               i == 0 ? cx_init : lstm[l][i-1]->outputTensors[1], "decoder");
     }
 
+  LSTM* attention[DST_LENGTH];
+  for (int i = 0; i < DST_LENGTH; i++) {
+    attention[i] = new LSTM(BATCH_SIZE, HIDDEN_SIZE, HIDDEN_SIZE, lstm[NUM_LAYERS-1][i+SRC_LENGTH]->outputTensors[0],
+                            i == 0 ? hx_init : attention[i-1]->outputTensors[0],
+                            i == 0 ? cx_init : attention[i-1]->outputTensors[1], "attention");
+  }
   Softmax* softmax[DST_LENGTH];
   for (int i = 0; i < DST_LENGTH; i++)
     softmax[i] = new Softmax(BATCH_SIZE, HIDDEN_SIZE, VOCAB_SIZE, true/*softmax*/, true/*lstm_linear*/,
-                             lstm[NUM_LAYERS-1][i + SRC_LENGTH]->outputTensors[0], "linear");
+                             //lstm[NUM_LAYERS-1][i + SRC_LENGTH]->outputTensors[0], "linear");
+                             attention[i]->outputTensors[0], "linear");
   int idx = 0;
   std::vector<Op*> opList;
   for (int l = 0; l <= NUM_LAYERS; l++) {
@@ -1337,6 +1367,10 @@ void build_nmt_model()
       opList.push_back(guidToOp[idx++]);
     parameters.push_back(opList);
   }
+  opList.clear();
+  for (int i = 0; i < DST_LENGTH; i++)
+    opList.push_back(guidToOp[idx++]);
+  parameters.push_back(opList);
   opList.clear();
   for (int i = 0; i < DST_LENGTH; i++)
     opList.push_back(guidToOp[idx++]);
@@ -1358,28 +1392,28 @@ void print_global_config(const std::map<Op*, OpConfig>& global)
 
 int main()
 {
-  srand (time(NULL));
-  //srand(1234);
-  build_nmt_model();
+  srand(time(NULL));
+  build_alexnet_model();
+  printf("minV = %.2lf maxV = %.2lf\n", minV, maxV);
   std::map<Op*, OpConfig> current, next, optimal;
   generate_init_config(current);
-  /*for (int i = 0; i < op_global_guid; i++) {
+  for (int i = 0; i < op_global_guid; i++) {
     OpConfig config;
-    config.nDims = (i >= op_global_guid - SRC_LENGTH) ? 2 : 1;
+    config.nDims = (i >= op_global_guid - 3) ? 2 : 1;
     config.nParts = NUM_PARTITIONS;
     config.dim[0] = NUM_PARTITIONS;
     config.dim[1] = 1;
     for (int j = 0; j < config.nParts; j++)
-      //config.map[j] = j % NUM_WORKERS;
-      config.map[j] = (i / SRC_LENGTH) % NUM_WORKERS;
+      config.map[j] = j % NUM_WORKERS;
+      //config.map[j] = (i / SRC_LENGTH) % NUM_WORKERS;
     current[guidToOp[i]] = config;
-  }*/
+  }
   optimal = current;
   float optimal_runtime = simulate_time(current, true);
   float cur_runtime = optimal_runtime;
   long long start_time = current_time();
   int good_moves = 0, best_moves = 0;
-  for (int i = 0; i <= 1000000; i++) {
+  for (int i = 0; i <= 100000; i++) {
     Op* updOp = rewrite(current, next);
     float next_runtime = simulate_time(next);
     if (i % 10000 == 0) {
@@ -1394,19 +1428,8 @@ int main()
     float diff = (next_runtime - cur_runtime);
     if (next_runtime < optimal_runtime) {
       best_moves ++;
-      //simulate_time(current, true);
-      //simulate_time(next, true);
-      //OpConfig config = current.find(updOp)->second;
-      //printf("old: t(%d) dims[%d %d] map[%d %d %d %d]\n", updOp->guid, config.dim[0], config.dim[1], config.map[0], config.map[1], config.map[2], config.map[3]);
-      //config = next.find(updOp)->second;
-      //printf("next: t(%d) dims[%d %d] map[%d %d %d %d]\n", updOp->guid, config.dim[0], config.dim[1], config.map[0], config.map[1], config.map[2], config.map[3]);
       optimal_runtime = next_runtime;
       optimal = next;
-      //for (int j = 0; j < op_global_guid; j++) {
-      //  printf("op[%d]: dim(%d %d) map(%d %d %d %d)\n", j, optimal[guidToOp[j]].dim[0], optimal[guidToOp[j]].dim[1],
-      //         optimal[guidToOp[j]].map[0], optimal[guidToOp[j]].map[1], optimal[guidToOp[j]].map[2], optimal[guidToOp[j]].map[3]);
-      //}
-      //getchar();
     }
     if (next_runtime < cur_runtime) {
       good_moves ++;
