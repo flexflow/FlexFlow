@@ -346,8 +346,9 @@ float measure_linear_time(int batchSize, int inputSize, int outputSize, bool sof
 {
   cudnnTensorDescriptor_t outputTensor;
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
-  checkCUDNN(cudnnSetTensor4dDescriptor(outputTensor, CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT, batchSize, outputSize, 1, 1));
+  cudnnStatus_t ret = cudnnSetTensor4dDescriptor(outputTensor, CUDNN_TENSOR_NCHW,
+                                                 CUDNN_DATA_FLOAT, batchSize, outputSize, 1, 1);
+  if (ret != CUDNN_STATUS_SUCCESS) return 1000000.0f;
   float *kernel_ptr, *input_ptr, *output_ptr, *softmax_ptr;
   float alpha = 1.0f, beta = 0.0f;
   checkCUDA(cudaMalloc(&kernel_ptr, inputSize * outputSize * sizeof(float)));

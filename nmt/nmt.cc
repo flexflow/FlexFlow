@@ -26,20 +26,21 @@ void parse_input_args(char **argv, int argc,
                       int &hidden_size, int &embed_size);
 
 void set_global_config(GlobalConfig &global, int num_layers,
-                       int seq_length, int num_parts);
+                       int seq_length, int workers_per_node, int num_nodes);
 
 void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime)
 {
-  int batch_size = 128;
+  int bs_per_worker = 64;
   int num_layers = 2;
-  int seq_length = 40;
-  int hidden_size = 1024;
-  int embed_size = 1024;
-  int vocab_size = 32 * 1024;
+  int seq_length = 20;
+  int hidden_size = 2048;
+  int embed_size = 2048;
+  int vocab_size = 20 * 1024;
   int num_nodes = 1;
-  int workers_per_node = 2;
+  int workers_per_node = 1;
   int num_parts = workers_per_node * num_nodes;
+  int batch_size = bs_per_worker * num_parts;
   int num_iterations = 10;
   {
     const InputArgs &command_args = HighLevelRuntime::get_input_args();
@@ -49,7 +50,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
                      hidden_size, embed_size);
   }
   GlobalConfig global;
-  set_global_config(global, num_layers, seq_length, num_parts);
+  set_global_config(global, num_layers, seq_length, workers_per_node, num_nodes);
   RnnModel model(batch_size, num_layers, seq_length, hidden_size, embed_size,
                  vocab_size, num_parts, num_nodes, workers_per_node,
                  global, ctx, runtime);
@@ -71,7 +72,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   for (int i = 0; i < num_iterations; i++) {
     model.forward();
     model.backward();
-    //model.update();
+    model.update();
   }
   runtime->issue_execution_fence(ctx);
   TimingLauncher timer(MEASURE_MICRO_SECONDS);
@@ -265,8 +266,10 @@ void parse_input_args(char **argv, int argc,
   }
 }
 
-void set_global_config(GlobalConfig &global, int num_layers, int seq_length, int num_parts)
+void set_global_config(GlobalConfig &global, int num_layers, int seq_length,
+                       int workers_per_node, int num_nodes)
 {
+  int num_parts = workers_per_node * num_nodes;
   for (int i = 0; i * LSTM_PER_NODE_LENGTH < 2 * seq_length; i++) {
     ParallelConfig pc;
     pc.nDims = 1;

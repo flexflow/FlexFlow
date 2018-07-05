@@ -536,7 +536,7 @@ void RnnModel::forward()
       runtime->execute_task(ctx, launcher);
     }
   }
-  //runtime->issue_mapping_fence(ctx);
+  runtime->issue_mapping_fence(ctx);
   // Step 2: zero gradients
   for (size_t i = 0; i < sharedVariables.size(); i++)
     for (int j = 0; j < config.workersPerNode * config.numNodes; j++)

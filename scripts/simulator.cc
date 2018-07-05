@@ -12,8 +12,8 @@
 #include "cnn.h"
 
 #define MAX_NUM_DIMS 4
-#define MAX_NUM_WORKERS 16
-#define MAX_NUM_PARTS 16
+#define MAX_NUM_WORKERS 64
+#define MAX_NUM_PARTS 64
 #define MAX_NUM_OPS 1000
 #define MAX_NUM_CONFIGS 20
 #define L2_FACTOR -0.0001
@@ -29,13 +29,13 @@ const int VOCAB_SIZE = 32000;
 const int LOCAL_BATCH_SIZE = 64;
 const int EMBEDDING_SIZE = 1024;
 const int HIDDEN_SIZE = 1024;
-const int NUM_NODES = 4;
+const int NUM_NODES = 2;
 const int WORKERS_PER_NODE = 4;
 const int NUM_WORKERS = NUM_NODES * WORKERS_PER_NODE; // NUM_WORKERS <= MAX_NUM_WORKERS
 const int NUM_PARTITIONS = NUM_NODES * WORKERS_PER_NODE; // NUM_PARTITIONS <= MAX_NUM_PARTS
 const int BATCH_SIZE = NUM_PARTITIONS * LOCAL_BATCH_SIZE;
-const float INTRA_NODE_BANDWIDTH = 15 * 1024 * 1024;
-const float CROSS_NODE_BANDWIDTH = 4.5 * 1024 * 1024;
+const float INTRA_NODE_BANDWIDTH = 4 * 1024 * 1024;
+const float CROSS_NODE_BANDWIDTH = 1 * 1024 * 1024;
 
 using namespace std;
 
@@ -76,7 +76,6 @@ public:
   int idx, nDims, dim[MAX_NUM_DIMS];
 };
 
-
 int op_global_guid = 0;
 Op* guidToOp[MAX_NUM_OPS];
 std::vector<std::vector<Op*> > parameters;
@@ -115,7 +114,8 @@ public:
   std::vector<Op*> nextOps, preOps;
 };
 
-float maxV = 0.0f, minV = 0.0f;
+float dpCompTime = 0.0f, mpCompTime = 0.0f, bestCompTime = 0.0f;
+float totalDataXfer = 0.0f;
 
 class Conv2D : public Op {
 public:
@@ -149,11 +149,12 @@ public:
                                            kernelH, kernelW, strideH, strideW,
                                            paddingH, paddingW);
     }
-    maxV += computeTime[nConfigs-1] * config_x[nConfigs-1];
+    dpCompTime += computeTime[nConfigs-1] * config_x[nConfigs-1];
+    mpCompTime += computeTime[0] * config_x[0];
     float bestV = computeTime[0] * config_x[0];
     for (int i = 0; i < nConfigs; i++)
       bestV = std::min(bestV, computeTime[i] * config_x[i]);
-    minV += bestV;
+    bestCompTime += bestV;
   }
   float compute(OpConfig c);
   float update(const std::vector<OpConfig>& vec);
@@ -261,11 +262,12 @@ public:
                                            kernelH, kernelW, strideH, strideW,
                                            paddingH, paddingW);
     }
-    maxV += computeTime[nConfigs-1] * config_x[nConfigs-1];
+    dpCompTime += computeTime[nConfigs-1] * config_x[nConfigs-1];
+    mpCompTime += computeTime[0] * config_x[0];
     float bestV = computeTime[0] * config_x[0];
     for (int i = 0; i < nConfigs; i++)
       bestV = std::min(bestV, computeTime[i] * config_x[i]);
-    minV += bestV;
+    bestCompTime += bestV;
   }
   float compute(OpConfig c);
   float update(const std::vector<OpConfig>& vec);
@@ -478,6 +480,13 @@ public:
       int b = batchSize / config_x[i];
       computeTime[i] = measure_lstm_time(1, LSTM_PER_NODE_LENGTH, b, inputSize, hiddenSize);
     }
+    dpCompTime += computeTime[nConfigs-1] * config_x[nConfigs-1];
+    mpCompTime += computeTime[0] * config_x[0];
+    float bestV = computeTime[0] * config_x[0];
+    for (int i = 0; i < nConfigs; i++)
+      bestV = std::min(bestV, computeTime[i] * config_x[i]);
+    bestCompTime += bestV;
+    printf("		dpCompTime(%.2lf) bestCompTime(%.2lf)\n", computeTime[nConfigs-1] * config_x[nConfigs-1], bestV);
   }
   float compute(OpConfig c);
   float update(const std::vector<OpConfig>& vec);
@@ -504,6 +513,7 @@ float LSTM::compute(OpConfig c) {
 float LSTM::update(const std::vector<OpConfig>& vec)
 {
   int used[NUM_WORKERS];
+  float xfer = hiddenSize * inputSize * 8 * sizeof(float);
   for (int i = 0; i < NUM_WORKERS; i++)
     used[i] = 0;
   for (int i = 0; i < vec.size(); i++) {
@@ -518,11 +528,13 @@ float LSTM::update(const std::vector<OpConfig>& vec)
       l2_cnt += used[i * WORKERS_PER_NODE + j] * used[i * WORKERS_PER_NODE + j];
     }
     if (cnt > intra_cnt) intra_cnt = cnt;
+    if (cnt > 0)
+      totalDataXfer += (cnt - 1) * xfer;
     if (cnt > 0) cross_cnt ++;
   }
-  float xfer = hiddenSize * inputSize * 8 * sizeof(float);
   assert(intra_cnt > 0);
   assert(cross_cnt > 0);
+  totalDataXfer += (cross_cnt - 1) * xfer;
   //printf("intra(%.2lf) cross(%.2lf) epsilon(%.2lf)\n", xfer * (intra_cnt-1) / INTRA_NODE_BANDWIDTH, xfer * (cross_cnt-1) / CROSS_NODE_BANDWIDTH, l2_cnt * L2_FACTOR);
   float ret = xfer * (intra_cnt-1) / INTRA_NODE_BANDWIDTH
               + xfer * (cross_cnt-1) / CROSS_NODE_BANDWIDTH
@@ -569,8 +581,10 @@ public:
     Tensor y(2, batchSize, outputSize, this, 0);
     outputTensors.push_back(y);
     nConfigs = 0;
-    for (int i = 1; i <= NUM_PARTITIONS; i*=2) {
-        config_x[nConfigs] = i; config_y[nConfigs] = NUM_PARTITIONS / i;
+    //FIXME: for now only consider i * j == NUM_PARTITIONS
+    for (int i = 1; i <= NUM_PARTITIONS; i*=2)
+      for (int j = NUM_PARTITIONS / i; i * j <= NUM_PARTITIONS; j*=2) {
+        config_x[nConfigs] = i; config_y[nConfigs] = j;
         nConfigs ++;
       }
     for (int i = 0; i < nConfigs; i++) {
@@ -579,6 +593,13 @@ public:
       int output = outputSize / config_y[i];
       computeTime[i] = measure_linear_time(batch, inputSize, output, softmax);
     }
+    dpCompTime += computeTime[nConfigs-1] * config_x[nConfigs-1] * config_y[nConfigs-1];
+    mpCompTime += computeTime[0] * config_x[0] * config_y[0];
+    float bestV = computeTime[0] * config_x[0] * config_y[0];
+    for (int i = 0; i < nConfigs; i++)
+      bestV = std::min(bestV, computeTime[i] * config_x[i] * config_y[i]);
+    bestCompTime += bestV;
+    printf("		dpCompTime(%.2lf) bestCompTime(%.2lf)\n", computeTime[nConfigs-1] * config_x[nConfigs-1] * config_y[nConfigs-1], bestV);
   }
 
   float compute(OpConfig c);
@@ -629,10 +650,14 @@ float Softmax::update(const std::vector<OpConfig>& vec) {
         l2_cnt += used[i * WORKERS_PER_NODE + j][k] * used[i * WORKERS_PER_NODE + j][k];
       }
       if (cnt > intra_cnt) intra_cnt = cnt;
+      //FIXME: uncomment us
+      //if (cnt > 0)
+      //  totalDataXfer += (cnt - 1) * xfer;
       if (cnt > 0) cross_cnt ++;
     }
     assert(intra_cnt > 0);
     assert(cross_cnt > 0);
+    totalDataXfer += (cross_cnt-1) * xfer;
     //printf("Linear[%d]: intra_cnt = %d cross_cnt = %d\n", k, intra_cnt, cross_cnt);
     //printf("Linear::intra_xfer = %.4lf cross_xfer = %.4lf\n", xfer * (intra_cnt-1)/ INTRA_NODE_BANDWIDTH, xfer * (cross_cnt-1) / CROSS_NODE_BANDWIDTH);
     ret += (xfer * (intra_cnt-1)) / INTRA_NODE_BANDWIDTH
@@ -717,6 +742,7 @@ float Embed::compute(OpConfig c) {
 
 float Embed::update(const std::vector<OpConfig>& vec) {
   int used[NUM_WORKERS];
+  float xfer = vocabSize * outputSize * sizeof(float);
   for (int i = 0; i < NUM_WORKERS; i++)
     used[i] = 0;
   for (int i = 0; i < vec.size(); i++) {
@@ -730,10 +756,12 @@ float Embed::update(const std::vector<OpConfig>& vec) {
       if (used[i*WORKERS_PER_NODE + j] > 0) cnt++;
       l2_cnt += used[i * WORKERS_PER_NODE + j] * used[i * WORKERS_PER_NODE + j];
     }
-    if (cnt > 0) cross_cnt++;
     if (cnt > intra_cnt) intra_cnt = cnt;
+    if (cnt > 0)
+      totalDataXfer += (cnt-1) * xfer;
+    if (cnt > 0) cross_cnt++;
   }
-  float xfer = vocabSize * outputSize * sizeof(float);
+  totalDataXfer += (cross_cnt-1) * xfer;
   assert(intra_cnt > 0);
   assert(cross_cnt > 0);
   float ret = xfer * (intra_cnt - 1) / INTRA_NODE_BANDWIDTH
@@ -860,7 +888,7 @@ float intersect(Rect a, Rect b)
   assert(a.nDims == b.nDims);
   float ret = 1.0f;
   for (int i = 0; i < a.nDims; i++) {
-    int w = std::min(a.hi[i], b.hi[i]) - std::max(a.lo[i], b.lo[i]);
+    int w = std::min(a.hi[i], b.hi[i]) - std::max(a.lo[i], b.lo[i]) + 1;
     w = std::max(w, 0);
     ret = ret * w;
   }
@@ -887,7 +915,7 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
   task_global_guid = 0;
   int comm_task_id = 0;
   std::set<Task*, TaskCompare> readyQueue;
-  float costDataXfer = 0.0f;
+  totalDataXfer = 0.0f;
   float accCompTime = 0.0f;
   for (int i = 0; i < op_global_guid; i++) {
     Op* op = guidToOp[i];
@@ -916,8 +944,8 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
             // Add dependency between srcT -> dstT
             float cost = 0.0f;
             if (srcT->workerId != dstT->workerId) {
-              cost = intersect(srcR, dstR) * 4 / bandwidth(srcT->workerId, dstT->workerId);
-              costDataXfer += cost;
+              cost = intersect(srcR, dstR) * LSTM_PER_NODE_LENGTH * 4 / bandwidth(srcT->workerId, dstT->workerId);
+              totalDataXfer += intersect(srcR, dstR) * LSTM_PER_NODE_LENGTH * 4;
               int comm_device_id = (srcId + 1) * MAX_NUM_WORKERS + dstId;
               Task* task = new Task(comm_device_id, cost);
               commTasks[comm_task_id++] = task;
@@ -980,7 +1008,6 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
     }
     float updateCost = opList[0]->update(configs);
     totalTime += updateCost;
-    costDataXfer += updateCost;
   }
 #ifdef VERBOSE
   for (int i = 0; i < op_global_guid; i++) {
@@ -1015,7 +1042,7 @@ float simulate_time(const std::map<Op*, OpConfig>& global, bool print = false)
 
   if (print) {
     printf("totalTime = %.2lf\n", totalTime);
-    printf("costDataXfer = %.2lf\n", costDataXfer);
+    printf("totalDataXfer = %.2lf\n", totalDataXfer);
     printf("totalCompTime = %.2lf\n", accCompTime);
   }
 
@@ -1393,31 +1420,32 @@ void print_global_config(const std::map<Op*, OpConfig>& global)
 int main()
 {
   srand(time(NULL));
-  build_alexnet_model();
-  printf("minV = %.2lf maxV = %.2lf\n", minV, maxV);
+  build_nmt_model();
+  printf("dpCompTime = %.2lf mpCompTime = %.2lf bestCompTime = %.2lf\n", dpCompTime, mpCompTime, bestCompTime);
   std::map<Op*, OpConfig> current, next, optimal;
   generate_init_config(current);
   for (int i = 0; i < op_global_guid; i++) {
     OpConfig config;
-    config.nDims = (i >= op_global_guid - 3) ? 2 : 1;
+    config.nDims = (i >= op_global_guid - DST_LENGTH) ? 2 : 1;
     config.nParts = NUM_PARTITIONS;
     config.dim[0] = NUM_PARTITIONS;
     config.dim[1] = 1;
     for (int j = 0; j < config.nParts; j++)
       config.map[j] = j % NUM_WORKERS;
       //config.map[j] = (i / SRC_LENGTH) % NUM_WORKERS;
+      //config.map[j] = (i / SRC_LENGTH) % WORKERS_PER_NODE + (j / WORKERS_PER_NODE) * WORKERS_PER_NODE;
     current[guidToOp[i]] = config;
   }
   optimal = current;
-  float optimal_runtime = simulate_time(current, true);
+  float optimal_runtime = simulate_time(current, true), optimalDataXfer = 0.0f;
   float cur_runtime = optimal_runtime;
   long long start_time = current_time();
   int good_moves = 0, best_moves = 0;
-  for (int i = 0; i <= 100000; i++) {
+  for (int i = 0; i <= 250000; i++) {
     Op* updOp = rewrite(current, next);
     float next_runtime = simulate_time(next);
     if (i % 10000 == 0) {
-      printf("cur(%.2lf) next(%.2lf) best(%.2lf)\n", cur_runtime, next_runtime, optimal_runtime);
+      printf("cur(%.2lf) next(%.2lf) best(%.2lf) optimalDataXfer(%.2lf)\n", cur_runtime, next_runtime, optimal_runtime, optimalDataXfer);
       long long end_time = current_time();
       printf("time = %lld us\n", (end_time - start_time) / (i+1));
       printf("best_moves (%d) good_moves (%d) i (%d)\n", best_moves, good_moves, i);
@@ -1429,6 +1457,7 @@ int main()
     if (next_runtime < optimal_runtime) {
       best_moves ++;
       optimal_runtime = next_runtime;
+      optimalDataXfer = totalDataXfer;
       optimal = next;
     }
     if (next_runtime < cur_runtime) {
@@ -1440,7 +1469,4 @@ int main()
       cur_runtime = next_runtime;
     }
   }
-  simulate_time(optimal, true);
-  print_global_config(optimal);
-  return 0;
 }
