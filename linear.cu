@@ -16,7 +16,7 @@
 #include "ops.h"
 #include "cnn_helper.h"
 
-Tensor CnnModel::add_linear_layer(Tensor input, int output_channels, bool relu)
+Tensor FFModel::linear(Tensor input, int output_channels, bool relu)
 {
   assert(input.numDim == 2);
   Linear *li = new Linear(config, input, fc_part_is, output_channels, relu);
@@ -182,7 +182,7 @@ OpMeta* Linear::init_task(const Task *task,
   assert(regions.size() == 5);
   assert(task->regions.size() == 5);
   const Linear* linear = (Linear*) task->args;
-  CnnHandle handle = *((const CnnHandle*) task->local_args);
+  FFHandler handle = *((const FFHandler*) task->local_args);
   //const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
   //const AccessorWO<float, 2> acc_output(regions[1], FID_DATA);
   //const AccessorRO<float, 1> acc_kernel(regions[3], FID_DATA);
@@ -271,11 +271,11 @@ void Linear::init_para_task(const Task *task,
   curandDestroyGenerator(genGPU);
 }
 
-void Linear::init(const CnnModel& model)
+void Linear::init(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
 
   // First we initialize the filter and bias parameters
   {
@@ -289,13 +289,13 @@ void Linear::init(const CnnModel& model)
     runtime->execute_task(ctx, para_launcher);
   }
 
-  Rect<2> rect = runtime->get_index_space_domain(ctx, model.fc_part_is);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, partIs);
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
-    CnnHandle handle = model.cnn_handlers[idx++];
-    argmap.set_point(*it, TaskArgument(&handle, sizeof(CnnHandle)));
+    FFHandler handle = ff.handlers[idx++];
+    argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
-  IndexLauncher init_launcher(LINEAR_INIT_TASK_ID, model.fc_part_is,
+  IndexLauncher init_launcher(LINEAR_INIT_TASK_ID, partIs,
                               TaskArgument(this, sizeof(Linear)), argmap);
   init_launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
@@ -411,18 +411,18 @@ void Linear::forward_task(const Task *task,
 #endif
 }
 
-void Linear::forward(const CnnModel& model)
+void Linear::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, model.fc_part_is);
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Rect<2> rect = runtime->get_index_space_domain(ctx, partIs);
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(LINEAR_FWD_TASK_ID, model.fc_part_is,
+  IndexLauncher launcher(LINEAR_FWD_TASK_ID, partIs,
                          TaskArgument(this, sizeof(Linear)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
@@ -605,19 +605,19 @@ void Linear::backward2_task(const Task *task,
 #endif
 }
 
-void Linear::backward(const CnnModel& model)
+void Linear::backward(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, model.fc_part_is);
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Rect<2> rect = runtime->get_index_space_domain(ctx, partIs);
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   {
-    IndexLauncher launcher(LINEAR_BWD_TASK_ID, model.fc_part_is,
+    IndexLauncher launcher(LINEAR_BWD_TASK_ID, partIs,
                            TaskArgument(this, sizeof(Linear)), argmap);
     // regions[0](I): input
     launcher.add_region_requirement(
@@ -658,7 +658,7 @@ void Linear::backward(const CnnModel& model)
   }
   {
     // We aggregate parameters from replica tensor to input tensor
-    IndexLauncher launcher2(LINEAR_BWD2_TASK_ID, model.fc_part_is,
+    IndexLauncher launcher2(LINEAR_BWD2_TASK_ID, partIs,
                             TaskArgument(this, sizeof(Linear)), argmap);
     launcher2.add_region_requirement(
         RegionRequirement(inputs[0].partition_grad, 0/*projection id*/,
@@ -724,15 +724,15 @@ void Linear::update_task(const Task *task,
 }
 
 __host__
-void Linear::update(const CnnModel& model)
+void Linear::update(const FFModel& ff)
 {
   // Synchronize the learning rate
-  learning_rate = model.config.learning_rate;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  learning_rate = ff.config.learning_rate;
   assert(num_replica > 0);
   // Only aggregate parameters if more than one replica
   if (num_replica > 1) {
-    Context ctx = model.config.lg_ctx;
-    Runtime* runtime = model.config.lg_hlr;
     TaskLauncher launcher(LINEAR_UPD_TASK_ID, TaskArgument(this, sizeof(Linear)));
     launcher.add_region_requirement(
       RegionRequirement(locals[1].region, READ_WRITE, EXCLUSIVE, locals[1].region));

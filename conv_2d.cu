@@ -1,4 +1,4 @@
-/* Copyright 2017 Stanford, NVIDIA
+/* Copyright 2018 Stanford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,24 +13,26 @@
  * limitations under the License.
  */
 
-#include "ops.h"
+#include "runtime.h"
 #include "cnn_helper.h"
-#define PARAMETER_ALL_ONES
 
-Tensor CnnModel::add_conv_layer(Tensor input, int out_channels,
-                                int kernel_x, int kernel_y,
-                                int stride_x, int stride_y,
-                                int padding_x, int padding_y, bool relu)
+Tensor FFModel::conv2d(std::string name,
+                         Tensor input, int outChannels,
+                         int kernelH, int kernelW,
+                         int strideH, int strideW,
+                         int paddingH, int paddingW, bool relu)
 {
   assert(input.numDim == 4); /*NCHW*/
-  int in_channels = input.adim[2];
-  bool first_layer = false;
+  int inChannels = input.adim[2];
+  bool firstLayer = false;
   if (input.region == input_image.region)
-    first_layer = true;
-  Conv2D *conv = new Conv2D(config, input, part_is,
-                            in_channels, out_channels, kernel_x, kernel_y,
-                            stride_x, stride_y, padding_x, padding_y,
-                            relu, first_layer);
+    firstLayer = true;
+  assert(strategies.find(name) != strategies.end());
+  ParallelConfig pc = strategies[name];
+  Conv2D *conv = new Conv2D(name, config, input, pc.partIs,
+                            inChannels, outChannels, kernelH, kernelW,
+                            strideH, strideW, paddingH, paddingW,
+                            relu, firstLayer);
   layers.push_back(conv);
   return conv->output;
 }
@@ -39,27 +41,30 @@ Tensor CnnModel::add_conv_layer(Tensor input, int out_channels,
 locals[0] = kernel
 locals[1] = bias
 */
-Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
+Conv2D::Conv2D(std::string _name, FFConfig _config,
+               Tensor _input, IndexSpaceT<3> _part_is,
                int _in_channels, int _out_channels,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
                bool _relu, bool _first_layer)
-: Op(input), in_channels(_in_channels), out_channels(_out_channels),
-  kernel_h(_kernel_h), kernel_w(_kernel_w), stride_h(_stride_h),
-  stride_w(_stride_w), padding_h(_padding_h), padding_w(_padding_w),
-  relu(_relu), first_layer(_first_layer), profiling_runtime(config.profiling)
+: Op(_name, _input), partIs(_part_is),
+  inChannels(_in_channels), outChannels(_out_channels),
+  kernelH(_kernel_h), kernelW(_kernel_w),
+  strideH(_stride_h), strideW(_stride_w),
+  paddingH(_padding_h), paddingH(_padding_w),
+  relu(_relu), firstLayer(_first_layer), profiling(_config.profiling)
 {
-  Context ctx = config.lg_ctx;
-  HighLevelRuntime* runtime = config.lg_hlr;
-  Rect<3> part_rect = runtime->get_index_space_domain(ctx, part_is);
-  num_replica = part_rect.volume();
+  Context ctx = _config.lg_ctx;
+  HighLevelRuntime* runtime = _config.lg_hlr;
+  Rect<3> part_rect = runtime->get_index_space_domain(ctx, partIs);
+  numReplica = part_rect.volume();
   // Create output tensor
-  int input_w = input.adim[0];
-  int input_h = input.adim[1];
+  int input_w = _input.adim[0];
+  int input_h = _input.adim[1];
   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  int output_nc = input.adim[3] * out_channels;
+  int output_nc = _input.adim[3] * out_channels;
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_n = part_rect.hi[2] - part_rect.lo[2] + 1;
@@ -67,7 +72,7 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   FieldSpace fs = config.field_space;
 
   Rect<3, coord_t> output_rect(Point<3>(0, 0, 0),
-                      Point<3>(output_w-1, output_h-1, output_nc-1));
+                       Point<3>(output_w-1, output_h-1, output_nc-1));
   IndexSpaceT<3> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
@@ -88,9 +93,9 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   LogicalPartition output_grad_lp =
     runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
 
-  int kernel_nc = num_replica * in_channels * out_channels;
-  Rect<1, coord_t> kernel_rect(0, kernel_w * kernel_h * in_channels * out_channels - 1);
-  Rect<1, coord_t> kernel_grad_rect(0, kernel_w * kernel_h * kernel_nc - 1);
+  int kernelNC = numReplica * inChannels * outChannels;
+  Rect<1, coord_t> kernel_rect(0, kernelW * kernelH * inChannels * outChannels - 1);
+  Rect<1, coord_t> kernel_grad_rect(0, kernelW * kernelH * kernelNC - 1);
   IndexSpaceT<1> kernel_is = runtime->create_index_space(ctx, kernel_rect);
   IndexSpaceT<1> kernel_grad_is = runtime->create_index_space(ctx, kernel_grad_rect);
   LogicalRegion kernel_lr = runtime->create_logical_region(ctx, kernel_is, fs);
@@ -99,14 +104,15 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
     runtime->create_equal_partition(ctx, kernel_grad_is, part_is);
   LogicalPartition kernel_grad_lp =
     runtime->get_logical_partition(ctx, kernel_grad_lr, kernel_grad_ip);
-  TensorWithGrad kernel_tensor;
+  Tensor kernel_tensor;
+  kernel_tensor.numDim = 0;
   kernel_tensor.region = kernel_lr;
   kernel_tensor.region_grad = kernel_grad_lr;
   kernel_tensor.partition = LogicalPartition::NO_PART;
   kernel_tensor.partition_grad = kernel_grad_lp;
   locals[0] = kernel_tensor;
 
-  int bias_nc = num_replica * out_channels;
+  int biasNC = numReplica * outChannels;
   Rect<1, coord_t> bias_grad_rect(0, bias_nc - 1);
   Rect<1, coord_t> bias_rect(0, out_channels - 1);
   IndexSpaceT<1> bias_is = runtime->create_index_space(ctx, bias_rect);
@@ -118,7 +124,8 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
     runtime->create_equal_partition(ctx, bias_grad_is, part_is);
   LogicalPartition bias_grad_lp =
     runtime->get_logical_partition(ctx, bias_grad_lr, bias_grad_ip);
-  TensorWithGrad bias_tensor;
+  Tensor bias_tensor;
+  bias_tensor.numDim = 0;
   bias_tensor.region = bias_lr;
   bias_tensor.region_grad = bias_grad_lr;
   bias_tensor.partition = LogicalPartition::NO_PART;
@@ -130,7 +137,7 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   output.adim[0] = output_w;
   output.adim[1] = output_h;
   output.adim[2] = out_channels;
-  output.adim[3] = input.adim[3];
+  output.adim[3] = _input.adim[3];
   output.pdim[0] = extent_w;
   output.pdim[1] = extent_h;
   output.pdim[2] = out_channels;
@@ -174,7 +181,6 @@ Conv2D::Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   }
 }
 
-#ifndef DISABLE_COMPUTATION
 cudnnConvolutionFwdAlgo_t
 selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
                                   const cudnnTensorDescriptor_t xDesc, const void* x,
@@ -196,7 +202,6 @@ selectConvolutionBackwardDataAlgorithm(cudnnHandle_t handle,
                                        const cudnnConvolutionDescriptor_t convDesc,
                                        void* workSpace, size_t workSpaceSize,
                                        const cudnnTensorDescriptor_t dxDesc, void* dx);
-#endif
 /*
   regions[0]: input
   regions[1]: output
@@ -218,10 +223,14 @@ OpMeta* Conv2D::init_task(const Task *task,
   const AccessorRO<float, 1> acc_bias(regions[3], FID_DATA);
   Rect<1> rect_filter, rect_bias;
   Rect<3> rect_input, rect_output;
-  rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  rect_filter = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
-  rect_bias = runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
+  rect_input = runtime->get_index_space_domain(
+                   ctx, task->regions[0].region.get_index_space());
+  rect_output = runtime->get_index_space_domain(
+                    ctx, task->regions[1].region.get_index_space());
+  rect_filter = runtime->get_index_space_domain(
+                    ctx, task->regions[2].region.get_index_space());
+  rect_bias = runtime->get_index_space_domain(
+                  ctx, task->regions[3].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
   assert(acc_output.accessor.is_dense_arbitrary(rect_output));
   assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
@@ -232,7 +241,6 @@ OpMeta* Conv2D::init_task(const Task *task,
   const float *bias_ptr = acc_bias.ptr(rect_bias.lo);
 
   Conv2DMeta* m = new Conv2DMeta(handle);
-#ifndef DISABLE_COMPUTATION
   m->relu = conv->relu;
   m->first_layer = conv->first_layer;
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
@@ -326,7 +334,6 @@ OpMeta* Conv2D::init_task(const Task *task,
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
                                             CUDNN_PROPAGATE_NAN, 0.0));
   }
-#endif // DISABLE_COMPUTATION
   return m;
 }
 
@@ -345,8 +352,10 @@ void Conv2D::init_para_task(const Task *task,
   const AccessorWO<float, 1> acc_filter(regions[0], FID_DATA);
   const AccessorWO<float, 1> acc_bias(regions[1], FID_DATA);
   Rect<1> rect_filter, rect_bias;
-  rect_filter = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  rect_bias = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  rect_filter = runtime->get_index_space_domain(
+                    ctx, task->regions[0].region.get_index_space());
+  rect_bias = runtime->get_index_space_domain(
+                  ctx, task->regions[1].region.get_index_space());
   assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
   assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
   float *filter_ptr = acc_filter.ptr(rect_filter.lo);
@@ -381,11 +390,11 @@ void Conv2D::init_para_task(const Task *task,
 }
 
 __host__
-void Conv2D::init(const CnnModel& model)
+void Conv2D::init(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
 
   // First we initialize the filter and bias parameters
   {
@@ -399,13 +408,13 @@ void Conv2D::init(const CnnModel& model)
     runtime->execute_task(ctx, para_launcher);
   }
 
-  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Rect<3> rect = runtime->get_index_space_domain(ctx, partIs);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
-    CnnHandle handle = model.cnn_handlers[idx++];
-    argmap.set_point(*it, TaskArgument(&handle, sizeof(CnnHandle)));
+    FFHandler handler = ff.handlers[idx++];
+    argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
-  IndexLauncher init_launcher(CONV2D_INIT_TASK_ID, model.part_is,
+  IndexLauncher init_launcher(CONV2D_INIT_TASK_ID, partIs,
                               TaskArgument(this, sizeof(Conv2D)), argmap);
   init_launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
@@ -442,7 +451,6 @@ void Conv2D::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   float alpha = 1.0f, beta = 0.0f;
@@ -454,10 +462,14 @@ void Conv2D::forward_task(const Task *task,
   const AccessorRO<float, 1> acc_bias(regions[3], FID_DATA);
   Rect<3> rect_input, rect_output;
   Rect<1> rect_filter, rect_bias;
-  rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  rect_filter = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
-  rect_bias = runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
+  rect_input = runtime->get_index_space_domain(
+                   ctx, task->regions[0].region.get_index_space());
+  rect_output = runtime->get_index_space_domain(
+                    ctx, task->regions[1].region.get_index_space());
+  rect_filter = runtime->get_index_space_domain(
+                    ctx, task->regions[2].region.get_index_space());
+  rect_bias = runtime->get_index_space_domain(
+                  ctx, task->regions[3].region.get_index_space());
   //for (int i = 0; i < 3; i++) printf("rect_input.hi = %lld lo = %lld\n", rect_input.hi[i], rect_input.lo[i]);
   //for (int i = 0; i < 3; i++) printf("rect_output.hi = %lld lo = %lld\n", rect_output.hi[i], rect_output.lo[i]);
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
@@ -502,22 +514,21 @@ void Conv2D::forward_task(const Task *task,
     cudaEventDestroy(t_end);
     printf("Conv2D forward time (CF) = %.2fms\n", elapsed);
   }
-#endif
 }
 
 __host__
-void Conv2D::forward(const CnnModel& model)
+void Conv2D::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Rect<3> rect = runtime->get_index_space_domain(ctx, partIs);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(CONV2D_FWD_TASK_ID, model.part_is,
+  IndexLauncher launcher(CONV2D_FWD_TASK_ID, partIs,
                          TaskArgument(this, sizeof(Conv2D)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
@@ -553,7 +564,6 @@ void Conv2D::backward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime)
 {
-#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   float alpha = 1.0f, beta = 0.0f;
@@ -641,23 +651,22 @@ void Conv2D::backward_task(const Task *task,
     cudaEventDestroy(t_end);
     printf("Conv2D backward time = %.2fms\n", elapsed);
   }
-#endif
 }
 
 __host__
-void Conv2D::backward(const CnnModel& model)
+void Conv2D::backward(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Rect<3> rect = runtime->get_index_space_domain(ctx, partIs);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
 
-  IndexLauncher launcher(CONV2D_BWD_TASK_ID, model.part_is,
+  IndexLauncher launcher(CONV2D_BWD_TASK_ID, partIs,
                          TaskArgument(this, sizeof(Conv2D)), argmap);
   // regions[0](I): input
   launcher.add_region_requirement(
@@ -729,11 +738,11 @@ void Conv2D::update_task(const Task *task,
     runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
   size_t filter_size = rect_filter.volume();
   size_t bias_size = rect_bias.volume();
-  assert(filter_size == conv->in_channels * conv->out_channels
-                        * conv->kernel_w * conv->kernel_h);
-  assert(bias_size == conv->out_channels);
-  assert(filter_size * conv->num_replica == rect_filter_grad.volume());
-  assert(bias_size * conv->num_replica == rect_bias_grad.volume());
+  assert(filter_size == conv->inChannels * conv->outChannels
+                        * conv->kernelW * conv->kernelH);
+  assert(bias_size == conv->outChannels);
+  assert(filter_size * conv->numReplica == rect_filter_grad.volume());
+  assert(bias_size * conv->numReplica == rect_bias_grad.volume());
   assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
   assert(acc_filter_grad.accessor.is_dense_arbitrary(rect_filter_grad));
   assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
@@ -743,21 +752,21 @@ void Conv2D::update_task(const Task *task,
   float *bias_ptr = acc_bias.ptr(rect_bias.lo);
   const float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
   updateGAS(filter_ptr, filter_grad_ptr, filter_size,
-            conv->num_replica, conv->learning_rate);
+            conv->numReplica, conv->learningRate);
   updateGAS(bias_ptr, bias_grad_ptr, bias_size,
-            conv->num_replica, conv->learning_rate);
+            conv->numReplica, conv->learningRate);
 }
 
 __host__
-void Conv2D::update(const CnnModel& model)
+void Conv2D::update(const FFModel& ff)
 {
   // Synchronize the learning rate
-  learning_rate = model.config.learning_rate;
-  assert(num_replica > 0);
+  learningRate = ff.config.learning_rate;
+  assert(numReplica > 0);
   // Only aggregate parameters if more than one replica
-  if (num_replica > 1) {
-    Context ctx = model.config.lg_ctx;
-    Runtime* runtime = model.config.lg_hlr;
+  if (numReplica > 1) {
+    Context ctx = ff.config.lg_ctx;
+    Runtime* runtime = ff.config.lg_hlr;
     TaskLauncher launcher(CONV2D_UPD_TASK_ID, TaskArgument(this, sizeof(Conv2D)));
     launcher.add_region_requirement(
       RegionRequirement(locals[0].region, READ_WRITE, EXCLUSIVE, locals[0].region));
@@ -775,7 +784,6 @@ void Conv2D::update(const CnnModel& model)
   }
 }
 
-#ifndef DISABLE_COMPUTATION
 cudnnConvolutionFwdAlgo_t
 selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
                                   const cudnnTensorDescriptor_t xDesc, const void* x,
@@ -835,4 +843,3 @@ selectConvolutionBackwardDataAlgorithm(cudnnHandle_t handle,
   printf("bwdDataAlgo(%d) time(%.2lf)\n", perfResults[0].algo, perfResults[0].time);
   return perfResults[0].algo;
 }
-#endif

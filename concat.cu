@@ -16,22 +16,24 @@
 #include "ops.h"
 #include "cnn_helper.h"
 
-Tensor CnnModel::add_concat_layer(int n, Tensor* tensors)
+Tensor FFModel::concat(std::string name, int n, Tensor* tensors)
 {
-  Concat *cat = new Concat(config, n, tensors, part_is);
+  assert(strategies.find(name) != strategies.end());
+  ParallelConfig pc = strategies[name];
+  Concat *cat = new Concat(name, config, n, tensors, pc.partIs);
   layers.push_back(cat);
   return cat->output;
 }
 
-Concat::Concat(CnnConfig config, int n, Tensor* tensors,
-               IndexSpaceT<3> part_is)
- : Op(n, tensors), num_inputs(n)
+Concat::Concat(std::string name, FFConfig config,
+               int n, Tensor* tensors, IndexSpaceT<3> _part_is)
+ : Op(n, tensors), partIs(_part_is), numInputs(n)
 {
   Context ctx = config.lg_ctx;
   HighLevelRuntime* runtime = config.lg_hlr;
   FieldSpace fs = config.field_space;
 
-  Rect<3> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  Rect<3> part_rect = runtime->get_index_space_domain(ctx, partIs);
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_n = part_rect.hi[2] - part_rect.lo[2] + 1;
@@ -61,7 +63,7 @@ Concat::Concat(CnnConfig config, int n, Tensor* tensors,
   transform[1][0] = 0; transform[1][1] = extent_h; transform[1][2] = 0;
   transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = extent_nc;
   IndexPartition output_ip =
-    runtime->create_partition_by_restriction(ctx, output_is, part_is, transform, extent);
+    runtime->create_partition_by_restriction(ctx, output_is, partIs, transform, extent);
   assert(runtime->is_index_partition_disjoint(ctx, output_ip));
   assert(runtime->is_index_partition_complete(ctx, output_ip));
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
@@ -99,23 +101,23 @@ OpMeta* Concat::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-  CnnHandle handle = *((const CnnHandle*) task->local_args);
-  ConcatMeta* m = new ConcatMeta(handle);
+  FFHandler handler = *((const FFHandler*) task->local_args);
+  ConcatMeta* m = new ConcatMeta(handler);
   return m;
 }
 
-void Concat::init(const CnnModel& model)
+void Concat::init(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Rect<3> rect = runtime->get_index_space_domain(ctx, partIs);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
-    CnnHandle handle = model.cnn_handlers[idx++];
-    argmap.set_point(*it, TaskArgument(&handle, sizeof(CnnHandle)));
+    FFHandler handler = ff.handlers[idx++];
+    argmap.set_point(*it, TaskArgument(&handler, sizeof(FFHandler)));
   }
-  IndexLauncher init_launcher(CONCAT_INIT_TASK_ID, model.part_is,
+  IndexLauncher init_launcher(CONCAT_INIT_TASK_ID, partIs,
                               TaskArgument(this, sizeof(Concat)), argmap);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
@@ -134,8 +136,8 @@ void Concat::forward_task(const Task *task,
                           Context ctx, Runtime *runtime)
 {
   const Concat* cc = (Concat*) task->args;
-  assert(regions.size() == cc->num_inputs + 1);
-  assert(task->regions.size() == cc->num_inputs + 1);
+  assert(regions.size() == cc->numInputs + 1);
+  assert(task->regions.size() == cc->numInputs + 1);
   const AccessorWO<float, 3> acc_output(regions[0], FID_DATA);
   Rect<3> rect_output;
   rect_output =
@@ -143,7 +145,7 @@ void Concat::forward_task(const Task *task,
   assert(acc_output.accessor.is_dense_arbitrary(rect_output));
   float *output_ptr = acc_output.ptr(rect_output.lo);
   float *output_bound = output_ptr + rect_output.volume();
-  for (int i = 0; i < cc->num_inputs; i++) {
+  for (int i = 0; i < cc->numInputs; i++) {
     const AccessorRO<float, 3> acc_input(regions[i+1], FID_DATA);
     Rect<3> rect_input =
       runtime->get_index_space_domain(ctx, task->regions[i+1].region.get_index_space());
@@ -157,18 +159,18 @@ void Concat::forward_task(const Task *task,
   assert(output_ptr == output_bound);
 }
 
-void Concat::forward(const CnnModel& model)
+void Concat::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
   Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(CONCAT_FWD_TASK_ID, model.part_is,
+  IndexLauncher launcher(CONCAT_FWD_TASK_ID, partIs,
                          TaskArgument(this, sizeof(Concat)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(output.partition, 0/*projection id*/,
@@ -215,18 +217,18 @@ void Concat::backward_task(const Task *task,
   assert(output_ptr == output_bound);
 }
 
-void Concat::backward(const CnnModel& model)
+void Concat::backward(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Rect<3> rect = runtime->get_index_space_domain(ctx, partIs);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(CONCAT_BWD_TASK_ID, model.part_is,
+  IndexLauncher launcher(CONCAT_BWD_TASK_ID, partIs,
                          TaskArgument(this, sizeof(Concat)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(output.partition_grad, 0/*projection id*/,
@@ -241,6 +243,6 @@ void Concat::backward(const CnnModel& model)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Concat::update(const CnnModel& model)
+void Concat::update(const FFModel& ff)
 {
 }

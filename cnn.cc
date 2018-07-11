@@ -19,46 +19,112 @@
 #include "inception.h"
 #define USE_INCEPTION
 
+// Default Config Parameters
+struct DefaultConfig {
+  static int batchSize = 64;
+  static int inputHeight = 224;
+  static int inputWidth = 224;
+  static bool profiling = false;
+  static float learningRate = 0.01;
+  static float weightDecay = 0.0001;
+  static size_t workSpaceSize = 2 * 1024 * 1024 * 1024; // 2GB
+  static int numNodes = 1;
+  static int workersPerNode = 0;
+  static int loadersPerNode = 4;
+};
+
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_cnn("cnn");
+LegionRuntime::Logger::Category log_ff("FF");
 
-void parse_input_args(char **argv, int argc,
-                      int &num_par_h, int &num_par_w, int& num_par_n,
-                      int &batch_size, int &fc_num_par_c, int &fc_num_par_n,
-                      int &num_loaders, int &num_nodes);
-
-void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions,
+void parse_input_args(char **argv, int argc, FFConfig& config);
+void parse_strategy_file(const std::string &filename, FFConfig& config);
+void top_level_task(const Task *task,
+                    const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime)
 {
-  // Set up config parameters
-  int num_par_h = 1;
-  int num_par_w = 1;
-  int num_par_n = 4;
-  int num_images = 256; // per_batch
-  int fc_num_par_c = 1;
-  int fc_num_par_n = 1;
-  int height = 299;
-  int width = 299;
-  bool profiling = false;
-  float learning_rate = 0.01;
-  int num_iterations = 50;
-  int num_loaders_per_node = 4;
-  int num_nodes = 1;
-  // parse input arguments
+  // Init config parameters
+  FFConfig config;
+  config.epochs = DefaultConfig::epochs;
+  config.batchSize = DefaultConfig::batchSize;
+  config.inputHeight = DefaultConfig::inputHeight;
+  config.inputWidth = DefaultConfig::inputWidth;
+  config.profiling = DefaultConfig::profiling;
+  config.learningRate = DefaultConfig::learningRate;
+  config.weightDecay = DefaultConfig::weightDecay;
+  config.workSpaceSize = DefaultConfig::workSpaceSize;
+  config.numNodes = DefaultConfig::numNodes;
+  config.loadersPerNode = DefaultConfig::loadersPerNode;
+  config.workersPerNode = DefaultConfig::workersPerNode;
+  config.strategyFile = "";
+  config.datasetPath = "";
+  config.syntheticInput = false;
+  // Parse input arguments
   {
     const InputArgs &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
-    parse_input_args(argv, argc, num_par_h, num_par_w, num_par_n,
-                     num_images, fc_num_par_c, fc_num_par_n,
-                     num_loaders_per_node, num_nodes);
-    printf("batch_size(%d) par_h(%d) par_w(%d) par_n(%d)\n",
-           num_images, num_par_h, num_par_w, num_par_n);
-    printf("par_fc_c(%d) par_fc_n(%d)\n", fc_num_par_c, fc_num_par_n);
-    printf("num_loaders_per_node(%d) num_nodes(%d)\n", num_loaders_per_node, num_nodes);
+    parse_input_args(argv, argc, config);
+    
+    log_ff.print("batchSize(%d) inputHeight(%d) inputWdith(%d)",
+                 config.batchSize, config.inputHeight, config.inputWidth);
+    log_ff.print("workersPerNode(%d) loadersPerNode(%d) numNodes(%d)",
+                 config.workersPerNode, config.loadersPerNode, config.numNodes);
+    if (config.datasetPath.length() == 0)
+      log_ff.print("datasetPath(synthetic data)");
+    else
+      log_ff.print("datasetPath(%s)", config.datasetPath.c_str());
+    if (config.strategyFile.length() == 0)
+      log_ff.print("strategyFile(Default Data Parallelism)");
+    else
+      log_ff.print("strategyFile(%s)", config.strategyFile.c_str());
+    if (config.workersPerNode == 0) {
+      log_ff.print("Missing -ll:gpu (number of GPUs to use on each node)");
+    }
   }
-  //assert(num_par_h * num_par_w * num_par_n == fc_num_par_c * fc_num_par_n);
+  // Parse strategy file
+  if (parse_strategy_file(config.strategyFile, config))
+  {
+    log_ff.print("Error: cannot parse strategy file");
+    return;
+  }
+  config.lg_ctx = ctx;
+  config.lg_hlr = runtime;
+  FFModel ff(config, ctx, runtime);
+  // Init CUDA libraries on each worker
+  ArgumentMap local_args;
+  size_t workSpaceSize = config.workSpaceSize;
+  Rect<3> task_rect(Point<1>(0),
+                    Point<1>(config.workersPerNode * config.numNodes - 1));
+  IndexSpaceT<3> task_is = runtime->create_index_space(ctx, rect);
+  IndexLauncher initLauncher(CUDNN_INIT_TASK_ID, task_is,
+                    TaskArgument(&workSpaceSize, sizeof(workSpaceSize)), local_args);
+  FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
+  fm.wait_all_results();
+  int idx;
+  for (PointInRectIterator<1> it(rect); it(); it++) {
+    ff.handlers[idx++] = fm.get_result<FFHandler>(*it);
+  }
+  ff.add_layers();
+  // Initialize every layer
+  ff.init_layers();
+
+  double ts_start = Realm::Clock::current_time_in_microseconds();
+  for (int i = 0; i < config.numIterations; i++) {
+    ff.load_images();
+    ff.prefetch();
+    ff.forward();
+    ff.backward();
+    ff.update();
+  }
+  runtime->issue_execution_fence(ctx);
+  TimingLauncher timer(MEASURE_MICRO_SECONDS);
+  Future future = runtime->issue_timing_measurement(ctx, timer);
+  future.get_void_result();
+  double ts_end = Realm::Clock::current_time_in_microseconds();
+  double run_time = 1e-6 * (ts_end - ts_start);
+  printf("time = %.4fs, tp = %.2f images/s\n", run_time, num_images * num_iterations / run_time);
+#ifdef OLD_CODE
   CnnModel model(num_images, height, width, num_par_n, num_par_h, num_par_w,
                  fc_num_par_n, fc_num_par_c, profiling, learning_rate,
                  num_loaders_per_node, num_nodes, ctx, runtime);
@@ -208,6 +274,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
   printf("time = %.4fs, tp = %.2f images/s\n", run_time, num_images * num_iterations / run_time);
+#endif
 }
 
 int main(int argc, char **argv)
@@ -442,52 +509,57 @@ int main(int argc, char **argv)
   return Runtime::start(argc, argv);
 }
 
-void parse_input_args(char **argv, int argc,
-                      int &num_par_h, int &num_par_w, int& num_par_n,
-                      int &batch_size, int &fc_num_par_c, int &fc_num_par_n,
-                      int &num_loaders, int &num_nodes)
+void parse_input_args(char **argv, int argc, FFConfig& config)
 {
   for (int i = 1; i < argc; i++)
   {
-    if (!strcmp(argv[i], "-ph"))
-    {
-      num_par_h = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "-e")) || (!strcmp(argv[i], "--epochs"))) {
+      config.epochs = atoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-pw"))
-    {
-      num_par_w = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "-b")) || (!strcmp(argv[i], "--batch-size"))) {
+      config.batchSize = atoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-pn"))
-    {
-      num_par_n = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "--lr")) || (!strcmp(argv[i], "--learning-rate"))) {
+      config.learningRate = atof(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-pfc"))
-    {
-      fc_num_par_c = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "--wd")) || (!strcmp(argv[i], "--weight-decay"))) {
+      config.weightDecay = atof(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-pfn"))
-    {
-      fc_num_par_n = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "-p")) || (!strcmp(argv[i], "--print-freq"))) {
+      config.printFreq = atoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-b"))
-    {
-      batch_size = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "-d")) || (!strcmp(argv[i], "--dataset"))) {
+      config.datasetPath = std::string(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-num_loaders"))
-    {
-      num_loaders = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "-s")) || (!strcmp(argv[i], "--strategy"))) {
+      config.strategyFile = std::string(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-num_nodes"))
+    if (!strcmp(argv[i], "-ll:gpu"))
     {
-      num_nodes = atoi(argv[++i]);
+      config.workersPerNode = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-ll:cpu"))
+    {
+      config.loadersPerNode = atoi(argv[++i]);
       continue;
     }
   }
+}
+
+bool parse_strategy_file(std::string filename, FFConfig& config)
+{
+  FILE* file;
+  if ((file = fopen(filename.c_str(), "r")) == NULL) {
+    log_ff.print("Cannot open strategy file (%s)", filename.c_str());
+    return false;
+  }
+  fclose(file);
 }
