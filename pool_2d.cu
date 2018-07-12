@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "ops.h"
-#include "cnn_helper.h"
+#include "model.h"
+#include "cuda_helper.h"
 
 Tensor FFModel::pool2d(std::string name, Tensor input,
                          int kernelH, int kernelW,
@@ -23,9 +23,10 @@ Tensor FFModel::pool2d(std::string name, Tensor input,
                          PoolType type, bool relu)
 {
   assert(input.numDim == 4); /*NCHW*/
-  assert(strategies.find(name) != strategies.end());
-  ParallelConfig pc = strategies[name];
-  Pool2D *pool = new Pool2D(name, config, input, pc.partIs, kernelH, kernelW,
+  //assert(strategies.find(name) != strategies.end());
+  //ParallelConfig pc = strategies[name];
+  IndexSpaceT<3> task_is;
+  Pool2D *pool = new Pool2D(name, config, input, task_is, kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW,
                             type, relu);
   layers.push_back(pool);
@@ -33,16 +34,16 @@ Tensor FFModel::pool2d(std::string name, Tensor input,
 }
 
 Pool2D::Pool2D(std::string _name, FFConfig _config,
-               Tensor _input, IndexSpaceT<3> _part_is,
+               Tensor _input, IndexSpaceT<3> _task_is,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
-               Pool2DType _type, bool _relu)
-: Op(_name, _input), partIs(_part_is),
-  kernelH(_kernel_h), kernelW(_kernel_w),
-  strideH(_stride_h), strideW(_stride_w),
-  paddingH(_padding_h), paddingW(_padding_w),
-  poolType(_type), relu(_relu), profiling(_config.profiling)
+               PoolType _type, bool _relu)
+: Op(_name, _input), task_is(_task_is),
+  kernel_h(_kernel_h), kernel_w(_kernel_w),
+  stride_h(_stride_h), stride_w(_stride_w),
+  padding_h(_padding_h), padding_w(_padding_w),
+  pool_type(_type), relu(_relu), profiling(_config.profiling)
 {
   Context ctx = _config.lg_ctx;
   HighLevelRuntime* runtime = _config.lg_hlr;
@@ -51,13 +52,13 @@ Pool2D::Pool2D(std::string _name, FFConfig _config,
   int input_h = _input.adim[1];
   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  int output_nc = input.adim[3] * input.adim[2];
-  Rect<3> part_rect = runtime->get_index_space_domain(ctx, partIs);
+  int output_nc = _input.adim[3] * _input.adim[2];
+  Rect<3> part_rect = runtime->get_index_space_domain(ctx, task_is);
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_n = part_rect.hi[2] - part_rect.lo[2] + 1;
 
-  FieldSpace fs = config.field_space;
+  FieldSpace fs = _config.field_space;
 
   Rect<3, coord_t> output_rect(Point<3>(0, 0, 0), Point<3>(output_w-1, output_h-1, output_nc-1));
   IndexSpaceT<3> output_is = runtime->create_index_space(ctx, output_rect);
@@ -73,7 +74,7 @@ Pool2D::Pool2D(std::string _name, FFConfig _config,
   transform[1][0] = 0; transform[1][1] = extent_h; transform[1][2] = 0;
   transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = extent_nc;
   IndexPartition output_ip =
-    runtime->create_partition_by_restriction(ctx, output_is, partIs, transform, extent);
+    runtime->create_partition_by_restriction(ctx, output_is, task_is, transform, extent);
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
   LogicalPartition output_grad_lp =
     runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
@@ -81,25 +82,25 @@ Pool2D::Pool2D(std::string _name, FFConfig _config,
   output.numDim = 4;
   output.adim[0] = output_w;
   output.adim[1] = output_h;
-  output.adim[2] = input.adim[2];
-  output.adim[3] = input.adim[3];
+  output.adim[2] = _input.adim[2];
+  output.adim[3] = _input.adim[3];
   output.pdim[0] = extent_w;
   output.pdim[1] = extent_h;
   output.pdim[2] = output.adim[2];
   output.pdim[3] = extent_nc / output.adim[2];
   assert(extent_nc % output.adim[2] == 0);
   output.region = output_lr;
-  output.partition = output_lp;
+  output.part = output_lp;
   output.region_grad = output_grad_lr;
-  output.partition_grad = output_grad_lp;
+  output.part_grad = output_grad_lp;
   printf("Create pool2d layer: output(n=%d c=%d h=%d w=%d)\n",
          output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
   // Compute partition bound for input
   Rect<3> input_part_rect =
-    runtime->get_index_partition_color_space(ctx, inputs[0].partition.get_index_partition());
+    runtime->get_index_partition_color_space(ctx, inputs[0].part.get_index_partition());
   if (input_part_rect == part_rect) {
-    input_lps[0] = input.partition;
+    input_lps[0] = _input.part;
   } else {
     printf("WARNING: input has a different partition!!!\n");
     IndexSpaceT<3> input_is = IndexSpaceT<3>(inputs[0].region.get_index_space());
@@ -119,7 +120,7 @@ Pool2D::Pool2D(std::string _name, FFConfig _config,
     transform[2][2] = extent_nc;
 
     IndexPartition input_ip =
-      runtime->create_partition_by_restriction(ctx, input_is, partIs, transform, extent_i);
+      runtime->create_partition_by_restriction(ctx, input_is, task_is, transform, extent_i);
     assert(runtime->is_index_partition_disjoint(ctx, input_ip));
     assert(runtime->is_index_partition_complete(ctx, input_ip));
     input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
@@ -137,7 +138,7 @@ OpMeta* Pool2D::init_task(const Task *task,
   assert(regions.size() == 2);
   assert(regions.size() == 2);
   const Pool2D* pool = (Pool2D*) task->args;
-  FFHandler handler = *((const FFHandlr*) task->local_args);
+  FFHandler handle = *((const FFHandler*) task->local_args);
   Pool2DMeta* m = new Pool2DMeta(handle);
   Rect<3> rect_input, rect_output;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
@@ -205,20 +206,20 @@ void Pool2D::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, partIs);
+  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[idx++];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
-  IndexLauncher init_launcher(POOL2D_INIT_TASK_ID, partIs,
-                              TaskArgument(this, sizeof(Pooling2D)), argmap);
+  IndexLauncher init_launcher(POOL2D_INIT_TASK_ID, task_is,
+                              TaskArgument(this, sizeof(Pool2D)), argmap);
   init_launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   init_launcher.add_field(0, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(output.partition, 0/*projection id*/,
+      RegionRequirement(output.part, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, output.region));
   init_launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
@@ -241,7 +242,7 @@ void Pool2D::forward_task(const Task *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   float alpha = 1.0f, beta = 0.0f;
-  const Pooling2DMeta* m = *((Pooling2DMeta**) task->local_args);
+  const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
   const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
   const AccessorWO<float, 3> acc_output(regions[1], FID_DATA);
   Rect<3> rect_input, rect_output;
@@ -265,20 +266,20 @@ void Pool2D::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, partIs);
+  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(POOL2D_FWD_TASK_ID, partIs,
-                         TaskArgument(this, sizeof(Pooling2D)), argmap);
+  IndexLauncher launcher(POOL2D_FWD_TASK_ID, task_is,
+                         TaskArgument(this, sizeof(Pool2D)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.partition, 0/*projection id*/,
+      RegionRequirement(output.part, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, output.region));
   launcher.add_field(1, FID_DATA);
 
@@ -298,8 +299,8 @@ void Pool2D::backward_task(const Task *task,
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   float alpha = 1.0f, beta = 0.0f;
-  const Pooling2D* pool = (Pooling2D*) task->args;
-  const Pooling2DMeta* m = *((Pooling2DMeta**) task->local_args);
+  const Pool2D* pool = (Pool2D*) task->args;
+  const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
   const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
   const AccessorWO<float, 3> acc_input_grad(regions[1], FID_DATA);
   const AccessorRO<float, 3> acc_output(regions[2], FID_DATA);
@@ -323,7 +324,7 @@ void Pool2D::backward_task(const Task *task,
   const float *output_grad_ptr = acc_output_grad.ptr(rect_output_grad.lo);
 
   cudaEvent_t t_start, t_end;
-  if (pool->profiling_runtime) {
+  if (pool->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -337,7 +338,7 @@ void Pool2D::backward_task(const Task *task,
                                   m->outputTensor, output_grad_ptr,
                                   m->inputTensor, input_ptr,
                                   &beta, m->inputTensor, input_grad_ptr));
-  if (pool->profiling_runtime) {
+  if (pool->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -353,32 +354,32 @@ void Pool2D::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, partIs);
+  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(POOL2D_BWD_TASK_ID, partIs,
-                         TaskArgument(this, sizeof(Pooling2D)), argmap);
+  IndexLauncher launcher(POOL2D_BWD_TASK_ID, task_is,
+                         TaskArgument(this, sizeof(Pool2D)), argmap);
   // regions[0](I): input
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0].partition, 0/*projection id*/,
+      RegionRequirement(inputs[0].part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   // regions[1](O): input_grad
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0].partition_grad, 0/*projection id*/,
+      RegionRequirement(inputs[0].part_grad, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2](I): output
   launcher.add_region_requirement(
-      RegionRequirement(output.partition, 0/*projection id*/,
+      RegionRequirement(output.part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, output.region));
   launcher.add_field(2, FID_DATA);
   // regions[3](I): output_grad
   launcher.add_region_requirement(
-      RegionRequirement(output.partition_grad, 0/*projection id*/,
+      RegionRequirement(output.part_grad, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, output.region_grad));
   launcher.add_field(3, FID_DATA);
 

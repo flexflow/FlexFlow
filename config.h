@@ -17,15 +17,20 @@
 #define _FLEXFLOW_CONFIG_H_
 #include <cstring>
 #include "legion.h"
+
+using namespace Legion;
+
 class FFConfig {
 public:
-  int epoches, batchSize, inputHeight, inputWidth;
+  int epochs, batchSize, numIterations, printFreq;
+  int inputHeight, inputWidth;
   int numNodes, loadersPerNode, workersPerNode;
   float learningRate, weightDecay;
   size_t workSpaceSize;
   Context lg_ctx;
   Runtime* lg_hlr;
-  bool syntheticInput;
+  FieldSpace field_space;
+  bool syntheticInput, profiling;
   std::string datasetPath, strategyFile;
 };
 #endif//_FLEXFLOW_CONFIG_H_

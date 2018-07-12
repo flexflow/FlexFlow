@@ -13,47 +13,51 @@
  * limitations under the License.
  */
 
-#include "ops.h"
-#include "cnn_helper.h"
+#include "model.h"
+#include "cuda_helper.h"
 
-Tensor CnnModel::add_softmax_layer(Tensor input)
+Tensor FFModel::softmax(std::string name, Tensor input)
 {
   assert(input.numDim == 2);
-  Softmax *sm = new Softmax(config, input, sm_part_is);
+  IndexSpaceT<1> task_is;
+  Softmax *sm = new Softmax(name, config, input, task_is);
   layers.push_back(sm);
   return sm->output;
 }
 
-Softmax::Softmax(CnnConfig config, Tensor input, IndexSpaceT<1> part_is)
-: Op(input), profiling_runtime(config.profiling)
+Softmax::Softmax(std::string _name, FFConfig _config,
+                 Tensor _input, IndexSpaceT<1> _task_is)
+: Op(_name, _input), task_is(_task_is), profiling(_config.profiling)
 {
-  assert(input.numDim == 2);
-  Context ctx = config.lg_ctx;
-  HighLevelRuntime* runtime = config.lg_hlr;
+  assert(_input.numDim == 2);
+  Context ctx = _config.lg_ctx;
+  HighLevelRuntime* runtime = _config.lg_hlr;
+  Rect<1> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  int num_par_n = part_rect.hi[0] - part_rect.lo[0] + 1;
 
-  FieldSpace fs = config.field_space;
-  IndexSpaceT<2> output_is(input.region.get_index_space());
+  FieldSpace fs = _config.field_space;
+  IndexSpaceT<2> output_is(_input.region.get_index_space());
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   Transform<2, 1, coord_t> transform;
-  int extent_c = input.adim[0];
-  int extent_n = (input.adim[1] + config.sm_num_par - 1) / config.sm_num_par;
+  int extent_c = _input.adim[0];
+  int extent_n = (_input.adim[1] + num_par_n - 1) / num_par_n;
   Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
   transform[0][0] = 0;
   transform[1][0] = extent_n;
   IndexPartition output_ip
-    = runtime->create_partition_by_restriction(ctx, output_is, part_is, transform, extent);
+    = runtime->create_partition_by_restriction(ctx, output_is, task_is, transform, extent);
   assert(runtime->is_index_partition_disjoint(ctx, output_ip));
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
   output.numDim = 2;
-  output.adim[0] = input.adim[0];
-  output.adim[1] = input.adim[1];
+  output.adim[0] = _input.adim[0];
+  output.adim[1] = _input.adim[1];
   output.pdim[0] = extent_c;
   output.pdim[1] = extent_n;
   output.region = output_lr;
-  output.partition = output_lp;
+  output.part = output_lp;
   // Note: we use the same regions/partitions for forward and back prop
   output.region_grad = output_lr;
-  output.partition_grad = output_lp;
+  output.part_grad = output_lp;
   // Every partition reads all input_channels
   // Use the same partitioning as outputs
   IndexPartition input_ip = output_ip;
@@ -79,7 +83,7 @@ OpMeta* Softmax::init_task(const Task *task,
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
   assert(acc_output.accessor.is_dense_arbitrary(rect_output));
-  CnnHandle handle = *((const CnnHandle*) task->local_args);
+  FFHandler handle = *((const FFHandler*) task->local_args);
   SoftmaxMeta* m = new SoftmaxMeta(handle);
 #ifndef DISABLE_COMPUTATION
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
@@ -96,25 +100,25 @@ OpMeta* Softmax::init_task(const Task *task,
 }
 
 __host__
-void Softmax::init(const CnnModel& model)
+void Softmax::init(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<1> rect = runtime->get_index_space_domain(ctx, model.sm_part_is);
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Rect<1> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<1> it(rect); it(); it++) {
-    CnnHandle handle = model.cnn_handlers[idx++];
-    argmap.set_point(*it, TaskArgument(&handle, sizeof(CnnHandle)));
+    FFHandler handle = ff.handlers[idx++];
+    argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
-  IndexLauncher init_launcher(SOFTMAX_INIT_TASK_ID, model.sm_part_is,
+  IndexLauncher init_launcher(SOFTMAX_INIT_TASK_ID, task_is,
                               TaskArgument(this, sizeof(Softmax)), argmap);
   init_launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   init_launcher.add_field(0, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(output.partition, 0/*projection id*/,
+      RegionRequirement(output.part, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, output.region));
   init_launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
@@ -151,7 +155,7 @@ void Softmax::forward_task(const Task *task,
   float *output_ptr = acc_output.ptr(rect_output.lo);
 
   cudaEvent_t t_start, t_end;
-  if (softmax->profiling_runtime) {
+  if (softmax->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -165,7 +169,7 @@ void Softmax::forward_task(const Task *task,
                                  CUDNN_SOFTMAX_MODE_CHANNEL,
                                  &alpha, m->inputTensor, input_ptr,
                                  &beta, m->inputTensor, output_ptr));
-  if (softmax->profiling_runtime) {
+  if (softmax->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -178,25 +182,25 @@ void Softmax::forward_task(const Task *task,
 }
 
 __host__
-void Softmax::forward(const CnnModel& model)
+void Softmax::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<1> rect = runtime->get_index_space_domain(ctx, model.sm_part_is);
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Rect<1> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<1> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(SOFTMAX_FWD_TASK_ID, model.sm_part_is,
+  IndexLauncher launcher(SOFTMAX_FWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Softmax)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.partition, 0/*projection id*/,
+      RegionRequirement(output.part, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, output.region));
   launcher.add_field(1, FID_DATA);
 
@@ -253,7 +257,7 @@ void Softmax::backward_task(const Task *task,
   const int *label_ptr = acc_label.ptr(rect_label.lo);
 
   cudaEvent_t t_start, t_end;
-  if (softmax->profiling_runtime) {
+  if (softmax->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -272,7 +276,7 @@ void Softmax::backward_task(const Task *task,
   float scalVal = 1.0f / static_cast<float>(num_images);
   checkCUDA(cublasSscal(m->handle.blas, rect_input_grad.volume(),
                         &scalVal, input_grad_ptr, 1));
-  if (softmax->profiling_runtime) {
+  if (softmax->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -285,35 +289,35 @@ void Softmax::backward_task(const Task *task,
 }
 
 __host__
-void Softmax::backward(const CnnModel& model)
+void Softmax::backward(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
   int idx = 0;
-  Rect<1> rect = runtime->get_index_space_domain(ctx, model.sm_part_is);
+  Rect<1> rect = runtime->get_index_space_domain(ctx, task_is);
   for (PointInRectIterator<1> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(SOFTMAX_BWD_TASK_ID, model.sm_part_is,
+  IndexLauncher launcher(SOFTMAX_BWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Softmax)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(input_grad_lp, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.partition, 0/*projection id*/,
+      RegionRequirement(output.part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, output.region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(model.input_label.partition, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, model.input_label.region));
+      RegionRequirement(ff.input_label.part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, ff.input_label.region));
   launcher.add_field(2, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Softmax::update(const CnnModel& model)
+void Softmax::update(const FFModel& ff)
 {
 }

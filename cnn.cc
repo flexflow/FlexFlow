@@ -14,23 +14,24 @@
  */
 
 #include <cstdio>
-#include "ops.h"
+#include "model.h"
+#include "config.h"
 #include "cnn_mapper.h"
-#include "inception.h"
 #define USE_INCEPTION
 
 // Default Config Parameters
 struct DefaultConfig {
-  static int batchSize = 64;
-  static int inputHeight = 224;
-  static int inputWidth = 224;
-  static bool profiling = false;
-  static float learningRate = 0.01;
-  static float weightDecay = 0.0001;
-  static size_t workSpaceSize = 2 * 1024 * 1024 * 1024; // 2GB
-  static int numNodes = 1;
-  static int workersPerNode = 0;
-  static int loadersPerNode = 4;
+  const static int epochs = 10;
+  const static int batchSize = 64;
+  const static int inputHeight = 224;
+  const static int inputWidth = 224;
+  const static bool profiling = false;
+  constexpr static float learningRate = 0.01f;
+  constexpr static float weightDecay = 0.0001f;
+  const static size_t workSpaceSize = (size_t)2 * 1024 * 1024 * 1024; // 2GB
+  const static int numNodes = 1;
+  const static int workersPerNode = 0;
+  const static int loadersPerNode = 4;
 };
 
 using namespace Legion;
@@ -38,7 +39,7 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_ff("FF");
 
 void parse_input_args(char **argv, int argc, FFConfig& config);
-void parse_strategy_file(const std::string &filename, FFConfig& config);
+bool parse_strategy_file(const std::string &filename, FFConfig& config);
 void top_level_task(const Task *task,
                     const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime)
@@ -90,19 +91,19 @@ void top_level_task(const Task *task,
   }
   config.lg_ctx = ctx;
   config.lg_hlr = runtime;
-  FFModel ff(config, ctx, runtime);
+  FFModel ff(config);
   // Init CUDA libraries on each worker
   ArgumentMap local_args;
   size_t workSpaceSize = config.workSpaceSize;
-  Rect<3> task_rect(Point<1>(0),
+  Rect<1> task_rect(Point<1>(0),
                     Point<1>(config.workersPerNode * config.numNodes - 1));
-  IndexSpaceT<3> task_is = runtime->create_index_space(ctx, rect);
-  IndexLauncher initLauncher(CUDNN_INIT_TASK_ID, task_is,
+  IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect);
+  IndexLauncher initLauncher(FF_INIT_TASK_ID, task_is,
                     TaskArgument(&workSpaceSize, sizeof(workSpaceSize)), local_args);
   FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
   fm.wait_all_results();
-  int idx;
-  for (PointInRectIterator<1> it(rect); it(); it++) {
+  int idx = 0;
+  for (PointInRectIterator<1> it(task_rect); it(); it++) {
     ff.handlers[idx++] = fm.get_result<FFHandler>(*it);
   }
   ff.add_layers();
@@ -111,7 +112,7 @@ void top_level_task(const Task *task,
 
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int i = 0; i < config.numIterations; i++) {
-    ff.load_images();
+    ff.load_images(i);
     ff.prefetch();
     ff.forward();
     ff.backward();
@@ -123,9 +124,10 @@ void top_level_task(const Task *task,
   future.get_void_result();
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("time = %.4fs, tp = %.2f images/s\n", run_time, num_images * num_iterations / run_time);
+  printf("time = %.4fs, tp = %.2f images/s\n", run_time,
+         config.numIterations * config.batchSize / run_time);
 #ifdef OLD_CODE
-  CnnModel model(num_images, height, width, num_par_n, num_par_h, num_par_w,
+  FFModel model(num_images, height, width, num_par_n, num_par_h, num_par_w,
                  fc_num_par_n, fc_num_par_c, profiling, learning_rate,
                  num_loaders_per_node, num_nodes, ctx, runtime);
   // First, create cnnContexts
@@ -289,10 +291,11 @@ int main(int argc, char **argv)
 
   // CNN_INIT_TASK
   {
-    TaskVariantRegistrar registrar(CNN_INIT_TASK_ID, "cnn_init_task");
+    TaskVariantRegistrar registrar(FF_INIT_TASK_ID, "cuda_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<CnnHandle, init_cudnn>(registrar, "cnn_init_task");
+    Runtime::preregister_task_variant<FFHandler, UtilityTasks::init_cuda_task>(
+        registrar, "cuda_init_task");
   }
 
   // IMAGE_INIT_TASK
@@ -300,7 +303,8 @@ int main(int argc, char **argv)
     TaskVariantRegistrar registrar(IMAGE_INIT_TASK_ID, "image_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<CnnModel::init_images_task>(registrar, "image_init_task");
+    Runtime::preregister_task_variant<UtilityTasks::init_images_task>(
+        registrar, "image_init_task");
   }
 
   // LOAD_IMAGES_TASK
@@ -308,7 +312,8 @@ int main(int argc, char **argv)
     TaskVariantRegistrar registrar(LOAD_IMAGES_TASK_ID, "load_images_task");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<CnnModel::load_images_task>(registrar, "load_images_task");
+    Runtime::preregister_task_variant<UtilityTasks::load_images_task>(
+        registrar, "load_images_task");
   }
 
   // LOAD_IMAGES_TASK
@@ -316,146 +321,162 @@ int main(int argc, char **argv)
     TaskVariantRegistrar registrar(NORMALIZE_IMAGES_TASK_ID, "normalize_images_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<CnnModel::normalize_images_task>(registrar, "normalize_images_task");
+    Runtime::preregister_task_variant<UtilityTasks::normalize_images_task>(
+        registrar, "normalize_images_task");
   }
 
-  // LABEL_INIT_TASK
-  {
-    TaskVariantRegistrar registrar(LABEL_INIT_TASK_ID, "label_init_task");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<CnnModel::init_labels_task>(registrar, "label_init_task");
-  }
   // Conv2D task
   {
     TaskVariantRegistrar registrar(CONV2D_INIT_TASK_ID, "conv2d_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta*, Conv2D::init_task>(registrar, "conv2d_init_task");
+    Runtime::preregister_task_variant<OpMeta*, Conv2D::init_task>(
+        registrar, "conv2d_init_task");
   }
   {
     TaskVariantRegistrar registrar(CONV2D_INIT_PARA_TASK_ID, "conv2d_init_para_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Conv2D::init_para_task>(registrar, "conv2d_init_para_task");
+    Runtime::preregister_task_variant<Conv2D::init_para_task>(
+        registrar, "conv2d_init_para_task");
   }
   {
     TaskVariantRegistrar registrar(CONV2D_FWD_TASK_ID, "conv2d_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Conv2D::forward_task>(registrar, "conv2d_fwd_task");
+    Runtime::preregister_task_variant<Conv2D::forward_task>(
+        registrar, "conv2d_fwd_task");
   }
   {
     TaskVariantRegistrar registrar(CONV2D_BWD_TASK_ID, "conv2d_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Conv2D::backward_task>(registrar, "conv2d_bwd_task");
+    Runtime::preregister_task_variant<Conv2D::backward_task>(
+        registrar, "conv2d_bwd_task");
   }
   {
     TaskVariantRegistrar registrar(CONV2D_UPD_TASK_ID, "conv2d_upd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Conv2D::update_task>(registrar, "conv2d_upd_task");
+    Runtime::preregister_task_variant<Conv2D::update_task>(
+       registrar, "conv2d_upd_task");
   }
-  // Pooling2D task
+  // Pool2D task
   {
-    TaskVariantRegistrar registrar(POOL2D_INIT_TASK_ID, "pooling2d_init_task");
+    TaskVariantRegistrar registrar(POOL2D_INIT_TASK_ID, "pool2d_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta*, Pooling2D::init_task>(registrar, "pooling2d_init_task");
+    Runtime::preregister_task_variant<OpMeta*, Pool2D::init_task>(
+        registrar, "pool2d_init_task");
   }
   {
-    TaskVariantRegistrar registrar(POOL2D_FWD_TASK_ID, "pooling2d_fwd_task");
+    TaskVariantRegistrar registrar(POOL2D_FWD_TASK_ID, "pool2d_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Pooling2D::forward_task>(registrar, "pooling2d_fwd_task");
+    Runtime::preregister_task_variant<Pool2D::forward_task>(
+        registrar, "pool2d_fwd_task");
   }
   {
-    TaskVariantRegistrar registrar(POOL2D_BWD_TASK_ID, "pooling2d_bwd_task");
+    TaskVariantRegistrar registrar(POOL2D_BWD_TASK_ID, "pool2d_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Pooling2D::backward_task>(registrar, "pooling2d_bwd_task");
+    Runtime::preregister_task_variant<Pool2D::backward_task>(
+        registrar, "pool2d_bwd_task");
   }
   // BatchNorm task
   {
     TaskVariantRegistrar registrar(BATCHNORM_INIT_TASK_ID, "bn_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta*, BatchNorm::init_task>(registrar, "bn_init_task");
+    Runtime::preregister_task_variant<OpMeta*, BatchNorm::init_task>(
+        registrar, "bn_init_task");
   }
   {
     TaskVariantRegistrar registrar(BATCHNORM_INIT_PARA_TASK_ID, "bm_init_para_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<BatchNorm::init_para_task>(registrar, "bm_init_para_task");
+    Runtime::preregister_task_variant<BatchNorm::init_para_task>(
+        registrar, "bm_init_para_task");
   }
   {
     TaskVariantRegistrar registrar(BATCHNORM_FWD_TASK_ID, "bn_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<BatchNorm::forward_task>(registrar, "bn_fwd_task");
+    Runtime::preregister_task_variant<BatchNorm::forward_task>(
+        registrar, "bn_fwd_task");
   }
   {
     TaskVariantRegistrar registrar(BATCHNORM_BWD_TASK_ID, "bn_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<BatchNorm::backward_task>(registrar, "bn_bwd_task");
+    Runtime::preregister_task_variant<BatchNorm::backward_task>(
+        registrar, "bn_bwd_task");
   }
   // Linear task
   {
     TaskVariantRegistrar registrar(LINEAR_INIT_TASK_ID, "linear_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta*, Linear::init_task>(registrar, "linear_init_task");
+    Runtime::preregister_task_variant<OpMeta*, Linear::init_task>(
+        registrar, "linear_init_task");
   }
   {
     TaskVariantRegistrar registrar(LINEAR_INIT_PARA_TASK_ID, "linear_init_para_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Linear::init_para_task>(registrar, "linear_init_para_task");
+    Runtime::preregister_task_variant<Linear::init_para_task>(
+        registrar, "linear_init_para_task");
   }
   {
     TaskVariantRegistrar registrar(LINEAR_FWD_TASK_ID, "linear_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Linear::forward_task>(registrar, "linear_fwd_task");
+    Runtime::preregister_task_variant<Linear::forward_task>(
+        registrar, "linear_fwd_task");
   }
   {
     TaskVariantRegistrar registrar(LINEAR_BWD_TASK_ID, "linear_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Linear::backward_task>(registrar, "linear_bwd_task");
+    Runtime::preregister_task_variant<Linear::backward_task>(
+        registrar, "linear_bwd_task");
   }
   {
-    TaskVariantRegistrar registrar(LINEAR_BWD2_TASK_ID, "linear_bwd_task (aggregate replica)");
+    TaskVariantRegistrar registrar(LINEAR_BWD2_TASK_ID,
+                                   "linear_bwd_task (aggregate replica)");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Linear::backward2_task>(registrar, "linear_bwd_task (aggregate replica)");
+    Runtime::preregister_task_variant<Linear::backward2_task>(
+        registrar, "linear_bwd_task (aggregate replica)");
   }
   {
     TaskVariantRegistrar registrar(LINEAR_UPD_TASK_ID, "linear_upd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Linear::update_task>(registrar, "linear_upd_task");
+    Runtime::preregister_task_variant<Linear::update_task>(
+        registrar, "linear_upd_task");
   }
   // Flat task
   {
     TaskVariantRegistrar registrar(FLAT_INIT_TASK_ID, "flat_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta*, Flat::init_task>(registrar, "flat_init_task");
+    Runtime::preregister_task_variant<OpMeta*, Flat::init_task>(
+        registrar, "flat_init_task");
   }
   {
     TaskVariantRegistrar registrar(FLAT_FWD_TASK_ID, "flat_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Flat::forward_task>(registrar, "flat_fwd_task");
+    Runtime::preregister_task_variant<Flat::forward_task>(
+        registrar, "flat_fwd_task");
   }
   {
     TaskVariantRegistrar registrar(FLAT_BWD_TASK_ID, "flat_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Flat::backward_task>(registrar, "flat_bwd_task");
+    Runtime::preregister_task_variant<Flat::backward_task>(
+        registrar, "flat_bwd_task");
   }
 
   // Softmax task
@@ -463,19 +484,22 @@ int main(int argc, char **argv)
     TaskVariantRegistrar registrar(SOFTMAX_INIT_TASK_ID, "softmax_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta*, Softmax::init_task>(registrar, "softmax_init_task");
+    Runtime::preregister_task_variant<OpMeta*, Softmax::init_task>(
+        registrar, "softmax_init_task");
   }
   {
     TaskVariantRegistrar registrar(SOFTMAX_FWD_TASK_ID, "softmax_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Softmax::forward_task>(registrar, "softmax_fwd_task");
+    Runtime::preregister_task_variant<Softmax::forward_task>(
+        registrar, "softmax_fwd_task");
   }
   {
     TaskVariantRegistrar registrar(SOFTMAX_BWD_TASK_ID, "softmax_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Softmax::backward_task>(registrar, "softmax_bwd_task");
+    Runtime::preregister_task_variant<Softmax::backward_task>(
+        registrar, "softmax_bwd_task");
   }
 
   // Concat task
@@ -483,26 +507,29 @@ int main(int argc, char **argv)
     TaskVariantRegistrar registrar(CONCAT_INIT_TASK_ID, "concat_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta*, Concat::init_task>(registrar, "concat_init_task");
+    Runtime::preregister_task_variant<OpMeta*, Concat::init_task>(
+        registrar, "concat_init_task");
   }
   {
     TaskVariantRegistrar registrar(CONCAT_FWD_TASK_ID, "concat_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Concat::forward_task>(registrar, "concat_fwd_task");
+    Runtime::preregister_task_variant<Concat::forward_task>(
+        registrar, "concat_fwd_task");
   }
   {
     TaskVariantRegistrar registrar(CONCAT_BWD_TASK_ID, "concat_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Concat::backward_task>(registrar, "concat_bwd_task");
+    Runtime::preregister_task_variant<Concat::backward_task>(
+        registrar, "concat_bwd_task");
   }
   // DUMMY task
   {
     TaskVariantRegistrar registrar(DUMMY_TASK_ID, "dummy_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Op::dummy_task>(registrar, "dummy_task");
+    Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "dummy_task");
   }
 
   Runtime::add_registration_callback(update_mappers);
@@ -554,7 +581,7 @@ void parse_input_args(char **argv, int argc, FFConfig& config)
   }
 }
 
-bool parse_strategy_file(std::string filename, FFConfig& config)
+bool parse_strategy_file(const std::string &filename, FFConfig& config)
 {
   FILE* file;
   if ((file = fopen(filename.c_str(), "r")) == NULL) {
@@ -562,4 +589,5 @@ bool parse_strategy_file(std::string filename, FFConfig& config)
     return false;
   }
   fclose(file);
+  return true;
 }

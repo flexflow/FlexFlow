@@ -15,8 +15,12 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/range/iterator_range.hpp>
+#include "model.h"
 
-FFModel::FFModel(const FFConfig& config)
+using namespace std;
+using namespace boost::filesystem;
+
+FFModel::FFModel(FFConfig& config)
 {
   // Build training dataset
   if (config.datasetPath.length() == 0) {
@@ -35,4 +39,9 @@ FFModel::FFModel(const FFConfig& config)
       }
     }
   }
+}
+
+void Op::prefetch(const FFModel& ff)
+{
+  // TODO: perform prefetch for performance imporvement
 }

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ops.h"
+#include "model.h"
 
 Tensor InceptionA(CnnModel &model, Tensor input, int pool_features)
 {

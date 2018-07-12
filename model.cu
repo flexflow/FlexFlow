@@ -12,22 +12,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "runtime.h"
+#include "model.h"
 #include "cuda_helper.h"
 #include "realm/runtime_impl.h"
 #include "realm/cuda/cuda_module.h"
 
-Op::Op(std::string _name, Tensor input)
+Op::Op(std::string _name, Tensor _input)
 : numLocals(0)
 {
-  strcpy(name, _name.c_str(), _name.length());
-  inputs[0] = input;
+  assert(_name.length() < MAX_OPNAME);
+  std::strcpy(name, _name.c_str());
+  inputs[0] = _input;
 }
 
-Op::Op(int n, Tensor* _inputs)
+Op::Op(std::string _name, int n, Tensor* _inputs)
 : numLocals(0)
 {
-  strcpy(name, _name.c_str(), _name.length());
+  assert(_name.length() < MAX_OPNAME);
+  std::strcpy(name, _name.c_str());
   for (int i = 0; i < n; i++)
     inputs[i] = _inputs[i];
 }
@@ -38,25 +40,25 @@ FFHandler UtilityTasks::init_cuda_task(
               Context ctx, HighLevelRuntime *runtime)
 {
   assert(regions.size() == 0);
-  assert(task->arglen = sizeof(size_t));
+  assert(task->arglen == sizeof(size_t));
   size_t workSpaceSize = *(const size_t*) task->args;
-  FFHandler handler;
-  handler.workSpaceSize = workSpaceSize;
-  checkCUDA(cublasCreate(&handler.cublas));
-  checkCUDNN(cudnnCreate(&handler.cudnn));
+  FFHandler handle;
+  handle.workSpaceSize = workSpaceSize;
+  checkCUDA(cublasCreate(&handle.blas));
+  checkCUDNN(cudnnCreate(&handle.dnn));
   std::set<Memory> memFB;
   assert(memFB.size() == 1);
   assert(memFB.begin()->kind() == Memory::GPU_FB_MEM);
-  Realm::MemoryImpl& memImpl =
+  Realm::MemoryImpl* memImpl =
       Realm::get_runtime()->get_memory_impl(*memFB.begin());
   Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
   off_t offset = memFBImpl->alloc_bytes(workSpaceSize);
-  handler.workSpace = memFBImpl->get_direct_ptr(offset, 0);
+  handle.workSpace = memFBImpl->get_direct_ptr(offset, 0);
   //checkCUDA(cudaMalloc(&handle.workSpace, workSpaceSize));
-  return handler;
+  return handle;
 }
 
-void UtilityTask::dummy_task(const Task *task,
+void UtilityTasks::dummy_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, Runtime *runtime)
 {}
@@ -70,16 +72,16 @@ int calc_offset(int c, int y, int x, int yscale, int xscale)
 void nearest_neighbor(unsigned char* image,
                       unsigned char* buffer,
                       int height, int width,
-                      int origHeight, int origWidth,
-                      float heightScale, float widthScale)
+                      int orig_height, int orig_width,
+                      float height_scale, float width_scale)
 {
   // Note buffer is in HWC layout while image is in CHW layout
   for (int y = 0; y < height; y++) {
-    int y0 = std::min(static_cast<int>(roundf(y * height_scale)), input_height - 1);
+    int y0 = std::min(static_cast<int>(roundf(y * height_scale)), orig_height - 1);
     for (int x = 0; x < width; x++) {
-      int x0 = std::min(static_cast<int>(roundf(x * width_scale)), input_width - 1);
+      int x0 = std::min(static_cast<int>(roundf(x * width_scale)), orig_width - 1);
       for (int c = 0; c < 3; c++) {
-        int origOffset = calc_offset(y0, x0, c, origWidth, 3);
+        int origOffset = calc_offset(y0, x0, c, orig_width, 3);
         int offset = calc_offset(c, y, x, height, width);
         image[offset] = buffer[origOffset];
       }
@@ -91,11 +93,12 @@ void nearest_neighbor(unsigned char* image,
   regions[0]: image (unsigned char)
   regions[1]: label (int)
 */
-void UtilityTask::load_images_task(
+void UtilityTasks::load_images_task(
          const Task *task,
          const std::vector<PhysicalRegion> &regions,
          Context ctx, HighLevelRuntime *runtime)
 {
+#ifdef USE_DATA_LOADER
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   const AccessorWO<unsigned char, 3> acc_image(regions[0], FID_DATA);
@@ -158,6 +161,7 @@ void UtilityTask::load_images_task(
     image_ptr += 3 * height * width;
   }
   free(buffer);
+#endif
 }
 
 __global__
@@ -205,7 +209,83 @@ void UtilityTasks::normalize_images_task(
       tensor_ptr, rgb_ptr, rect_tensor.volume(), h * w);
 }
 
-void FFModel::load_images(int batchId)
+__global__
+void init_image_kernel(float* ptr, coord_t size)
+{
+  const coord_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid < size) {
+    ptr[tid] = 1.0f;
+  }
+}
+
+__global__
+void init_label_kernel(int* ptr, coord_t size)
+{
+  const coord_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid < size) {
+    ptr[tid] = 1;
+  }
+}
+
+void UtilityTasks::init_images_task(const Task *task,
+                                    const std::vector<PhysicalRegion> &regions,
+                                    Context ctx, Runtime *runtime)
+{
+  const int BLKSIZE = 512;
+  const AccessorWO<float, 3> acc_image(regions[0], FID_DATA);
+  Rect<3> rect_image;
+  rect_image = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  assert(acc_image.accessor.is_dense_arbitrary(rect_image));
+  float *image_ptr = acc_image.ptr(rect_image.lo);
+  int num_blocks = (rect_image.volume() + BLKSIZE - 1) / BLKSIZE;
+  init_image_kernel<<<num_blocks, BLKSIZE>>>(image_ptr, rect_image.volume());
+}
+
+void UtilityTasks::init_labels_task(const Task *task,
+                                    const std::vector<PhysicalRegion> &regions,
+                                    Context ctx, Runtime *runtime)
+{
+  const int BLKSIZE = 512;
+  const AccessorWO<int, 1> acc_label(regions[0], FID_DATA);
+  Rect<1> rect_label;
+  rect_label = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  assert(acc_label.accessor.is_dense_arbitrary(rect_label));
+  int *label_ptr = acc_label.ptr(rect_label.lo);
+  int num_blocks = (rect_label.volume() + BLKSIZE - 1) / BLKSIZE;
+  init_label_kernel<<<num_blocks, BLKSIZE>>>(label_ptr, rect_label.volume());
+}
+
+
+void FFModel::init_layers()
+{
+  // init images
+  ArgumentMap argmap;
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  IndexSpaceT<3> task_is_3d;
+  IndexLauncher image_launcher(IMAGE_INIT_TASK_ID, task_is_3d,
+                               TaskArgument(NULL, 0), argmap);
+  image_launcher.add_region_requirement(
+      RegionRequirement(input_image.part, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, input_image.region));
+  image_launcher.add_field(0, FID_DATA);
+  runtime->execute_index_space(ctx, image_launcher);
+  
+  // init labels
+  IndexSpaceT<1> task_is_1d;
+  IndexLauncher label_launcher(LABEL_INIT_TASK_ID, task_is_1d,
+                               TaskArgument(NULL, 0), argmap);
+  label_launcher.add_region_requirement(
+      RegionRequirement(input_label.part, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, input_label.region));
+  label_launcher.add_field(0, FID_DATA);
+  runtime->execute_index_space(ctx, label_launcher);
+
+  for (size_t i = 0; i < layers.size(); i++)
+    layers[i]->init(*this);
+}
+
+void FFModel::load_images(int batch_id)
 {
   assert(false);
 }

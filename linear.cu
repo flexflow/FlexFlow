@@ -13,44 +13,48 @@
  * limitations under the License.
  */
 
-#include "ops.h"
-#include "cnn_helper.h"
+#include "model.h"
+#include "cuda_helper.h"
 
-Tensor FFModel::linear(Tensor input, int output_channels, bool relu)
+Tensor FFModel::linear(std::string name, Tensor input, int output_channels, bool relu)
 {
   assert(input.numDim == 2);
-  Linear *li = new Linear(config, input, fc_part_is, output_channels, relu);
+  IndexSpaceT<2> task_is;
+  Linear *li = new Linear(name, config, input, task_is, output_channels, relu);
   layers.push_back(li);
   return li->output;
 }
 
-Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
-               int output_channels, bool _relu)
-: Op(input), relu(_relu), profiling_runtime(config.profiling),
-  in_channels(input.adim[0]), out_channels(output_channels){
-  assert(input.numDim == 2);
-  Context ctx = config.lg_ctx;
-  HighLevelRuntime* runtime = config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, part_is);
+Linear::Linear(std::string _name, FFConfig _config,
+               Tensor _input, IndexSpaceT<2> _task_is,
+               int _output_channels, bool _relu)
+: Op(_name, _input), task_is(_task_is),
+  relu(_relu), profiling(_config.profiling),
+  in_channels(_input.adim[0]), out_channels(_output_channels)
+{
+  assert(_input.numDim == 2);
+  Context ctx = _config.lg_ctx;
+  HighLevelRuntime* runtime = _config.lg_hlr;
+  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
   fc_num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
   int fc_num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
   num_replica = fc_num_par_n;
 
   printf("Linear fc_num_par_c(%d) fc_num_par_n(%d)\n", fc_num_par_c, fc_num_par_n);
-  FieldSpace fs = config.field_space;
+  FieldSpace fs = _config.field_space;
 
-  Rect<2, coord_t> output_rect(Point<2>(0, 0), Point<2>(out_channels-1, input.adim[1]-1));
+  Rect<2, coord_t> output_rect(Point<2>(0, 0), Point<2>(out_channels-1, _input.adim[1]-1));
   IndexSpaceT<2> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
   Transform<2, 2, coord_t> transform;
   int extent_c = (out_channels + fc_num_par_c - 1) / fc_num_par_c;
-  int extent_n = (input.adim[1] + fc_num_par_n - 1) / fc_num_par_n;
+  int extent_n = (_input.adim[1] + fc_num_par_n - 1) / fc_num_par_n;
   Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
   transform[0][0] = extent_c; transform[0][1] = 0;
   transform[1][0] = 0; transform[1][1] = extent_n;
   IndexPartition output_ip =
-    runtime->create_partition_by_restriction(ctx, output_is, part_is, transform, extent);
+    runtime->create_partition_by_restriction(ctx, output_is, task_is, transform, extent);
   assert(runtime->is_index_partition_disjoint(ctx, output_ip));
   assert(runtime->is_index_partition_complete(ctx, output_ip));
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
@@ -58,31 +62,32 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
 
   // Note: we only need replica's grad, so no need to create lr/lp for forward
   Rect<2, coord_t> replica_rect(Point<2>(0, 0),
-                       Point<2>(in_channels*fc_num_par_c-1, input.adim[1]-1));
+                       Point<2>(in_channels*fc_num_par_c-1, _input.adim[1]-1));
   IndexSpaceT<2> replica_is = runtime->create_index_space(ctx, replica_rect);
   LogicalRegion replica_lr = runtime->create_logical_region(ctx, replica_is, fs);
   transform[0][0] = in_channels;
   transform[1][1] = extent_n;
   Rect<2, coord_t> extent_r(Point<2>(0, 0), Point<2>(in_channels-1, extent_n-1));
   IndexPartition replica_ip =
-    runtime->create_partition_by_restriction(ctx, replica_is, part_is, transform, extent_r);
+    runtime->create_partition_by_restriction(ctx, replica_is, task_is, transform, extent_r);
   assert(runtime->is_index_partition_disjoint(ctx, replica_ip));
   assert(runtime->is_index_partition_complete(ctx, replica_ip));
   LogicalPartition replica_lp = runtime->get_logical_partition(ctx, replica_lr, replica_ip);
-  TensorWithGrad replica_tensor;
+  Tensor replica_tensor;
   replica_tensor.region = LogicalRegion::NO_REGION;
-  replica_tensor.partition = LogicalPartition::NO_PART;
+  replica_tensor.part = LogicalPartition::NO_PART;
   replica_tensor.region_grad = replica_lr;
-  replica_tensor.partition_grad = replica_lp;
+  replica_tensor.part_grad = replica_lp;
   locals[0] = replica_tensor;
   // Create subpartitions for backward prop aggregation
   for (int i = 0; i < fc_num_par_c; i++) {
-    transform[0][0] = input.pdim[0];
-    transform[1][1] = input.pdim[1];
+    transform[0][0] = _input.pdim[0];
+    transform[1][1] = _input.pdim[1];
     Rect<2, coord_t> ext(Point<2>(in_channels*i, 0),
-                         Point<2>(in_channels*i+input.pdim[0]-1, input.pdim[1]-1));
+                         Point<2>(in_channels*i + _input.pdim[0] - 1,
+                                  _input.pdim[1]-1));
     IndexPartition ip =
-      runtime->create_partition_by_restriction(ctx, replica_is, part_is, transform, ext);
+      runtime->create_partition_by_restriction(ctx, replica_is, task_is, transform, ext);
     assert(runtime->is_index_partition_disjoint(ctx, ip));
     replica_sub_lps[i] = runtime->get_logical_partition(ctx, replica_lr, ip);
   }
@@ -98,7 +103,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   Rect<2, coord_t> extent_k_grad(Point<2>(0, 0), Point<2>(extent_c*in_channels-1, 0));
   printf("extent_k(%dx%d %d)\n", extent_c, in_channels, 1);
   IndexPartition kernel_grad_ip =
-    runtime->create_partition_by_restriction(ctx, kernel_grad_is, part_is,
+    runtime->create_partition_by_restriction(ctx, kernel_grad_is, task_is,
                                              transform, extent_k_grad);
   assert(runtime->is_index_partition_disjoint(ctx, kernel_grad_ip));
   assert(runtime->is_index_partition_complete(ctx, kernel_grad_ip));
@@ -108,14 +113,14 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   trans[0][0] = extent_c * in_channels; trans[0][1] = 0;
   Rect<1, coord_t> extent_k(0, extent_c*in_channels-1);
   IndexPartition kernel_ip =
-    runtime->create_partition_by_restriction(ctx, kernel_is, part_is, trans, extent_k);
+    runtime->create_partition_by_restriction(ctx, kernel_is, task_is, trans, extent_k);
   LogicalPartition kernel_lp =
     runtime->get_logical_partition(ctx, kernel_lr, kernel_ip);
-  TensorWithGrad kernel_tensor;
+  Tensor kernel_tensor;
   kernel_tensor.region = kernel_lr;
-  kernel_tensor.partition = kernel_lp;
+  kernel_tensor.part = kernel_lp;
   kernel_tensor.region_grad = kernel_grad_lr;
-  kernel_tensor.partition_grad = kernel_grad_lp;
+  kernel_tensor.part_grad = kernel_grad_lp;
   locals[1] = kernel_tensor;
 
   Rect<1, coord_t> bias_rect(0, out_channels-1);
@@ -128,7 +133,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   transform[1][1] = 1;
   Rect<2, coord_t> extent_b_grad(Point<2>(0, 0), Point<2>(extent_c-1,0));
   IndexPartition bias_grad_ip =
-    runtime->create_partition_by_restriction(ctx, bias_grad_is, part_is,
+    runtime->create_partition_by_restriction(ctx, bias_grad_is, task_is,
                                              transform, extent_b_grad);
   assert(runtime->is_index_partition_disjoint(ctx, bias_grad_ip));
   assert(runtime->is_index_partition_complete(ctx, bias_grad_ip));
@@ -137,26 +142,26 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   trans[0][0] = extent_c; trans[0][1] = 0;
   Rect<1, coord_t> extent_b(0, extent_c-1);
   IndexPartition bias_ip =
-    runtime->create_partition_by_restriction(ctx, bias_is, part_is, trans, extent_b);
+    runtime->create_partition_by_restriction(ctx, bias_is, task_is, trans, extent_b);
   LogicalPartition bias_lp =
     runtime->get_logical_partition(ctx, bias_lr, bias_ip);
-  TensorWithGrad bias_tensor;
+  Tensor bias_tensor;
   bias_tensor.region = bias_lr;
-  bias_tensor.partition = bias_lp;
+  bias_tensor.part = bias_lp;
   bias_tensor.region_grad = bias_grad_lr;
-  bias_tensor.partition_grad = bias_grad_lp;
+  bias_tensor.part_grad = bias_grad_lp;
   locals[2] = bias_tensor;
   numLocals = 3;
 
   output.numDim = 2;
   output.adim[0] = out_channels;
-  output.adim[1] = input.adim[1];
+  output.adim[1] = _input.adim[1];
   output.pdim[0] = extent_c;
   output.pdim[1] = extent_n;
   output.region = output_lr;
-  output.partition = output_lp;
+  output.part = output_lp;
   output.region_grad = output_grad_lr;
-  output.partition_grad = output_grad_lp;
+  output.part_grad = output_grad_lp;
 
   // Every partition reads all in_channels
   transform[0][0] = 0;
@@ -164,7 +169,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   Rect<2, coord_t> extent_i(Point<2>(0, 0), Point<2>(in_channels-1, extent_n-1));
   IndexSpaceT<2> input_is = IndexSpaceT<2>(inputs[0].region.get_index_space());
   IndexPartition input_ip 
-     = runtime->create_partition_by_restriction(ctx, input_is, part_is, transform, extent_i);
+     = runtime->create_partition_by_restriction(ctx, input_is, task_is, transform, extent_i);
   input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
 }
 
@@ -204,10 +209,9 @@ OpMeta* Linear::init_task(const Task *task,
   int batch_size = linear->output.pdim[1];
   printf("init linear (input): in_c(%d) out_c(%d) batch_size(%d)\n", input_channels, output_channels, batch_size);
   LinearMeta* m = new LinearMeta(handle);
-#ifndef DISABLE_COMPUTATION
   m->relu = linear->relu;
-  m->input_channels = input_channels;
-  m->output_channels = output_channels;
+  m->in_channels = input_channels;
+  m->out_channels = output_channels;
   m->batch_size = batch_size;
 
   float* dram_one_ptr = (float *) malloc(sizeof(float) * batch_size);
@@ -226,7 +230,6 @@ OpMeta* Linear::init_task(const Task *task,
                                           CUDNN_DATA_FLOAT,
                                           batch_size, output_channels, 1, 1));
   }
-#endif
   return m;
 }
 
@@ -289,32 +292,32 @@ void Linear::init(const FFModel& ff)
     runtime->execute_task(ctx, para_launcher);
   }
 
-  Rect<2> rect = runtime->get_index_space_domain(ctx, partIs);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[idx++];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
-  IndexLauncher init_launcher(LINEAR_INIT_TASK_ID, partIs,
+  IndexLauncher init_launcher(LINEAR_INIT_TASK_ID, task_is,
                               TaskArgument(this, sizeof(Linear)), argmap);
   init_launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   init_launcher.add_field(0, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(output.partition, 0/*projection id*/,
+      RegionRequirement(output.part, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, output.region));
   init_launcher.add_field(1, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(locals[0].partition_grad, 0/*projection id*/,
+      RegionRequirement(locals[0].part_grad, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, locals[0].region_grad));
   init_launcher.add_field(2, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(locals[1].partition, 0/*projection id*/,
+      RegionRequirement(locals[1].part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, locals[1].region));
   init_launcher.add_field(3, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(locals[2].partition, 0/*projection id*/,
+      RegionRequirement(locals[2].part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, locals[2].region));
   init_launcher.add_field(4, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
@@ -336,14 +339,13 @@ void Linear::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   float alpha = 1.0f, beta = 0.0f;
   const Linear* linear = (Linear*) task->args;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
-  int input_channels = m->input_channels;
-  int output_channels = m->output_channels;
+  int input_channels = m->in_channels;
+  int output_channels = m->out_channels;
   int batch_size = m->batch_size;
   const float *one_ptr = m->one_ptr;
   const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
@@ -376,7 +378,7 @@ void Linear::forward_task(const Task *task,
   //checkCUDA(cudaMemcpy(replica_ptr, input_ptr, rect_input.volume() * sizeof(float),
   //                     cudaMemcpyDeviceToDevice));
   cudaEvent_t t_start, t_end;
-  if (linear->profiling_runtime) {
+  if (linear->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -399,7 +401,7 @@ void Linear::forward_task(const Task *task,
                                       &alpha, m->outputTensor, output_ptr,
                                       &beta, m->outputTensor, output_ptr));
   }
-  if (linear->profiling_runtime) {
+  if (linear->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -408,7 +410,6 @@ void Linear::forward_task(const Task *task,
     cudaEventDestroy(t_end);
     printf("Linear forward time = %.2lfms\n", elapsed);
   }
-#endif
 }
 
 void Linear::forward(const FFModel& ff)
@@ -416,20 +417,20 @@ void Linear::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, partIs);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(LINEAR_FWD_TASK_ID, partIs,
+  IndexLauncher launcher(LINEAR_FWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Linear)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.partition, 0/*projection id*/,
+      RegionRequirement(output.part, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, output.region));
   launcher.add_field(1, FID_DATA);
   //launcher.add_region_requirement(
@@ -437,11 +438,11 @@ void Linear::forward(const FFModel& ff)
   //                      WRITE_DISCARD, EXCLUSIVE, locals[0].region));
   //launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(locals[1].partition, 0/*projection id*/,
+      RegionRequirement(locals[1].part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, locals[1].region));
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(locals[2].partition, 0/*projection id*/,
+      RegionRequirement(locals[2].part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, locals[2].region));
   launcher.add_field(3, FID_DATA);
 
@@ -462,14 +463,13 @@ void Linear::backward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime)
 {
-#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   float alpha = 1.0f, beta = 0.0f;
   const Linear* linear = (Linear*) task->args;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
-  int input_channels = m->input_channels;
-  int output_channels = m->output_channels;
+  int input_channels = m->in_channels;
+  int output_channels = m->out_channels;
   int batch_size = m->batch_size;
   const float *one_ptr = m->one_ptr;
   const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
@@ -521,7 +521,7 @@ void Linear::backward_task(const Task *task,
   float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
 
   cudaEvent_t t_start, t_end;
-  if (linear->profiling_runtime) {
+  if (linear->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -552,7 +552,7 @@ void Linear::backward_task(const Task *task,
                         &alpha, kernel_ptr, input_channels,
                         output_grad_ptr, output_channels,
                         &beta, replica_grad_ptr, input_channels));
-  if (linear->profiling_runtime) {
+  if (linear->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -561,7 +561,6 @@ void Linear::backward_task(const Task *task,
     cudaEventDestroy(t_end);
     printf("Linear backward time = %.2lfms\n", elapsed);
   }
-#endif
 }
 
 /*
@@ -573,7 +572,6 @@ void Linear::backward2_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime)
 {
-#ifndef DISABLE_COMPUTATION
   float alpha = 1.0f;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
   const AccessorWO<float, 2> acc_input(regions[0], FID_DATA);
@@ -602,7 +600,6 @@ void Linear::backward2_task(const Task *task,
       checkCUDA(cublasSaxpy(m->handle.blas, rect_input.volume(),
                             &alpha, replica_ptr, 1, input_ptr, 1));
   }
-#endif
 }
 
 void Linear::backward(const FFModel& ff)
@@ -610,14 +607,14 @@ void Linear::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, partIs);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   {
-    IndexLauncher launcher(LINEAR_BWD_TASK_ID, partIs,
+    IndexLauncher launcher(LINEAR_BWD_TASK_ID, task_is,
                            TaskArgument(this, sizeof(Linear)), argmap);
     // regions[0](I): input
     launcher.add_region_requirement(
@@ -626,42 +623,42 @@ void Linear::backward(const FFModel& ff)
     launcher.add_field(0, FID_DATA);
     // regions[1](O): replica_grad (we only need grad tensors)
     launcher.add_region_requirement(
-        RegionRequirement(locals[0].partition_grad, 0/*projection id*/,
+        RegionRequirement(locals[0].part_grad, 0/*projection id*/,
                           WRITE_DISCARD, EXCLUSIVE, locals[0].region_grad));
     launcher.add_field(1, FID_DATA);
     // regions[2](I): output
     launcher.add_region_requirement(
-        RegionRequirement(output.partition, 0/*projection id*/,
+        RegionRequirement(output.part, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, output.region));
     launcher.add_field(2, FID_DATA);
     // regions[3](I/O): output_grad
     launcher.add_region_requirement(
-        RegionRequirement(output.partition_grad, 0/*projection id*/,
+        RegionRequirement(output.part_grad, 0/*projection id*/,
                           READ_WRITE, EXCLUSIVE, output.region_grad));
     launcher.add_field(3, FID_DATA);
     // regions[4](I): filter
     launcher.add_region_requirement(
-        RegionRequirement(locals[1].partition, 0/*projection id*/,
+        RegionRequirement(locals[1].part, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, locals[1].region));
     launcher.add_field(4, FID_DATA);
     // regions[5](O): filter_grad
     launcher.add_region_requirement(
-        RegionRequirement(locals[1].partition_grad, 0/*projection id*/,
+        RegionRequirement(locals[1].part_grad, 0/*projection id*/,
                           WRITE_DISCARD, EXCLUSIVE, locals[1].region_grad));
     launcher.add_field(5, FID_DATA);
     // regions[6](O): bias_grad
     launcher.add_region_requirement(
-        RegionRequirement(locals[2].partition_grad, 0/*projection id*/,
+        RegionRequirement(locals[2].part_grad, 0/*projection id*/,
                           WRITE_DISCARD, EXCLUSIVE, locals[2].region_grad));
     launcher.add_field(6, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
   {
     // We aggregate parameters from replica tensor to input tensor
-    IndexLauncher launcher2(LINEAR_BWD2_TASK_ID, partIs,
+    IndexLauncher launcher2(LINEAR_BWD2_TASK_ID, task_is,
                             TaskArgument(this, sizeof(Linear)), argmap);
     launcher2.add_region_requirement(
-        RegionRequirement(inputs[0].partition_grad, 0/*projection id*/,
+        RegionRequirement(inputs[0].part_grad, 0/*projection id*/,
                           WRITE_DISCARD, EXCLUSIVE, inputs[0].region_grad));
     launcher2.add_field(0, FID_DATA);
     for (int i = 0; i < fc_num_par_c; i++) {
@@ -729,7 +726,7 @@ void Linear::update(const FFModel& ff)
   // Synchronize the learning rate
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  learning_rate = ff.config.learning_rate;
+  learning_rate = ff.config.learningRate;
   assert(num_replica > 0);
   // Only aggregate parameters if more than one replica
   if (num_replica > 1) {

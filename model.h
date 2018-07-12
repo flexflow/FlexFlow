@@ -15,6 +15,7 @@
 
 #ifndef _FLEXFLOW_RUNTIME_H_
 #define _FLEXFLOW_RUNTIME_H_
+#include "config.h"
 #include "legion.h"
 #include <cudnn.h>
 #include <cuda_runtime.h>
@@ -83,24 +84,26 @@ enum FieldIDs {
 };
 
 struct FFHandler {
-  cudnnHandle_t cudnn;
-  cublasHandle_t cublas;
+  cudnnHandle_t dnn;
+  cublasHandle_t blas;
   void *workSpace;
   size_t workSpaceSize;
 };
 
 struct Tensor {
   int numDim, adim[MAX_DIM], pdim[MAX_DIM];
-  LogicalRegion region, regionGrad,
-  LogicalPartition part, partGrad;
+  LogicalRegion region, region_grad;
+  LogicalPartition part, part_grad;
 };
 
 class OpMeta {
 public:
   OpMeta(FFHandler _handle) : handle(_handle) {};
 public:
-  FFhandler handler;
+  FFHandler handle;
 };
+
+class FFModel;
 
 class Op {
 public:
@@ -113,7 +116,7 @@ public:
   virtual void backward(const FFModel&) = 0;
   virtual void update(const FFModel&) = 0;
 public:
-  char* name[MAX_OPNAME];
+  char name[MAX_OPNAME];
   Tensor output;
   Tensor inputs[MAX_NUM_INPUTS];
   LogicalPartition input_lps[MAX_NUM_INPUTS];
@@ -124,7 +127,7 @@ public:
 
 class FFModel {
 public:
-  FFModel(FFConfig config, Context ctx, Runtime* runtime);
+  FFModel(FFConfig &config);
 
   // Add a 2D convolutional layer 
   Tensor conv2d(std::string name,
@@ -140,6 +143,10 @@ public:
                 int strideH, int strideW,
                 int paddingH, int paddingW,
                 PoolType type = POOL_MAX, bool relu = true);
+  // Add a batch_norm layer
+  Tensor batch_norm(std::string name,
+                    Tensor input,
+                    bool relu = true);
   // Add a linear layer
   Tensor linear(std::string name,
                 Tensor input, int outChannels,
@@ -152,22 +159,24 @@ public:
   // Add a softmax layer
   Tensor softmax(std::string name, Tensor input);
 
+  void add_layers();
   void init_layers();
-  void load_images();
+  void load_images(int batch_id);
   void prefetch();
   void forward();
   void backward();
   void update();
 public:
   FFConfig config;
+  Tensor input_image, input_label;
   std::vector<Op*> layers;
-  FFHandlers handlers[MAX_NUM_WORKERS];
+  FFHandler handlers[MAX_NUM_WORKERS];
 };
 
 class Conv2D : public Op {
 public:
   Conv2D(std::string name, FFConfig config,
-         Tensor input, IndexSpaceT<3> part_is,
+         Tensor input, IndexSpaceT<3> task_is,
          int inChannels, int outChannels,
          int kernelH, int kernelW,
          int strideH, int strideW,
@@ -201,15 +210,17 @@ public:
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, HighLevelRuntime *runtime);
 public:
-  int inChannels, outChannels;
-  int kernelH, kernelW, strideH, strideW, paddingH, paddingW;
-  bool relu, firstLayer, profiling;
-  int numReplica;
+  IndexSpaceT<3> task_is;
+  int in_channels, out_channels;
+  int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
+  bool relu, first_layer, profiling;
+  int num_replica;
+  float learning_rate;
 };
 
 class Conv2DMeta : public OpMeta {
 public:
-  Conv2DMeta(FFHandler handle) : OpMeta(handle) {};
+  Conv2DMeta(FFHandler handler) : OpMeta(handler) {};
   cudnnTensorDescriptor_t inputTensor, biasTensor, outputTensor;
   cudnnFilterDescriptor_t filterDesc;
   cudnnActivationDescriptor_t actiDesc;
@@ -217,7 +228,7 @@ public:
   cudnnConvolutionFwdAlgo_t fwdAlgo;
   cudnnConvolutionBwdFilterAlgo_t bwdFilterAlgo;
   cudnnConvolutionBwdDataAlgo_t bwdDataAlgo;
-  bool relu, firstLayer;
+  bool relu, first_layer;
 };
 
 class Pool2D : public Op {
@@ -250,14 +261,15 @@ public:
                             Context ctx, Runtime *runtime);
 
 public:
-  int kernelH, kernelW, strideH, strideW, paddingH, paddingW;
-  Pool2DType poolType;
+  IndexSpaceT<3> task_is;
+  int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
+  PoolType pool_type;
   bool relu, profiling;
 };
 
 class Pool2DMeta : public OpMeta {
 public:
-  PoolDMeta(FFHandler handle) : OpMeta(handle) {};
+  Pool2DMeta(FFHandler handle) : OpMeta(handle) {};
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
   cudnnPoolingDescriptor_t poolDesc;
@@ -293,8 +305,9 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
 public:
+  IndexSpaceT<3> task_is;
   bool relu, profiling;
-  int numReplica;
+  int num_replica;
 };
 
 class BatchNormMeta : public OpMeta {
@@ -344,9 +357,10 @@ public:
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime);
 public:
+  IndexSpaceT<2> task_is;
   LogicalPartition replica_sub_lps[MAX_NUM_WORKERS];
   bool relu, profiling;
-  int inChannels, outChannels, numReplica, fcNumParC;
+  int in_channels, out_channels, num_replica, fc_num_par_c;
   float learning_rate;
 };
 
@@ -355,9 +369,9 @@ public:
   LinearMeta(FFHandler handle) : OpMeta(handle) {};
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;
-  int inChannels, outChannels, batchSize;
+  int in_channels, out_channels, batch_size;
   bool relu;
-  float *onePtr, *preRelu;
+  float *one_ptr, *pre_relu;
 };
 
 class Flat : public Op {
@@ -387,6 +401,8 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
 public:
+  IndexSpaceT<3> task_is_3d;
+  IndexSpaceT<2> task_is_2d;
   LogicalPartition flat_lp, flat_grad_lp;
 };
 
@@ -420,8 +436,9 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
 public:
+  IndexSpaceT<1> task_is;
   LogicalPartition input_grad_lp;
-  bool profiling_runtime;
+  bool profiling;
 };
 
 class SoftmaxMeta : public OpMeta {
@@ -457,7 +474,8 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
 public:
-  int numInputs;
+  int num_inputs;
+  IndexSpaceT<3> task_is;
 };
 
 class ConcatMeta : public OpMeta {
@@ -466,13 +484,17 @@ public:
 };
 
 class UtilityTasks {
-  FFHandler init_cuda_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
+public:
+  static FFHandler init_cuda_task(const Task *task,
+                                  const std::vector<PhysicalRegion> &regions,
+                                  Context ctx, Runtime *runtime);
   static void dummy_task(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx, Runtime *runtime);
   static void init_images_task(const Task *task,
+                               const std::vector<PhysicalRegion> &regions,
+                               Context ctx, Runtime *runtime);
+  static void init_labels_task(const Task *task,
                                const std::vector<PhysicalRegion> &regions,
                                Context ctx, Runtime *runtime);
   static void load_images_task(const Task *task,

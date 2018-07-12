@@ -18,7 +18,7 @@
 
 #include "legion.h"
 #include "default_mapper.h"
-#include "ops.h"
+#include "model.h"
 
 using namespace Legion;
 using namespace Legion::Mapping;

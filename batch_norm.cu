@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-#include "ops.h"
-#include "cnn_helper.h"
+#include "model.h"
+#include "cuda_helper.h"
 
-Tensor CnnModel::add_bn_layer(Tensor input, bool relu)
+Tensor FFModel::batch_norm(std::string name, Tensor input, bool relu)
 {
   assert(input.numDim == 4); //Only support 4D BN for now
-  BatchNorm *bn = new BatchNorm(config, input, part_is, relu);
+  IndexSpaceT<3> task_is;
+  BatchNorm *bn = new BatchNorm(name, config, input, task_is, relu);
   layers.push_back(bn);
   return bn->output;
 }
@@ -28,22 +29,24 @@ Tensor CnnModel::add_bn_layer(Tensor input, bool relu)
   locals[0] = scale
   locals[1] = bias
 */
-BatchNorm::BatchNorm(CnnConfig config, Tensor input, IndexSpaceT<3> part_is, bool _relu)
-: Op(input), relu(_relu), profiling_runtime(config.profiling)
+BatchNorm::BatchNorm(std::string _name, FFConfig _config,
+                     Tensor _input, IndexSpaceT<3> _task_is,
+                     bool _relu)
+: Op(_name, _input), relu(_relu), profiling(_config.profiling)
 {
-  Context ctx = config.lg_ctx;
-  HighLevelRuntime* runtime = config.lg_hlr;
-  Rect<3> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  Context ctx = _config.lg_ctx;
+  HighLevelRuntime* runtime = _config.lg_hlr;
+  Rect<3> part_rect = runtime->get_index_space_domain(ctx, task_is);
   num_replica = part_rect.volume();
   // Create output tensor
-  int output_w = input.adim[0];
-  int output_h = input.adim[1];
-  int output_nc = input.adim[2] * input.adim[3];
+  int output_w = _input.adim[0];
+  int output_h = _input.adim[1];
+  int output_nc = _input.adim[2] * _input.adim[3];
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_n = part_rect.hi[2] - part_rect.lo[2] + 1;
 
-  FieldSpace fs = config.field_space;
+  FieldSpace fs = _config.field_space;
   Rect<3, coord_t> output_rect(Point<3>(0, 0, 0),
                                Point<3>(output_w-1, output_h-1, output_nc-1));
   IndexSpaceT<3> output_is = runtime->create_index_space(ctx, output_rect);
@@ -59,16 +62,16 @@ BatchNorm::BatchNorm(CnnConfig config, Tensor input, IndexSpaceT<3> part_is, boo
   trans[1][0] = 0; trans[1][1] = extent_h; trans[1][2] = 0;
   trans[2][0] = 0; trans[2][1] = 0; trans[2][2] = extent_nc;
   IndexPartition output_ip =
-    runtime->create_partition_by_restriction(ctx, output_is, part_is, trans, ext);
+    runtime->create_partition_by_restriction(ctx, output_is, task_is, trans, ext);
   assert(runtime->is_index_partition_disjoint(ctx, output_ip));
   assert(runtime->is_index_partition_complete(ctx, output_ip));
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
   LogicalPartition output_grad_lp =
     runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
 
-  int bias_nc = num_replica * input.adim[2]; /*input_channels*/
+  int bias_nc = num_replica * _input.adim[2]; /*input_channels*/
   Rect<1, coord_t> bias_grad_rect(0, bias_nc - 1);
-  Rect<1, coord_t> bias_rect(0, input.adim[2] - 1);
+  Rect<1, coord_t> bias_rect(0, _input.adim[2] - 1);
   IndexSpaceT<1> bias_is = runtime->create_index_space(ctx, bias_rect);
   IndexSpaceT<1> bias_grad_is = runtime->create_index_space(ctx, bias_grad_rect);
   LogicalRegion bias_lr = runtime->create_logical_region(ctx, bias_is, fs);
@@ -78,34 +81,34 @@ BatchNorm::BatchNorm(CnnConfig config, Tensor input, IndexSpaceT<3> part_is, boo
   LogicalRegion scale_grad_lr =
     runtime->create_logical_region(ctx, bias_grad_is, fs);
   IndexPartition bias_grad_ip =
-    runtime->create_equal_partition(ctx, bias_grad_is, part_is);
+    runtime->create_equal_partition(ctx, bias_grad_is, task_is);
   LogicalPartition bias_grad_lp =
     runtime->get_logical_partition(ctx, bias_grad_lr, bias_grad_ip);
   LogicalPartition scale_grad_lp =
     runtime->get_logical_partition(ctx, scale_grad_lr, bias_grad_ip);
 
-  TensorWithGrad scale_tensor, bias_tensor;
+  Tensor scale_tensor, bias_tensor;
   scale_tensor.region = scale_lr;
   scale_tensor.region_grad = scale_grad_lr;
-  scale_tensor.partition = LogicalPartition::NO_PART;
-  scale_tensor.partition_grad = scale_grad_lp;
+  scale_tensor.part = LogicalPartition::NO_PART;
+  scale_tensor.part_grad = scale_grad_lp;
   locals[0] = scale_tensor;
   bias_tensor.region = bias_lr;
   bias_tensor.region_grad = bias_grad_lr;
-  bias_tensor.partition = LogicalPartition::NO_PART;
-  bias_tensor.partition_grad = bias_grad_lp;
+  bias_tensor.part = LogicalPartition::NO_PART;
+  bias_tensor.part_grad = bias_grad_lp;
   locals[1] = bias_tensor;
   numLocals = 2;
 
-  output = input;
+  output = _input;
   output.region = output_lr;
-  output.partition = output_lp;
+  output.part = output_lp;
   output.region_grad = output_grad_lr;
-  output.partition_grad = output_grad_lp;
+  output.part_grad = output_grad_lp;
   printf("Create bn layer: output(%d %d %d %d)\n",
           output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
-  input_lps[0] = input.partition;
+  input_lps[0] = _input.part;
 }
 
 /*
@@ -122,7 +125,7 @@ OpMeta* BatchNorm::init_task(const Task *task,
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   const BatchNorm* bm = (BatchNorm*) task->args;
-  CnnHandle handle = *((const CnnHandle*) task->local_args);
+  FFHandler handle = *((const FFHandler*) task->local_args);
   const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
   const AccessorWO<float, 3> acc_output(regions[1], FID_DATA);
   const AccessorRO<float, 1> acc_scale(regions[2], FID_DATA);
@@ -232,11 +235,11 @@ void BatchNorm::init_para_task(const Task *task,
 
 
 __host__
-void BatchNorm::init(const CnnModel& model)
+void BatchNorm::init(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
   // First we initialize the scale and bias parameters
   {
     TaskLauncher para_launcher(BATCHNORM_INIT_PARA_TASK_ID, TaskArgument(NULL, 0));
@@ -248,20 +251,20 @@ void BatchNorm::init(const CnnModel& model)
     para_launcher.add_field(1, FID_DATA);
     runtime->execute_task(ctx, para_launcher);
   }
-  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
-    CnnHandle handle = model.cnn_handlers[idx++];
-    argmap.set_point(*it, TaskArgument(&handle, sizeof(CnnHandle)));
+    FFHandler handle = ff.handlers[idx++];
+    argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
-  IndexLauncher init_launcher(BATCHNORM_INIT_TASK_ID, model.part_is,
+  IndexLauncher init_launcher(BATCHNORM_INIT_TASK_ID, task_is,
                               TaskArgument(this, sizeof(BatchNorm)), argmap);
   init_launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   init_launcher.add_field(0, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(output.partition, 0/*projection id*/,
+      RegionRequirement(output.part, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, output.region));
   init_launcher.add_field(1, FID_DATA);
   init_launcher.add_region_requirement(
@@ -317,7 +320,7 @@ void BatchNorm::forward_task(const Task *task,
   const float *bias_ptr = acc_bias.ptr(rect_bias.lo);  
 
   cudaEvent_t t_start, t_end;
-  if (bm->profiling_runtime) {
+  if (bm->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -333,7 +336,7 @@ void BatchNorm::forward_task(const Task *task,
              m->outputTensor, output_ptr, m->biasTensor, scale_ptr, bias_ptr,
              1.0, m->runningMean, m->runningVar, CUDNN_BN_MIN_EPSILON,
              m->saveMean, m->saveVar));
-  if (bm->profiling_runtime) {
+  if (bm->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -346,25 +349,25 @@ void BatchNorm::forward_task(const Task *task,
 }
 
 __host__
-void BatchNorm::forward(const CnnModel& model)
+void BatchNorm::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(BATCHNORM_FWD_TASK_ID, model.part_is,
+  IndexLauncher launcher(BATCHNORM_FWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(BatchNorm)), argmap);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.partition, 0/*projection id*/,
+      RegionRequirement(output.part, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, output.region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
@@ -439,7 +442,7 @@ void BatchNorm::backward_task(const Task *task,
   float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
 
   cudaEvent_t t_start, t_end;
-  if (bm->profiling_runtime) {
+  if (bm->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -457,7 +460,7 @@ void BatchNorm::backward_task(const Task *task,
              m->inputTensor, input_grad_ptr, m->biasTensor, scale_ptr,
              scale_grad_ptr, bias_grad_ptr, CUDNN_BN_MIN_EPSILON,
              m->saveMean, m->saveVar));
-  if (bm->profiling_runtime) {
+  if (bm->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -470,19 +473,19 @@ void BatchNorm::backward_task(const Task *task,
 }
 
 __host__
-void BatchNorm::backward(const CnnModel& model)
+void BatchNorm::backward(const FFModel& ff)
 {
   ArgumentMap argmap;
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, model.part_is);
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
 
-  IndexLauncher launcher(BATCHNORM_BWD_TASK_ID, model.part_is,
+  IndexLauncher launcher(BATCHNORM_BWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(BatchNorm)), argmap);
   // regions[0](I): input
   launcher.add_region_requirement(
@@ -491,17 +494,17 @@ void BatchNorm::backward(const CnnModel& model)
   launcher.add_field(0, FID_DATA);
   // regions[1](O): input_grad (we only need grad tensors)
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0].partition_grad, 0/*projection id*/,
+      RegionRequirement(inputs[0].part_grad, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2](I): output
   launcher.add_region_requirement(
-      RegionRequirement(output.partition, 0/*projection id*/,
+      RegionRequirement(output.part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, output.region));
   launcher.add_field(2, FID_DATA);
   // regions[3](I/O): output_grad
   launcher.add_region_requirement(
-      RegionRequirement(output.partition_grad, 0/*projection id*/,
+      RegionRequirement(output.part_grad, 0/*projection id*/,
                         READ_WRITE, EXCLUSIVE, output.region_grad));
   launcher.add_field(3, FID_DATA);
   // regions[4](I): filter
@@ -511,19 +514,19 @@ void BatchNorm::backward(const CnnModel& model)
   launcher.add_field(4, FID_DATA);
   // regions[5](O): filter_grad
   launcher.add_region_requirement(
-      RegionRequirement(locals[0].partition_grad, 0/*projection id*/,
+      RegionRequirement(locals[0].part_grad, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, locals[0].region_grad));
   launcher.add_field(5, FID_DATA);
   // regions[6](O): bias_grad
   launcher.add_region_requirement(
-      RegionRequirement(locals[1].partition_grad, 0/*projection id*/,
+      RegionRequirement(locals[1].part_grad, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, locals[1].region_grad));
   launcher.add_field(6, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
 }
 
 __host__
-void BatchNorm::update(const CnnModel& model)
+void BatchNorm::update(const FFModel& ff)
 {
   //FIXME: we didn't sync batch norm parameters for now
 }
