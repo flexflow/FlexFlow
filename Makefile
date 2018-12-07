@@ -32,11 +32,11 @@ GEN_SRC		?= cnn.cc model.cc cnn_mapper.cc $(APP).cc # .cc files
 GEN_GPU_SRC	?= conv_2d.cu model.cu pool_2d.cu batch_norm.cu linear.cu softmax.cu concat.cu flat.cu cuda_helper.cu # .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= #-I/home/users/zhihao/tools/CMake-hdf5-1.10.1/hdf5-1.10.1/hdf5/include
+INC_FLAGS	?=
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcudnn -lcublas -lcurand -lboost_filesystem -lboost_system#-lhdf5 -L/home/users/zhihao/tools/CMake-hdf5-1.10.1/hdf5-1.10.1/hdf5/lib
+LD_FLAGS	?= -lcudnn -lcublas -lcurand 
 # For Point and Rect typedefs
 CC_FLAGS	+= -std=c++11
 NVCC_FLAGS  += -std=c++11

@@ -46,15 +46,15 @@ FFHandler UtilityTasks::init_cuda_task(
   handle.workSpaceSize = workSpaceSize;
   checkCUDA(cublasCreate(&handle.blas));
   checkCUDNN(cudnnCreate(&handle.dnn));
-  std::set<Memory> memFB;
-  assert(memFB.size() == 1);
-  assert(memFB.begin()->kind() == Memory::GPU_FB_MEM);
-  Realm::MemoryImpl* memImpl =
-      Realm::get_runtime()->get_memory_impl(*memFB.begin());
-  Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
-  off_t offset = memFBImpl->alloc_bytes(workSpaceSize);
-  handle.workSpace = memFBImpl->get_direct_ptr(offset, 0);
-  //checkCUDA(cudaMalloc(&handle.workSpace, workSpaceSize));
+  //std::set<Memory> memFB;
+  //assert(memFB.size() == 1);
+  //assert(memFB.begin()->kind() == Memory::GPU_FB_MEM);
+  //Realm::MemoryImpl* memImpl =
+  //    Realm::get_runtime()->get_memory_impl(*memFB.begin());
+  //Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
+  //off_t offset = memFBImpl->alloc_bytes(workSpaceSize);
+  //handle.workSpace = memFBImpl->get_direct_ptr(offset, 0);
+  checkCUDA(cudaMalloc(&handle.workSpace, workSpaceSize));
   return handle;
 }
 

@@ -23,13 +23,18 @@
 #include <cublas_v2.h>
 #include <unistd.h>
 
-// define constraints
+// ========================================================
+// Define Runtime Constants
+// ========================================================
 #define MAX_NUM_INPUTS 6
 #define MAX_NUM_LOCALS 3
 #define MAX_NUM_WORKERS 16
 #define MAX_DIM
 #define MAX_FILENAME 200
 #define MAX_OPNAME 64
+// DataLoader
+#define MAX_SAMPLES_PER_LOAD 64
+#define MAX_FILE_LENGTH 128
 
 using namespace Legion;
 
@@ -104,6 +109,7 @@ public:
 };
 
 class FFModel;
+class DataLoader;
 
 class Op {
 public:
@@ -171,6 +177,7 @@ public:
   Tensor input_image, input_label;
   std::vector<Op*> layers;
   FFHandler handlers[MAX_NUM_WORKERS];
+  DataLoader *dataLoader;
 };
 
 class Conv2D : public Op {
@@ -504,5 +511,27 @@ public:
                                     const std::vector<PhysicalRegion> &regions,
                                     Context ctx, Runtime *runtime);
 };
+
+struct Sample {
+  int label;
+  char file[MAX_FILE_LENGTH];
+};
+
+struct DataLoadMeta {
+  int numSamples;
+  Sample samples[MAX_SAMPLES_PER_LOAD];
+};
+
+// class DataLoader
+class DataLoader {
+public:
+  DataLoader(std::string);
+  bool get_samples(int numSamples, DataLoadMeta &meta);
+  bool shuffle_samples(void);
+public:
+  std::vector<Sample> samples;
+  std::vector<Sample>::const_iterator sampleIter;
+};
+
 #endif//_FLEXFLOW_RUNTIME_H_
 

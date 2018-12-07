@@ -4,4 +4,4 @@ APP="$1"
 
 if [ -z "$APP" ]; then echo "Usage: ./ffcompile app"; exit; fi
 
-make APP="${APP}"
+make -j 8 APP="${APP}"

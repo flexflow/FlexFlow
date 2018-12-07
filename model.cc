@@ -13,31 +13,20 @@
  * limitations under the License.
  */
 
-#include <boost/filesystem.hpp>
-#include <boost/range/iterator_range.hpp>
 #include "model.h"
+#include "dirent.h"
 
 using namespace std;
-using namespace boost::filesystem;
+
+LegionRuntime::Logger::Category log_model("ff");
 
 FFModel::FFModel(FFConfig& config)
 {
   // Build training dataset
   if (config.datasetPath.length() == 0) {
-    config.syntheticInput = true;
+    dataLoader = NULL;
   } else {
-    path dataset(config.datasetPath);
-    std::vector<string> filenames;
-    int idx = 0;
-    if (is_directory(dataset)) {
-      for (auto&entry : boost::make_iterator_range(directory_iterator(dataset), {})) {
-        if (is_directory(entry.path())) {
-          for (auto&entry2 : boost::make_iterator_range(directory_iterator(entry.path()), {})) {
-            
-          }
-        }
-      }
-    }
+    dataLoader = new DataLoader(config.datasetPath);
   }
 }
 
@@ -45,3 +34,58 @@ void Op::prefetch(const FFModel& ff)
 {
   // TODO: perform prefetch for performance imporvement
 }
+
+// ========================================================
+// class DataLoader
+// ========================================================
+DataLoader::DataLoader(std::string datasetPath)
+{
+  std::string trainPath = datasetPath + "/train";
+  std::string valPath = datasetPath + "/val";
+  DIR* trainDir = opendir(trainPath.c_str());
+  DIR* valDir = opendir(valPath.c_str());
+  if (!trainDir) {
+    log_model.print("Failed to open %s\n", trainPath.c_str());
+    return;
+  }
+  if (!valDir) {
+    log_model.print("Failed to open %s\n", valPath.c_str());
+    return;
+  }
+  for (struct dirent* dp = readdir(trainDir); dp; dp = readdir(trainDir)) {
+    std::string labelId(dp->d_name);
+    if (labelId == "." || labelId == "..")
+      continue;
+    DIR* labelDir = opendir((trainPath + "/" + labelId).c_str());
+    if (!labelDir)
+      continue;
+    for (struct dirent* sp = readdir(labelDir); sp; sp = readdir(labelDir)) {
+      std::string sampleId(sp->d_name);
+      if (sampleId == "." || sampleId == "..")
+        continue;
+      
+    }
+    printf("%s/%s\n", trainPath.c_str(), labelId.c_str());
+    closedir(labelDir);
+  }
+  closedir(trainDir);
+  closedir(valDir);
+}
+
+bool DataLoader::get_samples(int numSamples, DataLoadMeta &meta)
+{
+  meta.numSamples = numSamples;
+  for (int i = 0; i < numSamples; i++) {
+    if (sampleIter == samples.end())
+      sampleIter = samples.begin();
+    meta.samples[i] = *sampleIter;
+  }
+  return true;
+}
+
+bool DataLoader::shuffle_samples(void)
+{
+  std::random_shuffle(samples.begin(), samples.end());
+  return true;
+}
+
