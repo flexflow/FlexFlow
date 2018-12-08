@@ -311,8 +311,8 @@ void Softmax::backward(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, output.region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(ff.input_label.part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, ff.input_label.region));
+      RegionRequirement(ff.inputLabel.part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, ff.inputLabel.region));
   launcher.add_field(2, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);

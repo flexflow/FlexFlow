@@ -266,8 +266,8 @@ void FFModel::init_layers()
   IndexLauncher image_launcher(IMAGE_INIT_TASK_ID, task_is_3d,
                                TaskArgument(NULL, 0), argmap);
   image_launcher.add_region_requirement(
-      RegionRequirement(input_image.part, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, input_image.region));
+      RegionRequirement(inputImage.part, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, inputImage.region));
   image_launcher.add_field(0, FID_DATA);
   runtime->execute_index_space(ctx, image_launcher);
   

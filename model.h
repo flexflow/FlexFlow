@@ -174,7 +174,7 @@ public:
   void update();
 public:
   FFConfig config;
-  Tensor input_image, input_label;
+  Tensor inputImage, inputLabel;
   std::vector<Op*> layers;
   FFHandler handlers[MAX_NUM_WORKERS];
   DataLoader *dataLoader;

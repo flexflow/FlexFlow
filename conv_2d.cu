@@ -25,7 +25,7 @@ Tensor FFModel::conv2d(std::string name,
   assert(input.numDim == 4); /*NCHW*/
   int inChannels = input.adim[2];
   bool firstLayer = false;
-  if (input.region == input_image.region)
+  if (input.region == inputImage.region)
     firstLayer = true;
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
