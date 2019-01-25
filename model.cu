@@ -42,6 +42,7 @@ FFHandler UtilityTasks::init_cuda_task(
   assert(regions.size() == 0);
   assert(task->arglen == sizeof(size_t));
   size_t workSpaceSize = *(const size_t*) task->args;
+  printf("workSpaceSize (%d MB)\n", workSpaceSize / 1024 / 1024);
   FFHandler handle;
   handle.workSpaceSize = workSpaceSize;
   checkCUDA(cublasCreate(&handle.blas));

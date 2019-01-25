@@ -1,0 +1,3 @@
+[submodule "legion"]
+	path = legion
+	url = https://gitlab.com/StanfordLegion/legion.git
