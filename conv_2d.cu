@@ -17,10 +17,10 @@
 #include "cuda_helper.h"
 
 Tensor FFModel::conv2d(std::string name,
-                         Tensor input, int outChannels,
-                         int kernelH, int kernelW,
-                         int strideH, int strideW,
-                         int paddingH, int paddingW, bool relu)
+                       Tensor input, int outChannels,
+                       int kernelH, int kernelW,
+                       int strideH, int strideW,
+                       int paddingH, int paddingW, bool relu)
 {
   assert(input.numDim == 4); /*NCHW*/
   int inChannels = input.adim[2];

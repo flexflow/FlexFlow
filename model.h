@@ -29,7 +29,7 @@
 #define MAX_NUM_INPUTS 6
 #define MAX_NUM_LOCALS 3
 #define MAX_NUM_WORKERS 16
-#define MAX_DIM
+#define MAX_DIM 4
 #define MAX_FILENAME 200
 #define MAX_OPNAME 64
 // DataLoader
@@ -174,7 +174,7 @@ public:
   void update();
 public:
   FFConfig config;
-  Tensor inputImage, inputLabel;
+  Tensor inputImage, inputRaw, inputLabel;
   std::vector<Op*> layers;
   FFHandler handlers[MAX_NUM_WORKERS];
   DataLoader *dataLoader;

@@ -38,28 +38,33 @@ FFModel::FFModel(FFConfig& config)
     dataLoader = new DataLoader(config.datasetPath);
   }
   // Build logical regions for images
+  Rect<3, coord_t> part_rect(Point<3>(0, 0, 0),
+      Point<3>(0, 0, config.numNodes * config.workersPerNode-1));
+  IndexSpaceT<3> part_is = runtime->create_index_space(ctx, part_rect);
   Rect<3, coord_t> image_rect(Point<3>(0, 0, 0),
     Point<3>(config.inputWidth-1, config.inputHeight-1, 3*config.batchSize-1));
   IndexSpaceT<3> image_is = runtime->create_index_space(ctx, image_rect);
   LogicalRegion image_lr = runtime->create_logical_region(ctx, image_is,
                                config.field_space);
-  LogicalRegion image_grad_lr = runtime->create_logical_region(ctx, image_is,
-                                    config.field_space);
+  //LogicalRegion image_grad_lr = runtime->create_logical_region(ctx, image_is,
+  //                                  config.field_space);
   Transform<3, 3, coord_t> transform;
   int extentW = config.inputWidth;
   int extentH = config.inputHeight;
   assert(config.batchSize % (config.numNodes * config.workersPerNode) == 0);
-  int extentNC = 3 * config.batchSize / (config.numNodes * config.workersPerNode);
+  int extentN = 3 * config.batchSize / (config.numNodes * config.workersPerNode);
   Rect<3, coord_t> extent(Point<3>(0, 0, 0),
-                          Point<3>(extentW-1, extentH-1, extentNC-1));
+                          Point<3>(extentW-1, extentH-1, 3*extentN-1));
   transform[0][0] = extentW; transform[0][1] = 0; transform[0][2] = 0;
   transform[1][0] = 0; transform[1][1] = extentH; transform[1][2] = 0;
-  transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = extentNC;
+  transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = 3*extentN;
   IndexPartition image_ip =
     runtime->create_partition_by_restriction(ctx, image_is, part_is, transform, extent);
-  LogicalPartition image_lp = runtime->get_logical_partition(ctx, iamge_lr, image_ip);
-  LogicalPartition image_grad_lp =
-    runtime->get_logical_partition(ctx, image_grad_lr, image_ip);
+  assert(runtime->is_index_partition_disjoint(ctx, image_ip));
+  assert(runtime->is_index_partition_complete(ctx, image_ip));
+  LogicalPartition image_lp = runtime->get_logical_partition(ctx, image_lr, image_ip);
+  //LogicalPartition image_grad_lp =
+  //  runtime->get_logical_partition(ctx, image_grad_lr, image_ip);
   inputImage.numDim = 4;
   inputImage.adim[0] = config.inputWidth;
   inputImage.adim[1] = config.inputHeight;
@@ -68,15 +73,35 @@ FFModel::FFModel(FFConfig& config)
   inputImage.pdim[0] = extentW;
   inputImage.pdim[1] = extentH;
   inputImage.pdim[2] = 3;
-  inputImage.pdim[3] = extentNC / 3;
+  inputImage.pdim[3] = extentN;
   inputImage.region = image_lr;
-  inputImage.region_grad = image_grad_lr;
-  inputImage.partition = image_lp;
-  inputImage.partition_grad = image_grad_lp;
+  inputImage.region_grad = LogicalRegion::NO_REGION;
+  inputImage.part = image_lp;
+  inputImage.part_grad = LogicalPartition::NO_PART;
   // Build locail regions for input raw images
-  Rect<2, coord_t> raw_rect(Point<2>(0, 0), Point<2>(
+  int extentHWC = config.inputHeight * config.inputWidth * 3;
+  Rect<2> raw_rect(Point<2>(0, 0), Point<2>(extentHWC-1, config.batchSize-1));
+  IndexSpaceT<2> raw_is = runtime->create_index_space(ctx, raw_rect);
+  LogicalRegion raw_lr =
+      runtime->create_logical_region(ctx, raw_is, config.field_space);
+  Transform<2, 3, coord_t> raw_trans;
+  Rect<2, coord_t> raw_ext(Point<2>(0, 0), Point<2>(extentHWC-1, extentN-1));
+  raw_trans[0][0] = 0; raw_trans[0][1] = 0; raw_trans[0][2] = 0;
+  raw_trans[1][0] = 0; raw_trans[1][1] = 0; raw_trans[1][2] = extentN;
+  IndexPartition raw_ip =
+    runtime->create_partition_by_restriction(ctx, raw_is, part_is, raw_trans, raw_ext);
+  assert(runtime->is_index_partition_disjoint(ctx, raw_ip));
+  assert(runtime->is_index_partition_complete(ctx, raw_ip));
+  LogicalPartition raw_lp = runtime->get_logical_partition(ctx, raw_lr, raw_ip);
+  inputRaw.numDim = 2; //Dim [HWC, N]
+  inputRaw.adim[0] = extentHWC;
+  inputRaw.adim[1] = config.batchSize;
+  inputRaw.pdim[0] = extentHWC;
+  inputRaw.pdim[1] = extentN;
+  inputRaw.region = raw_lr;
+  inputRaw.part = raw_lp;
   // Build logical regions for labels
-  
+  // TODO: 
 }
 
 void Op::prefetch(const FFModel& ff)
