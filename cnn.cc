@@ -23,9 +23,11 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_cnn("cnn");
 
 void parse_input_args(char **argv, int argc,
-                      int &num_par_h, int &num_par_w, int& num_par_n,
-                      int &batch_size, int &fc_num_par_c, int &fc_num_par_n,
-                      int &num_loaders, int &num_nodes);
+                      int &epochs, int &batch_size,
+                      float &learningRate, float &weightDecay,
+                      int &printFreq,
+                      std::string &datasetPath, std::string &strategy,
+                      int &workersPerNode, int &loadersPerNode);
 
 void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime)
@@ -34,33 +36,51 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int num_par_h = 1;
   int num_par_w = 1;
   int num_par_n = 4;
-  int num_images = 256; // per_batch
+  int batchSize = 256; // per_batch
   int fc_num_par_c = 1;
   int fc_num_par_n = 1;
   int height = 224;
   int width = 224;
   bool profiling = false;
-  float learning_rate = 0.01;
-  int num_iterations = 10;
-  int num_loaders_per_node = 4;
-  int num_nodes = 1;
+  float learningRate = 0.01f;
+  float weightDecay = 0.0001f;
+  int printFeq = 100;
+  std::string datasetPath, strategy;
+  int numIterations = 10;
+  int loadersPerNode = 4, workersPerNode;
+  int numNodes = 1;
   // parse input arguments
   {
     const InputArgs &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
-    parse_input_args(argv, argc, num_par_h, num_par_w, num_par_n,
-                     num_images, fc_num_par_c, fc_num_par_n,
-                     num_loaders_per_node, num_nodes);
-    printf("batch_size(%d) par_h(%d) par_w(%d) par_n(%d)\n",
-           num_images, num_par_h, num_par_w, num_par_n);
-    printf("par_fc_c(%d) par_fc_n(%d)\n", fc_num_par_c, fc_num_par_n);
-    printf("num_loaders_per_node(%d) num_nodes(%d)\n", num_loaders_per_node, num_nodes);
+    parse_input_args(argv, argc, numIterations, batchSize, learningRate, weightDecay, printFeq,
+                     datasetPath, strategy, workersPerNode, loadersPerNode);
+    printf("batchSize(%d) inputHeight(%d) inputWdith(%d)\n",
+           batchSize, height, width);
+    printf("workersPerNode(%d) loadersPerNode(%d)\n",
+           workersPerNode, loadersPerNode);
+    if (datasetPath.length() == 0)
+      printf("datasetPath(synthetic data)\n");
+    else
+      printf("datasetPath(%s)\n", datasetPath.c_str());
+    if (strategy != "opt")
+      printf("strategy(Default Data Parallelism)\n");
+    else
+      printf("strategy(FlexFlow Optimized Strategy)\n");
+    if (workersPerNode == 0) {
+      printf("Missing -ll:gpu (number of GPUs to use on each node)\n");
+      return;
+    }
   }
+  num_par_n = workersPerNode * numNodes;
+  fc_num_par_n = workersPerNode * numNodes;
+  if (strategy == "opt")
+    fc_num_par_n = 1;
   //assert(num_par_h * num_par_w * num_par_n == fc_num_par_c * fc_num_par_n);
-  CnnModel model(num_images, height, width, num_par_n, num_par_h, num_par_w,
-                 fc_num_par_n, fc_num_par_c, profiling, learning_rate,
-                 num_loaders_per_node, num_nodes, ctx, runtime);
+  CnnModel model(batchSize, height, width, num_par_n, num_par_h, num_par_w,
+                 fc_num_par_n, fc_num_par_c, profiling, learningRate,
+                 loadersPerNode, numNodes, ctx, runtime);
   // First, create cnnContexts
   ArgumentMap local_args;
   size_t workSpaceSize = (size_t) 2 * 1024 * 1024 * 1024;
@@ -127,7 +147,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   model.init_layers();
 
   double ts_start = Realm::Clock::current_time_in_microseconds();
-  for (int i = 0; i < num_iterations; i++) {
+  for (int i = 0; i < numIterations; i++) {
     //model.load_images();
     model.prefetch();
     model.forward();
@@ -140,7 +160,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   future.get_void_result();
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("time = %.4fs, tp = %.2f images/s\n", run_time, num_images * num_iterations / run_time);
+  printf("time = %.4fs, tp = %.2f images/s\n", run_time, batchSize * numIterations / run_time);
 }
 
 int main(int argc, char **argv)
@@ -376,50 +396,50 @@ int main(int argc, char **argv)
 }
 
 void parse_input_args(char **argv, int argc,
-                      int &num_par_h, int &num_par_w, int& num_par_n,
-                      int &batch_size, int &fc_num_par_c, int &fc_num_par_n,
-                      int &num_loaders, int &num_nodes)
+                      int &epochs, int &batchSize,
+                      float &learningRate, float &weightDecay,
+                      int &printFreq,
+                      std::string &datasetPath, std::string &strategy,
+                      int &workersPerNode, int &loadersPerNode)
 {
   for (int i = 1; i < argc; i++)
   {
-    if (!strcmp(argv[i], "-ph"))
-    {
-      num_par_h = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "-e")) || (!strcmp(argv[i], "--epochs"))) {
+      epochs = atoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-pw"))
-    {
-      num_par_w = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "-b")) || (!strcmp(argv[i], "--batch-size"))) {
+      batchSize = atoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-pn"))
-    {
-      num_par_n = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "--lr")) || (!strcmp(argv[i], "--learning-rate"))) {
+      learningRate = atof(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-pfc"))
-    {
-      fc_num_par_c = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "--wd")) || (!strcmp(argv[i], "--weight-decay"))) {
+      weightDecay = atof(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-pfn"))
-    {
-      fc_num_par_n = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "-p")) || (!strcmp(argv[i], "--print-freq"))) {
+      printFreq = atoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-b"))
-    {
-      batch_size = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "-d")) || (!strcmp(argv[i], "--dataset"))) {
+      datasetPath = std::string(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-num_loaders"))
-    {
-      num_loaders = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "-s")) || (!strcmp(argv[i], "--strategy"))) {
+      strategy = std::string(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-num_nodes"))
+    if (!strcmp(argv[i], "-ll:gpu"))
     {
-      num_nodes = atoi(argv[++i]);
+      workersPerNode = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-ll:cpu"))
+    {
+      loadersPerNode = atoi(argv[++i]);
       continue;
     }
   }
