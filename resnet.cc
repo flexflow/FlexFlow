@@ -3,6 +3,7 @@
 
 void CnnModel::add_layers()
 {
+  printf("Create Resnet-121:\n");
   Tensor t = add_conv_layer(input_image, 64, 7, 7, 2, 2, 3, 3);
   t = add_pool_layer(t, 3, 3, 2, 2, 1, 1);
   for (int i = 0; i < 3; i++)

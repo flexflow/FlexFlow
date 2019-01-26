@@ -24,7 +24,7 @@ CnnHandle init_cudnn(const Task *task,
   size_t workSpaceSize = *(const size_t*) task->args;
   CnnHandle handle;
   handle.workSpaceSize = workSpaceSize;
-  printf("workSpaceSize = %zu\n", workSpaceSize);
+  //printf("workSpaceSize = %zu\n", workSpaceSize);
 #ifndef DISABLE_COMPUTATION
   checkCUDA(cublasCreate(&handle.blas));
   checkCUDNN(cudnnCreate(&handle.dnn));
@@ -580,7 +580,7 @@ Flat::Flat(CnnConfig config, Tensor input,
   output.region_grad = output_grad_lr;
   output.partition = output_lp;
   output.partition_grad = output_grad_lp;
-  printf("Create flat layer: input(N=%d C=%d H=%d W=%d) -> output(N=%d C=%d)\n",
+  printf("    Create flat layer: input(N=%d C=%d H=%d W=%d) -> output(N=%d C=%d)\n",
          input.adim[3], input.adim[2], input.adim[1], input.adim[0], output.adim[1], output.adim[0]);
  
   FieldSpace proj_fs = runtime->create_field_space(ctx);

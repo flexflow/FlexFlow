@@ -32,6 +32,7 @@ void parse_input_args(char **argv, int argc,
 void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime)
 {
+  printf("\n--------  Start FlexFlow Runtime  --------\n");
   // Set up config parameters
   int num_par_h = 1;
   int num_par_w = 1;
@@ -160,7 +161,8 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   future.get_void_result();
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("time = %.4fs, tp = %.2f images/s\n", run_time, batchSize * numIterations / run_time);
+  printf("End-to-end execution time = %.4fs\n", run_time);
+  printf("Training throughput = %.2f images/s\n", batchSize * numIterations / run_time);
 }
 
 int main(int argc, char **argv)

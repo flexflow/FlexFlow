@@ -36,7 +36,9 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   int fc_num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
   num_replica = fc_num_par_n;
 
+#ifdef VERBOSE_PRINT
   printf("Linear fc_num_par_c(%d) fc_num_par_n(%d)\n", fc_num_par_c, fc_num_par_n);
+#endif
   FieldSpace fs = config.field_space;
 
   Rect<2, coord_t> output_rect(Point<2>(0, 0), Point<2>(out_channels-1, input.adim[1]-1));
@@ -96,7 +98,7 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   transform[0][0] = extent_c * in_channels;
   transform[1][1] = 1;
   Rect<2, coord_t> extent_k_grad(Point<2>(0, 0), Point<2>(extent_c*in_channels-1, 0));
-  printf("extent_k(%dx%d %d)\n", extent_c, in_channels, 1);
+  //printf("extent_k(%dx%d %d)\n", extent_c, in_channels, 1);
   IndexPartition kernel_grad_ip =
     runtime->create_partition_by_restriction(ctx, kernel_grad_is, part_is,
                                              transform, extent_k_grad);
@@ -157,6 +159,8 @@ Linear::Linear(CnnConfig config, Tensor input, IndexSpaceT<2> part_is,
   output.partition = output_lp;
   output.region_grad = output_grad_lr;
   output.partition_grad = output_grad_lp;
+  printf("    Create linear layer: output(n=%d c=%d))\n",
+         output.adim[1], output.adim[0]);
 
   // Every partition reads all in_channels
   transform[0][0] = 0;
@@ -202,7 +206,9 @@ OpMeta* Linear::init_task(const Task *task,
   int input_channels = rect_input.hi[0] - rect_input.lo[0] + 1;
   int output_channels = rect_output.hi[0] - rect_output.lo[0] + 1;
   int batch_size = linear->output.pdim[1];
+#ifdef VERBOSE_PRINT
   printf("init linear (input): in_c(%d) out_c(%d) batch_size(%d)\n", input_channels, output_channels, batch_size);
+#endif
   LinearMeta* m = new LinearMeta(handle);
 #ifndef DISABLE_COMPUTATION
   m->relu = linear->relu;
@@ -706,7 +712,9 @@ void Linear::update_task(const Task *task,
   size_t bias_size = rect_bias.volume();
   assert(filter_size == linear->in_channels * linear->out_channels);
   assert(bias_size == linear->out_channels);
+#ifdef VERBOSE_PRINT
   printf("filter_size(%d) linear->num_replica(%d) rect_filter_grad(%d)\n", filter_size, linear->num_replica, rect_filter_grad.volume());
+#endif
   assert(filter_size * linear->num_replica == rect_filter_grad.volume());
   assert(bias_size * linear->num_replica == rect_bias_grad.volume());
   assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));

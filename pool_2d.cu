@@ -84,7 +84,7 @@ Pooling2D::Pooling2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
   output.partition = output_lp;
   output.region_grad = output_grad_lr;
   output.partition_grad = output_grad_lp;
-  printf("Create pool2d layer: output(n=%d c=%d h=%d w=%d)\n",
+  printf("    Create pool2d layer: output(n=%d c=%d h=%d w=%d)\n",
          output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
   // Compute partition bound for input
@@ -143,10 +143,12 @@ OpMeta* Pooling2D::init_task(const Task *task,
   int input_h = rect_input.hi[1] - rect_input.lo[1] + 1;
   int output_w = rect_output.hi[0] - rect_output.lo[0] + 1;
   int output_h = rect_output.hi[1] - rect_output.lo[1] + 1;
+#ifdef VERBOSE_PRINT
   printf("init pool (input): n(%d) c(%d) h(%d) w(%d)\n", pool->inputs[0].pdim[3],
         pool->inputs[0].pdim[2], input_h, input_w);
   printf("init pool (output): n(%d) c(%d) h(%d) w(%d)\n", pool->output.pdim[3],
         pool->output.pdim[2], output_h, output_w);
+#endif
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,

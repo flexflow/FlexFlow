@@ -2,6 +2,7 @@
 
 void CnnModel::add_layers()
 {
+  printf("Create Alexnet:\n");
   Tensor t = add_conv_layer(input_image, 64, 11, 11, 4, 4, 2, 2);
   t = add_pool_layer(t, 3, 3, 2, 2, 0, 0);
   t = add_conv_layer(t, 192, 5, 5, 1, 1, 2, 2);
