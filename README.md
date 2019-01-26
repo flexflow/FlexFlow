@@ -26,9 +26,9 @@ git clone --recursive https://gitlab.com/fflow/flexflow
 
 * Build a DNN model (e.g., alexnet):
 ```
-./ffcompile.sh examples/alexnet
+./ffcompile.sh alexnet
 ```
-where `examples/alexnet.cc` defines all operators in a DNN.
+where `alexnet.cc` defines all operators in a DNN.
 
 * To build a distributed version of FlexFlow, add a `-d` flag:
 ```
