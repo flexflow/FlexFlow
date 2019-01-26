@@ -188,8 +188,10 @@ CnnModel::CnnModel(int num_images, int height, int width,
   input_label.region = label_lr;
   input_label.partition = label_lp;
 
+#ifdef DATA_LOADER
   // Build DataLoader
   dataLoader = new DataLoader("list.txt");
+#endif
 };
 
 __inline__
@@ -282,6 +284,7 @@ void CnnModel::load_images_task(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
                                 Context ctx, HighLevelRuntime *runtime)
 {
+#ifdef DATA_LOADER
   long long start_time = Realm::Clock::current_time_in_microseconds();
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
@@ -333,6 +336,7 @@ void CnnModel::load_images_task(const Task *task,
   long long end_time = Realm::Clock::current_time_in_microseconds();
   printf("exe time = %lld\n", end_time - start_time);
   free(buffer);
+#endif
 }
 
 __global__
@@ -783,6 +787,7 @@ void Flat::update(const CnnModel& model)
 DataLoader::DataLoader(std::string filename)
   : fileIdx(0), imageIdx(0)
 {
+#ifdef DATA_LOADER
   FILE *file;
   file = fopen(filename.c_str(), "r");
   assert(file != NULL);
@@ -796,10 +801,12 @@ DataLoader::DataLoader(std::string filename)
     //H5Fclose(fileId);
     datasets.push_back(hdf);
   }
+#endif
 }
 
 void DataLoader::get_images(int numImages, DataLoadMeta &meta)
 {
+#ifdef DATA_LOADER
   int idx = 0;
   if (imageIdx == (int)datasets[fileIdx].numImages) {
     imageIdx = 0;
@@ -827,5 +834,5 @@ void DataLoader::get_images(int numImages, DataLoadMeta &meta)
   printf("meta.cnt = %d\n", meta.cnt);
   for (int i = 0; i < meta.cnt; i++)
     printf("fn = %s, start = %d, end = %d\n", meta.datasets[i].filename, meta.datasets[i].start, meta.datasets[i].end);
+#endif
 }
-

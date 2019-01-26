@@ -23,7 +23,6 @@
 #include <curand.h>
 #include <cublas_v2.h>
 #include <unistd.h>
-#include "hdf5.h"
 using namespace Legion;
 
 template<typename FT, int N, typename T = coord_t> using AccessorRO = FieldAccessor<READ_ONLY,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
@@ -169,6 +168,8 @@ public:
            float learning_rate,
            int num_loaders_per_node, int num_nodes,
            Context ctx, Runtime* runtime);
+
+  void add_layers();
 
   static void init_images_task(const Task *task,
                                const std::vector<PhysicalRegion> &regions,
@@ -546,8 +547,8 @@ public:
 
 struct HDFFile {
   char filename[MAX_FILENAME];
-  hid_t fid;
-  hsize_t numImages, start, end;
+  //hid_t fid;
+  //hsize_t numImages, start, end;
 };
 
 struct DataLoadMeta {

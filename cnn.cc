@@ -16,8 +16,7 @@
 #include <cstdio>
 #include "ops.h"
 #include "cnn_mapper.h"
-#include "inception.h"
-#define USE_INCEPTION
+#define USE_ALEXNET
 
 using namespace Legion;
 
@@ -38,11 +37,11 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   int num_images = 256; // per_batch
   int fc_num_par_c = 1;
   int fc_num_par_n = 1;
-  int height = 299;
-  int width = 299;
+  int height = 224;
+  int width = 224;
   bool profiling = false;
   float learning_rate = 0.01;
-  int num_iterations = 50;
+  int num_iterations = 10;
   int num_loaders_per_node = 4;
   int num_nodes = 1;
   // parse input arguments
@@ -75,24 +74,8 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
     model.cnn_handlers[idx++] = fm.get_result<CnnHandle>(*it);
   }
 
-  // Construct model (AlexNet)
-#ifdef USE_ALEXNET
-  Tensor t = model.add_conv_layer(model.input_image, 64, 11, 11, 4, 4, 2, 2);
-  t = model.add_pool_layer(t, 3, 3, 2, 2, 0, 0);
-  t = model.add_conv_layer(t, 192, 5, 5, 1, 1, 2, 2);
-  t = model.add_pool_layer(t, 3, 3, 2, 2, 0, 0);
-  t = model.add_conv_layer(t, 384, 3, 3, 1, 1, 1, 1);
-  t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
-  t = model.add_conv_layer(t, 256, 3, 3, 1, 1, 1, 1);
-  t = model.add_pool_layer(t, 3, 3, 2, 2, 0, 0);
-  t = model.add_flat_layer(t);
-  t = model.add_linear_layer(t, 4096);
-  t = model.add_linear_layer(t, 4096);
-  t = model.add_linear_layer(t, 1000, false/*relu*/);
-  t = model.add_softmax_layer(t);
-#endif
+  model.add_layers();
 
-  // Construct model (VGG-16Net)
 #ifdef USE_VGG
   Tensor t = model.add_conv_layer(model.input_image, 64, 3, 3, 1, 1, 1, 1);
   t = model.add_conv_layer(t, 64, 3, 3, 1, 1, 1, 1);
@@ -119,33 +102,6 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   t = model.add_softmax_layer(t);
 #endif
 
-  // Construct model (Inception-V3)
-#ifdef USE_INCEPTION
-  Tensor t = model.add_conv_layer(model.input_image, 32, 3, 3, 2, 2, 0, 0);
-  t = model.add_conv_layer(t, 32, 3, 3, 1, 1, 0, 0);
-  t = model.add_conv_layer(t, 64, 3, 3, 1, 1, 1, 1);
-  t = model.add_pool_layer(t, 3, 3, 2, 2, 0, 0);
-  t = model.add_conv_layer(t, 80, 1, 1, 1, 1, 0, 0);
-  t = model.add_conv_layer(t, 192, 3, 3, 1, 1, 1, 1);
-  t = model.add_pool_layer(t, 3, 3, 2, 2, 0, 0);
-  t = InceptionA(model, t, 32);
-  t = InceptionA(model, t, 64);
-  t = InceptionA(model, t, 64);
-  t = InceptionB(model, t);
-  t = InceptionC(model, t, 128);
-  t = InceptionC(model, t, 160);
-  t = InceptionC(model, t, 160);
-  t = InceptionC(model, t, 192);
-  t = InceptionD(model, t);
-  t = InceptionE(model, t);
-  t = InceptionE(model, t);
-  t = model.add_pool_layer(t, 8, 8, 1, 1, 0, 0, POOL2D_AVG);
-  t = model.add_flat_layer(t);
-  t = model.add_linear_layer(t, 1000, false/*relu*/);
-  t = model.add_softmax_layer(t);
-#endif
-
-  // Construct model (DenseNet121)
 #ifdef USE_DENSENET
   Tensor t = model.add_conv_layer(model.input_image, 64, 7, 7, 2, 2, 3, 3, false/*relu*/);
   t = model.add_bn_layer(t, true/*relu*/);
@@ -167,29 +123,6 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   t = model.add_softmax_layer(t);
 #endif
   
-  // Construct model (Resnet101)
-#ifdef USE_RESNET
-  Tensor t = model.add_conv_layer(model.input_image, 64, 7, 7, 2, 2, 3, 3);
-  t = model.add_pool_layer(t, 3, 3, 2, 2, 1, 1);
-  for (int i = 0; i < 3; i++)
-    t = BottleneckBlock(model, t, 256, 64, 1);
-  for (int i = 0; i < 4; i++) {
-    int stride = (i==0) ? 2 : 1;
-    t = BottleneckBlock(model, t, 512, 128, stride);
-  }
-  for (int i = 0; i < 23; i++) {
-    int stride = (i==0) ? 2 : 1;
-    t = BottleneckBlock(model, t, 1024, 256, stride);
-  }
-  for (int i = 0; i < 3; i++) {
-    int stride = (i==0) ? 2 : 1;
-    t = BottleneckBlock(model, t, 2048, 512, stride);
-  }
-  t = model.add_pool_layer(t, 7, 7, 1, 1, 0, 0, POOL2D_AVG);
-  t = model.add_flat_layer(t);
-  t = model.add_linear_layer(t, 1000, false/*relu*/);
-  t = model.add_softmax_layer(t);
-#endif
   // Initialize every layer
   model.init_layers();
 
