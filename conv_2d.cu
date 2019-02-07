@@ -29,7 +29,7 @@ Tensor FFModel::conv2d(std::string name,
     firstLayer = true;
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
-  IndexSpaceT<3> task_is;
+  IndexSpaceT<4> task_is = IndexSpaceT<4>(IndexSpace::NO_SPACE);
   Conv2D *conv = new Conv2D(name, config, input, task_is,
                             inChannels, outChannels, kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW,
@@ -43,7 +43,7 @@ locals[0] = kernel
 locals[1] = bias
 */
 Conv2D::Conv2D(std::string _name, FFConfig _config,
-               Tensor _input, IndexSpaceT<3> _task_is,
+               Tensor _input, IndexSpaceT<4> _task_is,
                int _in_channels, int _out_channels,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
@@ -57,39 +57,54 @@ Conv2D::Conv2D(std::string _name, FFConfig _config,
   relu(_relu), first_layer(_first_layer), profiling(_config.profiling)
 {
   Context ctx = _config.lg_ctx;
-  HighLevelRuntime* runtime = _config.lg_hlr;
-  Rect<3> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  Runtime* runtime = _config.lg_hlr;
+  Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
   num_replica = part_rect.volume();
   // Create output tensor
   int input_w = _input.adim[0];
   int input_h = _input.adim[1];
   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  int output_nc = _input.adim[3] * out_channels;
+  int output_c = out_channels;
+  int output_n = _input.adim[3];
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
-  int num_par_n = part_rect.hi[2] - part_rect.lo[2] + 1;
+  int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
+  int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
  
   FieldSpace fs = _config.field_space;
 
-  Rect<3, coord_t> output_rect(Point<3>(0, 0, 0),
-                       Point<3>(output_w-1, output_h-1, output_nc-1));
-  IndexSpaceT<3> output_is = runtime->create_index_space(ctx, output_rect);
+  IndexSpaceT<3, coord_t> output_is;
+  {
+    //const Legion::coord_t lo[4] = {0, 0, 0, 0};
+    //const Legion::coord_t hi[4] = {output_w-1, output_h-1, output_c-1, output_n-1};
+    Rect<4> output_rect(Realm::Point<4>(0, 0, 0, 0),
+        Realm::Point<4>(output_w-1, output_h-1, output_c-1, output_n-1));
+    output_is = runtime->create_index_space<4, coord_t>(ctx, output_rect);
+  }
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
-  Transform<3, 3, coord_t> transform;
+  Transform<4, 4, coord_t> transform;
   int extent_w = (output_w + num_par_w - 1) / num_par_w;
   int extent_h = (output_h + num_par_h - 1) / num_par_h;
-  int extent_nc = output_nc / num_par_n;
-  assert(output_nc % num_par_n == 0);
-  Rect<3, coord_t> extent(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
-  transform[0][0] = extent_w; transform[0][1] = 0; transform[0][2] = 0;
-  transform[1][0] = 0; transform[1][1] = extent_h; transform[1][2] = 0;
-  transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = extent_nc;
-  IndexPartition output_ip =
-    runtime->create_partition_by_restriction(ctx, output_is, task_is, transform, extent);
-  assert(runtime->is_index_partition_disjoint(ctx, output_ip));
-  assert(runtime->is_index_partition_complete(ctx, output_ip));
+  int extent_c = output_c / num_par_c;
+  int extent_n = output_n / num_par_n;
+  assert(output_c % num_par_c == 0);
+  assert(output_n % num_par_n == 0);
+  transform[0][0] = extent_w; transform[0][1] = 0; transform[0][2] = 0; transform[0][3] = 0;
+  transform[1][0] = 0; transform[1][1] = extent_h; transform[1][2] = 0; transform[1][3] = 0;
+  transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = extent_c; transform[2][3] = 0;
+  transform[3][0] = 0; transform[3][1] = 0; transform[3][2] = 0; transform[3][3] = extent_n;
+  IndexPartition output_ip;
+  {
+    //int lo[4] = {0, 0, 0, 0};
+    //int hi[4] = {extent_w-1, extent_h-1, extent_c-1, extent_n-1};
+    Rect<4> extent(Realm::Point<4>(0, 0, 0, 0),
+        Realm::Point<4>(extent_w-1, extent_h-1, extent_c-1, extent_n-1));
+    output_ip = runtime->create_partition_by_restriction(ctx, output_is, task_is, transform, extent);
+    assert(runtime->is_index_partition_disjoint(ctx, output_ip));
+    assert(runtime->is_index_partition_complete(ctx, output_ip));
+  }
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
   LogicalPartition output_grad_lp =
     runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
@@ -141,9 +156,8 @@ Conv2D::Conv2D(std::string _name, FFConfig _config,
   output.adim[3] = _input.adim[3];
   output.pdim[0] = extent_w;
   output.pdim[1] = extent_h;
-  output.pdim[2] = out_channels;
-  output.pdim[3] = extent_nc / out_channels;
-  assert(extent_nc % out_channels == 0);
+  output.pdim[2] = extent_c;
+  output.pdim[3] = extent_n;
   output.region = output_lr;
   output.part = output_lp;
   output.region_grad = output_grad_lr;
@@ -152,33 +166,41 @@ Conv2D::Conv2D(std::string _name, FFConfig _config,
          output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
   // Compute partition bound for input
-  Rect<3> input_part_rect =
+  Rect<4> input_part_rect =
     runtime->get_index_partition_color_space(ctx, inputs[0].part.get_index_partition());
   if (input_part_rect == part_rect) {
     input_lps[0] = _input.part;
   } else {
     printf("WARNING: input has a different partition!!!\n");
-    IndexSpaceT<3> input_is = IndexSpaceT<3>(inputs[0].region.get_index_space());
+    IndexSpaceT<4> input_is = IndexSpaceT<4>(inputs[0].region.get_index_space());
     //extent_w = stride_w * (output.pdim[0]-1) + kernel_w - 2 * padding_w;
     //extent_h = stride_h * (output.pdim[1]-1) + kernel_h - 2 * padding_h;
     //extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / num_par_n;
     extent_w = (inputs[0].adim[0] + num_par_w - 1) / num_par_w;
     extent_h = (inputs[0].adim[1] + num_par_h - 1) / num_par_h;
-    extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / num_par_n;
-    assert(inputs[0].adim[2] * inputs[0].adim[3] % num_par_n == 0);
-    Rect<3, coord_t> extent_i(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
+    extent_c = inputs[0].adim[2] / num_par_c;
+    extent_n = inputs[0].adim[3] / num_par_n;
+    assert(inputs[0].adim[2] % num_par_c == 0);
+    assert(inputs[0].adim[3] % num_par_n == 0);
     //transform[0][0] = stride_w * output.pdim[0];
     //transform[1][1] = stride_h * output.pdim[1];
     //transform[2][2] = extent_nc;
     transform[0][0] = extent_w;
     transform[1][1] = extent_h;
-    transform[2][2] = extent_nc;
+    transform[2][2] = extent_c;
+    transform[3][3] = extent_n;
 
-    IndexPartition input_ip =
-      runtime->create_partition_by_restriction(ctx, input_is, task_is,
-                                               transform, extent_i);
-    assert(runtime->is_index_partition_disjoint(ctx, input_ip));
-    assert(runtime->is_index_partition_complete(ctx, input_ip));
+    IndexPartition input_ip;
+    {
+      //int lo[4] = {0, 0, 0, 0};
+      //int hi[4] = {extent_w-1, extent_h-1, extent_c-1, extent_n-1};
+      Rect<4> extent_i(Realm::Point<4>(0, 0, 0, 0),
+          Realm::Point<4>(extent_w-1, extent_h-1, extent_c-1, extent_n-1));
+      input_ip = runtime->create_partition_by_restriction(ctx,
+          input_is, task_is, transform, extent_i);
+      assert(runtime->is_index_partition_disjoint(ctx, input_ip));
+      assert(runtime->is_index_partition_complete(ctx, input_ip));
+    }
     input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
   }
 }
@@ -412,9 +434,9 @@ void Conv2D::init(const FFModel& ff)
     runtime->execute_task(ctx, para_launcher);
   }
 
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<4> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[idx++];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
@@ -439,7 +461,7 @@ void Conv2D::init(const FFModel& ff)
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
   idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<4> it(rect); it(); it++) {
     meta[idx++] = fm.get_result<OpMeta*>(*it);
   }
 }
@@ -460,11 +482,11 @@ void Conv2D::forward_task(const Task *task,
   float alpha = 1.0f, beta = 0.0f;
   const Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
-  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 3> acc_output(regions[1], FID_DATA);
+  const AccessorRO<float, 4> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 4> acc_output(regions[1], FID_DATA);
   const AccessorRO<float, 1> acc_filter(regions[2], FID_DATA);
   const AccessorRO<float, 1> acc_bias(regions[3], FID_DATA);
-  Rect<3> rect_input, rect_output;
+  Rect<4> rect_input, rect_output;
   Rect<1> rect_filter, rect_bias;
   rect_input = runtime->get_index_space_domain(
                    ctx, task->regions[0].region.get_index_space());
@@ -526,9 +548,9 @@ void Conv2D::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<4> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
@@ -573,14 +595,14 @@ void Conv2D::backward_task(const Task *task,
   float alpha = 1.0f, beta = 0.0f;
   const Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
-  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 3> acc_input_grad(regions[1], FID_DATA);
-  const AccessorRO<float, 3> acc_output(regions[2], FID_DATA);
-  const AccessorRW<float, 3> acc_output_grad(regions[3], FID_DATA);
+  const AccessorRO<float, 4> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 4> acc_input_grad(regions[1], FID_DATA);
+  const AccessorRO<float, 4> acc_output(regions[2], FID_DATA);
+  const AccessorRW<float, 4> acc_output_grad(regions[3], FID_DATA);
   const AccessorRO<float, 1> acc_kernel(regions[4], FID_DATA);
   const AccessorWO<float, 1> acc_kernel_grad(regions[5], FID_DATA);
   const AccessorWO<float, 1> acc_bias_grad(regions[6], FID_DATA);
-  Rect<3> rect_input, rect_input_grad, rect_output, rect_output_grad;
+  Rect<4> rect_input, rect_input_grad, rect_output, rect_output_grad;
   Rect<1> rect_kernel, rect_kernel_grad, rect_bias_grad;
   rect_input =
     runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
@@ -663,9 +685,9 @@ void Conv2D::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<4> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }

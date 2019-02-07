@@ -183,7 +183,7 @@ public:
 class Conv2D : public Op {
 public:
   Conv2D(std::string name, FFConfig config,
-         Tensor input, IndexSpaceT<3> task_is,
+         Tensor input, IndexSpaceT<4> task_is,
          int inChannels, int outChannels,
          int kernelH, int kernelW,
          int strideH, int strideW,
@@ -217,7 +217,7 @@ public:
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, HighLevelRuntime *runtime);
 public:
-  IndexSpaceT<3> task_is;
+  IndexSpaceT<4> task_is;
   int in_channels, out_channels;
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   bool relu, first_layer, profiling;
@@ -241,7 +241,7 @@ public:
 class Pool2D : public Op {
 public:
   Pool2D(std::string name, FFConfig config,
-         Tensor input, IndexSpaceT<3> part_is,
+         Tensor input, IndexSpaceT<4> part_is,
          int kernelH, int kernelW,
          int strideH, int strideW,
          int paddingH, int paddingW,
@@ -286,7 +286,7 @@ public:
 class BatchNorm : public Op {
 public:
   BatchNorm(std::string name, FFConfig config,
-            Tensor input, IndexSpaceT<3> part_is,
+            Tensor input, IndexSpaceT<4> part_is,
             bool relu);
 
   void init(const FFModel&);
@@ -312,7 +312,7 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
 public:
-  IndexSpaceT<3> task_is;
+  IndexSpaceT<4> task_is;
   bool relu, profiling;
   int num_replica;
 };

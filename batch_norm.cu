@@ -19,7 +19,7 @@
 Tensor FFModel::batch_norm(std::string name, Tensor input, bool relu)
 {
   assert(input.numDim == 4); //Only support 4D BN for now
-  IndexSpaceT<3> task_is;
+  IndexSpaceT<4> task_is;
   BatchNorm *bn = new BatchNorm(name, config, input, task_is, relu);
   layers.push_back(bn);
   return bn->output;
@@ -30,37 +30,46 @@ Tensor FFModel::batch_norm(std::string name, Tensor input, bool relu)
   locals[1] = bias
 */
 BatchNorm::BatchNorm(std::string _name, FFConfig _config,
-                     Tensor _input, IndexSpaceT<3> _task_is,
+                     Tensor _input, IndexSpaceT<4> _task_is,
                      bool _relu)
 : Op(_name, _input), relu(_relu), profiling(_config.profiling)
 {
   Context ctx = _config.lg_ctx;
   HighLevelRuntime* runtime = _config.lg_hlr;
-  Rect<3> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
   num_replica = part_rect.volume();
   // Create output tensor
   int output_w = _input.adim[0];
   int output_h = _input.adim[1];
-  int output_nc = _input.adim[2] * _input.adim[3];
+  int output_c = _input.adim[2];
+  int output_n = _input.adim[3];
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
-  int num_par_n = part_rect.hi[2] - part_rect.lo[2] + 1;
+  int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
+  int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
 
   FieldSpace fs = _config.field_space;
-  Rect<3, coord_t> output_rect(Point<3>(0, 0, 0),
-                               Point<3>(output_w-1, output_h-1, output_nc-1));
-  IndexSpaceT<3> output_is = runtime->create_index_space(ctx, output_rect);
+  Rect<4> output_rect(Point<4>(0, 0, 0, 0),
+      Point<4>(output_w-1, output_h-1, output_c-1, output_n-1));
+  IndexSpaceT<4> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
-  Transform<3, 3, coord_t> trans;
   int extent_w = (output_w + num_par_w - 1) / num_par_w;
   int extent_h = (output_h + num_par_h - 1) / num_par_h;
-  int extent_nc = output_nc / num_par_n;
-  assert(output_nc % num_par_n == 0);
-  Rect<3, coord_t> ext(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
-  trans[0][0] = extent_w; trans[0][1] = 0; trans[0][2] = 0;
-  trans[1][0] = 0; trans[1][1] = extent_h; trans[1][2] = 0;
-  trans[2][0] = 0; trans[2][1] = 0; trans[2][2] = extent_nc;
+  int extent_c = output_c / num_par_c;
+  int extent_n = output_n / num_par_n;
+  assert(output_c % num_par_c == 0);
+  assert(output_n % num_par_n == 0);
+  Rect<4> ext(Point<4>(0, 0, 0, 0),
+      Point<4>(extent_w-1, extent_h-1, extent_c-1, extent_n-1));
+  Transform<4, 4, coord_t> trans;
+  for (int i = 0; i < 4; i++)
+    for (int j = 0; j < 4; j++)
+      trans[i][j] = 0;
+  trans[0][0] = extent_w;
+  trans[1][1] = extent_h;
+  trans[2][2] = extent_c;
+  trans[3][3] = extent_n;
   IndexPartition output_ip =
     runtime->create_partition_by_restriction(ctx, output_is, task_is, trans, ext);
   assert(runtime->is_index_partition_disjoint(ctx, output_ip));
@@ -126,12 +135,12 @@ OpMeta* BatchNorm::init_task(const Task *task,
   assert(task->regions.size() == 4);
   const BatchNorm* bm = (BatchNorm*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
-  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 3> acc_output(regions[1], FID_DATA);
+  const AccessorRO<float, 4> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 4> acc_output(regions[1], FID_DATA);
   const AccessorRO<float, 1> acc_scale(regions[2], FID_DATA);
   const AccessorRO<float, 1> acc_bias(regions[3], FID_DATA);
   Rect<1> rect_scale, rect_bias;
-  Rect<3> rect_input, rect_output;
+  Rect<4> rect_input, rect_output;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   rect_scale = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
@@ -251,9 +260,9 @@ void BatchNorm::init(const FFModel& ff)
     para_launcher.add_field(1, FID_DATA);
     runtime->execute_task(ctx, para_launcher);
   }
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<4> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[idx++];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
@@ -278,7 +287,7 @@ void BatchNorm::init(const FFModel& ff)
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
   idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<4> it(rect); it(); it++) {
     meta[idx++] = fm.get_result<OpMeta*>(*it);
   }
 }
@@ -300,11 +309,11 @@ void BatchNorm::forward_task(const Task *task,
   float alpha = 1.0f, beta = 0.0f;
   const BatchNorm* bm = (BatchNorm*) task->args;
   const BatchNormMeta* m = *((BatchNormMeta**) task->local_args);
-  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 3> acc_output(regions[1], FID_DATA);
+  const AccessorRO<float, 4> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 4> acc_output(regions[1], FID_DATA);
   const AccessorRO<float, 1> acc_scale(regions[2], FID_DATA);
   const AccessorRO<float, 1> acc_bias(regions[3], FID_DATA);
-  Rect<3> rect_input, rect_output;
+  Rect<4> rect_input, rect_output;
   Rect<1> rect_scale, rect_bias;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
@@ -354,9 +363,9 @@ void BatchNorm::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<4> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
@@ -402,14 +411,14 @@ void BatchNorm::backward_task(const Task *task,
   float alpha = 1.0f, beta = 0.0f;
   const BatchNorm* bm = (BatchNorm*) task->args;
   const BatchNormMeta* m = *((BatchNormMeta**) task->local_args);
-  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 3> acc_input_grad(regions[1], FID_DATA);
-  const AccessorRO<float, 3> acc_output(regions[2], FID_DATA);
-  const AccessorRW<float, 3> acc_output_grad(regions[3], FID_DATA);
+  const AccessorRO<float, 4> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 4> acc_input_grad(regions[1], FID_DATA);
+  const AccessorRO<float, 4> acc_output(regions[2], FID_DATA);
+  const AccessorRW<float, 4> acc_output_grad(regions[3], FID_DATA);
   const AccessorRO<float, 1> acc_scale(regions[4], FID_DATA);
   const AccessorWO<float, 1> acc_scale_grad(regions[5], FID_DATA);
   const AccessorWO<float, 1> acc_bias_grad(regions[6], FID_DATA);
-  Rect<3> rect_input, rect_input_grad, rect_output, rect_output_grad;
+  Rect<4> rect_input, rect_input_grad, rect_output, rect_output_grad;
   Rect<1> rect_scale, rect_scale_grad, rect_bias_grad;
   rect_input =
     runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
@@ -478,9 +487,9 @@ void BatchNorm::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<4> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }

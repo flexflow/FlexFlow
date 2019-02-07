@@ -244,7 +244,7 @@ CnnHandle init_cudnn(const Task *task,
 
 class Conv2D : public Op {
 public:
-  Conv2D(CnnConfig config, Tensor input, IndexSpaceT<3> part_is,
+  Conv2D(CnnConfig config, Tensor input, IndexSpaceT<4> part_is,
          int in_channels, int out_channels, int kernel_x, int kernel_y,
          int stride_x, int stride_y, int padding_x, int padding_y,
          bool relu, bool first_layer);

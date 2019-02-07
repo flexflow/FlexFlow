@@ -14,12 +14,13 @@
 #
 
 ifndef LG_RT_DIR
-#$(error LG_RT_DIR variable is not defined, aborting build)
-LG_RT_DIR	?= legion/runtime
+$(error LG_RT_DIR variable is not defined, aborting build)
+#LG_RT_DIR	?= legion/runtime
 endif
 
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 0		# Include debugging symbols
+MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)

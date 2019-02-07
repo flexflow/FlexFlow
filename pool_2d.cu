@@ -25,7 +25,7 @@ Tensor FFModel::pool2d(std::string name, Tensor input,
   assert(input.numDim == 4); /*NCHW*/
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
-  IndexSpaceT<3> task_is;
+  IndexSpaceT<4> task_is;
   Pool2D *pool = new Pool2D(name, config, input, task_is, kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW,
                             type, relu);
@@ -34,7 +34,7 @@ Tensor FFModel::pool2d(std::string name, Tensor input,
 }
 
 Pool2D::Pool2D(std::string _name, FFConfig _config,
-               Tensor _input, IndexSpaceT<3> _task_is,
+               Tensor _input, IndexSpaceT<4> _task_is,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
@@ -52,27 +52,37 @@ Pool2D::Pool2D(std::string _name, FFConfig _config,
   int input_h = _input.adim[1];
   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  int output_nc = _input.adim[3] * _input.adim[2];
-  Rect<3> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  int output_c = _input.adim[2];
+  int output_n = _input.adim[3];
+  Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
-  int num_par_n = part_rect.hi[2] - part_rect.lo[2] + 1;
+  int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
+  int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
 
   FieldSpace fs = _config.field_space;
 
-  Rect<3, coord_t> output_rect(Point<3>(0, 0, 0), Point<3>(output_w-1, output_h-1, output_nc-1));
-  IndexSpaceT<3> output_is = runtime->create_index_space(ctx, output_rect);
+  Rect<4> output_rect(Point<4>(0, 0, 0, 0),
+      Point<4>(output_w-1, output_h-1, output_c-1, output_n-1));
+  IndexSpaceT<4> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
-  Transform<3, 3, coord_t> transform;
   int extent_w = (output_w + num_par_w - 1) / num_par_w;
   int extent_h = (output_h + num_par_h - 1) / num_par_h;
-  int extent_nc = output_nc / num_par_n;
-  assert(output_nc % num_par_n == 0);
-  Rect<3, coord_t> extent(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
-  transform[0][0] = extent_w; transform[0][1] = 0; transform[0][2] = 0;
-  transform[1][0] = 0; transform[1][1] = extent_h; transform[1][2] = 0;
-  transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = extent_nc;
+  int extent_c = output_c / num_par_c;
+  int extent_n = output_n / num_par_n;
+  assert(output_c % num_par_c == 0);
+  assert(output_n % num_par_n == 0);
+  Rect<4> extent(Point<4>(0, 0, 0, 0),
+      Point<4>(extent_w-1, extent_h-1, extent_c-1, extent_n-1));
+  Transform<4, 4> transform;
+  for (int i = 0; i < 4; i++)
+    for (int j = 0; j < 4; j++)
+      transform[i][j] = 0;
+  transform[0][0] = extent_w; 
+  transform[1][1] = extent_h;
+  transform[2][2] = extent_c;
+  transform[3][3] = extent_n;
   IndexPartition output_ip =
     runtime->create_partition_by_restriction(ctx, output_is, task_is, transform, extent);
   LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
@@ -82,13 +92,12 @@ Pool2D::Pool2D(std::string _name, FFConfig _config,
   output.numDim = 4;
   output.adim[0] = output_w;
   output.adim[1] = output_h;
-  output.adim[2] = _input.adim[2];
-  output.adim[3] = _input.adim[3];
+  output.adim[2] = output_c;
+  output.adim[3] = output_n;
   output.pdim[0] = extent_w;
   output.pdim[1] = extent_h;
-  output.pdim[2] = output.adim[2];
-  output.pdim[3] = extent_nc / output.adim[2];
-  assert(extent_nc % output.adim[2] == 0);
+  output.pdim[2] = extent_c;
+  output.pdim[3] = extent_n;
   output.region = output_lr;
   output.part = output_lp;
   output.region_grad = output_grad_lr;
@@ -97,7 +106,7 @@ Pool2D::Pool2D(std::string _name, FFConfig _config,
          output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
   // Compute partition bound for input
-  Rect<3> input_part_rect =
+  Rect<4> input_part_rect =
     runtime->get_index_partition_color_space(ctx, inputs[0].part.get_index_partition());
   if (input_part_rect == part_rect) {
     input_lps[0] = _input.part;
@@ -109,15 +118,19 @@ Pool2D::Pool2D(std::string _name, FFConfig _config,
     //extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / config.num_par_n;
     extent_w = (inputs[0].adim[0] + num_par_w - 1) / num_par_w;
     extent_h = (inputs[0].adim[1] + num_par_h - 1) / num_par_h;
-    extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / num_par_n;
-    assert(inputs[0].adim[2] * inputs[0].adim[3] % num_par_n == 0);
-    Rect<3, coord_t> extent_i(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
+    extent_c = inputs[0].adim[2] / num_par_c;
+    extent_n = inputs[0].adim[3] / num_par_n;
+    assert(inputs[0].adim[2] % num_par_c == 0);
+    assert(inputs[0].adim[3] % num_par_n == 0);
+    Rect<4> extent_i(Point<4>(0, 0, 0, 0),
+        Point<4>(extent_w-1, extent_h-1, extent_c-1, extent_n-1));
     //transform[0][0] = stride_w * output.pdim[0];
     //transform[1][1] = stride_h * output.pdim[1];
     //transform[2][2] = extent_nc;
     transform[0][0] = extent_w;
     transform[1][1] = extent_h;
-    transform[2][2] = extent_nc;
+    transform[2][2] = extent_c;
+    transform[3][3] = extent_n;
 
     IndexPartition input_ip =
       runtime->create_partition_by_restriction(ctx, input_is, task_is, transform, extent_i);
@@ -140,7 +153,7 @@ OpMeta* Pool2D::init_task(const Task *task,
   const Pool2D* pool = (Pool2D*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   Pool2DMeta* m = new Pool2DMeta(handle);
-  Rect<3> rect_input, rect_output;
+  Rect<4> rect_input, rect_output;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
@@ -206,9 +219,9 @@ void Pool2D::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<4> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[idx++];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
@@ -225,7 +238,7 @@ void Pool2D::init(const FFModel& ff)
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
   idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<4> it(rect); it(); it++) {
     meta[idx++] = fm.get_result<OpMeta*>(*it);
   }
 }
@@ -243,9 +256,9 @@ void Pool2D::forward_task(const Task *task,
   assert(task->regions.size() == 2);
   float alpha = 1.0f, beta = 0.0f;
   const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
-  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 3> acc_output(regions[1], FID_DATA);
-  Rect<3> rect_input, rect_output;
+  const AccessorRO<float, 4> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 4> acc_output(regions[1], FID_DATA);
+  Rect<4> rect_input, rect_output;
   rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
@@ -266,9 +279,9 @@ void Pool2D::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<4> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
@@ -301,11 +314,11 @@ void Pool2D::backward_task(const Task *task,
   float alpha = 1.0f, beta = 0.0f;
   const Pool2D* pool = (Pool2D*) task->args;
   const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
-  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 3> acc_input_grad(regions[1], FID_DATA);
-  const AccessorRO<float, 3> acc_output(regions[2], FID_DATA);
-  const AccessorRO<float, 3> acc_output_grad(regions[3], FID_DATA);
-  Rect<3> rect_input, rect_input_grad, rect_output, rect_output_grad;
+  const AccessorRO<float, 4> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 4> acc_input_grad(regions[1], FID_DATA);
+  const AccessorRO<float, 4> acc_output(regions[2], FID_DATA);
+  const AccessorRO<float, 4> acc_output_grad(regions[3], FID_DATA);
+  Rect<4> rect_input, rect_input_grad, rect_output, rect_output_grad;
   rect_input =
     runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
   rect_input_grad =
@@ -354,9 +367,9 @@ void Pool2D::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<4> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
