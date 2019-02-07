@@ -14,7 +14,8 @@
 #
 
 ifndef LG_RT_DIR
-$(error LG_RT_DIR variable is not defined, aborting build)
+#$(error LG_RT_DIR variable is not defined, aborting build)
+LG_RT_DIR=legion/runtime
 endif
 
 # Flags for directing the runtime makefile what to include
