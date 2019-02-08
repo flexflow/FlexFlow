@@ -1,0 +1,14 @@
+syntax = "proto2";
+
+package FFProtoBuf;
+
+message Op {
+  required string name = 1;
+  required int32 nDims = 2;
+  repeated int32 dims = 3;
+  repeated int32 devices = 4;
+}
+
+message Strategy {
+  repeated Op ops = 1;
+}
