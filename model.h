@@ -23,19 +23,6 @@
 #include <cublas_v2.h>
 #include <unistd.h>
 
-// ========================================================
-// Define Runtime Constants
-// ========================================================
-#define MAX_NUM_INPUTS 6
-#define MAX_NUM_LOCALS 3
-#define MAX_NUM_WORKERS 16
-#define MAX_DIM 4
-#define MAX_FILENAME 200
-#define MAX_OPNAME 64
-// DataLoader
-#define MAX_SAMPLES_PER_LOAD 64
-#define MAX_FILE_LENGTH 128
-
 using namespace Legion;
 
 template<typename FT, int N, typename T = coord_t> using AccessorRO = FieldAccessor<READ_ONLY,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
@@ -178,6 +165,9 @@ public:
   std::vector<Op*> layers;
   FFHandler handlers[MAX_NUM_WORKERS];
   DataLoader *dataLoader;
+private:
+  IndexSpace get_or_create_task_is(ParallelConfig pc);
+  std::map<ParallelConfig, IndexSpace, ParaConfigCompare> taskIs;
 };
 
 class Conv2D : public Op {

@@ -104,6 +104,47 @@ FFModel::FFModel(FFConfig& config)
   // TODO: 
 }
 
+IndexSpace FFModel::get_or_create_task_is(ParallelConfig pc)
+{
+  if (taskIs.find(pc) != taskIs.end())
+    return taskIs[pc];
+  IndexSpace task_is;
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  switch (pc.nDims) {
+    case 1:
+    {
+      Rect<1> task_rect(Point<1>(0), Point<1>(pc.dim[0]-1));
+      task_is = runtime->create_index_space(ctx, task_rect);
+      break;
+    } 
+    case 2:
+    {
+      Rect<2> task_rect(Point<2>(0, 0), Point<2>(pc.dim[0]-1, pc.dim[1]-1));
+      task_is = runtime->create_index_space(ctx, task_rect);
+      break;
+    }
+    case 3:
+    {
+      Rect<3> task_rect(Point<3>(0, 0, 0),
+                        Point<3>(pc.dim[0]-1, pc.dim[1]-1, pc.dim[2]-1));
+      task_is = runtime->create_index_space(ctx, task_rect);
+      break;
+    }
+    case 4:
+    {
+      Rect<4> task_rect(Point<4>(0, 0, 0, 0),
+                        Point<4>(pc.dim[0]-1, pc.dim[1]-1, pc.dim[2]-1, pc.dim[3]-1));
+      task_is = runtime->create_index_space(ctx, task_rect);
+      break;
+    }
+    default:
+      assert(false);
+  }
+  taskIs[pc] = task_is;
+  return task_is;
+}
+
 void Op::prefetch(const FFModel& ff)
 {
   // TODO: perform prefetch for performance imporvement

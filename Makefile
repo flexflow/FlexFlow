@@ -30,7 +30,7 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 # Put the binary file name here
 OUTFILE		?= $(APP)
 # List all the application source files here
-GEN_SRC		?= cnn.cc model.cc cnn_mapper.cc $(APP).cc # .cc files
+GEN_SRC		?= cnn.cc model.cc cnn_mapper.cc strategy.pb.cc strategy.cc $(APP).cc # .cc files
 GEN_GPU_SRC	?= conv_2d.cu model.cu pool_2d.cu batch_norm.cu linear.cu softmax.cu concat.cu flat.cu cuda_helper.cu # .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
@@ -38,7 +38,7 @@ INC_FLAGS	?=
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcudnn -lcublas -lcurand 
+LD_FLAGS	?= -lcudnn -lcublas -lcurand -lprotobuf
 # For Point and Rect typedefs
 CC_FLAGS	+= -std=c++11
 NVCC_FLAGS  += -std=c++11

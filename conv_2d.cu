@@ -27,9 +27,9 @@ Tensor FFModel::conv2d(std::string name,
   bool firstLayer = false;
   if (input.region == inputImage.region)
     firstLayer = true;
-  //assert(strategies.find(name) != strategies.end());
-  //ParallelConfig pc = strategies[name];
-  IndexSpaceT<4> task_is = IndexSpaceT<4>(IndexSpace::NO_SPACE);
+  assert(config.strategies.find(name) != config.strategies.end());
+  ParallelConfig pc = config.strategies[name];
+  IndexSpaceT<4> task_is = IndexSpaceT<4>(get_or_create_task_is(pc));
   Conv2D *conv = new Conv2D(name, config, input, task_is,
                             inChannels, outChannels, kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW,
@@ -74,27 +74,30 @@ Conv2D::Conv2D(std::string _name, FFConfig _config,
  
   FieldSpace fs = _config.field_space;
 
-  IndexSpaceT<3, coord_t> output_is;
+  IndexSpaceT<4> output_is;
   {
     //const Legion::coord_t lo[4] = {0, 0, 0, 0};
     //const Legion::coord_t hi[4] = {output_w-1, output_h-1, output_c-1, output_n-1};
-    Rect<4> output_rect(Realm::Point<4>(0, 0, 0, 0),
-        Realm::Point<4>(output_w-1, output_h-1, output_c-1, output_n-1));
-    output_is = runtime->create_index_space<4, coord_t>(ctx, output_rect);
+    Rect<4> output_rect(Point<4>(0, 0, 0, 0),
+        Point<4>(output_w-1, output_h-1, output_c-1, output_n-1));
+    output_is = runtime->create_index_space<4>(ctx, output_rect);
   }
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
-  Transform<4, 4, coord_t> transform;
   int extent_w = (output_w + num_par_w - 1) / num_par_w;
   int extent_h = (output_h + num_par_h - 1) / num_par_h;
   int extent_c = output_c / num_par_c;
   int extent_n = output_n / num_par_n;
   assert(output_c % num_par_c == 0);
   assert(output_n % num_par_n == 0);
-  transform[0][0] = extent_w; transform[0][1] = 0; transform[0][2] = 0; transform[0][3] = 0;
-  transform[1][0] = 0; transform[1][1] = extent_h; transform[1][2] = 0; transform[1][3] = 0;
-  transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = extent_c; transform[2][3] = 0;
-  transform[3][0] = 0; transform[3][1] = 0; transform[3][2] = 0; transform[3][3] = extent_n;
+  Transform<4, 4, coord_t> transform;
+  for (int i = 0; i < 4; i++)
+    for (int j = 0; j < 4; j++)
+      transform[i][j] = 0;
+  transform[0][0] = extent_w;
+  transform[1][1] = extent_h;
+  transform[2][2] = extent_c;
+  transform[3][3] = extent_n;
   IndexPartition output_ip;
   {
     //int lo[4] = {0, 0, 0, 0};
