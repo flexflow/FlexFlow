@@ -65,10 +65,11 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
       printf("datasetPath(synthetic data)\n");
     else
       printf("datasetPath(%s)\n", datasetPath.c_str());
-    if (strategy != "opt")
-      printf("strategy(Default Data Parallelism)\n");
+    printf("strategy(%s)\n", strategy.c_str());
+    if (strategy.find("optimized") == std::string::npos)
+      printf("Default Data Parallelism\n");
     else
-      printf("strategy(FlexFlow Optimized Strategy)\n");
+      printf("FlexFlow Optimized Strategy\n");
     if (workersPerNode == 0) {
       printf("Missing -ll:gpu (number of GPUs to use on each node)\n");
       return;
@@ -76,7 +77,7 @@ void top_level_task(const Task *task, const std::vector<PhysicalRegion> &regions
   }
   num_par_n = workersPerNode * numNodes;
   fc_num_par_n = workersPerNode * numNodes;
-  if (strategy == "opt")
+  if (strategy.find("optimized") != std::string::npos)
     fc_num_par_n = 1;
   //assert(num_par_h * num_par_w * num_par_n == fc_num_par_c * fc_num_par_n);
   CnnModel model(batchSize, height, width, num_par_n, num_par_h, num_par_w,

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# GPU_ARCH must be one of fermi, k20, pascal, volta
+# set GPU_ARCH to one of fermi, k20, k80, pascal, and volta
 export GPU_ARCH=volta
 
 # set CUDA_HOME to the directoy of cuda, which should have subdirectories bin/, include/, and lib/
