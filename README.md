@@ -23,10 +23,12 @@ Compilation
 ```
 # Using git to download FlexFlow
 git clone --recursive https://gitlab.com/fflow/flexflow
+# Using zenodo archive
+unzip FlexFlow-v1.1.1.zip
+./install.sh
 ```
 
-* Set GPU architecture and CUDA path.
-Legion (FlexFlow's underlying runtime) requires users to specify GPU architecture and path to CUDA libraries through the `GPU_ARCH` and `CUDA_HOME` environment variables.
+* Set GPU architecture and CUDA path. Legion (FlexFlow's underlying runtime) requires users to specify GPU architecture and path to CUDA libraries through the `GPU_ARCH` and `CUDA_HOME` environment variables.
 You can set `GPU_ARCH` in `ffcompile.sh` to be one of `fermi`, `k20`, `k80`, `pascal`, and `volta`. Other GPU architectures can also be supported upon request. You can also set `CUDA_HOME` to be the path to CUDA libraries (the default path should be `/usr/local/cuda`.
 
 * Build a DNN model (e.g., alexnet):
