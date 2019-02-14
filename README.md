@@ -15,6 +15,7 @@ After you have cloned FlexFlow, use the following command lines to clone Legion 
 git submodule init
 git submodule update
 ```
+If you download FlexFlow source code from Zenodo, you can clone the submodules by running the `install.sh` script.
 
 Compilation
 -----------
