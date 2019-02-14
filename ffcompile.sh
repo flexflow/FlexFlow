@@ -5,8 +5,6 @@ export GPU_ARCH=volta
 
 # set CUDA_HOME to the directoy of cuda, which should have subdirectories bin/, include/, and lib/
 export CUDA_HOME=/usr/local/cuda
-git submodule init
-git submodule update
 
 APP="$1"
 
