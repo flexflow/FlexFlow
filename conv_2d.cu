@@ -22,11 +22,14 @@ Tensor FFModel::conv2d(std::string name,
                        int strideH, int strideW,
                        int paddingH, int paddingW, bool relu)
 {
+  printf("CP#1\n");
   assert(input.numDim == 4); /*NCHW*/
   int inChannels = input.adim[2];
   bool firstLayer = false;
   if (input.region == inputImage.region)
     firstLayer = true;
+  printf("config.strategies.size() = %zu\n", config.strategies.size());
+  printf("name = %s\n", name.c_str());
   assert(config.strategies.find(name) != config.strategies.end());
   ParallelConfig pc = config.strategies[name];
   IndexSpaceT<4> task_is = IndexSpaceT<4>(get_or_create_task_is(pc));

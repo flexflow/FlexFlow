@@ -2,6 +2,7 @@
 
 void FFModel::add_layers()
 {
+  printf("inputImage.numDim = %d\n", inputImage.numDim);
   Tensor t = conv2d("conv1", inputImage, 64, 11, 11, 4, 4, 2, 2);
   t = pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
   t = conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2);

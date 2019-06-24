@@ -31,7 +31,7 @@ bool load_strategies(std::map<std::string, ParallelConfig>& strategies,
       config.dim[j] = op.dims(j);
       n = n * config.dim[j];
     }
-    assert(n == op.devices_size());
+    assert(n == op.devices_size() || op.devices_size() == 0);
     for (int j = 0; j < op.devices_size(); j++)
       config.gpu[j] = op.devices(j);
     strategies[op.name()] = config;
@@ -69,6 +69,7 @@ bool FFConfig::load_strategy_file(std::string filename)
   }
 
   load_strategies(strategies, strategyPb);
+  printf("strategies.size() = %zu\n", strategies.size());
   return true;
 }
 

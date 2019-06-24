@@ -258,7 +258,7 @@ public:
                             Context ctx, Runtime *runtime);
 
 public:
-  IndexSpaceT<3> task_is;
+  IndexSpaceT<4> task_is;
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
   bool relu, profiling;

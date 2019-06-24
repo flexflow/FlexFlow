@@ -146,10 +146,10 @@ class Op : public ::google::protobuf::Message /* @@protoc_insertion_point(class_
 
   // accessors -------------------------------------------------------
 
-  // repeated int32 dims = 3;
+  // repeated int32 dims = 2;
   int dims_size() const;
   void clear_dims();
-  static const int kDimsFieldNumber = 3;
+  static const int kDimsFieldNumber = 2;
   ::google::protobuf::int32 dims(int index) const;
   void set_dims(int index, ::google::protobuf::int32 value);
   void add_dims(::google::protobuf::int32 value);
@@ -158,10 +158,10 @@ class Op : public ::google::protobuf::Message /* @@protoc_insertion_point(class_
   ::google::protobuf::RepeatedField< ::google::protobuf::int32 >*
       mutable_dims();
 
-  // repeated int32 devices = 4;
+  // repeated int32 devices = 3;
   int devices_size() const;
   void clear_devices();
-  static const int kDevicesFieldNumber = 4;
+  static const int kDevicesFieldNumber = 3;
   ::google::protobuf::int32 devices(int index) const;
   void set_devices(int index, ::google::protobuf::int32 value);
   void add_devices(::google::protobuf::int32 value);
@@ -185,22 +185,10 @@ class Op : public ::google::protobuf::Message /* @@protoc_insertion_point(class_
   ::std::string* release_name();
   void set_allocated_name(::std::string* name);
 
-  // required int32 nDims = 2;
-  bool has_ndims() const;
-  void clear_ndims();
-  static const int kNDimsFieldNumber = 2;
-  ::google::protobuf::int32 ndims() const;
-  void set_ndims(::google::protobuf::int32 value);
-
   // @@protoc_insertion_point(class_scope:FFProtoBuf.Op)
  private:
   void set_has_name();
   void clear_has_name();
-  void set_has_ndims();
-  void clear_has_ndims();
-
-  // helper for ByteSizeLong()
-  size_t RequiredFieldsByteSizeFallback() const;
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
@@ -208,7 +196,6 @@ class Op : public ::google::protobuf::Message /* @@protoc_insertion_point(class_
   ::google::protobuf::RepeatedField< ::google::protobuf::int32 > dims_;
   ::google::protobuf::RepeatedField< ::google::protobuf::int32 > devices_;
   ::google::protobuf::internal::ArenaStringPtr name_;
-  ::google::protobuf::int32 ndims_;
   friend struct protobuf_strategy_2eproto::TableStruct;
 };
 // -------------------------------------------------------------------
@@ -397,31 +384,7 @@ inline void Op::set_allocated_name(::std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:FFProtoBuf.Op.name)
 }
 
-// required int32 nDims = 2;
-inline bool Op::has_ndims() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-inline void Op::set_has_ndims() {
-  _has_bits_[0] |= 0x00000002u;
-}
-inline void Op::clear_has_ndims() {
-  _has_bits_[0] &= ~0x00000002u;
-}
-inline void Op::clear_ndims() {
-  ndims_ = 0;
-  clear_has_ndims();
-}
-inline ::google::protobuf::int32 Op::ndims() const {
-  // @@protoc_insertion_point(field_get:FFProtoBuf.Op.nDims)
-  return ndims_;
-}
-inline void Op::set_ndims(::google::protobuf::int32 value) {
-  set_has_ndims();
-  ndims_ = value;
-  // @@protoc_insertion_point(field_set:FFProtoBuf.Op.nDims)
-}
-
-// repeated int32 dims = 3;
+// repeated int32 dims = 2;
 inline int Op::dims_size() const {
   return dims_.size();
 }
@@ -451,7 +414,7 @@ Op::mutable_dims() {
   return &dims_;
 }
 
-// repeated int32 devices = 4;
+// repeated int32 devices = 3;
 inline int Op::devices_size() const {
   return devices_.size();
 }

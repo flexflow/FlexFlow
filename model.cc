@@ -20,12 +20,12 @@ using namespace std;
 
 LegionRuntime::Logger::Category log_model("ff");
 
-FFModel::FFModel(FFConfig& config)
+FFModel::FFModel(FFConfig& _config)
+: config(_config)
 {
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
   // Create field space
-  config.field_space = runtime->create_field_space(ctx);
   {
     FieldAllocator allocator =
       runtime->create_field_allocator(ctx, config.field_space);
@@ -38,26 +38,31 @@ FFModel::FFModel(FFConfig& config)
     dataLoader = new DataLoader(config.datasetPath);
   }
   // Build logical regions for images
-  Rect<3, coord_t> part_rect(Point<3>(0, 0, 0),
-      Point<3>(0, 0, config.numNodes * config.workersPerNode-1));
-  IndexSpaceT<3> part_is = runtime->create_index_space(ctx, part_rect);
-  Rect<3, coord_t> image_rect(Point<3>(0, 0, 0),
-    Point<3>(config.inputWidth-1, config.inputHeight-1, 3*config.batchSize-1));
-  IndexSpaceT<3> image_is = runtime->create_index_space(ctx, image_rect);
+  Rect<4> part_rect(Point<4>(0, 0, 0, 0),
+      Point<4>(0, 0, 0, config.numNodes * config.workersPerNode-1));
+  IndexSpaceT<4> part_is = runtime->create_index_space(ctx, part_rect);
+  Rect<4> image_rect(Point<4>(0, 0, 0, 0),
+    Point<4>(config.inputWidth-1, config.inputHeight-1, 2, config.batchSize-1));
+  IndexSpaceT<4> image_is = runtime->create_index_space(ctx, image_rect);
   LogicalRegion image_lr = runtime->create_logical_region(ctx, image_is,
                                config.field_space);
   //LogicalRegion image_grad_lr = runtime->create_logical_region(ctx, image_is,
   //                                  config.field_space);
-  Transform<3, 3, coord_t> transform;
   int extentW = config.inputWidth;
   int extentH = config.inputHeight;
+  int extentC = 3;
   assert(config.batchSize % (config.numNodes * config.workersPerNode) == 0);
-  int extentN = 3 * config.batchSize / (config.numNodes * config.workersPerNode);
-  Rect<3, coord_t> extent(Point<3>(0, 0, 0),
-                          Point<3>(extentW-1, extentH-1, 3*extentN-1));
-  transform[0][0] = extentW; transform[0][1] = 0; transform[0][2] = 0;
-  transform[1][0] = 0; transform[1][1] = extentH; transform[1][2] = 0;
-  transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = 3*extentN;
+  int extentN = config.batchSize / (config.numNodes * config.workersPerNode);
+  Rect<4> extent(Point<4>(0, 0, 0, 0),
+                 Point<4>(extentW-1, extentH-1, extentC-1, extentN-1));
+  Transform<4, 4> transform;
+  for (int i = 0; i < 4; i++)
+    for (int j = 0; j < 4; j++)
+      transform[i][j] = 0;
+  transform[0][0] = extentW;
+  transform[1][1] = extentH;
+  transform[2][2] = 3;
+  transform[3][3] = extentN;
   IndexPartition image_ip =
     runtime->create_partition_by_restriction(ctx, image_is, part_is, transform, extent);
   assert(runtime->is_index_partition_disjoint(ctx, image_ip));
@@ -78,16 +83,18 @@ FFModel::FFModel(FFConfig& config)
   inputImage.region_grad = LogicalRegion::NO_REGION;
   inputImage.part = image_lp;
   inputImage.part_grad = LogicalPartition::NO_PART;
-  // Build locail regions for input raw images
+  // Build local regions for input raw images
   int extentHWC = config.inputHeight * config.inputWidth * 3;
   Rect<2> raw_rect(Point<2>(0, 0), Point<2>(extentHWC-1, config.batchSize-1));
   IndexSpaceT<2> raw_is = runtime->create_index_space(ctx, raw_rect);
   LogicalRegion raw_lr =
       runtime->create_logical_region(ctx, raw_is, config.field_space);
-  Transform<2, 3, coord_t> raw_trans;
-  Rect<2, coord_t> raw_ext(Point<2>(0, 0), Point<2>(extentHWC-1, extentN-1));
-  raw_trans[0][0] = 0; raw_trans[0][1] = 0; raw_trans[0][2] = 0;
-  raw_trans[1][0] = 0; raw_trans[1][1] = 0; raw_trans[1][2] = extentN;
+  Transform<2, 4> raw_trans;
+  Rect<2> raw_ext(Point<2>(0, 0), Point<2>(extentHWC-1, extentN-1));
+  for (int i = 0; i < 2; i++)
+    for (int j = 0; j < 4; j++)
+      raw_trans[i][j] = 0;
+  raw_trans[1][3] = extentN;
   IndexPartition raw_ip =
     runtime->create_partition_by_restriction(ctx, raw_is, part_is, raw_trans, raw_ext);
   assert(runtime->is_index_partition_disjoint(ctx, raw_ip));

@@ -60,11 +60,9 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_ATTRIBUTE_SECTION
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Op, name_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Op, ndims_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Op, dims_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Op, devices_),
   0,
-  1,
   ~0u,
   ~0u,
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Strategy, _has_bits_),
@@ -76,8 +74,8 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_ATTRIBUTE_SECTION
   ~0u,
 };
 static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-  { 0, 9, sizeof(Op)},
-  { 13, 19, sizeof(Strategy)},
+  { 0, 8, sizeof(Op)},
+  { 11, 17, sizeof(Strategy)},
 };
 
 static ::google::protobuf::Message const * const file_default_instances[] = {
@@ -125,13 +123,12 @@ namespace {
 void AddDescriptorsImpl() {
   InitDefaults();
   static const char descriptor[] GOOGLE_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-      "\n\016strategy.proto\022\nFFProtoBuf\"@\n\002Op\022\014\n\004na"
-      "me\030\001 \002(\t\022\r\n\005nDims\030\002 \002(\005\022\014\n\004dims\030\003 \003(\005\022\017\n"
-      "\007devices\030\004 \003(\005\"\'\n\010Strategy\022\033\n\003ops\030\001 \003(\0132"
-      "\016.FFProtoBuf.Op"
+      "\n\016strategy.proto\022\nFFProtoBuf\"1\n\002Op\022\014\n\004na"
+      "me\030\001 \002(\t\022\014\n\004dims\030\002 \003(\005\022\017\n\007devices\030\003 \003(\005\""
+      "\'\n\010Strategy\022\033\n\003ops\030\001 \003(\0132\016.FFProtoBuf.Op"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 135);
+      descriptor, 120);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "strategy.proto", &protobuf_RegisterTypes);
 }
@@ -155,7 +152,6 @@ struct StaticDescriptorInitializer {
 
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int Op::kNameFieldNumber;
-const int Op::kNDimsFieldNumber;
 const int Op::kDimsFieldNumber;
 const int Op::kDevicesFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
@@ -180,14 +176,12 @@ Op::Op(const Op& from)
   if (from.has_name()) {
     name_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.name_);
   }
-  ndims_ = from.ndims_;
   // @@protoc_insertion_point(copy_constructor:FFProtoBuf.Op)
 }
 
 void Op::SharedCtor() {
   _cached_size_ = 0;
   name_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  ndims_ = 0;
 }
 
 Op::~Op() {
@@ -234,7 +228,6 @@ void Op::Clear() {
     GOOGLE_DCHECK(!name_.IsDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited()));
     (*name_.UnsafeRawStringPointer())->clear();
   }
-  ndims_ = 0;
   _has_bits_.Clear();
   _internal_metadata_.Clear();
 }
@@ -265,30 +258,16 @@ bool Op::MergePartialFromCodedStream(
         break;
       }
 
-      // required int32 nDims = 2;
+      // repeated int32 dims = 2;
       case 2: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(16u /* 16 & 0xFF */)) {
-          set_has_ndims();
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
-                 input, &ndims_)));
-        } else {
-          goto handle_unusual;
-        }
-        break;
-      }
-
-      // repeated int32 dims = 3;
-      case 3: {
-        if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(24u /* 24 & 0xFF */)) {
           DO_((::google::protobuf::internal::WireFormatLite::ReadRepeatedPrimitive<
                    ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
-                 1, 24u, input, this->mutable_dims())));
+                 1, 16u, input, this->mutable_dims())));
         } else if (
             static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(26u /* 26 & 0xFF */)) {
+            static_cast< ::google::protobuf::uint8>(18u /* 18 & 0xFF */)) {
           DO_((::google::protobuf::internal::WireFormatLite::ReadPackedPrimitiveNoInline<
                    ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
                  input, this->mutable_dims())));
@@ -298,16 +277,16 @@ bool Op::MergePartialFromCodedStream(
         break;
       }
 
-      // repeated int32 devices = 4;
-      case 4: {
+      // repeated int32 devices = 3;
+      case 3: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(32u /* 32 & 0xFF */)) {
+            static_cast< ::google::protobuf::uint8>(24u /* 24 & 0xFF */)) {
           DO_((::google::protobuf::internal::WireFormatLite::ReadRepeatedPrimitive<
                    ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
-                 1, 32u, input, this->mutable_devices())));
+                 1, 24u, input, this->mutable_devices())));
         } else if (
             static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(34u /* 34 & 0xFF */)) {
+            static_cast< ::google::protobuf::uint8>(26u /* 26 & 0xFF */)) {
           DO_((::google::protobuf::internal::WireFormatLite::ReadPackedPrimitiveNoInline<
                    ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
                  input, this->mutable_devices())));
@@ -354,21 +333,16 @@ void Op::SerializeWithCachedSizes(
       1, this->name(), output);
   }
 
-  // required int32 nDims = 2;
-  if (cached_has_bits & 0x00000002u) {
-    ::google::protobuf::internal::WireFormatLite::WriteInt32(2, this->ndims(), output);
-  }
-
-  // repeated int32 dims = 3;
+  // repeated int32 dims = 2;
   for (int i = 0, n = this->dims_size(); i < n; i++) {
     ::google::protobuf::internal::WireFormatLite::WriteInt32(
-      3, this->dims(i), output);
+      2, this->dims(i), output);
   }
 
-  // repeated int32 devices = 4;
+  // repeated int32 devices = 3;
   for (int i = 0, n = this->devices_size(); i < n; i++) {
     ::google::protobuf::internal::WireFormatLite::WriteInt32(
-      4, this->devices(i), output);
+      3, this->devices(i), output);
   }
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -397,18 +371,13 @@ void Op::SerializeWithCachedSizes(
         1, this->name(), target);
   }
 
-  // required int32 nDims = 2;
-  if (cached_has_bits & 0x00000002u) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(2, this->ndims(), target);
-  }
-
-  // repeated int32 dims = 3;
+  // repeated int32 dims = 2;
   target = ::google::protobuf::internal::WireFormatLite::
-    WriteInt32ToArray(3, this->dims_, target);
+    WriteInt32ToArray(2, this->dims_, target);
 
-  // repeated int32 devices = 4;
+  // repeated int32 devices = 3;
   target = ::google::protobuf::internal::WireFormatLite::
-    WriteInt32ToArray(4, this->devices_, target);
+    WriteInt32ToArray(3, this->devices_, target);
 
   if (_internal_metadata_.have_unknown_fields()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
@@ -418,26 +387,6 @@ void Op::SerializeWithCachedSizes(
   return target;
 }
 
-size_t Op::RequiredFieldsByteSizeFallback() const {
-// @@protoc_insertion_point(required_fields_byte_size_fallback_start:FFProtoBuf.Op)
-  size_t total_size = 0;
-
-  if (has_name()) {
-    // required string name = 1;
-    total_size += 1 +
-      ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->name());
-  }
-
-  if (has_ndims()) {
-    // required int32 nDims = 2;
-    total_size += 1 +
-      ::google::protobuf::internal::WireFormatLite::Int32Size(
-        this->ndims());
-  }
-
-  return total_size;
-}
 size_t Op::ByteSizeLong() const {
 // @@protoc_insertion_point(message_byte_size_start:FFProtoBuf.Op)
   size_t total_size = 0;
@@ -447,21 +396,13 @@ size_t Op::ByteSizeLong() const {
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
         _internal_metadata_.unknown_fields());
   }
-  if (((_has_bits_[0] & 0x00000003) ^ 0x00000003) == 0) {  // All required fields are present.
-    // required string name = 1;
+  // required string name = 1;
+  if (has_name()) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
         this->name());
-
-    // required int32 nDims = 2;
-    total_size += 1 +
-      ::google::protobuf::internal::WireFormatLite::Int32Size(
-        this->ndims());
-
-  } else {
-    total_size += RequiredFieldsByteSizeFallback();
   }
-  // repeated int32 dims = 3;
+  // repeated int32 dims = 2;
   {
     size_t data_size = ::google::protobuf::internal::WireFormatLite::
       Int32Size(this->dims_);
@@ -470,7 +411,7 @@ size_t Op::ByteSizeLong() const {
     total_size += data_size;
   }
 
-  // repeated int32 devices = 4;
+  // repeated int32 devices = 3;
   {
     size_t data_size = ::google::protobuf::internal::WireFormatLite::
       Int32Size(this->devices_);
@@ -510,16 +451,9 @@ void Op::MergeFrom(const Op& from) {
 
   dims_.MergeFrom(from.dims_);
   devices_.MergeFrom(from.devices_);
-  cached_has_bits = from._has_bits_[0];
-  if (cached_has_bits & 3u) {
-    if (cached_has_bits & 0x00000001u) {
-      set_has_name();
-      name_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.name_);
-    }
-    if (cached_has_bits & 0x00000002u) {
-      ndims_ = from.ndims_;
-    }
-    _has_bits_[0] |= cached_has_bits;
+  if (from.has_name()) {
+    set_has_name();
+    name_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.name_);
   }
 }
 
@@ -538,7 +472,7 @@ void Op::CopyFrom(const Op& from) {
 }
 
 bool Op::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
   return true;
 }
 
@@ -551,7 +485,6 @@ void Op::InternalSwap(Op* other) {
   dims_.InternalSwap(&other->dims_);
   devices_.InternalSwap(&other->devices_);
   name_.Swap(&other->name_);
-  swap(ndims_, other->ndims_);
   swap(_has_bits_[0], other->_has_bits_[0]);
   _internal_metadata_.Swap(&other->_internal_metadata_);
   swap(_cached_size_, other->_cached_size_);
@@ -628,31 +561,7 @@ void Op::set_allocated_name(::std::string* name) {
   // @@protoc_insertion_point(field_set_allocated:FFProtoBuf.Op.name)
 }
 
-// required int32 nDims = 2;
-bool Op::has_ndims() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-void Op::set_has_ndims() {
-  _has_bits_[0] |= 0x00000002u;
-}
-void Op::clear_has_ndims() {
-  _has_bits_[0] &= ~0x00000002u;
-}
-void Op::clear_ndims() {
-  ndims_ = 0;
-  clear_has_ndims();
-}
-::google::protobuf::int32 Op::ndims() const {
-  // @@protoc_insertion_point(field_get:FFProtoBuf.Op.nDims)
-  return ndims_;
-}
-void Op::set_ndims(::google::protobuf::int32 value) {
-  set_has_ndims();
-  ndims_ = value;
-  // @@protoc_insertion_point(field_set:FFProtoBuf.Op.nDims)
-}
-
-// repeated int32 dims = 3;
+// repeated int32 dims = 2;
 int Op::dims_size() const {
   return dims_.size();
 }
@@ -682,7 +591,7 @@ Op::mutable_dims() {
   return &dims_;
 }
 
-// repeated int32 devices = 4;
+// repeated int32 devices = 3;
 int Op::devices_size() const {
   return devices_.size();
 }

@@ -40,6 +40,9 @@ struct ParallelConfig {
 
 class FFConfig {
 public:
+  bool load_strategy_file(std::string filename);
+  bool save_strategy_file(std::string filename);
+public:
   int epochs, batchSize, numIterations, printFreq;
   int inputHeight, inputWidth;
   int numNodes, loadersPerNode, workersPerNode;
@@ -51,8 +54,6 @@ public:
   bool syntheticInput, profiling;
   std::string datasetPath, strategyFile;
   std::map<std::string, ParallelConfig> strategies;
-  bool load_strategy_file(std::string filename);
-  bool save_strategy_file(std::string filename);
 };
 
 struct ParaConfigCompare {

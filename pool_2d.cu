@@ -26,6 +26,7 @@ Tensor FFModel::pool2d(std::string name, Tensor input,
   assert(config.strategies.find(name) != config.strategies.end());
   ParallelConfig pc = config.strategies[name];
   IndexSpaceT<4> task_is = IndexSpaceT<4>(get_or_create_task_is(pc));
+  printf("CP#1\n");
   Pool2D *pool = new Pool2D(name, config, input, task_is, kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW,
                             type, relu);
@@ -45,8 +46,9 @@ Pool2D::Pool2D(std::string _name, FFConfig _config,
   padding_h(_padding_h), padding_w(_padding_w),
   pool_type(_type), relu(_relu), profiling(_config.profiling)
 {
+  printf("CP#2\n");
   Context ctx = _config.lg_ctx;
-  HighLevelRuntime* runtime = _config.lg_hlr;
+  Runtime* runtime = _config.lg_hlr;
 
   int input_w = _input.adim[0];
   int input_h = _input.adim[1];
