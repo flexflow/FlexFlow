@@ -1,4 +1,4 @@
-/* Copyright 2017 Stanford, NVIDIA
+/* Copyright 2019 Stanford, NVIDIA
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 #include <cstdio>
 #include "model.h"
 #include "config.h"
-#include "cnn_mapper.h"
+#include "src/mapper/mapper.h"
 #define USE_INCEPTION
 
 // Default Config Parameters

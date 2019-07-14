@@ -37,6 +37,22 @@ FFModel::FFModel(FFConfig& _config)
   } else {
     dataLoader = new DataLoader(config.datasetPath);
   }
+
+  // Init CUDA library on each worker
+  ArgumentMap local_args;
+  size_t workSpaceSize = config.workSpaceSize;
+  Rect<1> task_rect(Point<1>(0),
+                    Point<1>(config.workersPerNode * config.numNodes - 1));
+  IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect);
+  IndexLauncher initLauncher(FF_INIT_TASK_ID, task_is,
+                             TaskArgument(&workSpaceSize, sizeof(workSpaceSize)),
+                             local_args);
+  FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
+  fm.wait_all_results();
+  for (PointInRectIterator<1> it(task_rect); it(); it++) {
+    handlers[*it] = fm.get_result<FFHandler>(*it);
+  }
+#ifdef DEADCODE
   // Build logical regions for images
   Rect<4> part_rect(Point<4>(0, 0, 0, 0),
       Point<4>(0, 0, 0, config.numNodes * config.workersPerNode-1));
@@ -107,8 +123,7 @@ FFModel::FFModel(FFConfig& _config)
   inputRaw.pdim[1] = extentN;
   inputRaw.region = raw_lr;
   inputRaw.part = raw_lp;
-  // Build logical regions for labels
-  // TODO: 
+#endif
 }
 
 IndexSpace FFModel::get_or_create_task_is(ParallelConfig pc)

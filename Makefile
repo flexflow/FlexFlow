@@ -30,11 +30,13 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 # Put the binary file name here
 OUTFILE		?= $(APP)
 # List all the application source files here
-GEN_SRC		?= cnn.cc model.cc cnn_mapper.cc strategy.pb.cc strategy.cc $(APP).cc # .cc files
-GEN_GPU_SRC	?= conv_2d.cu model.cu pool_2d.cu batch_norm.cu linear.cu softmax.cu concat.cu flat.cu cuda_helper.cu # .cu files
+GEN_SRC		?= src/runtime/model.cc src/mapper/mapper.cc src/runtime/initializer.cc $(APP.cc) #.cc files src/ops/strategy.pb.cc src/ops/strategy.cc
+GEN_GPU_SRC	?= src/ops/conv_2d.cu src/runtime/model.cu src/ops/pool_2d.cu src/ops/batch_norm.cu src/ops/linear.cu  \
+		src/ops/softmax.cu src/ops/concat.cu src/ops/flat.cu \
+		src/runtime/initializer_kernel.cu src/runtime/accessor_kernel.cu cuda_helper.cu # .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?=
+INC_FLAGS	?= -Iinclude/
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=

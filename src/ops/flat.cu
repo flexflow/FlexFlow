@@ -29,7 +29,7 @@ Tensor FFModel::flat(std::string name, Tensor input)
 }
 
 Flat::Flat(std::string _name, FFConfig _config, Tensor _input,
-           IndexSpaceT<3> _task_is_3d, IndexSpaceT<2> _task_is_2d)
+           IndexSpaceT<4> _task_is_3d, IndexSpaceT<2> _task_is_2d)
 : Op(_name, _input), task_is_3d(_task_is_3d), task_is_2d(_task_is_2d)
 {
   Context ctx = _config.lg_ctx;

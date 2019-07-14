@@ -16,21 +16,49 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::linear(std::string name, Tensor input, int output_channels, bool relu)
+Tensor FFModel::dense(std::string name,
+                      const Tensor& input,
+                      int outDim, 
+                      ActiMode activation,
+                      Initializer* kernel_initializer,
+                      Initializer* bias_initializer)
 {
   assert(input.numDim == 2);
-  IndexSpaceT<2> task_is;
-  Linear *li = new Linear(name, config, input, task_is, output_channels, relu);
+  assert(config.strategies.find(name) != config.strategies.end());
+  ParallelConfig pc = config.strategies[name];
+  IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
+  Linear *li = new Linear(name, config, input, task_is, outDim, activation,
+                          kernel_initializer, bias_initializer);
   layers.push_back(li);
   return li->output;
 }
 
-Linear::Linear(std::string _name, FFConfig _config,
-               Tensor _input, IndexSpaceT<2> _task_is,
-               int _output_channels, bool _relu)
+//
+// Deprecated -- TO BE REMOVED
+//
+Tensor FFModel::linear(std::string name,
+                       const Tensor& input,
+                       int out_dim,
+                       ActiMode activation,
+                       Initializer* kernel_initializer,
+                       Initializer* bias_initializer)
+{
+  return dense(name, input, out_dim, activation,
+               kernel_initializer, bias_initializer);
+}
+
+Linear::Linear(std::string _name,
+               const FFConfig& _config,
+               const Tensor& _input,
+               const IndexSpaceT<2>& _task_is,
+               int outDim,
+               ActiMode _activation,
+               Initializer* kernel_initializer,
+               Initializer* bias_initializer)
 : Op(_name, _input), task_is(_task_is),
-  relu(_relu), profiling(_config.profiling),
-  in_channels(_input.adim[0]), out_channels(_output_channels)
+  activation(_activation),
+  profiling(_config.profiling)
+  // in_channels(_input.adim[0]), out_channels(outDim)
 {
   assert(_input.numDim == 2);
   Context ctx = _config.lg_ctx;
@@ -39,18 +67,19 @@ Linear::Linear(std::string _name, FFConfig _config,
   fc_num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
   int fc_num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
   num_replica = fc_num_par_n;
+  int inDim = _input.adim[0];
 
   printf("Linear fc_num_par_c(%d) fc_num_par_n(%d)\n", fc_num_par_c, fc_num_par_n);
   FieldSpace fs = _config.field_space;
 
-  Rect<2, coord_t> output_rect(Point<2>(0, 0), Point<2>(out_channels-1, _input.adim[1]-1));
+  Rect<2> output_rect(Point<2>(0, 0), Point<2>(outDim-1, _input.adim[1]-1));
   IndexSpaceT<2> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
   Transform<2, 2, coord_t> transform;
-  int extent_c = (out_channels + fc_num_par_c - 1) / fc_num_par_c;
+  int extent_c = (outDim + fc_num_par_c - 1) / fc_num_par_c;
   int extent_n = (_input.adim[1] + fc_num_par_n - 1) / fc_num_par_n;
-  Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
+  Rect<2> extent(Point<2>(0, 0), Point<2>(extent_c-1, extent_n-1));
   transform[0][0] = extent_c; transform[0][1] = 0;
   transform[1][0] = 0; transform[1][1] = extent_n;
   IndexPartition output_ip =
@@ -62,12 +91,12 @@ Linear::Linear(std::string _name, FFConfig _config,
 
   // Note: we only need replica's grad, so no need to create lr/lp for forward
   Rect<2, coord_t> replica_rect(Point<2>(0, 0),
-                       Point<2>(in_channels*fc_num_par_c-1, _input.adim[1]-1));
+                       Point<2>(inDim*fc_num_par_c-1, _input.adim[1]-1));
   IndexSpaceT<2> replica_is = runtime->create_index_space(ctx, replica_rect);
   LogicalRegion replica_lr = runtime->create_logical_region(ctx, replica_is, fs);
-  transform[0][0] = in_channels;
+  transform[0][0] = inDim;
   transform[1][1] = extent_n;
-  Rect<2, coord_t> extent_r(Point<2>(0, 0), Point<2>(in_channels-1, extent_n-1));
+  Rect<2, coord_t> extent_r(Point<2>(0, 0), Point<2>(inDim-1, extent_n-1));
   IndexPartition replica_ip =
     runtime->create_partition_by_restriction(ctx, replica_is, task_is, transform, extent_r);
   assert(runtime->is_index_partition_disjoint(ctx, replica_ip));
@@ -83,8 +112,8 @@ Linear::Linear(std::string _name, FFConfig _config,
   for (int i = 0; i < fc_num_par_c; i++) {
     transform[0][0] = _input.pdim[0];
     transform[1][1] = _input.pdim[1];
-    Rect<2, coord_t> ext(Point<2>(in_channels*i, 0),
-                         Point<2>(in_channels*i + _input.pdim[0] - 1,
+    Rect<2, coord_t> ext(Point<2>(inDim*i, 0),
+                         Point<2>(inDim*i + _input.pdim[0] - 1,
                                   _input.pdim[1]-1));
     IndexPartition ip =
       runtime->create_partition_by_restriction(ctx, replica_is, task_is, transform, ext);
@@ -92,16 +121,16 @@ Linear::Linear(std::string _name, FFConfig _config,
     replica_sub_lps[i] = runtime->get_logical_partition(ctx, replica_lr, ip);
   }
 
-  Rect<1, coord_t> kernel_rect(0, in_channels * out_channels - 1);
-  Rect<2, coord_t> kernel_grad_rect(Point<2>(0, 0), Point<2>(out_channels * in_channels-1, fc_num_par_n-1));
+  Rect<1, coord_t> kernel_rect(0, inDim * outDim - 1);
+  Rect<2, coord_t> kernel_grad_rect(Point<2>(0, 0), Point<2>(outDim * inDim-1, fc_num_par_n-1));
   IndexSpaceT<1> kernel_is = runtime->create_index_space(ctx, kernel_rect);
   IndexSpaceT<2> kernel_grad_is = runtime->create_index_space(ctx, kernel_grad_rect);
   LogicalRegion kernel_lr = runtime->create_logical_region(ctx, kernel_is, fs);
   LogicalRegion kernel_grad_lr = runtime->create_logical_region(ctx, kernel_grad_is, fs);
-  transform[0][0] = extent_c * in_channels;
+  transform[0][0] = extent_c * inDim;
   transform[1][1] = 1;
-  Rect<2, coord_t> extent_k_grad(Point<2>(0, 0), Point<2>(extent_c*in_channels-1, 0));
-  printf("extent_k(%dx%d %d)\n", extent_c, in_channels, 1);
+  Rect<2, coord_t> extent_k_grad(Point<2>(0, 0), Point<2>(extent_c*inDim-1, 0));
+  printf("extent_k(%dx%d %d)\n", extent_c, inDim, 1);
   IndexPartition kernel_grad_ip =
     runtime->create_partition_by_restriction(ctx, kernel_grad_is, task_is,
                                              transform, extent_k_grad);
@@ -110,8 +139,8 @@ Linear::Linear(std::string _name, FFConfig _config,
   LogicalPartition kernel_grad_lp =
     runtime->get_logical_partition(ctx, kernel_grad_lr, kernel_grad_ip);
   Transform<1, 2, coord_t> trans;
-  trans[0][0] = extent_c * in_channels; trans[0][1] = 0;
-  Rect<1, coord_t> extent_k(0, extent_c*in_channels-1);
+  trans[0][0] = extent_c * inDim; trans[0][1] = 0;
+  Rect<1, coord_t> extent_k(0, extent_c*inDim-1);
   IndexPartition kernel_ip =
     runtime->create_partition_by_restriction(ctx, kernel_is, task_is, trans, extent_k);
   LogicalPartition kernel_lp =
@@ -122,9 +151,10 @@ Linear::Linear(std::string _name, FFConfig _config,
   kernel_tensor.region_grad = kernel_grad_lr;
   kernel_tensor.part_grad = kernel_grad_lp;
   locals[1] = kernel_tensor;
+  kernel_initializer->init(ctx, runtime, &kernel_tensor);
 
-  Rect<1, coord_t> bias_rect(0, out_channels-1);
-  Rect<2, coord_t> bias_grad_rect(Point<2>(0, 0), Point<2>(out_channels-1, fc_num_par_n-1));
+  Rect<1, coord_t> bias_rect(0, outDim-1);
+  Rect<2, coord_t> bias_grad_rect(Point<2>(0, 0), Point<2>(outDim-1, fc_num_par_n-1));
   IndexSpaceT<1> bias_is = runtime->create_index_space(ctx, bias_rect);
   IndexSpaceT<2> bias_grad_is = runtime->create_index_space(ctx, bias_grad_rect);
   LogicalRegion bias_lr = runtime->create_logical_region(ctx, bias_is, fs);
@@ -151,10 +181,11 @@ Linear::Linear(std::string _name, FFConfig _config,
   bias_tensor.region_grad = bias_grad_lr;
   bias_tensor.part_grad = bias_grad_lp;
   locals[2] = bias_tensor;
+  bias_initializer->init(ctx, runtime, &bias_tensor);
   numLocals = 3;
 
   output.numDim = 2;
-  output.adim[0] = out_channels;
+  output.adim[0] = outDim;
   output.adim[1] = _input.adim[1];
   output.pdim[0] = extent_c;
   output.pdim[1] = extent_n;
@@ -163,10 +194,10 @@ Linear::Linear(std::string _name, FFConfig _config,
   output.region_grad = output_grad_lr;
   output.part_grad = output_grad_lp;
 
-  // Every partition reads all in_channels
+  // Every partition reads all inDim
   transform[0][0] = 0;
   transform[1][1] = extent_n;
-  Rect<2, coord_t> extent_i(Point<2>(0, 0), Point<2>(in_channels-1, extent_n-1));
+  Rect<2, coord_t> extent_i(Point<2>(0, 0), Point<2>(inDim-1, extent_n-1));
   IndexSpaceT<2> input_is = IndexSpaceT<2>(inputs[0].region.get_index_space());
   IndexPartition input_ip 
      = runtime->create_partition_by_restriction(ctx, input_is, task_is, transform, extent_i);
@@ -209,7 +240,7 @@ OpMeta* Linear::init_task(const Task *task,
   int batch_size = linear->output.pdim[1];
   printf("init linear (input): in_c(%d) out_c(%d) batch_size(%d)\n", input_channels, output_channels, batch_size);
   LinearMeta* m = new LinearMeta(handle);
-  m->relu = linear->relu;
+  m->activation = linear->activation;
   m->in_channels = input_channels;
   m->out_channels = output_channels;
   m->batch_size = batch_size;
@@ -220,7 +251,7 @@ OpMeta* Linear::init_task(const Task *task,
   checkCUDA(cudaMalloc(&m->one_ptr, sizeof(float) * batch_size));
   checkCUDA(cudaMemcpy(m->one_ptr, dram_one_ptr,
                        sizeof(float) * batch_size, cudaMemcpyHostToDevice));
-  if (m->relu) {
+  if (m->activation == AC_MODE_RELU) {
     checkCUDNN(cudnnCreateActivationDescriptor(&m->actiDesc));
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
                                             CUDNN_PROPAGATE_NAN, 0.0));
@@ -233,6 +264,7 @@ OpMeta* Linear::init_task(const Task *task,
   return m;
 }
 
+#ifdef DEADCODE
 /*
   regions[0](O): filter
   regions[1](O): bias
@@ -273,6 +305,7 @@ void Linear::init_para_task(const Task *task,
       bias_ptr, linear->out_channels, -factor, factor);
   curandDestroyGenerator(genGPU);
 }
+#endif
 
 void Linear::init(const FFModel& ff)
 {
@@ -280,6 +313,7 @@ void Linear::init(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
 
+#ifdef DEADCODE
   // First we initialize the filter and bias parameters
   {
     TaskLauncher para_launcher(LINEAR_INIT_PARA_TASK_ID, TaskArgument(this, sizeof(Linear)));
@@ -291,6 +325,7 @@ void Linear::init(const FFModel& ff)
     para_launcher.add_field(1, FID_DATA);
     runtime->execute_task(ctx, para_launcher);
   }
+#endif
 
   Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
@@ -396,7 +431,7 @@ void Linear::forward_task(const Task *task,
                         &alpha, bias_ptr, 1,
                         one_ptr, 1, &alpha,
                         output_ptr, output_channels));
-  if (m->relu) {
+  if (m->activation != AC_MODE_NONE) {
     checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
                                       &alpha, m->outputTensor, output_ptr,
                                       &beta, m->outputTensor, output_ptr));
@@ -529,9 +564,12 @@ void Linear::backward_task(const Task *task,
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
-  if (m->relu) {
+  if (m->activation == AC_MODE_RELU) {
     int n = rect_output.volume();
     reluBackward<<<GET_BLOCKS(n), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, n);
+  } else {
+    // TODO: only support relu or none activation
+    assert(m->activation == AC_MODE_NONE);
   }
 
   // Compute weight gradiant
@@ -671,6 +709,7 @@ void Linear::backward(const FFModel& ff)
   }
 }
 
+#ifdef DEADCODE
 /*
   regions[0](I/O): filter
   regions[1](I): filter_grad
@@ -746,3 +785,4 @@ void Linear::update(const FFModel& ff)
     runtime->execute_task(ctx, launcher);
   }
 }
+#endif

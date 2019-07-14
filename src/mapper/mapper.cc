@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "cnn_mapper.h"
+#include "mapper.h"
 
 CnnMapper::CnnMapper(MapperRuntime *rt, Machine machine, Processor local,
                      const char *mapper_name,

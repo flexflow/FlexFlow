@@ -1,4 +1,4 @@
-/* Copyright 2018 Stanford
+/* Copyright 2019 Stanford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,10 @@
 
 #ifndef _FLEXFLOW_RUNTIME_H_
 #define _FLEXFLOW_RUNTIME_H_
-#include "config.h"
 #include "legion.h"
+#include "config.h"
+#include "initializer.h"
+#include "accessor.h"
 #include <cudnn.h>
 #include <cuda_runtime.h>
 #include <curand.h>
@@ -24,10 +26,6 @@
 #include <unistd.h>
 
 using namespace Legion;
-
-template<typename FT, int N, typename T = coord_t> using AccessorRO = FieldAccessor<READ_ONLY,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
-template<typename FT, int N, typename T = coord_t> using AccessorRW = FieldAccessor<READ_WRITE,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
-template<typename FT, int N, typename T = coord_t> using AccessorWO = FieldAccessor<WRITE_ONLY,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
 
 enum TaskIDs {
   TOP_LEVEL_TASK_ID,
@@ -64,6 +62,18 @@ enum TaskIDs {
   CONCAT_FWD_TASK_ID,
   CONCAT_BWD_TASK_ID,
   DUMMY_TASK_ID,
+  // Initializer
+  GLOROT_INIT_TASK_ID,
+  ZEROS_INIT_TASK_ID,
+  UNIFORM_INIT_TASK_ID,
+  NORMAL_INIT_TASK_ID,
+};
+
+enum ActiMode {
+  AC_MODE_NONE,
+  AC_MODE_RELU,
+  AC_MODE_SIGMOID,
+  AC_MODE_TANH,
 };
 
 enum PoolType {
@@ -140,10 +150,20 @@ public:
   Tensor batch_norm(std::string name,
                     Tensor input,
                     bool relu = true);
+  // Add a dense layer
+  Tensor dense(std::string name,
+               const Tensor& input,
+               int outDim,
+               ActiMode activation = AC_MODE_NONE,
+               Initializer* kernel_initializer = NULL,
+               Initializer* bias_initializer = NULL);
   // Add a linear layer
   Tensor linear(std::string name,
-                Tensor input, int outChannels,
-                bool relu = true);
+                const Tensor& input,
+                int outChannels,
+                ActiMode activation = AC_MODE_NONE,
+                Initializer* kernel_initializer = NULL,
+                Initializer* bias_initializer = NULL);
   // Add a concat layer
   Tensor concat(std::string name,
                 int n, Tensor* tensors);
@@ -319,9 +339,14 @@ public:
 
 class Linear : public Op {
 public:
-  Linear(std::string name, FFConfig config,
-         Tensor input, IndexSpaceT<2> part_is,
-         int outChannels, bool relu);
+  Linear(std::string name,
+         const FFConfig& config,
+         const Tensor& input,
+         const IndexSpaceT<2>& part_is,
+         int outChannels,
+         ActiMode activation,
+         Initializer* kernel_initializer,
+         Initializer* bias_initializer);
 
   void init(const FFModel&);
 
@@ -356,9 +381,9 @@ public:
 public:
   IndexSpaceT<2> task_is;
   LogicalPartition replica_sub_lps[MAX_NUM_WORKERS];
-  bool relu, profiling;
-  int in_channels, out_channels, num_replica, fc_num_par_c;
-  float learning_rate;
+  bool profiling;
+  int num_replica, fc_num_par_c;
+  ActiMode activation;
 };
 
 class LinearMeta : public OpMeta {
@@ -367,7 +392,7 @@ public:
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;
   int in_channels, out_channels, batch_size;
-  bool relu;
+  ActiMode activation;
   float *one_ptr, *pre_relu;
 };
 
@@ -375,7 +400,7 @@ class Flat : public Op {
 public:
   Flat(std::string name, FFConfig config,
        Tensor input,
-       IndexSpaceT<3> part_is_3d,
+       IndexSpaceT<4> part_is_3d,
        IndexSpaceT<2> part_is_2d);
 
   void init(const FFModel&);
