@@ -61,8 +61,8 @@ void ZerosInitializer::init(Context ctx,
   runtime->execute_task(ctx, launcher);
 }
 
-UniformInitializer::UniformInitializer(float _min, float _max)
-: min_val(_min), max_val(_max) {}
+UniformInitializer::UniformInitializer(int _seed, float _min, float _max)
+: seed(_seed), min_val(_min), max_val(_max) {}
 
 UniformInitializer::~UniformInitializer(void)
 {}
@@ -80,8 +80,8 @@ void UniformInitializer::init(Context ctx,
   runtime->execute_task(ctx, launcher);
 }
 
-NormInitializer::NormInitializer(float _mean, float _stddev)
-: mean(_mean), stddev(_stddev) {}
+NormInitializer::NormInitializer(int _seed, float _mean, float _stddev)
+: seed(_seed), mean(_mean), stddev(_stddev) {}
 
 NormInitializer::~NormInitializer(void)
 {}

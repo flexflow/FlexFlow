@@ -16,18 +16,18 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::concat(std::string name, int n, Tensor* tensors)
+Tensor FFModel::concat(std::string name, int n, Tensor* tensors, int axis)
 {
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
   IndexSpaceT<3> task_is;
-  Concat *cat = new Concat(name, config, n, tensors, task_is);
+  Concat *cat = new Concat(name, config, n, tensors, task_is, axis);
   layers.push_back(cat);
   return cat->output;
 }
 
 Concat::Concat(std::string _name, FFConfig _config,
-               int _n, Tensor* _tensors, IndexSpaceT<3> _task_is)
+               int _n, Tensor* _tensors, IndexSpaceT<3> _task_is, int axis)
  : Op(_name, _n, _tensors), task_is(_task_is), num_inputs(_n)
 {
   Context ctx = _config.lg_ctx;

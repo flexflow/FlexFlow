@@ -22,10 +22,12 @@ LegionRuntime::Logger::Category log_ff("DLRM");
 
 struct DLRMConfig {
   DLRMConfig(void)
-  : sparse_feature_size(2), loss_threshold(0.0f) {}
-  int sparse_feature_size;
+  : sparse_feature_size(2), loss_threshold(0.0f),
+    sigmoid_bot(-1), sigmoid_top(-1) {}
+  int sparse_feature_size, sigmoid_bot, sigmoid_top;
   float loss_threshold;
   std::vector<int> embedding_size, mlp_bot, mlp_top;
+  std::string arch_interaction_op;
 };
 
 void parse_input_args(char **argv, int argc, DLRMConfig& apConfig);
@@ -34,13 +36,13 @@ Tensor create_mlp(FFModel* model, const Tensor& input,
                   std::vector<int> ln, int sigmoid_layer)
 {
   Tensor t = input;
-  for (size_t i = 0; i < ln.size()-1; i++) {
+  for (int i = 0; i < (int)(ln.size()-1); i++) {
     float std_dev = sqrt(2.0f / (ln[i+1] + ln[i]));
     Initializer* weight_init = new NormInitializer(std::rand(), 0, std_dev);
     std_dev = sqrt(2.0f / ln[i+1]);
     Initializer* bias_init = new NormInitializer(std::rand(), 0, std_dev);
     ActiMode activation = i == sigmoid_layer ? AC_MODE_SIGMOID : AC_MODE_RELU;
-    t = model->linear("linear", t, ln[i+1], weight_init, bias_init, activation);
+    t = model->linear("linear", t, ln[i+1], activation, weight_init, bias_init);
   }
   return t;
 }
@@ -50,7 +52,7 @@ Tensor create_emb(FFModel* model, const Tensor& input,
 {
   float range = sqrt(1.0f / input_dim);
   Initializer* embed_init = new UniformInitializer(std::rand(), -range, range);
-  return model->embedding("embedding", input, input_dim, output_dim, embed_init);
+  //return model->embedding("embedding", input, input_dim, output_dim, embed_init);
 }
 
 Tensor interact_features(FFModel* model, const Tensor& x,
@@ -60,7 +62,7 @@ Tensor interact_features(FFModel* model, const Tensor& x,
   // Currently only support cat
   // TODO: implement dot attention
   if (interaction == "cat") {
-    Tensor* inputs = malloc(sizeof(Tensor) * (1 + ly.size()));
+    Tensor* inputs = (Tensor*) malloc(sizeof(Tensor) * (1 + ly.size()));
     inputs[0] = x;
     for (size_t i = 0; i < ly.size(); i++)
       inputs[i+1] = ly[i];
@@ -83,7 +85,7 @@ void top_level_task(const Task* task,
     char **argv = command_args.argv;
     int argc = command_args.argc;
     ffConfig.parse_args(argv, argc);
-    parse_input_args(argv, argc, ffConfig, dlrmConfig);
+    parse_input_args(argv, argc, dlrmConfig);
   }
 
   ffConfig.lg_ctx = ctx;
@@ -99,27 +101,27 @@ void top_level_task(const Task* task,
   }
   Tensor dense_input;
   {
-    const int dims[] = {ffCOnfig.batchSize, dlrmConfig.mlp_bot[0]};
+    const int dims[] = {ffConfig.batchSize, dlrmConfig.mlp_bot[0]};
     dense_input = ff.create_input_tensor<int>(2, dims);
   }
   Tensor label;
   // Step 1 create dense_mlp
-  Tensor x = create_mlp(&ff, dense_input, dlrmConfig.mlp_bot);
+  Tensor x = create_mlp(&ff, dense_input, dlrmConfig.mlp_bot, dlrmConfig.sigmoid_bot);
   std::vector<Tensor> ly;
   for (size_t i = 0; i < dlrmConfig.embedding_size.size(); i++) {
     int input_dim = dlrmConfig.embedding_size[i];
     int output_dim = dlrmConfig.sparse_feature_size;
-    ly.push_back(create_emb(&ff, sparse_inputs[i], input_dim, output_dim);
+    ly.push_back(create_emb(&ff, sparse_inputs[i], input_dim, output_dim));
   }
-  Tensor z = interact_features(x, ly);
-  Tensor p = create_mlp(z, dlrmConfig.mlp_top);
-  if (dlrmConfig.loss_threshold > 0.0f && dlrmConfig.loss_thresdhold < 1.0f) {
+  Tensor z = interact_features(&ff, x, ly, dlrmConfig.arch_interation_op);
+  Tensor p = create_mlp(&ff, z, dlrmConfig.mlp_top, dlrmConfig.sigmoid_top);
+  if (dlrmConfig.loss_threshold > 0.0f && dlrmConfig.loss_threshold < 1.0f) {
     // TODO: implement clamp
-    assert(false):
+    assert(false);
   }
   ff.mse_loss("mse_loss"/*name*/, p, label, "mean"/*reduction*/);
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
-    for (int batch = 0; batch < ffConfig.batches; batch++) {
+    for (int iter = 0; iter < ffConfig.numIterations; iter++) {
       ff.zero_gradients();
       ff.forward();
       ff.backward();
@@ -131,30 +133,48 @@ void top_level_task(const Task* task,
 void parse_input_args(char **argv, int argc, DLRMConfig& config)
 {
   for (int i = 1; i < argc; i++) {
-    if ((!strcmp(argv[i]), "--arch-sparse-feature-size")) {
+    if (!strcmp(argv[i], "--arch-sparse-feature-size")) {
       config.sparse_feature_size = atoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--arch-embedding-size")) {
-      std::stringstream ss(std::string(argv[++i])), word;
-      while (std::get_line(ss, word, "-")) {
+      std::stringstream ss(std::string(argv[++i]));
+      std::string word;
+      while (std::getline(ss, word, '-')) {
         config.embedding_size.push_back(std::stoi(word));
       }
       continue;
     }
     if (!strcmp(argv[i], "--arch-mlp-bot")) {
-      std::stringstream ss(std::string(argv[++i])), word;
-      while (std::get_line(ss, word, "-")) {
+      std::stringstream ss(std::string(argv[++i]));
+      std::string word;
+      while (std::getline(ss, word, '-')) {
         config.mlp_bot.push_back(std::stoi(word));
       }
       continue;
     }
     if (!strcmp(argv[i], "--arch-mlp-top")) {
-      std::stringstream ss(std::string(argv[++i])), word;
-      while (std::get_line(ss, word, "-")) {
+      std::stringstream ss(std::string(argv[++i]));
+      std::string word;
+      while (std::getline(ss, word, '-')) {
         config.mlp_top.push_back(std::stoi(word));
       }
       continue;
+    }
+    if (!strcmp(argv[i], "--loss-threshold")) {
+      config.loss_threshold = atof(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--sigmoid-top")) {
+      config.sigmoid_top = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--sigmoid-bot")) {
+      config.sigmoid_bot = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--arch-interaction-op")) {
+      config.arch_interaction_op = std::string(argv[++i]);
     }
   }
 }

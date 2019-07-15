@@ -166,7 +166,9 @@ public:
                 Initializer* bias_initializer = NULL);
   // Add a concat layer
   Tensor concat(std::string name,
-                int n, Tensor* tensors);
+                int n,
+                Tensor* tensors,
+                int axis);
   // Add a flat layer
   Tensor flat(std::string name, Tensor input);
   // Add a softmax layer
