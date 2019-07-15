@@ -52,7 +52,7 @@ Tensor create_emb(FFModel* model, const Tensor& input,
 {
   float range = sqrt(1.0f / input_dim);
   Initializer* embed_init = new UniformInitializer(std::rand(), -range, range);
-  //return model->embedding("embedding", input, input_dim, output_dim, embed_init);
+  return model->embedding("embedding", input, input_dim, output_dim, embed_init);
 }
 
 Tensor interact_features(FFModel* model, const Tensor& x,
