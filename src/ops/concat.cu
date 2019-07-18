@@ -27,8 +27,8 @@ Tensor FFModel::concat(std::string name, int n, Tensor* tensors, int axis)
 }
 
 Concat::Concat(std::string _name, FFConfig _config,
-               int _n, Tensor* _tensors, IndexSpaceT<3> _task_is, int axis)
- : Op(_name, _n, _tensors), task_is(_task_is), num_inputs(_n)
+               int _n, Tensor* _tensors, IndexSpaceT<3> _task_is, int _axis)
+ : Op(_name, _n, _tensors), task_is(_task_is), axis(_axis)
 {
   Context ctx = _config.lg_ctx;
   HighLevelRuntime* runtime = _config.lg_hlr;
@@ -42,7 +42,7 @@ Concat::Concat(std::string _name, FFConfig _config,
   int input_h = inputs[0].adim[1];
   int input_c = 0;
   int input_n = inputs[0].adim[3];
-  for (int i = 0; i < num_inputs; i++) {
+  for (int i = 0; i < numInputs; i++) {
     assert(input_w == inputs[i].adim[0]);
     assert(input_h == inputs[i].adim[1]);
     assert(input_n == inputs[i].adim[3]);
@@ -87,7 +87,7 @@ Concat::Concat(std::string _name, FFConfig _config,
   output.part_grad = output_grad_lp;
   printf("Create concat layer: output(n=%d c=%d h=%d w=%d)\n",
          output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
-  for (int i = 0; i < num_inputs; i++) {
+  for (int i = 0; i < numInputs; i++) {
     // For now, we assume our output has the same partition as all inputs
     Rect<3> input_part_rect =
       runtime->get_index_partition_color_space(ctx, inputs[i].part.get_index_partition());
@@ -130,15 +130,15 @@ void Concat::init(const FFModel& ff)
 
 /*
   regions[0](O): output
-  regions[1..num_inputs](I): inputs
+  regions[1..numInputs](I): inputs
 */
 void Concat::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
   const Concat* cc = (Concat*) task->args;
-  assert(regions.size() == cc->num_inputs + 1);
-  assert(task->regions.size() == cc->num_inputs + 1);
+  assert(regions.size() == cc->numInputs + 1);
+  assert(task->regions.size() == cc->numInputs + 1);
   const AccessorWO<float, 3> acc_output(regions[0], FID_DATA);
   Rect<3> rect_output;
   rect_output =
@@ -146,7 +146,7 @@ void Concat::forward_task(const Task *task,
   assert(acc_output.accessor.is_dense_arbitrary(rect_output));
   float *output_ptr = acc_output.ptr(rect_output.lo);
   float *output_bound = output_ptr + rect_output.volume();
-  for (int i = 0; i < cc->num_inputs; i++) {
+  for (int i = 0; i < cc->numInputs; i++) {
     const AccessorRO<float, 3> acc_input(regions[i+1], FID_DATA);
     Rect<3> rect_input =
       runtime->get_index_space_domain(ctx, task->regions[i+1].region.get_index_space());
@@ -177,7 +177,7 @@ void Concat::forward(const FFModel& ff)
       RegionRequirement(output.part, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, output.region));
   launcher.add_field(0, FID_DATA);
-  for (int i = 0; i < num_inputs; i++) {
+  for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
         RegionRequirement(inputs[i].part, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, inputs[i].region));
@@ -188,15 +188,15 @@ void Concat::forward(const FFModel& ff)
 
 /*
   regions[0](I): output_grad
-  regions[1..num_inputs](O): input_grad
+  regions[1..numInputs](O): input_grad
 */
 void Concat::backward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime)
 {
   const Concat* cc = (Concat*) task->args;
-  assert(regions.size() == cc->num_inputs + 1);
-  assert(task->regions.size() == cc->num_inputs + 1);
+  assert(regions.size() == cc->numInputs + 1);
+  assert(task->regions.size() == cc->numInputs + 1);
   const AccessorRO<float, 3> acc_output(regions[0], FID_DATA);
   Rect<3> rect_output;
   rect_output =
@@ -204,7 +204,7 @@ void Concat::backward_task(const Task *task,
   assert(acc_output.accessor.is_dense_arbitrary(rect_output));
   float *output_ptr = (float*) acc_output.ptr(rect_output.lo);
   float *output_bound = output_ptr + rect_output.volume();
-  for (int i = 0; i < cc->num_inputs; i++) {
+  for (int i = 0; i < cc->numInputs; i++) {
     const AccessorWO<float, 3> acc_input(regions[i+1], FID_DATA);
     Rect<3> rect_input =
       runtime->get_index_space_domain(ctx, task->regions[i+1].region.get_index_space());
@@ -235,7 +235,7 @@ void Concat::backward(const FFModel& ff)
       RegionRequirement(output.part_grad, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, output.region_grad));
   launcher.add_field(0, FID_DATA);
-  for (int i = 0; i < num_inputs; i++) {
+  for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
         RegionRequirement(inputs[i].part_grad, 0/*projection id*/,
                           WRITE_DISCARD, EXCLUSIVE, inputs[i].region_grad));
@@ -244,6 +244,6 @@ void Concat::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Concat::update(const FFModel& ff)
-{
-}
+//void Concat::update(const FFModel& ff)
+//{
+//}

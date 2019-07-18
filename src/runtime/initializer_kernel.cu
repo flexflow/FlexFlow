@@ -51,7 +51,7 @@ void ZerosInitializer::init_task(const Task* task,
   TensorAccessorW<float, 2> accW(regions[0], task->regions[0],
       FID_DATA, ctx, runtime, false/*readOutput*/);
   assign_kernel<<<GET_BLOCKS(accW.rect.volume()), CUDA_NUM_THREADS>>>(
-      accW.ptr, accW.rect.volume(), 0);
+      accW.ptr, accW.rect.volume(), 0.0f);
   checkCUDA(cudaDeviceSynchronize());
 }
 

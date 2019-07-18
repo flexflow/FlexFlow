@@ -22,8 +22,8 @@ LegionRuntime::Logger::Category log_ff("DLRM");
 
 struct DLRMConfig {
   DLRMConfig(void)
-  : sparse_feature_size(2), loss_threshold(0.0f),
-    sigmoid_bot(-1), sigmoid_top(-1) {}
+  : sparse_feature_size(2), sigmoid_bot(-1), sigmoid_top(-1),
+    loss_threshold(0.0f), arch_interaction_op("dot") {}
   int sparse_feature_size, sigmoid_bot, sigmoid_top;
   float loss_threshold;
   std::vector<int> embedding_size, mlp_bot, mlp_top;
@@ -96,13 +96,13 @@ void top_level_task(const Task* task,
   std::vector<Tensor> sparse_inputs;
   for (size_t i = 0; i < dlrmConfig.embedding_size.size(); i++) {
     const int dims[] = {ffConfig.batchSize, 1};
-    Tensor input = ff.create_input_tensor<float>(2, dims);
+    Tensor input = ff.create_tensor<2>(dims, "", DT_INT32);
     sparse_inputs.push_back(input);
   }
   Tensor dense_input;
   {
     const int dims[] = {ffConfig.batchSize, dlrmConfig.mlp_bot[0]};
-    dense_input = ff.create_input_tensor<int>(2, dims);
+    dense_input = ff.create_tensor<2>(dims, "", DT_FLOAT);
   }
   Tensor label;
   // Step 1 create dense_mlp
@@ -113,7 +113,7 @@ void top_level_task(const Task* task,
     int output_dim = dlrmConfig.sparse_feature_size;
     ly.push_back(create_emb(&ff, sparse_inputs[i], input_dim, output_dim));
   }
-  Tensor z = interact_features(&ff, x, ly, dlrmConfig.arch_interation_op);
+  Tensor z = interact_features(&ff, x, ly, dlrmConfig.arch_interaction_op);
   Tensor p = create_mlp(&ff, z, dlrmConfig.mlp_top, dlrmConfig.sigmoid_top);
   if (dlrmConfig.loss_threshold > 0.0f && dlrmConfig.loss_threshold < 1.0f) {
     // TODO: implement clamp

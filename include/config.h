@@ -40,8 +40,10 @@ struct ParallelConfig {
 
 class FFConfig {
 public:
+  FFConfig();
   bool load_strategy_file(std::string filename);
   bool save_strategy_file(std::string filename);
+  void parse_args(char** argv, int argc);
 public:
   int epochs, batchSize, numIterations, printFreq;
   int inputHeight, inputWidth;

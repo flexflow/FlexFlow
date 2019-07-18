@@ -17,23 +17,6 @@
 #include "realm/runtime_impl.h"
 #include "realm/cuda/cuda_module.h"
 
-Op::Op(std::string _name, Tensor _input)
-: numLocals(0)
-{
-  assert(_name.length() < MAX_OPNAME);
-  std::strcpy(name, _name.c_str());
-  inputs[0] = _input;
-}
-
-Op::Op(std::string _name, int n, Tensor* _inputs)
-: numLocals(0)
-{
-  assert(_name.length() < MAX_OPNAME);
-  std::strcpy(name, _name.c_str());
-  for (int i = 0; i < n; i++)
-    inputs[i] = _inputs[i];
-}
-
 FFHandler UtilityTasks::init_cuda_task(
               const Task *task,
               const std::vector<PhysicalRegion> &regions,
@@ -297,20 +280,8 @@ void FFModel::prefetch()
     layers[i]->prefetch(*this);
 }
 
-void FFModel::forward()
-{
-  for (size_t i = 0; i < layers.size(); i++)
-    layers[i]->forward(*this);
-}
-
-void FFModel::backward()
-{
-  for (int i = layers.size() - 1; i >= 0; i--)
-    layers[i]->backward(*this);
-}
-
-void FFModel::update()
-{
-  for (int i = layers.size() - 1; i >= 0; i--)
-    layers[i]->update(*this);
-}
+//void FFModel::update()
+//{
+//  for (int i = layers.size() - 1; i >= 0; i--)
+//    layers[i]->update(*this);
+//}

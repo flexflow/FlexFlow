@@ -318,6 +318,6 @@ void Softmax::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Softmax::update(const FFModel& ff)
-{
-}
+//void Softmax::update(const FFModel& ff)
+//{
+//}

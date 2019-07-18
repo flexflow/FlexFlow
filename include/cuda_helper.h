@@ -50,8 +50,9 @@ void scale_kernel(float* ptr, coord_t size, float a, float b);
 __global__
 void ones_kernel(float* ptr, coord_t size);
 
+template<typename DT>
 __global__
-void assign_kernel(float* ptr, coord_t size, float value);
+void assign_kernel(DT* ptr, coord_t size, DT value);
 
 __global__
 void reluBackward(float* grad_ptr, const float* input, int n);

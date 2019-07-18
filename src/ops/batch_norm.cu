@@ -242,7 +242,6 @@ void BatchNorm::init_para_task(const Task *task,
 #endif
 }
 
-
 __host__
 void BatchNorm::init(const FFModel& ff)
 {

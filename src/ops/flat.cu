@@ -276,7 +276,7 @@ void Flat::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Flat::update(const FFModel& ff)
-{
-}
+//void Flat::update(const FFModel& ff)
+//{
+//}
 
