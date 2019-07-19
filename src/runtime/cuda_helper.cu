@@ -72,4 +72,6 @@ void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
 }
 
 
+template __global__ void assign_kernel<float>(float* ptr, coord_t size, float value);
+template __global__ void assign_kernel<int>(int* ptr, coord_t size, int value);
 

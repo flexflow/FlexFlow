@@ -14,6 +14,7 @@
  */
 
 #include "model.h"
+#include "mapper.h"
 #include "dirent.h"
 
 using namespace std;
@@ -169,7 +170,7 @@ FFModel::FFModel(FFConfig& _config)
 }
 
 template<int NDIM>
-Tensor FFModel::create_tensor(const int* dims,
+Tensor FFModel::create_tensor(const int dims[],
                               const std::string& pc_name,
                               DataType data_type,
                               bool create_grad)
@@ -181,7 +182,7 @@ Tensor FFModel::create_tensor(const int* dims,
 }
 
 template<int NDIM>
-Tensor FFModel::create_tensor(const int* dims,
+Tensor FFModel::create_tensor(const int dims[],
                               const IndexSpaceT<NDIM>& part_is,
                               DataType data_type,
                               bool create_grad)
@@ -206,25 +207,22 @@ Tensor FFModel::create_tensor(const int* dims,
     default:
       assert(false);
   }
-  int points[NDIM];
-  Point<NDIM> lo = Point<NDIM>::ZEROS();
+  Point<NDIM> hi;
   for (int i = 0; i < NDIM; i++)
-    points[i] = dims[NDIM-1-i]-1;
-  Point<NDIM> hi(points);
-  Rect<NDIM> rect(lo, hi);
+    hi[i] = dims[NDIM-1-i]-1;
+  Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
   IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
   tensor.region = runtime->create_logical_region(ctx, is, fs);
   tensor.region_grad = runtime->create_logical_region(ctx, is, fs);
   // Step 2: create partitions
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
   Transform<NDIM, NDIM> transform;
+  Point<NDIM> ext_hi;
   for (int i = 0; i < NDIM; i++) {
     int nparts = part_rect.hi[i] - part_rect.lo[i] + 1;
-    points[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
+    ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
   }
-  Point<NDIM> ext_lo = lo;
-  Point<NDIM> ext_hi(points);
-  Rect<NDIM> extent(ext_lo, ext_hi);
+  Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
   for (int i = 0; i < NDIM; i++)
     for (int j = 0; j < NDIM; j++)
       if (i == j)
@@ -492,3 +490,285 @@ void FFConfig::parse_args(char **argv, int argc)
     }
   }
 }
+
+// ========================================================
+// Task and mapper registrations
+// ========================================================
+
+int main(int argc, char** argv)
+{
+  Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
+  {
+    TaskVariantRegistrar registrar(TOP_LEVEL_TASK_ID, "top_level");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    Runtime::preregister_task_variant<top_level_task>(registrar, "top_level");
+  }
+  // CNN_INIT_TASK
+  {
+    TaskVariantRegistrar registrar(FF_INIT_TASK_ID, "cuda_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<FFHandler, UtilityTasks::init_cuda_task>(
+        registrar, "cuda_init_task");
+  }
+  // Conv2D task
+  {
+    TaskVariantRegistrar registrar(CONV2D_INIT_TASK_ID, "Conv2D Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Conv2D::init_task>(
+        registrar, "Conv2D Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CONV2D_INIT_PARA_TASK_ID, "Conv2D Init Para");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Conv2D::init_para_task>(
+        registrar, "Conv2D Init Para Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CONV2D_FWD_TASK_ID, "Conv2D Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Conv2D::forward_task>(
+        registrar, "Conv2D Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CONV2D_BWD_TASK_ID, "Conv2D Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Conv2D::backward_task>(
+        registrar, "Conv2D Backward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CONV2D_UPD_TASK_ID, "Conv2D Update");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Conv2D::update_task>(
+       registrar, "Conv2D Update Task");
+  }
+  // Embedding task
+  {
+    TaskVariantRegistrar registrar(EMBED_FWD_TASK_ID, "Embedding Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Embedding::forward_task>(
+        registrar, "Embedding Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(EMBED_BWD_TASK_ID, "Embedding Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Embedding::backward_task>(
+        registrar, "Embedding Backward Task");
+  }
+  // Pool2D task
+  {
+    TaskVariantRegistrar registrar(POOL2D_INIT_TASK_ID, "pool2d_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Pool2D::init_task>(
+        registrar, "pool2d_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(POOL2D_FWD_TASK_ID, "pool2d_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Pool2D::forward_task>(
+        registrar, "pool2d_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(POOL2D_BWD_TASK_ID, "pool2d_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Pool2D::backward_task>(
+        registrar, "pool2d_bwd_task");
+  }
+  // BatchNorm task
+  {
+    TaskVariantRegistrar registrar(BATCHNORM_INIT_TASK_ID, "bn_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, BatchNorm::init_task>(
+        registrar, "bn_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(BATCHNORM_INIT_PARA_TASK_ID, "bm_init_para_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<BatchNorm::init_para_task>(
+        registrar, "bm_init_para_task");
+  }
+  {
+    TaskVariantRegistrar registrar(BATCHNORM_FWD_TASK_ID, "bn_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<BatchNorm::forward_task>(
+        registrar, "bn_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(BATCHNORM_BWD_TASK_ID, "bn_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<BatchNorm::backward_task>(
+        registrar, "bn_bwd_task");
+  }
+  // Linear task
+  {
+    TaskVariantRegistrar registrar(LINEAR_INIT_TASK_ID, "Linear Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Linear::init_task>(
+        registrar, "Linear Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(LINEAR_FWD_TASK_ID, "Linear Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Linear::forward_task>(
+        registrar, "Linear Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(LINEAR_BWD_TASK_ID, "Linear Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Linear::backward_task>(
+        registrar, "Linear Backward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(LINEAR_BWD2_TASK_ID,
+                                   "Linear Backward (Aggregate replica)");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Linear::backward2_task>(
+        registrar, "Linear Backward Task (Aggregate replica)");
+  }
+  // Flat task
+  {
+    TaskVariantRegistrar registrar(FLAT_INIT_TASK_ID, "flat_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Flat::init_task>(
+        registrar, "flat_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(FLAT_FWD_TASK_ID, "flat_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Flat::forward_task>(
+        registrar, "flat_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(FLAT_BWD_TASK_ID, "flat_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Flat::backward_task>(
+        registrar, "flat_bwd_task");
+  }
+  // Softmax task
+  {
+    TaskVariantRegistrar registrar(SOFTMAX_INIT_TASK_ID, "softmax_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Softmax::init_task>(
+        registrar, "softmax_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(SOFTMAX_FWD_TASK_ID, "softmax_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Softmax::forward_task>(
+        registrar, "softmax_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(SOFTMAX_BWD_TASK_ID, "softmax_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Softmax::backward_task>(
+        registrar, "softmax_bwd_task");
+  }
+  // MSELoss
+  {
+    TaskVariantRegistrar registrar(MSELOSS_BWD_TASK_ID, "MSELoss Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<MSELoss::backward_task>(
+        registrar, "MSELoss Backward");
+  }
+  // Concat task
+  {
+    TaskVariantRegistrar registrar(CONCAT_INIT_TASK_ID, "concat_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Concat::init_task>(
+        registrar, "concat_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(CONCAT_FWD_TASK_ID, "concat_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Concat::forward_task>(
+        registrar, "concat_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(CONCAT_BWD_TASK_ID, "concat_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Concat::backward_task>(
+        registrar, "concat_bwd_task");
+  }
+  // Optimizer
+  {
+    TaskVariantRegistrar registrar(SGD_UPD_TASK_ID,
+                                   "SGD Update");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<SGDOptimizer::update_task>(
+        registrar, "SGD Update Task");
+  }
+  // Initializer
+  {
+    TaskVariantRegistrar registrar(ZEROS_INIT_TASK_ID,
+                                   "Zeros Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ZerosInitializer::init_task>(
+        registrar, "Zeros Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(UNIFORM_INIT_TASK_ID,
+                                   "Uniform Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<UniformInitializer::init_task>(
+        registrar, "Uniform Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(NORMAL_INIT_TASK_ID,
+                                   "Normalize Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<NormInitializer::init_task>(
+        registrar, "Normalize Init Task");
+  }
+  // DUMMY task
+  {
+    TaskVariantRegistrar registrar(DUMMY_TASK_ID, "dummy_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "dummy_task");
+  }
+
+  Runtime::add_registration_callback(update_mappers);
+  return Runtime::start(argc, argv);
+}
+
+// template instantiations
+template Tensor FFModel::create_tensor<1>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
+template Tensor FFModel::create_tensor<2>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
+template Tensor FFModel::create_tensor<3>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
+template Tensor FFModel::create_tensor<4>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
+template Tensor FFModel::create_tensor<1>(const int* dims, const IndexSpaceT<1>& part_is, DataType data_type, bool create_grad);
+template Tensor FFModel::create_tensor<2>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, bool create_grad);
+template Tensor FFModel::create_tensor<3>(const int* dims, const IndexSpaceT<3>& part_is, DataType data_type, bool create_grad);
+template Tensor FFModel::create_tensor<4>(const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, bool create_grad);

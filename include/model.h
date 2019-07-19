@@ -67,7 +67,7 @@ enum TaskIDs {
   MSELOSS_BWD_TASK_ID,
   DUMMY_TASK_ID,
   // Optimizer
-  SGD_OPT_TASK_ID,
+  SGD_UPD_TASK_ID,
   // Initializer
   GLOROT_INIT_TASK_ID,
   ZEROS_INIT_TASK_ID,
@@ -605,6 +605,10 @@ public:
   std::vector<Sample> samples;
   std::vector<Sample>::const_iterator sampleIter;
 };
+
+void top_level_task(const Task* task,
+                    const std::vector<PhysicalRegion>& regions,
+                    Context ctx, Runtime* runtime);
 
 #endif//_FLEXFLOW_RUNTIME_H_
 
