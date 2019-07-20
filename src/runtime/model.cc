@@ -68,6 +68,20 @@ FFModel::FFModel(FFConfig& _config)
 {
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
+  // Load strategy file
+  if (config.strategyFile == "") {
+    // TODO: the decault data parallelsim only apply to 2D operators
+    ParallelConfig pc;
+    pc.nDims = 2;
+    pc.dim[0] = 1;
+    pc.dim[1] = config.workersPerNode * config.numNodes;
+    for (int i = 0; i < pc.dim[1]; i++)
+      pc.gpu[i] = i;
+    config.strategies[FFConfig::DataParallelismID] = pc;
+  } else {
+    load_strategies_from_file(config.strategyFile, config.strategies);
+  }
+
   // Create field space
   {
     FieldAllocator allocator =
@@ -75,25 +89,27 @@ FFModel::FFModel(FFConfig& _config)
     allocator.allocate_field(sizeof(float), FID_DATA);
   }
   // Build training dataset
-  if (config.datasetPath.length() == 0) {
-    dataLoader = NULL;
-  } else {
-    dataLoader = new DataLoader(config.datasetPath);
-  }
+  //if (config.datasetPath.length() == 0) {
+  //  dataLoader = NULL;
+  //} else {
+  //  dataLoader = new DataLoader(config.datasetPath);
+  //}
 
   // Init CUDA library on each worker
   ArgumentMap local_args;
   size_t workSpaceSize = config.workSpaceSize;
-  Rect<1> task_rect(Point<1>(0),
-                    Point<1>(config.workersPerNode * config.numNodes - 1));
-  IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect);
+  Rect<2> task_rect(Point<2>(0, 0),
+                    Point<2>(0, config.workersPerNode * config.numNodes - 1));
+  IndexSpaceT<2> task_is = runtime->create_index_space(ctx, task_rect);
   IndexLauncher initLauncher(FF_INIT_TASK_ID, task_is,
-                             TaskArgument(&workSpaceSize, sizeof(workSpaceSize)),
-                             local_args);
+                             TaskArgument(&workSpaceSize, sizeof(workSpaceSize)), local_args,
+                             Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                             FFConfig::DataParallelismID);
   FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
   fm.wait_all_results();
-  for (PointInRectIterator<1> it(task_rect); it(); it++) {
-    handlers[*it] = fm.get_result<FFHandler>(*it);
+  int idx = 0;
+  for (PointInRectIterator<2> it(task_rect); it(); it++) {
+    handlers[idx++] = fm.get_result<FFHandler>(*it);
   }
 #ifdef DEADCODE
   // Build logical regions for images
@@ -175,8 +191,8 @@ Tensor FFModel::create_tensor(const int dims[],
                               DataType data_type,
                               bool create_grad)
 {
-  assert(config.strategies.find(pc_name) != config.strategies.end());
-  ParallelConfig pc = config.strategies[pc_name];
+  ParallelConfig pc;
+  assert(config.find_parallel_config(pc_name, pc));
   IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(get_or_create_task_is(pc));
   return create_tensor(dims, task_is, data_type, create_grad);
 }
@@ -296,9 +312,15 @@ IndexSpace FFModel::get_or_create_task_is(const Domain& domain)
 
 IndexSpace FFModel::get_or_create_task_is(const std::string& pcname)
 {
-  assert(config.strategies.find(pcname) != config.strategies.end());
-  ParallelConfig pc = config.strategies[pcname];
+  ParallelConfig pc;
+  assert(config.find_parallel_config(pcname, pc));
   return get_or_create_task_is(pc);
+}
+
+void FFModel::init_layers()
+{ 
+  for (size_t i = 0; i < layers.size(); i++)
+    layers[i]->init(*this);
 }
 
 void FFModel::forward()
@@ -326,8 +348,8 @@ void FFModel::backward()
 void FFModel::update()
 {
   optimizer->next();
-  for (int p = parameters.size() - 1; p >= 0; p --) {
-    optimizer->update(&parameters[p]);
+  for (size_t i = 0; i < parameters.size(); i++) {
+    optimizer->update(&(parameters[i].tensor));
   }
 }
 
@@ -338,13 +360,15 @@ void FFModel::zero_gradients(void)
   Runtime* runtime = config.lg_hlr;
   for (size_t p = 0; p < parameters.size(); p++) {
     Domain domain = runtime->get_index_partition_color_space(
-        ctx, parameters[p].part_grad.get_index_partition());
+        ctx, parameters[p].tensor.part_grad.get_index_partition());
     IndexSpace task_is = get_or_create_task_is(domain);
     IndexLauncher launcher(ZERO_GRAD_TASK_ID, task_is,
-                           TaskArgument(NULL, 0), arg_map);
+                           TaskArgument(NULL, 0), arg_map,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(std::string(parameters[p].op->name)));
     launcher.add_region_requirement(
-        RegionRequirement(parameters[p].part_grad, 0/*projection*/,
-                          WRITE_ONLY, EXCLUSIVE, parameters[p].region_grad));
+        RegionRequirement(parameters[p].tensor.part_grad, 0/*projection*/,
+                          WRITE_ONLY, EXCLUSIVE, parameters[p].tensor.region_grad));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }

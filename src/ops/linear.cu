@@ -23,13 +23,16 @@ Tensor FFModel::dense(std::string name,
                       Initializer* kernel_initializer,
                       Initializer* bias_initializer)
 {
-  assert(input.numDim == 2);
-  assert(config.strategies.find(name) != config.strategies.end());
-  ParallelConfig pc = config.strategies[name];
-  IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
-  Linear *li = new Linear(name, config, input, task_is, outDim, activation,
+  Linear *li = new Linear(*this, name, input, outDim, activation,
                           kernel_initializer, bias_initializer);
   layers.push_back(li);
+  Parameter kernel, bias;
+  kernel.tensor = li->locals[0];
+  kernel.op = li;
+  bias.tensor = li->locals[1];
+  bias.op = li;
+  parameters.push_back(kernel);
+  parameters.push_back(bias);
   return li->output;
 }
 
@@ -47,22 +50,23 @@ Tensor FFModel::linear(std::string name,
                kernel_initializer, bias_initializer);
 }
 
-Linear::Linear(std::string _name,
-               const FFConfig& _config,
+Linear::Linear(FFModel& model,
+               const std::string& pcname,
                const Tensor& _input,
-               const IndexSpaceT<2>& _task_is,
                int outDim,
                ActiMode _activation,
                Initializer* kernel_initializer,
                Initializer* bias_initializer)
-: Op(_name, _input), task_is(_task_is),
-  activation(_activation),
-  profiling(_config.profiling)
+: Op(pcname, _input), activation(_activation),
+  profiling(model.config.profiling)
   // in_channels(_input.adim[0]), out_channels(outDim)
 {
   assert(_input.numDim == 2);
-  Context ctx = _config.lg_ctx;
-  HighLevelRuntime* runtime = _config.lg_hlr;
+  // Retrive the task indexspace for the op
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(pcname));
+
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
   fc_num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
   int fc_num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
@@ -70,7 +74,7 @@ Linear::Linear(std::string _name,
   int inDim = _input.adim[0];
 
   printf("Linear fc_num_par_c(%d) fc_num_par_n(%d)\n", fc_num_par_c, fc_num_par_n);
-  FieldSpace fs = _config.field_space;
+  FieldSpace fs = model.config.field_space;
 
   Rect<2> output_rect(Point<2>(0, 0), Point<2>(outDim-1, _input.adim[1]-1));
   IndexSpaceT<2> output_is = runtime->create_index_space(ctx, output_rect);
@@ -333,29 +337,31 @@ void Linear::init(const FFModel& ff)
     FFHandler handle = ff.handlers[idx++];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
-  IndexLauncher init_launcher(LINEAR_INIT_TASK_ID, task_is,
-                              TaskArgument(this, sizeof(Linear)), argmap);
-  init_launcher.add_region_requirement(
+  IndexLauncher launcher(LINEAR_INIT_TASK_ID, task_is,
+                         TaskArgument(this, sizeof(Linear)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
+  launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
-  init_launcher.add_field(0, FID_DATA);
-  init_launcher.add_region_requirement(
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
       RegionRequirement(output.part, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, output.region));
-  init_launcher.add_field(1, FID_DATA);
-  init_launcher.add_region_requirement(
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(
       RegionRequirement(locals[0].part_grad, 0/*projection id*/,
                         WRITE_DISCARD, EXCLUSIVE, locals[0].region_grad));
-  init_launcher.add_field(2, FID_DATA);
-  init_launcher.add_region_requirement(
+  launcher.add_field(2, FID_DATA);
+  launcher.add_region_requirement(
       RegionRequirement(locals[1].part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, locals[1].region));
-  init_launcher.add_field(3, FID_DATA);
-  init_launcher.add_region_requirement(
+  launcher.add_field(3, FID_DATA);
+  launcher.add_region_requirement(
       RegionRequirement(locals[2].part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, locals[2].region));
-  init_launcher.add_field(4, FID_DATA);
-  FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
+  launcher.add_field(4, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
@@ -459,7 +465,10 @@ void Linear::forward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(LINEAR_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Linear)), argmap);
+                         TaskArgument(this, sizeof(Linear)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
+
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
@@ -653,7 +662,9 @@ void Linear::backward(const FFModel& ff)
   }
   {
     IndexLauncher launcher(LINEAR_BWD_TASK_ID, task_is,
-                           TaskArgument(this, sizeof(Linear)), argmap);
+                           TaskArgument(this, sizeof(Linear)), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(std::string(name)));
     // regions[0](I): input
     launcher.add_region_requirement(
         RegionRequirement(input_lps[0], 0/*projection id*/,
@@ -694,7 +705,9 @@ void Linear::backward(const FFModel& ff)
   {
     // We aggregate parameters from replica tensor to input tensor
     IndexLauncher launcher2(LINEAR_BWD2_TASK_ID, task_is,
-                            TaskArgument(this, sizeof(Linear)), argmap);
+                            TaskArgument(this, sizeof(Linear)), argmap,
+                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                            FFConfig::get_hash_id(std::string(name)));
     launcher2.add_region_requirement(
         RegionRequirement(inputs[0].part_grad, 0/*projection id*/,
                           WRITE_DISCARD, EXCLUSIVE, inputs[0].region_grad));

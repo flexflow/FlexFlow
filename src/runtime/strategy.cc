@@ -19,9 +19,36 @@
 #include <iostream>
 #include <string>
 
-bool load_strategies(std::map<std::string, ParallelConfig>& strategies,
-                     const FFProtoBuf::Strategy& strategyPb)
+MappingTagID FFConfig::get_hash_id(const std::string& pcname)
 {
+  return std::hash<std::string>{}(pcname);
+}
+
+bool FFConfig::find_parallel_config(const std::string& pcname,
+                                    ParallelConfig& config)
+{
+  MappingTagID hash = get_hash_id(pcname);
+  if (strategies.find(hash) == strategies.end()) {
+    // No strategy found, use default data parallelism
+    assert(strategies.find(DataParallelismID) != strategies.end());
+    config = strategies[DataParallelismID];
+    return true;
+  } else {
+    config = strategies[hash];
+    return true;
+  }
+}
+
+bool load_strategies_from_file(const std::string& filename,
+                               std::map<MappingTagID, ParallelConfig>& strategies)
+{
+  FFProtoBuf::Strategy strategyPb;
+  std::fstream input(filename, std::ios::in);
+  if (!strategyPb.ParseFromIstream(&input)) {
+    std::cerr << "Failed to parse strategy file" << std::endl;
+    return false;
+  }
+ 
   for (int i = 0; i < strategyPb.ops_size(); i++) {
     const FFProtoBuf::Op& op = strategyPb.ops(i);
     ParallelConfig config;
@@ -34,19 +61,23 @@ bool load_strategies(std::map<std::string, ParallelConfig>& strategies,
     assert(n == op.devices_size() || op.devices_size() == 0);
     for (int j = 0; j < op.devices_size(); j++)
       config.gpu[j] = op.devices(j);
-    strategies[op.name()] = config;
+    MappingTagID hash = FFConfig::get_hash_id(op.name());
+    assert(strategies.find(hash) == strategies.end());
+    strategies[hash] = config;
   }
+  printf("strategies.size() = %zu\n", strategies.size());
   return true;
 }
 
-bool save_strategies(const std::map<std::string, ParallelConfig>& strategies,
-                     FFProtoBuf::Strategy& strategyPb)
+bool save_strategies_to_file(const std::string& filename,
+                             const std::map<MappingTagID, ParallelConfig>& strategies)
 {
-  std::map<std::string, ParallelConfig>::const_iterator it;
+  FFProtoBuf::Strategy strategyPb;
+  std::map<MappingTagID, ParallelConfig>::const_iterator it;
   for (it = strategies.begin(); it != strategies.end(); it++) {
     FFProtoBuf::Op* op = strategyPb.add_ops();
     ParallelConfig config = it->second;
-    op->set_name(it->first);
+    op->set_name(std::to_string(it->first));
     int n = 1;
     for (int j = 0; j < config.nDims; j++) {
       n = n * config.dim[j];
@@ -56,27 +87,6 @@ bool save_strategies(const std::map<std::string, ParallelConfig>& strategies,
       op->add_devices(config.gpu[j]);
     }
   }
-  return true;
-}
-
-bool FFConfig::load_strategy_file(std::string filename)
-{
-  FFProtoBuf::Strategy strategyPb;
-  std::fstream input(filename, std::ios::in);
-  if (!strategyPb.ParseFromIstream(&input)) {
-    std::cerr << "Failed to parse strategy file" << std::endl;
-    return false;
-  }
-
-  load_strategies(strategies, strategyPb);
-  printf("strategies.size() = %zu\n", strategies.size());
-  return true;
-}
-
-bool FFConfig::save_strategy_file(std::string filename)
-{
-  FFProtoBuf::Strategy strategyPb;
-  save_strategies(strategies, strategyPb);
   std::fstream output(filename, std::ios::out | std::ios::trunc);
   if (!strategyPb.SerializeToOstream(&output)) {
     std::cerr << "Failed to save to strategy file" << std::endl;

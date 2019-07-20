@@ -16,25 +16,73 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::concat(std::string name, int n, Tensor* tensors, int axis)
+Tensor FFModel::concat(std::string name,
+                       int n, const Tensor* tensors,
+                       int axis)
 {
-  //assert(strategies.find(name) != strategies.end());
-  //ParallelConfig pc = strategies[name];
-  IndexSpaceT<3> task_is;
-  Concat *cat = new Concat(name, config, n, tensors, task_is, axis);
+  Concat *cat = new Concat(*this, name, n, tensors, axis);
   layers.push_back(cat);
   return cat->output;
 }
 
-Concat::Concat(std::string _name, FFConfig _config,
-               int _n, Tensor* _tensors, IndexSpaceT<3> _task_is, int _axis)
- : Op(_name, _n, _tensors), task_is(_task_is), axis(_axis)
+Concat::Concat(FFModel& model,
+               const std::string& pcname, 
+               int _n, const Tensor* _tensors,
+               int _axis)
+ : Op(pcname, _n, _tensors), axis(_axis)
 {
-  Context ctx = _config.lg_ctx;
-  HighLevelRuntime* runtime = _config.lg_hlr;
-  FieldSpace fs = _config.field_space;
+  // Retrive the task indexspace for the op
+  task_is = model.get_or_create_task_is(pcname);
 
-  Rect<3> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  FieldSpace fs = model.config.field_space;
+  int dims[MAX_DIM];
+  for (int i = 0; i < domain.get_dim(); i++)
+    dims[i] = domain.hi()[i] - domain.lo()[i] + 1;
+  switch (domain.get_dim()) {
+    case 1:
+    {
+      Rect<1> part_rect = domain;
+      output = model.create_tensor<1>(dims, IndexSpaceT<1>(task_is), DT_FLOAT);
+      for (int i = 0; i < numInputs; i++) {
+        Rect<1> input_rect = runtime->get_index_partition_color_space(
+            ctx, inputs[i].part.get_index_partition());
+        if (input_rect == part_rect) {
+          input_lps[i] = inputs[i].part;
+        } else {
+          // Currently assert input must have the same partition
+          // to avoid data movement
+          assert(false);
+        }
+      }
+      break;
+    }
+    case 2:
+    {
+      Rect<2> part_rect = domain;
+      output = model.create_tensor<2>(dims, IndexSpaceT<2>(task_is), DT_FLOAT);
+      for (int i = 0; i < numInputs; i++) {
+        Rect<2> input_rect = runtime->get_index_partition_color_space(
+            ctx, inputs[i].part.get_index_partition());
+        if (input_rect == part_rect) {
+          input_lps[i] = inputs[i].part;
+        } else {
+          // Currently assert input must have the same partition
+          // to avoid data movement
+          assert(false);
+        }
+      }
+      break;
+    }
+    default:
+    {
+      fprintf(stderr, "Unsupported concat dimension number");
+      assert(false);
+    }
+  }
+#ifdef DEADCODE
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_n = part_rect.hi[2] - part_rect.lo[2] + 1;
@@ -94,9 +142,10 @@ Concat::Concat(std::string _name, FFConfig _config,
     assert(part_rect == input_part_rect);
     input_lps[i] = inputs[i].part;
   }
-  return;
+#endif
 }
 
+#ifdef DEADCODE
 __host__
 OpMeta* Concat::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
@@ -106,9 +155,11 @@ OpMeta* Concat::init_task(const Task *task,
   ConcatMeta* m = new ConcatMeta(handler);
   return m;
 }
+#endif
 
 void Concat::init(const FFModel& ff)
 {
+#ifdef DEADCODE
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -126,6 +177,25 @@ void Concat::init(const FFModel& ff)
   for (PointInRectIterator<3> it(rect); it(); it++) {
     meta[idx++] = fm.get_result<OpMeta*>(*it);
   }
+#endif
+}
+
+__global__
+void add_with_stride(float* output,
+                     const float* input,
+                     int num_blocks,
+                     int output_blk_size,
+                     int input_blk_size)
+{
+  int min_blk_size = min(output_blk_size, input_blk_size);
+  CUDA_KERNEL_LOOP(i, num_blocks * min_blk_size)
+  {
+    int blk_idx = i / min_blk_size;
+    int blk_offset = i % min_blk_size;
+    int input_offset = blk_idx * input_blk_size + blk_offset;
+    int output_offset = blk_idx * output_blk_size + blk_offset;
+    output[output_offset] += input[input_offset];
+  }
 }
 
 /*
@@ -139,6 +209,62 @@ void Concat::forward_task(const Task *task,
   const Concat* cc = (Concat*) task->args;
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
+  float *output;
+  const float *inputs[MAX_NUM_INPUTS];
+  int num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
+  for (int d = 0; d < cc->output.numDim; d++) {
+    if (d <= cc->axis)
+      output_blk_size *= cc->output.adim[d];
+    else
+      num_blocks *= cc->output.adim[d];
+  }
+  for (int i = 0; i < cc->numInputs; i++) {
+    input_blk_sizes[i] = 1;
+    for (int d = 0; d < cc->axis; d++)
+      input_blk_sizes[i] *= cc->inputs[i].adim[d];
+  }
+  assert(cc->numInputs <= MAX_NUM_INPUTS);
+  Domain domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  assert(domain.get_dim() == cc->output.numDim);
+  switch (domain.get_dim()) {
+    case 1:
+    {
+      TensorAccessorW<float, 1> accOutput(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime,
+          false/*readOutput*/);
+      output = accOutput.ptr;
+      for (int i = 0; i < cc->numInputs; i++) {
+        TensorAccessorR<float, 1> accInput(
+            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
+        inputs[i] = accInput.ptr;
+      }
+      break;
+    }
+    case 2:
+    {
+      TensorAccessorW<float, 2> accOutput(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime,
+          false/*readOutput*/);
+      output = accOutput.ptr;
+      for (int i = 0; i < cc->numInputs; i++) {
+        TensorAccessorR<float, 2> accInput(
+            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
+        inputs[i] = accInput.ptr;
+      }
+      break;
+    }
+    default:
+      fprintf(stderr, "Unsupported concat dimension number");
+      assert(false);
+  }
+  for (int i = 0; i < cc->numInputs; i++) {
+    add_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS>>>(
+        output, inputs[i], num_blocks, output_blk_size, input_blk_sizes[i]);
+    output += input_blk_sizes[i];
+  }
+  checkCUDA(cudaDeviceSynchronize());
+#ifdef DEADCODE
   const AccessorWO<float, 3> acc_output(regions[0], FID_DATA);
   Rect<3> rect_output;
   rect_output =
@@ -158,6 +284,7 @@ void Concat::forward_task(const Task *task,
     output_ptr += rect_input.volume();
   }
   assert(output_ptr == output_bound);
+#endif
 }
 
 void Concat::forward(const FFModel& ff)
@@ -165,21 +292,25 @@ void Concat::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+#ifdef DEADCODE
   Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
+#endif
   IndexLauncher launcher(CONCAT_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Concat)), argmap);
+                         TaskArgument(this, sizeof(Concat)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, output.region));
+                        WRITE_ONLY, EXCLUSIVE, output.region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-        RegionRequirement(inputs[i].part, 0/*projection id*/,
+        RegionRequirement(input_lps[i], 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, inputs[i].region));
     launcher.add_field(i + 1, FID_DATA);
   }
@@ -197,6 +328,62 @@ void Concat::backward_task(const Task *task,
   const Concat* cc = (Concat*) task->args;
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
+  const float *output_grad;
+  float *input_grads[MAX_NUM_INPUTS];
+  int num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
+  for (int d = 0; d < cc->output.numDim; d++) {
+    if (d <= cc->axis)
+      output_blk_size *= cc->output.adim[d];
+    else
+      num_blocks *= cc->output.adim[d];
+  }
+  for (int i = 0; i < cc->numInputs; i++) {
+    input_blk_sizes[i] = 1;
+    for (int d = 0; d < cc->axis; d++)
+      input_blk_sizes[i] *= cc->inputs[i].adim[d];
+  }
+  assert(cc->numInputs <= MAX_NUM_INPUTS);
+  Domain domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  assert(domain.get_dim() == cc->output.numDim);
+  switch (domain.get_dim()) {
+    case 1:
+    {
+      TensorAccessorR<float, 1> accOutputGrad(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      output_grad = accOutputGrad.ptr;
+      for (int i = 0; i < cc->numInputs; i++) {
+        TensorAccessorW<float, 1> accInputGrad(
+            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
+            false/*readOutput*/);
+        input_grads[i] = accInputGrad.ptr;
+      }
+      break;
+    }
+    case 2:
+    {
+      TensorAccessorR<float, 2> accOutputGrad(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      output_grad = accOutputGrad.ptr;
+      for (int i = 0; i < cc->numInputs; i++) {
+        TensorAccessorW<float, 2> accInputGrad(
+            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
+            false/*readOutput*/);
+        input_grads[i] = accInputGrad.ptr;
+      }
+      break;
+    }
+    default:
+      fprintf(stderr, "Unsupported concat dimension number");
+      assert(false);
+  }
+  for (int i = 0; i < cc->numInputs; i++) {
+    add_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS>>>(
+        input_grads[i], output_grad, num_blocks, input_blk_sizes[i], output_blk_size);
+    output_grad += input_blk_sizes[i];
+  }
+  checkCUDA(cudaDeviceSynchronize());
+#ifdef DEADCODE
   const AccessorRO<float, 3> acc_output(regions[0], FID_DATA);
   Rect<3> rect_output;
   rect_output =
@@ -216,6 +403,7 @@ void Concat::backward_task(const Task *task,
     output_ptr += rect_input.volume();
   }
   assert(output_ptr == output_bound);
+#endif
 }
 
 void Concat::backward(const FFModel& ff)
@@ -223,22 +411,26 @@ void Concat::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+#ifdef DEADCODE
   Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
+#endif
   IndexLauncher launcher(CONCAT_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Concat)), argmap);
+                         TaskArgument(this, sizeof(Concat)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(output.part_grad, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, output.region_grad));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-        RegionRequirement(inputs[i].part_grad, 0/*projection id*/,
-                          WRITE_DISCARD, EXCLUSIVE, inputs[i].region_grad));
+        RegionRequirement(input_lps[i], 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);

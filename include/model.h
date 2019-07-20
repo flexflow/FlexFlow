@@ -155,6 +155,10 @@ public:
 
 class FFModel {
 public:
+  struct Parameter {
+    Tensor tensor;
+    Op* op;
+  };
   FFModel(FFConfig &config);
 
   // Add a 2D convolutional layer 
@@ -196,8 +200,7 @@ public:
                 Initializer* bias_initializer = NULL);
   // Add a concat layer
   Tensor concat(std::string name,
-                int n,
-                Tensor* tensors,
+                int n, const Tensor* tensors,
                 int axis);
   // Add a flat layer
   Tensor flat(std::string name, Tensor input);
@@ -219,9 +222,7 @@ public:
                        const IndexSpaceT<NDIM>& part_is,
                        DataType data_type,
                        bool create_grad = true);
-  void add_layers();
   void init_layers();
-  void load_images(int batch_id);
   void prefetch();
   void forward();
   void backward();
@@ -234,11 +235,11 @@ public:
 public:
   FFConfig config;
   Optimizer* optimizer;
-  Tensor inputImage, inputRaw, inputLabel;
+  //Tensor inputImage, inputRaw, inputLabel;
   std::vector<Op*> layers;
-  std::vector<Tensor> parameters;
+  std::vector<Parameter> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
-  DataLoader *dataLoader;
+  //DataLoader *dataLoader;
 private:
   std::map<ParallelConfig, IndexSpace, ParaConfigCompare> taskIs;
 };
@@ -372,10 +373,9 @@ public:
 
 class Linear : public Op {
 public:
-  Linear(std::string name,
-         const FFConfig& config,
+  Linear(FFModel& model,
+         const std::string& pcname,
          const Tensor& input,
-         const IndexSpaceT<2>& part_is,
          int outChannels,
          ActiMode activation,
          Initializer* kernel_initializer,
@@ -514,8 +514,9 @@ public:
 
 class Concat : public Op {
 public:
-  Concat(std::string name, FFConfig config,
-         int n, Tensor* inputs, IndexSpaceT<3> part_is, int axis);
+  Concat(FFModel& model,
+         const std::string& name,
+         int n, const Tensor* inputs, int axis);
 
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -533,7 +534,7 @@ public:
                             Context ctx, Runtime *runtime);
 public:
   int axis;
-  IndexSpaceT<3> task_is;
+  IndexSpace task_is;
 };
 
 class ConcatMeta : public OpMeta {

@@ -239,40 +239,10 @@ void UtilityTasks::init_labels_task(const Task *task,
   init_label_kernel<<<num_blocks, BLKSIZE>>>(label_ptr, rect_label.volume());
 }
 
-
-void FFModel::init_layers()
-{
-  // init images
-  ArgumentMap argmap;
-  Context ctx = config.lg_ctx;
-  Runtime* runtime = config.lg_hlr;
-  IndexSpaceT<3> task_is_3d;
-  IndexLauncher image_launcher(IMAGE_INIT_TASK_ID, task_is_3d,
-                               TaskArgument(NULL, 0), argmap);
-  image_launcher.add_region_requirement(
-      RegionRequirement(inputImage.part, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, inputImage.region));
-  image_launcher.add_field(0, FID_DATA);
-  runtime->execute_index_space(ctx, image_launcher);
-  
-  // init labels
-  IndexSpaceT<1> task_is_1d;
-  IndexLauncher label_launcher(LABEL_INIT_TASK_ID, task_is_1d,
-                               TaskArgument(NULL, 0), argmap);
-  label_launcher.add_region_requirement(
-      RegionRequirement(inputLabel.part, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, inputLabel.region));
-  label_launcher.add_field(0, FID_DATA);
-  runtime->execute_index_space(ctx, label_launcher);
-
-  for (size_t i = 0; i < layers.size(); i++)
-    layers[i]->init(*this);
-}
-
-void FFModel::load_images(int batch_id)
-{
-  assert(false);
-}
+//void FFModel::load_images(int batch_id)
+//{
+//  assert(false);
+//}
 
 void FFModel::prefetch()
 {

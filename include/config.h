@@ -38,12 +38,26 @@ struct ParallelConfig {
   int gpu[MAX_NUM_WORKERS];
 };
 
+bool load_strategies_from_file(const std::string& filename,
+                               std::map<MappingTagID, ParallelConfig>& strategies);
+
+bool save_strategies_to_file(const std::string& filename,
+                             const std::map<MappingTagID, ParallelConfig>& strategies);
+
 class FFConfig {
 public:
+  enum PreservedIDs{
+    InvalidID = 0,
+    DataParallelismID = 1,
+  };
+
   FFConfig();
-  bool load_strategy_file(std::string filename);
-  bool save_strategy_file(std::string filename);
+  //bool load_strategy_file(std::string filename);
+  //bool save_strategy_file(std::string filename);
   void parse_args(char** argv, int argc);
+  static MappingTagID get_hash_id(const std::string& pcname);
+  bool find_parallel_config(const std::string& pcname,
+                            ParallelConfig& config);
 public:
   int epochs, batchSize, numIterations, printFreq;
   int inputHeight, inputWidth;
@@ -55,7 +69,8 @@ public:
   FieldSpace field_space;
   bool syntheticInput, profiling;
   std::string datasetPath, strategyFile;
-  std::map<std::string, ParallelConfig> strategies;
+  // We use MappingTagID has the key since we will pass the tag to the mapper
+  std::map<MappingTagID, ParallelConfig> strategies;
 };
 
 struct ParaConfigCompare {

@@ -15,20 +15,25 @@
 
 #include "mapper.h"
 
-CnnMapper::CnnMapper(MapperRuntime *rt, Machine machine, Processor local,
+LegionRuntime::Logger::Category log_mapper("Mapper");
+
+FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor local,
                      const char *mapper_name,
                      std::vector<Processor>* _gpus,
                      std::map<Processor, Memory>* _proc_fbmems,
-                     std::vector<Processor>* _cpus)
+                     std::vector<Processor>* _cpus,
+                     std::map<size_t, ParallelConfig>* _strategies)
   : DefaultMapper(rt, machine, local, mapper_name),
-    gpus(*_gpus), proc_fbmems(*_proc_fbmems), cpus(*_cpus)
+    gpus(*_gpus), proc_fbmems(*_proc_fbmems), cpus(*_cpus),
+    strategies(*_strategies)
 {}
 
-void CnnMapper::slice_task(const MapperContext ctx,
-                           const Task& task,
-                           const SliceTaskInput& input,
-                           SliceTaskOutput& output)
+void FFMapper::slice_task(const MapperContext ctx,
+                          const Task& task,
+                          const SliceTaskInput& input,
+                          SliceTaskOutput& output)
 {
+#ifdef DEADCODE
   if (task.task_id == LOAD_IMAGES_TASK_ID) {
     output.slices.resize(input.domain.get_volume());
     unsigned idx = 0;
@@ -40,10 +45,28 @@ void CnnMapper::slice_task(const MapperContext ctx,
                                      false/*recurse*/, false/*stealable*/);
     }
   }
-  else if (task.task_id != TOP_LEVEL_TASK_ID)
+  else 
+#endif
+  if (task.task_id != TOP_LEVEL_TASK_ID)
   {
     output.slices.resize(input.domain.get_volume());
     unsigned idx = 0;
+    MappingTagID hash = task.tag;
+    // Make sure the task has a non-zero tag
+    assert(hash != 0);
+    ParallelConfig config;
+    if (strategies.find(hash) == strategies.end()) {
+      // No strategy found, use default data parallelism
+      assert(strategies.find(FFConfig::DataParallelismID) != strategies.end());
+      config = strategies[FFConfig::DataParallelismID];
+    } else {
+      // Found a strategy
+      config = strategies[hash];
+      // Check that the dimensions match
+      assert(config.nDims == input.domain.get_dim());
+      for (int i = 0; i < config.nDims; i++)
+        assert(config.dim[i] == input.domain.hi()[i] - input.domain.lo()[i] + 1);
+    }
     switch (input.domain.get_dim())
     {
       case 1:
@@ -51,7 +74,7 @@ void CnnMapper::slice_task(const MapperContext ctx,
         Rect<1> rect = input.domain;
         for (PointInRectIterator<1> pir(rect); pir(); pir++, idx++) {
           Rect<1> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, gpus[idx % gpus.size()],
+          output.slices[idx] = TaskSlice(slice, gpus[config.gpu[idx]],
                                          false/*recurse*/, false/*stealable*/);
         }
         break;
@@ -61,7 +84,7 @@ void CnnMapper::slice_task(const MapperContext ctx,
         Rect<2> rect = input.domain;
         for (PointInRectIterator<2> pir(rect); pir(); pir++, idx++) {
           Rect<2> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, gpus[idx % gpus.size()],
+          output.slices[idx] = TaskSlice(slice, gpus[config.gpu[idx]],
                                          false/*recurse*/, false/*stealable*/);
         }
         break;
@@ -71,7 +94,7 @@ void CnnMapper::slice_task(const MapperContext ctx,
         Rect<3> rect = input.domain;
         for (PointInRectIterator<3> pir(rect); pir(); pir++, idx++) {
           Rect<3> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, gpus[idx % gpus.size()],
+          output.slices[idx] = TaskSlice(slice, gpus[config.gpu[idx]],
                                          false/*recurse*/, false/*stealable*/);
         }
         break;
@@ -84,10 +107,10 @@ void CnnMapper::slice_task(const MapperContext ctx,
     DefaultMapper::slice_task(ctx, task, input, output);
 }
 
-void CnnMapper::map_task(const MapperContext ctx,
-                         const Task& task,
-                         const MapTaskInput& input,
-                         MapTaskOutput& output)
+void FFMapper::map_task(const MapperContext ctx,
+                        const Task& task,
+                        const MapTaskInput& input,
+                        MapTaskOutput& output)
 {
   // Convolve forward
   if ((task.task_id == CONV2D_INIT_TASK_ID)
@@ -168,13 +191,41 @@ void update_mappers(Machine machine, Runtime *runtime,
     gpus->push_back(it->first); 
   }
 */
+  // Find strategy file path
+  std::string strategyFile = "";
+  const InputArgs &command_args = HighLevelRuntime::get_input_args();
+  char **argv = command_args.argv;
+  int argc = command_args.argc;
+  for (int i = 1; i < argc; i++) {
+    if ((!strcmp(argv[i], "-s")) || (!strcmp(argv[i], "--strategy"))) {
+      strategyFile = std::string(argv[++i]);
+      continue;
+    }
+  }
+  std::map<MappingTagID, ParallelConfig>* strategies = new std::map<MappingTagID, ParallelConfig>();
+
+  if (strategyFile == "") {
+    log_mapper.print("No strategy file provided. Use default data parallelism.");
+    // No strategy file provided, use data parallelism
+    // TODO: the decault data parallelsim only apply to 2D operators
+    ParallelConfig pc;
+    pc.nDims = 2;
+    pc.dim[0] = 1;
+    pc.dim[1] = gpus->size();
+    for (size_t i = 0; i < gpus->size(); i++)
+      pc.gpu[i] = i;
+    (*strategies)[FFConfig::DataParallelismID] = pc;
+  } else {
+    load_strategies_from_file(strategyFile, *strategies);
+  }
 
   for (std::set<Processor>::const_iterator it = local_procs.begin();
         it != local_procs.end(); it++)
   {
-    CnnMapper* mapper = new CnnMapper(runtime->get_mapper_runtime(),
-                                      machine, *it, "cnn_mapper",
-                                      gpus, proc_fbmems, cpus);
+    FFMapper* mapper = new FFMapper(runtime->get_mapper_runtime(),
+                                    machine, *it, "FlexFlow Mapper",
+                                    gpus, proc_fbmems, cpus, strategies);
     runtime->replace_default_mapper(mapper, *it);
   }
 }
+

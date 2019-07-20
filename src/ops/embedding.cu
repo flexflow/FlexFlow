@@ -28,6 +28,10 @@ Tensor FFModel::embedding(const std::string& pcname,
   Embedding* embed = new Embedding(*this, pcname, input, inDim,
                                    outDim, kernel_initializer);
   layers.push_back(embed);
+  Parameter kernel;
+  kernel.tensor = embed->locals[0];
+  kernel.op = embed;
+  parameters.push_back(kernel);
   return embed->output;
 }
 
@@ -184,7 +188,9 @@ void Embedding::forward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   IndexLauncher launcher(EMBED_FWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap);
+                         TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
   // regions[0]: input
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection*/,
@@ -235,7 +241,10 @@ void Embedding::backward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   IndexLauncher launcher(EMBED_BWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap);
+                         TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
+
   // regions[0]: input
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection*/,

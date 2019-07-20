@@ -23,10 +23,9 @@ Tensor FFModel::pool2d(std::string name, Tensor input,
                          PoolType type, bool relu)
 {
   assert(input.numDim == 4); /*NCHW*/
-  assert(config.strategies.find(name) != config.strategies.end());
-  ParallelConfig pc = config.strategies[name];
+  ParallelConfig pc;
+  assert(config.find_parallel_config(name, pc));
   IndexSpaceT<4> task_is = IndexSpaceT<4>(get_or_create_task_is(pc));
-  printf("CP#1\n");
   Pool2D *pool = new Pool2D(name, config, input, task_is, kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW,
                             type, relu);

@@ -18,7 +18,7 @@
 
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_ff("DLRM");
+LegionRuntime::Logger::Category log_app("DLRM");
 
 struct DLRMConfig {
   DLRMConfig(void)
@@ -73,6 +73,16 @@ Tensor interact_features(FFModel* model, const Tensor& x,
   }
 }
 
+void print_vector(const std::string& name, const std::vector<int>& vector)
+{
+  std::ostringstream out;
+  for (size_t i = 0; i < vector.size() - 1; i++)
+    out << vector[i] << " ";
+  if (vector.size() > 0)
+    out << vector[vector.size() - 1];
+  log_app.print("%s: %s", name.c_str(), out.str().c_str());
+}
+
 void top_level_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime)
@@ -86,6 +96,11 @@ void top_level_task(const Task* task,
     int argc = command_args.argc;
     ffConfig.parse_args(argv, argc);
     parse_input_args(argv, argc, dlrmConfig);
+    log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
+        ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
+    print_vector("Embedding Size", dlrmConfig.embedding_size);
+    print_vector("MLP Top", dlrmConfig.mlp_top);
+    print_vector("MLP Bot", dlrmConfig.mlp_bot);
   }
 
   ffConfig.lg_ctx = ctx;
@@ -120,10 +135,13 @@ void top_level_task(const Task* task,
     assert(false);
   }
   ff.mse_loss("mse_loss"/*name*/, p, label, "mean"/*reduction*/);
+  // Use SGD Optimizer
+  ff.optimizer = new SGDOptimizer(&ff, 0.01f);
+  ff.init_layers();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     for (int iter = 0; iter < ffConfig.numIterations; iter++) {
-      ff.zero_gradients();
       ff.forward();
+      ff.zero_gradients();
       ff.backward();
       ff.update();
     }
