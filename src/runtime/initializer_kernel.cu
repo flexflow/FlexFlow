@@ -86,12 +86,16 @@ void NormInitializer::init_task(const Task* task,
       w = accW.ptr;
       break;
     }
+    default:
+      assert(false);
   }
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
   NormInitializer* initializer = (NormInitializer*) task->args;
   fprintf(stderr, "seed = %d\n", initializer->seed);
   curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
+  fprintf(stderr, "domain.volume() = %zu mean(%.4lf) var(%.4lf)\n",
+      domain.get_volume(), initializer->mean, initializer->stddev);
   checkCUDA(curandGenerateNormal(gen, w, domain.get_volume(),
       initializer->mean, initializer->stddev));
   checkCUDA(cudaDeviceSynchronize());

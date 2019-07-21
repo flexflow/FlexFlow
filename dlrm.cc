@@ -120,6 +120,10 @@ void top_level_task(const Task* task,
     dense_input = ff.create_tensor<2>(dims, "", DT_FLOAT);
   }
   Tensor label;
+  {
+    const int dims[] = {ffConfig.batchSize, 2};
+    label = ff.create_tensor<2>(dims, "", DT_FLOAT);
+  }
   // Step 1 create dense_mlp
   Tensor x = create_mlp(&ff, dense_input, dlrmConfig.mlp_bot, dlrmConfig.sigmoid_bot);
   std::vector<Tensor> ly;
@@ -134,7 +138,7 @@ void top_level_task(const Task* task,
     // TODO: implement clamp
     assert(false);
   }
-  ff.mse_loss("mse_loss"/*name*/, p, label, "mean"/*reduction*/);
+  ff.mse_loss("mse_loss"/*name*/, p, label, "average"/*reduction*/);
   // Use SGD Optimizer
   ff.optimizer = new SGDOptimizer(&ff, 0.01f);
   ff.init_layers();

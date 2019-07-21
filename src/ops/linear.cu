@@ -27,9 +27,9 @@ Tensor FFModel::dense(std::string name,
                           kernel_initializer, bias_initializer);
   layers.push_back(li);
   Parameter kernel, bias;
-  kernel.tensor = li->locals[0];
+  kernel.tensor = li->locals[1];
   kernel.op = li;
-  bias.tensor = li->locals[1];
+  bias.tensor = li->locals[2];
   bias.op = li;
   parameters.push_back(kernel);
   parameters.push_back(bias);
