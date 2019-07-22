@@ -29,7 +29,7 @@ Tensor FFModel::embedding(const std::string& pcname,
                                    outDim, kernel_initializer);
   layers.push_back(embed);
   Parameter kernel;
-  kernel.tensor = embed->locals[0];
+  kernel.tensor = embed->kernel;
   kernel.op = embed;
   parameters.push_back(kernel);
   return embed->output;
@@ -54,14 +54,15 @@ Embedding::Embedding(FFModel& model,
   assert(part_rect.hi[0] == part_rect.lo[0]);
   const int dims[2] = {inputs[0].adim[1], outDim};
   output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
- // Create kernel tensor
-  Tensor kernel_tensor;
+  kernel = model.create_weight<2>(dims, task_is, DT_FLOAT);
+#ifdef DEADCODE
+  // Create kernel tensor
   Rect<2> kernel_rect(Point<2>(0, 0), Point<2>(outDim-1, inDim-1));
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
   allocator.allocate_field(sizeof(float), FID_DATA);
   IndexSpaceT<2> kernel_is = runtime->create_index_space(ctx, kernel_rect);
-  kernel_tensor.region = runtime->create_logical_region(ctx, kernel_is, fs);
+  kernel.region = runtime->create_logical_region(ctx, kernel_is, fs);
   {
     int num_part_c = part_rect.hi[0] - part_rect.lo[0] + 1;
     int extent_c = (outDim + num_part_c - 1) / num_part_c;
@@ -71,15 +72,15 @@ Embedding::Embedding(FFModel& model,
     transform[1][0] = 0; transform[1][1] = 0;
     IndexPartition ip = runtime->create_partition_by_restriction(
         ctx, kernel_is, task_is, transform, extent);
-    kernel_tensor.part = runtime->get_logical_partition(
-        ctx, kernel_tensor.region, ip);
+    kernel.part = runtime->get_logical_partition(
+        ctx, kernel.region, ip);
   }
   // Create kernel tensor gradients
   Rect<3> kernel_grad_rect(Point<3>(0, 0, 0),
       Point<3>(outDim-1, inDim-1, part_rect.hi[1] - part_rect.lo[1]));
   IndexSpaceT<3> kernel_grad_is = runtime->create_index_space(
       ctx, kernel_grad_rect);
-  kernel_tensor.region_grad = runtime->create_logical_region(
+  kernel.region_grad = runtime->create_logical_region(
       ctx, kernel_grad_is, fs);
   {
     int num_part_c = part_rect.hi[0] - part_rect.lo[0] + 1;
@@ -91,17 +92,18 @@ Embedding::Embedding(FFModel& model,
     transform[2][0] = 0; transform[2][1] = 1;
     IndexPartition ip = runtime->create_partition_by_restriction(
         ctx, kernel_grad_is, task_is, transform, extent);
-    kernel_tensor.part_grad = runtime->get_logical_partition(
-        ctx, kernel_tensor.region_grad, ip);
+    kernel.part_grad = runtime->get_logical_partition(
+        ctx, kernel.region_grad, ip);
     assert(runtime->is_index_partition_disjoint(ctx, ip));
     assert(runtime->is_index_partition_complete(ctx, ip));
   }
-  locals[0] = kernel_tensor;
+#endif
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(
       ctx, inputs[0].part.get_index_partition());
   if (input_rect == part_rect) {
     input_lps[0] = inputs[0].part;
+    input_grad_lps[0] = inputs[0].part_grad;
   } else {
     // Currently assert input must have the same partition
     // to avoid data movement
@@ -203,8 +205,8 @@ void Embedding::forward(const FFModel& ff)
   launcher.add_field(1, FID_DATA);
   // regions[2]: weight
   launcher.add_region_requirement(
-      RegionRequirement(locals[0].part, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, locals[0].region));
+      RegionRequirement(kernel.part, 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, kernel.region));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -247,8 +249,8 @@ void Embedding::backward(const FFModel& ff)
 
   // regions[0]: input
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+      RegionRequirement(input_grad_lps[0], 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[1]: output
   launcher.add_region_requirement(
@@ -257,8 +259,8 @@ void Embedding::backward(const FFModel& ff)
   launcher.add_field(1, FID_DATA);
   // regions[2]: weight
   launcher.add_region_requirement(
-      RegionRequirement(locals[0].part, 0/*projection*/,
-                        READ_WRITE, EXCLUSIVE, locals[0].region));
+      RegionRequirement(kernel.part, 0/*projection*/,
+                        READ_WRITE, EXCLUSIVE, kernel.region));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }

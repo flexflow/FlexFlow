@@ -259,6 +259,145 @@ Tensor FFModel::create_tensor(const int dims[],
   return tensor;
 }
 
+// This function assumes:
+// 1. the outer most dim of weight is channel out
+// 2. partition is 2D (sample, channel_out)
+template<int NDIM>
+Tensor FFModel::create_weight(const int dims[],
+                              const IndexSpaceT<2>& part_is,
+                              DataType data_type,
+                              bool create_grad)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  Rect<2> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
+  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
+  Tensor weight;
+  weight.numDim = NDIM;
+  for (int i = 0; i < NDIM; i++)
+    weight.adim[i] = dims[NDIM-1-i];
+  FieldSpace fs = runtime->create_field_space(ctx);
+  FieldAllocator allocator= runtime->create_field_allocator(ctx, fs);
+  switch (data_type) {
+    case DT_FLOAT:
+      allocator.allocate_field(sizeof(float), FID_DATA);
+      break;
+    case DT_DOUBLE:
+      allocator.allocate_field(sizeof(double), FID_DATA);
+      break;
+    case DT_INT32:
+      allocator.allocate_field(sizeof(int), FID_DATA);
+      break;
+    default:
+      assert(false);
+  }
+  // Step 1: forward region and partition
+  {
+    Point<NDIM> hi;
+    for (int i = 0; i < NDIM; i++)
+      hi[i] = dims[NDIM-1-i]-1;
+    Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
+    IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
+    weight.region = runtime->create_logical_region(ctx, is, fs);
+    assert(dims[0] % num_par_c == 0);
+    hi[NDIM-1] = dims[0] / num_par_c - 1;
+    Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
+    Transform<NDIM, 2> transform;
+    for (int i = 0; i < NDIM; i++)
+      for (int j = 0; j < 2; j++)
+        transform[i][j] = 0;
+    transform[NDIM-1][0] = dims[0] / num_par_c;
+    IndexPartition ip = runtime->create_partition_by_restriction(
+        ctx, is, part_is, transform, extent);
+    assert(runtime->is_index_partition_complete(ctx, ip));
+    weight.part = runtime->get_logical_partition(
+        ctx, weight.region, ip);
+  }
+  // Step 3: backward region
+  if (create_grad) {
+    Point<NDIM+1> hi;
+    for (int i = 0; i < NDIM; i++)
+      hi[i] = dims[NDIM-1-i]-1;
+    hi[NDIM] = num_par_n-1;
+    Rect<NDIM+1> rect(Point<NDIM+1>::ZEROES(), hi);
+    IndexSpaceT<NDIM+1> is = runtime->create_index_space(ctx, rect);
+    weight.region_grad = runtime->create_logical_region(ctx, is, fs);
+    hi[NDIM-1] = dims[0] / num_par_c - 1;
+    hi[NDIM] = 0;
+    Rect<NDIM+1> extent(Point<NDIM+1>::ZEROES(), hi);
+    Transform<NDIM+1, 2> transform;
+    for (int i = 0; i < NDIM+1; i++)
+      for (int j = 0; j < 2; j++)
+        transform[i][j] = 0;
+    transform[NDIM-1][0] = dims[0] / num_par_c;
+    transform[NDIM][1] = 1;
+    IndexPartition ip = runtime->create_partition_by_restriction(
+        ctx, is, part_is, transform, extent);
+    assert(runtime->is_index_partition_complete(ctx, ip));
+    assert(runtime->is_index_partition_disjoint(ctx, ip));
+    weight.part_grad = runtime->get_logical_partition(
+        ctx, weight.region_grad, ip);
+  }
+  return weight;
+}
+
+template<int NDIM>
+Tensor FFModel::create_replica(const int dims[],
+                               const IndexSpaceT<2>& task_is,
+                               DataType data_type)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  assert(NDIM >= 2);
+  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
+  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
+  Tensor replica;
+  replica.numDim = NDIM;
+  for (int i = 0; i < NDIM; i++)
+    replica.adim[i] = dims[NDIM-1-i];
+  FieldSpace fs = runtime->create_field_space(ctx);
+  FieldAllocator allocator= runtime->create_field_allocator(ctx, fs);
+  switch (data_type) {
+    case DT_FLOAT:
+      allocator.allocate_field(sizeof(float), FID_DATA);
+      break;
+    case DT_DOUBLE:
+      allocator.allocate_field(sizeof(double), FID_DATA);
+      break;
+    case DT_INT32:
+      allocator.allocate_field(sizeof(int), FID_DATA);
+      break;
+    default:
+      assert(false);
+  }
+  Point<NDIM> hi;
+  for (int i = 0; i < NDIM; i++)
+    hi[i] = dims[NDIM-1-i]-1;
+  Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
+  IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
+  replica.region_grad = runtime->create_logical_region(ctx, is, fs);
+  assert(dims[0] == num_par_c);
+  assert(dims[1] % num_par_n == 0);
+  hi[NDIM-1] = dims[0] / num_par_c - 1;
+  hi[NDIM-2] = dims[1] / num_par_n - 1;
+  Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
+  Transform<NDIM, 2> transform;
+  for (int i = 0; i < NDIM; i++)
+    for (int j = 0; j < 2; j++)
+      transform[i][j] = 0;
+  transform[NDIM-1][0] = 1;
+  transform[NDIM-2][1] = dims[1] / num_par_n;
+  IndexPartition ip = runtime->create_partition_by_restriction(
+      ctx, is, task_is, transform, extent);
+  assert(runtime->is_index_partition_disjoint(ctx, ip));
+  assert(runtime->is_index_partition_complete(ctx, ip));
+  replica.part_grad = runtime->get_logical_partition(
+    ctx, replica.region_grad, ip);
+  return replica;
+}
+
 IndexSpace FFModel::get_or_create_task_is(ParallelConfig pc)
 {
   if (taskIs.find(pc) != taskIs.end())
@@ -315,6 +454,18 @@ IndexSpace FFModel::get_or_create_task_is(const std::string& pcname)
   ParallelConfig pc;
   assert(config.find_parallel_config(pcname, pc));
   return get_or_create_task_is(pc);
+}
+
+IndexSpace FFModel::get_task_is(const Domain& domain) const
+{
+  ParallelConfig pc;
+  pc.nDims = domain.get_dim();
+  for (int i = 0; i < pc.nDims; i++)
+    pc.dim[i] = domain.hi()[i] - domain.lo()[i];
+  std::map<ParallelConfig, IndexSpace, ParaConfigCompare>::const_iterator it;
+  it = taskIs.find(pc);
+  assert(it != taskIs.end());
+  return it->second;
 }
 
 void FFModel::init_layers()
@@ -511,6 +662,10 @@ void FFConfig::parse_args(char **argv, int argc)
     {
       loadersPerNode = atoi(argv[++i]);
       continue;
+    }
+    if (!strcmp(argv[i], "--profiling"))
+    {
+      profiling = true;
     }
   }
 }
@@ -796,3 +951,8 @@ template Tensor FFModel::create_tensor<1>(const int* dims, const IndexSpaceT<1>&
 template Tensor FFModel::create_tensor<2>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, bool create_grad);
 template Tensor FFModel::create_tensor<3>(const int* dims, const IndexSpaceT<3>& part_is, DataType data_type, bool create_grad);
 template Tensor FFModel::create_tensor<4>(const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, bool create_grad);
+
+template Tensor FFModel::create_weight<2>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, bool create_grad);
+template Tensor FFModel::create_weight<1>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, bool create_grad);
+
+template Tensor FFModel::create_replica<3>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type);

@@ -115,6 +115,17 @@ struct FFHandler {
 };
 
 struct Tensor {
+  Tensor(void) {
+    numDim = 0;
+    for (int i = 0; i < MAX_DIM; i++) {
+      adim[i] = 0;
+      pdim[i] = 0;
+    }
+    region = LogicalRegion::NO_REGION;
+    region_grad = LogicalRegion::NO_REGION;
+    part = LogicalPartition::NO_PART;
+    part_grad = LogicalPartition::NO_PART;
+  }
   int numDim, adim[MAX_DIM], pdim[MAX_DIM];
   LogicalRegion region, region_grad;
   LogicalPartition part, part_grad;
@@ -147,8 +158,8 @@ public:
   Tensor inputs[MAX_NUM_INPUTS];
   bool trainableInputs[MAX_NUM_INPUTS];
   bool resetInputGrads[MAX_NUM_INPUTS];
-  LogicalPartition input_lps[MAX_NUM_INPUTS];
-  Tensor locals[MAX_NUM_LOCALS];
+  LogicalPartition input_lps[MAX_NUM_INPUTS], input_grad_lps[MAX_NUM_INPUTS];
+  //Tensor locals[MAX_NUM_LOCALS];
   OpMeta* meta[MAX_NUM_WORKERS];
   int numLocals, numInputs;
 };
@@ -189,6 +200,7 @@ public:
                const Tensor& input,
                int outDim,
                ActiMode activation = AC_MODE_NONE,
+               bool use_bias = true,
                Initializer* kernel_initializer = NULL,
                Initializer* bias_initializer = NULL);
   // Add a linear layer
@@ -196,6 +208,7 @@ public:
                 const Tensor& input,
                 int outChannels,
                 ActiMode activation = AC_MODE_NONE,
+                bool use_bias = true,
                 Initializer* kernel_initializer = NULL,
                 Initializer* bias_initializer = NULL);
   // Add a concat layer
@@ -222,6 +235,15 @@ public:
                        const IndexSpaceT<NDIM>& part_is,
                        DataType data_type,
                        bool create_grad = true);
+  template<int NDIM>
+  Tensor create_weight(const int* dims,
+                       const IndexSpaceT<2>& part_is,
+                       DataType data_type,
+                       bool create_grad = true);
+  template<int NDIM>
+  Tensor create_replica(const int* dims,
+                        const IndexSpaceT<2>& part_is,
+                        DataType data_type);
   void init_layers();
   void prefetch();
   void forward();
@@ -232,6 +254,7 @@ public:
   IndexSpace get_or_create_task_is(ParallelConfig pc);
   IndexSpace get_or_create_task_is(const Domain& domain);
   IndexSpace get_or_create_task_is(const std::string& pcname);
+  IndexSpace get_task_is(const Domain& domain) const;
 public:
   FFConfig config;
   Optimizer* optimizer;
@@ -280,6 +303,7 @@ public:
   bool relu, first_layer, profiling;
   int num_replica;
   float learning_rate;
+  Tensor locals[MAX_NUM_LOCALS];
 };
 
 class Conv2DMeta : public OpMeta {
@@ -359,6 +383,7 @@ public:
   IndexSpaceT<4> task_is;
   bool relu, profiling;
   int num_replica;
+  Tensor locals[MAX_NUM_LOCALS];
 };
 
 class BatchNormMeta : public OpMeta {
@@ -378,6 +403,7 @@ public:
          const Tensor& input,
          int outChannels,
          ActiMode activation,
+         bool use_bias,
          Initializer* kernel_initializer,
          Initializer* bias_initializer);
   void init(const FFModel&);
@@ -405,9 +431,8 @@ public:
   //                        Context ctx, Runtime *runtime);
 public:
   IndexSpaceT<2> task_is;
-  LogicalPartition replica_sub_lps[MAX_NUM_WORKERS];
+  Tensor kernel, bias, replica;
   bool profiling;
-  int num_replica, fc_num_par_c;
   ActiMode activation;
 };
 
@@ -416,9 +441,7 @@ public:
   LinearMeta(FFHandler handle) : OpMeta(handle) {};
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;
-  int in_channels, out_channels, batch_size;
-  ActiMode activation;
-  float *one_ptr, *pre_relu;
+  const float *one_ptr;
 };
 
 class Embedding : public Op {
@@ -444,6 +467,7 @@ public:
                             Context ctx, Runtime *runtime);
 public:
   IndexSpaceT<2> task_is;
+  Tensor kernel;
   bool profiling;
 };
 

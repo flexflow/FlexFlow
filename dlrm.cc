@@ -42,7 +42,7 @@ Tensor create_mlp(FFModel* model, const Tensor& input,
     std_dev = sqrt(2.0f / ln[i+1]);
     Initializer* bias_init = new NormInitializer(std::rand(), 0, std_dev);
     ActiMode activation = i == sigmoid_layer ? AC_MODE_SIGMOID : AC_MODE_RELU;
-    t = model->linear("linear", t, ln[i+1], activation, weight_init, bias_init);
+    t = model->linear("linear", t, ln[i+1], activation, true/*bias*/, weight_init, bias_init);
   }
   return t;
 }
