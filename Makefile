@@ -42,7 +42,7 @@ INC_FLAGS	?= -Iinclude/
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcudnn -lcublas -lcurand -lprotobuf
+LD_FLAGS	?= -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib
 # For Point and Rect typedefs
 CC_FLAGS	+= -std=c++11
 NVCC_FLAGS  += -std=c++11

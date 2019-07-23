@@ -164,3 +164,4 @@ void parse_input_args(char **argv, int argc, CandleConfig& config)
     }
   }
 }
+
