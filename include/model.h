@@ -70,11 +70,9 @@ enum TaskIDs {
   SGD_UPD_TASK_ID,
   // Initializer
   GLOROT_INIT_TASK_ID,
-  ZEROS_INIT_TASK_ID,
+  ZERO_INIT_TASK_ID,
   UNIFORM_INIT_TASK_ID,
   NORMAL_INIT_TASK_ID,
-  // Internal
-  ZERO_GRAD_TASK_ID,
 };
 
 enum ActiMode {

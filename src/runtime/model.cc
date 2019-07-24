@@ -444,7 +444,7 @@ IndexSpace FFModel::get_or_create_task_is(const Domain& domain)
   ParallelConfig pc;
   pc.nDims = domain.get_dim();
   for (int i = 0; i < pc.nDims; i++) {
-    pc.dim[i] = domain.hi()[i] - domain.lo()[i];
+    pc.dim[i] = domain.hi()[i] - domain.lo()[i] + 1;
   }
   return get_or_create_task_is(pc);
 }
@@ -461,7 +461,7 @@ IndexSpace FFModel::get_task_is(const Domain& domain) const
   ParallelConfig pc;
   pc.nDims = domain.get_dim();
   for (int i = 0; i < pc.nDims; i++)
-    pc.dim[i] = domain.hi()[i] - domain.lo()[i];
+    pc.dim[i] = domain.hi()[i] - domain.lo()[i] + 1;
   std::map<ParallelConfig, IndexSpace, ParaConfigCompare>::const_iterator it;
   it = taskIs.find(pc);
   assert(it != taskIs.end());
@@ -513,7 +513,7 @@ void FFModel::zero_gradients(void)
     Domain domain = runtime->get_index_partition_color_space(
         ctx, parameters[p].tensor.part_grad.get_index_partition());
     IndexSpace task_is = get_or_create_task_is(domain);
-    IndexLauncher launcher(ZERO_GRAD_TASK_ID, task_is,
+    IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
                            TaskArgument(NULL, 0), arg_map,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(std::string(parameters[p].op->name)));
@@ -907,12 +907,12 @@ int main(int argc, char** argv)
   }
   // Initializer
   {
-    TaskVariantRegistrar registrar(ZEROS_INIT_TASK_ID,
-                                   "Zeros Init");
+    TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID,
+                                   "Zero Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<ZerosInitializer::init_task>(
-        registrar, "Zeros Init Task");
+    Runtime::preregister_task_variant<ZeroInitializer::init_task>(
+        registrar, "Zero Init Task");
   }
   {
     TaskVariantRegistrar registrar(UNIFORM_INIT_TASK_ID,

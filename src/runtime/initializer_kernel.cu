@@ -42,19 +42,6 @@ void UniformInitializer::init_task(const Task* task,
   curandDestroyGenerator(gen);
 }
 
-void ZerosInitializer::init_task(const Task* task,
-                                 const std::vector<PhysicalRegion>& regions,
-                                 Context ctx, Runtime* runtime)
-{
-  assert(regions.size() == 1);
-  assert(task->regions.size() == 1);
-  TensorAccessorW<float, 2> accW(regions[0], task->regions[0],
-      FID_DATA, ctx, runtime, false/*readOutput*/);
-  assign_kernel<<<GET_BLOCKS(accW.rect.volume()), CUDA_NUM_THREADS>>>(
-      accW.ptr, accW.rect.volume(), 0.0f);
-  checkCUDA(cudaDeviceSynchronize());
-}
-
 void NormInitializer::init_task(const Task* task,
                                 const std::vector<PhysicalRegion>& regions,
                                 Context ctx, Runtime* runtime)
@@ -102,9 +89,9 @@ void NormInitializer::init_task(const Task* task,
   curandDestroyGenerator(gen);
 }
 
-void zero_grad_task_impl(const Task* task,
-                         const std::vector<PhysicalRegion>& regions,
-                         Context ctx, Runtime* runtime)
+void ZeroInitializer::init_task(const Task* task,
+                                const std::vector<PhysicalRegion>& regions,
+                                Context ctx, Runtime* runtime)
 {
   assert(regions.size() == task->regions.size());
   for (size_t i = 0; i < regions.size(); i++) {

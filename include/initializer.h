@@ -42,11 +42,11 @@ public:
                         Context ctx, Runtime *runtime);
 };
 
-class ZerosInitializer : public Initializer
+class ZeroInitializer : public Initializer
 {
 public:
-  ZerosInitializer(void);
-  ~ZerosInitializer(void);
+  ZeroInitializer(void);
+  ~ZeroInitializer(void);
   void init(Context ctx, Runtime* runtime, const Tensor* tensor);
   static void init_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,

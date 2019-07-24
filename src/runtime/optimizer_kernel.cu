@@ -29,7 +29,7 @@ void sgd_update(int count, float lr, float weight_decay,
   CUDA_KERNEL_LOOP(i, count)
   {
     float gt = WGrad[i] + weight_decay * W[i];
-    if (momentum > 0) {
+    if (momentum > 0.0f) {
       V[i] = V[i] * momentum + gt;
       if (nesterov)
         gt = gt + momentum * V[i];
@@ -45,13 +45,18 @@ void SGDOptimizer::update_task(const Task* task,
                                const std::vector<PhysicalRegion>& regions,
                                Context ctx, Runtime* runtime)
 {
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
   const SGDOptimizer* op = (SGDOptimizer*) task->args;
+  if (op->momentum > 0.0f) {
+    assert(regions.size() == 3);
+    assert(task->regions.size() == 3);
+  } else {
+    assert(regions.size() == 2);
+    assert(task->regions.size() == 2);
+  }
   Domain domain = runtime->get_index_space_domain(ctx,
       task->regions[1].region.get_index_space());
-  const float *w_grad_ptr;
-  float *w_ptr, *v_ptr;
+  const float *w_grad_ptr = NULL;
+  float *w_ptr = NULL, *v_ptr = NULL;
   size_t size = 0, num_replicas = 0;
   switch(domain.get_dim()) {
     case 1:
@@ -61,10 +66,6 @@ void SGDOptimizer::update_task(const Task* task,
       TensorAccessorW<float, 1> accW(
           regions[1], task->regions[1], FID_DATA, ctx, runtime,
           true/*readOutput*/);
-      TensorAccessorW<float, 1> accV(
-          regions[2], task->regions[2], FID_DATA, ctx, runtime,
-          true/*readOutput*/);
-      assert(accW.rect == accV.rect);
       for (int i = 0; i < domain.get_dim(); i++) {
         assert(accW.rect.lo[i] == accWGrad.rect.lo[i]);
         assert(accW.rect.hi[i] == accWGrad.rect.hi[i]);
@@ -74,7 +75,13 @@ void SGDOptimizer::update_task(const Task* task,
       num_replicas = accWGrad.rect.volume() / accW.rect.volume();
       w_grad_ptr = accWGrad.ptr;
       w_ptr = accW.ptr;
-      v_ptr = accV.ptr;
+      if (op->momentum > 0.0f) {
+        TensorAccessorW<float, 1> accV(
+            regions[2], task->regions[2], FID_DATA, ctx, runtime,
+            true/*readOutput*/);
+        assert(accW.rect == accV.rect);
+        v_ptr = accV.ptr;
+      }
       break;
     }
     case 2:
@@ -84,10 +91,6 @@ void SGDOptimizer::update_task(const Task* task,
       TensorAccessorW<float, 2> accW(
           regions[1], task->regions[1], FID_DATA, ctx, runtime,
           true/*readOutput*/);
-      TensorAccessorW<float, 2> accV(
-          regions[2], task->regions[2], FID_DATA, ctx, runtime,
-          true/*readOutput*/);
-      assert(accW.rect == accV.rect);
       for (int i = 0; i < domain.get_dim(); i++) {
         assert(accW.rect.lo[i] == accWGrad.rect.lo[i]);
         assert(accW.rect.hi[i] == accWGrad.rect.hi[i]);
@@ -97,7 +100,13 @@ void SGDOptimizer::update_task(const Task* task,
       num_replicas = accWGrad.rect.volume() / accW.rect.volume();
       w_grad_ptr = accWGrad.ptr;
       w_ptr = accW.ptr;
-      v_ptr = accV.ptr;
+      if (op->momentum > 0.0f) {
+        TensorAccessorW<float, 2> accV(
+            regions[2], task->regions[2], FID_DATA, ctx, runtime,
+            true/*readOutput*/);
+        assert(accW.rect == accV.rect);
+        v_ptr = accV.ptr;
+      }
       break;
     }
     default:

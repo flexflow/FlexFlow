@@ -51,6 +51,7 @@ Concat::Concat(FFModel& model,
             ctx, inputs[i].part.get_index_partition());
         if (input_rect == part_rect) {
           input_lps[i] = inputs[i].part;
+          input_grad_lps[i] = inputs[i].part_grad;
         } else {
           // Currently assert input must have the same partition
           // to avoid data movement
@@ -68,6 +69,7 @@ Concat::Concat(FFModel& model,
             ctx, inputs[i].part.get_index_partition());
         if (input_rect == part_rect) {
           input_lps[i] = inputs[i].part;
+          input_grad_lps[i] = inputs[i].part_grad;
         } else {
           // Currently assert input must have the same partition
           // to avoid data movement
@@ -429,7 +431,7 @@ void Concat::backward(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-        RegionRequirement(input_lps[i], 0/*projection id*/,
+        RegionRequirement(input_grad_lps[i], 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
     launcher.add_field(i + 1, FID_DATA);
   }

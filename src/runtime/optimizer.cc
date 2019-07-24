@@ -27,7 +27,7 @@ SGDOptimizer::SGDOptimizer(const FFModel* _model,
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  Initializer* initializer = new ZerosInitializer();
+  Initializer* initializer = new ZeroInitializer();
   for (size_t i = 0; i < model->parameters.size(); i++) {
     Tensor p = model->parameters[i].tensor;
     Domain domain = runtime->get_index_space_domain(
@@ -70,7 +70,6 @@ void SGDOptimizer::update(const Tensor* p)
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  assert(v_regions.find(p->region) != v_regions.end());
   TaskLauncher launcher(SGD_UPD_TASK_ID,
                         TaskArgument(this, sizeof(SGDOptimizer)));
   // regions[0]: region_grad
@@ -83,11 +82,14 @@ void SGDOptimizer::update(const Tensor* p)
       RegionRequirement(p->region,
                         READ_WRITE, EXCLUSIVE, p->region));
   launcher.add_field(1, FID_DATA);
-  // regions[2]: v_region
-  launcher.add_region_requirement(
-      RegionRequirement(v_regions[p->region],
-                        READ_WRITE, EXCLUSIVE, v_regions[p->region]));
-  launcher.add_field(2, FID_DATA);
+  if (momentum > 0.0f) {
+    // regions[2]: v_region
+    assert(v_regions.find(p->region) != v_regions.end());
+    launcher.add_region_requirement(
+        RegionRequirement(v_regions[p->region],
+                          READ_WRITE, EXCLUSIVE, v_regions[p->region]));
+    launcher.add_field(2, FID_DATA);
+  }
   runtime->execute_task(ctx, launcher);
 }
 

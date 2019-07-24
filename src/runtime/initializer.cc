@@ -42,18 +42,18 @@ void GlorotUniform::init(Context ctx,
   runtime->execute_task(ctx, launcher);
 }
 
-ZerosInitializer::ZerosInitializer(void)
+ZeroInitializer::ZeroInitializer(void)
 : Initializer() 
 {}
 
-ZerosInitializer::~ZerosInitializer(void)
+ZeroInitializer::~ZeroInitializer(void)
 {}
 
-void ZerosInitializer::init(Context ctx,
-                            Runtime* runtime,
-                            const Tensor* p)
+void ZeroInitializer::init(Context ctx,
+                           Runtime* runtime,
+                           const Tensor* p)
 {
-  TaskLauncher launcher(ZEROS_INIT_TASK_ID, TaskArgument(NULL, 0));
+  TaskLauncher launcher(ZERO_INIT_TASK_ID, TaskArgument(NULL, 0));
   // regions[0]: p->region
   launcher.add_region_requirement(
       RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
