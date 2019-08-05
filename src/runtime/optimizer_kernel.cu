@@ -61,7 +61,7 @@ void SGDOptimizer::update_task(const Task* task,
   switch(domain.get_dim()) {
     case 1:
     {
-      TensorAccessorR<float, 2> accWGrad(
+      TensorAccessorR<float, 1> accWGrad(
           regions[0], task->regions[0], FID_DATA, ctx, runtime);
       TensorAccessorW<float, 1> accW(
           regions[1], task->regions[1], FID_DATA, ctx, runtime,
@@ -86,7 +86,7 @@ void SGDOptimizer::update_task(const Task* task,
     }
     case 2:
     {
-      TensorAccessorR<float, 3> accWGrad(
+      TensorAccessorR<float, 2> accWGrad(
           regions[0], task->regions[0], FID_DATA, ctx, runtime);
       TensorAccessorW<float, 2> accW(
           regions[1], task->regions[1], FID_DATA, ctx, runtime,

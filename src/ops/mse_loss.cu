@@ -111,7 +111,9 @@ void MSELoss::backward(const FFModel& model)
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   IndexLauncher launcher(MSELOSS_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(MSELoss)), argmap);
+                         TaskArgument(this, sizeof(MSELoss)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
   // regions[0]: _logit
   launcher.add_region_requirement(
       RegionRequirement(inputs[0].part, 0/*projection*/,

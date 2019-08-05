@@ -363,29 +363,41 @@ void Linear::backward_task(const Task *task,
   float alpha = 1.0f, beta = 0.0f;
   const Linear* linear = (Linear*) task->args;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
+  float* input_grad = NULL;
   TensorAccessorR<float, 2> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 3> acc_replica_grad(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime,
-      false/*readOutput*/);
   TensorAccessorR<float, 2> acc_output(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
+  int batch_size = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
+  int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
+  Domain domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  if (domain.get_dim() == 3) {
+    TensorAccessorW<float, 3> acc_replica_grad(
+        regions[1], task->regions[1], FID_DATA, ctx, runtime,
+        false/*readOutput*/);
+    assert(acc_replica_grad.rect.volume() == in_dim * batch_size);
+    input_grad = acc_replica_grad.ptr;
+  } else {
+    TensorAccessorW<float, 2> acc_replica_grad(
+        regions[1], task->regions[1], FID_DATA, ctx, runtime,
+        false/*readOutput*/);
+    assert(acc_replica_grad.rect.volume() == in_dim * batch_size);
+    input_grad = acc_replica_grad.ptr;
+  }
   TensorAccessorW<float, 2> acc_output_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime,
       true/*readOutput*/);
   TensorAccessorR<float, 2> acc_kernel(
       regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 3> acc_kernel_grad(
+  TensorAccessorW<float, 2> acc_kernel_grad(
       regions[5], task->regions[5], FID_DATA, ctx, runtime,
       false/*readOutput*/);
-  TensorAccessorW<float, 2> acc_bias_grad(
+  TensorAccessorW<float, 1> acc_bias_grad(
       regions[6], task->regions[6], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   // make sure the sizes match
-  int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
-  int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
-  int batch_size = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
-  assert(acc_replica_grad.rect.volume() == in_dim * batch_size);
   assert(acc_output.rect.volume() == out_dim * batch_size);
   assert(acc_output_grad.rect.volume() == out_dim * batch_size);
   assert(acc_kernel.rect.volume() == in_dim * out_dim);
@@ -424,7 +436,7 @@ void Linear::backward_task(const Task *task,
                         in_dim, batch_size, out_dim,
                         &alpha, acc_kernel.ptr, in_dim,
                         acc_output_grad.ptr, out_dim,
-                        &beta, acc_replica_grad.ptr, in_dim));
+                        &beta, input_grad, in_dim));
   if (linear->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));

@@ -59,7 +59,7 @@ public:
   bool find_parallel_config(const std::string& pcname,
                             ParallelConfig& config);
 public:
-  int epochs, batchSize, numIterations, printFreq;
+  int epochs, batchSize, iterations, printFreq;
   int inputHeight, inputWidth;
   int numNodes, loadersPerNode, workersPerNode;
   float learningRate, weightDecay;

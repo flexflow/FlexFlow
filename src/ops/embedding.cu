@@ -52,9 +52,14 @@ Embedding::Embedding(FFModel& model,
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
   // Currently assume we can only partition over the sample dim
   assert(part_rect.hi[0] == part_rect.lo[0]);
-  const int dims[2] = {inputs[0].adim[1], outDim};
-  output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
-  kernel = model.create_weight<2>(dims, task_is, DT_FLOAT);
+  {
+    const int dims[2] = {inputs[0].adim[1], outDim};
+    output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
+  }
+  {
+    const int dims[2] = {outDim, inDim};
+    kernel = model.create_weight<2>(dims, task_is, DT_FLOAT);
+  }
 #ifdef DEADCODE
   // Create kernel tensor
   Rect<2> kernel_rect(Point<2>(0, 0), Point<2>(outDim-1, inDim-1));

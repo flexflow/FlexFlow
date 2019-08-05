@@ -38,9 +38,19 @@ Concat::Concat(FFModel& model,
   Runtime* runtime = model.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, task_is);
   FieldSpace fs = model.config.field_space;
-  int dims[MAX_DIM];
-  for (int i = 0; i < domain.get_dim(); i++)
-    dims[i] = domain.hi()[i] - domain.lo()[i] + 1;
+  int dims[MAX_DIM], num_dim = inputs[0].numDim;
+  assert(num_dim == domain.get_dim());
+  for (int i = 0; i < num_dim; i++)
+    dims[i] = inputs[0].adim[num_dim-1-i];
+  for (int i = 1; i < numInputs; i++)
+    for (int j = 0; j < num_dim; j++) {
+      if (j != axis)
+        assert(inputs[i].adim[num_dim-1-j] == dims[j]);
+      else
+        dims[j] += inputs[i].adim[num_dim-1-j];
+    }
+  for (int i = 0; i < num_dim; i++)
+    printf("concat: dim[%d] = %d\n", i, dims[i]);
   switch (domain.get_dim()) {
     case 1:
     {

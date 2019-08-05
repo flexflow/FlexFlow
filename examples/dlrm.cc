@@ -20,10 +20,24 @@ using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("DLRM");
 
+struct DataLoader {
+  DataLoader(std::string prefix);
+};
+
 struct DLRMConfig {
   DLRMConfig(void)
   : sparse_feature_size(2), sigmoid_bot(-1), sigmoid_top(-1),
-    loss_threshold(0.0f), arch_interaction_op("dot") {}
+    loss_threshold(0.0f), arch_interaction_op("cat") {
+    embedding_size.push_back(4);
+    embedding_size.push_back(3);
+    embedding_size.push_back(2);
+    mlp_bot.push_back(4);
+    mlp_bot.push_back(3);
+    mlp_bot.push_back(2);
+    mlp_top.push_back(4);
+    mlp_top.push_back(2);
+    mlp_top.push_back(1);
+  }
   int sparse_feature_size, sigmoid_bot, sigmoid_top;
   float loss_threshold;
   std::vector<int> embedding_size, mlp_bot, mlp_top;
@@ -143,7 +157,7 @@ void top_level_task(const Task* task,
   ff.optimizer = new SGDOptimizer(&ff, 0.01f);
   ff.init_layers();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
-    for (int iter = 0; iter < ffConfig.numIterations; iter++) {
+    for (int iter = 0; iter < ffConfig.iterations; iter++) {
       ff.forward();
       ff.zero_gradients();
       ff.backward();
@@ -162,6 +176,7 @@ void parse_input_args(char **argv, int argc, DLRMConfig& config)
     if (!strcmp(argv[i], "--arch-embedding-size")) {
       std::stringstream ss(std::string(argv[++i]));
       std::string word;
+      config.embedding_size.clear();
       while (std::getline(ss, word, '-')) {
         config.embedding_size.push_back(std::stoi(word));
       }
@@ -170,6 +185,7 @@ void parse_input_args(char **argv, int argc, DLRMConfig& config)
     if (!strcmp(argv[i], "--arch-mlp-bot")) {
       std::stringstream ss(std::string(argv[++i]));
       std::string word;
+      config.mlp_bot.clear();
       while (std::getline(ss, word, '-')) {
         config.mlp_bot.push_back(std::stoi(word));
       }
@@ -178,6 +194,7 @@ void parse_input_args(char **argv, int argc, DLRMConfig& config)
     if (!strcmp(argv[i], "--arch-mlp-top")) {
       std::stringstream ss(std::string(argv[++i]));
       std::string word;
+      config.mlp_top.clear();
       while (std::getline(ss, word, '-')) {
         config.mlp_top.push_back(std::stoi(word));
       }
@@ -200,3 +217,24 @@ void parse_input_args(char **argv, int argc, DLRMConfig& config)
     }
   }
 }
+
+DataLoader::DataLoader(const FFMOdel& ff,
+                       const DLRMConfig& config)
+{
+  for (size_t i = 0; i < config.embedding_size.size(); i++) {
+    const int dims[] = {config.num_samples, 1};
+    Tensor input = ff.create_tensor<2>(dims, "", DT_INT32);
+    sparse_inputs.push_back(input);
+  }
+
+  TaskLauncher launch
+
+  std::string prefix = config.dataset_path;
+  if (prefix.length() == 0) {
+    log_app.print("Use random dataset...");
+  } else {
+    log_app.print("Start loading dataset from %s", prefix.c_str());
+    log_app.print("Finish loading dataset from %s", prefix.c_str());
+  }
+}
+

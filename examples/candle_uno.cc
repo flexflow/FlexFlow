@@ -132,7 +132,8 @@ void top_level_task(const Task* task,
   ff.optimizer = new SGDOptimizer(&ff, 0.01f);
   ff.init_layers();
   for (int epoch = 0; epoch < ff_config.epochs; epoch++) {
-    for (int iter = 0; iter < ff_config.numIterations; iter++) {
+    for (int iter = 0; iter < ff_config.iterations; iter++) {
+      printf("epoch = %d iter = %d\n", epoch, iter);
       ff.forward();
       ff.zero_gradients();
       ff.backward();

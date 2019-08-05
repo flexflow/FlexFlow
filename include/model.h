@@ -608,6 +608,7 @@ public:
                                     Context ctx, Runtime *runtime);
 };
 
+#ifdef DEADCODE
 struct Sample {
   int label;
   char file[MAX_FILE_LENGTH];
@@ -628,8 +629,13 @@ public:
   std::vector<Sample> samples;
   std::vector<Sample>::const_iterator sampleIter;
 };
+#endif
 
 void top_level_task(const Task* task,
+                    const std::vector<PhysicalRegion>& regions,
+                    Context ctx, Runtime* runtime);
+
+void data_load_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime);
 
