@@ -27,11 +27,9 @@ struct DLRMConfig {
     embedding_size.push_back(4);
     embedding_size.push_back(4);
     mlp_bot.push_back(4);
-    mlp_bot.push_back(3);
     mlp_bot.push_back(2);
-    mlp_top.push_back(4);
+    mlp_top.push_back(8);
     mlp_top.push_back(2);
-    mlp_top.push_back(1);
   }
   int sparse_feature_size, sigmoid_bot, sigmoid_top;
   float loss_threshold;
