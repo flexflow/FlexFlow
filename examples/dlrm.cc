@@ -32,7 +32,7 @@ Tensor create_mlp(FFModel* model, const Tensor& input,
     std_dev = sqrt(2.0f / ln[i+1]);
     Initializer* bias_init = new NormInitializer(std::rand(), 0, std_dev);
     ActiMode activation = i == sigmoid_layer ? AC_MODE_SIGMOID : AC_MODE_RELU;
-    t = model->linear("linear", t, ln[i+1], activation, true/*bias*/, weight_init, bias_init);
+    t = model->dense("linear", t, ln[i+1], activation, true/*bias*/, weight_init, bias_init);
   }
   return t;
 }
@@ -111,7 +111,7 @@ void top_level_task(const Task* task,
   }
   Tensor label;
   {
-    const int dims[] = {ffConfig.batchSize, 1};
+    const int dims[] = {ffConfig.batchSize, 2};
     label = ff.create_tensor<2>(dims, "", DT_FLOAT);
   }
   // Step 1 create dense_mlp
@@ -132,8 +132,11 @@ void top_level_task(const Task* task,
   // Use SGD Optimizer
   ff.optimizer = new SGDOptimizer(&ff, 0.01f);
   ff.init_layers();
+  // Data Loader
+  DataLoader data_loader(ff, dlrmConfig, sparse_inputs, dense_input, label);
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     for (int iter = 0; iter < ffConfig.iterations; iter++) {
+      data_loader.load_next_batch(ff);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
@@ -197,17 +200,16 @@ void parse_input_args(char **argv, int argc, DLRMConfig& config)
 DataLoader::DataLoader(FFModel& ff,
                        const DLRMConfig& dlrm,
                        const std::vector<Tensor>& _sparse_inputs,
-                       Tensor _dense_input, Tensor _label,
-                       const std::string& dataset_path)
+                       Tensor _dense_input, Tensor _label)
 {
   int num_samples;
-  if (dataset_path == "") {
+  if (dlrm.dataset_path == "") {
     log_app.print("Use random dataset...");
     num_samples = 10;
   } else {
     assert(false);
-    log_app.print("Start loading dataset from %s", dataset_path.c_str());
-    log_app.print("Finish loading dataset from %s", dataset_path.c_str());
+    log_app.print("Start loading dataset from %s", dlrm.dataset_path.c_str());
+    log_app.print("Finish loading dataset from %s", dlrm.dataset_path.c_str());
   }
   for (size_t i = 0; i < _sparse_inputs.size(); i++) {
     const int dims[] = {num_samples, 1};
@@ -222,7 +224,7 @@ DataLoader::DataLoader(FFModel& ff,
   }
   {
     batch_label = _label;
-    const int dims[] = {num_samples, 1};
+    const int dims[] = {num_samples, 2};
     full_label = ff.create_tensor<2>(dims, "", DT_FLOAT);
   }
 }

@@ -58,7 +58,7 @@ Embedding::Embedding(FFModel& model,
   }
   {
     const int dims[2] = {outDim, inDim};
-    kernel = model.create_weight<2>(dims, task_is, DT_FLOAT);
+    kernel = model.create_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
   }
 #ifdef DEADCODE
   // Create kernel tensor
@@ -182,11 +182,16 @@ void Embedding::forward_task(const Task *task,
   // Weight matches Output
   assert(accWeight.rect.hi[1] == accOutput.rect.hi[0]);
   assert(accWeight.rect.lo[1] == accOutput.rect.lo[0]);
+  int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
+  int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
   embed_forward<<<GET_BLOCKS(accOutput.rect.volume()), CUDA_NUM_THREADS>>>(
-      accInput.ptr, accOutput.ptr, accWeight.ptr,
-      accOutput.rect.lo[0] - accOutput.rect.hi[0] + 1,
-      accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1);
+      accInput.ptr, accOutput.ptr, accWeight.ptr, out_dim, batch_size);
   checkCUDA(cudaDeviceSynchronize());
+  if (false) {
+    print_tensor<2, int>(accInput.ptr, accInput.rect, "[Embedding:forward:input]");
+    print_tensor<2, float>(accWeight.ptr, accWeight.rect, "[Embedding:forward:weight]");
+    print_tensor<2, float>(accOutput.ptr, accOutput.rect, "[Embedding:forward:output]");
+  }
 }
 
 void Embedding::forward(const FFModel& ff)

@@ -35,12 +35,15 @@ void DataLoader::load_sparse_input(const Task *task,
   int* input_zc;
   checkCUDA(cudaHostAlloc(&input_zc, sizeof(int) * acc_batch_input.rect.volume(),
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  for (int i = 0; i < batch_size; i++)
-    input_zc[i] = i;
+  for (int i = 0; i < batch_size; i++) {
+    input_zc[i] = std::rand()%4;
+  }
   checkCUDA(cudaMemcpy(acc_batch_input.ptr, input_zc,
                        sizeof(int) * acc_batch_input.rect.volume(),
                        cudaMemcpyHostToDevice));
   checkCUDA(cudaFreeHost(input_zc));
+  checkCUDA(cudaDeviceSynchronize());
+  //print_tensor<2, int>(acc_batch_input.ptr, acc_batch_input.rect, "[DataLoader:load_sparse]");
 }
 
 void DataLoader::load_dense_input(const Task *task,
@@ -92,12 +95,13 @@ void DataLoader::load_label(const Task *task,
   float* label_zc;
   checkCUDA(cudaHostAlloc(&label_zc, sizeof(float) * acc_batch_label.rect.volume(),
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  for (int i = 0; i < batch_size; i++)
+  for (int i = 0; i < batch_size; i++) {
+    //int true_label = std::rand() % num_label;
     for (int j = 0; j < num_label; j++)
       label_zc[i*num_label+j] = j == 0 ? 1.0f : 0.0f;
+  }
   checkCUDA(cudaMemcpy(acc_batch_label.ptr, label_zc,
                        sizeof(float) * acc_batch_label.rect.volume(),
                        cudaMemcpyHostToDevice));
   checkCUDA(cudaFreeHost(label_zc));
 }
-

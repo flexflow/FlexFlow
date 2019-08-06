@@ -24,8 +24,8 @@ struct DLRMConfig {
     loss_threshold(0.0f),
     arch_interaction_op("cat"), dataset_path("") {
     embedding_size.push_back(4);
-    embedding_size.push_back(3);
-    embedding_size.push_back(2);
+    embedding_size.push_back(4);
+    embedding_size.push_back(4);
     mlp_bot.push_back(4);
     mlp_bot.push_back(3);
     mlp_bot.push_back(2);
@@ -43,8 +43,7 @@ class DataLoader {
 public:
   DataLoader(FFModel& ff, const DLRMConfig& dlrm,
              const std::vector<Tensor>& _sparse_inputs,
-             Tensor _dense_input, Tensor _label,
-             const std::string& dataset_path);
+             Tensor _dense_input, Tensor _label);
   void load_next_batch(FFModel& ff);
   void shuffle();
   static void load_sparse_input(const Task *task,

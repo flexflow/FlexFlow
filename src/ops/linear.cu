@@ -79,12 +79,12 @@ Linear::Linear(FFModel& model,
   // Create kernel tensor
   {
     const int dims[2] = {out_dim, in_dim};
-    kernel = model.create_weight<2>(dims, task_is, DT_FLOAT);
+    kernel = model.create_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_dim};
-    bias = model.create_weight<1>(dims, task_is, DT_FLOAT);
+    bias = model.create_weight<1>(dims, task_is, DT_FLOAT, bias_initializer);
   }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(
@@ -307,6 +307,9 @@ void Linear::forward_task(const Task *task,
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("Linear forward time = %.2lfms\n", elapsed);
+    print_tensor<2, float>(acc_input.ptr, acc_input.rect, "[Linear:forward:input]");
+    print_tensor<2, float>(acc_kernel.ptr, acc_kernel.rect, "[Linear:forward:kernel]");
+    print_tensor<2, float>(acc_output.ptr, acc_output.rect, "[Linear:forward:output]");
   }
 }
 

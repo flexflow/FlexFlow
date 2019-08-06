@@ -246,6 +246,7 @@ public:
   Tensor create_weight(const int* dims,
                        const IndexSpaceT<2>& part_is,
                        DataType data_type,
+                       Initializer* initializer,
                        bool create_grad = true);
   template<int NDIM>
   Tensor create_replica(const int* dims,
@@ -566,6 +567,7 @@ public:
 public:
   int axis;
   IndexSpace task_is;
+  bool profiling;
 };
 
 class ConcatMeta : public OpMeta {
