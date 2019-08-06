@@ -529,6 +529,7 @@ void Op::prefetch(const FFModel& ff)
   // TODO: perform prefetch for performance imporvement
 }
 
+#ifdef DEADCODE
 // ========================================================
 // class DataLoader
 // ========================================================
@@ -582,6 +583,7 @@ bool DataLoader::shuffle_samples(void)
   std::random_shuffle(samples.begin(), samples.end());
   return true;
 }
+#endif
 
 // ========================================================
 // class FFConfig
@@ -938,6 +940,9 @@ int main(int argc, char** argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "dummy_task");
   }
+
+  // Register custom tasks
+  register_custom_tasks();
 
   Runtime::add_registration_callback(update_mappers);
   return Runtime::start(argc, argv);

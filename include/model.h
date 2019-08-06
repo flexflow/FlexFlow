@@ -73,6 +73,15 @@ enum TaskIDs {
   ZERO_INIT_TASK_ID,
   UNIFORM_INIT_TASK_ID,
   NORMAL_INIT_TASK_ID,
+  // Custom tasks
+  CUSTOM_TASK_ID_1,
+  CUSTOM_TASK_ID_2,
+  CUSTOM_TASK_ID_3,
+  CUSTOM_TASK_ID_4,
+  CUSTOM_TASK_ID_5,
+  CUSTOM_TASK_ID_6,
+  CUSTOM_TASK_ID_7,
+  CUSTOM_TASK_ID_8,
 };
 
 enum ActiMode {
@@ -639,5 +648,6 @@ void data_load_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime);
 
+void register_custom_tasks();
 #endif//_FLEXFLOW_RUNTIME_H_
 

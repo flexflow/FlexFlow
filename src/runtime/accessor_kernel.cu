@@ -54,8 +54,13 @@ TensorAccessorW<DT, dim>::TensorAccessorW(PhysicalRegion region,
 template class TensorAccessorR<float, 1>;
 template class TensorAccessorR<float, 2>;
 template class TensorAccessorR<float, 3>;
+template class TensorAccessorR<int, 1>;
 template class TensorAccessorR<int, 2>;
+template class TensorAccessorR<int, 3>;
 
 template class TensorAccessorW<float, 1>;
 template class TensorAccessorW<float, 2>;
 template class TensorAccessorW<float, 3>;
+template class TensorAccessorW<int, 1>;
+template class TensorAccessorW<int, 2>;
+template class TensorAccessorW<int, 3>;
