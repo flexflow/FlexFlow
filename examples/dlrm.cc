@@ -123,7 +123,7 @@ void top_level_task(const Task* task,
     ly.push_back(create_emb(&ff, sparse_inputs[i], input_dim, output_dim));
   }
   Tensor z = interact_features(&ff, x, ly, dlrmConfig.arch_interaction_op);
-  Tensor p = create_mlp(&ff, z, dlrmConfig.mlp_top, dlrmConfig.sigmoid_top);
+  Tensor p = create_mlp(&ff, z, dlrmConfig.mlp_top, dlrmConfig.mlp_top.size() - 2);
   if (dlrmConfig.loss_threshold > 0.0f && dlrmConfig.loss_threshold < 1.0f) {
     // TODO: implement clamp
     assert(false);

@@ -36,7 +36,7 @@ void DataLoader::load_sparse_input(const Task *task,
   checkCUDA(cudaHostAlloc(&input_zc, sizeof(int) * acc_batch_input.rect.volume(),
                           cudaHostAllocPortable | cudaHostAllocMapped));
   for (int i = 0; i < batch_size; i++) {
-    input_zc[i] = std::rand()%4;
+    input_zc[i] = std::rand() % 4;
   }
   checkCUDA(cudaMemcpy(acc_batch_input.ptr, input_zc,
                        sizeof(int) * acc_batch_input.rect.volume(),
@@ -68,7 +68,7 @@ void DataLoader::load_dense_input(const Task *task,
                           cudaHostAllocPortable | cudaHostAllocMapped));
   for (int i = 0; i < batch_size; i++)
     for (int j = 0; j < num_feats; j++)
-      input_zc[i*num_feats+j] = 1.0f;
+      input_zc[i*num_feats+j] = i % 2;
   checkCUDA(cudaMemcpy(acc_batch_input.ptr, input_zc,
                        sizeof(float) * acc_batch_input.rect.volume(),
                        cudaMemcpyHostToDevice));
@@ -96,12 +96,13 @@ void DataLoader::load_label(const Task *task,
   checkCUDA(cudaHostAlloc(&label_zc, sizeof(float) * acc_batch_label.rect.volume(),
                           cudaHostAllocPortable | cudaHostAllocMapped));
   for (int i = 0; i < batch_size; i++) {
-    //int true_label = std::rand() % num_label;
+    int true_label = i % num_label;
     for (int j = 0; j < num_label; j++)
-      label_zc[i*num_label+j] = j == 0 ? 1.0f : 0.0f;
+      label_zc[i*num_label+j] = j == true_label ? 1.0f : 0.0f;
   }
   checkCUDA(cudaMemcpy(acc_batch_label.ptr, label_zc,
                        sizeof(float) * acc_batch_label.rect.volume(),
                        cudaMemcpyHostToDevice));
   checkCUDA(cudaFreeHost(label_zc));
 }
+

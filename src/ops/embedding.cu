@@ -169,6 +169,7 @@ void Embedding::forward_task(const Task *task,
 {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
+  const Embedding* embed = (Embedding*) task->args;
   TensorAccessorR<int, 2> accInput(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 2> accOutput(
@@ -187,10 +188,11 @@ void Embedding::forward_task(const Task *task,
   embed_forward<<<GET_BLOCKS(accOutput.rect.volume()), CUDA_NUM_THREADS>>>(
       accInput.ptr, accOutput.ptr, accWeight.ptr, out_dim, batch_size);
   checkCUDA(cudaDeviceSynchronize());
-  if (false) {
+  if (embed->profiling) {
     print_tensor<2, int>(accInput.ptr, accInput.rect, "[Embedding:forward:input]");
     print_tensor<2, float>(accWeight.ptr, accWeight.rect, "[Embedding:forward:weight]");
     print_tensor<2, float>(accOutput.ptr, accOutput.rect, "[Embedding:forward:output]");
+    checkCUDA(cudaDeviceSynchronize());
   }
 }
 
@@ -200,7 +202,7 @@ void Embedding::forward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   IndexLauncher launcher(EMBED_FWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap,
+                         TaskArgument(this, sizeof(Embedding)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0]: input
@@ -227,6 +229,7 @@ void Embedding::backward_task(const Task *task,
 {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
+  const Embedding* embed = (Embedding*) task->args;
   TensorAccessorR<int, 2> accInput(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorR<float, 2> accOutput(
@@ -240,11 +243,17 @@ void Embedding::backward_task(const Task *task,
   // WeightGrad matches Output
   assert(accWeightGrad.rect.hi[1] == accOutput.rect.hi[0]);
   assert(accWeightGrad.rect.lo[1] == accOutput.rect.lo[0]);
+  int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
+  int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
   embed_backward<<<GET_BLOCKS(accOutput.rect.volume()), CUDA_NUM_THREADS>>>(
-      accInput.ptr, accOutput.ptr, accWeightGrad.ptr,
-      accOutput.rect.lo[0] - accOutput.rect.hi[0] + 1,
-      accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1);
+      accInput.ptr, accOutput.ptr, accWeightGrad.ptr, out_dim, batch_size);
   checkCUDA(cudaDeviceSynchronize());
+  if (embed->profiling) {
+    print_tensor<2, float>(accOutput.ptr, accOutput.rect, "[Embedding:backward:output_grad]");
+    print_tensor<2, float>(accWeightGrad.ptr, accWeightGrad.rect, "[Embedding:backward:weight_grad]");
+    print_tensor<2, int>(accInput.ptr, accInput.rect, "[Embedding:backward:input]");
+    checkCUDA(cudaDeviceSynchronize());
+  }
 }
 
 void Embedding::backward(const FFModel& ff)
@@ -253,24 +262,23 @@ void Embedding::backward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   IndexLauncher launcher(EMBED_BWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap,
+                         TaskArgument(this, sizeof(Embedding)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
-
   // regions[0]: input
   launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[0], 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0].region_grad));
+      RegionRequirement(input_lps[0], 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
-  // regions[1]: output
+  // regions[1]: output_grad
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, output.region));
+      RegionRequirement(output.part_grad, 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, output.region_grad));
   launcher.add_field(1, FID_DATA);
-  // regions[2]: weight
+  // regions[2]: weight_grad
   launcher.add_region_requirement(
-      RegionRequirement(kernel.part, 0/*projection*/,
-                        READ_WRITE, EXCLUSIVE, kernel.region));
+      RegionRequirement(kernel.part_grad, 0/*projection*/,
+                        READ_WRITE, EXCLUSIVE, kernel.region_grad));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }

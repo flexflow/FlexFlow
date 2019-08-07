@@ -163,7 +163,9 @@ void MSELoss::backward_task(const Task *task,
       scale, accLogits.rect.volume());
   checkCUDA(cudaDeviceSynchronize());
   if (op->profiling) {
-    print_tensor<2, float>(accLabels.ptr, accLabels.rect, "[MESLoss:label]");
+    print_tensor<2, float>(accLabels.ptr, accLabels.rect, "[MSELoss:label]");
+    print_tensor<2, float>(accLogits.ptr, accLogits.rect, "[MSELoss:logit]");
+    print_tensor<2, float>(accLogitsGrad.ptr, accLogitsGrad.rect, "[MSELoss:logit_grad]");
   }
 }
 

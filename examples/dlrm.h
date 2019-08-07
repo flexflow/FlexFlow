@@ -24,8 +24,8 @@ struct DLRMConfig {
     loss_threshold(0.0f),
     arch_interaction_op("cat"), dataset_path("") {
     embedding_size.push_back(4);
-    embedding_size.push_back(4);
-    embedding_size.push_back(4);
+    //embedding_size.push_back(4);
+    //embedding_size.push_back(4);
     mlp_bot.push_back(4);
     mlp_bot.push_back(2);
     mlp_top.push_back(8);
@@ -65,5 +65,4 @@ struct SampleIdxs {
   int numSamples;
   int idxs[MAX_NUM_SAMPLES];
 };
-
 

@@ -191,9 +191,21 @@ OpMeta* Linear::init_task(const Task *task,
   checkCUDA(cudaMemcpy(fb_one_ptr, dram_one_ptr,
                        sizeof(float) * batch_size, cudaMemcpyHostToDevice));
   m->one_ptr = (const float*) fb_one_ptr;
-  if (linear->activation == AC_MODE_RELU) {
+  if (linear->activation != AC_MODE_NONE) {
+    cudnnActivationMode_t mode;
+    switch (linear->activation) {
+      case AC_MODE_RELU:
+        mode = CUDNN_ACTIVATION_RELU;
+        break;
+      case AC_MODE_SIGMOID:
+        mode = CUDNN_ACTIVATION_SIGMOID;
+        break;
+      default:
+        // Unsupported activation mode
+        assert(false);
+    }
     checkCUDNN(cudnnCreateActivationDescriptor(&m->actiDesc));
-    checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
+    checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, mode,
                                             CUDNN_PROPAGATE_NAN, 0.0));
     checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
     checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
@@ -310,6 +322,7 @@ void Linear::forward_task(const Task *task,
     print_tensor<2, float>(acc_input.ptr, acc_input.rect, "[Linear:forward:input]");
     print_tensor<2, float>(acc_kernel.ptr, acc_kernel.rect, "[Linear:forward:kernel]");
     print_tensor<2, float>(acc_output.ptr, acc_output.rect, "[Linear:forward:output]");
+    checkCUDA(cudaDeviceSynchronize());
   }
 }
 
@@ -345,6 +358,15 @@ void Linear::forward(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, bias.region));
   launcher.add_field(3, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+__global__
+void sigmoid_backward(float *grad_ptr, const float *output, int n)
+{
+  CUDA_KERNEL_LOOP(i, n)
+  {
+    grad_ptr[i] = grad_ptr[i] * output[i] * (1 - output[i]);
+  }
 }
 
 /*
@@ -418,8 +440,11 @@ void Linear::backward_task(const Task *task,
   if (linear->activation == AC_MODE_RELU) {
     reluBackward<<<GET_BLOCKS(acc_output.rect.volume()), CUDA_NUM_THREADS>>>(
         acc_output_grad.ptr, acc_output.ptr, acc_output.rect.volume());
+  } else if (linear->activation == AC_MODE_SIGMOID) {
+    sigmoid_backward<<<GET_BLOCKS(acc_output.rect.volume()), CUDA_NUM_THREADS>>>(
+        acc_output_grad.ptr, acc_output.ptr, acc_output.rect.volume());
   } else {
-    // TODO: only support relu or none activation
+    // TODO: only support relu and sigmoid for now
     assert(linear->activation == AC_MODE_NONE);
   }
   // Compute weight gradiant
@@ -448,6 +473,11 @@ void Linear::backward_task(const Task *task,
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("Linear backward time = %.2lfms\n", elapsed);
+    print_tensor<2, float>(acc_output_grad.ptr, acc_output_grad.rect, "[Linear:backward:output_grad]");
+    print_tensor<2, float>(acc_kernel_grad.ptr, acc_kernel_grad.rect, "[Linear:backward:kernel_grad]");
+    print_tensor<1, float>(acc_bias_grad.ptr, acc_bias_grad.rect, "[Linear:backward:bias_grad]");
+    print_tensor<2, float>(input_grad, acc_input.rect, "[Linear:backward:input_grad]");
+    checkCUDA(cudaDeviceSynchronize());
   }
 }
 
