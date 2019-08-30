@@ -1,4 +1,4 @@
-/* Copyright 2017 Stanford University
+/* Copyright 2019 Stanford University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,15 @@
 LegionRuntime::Logger::Category log_mapper("Mapper");
 
 FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor local,
-                     const char *mapper_name,
-                     std::vector<Processor>* _gpus,
-                     std::map<Processor, Memory>* _proc_fbmems,
-                     std::vector<Processor>* _cpus,
-                     std::map<size_t, ParallelConfig>* _strategies)
+                   const char *mapper_name,
+                   std::vector<Processor>* _gpus,
+                   std::map<Processor, Memory>* _proc_fbmems,
+                   std::map<Processor, Memory>* _proc_zcmems,
+                   std::vector<Processor>* _cpus,
+                   std::map<size_t, ParallelConfig>* _strategies)
   : DefaultMapper(rt, machine, local, mapper_name),
-    gpus(*_gpus), proc_fbmems(*_proc_fbmems), cpus(*_cpus),
+    gpus(*_gpus), proc_fbmems(*_proc_fbmems),
+    proc_zcmems(*_proc_zcmems), cpus(*_cpus),
     strategies(*_strategies)
 {}
 
@@ -107,6 +109,24 @@ void FFMapper::slice_task(const MapperContext ctx,
     DefaultMapper::slice_task(ctx, task, input, output);
 }
 
+Memory FFMapper::default_policy_select_target_memory(MapperContext ctx,
+                                                     Processor target_proc,
+                                                     const RegionRequirement &req)
+{
+  //return DefaultMapper::default_policy_select_target_memory(
+  //           ctx, target_proc, req);
+  if (req.tag == MAP_TO_ZC_MEMORY) {
+    assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
+    return proc_zcmems[target_proc];
+  } else {
+    assert(req.tag == 0);
+    //return DefaultMapper::default_policy_select_target_memory(
+    //           ctx, target_proc, req);
+    assert(proc_fbmems.find(target_proc) != proc_fbmems.end());
+    return proc_fbmems[target_proc];
+  }
+}
+
 void FFMapper::map_task(const MapperContext ctx,
                         const Task& task,
                         const MapTaskInput& input,
@@ -152,6 +172,7 @@ void update_mappers(Machine machine, Runtime *runtime,
 {
   std::vector<Processor>* gpus = new std::vector<Processor>();
   std::map<Processor, Memory>* proc_fbmems = new std::map<Processor, Memory>();
+  std::map<Processor, Memory>* proc_zcmems = new std::map<Processor, Memory>();
   std::vector<Processor>* cpus = new std::vector<Processor>();
   //std::map<Processor, Memory>* proc_zcmems = new std::map<Processor, Memory>();
   std::vector<Machine::ProcessorMemoryAffinity> proc_mem_affinities;
@@ -167,6 +188,11 @@ void update_mappers(Machine machine, Runtime *runtime,
       fb_query.best_affinity_to(*it);
       assert(fb_query.count() == 1);
       (*proc_fbmems)[*it] = *(fb_query.begin());
+      Machine::MemoryQuery zc_query(machine);
+      zc_query.only_kind(Memory::Z_COPY_MEM);
+      zc_query.has_affinity_to(*it);
+      assert(zc_query.count() == 1);
+      (*proc_zcmems)[*it] = *(zc_query.begin());
     }
     else if (it->kind() == Processor::LOC_PROC) {
       cpus->push_back(*it);
@@ -224,7 +250,8 @@ void update_mappers(Machine machine, Runtime *runtime,
   {
     FFMapper* mapper = new FFMapper(runtime->get_mapper_runtime(),
                                     machine, *it, "FlexFlow Mapper",
-                                    gpus, proc_fbmems, cpus, strategies);
+                                    gpus, proc_fbmems, proc_zcmems,
+                                    cpus, strategies);
     runtime->replace_default_mapper(mapper, *it);
   }
 }

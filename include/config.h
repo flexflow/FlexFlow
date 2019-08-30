@@ -21,7 +21,7 @@
 // ========================================================
 // Define Runtime Constants
 // ========================================================
-#define MAX_NUM_INPUTS 6
+#define MAX_NUM_INPUTS 32
 #define MAX_NUM_LOCALS 3
 #define MAX_NUM_WORKERS 16
 #define MAX_DIM 4
@@ -30,6 +30,9 @@
 // DataLoader
 #define MAX_SAMPLES_PER_LOAD 64
 #define MAX_FILE_LENGTH 128
+// Pre-assigned const flags
+#define MAP_TO_FB_MEMORY 0xABCD0000
+#define MAP_TO_ZC_MEMORY 0xABCE0000
 
 using namespace Legion;
 

@@ -81,11 +81,26 @@ void NormInitializer::init_task(const Task* task,
   NormInitializer* initializer = (NormInitializer*) task->args;
   //fprintf(stderr, "seed = %d\n", initializer->seed);
   curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
-  //fprintf(stderr, "domain.volume() = %zu mean(%.4lf) var(%.4lf)\n",
-  //    domain.get_volume(), initializer->mean, initializer->stddev);
-  checkCUDA(curandGenerateNormal(gen, w, domain.get_volume(),
-      initializer->mean, initializer->stddev));
-  checkCUDA(cudaDeviceSynchronize());
+  fprintf(stderr, "domain.volume() = %zu mean(%.4lf) var(%.4lf)\n",
+      domain.get_volume(), initializer->mean, initializer->stddev);
+  // FIXME: it seems curand has an internal bug with volume < 4
+  // double check this later
+  if (domain.get_volume() < 4) {
+    std::default_random_engine generator;
+    std::normal_distribution<float> distribution(
+        initializer->mean, initializer->stddev);
+    float* w_dram = (float*) malloc(domain.get_volume() * sizeof(float));
+    for (size_t i = 0; i < domain.get_volume(); i++)
+      w_dram[i] = distribution(generator);
+    checkCUDA(cudaMemcpy(w, w_dram, sizeof(float) * domain.get_volume(),
+                         cudaMemcpyHostToDevice));
+    checkCUDA(cudaDeviceSynchronize());
+    free(w_dram);
+  } else {
+    checkCUDA(curandGenerateNormal(gen, w, domain.get_volume(),
+        initializer->mean, initializer->stddev));
+    checkCUDA(cudaDeviceSynchronize());
+  }
   curandDestroyGenerator(gen);
 }
 

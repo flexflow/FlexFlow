@@ -28,6 +28,7 @@ public:
   FFMapper(MapperRuntime *rt, Machine machine, Processor local,
             const char *mapper_name, std::vector<Processor>* gpus,
             std::map<Processor, Memory>* proc_fbmems,
+            std::map<Processor, Memory>* proc_zcmems,
             std::vector<Processor>* cpus,
             std::map<MappingTagID, ParallelConfig>* strategies);
 public:
@@ -35,13 +36,16 @@ public:
                           const Task& task,
                           const SliceTaskInput& input,
                           SliceTaskOutput& output);
+  Memory default_policy_select_target_memory(MapperContext ctx,
+                                             Processor target_proc,
+                                             const RegionRequirement &req);
   virtual void map_task(const MapperContext ctx,
                         const Task& task,
                         const MapTaskInput& input,
                         MapTaskOutput& output);
 protected:
   std::vector<Processor>& gpus;
-  std::map<Processor, Memory>& proc_fbmems;
+  std::map<Processor, Memory>& proc_fbmems, proc_zcmems;
   std::vector<Processor>& cpus;
   // We use MappingTagID has the key since we will pass the tag to the mapper
   std::map<MappingTagID, ParallelConfig>& strategies;

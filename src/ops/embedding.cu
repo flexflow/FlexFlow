@@ -126,7 +126,7 @@ void Embedding::init(const FFModel& ff)
 {}
 
 __global__
-void embed_forward(const int* input,
+void embed_forward(const int64_t* input,
                    float* output,
                    const float* embed,
                    int out_dim,
@@ -136,13 +136,13 @@ void embed_forward(const int* input,
   {
     int idx = i / out_dim;
     int off = i % out_dim;
-    int wordIdx = input[idx];
+    int64_t wordIdx = input[idx];
     output[i] = embed[wordIdx * out_dim + off];
   }
 }
 
 __global__
-void embed_backward(const int* input,
+void embed_backward(const int64_t* input,
                     const float* output,
                     float* embed,
                     int out_dim,
@@ -152,7 +152,7 @@ void embed_backward(const int* input,
   {
     int idx = i / out_dim;
     int off = i % out_dim;
-    int wordIdx = input[idx];
+    int64_t wordIdx = input[idx];
     atomicAdd(embed + wordIdx * out_dim + off, output[i]);
   }
 }
@@ -170,7 +170,7 @@ void Embedding::forward_task(const Task *task,
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   const Embedding* embed = (Embedding*) task->args;
-  TensorAccessorR<int, 2> accInput(
+  TensorAccessorR<int64_t, 2> accInput(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 2> accOutput(
       regions[1], task->regions[1], FID_DATA, ctx, runtime, false/*readOutput*/);
@@ -189,7 +189,7 @@ void Embedding::forward_task(const Task *task,
       accInput.ptr, accOutput.ptr, accWeight.ptr, out_dim, batch_size);
   checkCUDA(cudaDeviceSynchronize());
   if (embed->profiling) {
-    print_tensor<2, int>(accInput.ptr, accInput.rect, "[Embedding:forward:input]");
+    print_tensor<2, int64_t>(accInput.ptr, accInput.rect, "[Embedding:forward:input]");
     print_tensor<2, float>(accWeight.ptr, accWeight.rect, "[Embedding:forward:weight]");
     print_tensor<2, float>(accOutput.ptr, accOutput.rect, "[Embedding:forward:output]");
     checkCUDA(cudaDeviceSynchronize());
@@ -230,7 +230,7 @@ void Embedding::backward_task(const Task *task,
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   const Embedding* embed = (Embedding*) task->args;
-  TensorAccessorR<int, 2> accInput(
+  TensorAccessorR<int64_t, 2> accInput(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorR<float, 2> accOutput(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
@@ -251,7 +251,7 @@ void Embedding::backward_task(const Task *task,
   if (embed->profiling) {
     print_tensor<2, float>(accOutput.ptr, accOutput.rect, "[Embedding:backward:output_grad]");
     print_tensor<2, float>(accWeightGrad.ptr, accWeightGrad.rect, "[Embedding:backward:weight_grad]");
-    print_tensor<2, int>(accInput.ptr, accInput.rect, "[Embedding:backward:input]");
+    print_tensor<2, int64_t>(accInput.ptr, accInput.rect, "[Embedding:backward:input]");
     checkCUDA(cudaDeviceSynchronize());
   }
 }

@@ -14,6 +14,7 @@
  */
 
 #include "dlrm.h"
+#include "hdf5.h"
 #include <sstream>
 
 using namespace Legion;
@@ -101,7 +102,7 @@ void top_level_task(const Task* task,
   std::vector<Tensor> sparse_inputs;
   for (size_t i = 0; i < dlrmConfig.embedding_size.size(); i++) {
     const int dims[] = {ffConfig.batchSize, 1};
-    Tensor input = ff.create_tensor<2>(dims, "", DT_INT32);
+    Tensor input = ff.create_tensor<2>(dims, "", DT_INT64);
     sparse_inputs.push_back(input);
   }
   Tensor dense_input;
@@ -111,7 +112,7 @@ void top_level_task(const Task* task,
   }
   Tensor label;
   {
-    const int dims[] = {ffConfig.batchSize, 2};
+    const int dims[] = {ffConfig.batchSize, 1};
     label = ff.create_tensor<2>(dims, "", DT_FLOAT);
   }
   // Step 1 create dense_mlp
@@ -135,8 +136,10 @@ void top_level_task(const Task* task,
   // Data Loader
   DataLoader data_loader(ff, dlrmConfig, sparse_inputs, dense_input, label);
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
-    for (int iter = 0; iter < ffConfig.iterations; iter++) {
-      data_loader.load_next_batch(ff);
+    data_loader.reset();
+    int iterations = data_loader.num_samples / ffConfig.batchSize;
+    for (int iter = 0; iter < iterations; iter++) {
+      data_loader.next_batch(ff);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
@@ -193,6 +196,11 @@ void parse_input_args(char **argv, int argc, DLRMConfig& config)
     }
     if (!strcmp(argv[i], "--arch-interaction-op")) {
       config.arch_interaction_op = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--dataset")) {
+      config.dataset_path = std::string(argv[++i]);
+      continue;
     }
   }
 }
@@ -202,20 +210,64 @@ DataLoader::DataLoader(FFModel& ff,
                        const std::vector<Tensor>& _sparse_inputs,
                        Tensor _dense_input, Tensor _label)
 {
-  int num_samples;
+  num_samples = 0;
   if (dlrm.dataset_path == "") {
     log_app.print("Use random dataset...");
     num_samples = 10;
   } else {
-    assert(false);
     log_app.print("Start loading dataset from %s", dlrm.dataset_path.c_str());
+    hid_t file_id = H5Fopen(dlrm.dataset_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+    // X_int
+    {
+      hsize_t dims[2], maxdims[2];
+      hid_t x_int_dataset_id = H5Dopen2(file_id, "X_int", H5P_DEFAULT);
+      hid_t x_int_space_id = H5Dget_space(x_int_dataset_id);
+      hid_t x_int_type_id = H5Dget_type(x_int_dataset_id);
+      assert(H5Sget_simple_extent_dims(x_int_space_id, dims, maxdims) == 2);
+      assert(H5Tget_class(x_int_type_id) == H5T_FLOAT);
+      num_samples = dims[0];
+      assert(dlrm.mlp_bot[0] == (int)dims[1]);
+      H5Tclose(x_int_type_id);
+      H5Dclose(x_int_dataset_id);
+      H5Sclose(x_int_space_id);
+    }
+    // X_cat
+    {
+      hsize_t dims[2], maxdims[2];
+      hid_t x_cat_dataset_id = H5Dopen2(file_id, "X_cat", H5P_DEFAULT);
+      hid_t x_cat_space_id = H5Dget_space(x_cat_dataset_id);
+      hid_t x_cat_type_id = H5Dget_type(x_cat_dataset_id);
+      assert(H5Sget_simple_extent_dims(x_cat_space_id, dims, maxdims) == 2);
+      assert(H5Tget_class(x_cat_type_id) == H5T_INTEGER);
+      assert(num_samples == (int)dims[0]);
+      assert(_sparse_inputs.size() == dims[1]);
+      H5Tclose(x_cat_type_id);
+      H5Dclose(x_cat_dataset_id);
+      H5Sclose(x_cat_space_id);
+    }
+    // y
+    {
+      hsize_t dims[2], maxdims[2];
+      hid_t y_dataset_id = H5Dopen2(file_id, "y", H5P_DEFAULT);
+      hid_t y_space_id = H5Dget_space(y_dataset_id);
+      hid_t y_type_id = H5Dget_type(y_dataset_id);
+      assert(H5Sget_simple_extent_dims(y_space_id, dims, maxdims) == 2);
+      assert(num_samples == (int)dims[0]);
+      assert(dims[1] == 1);
+      H5Tclose(y_type_id);
+      H5Dclose(y_dataset_id);
+      H5Sclose(y_space_id);
+    }
+    H5Fclose(file_id);
     log_app.print("Finish loading dataset from %s", dlrm.dataset_path.c_str());
+    log_app.print("Loaded %d samples", num_samples);
   }
   for (size_t i = 0; i < _sparse_inputs.size(); i++) {
-    const int dims[] = {num_samples, 1};
-    Tensor input = ff.create_tensor<2>(dims, "", DT_INT32);
-    full_sparse_inputs.push_back(input);
     batch_sparse_inputs.push_back(_sparse_inputs[i]);
+  }
+  {
+    const int dims[] = {num_samples, (int)_sparse_inputs.size()};
+    full_sparse_input = ff.create_tensor<2>(dims, "", DT_INT64);
   }
   {
     batch_dense_input = _dense_input;
@@ -224,12 +276,107 @@ DataLoader::DataLoader(FFModel& ff,
   }
   {
     batch_label = _label;
-    const int dims[] = {num_samples, 2};
+    const int dims[] = {num_samples, 1};
     full_label = ff.create_tensor<2>(dims, "", DT_FLOAT);
+  }
+  // Load entire dataset
+  // TODO: Use index launcher instead of task launcher
+  TaskLauncher launcher(CUSTOM_TASK_ID_0,
+      TaskArgument(&(dlrm.dataset_path), dlrm.dataset_path.length()));
+  // regions[0]: full_sparse_input 
+  launcher.add_region_requirement(
+      RegionRequirement(full_sparse_input.region,
+                        READ_WRITE, EXCLUSIVE, full_sparse_input.region));
+  launcher.add_field(0, FID_DATA);
+  // regions[1]: full_sparse_input 
+  launcher.add_region_requirement(
+      RegionRequirement(full_dense_input.region,
+                        READ_WRITE, EXCLUSIVE, full_dense_input.region));
+  launcher.add_field(1, FID_DATA);
+  // regions[3]: full_sparse_input 
+  launcher.add_region_requirement(
+      RegionRequirement(full_label.region,
+                        READ_WRITE, EXCLUSIVE, full_label.region));
+  launcher.add_field(2, FID_DATA);
+}
+
+void DataLoader::load_entire_dataset(const Task *task,
+                                     const std::vector<PhysicalRegion> &regions,
+                                     Context ctx,
+                                     Runtime* runtime)
+{
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
+  char* file_name = (char*) task->args;
+  hid_t file_id = H5Fopen(file_name, H5F_ACC_RDWR, H5P_DEFAULT);
+  log_app.print("Start loading sparse features from %s", file_name);
+  // Note that these instances are in ZCM, can only use
+  // TensorAccessorW with readOutput flag
+  TensorAccessorW<int64_t, 2> acc_sparse_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime,
+      true/*readOutput*/);
+  TensorAccessorW<float, 2> acc_dense_input(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime,
+      true/*readOutput*/);
+  TensorAccessorW<float, 2> acc_label_input(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime,
+      true/*readOutput*/);
+  int num_samples = acc_sparse_input.rect.hi[0] - acc_sparse_input.rect.lo[0] + 1;
+  int num_sparse_inputs = acc_sparse_input.rect.hi[1] - acc_sparse_input.rect.lo[1] + 1;
+  assert(num_samples == acc_dense_input.rect.hi[0] - acc_dense_input.rect.lo[0] + 1);
+  int num_dense_dims = acc_dense_input.rect.hi[1] - acc_dense_input.rect.lo[1] + 1;
+  assert(num_samples == acc_label_input.rect.hi[0] - acc_label_input.rect.lo[0] + 1);
+  assert(acc_label_input.rect.hi[1] == acc_label_input.rect.lo[1]);
+  // Load X_cat
+  {
+    hsize_t dims[2], maxdims[2];
+    hid_t x_cat_dataset_id = H5Dopen2(file_id, "X_cat", H5P_DEFAULT);
+    hid_t x_cat_space_id = H5Dget_space(x_cat_dataset_id);
+    hid_t x_cat_type_id = H5Dget_type(x_cat_dataset_id);
+    assert(H5Sget_simple_extent_dims(x_cat_space_id, dims, maxdims) == 2);
+    assert(H5Tget_class(x_cat_type_id) == H5T_INTEGER);
+    assert(num_samples == (int)dims[0]);
+    assert(num_sparse_inputs == (int)dims[1]);
+    H5Dread(x_cat_dataset_id, H5T_INTEGER, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+            acc_sparse_input.ptr);
+    H5Tclose(x_cat_type_id);
+    H5Dclose(x_cat_dataset_id);
+    H5Sclose(x_cat_space_id);
+  }
+  // Load X_int
+  {
+    hsize_t dims[2], maxdims[2];
+    hid_t x_int_dataset_id = H5Dopen2(file_id, "X_int", H5P_DEFAULT);
+    hid_t x_int_space_id = H5Dget_space(x_int_dataset_id);
+    hid_t x_int_type_id = H5Dget_type(x_int_dataset_id);
+    assert(H5Sget_simple_extent_dims(x_int_space_id, dims, maxdims) == 2);
+    assert(H5Tget_class(x_int_type_id) == H5T_FLOAT);
+    num_samples = dims[0];
+    assert(num_dense_dims == (int)dims[1]);
+    H5Dread(x_int_dataset_id, H5T_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+            acc_dense_input.ptr);
+    H5Tclose(x_int_type_id);
+    H5Dclose(x_int_dataset_id);
+    H5Sclose(x_int_space_id);
+  }
+  // Load y
+  {
+    hsize_t dims[2], maxdims[2];
+    hid_t y_dataset_id = H5Dopen2(file_id, "y", H5P_DEFAULT);
+    hid_t y_space_id = H5Dget_space(y_dataset_id);
+    hid_t y_type_id = H5Dget_type(y_dataset_id);
+    assert(H5Sget_simple_extent_dims(y_space_id, dims, maxdims) == 2);
+    assert(num_samples == (int)dims[0]);
+    assert(dims[1] == 1);
+    H5Dread(y_dataset_id, H5T_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+            acc_label_input.ptr);
+    H5Tclose(y_type_id);
+    H5Dclose(y_dataset_id);
+    H5Sclose(y_space_id);
   }
 }
 
-void DataLoader::load_next_batch(FFModel& ff)
+void DataLoader::next_batch(FFModel& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -239,20 +386,23 @@ void DataLoader::load_next_batch(FFModel& ff)
   for (PointInRectIterator<2> it(rect); it(); it++) {
     SampleIdxs meta;
     assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-    meta.numSamples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
-    for (int i = 0; i < meta.numSamples; i++)
-      meta.idxs[i] = i;
+    meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+    for (int i = 0; i < meta.num_samples; i++)
+      meta.idxs[i] = next_index++;
     argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
   }
   // Load Sparse Inputs
-  for (size_t i = 0; i < full_sparse_inputs.size(); i++) {
+  for (size_t i = 0; i < batch_sparse_inputs.size(); i++) {
+    int hash = batch_sparse_inputs.size() * 1000 + i;
     IndexLauncher launcher(CUSTOM_TASK_ID_1, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string("")));
+                           TaskArgument(&hash, sizeof(int)), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(std::string("")));
+    // Full dataset in ZCM
     launcher.add_region_requirement(
-        RegionRequirement(full_sparse_inputs[i].part, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_sparse_inputs[i].region));
+        RegionRequirement(full_sparse_input.region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_sparse_input.region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
         RegionRequirement(batch_sparse_inputs[i].part, 0/*projection id*/,
@@ -266,9 +416,11 @@ void DataLoader::load_next_batch(FFModel& ff)
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string("")));
+    // Full dataset in ZCM
     launcher.add_region_requirement(
-        RegionRequirement(full_dense_input.part, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_dense_input.region));
+        RegionRequirement(full_dense_input.region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_dense_input.region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
         RegionRequirement(batch_dense_input.part, 0/*projection id*/,
@@ -282,9 +434,11 @@ void DataLoader::load_next_batch(FFModel& ff)
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string("")));
+    // Full dataset in ZCM
     launcher.add_region_requirement(
-        RegionRequirement(full_label.part, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_label.region));
+        RegionRequirement(full_label.region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_label.region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
         RegionRequirement(batch_label.part, 0/*projection id*/,
@@ -297,8 +451,21 @@ void DataLoader::load_next_batch(FFModel& ff)
 void DataLoader::shuffle()
 {}
 
+void DataLoader::reset()
+{
+  next_index = 0;
+}
+
 void register_custom_tasks()
 {
+  // Load entire dataset
+  {
+    TaskVariantRegistrar registrar(CUSTOM_TASK_ID_0, "Load Entire Dataset");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<DataLoader::load_entire_dataset>(
+        registrar, "Load Entire Dataset Task");
+  }
   // Load Sparse Inputs
   {
     TaskVariantRegistrar registrar(CUSTOM_TASK_ID_1, "Load Sparse Inputs");

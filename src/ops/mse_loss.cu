@@ -65,13 +65,14 @@ struct PerfMetrics
 };
 
 __global__
-void calc_loss(const float* logits,
-               const float* labels,
-               PerfMetrics* perf,
-               int batch_size,
-               int out_dim,
-               float scale)
+void multi_category_calc_loss(const float* logits,
+                              const float* labels,
+                              PerfMetrics* perf,
+                              int batch_size,
+                              int out_dim,
+                              float scale)
 {
+  assert(out_dim > 1);
   CUDA_KERNEL_LOOP(b, batch_size)
   {
     float max_val = 0.0f;
@@ -96,6 +97,26 @@ void calc_loss(const float* logits,
       atomicAdd(&(perf->train_correct), 1);
   }
 }
+
+__global__
+void single_category_calc_loss(const float* logits,
+                               const float* labels,
+                               PerfMetrics* perf,
+                               int batch_size,
+                               int out_dim,
+                               float scale)
+{
+  assert(out_dim == 1);
+  CUDA_KERNEL_LOOP(b, batch_size)
+  {
+    float diff = logits[b] - labels[b];
+    atomicAdd(&(perf->train_loss), scale * diff * diff);
+    atomicAdd(&(perf->train_all), 1);
+    if ((logits[b] < 0.5f) == (labels[b] < 0.5f))
+      atomicAdd(&(perf->train_correct), 1);
+  }
+}
+
 
 __global__
 void mseloss_backward(float* logitsGrad,
@@ -151,8 +172,13 @@ void MSELoss::backward_task(const Task *task,
   
   checkCUDA(cudaMalloc(&perf, sizeof(PerfMetrics)));
   checkCUDA(cudaMemcpy(perf, &perf_zc, sizeof(PerfMetrics), cudaMemcpyHostToDevice));
-  calc_loss<<<GET_BLOCKS(batch_size), CUDA_NUM_THREADS>>>(
-    accLogits.ptr, accLabels.ptr, perf, batch_size, out_dim, scale);
+  if (out_dim == 1) {
+    single_category_calc_loss<<<GET_BLOCKS(batch_size), CUDA_NUM_THREADS>>>(
+        accLogits.ptr, accLabels.ptr, perf, batch_size, out_dim, scale);
+  } else {
+    multi_category_calc_loss<<<GET_BLOCKS(batch_size), CUDA_NUM_THREADS>>>(
+        accLogits.ptr, accLabels.ptr, perf, batch_size, out_dim, scale);
+  }
   checkCUDA(cudaMemcpy(&perf_zc, perf, sizeof(PerfMetrics), cudaMemcpyDeviceToHost));
   fprintf(stderr, "train_loss: %.4lf train_accuracy: %.2lf%%(%d/%d)\n",
           perf_zc.train_loss,

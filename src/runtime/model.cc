@@ -54,6 +54,7 @@ Op::Op(const std::string& _name,
 : numLocals(0), numInputs(n)
 {
   assert(_name.length() < MAX_OPNAME);
+  assert(n <= MAX_NUM_INPUTS);
   std::strcpy(name, _name.c_str());
   for (int i = 0; i < n; i++)
     inputs[i] = _inputs[i];
@@ -218,7 +219,10 @@ Tensor FFModel::create_tensor(const int dims[],
       allocator.allocate_field(sizeof(double), FID_DATA);
       break;
     case DT_INT32:
-      allocator.allocate_field(sizeof(int), FID_DATA);
+      allocator.allocate_field(sizeof(int32_t), FID_DATA);
+      break;
+    case DT_INT64:
+      allocator.allocate_field(sizeof(int64_t), FID_DATA);
       break;
     default:
       assert(false);
@@ -229,7 +233,9 @@ Tensor FFModel::create_tensor(const int dims[],
   Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
   IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
   tensor.region = runtime->create_logical_region(ctx, is, fs);
-  tensor.region_grad = runtime->create_logical_region(ctx, is, fs);
+  if (create_grad) {
+    tensor.region_grad = runtime->create_logical_region(ctx, is, fs);
+  }
   // Step 2: create partitions
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
   Transform<NDIM, NDIM> transform;
@@ -250,7 +256,9 @@ Tensor FFModel::create_tensor(const int dims[],
   assert(runtime->is_index_partition_disjoint(ctx, ip));
   assert(runtime->is_index_partition_complete(ctx, ip));
   tensor.part = runtime->get_logical_partition(ctx, tensor.region, ip);
-  tensor.part_grad = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
+  if (create_grad) {
+    tensor.part_grad = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
+  }
   tensor.numDim = NDIM;
   for (int i = 0; i < NDIM; i++) {
     tensor.adim[i] = rect.hi[i] - rect.lo[i] + 1;

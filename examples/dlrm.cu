@@ -23,23 +23,29 @@ void DataLoader::load_sparse_input(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
+  int hash = *((int*) task->args);
+  int num_sparse_inputs = hash / 1000;
+  int my_input_idx = hash % 1000;
   SampleIdxs* meta = (SampleIdxs*) task->local_args;
-  TensorAccessorR<int, 2> acc_full_input(
+  TensorAccessorR<int64_t, 2> acc_full_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<int, 2> acc_batch_input(
+  TensorAccessorW<int64_t, 2> acc_batch_input(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   int batch_size = acc_batch_input.rect.hi[1] - acc_batch_input.rect.lo[1] + 1;
   assert(acc_batch_input.rect.hi[0] == acc_batch_input.rect.lo[0]);
-  assert(acc_full_input.rect.hi[0] == acc_full_input.rect.lo[0]);
-  int* input_zc;
-  checkCUDA(cudaHostAlloc(&input_zc, sizeof(int) * acc_batch_input.rect.volume(),
+  assert(acc_full_input.rect.hi[0]-acc_full_input.rect.lo[0]+1 == num_sparse_inputs);
+  int64_t* input_zc;
+  checkCUDA(cudaHostAlloc(&input_zc, sizeof(int64_t) * acc_batch_input.rect.volume(),
                           cudaHostAllocPortable | cudaHostAllocMapped));
+  assert(batch_size == meta->num_samples);
   for (int i = 0; i < batch_size; i++) {
-    input_zc[i] = std::rand() % 4;
+    int offset = meta->idxs[i] * num_sparse_inputs + my_input_idx;
+    assert(offset < (int)acc_full_input.rect.volume());
+    input_zc[i] = acc_full_input.ptr[offset];
   }
   checkCUDA(cudaMemcpy(acc_batch_input.ptr, input_zc,
-                       sizeof(int) * acc_batch_input.rect.volume(),
+                       sizeof(int64_t) * acc_batch_input.rect.volume(),
                        cudaMemcpyHostToDevice));
   checkCUDA(cudaFreeHost(input_zc));
   checkCUDA(cudaDeviceSynchronize());
@@ -66,9 +72,12 @@ void DataLoader::load_dense_input(const Task *task,
   float* input_zc;
   checkCUDA(cudaHostAlloc(&input_zc, sizeof(float) * acc_batch_input.rect.volume(),
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  for (int i = 0; i < batch_size; i++)
+  assert(batch_size == meta->num_samples);
+  for (int i = 0; i < batch_size; i++) {
+    int base_offset = meta->idxs[i] * num_feats;
     for (int j = 0; j < num_feats; j++)
-      input_zc[i*num_feats+j] = i % 2;
+      input_zc[i*num_feats+j] = acc_full_input.ptr[base_offset+j];
+  }
   checkCUDA(cudaMemcpy(acc_batch_input.ptr, input_zc,
                        sizeof(float) * acc_batch_input.rect.volume(),
                        cudaMemcpyHostToDevice));
@@ -95,10 +104,11 @@ void DataLoader::load_label(const Task *task,
   float* label_zc;
   checkCUDA(cudaHostAlloc(&label_zc, sizeof(float) * acc_batch_label.rect.volume(),
                           cudaHostAllocPortable | cudaHostAllocMapped));
+  assert(batch_size == meta->num_samples);
   for (int i = 0; i < batch_size; i++) {
-    int true_label = i % num_label;
+    int base_offset = meta->idxs[i] * num_label;
     for (int j = 0; j < num_label; j++)
-      label_zc[i*num_label+j] = j == true_label ? 1.0f : 0.0f;
+      label_zc[i*num_label+j] = acc_full_label.ptr[base_offset+j];
   }
   checkCUDA(cudaMemcpy(acc_batch_label.ptr, label_zc,
                        sizeof(float) * acc_batch_label.rect.volume(),
