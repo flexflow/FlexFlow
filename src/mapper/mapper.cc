@@ -49,8 +49,11 @@ void FFMapper::slice_task(const MapperContext ctx,
   }
   else 
 #endif
-  if (task.task_id != TOP_LEVEL_TASK_ID)
-  {
+  if ((task.task_id == TOP_LEVEL_TASK_ID)
+  || ((task.task_id >= CUSTOM_CPU_TASK_ID_FIRST)
+     && (task.task_id <= CUSTOM_CPU_TASK_ID_LAST))) {
+    DefaultMapper::slice_task(ctx, task, input, output);
+  } else {
     output.slices.resize(input.domain.get_volume());
     unsigned idx = 0;
     MappingTagID hash = task.tag;
@@ -105,8 +108,6 @@ void FFMapper::slice_task(const MapperContext ctx,
         assert(false);
     }
   }
-  else
-    DefaultMapper::slice_task(ctx, task, input, output);
 }
 
 Memory FFMapper::default_policy_select_target_memory(MapperContext ctx,
@@ -196,6 +197,11 @@ void update_mappers(Machine machine, Runtime *runtime,
     }
     else if (it->kind() == Processor::LOC_PROC) {
       cpus->push_back(*it);
+      Machine::MemoryQuery zc_query(machine);
+      zc_query.only_kind(Memory::Z_COPY_MEM);
+      zc_query.has_affinity_to(*it);
+      assert(zc_query.count() == 1);
+      (*proc_zcmems)[*it] = *(zc_query.begin());
     }
   }
 

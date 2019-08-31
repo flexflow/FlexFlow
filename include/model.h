@@ -65,6 +65,7 @@ enum TaskIDs {
   CONCAT_FWD_TASK_ID,
   CONCAT_BWD_TASK_ID,
   MSELOSS_BWD_TASK_ID,
+  UPDATE_METRICS_TASK_ID,
   DUMMY_TASK_ID,
   // Optimizer
   SGD_UPD_TASK_ID,
@@ -74,15 +75,24 @@ enum TaskIDs {
   UNIFORM_INIT_TASK_ID,
   NORMAL_INIT_TASK_ID,
   // Custom tasks
-  CUSTOM_TASK_ID_0,
-  CUSTOM_TASK_ID_1,
-  CUSTOM_TASK_ID_2,
-  CUSTOM_TASK_ID_3,
-  CUSTOM_TASK_ID_4,
-  CUSTOM_TASK_ID_5,
-  CUSTOM_TASK_ID_6,
-  CUSTOM_TASK_ID_7,
-  CUSTOM_TASK_ID_8,
+  CUSTOM_GPU_TASK_ID_FIRST,
+  CUSTOM_GPU_TASK_ID_1,
+  CUSTOM_GPU_TASK_ID_2,
+  CUSTOM_GPU_TASK_ID_3,
+  CUSTOM_GPU_TASK_ID_4,
+  CUSTOM_GPU_TASK_ID_5,
+  CUSTOM_GPU_TASK_ID_6,
+  CUSTOM_GPU_TASK_ID_7,
+  CUSTOM_GPU_TASK_ID_LAST,
+  CUSTOM_CPU_TASK_ID_FIRST,
+  CUSTOM_CPU_TASK_ID_1,
+  CUSTOM_CPU_TASK_ID_2,
+  CUSTOM_CPU_TASK_ID_3,
+  CUSTOM_CPU_TASK_ID_4,
+  CUSTOM_CPU_TASK_ID_5,
+  CUSTOM_CPU_TASK_ID_6,
+  CUSTOM_CPU_TASK_ID_7,
+  CUSTOM_CPU_TASK_ID_LAST,
 };
 
 enum ActiMode {
@@ -113,6 +123,12 @@ enum DataType {
 
 enum FieldIDs {
   FID_DATA,
+};
+
+struct PerfMetrics
+{
+  float train_loss;
+  int train_all, train_correct, test_all, test_correct, val_all, val_correct;
 };
 
 struct FFHandler {
@@ -253,6 +269,10 @@ public:
   Tensor create_replica(const int* dims,
                         const IndexSpaceT<2>& part_is,
                         DataType data_type);
+  static PerfMetrics update_metrics_task(const Task *task,
+                                         const std::vector<PhysicalRegion> &regions,
+                                         Context ctx, Runtime *runtime);
+  void reset_metrics();
   void init_layers();
   void prefetch();
   void forward();
@@ -271,6 +291,7 @@ public:
   std::vector<Op*> layers;
   std::vector<Parameter> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
+  Future current_metrics;
   //DataLoader *dataLoader;
 private:
   std::map<ParallelConfig, IndexSpace, ParaConfigCompare> taskIs;
@@ -589,9 +610,9 @@ public:
   void backward(const FFModel& model);
   //void update(const FFModel& model);
 
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static PerfMetrics backward_task(const Task *task,
+                                   const std::vector<PhysicalRegion> &regions,
+                                   Context ctx, Runtime *runtime);
 public:
   IndexSpaceT<2> task_is;
   AggrMode aggr_mode;

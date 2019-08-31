@@ -58,12 +58,6 @@ void MSELoss::forward(const FFModel& model)
 {
 }
 
-struct PerfMetrics
-{
-  float train_loss;
-  int train_all, train_correct, test_all, test_correct, val_all, val_correct;
-};
-
 __global__
 void multi_category_calc_loss(const float* logits,
                               const float* labels,
@@ -117,7 +111,6 @@ void single_category_calc_loss(const float* logits,
   }
 }
 
-
 __global__
 void mseloss_backward(float* logitsGrad,
                       const float* logits,
@@ -132,9 +125,9 @@ void mseloss_backward(float* logitsGrad,
 }
 
 __host__
-void MSELoss::backward_task(const Task *task,
-                            const std::vector<PhysicalRegion>& regions,
-                            Context ctx, Runtime* runtime)
+PerfMetrics MSELoss::backward_task(const Task *task,
+                                   const std::vector<PhysicalRegion>& regions,
+                                   Context ctx, Runtime* runtime)
 {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
@@ -180,9 +173,6 @@ void MSELoss::backward_task(const Task *task,
         accLogits.ptr, accLabels.ptr, perf, batch_size, out_dim, scale);
   }
   checkCUDA(cudaMemcpy(&perf_zc, perf, sizeof(PerfMetrics), cudaMemcpyDeviceToHost));
-  fprintf(stderr, "train_loss: %.4lf train_accuracy: %.2lf%%(%d/%d)\n",
-          perf_zc.train_loss,
-          perf_zc.train_correct * 100.0f / perf_zc.train_all, perf_zc.train_correct, perf_zc.train_all);
   // Calculate backward
   mseloss_backward<<<GET_BLOCKS(accLogits.rect.volume()), CUDA_NUM_THREADS>>>(
       accLogitsGrad.ptr, accLogits.ptr, accLabels.ptr,
@@ -193,6 +183,7 @@ void MSELoss::backward_task(const Task *task,
     print_tensor<2, float>(accLogits.ptr, accLogits.rect, "[MSELoss:logit]");
     print_tensor<2, float>(accLogitsGrad.ptr, accLogitsGrad.rect, "[MSELoss:logit_grad]");
   }
+  return perf_zc;
 }
 
 void MSELoss::backward(const FFModel& model)
@@ -219,6 +210,14 @@ void MSELoss::backward(const FFModel& model)
       RegionRequirement(inputs[0].part_grad, 0/*projection*/,
                         WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(2, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  FutureMap new_metrics = runtime->execute_index_space(ctx, launcher);
+  // Update metrics
+  TaskLauncher metrics_task(UPDATE_METRICS_TASK_ID, TaskArgument(NULL, 0));
+  metrics_task.add_future(model.current_metrics);
+  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  for (PointInRectIterator<2> it(part_rect); it(); it++) {
+    metrics_task.add_future(new_metrics[*it]);
+  }
+  ((FFModel*)(&model))->current_metrics = runtime->execute_task(ctx, metrics_task);
 }
 

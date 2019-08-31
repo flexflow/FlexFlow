@@ -99,6 +99,7 @@ void DataLoader::load_label(const Task *task,
       false/*readOutput*/);
   int batch_size = acc_batch_label.rect.hi[1] - acc_batch_label.rect.lo[1] + 1;
   int num_label = acc_batch_label.rect.hi[0] - acc_batch_label.rect.lo[0] + 1;
+  assert(num_label == 1); // Kaggle dataset a has single label
   assert(acc_batch_label.rect.hi[0] == acc_full_label.rect.hi[0]);
   assert(acc_batch_label.rect.lo[0] == acc_full_label.rect.lo[0]);
   float* label_zc;
@@ -109,6 +110,7 @@ void DataLoader::load_label(const Task *task,
     int base_offset = meta->idxs[i] * num_label;
     for (int j = 0; j < num_label; j++)
       label_zc[i*num_label+j] = acc_full_label.ptr[base_offset+j];
+    //printf("meta->idxs[%d]=%d label=%.2lf\n", i, meta->idxs[i], label_zc[i]);
   }
   checkCUDA(cudaMemcpy(acc_batch_label.ptr, label_zc,
                        sizeof(float) * acc_batch_label.rect.volume(),

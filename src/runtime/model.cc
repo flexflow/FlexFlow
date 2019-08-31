@@ -483,6 +483,14 @@ IndexSpace FFModel::get_task_is(const Domain& domain) const
   return it->second;
 }
 
+void FFModel::reset_metrics()
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  TaskLauncher launcher(UPDATE_METRICS_TASK_ID, TaskArgument(NULL, 0));
+  current_metrics = runtime->execute_task(ctx, launcher);
+}
+
 void FFModel::init_layers()
 { 
   for (size_t i = 0; i < layers.size(); i++)
@@ -538,6 +546,38 @@ void FFModel::zero_gradients(void)
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
+}
+
+PerfMetrics FFModel::update_metrics_task(const Task *task,
+                                         const std::vector<PhysicalRegion>& regions,
+                                         Context ctx, Runtime* runtime)
+{
+  if (task->futures.size() == 0) {
+    // Create an empty future
+    PerfMetrics perf;
+    perf.train_loss = 0.0f;
+    perf.train_correct = perf.train_all = 0;
+    perf.test_correct = perf.test_all = 0;
+    perf.val_correct = perf.val_all = 0;
+    return perf;
+  }
+  assert(task->futures.size() > 1);
+  PerfMetrics all_metrics = task->futures[0].get_result<PerfMetrics>();
+  for (size_t i = 1; i < task->futures.size(); i++) {
+    PerfMetrics one_metrics = task->futures[1].get_result<PerfMetrics>();
+    all_metrics.train_loss += one_metrics.train_loss;
+    all_metrics.train_correct += one_metrics.train_correct;
+    all_metrics.train_all += one_metrics.train_all;
+    all_metrics.test_correct += one_metrics.test_correct;
+    all_metrics.test_all += one_metrics.test_all;
+    all_metrics.val_correct += one_metrics.val_correct;
+    all_metrics.val_all += one_metrics.val_all;
+  }
+  fprintf(stderr, "acc_train_loss: %.4lf train_accuracy: %.2lf%%(%d/%d)\n",
+          all_metrics.train_loss / all_metrics.train_all,
+          all_metrics.train_correct * 100.0f / all_metrics.train_all,
+          all_metrics.train_correct, all_metrics.train_all);
+  return all_metrics;
 }
 
 void Op::prefetch(const FFModel& ff)
@@ -894,8 +934,16 @@ int main(int argc, char** argv)
     TaskVariantRegistrar registrar(MSELOSS_BWD_TASK_ID, "MSELoss Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<MSELoss::backward_task>(
-        registrar, "MSELoss Backward");
+    Runtime::preregister_task_variant<PerfMetrics, MSELoss::backward_task>(
+        registrar, "MSELoss Backward Task");
+  }
+  // update metrics
+  {
+    TaskVariantRegistrar registrar(UPDATE_METRICS_TASK_ID, "Update Metrics");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<PerfMetrics, FFModel::update_metrics_task>(
+        registrar, "Update Metrics Task");
   }
   // Concat task
   //{

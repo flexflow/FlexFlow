@@ -14,7 +14,7 @@
  */
 
 #include "model.h"
-#define MAX_NUM_SAMPLES 128
+#define MAX_NUM_SAMPLES 1024
 
 using namespace Legion;
 
