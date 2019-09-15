@@ -24,7 +24,7 @@ MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
-USE_HDF         ?= 1		# Include HDF5 support (requires HDF5)
+USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 
 # Put the binary file name here
@@ -42,7 +42,7 @@ INC_FLAGS	?= -Iinclude/
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcudart -lcuda -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -lhdf5
+LD_FLAGS	?= -lcudart -lcuda -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib
 # For Point and Rect typedefs
 CC_FLAGS	+= -std=c++11
 NVCC_FLAGS  += -std=c++11

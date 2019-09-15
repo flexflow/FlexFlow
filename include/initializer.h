@@ -34,12 +34,13 @@ public:
 class GlorotUniform : public Initializer
 {
 public:
-  GlorotUniform(void);
+  GlorotUniform(int _seed);
   ~GlorotUniform(void);
   void init(Context ctx, Runtime* runtime, const Tensor* tensor);
   static void init_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime *runtime);
+  int seed;
 };
 
 class ZeroInitializer : public Initializer

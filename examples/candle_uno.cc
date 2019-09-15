@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "candle_uno.h"
 #include <sstream>
 #include <string>
 
@@ -21,27 +21,6 @@ using namespace Legion;
 using namespace std;
 
 LegionRuntime::Logger::Category log_app("DLRM");
-
-struct CandleConfig {
-  CandleConfig(void) {
-    // Set default configurations here
-    for (int i = 0; i < 3; i++)
-      dense_layers.push_back(1000);
-    for (int i = 0; i < 3; i++)
-      dense_feature_layers.push_back(1000);
-    feature_shapes["dose"] = 1;
-    feature_shapes["cell.rnaseq"] = 942;
-    feature_shapes["drug.descriptors"] = 5270;
-    feature_shapes["drug.fingerprints"] = 2048;
-    input_features["dose1"] = "dose";
-    input_features["cell.rnaseq"] = "cell.rnaseq";
-    input_features["drug1.descriptors"] = "drug.descriptors";
-    input_features["drug1.fingerprints"] = "drug.fingerprints";
-  }
-  vector<int> dense_layers, dense_feature_layers;
-  map<string, int> feature_shapes;
-  map<string, string> input_features;
-};
 
 void parse_input_args(char **argv, int argc, CandleConfig& apConfig);
 
@@ -101,6 +80,7 @@ void top_level_task(const Task* task,
     }
   }
   int n = 0;
+  std::vector<Tensor> all_inputs;
   Tensor encoded_inputs[MAX_NUM_INPUTS];
   for (map<string, string>::const_iterator it = input_features.begin();
       it != input_features.end(); it++)
@@ -109,6 +89,7 @@ void top_level_task(const Task* task,
     int shape = feature_shapes[it->second];
     const int dims[] = {ff_config.batchSize, shape};
     Tensor input = ff.create_tensor<2>(dims, "", DT_FLOAT);
+    all_inputs.push_back(input);
     if (input_models.find(it->second) != input_models.end()) {
       Tensor encoded = build_feature_model(&ff, input, candle_config.dense_feature_layers);
       encoded_inputs[n++] = encoded;
@@ -130,6 +111,8 @@ void top_level_task(const Task* task,
   ff.mse_loss("mse_loss", output, label, "average"/*reduction*/);
   // Use SGD Optimizer
   ff.optimizer = new SGDOptimizer(&ff, 0.01f);
+  // Data Loader
+  DataLoader data_loader(ff, candle_config, all_inputs, label);
   ff.init_layers();
   for (int epoch = 0; epoch < ff_config.epochs; epoch++) {
     for (int iter = 0; iter < ff_config.iterations; iter++) {
@@ -166,3 +149,56 @@ void parse_input_args(char **argv, int argc, CandleConfig& config)
   }
 }
 
+DataLoader::DataLoader(FFModel& ff,
+                       const CandleConfig& candle,
+                       const std::vector<Tensor>& _all_inputs,
+                       Tensor _label)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  ArgumentMap argmap;
+  IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(""));
+  for (size_t i = 0; i < _all_inputs.size(); i++) {
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
+                           TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(std::string("")));
+    launcher.add_region_requirement(
+      RegionRequirement(_all_inputs[i].part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, _all_inputs[i].region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  }
+  // Load Labels
+  {
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
+                           TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(std::string("")));
+    launcher.add_region_requirement(
+      RegionRequirement(_label.part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, _label.region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  }
+}
+
+void register_custom_tasks()
+{
+  // Load Inputs
+  {
+    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_1, "Load Inputs (Random)");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<DataLoader::load_input>(
+        registrar, "Load Inputs (Random) Task");
+  }
+  // Load Label
+  {
+    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_2, "Load Label (Random)");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<DataLoader::load_input>(
+        registrar, "Load Label (Random) Task");
+  }
+}

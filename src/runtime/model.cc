@@ -325,8 +325,7 @@ Tensor FFModel::create_weight(const int dims[],
   }
   // Step 2: initialize region
   if (initializer == NULL) {
-    initializer = new GlorotUniform();
-    initializer->init(ctx, runtime, &weight);
+    assert(false); // add weight initializer should be set before
   } else {
     initializer->init(ctx, runtime, &weight);
   }
@@ -992,6 +991,14 @@ int main(int argc, char** argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<UniformInitializer::init_task>(
         registrar, "Uniform Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(GLOROT_INIT_TASK_ID,
+                                   "Glorot Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<GlorotUniform::init_task>(
+        registrar, "Glorot Init Task");
   }
   {
     TaskVariantRegistrar registrar(NORMAL_INIT_TASK_ID,
