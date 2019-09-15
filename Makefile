@@ -19,7 +19,7 @@ LG_RT_DIR	?= legion/runtime
 endif
 
 # Flags for directing the runtime makefile what to include
-DEBUG           ?= 1		# Include debugging symbols
+DEBUG           ?= 0		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
@@ -38,11 +38,11 @@ GEN_GPU_SRC	?= src/ops/conv_2d.cu src/runtime/model.cu src/ops/pool_2d.cu src/op
 		src/runtime/cuda_helper.cu $(app).cu# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -Iinclude/
+INC_FLAGS	?= -Iinclude/ -I/home/users/zhihao/tools/protobuf/src
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcudart -lcuda -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib
+LD_FLAGS	?= -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L/home/users/zhihao/tools/protobuf/src/.libs
 # For Point and Rect typedefs
 CC_FLAGS	+= -std=c++11
 NVCC_FLAGS  += -std=c++11

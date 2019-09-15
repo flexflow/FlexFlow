@@ -114,15 +114,27 @@ void top_level_task(const Task* task,
   // Data Loader
   DataLoader data_loader(ff, candle_config, all_inputs, label);
   ff.init_layers();
+
+  double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ff_config.epochs; epoch++) {
+    ff.reset_metrics();
     for (int iter = 0; iter < ff_config.iterations; iter++) {
-      printf("epoch = %d iter = %d\n", epoch, iter);
+      runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
-      ff.update();
+      //ff.update();
+      runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
+  runtime->issue_execution_fence(ctx);
+  TimingLauncher timer(MEASURE_MICRO_SECONDS);
+  Future future = runtime->issue_timing_measurement(ctx, timer);
+  future.get_void_result();
+  double ts_end = Realm::Clock::current_time_in_microseconds();
+  double run_time = 1e-6 * (ts_end - ts_start);
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
+         ff_config.iterations * ff_config.epochs * ff_config.batchSize / run_time);
 }
 
 void parse_input_args(char **argv, int argc, CandleConfig& config)

@@ -18,6 +18,7 @@
 #include "model.h"
 #include "cuda_helper.h"
 #include <curand.h>
+#include <random>
 #include <ctime>
 
 void UniformInitializer::init_task(const Task* task,

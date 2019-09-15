@@ -96,6 +96,10 @@ FFModel::FFModel(FFConfig& _config)
   //  dataLoader = new DataLoader(config.datasetPath);
   //}
 
+  // Init performance metrics
+  TaskLauncher launcher(UPDATE_METRICS_TASK_ID, TaskArgument(NULL, 0));
+  current_metrics = runtime->execute_task(ctx, launcher);
+
   // Init CUDA library on each worker
   ArgumentMap local_args;
   size_t workSpaceSize = config.workSpaceSize;
