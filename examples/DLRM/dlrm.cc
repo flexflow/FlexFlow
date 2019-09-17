@@ -135,18 +135,35 @@ void top_level_task(const Task* task,
   ff.init_layers();
   // Data Loader
   DataLoader data_loader(ff, dlrmConfig, sparse_inputs, dense_input, label);
+  double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     data_loader.reset();
     ff.reset_metrics();
     int iterations = data_loader.num_samples / ffConfig.batchSize;
     for (int iter = 0; iter < iterations; iter++) {
-      data_loader.next_batch(ff);
+      if (dlrmConfig.dataset_path.length() == 0) {
+        // Only load data once for random input
+        if (iter == 0 && epoch == 0)
+          data_loader.next_batch(ff);
+      } else {
+        data_loader.next_batch(ff);
+      }
+      runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
+      runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
+  runtime->issue_execution_fence(ctx);
+  TimingLauncher timer(MEASURE_MICRO_SECONDS);
+  Future future = runtime->issue_timing_measurement(ctx, timer);
+  future.get_void_result();
+  double ts_end = Realm::Clock::current_time_in_microseconds();
+  double run_time = 1e-6 * (ts_end - ts_start);
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
+         data_loader.num_samples * ffConfig.epochs / run_time);
 }
 
 void parse_input_args(char **argv, int argc, DLRMConfig& config)
@@ -216,7 +233,7 @@ DataLoader::DataLoader(FFModel& ff,
   num_samples = 0;
   if (dlrm.dataset_path == "") {
     log_app.print("Use random dataset...");
-    num_samples = 32000;
+    num_samples = 8192;
   } else {
     log_app.print("Start loading dataset from %s", dlrm.dataset_path.c_str());
     hid_t file_id = H5Fopen(dlrm.dataset_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);

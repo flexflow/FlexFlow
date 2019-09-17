@@ -66,7 +66,7 @@ void SGDOptimizer::update_task(const Task* task,
       TensorAccessorW<float, 1> accW(
           regions[1], task->regions[1], FID_DATA, ctx, runtime,
           true/*readOutput*/);
-      for (int i = 0; i < domain.get_dim(); i++) {
+      for (int i = 0; i < domain.get_dim()-1; i++) {
         assert(accW.rect.lo[i] == accWGrad.rect.lo[i]);
         assert(accW.rect.hi[i] == accWGrad.rect.hi[i]);
       }
@@ -91,7 +91,7 @@ void SGDOptimizer::update_task(const Task* task,
       TensorAccessorW<float, 2> accW(
           regions[1], task->regions[1], FID_DATA, ctx, runtime,
           true/*readOutput*/);
-      for (int i = 0; i < domain.get_dim(); i++) {
+      for (int i = 0; i < domain.get_dim()-1; i++) {
         assert(accW.rect.lo[i] == accWGrad.rect.lo[i]);
         assert(accW.rect.hi[i] == accWGrad.rect.hi[i]);
       }

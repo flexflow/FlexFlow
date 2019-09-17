@@ -567,7 +567,7 @@ PerfMetrics FFModel::update_metrics_task(const Task *task,
   assert(task->futures.size() > 1);
   PerfMetrics all_metrics = task->futures[0].get_result<PerfMetrics>();
   for (size_t i = 1; i < task->futures.size(); i++) {
-    PerfMetrics one_metrics = task->futures[1].get_result<PerfMetrics>();
+    PerfMetrics one_metrics = task->futures[i].get_result<PerfMetrics>();
     all_metrics.train_loss += one_metrics.train_loss;
     all_metrics.train_correct += one_metrics.train_correct;
     all_metrics.train_all += one_metrics.train_all;
@@ -658,7 +658,7 @@ struct DefaultConfig {
   const static bool profiling = false;
   constexpr static float learningRate = 0.01f;
   constexpr static float weightDecay = 0.0001f;
-  const static size_t workSpaceSize = (size_t)2 * 1024 * 1024 * 1024; // 2GB
+  const static size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
   const static int numNodes = 1;
   const static int workersPerNode = 0;
   const static int loadersPerNode = 4;
