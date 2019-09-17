@@ -24,6 +24,13 @@ Tensor FFModel::dense(std::string name,
                       Initializer* kernel_initializer,
                       Initializer* bias_initializer)
 {
+  if (kernel_initializer == NULL) {
+    int seed = std::rand();
+    kernel_initializer = new GlorotUniform(seed);
+  }
+  if (bias_initializer == NULL) {
+    bias_initializer = new ZeroInitializer();
+  }
   Linear *li = new Linear(*this, name, input, outDim, activation, use_bias,
                           kernel_initializer, bias_initializer);
   layers.push_back(li);
@@ -153,32 +160,31 @@ Linear::Linear(FFModel& model,
 }
 
 /*
-  regions[0](I): input
-  regions[1](O): output
-  regions[2]: replica
-  regions[3](I): kernel
-  regions[4](I): bias
+  regions[0](O): output
+  regions[1](I): kernel
+  regions[2](I): bias
 */
 OpMeta* Linear::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-  assert(regions.size() == 4);
-  assert(task->regions.size() == 4);
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
   const Linear* linear = (Linear*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
-  TensorAccessorR<float, 2> acc_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  //TensorAccessorR<float, 2> acc_input(
+  //    regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 2> acc_output(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime,
+      regions[0], task->regions[0], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   TensorAccessorR<float, 2> acc_kernel(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
   TensorAccessorR<float, 1> acc_bias(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  //int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
+  int in_dim = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
-  int batch_size = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
+  int batch_size = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
   printf("init linear (input): in_dim(%d) out_dim(%d) batch_size(%d)\n",
       in_dim, out_dim, batch_size);
   LinearMeta* m = new LinearMeta(handle);
@@ -231,22 +237,22 @@ void Linear::init(const FFModel& ff)
                          TaskArgument(this, sizeof(Linear)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
-  launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0].region));
-  launcher.add_field(0, FID_DATA);
+  //launcher.add_region_requirement(
+  //    RegionRequirement(input_lps[0], 0/*projection id*/,
+  //                      READ_ONLY, EXCLUSIVE, inputs[0].region));
+  //launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(output.part, 0/*projection id*/,
                         WRITE_ONLY, EXCLUSIVE, output.region));
-  launcher.add_field(1, FID_DATA);
+  launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(kernel.part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, kernel.region));
-  launcher.add_field(2, FID_DATA);
+  launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(bias.part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, bias.region));
-  launcher.add_field(3, FID_DATA);
+  launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;

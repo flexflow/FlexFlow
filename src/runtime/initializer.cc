@@ -22,8 +22,8 @@ Initializer::Initializer(void)
 Initializer::~Initializer(void)
 {}
 
-GlorotUniform::GlorotUniform(void)
-: Initializer() {}
+GlorotUniform::GlorotUniform(int _seed)
+: Initializer(), seed(_seed) {}
 
 GlorotUniform::~GlorotUniform(void)
 {}
@@ -33,8 +33,8 @@ void GlorotUniform::init(Context ctx,
                          const Tensor* p)
 {
   assert(p->numDim == 2);
-  int num = std::rand();
-  TaskLauncher launcher(GLOROT_INIT_TASK_ID, TaskArgument(&num, sizeof(int)));
+  TaskLauncher launcher(GLOROT_INIT_TASK_ID,
+                        TaskArgument(this, sizeof(GlorotUniform)));
   // regions[0]: p->region
   launcher.add_region_requirement(
       RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
@@ -62,7 +62,7 @@ void ZeroInitializer::init(Context ctx,
 }
 
 UniformInitializer::UniformInitializer(int _seed, float _min, float _max)
-: seed(_seed), min_val(_min), max_val(_max) {}
+: Initializer(), seed(_seed), min_val(_min), max_val(_max) {}
 
 UniformInitializer::~UniformInitializer(void)
 {}

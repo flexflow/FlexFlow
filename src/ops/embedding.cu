@@ -241,8 +241,7 @@ void Embedding::backward_task(const Task *task,
   assert(accInput.rect.hi[1] == accOutput.rect.hi[1]);
   assert(accInput.rect.lo[1] == accOutput.rect.lo[1]);
   // WeightGrad matches Output
-  assert(accWeightGrad.rect.hi[1] == accOutput.rect.hi[0]);
-  assert(accWeightGrad.rect.lo[1] == accOutput.rect.lo[0]);
+  assert(accWeightGrad.rect.hi[1] - accWeightGrad.rect.lo[1] == accOutput.rect.hi[0] - accOutput.rect.lo[0]);
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
   int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
   embed_backward<<<GET_BLOCKS(accOutput.rect.volume()), CUDA_NUM_THREADS>>>(

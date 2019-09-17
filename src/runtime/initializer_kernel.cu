@@ -18,6 +18,7 @@
 #include "model.h"
 #include "cuda_helper.h"
 #include <curand.h>
+#include <random>
 #include <ctime>
 
 void UniformInitializer::init_task(const Task* task,
@@ -41,6 +42,30 @@ void UniformInitializer::init_task(const Task* task,
   checkCUDA(cudaDeviceSynchronize());
   curandDestroyGenerator(gen);
 }
+
+void GlorotUniform::init_task(const Task* task,
+                              const std::vector<PhysicalRegion>& regions,
+                              Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == 1);
+  assert(task->regions.size() == 1);
+  TensorAccessorW<float, 2> accW(regions[0], task->regions[0],
+      FID_DATA, ctx, runtime, false/*readOutput*/);
+  int inputDim = accW.rect.hi[0] - accW.rect.lo[0] + 1;
+  int outputDim = accW.rect.hi[1] - accW.rect.lo[1] + 1;
+  float scale = sqrt(6.0 / (inputDim + outputDim));
+  curandGenerator_t gen;
+  curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
+  GlorotUniform* initializer = (GlorotUniform*) task->args;
+  curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
+  fprintf(stderr, "seed = %d\n", initializer->seed);
+  checkCUDA(curandGenerateUniform(gen, accW.ptr, accW.rect.volume()));
+  scale_kernel<<<GET_BLOCKS(accW.rect.volume()), CUDA_NUM_THREADS>>>(
+      accW.ptr, accW.rect.volume(), -scale, scale);
+  checkCUDA(cudaDeviceSynchronize());
+  curandDestroyGenerator(gen);
+}
+
 
 void NormInitializer::init_task(const Task* task,
                                 const std::vector<PhysicalRegion>& regions,
