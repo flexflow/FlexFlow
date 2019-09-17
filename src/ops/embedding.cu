@@ -241,6 +241,7 @@ void Embedding::backward_task(const Task *task,
   assert(accInput.rect.hi[1] == accOutput.rect.hi[1]);
   assert(accInput.rect.lo[1] == accOutput.rect.lo[1]);
   // WeightGrad matches Output
+  printf("wg.hi[1] = %d o.hi[0] = %d\n", accWeightGrad.rect.hi[1], accOutput.rect.hi[0]);
   assert(accWeightGrad.rect.hi[1] == accOutput.rect.hi[0]);
   assert(accWeightGrad.rect.lo[1] == accOutput.rect.lo[0]);
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;

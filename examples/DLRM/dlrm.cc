@@ -216,7 +216,7 @@ DataLoader::DataLoader(FFModel& ff,
   num_samples = 0;
   if (dlrm.dataset_path == "") {
     log_app.print("Use random dataset...");
-    num_samples = 10;
+    num_samples = 32000;
   } else {
     log_app.print("Start loading dataset from %s", dlrm.dataset_path.c_str());
     hid_t file_id = H5Fopen(dlrm.dataset_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
@@ -286,19 +286,19 @@ DataLoader::DataLoader(FFModel& ff,
   // TODO: Use index launcher instead of task launcher
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
       TaskArgument(dlrm.dataset_path.c_str(), dlrm.dataset_path.length()+10));
-  // regions[0]: full_sparse_input 
+  // regions[0]: full_sparse_input
   launcher.add_region_requirement(
       RegionRequirement(full_sparse_input.region,
                         WRITE_ONLY, EXCLUSIVE, full_sparse_input.region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
-  // regions[1]: full_sparse_input 
+  // regions[1]: full_sparse_input
   launcher.add_region_requirement(
       RegionRequirement(full_dense_input.region,
                         WRITE_ONLY, EXCLUSIVE, full_dense_input.region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
-  // regions[3]: full_sparse_input 
+  // regions[3]: full_sparse_input
   launcher.add_region_requirement(
       RegionRequirement(full_label.region,
                         WRITE_ONLY, EXCLUSIVE, full_label.region,
@@ -314,8 +314,6 @@ void DataLoader::load_entire_dataset(const Task *task,
 {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  char* file_name = (char*) task->args;
-  hid_t file_id = H5Fopen(file_name, H5F_ACC_RDWR, H5P_DEFAULT);
   // Note that these instances are in ZCM, can only use
   // TensorAccessorW with readOutput flag
   const AccessorWO<int64_t, 2> acc_sparse_input(regions[0], FID_DATA);
@@ -339,61 +337,73 @@ void DataLoader::load_entire_dataset(const Task *task,
   int num_dense_dims = rect_dense_input.hi[0] - rect_dense_input.lo[0] + 1;
   assert(num_samples == rect_label_input.hi[1] - rect_label_input.lo[1] + 1);
   assert(rect_label_input.hi[0] == rect_label_input.lo[0]);
-  // Load X_cat
-  {
-    log_app.print("Start loading sparse features from "
-                  "%s.%s", file_name, "X_cat");
-    hsize_t dims[2], maxdims[2];
-    hid_t x_cat_dataset_id = H5Dopen2(file_id, "X_cat", H5P_DEFAULT);
-    hid_t x_cat_space_id = H5Dget_space(x_cat_dataset_id);
-    hid_t x_cat_type_id = H5Dget_type(x_cat_dataset_id);
-    assert(H5Sget_simple_extent_dims(x_cat_space_id, dims, maxdims) == 2);
-    assert(H5Tget_class(x_cat_type_id) == H5T_INTEGER);
-    assert(num_samples == (int)dims[0]);
-    assert(num_sparse_inputs == (int)dims[1]);
-    H5Dread(x_cat_dataset_id, H5T_NATIVE_LLONG, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-            sparse_input_ptr);
-    H5Tclose(x_cat_type_id);
-    H5Dclose(x_cat_dataset_id);
-    H5Sclose(x_cat_space_id);
-    log_app.print("Finish loading sparse features");
-  }
-  // Load X_int
-  {
-    log_app.print("Start loading dense features from "
-                  "%s.%s", file_name, "X_int");
-    hsize_t dims[2], maxdims[2];
-    hid_t x_int_dataset_id = H5Dopen2(file_id, "X_int", H5P_DEFAULT);
-    hid_t x_int_space_id = H5Dget_space(x_int_dataset_id);
-    hid_t x_int_type_id = H5Dget_type(x_int_dataset_id);
-    assert(H5Sget_simple_extent_dims(x_int_space_id, dims, maxdims) == 2);
-    assert(H5Tget_class(x_int_type_id) == H5T_FLOAT);
-    num_samples = dims[0];
-    assert(num_dense_dims == (int)dims[1]);
-    H5Dread(x_int_dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-            dense_input_ptr);
-    H5Tclose(x_int_type_id);
-    H5Dclose(x_int_dataset_id);
-    H5Sclose(x_int_space_id);
-    log_app.print("Finish loading dense features");
-  }
-  // Load y
-  {
-    log_app.print("Start loading labels from "
-                  "%s.%s", file_name, "y");
-    hsize_t dims[2], maxdims[2];
-    hid_t y_dataset_id = H5Dopen2(file_id, "y", H5P_DEFAULT);
-    hid_t y_space_id = H5Dget_space(y_dataset_id);
-    hid_t y_type_id = H5Dget_type(y_dataset_id);
-    assert(H5Sget_simple_extent_dims(y_space_id, dims, maxdims) == 2);
-    assert(num_samples == (int)dims[0]);
-    assert(dims[1] == 1);
-    H5Dread(y_dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-            label_input_ptr);
-    H5Tclose(y_type_id);
-    H5Dclose(y_dataset_id);
-    H5Sclose(y_space_id);
-    log_app.print("Finish loading labels");
+  std::string file_name((const char*)task->args);
+  if (file_name.length() == 0) {
+    log_app.print("Start generating random input samples");
+    for (size_t i = 0; i < rect_sparse_input.volume(); i++)
+      sparse_input_ptr[i] = std::rand() % 1000000;
+    for (size_t i = 0; i < rect_dense_input.volume(); i++)
+      dense_input_ptr[i] = ((float)std::rand()) / RAND_MAX;
+    for (size_t i = 0; i < rect_label_input.volume(); i++)
+      label_input_ptr[i] = std::rand() % 2;
+  } else {
+    hid_t file_id = H5Fopen(file_name.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+    // Load X_cat
+    {
+      log_app.print("Start loading sparse features from "
+                    "%s.%s", file_name.c_str(), "X_cat");
+      hsize_t dims[2], maxdims[2];
+      hid_t x_cat_dataset_id = H5Dopen2(file_id, "X_cat", H5P_DEFAULT);
+      hid_t x_cat_space_id = H5Dget_space(x_cat_dataset_id);
+      hid_t x_cat_type_id = H5Dget_type(x_cat_dataset_id);
+      assert(H5Sget_simple_extent_dims(x_cat_space_id, dims, maxdims) == 2);
+      assert(H5Tget_class(x_cat_type_id) == H5T_INTEGER);
+      assert(num_samples == (int)dims[0]);
+      assert(num_sparse_inputs == (int)dims[1]);
+      H5Dread(x_cat_dataset_id, H5T_NATIVE_LLONG, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+              sparse_input_ptr);
+      H5Tclose(x_cat_type_id);
+      H5Dclose(x_cat_dataset_id);
+      H5Sclose(x_cat_space_id);
+      log_app.print("Finish loading sparse features");
+    }
+    // Load X_int
+    {
+      log_app.print("Start loading dense features from "
+                    "%s.%s", file_name.c_str(), "X_int");
+      hsize_t dims[2], maxdims[2];
+      hid_t x_int_dataset_id = H5Dopen2(file_id, "X_int", H5P_DEFAULT);
+      hid_t x_int_space_id = H5Dget_space(x_int_dataset_id);
+      hid_t x_int_type_id = H5Dget_type(x_int_dataset_id);
+      assert(H5Sget_simple_extent_dims(x_int_space_id, dims, maxdims) == 2);
+      assert(H5Tget_class(x_int_type_id) == H5T_FLOAT);
+      num_samples = dims[0];
+      assert(num_dense_dims == (int)dims[1]);
+      H5Dread(x_int_dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+              dense_input_ptr);
+      H5Tclose(x_int_type_id);
+      H5Dclose(x_int_dataset_id);
+      H5Sclose(x_int_space_id);
+      log_app.print("Finish loading dense features");
+    }
+    // Load y
+    {
+      log_app.print("Start loading labels from "
+                    "%s.%s", file_name.c_str(), "y");
+      hsize_t dims[2], maxdims[2];
+      hid_t y_dataset_id = H5Dopen2(file_id, "y", H5P_DEFAULT);
+      hid_t y_space_id = H5Dget_space(y_dataset_id);
+      hid_t y_type_id = H5Dget_type(y_dataset_id);
+      assert(H5Sget_simple_extent_dims(y_space_id, dims, maxdims) == 2);
+      assert(num_samples == (int)dims[0]);
+      assert(dims[1] == 1);
+      H5Dread(y_dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+              label_input_ptr);
+      H5Tclose(y_type_id);
+      H5Dclose(y_dataset_id);
+      H5Sclose(y_space_id);
+      log_app.print("Finish loading labels");
+    }
   }
 }
 
