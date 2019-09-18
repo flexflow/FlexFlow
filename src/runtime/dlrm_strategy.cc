@@ -4,17 +4,17 @@
 
 int main()
 {
-  int gpu = 1;
+  int gpu = 4;
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   FFProtoBuf::Strategy strategy;
   // Embedding
-  for (int i = 0; i < gpu; i++) {
+  for (int i = 0; i < 8; i++) {
     std::string name = "embedding"+std::to_string(i);
     FFProtoBuf::Op* op = strategy.add_ops();
     op->set_name(name);
-    op->add_dims(gpu);
     op->add_dims(1);
-    for (int j = 0; j < gpu; j++)
+    op->add_dims(1);
+    for (int j = 0; j < 1; j++)
       op->add_devices(i);
   }
   std::vector<std::string> names;
@@ -24,8 +24,8 @@ int main()
   for (size_t i = 0; i < names.size(); i++) {
     FFProtoBuf::Op* op = strategy.add_ops();
     op->set_name(names[i]);
-    op->add_dims(gpu);
     op->add_dims(1);
+    op->add_dims(gpu);
     for (int j = 0; j < gpu; j++)
       op->add_devices(j);
   }

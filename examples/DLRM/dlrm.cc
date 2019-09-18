@@ -39,11 +39,11 @@ Tensor create_mlp(FFModel* model, const Tensor& input,
 }
 
 Tensor create_emb(FFModel* model, const Tensor& input,
-                  int input_dim, int output_dim)
+                  int input_dim, int output_dim, int idx)
 {
   float range = sqrt(1.0f / input_dim);
   Initializer* embed_init = new UniformInitializer(std::rand(), -range, range);
-  return model->embedding("embedding", input, input_dim, output_dim, embed_init);
+  return model->embedding("embedding"+std::to_string(idx), input, input_dim, output_dim, embed_init);
 }
 
 Tensor interact_features(FFModel* model, const Tensor& x,
@@ -102,7 +102,7 @@ void top_level_task(const Task* task,
   std::vector<Tensor> sparse_inputs;
   for (size_t i = 0; i < dlrmConfig.embedding_size.size(); i++) {
     const int dims[] = {ffConfig.batchSize, 1};
-    Tensor input = ff.create_tensor<2>(dims, "", DT_INT64);
+    Tensor input = ff.create_tensor<2>(dims, "embedding"+std::to_string(i), DT_INT64);
     sparse_inputs.push_back(input);
   }
   Tensor dense_input;
@@ -121,7 +121,7 @@ void top_level_task(const Task* task,
   for (size_t i = 0; i < dlrmConfig.embedding_size.size(); i++) {
     int input_dim = dlrmConfig.embedding_size[i];
     int output_dim = dlrmConfig.sparse_feature_size;
-    ly.push_back(create_emb(&ff, sparse_inputs[i], input_dim, output_dim));
+    ly.push_back(create_emb(&ff, sparse_inputs[i], input_dim, output_dim, i));
   }
   Tensor z = interact_features(&ff, x, ly, dlrmConfig.arch_interaction_op);
   Tensor p = create_mlp(&ff, z, dlrmConfig.mlp_top, dlrmConfig.mlp_top.size() - 2);
@@ -426,26 +426,18 @@ void DataLoader::load_entire_dataset(const Task *task,
 
 void DataLoader::next_batch(FFModel& ff)
 {
-  ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(""));
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
-  for (PointInRectIterator<2> it(rect); it(); it++) {
-    SampleIdxs meta;
-    assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-    meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
-    for (int i = 0; i < meta.num_samples; i++)
-      meta.idxs[i] = next_index++;
-    argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
-  }
   // Load Sparse Inputs
   for (size_t i = 0; i < batch_sparse_inputs.size(); i++) {
     int hash = batch_sparse_inputs.size() * 1000 + i;
+    std::string pc_name = "embedding"+std::to_string(i);
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(pc_name));
+    ArgumentMap argmap;
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
                            TaskArgument(&hash, sizeof(int)), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(std::string("")));
+                           FFConfig::get_hash_id(pc_name));
     // Full dataset in ZCM
     launcher.add_region_requirement(
         RegionRequirement(full_sparse_input.region, 0/*projection id*/,
@@ -460,10 +452,22 @@ void DataLoader::next_batch(FFModel& ff)
   }
   // Load Dense Input
   {
+    std::string pc_name = "";
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(pc_name));
+    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    for (PointInRectIterator<2> it(rect); it(); it++) {
+      SampleIdxs meta;
+      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = next_index++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string("")));
+                         FFConfig::get_hash_id(std::string(pc_name)));
     // Full dataset in ZCM
     launcher.add_region_requirement(
         RegionRequirement(full_dense_input.region, 0/*projection id*/,
@@ -478,10 +482,14 @@ void DataLoader::next_batch(FFModel& ff)
   }
   // Load Labels
   {
+    std::string pc_name = "";
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(pc_name));
+    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_3, task_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string("")));
+                         FFConfig::get_hash_id(std::string(pc_name)));
     // Full dataset in ZCM
     launcher.add_region_requirement(
         RegionRequirement(full_label.region, 0/*projection id*/,
