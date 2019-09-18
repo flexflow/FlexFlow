@@ -64,9 +64,8 @@ Concat::Concat(FFModel& model,
           input_lps[i] = inputs[i].part;
           input_grad_lps[i] = inputs[i].part_grad;
         } else {
-          // Currently assert input must have the same partition
-          // to avoid data movement
-          assert(false);
+          model.create_disjoint_partition<1>(inputs[i],
+              IndexSpaceT<1>(task_is), input_lps[i], input_grad_lps[i]);
         }
       }
       break;
@@ -82,9 +81,8 @@ Concat::Concat(FFModel& model,
           input_lps[i] = inputs[i].part;
           input_grad_lps[i] = inputs[i].part_grad;
         } else {
-          // Currently assert input must have the same partition
-          // to avoid data movement
-          assert(false);
+           model.create_disjoint_partition<2>(inputs[i],
+               IndexSpaceT<2>(task_is), input_lps[i], input_grad_lps[i]);
         }
       }
       break;

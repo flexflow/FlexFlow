@@ -254,6 +254,13 @@ public:
                        const std::string& pc_name,
                        DataType data_type,
                        bool create_grad = true);
+
+  template<int NDIM>
+  void create_disjoint_partition(const Tensor& tensor,
+                                 const IndexSpaceT<NDIM>& part_is,
+                                 LogicalPartition& part_fwd,
+                                 LogicalPartition& part_bwd);
+
   template<int NDIM>
   Tensor create_tensor(const int* dims,
                        const IndexSpaceT<NDIM>& part_is,

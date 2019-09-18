@@ -279,6 +279,39 @@ Tensor FFModel::create_tensor(const int dims[],
   return tensor;
 }
 
+template<int NDIM>
+void FFModel::create_disjoint_partition(const Tensor& tensor,
+                                        const IndexSpaceT<NDIM>& part_is,
+                                        LogicalPartition& part_fwd,
+                                        LogicalPartition& part_bwd)
+{ 
+  // Current assume forward and grad share the same index space
+  assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, tensor.region.get_index_space());
+  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  Transform<NDIM, NDIM> transform;
+  Point<NDIM> ext_hi;
+  for (int i = 0; i < NDIM; i++) {
+    int nparts = part_rect.hi[i] - part_rect.lo[i] + 1;
+    ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
+  }
+  Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
+  for (int i = 0; i < NDIM; i++)
+    for (int j = 0; j < NDIM; j++)
+      if (i == j)
+        transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
+      else
+        transform[i][j] = 0;
+  IndexPartition ip = runtime->create_partition_by_restriction(
+      ctx, tensor.region.get_index_space(), part_is, transform, extent);
+  assert(runtime->is_index_partition_disjoint(ctx, ip));
+  assert(runtime->is_index_partition_complete(ctx, ip));
+  part_fwd = runtime->get_logical_partition(ctx, tensor.region, ip);
+  part_bwd = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
+}
+
 // This function assumes:
 // 1. the outer most dim of weight is channel out
 // 2. partition is 2D (sample, channel_out)
@@ -1044,6 +1077,9 @@ template Tensor FFModel::create_tensor<1>(const int* dims, const IndexSpaceT<1>&
 template Tensor FFModel::create_tensor<2>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, bool create_grad);
 template Tensor FFModel::create_tensor<3>(const int* dims, const IndexSpaceT<3>& part_is, DataType data_type, bool create_grad);
 template Tensor FFModel::create_tensor<4>(const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, bool create_grad);
+
+template void FFModel::create_disjoint_partition<1>(const Tensor& tensor, const IndexSpaceT<1>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
+template void FFModel::create_disjoint_partition<2>(const Tensor& tensor, const IndexSpaceT<2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
 
 template Tensor FFModel::create_weight<2>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
 template Tensor FFModel::create_weight<1>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
