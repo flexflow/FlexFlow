@@ -248,7 +248,17 @@ void update_mappers(Machine machine, Runtime *runtime,
       pc.gpu[i] = i;
     (*strategies)[FFConfig::DataParallelismID] = pc;
   } else {
+    log_mapper.print("Load parallelization strategy from file %s",
+                     strategyFile.c_str());
     load_strategies_from_file(strategyFile, *strategies);
+    // TODO: the decault data parallelsim only apply to 2D operators
+    ParallelConfig pc;
+    pc.nDims = 2;
+    pc.dim[0] = 1;
+    pc.dim[1] = gpus->size();
+    for (size_t i = 0; i < gpus->size(); i++)
+      pc.gpu[i] = i;
+    (*strategies)[FFConfig::DataParallelismID] = pc;
   }
 
   for (std::set<Processor>::const_iterator it = local_procs.begin();

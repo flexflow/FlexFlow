@@ -81,6 +81,14 @@ FFModel::FFModel(FFConfig& _config)
     config.strategies[FFConfig::DataParallelismID] = pc;
   } else {
     load_strategies_from_file(config.strategyFile, config.strategies);
+    // TODO: the decault data parallelsim only apply to 2D operators
+    ParallelConfig pc;
+    pc.nDims = 2;
+    pc.dim[0] = 1;
+    pc.dim[1] = config.workersPerNode * config.numNodes;
+    for (int i = 0; i < pc.dim[1]; i++)
+      pc.gpu[i] = i;
+    config.strategies[FFConfig::DataParallelismID] = pc;
   }
 
   // Create field space
