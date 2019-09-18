@@ -433,7 +433,17 @@ void DataLoader::next_batch(FFModel& ff)
     int hash = batch_sparse_inputs.size() * 1000 + i;
     std::string pc_name = "embedding"+std::to_string(i);
     IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(pc_name));
+    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
+    int idx = next_index;
+    for (PointInRectIterator<2> it(rect); it(); it++) {
+      SampleIdxs meta;
+      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
                            TaskArgument(&hash, sizeof(int)), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -456,12 +466,13 @@ void DataLoader::next_batch(FFModel& ff)
     IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(pc_name));
     Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
+    int idx = next_index;
     for (PointInRectIterator<2> it(rect); it(); it++) {
       SampleIdxs meta;
       assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
       meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
       for (int i = 0; i < meta.num_samples; i++)
-        meta.idxs[i] = next_index++;
+        meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
@@ -486,6 +497,15 @@ void DataLoader::next_batch(FFModel& ff)
     IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(pc_name));
     Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
+    int idx = next_index;
+    for (PointInRectIterator<2> it(rect); it(); it++) {
+      SampleIdxs meta;
+      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_3, task_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -502,6 +522,8 @@ void DataLoader::next_batch(FFModel& ff)
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
+  // progress next_index
+  next_index += ff.config.batchSize;
 }
 
 void DataLoader::shuffle()
