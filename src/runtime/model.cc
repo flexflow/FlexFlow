@@ -567,7 +567,8 @@ void FFModel::update()
 {
   optimizer->next();
   for (size_t i = 0; i < parameters.size(); i++) {
-    optimizer->update(&(parameters[i].tensor));
+    //if (parameters[i].op->name[0] != 'e')
+    optimizer->update(&(parameters[i]));
   }
 }
 

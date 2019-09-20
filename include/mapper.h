@@ -36,6 +36,9 @@ public:
                           const Task& task,
                           const SliceTaskInput& input,
                           SliceTaskOutput& output);
+  virtual void select_task_options(const MapperContext ctx,
+                                   const Task& task,
+                                   TaskOptions& output);
   Memory default_policy_select_target_memory(MapperContext ctx,
                                              Processor target_proc,
                                              const RegionRequirement &req);

@@ -49,6 +49,8 @@ void FFMapper::slice_task(const MapperContext ctx,
   }
   else 
 #endif
+  //printf("task.task_id = %d task.target_proc = %x num_slices = %d\n",
+  //    task.task_id, task.target_proc.id, input.domain.get_volume());
   if ((task.task_id == TOP_LEVEL_TASK_ID)
   || ((task.task_id >= CUSTOM_CPU_TASK_ID_FIRST)
      && (task.task_id <= CUSTOM_CPU_TASK_ID_LAST))) {
@@ -108,6 +110,32 @@ void FFMapper::slice_task(const MapperContext ctx,
         assert(false);
     }
   }
+}
+
+void FFMapper::select_task_options(const MapperContext ctx,
+                                   const Task& task,
+                                   TaskOptions& output)
+{
+  if (task.task_id == SGD_UPD_TASK_ID) {
+    // For SGD Update, pick a processor from config
+    // TODO: perform similar optimizations for other Optimizer
+    MappingTagID hash = task.tag;
+    ParallelConfig config;
+    if (strategies.find(hash) != strategies.end()) {
+      config = strategies[hash];
+      int num_parts = 1;
+      for (int i = 0; i < config.nDims; i++)
+        num_parts *= config.dim[i];
+      if (num_parts == 1) {
+        output.initial_proc = gpus[config.gpu[0]];
+        output.inline_task = false;
+        output.stealable = stealing_enabled;
+        output.map_locally = map_locally;
+        return;
+      }
+    }
+  }
+  DefaultMapper::select_task_options(ctx, task, output);
 }
 
 Memory FFMapper::default_policy_select_target_memory(MapperContext ctx,

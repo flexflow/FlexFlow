@@ -4,7 +4,7 @@
 
 int main()
 {
-  int gpu = 4;
+  int gpu = 1;
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   FFProtoBuf::Strategy strategy;
   // Embedding
@@ -15,7 +15,7 @@ int main()
     op->add_dims(1);
     op->add_dims(1);
     for (int j = 0; j < 1; j++)
-      op->add_devices(i);
+      op->add_devices(i % gpu);
   }
   std::vector<std::string> names;
   names.push_back("linear");

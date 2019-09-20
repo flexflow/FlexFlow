@@ -66,28 +66,30 @@ void SGDOptimizer::next(void)
 {
 }
 
-void SGDOptimizer::update(const Tensor* p)
+void SGDOptimizer::update(const Parameter* p)
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
   TaskLauncher launcher(SGD_UPD_TASK_ID,
-                        TaskArgument(this, sizeof(SGDOptimizer)));
+                        TaskArgument(this, sizeof(SGDOptimizer)),
+                        Predicate::TRUE_PRED, 0/*mapper_id*/,
+                        FFConfig::get_hash_id(std::string(p->op->name)));
   // regions[0]: region_grad
   launcher.add_region_requirement(
-      RegionRequirement(p->region_grad,
-                        READ_ONLY, EXCLUSIVE, p->region_grad));
+      RegionRequirement(p->tensor.region_grad,
+                        READ_ONLY, EXCLUSIVE, p->tensor.region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[1]: region
   launcher.add_region_requirement(
-      RegionRequirement(p->region,
-                        READ_WRITE, EXCLUSIVE, p->region));
+      RegionRequirement(p->tensor.region,
+                        READ_WRITE, EXCLUSIVE, p->tensor.region));
   launcher.add_field(1, FID_DATA);
   if (momentum > 0.0f) {
     // regions[2]: v_region
-    assert(v_regions.find(p->region) != v_regions.end());
+    assert(v_regions.find(p->tensor.region) != v_regions.end());
     launcher.add_region_requirement(
-        RegionRequirement(v_regions[p->region],
-                          READ_WRITE, EXCLUSIVE, v_regions[p->region]));
+        RegionRequirement(v_regions[p->tensor.region],
+                          READ_WRITE, EXCLUSIVE, v_regions[p->tensor.region]));
     launcher.add_field(2, FID_DATA);
   }
   runtime->execute_task(ctx, launcher);

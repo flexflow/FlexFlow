@@ -21,14 +21,14 @@
 using namespace Legion;
 
 class FFModel;
-class Tensor;
+class Parameter;
 
 class Optimizer
 {
 public:
   Optimizer(const FFModel* _model);
   virtual void next(void) = 0;
-  virtual void update(const Tensor* p) = 0;
+  virtual void update(const Parameter* p) = 0;
   const FFModel* model;
 };
 
@@ -39,7 +39,7 @@ public:
                double lr = 0.01f, double momentum = 0.0f,
                bool nesterov = false, double weight_decay = 0.0f);
   void next(void);
-  void update(const Tensor* p);
+  void update(const Parameter* p);
   void set_weight_decay(double _weight_decay);
   static void update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
