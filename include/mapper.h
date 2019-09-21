@@ -36,6 +36,10 @@ public:
                           const Task& task,
                           const SliceTaskInput& input,
                           SliceTaskOutput& output);
+  virtual void select_sharding_functor(const MapperContext ctx,
+                                       const Task& task,
+                                       const SelectShardingFunctorInput& input,
+                                       SelectShardingFunctorOutput& output);
   virtual void select_task_options(const MapperContext ctx,
                                    const Task& task,
                                    TaskOptions& output);

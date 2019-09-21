@@ -95,6 +95,10 @@ enum TaskIDs {
   CUSTOM_CPU_TASK_ID_LAST,
 };
 
+enum ShardingID {
+  DataParallelShardingID = 135,
+};
+
 enum ActiMode {
   AC_MODE_NONE,
   AC_MODE_RELU,

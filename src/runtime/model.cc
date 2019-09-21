@@ -766,6 +766,11 @@ void FFConfig::parse_args(char **argv, int argc)
       workersPerNode = atoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--nodes"))
+    {
+      numNodes = atoi(argv[++i]);
+      continue;
+    }
     if (!strcmp(argv[i], "-ll:cpu"))
     {
       loadersPerNode = atoi(argv[++i]);
@@ -778,16 +783,45 @@ void FFConfig::parse_args(char **argv, int argc)
   }
 }
 
+// Perform data parallelsim across machines
+class DataParallelShardingFunctor : public ShardingFunctor {
+public:
+  DataParallelShardingFunctor(void);
+  ~DataParallelShardingFunctor(void);
+public:
+  ShardID shard(const DomainPoint &point,
+                const Domain &full_space,
+                const size_t total_shards);
+};
+
+DataParallelShardingFunctor::DataParallelShardingFunctor(void)
+: ShardingFunctor() {}
+
+DataParallelShardingFunctor::~DataParallelShardingFunctor(void)
+{}
+
+ShardID DataParallelShardingFunctor::shard(const DomainPoint &point,
+                                           const Domain &full_space,
+                                           const size_t total_shards)
+{
+  printf("full_space.size = %zu total_shards = %zu\n", full_space.get_volume(), total_shards);
+  assert(point.get_dim() == full_space.get_dim());
+  int idx = full_space.get_dim() - 1;
+  int samples = full_space.hi()[idx] - full_space.lo()[idx] + 1;
+  int samples_per_shard = (samples + total_shards - 1) / total_shards;
+  return (point[idx] - full_space.lo()[idx]) / samples_per_shard;
+}
+
 // ========================================================
 // Task and mapper registrations
 // ========================================================
-
 int main(int argc, char** argv)
 {
   Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
   {
     TaskVariantRegistrar registrar(TOP_LEVEL_TASK_ID, "top_level");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_replicable();
     Runtime::preregister_task_variant<top_level_task>(registrar, "top_level");
   }
   // CNN_INIT_TASK
@@ -1066,6 +1100,8 @@ int main(int argc, char** argv)
   register_custom_tasks();
 
   Runtime::add_registration_callback(update_mappers);
+  DataParallelShardingFunctor* sharding_functor = new DataParallelShardingFunctor();
+  Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);
   return Runtime::start(argc, argv);
 }
 
