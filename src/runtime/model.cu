@@ -14,8 +14,8 @@
  */
 #include "model.h"
 #include "cuda_helper.h"
-#include "realm/runtime_impl.h"
-#include "realm/cuda/cuda_module.h"
+//#include "realm/runtime_impl.h"
+//#include "realm/cuda/cuda_module.h"
 
 FFHandler UtilityTasks::init_cuda_task(
               const Task *task,
