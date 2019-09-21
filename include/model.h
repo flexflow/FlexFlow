@@ -188,12 +188,14 @@ public:
   int numLocals, numInputs;
 };
 
+class Parameter {
+public:
+  Tensor tensor;
+  Op* op;
+};
+
 class FFModel {
 public:
-  struct Parameter {
-    Tensor tensor;
-    Op* op;
-  };
   FFModel(FFConfig &config);
 
   // Add a 2D convolutional layer 
