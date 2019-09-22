@@ -804,7 +804,6 @@ ShardID DataParallelShardingFunctor::shard(const DomainPoint &point,
                                            const Domain &full_space,
                                            const size_t total_shards)
 {
-  printf("full_space.size = %zu total_shards = %zu\n", full_space.get_volume(), total_shards);
   assert(point.get_dim() == full_space.get_dim());
   int idx = full_space.get_dim() - 1;
   int samples = full_space.hi()[idx] - full_space.lo()[idx] + 1;

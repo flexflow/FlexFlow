@@ -119,12 +119,12 @@ void top_level_task(const Task* task,
   for (int epoch = 0; epoch < ff_config.epochs; epoch++) {
     ff.reset_metrics();
     for (int iter = 0; iter < ff_config.iterations; iter++) {
-      runtime->begin_trace(ctx, 111/*trace_id*/);
+      //runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       //ff.update();
-      runtime->end_trace(ctx, 111/*trace_id*/);
+      //runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
   runtime->issue_execution_fence(ctx);

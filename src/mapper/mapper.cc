@@ -49,8 +49,8 @@ void FFMapper::slice_task(const MapperContext ctx,
   }
   else 
 #endif
-  printf("task.task_id = %d task.target_proc = %x num_slices = %zu gpus.size = %zu\n",
-      task.task_id, task.target_proc.id, input.domain.get_volume(), gpus.size());
+  //printf("task.task_id = %d task.target_proc = %x num_slices = %zu gpus.size = %zu\n",
+  //    task.task_id, task.target_proc.id, input.domain.get_volume(), gpus.size());
   if ((task.task_id == TOP_LEVEL_TASK_ID)
   || ((task.task_id >= CUSTOM_CPU_TASK_ID_FIRST)
      && (task.task_id <= CUSTOM_CPU_TASK_ID_LAST))) {
@@ -61,6 +61,7 @@ void FFMapper::slice_task(const MapperContext ctx,
     // Make sure the task has a non-zero tag
     assert(hash != 0);
     ParallelConfig config;
+    unsigned int config_num_parts = 1;
     if (strategies.find(hash) == strategies.end()) {
       // No strategy found, use default data parallelism
       assert(strategies.find(FFConfig::DataParallelismID) != strategies.end());
@@ -70,52 +71,58 @@ void FFMapper::slice_task(const MapperContext ctx,
       config = strategies[hash];
       // Check that the dimensions match
       assert(config.nDims == input.domain.get_dim());
-      // They may have different shape due to sharding
-      //for (int i = 0; i < config.nDims; i++) {
-      //  assert(config.dim[i] == input.domain.hi()[i] - input.domain.lo()[i] + 1);
-      //}
+    }
+    for (int i = 0; i < config.nDims; i++) {
+      //assert(config.dim[i] == input.domain.hi()[i] - input.domain.lo()[i] + 1);
+      config_num_parts *= config.dim[i];
     }
     switch (input.domain.get_dim())
     {
       case 1:
       {
         Rect<1> rect = input.domain;
+        unsigned int cnt = 0;
         for (PointInRectIterator<1> pir(rect); pir(); pir++) {
           unsigned int idx = 0;
           for (int i = input.domain.get_dim()-1; i >= 0; i--)
             idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
-          printf("idx = %u\n", idx);
+          assert(config_num_parts > idx);
+          assert((int)gpus.size() > config.gpu[idx]);
           Rect<1> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, gpus[config.gpu[idx]],
-                                         false/*recurse*/, false/*stealable*/);
+          output.slices[cnt++] = TaskSlice(slice, gpus[config.gpu[idx]],
+                                     false/*recurse*/, false/*stealable*/);
         }
         break;
       }
       case 2:
       {
         Rect<2> rect = input.domain;
+        unsigned int cnt = 0;
         for (PointInRectIterator<2> pir(rect); pir(); pir++) {
           unsigned int idx = 0;
           for (int i = input.domain.get_dim()-1; i >= 0; i--)
             idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
-          printf("idx = %u\n", idx);
+          assert(config_num_parts > idx);
+          assert((int)gpus.size() > config.gpu[idx]);
           Rect<2> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, gpus[config.gpu[idx]],
-                                         false/*recurse*/, false/*stealable*/);
+          output.slices[cnt++] = TaskSlice(slice, gpus[config.gpu[idx]],
+                                     false/*recurse*/, false/*stealable*/);
         }
         break;
       }
       case 3:
       {
         Rect<3> rect = input.domain;
+        unsigned int cnt = 0;
         for (PointInRectIterator<3> pir(rect); pir(); pir++) {
           unsigned int idx = 0;
           for (int i = input.domain.get_dim()-1; i >= 0; i--)
             idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
-          printf("idx = %u\n", idx);
+          assert(config_num_parts > idx);
+          assert((int)gpus.size() > config.gpu[idx]);
           Rect<3> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, gpus[config.gpu[idx]],
-                                         false/*recurse*/, false/*stealable*/);
+          output.slices[cnt++] = TaskSlice(slice, gpus[config.gpu[idx]],
+                                     false/*recurse*/, false/*stealable*/);
         }
         break;
       }
