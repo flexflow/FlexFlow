@@ -23,7 +23,7 @@ DEBUG           ?= 1		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
-USE_GASNET      ?= 1		# Include GASNet support (requires GASNet)
+USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 1		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 
@@ -39,11 +39,11 @@ GEN_GPU_SRC	?= ../../src/ops/conv_2d.cu ../../src/runtime/model.cu ../../src/ops
 		../../src/runtime/cuda_helper.cu $(app).cu# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -I../../include/ -I/autofs/nccs-svm1_home1/zhihao/tools/protobuf/src
+INC_FLAGS	?= -I../../include/ -I/autofs/nccs-svm1_home1/zhihao/tools/protobuf/src -I/home/ubuntu/hdf5-1.10.5-linux-centos7-x86_64-shared/include
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L/autofs/nccs-svm1_home1/zhihao/tools/protobuf/src/.libs
+LD_FLAGS	?= -lcudart -lcuda -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L/autofs/nccs-svm1_home1/zhihao/tools/protobuf/src/.libs -L/home/ubuntu/hdf5-1.10.5-linux-centos7-x86_64-shared/lib
 # For Point and Rect typedefs
 CC_FLAGS	+= -std=c++11
 NVCC_FLAGS  += -std=c++11

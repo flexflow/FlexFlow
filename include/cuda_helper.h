@@ -54,6 +54,10 @@ template<typename DT>
 __global__
 void assign_kernel(DT* ptr, coord_t size, DT value);
 
+template<typename DT>
+__global__
+void copy_kernel(DT* dst, const DT* src, coord_t size);
+
 __global__
 void reluBackward(float* grad_ptr, const float* input, int n);
 

@@ -14,7 +14,9 @@
  */
 
 #include "candle_uno.h"
+#include "hdf5.h"
 #include <sstream>
+#include <fstream>
 #include <string>
 
 using namespace Legion;
@@ -23,6 +25,26 @@ using namespace std;
 LegionRuntime::Logger::Category log_app("DLRM");
 
 void parse_input_args(char **argv, int argc, CandleConfig& apConfig);
+
+CandleConfig::CandleConfig(void)
+{
+  // Set default configurations here
+  for (int i = 0; i < 1; i++)
+    dense_layers.push_back(2);
+  for (int i = 0; i < 1; i++)
+    dense_feature_layers.push_back(2);
+  feature_shapes["dose"] = 1;
+  feature_shapes["cell.rnaseq"] = 10;//942;
+  feature_shapes["drug.descriptors"] = 5270;
+  feature_shapes["drug.fingerprints"] = 2048;
+  input_features["dose1"] = "dose";
+  input_features["dose2"] = "dose";
+  //input_features["cell.rnaseq"] = "cell.rnaseq";
+  //input_features["drug1.descriptors"] = "drug.descriptors";
+  //input_features["drug1.fingerprints"] = "drug.fingerprints";
+  //input_features["drug2.descriptors"] = "drug.descriptors";
+  //input_features["drug2.fingerprints"] = "drug.fingerprints";
+}
 
 Tensor build_feature_model(FFModel* model, const Tensor& input,
                            const std::vector<int>& dense_layers)
@@ -117,13 +139,24 @@ void top_level_task(const Task* task,
 
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ff_config.epochs; epoch++) {
+    data_loader.reset();
     ff.reset_metrics();
-    for (int iter = 0; iter < ff_config.iterations; iter++) {
+    int iterations = data_loader.num_samples / ff_config.batchSize;
+    for (int iter = 0; iter < iterations; iter++) {
+      // TODO: remove me
+      if (iter > 5) break;
+      if (candle_config.dataset_path.length() == 0) {
+        // Only load data once for random input
+        if (iter == 0 && epoch == 0)
+          data_loader.next_batch(ff);
+      } else {
+        data_loader.next_batch(ff);
+      }
       //runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
-      //ff.update();
+      ff.update();
       //runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
@@ -158,59 +191,234 @@ void parse_input_args(char **argv, int argc, CandleConfig& config)
       }
       continue;
     }
+    if (!strcmp(argv[i], "--dataset")) {
+      config.dataset_path = std::string(argv[++i]);
+      continue;
+    }
   }
+}
+
+size_t get_file_size(const std::string& filename)
+{
+  streampos begin,end;
+  ifstream file(filename.c_str(), ios::binary);
+  begin = file.tellg();
+  file.seekg (0, ios::end);
+  end = file.tellg();
+  file.close();
+  size_t filesize = end - begin;
+  printf("filesizee(%s) = %zu\n", filename.c_str(), filesize);
+  return filesize;
 }
 
 DataLoader::DataLoader(FFModel& ff,
                        const CandleConfig& candle,
-                       const std::vector<Tensor>& _all_inputs,
+                       const std::vector<Tensor>& _inputs,
                        Tensor _label)
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  ArgumentMap argmap;
-  IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(""));
-  for (size_t i = 0; i < _all_inputs.size(); i++) {
+  num_samples = 0;
+  if (candle.dataset_path == "") {
+    log_app.print("Use random dataset...");
+    num_samples = 8192;
+  } else {
+    log_app.print("Start loading dataset from %s", candle.dataset_path.c_str());
+    assert(_inputs.size() == candle.input_features.size());
+    string dose1_name = candle.dataset_path + "/dose1";
+    num_samples = get_file_size(dose1_name) / 4;
+    // inputs
+    int idx = 0;
+    for(map<string, string>::const_iterator it = candle.input_features.begin();
+        it != candle.input_features.end(); it++)
+    {
+      string filename = candle.dataset_path+it->first;
+      size_t filesize = get_file_size(filename);
+      assert(filesize == (size_t)num_samples * sizeof(float) * _inputs[idx++].adim[0]);
+    }
+    // labels
+    {
+      string filename = candle.dataset_path + "/label";
+      assert(get_file_size(filename) == (size_t)num_samples * sizeof(float));
+    }
+  }
+  for (size_t i = 0; i < _inputs.size(); i++) {
+    batch_inputs.push_back(_inputs[i]);
+    const int dims[] = {num_samples, _inputs[i].adim[0]};
+    Tensor full_input = ff.create_tensor<2>(dims, "", DT_FLOAT);
+    full_inputs.push_back(full_input);
+  }
+  {
+    batch_label = _label;
+    const int dims[] = {num_samples, 1};
+    full_label = ff.create_tensor<2>(dims, "", DT_FLOAT);
+  }
+  // Load entire dataset
+  // TODO: Use index launcher instead of task launcher
+  const CandleConfig* ptr = &candle;
+  TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
+      TaskArgument(&ptr, sizeof(CandleConfig*)));
+  // regions[0]: full_label
+  launcher.add_region_requirement(
+      RegionRequirement(full_label.region, WRITE_ONLY,
+                        EXCLUSIVE, full_label.region,
+                        MAP_TO_ZC_MEMORY));
+  launcher.add_field(0, FID_DATA);
+  // regions[1-n]: full_inputs
+  for (size_t i = 0; i < full_inputs.size(); i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(full_inputs[i].region, WRITE_ONLY,
+                          EXCLUSIVE, full_inputs[i].region,
+                          MAP_TO_ZC_MEMORY));
+    launcher.add_field(i+1, FID_DATA);
+  }
+  runtime->execute_task(ctx, launcher);
+}
+
+void DataLoader::load_entire_dataset(const Task *task,
+                                     const std::vector<PhysicalRegion> &regions,
+                                     Context ctx,
+                                     Runtime* runtime)
+{
+  CandleConfig* candle = *((CandleConfig**)task->args);
+  assert(regions.size() == candle->input_features.size() + 1);
+  assert(task->regions.size() == regions.size());
+  const AccessorWO<float, 2> acc_label(regions[0], FID_DATA);
+  Rect<2> rect_label = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  assert(acc_label.accessor.is_dense_arbitrary(rect_label));
+  float* label_ptr = acc_label.ptr(rect_label.lo);
+  int num_samples = rect_label.hi[1] - rect_label.lo[1] + 1;
+  if (candle->dataset_path.length() == 0) {
+    log_app.print("Start generating random input samples");
+    for (size_t i = 0; i < rect_label.volume(); i++)
+      label_ptr[i] = 0.5f;
+      //label_ptr[i] = ((float)std::rand()) / RAND_MAX - 0.5;
+  } else {
+    string filename = candle->dataset_path + "/label";
+    log_app.print("Start loading labels from %s", filename.c_str());
+    FILE* file = fopen(filename.c_str(), "rb");
+    size_t ret = fread(label_ptr, sizeof(float), rect_label.volume(), file);
+    assert(ret == rect_label.volume());
+    fclose(file);
+  }
+  int idx = 0;
+  for(map<string, string>::const_iterator it = candle->input_features.begin();
+      it != candle->input_features.end(); it++, idx++)
+  {
+    printf("idx = %d\n", idx);
+    const AccessorWO<float, 2> acc_input(regions[idx+1], FID_DATA);
+    Rect<2> rect_input = runtime->get_index_space_domain(
+        ctx, task->regions[idx+1].region.get_index_space());
+    assert(acc_input.accessor.is_dense_arbitrary(rect_input));
+    float* input_ptr = acc_input.ptr(rect_input.lo);
+    assert(num_samples == rect_input.hi[1] - rect_input.lo[1] + 1);
+    //int num_features = rect_input.hi[0] - rect_input.lo[0] + 1;
+    if (candle->dataset_path.length() == 0) {
+      for (size_t j = 0; j < rect_input.volume(); j++)
+        input_ptr[j] = ((float)std::rand()) / RAND_MAX;
+    } else {
+      string filename = candle->dataset_path + it->first;
+      log_app.print("Start loading input feature %s from %s",
+                    it->first.c_str(), filename.c_str());
+      FILE* file = fopen(filename.c_str(), "rb");
+      size_t ret = fread(input_ptr, sizeof(float), rect_input.volume(), file);
+      assert(ret == rect_input.volume());
+      fclose(file);
+      log_app.print("Finish loading input feature %s", it->first.c_str());
+    }
+  }
+}
+
+void DataLoader::next_batch(FFModel& ff)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  assert(full_inputs.size() == batch_inputs.size());
+  // Load inputs
+  for (size_t i = 0; i < batch_inputs.size(); i++) {
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(""));
+    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    int idx = next_index;
+    for (PointInRectIterator<2> it(rect); it(); it++) {
+      SampleIdxs meta;
+      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
+                           TaskArgument(&i, sizeof(int)), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(""));
+    launcher.add_region_requirement(
+        RegionRequirement(full_inputs[i].region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_inputs[i].region,
+                          MAP_TO_ZC_MEMORY));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_inputs[i].part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_inputs[i].region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  }
+  // Load label
+  {
+    std::string pc_name = "";
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(pc_name));
+    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    int idx = next_index;
+    for (PointInRectIterator<2> it(rect); it(); it++) {
+      SampleIdxs meta;
+      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
                            TaskArgument(NULL, 0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(std::string("")));
+                           FFConfig::get_hash_id(std::string(pc_name)));
     launcher.add_region_requirement(
-      RegionRequirement(_all_inputs[i].part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, _all_inputs[i].region));
+        RegionRequirement(full_label.region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_label.region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_label.part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_label.region));
+    launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
-  // Load Labels
-  {
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
-                           TaskArgument(NULL, 0), argmap,
-                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(std::string("")));
-    launcher.add_region_requirement(
-      RegionRequirement(_label.part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, _label.region));
-    launcher.add_field(0, FID_DATA);
-    runtime->execute_index_space(ctx, launcher);
-  }
+  // progress next_index
+  next_index += ff.config.batchSize;
+}
+
+void DataLoader::reset()
+{
+  next_index = 0;
 }
 
 void register_custom_tasks()
 {
-  // Load Inputs
+  // Load entire dataset
   {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_1, "Load Inputs (Random)");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_1, "Load Entire Dataset");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<DataLoader::load_input>(
-        registrar, "Load Inputs (Random) Task");
+    Runtime::preregister_task_variant<DataLoader::load_entire_dataset>(
+        registrar, "Load Entire Dataset Task");
   }
-  // Load Label
+  // Load input
   {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_2, "Load Label (Random)");
+    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_1, "Load Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<DataLoader::load_input>(
-        registrar, "Load Label (Random) Task");
+        registrar, "Load Input Task");
   }
 }
