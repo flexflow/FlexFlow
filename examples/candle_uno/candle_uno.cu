@@ -39,4 +39,5 @@ void DataLoader::load_input(const Task *task,
   const float* input_zc = acc_full_input.ptr + meta->idxs[0] * num_feats;
   copy_kernel<<<GET_BLOCKS(acc_batch_input.rect.volume()), CUDA_NUM_THREADS>>>(
       acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());
+  checkCUDA(cudaDeviceSynchronize());
 }

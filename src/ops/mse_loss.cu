@@ -84,7 +84,7 @@ void multi_category_calc_loss(const float* logits,
     assert(true_label >= 0);
     for (int i = 0; i < out_dim; i++) {
       float diff = logits[b*out_dim+i] - labels[b*out_dim+i];
-      atomicAdd(&(perf->train_loss), scale * diff * diff);
+      atomicAdd(&(perf->train_loss), diff * diff);
     }
     atomicAdd(&(perf->train_all), 1);
     if (true_label == my_label)
@@ -104,7 +104,7 @@ void single_category_calc_loss(const float* logits,
   CUDA_KERNEL_LOOP(b, batch_size)
   {
     float diff = logits[b] - labels[b];
-    atomicAdd(&(perf->train_loss), scale * diff * diff);
+    atomicAdd(&(perf->train_loss), diff * diff);
     atomicAdd(&(perf->train_all), 1);
     if ((logits[b] < 0.5f) == (labels[b] < 0.5f))
       atomicAdd(&(perf->train_correct), 1);
@@ -149,7 +149,7 @@ PerfMetrics MSELoss::backward_task(const Task *task,
       break;
     case AGGR_MODE_AVG:
       // Divided by the global batch size
-      scale = 1.0f / (op->inputs[0].adim[0]);
+      scale = 1.0f / (op->inputs[0].adim[1]);
       break;
     default:
       assert(false);

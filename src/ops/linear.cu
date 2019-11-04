@@ -327,6 +327,7 @@ void Linear::forward_task(const Task *task,
     printf("Linear forward time = %.2lfms\n", elapsed);
     print_tensor<2, float>(acc_input.ptr, acc_input.rect, "[Linear:forward:input]");
     print_tensor<2, float>(acc_kernel.ptr, acc_kernel.rect, "[Linear:forward:kernel]");
+    print_tensor<1, float>(acc_bias.ptr, acc_bias.rect, "[Linear:forward:bias]");
     print_tensor<2, float>(acc_output.ptr, acc_output.rect, "[Linear:forward:output]");
     checkCUDA(cudaDeviceSynchronize());
   }

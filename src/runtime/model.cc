@@ -1054,6 +1054,14 @@ int main(int argc, char** argv)
     Runtime::preregister_task_variant<SGDOptimizer::update_task>(
         registrar, "SGD Update Task");
   }
+  {
+    TaskVariantRegistrar registrar(ADAM_UPD_TASK_ID,
+                                   "Adam Update");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AdamOptimizer::update_task>(
+        registrar, "Adam Update Task");
+  }
   // Initializer
   {
     TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID,

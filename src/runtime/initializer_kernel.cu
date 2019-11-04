@@ -34,6 +34,9 @@ void UniformInitializer::init_task(const Task* task,
   UniformInitializer* initializer = (UniformInitializer*) task->args;
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  curandSetStream(gen, stream);
   //fprintf(stderr, "seed = %d\n", initializer->seed);
   curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
   checkCUDA(curandGenerateUniform(gen, accW.ptr, accW.rect.volume()));
@@ -56,6 +59,9 @@ void GlorotUniform::init_task(const Task* task,
   float scale = sqrt(6.0 / (inputDim + outputDim));
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  curandSetStream(gen, stream);
   GlorotUniform* initializer = (GlorotUniform*) task->args;
   curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
   fprintf(stderr, "seed = %d\n", initializer->seed);
@@ -103,6 +109,9 @@ void NormInitializer::init_task(const Task* task,
   }
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  curandSetStream(gen, stream);
   NormInitializer* initializer = (NormInitializer*) task->args;
   //fprintf(stderr, "seed = %d\n", initializer->seed);
   curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);

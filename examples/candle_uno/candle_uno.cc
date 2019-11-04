@@ -14,7 +14,6 @@
  */
 
 #include "candle_uno.h"
-#include "hdf5.h"
 #include <sstream>
 #include <fstream>
 #include <string>
@@ -29,19 +28,19 @@ void parse_input_args(char **argv, int argc, CandleConfig& apConfig);
 CandleConfig::CandleConfig(void)
 {
   // Set default configurations here
-  for (int i = 0; i < 1; i++)
-    dense_layers.push_back(2);
-  for (int i = 0; i < 1; i++)
-    dense_feature_layers.push_back(2);
+  for (int i = 0; i < 3; i++)
+    dense_layers.push_back(1000);
+  for (int i = 0; i < 3; i++)
+    dense_feature_layers.push_back(1000);
   feature_shapes["dose"] = 1;
-  feature_shapes["cell.rnaseq"] = 10;//942;
+  feature_shapes["cell.rnaseq"] = 942;
   feature_shapes["drug.descriptors"] = 5270;
   feature_shapes["drug.fingerprints"] = 2048;
   input_features["dose1"] = "dose";
   input_features["dose2"] = "dose";
-  //input_features["cell.rnaseq"] = "cell.rnaseq";
-  //input_features["drug1.descriptors"] = "drug.descriptors";
-  //input_features["drug1.fingerprints"] = "drug.fingerprints";
+  input_features["cell.rnaseq"] = "cell.rnaseq";
+  input_features["drug1.descriptors"] = "drug.descriptors";
+  input_features["drug1.fingerprints"] = "drug.fingerprints";
   //input_features["drug2.descriptors"] = "drug.descriptors";
   //input_features["drug2.fingerprints"] = "drug.fingerprints";
 }
@@ -132,7 +131,7 @@ void top_level_task(const Task* task,
   }
   ff.mse_loss("mse_loss", output, label, "average"/*reduction*/);
   // Use SGD Optimizer
-  ff.optimizer = new SGDOptimizer(&ff, 0.01f);
+  ff.optimizer = new SGDOptimizer(&ff, 0.001f);
   // Data Loader
   DataLoader data_loader(ff, candle_config, all_inputs, label);
   ff.init_layers();
@@ -143,8 +142,6 @@ void top_level_task(const Task* task,
     ff.reset_metrics();
     int iterations = data_loader.num_samples / ff_config.batchSize;
     for (int iter = 0; iter < iterations; iter++) {
-      // TODO: remove me
-      if (iter > 5) break;
       if (candle_config.dataset_path.length() == 0) {
         // Only load data once for random input
         if (iter == 0 && epoch == 0)
@@ -292,8 +289,7 @@ void DataLoader::load_entire_dataset(const Task *task,
   if (candle->dataset_path.length() == 0) {
     log_app.print("Start generating random input samples");
     for (size_t i = 0; i < rect_label.volume(); i++)
-      label_ptr[i] = 0.5f;
-      //label_ptr[i] = ((float)std::rand()) / RAND_MAX - 0.5;
+      label_ptr[i] = ((float)std::rand()) / RAND_MAX - 0.5f;
   } else {
     string filename = candle->dataset_path + "/label";
     log_app.print("Start loading labels from %s", filename.c_str());
@@ -315,8 +311,9 @@ void DataLoader::load_entire_dataset(const Task *task,
     assert(num_samples == rect_input.hi[1] - rect_input.lo[1] + 1);
     //int num_features = rect_input.hi[0] - rect_input.lo[0] + 1;
     if (candle->dataset_path.length() == 0) {
-      for (size_t j = 0; j < rect_input.volume(); j++)
+      for (size_t j = 0; j < rect_input.volume(); j++) {
         input_ptr[j] = ((float)std::rand()) / RAND_MAX;
+      }
     } else {
       string filename = candle->dataset_path + it->first;
       log_app.print("Start loading input feature %s from %s",

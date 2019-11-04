@@ -69,6 +69,7 @@ enum TaskIDs {
   DUMMY_TASK_ID,
   // Optimizer
   SGD_UPD_TASK_ID,
+  ADAM_UPD_TASK_ID,
   // Initializer
   GLOROT_INIT_TASK_ID,
   ZERO_INIT_TASK_ID,
