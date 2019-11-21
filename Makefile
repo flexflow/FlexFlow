@@ -38,11 +38,12 @@ GEN_GPU_SRC	?= src/ops/conv_2d.cu src/runtime/model.cu src/ops/pool_2d.cu src/op
 		src/runtime/cuda_helper.cu $(app).cu# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -Iinclude/ -I/home/users/zhihao/tools/protobuf/src
+INC_FLAGS	?= -Iinclude/ -Iprotobuf/src -I/public/apps/cudnn/v7.6/cuda/include -I/usr/include/hdf5/serial/
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L/home/users/zhihao/tools/protobuf/src/.libs
+LD_FLAGS        ?= -L/usr/lib/x86_64-linux-gnu/hdf5/serial/ -L/usr/local/lib -Lprotobuf/src/.libs -L/public/apps/cudnn/v7.6/cuda/lib64
+LD_FLAGS	+= -lcudnn -lcublas -lcurand -lprotobuf -lhdf5
 # For Point and Rect typedefs
 CC_FLAGS	+= -std=c++11
 NVCC_FLAGS  += -std=c++11
