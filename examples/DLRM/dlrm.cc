@@ -306,16 +306,16 @@ DataLoader::DataLoader(FFModel& ff,
   // regions[0]: full_sparse_input
   launcher.add_region_requirement(
       RegionRequirement(full_sparse_input.region,
-                        WRITE_ONLY, EXCLUSIVE, full_sparse_input.region,
-                        MAP_TO_ZC_MEMORY));
+                        READ_WRITE, EXCLUSIVE, full_sparse_input.region,
+                        MAP_TO_FB_MEMORY));
   launcher.add_field(0, FID_DATA);
-  // regions[1]: full_sparse_input
+  // regions[1]: full_dense_input
   launcher.add_region_requirement(
       RegionRequirement(full_dense_input.region,
                         WRITE_ONLY, EXCLUSIVE, full_dense_input.region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
-  // regions[3]: full_sparse_input
+  // regions[3]: full_label
   launcher.add_region_requirement(
       RegionRequirement(full_label.region,
                         WRITE_ONLY, EXCLUSIVE, full_label.region,
@@ -444,21 +444,25 @@ void DataLoader::next_batch(FFModel& ff)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
+    IndexLauncher launcher(CUSTOM_CPU_TASK_ID_2, task_is,
                            TaskArgument(&hash, sizeof(int)), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(pc_name));
+    #if 1
     // Full dataset in ZCM
     launcher.add_region_requirement(
         RegionRequirement(full_sparse_input.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_sparse_input.region,
-                          MAP_TO_ZC_MEMORY));
+                          READ_ONLY, EXCLUSIVE, full_sparse_input.region/*,
+                          MAP_TO_ZC_MEMORY*/));
     launcher.add_field(0, FID_DATA);
+#endif
     launcher.add_region_requirement(
         RegionRequirement(batch_sparse_inputs[i].part, 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, batch_sparse_inputs[i].region));
     launcher.add_field(1, FID_DATA);
+    std::cout << "CUSTOM_CPU_TASK_ID_2" << std::endl; 
     runtime->execute_index_space(ctx, launcher);
+    std::cout << "Done CUSTOM_CPU_TASK_ID_2" << std::endl; 
   }
   // Load Dense Input
   {
@@ -533,6 +537,13 @@ void DataLoader::reset()
 {
   next_index = 0;
 }
+void DataLoader::load_sparse_input_cpu(const Task *task,
+                                   const std::vector<PhysicalRegion> &regions,
+                                   Context ctx,
+                                   Runtime* runtime)
+{
+  std::cout << "load_sparse_input_cpu" << std::endl;
+}
 
 void register_custom_tasks()
 {
@@ -546,10 +557,10 @@ void register_custom_tasks()
   }
   // Load Sparse Inputs
   {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_1, "Load Sparse Inputs");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_2, "Load Sparse Inputs");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<DataLoader::load_sparse_input>(
+    Runtime::preregister_task_variant<DataLoader::load_sparse_input_cpu>(
         registrar, "Load Sparse Inputs Task");
   }
   // Load Dense Inputs
