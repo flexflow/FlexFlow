@@ -87,8 +87,9 @@ void FFMapper::slice_task(const MapperContext ctx,
         Rect<1> rect = input.domain;
         for (PointInRectIterator<1> pir(rect); pir(); pir++, idx++) {
           Rect<1> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, (*devices)[config.device_ids[idx]],
-                                         false/*recurse*/, false/*stealable*/);
+          output.slices[idx] = TaskSlice(slice,
+              (*devices)[config.device_ids[idx] % devices->size()],
+              false/*recurse*/, false/*stealable*/);
         }
         break;
       }
@@ -97,8 +98,9 @@ void FFMapper::slice_task(const MapperContext ctx,
         Rect<2> rect = input.domain;
         for (PointInRectIterator<2> pir(rect); pir(); pir++, idx++) {
           Rect<2> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, (*devices)[config.device_ids[idx]],
-                                         false/*recurse*/, false/*stealable*/);
+          output.slices[idx] = TaskSlice(slice,
+              (*devices)[config.device_ids[idx] % devices->size()],
+              false/*recurse*/, false/*stealable*/);
         }
         break;
       }
@@ -107,8 +109,9 @@ void FFMapper::slice_task(const MapperContext ctx,
         Rect<3> rect = input.domain;
         for (PointInRectIterator<3> pir(rect); pir(); pir++, idx++) {
           Rect<3> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, (*devices)[config.device_ids[idx]],
-                                         false/*recurse*/, false/*stealable*/);
+          output.slices[idx] = TaskSlice(slice,
+              (*devices)[config.device_ids[idx] % devices->size()],
+              false/*recurse*/, false/*stealable*/);
         }
         break;
       }
@@ -203,8 +206,7 @@ void FFMapper::map_task(const MapperContext ctx,
                                                 fbmem);
       }
     }
-  }
-  else
+  } else
     DefaultMapper::map_task(ctx, task, input, output);
 }
 

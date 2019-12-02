@@ -37,7 +37,7 @@ void Embedding::forward_task_cpu(const Task *task,
   coord_t in_dim = rect_input.hi[0] - rect_input.lo[0] + 1;
   coord_t out_dim = rect_output.hi[0] - rect_output.lo[0] + 1;
   // Weight and output have same out dim
-  assert(out_dim == rect_weight.hi[0] - rect_weight.lo[0] + 1);
+  assert(out_dim == rect_weight.hi[1] - rect_weight.lo[1] + 1);
   const int64_t* input = acc_input.ptr(rect_input);
   float* output = acc_output.ptr(rect_output);
   const float* weight = acc_weight.ptr(rect_weight);
@@ -66,7 +66,7 @@ void Embedding::backward_task_cpu(const Task *task,
   coord_t in_dim = rect_input.hi[0] - rect_input.lo[0] + 1;
   coord_t out_dim = rect_output.hi[0] - rect_output.lo[0] + 1;
   // Weight and output have same out dim
-  assert(out_dim == rect_weight.hi[0] - rect_weight.lo[0] + 1);
+  assert(out_dim == rect_weight.hi[1] - rect_weight.lo[1] + 1);
   const int64_t* input = acc_input.ptr(rect_input);
   const float* output = acc_output.ptr(rect_output);
   float* weight = acc_weight.ptr(rect_weight);

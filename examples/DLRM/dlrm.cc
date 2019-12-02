@@ -565,7 +565,7 @@ void register_custom_tasks()
   }
   // Load Dense Inputs
   {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_2, "Load Densee Inputs");
+    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_2, "Load Dense Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<DataLoader::load_dense_input>(

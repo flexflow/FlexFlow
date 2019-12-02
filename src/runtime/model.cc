@@ -1048,6 +1048,14 @@ int main(int argc, char** argv)
   {
     TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID,
                                    "Zero Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ZeroInitializer::init_task_cpu>(
+        registrar, "Zero Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID,
+                                   "Zero Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<ZeroInitializer::init_task>(

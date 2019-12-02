@@ -61,6 +61,61 @@ void ZeroInitializer::init(Context ctx,
   runtime->execute_task(ctx, launcher);
 }
 
+void ZeroInitializer::init_task_cpu(const Task* task,
+                                    const std::vector<PhysicalRegion>& regions,
+                                    Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == task->regions.size());
+  for (size_t i = 0; i < regions.size(); i++) {
+    Domain domain = runtime->get_index_space_domain(
+        ctx, task->regions[i].region.get_index_space());
+    float* w;
+    switch (domain.get_dim()) {
+      case 0:
+      {
+        // Do not support 0-dim parameters for now
+        assert(false);
+        break;
+      }
+      case 1:
+      {
+        const AccessorWO<float, 1> accW(regions[i], FID_DATA);
+        Rect<1> rect = runtime->get_index_space_domain(
+            ctx, task->regions[i].region.get_index_space());
+        assert(accW.accessor.is_dense_arbitrary(rect));
+        w = accW.ptr(rect);
+        break;
+      }
+      case 2:
+      {
+        const AccessorWO<float, 2> accW(regions[i], FID_DATA);
+        Rect<2> rect = runtime->get_index_space_domain(
+            ctx, task->regions[i].region.get_index_space());
+        assert(accW.accessor.is_dense_arbitrary(rect));
+        w = accW.ptr(rect);
+        break;
+      }
+      case 3:
+      {
+        const AccessorWO<float, 3> accW(regions[i], FID_DATA);
+        Rect<3> rect = runtime->get_index_space_domain(
+            ctx, task->regions[i].region.get_index_space());
+        assert(accW.accessor.is_dense_arbitrary(rect));
+        w = accW.ptr(rect);
+        break;
+      }
+      default:
+      {
+        assert(false);
+        break;
+      }
+    }
+    for (size_t i = 0; i < domain.get_volume(); i++) {
+      w[i] = 0.0f;
+    }
+  }
+}
+
 UniformInitializer::UniformInitializer(int _seed, float _min, float _max)
 : Initializer(), seed(_seed), min_val(_min), max_val(_max) {}
 
