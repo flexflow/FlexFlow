@@ -131,7 +131,7 @@ void top_level_task(const Task* task,
   }
   ff.mse_loss("mse_loss"/*name*/, p, label, "average"/*reduction*/);
   // Use SGD Optimizer
-  ff.optimizer = new SGDOptimizer(&ff, 0.1f);
+  ff.optimizer = new SGDOptimizer(&ff, 0.01f);
   ff.init_layers();
   // Data Loader
   DataLoader data_loader(ff, dlrmConfig, sparse_inputs, dense_input, label);
@@ -271,9 +271,9 @@ DataLoader::DataLoader(FFModel& ff,
       hid_t y_dataset_id = H5Dopen2(file_id, "y", H5P_DEFAULT);
       hid_t y_space_id = H5Dget_space(y_dataset_id);
       hid_t y_type_id = H5Dget_type(y_dataset_id);
-      assert(H5Sget_simple_extent_dims(y_space_id, dims, maxdims) == 2);
+      H5Sget_simple_extent_dims(y_space_id, dims, maxdims);
       assert(num_samples == (int)dims[0]);
-      assert(dims[1] == 1);
+      //assert(dims[1] == 1);
       H5Tclose(y_type_id);
       H5Dclose(y_dataset_id);
       H5Sclose(y_space_id);
@@ -306,7 +306,7 @@ DataLoader::DataLoader(FFModel& ff,
   // regions[0]: full_sparse_input
   launcher.add_region_requirement(
       RegionRequirement(full_sparse_input.region,
-                        READ_WRITE, EXCLUSIVE, full_sparse_input.region,
+                        WRITE_ONLY, EXCLUSIVE, full_sparse_input.region,
                         MAP_TO_FB_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_dense_input
@@ -411,9 +411,9 @@ void DataLoader::load_entire_dataset(const Task *task,
       hid_t y_dataset_id = H5Dopen2(file_id, "y", H5P_DEFAULT);
       hid_t y_space_id = H5Dget_space(y_dataset_id);
       hid_t y_type_id = H5Dget_type(y_dataset_id);
-      assert(H5Sget_simple_extent_dims(y_space_id, dims, maxdims) == 2);
+      H5Sget_simple_extent_dims(y_space_id, dims, maxdims);
       assert(num_samples == (int)dims[0]);
-      assert(dims[1] == 1);
+      //assert(dims[1] == 1);
       H5Dread(y_dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
               label_input_ptr);
       H5Tclose(y_type_id);
@@ -444,25 +444,25 @@ void DataLoader::next_batch(FFModel& ff)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_CPU_TASK_ID_2, task_is,
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
                            TaskArgument(&hash, sizeof(int)), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(pc_name));
-    #if 1
+//#if 1
     // Full dataset in ZCM
     launcher.add_region_requirement(
         RegionRequirement(full_sparse_input.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_sparse_input.region/*,
-                          MAP_TO_ZC_MEMORY*/));
+                          READ_ONLY, EXCLUSIVE, full_sparse_input.region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-#endif
+//#endif
     launcher.add_region_requirement(
         RegionRequirement(batch_sparse_inputs[i].part, 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, batch_sparse_inputs[i].region));
     launcher.add_field(1, FID_DATA);
-    std::cout << "CUSTOM_CPU_TASK_ID_2" << std::endl; 
+    //std::cout << "CUSTOM_CPU_TASK_ID_2" << std::endl; 
     runtime->execute_index_space(ctx, launcher);
-    std::cout << "Done CUSTOM_CPU_TASK_ID_2" << std::endl; 
+    //std::cout << "Done CUSTOM_CPU_TASK_ID_2" << std::endl; 
   }
   // Load Dense Input
   {
@@ -557,10 +557,10 @@ void register_custom_tasks()
   }
   // Load Sparse Inputs
   {
-    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_2, "Load Sparse Inputs");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_1, "Load Sparse Inputs");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<DataLoader::load_sparse_input_cpu>(
+    Runtime::preregister_task_variant<DataLoader::load_sparse_input>(
         registrar, "Load Sparse Inputs Task");
   }
   // Load Dense Inputs

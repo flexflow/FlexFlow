@@ -42,7 +42,7 @@ INC_FLAGS	?= -I../../include/ #-I/mnt/homedir/zhihao/tools/protobuf/src -I/mnt/h
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -lhdf5 #-L/mnt/homedir/zhihao/tools/protobuf/src/.libs -L/mnt/homedir/zhihao/tools/hdf5-1.10.5-linux-centos7-x86_64-shared/lib
+LD_FLAGS	?= -lcuda -lcudart -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -lhdf5 #-L/mnt/homedir/zhihao/tools/protobuf/src/.libs -L/mnt/homedir/zhihao/tools/hdf5-1.10.5-linux-centos7-x86_64-shared/lib
 # For Point and Rect typedefs
 CC_FLAGS	+= -std=c++11
 NVCC_FLAGS  	+= -std=c++11
