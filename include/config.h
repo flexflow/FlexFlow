@@ -23,7 +23,7 @@
 // ========================================================
 #define MAX_NUM_INPUTS 32
 #define MAX_NUM_LOCALS 3
-#define MAX_NUM_WORKERS 16
+#define MAX_NUM_WORKERS 1024
 #define MAX_DIM 4
 #define MAX_FILENAME 200
 #define MAX_OPNAME 64
@@ -37,8 +37,13 @@
 using namespace Legion;
 
 struct ParallelConfig {
+  enum DeviceType {
+    GPU = 0,
+    CPU = 1,
+  };
+  DeviceType device_type;
   int nDims, dim[MAX_DIM];
-  int gpu[MAX_NUM_WORKERS];
+  int device_ids[MAX_NUM_WORKERS];
 };
 
 bool load_strategies_from_file(const std::string& filename,

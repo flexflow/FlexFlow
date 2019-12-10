@@ -299,9 +299,11 @@ void Linear::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+#ifdef FIXME
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
+#endif
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
                         out_dim, batch_size, in_dim,
                         &alpha, acc_kernel.ptr, in_dim,
@@ -440,9 +442,11 @@ void Linear::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+#ifdef FIXME
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
+#endif
   if (linear->activation == AC_MODE_RELU) {
     reluBackward<<<GET_BLOCKS(acc_output.rect.volume()), CUDA_NUM_THREADS>>>(
         acc_output_grad.ptr, acc_output.ptr, acc_output.rect.volume());

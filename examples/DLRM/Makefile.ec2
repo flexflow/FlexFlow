@@ -31,7 +31,7 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 OUTFILE		?= $(app)
 # List all the application source files here
 GEN_SRC		?= ../../src/runtime/model.cc ../../src/mapper/mapper.cc ../../src/runtime/initializer.cc ../../src/runtime/optimizer.cc\
-		../../src/runtime/strategy.pb.cc ../../src/runtime/strategy.cc $(app).cc
+		../../src/ops/embedding.cc ../../src/runtime/strategy.pb.cc ../../src/runtime/strategy.cc $(app).cc
 GEN_GPU_SRC	?= ../../src/ops/conv_2d.cu ../../src/runtime/model.cu ../../src/ops/pool_2d.cu ../../src/ops/batch_norm.cu ../../src/ops/linear.cu  \
 		../../src/ops/softmax.cu ../../src/ops/concat.cu ../../src/ops/flat.cu ../../src/ops/embedding.cu ../../src/ops/mse_loss.cu\
 		../../src/runtime/initializer_kernel.cu ../../src/runtime/optimizer_kernel.cu ../../src/runtime/accessor_kernel.cu\
@@ -42,7 +42,7 @@ INC_FLAGS	?= -I../../include/ #-I/mnt/homedir/zhihao/tools/protobuf/src -I/mnt/h
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -lhdf5 #-L/mnt/homedir/zhihao/tools/protobuf/src/.libs -L/mnt/homedir/zhihao/tools/hdf5-1.10.5-linux-centos7-x86_64-shared/lib
+LD_FLAGS	?= -lcuda -lcudart -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -lhdf5 #-L/mnt/homedir/zhihao/tools/protobuf/src/.libs -L/mnt/homedir/zhihao/tools/hdf5-1.10.5-linux-centos7-x86_64-shared/lib
 # For Point and Rect typedefs
 CC_FLAGS	+= -std=c++11
 NVCC_FLAGS  	+= -std=c++11

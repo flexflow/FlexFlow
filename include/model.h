@@ -508,6 +508,12 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+  static void forward_task_cpu(const Task *task,
+                               const std::vector<PhysicalRegion> &regions,
+                               Context ctx, Runtime *runtime);
+  static void backward_task_cpu(const Task *task,
+                                const std::vector<PhysicalRegion> &regions,
+                                Context ctx, Runtime *runtime);
 public:
   IndexSpaceT<2> task_is;
   Tensor kernel;

@@ -33,6 +33,8 @@ struct CandleConfig {
     input_features["cell.rnaseq"] = "cell.rnaseq";
     input_features["drug1.descriptors"] = "drug.descriptors";
     input_features["drug1.fingerprints"] = "drug.fingerprints";
+    input_features["drug2.descriptors"] = "drug.descriptors";
+    input_features["drug2.fingerprints"] = "drug.fingerprints";
   }
   vector<int> dense_layers, dense_feature_layers;
   map<string, int> feature_shapes;

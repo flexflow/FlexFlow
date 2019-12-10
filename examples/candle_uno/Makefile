@@ -28,7 +28,7 @@ USE_HDF         ?= 1		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 
 # Put the binary file name here
-app		?= candle_uno
+app   		= candle_uno
 OUTFILE		?= $(app)
 # List all the application source files here
 GEN_SRC		?= ../../src/runtime/model.cc ../../src/mapper/mapper.cc ../../src/runtime/initializer.cc ../../src/runtime/optimizer.cc\

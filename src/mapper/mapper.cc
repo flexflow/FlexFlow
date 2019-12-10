@@ -75,6 +75,12 @@ void FFMapper::slice_task(const MapperContext ctx,
       //  assert(config.dim[i] == input.domain.hi()[i] - input.domain.lo()[i] + 1);
       //}
     }
+    const std::vector<Processor>* devices;
+    if (config.device_type == ParallelConfig::GPU) {
+      devices = &gpus;
+    } else {
+      devices = &cpus;
+    }
     switch (input.domain.get_dim())
     {
       case 1:
@@ -86,8 +92,9 @@ void FFMapper::slice_task(const MapperContext ctx,
             idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
           printf("idx = %u\n", idx);
           Rect<1> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, gpus[config.gpu[idx]],
-                                         false/*recurse*/, false/*stealable*/);
+          output.slices[idx] = TaskSlice(slice,
+              (*devices)[config.device_ids[idx] % devices->size()],
+              false/*recurse*/, false/*stealable*/);
         }
         break;
       }
@@ -100,8 +107,9 @@ void FFMapper::slice_task(const MapperContext ctx,
             idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
           printf("idx = %u\n", idx);
           Rect<2> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, gpus[config.gpu[idx]],
-                                         false/*recurse*/, false/*stealable*/);
+          output.slices[idx] = TaskSlice(slice,
+              (*devices)[config.device_ids[idx] % devices->size()],
+              false/*recurse*/, false/*stealable*/);
         }
         break;
       }
@@ -114,8 +122,9 @@ void FFMapper::slice_task(const MapperContext ctx,
             idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
           printf("idx = %u\n", idx);
           Rect<3> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice, gpus[config.gpu[idx]],
-                                         false/*recurse*/, false/*stealable*/);
+          output.slices[idx] = TaskSlice(slice,
+              (*devices)[config.device_ids[idx] % devices->size()],
+              false/*recurse*/, false/*stealable*/);
         }
         break;
       }
@@ -140,7 +149,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
       for (int i = 0; i < config.nDims; i++)
         num_parts *= config.dim[i];
       if (num_parts == 1) {
-        output.initial_proc = gpus[config.gpu[0]];
+        output.initial_proc = gpus[config.device_ids[0]];
         output.inline_task = false;
         output.stealable = stealing_enabled;
         output.map_locally = map_locally;
@@ -164,17 +173,23 @@ Memory FFMapper::default_policy_select_target_memory(MapperContext ctx,
                                                      Processor target_proc,
                                                      const RegionRequirement &req)
 {
-  //return DefaultMapper::default_policy_select_target_memory(
-  //           ctx, target_proc, req);
-  if (req.tag == MAP_TO_ZC_MEMORY) {
+  if (target_proc.kind() == Processor::TOC_PROC) {
+    if (req.tag == MAP_TO_ZC_MEMORY) {
+      assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
+      return proc_zcmems[target_proc];
+    } else {
+      assert(req.tag == 0);
+      //return DefaultMapper::default_policy_select_target_memory(
+      //           ctx, target_proc, req);
+      assert(proc_fbmems.find(target_proc) != proc_fbmems.end());
+      return proc_fbmems[target_proc];
+    }
+  } else if (target_proc.kind() == Processor::LOC_PROC) {
     assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
     return proc_zcmems[target_proc];
   } else {
-    assert(req.tag == 0);
-    //return DefaultMapper::default_policy_select_target_memory(
-    //           ctx, target_proc, req);
-    assert(proc_fbmems.find(target_proc) != proc_fbmems.end());
-    return proc_fbmems[target_proc];
+    return DefaultMapper::default_policy_select_target_memory(
+               ctx, target_proc, req);
   }
 }
 
@@ -213,8 +228,7 @@ void FFMapper::map_task(const MapperContext ctx,
                                                 fbmem);
       }
     }
-  }
-  else
+  } else
     DefaultMapper::map_task(ctx, task, input, output);
 }
 
@@ -291,11 +305,12 @@ void update_mappers(Machine machine, Runtime *runtime,
     // No strategy file provided, use data parallelism
     // TODO: the decault data parallelsim only apply to 2D operators
     ParallelConfig pc;
+    pc.device_type = ParallelConfig::GPU;
     pc.nDims = 2;
     pc.dim[0] = 1;
     pc.dim[1] = gpus->size();
     for (size_t i = 0; i < gpus->size(); i++)
-      pc.gpu[i] = i;
+      pc.device_ids[i] = i;
     (*strategies)[FFConfig::DataParallelismID] = pc;
   } else {
     log_mapper.print("Load parallelization strategy from file %s",
@@ -303,11 +318,12 @@ void update_mappers(Machine machine, Runtime *runtime,
     load_strategies_from_file(strategyFile, *strategies);
     // TODO: the decault data parallelsim only apply to 2D operators
     ParallelConfig pc;
+    pc.device_type = ParallelConfig::GPU;
     pc.nDims = 2;
     pc.dim[0] = 1;
     pc.dim[1] = gpus->size();
     for (size_t i = 0; i < gpus->size(); i++)
-      pc.gpu[i] = i;
+      pc.device_ids[i] = i;
     (*strategies)[FFConfig::DataParallelismID] = pc;
   }
 
