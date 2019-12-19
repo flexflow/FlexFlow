@@ -37,8 +37,13 @@
 using namespace Legion;
 
 struct ParallelConfig {
+  enum DeviceType {
+    GPU = 0,
+    CPU = 1,
+  };
+  DeviceType device_type;
   int nDims, dim[MAX_DIM];
-  int gpu[MAX_NUM_WORKERS];
+  int device_ids[MAX_NUM_WORKERS];
 };
 
 bool load_strategies_from_file(const std::string& filename,

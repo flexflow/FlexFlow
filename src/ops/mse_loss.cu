@@ -173,6 +173,7 @@ PerfMetrics MSELoss::backward_task(const Task *task,
         accLogits.ptr, accLabels.ptr, perf, batch_size, out_dim, scale);
   }
   checkCUDA(cudaMemcpy(&perf_zc, perf, sizeof(PerfMetrics), cudaMemcpyDeviceToHost));
+  checkCUDA(cudaFree(perf));
   // Calculate backward
   mseloss_backward<<<GET_BLOCKS(accLogits.rect.volume()), CUDA_NUM_THREADS>>>(
       accLogitsGrad.ptr, accLogits.ptr, accLabels.ptr,

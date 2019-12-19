@@ -4,19 +4,35 @@
 
 int main()
 {
-  int gpu = 8;
+  int gpu = 1;
+  int cpu = 1;
+  int nemb = 8; //Assuming >gpu embeddings 1x per GPU and the rest distributed among available CPUs
+
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   FFProtoBuf::Strategy strategy;
+  
   // Embedding
-  for (int i = 0; i < 8; i++) {
-    std::string name = "embedding"+std::to_string(i);
+  int ei = 0;
+#if 0
+  for (ei = 0; ei < std::min(gpu, nemb); ei++) {
+    std::string name = "embedding"+std::to_string(ei);
+    FFProtoBuf::Op* op = strategy.add_ops();
+    op->set_name(name);
+    op->set_device_type(FFProtoBuf::Op_DeviceType_GPU);
+    op->add_dims(1);
+    op->add_dims(1);
+    op->add_device_ids(ei);
+  }
+#endif
+
+  for (;ei < nemb; ei++) {
+    std::string name = "embedding"+std::to_string(ei);
     FFProtoBuf::Op* op = strategy.add_ops();
     op->set_name(name);
     op->set_device_type(FFProtoBuf::Op_DeviceType_CPU);
     op->add_dims(1);
     op->add_dims(1);
-    for (int j = 0; j < 1; j++)
-      op->add_device_ids(i % gpu);
+    op->add_device_ids(ei%cpu);
   }
   std::vector<std::string> names;
   names.push_back("linear");
@@ -31,7 +47,7 @@ int main()
     for (int j = 0; j < gpu; j++)
       op->add_device_ids(j);
   }
-  std::string output = "dlrm_strategy_" + std::to_string(gpu) + "gpus.pb";
+  std::string output = "dlrm_strategy_" + std::to_string(nemb) + "nEmb_" + std::to_string(cpu) + "cpu_" + std::to_string(gpu) + "gpu.pb";
   std::fstream outputFile(output.c_str(), std::ios::out | std::ios::trunc);
   strategy.SerializeToOstream(&outputFile);
   google::protobuf::ShutdownProtobufLibrary();

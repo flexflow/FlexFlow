@@ -53,6 +53,10 @@ public:
                                 const std::vector<PhysicalRegion> &regions,
                                 Context ctx,
                                 Runtime* runtime);
+  static void load_sparse_input_cpu(const Task *task,
+                                const std::vector<PhysicalRegion> &regions,
+                                Context ctx,
+                                Runtime* runtime);
   static void load_dense_input(const Task *task,
                                const std::vector<PhysicalRegion> &regions,
                                Context ctx,

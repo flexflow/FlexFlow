@@ -52,6 +52,9 @@ public:
   static void init_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime *runtime);
+  static void init_task_cpu(const Task *task,
+                        const std::vector<PhysicalRegion> &regions,
+                        Context ctx, Runtime *runtime);
 };
 
 class UniformInitializer : public Initializer

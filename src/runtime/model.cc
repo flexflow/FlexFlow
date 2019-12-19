@@ -1,4 +1,4 @@
-/* Copyright 2018 Stanford
+/* Copyright 2019 Stanford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,21 +73,23 @@ FFModel::FFModel(FFConfig& _config)
   if (config.strategyFile == "") {
     // TODO: the decault data parallelsim only apply to 2D operators
     ParallelConfig pc;
+    pc.device_type = ParallelConfig::GPU;
     pc.nDims = 2;
     pc.dim[0] = 1;
     pc.dim[1] = config.workersPerNode * config.numNodes;
     for (int i = 0; i < pc.dim[1]; i++)
-      pc.gpu[i] = i;
+      pc.device_ids[i] = i;
     config.strategies[FFConfig::DataParallelismID] = pc;
   } else {
     load_strategies_from_file(config.strategyFile, config.strategies);
     // TODO: the decault data parallelsim only apply to 2D operators
     ParallelConfig pc;
+    pc.device_type = ParallelConfig::GPU;
     pc.nDims = 2;
     pc.dim[0] = 1;
     pc.dim[1] = config.workersPerNode * config.numNodes;
     for (int i = 0; i < pc.dim[1]; i++)
-      pc.gpu[i] = i;
+      pc.device_ids[i] = i;
     config.strategies[FFConfig::DataParallelismID] = pc;
   }
 
@@ -568,8 +570,8 @@ void FFModel::update()
   optimizer->next();
   for (size_t i = 0; i < parameters.size(); i++) {
     //if (parameters[i].op->name[0] != 'e')
-    if (i >= parameters.size() - 6)
-      optimizer->update(&(parameters[i]));
+    //if (i >= parameters.size() - 6)
+    optimizer->update(&(parameters[i]));
   }
 }
 
@@ -868,7 +870,7 @@ int main(int argc, char** argv)
     Runtime::preregister_task_variant<Conv2D::update_task>(
        registrar, "Conv2D Update Task");
   }
-  // Embedding task
+  // Embedding task GPU
   {
     TaskVariantRegistrar registrar(EMBED_FWD_TASK_ID, "Embedding Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
@@ -881,6 +883,21 @@ int main(int argc, char** argv)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Embedding::backward_task>(
+        registrar, "Embedding Backward Task");
+  }
+  // Embedding task CPU
+  {
+    TaskVariantRegistrar registrar(EMBED_FWD_TASK_ID, "Embedding Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Embedding::forward_task_cpu>(
+        registrar, "Embedding Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(EMBED_BWD_TASK_ID, "Embedding Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Embedding::backward_task_cpu>(
         registrar, "Embedding Backward Task");
   }
   // Pool2D task
@@ -1056,6 +1073,14 @@ int main(int argc, char** argv)
         registrar, "SGD Update Task");
   }
   // Initializer
+  {
+    TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID,
+                                   "Zero Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ZeroInitializer::init_task_cpu>(
+        registrar, "Zero Init Task");
+  }
   {
     TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID,
                                    "Zero Init");
