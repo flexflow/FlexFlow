@@ -4,15 +4,15 @@
 
 int main()
 {
-  int gpu = 8;
+  int gpu = 24;
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   FFProtoBuf::Strategy strategy;
   // Embedding
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 24; i++) {
     std::string name = "embedding"+std::to_string(i);
     FFProtoBuf::Op* op = strategy.add_ops();
     op->set_name(name);
-    op->set_device_type(FFProtoBuf::Op_DeviceType_CPU);
+    op->set_device_type(FFProtoBuf::Op_DeviceType_GPU);
     op->add_dims(1);
     op->add_dims(1);
     for (int j = 0; j < 1; j++)

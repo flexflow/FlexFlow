@@ -87,15 +87,15 @@ void FFMapper::slice_task(const MapperContext ctx,
       case 1:
       {
         Rect<1> rect = input.domain;
-        unsigned int cnt = 0;
+        int cnt = 0;
         for (PointInRectIterator<1> pir(rect); pir(); pir++) {
           unsigned int idx = 0;
           for (int i = input.domain.get_dim()-1; i >= 0; i--)
             idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
           assert(config_num_parts > idx);
-          assert((int)gpus.size() > config.gpu[idx]);
+          //assert((int)gpus.size() > config.gpu[idx]);
           Rect<1> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice,
+          output.slices[cnt++] = TaskSlice(slice,
               (*devices)[config.device_ids[idx] % devices->size()],
               false/*recurse*/, false/*stealable*/);
         }
@@ -104,15 +104,15 @@ void FFMapper::slice_task(const MapperContext ctx,
       case 2:
       {
         Rect<2> rect = input.domain;
-        unsigned int cnt = 0;
+        int cnt = 0;
         for (PointInRectIterator<2> pir(rect); pir(); pir++) {
           unsigned int idx = 0;
           for (int i = input.domain.get_dim()-1; i >= 0; i--)
             idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
           assert(config_num_parts > idx);
-          assert((int)gpus.size() > config.gpu[idx]);
+          //assert((int)gpus.size() > config.gpu[idx]);
           Rect<2> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice,
+          output.slices[cnt++] = TaskSlice(slice,
               (*devices)[config.device_ids[idx] % devices->size()],
               false/*recurse*/, false/*stealable*/);
         }
@@ -121,15 +121,15 @@ void FFMapper::slice_task(const MapperContext ctx,
       case 3:
       {
         Rect<3> rect = input.domain;
-        unsigned int cnt = 0;
+        int cnt = 0;
         for (PointInRectIterator<3> pir(rect); pir(); pir++) {
           unsigned int idx = 0;
           for (int i = input.domain.get_dim()-1; i >= 0; i--)
             idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
           assert(config_num_parts > idx);
-          assert((int)gpus.size() > config.gpu[idx]);
+          //assert((int)gpus.size() > config.gpu[idx]);
           Rect<3> slice(*pir, *pir);
-          output.slices[idx] = TaskSlice(slice,
+          output.slices[cnt++] = TaskSlice(slice,
               (*devices)[config.device_ids[idx] % devices->size()],
               false/*recurse*/, false/*stealable*/);
         }

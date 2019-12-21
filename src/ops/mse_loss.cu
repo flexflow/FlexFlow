@@ -213,7 +213,6 @@ void MSELoss::backward(const FFModel& model)
   launcher.add_field(2, FID_DATA);
   FutureMap new_metrics = runtime->execute_index_space(ctx, launcher);
   // Update metrics
-#ifdef DISABLE_UPDATE_METRICS
   TaskLauncher metrics_task(UPDATE_METRICS_TASK_ID, TaskArgument(NULL, 0));
   metrics_task.add_future(model.current_metrics);
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
@@ -221,6 +220,5 @@ void MSELoss::backward(const FFModel& model)
     metrics_task.add_future(new_metrics[*it]);
   }
   ((FFModel*)(&model))->current_metrics = runtime->execute_task(ctx, metrics_task);
-#endif
 }
 

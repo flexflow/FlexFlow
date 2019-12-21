@@ -10,7 +10,6 @@
     exit(1);                                                           \
 } while(0)
 
-#ifndef DISABLE_COMPUTATION
 #define checkCUDNN(status) do {                                        \
     std::stringstream _error;                                          \
     if (status != CUDNN_STATUS_SUCCESS) {                              \
@@ -18,7 +17,14 @@
       FatalError(_error.str());                                        \
     }                                                                  \
 } while(0)
-#endif
+
+#define checkCURAND(status) do {                                       \
+    std::stringstream _error;                                          \
+    if (status != CURAND_STATUS_SUCCESS) {                             \
+      _error << "CURAND failure: " << status;                          \
+      FatalError(_error.str());                                        \
+    }                                                                  \
+} while(0)
 
 #define checkCUDA(status) do {                                         \
     std::stringstream _error;                                          \
