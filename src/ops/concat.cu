@@ -323,12 +323,14 @@ void Concat::forward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, output.region));
+                        WRITE_ONLY, EXCLUSIVE, output.region,
+                        MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
         RegionRequirement(input_lps[i], 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, inputs[i].region));
+                          READ_ONLY, EXCLUSIVE, inputs[i].region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -451,12 +453,14 @@ void Concat::backward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(output.part_grad, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, output.region_grad));
+                        READ_ONLY, EXCLUSIVE, output.region_grad,
+                        MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
         RegionRequirement(input_grad_lps[i], 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
+                          WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);

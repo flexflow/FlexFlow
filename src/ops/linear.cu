@@ -505,7 +505,7 @@ void Linear::backward2_task(const Task *task,
   float alpha = 1.0f;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
   TensorAccessorW<float, 2> acc_input(
-      regions[0], task->regions[1], FID_DATA, ctx, runtime,
+      regions[0], task->regions[0], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   TensorAccessorR<float, 3> acc_replica(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
@@ -548,7 +548,7 @@ void Linear::backward(const FFModel& ff)
                           READ_ONLY, EXCLUSIVE, inputs[0].region));
     launcher.add_field(0, FID_DATA);
     // regions[1](O): replica_grad 
-    if (replica.region != LogicalRegion::NO_REGION) {
+    if (replica.region_grad != LogicalRegion::NO_REGION) {
       launcher.add_region_requirement(
           RegionRequirement(replica.part_grad, 0/*projection id*/,
                             WRITE_ONLY, EXCLUSIVE, replica.region_grad));
@@ -586,7 +586,7 @@ void Linear::backward(const FFModel& ff)
     launcher.add_field(6, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
-  if (replica.region != LogicalRegion::NO_REGION) {
+  if (replica.region_grad != LogicalRegion::NO_REGION) {
     // We aggregate parameters from replica tensor to input tensor
     // Note we use input's task_is to reduce extra data transfers
     Rect<2> input_rect = runtime->get_index_partition_color_space(

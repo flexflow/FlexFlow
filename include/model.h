@@ -212,7 +212,8 @@ public:
   // Add an embedding layer
   Tensor embedding(const std::string& name,
                    const Tensor& input,
-                   int inDim, int outDim,
+                   int num_entires, int outDim,
+                   AggrMode aggr,
                    Initializer* kernel_initializer);
   // Add a 2D pooling layer
   Tensor pool2d(std::string name,
@@ -492,7 +493,8 @@ public:
   Embedding(FFModel& model,
             const std::string& pcname,
             const Tensor& input,
-            int inDim, int outDim,
+            int num_entries, int outDim,
+            AggrMode _aggr,
             Initializer* kernel_initializer);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -517,6 +519,7 @@ public:
 public:
   IndexSpaceT<2> task_is;
   Tensor kernel;
+  AggrMode aggr;
   bool profiling;
 };
 

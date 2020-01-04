@@ -43,7 +43,7 @@ Tensor create_emb(FFModel* model, const Tensor& input,
 {
   float range = sqrt(1.0f / input_dim);
   Initializer* embed_init = new UniformInitializer(std::rand(), -range, range);
-  return model->embedding("embedding"+std::to_string(idx), input, input_dim, output_dim, embed_init);
+  return model->embedding("embedding"+std::to_string(idx), input, input_dim, output_dim, AGGR_MODE_SUM, embed_init);
 }
 
 Tensor interact_features(FFModel* model, const Tensor& x,
@@ -89,7 +89,8 @@ void top_level_task(const Task* task,
     parse_input_args(argv, argc, dlrmConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
         ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
-    print_vector("Embedding Size", dlrmConfig.embedding_size);
+    log_app.print("EmbeddingBagSize(%d)", dlrmConfig.embedding_bag_size);
+    print_vector("Embedding Vocab Sizes", dlrmConfig.embedding_size);
     print_vector("MLP Top", dlrmConfig.mlp_top);
     print_vector("MLP Bot", dlrmConfig.mlp_bot);
   }
@@ -101,7 +102,7 @@ void top_level_task(const Task* task,
 
   std::vector<Tensor> sparse_inputs;
   for (size_t i = 0; i < dlrmConfig.embedding_size.size(); i++) {
-    const int dims[] = {ffConfig.batchSize, 1};
+    const int dims[] = {ffConfig.batchSize, dlrmConfig.embedding_bag_size};
     Tensor input = ff.create_tensor<2>(dims, "embedding"+std::to_string(i), DT_INT64);
     sparse_inputs.push_back(input);
   }
@@ -135,6 +136,14 @@ void top_level_task(const Task* task,
   ff.init_layers();
   // Data Loader
   DataLoader data_loader(ff, dlrmConfig, sparse_inputs, dense_input, label);
+
+  //Start timer
+  {
+    runtime->issue_execution_fence(ctx);
+    TimingLauncher timer(MEASURE_MICRO_SECONDS);
+    Future future = runtime->issue_timing_measurement(ctx, timer);
+    future.get_void_result();
+  }
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     data_loader.reset();
@@ -156,10 +165,13 @@ void top_level_task(const Task* task,
       runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
-  runtime->issue_execution_fence(ctx);
-  TimingLauncher timer(MEASURE_MICRO_SECONDS);
-  Future future = runtime->issue_timing_measurement(ctx, timer);
-  future.get_void_result();
+  // End timer
+  {
+    runtime->issue_execution_fence(ctx);
+    TimingLauncher timer(MEASURE_MICRO_SECONDS);
+    Future future = runtime->issue_timing_measurement(ctx, timer);
+    future.get_void_result();
+  }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
@@ -180,6 +192,10 @@ void parse_input_args(char **argv, int argc, DLRMConfig& config)
       while (std::getline(ss, word, '-')) {
         config.embedding_size.push_back(std::stoi(word));
       }
+      continue;
+    }
+    if (!strcmp(argv[i], "--embedding-bag-size")) {
+      config.embedding_bag_size = atoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--arch-mlp-bot")) {
@@ -233,7 +249,8 @@ DataLoader::DataLoader(FFModel& ff,
   num_samples = 0;
   if (dlrm.dataset_path == "") {
     log_app.print("Use random dataset...");
-    num_samples = 8192;
+    num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
+    log_app.print("Number of random samples = %d\n", num_samples);
   } else {
     log_app.print("Start loading dataset from %s", dlrm.dataset_path.c_str());
     hid_t file_id = H5Fopen(dlrm.dataset_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
@@ -286,7 +303,7 @@ DataLoader::DataLoader(FFModel& ff,
     batch_sparse_inputs.push_back(_sparse_inputs[i]);
   }
   {
-    const int dims[] = {num_samples, (int)_sparse_inputs.size()};
+    const int dims[] = {num_samples, (int)_sparse_inputs.size()*dlrm.embedding_bag_size};
     full_sparse_input = ff.create_tensor<2>(dims, "", DT_INT64);
   }
   {

@@ -4,7 +4,7 @@
 
 int main()
 {
-  int gpu = 24;
+  int gpu = 6;
   GOOGLE_PROTOBUF_VERIFY_VERSION;
   FFProtoBuf::Strategy strategy;
   // Embedding
@@ -18,10 +18,19 @@ int main()
     for (int j = 0; j < 1; j++)
       op->add_device_ids(i % gpu);
   }
+  if (false) {
+    FFProtoBuf::Op* op = strategy.add_ops();
+    op->set_name("concat");
+    op->set_device_type(FFProtoBuf::Op_DeviceType_GPU);
+    op->add_dims(1);
+    op->add_dims(gpu / 6);
+    for (int j = 0; j < gpu / 6; j++)
+      op->add_device_ids(j * 6);
+  }
   std::vector<std::string> names;
+  names.push_back("concat");
   names.push_back("linear");
   names.push_back("mse_loss");
-  names.push_back("concat");
   for (size_t i = 0; i < names.size(); i++) {
     FFProtoBuf::Op* op = strategy.add_ops();
     op->set_name(names[i]);

@@ -33,16 +33,19 @@ void DataLoader::load_sparse_input(const Task *task,
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   int batch_size = acc_batch_input.rect.hi[1] - acc_batch_input.rect.lo[1] + 1;
-  assert(acc_batch_input.rect.hi[0] == acc_batch_input.rect.lo[0]);
-  assert(acc_full_input.rect.hi[0]-acc_full_input.rect.lo[0]+1 == num_sparse_inputs);
+  int in_dim = acc_batch_input.rect.hi[0] - acc_batch_input.rect.lo[0] + 1;
+  assert(acc_full_input.rect.hi[0]-acc_full_input.rect.lo[0]+1 == num_sparse_inputs * in_dim);
   int64_t* input_zc;
   checkCUDA(cudaHostAlloc(&input_zc, sizeof(int64_t) * acc_batch_input.rect.volume(),
                           cudaHostAllocPortable | cudaHostAllocMapped));
   assert(batch_size == meta->num_samples);
   for (int i = 0; i < batch_size; i++) {
-    int offset = meta->idxs[i] * num_sparse_inputs + my_input_idx;
-    assert(offset < (int)acc_full_input.rect.volume());
-    input_zc[i] = acc_full_input.ptr[offset];
+    int full_offset = meta->idxs[i] * num_sparse_inputs * in_dim + my_input_idx * in_dim;
+    int batch_offset = i * in_dim;
+    assert(full_offset + in_dim <= (int)acc_full_input.rect.volume());
+    for (int j = 0; j < in_dim; j++) {
+      input_zc[batch_offset+j] = acc_full_input.ptr[full_offset+j];
+    }
   }
   checkCUDA(cudaMemcpy(acc_batch_input.ptr, input_zc,
                        sizeof(int64_t) * acc_batch_input.rect.volume(),
