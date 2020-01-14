@@ -457,6 +457,8 @@ void DataLoader::next_batch(FFModel& ff)
       SampleIdxs meta;
       assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
       meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      // Assert that we have enough slots to save the indices
+      assert(meta.num_samples <= MAX_NUM_SAMPLES);
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
