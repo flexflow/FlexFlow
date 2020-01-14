@@ -2,6 +2,30 @@
 #include <fstream>
 #include <iostream>
 
+
+class FFStrategy {
+public:
+  FFStrategy(void);
+  bool add_conv_config(const std::string& name,
+                       const std::string& device_type,
+                       int num_par_n,
+                       int num_par_c,
+                       const std::string& input_memory,
+                       const std::string& output_memory);
+private:
+  FFProtoBuf::Strategy strategy;
+}
+
+FFStrategy::FFStrategy(void)
+{}
+
+bool FFStrategy::add_conv_config(const std::string& name,
+                                 const std::string& device_type,
+                                 int num_par_n,
+                                 int num_par_c)
+{
+}
+
 int main()
 {
   int gpu = 6;
