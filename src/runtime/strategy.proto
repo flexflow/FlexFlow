@@ -8,9 +8,14 @@ message Op {
     GPU = 0;
     CPU = 1;
   }
+  enum MemoryType {
+    FBM = 0;
+    ZCM = 1;
+  }
   required DeviceType device_type = 2 [default = GPU];
   repeated int32 dims = 3;
   repeated int32 device_ids = 4;
+  repeated MemoryType memory_types = 5;
 }
 
 message Strategy {
