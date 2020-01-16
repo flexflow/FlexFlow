@@ -569,9 +569,7 @@ void FFModel::update()
 {
   optimizer->next();
   for (size_t i = 0; i < parameters.size(); i++) {
-    //if (i >= parameters.size() - 6)
-    if (parameters[i].op->name[0] != 'l')
-      optimizer->update(&(parameters[i]));
+    optimizer->update(&(parameters[i]));
   }
 }
 
