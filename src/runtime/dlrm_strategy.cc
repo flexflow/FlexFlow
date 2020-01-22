@@ -204,7 +204,7 @@ int main(int argc, char **argv)
     std::vector<int> device_ids;
     for (int i = 0; i < num_nodes * gpus_per_node; i++)
       device_ids.push_back(i * gpus_per_node);
-    strategy.add_mse_config("mse", "GPU", "FBM"/*input*/,
+    strategy.add_mse_config("mse_loss", "GPU", "FBM"/*input*/,
         num_nodes*gpus_per_node, device_ids);
   }
   std::string output = "dlrm_strategy_gpu_" + std::to_string(gpus_per_node) + "_node_" + std::to_string(num_nodes) + ".pb";

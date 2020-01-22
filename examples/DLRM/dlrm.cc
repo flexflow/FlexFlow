@@ -137,6 +137,17 @@ void top_level_task(const Task* task,
   // Data Loader
   DataLoader data_loader(ff, dlrmConfig, sparse_inputs, dense_input, label);
 
+  // Warmup iterations
+  for (int iter = 0; iter < 1; iter++) {
+    data_loader.reset();
+    ff.reset_metrics();
+    data_loader.next_batch(ff);
+    ff.forward();
+    ff.zero_gradients();
+    ff.backward();
+    ff.update();
+  }
+
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -144,6 +155,9 @@ void top_level_task(const Task* task,
     Future future = runtime->issue_timing_measurement(ctx, timer);
     future.get_void_result();
   }
+  log_app.print("Warmup finished...Start timer...");
+  log_app.print("Num. epochs = %d", ffConfig.epochs);
+  log_app.print("Num. iterations/epoch = %d", data_loader.num_samples / ffConfig.batchSize);
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     data_loader.reset();
@@ -152,14 +166,14 @@ void top_level_task(const Task* task,
     for (int iter = 0; iter < iterations; iter++) {
       if (dlrmConfig.dataset_path.length() == 0) {
         // Only load data once for random input
-        if (iter == 0 && epoch == 0)
-          data_loader.next_batch(ff);
+        //if (iter == 0 && epoch == 0)
+          //data_loader.next_batch(ff);
       } else {
         data_loader.next_batch(ff);
       }
       runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
-      ff.zero_gradients();
+      //ff.zero_gradients();
       ff.backward();
       ff.update();
       runtime->end_trace(ctx, 111/*trace_id*/);
@@ -556,6 +570,7 @@ void DataLoader::reset()
 {
   next_index = 0;
 }
+
 void DataLoader::load_sparse_input_cpu(const Task *task,
                                    const std::vector<PhysicalRegion> &regions,
                                    Context ctx,

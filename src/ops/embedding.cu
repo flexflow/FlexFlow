@@ -268,6 +268,10 @@ void Embedding::backward_task(const Task *task,
   int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
   int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
+  // Explicitly initialize accWegihtGrad to zero to aviod calling zero_gradients() before backward()
+  // as an optimization for DLRM
+  //assign_kernel<<<GET_BLOCKS(accWeightGrad.rect.volume()), CUDA_NUM_THREADS>>>(
+  //      accWeightGrad.ptr, accWeightGrad.rect.volume(), 0.0f);
   embed_backward<<<GET_BLOCKS(accOutput.rect.volume()), CUDA_NUM_THREADS>>>(
       accInput.ptr, accOutput.ptr, accWeightGrad.ptr, out_dim, in_dim, batch_size, embed->aggr);
   checkCUDA(cudaDeviceSynchronize());
