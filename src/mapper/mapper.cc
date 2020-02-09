@@ -35,20 +35,6 @@ void FFMapper::slice_task(const MapperContext ctx,
                           const SliceTaskInput& input,
                           SliceTaskOutput& output)
 {
-#ifdef DEADCODE
-  if (task.task_id == LOAD_IMAGES_TASK_ID) {
-    output.slices.resize(input.domain.get_volume());
-    unsigned idx = 0;
-    assert(input.domain.get_dim() == 1);
-    Rect<1> rect = input.domain;
-    for (PointInRectIterator<1> pir(rect); pir(); pir++, idx++) {
-      Rect<1> slice(*pir, *pir);
-      output.slices[idx] = TaskSlice(slice, cpus[idx % cpus.size()],
-                                     false/*recurse*/, false/*stealable*/);
-    }
-  }
-  else 
-#endif
   //printf("task.task_id = %d task.target_proc = %x num_slices = %zu gpus.size = %zu\n",
   //    task.task_id, task.target_proc.id, input.domain.get_volume(), gpus.size());
   if ((task.task_id == TOP_LEVEL_TASK_ID)

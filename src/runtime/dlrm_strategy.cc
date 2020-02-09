@@ -196,14 +196,14 @@ int main(int argc, char **argv)
   {
     std::vector<int> device_ids;
     for (int i = 0; i < num_nodes * gpus_per_node; i++)
-      device_ids.push_back(i * gpus_per_node);
+      device_ids.push_back(i);
     strategy.add_linear_config("linear", "GPU", "FBM"/*input*/, "FBM"/*weight*/,
         "FBM"/*output*/, 1, num_nodes*gpus_per_node, device_ids);
   }
   {
     std::vector<int> device_ids;
     for (int i = 0; i < num_nodes * gpus_per_node; i++)
-      device_ids.push_back(i * gpus_per_node);
+      device_ids.push_back(i);
     strategy.add_mse_config("mse_loss", "GPU", "FBM"/*input*/,
         num_nodes*gpus_per_node, device_ids);
   }
