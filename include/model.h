@@ -20,10 +20,10 @@
 #include "initializer.h"
 #include "optimizer.h"
 #include "accessor.h"
-#include <cudnn.h>
-#include <cuda_runtime.h>
-#include <curand.h>
-#include <cublas_v2.h>
+//#include <cudnn.h>
+//#include <cuda_runtime.h>
+//#include <curand.h>
+//#include <cublas_v2.h>
 #include <unistd.h>
 
 using namespace Legion;
@@ -130,6 +130,7 @@ enum FieldIDs {
   FID_DATA,
 };
 
+#if 0
 struct PerfMetrics
 {
   float train_loss;
@@ -697,5 +698,6 @@ void data_load_task(const Task* task,
                     Context ctx, Runtime* runtime);
 
 void register_custom_tasks();
+#endif
 #endif//_FLEXFLOW_RUNTIME_H_
 

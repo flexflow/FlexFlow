@@ -18,6 +18,15 @@ ifndef LG_RT_DIR
 $(error LG_RT_DIR variable is not defined, aborting build)
 endif
 
+ifndef FF_DIR
+$(error FF_DIR variable is not defined, aborting build)
+endif
+
+PROTOBUF_DIR ?= /home/wwu12/opt
+ifndef PROTOBUF_DIR
+$(error PROTOBUF_DIR variable is not defined, aborting build)
+endif
+
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 1		# Include debugging symbols
 MAX_DIM         ?= 3		# Maximum number of dimensions
@@ -35,15 +44,15 @@ PYTHON_VERSION_MAJOR ?= 3
 # Put the binary file name here
 OUTFILE		?= flexflow_python
 # List all the application source files here
-GEN_SRC		?= main.cc	hello/hello.cc	# .cc files
+GEN_SRC		?= main.cc hello/hello.cc $(FF_DIR)/src/mapper/mapper.cc $(FF_DIR)/src/runtime/strategy.cc $(FF_DIR)/src/runtime/strategy.pb.cc # .cc files
 GEN_GPU_SRC	?=		# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?=
-CC_FLAGS	?= -DBINDINGS_AUGMENT_PYTHONPATH
+INC_FLAGS	?= -I$(FF_DIR)/include -I$(PROTOBUF_DIR)/include
+CC_FLAGS	?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_CPU
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?=
+LD_FLAGS	?= -L$(PROTOBUF_DIR)/lib -lprotobuf
 
 ifeq ($(shell uname), Darwin)
 	LD_FLAGS += -Wl,-force_load,liblegion.a

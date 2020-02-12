@@ -272,7 +272,11 @@ void update_mappers(Machine machine, Runtime *runtime,
     else if (it->kind() == Processor::LOC_PROC) {
       cpus->push_back(*it);
       Machine::MemoryQuery zc_query(machine);
+#ifdef FF_USE_CPU
+      zc_query.only_kind(Memory::SYSTEM_MEM);
+#else
       zc_query.only_kind(Memory::Z_COPY_MEM);
+#endif
       zc_query.has_affinity_to(*it);
       assert(zc_query.count() == 1);
       (*proc_zcmems)[*it] = *(zc_query.begin());

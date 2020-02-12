@@ -21,9 +21,11 @@
 
 using namespace Legion;
 
+#include "mapper.h"
+
 #include "hello/hello.h"
 
-enum TaskIDs {
+enum MainTaskIDs {
   MAIN_TASK_ID = 111,
 };
 
@@ -94,6 +96,8 @@ int main(int argc, char **argv)
   
 
   Runtime::set_top_level_task_id(MAIN_TASK_ID);
+  
+  Runtime::add_registration_callback(update_mappers);
   
   return Runtime::start(argc, argv);
 }
