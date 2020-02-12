@@ -27,6 +27,8 @@ ifndef PROTOBUF_DIR
 $(error PROTOBUF_DIR variable is not defined, aborting build)
 endif
 
+PROTOBUF_EXE ?= $(PROTOBUF_DIR)/bin/protoc
+
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 1		# Include debugging symbols
 MAX_DIM         ?= 3		# Maximum number of dimensions
@@ -44,7 +46,7 @@ PYTHON_VERSION_MAJOR ?= 3
 # Put the binary file name here
 OUTFILE		?= flexflow_python
 # List all the application source files here
-GEN_SRC		?= main.cc hello/hello.cc $(FF_DIR)/src/mapper/mapper.cc $(FF_DIR)/src/runtime/strategy.cc $(FF_DIR)/src/runtime/strategy.pb.cc # .cc files
+GEN_SRC		?= main.cc hello/hello.cc strategy.pb.cc $(FF_DIR)/src/mapper/mapper.cc $(FF_DIR)/src/runtime/strategy.cc  # .cc files
 GEN_GPU_SRC	?=		# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
@@ -65,7 +67,7 @@ CC_FLAGS += -DLEGION_REDOP_COMPLEX
 
 NO_BUILD_ALL=1
 .PHONY: all
-all: $(OUTFILE) legion_cffi.py
+all: $(OUTFILE) legion_cffi.py strategy.pb.cc
 
 ###########################################################################
 #
@@ -77,6 +79,9 @@ include $(LG_RT_DIR)/runtime.mk
 
 legion_cffi.py: legion_cffi.py.in legion_cffi_build.py
 	$(PYTHON_EXE) legion_cffi_build.py --defines-dir $(DEFINE_HEADERS_DIR)
+	
+strategy.pb.cc: $(FF_DIR)/src/runtime/strategy.proto
+	$(PROTOBUF_EXE) --proto_path=$(FF_DIR)/src/runtime strategy.proto --cpp_out=.
 
 clean::
 	$(RM) -f $(OUTFILE) $(SLIB_LEGION) $(SLIB_REALM) $(GEN_OBJS) $(GEN_GPU_OBJS) $(REALM_OBJS) $(LEGION_OBJS) $(GPU_RUNTIME_OBJS) $(MAPPER_OBJS) $(ASM_OBJS) legion_defines.h realm_defines.h legion_cffi.py *.pyc
