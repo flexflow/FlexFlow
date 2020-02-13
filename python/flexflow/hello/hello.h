@@ -9,7 +9,7 @@ extern "C"
 {
 #endif
 
-void launch_hello_world_task();
+void launch_hello_world_task(char *name);
 
 #ifdef __cplusplus
 } // extern "C"
