@@ -46,7 +46,7 @@ PYTHON_VERSION_MAJOR ?= 3
 # Put the binary file name here
 OUTFILE		?= flexflow_python
 # List all the application source files here
-GEN_SRC		?= main.cc hello/hello.cc strategy.pb.cc $(FF_DIR)/src/mapper/mapper.cc $(FF_DIR)/src/runtime/strategy.cc  # .cc files
+GEN_SRC		?= main.cc flexflow/hello/hello.cc strategy.pb.cc $(FF_DIR)/src/mapper/mapper.cc $(FF_DIR)/src/runtime/strategy.cc  # .cc files
 GEN_GPU_SRC	?=		# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
@@ -67,7 +67,7 @@ CC_FLAGS += -DLEGION_REDOP_COMPLEX
 
 NO_BUILD_ALL=1
 .PHONY: all
-all: $(OUTFILE) legion_cffi.py strategy.pb.cc
+all: $(OUTFILE) flexflow/core/legion_cffi.py strategy.pb.cc
 
 ###########################################################################
 #
@@ -77,8 +77,8 @@ all: $(OUTFILE) legion_cffi.py strategy.pb.cc
 
 include $(LG_RT_DIR)/runtime.mk
 
-legion_cffi.py: legion_cffi.py.in legion_cffi_build.py
-	$(PYTHON_EXE) legion_cffi_build.py --defines-dir $(DEFINE_HEADERS_DIR)
+flexflow/core/legion_cffi.py: legion_cffi.py.in legion_cffi_build.py
+	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
 	
 strategy.pb.cc: $(FF_DIR)/src/runtime/strategy.proto
 	$(PROTOBUF_EXE) --proto_path=$(FF_DIR)/src/runtime strategy.proto --cpp_out=.

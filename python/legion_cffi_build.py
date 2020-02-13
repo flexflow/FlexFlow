@@ -21,24 +21,20 @@ import argparse
 import os
 import subprocess
 
-def find_legion_header():
+def find_legion_header(runtime_dir):
     def try_prefix(prefix_dir):
         legion_h_path = os.path.join(prefix_dir, 'legion.h')
         if os.path.exists(legion_h_path):
             return prefix_dir, legion_h_path
 
-    # We should always be in an in-source build, so just find the file
-    # relative to the source directory.
-    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-    runtime_dir = os.path.join(root_dir, 'runtime')
     result = try_prefix(runtime_dir)
     if result:
         return result
 
     raise Exception('Unable to locate legion.h header file')
 
-def build(defines_dir, output_dir):
-    prefix_dir, legion_h_path = find_legion_header()
+def build(defines_dir, output_dir, runtime_dir):
+    prefix_dir, legion_h_path = find_legion_header(runtime_dir)
 
     if defines_dir is not None:
         # For CMake, need to be told where the defines directory is:
@@ -61,8 +57,9 @@ def build(defines_dir, output_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument('--runtime-dir', required=True)
     parser.add_argument('--defines-dir', required=False)
     parser.add_argument('--output-dir', required=False)
     args = parser.parse_args()
 
-    build(args.defines_dir, args.output_dir)
+    build(args.defines_dir, args.output_dir, args.runtime_dir)

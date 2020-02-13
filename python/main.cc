@@ -23,7 +23,7 @@ using namespace Legion;
 
 #include "mapper.h"
 
-#include "hello/hello.h"
+#include "flexflow/hello/hello.h"
 
 enum MainTaskIDs {
   MAIN_TASK_ID = 111,
@@ -80,12 +80,12 @@ int main(int argc, char **argv)
   }
 #endif
 
-  Realm::Python::PythonModule::import_python_module("flexflow");
+  Realm::Python::PythonModule::import_python_module("flexflow.core");
 
   {
     TaskVariantRegistrar registrar(MAIN_TASK_ID, "flexflow_top_level_task");
     registrar.add_constraint(ProcessorConstraint(Processor::PY_PROC));
-    preregister_python_task_variant(registrar, "flexflow", "flexflow_top_level_task");
+    preregister_python_task_variant(registrar, "flexflow.core", "flexflow_top_level_task");
   }
   
   {

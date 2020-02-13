@@ -21,8 +21,8 @@ import os
 import sys
 import threading
 
-from legion import *
-from legion_cffi import ffi, lib as c
+from flexflow.core.legion import *
+from flexflow.core.legion_cffi import ffi, lib as c
 
 
 # Storage for variables that apply to the top-level task.

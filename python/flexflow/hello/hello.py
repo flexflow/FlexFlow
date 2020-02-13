@@ -1,4 +1,4 @@
-from flexflow import *
+from flexflow.core import *
 
 import cffi
 ffihello = cffi.FFI()
@@ -12,7 +12,5 @@ def launch_hello_world_task():
   context = get_legion_context()
   task.launch(runtime, context)
 
-if __name__ == '__main__':
-  print("start hello")
-  launch_hello_world_task()
+def launch_hello_world_task_c():
   hello_c.launch_hello_world_task()
