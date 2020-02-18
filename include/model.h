@@ -204,11 +204,12 @@ public:
 
   // Add a 2D convolutional layer 
   Tensor conv2d(std::string name,
-                Tensor input, int outChannels,
+                const Tensor& input,
+                int outChannels,
                 int kernelH, int kernelW,
                 int strideH, int strideW,
                 int paddingH, int paddingW,
-                bool relu = false);
+                ActiMode activation = AC_MODE_NONE);
   // Add an embedding layer
   Tensor embedding(const std::string& name,
                    const Tensor& input,
@@ -313,13 +314,13 @@ private:
 
 class Conv2D : public Op {
 public:
-  Conv2D(std::string name, FFConfig config,
-         Tensor input, IndexSpaceT<4> task_is,
-         int inChannels, int outChannels,
+  Conv2D(FFModel& model, const std::string& pcname,
+         const Tensor& input,
+         int out_dim,
          int kernelH, int kernelW,
          int strideH, int strideW,
          int paddingH, int paddingW,
-         bool relu, bool first_layer);
+         ActiMode mode = AC_MODE_NONE);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -342,11 +343,11 @@ public:
                           Context ctx, HighLevelRuntime *runtime);
 public:
   IndexSpaceT<4> task_is;
-  int in_channels, out_channels;
-  int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
-  bool relu, first_layer, profiling;
+  int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
+  bool profiling;
   int num_replica;
   float learning_rate;
+  ActiMode activation;
   Tensor locals[MAX_NUM_LOCALS];
 };
 

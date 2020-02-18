@@ -45,7 +45,6 @@ Pool2D::Pool2D(std::string _name, FFConfig _config,
   padding_h(_padding_h), padding_w(_padding_w),
   pool_type(_type), relu(_relu), profiling(_config.profiling)
 {
-  printf("CP#2\n");
   Context ctx = _config.lg_ctx;
   Runtime* runtime = _config.lg_hlr;
 
@@ -227,7 +226,9 @@ void Pool2D::init(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
   IndexLauncher init_launcher(POOL2D_INIT_TASK_ID, task_is,
-                              TaskArgument(this, sizeof(Pool2D)), argmap);
+                              TaskArgument(this, sizeof(Pool2D)), argmap,
+                              Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                              FFConfig::get_hash_id(std::string(name)));
   init_launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
@@ -287,7 +288,9 @@ void Pool2D::forward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(POOL2D_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Pool2D)), argmap);
+                         TaskArgument(this, sizeof(Pool2D)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
@@ -375,7 +378,9 @@ void Pool2D::backward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(POOL2D_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Pool2D)), argmap);
+                         TaskArgument(this, sizeof(Pool2D)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): input
   launcher.add_region_requirement(
       RegionRequirement(inputs[0].part, 0/*projection id*/,

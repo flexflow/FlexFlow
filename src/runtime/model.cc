@@ -71,23 +71,27 @@ FFModel::FFModel(FFConfig& _config)
   Context ctx = config.lg_ctx;
   // Load strategy file
   if (config.strategyFile == "") {
-    // TODO: the decault data parallelsim only apply to 2D operators
+    // TODO: the decault data parallelsim only apply to 4D operators
     ParallelConfig pc;
     pc.device_type = ParallelConfig::GPU;
-    pc.nDims = 2;
+    pc.nDims = 4;
     pc.dim[0] = 1;
-    pc.dim[1] = config.workersPerNode * config.numNodes;
+    pc.dim[1] = 1;
+    pc.dim[2] = 1;
+    pc.dim[3] = config.workersPerNode * config.numNodes;
     for (int i = 0; i < pc.dim[1]; i++)
       pc.device_ids[i] = i;
     config.strategies[FFConfig::DataParallelismID] = pc;
   } else {
     load_strategies_from_file(config.strategyFile, config.strategies);
-    // TODO: the decault data parallelsim only apply to 2D operators
+    // TODO: the decault data parallelsim only apply to 4D operators
     ParallelConfig pc;
     pc.device_type = ParallelConfig::GPU;
-    pc.nDims = 2;
+    pc.nDims = 4;
     pc.dim[0] = 1;
-    pc.dim[1] = config.workersPerNode * config.numNodes;
+    pc.dim[1] = 1;
+    pc.dim[2] = 1;
+    pc.dim[3] = config.workersPerNode * config.numNodes;
     for (int i = 0; i < pc.dim[1]; i++)
       pc.device_ids[i] = i;
     config.strategies[FFConfig::DataParallelismID] = pc;

@@ -17,24 +17,20 @@
 #include "cuda_helper.h"
 
 Tensor FFModel::conv2d(std::string name,
-                       Tensor input, int outChannels,
+                       const Tensor& input,
+                       int outChannels,
                        int kernelH, int kernelW,
                        int strideH, int strideW,
-                       int paddingH, int paddingW, bool relu)
+                       int paddingH, int paddingW,
+                       ActiMode activation)
 {
-  printf("CP#1\n");
   assert(input.numDim == 4); /*NCHW*/
-  int inChannels = input.adim[2];
-  bool firstLayer = false;
   //if (input.region == inputImage.region)
   //  firstLayer = true;
-  ParallelConfig pc;
-  assert(config.find_parallel_config(name, pc));
-  IndexSpaceT<4> task_is = IndexSpaceT<4>(get_or_create_task_is(pc));
-  Conv2D *conv = new Conv2D(name, config, input, task_is,
-                            inChannels, outChannels, kernelH, kernelW,
+  Conv2D *conv = new Conv2D(*this, name, input,
+                            outChannels, kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW,
-                            relu, firstLayer);
+                            activation);
   layers.push_back(conv);
   return conv->output;
 }
@@ -43,22 +39,27 @@ Tensor FFModel::conv2d(std::string name,
 locals[0] = kernel
 locals[1] = bias
 */
-Conv2D::Conv2D(std::string _name, FFConfig _config,
-               Tensor _input, IndexSpaceT<4> _task_is,
-               int _in_channels, int _out_channels,
+Conv2D::Conv2D(FFModel& model,
+               const std::string& pcname,
+               const Tensor& _input,
+               int out_dim,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
-               bool _relu, bool _first_layer)
-: Op(_name, _input), task_is(_task_is),
-  in_channels(_in_channels), out_channels(_out_channels),
+               ActiMode _activation)
+: Op(pcname, _input),
+  in_channels(_input.adim[2]), out_channels(out_dim),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),
   padding_h(_padding_h), padding_w(_padding_w),
-  relu(_relu), first_layer(_first_layer), profiling(_config.profiling)
+  activation(_activation), profiling(model.config.profiling)
 {
-  Context ctx = _config.lg_ctx;
-  Runtime* runtime = _config.lg_hlr;
+  assert(_input.numDim == 4);
+    // Retrive the task indexspace for the op
+  task_is = IndexSpaceT<4>(model.get_or_create_task_is(pcname));
+
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
   Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
   num_replica = part_rect.volume();
   // Create output tensor
@@ -66,14 +67,14 @@ Conv2D::Conv2D(std::string _name, FFConfig _config,
   int input_h = _input.adim[1];
   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  int output_c = out_channels;
+  int output_c = out_dim;
   int output_n = _input.adim[3];
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
   int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
  
-  FieldSpace fs = _config.field_space;
+  FieldSpace fs = model.config.field_space;
 
   IndexSpaceT<4> output_is;
   {
@@ -269,8 +270,7 @@ OpMeta* Conv2D::init_task(const Task *task,
   const float *bias_ptr = acc_bias.ptr(rect_bias.lo);
 
   Conv2DMeta* m = new Conv2DMeta(handle);
-  m->relu = conv->relu;
-  m->first_layer = conv->first_layer;
+  m->relu = conv->activation == AC_MODE_RELU;
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&m->biasTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
@@ -445,7 +445,10 @@ void Conv2D::init(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
   IndexLauncher init_launcher(CONV2D_INIT_TASK_ID, task_is,
-                              TaskArgument(this, sizeof(Conv2D)), argmap);
+                              TaskArgument(this, sizeof(Conv2D)), argmap,
+                              Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                              FFConfig::get_hash_id(std::string(name)));
+ 
   init_launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
@@ -559,7 +562,9 @@ void Conv2D::forward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(CONV2D_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Conv2D)), argmap);
+                         TaskArgument(this, sizeof(Conv2D)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
@@ -697,7 +702,9 @@ void Conv2D::backward(const FFModel& ff)
   }
 
   IndexLauncher launcher(CONV2D_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Conv2D)), argmap);
+                         TaskArgument(this, sizeof(Conv2D)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): input
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,

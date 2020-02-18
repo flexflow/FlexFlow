@@ -21,8 +21,12 @@ Tensor FFModel::flat(std::string name, Tensor input)
   assert(input.numDim == 4);
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
-  IndexSpaceT<4> task_is_4d;
-  IndexSpaceT<2> task_is_2d;
+  IndexSpaceT<4> task_is_4d = IndexSpaceT<4>(get_or_create_task_is(name));
+  ParallelConfig pc;
+  pc.nDims = 2;
+  pc.dim[0] = 1;
+  pc.dim[1] = 1;
+  IndexSpaceT<2> task_is_2d = IndexSpaceT<2>(get_or_create_task_is(pc));
   Flat *flat = new Flat(name, config, input, task_is_4d, task_is_2d);
   layers.push_back(flat);
   return flat->output;

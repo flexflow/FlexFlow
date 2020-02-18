@@ -121,6 +121,23 @@ void FFMapper::slice_task(const MapperContext ctx,
         }
         break;
       }
+      case 4:
+      {
+        Rect<4> rect = input.domain;
+        int cnt = 0;
+        for (PointInRectIterator<4> pir(rect); pir(); pir++) {
+          unsigned int idx = 0;
+          for (int i = input.domain.get_dim()-1; i >= 0; i--)
+            idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
+          assert(config_num_parts > idx);
+          //assert((int)gpus.size() > config.gpu[idx]);
+          Rect<4> slice(*pir, *pir);
+          output.slices[cnt++] = TaskSlice(slice,
+              (*devices)[config.device_ids[idx] % devices->size()],
+              false/*recurse*/, false/*stealable*/);
+        }
+        break;
+      }
       default:
         assert(false);
     }
