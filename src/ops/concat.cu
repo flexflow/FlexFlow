@@ -209,6 +209,24 @@ void add_with_stride(float* output,
   }
 }
 
+__global__
+void copy_with_stride(float* output,
+                      const float* input,
+                      int num_blocks,
+                      int output_blk_size,
+                      int input_blk_size)
+{
+  int min_blk_size = min(output_blk_size, input_blk_size);
+  CUDA_KERNEL_LOOP(i, num_blocks * min_blk_size)
+  {
+    int blk_idx = i / min_blk_size;
+    int blk_offset = i % min_blk_size;
+    int input_offset = blk_idx * input_blk_size + blk_offset;
+    int output_offset = blk_idx * output_blk_size + blk_offset;
+    output[output_offset] = input[input_offset];
+  }
+}
+
 /*
   regions[0](O): output
   regions[1..numInputs](I): inputs
@@ -272,14 +290,19 @@ void Concat::forward_task(const Task *task,
       assert(false);
   }
   for (int i = 0; i < cc->numInputs; i++) {
-    add_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS>>>(
+    copy_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS>>>(
         output, inputs[i], num_blocks, output_blk_size, input_blk_sizes[i]);
+    //printf("output = %x num_blocks=%d output_blk_size=%d input_blk_size[%d]=%d\n",
+    //       output, num_blocks, output_blk_size, i, input_blk_sizes[i]);
     output += input_blk_sizes[i];
   }
   checkCUDA(cudaDeviceSynchronize());
   if (cc->profiling) {
     Rect<2> rect(Point<2>(0, 0), Point<2>(output_blk_size-1, domain.get_volume() / output_blk_size - 1));
     print_tensor<2, float>(output - output_blk_size, rect, "[Concat:forward:output]");
+    printf("output-output_blk_size=%x\n", output - output_blk_size);
+    Rect<2> input_rec(Point<2>(0, 0), Point<2>(input_blk_sizes[0]-1, domain.get_volume() / output_blk_size - 1));
+    print_tensor<2, float>(inputs[0], rect, "[Concat:forward:input0]");
   }
 #ifdef DEADCODE
   const AccessorWO<float, 3> acc_output(regions[0], FID_DATA);
@@ -408,8 +431,8 @@ void Concat::backward_task(const Task *task,
     int batch_size = domain.get_volume() / output_blk_size;
     Rect<2> output_rect(Point<2>(0, 0), Point<2>(output_blk_size-1, batch_size - 1));
     Rect<2> input_rect(Point<2>(0, 0), Point<2>(input_blk_sizes[0]-1, batch_size - 1));
-    print_tensor<2, float>(output_grad - output_blk_size, output_rect, "[Concat:forward:output]");
-    print_tensor<2, float>(input_grads[0], input_rect, "[Concat:forward:input0]");
+    print_tensor<2, float>(output_grad - output_blk_size, output_rect, "[Concat:backward:output]");
+    print_tensor<2, float>(input_grads[0], input_rect, "[Concat:backward:input0]");
   }
 #ifdef DEADCODE
   const AccessorRO<float, 3> acc_output(regions[0], FID_DATA);

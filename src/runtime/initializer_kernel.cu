@@ -34,6 +34,9 @@ void UniformInitializer::init_task(const Task* task,
   UniformInitializer* initializer = (UniformInitializer*) task->args;
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  curandSetStream(gen, stream);
   //fprintf(stderr, "seed = %d\n", initializer->seed);
 
   curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);

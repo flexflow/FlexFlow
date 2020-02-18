@@ -14,6 +14,7 @@
  */
 
 #include "model.h"
+#define MAX_NUM_SAMPLES 4196
 
 using namespace Legion;
 using namespace std;
@@ -39,6 +40,7 @@ struct CandleConfig {
   vector<int> dense_layers, dense_feature_layers;
   map<string, int> feature_shapes;
   map<string, string> input_features;
+  std::string dataset_path;
 };
 
 class DataLoader {
@@ -50,8 +52,20 @@ public:
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx,
                          Runtime* runtime);
-  static void load_label(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
-                         Context ctx,
-                         Runtime* runtime);
+  static void load_entire_dataset(const Task *task,
+                                  const std::vector<PhysicalRegion> &regions,
+                                  Context ctx,
+                                  Runtime* runtime);
+  void next_batch(FFModel&);
+  void reset(void);
+public:
+  int num_samples, next_index;
+  std::vector<Tensor> full_inputs, batch_inputs;
+  Tensor full_label, batch_label;
 };
+
+struct SampleIdxs {
+  int num_samples;
+  int idxs[MAX_NUM_SAMPLES];
+};
+
