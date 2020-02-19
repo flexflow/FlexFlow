@@ -20,117 +20,16 @@
 #include "initializer.h"
 #include "optimizer.h"
 #include "accessor.h"
-//#include <cudnn.h>
-//#include <cuda_runtime.h>
-//#include <curand.h>
-//#include <cublas_v2.h>
+#include <cudnn.h>
+#include <cuda_runtime.h>
+#include <curand.h>
+#include <cublas_v2.h>
 #include <unistd.h>
 
 using namespace Legion;
 
-enum TaskIDs {
-  TOP_LEVEL_TASK_ID,
-  FF_INIT_TASK_ID,
-  IMAGE_INIT_TASK_ID,
-  LABEL_INIT_TASK_ID,
-  LOAD_IMAGES_TASK_ID,
-  NORMALIZE_IMAGES_TASK_ID,
-  CONV2D_INIT_TASK_ID,
-  CONV2D_INIT_PARA_TASK_ID,
-  CONV2D_FWD_TASK_ID,
-  CONV2D_BWD_TASK_ID,
-  CONV2D_UPD_TASK_ID,
-  EMBED_FWD_TASK_ID,
-  EMBED_BWD_TASK_ID,
-  POOL2D_INIT_TASK_ID,
-  POOL2D_FWD_TASK_ID,
-  POOL2D_BWD_TASK_ID,
-  BATCHNORM_INIT_TASK_ID,
-  BATCHNORM_INIT_PARA_TASK_ID,
-  BATCHNORM_FWD_TASK_ID,
-  BATCHNORM_BWD_TASK_ID,
-  LINEAR_INIT_TASK_ID,
-  LINEAR_INIT_PARA_TASK_ID,
-  LINEAR_FWD_TASK_ID,
-  LINEAR_BWD_TASK_ID,
-  LINEAR_BWD2_TASK_ID,
-  LINEAR_UPD_TASK_ID,
-  FLAT_INIT_TASK_ID,
-  FLAT_FWD_TASK_ID,
-  FLAT_BWD_TASK_ID,
-  SOFTMAX_INIT_TASK_ID,
-  SOFTMAX_FWD_TASK_ID,
-  SOFTMAX_BWD_TASK_ID,
-  CONCAT_INIT_TASK_ID,
-  CONCAT_FWD_TASK_ID,
-  CONCAT_BWD_TASK_ID,
-  MSELOSS_BWD_TASK_ID,
-  UPDATE_METRICS_TASK_ID,
-  DUMMY_TASK_ID,
-  // Optimizer
-  SGD_UPD_TASK_ID,
-  ADAM_UPD_TASK_ID,
-  // Initializer
-  GLOROT_INIT_TASK_ID,
-  ZERO_INIT_TASK_ID,
-  UNIFORM_INIT_TASK_ID,
-  NORMAL_INIT_TASK_ID,
-  // Custom tasks
-  CUSTOM_GPU_TASK_ID_FIRST,
-  CUSTOM_GPU_TASK_ID_1,
-  CUSTOM_GPU_TASK_ID_2,
-  CUSTOM_GPU_TASK_ID_3,
-  CUSTOM_GPU_TASK_ID_4,
-  CUSTOM_GPU_TASK_ID_5,
-  CUSTOM_GPU_TASK_ID_6,
-  CUSTOM_GPU_TASK_ID_7,
-  CUSTOM_GPU_TASK_ID_LAST,
-  CUSTOM_CPU_TASK_ID_FIRST,
-  CUSTOM_CPU_TASK_ID_1,
-  CUSTOM_CPU_TASK_ID_2,
-  CUSTOM_CPU_TASK_ID_3,
-  CUSTOM_CPU_TASK_ID_4,
-  CUSTOM_CPU_TASK_ID_5,
-  CUSTOM_CPU_TASK_ID_6,
-  CUSTOM_CPU_TASK_ID_7,
-  CUSTOM_CPU_TASK_ID_LAST,
-};
+#include "ffconst.h"
 
-enum ShardingID {
-  DataParallelShardingID = 135,
-};
-
-enum ActiMode {
-  AC_MODE_NONE,
-  AC_MODE_RELU,
-  AC_MODE_SIGMOID,
-  AC_MODE_TANH,
-};
-
-enum AggrMode {
-  AGGR_MODE_NONE,
-  AGGR_MODE_SUM,
-  AGGR_MODE_AVG,
-};
-
-enum PoolType {
-  POOL_MAX,
-  POOL_AVG,
-};
-
-enum DataType {
-  DT_FLOAT,
-  DT_DOUBLE,
-  DT_INT32,
-  DT_INT64,
-  DT_BOOLEAN,
-};
-
-enum FieldIDs {
-  FID_DATA,
-};
-
-#if 0
 struct PerfMetrics
 {
   float train_loss;
@@ -698,6 +597,5 @@ void data_load_task(const Task* task,
                     Context ctx, Runtime* runtime);
 
 void register_custom_tasks();
-#endif
 #endif//_FLEXFLOW_RUNTIME_H_
 

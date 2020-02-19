@@ -18,8 +18,11 @@ ifndef LG_RT_DIR
 LG_RT_DIR	?= ../../legion/runtime
 endif
 
+CUDNN_DIR ?= /scratch/shared/wwu12/cudnn
+CUDA_DIR ?= /spack/opt/spack/linux-scientific7-x86_64/gcc-7.3.0/cuda-10.0.130-etoqn3vlwx2os25n3rmtksntnu5ioorb
+
 # Flags for directing the runtime makefile what to include
-DEBUG           ?= 0		# Include debugging symbols
+DEBUG           ?= 1		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
@@ -38,14 +41,14 @@ GEN_GPU_SRC	?= ../../src/ops/conv_2d.cu ../../src/runtime/model.cu ../../src/ops
 		../../src/runtime/cuda_helper.cu # .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -I../../include/ -I/autofs/nccs-svm1_home1/zhihao/tools/protobuf/src
+INC_FLAGS	?= -I../../include/ -I/home/wwu12/opt/include -I$(CUDNN_DIR)/include -I$(CUDA_DIR)/include
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L/autofs/nccs-svm1_home1/zhihao/tools/protobuf/src/.libs
+LD_FLAGS	?= -L$(CUDNN_DIR)/lib64 -lcudnn -L$(CUDA_DIR)/lib64 -lcublas -lcurand -L/home/wwu12/opt/lib -lprotobuf
 # For Point and Rect typedefs
-CC_FLAGS	+= -std=c++11
-NVCC_FLAGS  	+= -std=c++11
+CC_FLAGS	+= -std=c++11 -DFF_USE_CUDA
+NVCC_FLAGS  	+= -std=c++11 -DFF_USE_CUDA
 ###########################################################################
 #
 #   Don't change anything below here

@@ -27,13 +27,16 @@ ifndef PROTOBUF_DIR
 $(error PROTOBUF_DIR variable is not defined, aborting build)
 endif
 
+CUDNN_DIR ?= /scratch/shared/wwu12/cudnn
+CUDA_DIR ?= /spack/opt/spack/linux-scientific7-x86_64/gcc-7.3.0/cuda-10.0.130-etoqn3vlwx2os25n3rmtksntnu5ioorb
+
 PROTOBUF_EXE ?= $(PROTOBUF_DIR)/bin/protoc
 
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 1		# Include debugging symbols
-MAX_DIM         ?= 3		# Maximum number of dimensions
+MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
-USE_CUDA        ?= 0		# Include CUDA support (requires CUDA)
+USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
@@ -50,11 +53,11 @@ GEN_SRC		?= main.cc flexflow/hello/hello.cc strategy.pb.cc $(FF_DIR)/src/mapper/
 GEN_GPU_SRC	?=		# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -I$(FF_DIR)/include -I$(PROTOBUF_DIR)/include
+INC_FLAGS	?= -I$(FF_DIR)/include -I$(PROTOBUF_DIR)/include -I$(CUDNN_DIR)/include -I$(CUDA_DIR)/include 
 CC_FLAGS	?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_CPU
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -L$(PROTOBUF_DIR)/lib -lprotobuf
+LD_FLAGS	?= -L$(PROTOBUF_DIR)/lib -lprotobuf -L$(CUDNN_DIR)/lib64 -lcudnn -L$(CUDA_DIR)/lib64 -lcublas -lcurand
 
 ifeq ($(shell uname), Darwin)
 	LD_FLAGS += -Wl,-force_load,liblegion.a
