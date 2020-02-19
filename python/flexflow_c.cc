@@ -27,10 +27,78 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_sgd_optimizer_t, SGDOptimizer *);
 };
 
+// -----------------------------------------------------------------------
+// FFConfig
+// -----------------------------------------------------------------------
+
+flexflow_config_t
+flexflow_config_create()
+{
+  FFConfig *config = new FFConfig();
+  Runtime *runtime = Runtime::get_runtime();
+  config->lg_hlr = runtime;
+  config->lg_ctx = Runtime::get_context();
+  config->field_space = runtime->create_field_space(config->lg_ctx);
+  return FFCObjectWrapper::wrap(config);
+}
+
+void
+flexflow_config_destroy(
+  flexflow_config_t handle_)
+{
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  delete handle;
+}
+
+void
+flexflow_config_parse_args(
+  flexflow_config_t handle_,
+  char** argv, 
+  int argc)
+{
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->parse_args(argv, argc);  
+}
+
+int
+flexflow_config_get_batch_size(
+  flexflow_config_t handle_)
+{
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->batchSize;
+}
+
+int
+flexflow_config_get_workers_per_node(
+  flexflow_config_t handle_)
+{
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->workersPerNode;
+}
+
+int
+flexflow_config_get_num_nodes(
+  flexflow_config_t handle_)
+{
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->numNodes;
+}
+
+int
+flexflow_config_get_epochs(
+  flexflow_config_t handle_)
+{
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->epochs;
+}
+
+// -----------------------------------------------------------------------
+// FFModel
+// -----------------------------------------------------------------------
+
 flexflow_model_t
 flexflow_model_create(
-  flexflow_config_t config_
-)
+  flexflow_config_t config_)
 {
   FFConfig *config = FFCObjectWrapper::unwrap(config_);
   FFModel *model = new FFModel(*config);
@@ -44,6 +112,66 @@ flexflow_model_destroy(
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   delete handle;
 }
+
+void
+flexflow_model_reset_metrics(
+  flexflow_model_t handle_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->reset_metrics();
+}
+
+void
+flexflow_model_init_layers(
+  flexflow_model_t handle_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->init_layers();
+}
+
+void
+flexflow_model_prefetch(
+  flexflow_model_t handle_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->prefetch();
+}
+
+void
+flexflow_model_forward(
+  flexflow_model_t handle_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->forward();
+}
+
+void
+flexflow_model_backward(
+  flexflow_model_t handle_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->backward();
+}
+
+void
+flexflow_model_update(
+  flexflow_model_t handle_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->update();
+}
+
+void
+flexflow_model_zero_gradients(
+  flexflow_model_t handle_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->zero_gradients();
+}
+
+// -----------------------------------------------------------------------
+// Tensor
+// -----------------------------------------------------------------------
 
 flexflow_tensor_t
 flexflow_tensor_4d_create(
@@ -67,6 +195,10 @@ flexflow_tensor_4d_destroy(
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
   delete handle;
 }
+
+// -----------------------------------------------------------------------
+// SGDOptimizer
+// -----------------------------------------------------------------------
 
 flexflow_sgd_optimizer_t
 flexflow_sgd_optimizer_create(

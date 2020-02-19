@@ -816,6 +816,7 @@ ShardID DataParallelShardingFunctor::shard(const DomainPoint &point,
   return (point[idx] - full_space.lo()[idx]) / samples_per_shard;
 }
 
+#if !defined(FF_USE_PYTHON)
 // ========================================================
 // Task and mapper registrations
 // ========================================================
@@ -1139,6 +1140,8 @@ int main(int argc, char** argv)
   Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);
   return Runtime::start(argc, argv);
 }
+
+#endif // FF_USE_PYTHON
 
 // template instantiations
 template Tensor FFModel::create_tensor<1>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);

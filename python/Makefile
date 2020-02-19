@@ -48,14 +48,20 @@ PYTHON_VERSION_MAJOR ?= 3
 
 # Put the binary file name here
 OUTFILE		?= flexflow_python
+
 # List all the application source files here
-GEN_SRC		?= main.cc flexflow/hello/hello.cc strategy.pb.cc $(FF_DIR)/src/mapper/mapper.cc $(FF_DIR)/src/runtime/strategy.cc  # .cc files
-GEN_GPU_SRC	?=		# .cu files
+FF_SRC ?= $(FF_DIR)/src/mapper/mapper.cc $(FF_DIR)/src/runtime/strategy.cc $(FF_DIR)/src/runtime/model.cc $(FF_DIR)/src/runtime/optimizer.cc $(FF_DIR)/src/runtime/initializer.cc $(FF_DIR)/src/ops/embedding.cc 
+FF_GPU_SRC ?= $(FF_DIR)/src/ops/conv_2d.cu $(FF_DIR)/src/runtime/model.cu $(FF_DIR)/src/ops/pool_2d.cu $(FF_DIR)/src/ops/batch_norm.cu $(FF_DIR)/src/ops/linear.cu  \
+		$(FF_DIR)/src/ops/softmax.cu $(FF_DIR)/src/ops/concat.cu $(FF_DIR)/src/ops/flat.cu $(FF_DIR)/src/ops/embedding.cu $(FF_DIR)/src/ops/mse_loss.cu\
+		$(FF_DIR)/src/runtime/initializer_kernel.cu $(FF_DIR)/src/runtime/optimizer_kernel.cu $(FF_DIR)/src/runtime/accessor_kernel.cu\
+		$(FF_DIR)/src/runtime/cuda_helper.cu
+GEN_SRC		?= main.cc flexflow/hello/hello.cc flexflow_c.cc strategy.pb.cc $(FF_SRC) # .cc files
+GEN_GPU_SRC	?= $(FF_GPU_SRC)		# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
 INC_FLAGS	?= -I$(FF_DIR)/include -I$(PROTOBUF_DIR)/include -I$(CUDNN_DIR)/include -I$(CUDA_DIR)/include 
-CC_FLAGS	?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_CPU
-NVCC_FLAGS	?=
+CC_FLAGS	?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON -std=c++11
+NVCC_FLAGS	?= -std=c++11
 GASNET_FLAGS	?=
 LD_FLAGS	?= -L$(PROTOBUF_DIR)/lib -lprotobuf -L$(CUDNN_DIR)/lib64 -lcudnn -L$(CUDA_DIR)/lib64 -lcublas -lcurand
 
