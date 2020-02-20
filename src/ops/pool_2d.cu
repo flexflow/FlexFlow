@@ -102,8 +102,8 @@ Pool2D::Pool2D(std::string _name, FFConfig _config,
   output.part = output_lp;
   output.region_grad = output_grad_lr;
   output.part_grad = output_grad_lp;
-  printf("Create pool2d layer: output(n=%d c=%d h=%d w=%d)\n",
-         output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
+  printf("Create pool2d layer: name %s, output(n=%d c=%d h=%d w=%d)\n",
+         _name.c_str(), output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
   // Compute partition bound for input
   Rect<4> input_part_rect =

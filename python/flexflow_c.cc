@@ -169,6 +169,84 @@ flexflow_model_zero_gradients(
   handle->zero_gradients();
 }
 
+flexflow_tensor_t
+flexflow_model_add_conv2d(
+  flexflow_model_t handle_,
+  char* name,
+  const flexflow_tensor_t input_,
+  int out_channels,
+  int kernel_h, int kernel_w,
+  int stride_h, int stride_w,
+  int padding_h, int padding_w,
+  ActiMode activation /* AC_MODE_NONE */)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->conv2d(name, *input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation);
+  return FFCObjectWrapper::wrap(tensor);   
+}
+
+flexflow_tensor_t
+flexflow_model_add_pool2d(
+  flexflow_model_t handle_,
+  char* name,
+  const flexflow_tensor_t input_,
+  int kernel_h, int kernel_w,
+  int stride_h, int stride_w,
+  int padding_h, int padding_w,
+  PoolType type /* POOL_MAX */, 
+  bool relu /* true */)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->pool2d(name, *input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, type, relu);
+  return FFCObjectWrapper::wrap(tensor); 
+}
+
+flexflow_tensor_t
+flexflow_model_add_linear(
+  flexflow_model_t handle_,
+  char* name,
+  const flexflow_tensor_t input_,
+  int out_channels,
+  ActiMode activation /* AC_MODE_NONE */,
+  bool use_bias /* true */)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->linear(name, *input, out_channels, activation, use_bias);
+  return FFCObjectWrapper::wrap(tensor); 
+}
+
+flexflow_tensor_t
+flexflow_model_add_flat(
+  flexflow_model_t handle_,
+  char* name,
+  const flexflow_tensor_t input_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->flat(name, *input);
+  return FFCObjectWrapper::wrap(tensor);  
+}
+
+flexflow_tensor_t
+flexflow_model_add_softmax(
+  flexflow_model_t handle_,
+  char* name,
+  const flexflow_tensor_t input_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->softmax(name, *input);
+  return FFCObjectWrapper::wrap(tensor);   
+}
+
 // -----------------------------------------------------------------------
 // Tensor
 // -----------------------------------------------------------------------
@@ -183,8 +261,7 @@ flexflow_tensor_4d_create(
 {
   Tensor *tensor = new Tensor();
   FFModel *model = FFCObjectWrapper::unwrap(model_);
-  Tensor tmp_tensor = model->create_tensor<4>(dims, pc_name, data_type, create_grad);
-  *tensor = tmp_tensor;
+  *tensor = model->create_tensor<4>(dims, pc_name, data_type, create_grad);
   return FFCObjectWrapper::wrap(tensor);
 }
 

@@ -87,6 +87,49 @@ void
 flexflow_model_zero_gradients(
   flexflow_model_t handle);
 
+flexflow_tensor_t
+flexflow_model_add_conv2d(
+  flexflow_model_t handle,
+  char* name,
+  const flexflow_tensor_t input,
+  int out_channels,
+  int kernel_h, int kernel_w,
+  int stride_h, int stride_w,
+  int padding_h, int padding_w,
+  ActiMode activation /* AC_MODE_NONE */);
+  
+flexflow_tensor_t
+flexflow_model_add_pool2d(
+  flexflow_model_t handle,
+  char* name,
+  const flexflow_tensor_t input,
+  int kernel_h, int kernel_w,
+  int stride_h, int stride_w,
+  int padding_h, int padding_w,
+  PoolType type /* POOL_MAX */, 
+  bool relu /* true */);
+  
+flexflow_tensor_t
+flexflow_model_add_linear(
+  flexflow_model_t handle,
+  char* name,
+  const flexflow_tensor_t input,
+  int out_channels,
+  ActiMode activation /* AC_MODE_NONE */,
+  bool use_bias /* true */);
+  
+flexflow_tensor_t
+flexflow_model_add_flat(
+  flexflow_model_t handle,
+  char* name,
+  const flexflow_tensor_t input);
+  
+flexflow_tensor_t
+flexflow_model_add_softmax(
+  flexflow_model_t handle,
+  char* name,
+  const flexflow_tensor_t input);
+
 // -----------------------------------------------------------------------
 // Tensor
 // -----------------------------------------------------------------------
@@ -103,6 +146,10 @@ void
 flexflow_tensor_4d_destroy(
   flexflow_tensor_t handle);
   
+// -----------------------------------------------------------------------
+// SGDOptimizer
+// -----------------------------------------------------------------------
+
 flexflow_sgd_optimizer_t
 flexflow_sgd_optimizer_create(
   flexflow_model_t model,
@@ -110,10 +157,6 @@ flexflow_sgd_optimizer_create(
   double momentum, /* 0.0f */
   bool nesterov, /* false */
   double weight_decay /* 0.0f */ );
-
-// -----------------------------------------------------------------------
-// SGDOptimizer
-// -----------------------------------------------------------------------
 
 void 
 flexflow_sgd_optimizer_destroy(

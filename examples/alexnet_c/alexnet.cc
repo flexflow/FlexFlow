@@ -52,10 +52,14 @@ void top_level_task(const Task* task,
     //label = ff.create_tensor<2>(dims, "", DT_FLOAT);
   //}
   // Add layers
-  Tensor *tmp_t = static_cast<Tensor *>(input.impl); 
+
+  flexflow_tensor_t t0 = input;
+  flexflow_tensor_t t1 = flexflow_model_add_conv2d(ffmodel, "conv1", t0, 64, 11, 11, 4, 4, 2, 2, AC_MODE_NONE);
+  flexflow_tensor_t t2 = flexflow_model_add_pool2d(ffmodel, "pool1", t1, 3, 3, 2, 2, 0, 0, POOL_MAX, true);
+  Tensor *tmp_t = static_cast<Tensor *>(t2.impl); 
   Tensor t = *tmp_t;
-  t = ff->conv2d("conv1", t, 64, 11, 11, 4, 4, 2, 2);
-  t = ff->pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
+  //t = ff->conv2d("conv1", t, 64, 11, 11, 4, 4, 2, 2);
+  //t = ff->pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
   t = ff->conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2);
   t = ff->pool2d("pool2", t, 3, 3, 2, 2, 0, 0);
   t = ff->conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1);

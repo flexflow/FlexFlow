@@ -167,8 +167,8 @@ Conv2D::Conv2D(FFModel& model,
   output.part = output_lp;
   output.region_grad = output_grad_lr;
   output.part_grad = output_grad_lp;
-  printf("Create conv layer: output(n=%d c=%d h=%d w=%d)\n",
-         output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
+  printf("Create conv layer: name %s, output(n=%d c=%d h=%d w=%d)\n",
+         pcname.c_str(), output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
   // Compute partition bound for input
   Rect<4> input_part_rect =
