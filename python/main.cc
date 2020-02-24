@@ -44,6 +44,8 @@ VariantID preregister_python_task_variant(
     registrar.task_variant_name);
 }
 
+void register_flexflow_tasks();
+
 int main(int argc, char **argv)
 {
 #ifdef BINDINGS_AUGMENT_PYTHONPATH
@@ -85,6 +87,7 @@ int main(int argc, char **argv)
   {
     TaskVariantRegistrar registrar(MAIN_TASK_ID, "flexflow_top_level_task");
     registrar.add_constraint(ProcessorConstraint(Processor::PY_PROC));
+    registrar.set_replicable();
     preregister_python_task_variant(registrar, "flexflow.core", "flexflow_top_level_task");
   }
   
@@ -93,6 +96,8 @@ int main(int argc, char **argv)
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     Runtime::preregister_task_variant<hello_world_task>(registrar, "hello_world_task");
   }
+  
+  register_flexflow_tasks();
   
 
   Runtime::set_top_level_task_id(MAIN_TASK_ID);

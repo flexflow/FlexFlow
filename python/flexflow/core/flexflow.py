@@ -17,11 +17,13 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import gc
 import os
 import sys
 import threading
 
 from flexflow.core.legion import *
+from flexflow.core.cbinding import *
 from flexflow.core.legion_cffi import ffi, lib as c
 
 
@@ -120,6 +122,7 @@ def flexflow_top_level_task(raw_args, user_data, proc):
     assert len(args) >= 2
     sys.argv = list(args)
     run_path(args[1], run_name='__main__')
+    print("end top-level task")
 
     # # Hack: Keep this thread alive because otherwise Python will reuse
     # # it for task execution and Pygion's thread-local state (_my.ctx)
@@ -134,9 +137,12 @@ def flexflow_top_level_task(raw_args, user_data, proc):
     del top_level.context
     del top_level.task
     del top_level.cleanup_items
+    
+    gc.collect()
 
     # Execute postamble.
     c.legion_task_postamble(runtime[0], context[0], ffi.NULL, 0)
+    #print("real end top-level task")
     
 def get_legion_runtime():
     return top_level.runtime

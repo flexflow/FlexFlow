@@ -39,6 +39,7 @@ flexflow_config_create()
   config->lg_hlr = runtime;
   config->lg_ctx = Runtime::get_context();
   config->field_space = runtime->create_field_space(config->lg_ctx);
+  printf("new FFConfig %p\n", config);
   return FFCObjectWrapper::wrap(config);
 }
 
@@ -47,6 +48,7 @@ flexflow_config_destroy(
   flexflow_config_t handle_)
 {
   FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  printf("delete FFConfig %p\n", handle);
   delete handle;
 }
 
@@ -57,6 +59,17 @@ flexflow_config_parse_args(
   int argc)
 {
   FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->parse_args(argv, argc);  
+}
+
+void
+flexflow_config_parse_default_args(
+  flexflow_config_t handle_)
+{
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  const InputArgs &command_args = Runtime::get_input_args();
+  char **argv = command_args.argv;
+  int argc = command_args.argc;
   handle->parse_args(argv, argc);  
 }
 
@@ -102,6 +115,7 @@ flexflow_model_create(
 {
   FFConfig *config = FFCObjectWrapper::unwrap(config_);
   FFModel *model = new FFModel(*config);
+  printf("new FFModel %p\n", model);
   return FFCObjectWrapper::wrap(model);
 }
 
@@ -110,6 +124,7 @@ flexflow_model_destroy(
   flexflow_model_t handle_)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  printf("delete FFModel %p\n", handle); 
   delete handle;
 }
 
@@ -172,7 +187,7 @@ flexflow_model_zero_gradients(
 flexflow_tensor_t
 flexflow_model_add_conv2d(
   flexflow_model_t handle_,
-  char* name,
+  const char* name,
   const flexflow_tensor_t input_,
   int out_channels,
   int kernel_h, int kernel_w,
@@ -190,7 +205,7 @@ flexflow_model_add_conv2d(
 flexflow_tensor_t
 flexflow_model_add_pool2d(
   flexflow_model_t handle_,
-  char* name,
+  const char* name,
   const flexflow_tensor_t input_,
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
@@ -208,7 +223,7 @@ flexflow_model_add_pool2d(
 flexflow_tensor_t
 flexflow_model_add_linear(
   flexflow_model_t handle_,
-  char* name,
+  const char* name,
   const flexflow_tensor_t input_,
   int out_channels,
   ActiMode activation /* AC_MODE_NONE */,
@@ -222,9 +237,24 @@ flexflow_model_add_linear(
 }
 
 flexflow_tensor_t
+flexflow_model_add_concat(
+  flexflow_model_t handle_,
+  const char* name,
+  int n,
+  flexflow_tensor_t input_,
+  int axis)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->concat(name, n, input, axis);
+  return FFCObjectWrapper::wrap(tensor); 
+}
+
+flexflow_tensor_t
 flexflow_model_add_flat(
   flexflow_model_t handle_,
-  char* name,
+  const char* name,
   const flexflow_tensor_t input_)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
@@ -245,6 +275,16 @@ flexflow_model_add_softmax(
   Tensor *tensor = new Tensor();
   *tensor = handle->softmax(name, *input);
   return FFCObjectWrapper::wrap(tensor);   
+}
+
+void
+flexflow_model_set_sgd_optimizer(
+  flexflow_model_t handle_, 
+  flexflow_sgd_optimizer_t optimizer_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  SGDOptimizer *optimizer = FFCObjectWrapper::unwrap(optimizer_);
+  handle->optimizer = static_cast<Optimizer *>(optimizer);
 }
 
 // -----------------------------------------------------------------------

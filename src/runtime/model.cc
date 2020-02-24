@@ -1135,10 +1135,36 @@ int main(int argc, char** argv)
   // Register custom tasks
   register_custom_tasks();
 
-  Runtime::add_registration_callback(update_mappers);
   DataParallelShardingFunctor* sharding_functor = new DataParallelShardingFunctor();
   Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);
+  
+  Runtime::add_registration_callback(update_mappers);
   return Runtime::start(argc, argv);
+}
+
+#else
+void register_flexflow_tasks()
+{
+  printf("register flexflow tasks\n");
+  // CNN_INIT_TASK
+  {
+    TaskVariantRegistrar registrar(FF_INIT_TASK_ID, "cuda_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<FFHandler, UtilityTasks::init_cuda_task>(
+        registrar, "cuda_init_task");
+  }
+  // update metrics
+  {
+    TaskVariantRegistrar registrar(UPDATE_METRICS_TASK_ID, "Update Metrics");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<PerfMetrics, FFModel::update_metrics_task>(
+        registrar, "Update Metrics Task");
+  }
+  
+  DataParallelShardingFunctor* sharding_functor = new DataParallelShardingFunctor();
+  Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);
 }
 
 #endif // FF_USE_PYTHON

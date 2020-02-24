@@ -1,7 +1,7 @@
 #ifndef __FLEXFLOW_C_H__
 #define __FLEXFLOW_C_H__
 
-#include "ffconst.h"
+//#include "ffconst.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -11,8 +11,8 @@ extern "C" {
 
 FF_NEW_OPAQUE_TYPE(flexflow_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_model_t);
-FF_NEW_OPAQUE_TYPE(flexflow_tensor_t);
-FF_NEW_OPAQUE_TYPE(flexflow_sgd_optimizer_t);
+//FF_NEW_OPAQUE_TYPE(flexflow_tensor_t);
+//FF_NEW_OPAQUE_TYPE(flexflow_sgd_optimizer_t);
 
 // -----------------------------------------------------------------------
 // FFConfig
@@ -34,7 +34,7 @@ flexflow_config_parse_args(
 void
 flexflow_config_parse_default_args(
   flexflow_config_t handle);  
-
+  
 int
 flexflow_config_get_batch_size(
   flexflow_config_t handle);
@@ -63,6 +63,7 @@ void
 flexflow_model_destroy(
   flexflow_model_t handle);
 
+#if 0
 void
 flexflow_model_reset_metrics(
   flexflow_model_t handle);
@@ -179,7 +180,7 @@ void
 flexflow_sgd_optimizer_destroy(
   flexflow_sgd_optimizer_t handle);
 
-
+#endif
 #ifdef __cplusplus
 }
 #endif

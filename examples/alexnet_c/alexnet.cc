@@ -27,16 +27,16 @@ void top_level_task(const Task* task,
 {
   flexflow_config_t ffconfig;
   ffconfig = flexflow_config_create();
-  {
-    const InputArgs &command_args = HighLevelRuntime::get_input_args();
-    char **argv = command_args.argv;
-    int argc = command_args.argc;
-    flexflow_config_parse_args(ffconfig, argv, argc);
-    log_app.print("C API batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-        flexflow_config_get_batch_size(ffconfig), flexflow_config_get_workers_per_node(ffconfig), flexflow_config_get_num_nodes(ffconfig));
-  }
+
+  flexflow_config_parse__default_args(ffconfig);
+  log_app.print("C API batchSize(%d) workersPerNodes(%d) numNodes(%d)",
+    flexflow_config_get_batch_size(ffconfig), flexflow_config_get_workers_per_node(ffconfig), flexflow_config_get_num_nodes(ffconfig));
   
   flexflow_model_t ffmodel = flexflow_model_create(ffconfig);
+#if 1
+  flexflow_model_destroy(ffmodel);
+  flexflow_config_destroy(ffconfig);
+#else  
   FFModel *ff = static_cast<FFModel *>(ffmodel.impl);
 
   //Tensor input;
@@ -72,9 +72,7 @@ void top_level_task(const Task* task,
   t = ff->linear("linear3", t, 1000, AC_MODE_RELU/*relu*/);
   t = ff->softmax("softmax", t);
 
-  flexflow_model_t model;
-  model.impl = static_cast<void *>(ff);
-  flexflow_sgd_optimizer_t optimizer = flexflow_sgd_optimizer_create(model, 0.01f, 0, false, 0);
+  flexflow_sgd_optimizer_t optimizer = flexflow_sgd_optimizer_create(ffmodel, 0.01f, 0, false, 0);
   SGDOptimizer *sgd_opt = static_cast<SGDOptimizer *>(optimizer.impl);
   ff->optimizer = sgd_opt;
   //ff.optimizer = new SGDOptimizer(&ff, 0.01f);
@@ -123,6 +121,7 @@ void top_level_task(const Task* task,
   double run_time = 1e-6 * (ts_end - ts_start);
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
          8192 * flexflow_config_get_epochs(ffconfig) / run_time);
+#endif
 }
 
 void register_custom_tasks()
