@@ -75,7 +75,6 @@ class FFModel(object):
     
   def create_tensor_4d(self, dims, name, data_type, create_grad=True):
     c_dims = ffi.new("int[]", dims)
-    print(create_grad)
     c_data_type = 40
     if (data_type == DataType.DT_FLOAT):
       c_data_type = 40
