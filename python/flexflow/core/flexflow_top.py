@@ -25,8 +25,6 @@ import atexit
 import readline
 import threading
 
-from flexflow.core.legion import *
-from flexflow.core.cbinding import *
 from flexflow.core.legion_cffi import ffi, lib as c
 
 
