@@ -158,6 +158,7 @@ void top_level_task(const Task* task,
   log_app.print("Warmup finished...Start timer...");
   log_app.print("Num. epochs = %d", ffConfig.epochs);
   log_app.print("Num. iterations/epoch = %d", data_loader.num_samples / ffConfig.batchSize);
+  printf("parameters.size() = %lu\n", ff.parameters.size());
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     data_loader.reset();
@@ -171,14 +172,12 @@ void top_level_task(const Task* task,
       } else {
         data_loader.next_batch(ff);
       }
-      if (epoch > 0)
-        runtime->begin_trace(ctx, 111/*trace_id*/);
+      runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       //ff.zero_gradients();
       ff.backward();
-      ff.update();
-      if (epoch > 0)
-        runtime->end_trace(ctx, 111/*trace_id*/);
+      //ff.update();
+      runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
   // End timer

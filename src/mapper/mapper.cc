@@ -148,6 +148,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
                                    const Task& task,
                                    TaskOptions& output)
 {
+  unsigned long long task_hash = compute_task_hash(task);
   if (task.task_id == SGD_UPD_TASK_ID) {
     // For SGD Update, pick a processor from config
     // TODO: perform similar optimizations for other Optimizer
@@ -166,8 +167,21 @@ void FFMapper::select_task_options(const MapperContext ctx,
         return;
       }
     }
+    if (cache_update_tasks.find(task_hash) != cache_update_tasks.end()) {
+      output.initial_proc = cache_update_tasks[task_hash];
+      output.inline_task = false;
+      output.stealable = stealing_enabled;
+      output.map_locally = map_locally;
+      return;
+    }
   }
+  
   DefaultMapper::select_task_options(ctx, task, output);
+  if ((task.task_id == SGD_UPD_TASK_ID)
+  && (cache_update_tasks.find(task_hash) == cache_update_tasks.end())) {
+    cache_update_tasks[task_hash] = output.initial_proc;
+    printf("hash = %llu proc = %llu\n", task_hash, output.initial_proc.id);
+  }
 }
 
 void FFMapper::select_sharding_functor(const MapperContext ctx,
