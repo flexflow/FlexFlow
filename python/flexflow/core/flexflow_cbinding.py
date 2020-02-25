@@ -42,6 +42,14 @@ class DataType(Enum):
   DT_INT32 = 42
   DT_INT64 = 43
   DT_BOOLEAN = 44
+  
+def enum_to_int(enum, enum_item):
+  for item in enum:
+    if (enum_item == item):
+      return item.value
+  
+  assert 0, "unknow enum type " + str(enum_item) + " " + str(enum)    
+  return -1
 
 class FFConfig(object):
   def __init__(self):
@@ -75,60 +83,22 @@ class FFModel(object):
     
   def create_tensor_4d(self, dims, name, data_type, create_grad=True):
     c_dims = ffi.new("int[]", dims)
-    c_data_type = 40
-    if (data_type == DataType.DT_FLOAT):
-      c_data_type = 40
-    elif (data_type == DataType.DT_DOUBLE):
-      c_data_type = 41
-    elif (data_type == DataType.DT_INT32):
-      c_data_type = 42
-    elif (data_type == DataType.DT_INT64):
-      c_data_type = 43
-    elif (data_type == DataType.DT_BOOLEAN):
-      c_data_type = 44
-    else:
-      print("error, unknow data type ", data_type)
+    c_data_type = enum_to_int(DataType, data_type)
     handle = ffc.flexflow_tensor_4d_create(self.handle, c_dims, name.encode('utf-8'), c_data_type, create_grad);
     return Tensor(handle)
     
   def conv2d(self, name, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE):
-    c_activation = 10
-    if (activation == ActiMode.AC_MODE_NONE):
-      c_activation = 10
-    elif (activation == ActiMode.AC_MODE_RELU):
-      c_activation = 11
-    elif (activation == ActiMode.AC_MODE_SIGMOID):
-      c_activation = 12
-    elif (activation == ActiMode.AC_MODE_TANH):
-      c_activation = 13
-    else:
-      print("error, conv2d unknow activation mode ", activation)
+    c_activation = enum_to_int(ActiMode, activation)
     handle = ffc.flexflow_model_add_conv2d(self.handle, name.encode('utf-8'), input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation)  
     return Tensor(handle)
     
   def pool2d(self, name, input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, relu=True):
-    c_pool_type = 30
-    if (pool_type == PoolType.POOL_MAX):
-      c_pool_type = 30
-    elif (pool_type == PoolType.POOL_AVG):
-      c_pool_type = 31
-    else:
-      print("error, pool2d unknow Pool Type ", pool_type)
+    c_pool_type = enum_to_int(PoolType, pool_type)
     handle = ffc.flexflow_model_add_pool2d(self.handle, name.encode('utf-8'), input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, relu)
     return Tensor(handle)
     
   def linear(self, name, input, out_channels, activation=ActiMode.AC_MODE_NONE, use_bias=True):
-    c_activation = 10
-    if (activation == ActiMode.AC_MODE_NONE):
-      c_activation = 10
-    if (activation == ActiMode.AC_MODE_RELU):
-      c_activation = 11
-    if (activation == ActiMode.AC_MODE_SIGMOID):
-      c_activation = 12
-    if (activation == ActiMode.AC_MODE_TANH):
-      c_activation = 13
-    else:
-      print("error, linear unknow activation mode ", activation)
+    c_activation = enum_to_int(ActiMode, activation)
     handle = ffc.flexflow_model_add_linear(self.handle, name.encode('utf-8'), input.handle, out_channels, c_activation, use_bias)
     return Tensor(handle)
     
