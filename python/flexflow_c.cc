@@ -193,12 +193,13 @@ flexflow_model_add_conv2d(
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
-  ActiMode activation /* AC_MODE_NONE */)
+  enum ActiMode activation /* AC_MODE_NONE */)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
   Tensor *tensor = new Tensor();
   *tensor = handle->conv2d(name, *input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation);
+  printf("conv2d new Tensor 4D %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor);   
 }
 
@@ -210,13 +211,14 @@ flexflow_model_add_pool2d(
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
-  PoolType type /* POOL_MAX */, 
+  enum PoolType type /* POOL_MAX */, 
   bool relu /* true */)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
   Tensor *tensor = new Tensor();
   *tensor = handle->pool2d(name, *input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, type, relu);
+  printf("pool2d new Tensor 4D %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor); 
 }
 
@@ -226,13 +228,14 @@ flexflow_model_add_linear(
   const char* name,
   const flexflow_tensor_t input_,
   int out_channels,
-  ActiMode activation /* AC_MODE_NONE */,
+  enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* true */)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
   Tensor *tensor = new Tensor();
   *tensor = handle->linear(name, *input, out_channels, activation, use_bias);
+  printf("linear new Tensor 4D %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor); 
 }
 
@@ -248,6 +251,7 @@ flexflow_model_add_concat(
   Tensor *input = FFCObjectWrapper::unwrap(input_);
   Tensor *tensor = new Tensor();
   *tensor = handle->concat(name, n, input, axis);
+  printf("concat new Tensor 4D %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor); 
 }
 
@@ -261,6 +265,7 @@ flexflow_model_add_flat(
   const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
   Tensor *tensor = new Tensor();
   *tensor = handle->flat(name, *input);
+  printf("flat new Tensor 4D %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor);  
 }
 
@@ -274,6 +279,7 @@ flexflow_model_add_softmax(
   const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
   Tensor *tensor = new Tensor();
   *tensor = handle->softmax(name, *input);
+  printf("softmax new Tensor 4D %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor);   
 }
 
@@ -296,12 +302,13 @@ flexflow_tensor_4d_create(
   flexflow_model_t model_,
   const int* dims, 
   const char* pc_name, 
-  DataType data_type, 
+  enum DataType data_type, 
   bool create_grad /* true */)
 {
   Tensor *tensor = new Tensor();
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   *tensor = model->create_tensor<4>(dims, pc_name, data_type, create_grad);
+  printf("new Tensor 4D %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -310,6 +317,7 @@ flexflow_tensor_4d_destroy(
   flexflow_tensor_t handle_)
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  printf("delete Tensor 4D %p\n", handle);
   delete handle;
 }
 

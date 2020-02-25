@@ -100,7 +100,7 @@ flexflow_model_add_conv2d(
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
-  ActiMode activation /* AC_MODE_NONE */);
+  enum ActiMode activation /* AC_MODE_NONE */);
   
 flexflow_tensor_t
 flexflow_model_add_pool2d(
@@ -110,7 +110,7 @@ flexflow_model_add_pool2d(
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
-  PoolType type /* POOL_MAX */, 
+  enum PoolType type /* POOL_MAX */, 
   bool relu /* true */);
   
 flexflow_tensor_t
@@ -119,7 +119,7 @@ flexflow_model_add_linear(
   const char* name,
   const flexflow_tensor_t input,
   int out_channels,
-  ActiMode activation /* AC_MODE_NONE */,
+  enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* true */);
 
 flexflow_tensor_t
@@ -156,7 +156,7 @@ flexflow_tensor_4d_create(
   flexflow_model_t model,
   const int* dims, 
   const char* pc_name, 
-  DataType data_type, 
+  enum DataType data_type, 
   bool create_grad /* true */);
 
 void
