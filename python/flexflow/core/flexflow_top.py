@@ -20,6 +20,9 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import gc
 import os
 import sys
+import code
+import atexit
+import readline
 import threading
 
 from flexflow.core.legion import *
@@ -38,37 +41,90 @@ top_level = threading.local()
 
 
 def input_args(filter_runtime_options=False):
-    raw_args = c.legion_runtime_get_input_args()
+  raw_args = c.legion_runtime_get_input_args()
 
-    args = []
-    for i in range(raw_args.argc):
-        args.append(ffi.string(raw_args.argv[i]).decode('utf-8'))
+  args = []
+  for i in range(raw_args.argc):
+    args.append(ffi.string(raw_args.argv[i]).decode('utf-8'))
 
-    if filter_runtime_options:
-        i = 1 # Skip program name
+  if filter_runtime_options:
+    i = 1 # Skip program name
 
-        prefixes = ['-lg:', '-hl:', '-realm:', '-ll:', '-cuda:', '-numa:',
-                    '-dm:', '-bishop:']
-        while i < len(args):
-            match = False
-            for prefix in prefixes:
-                if args[i].startswith(prefix):
-                    match = True
-                    break
-            if args[i] == '-level':
-                match = True
-            if args[i] == '-logfile':
-                match = True
-            if match:
-                args.pop(i)
-                # Assume that every option has an argument, as long as
-                # the subsequent value does **NOT** start with a dash.
-                if i < len(args) and not args[i].startswith('-'):
-                    args.pop(i)
-                continue
-            i += 1
-    return args
+    prefixes = ['-lg:', '-hl:', '-realm:', '-ll:', '-cuda:', '-numa:',
+                '-dm:', '-bishop:']
+    while i < len(args):
+      match = False
+      for prefix in prefixes:
+        if args[i].startswith(prefix):
+          match = True
+          break
+      if args[i] == '-level':
+        match = True
+      if args[i] == '-logfile':
+        match = True
+      if match:
+        args.pop(i)
+        # Assume that every option has an argument, as long as
+        # the subsequent value does **NOT** start with a dash.
+        if i < len(args) and not args[i].startswith('-'):
+          args.pop(i)
+          continue
+      i += 1
+  return args
 
+# This code is borrowed from the Python docs:
+# https://docs.python.org/3/library/readline.html
+class LegionConsole(code.InteractiveConsole):
+  def __init__(self, locals=None, filename='<console>',
+               histfile = os.path.expanduser('~/.python-history')):
+    code.InteractiveConsole.__init__(self, locals, filename)
+    self.init_history(histfile)
+
+  def init_history(self, histfile):
+    readline.parse_and_bind('tab: complete')
+    if hasattr(readline, 'read_history_file'):
+      try:
+        readline.read_history_file(histfile)
+      except FileNotFoundError:
+        pass
+      atexit.register(self.save_history, histfile)
+
+  def save_history(self, histfile):
+      readline.set_history_length(10000)
+      readline.write_history_file(histfile)
+     
+def run_repl():
+  try:
+    shell = LegionConsole()
+    shell.interact(banner='Welcome to Legion Python interactive console')
+  except SystemExit:
+    pass
+    
+def run_cmd(cmd, run_name=None):
+    import imp
+    module = imp.new_module(run_name)
+    setattr(module, '__name__', run_name)
+    setattr(module, '__package__', None)
+
+    # Hide the current module if it exists.
+    old_module = sys.modules.get(run_name)
+    sys.modules[run_name] = module
+    code = compile(cmd, '<string>', 'eval')
+    exec(code, module.__dict__, module.__dict__)
+    # Wait for execution to finish here before removing the module
+    # because executing tasks might still need to refer to it
+    future = c.legion_runtime_issue_execution_fence(
+            top_level.runtime[0], top_level.context[0])
+    # block waiting on the future
+    c.legion_future_wait(future, True, ffi.NULL)
+    c.legion_future_destroy(future)
+    # Make sure our module gets deleted to clean up any references
+    # to variables the user might have made
+    if old_module is None:
+        del sys.modules[run_name]
+    else:
+        sys.modules[run_name] = old_module
+    del module
 
 # We can't use runpy for this since runpy is aggressive about
 # cleaning up after itself and removes the module before execution
@@ -82,21 +138,29 @@ def run_path(filename, run_name=None):
     setattr(module, '__package__', run_name.rpartition('.')[0])
 
     # Hide the current module if it exists.
-    old_module = sys.modules[run_name] if run_name in sys.modules else None
+    old_module = sys.modules.get(run_name)
     sys.modules[run_name] = module
 
     sys.path.append(os.path.dirname(filename))
 
     with open(filename) as f:
-        code = compile(f.read(), filename, 'exec')
-        exec(code, module.__dict__)
+      code = compile(f.read(), filename, 'exec')
+      exec(code, module.__dict__, module.__dict__)
+    # Wait for execution to finish here before removing the module
+    # because executing tasks might still need to refer to it
+    future = c.legion_runtime_issue_execution_fence(
+            top_level.runtime[0], top_level.context[0])
+    # block waiting on the future
+    c.legion_future_wait(future, True, ffi.NULL)
+    c.legion_future_destroy(future)
+    # Make sure our module gets deleted to clean up any references
+    # to variables the user might have made
+    if old_module is None:
+      del sys.modules[run_name]
+    else:
+      sys.modules[run_name] = old_module
+    del module
 
-    # FIXME: Can't restore the old module because tasks may be
-    # continuing to execute asynchronously. We could fix this with
-    # an execution fence but it doesn't seem worth it given that
-    # we'll be cleaning up the process right after this.
-
-    # sys.modules[run_name] = old_module
 
 
 def flexflow_top_level_task(raw_args, user_data, proc):
@@ -119,9 +183,20 @@ def flexflow_top_level_task(raw_args, user_data, proc):
     print("top-level task")
     # Run user's script.
     args = input_args(True)
-    assert len(args) >= 2
-    sys.argv = list(args)
-    run_path(args[1], run_name='__main__')
+    start = 1
+    if len(args) > 1 and args[1] == '--nocr':
+      start += 1
+    if len(args) < (start+1) or args[start] == '-':
+      run_repl()
+    elif args[start] == '-c':
+      assert len(args) >= 3
+      sys.argv = list(args)
+      run_cmd(args[start+1], run_name='__main__')
+    else:
+      assert len(args) >= (start+1) 
+      sys.argv = list(args)
+      run_path(args[start], run_name='__main__')
+
     print("end top-level task")
 
     # # Hack: Keep this thread alive because otherwise Python will reuse

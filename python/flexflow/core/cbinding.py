@@ -87,7 +87,7 @@ class FFModel(object):
     elif (data_type == DataType.DT_BOOLEAN):
       c_data_type = 44
     else:
-      print("error, unknow data type %d" %(c_data_type))
+      print("error, unknow data type ", data_type)
     handle = ffc.flexflow_tensor_4d_create(self.handle, c_dims, name.encode('utf-8'), c_data_type, create_grad);
     return Tensor(handle)
     
@@ -102,7 +102,7 @@ class FFModel(object):
     elif (activation == ActiMode.AC_MODE_TANH):
       c_activation = 13
     else:
-      print("error, conv2d unknow activation mode %d" %(activation))
+      print("error, conv2d unknow activation mode ", activation)
     handle = ffc.flexflow_model_add_conv2d(self.handle, name.encode('utf-8'), input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation)  
     return Tensor(handle)
     
@@ -113,12 +113,8 @@ class FFModel(object):
     elif (pool_type == PoolType.POOL_AVG):
       c_pool_type = 31
     else:
-      print("error, pool2d unknow Pool Type %d" %(c_pool_type))
+      print("error, pool2d unknow Pool Type ", pool_type)
     handle = ffc.flexflow_model_add_pool2d(self.handle, name.encode('utf-8'), input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, relu)
-    return Tensor(handle)
-    
-  def flat(self, name, input):
-    handle = ffc.flexflow_model_add_flat(self.handle, name.encode('utf-8'), input.handle)
     return Tensor(handle)
     
   def linear(self, name, input, out_channels, activation=ActiMode.AC_MODE_NONE, use_bias=True):
@@ -132,7 +128,36 @@ class FFModel(object):
     if (activation == ActiMode.AC_MODE_TANH):
       c_activation = 13
     else:
-      print("error, linear unknow activation mode %d" %(c_activation))
+      print("error, linear unknow activation mode ", activation)
     handle = ffc.flexflow_model_add_linear(self.handle, name.encode('utf-8'), input.handle, out_channels, c_activation, use_bias)
     return Tensor(handle)
+    
+  def flat(self, name, input):
+    handle = ffc.flexflow_model_add_flat(self.handle, name.encode('utf-8'), input.handle)
+    return Tensor(handle)
+    
+  def softmax(self, name, input):
+    handle = ffc.flexflow_model_add_softmax(self.handle, name.encode('utf-8'), input.handle)
+    return Tensor(handle)
+    
+  def reset_metrics(self):
+    ffc.flexflow_model_reset_metrics(self.handle)
+    
+  def init_layers(self):
+    ffc.flexflow_model_init_layers(self.handle)
+    
+  def prefetch(self):
+    ffc.flexflow_model_prefetch(self.handle)
+    
+  def forward(self):
+    ffc.flexflow_model_forward(self.handle)
+    
+  def backward(self):
+    ffc.flexflow_model_backward(self.handle)
+    
+  def update(self):
+    ffc.flexflow_model_update(self.handle)
+    
+  def zero_gradients(self):
+    ffc.flexflow_model_zero_gradients(self.handle)
   

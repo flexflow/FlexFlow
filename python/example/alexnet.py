@@ -1,12 +1,5 @@
 from flexflow.core import *
 
-class FFTest(object):
-  def __init__(self):
-    print("FFTest Constructor");
-    
-  def __del__(self):
-    print("FFTest Destructor")
-
 def top_level_task():
   ffconfig = FFConfig()
   ffconfig.parse_args()
@@ -17,14 +10,14 @@ def top_level_task():
   print(dims)
   input = ffmodel.create_tensor_4d(dims, "", DataType.DT_FLOAT);
   
-  t1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2);
+  t1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
   t2 = ffmodel.pool2d("pool1", t1, 3, 3, 2, 2, 0, 0)
-  t3 = ffmodel.conv2d("conv2", t2, 192, 5, 5, 1, 1, 2, 2);
-  t4 = ffmodel.pool2d("pool2", t3, 3, 3, 2, 2, 0, 0);
-  t5 = ffmodel.conv2d("conv3", t4, 384, 3, 3, 1, 1, 1, 1);
-  t6 = ffmodel.conv2d("conv4", t5, 256, 3, 3, 1, 1, 1, 1);
-  t7 = ffmodel.conv2d("conv5", t6, 256, 3, 3, 1, 1, 1, 1);
-  t8 = ffmodel.pool2d("pool3", t7, 3, 3, 2, 2, 0, 0);
+  t3 = ffmodel.conv2d("conv2", t2, 192, 5, 5, 1, 1, 2, 2)
+  t4 = ffmodel.pool2d("pool2", t3, 3, 3, 2, 2, 0, 0)
+  t5 = ffmodel.conv2d("conv3", t4, 384, 3, 3, 1, 1, 1, 1)
+  t6 = ffmodel.conv2d("conv4", t5, 256, 3, 3, 1, 1, 1, 1)
+  t7 = ffmodel.conv2d("conv5", t6, 256, 3, 3, 1, 1, 1, 1)
+  t8 = ffmodel.pool2d("pool3", t7, 3, 3, 2, 2, 0, 0)
   #t9 = ffmodel.flat("flat", t8);
   #t10 = ffmodel.linear("lienar1", t9, 4096);
   #t11 = ffmodel.linear("linear2", t10, 4096);

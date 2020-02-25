@@ -19,7 +19,7 @@ $(error LG_RT_DIR variable is not defined, aborting build)
 endif
 
 ifndef FF_DIR
-$(error FF_DIR variable is not defined, aborting build)
+FF_DIR ?= ../
 endif
 
 PROTOBUF_DIR ?= /home/wwu12/opt
@@ -27,8 +27,13 @@ ifndef PROTOBUF_DIR
 $(error PROTOBUF_DIR variable is not defined, aborting build)
 endif
 
+ifndef CUDNN_DIR
 CUDNN_DIR ?= /scratch/shared/wwu12/cudnn
+endif
+
+ifndef CYDA_DIR
 CUDA_DIR ?= /spack/opt/spack/linux-scientific7-x86_64/gcc-7.3.0/cuda-10.0.130-etoqn3vlwx2os25n3rmtksntnu5ioorb
+endif
 
 PROTOBUF_EXE ?= $(PROTOBUF_DIR)/bin/protoc
 
