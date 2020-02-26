@@ -13,13 +13,17 @@ FF_NEW_OPAQUE_TYPE(flexflow_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_model_t);
 FF_NEW_OPAQUE_TYPE(flexflow_tensor_t);
 FF_NEW_OPAQUE_TYPE(flexflow_sgd_optimizer_t);
+FF_NEW_OPAQUE_TYPE(flexflow_glorot_uniform_initializer_t);
+FF_NEW_OPAQUE_TYPE(flexflow_zero_initializer_t);
+FF_NEW_OPAQUE_TYPE(flexflow_uniform_initializer_t);
+FF_NEW_OPAQUE_TYPE(flexflow_norm_initializer_t);
 
 // -----------------------------------------------------------------------
 // FFConfig
 // -----------------------------------------------------------------------
 
 flexflow_config_t
-flexflow_config_create();
+flexflow_config_create(void);
 
 void
 flexflow_config_destroy(
@@ -32,7 +36,7 @@ flexflow_config_parse_args(
   int argc);
 
 void
-flexflow_config_parse_default_args(
+flexflow_config_parse_args_default(
   flexflow_config_t handle);  
 
 int
@@ -101,20 +105,65 @@ flexflow_model_add_conv2d(
   int stride_h, int stride_w,
   int padding_h, int padding_w,
   enum ActiMode activation /* AC_MODE_NONE */);
+
+flexflow_tensor_t
+flexflow_model_add_embedding_with_glorot_uniform_initializer(
+  flexflow_model_t handle,
+  const char* name,
+  const flexflow_tensor_t input,
+  int num_entires, int out_dim,
+  enum AggrMode aggr,
+  flexflow_glorot_uniform_initializer_t kernel_initializer);  
+  
+flexflow_tensor_t
+flexflow_model_add_embedding_with_zero_initializer(
+  flexflow_model_t handle,
+  const char* name,
+  const flexflow_tensor_t input,
+  int num_entires, int out_dim,
+  enum AggrMode aggr,
+  flexflow_zero_initializer_t kernel_initializer);
+  
+flexflow_tensor_t
+flexflow_model_add_embedding_with_uniform_initializer(
+  flexflow_model_t handle,
+  const char* name,
+  const flexflow_tensor_t input,
+  int num_entires, int out_dim,
+  enum AggrMode aggr,
+  flexflow_uniform_initializer_t kernel_initializer);
+  
+flexflow_tensor_t
+flexflow_model_add_embedding_with_norm_initializer(
+  flexflow_model_t handle,
+  const char* name,
+  const flexflow_tensor_t input,
+  int num_entires, int out_dim,
+  enum AggrMode aggr,
+  flexflow_norm_initializer_t kernel_initializer);
   
 flexflow_tensor_t
 flexflow_model_add_pool2d(
   flexflow_model_t handle,
   const char* name,
-  const flexflow_tensor_t input,
+  flexflow_tensor_t input,
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
   enum PoolType type /* POOL_MAX */, 
   bool relu /* true */);
+
+flexflow_tensor_t
+flexflow_model_add_dense_with_default_initializer(
+  flexflow_model_t handle,
+  const char* name,
+  const flexflow_tensor_t input,
+  int out_dim,
+  enum ActiMode activation /* AC_MODE_NONE */,
+  bool use_bias /* true */);
   
 flexflow_tensor_t
-flexflow_model_add_linear(
+flexflow_model_add_linear_with_default_initializer(
   flexflow_model_t handle,
   const char* name,
   const flexflow_tensor_t input,
@@ -134,12 +183,12 @@ flexflow_tensor_t
 flexflow_model_add_flat(
   flexflow_model_t handle,
   const char* name,
-  const flexflow_tensor_t input);
+  flexflow_tensor_t input);
   
 flexflow_tensor_t
 flexflow_model_add_softmax(
   flexflow_model_t handle,
-  const char* name,
+  char* name,
   const flexflow_tensor_t input);
   
 void
@@ -179,6 +228,56 @@ void
 flexflow_sgd_optimizer_destroy(
   flexflow_sgd_optimizer_t handle);
 
+// -----------------------------------------------------------------------
+// GlorotUniform
+// -----------------------------------------------------------------------
+
+flexflow_glorot_uniform_initializer_t
+flexflow_glorot_uniform_initializer_create(
+  int seed);
+
+void  
+flexflow_glorot_uniform_initializer_destroy(
+  flexflow_glorot_uniform_initializer_t handle);
+
+// -----------------------------------------------------------------------
+// ZeroInitializer
+// -----------------------------------------------------------------------
+
+flexflow_zero_initializer_t
+flexflow_zero_initializer_create(void);
+
+void  
+flexflow_zero_initializer_destroy(
+  flexflow_zero_initializer_t handle);
+
+// -----------------------------------------------------------------------
+// UniformInitializer
+// -----------------------------------------------------------------------
+
+flexflow_uniform_initializer_t
+flexflow_uniform_initializer_create(
+  int seed, 
+  float min, 
+  float max);
+
+void  
+flexflow_uniform_initializer_destroy(
+  flexflow_uniform_initializer_t handle);
+
+// -----------------------------------------------------------------------
+// NormInitializer
+// -----------------------------------------------------------------------
+
+flexflow_norm_initializer_t
+flexflow_norm_initializer_create(
+  int seed, 
+  float mean, 
+  float stddev);
+
+void  
+flexflow_norm_initializer_destroy(
+  flexflow_norm_initializer_t handle);
 
 #ifdef __cplusplus
 }

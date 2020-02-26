@@ -28,7 +28,7 @@ void top_level_task(const Task* task,
   flexflow_config_t ffconfig;
   ffconfig = flexflow_config_create();
 
-  flexflow_config_parse_default_args(ffconfig);
+  flexflow_config_parse_args_default(ffconfig);
   log_app.print("C API batchSize(%d) workersPerNodes(%d) numNodes(%d)",
     flexflow_config_get_batch_size(ffconfig), flexflow_config_get_workers_per_node(ffconfig), flexflow_config_get_num_nodes(ffconfig));
   
