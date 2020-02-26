@@ -244,13 +244,17 @@ flexflow_model_add_concat(
   flexflow_model_t handle_,
   const char* name,
   int n,
-  flexflow_tensor_t input_,
+  flexflow_tensor_t* input_,
   int axis)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
   Tensor *tensor = new Tensor();
-  *tensor = handle->concat(name, n, input, axis);
+  std::vector<Tensor> input_vec;
+  for (int i = 0; i < n; i++ ) {
+    Tensor *t = FFCObjectWrapper::unwrap(input_[i]);
+    input_vec.push_back(*t);
+  }
+  *tensor = handle->concat(name, n, input_vec.data(), axis);
   printf("concat new Tensor 4D %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor); 
 }

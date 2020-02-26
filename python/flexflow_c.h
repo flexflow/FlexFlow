@@ -127,7 +127,7 @@ flexflow_model_add_concat(
   flexflow_model_t handle,
   const char* name,
   int n,
-  flexflow_tensor_t input,
+  flexflow_tensor_t* input,
   int axis);
   
 flexflow_tensor_t
