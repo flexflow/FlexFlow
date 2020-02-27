@@ -21,6 +21,20 @@ def top_level_task():
   #t9 = ffmodel.flat("flat", t8);
   #t10 = ffmodel.linear("lienar1", t9, 4096);
   #t11 = ffmodel.linear("linear2", t10, 4096);
+  #t12 = ffmodel.linear("linear3", t11, 1000,ActiMode.AC_MODE_RELU)
+  #t13 = ffmodel.softmax("softmax", t12)
+  
+  #ffoptimizer = SGDOptimizer(ffmodel, 0.01f)
+  #ffmodel.set_sgd_optimizer(ffoptimizer)
+  
+  for epoch in range(0,1):
+    ffmodel.reset_metrics()
+    iterations = 8192 / ffconfig.get_batch_size()
+    #for iter in range(0, iterations):
+      #ffmodel.forward()
+      #ffmodel.zero_gradidents()
+      #ffmodel.backward()
+      #ffmodel.update
 
 if __name__ == "__main__":
   print("alexnet")

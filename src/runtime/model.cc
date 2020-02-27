@@ -602,6 +602,7 @@ PerfMetrics FFModel::update_metrics_task(const Task *task,
                                          const std::vector<PhysicalRegion>& regions,
                                          Context ctx, Runtime* runtime)
 {
+  printf("in update_metrics_task\n");
   if (task->futures.size() == 0) {
     // Create an empty future
     PerfMetrics perf;

@@ -30,6 +30,11 @@ USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 
+USE_PYTHON := 1
+PYTHON_EXE ?= python3.6
+PYTHON_LIB ?= /usr/lib64/libpython3.6m.so.1.0
+PYTHON_VERSION_MAJOR ?= 3
+
 # Put the binary file name here
 OUTFILE		?= alexnet
 # List all the application source files here
@@ -47,8 +52,8 @@ NVCC_FLAGS	?=
 GASNET_FLAGS	?=
 LD_FLAGS	?= -L$(CUDNN_DIR)/lib64 -lcudnn -L$(CUDA_DIR)/lib64 -lcublas -lcurand -L/home/wwu12/opt/lib -lprotobuf
 # For Point and Rect typedefs
-CC_FLAGS	+= -std=c++11 -DFF_USE_CUDA
-NVCC_FLAGS  	+= -std=c++11 -DFF_USE_CUDA
+CC_FLAGS	+= -std=c++11
+NVCC_FLAGS  	+= -std=c++11
 ###########################################################################
 #
 #   Don't change anything below here
