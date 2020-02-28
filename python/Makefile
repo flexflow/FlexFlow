@@ -19,7 +19,7 @@ $(error LG_RT_DIR variable is not defined, aborting build)
 endif
 
 ifndef FF_DIR
-FF_DIR ?= ../
+$(error FF_DIR variable is not defined, aborting build)
 endif
 
 PROTOBUF_DIR ?= /home/wwu12/opt

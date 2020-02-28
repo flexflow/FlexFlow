@@ -18,12 +18,17 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import cffi
+import os
 import subprocess
 from enum import Enum
 
-_flexflow_header = subprocess.check_output(['gcc', '-I/home/wwu12/FlexFlow/include', '-E', '-P', '/home/wwu12/FlexFlow/python/flexflow_c.h']).decode('utf-8')
+assert 'FF_DIR' in os.environ
+_flexflow_cxxheader_dir= os.path.join(os.environ['FF_DIR'], 'include')
+_flexflow_cheader_file = os.path.join(os.path.join(os.environ['FF_DIR'], 'python'), 'flexflow_c.h')
+
+_flexflow_cheader = subprocess.check_output(['gcc', '-I', _flexflow_cxxheader_dir, '-E', '-P', _flexflow_cheader_file]).decode('utf-8')
 ffi = cffi.FFI()
-ffi.cdef(_flexflow_header)
+ffi.cdef(_flexflow_cheader)
 ffc = ffi.dlopen(None)
 
 class ActiMode(Enum):

@@ -2,3 +2,4 @@ from .module import Module
 from .conv import Conv2d
 from .pooling import AvgPool2d, MaxPool2d
 from .linear import Linear
+from .activation import ReLU
