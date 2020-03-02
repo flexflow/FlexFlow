@@ -22,16 +22,15 @@ ifndef FF_DIR
 $(error FF_DIR variable is not defined, aborting build)
 endif
 
-PROTOBUF_DIR ?= /home/wwu12/opt
 ifndef PROTOBUF_DIR
-$(error PROTOBUF_DIR variable is not defined, aborting build)
+PROTOBUF_DIR ?= /home/wwu12/opt
 endif
 
 ifndef CUDNN_DIR
 CUDNN_DIR ?= /scratch/shared/wwu12/cudnn
 endif
 
-ifndef CYDA_DIR
+ifndef CUDA_DIR
 CUDA_DIR ?= /spack/opt/spack/linux-scientific7-x86_64/gcc-7.3.0/cuda-10.0.130-etoqn3vlwx2os25n3rmtksntnu5ioorb
 endif
 

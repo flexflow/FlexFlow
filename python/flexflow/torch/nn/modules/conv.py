@@ -34,6 +34,7 @@ class Conv2d(_ConvNd):
                bias=True, padding_mode='zeros'):
     print("create Conv2d")
     kernel_size = _pair(kernel_size)
+    print(kernel_size)
     stride = _pair(stride)
     padding = _pair(padding)
     dilation = _pair(dilation)
