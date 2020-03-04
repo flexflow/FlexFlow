@@ -30,8 +30,9 @@ def top_level_task():
   for epoch in range(0,1):
     ffmodel.reset_metrics()
     iterations = 8192 / ffconfig.get_batch_size()
-    #for iter in range(0, iterations):
-      #ffmodel.forward()
+    print(iterations)
+  #  for iter in range(0, int(iterations)):
+   #   ffmodel.forward()
       #ffmodel.zero_gradidents()
       #ffmodel.backward()
       #ffmodel.update

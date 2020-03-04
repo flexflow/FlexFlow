@@ -195,6 +195,8 @@ def flexflow_top_level_task(raw_args, user_data, proc):
       sys.argv = list(args)
       run_path(args[start], run_name='__main__')
 
+    future = c.legion_runtime_issue_execution_fence(runtime[0], context[0])
+    c.legion_future_wait(future, False, ffi.NULL)
     print("end top-level task")
 
     # # Hack: Keep this thread alive because otherwise Python will reuse
