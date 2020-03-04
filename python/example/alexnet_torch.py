@@ -9,6 +9,7 @@ class AlexNet(nn.Module):
   
 def top_level_task():
   model = AlexNet()
+  print(model)
 
 if __name__ == "__main__":
   print("alexnet torch")

@@ -52,6 +52,8 @@ void top_level_task(const Task* task,
   Tensor t = input;
   t = ff.conv2d("conv1", t, 64, 11, 11, 4, 4, 2, 2);
   t = ff.pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
+  ff.print_layers();
+#if 0
   t = ff.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2);
   t = ff.pool2d("pool2", t, 3, 3, 2, 2, 0, 0);
   t = ff.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1);
@@ -110,6 +112,7 @@ void top_level_task(const Task* task,
   double run_time = 1e-6 * (ts_end - ts_start);
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
          8192 * ffConfig.epochs / run_time);
+#endif
 }
 
 void register_custom_tasks()

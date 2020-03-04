@@ -598,6 +598,13 @@ void FFModel::zero_gradients(void)
   }
 }
 
+void FFModel::print_layers()
+{
+  for (size_t i = 0; i < layers.size(); i++) {
+    layers[i]->print_layer(*this);
+  }
+}
+
 PerfMetrics FFModel::update_metrics_task(const Task *task,
                                          const std::vector<PhysicalRegion>& regions,
                                          Context ctx, Runtime* runtime)
@@ -1120,6 +1127,14 @@ void register_internal_tasks()
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "dummy_task");
+  }
+  
+  // Print task
+  {
+    TaskVariantRegistrar registrar(CONV2D_PRINT_TASK_ID, "conv2d_print_layer_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Conv2D::print_layer_task>(registrar, "conv2d_print_layer_task");
   }
 }
 

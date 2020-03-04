@@ -96,6 +96,8 @@ enum TaskIDs {
   CUSTOM_CPU_TASK_ID_6,
   CUSTOM_CPU_TASK_ID_7,
   CUSTOM_CPU_TASK_ID_LAST,
+  // Print tasks
+  CONV2D_PRINT_TASK_ID,
 };
 
 enum ShardingID {
@@ -156,6 +158,7 @@ public:
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
   virtual void backward(const FFModel&) = 0;
+  virtual void print_layer(const FFModel& model) = 0;
   //virtual void update(const FFModel&) = 0;
 public:
   char name[MAX_OPNAME];
@@ -271,6 +274,7 @@ public:
   void backward();
   void update();
   void zero_gradients();
+  void print_layers();
   // Internal funcitons
   IndexSpace get_or_create_task_is(ParallelConfig pc);
   IndexSpace get_or_create_task_is(const Domain& domain);
@@ -302,6 +306,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void update(const FFModel&);
+  void print_layer(const FFModel& model);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -318,6 +323,9 @@ public:
   static void update_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, HighLevelRuntime *runtime);
+  static void print_layer_task(const Task *task,
+                               const std::vector<PhysicalRegion> &regions,
+                               Context ctx, HighLevelRuntime *runtime);
 public:
   IndexSpaceT<4> task_is;
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
@@ -353,6 +361,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void update(const FFModel&);
+  void print_layer(const FFModel& model);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -388,6 +397,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void update(const FFModel&);
+  void print_layer(const FFModel& model) {}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -432,6 +442,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   //void update(const FFModel&);
+  void print_layer(const FFModel& model) {}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -478,6 +489,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   //void update(const FFModel&);
+  void print_layer(const FFModel& model) {}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -512,6 +524,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   //void update(const FFModel&);
+  void print_layer(const FFModel& model) {}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -542,6 +555,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   //void update(const FFModel&);
+  void print_layer(const FFModel& model) {}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -576,6 +590,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   //void update(const FFModel&);
+  void print_layer(const FFModel& model) {}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -609,6 +624,7 @@ public:
   void forward(const FFModel& model);
   void backward(const FFModel& model);
   //void update(const FFModel& model);
+  void print_layer(const FFModel& model) {}
 
   static PerfMetrics backward_task(const Task *task,
                                    const std::vector<PhysicalRegion> &regions,

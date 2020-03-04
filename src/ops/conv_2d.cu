@@ -821,6 +821,71 @@ void Conv2D::update(const FFModel& ff)
   }
 }
 
+__host__
+void Conv2D::print_layer(const FFModel& ff)
+{
+  printf("conv2d layer\n");  
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  TaskLauncher launcher(CONV2D_PRINT_TASK_ID, TaskArgument(NULL, 0));
+  launcher.add_region_requirement(
+    RegionRequirement(locals[0].region, READ_WRITE, EXCLUSIVE, locals[0].region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+    RegionRequirement(locals[0].region_grad, READ_WRITE, EXCLUSIVE, locals[0].region_grad));
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(
+    RegionRequirement(locals[1].region, READ_WRITE, EXCLUSIVE, locals[1].region));
+  launcher.add_field(2, FID_DATA);
+  launcher.add_region_requirement(
+    RegionRequirement(locals[1].region_grad, READ_WRITE, EXCLUSIVE, locals[1].region_grad));
+  launcher.add_field(3, FID_DATA);
+  Future fu = runtime->execute_task(ctx, launcher);
+  fu.wait();
+}
+
+__host__
+void Conv2D::print_layer_task(const Task *task,
+                              const std::vector<PhysicalRegion> &regions,
+                              Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 4);
+
+  const AccessorRW<float, 1> acc_kernel(regions[0], FID_DATA);
+  const AccessorRW<float, 1> acc_kernel_grad(regions[1], FID_DATA);
+  const AccessorRW<float, 1> acc_bias(regions[2], FID_DATA);
+  const AccessorRW<float, 1> acc_bias_grad(regions[3], FID_DATA);
+  
+  Rect<1> rect_kernel, rect_kernel_grad, rect_bias, rect_bias_grad;
+  rect_kernel =
+    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
+  rect_kernel_grad =
+    runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  rect_bias =
+    runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
+  rect_bias_grad =
+    runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
+
+  assert(acc_kernel.accessor.is_dense_arbitrary(rect_kernel));
+  assert(acc_kernel_grad.accessor.is_dense_arbitrary(rect_kernel_grad));
+  assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
+  assert(acc_bias_grad.accessor.is_dense_arbitrary(rect_bias_grad));
+  
+  float *kernel_ptr = acc_kernel.ptr(rect_kernel.lo);
+  float *kernel_grad_ptr = acc_kernel_grad.ptr(rect_kernel_grad.lo);
+  float *bias_ptr = acc_bias.ptr(rect_bias.lo);
+  float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
+  
+  size_t kernel_size = rect_kernel.volume();
+  size_t kernel_grad_size = rect_kernel_grad.volume();
+  size_t bias_size = rect_bias.volume();
+  size_t bias_grad_size = rect_bias_grad.volume();
+  printf("kernel, %d\n", kernel_size);
+  printf("kernel_grad, %d\n", kernel_grad_size);
+  printf("bias, %d\n", bias_size);
+  printf("bias_grad, %d\n", bias_grad_size);
+}
+
 cudnnConvolutionFwdAlgo_t
 selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
                                   const cudnnTensorDescriptor_t xDesc, const void* x,
