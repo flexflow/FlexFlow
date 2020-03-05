@@ -827,6 +827,7 @@ void Conv2D::print_layer(const FFModel& ff)
   printf("conv2d layer\n");  
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+#if 0
   TaskLauncher launcher(CONV2D_PRINT_TASK_ID, TaskArgument(NULL, 0));
   launcher.add_region_requirement(
     RegionRequirement(locals[0].region, READ_WRITE, EXCLUSIVE, locals[0].region));
@@ -842,6 +843,70 @@ void Conv2D::print_layer(const FFModel& ff)
   launcher.add_field(3, FID_DATA);
   Future fu = runtime->execute_task(ctx, launcher);
   fu.wait();
+#else
+  RegionRequirement kernel_req(locals[0].region, READ_WRITE, EXCLUSIVE, locals[0].region);
+  kernel_req.add_field(FID_DATA);
+  InlineLauncher kernel_launcher(kernel_req);
+  PhysicalRegion kernel_region = runtime->map_region(ctx, kernel_launcher);
+  kernel_region.wait_until_valid();
+  
+  RegionRequirement kernel_grad_req(locals[0].region_grad, READ_WRITE, EXCLUSIVE, locals[0].region_grad);
+  kernel_grad_req.add_field(FID_DATA);
+  InlineLauncher kernel_grad_launcher(kernel_grad_req);
+  PhysicalRegion kernel_grad_region = runtime->map_region(ctx, kernel_grad_launcher);
+  kernel_grad_region.wait_until_valid();
+  
+  RegionRequirement bias_req(locals[1].region, READ_WRITE, EXCLUSIVE, locals[1].region);
+  bias_req.add_field(FID_DATA);
+  InlineLauncher bias_launcher(bias_req);
+  PhysicalRegion bias_region = runtime->map_region(ctx, bias_launcher);
+  bias_region.wait_until_valid();
+  
+  RegionRequirement bias_grad_req(locals[1].region_grad, READ_WRITE, EXCLUSIVE, locals[1].region_grad);
+  bias_grad_req.add_field(FID_DATA);
+  InlineLauncher bias_grad_launcher(bias_grad_req);
+  PhysicalRegion bias_grad_region = runtime->map_region(ctx, bias_grad_launcher);
+  bias_grad_region.wait_until_valid();
+  
+  const AccessorRW<float, 1> acc_kernel(kernel_region, FID_DATA);
+  const AccessorRW<float, 1> acc_kernel_grad(kernel_grad_region, FID_DATA);
+  const AccessorRW<float, 1> acc_bias(bias_region, FID_DATA);
+  const AccessorRW<float, 1> acc_bias_grad(bias_grad_region, FID_DATA);
+  
+  Rect<1> rect_kernel, rect_kernel_grad, rect_bias, rect_bias_grad;
+  rect_kernel =
+    runtime->get_index_space_domain(ctx, locals[0].region.get_index_space());
+  rect_kernel_grad =
+    runtime->get_index_space_domain(ctx, locals[0].region_grad.get_index_space());
+  rect_bias =
+    runtime->get_index_space_domain(ctx, locals[1].region.get_index_space());
+  rect_bias_grad =
+    runtime->get_index_space_domain(ctx, locals[1].region_grad.get_index_space());
+
+  assert(acc_kernel.accessor.is_dense_arbitrary(rect_kernel));
+  assert(acc_kernel_grad.accessor.is_dense_arbitrary(rect_kernel_grad));
+  assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
+  assert(acc_bias_grad.accessor.is_dense_arbitrary(rect_bias_grad));
+  
+  float *kernel_ptr = acc_kernel.ptr(rect_kernel.lo);
+  float *kernel_grad_ptr = acc_kernel_grad.ptr(rect_kernel_grad.lo);
+  float *bias_ptr = acc_bias.ptr(rect_bias.lo);
+  float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
+  
+  size_t kernel_size = rect_kernel.volume();
+  size_t kernel_grad_size = rect_kernel_grad.volume();
+  size_t bias_size = rect_bias.volume();
+  size_t bias_grad_size = rect_bias_grad.volume();
+  printf("kernel, %d\n", kernel_size);
+  printf("kernel_grad, %d\n", kernel_grad_size);
+  printf("bias, %d\n", bias_size);
+  printf("bias_grad, %d\n", bias_grad_size);
+  
+  runtime->unmap_region(ctx, kernel_region);
+  runtime->unmap_region(ctx, kernel_grad_region);
+  runtime->unmap_region(ctx, bias_region);
+  runtime->unmap_region(ctx, bias_grad_region);
+#endif
 }
 
 __host__

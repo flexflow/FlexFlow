@@ -98,6 +98,7 @@ enum TaskIDs {
   CUSTOM_CPU_TASK_ID_LAST,
   // Print tasks
   CONV2D_PRINT_TASK_ID,
+  LINEAR_PRINT_TASK_ID,
 };
 
 enum ShardingID {
@@ -442,7 +443,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   //void update(const FFModel&);
-  void print_layer(const FFModel& model) {}
+  void print_layer(const FFModel& model);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -462,6 +463,9 @@ public:
   //static void update_task(const Task *task,
   //                        const std::vector<PhysicalRegion> &regions,
   //                        Context ctx, Runtime *runtime);
+  static void print_layer_task(const Task *task,
+                               const std::vector<PhysicalRegion> &regions,
+                               Context ctx, Runtime *runtime);
 public:
   IndexSpaceT<2> task_is;
   Tensor kernel, bias, replica;
