@@ -1,6 +1,8 @@
 from flexflow.core import *
 
-class _MaxPoolNd(object):
+from .op import Op
+
+class _MaxPoolNd(Op):
   def __init__(self, kernel_size, stride=None, padding=0, dilation=1,
                return_indices=False, ceil_mode=False):
     self.kernel_size = kernel_size
@@ -22,7 +24,7 @@ class MaxPool2d(_MaxPoolNd):
     return self.forward(input)
     
   def forward(self, input):
-    print("maxpool2d forward");
+    print("maxpool2d forward ", self._layer_id);
     return input+1
     
 class AvgPool2d(object):

@@ -18,12 +18,18 @@ class AlexNet(nn.Module):
   def forward(self, x):
     x = self.conv2_1(x)
     x = self.maxpool2d_1(x)
+    x = self.conv2_2(x)
+    x = self.maxpool2d_2(x)
+    x = self.conv2_3(x)
+    x = self.conv2_4(x)
+    x = self.conv2_5(x)
+    x = self.maxpool2d_3(x)
     return x
   
 def top_level_task():
   model = AlexNet()
   x = model(7)
-  print(x)
+  print(model.__dict__)
 
 if __name__ == "__main__":
   print("alexnet torch")

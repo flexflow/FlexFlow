@@ -1,9 +1,9 @@
 from flexflow.core import *
 
 from .utils import _single, _pair
+from .op import Op
 
-
-class _ConvNd(object):
+class _ConvNd(Op):
   def __init__(self, in_channels, out_channels, kernel_size, stride,
                padding, dilation, transposed, output_padding,
                groups, bias, padding_mode):
@@ -45,5 +45,5 @@ class Conv2d(_ConvNd):
     return self.forward(input)
     
   def forward(self, input):
-    print("conv2d forward");
+    print("conv2d forward ", self._layer_id);
     return input+1

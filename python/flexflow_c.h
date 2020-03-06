@@ -17,6 +17,9 @@ FF_NEW_OPAQUE_TYPE(flexflow_glorot_uniform_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_zero_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_uniform_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_norm_initializer_t);
+FF_NEW_OPAQUE_TYPE(flexflow_conv2d_t);
+FF_NEW_OPAQUE_TYPE(flexflow_pool2d_t);
+FF_NEW_OPAQUE_TYPE(flexflow_linear_t);
 
 // -----------------------------------------------------------------------
 // FFConfig

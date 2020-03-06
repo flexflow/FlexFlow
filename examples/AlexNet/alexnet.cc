@@ -51,8 +51,9 @@ void top_level_task(const Task* task,
   // Add layers
   Tensor t = input;
   t = ff.conv2d("conv1", t, 64, 11, 11, 4, 4, 2, 2);
+  t = ff.conv2d("conv2", t, 64, 11, 11, 4, 4, 2, 2);
   t = ff.pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
-  ff.print_layers();
+  //ff.print_layers();
 #if 0
   t = ff.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2);
   t = ff.pool2d("pool2", t, 3, 3, 2, 2, 0, 0);
