@@ -18,8 +18,12 @@ class MaxPool2d(_MaxPoolNd):
       kernel_size, stride, padding, dilation,
       return_indices, ceil_mode)
     
+  def __call__(self, input):
+    return self.forward(input)
+    
   def forward(self, input):
-    print("MaxPool2d forward")
+    print("maxpool2d forward");
+    return input+1
     
 class AvgPool2d(object):
   def __init__(self, kernel_size, stride=None, padding=0, ceil_mode=False,

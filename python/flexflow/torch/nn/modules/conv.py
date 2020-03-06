@@ -40,3 +40,10 @@ class Conv2d(_ConvNd):
     super(Conv2d, self).__init__(
       in_channels, out_channels, kernel_size, stride, padding, dilation,
       False, _pair(0), groups, bias, padding_mode)
+  
+  def __call__(self, input):
+    return self.forward(input)
+    
+  def forward(self, input):
+    print("conv2d forward");
+    return input+1

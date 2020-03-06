@@ -12,12 +12,18 @@ class AlexNet(nn.Module):
     self.conv2_5 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
     self.maxpool2d_3 = nn.MaxPool2d(kernel_size=3, stride=2)
     #self.flat = nn.Flatten()
-    
+    self.test = "test"
     #self.linear_1 = nn.Linear(256 * 6 * 6, 4096)
+  
+  def forward(self, x):
+    x = self.conv2_1(x)
+    x = self.maxpool2d_1(x)
+    return x
   
 def top_level_task():
   model = AlexNet()
-  ##print(model.__dict__)
+  x = model(7)
+  print(x)
 
 if __name__ == "__main__":
   print("alexnet torch")

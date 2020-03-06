@@ -23,6 +23,9 @@ class Module(object):
     dims = [self.ffconfig.get_batch_size(), 3, 229, 229]
     self.input = self.ffmodel.create_tensor_4d(dims, "", DataType.DT_FLOAT);
   
+  def __call__(self, input):
+    return self.forward(input)
+  
   def __setattr__(self, name, value):
     super(Module, self).__setattr__(name, value)
     if (isinstance(value, FFModel) == True):
