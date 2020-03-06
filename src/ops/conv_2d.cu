@@ -902,6 +902,30 @@ void Conv2D::print_layer(const FFModel& ff)
   printf("bias, %d\n", bias_size);
   printf("bias_grad, %d\n", bias_grad_size);
   
+  for (int i = 0; i < bias_size; i++) {
+    printf("%f ", bias_ptr);
+    bias_ptr ++;
+  }
+  printf("\n");
+  
+  for (int i = 0; i < bias_grad_size; i++) {
+    printf("%f ", bias_grad_ptr);
+    bias_grad_ptr ++;
+  }
+  printf("\n");
+  
+  for (int i = 0; i < kernel_size; i++) {
+    printf("%f ", kernel_ptr);
+    kernel_ptr ++;
+  }
+  printf("\n");
+  
+  for (int i = 0; i < kernel_grad_size; i++) {
+    printf("%f ", kernel_grad_ptr);
+    kernel_grad_ptr ++;
+  }
+  printf("\n");
+  
   runtime->unmap_region(ctx, kernel_region);
   runtime->unmap_region(ctx, kernel_grad_region);
   runtime->unmap_region(ctx, bias_region);

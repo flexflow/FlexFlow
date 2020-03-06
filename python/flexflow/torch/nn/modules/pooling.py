@@ -1,11 +1,8 @@
 from flexflow.core import *
 
-from .module import Module
-
-class _MaxPoolNd(Module):
+class _MaxPoolNd(object):
   def __init__(self, kernel_size, stride=None, padding=0, dilation=1,
                return_indices=False, ceil_mode=False):
-    super(_MaxPoolNd, self).__init__()
     self.kernel_size = kernel_size
     self.stride = stride or kernel_size
     self.padding = padding
@@ -24,11 +21,11 @@ class MaxPool2d(_MaxPoolNd):
   def forward(self, input):
     print("MaxPool2d forward")
     
-class AvgPool2d(Module):
+class AvgPool2d(object):
   def __init__(self, kernel_size, stride=None, padding=0, ceil_mode=False,
                count_include_pad=True, divisor_override=None):
     print("create AvgPool2d")
-    super(AvgPool2d, self).__init__()
+   # super(AvgPool2d, self).__init__()
     self.kernel_size = kernel_size
     self.stride = stride or kernel_size
     self.padding = padding

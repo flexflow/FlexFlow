@@ -1,14 +1,13 @@
 from flexflow.core import *
 
-from .module import Module
 from .utils import _single, _pair
 
 
-class _ConvNd(Module):
+class _ConvNd(object):
   def __init__(self, in_channels, out_channels, kernel_size, stride,
                padding, dilation, transposed, output_padding,
                groups, bias, padding_mode):
-    super(_ConvNd, self).__init__()
+    #super(_ConvNd, self).__init__()
     if in_channels % groups != 0:
       raise ValueError('in_channels must be divisible by groups')
     if out_channels % groups != 0:
@@ -32,9 +31,9 @@ class Conv2d(_ConvNd):
   def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                padding=0, dilation=1, groups=1,
                bias=True, padding_mode='zeros'):
-    print("create Conv2d")
+    #print("create Conv2d")
     kernel_size = _pair(kernel_size)
-    print(kernel_size)
+    #print(kernel_size)
     stride = _pair(stride)
     padding = _pair(padding)
     dilation = _pair(dilation)
