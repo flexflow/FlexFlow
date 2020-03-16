@@ -24,17 +24,63 @@ MappingTagID FFConfig::get_hash_id(const std::string& pcname)
   return std::hash<std::string>{}(pcname);
 }
 
-bool FFConfig::find_parallel_config(const std::string& pcname,
+bool FFConfig::find_parallel_config(int ndims,
+                                    const std::string& pcname,
                                     ParallelConfig& config)
 {
   MappingTagID hash = get_hash_id(pcname);
   if (strategies.find(hash) == strategies.end()) {
     // No strategy found, use default data parallelism
-    assert(strategies.find(DataParallelismID) != strategies.end());
-    config = strategies[DataParallelismID];
+    switch (ndims) {
+      case 1:
+      {
+        printf("%d pcname = %s\n", ndims, pcname.c_str());
+        assert(strategies.find(DataParallelism_1D) != strategies.end());
+        config = strategies[DataParallelism_1D];
+        break;
+      }
+      case 2:
+      {
+        printf("%d pcname = %s\n", ndims, pcname.c_str());
+        assert(strategies.find(DataParallelism_2D) != strategies.end());
+        config = strategies[DataParallelism_2D];
+        break;
+      }
+      case 3:
+      {
+        assert(strategies.find(DataParallelism_3D) != strategies.end());
+        config = strategies[DataParallelism_3D];
+        break;
+      }
+      case 4:
+      {
+        assert(strategies.find(DataParallelism_4D) != strategies.end());
+        config = strategies[DataParallelism_4D];
+        break;
+      }
+      case 5:
+      {
+        assert(strategies.find(DataParallelism_5D) != strategies.end());
+        config = strategies[DataParallelism_5D];
+        break;
+      }
+      case 6:
+      {
+        assert(strategies.find(DataParallelism_6D) != strategies.end());
+        config = strategies[DataParallelism_6D];
+        break;
+      }
+      default:
+      {
+        // Unsupported dimension for data parallelism
+        assert(false);
+      }
+    }
     return true;
   } else {
     config = strategies[hash];
+    // Check that the returned config matches what we are looking for
+    assert(config.nDims == ndims);
     return true;
   }
 }

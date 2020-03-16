@@ -21,31 +21,36 @@ Tensor FFModel::flat(std::string name, Tensor input)
   assert(input.numDim == 4);
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
-  IndexSpaceT<4> task_is_4d = IndexSpaceT<4>(get_or_create_task_is(name));
-  ParallelConfig pc;
-  pc.nDims = 2;
-  pc.dim[0] = 1;
-  pc.dim[1] = 1;
-  IndexSpaceT<2> task_is_2d = IndexSpaceT<2>(get_or_create_task_is(pc));
-  Flat *flat = new Flat(name, config, input, task_is_4d, task_is_2d);
+  Flat *flat = new Flat(*this, name, input);
   layers.push_back(flat);
   return flat->output;
 }
 
-Flat::Flat(std::string _name, FFConfig _config, Tensor _input,
-           IndexSpaceT<4> _task_is_3d, IndexSpaceT<2> _task_is_2d)
-: Op(_name, _input), task_is_3d(_task_is_3d), task_is_2d(_task_is_2d)
+Flat::Flat(FFModel& model,
+           const std::string& pcname,
+           const Tensor& _input)
+: Op(pcname, _input)
 {
-  Context ctx = _config.lg_ctx;
-  HighLevelRuntime* runtime = _config.lg_hlr;
-  Rect<2> part_rect_2d = runtime->get_index_space_domain(ctx, task_is_2d);
-  int fc_num_par_c = part_rect_2d.hi[0] - part_rect_2d.lo[0] + 1;
-  int fc_num_par_n = part_rect_2d.hi[1] - part_rect_2d.lo[1] + 1;
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
+  int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
+  // Assert data parallelism for operators with dim changes
+  assert(num_par_c == 1);
  
-  FieldSpace fs = _config.field_space;
-  
-  int output_c = _input.adim[0] * _input.adim[1] * _input.adim[2];
-  int output_n = _input.adim[3];
+  int out_dim = _input.adim[0] * _input.adim[1] * _input.adim[2];
+  int batch_size = _input.adim[3];
+  // Create output tensor
+  {
+    const int dims[2] = {batch_size, out_dim};
+    output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
+  }
+  model.create_data_parallel_partition_with_diff_dims<4, 2>(
+      _input, task_is, input_lps[0], input_grad_lps[0]);
+#ifdef DEADCODE
   Rect<2, coord_t> output_rect(Point<2>(0, 0), Point<2>(output_c-1, output_n-1));
   IndexSpaceT<2> output_is = runtime->create_index_space(ctx, output_rect);
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
@@ -139,6 +144,7 @@ Flat::Flat(std::string _name, FFConfig _config, Tensor _input,
     runtime->create_partition_by_restriction(ctx, output_is, part_is_3d, flat_trans, extent);
   flat_lp = runtime->get_logical_partition(ctx, output_lr, flat_ip);
 */
+#endif
 }
 
 OpMeta* Flat::init_task(const Task *task,
@@ -155,19 +161,21 @@ void Flat::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is_3d);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<2> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[idx++];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
 
-  IndexLauncher init_launcher(FLAT_INIT_TASK_ID, task_is_3d,
-                              TaskArgument(this, sizeof(Flat)), argmap);
-  FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
+  IndexLauncher launcher(FLAT_INIT_TASK_ID, task_is,
+                         TaskArgument(this, sizeof(Flat)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<2> it(rect); it(); it++) {
     meta[idx++] = fm.get_result<OpMeta*>(*it);
   }
 }
@@ -182,22 +190,15 @@ void Flat::forward_task(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const AccessorRO<float, 3> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 2> acc_output(regions[1], FID_DATA);
-  Rect<3> rect_input;
-  Rect<2> rect_output;
-  rect_input = runtime->get_index_space_domain(
-                   ctx, task->regions[0].region.get_index_space());
-  rect_output = runtime->get_index_space_domain(
-                    ctx, task->regions[1].region.get_index_space());
-  assert(rect_input.volume() == rect_output.volume());
-  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
-  assert(acc_output.accessor.is_dense_arbitrary(rect_output));
-  const float *input_ptr = acc_input.ptr(rect_input.lo);
-  float *output_ptr = acc_output.ptr(rect_output.lo);
+  TensorAccessorR<float, 4> acc_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 2> acc_output(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime,
+      false/*readOutput*/);
 
-  checkCUDA(cudaMemcpyAsync(output_ptr, input_ptr,
-                            rect_input.volume() * sizeof(float),
+  assert(acc_input.rect.volume() == acc_output.rect.volume());
+  checkCUDA(cudaMemcpyAsync(acc_output.ptr, acc_input.ptr,
+                            acc_input.rect.volume() * sizeof(float),
                             cudaMemcpyDeviceToDevice));
 }
 
@@ -206,23 +207,24 @@ void Flat::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is_3d);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<2> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(FLAT_FWD_TASK_ID, task_is_3d,
-                         TaskArgument(NULL, 0), argmap);
+  IndexLauncher launcher(FLAT_FWD_TASK_ID, task_is,
+                         TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0].part, 0/*projection id*/,
+      RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(flat_lp /*3D->2D partitions*/, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, output.region));
+      RegionRequirement(output.part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, output.region));
   launcher.add_field(1, FID_DATA);
-
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -236,22 +238,15 @@ void Flat::backward_task(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const AccessorWO<float, 3> acc_input_grad(regions[0], FID_DATA);
-  const AccessorRO<float, 2> acc_output_grad(regions[1], FID_DATA);
-  Rect<3> rect_input_grad;
-  Rect<2> rect_output_grad;
-  rect_input_grad = runtime->get_index_space_domain(
-                        ctx, task->regions[0].region.get_index_space());
-  rect_output_grad = runtime->get_index_space_domain(
-                         ctx, task->regions[1].region.get_index_space());
-  assert(rect_input_grad.volume() == rect_output_grad.volume());
-  assert(acc_input_grad.accessor.is_dense_arbitrary(rect_input_grad));
-  assert(acc_output_grad.accessor.is_dense_arbitrary(rect_output_grad));
-  float *input_grad_ptr = acc_input_grad.ptr(rect_input_grad.lo);
-  const float *output_grad_ptr = acc_output_grad.ptr(rect_output_grad.lo);
+  TensorAccessorW<float, 2> acc_input_grad(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime,
+      true/*readOutput*/);
+  TensorAccessorR<float, 2> acc_output_grad(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
 
-  checkCUDA(cudaMemcpyAsync(input_grad_ptr, output_grad_ptr,
-                            rect_input_grad.volume() * sizeof(float),
+  checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
+                            acc_input_grad.rect.volume() * sizeof(float),
                             cudaMemcpyDeviceToDevice));
 }
 
@@ -260,27 +255,22 @@ void Flat::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is_3d);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
+  for (PointInRectIterator<2> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(FLAT_BWD_TASK_ID, task_is_3d,
+  IndexLauncher launcher(FLAT_BWD_TASK_ID, task_is,
                          TaskArgument(NULL, 0), argmap);
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0].part_grad, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, inputs[0].region_grad));
+      RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+                        READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(flat_grad_lp /*3D->2D partitions*/, 0/*projection id*/,
+      RegionRequirement(output.part_grad, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, output.region_grad));
   launcher.add_field(1, FID_DATA);
-
   runtime->execute_index_space(ctx, launcher);
 }
-
-//void Flat::update(const FFModel& ff)
-//{
-//}
 

@@ -197,12 +197,13 @@ flexflow_model_add_conv2d(
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
-  enum ActiMode activation /* AC_MODE_NONE */)
+  enum ActiMode activation /* AC_MODE_NONE */,
+  bool use_bias /* True */)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
   Tensor *tensor = new Tensor();
-  *tensor = handle->conv2d(name, *input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation);
+  *tensor = handle->conv2d(name, *input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation, use_bias);
   printf("conv2d new Tensor 4D %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor);   
 }

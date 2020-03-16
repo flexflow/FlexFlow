@@ -42,7 +42,7 @@ MSELoss::MSELoss(FFModel& model,
 : Op(pcname, _logit, _label), profiling(model.config.profiling),
 aggr_mode(_aggr)
 {
-  task_is = model.get_or_create_task_is(pcname);
+  task_is = model.get_or_create_task_is(2/*numDim*/, pcname);
   // Current assume 2D logit and label
   assert(_logit.numDim == 2);
   assert(_label.numDim == 2);

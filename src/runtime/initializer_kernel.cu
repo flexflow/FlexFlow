@@ -180,6 +180,13 @@ void ZeroInitializer::init_task(const Task* task,
         w = accW.ptr;
         break;
       }
+      case 4:
+      {
+        TensorAccessorW<float, 4> accW(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/);
+        w = accW.ptr;
+        break;
+      }
       default:
       {
          assert(false);

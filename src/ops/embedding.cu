@@ -47,7 +47,7 @@ Embedding::Embedding(FFModel& model,
 {
   assert(_input.numDim == 2);
   // Retrive the task indexspace for the op
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(pcname));
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
   
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
@@ -60,7 +60,8 @@ Embedding::Embedding(FFModel& model,
   }
   {
     const int dims[2] = {outDim, num_entries};
-    kernel = model.create_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
+    // Embeddding weights and linear weights can be partitioned in the same way
+    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
   }
 #ifdef DEADCODE
   // Create kernel tensor

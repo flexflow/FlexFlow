@@ -37,10 +37,12 @@ Tensor FFModel::dense(std::string name,
   Parameter kernel, bias;
   kernel.tensor = li->kernel;
   kernel.op = li;
-  bias.tensor = li->bias;
-  bias.op = li;
   parameters.push_back(kernel);
-  parameters.push_back(bias);
+  if (use_bias) {
+    bias.tensor = li->bias;
+    bias.op = li;
+    parameters.push_back(bias);
+  }
   return li->output;
 }
 
@@ -70,7 +72,7 @@ Linear::Linear(FFModel& model,
 {
   assert(_input.numDim == 2);
   // Retrive the task indexspace for the op
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(pcname));
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
 
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
@@ -86,12 +88,12 @@ Linear::Linear(FFModel& model,
   // Create kernel tensor
   {
     const int dims[2] = {out_dim, in_dim};
-    kernel = model.create_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
+    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_dim};
-    bias = model.create_weight<1>(dims, task_is, DT_FLOAT, bias_initializer);
+    bias = model.create_linear_weight<1>(dims, task_is, DT_FLOAT, bias_initializer);
   }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(
@@ -99,7 +101,7 @@ Linear::Linear(FFModel& model,
   // Create replica tensor
   if (num_par_c > 1) {
     const int dims[3] = {num_par_c, batch_size, in_dim};
-    replica = model.create_replica<3>(dims, task_is, DT_FLOAT);
+    replica = model.create_linear_replica<3>(dims, task_is, DT_FLOAT);
     {
       Rect<2> extent(Point<2>(0, 0), Point<2>(in_dim-1, batch_size/num_par_n-1));
       Transform<2, 2> transform;
@@ -288,7 +290,7 @@ void Linear::forward_task(const Task *task,
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
   int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
-  int batch_size = acc_input.rect.hi[1] - acc_output.rect.lo[1] + 1;
+  int batch_size = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
   assert(acc_output.rect.volume() == out_dim * batch_size);
   assert(acc_kernel.rect.volume() == in_dim * out_dim);
   assert(acc_bias.rect.volume() == out_dim);

@@ -20,6 +20,17 @@ LegionRuntime::Logger::Category log_app("AlexNet");
 
 //void parse_input_args(char **argv, int argc, AlexNetConfig& anConfig);
 
+class DataLoader {
+public:
+  DataLoader(FFModel& ff, Tensor input, Tensor label);
+  static void load_input(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx,
+                         Runtime* runtime);
+public:
+  int num_samples;
+};
+
 void top_level_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime)
@@ -43,18 +54,15 @@ void top_level_task(const Task* task,
     const int dims[] = {ffConfig.batchSize, 3, 229, 229};
     input = ff.create_tensor<4>(dims, "", DT_FLOAT);
   }
-  //Tensor label;
-  //{
-    //const int dims[] = {ffConfig.batchSize, 1};
-    //label = ff.create_tensor<2>(dims, "", DT_FLOAT);
-  //}
+  Tensor label;
+  {
+    const int dims[] = {ffConfig.batchSize, 1};
+    label = ff.create_tensor<2>(dims, "", DT_FLOAT);
+  }
   // Add layers
   Tensor t = input;
   t = ff.conv2d("conv1", t, 64, 11, 11, 4, 4, 2, 2);
-  t = ff.conv2d("conv2", t, 64, 11, 11, 4, 4, 2, 2);
   t = ff.pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
-  //ff.print_layers();
-#if 0
   t = ff.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2);
   t = ff.pool2d("pool2", t, 3, 3, 2, 2, 0, 0);
   t = ff.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1);
@@ -62,14 +70,14 @@ void top_level_task(const Task* task,
   t = ff.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1);
   t = ff.pool2d("pool3", t, 3, 3, 2, 2, 0, 0);
   t = ff.flat("flat", t);
-  t = ff.linear("lienar1", t, 4096);
-  t = ff.linear("linear2", t, 4096);
-  t = ff.linear("linear3", t, 1000, AC_MODE_RELU/*relu*/);
-  t = ff.softmax("softmax", t);
-
+  t = ff.linear("lienar1", t, 4096, AC_MODE_RELU/*relu*/);
+  t = ff.linear("linear2", t, 4096, AC_MODE_RELU/*relu*/);
+  t = ff.linear("linear3", t, 1000);
+  //t = ff.softmax("softmax", t);
   ff.optimizer = new SGDOptimizer(&ff, 0.01f);
+  // Data Loader
+  DataLoader data_loader(ff, input, label);
   ff.init_layers();
-  //TODO: implement a data loader
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -96,8 +104,8 @@ void top_level_task(const Task* task,
         runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
-      ff.backward();
-      ff.update();
+      //ff.backward();
+      //ff.update();
       if (epoch > 0)
         runtime->end_trace(ctx, 111/*trace_id*/);
     }
@@ -113,9 +121,46 @@ void top_level_task(const Task* task,
   double run_time = 1e-6 * (ts_end - ts_start);
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
          8192 * ffConfig.epochs / run_time);
-#endif
 }
 
 void register_custom_tasks()
 {
+  // Load Input
+  {
+    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_1, "Load Inputs");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<DataLoader::load_input>(
+        registrar, "Load Inputs Task");
+  }
+}
+
+DataLoader::DataLoader(FFModel& ff,
+                       Tensor input, Tensor label)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  num_samples = 0;
+  log_app.print("Use random dataset...");
+  num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
+  log_app.print("Number of random samples = %d\n", num_samples);
+  IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, ""));
+  ArgumentMap argmap;
+  IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
+                         TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string("")));
+  launcher.add_region_requirement(
+      RegionRequirement(input.part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, input.region));
+  launcher.add_field(0, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void DataLoader::load_input(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx,
+                            Runtime* runtime)
+{
+  printf("CheckPoint#1\n");
 }

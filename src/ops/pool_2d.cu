@@ -16,37 +16,39 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::pool2d(std::string name, Tensor input,
-                         int kernelH, int kernelW,
-                         int strideH, int strideW,
-                         int paddingH, int paddingW,
-                         PoolType type, bool relu)
+Tensor FFModel::pool2d(const std::string& name,
+                       const Tensor& input,
+                       int kernelH, int kernelW,
+                       int strideH, int strideW,
+                       int paddingH, int paddingW,
+                       PoolType type, ActiMode activation)
 {
   assert(input.numDim == 4); /*NCHW*/
-  ParallelConfig pc;
-  assert(config.find_parallel_config(name, pc));
-  IndexSpaceT<4> task_is = IndexSpaceT<4>(get_or_create_task_is(pc));
-  Pool2D *pool = new Pool2D(name, config, input, task_is, kernelH, kernelW,
+  Pool2D *pool = new Pool2D(*this, name, input,kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW,
-                            type, relu);
+                            type, activation);
   layers.push_back(pool);
   return pool->output;
 }
 
-Pool2D::Pool2D(std::string _name, FFConfig _config,
-               Tensor _input, IndexSpaceT<4> _task_is,
+Pool2D::Pool2D(FFModel& model,
+               const std::string& pcname,
+               const Tensor& _input,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
-               PoolType _type, bool _relu)
-: Op(_name, _input), task_is(_task_is),
+               PoolType _type, ActiMode _activation)
+: Op(pcname, _input),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),
   padding_h(_padding_h), padding_w(_padding_w),
-  pool_type(_type), relu(_relu), profiling(_config.profiling)
+  pool_type(_type), activation(_activation),
+  profiling(model.config.profiling)
 {
-  Context ctx = _config.lg_ctx;
-  Runtime* runtime = _config.lg_hlr;
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
+  Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
 
   int input_w = _input.adim[0];
   int input_h = _input.adim[1];
@@ -54,17 +56,26 @@ Pool2D::Pool2D(std::string _name, FFConfig _config,
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
   int output_c = _input.adim[2];
   int output_n = _input.adim[3];
-  Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
-  int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
+  {
+    const int dims[4] = {output_n, output_c, output_h, output_w};
+    output = model.create_tensor<4>(dims, task_is, DT_FLOAT);
+  }
+  //int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
+  //int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
-  int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
-
-  FieldSpace fs = _config.field_space;
-
-  Rect<4> output_rect(Point<4>(0, 0, 0, 0),
-      Point<4>(output_w-1, output_h-1, output_c-1, output_n-1));
-  IndexSpaceT<4> output_is = runtime->create_index_space(ctx, output_rect);
+  //int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
+  Rect<4> input_rect = runtime->get_index_partition_color_space(
+      ctx, inputs[0].part.get_index_partition());
+  //TODO: currently do not support splitting over the channel dimension
+  assert(num_par_c == 1);
+  if (input_rect == part_rect) {
+    input_lps[0] = inputs[0].part;
+    input_grad_lps[0] = inputs[0].part_grad;
+  } else {
+    model.create_disjoint_partition(
+        _input, task_is, input_lps[0], input_grad_lps[0]);
+  }
+#ifdef DEADCODE
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
   int extent_w = (output_w + num_par_w - 1) / num_par_w;
@@ -138,6 +149,7 @@ Pool2D::Pool2D(std::string _name, FFConfig _config,
     assert(runtime->is_index_partition_complete(ctx, input_ip));
     input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
   }
+#endif
 }
 
 /*
