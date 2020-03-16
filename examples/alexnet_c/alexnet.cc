@@ -54,11 +54,10 @@ void top_level_task(const Task* task,
     //input = ff->create_tensor<4>(dims, "", DT_FLOAT);
     input = flexflow_tensor_4d_create(ffmodel, dims, "", DT_FLOAT, true);
   }
-  Tensor *tmp_input = static_cast<Tensor *>(input.impl); 
-  Tensor label;
+  flexflow_tensor_t label;
   {
     const int dims[] = {flexflow_config_get_batch_size(ffconfig), 1};
-    label = ff->create_tensor<2>(dims, "", DT_FLOAT);
+    label = flexflow_tensor_2d_create(ffmodel, dims, "", DT_FLOAT, true);
   }
   // Add layers
   flexflow_tensor_t t0 = input;
@@ -94,7 +93,7 @@ void top_level_task(const Task* task,
   SGDOptimizer *sgd_opt = static_cast<SGDOptimizer *>(optimizer.impl);
   ff->optimizer = sgd_opt;
   // Data Loader
-  DataLoader data_loader(*ff, *tmp_input, label);
+  DataLoader data_loader(ffmodel, input, label);
   ff->init_layers();
   //Start timer
   {
