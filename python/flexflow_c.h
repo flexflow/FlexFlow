@@ -107,7 +107,8 @@ flexflow_model_add_conv2d(
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
-  enum ActiMode activation /* AC_MODE_NONE */);
+  enum ActiMode activation /* AC_MODE_NONE */,
+  bool use_bias /* True */);
 
 flexflow_tensor_t
 flexflow_model_add_embedding_with_glorot_uniform_initializer(
@@ -154,7 +155,7 @@ flexflow_model_add_pool2d(
   int stride_h, int stride_w,
   int padding_h, int padding_w,
   enum PoolType type /* POOL_MAX */, 
-  bool relu /* true */);
+  enum ActiMode activation /* AC_MODE_NONE */);
 
 flexflow_tensor_t
 flexflow_model_add_dense_with_default_initializer(
@@ -213,6 +214,18 @@ flexflow_tensor_4d_create(
 
 void
 flexflow_tensor_4d_destroy(
+  flexflow_tensor_t handle);
+
+flexflow_tensor_t
+flexflow_tensor_2d_create(
+  flexflow_model_t model,
+  const int* dims, 
+  const char* pc_name, 
+  enum DataType data_type, 
+  bool create_grad /* true */);
+
+void
+flexflow_tensor_2d_destroy(
   flexflow_tensor_t handle);
   
 // -----------------------------------------------------------------------

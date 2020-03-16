@@ -293,12 +293,12 @@ flexflow_model_add_pool2d(
   int stride_h, int stride_w,
   int padding_h, int padding_w,
   enum PoolType type /* POOL_MAX */, 
-  bool relu /* true */)
+  enum ActiMode activation /* AC_MODE_NONE */)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor *input = FFCObjectWrapper::unwrap(input_);
   Tensor *tensor = new Tensor();
-  *tensor = handle->pool2d(name, *input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, type, relu);
+  *tensor = handle->pool2d(name, *input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, type, activation);
   printf("pool2d new Tensor 4D %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor); 
 }
@@ -420,6 +420,30 @@ flexflow_tensor_4d_destroy(
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
   printf("delete Tensor 4D %p\n", handle);
+  delete handle;
+}
+
+flexflow_tensor_t
+flexflow_tensor_2d_create(
+  flexflow_model_t model_,
+  const int* dims, 
+  const char* pc_name, 
+  enum DataType data_type, 
+  bool create_grad /* true */)
+{
+  Tensor *tensor = new Tensor();
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  *tensor = model->create_tensor<2>(dims, pc_name, data_type, create_grad);
+  printf("new Tensor 2D %p\n", tensor);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+void
+flexflow_tensor_2d_destroy(
+  flexflow_tensor_t handle_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  printf("delete Tensor 2D %p\n", handle);
   delete handle;
 }
 

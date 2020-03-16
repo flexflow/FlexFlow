@@ -21,11 +21,6 @@ endif
 CUDNN_DIR ?= /scratch/shared/wwu12/cudnn
 CUDA_DIR ?= /spack/opt/spack/linux-scientific7-x86_64/gcc-7.3.0/cuda-10.0.130-etoqn3vlwx2os25n3rmtksntnu5ioorb
 
-USE_PYTHON := 1
-PYTHON_EXE ?= python3.6
-PYTHON_LIB ?= /usr/lib64/libpython3.6m.so.1.0
-PYTHON_VERSION_MAJOR ?= 3
-
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 1		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
@@ -34,6 +29,11 @@ USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
+
+USE_PYTHON := 1
+PYTHON_EXE ?= python3.6
+PYTHON_LIB ?= /usr/lib64/libpython3.6m.so.1.0
+PYTHON_VERSION_MAJOR ?= 3
 
 # Put the binary file name here
 OUTFILE		?= alexnet

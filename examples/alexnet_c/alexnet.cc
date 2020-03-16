@@ -14,6 +14,7 @@
  */
 
 #include "model.h"
+#include "flexflow_c.h"
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("AlexNet");
@@ -22,6 +23,7 @@ LegionRuntime::Logger::Category log_app("AlexNet");
 
 class DataLoader {
 public:
+  DataLoader(flexflow_model_t ff, flexflow_tensor_t input, flexflow_tensor_t label);
   DataLoader(FFModel& ff, Tensor input, Tensor label);
   static void load_input(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
@@ -45,35 +47,55 @@ void top_level_task(const Task* task,
   flexflow_model_t ffmodel = flexflow_model_create(ffconfig);
   FFModel *ff = static_cast<FFModel *>(ffmodel.impl);
 
-  Tensor input;
+  //Tensor input;
+  flexflow_tensor_t input;
   {
     const int dims[] = {flexflow_config_get_batch_size(ffconfig), 3, 229, 229};
-    input = ff.create_tensor<4>(dims, "", DT_FLOAT);
+    //input = ff->create_tensor<4>(dims, "", DT_FLOAT);
+    input = flexflow_tensor_4d_create(ffmodel, dims, "", DT_FLOAT, true);
   }
+  Tensor *tmp_input = static_cast<Tensor *>(input.impl); 
   Tensor label;
   {
     const int dims[] = {flexflow_config_get_batch_size(ffconfig), 1};
-    label = ff.create_tensor<2>(dims, "", DT_FLOAT);
+    label = ff->create_tensor<2>(dims, "", DT_FLOAT);
   }
   // Add layers
-  Tensor t = input;
-  t = ff.conv2d("conv1", t, 64, 11, 11, 4, 4, 2, 2);
-  t = ff.pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2);
-  t = ff.pool2d("pool2", t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1);
-  t = ff.conv2d("conv4", t, 256, 3, 3, 1, 1, 1, 1);
-  t = ff.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1);
-  t = ff.pool2d("pool3", t, 3, 3, 2, 2, 0, 0);
-  t = ff.flat("flat", t);
-  t = ff.linear("lienar1", t, 4096, AC_MODE_RELU/*relu*/);
-  t = ff.linear("linear2", t, 4096, AC_MODE_RELU/*relu*/);
-  t = ff.linear("linear3", t, 1000);
+  flexflow_tensor_t t0 = input;
+  flexflow_tensor_t t1 = flexflow_model_add_conv2d(ffmodel, "conv1", t0, 64, 11, 11, 4, 4, 2, 2, AC_MODE_NONE, true);
+  flexflow_tensor_t t2 = flexflow_model_add_pool2d(ffmodel, "pool1", t1, 3, 3, 2, 2, 0, 0, POOL_MAX, AC_MODE_NONE);
+  flexflow_tensor_t t3 = flexflow_model_add_conv2d(ffmodel, "conv2", t2, 192, 5, 5, 1, 1, 2, 2, AC_MODE_NONE, true);
+  flexflow_tensor_t t4 = flexflow_model_add_pool2d(ffmodel, "pool2", t3, 3, 3, 2, 2, 0, 0, POOL_MAX, AC_MODE_NONE);
+  flexflow_tensor_t t5 = flexflow_model_add_conv2d(ffmodel, "conv3", t4, 384, 3, 3, 1, 1, 1, 1, AC_MODE_NONE, true);
+  flexflow_tensor_t t6 = flexflow_model_add_conv2d(ffmodel, "conv4", t5, 256, 3, 3, 1, 1, 1, 1, AC_MODE_NONE, true);
+  flexflow_tensor_t t7 = flexflow_model_add_conv2d(ffmodel, "conv5", t6, 256, 3, 3, 1, 1, 1, 1, AC_MODE_NONE, true);
+  flexflow_tensor_t t8 = flexflow_model_add_pool2d(ffmodel, "pool3", t7, 3, 3, 2, 2, 0, 0, POOL_MAX, AC_MODE_NONE);
+  flexflow_tensor_t t9 = flexflow_model_add_flat(ffmodel, "flat", t8);
+  flexflow_tensor_t t10 = flexflow_model_add_linear_with_default_initializer(ffmodel, "linear1", t9, 4096, AC_MODE_RELU, true);
+  flexflow_tensor_t t11 = flexflow_model_add_linear_with_default_initializer(ffmodel, "linear2", t10, 4096, AC_MODE_RELU, true);
+  flexflow_tensor_t t12 = flexflow_model_add_linear_with_default_initializer(ffmodel, "linear3", t11, 1000, AC_MODE_NONE, true);
+  //Tensor *tmp_t = static_cast<Tensor *>(t12.impl); 
+  //Tensor t = *tmp_t;
+  //Tensor t = input;
+  //t = ff->conv2d("conv1", t, 64, 11, 11, 4, 4, 2, 2);
+  //t = ff->pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
+  //t = ff->conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2);
+  //t = ff->pool2d("pool2", t, 3, 3, 2, 2, 0, 0);
+  //t = ff->conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1);
+  //t = ff->conv2d("conv4", t, 256, 3, 3, 1, 1, 1, 1);
+  //t = ff->conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1);
+  //t = ff->pool2d("pool3", t, 3, 3, 2, 2, 0, 0);
+  //t = ff->flat("flat", t);
+  //t = ff->linear("lienar1", t, 4096, AC_MODE_RELU/*relu*/);
+  //t = ff->linear("linear2", t, 4096, AC_MODE_RELU/*relu*/);
+  //t = ff->linear("linear3", t, 1000);
   //t = ff.softmax("softmax", t);
-  ff.optimizer = new SGDOptimizer(&ff, 0.01f);
+  flexflow_sgd_optimizer_t optimizer = flexflow_sgd_optimizer_create(ffmodel, 0.01f, 0, false, 0);
+  SGDOptimizer *sgd_opt = static_cast<SGDOptimizer *>(optimizer.impl);
+  ff->optimizer = sgd_opt;
   // Data Loader
-  DataLoader data_loader(ff, input, label);
-  ff.init_layers();
+  DataLoader data_loader(*ff, *tmp_input, label);
+  ff->init_layers();
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -85,8 +107,8 @@ void top_level_task(const Task* task,
   for (int epoch = 0; epoch < 0; epoch++) {
   //for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     //data_loader.reset();
-    ff.reset_metrics();
-    int iterations = 8192 / ffConfig.batchSize;
+    ff->reset_metrics();
+    int iterations = 8192 / flexflow_config_get_batch_size(ffconfig);
  
     for (int iter = 0; iter < iterations; iter++) {
       //if (dlrmConfig.dataset_path.length() == 0) {
@@ -98,8 +120,8 @@ void top_level_task(const Task* task,
       //}
       if (epoch > 0)
         runtime->begin_trace(ctx, 111/*trace_id*/);
-      ff.forward();
-      ff.zero_gradients();
+      ff->forward();
+      ff->zero_gradients();
       //ff.backward();
       //ff.update();
       if (epoch > 0)
@@ -116,7 +138,7 @@ void top_level_task(const Task* task,
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
-         8192 * ffConfig.epochs / run_time);
+         8192 * flexflow_config_get_epochs(ffconfig) / run_time);
 }
 
 void register_custom_tasks()
@@ -129,6 +151,14 @@ void register_custom_tasks()
     Runtime::preregister_task_variant<DataLoader::load_input>(
         registrar, "Load Inputs Task");
   }
+}
+
+DataLoader::DataLoader(flexflow_model_t ff_c, flexflow_tensor_t input_c, flexflow_tensor_t label_c)
+{
+  FFModel *ff = static_cast<FFModel *>(ff_c.impl);
+  Tensor *input = static_cast<Tensor *>(input_c.impl);
+  Tensor *label = static_cast<Tensor *>(label_c.impl);
+  DataLoader(*ff, *input, *label);
 }
 
 DataLoader::DataLoader(FFModel& ff,
