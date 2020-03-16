@@ -71,26 +71,19 @@ FFModel::FFModel(FFConfig& _config)
   Context ctx = config.lg_ctx;
   // Load strategy file
   if (config.strategyFile == "") {
-    // TODO: the decault data parallelsim only apply to 2D operators
-    ParallelConfig pc;
-    pc.device_type = ParallelConfig::GPU;
-    pc.nDims = 2;
-    pc.dim[0] = 1;
-    pc.dim[1] = config.workersPerNode * config.numNodes;
-    for (int i = 0; i < pc.dim[1]; i++)
-      pc.device_ids[i] = i;
-    config.strategies[FFConfig::DataParallelismID] = pc;
   } else {
     load_strategies_from_file(config.strategyFile, config.strategies);
-    // TODO: the decault data parallelsim only apply to @D operators
+  }
+  for (int i = FFConfig::DataParallelism_1D; i <= FFConfig::DataParallelism_6D; i++) {
     ParallelConfig pc;
     pc.device_type = ParallelConfig::GPU;
-    pc.nDims = 2;
-    pc.dim[0] = 1;
-    pc.dim[1] = config.workersPerNode * config.numNodes;
-    for (int i = 0; i < pc.dim[1]; i++)
-      pc.device_ids[i] = i;
-    config.strategies[FFConfig::DataParallelismID] = pc;
+    pc.nDims = i - FFConfig::DataParallelism_1D + 1;
+    for (int j = 0; j < pc.nDims; j++)
+      pc.dim[j] = 1;
+    pc.dim[pc.nDims-1] = config.workersPerNode * config.numNodes;
+    for (int j = 0; j < pc.dim[pc.nDims-1]; j++)
+      pc.device_ids[j] = j;
+    config.strategies[i] = pc;
   }
 
   // Create field space
@@ -119,7 +112,7 @@ FFModel::FFModel(FFConfig& _config)
   IndexLauncher initLauncher(FF_INIT_TASK_ID, task_is,
                              TaskArgument(&workSpaceSize, sizeof(workSpaceSize)), local_args,
                              Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                             FFConfig::DataParallelismID);
+                             FFConfig::DataParallelism_2D);
   FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
   fm.wait_all_results();
   int idx = 0;
@@ -207,7 +200,7 @@ Tensor FFModel::create_tensor(const int dims[],
                               bool create_grad)
 {
   ParallelConfig pc;
-  assert(config.find_parallel_config(pc_name, pc));
+  assert(config.find_parallel_config(NDIM, pc_name, pc));
   IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(get_or_create_task_is(pc));
   return create_tensor(dims, task_is, data_type, create_grad);
 }
@@ -286,7 +279,8 @@ void FFModel::create_disjoint_partition(const Tensor& tensor,
                                         const IndexSpaceT<NDIM>& part_is,
                                         LogicalPartition& part_fwd,
                                         LogicalPartition& part_bwd)
-{ 
+{
+  assert(tensor.numDim == NDIM);
   // Current assume forward and grad share the same index space
   assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
   Context ctx = config.lg_ctx;
@@ -306,6 +300,43 @@ void FFModel::create_disjoint_partition(const Tensor& tensor,
         transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
       else
         transform[i][j] = 0;
+  IndexPartition ip = runtime->create_partition_by_restriction(
+      ctx, tensor.region.get_index_space(), part_is, transform, extent);
+  assert(runtime->is_index_partition_disjoint(ctx, ip));
+  assert(runtime->is_index_partition_complete(ctx, ip));
+  part_fwd = runtime->get_logical_partition(ctx, tensor.region, ip);
+  part_bwd = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
+}
+
+template<int NDIM, int TDIM>
+void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor& tensor,
+                                                            const IndexSpaceT<TDIM>& part_is,
+                                                            LogicalPartition& part_fwd,
+                                                            LogicalPartition& part_bwd)
+{
+  assert(tensor.numDim == NDIM);
+  // Current assume forward and grad share the same index space
+  assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, tensor.region.get_index_space());
+  Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  // Assume it is data parallel
+  for (int i = 0; i < TDIM - 1; i++)
+    assert(part_rect.lo[i] == part_rect.hi[i]);
+  Transform<NDIM, TDIM> transform;
+  Point<NDIM> ext_hi;
+  for (int i = 0; i < NDIM; i++) {
+    int nparts = 1;
+    if (i == NDIM - 1)
+      nparts = part_rect.hi[TDIM-1] - part_rect.lo[TDIM-1] + 1;
+    ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
+  }
+  Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
+  for (int i = 0; i < NDIM; i++)
+    for (int j = 0; j < TDIM; j++)
+      transform[i][j] = 0;
+  transform[NDIM-1][TDIM-1] = extent.hi[NDIM-1] - extent.lo[NDIM-1] + 1;
   IndexPartition ip = runtime->create_partition_by_restriction(
       ctx, tensor.region.get_index_space(), part_is, transform, extent);
   assert(runtime->is_index_partition_disjoint(ctx, ip));
@@ -510,10 +541,10 @@ IndexSpace FFModel::get_or_create_task_is(const Domain& domain)
   return get_or_create_task_is(pc);
 }
 
-IndexSpace FFModel::get_or_create_task_is(const std::string& pcname)
+IndexSpace FFModel::get_or_create_task_is(int ndims, const std::string& pcname)
 {
   ParallelConfig pc;
-  assert(config.find_parallel_config(pcname, pc));
+  assert(config.find_parallel_config(ndims, pcname, pc));
   return get_or_create_task_is(pc);
 }
 
@@ -840,13 +871,13 @@ int main(int argc, char** argv)
     Runtime::preregister_task_variant<OpMeta*, Conv2D::init_task>(
         registrar, "Conv2D Init Task");
   }
-  {
-    TaskVariantRegistrar registrar(CONV2D_INIT_PARA_TASK_ID, "Conv2D Init Para");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<Conv2D::init_para_task>(
-        registrar, "Conv2D Init Para Task");
-  }
+  //{
+  //  TaskVariantRegistrar registrar(CONV2D_INIT_PARA_TASK_ID, "Conv2D Init Para");
+  //  registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+  //  registrar.set_leaf();
+  //  Runtime::preregister_task_variant<Conv2D::init_para_task>(
+  //      registrar, "Conv2D Init Para Task");
+  //}
   {
     TaskVariantRegistrar registrar(CONV2D_FWD_TASK_ID, "Conv2D Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
@@ -861,13 +892,13 @@ int main(int argc, char** argv)
     Runtime::preregister_task_variant<Conv2D::backward_task>(
         registrar, "Conv2D Backward Task");
   }
-  {
-    TaskVariantRegistrar registrar(CONV2D_UPD_TASK_ID, "Conv2D Update");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<Conv2D::update_task>(
-       registrar, "Conv2D Update Task");
-  }
+  //{
+  //  TaskVariantRegistrar registrar(CONV2D_UPD_TASK_ID, "Conv2D Update");
+  //  registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+  //  registrar.set_leaf();
+  //  Runtime::preregister_task_variant<Conv2D::update_task>(
+  //     registrar, "Conv2D Update Task");
+  //}
   // Embedding task GPU
   {
     TaskVariantRegistrar registrar(EMBED_FWD_TASK_ID, "Embedding Forward");
@@ -1148,6 +1179,10 @@ template Tensor FFModel::create_tensor<4>(const int* dims, const IndexSpaceT<4>&
 
 template void FFModel::create_disjoint_partition<1>(const Tensor& tensor, const IndexSpaceT<1>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
 template void FFModel::create_disjoint_partition<2>(const Tensor& tensor, const IndexSpaceT<2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
+template void FFModel::create_disjoint_partition<3>(const Tensor& tensor, const IndexSpaceT<3>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
+template void FFModel::create_disjoint_partition<4>(const Tensor& tensor, const IndexSpaceT<4>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
+
+template void FFModel::create_data_parallel_partition_with_diff_dims<4, 2>(const Tensor& tensor, const IndexSpaceT<2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
 
 template Tensor FFModel::create_weight<2>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
 template Tensor FFModel::create_weight<1>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);

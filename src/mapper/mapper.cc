@@ -50,8 +50,9 @@ void FFMapper::slice_task(const MapperContext ctx,
     unsigned int config_num_parts = 1;
     if (strategies.find(hash) == strategies.end()) {
       // No strategy found, use default data parallelism
-      assert(strategies.find(FFConfig::DataParallelismID) != strategies.end());
-      config = strategies[FFConfig::DataParallelismID];
+      int ndim = input.domain.get_dim();
+      assert(strategies.find(FFConfig::DataParallelism_1D-1+ndim) != strategies.end());
+      config = strategies[FFConfig::DataParallelism_1D-1+ndim];
     } else {
       // Found a strategy
       config = strategies[hash];
@@ -325,30 +326,23 @@ void update_mappers(Machine machine, Runtime *runtime,
   std::map<MappingTagID, ParallelConfig>* strategies = new std::map<MappingTagID, ParallelConfig>();
 
   if (strategyFile == "") {
-    log_mapper.print("No strategy file provided. Use default data parallelism.");
     // No strategy file provided, use data parallelism
-    // TODO: the decault data parallelsim only apply to 2D operators
-    ParallelConfig pc;
-    pc.device_type = ParallelConfig::GPU;
-    pc.nDims = 2;
-    pc.dim[0] = 1;
-    pc.dim[1] = gpus->size();
-    for (size_t i = 0; i < gpus->size(); i++)
-      pc.device_ids[i] = i;
-    (*strategies)[FFConfig::DataParallelismID] = pc;
+    log_mapper.print("No strategy file provided. Use default data parallelism.");
   } else {
     log_mapper.print("Load parallelization strategy from file %s",
                      strategyFile.c_str());
     load_strategies_from_file(strategyFile, *strategies);
-    // TODO: the decault data parallelsim only apply to 2D operators
+  }
+  for (int i = FFConfig::DataParallelism_1D; i <= FFConfig::DataParallelism_6D; i++) {
     ParallelConfig pc;
     pc.device_type = ParallelConfig::GPU;
-    pc.nDims = 2;
-    pc.dim[0] = 1;
-    pc.dim[1] = gpus->size();
-    for (size_t i = 0; i < gpus->size(); i++)
-      pc.device_ids[i] = i;
-    (*strategies)[FFConfig::DataParallelismID] = pc;
+    pc.nDims = i - FFConfig::DataParallelism_1D + 1;
+    for (int j = 0; j < pc.nDims; j++)
+      pc.dim[j] = 1;
+    pc.dim[pc.nDims-1] = gpus->size();
+    for (size_t j = 0; j < gpus->size(); j++)
+      pc.device_ids[j] = j;
+    (*strategies)[i] = pc;
   }
 
   for (std::set<Processor>::const_iterator it = local_procs.begin();

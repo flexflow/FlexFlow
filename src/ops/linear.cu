@@ -37,10 +37,12 @@ Tensor FFModel::dense(std::string name,
   Parameter kernel, bias;
   kernel.tensor = li->kernel;
   kernel.op = li;
-  bias.tensor = li->bias;
-  bias.op = li;
   parameters.push_back(kernel);
-  parameters.push_back(bias);
+  if (use_bias) {
+    bias.tensor = li->bias;
+    bias.op = li;
+    parameters.push_back(bias);
+  }
   return li->output;
 }
 
@@ -70,7 +72,7 @@ Linear::Linear(FFModel& model,
 {
   assert(_input.numDim == 2);
   // Retrive the task indexspace for the op
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(pcname));
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
 
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
