@@ -42,6 +42,7 @@ SGDOptimizer::SGDOptimizer(const FFModel* _model,
       case 1:
       case 2:
       case 3:
+      case 4:
       {
         if (momentum > 0.0f) {
           v_regions[p.region] = runtime->create_logical_region(

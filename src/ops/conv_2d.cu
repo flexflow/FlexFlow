@@ -29,7 +29,8 @@ Tensor FFModel::conv2d(std::string name,
 {
   if (kernel_initializer == NULL) {
     int seed = std::rand();
-    kernel_initializer = new GlorotUniform(seed);
+    //kernel_initializer = new GlorotUniform(seed);
+    kernel_initializer = new ZeroInitializer();
   }
   if (bias_initializer == NULL) {
     bias_initializer = new ZeroInitializer();
@@ -100,12 +101,12 @@ Conv2D::Conv2D(FFModel& model,
   // Create kernel
   {
     const int dims[4] = {output_c, input_c, kernel_h, kernel_w};
-    kernel = model.create_weight<4>(dims, task_is, DT_FLOAT, kernel_initializer);
+    kernel = model.create_conv_weight<4>(dims, task_is, DT_FLOAT, kernel_initializer);
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {output_c};
-    bias = model.create_weight<1>(dims, task_is, DT_FLOAT, bias_initializer);
+    bias = model.create_conv_weight<1>(dims, task_is, DT_FLOAT, bias_initializer);
   }
   // Compute partition bound for input
   Rect<4> input_rect = runtime->get_index_partition_color_space(
@@ -399,7 +400,6 @@ OpMeta* Conv2D::init_task(const Task *task,
   return m;
 }
 
-__host__
 void Conv2D::init(const FFModel& ff)
 {
   ArgumentMap argmap;
@@ -411,28 +411,27 @@ void Conv2D::init(const FFModel& ff)
     FFHandler handle = ff.handlers[idx++];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
-  IndexLauncher init_launcher(CONV2D_INIT_TASK_ID, task_is,
-                              TaskArgument(this, sizeof(Conv2D)), argmap,
-                              Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                              FFConfig::get_hash_id(std::string(name)));
- 
-  init_launcher.add_region_requirement(
+  IndexLauncher launcher(CONV2D_INIT_TASK_ID, task_is,
+                         TaskArgument(this, sizeof(Conv2D)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
+  launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
-  init_launcher.add_field(0, FID_DATA);
-  init_launcher.add_region_requirement(
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
       RegionRequirement(output.part, 0/*projection id*/,
                         WRITE_ONLY, EXCLUSIVE, output.region));
-  init_launcher.add_field(1, FID_DATA);
-  init_launcher.add_region_requirement(
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(
       RegionRequirement(kernel.part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, kernel.region));
-  init_launcher.add_field(2, FID_DATA);
-  init_launcher.add_region_requirement(
+  launcher.add_field(2, FID_DATA);
+  launcher.add_region_requirement(
       RegionRequirement(bias.part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, bias.region));
-  init_launcher.add_field(3, FID_DATA);
-  FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
+  launcher.add_field(3, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;
   for (PointInRectIterator<4> it(rect); it(); it++) {
@@ -526,7 +525,7 @@ void Conv2D::forward(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, output.region));
+                        WRITE_ONLY, EXCLUSIVE, output.region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(kernel.part, 0/*projection id*/,

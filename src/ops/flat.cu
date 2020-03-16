@@ -271,7 +271,6 @@ void Flat::backward(const FFModel& ff)
       RegionRequirement(output.part_grad, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, output.region_grad));
   launcher.add_field(1, FID_DATA);
-
   runtime->execute_index_space(ctx, launcher);
 }
 

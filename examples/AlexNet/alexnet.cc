@@ -70,15 +70,14 @@ void top_level_task(const Task* task,
   t = ff.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1);
   t = ff.pool2d("pool3", t, 3, 3, 2, 2, 0, 0);
   t = ff.flat("flat", t);
-  t = ff.linear("lienar1", t, 4096);
-  t = ff.linear("linear2", t, 4096);
-  t = ff.linear("linear3", t, 1000, AC_MODE_RELU/*relu*/);
+  t = ff.linear("lienar1", t, 4096, AC_MODE_RELU/*relu*/);
+  t = ff.linear("linear2", t, 4096, AC_MODE_RELU/*relu*/);
+  t = ff.linear("linear3", t, 1000);
   //t = ff.softmax("softmax", t);
-
-  //ff.optimizer = new SGDOptimizer(&ff, 0.01f);
-  ff.init_layers();
+  ff.optimizer = new SGDOptimizer(&ff, 0.01f);
   // Data Loader
   DataLoader data_loader(ff, input, label);
+  ff.init_layers();
   //Start timer
   {
     runtime->issue_execution_fence(ctx);

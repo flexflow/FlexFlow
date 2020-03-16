@@ -285,15 +285,21 @@ public:
                        DataType data_type,
                        bool create_grad = true);
   template<int NDIM>
-  Tensor create_weight(const int* dims,
-                       const IndexSpaceT<2>& part_is,
-                       DataType data_type,
-                       Initializer* initializer,
-                       bool create_grad = true);
+  Tensor create_conv_weight(const int* dims,
+                            const IndexSpaceT<4>& part_is,
+                            DataType data_type,
+                            Initializer* initializer,
+                            bool create_grad = true);
   template<int NDIM>
-  Tensor create_replica(const int* dims,
-                        const IndexSpaceT<2>& part_is,
-                        DataType data_type);
+  Tensor create_linear_weight(const int* dims,
+                              const IndexSpaceT<2>& part_is,
+                              DataType data_type,
+                              Initializer* initializer,
+                              bool create_grad = true);
+  template<int NDIM>
+  Tensor create_linear_replica(const int* dims,
+                               const IndexSpaceT<2>& part_is,
+                               DataType data_type);
   static PerfMetrics update_metrics_task(const Task *task,
                                          const std::vector<PhysicalRegion> &regions,
                                          Context ctx, Runtime *runtime);
