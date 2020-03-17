@@ -20,6 +20,7 @@ FF_NEW_OPAQUE_TYPE(flexflow_norm_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_conv2d_t);
 FF_NEW_OPAQUE_TYPE(flexflow_pool2d_t);
 FF_NEW_OPAQUE_TYPE(flexflow_linear_t);
+FF_NEW_OPAQUE_TYPE(flexflow_dataloader_t);
 
 // -----------------------------------------------------------------------
 // FFConfig
@@ -294,6 +295,20 @@ flexflow_norm_initializer_create(
 void  
 flexflow_norm_initializer_destroy(
   flexflow_norm_initializer_t handle);
+
+// -----------------------------------------------------------------------
+// DataLoader
+// -----------------------------------------------------------------------
+
+flexflow_dataloader_t
+flexflow_dataloader_create(
+  flexflow_model_t ffmodel_, 
+  flexflow_tensor_t input_, 
+  flexflow_tensor_t label_);
+  
+void  
+flexflow_dataloader_destroy(
+  flexflow_dataloader_t handle_);
 
 #ifdef __cplusplus
 }

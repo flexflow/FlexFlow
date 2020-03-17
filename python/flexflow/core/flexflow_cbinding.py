@@ -116,9 +116,15 @@ class FFModel(object):
     handle = ffc.flexflow_tensor_4d_create(self.handle, c_dims, name.encode('utf-8'), c_data_type, create_grad);
     return Tensor(handle)
     
-  def conv2d(self, name, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE):
+  def create_tensor_2d(self, dims, name, data_type, create_grad=True):
+    c_dims = ffi.new("int[]", dims)
+    c_data_type = enum_to_int(DataType, data_type)
+    handle = ffc.flexflow_tensor_2d_create(self.handle, c_dims, name.encode('utf-8'), c_data_type, create_grad);
+    return Tensor(handle)
+    
+  def conv2d(self, name, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True):
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_conv2d(self.handle, name.encode('utf-8'), input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation)  
+    handle = ffc.flexflow_model_add_conv2d(self.handle, name.encode('utf-8'), input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias)  
     return Tensor(handle)
     
   def embedding(self, name, input, num_entires, out_dim, aggr, kernel_initializer):
@@ -135,9 +141,10 @@ class FFModel(object):
       assert 0, "unknow initializer type"
     return Tensor(handle)
     
-  def pool2d(self, name, input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, relu=True):
+  def pool2d(self, name, input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE):
     c_pool_type = enum_to_int(PoolType, pool_type)
-    handle = ffc.flexflow_model_add_pool2d(self.handle, name.encode('utf-8'), input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, relu)
+    c_activation = enum_to_int(ActiMode, activation)
+    handle = ffc.flexflow_model_add_pool2d(self.handle, name.encode('utf-8'), input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
     return Tensor(handle)
 
   def dense(self, name, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True):
@@ -226,4 +233,13 @@ class NormInitializer(object):
   def __init__(self, seed, meanv, stddev):
     self.handle = ffc.flexflow_norm_initializer_create(seed, meanv, stddev)
     self._handle = ffi.gc(self.handle, ffc.flexflow_norm_initializer_destroy)
+    
+# -----------------------------------------------------------------------
+# DataLoader
+# -----------------------------------------------------------------------
+
+class DataLoader(object):
+  def __init__(self, ffmodel, input, label):
+    self.handle = ffc.flexflow_dataloader_create(ffmodel.handle, input.handle, label.handle)
+    self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_destroy)
   

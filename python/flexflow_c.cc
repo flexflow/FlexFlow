@@ -29,6 +29,18 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_zero_initializer_t, ZeroInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_uniform_initializer_t, UniformInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_norm_initializer_t, NormInitializer *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_t, DataLoader *);
+};
+
+class DataLoader {
+public:
+  DataLoader(FFModel& ff, Tensor input, Tensor label);
+  static void load_input(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx,
+                         Runtime* runtime);
+public:
+  int num_samples;
 };
 
 // -----------------------------------------------------------------------
@@ -553,5 +565,72 @@ flexflow_norm_initializer_destroy(
 {
   NormInitializer *handle = FFCObjectWrapper::unwrap(handle_);
   delete handle;
+}
+
+// -----------------------------------------------------------------------
+// DataLoader
+// -----------------------------------------------------------------------
+
+flexflow_dataloader_t
+flexflow_dataloader_create(
+  flexflow_model_t ffmodel_, 
+  flexflow_tensor_t input_, 
+  flexflow_tensor_t label_)
+{
+  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *label = FFCObjectWrapper::unwrap(label_);
+  DataLoader *dataloader = new DataLoader(*ffmodel, *input, *label);
+  return FFCObjectWrapper::wrap(dataloader);  
+}
+
+void  
+flexflow_dataloader_destroy(
+  flexflow_dataloader_t handle_)
+{
+  DataLoader *handle = FFCObjectWrapper::unwrap(handle_);
+  delete handle;
+}
+
+DataLoader::DataLoader(FFModel& ff,
+                       Tensor input, Tensor label)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  num_samples = 0;
+  printf("Use random dataset...");
+  num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
+  printf("Number of random samples = %d\n", num_samples);
+  IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, ""));
+  ArgumentMap argmap;
+  IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
+                         TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string("")));
+  launcher.add_region_requirement(
+      RegionRequirement(input.part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, input.region));
+  launcher.add_field(0, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void DataLoader::load_input(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx,
+                            Runtime* runtime)
+{
+  printf("CheckPoint#1\n");
+}
+
+void register_custom_tasks()
+{
+  // Load Input
+  {
+    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_1, "Load Inputs");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<DataLoader::load_input>(
+        registrar, "Load Inputs Task");
+  }
 }
 
