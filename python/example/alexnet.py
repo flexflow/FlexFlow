@@ -34,7 +34,7 @@ def top_level_task():
   # Data Loader
   dataloader = DataLoader(ffmodel, input, label)
   
-  ffmodel.init_layers()
+ # ffmodel.init_layers()
   
   for epoch in range(0,1):
     ffmodel.reset_metrics()
