@@ -428,15 +428,6 @@ flexflow_tensor_4d_create(
   return FFCObjectWrapper::wrap(tensor);
 }
 
-void
-flexflow_tensor_4d_destroy(
-  flexflow_tensor_t handle_)
-{
-  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
-  printf("delete Tensor 4D %p\n", handle);
-  delete handle;
-}
-
 flexflow_tensor_t
 flexflow_tensor_2d_create(
   flexflow_model_t model_,
@@ -453,11 +444,11 @@ flexflow_tensor_2d_create(
 }
 
 void
-flexflow_tensor_2d_destroy(
+flexflow_tensor_destroy(
   flexflow_tensor_t handle_)
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
-  printf("delete Tensor 2D %p\n", handle);
+  printf("delete Tensor %p\n", handle);
   delete handle;
 }
 
@@ -475,6 +466,7 @@ flexflow_sgd_optimizer_create(
 {
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
   SGDOptimizer *optimizer = new SGDOptimizer(model, lr, momentum, nesterov, weight_decay);
+  printf("new SGDOptimizer %p\n", optimizer);
   return FFCObjectWrapper::wrap(optimizer);
 }
 
@@ -483,6 +475,7 @@ flexflow_sgd_optimizer_destroy(
   flexflow_sgd_optimizer_t handle_)
 {
   SGDOptimizer *handle = FFCObjectWrapper::unwrap(handle_);
+  printf("delete SGDOptimizer %p\n", handle);
   delete handle;
 }
 

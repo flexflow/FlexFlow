@@ -143,6 +143,25 @@ void top_level_task(const Task* task,
   double run_time = 1e-6 * (ts_end - ts_start);
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
          8192 * flexflow_config_get_epochs(ffconfig) / run_time);
+  
+  flexflow_tensor_destroy(input);
+  flexflow_tensor_destroy(label);       
+  flexflow_tensor_destroy(t1);
+  flexflow_tensor_destroy(t2);
+  flexflow_tensor_destroy(t3);
+  flexflow_tensor_destroy(t4);
+  flexflow_tensor_destroy(t5);
+  flexflow_tensor_destroy(t6);
+  flexflow_tensor_destroy(t7);
+  flexflow_tensor_destroy(t8);
+  flexflow_tensor_destroy(t9);
+  flexflow_tensor_destroy(t10);
+  flexflow_tensor_destroy(t11);
+  flexflow_tensor_destroy(t12);
+  flexflow_tensor_destroy(t13);
+  flexflow_sgd_optimizer_destroy(optimizer);
+  flexflow_model_destroy(ffmodel);
+  flexflow_config_destroy(ffconfig);
 }
 
 void register_custom_tasks()

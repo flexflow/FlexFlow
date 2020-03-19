@@ -108,7 +108,7 @@ class FFConfig(object):
 class Tensor(object):
   def __init__(self, handle):
     self.handle = handle
-    self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_4d_destroy)
+    self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
 
 # -----------------------------------------------------------------------
 # FFModel

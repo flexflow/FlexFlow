@@ -214,10 +214,6 @@ flexflow_tensor_4d_create(
   enum DataType data_type, 
   bool create_grad /* true */);
 
-void
-flexflow_tensor_4d_destroy(
-  flexflow_tensor_t handle);
-
 flexflow_tensor_t
 flexflow_tensor_2d_create(
   flexflow_model_t model,
@@ -227,7 +223,7 @@ flexflow_tensor_2d_create(
   bool create_grad /* true */);
 
 void
-flexflow_tensor_2d_destroy(
+flexflow_tensor_destroy(
   flexflow_tensor_t handle);
   
 // -----------------------------------------------------------------------

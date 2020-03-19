@@ -37,7 +37,6 @@ def top_level_task():
   ffmodel.init_layers()
   
   epochs = ffconfig.get_epochs()
-  print(epochs)
   
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
@@ -55,7 +54,7 @@ def top_level_task():
         
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
-  print("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(run_time, 8192 * epochs / run_time));
+  print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, 8192 * epochs / run_time));
 
 if __name__ == "__main__":
   print("alexnet")
