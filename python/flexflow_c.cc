@@ -1,6 +1,17 @@
 #include "model.h"
 #include "flexflow_c.h"
 
+class ImgDataLoader {
+public:
+  ImgDataLoader(FFModel& ff, Tensor input, Tensor label);
+  static void load_input(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx,
+                         Runtime* runtime);
+public:
+  int num_samples;
+};
+
 class FFCObjectWrapper {
 public:
 #define FF_NEW_OPAQUE_WRAPPER(T_, T)                                   \
@@ -29,18 +40,7 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_zero_initializer_t, ZeroInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_uniform_initializer_t, UniformInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_norm_initializer_t, NormInitializer *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_t, DataLoader *);
-};
-
-class DataLoader {
-public:
-  DataLoader(FFModel& ff, Tensor input, Tensor label);
-  static void load_input(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
-                         Context ctx,
-                         Runtime* runtime);
-public:
-  int num_samples;
+  FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_t, ImgDataLoader *);
 };
 
 // -----------------------------------------------------------------------
@@ -337,14 +337,14 @@ flexflow_model_add_linear_with_default_initializer(
   flexflow_model_t handle_,
   const char* name,
   const flexflow_tensor_t input_,
-  int out_channels,
+  int out_dim,
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* true */)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
   Tensor *tensor = new Tensor();
-  *tensor = handle->linear(name, *input, out_channels, activation, use_bias);
+  *tensor = handle->linear(name, *input, out_dim, activation, use_bias);
   printf("Linear default new Tensor 4D %p, activation %d, use_bias %d\n", tensor, activation, use_bias);
   return FFCObjectWrapper::wrap(tensor); 
 }
@@ -379,21 +379,23 @@ flexflow_model_add_flat(
   Tensor *input = FFCObjectWrapper::unwrap(input_);
   Tensor *tensor = new Tensor();
   *tensor = handle->flat(name, *input);
-  printf("flat new Tensor 4D %p\n", tensor);
+  printf("Flat new Tensor 4D %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor);  
 }
 
 flexflow_tensor_t
 flexflow_model_add_softmax(
   flexflow_model_t handle_,
-  char* name,
-  flexflow_tensor_t input_)
+  const char* name,
+  const flexflow_tensor_t input_,
+  const flexflow_tensor_t label_)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *label = FFCObjectWrapper::unwrap(label_);
   Tensor *tensor = new Tensor();
-  *tensor = handle->softmax(name, *input);
-  printf("softmax new Tensor 4D %p\n", tensor);
+  *tensor = handle->softmax(name, *input, *label);
+  printf("Softmax new Tensor 4D %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor);   
 }
 
@@ -580,7 +582,7 @@ flexflow_dataloader_create(
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
   Tensor *input = FFCObjectWrapper::unwrap(input_);
   Tensor *label = FFCObjectWrapper::unwrap(label_);
-  DataLoader *dataloader = new DataLoader(*ffmodel, *input, *label);
+  ImgDataLoader *dataloader = new ImgDataLoader(*ffmodel, *input, *label);
   return FFCObjectWrapper::wrap(dataloader);  
 }
 
@@ -588,11 +590,50 @@ void
 flexflow_dataloader_destroy(
   flexflow_dataloader_t handle_)
 {
-  DataLoader *handle = FFCObjectWrapper::unwrap(handle_);
+  ImgDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
   delete handle;
 }
 
-DataLoader::DataLoader(FFModel& ff,
+// -----------------------------------------------------------------------
+// Timer
+// -----------------------------------------------------------------------
+
+double
+flexflow_get_current_time(
+  flexflow_config_t config_)
+{
+  FFConfig *config = FFCObjectWrapper::unwrap(config_);
+  config->lg_hlr->issue_execution_fence(config->lg_ctx);
+  TimingLauncher timer(MEASURE_MICRO_SECONDS);
+  Future future = config->lg_hlr->issue_timing_measurement(config->lg_ctx, timer);
+  future.get_void_result();
+  double ts_start = Realm::Clock::current_time_in_microseconds();
+  return ts_start;
+}
+
+// -----------------------------------------------------------------------
+// Trace
+// -----------------------------------------------------------------------
+
+void
+flexflow_begin_trace(
+  flexflow_config_t config_, 
+  int trace_id)
+{
+  FFConfig *config = FFCObjectWrapper::unwrap(config_);
+  config->lg_hlr->begin_trace(config->lg_ctx, trace_id);
+}
+
+void
+flexflow_end_trace(
+  flexflow_config_t config_, 
+  int trace_id)
+{
+  FFConfig *config = FFCObjectWrapper::unwrap(config_);
+  config->lg_hlr->end_trace(config->lg_ctx, trace_id);
+}
+
+ImgDataLoader::ImgDataLoader(FFModel& ff,
                        Tensor input, Tensor label)
 {
   Context ctx = ff.config.lg_ctx;
@@ -614,7 +655,7 @@ DataLoader::DataLoader(FFModel& ff,
   runtime->execute_index_space(ctx, launcher);
 }
 
-void DataLoader::load_input(const Task *task,
+void ImgDataLoader::load_input(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx,
                             Runtime* runtime)
@@ -622,14 +663,14 @@ void DataLoader::load_input(const Task *task,
   printf("CheckPoint#1\n");
 }
 
-void register_custom_tasks()
+void register_c_custom_tasks()
 {
   // Load Input
   {
     TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_1, "Load Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<DataLoader::load_input>(
+    Runtime::preregister_task_variant<ImgDataLoader::load_input>(
         registrar, "Load Inputs Task");
   }
 }

@@ -70,9 +70,10 @@ void top_level_task(const Task* task,
   flexflow_tensor_t t7 = flexflow_model_add_conv2d(ffmodel, "conv5", t6, 256, 3, 3, 1, 1, 1, 1, AC_MODE_NONE, true);
   flexflow_tensor_t t8 = flexflow_model_add_pool2d(ffmodel, "pool3", t7, 3, 3, 2, 2, 0, 0, POOL_MAX, AC_MODE_NONE);
   flexflow_tensor_t t9 = flexflow_model_add_flat(ffmodel, "flat", t8);
-  flexflow_tensor_t t10 = flexflow_model_add_linear_with_default_initializer(ffmodel, "linear1", t9, 4096, AC_MODE_RELU, true);
-  flexflow_tensor_t t11 = flexflow_model_add_linear_with_default_initializer(ffmodel, "linear2", t10, 4096, AC_MODE_RELU, true);
-  flexflow_tensor_t t12 = flexflow_model_add_linear_with_default_initializer(ffmodel, "linear3", t11, 1000, AC_MODE_NONE, true);
+  flexflow_tensor_t t10 = flexflow_model_add_dense_with_default_initializer(ffmodel, "linear1", t9, 4096, AC_MODE_RELU, true);
+  flexflow_tensor_t t11 = flexflow_model_add_dense_with_default_initializer(ffmodel, "linear2", t10, 4096, AC_MODE_RELU, true);
+  flexflow_tensor_t t12 = flexflow_model_add_dense_with_default_initializer(ffmodel, "linear3", t11, 1000, AC_MODE_NONE, true);
+  flexflow_tensor_t t13 = flexflow_model_add_softmax(ffmodel, "softmax", t12, label);
   //Tensor *tmp_t = static_cast<Tensor *>(t12.impl); 
   //Tensor t = *tmp_t;
   //Tensor t = input;
@@ -90,11 +91,13 @@ void top_level_task(const Task* task,
   //t = ff->linear("linear3", t, 1000);
   //t = ff.softmax("softmax", t);
   flexflow_sgd_optimizer_t optimizer = flexflow_sgd_optimizer_create(ffmodel, 0.01f, 0, false, 0);
-  SGDOptimizer *sgd_opt = static_cast<SGDOptimizer *>(optimizer.impl);
-  ff->optimizer = sgd_opt;
+  flexflow_model_set_sgd_optimizer(ffmodel, optimizer);
+  //SGDOptimizer *sgd_opt = static_cast<SGDOptimizer *>(optimizer.impl);
+  //ff->optimizer = sgd_opt;
   // Data Loader
   DataLoader data_loader(ffmodel, input, label);
-  ff->init_layers();
+  flexflow_model_init_layers(ffmodel);
+  //ff->init_layers();
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -103,8 +106,8 @@ void top_level_task(const Task* task,
     future.get_void_result();
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
-  for (int epoch = 0; epoch < 0; epoch++) {
-  //for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
+  for (int epoch = 0; epoch < flexflow_config_get_epochs(ffconfig); epoch++) {
+
     //data_loader.reset();
     ff->reset_metrics();
     int iterations = 8192 / flexflow_config_get_batch_size(ffconfig);
@@ -119,8 +122,10 @@ void top_level_task(const Task* task,
       //}
       if (epoch > 0)
         runtime->begin_trace(ctx, 111/*trace_id*/);
-      ff->forward();
-      ff->zero_gradients();
+      flexflow_model_forward(ffmodel);
+      flexflow_model_zero_gradients(ffmodel);
+      //ff->forward();
+      //ff->zero_gradients();
       //ff.backward();
       //ff.update();
       if (epoch > 0)

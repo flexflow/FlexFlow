@@ -1284,7 +1284,7 @@ void register_flexflow_tasks()
 {
   register_internal_tasks();
   
-  register_custom_tasks();
+  register_c_custom_tasks();
   
   DataParallelShardingFunctor* sharding_functor = new DataParallelShardingFunctor();
   Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);

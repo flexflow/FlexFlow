@@ -172,7 +172,7 @@ flexflow_model_add_linear_with_default_initializer(
   flexflow_model_t handle,
   const char* name,
   const flexflow_tensor_t input,
-  int out_channels,
+  int out_dim,
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* true */);
 
@@ -193,8 +193,9 @@ flexflow_model_add_flat(
 flexflow_tensor_t
 flexflow_model_add_softmax(
   flexflow_model_t handle,
-  char* name,
-  const flexflow_tensor_t input);
+  const char* name,
+  const flexflow_tensor_t input,
+  const flexflow_tensor_t label);
   
 void
 flexflow_model_set_sgd_optimizer(
@@ -309,6 +310,28 @@ flexflow_dataloader_create(
 void  
 flexflow_dataloader_destroy(
   flexflow_dataloader_t handle_);
+
+// -----------------------------------------------------------------------
+// Timer
+// -----------------------------------------------------------------------
+
+double
+flexflow_get_current_time(
+  flexflow_config_t config);
+
+// -----------------------------------------------------------------------
+// Trace
+// -----------------------------------------------------------------------
+
+void
+flexflow_begin_trace(
+  flexflow_config_t config, 
+  int trace_id);
+
+void
+flexflow_end_trace(
+  flexflow_config_t config, 
+  int trace_id);
 
 #ifdef __cplusplus
 }

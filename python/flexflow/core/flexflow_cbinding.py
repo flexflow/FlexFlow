@@ -91,6 +91,15 @@ class FFConfig(object):
     
   def get_epochs(self):
     return ffc.flexflow_config_get_epochs(self.handle)
+  
+  def get_current_time(self):
+    return ffc.flexflow_get_current_time(self.handle)
+    
+  def begin_trace(self, trace_id):
+    ffc.flexflow_begin_trace(self.handle, trace_id)
+    
+  def end_trace(self, trace_id):
+    ffc.flexflow_end_trace(self.handle, trace_id)
 
 # -----------------------------------------------------------------------
 # Tensor
@@ -149,20 +158,20 @@ class FFModel(object):
 
   def dense(self, name, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True):
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_dense_with_default_initializer(self.handle, name.encode('utf-8'), input.handle, out_channels, c_activation, use_bias)
+    handle = ffc.flexflow_model_add_dense_with_default_initializer(self.handle, name.encode('utf-8'), input.handle, out_dim, c_activation, use_bias)
     return Tensor(handle)
     
-  def linear(self, name, input, out_channels, activation=ActiMode.AC_MODE_NONE, use_bias=True):
+  def linear(self, name, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True):
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_linear_with_default_initializer(self.handle, name.encode('utf-8'), input.handle, out_channels, c_activation, use_bias)
+    handle = ffc.flexflow_model_add_linear_with_default_initializer(self.handle, name.encode('utf-8'), input.handle, out_dim, c_activation, use_bias)
     return Tensor(handle)
     
   def flat(self, name, input):
     handle = ffc.flexflow_model_add_flat(self.handle, name.encode('utf-8'), input.handle)
     return Tensor(handle)
     
-  def softmax(self, name, input):
-    handle = ffc.flexflow_model_add_softmax(self.handle, name.encode('utf-8'), input.handle)
+  def softmax(self, name, input, label):
+    handle = ffc.flexflow_model_add_softmax(self.handle, name.encode('utf-8'), input.handle, label.handle)
     return Tensor(handle)
     
   def reset_metrics(self):

@@ -710,5 +710,6 @@ void data_load_task(const Task* task,
                     Context ctx, Runtime* runtime);
 
 void register_custom_tasks();
+void register_c_custom_tasks();
 #endif//_FLEXFLOW_RUNTIME_H_
 

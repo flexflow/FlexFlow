@@ -23,10 +23,10 @@ def top_level_task():
   t7 = ffmodel.conv2d("conv5", t6, 256, 3, 3, 1, 1, 1, 1)
   t8 = ffmodel.pool2d("pool3", t7, 3, 3, 2, 2, 0, 0)
   t9 = ffmodel.flat("flat", t8);
-  t10 = ffmodel.linear("lienar1", t9, 4096, ActiMode.AC_MODE_RELU);
-  t11 = ffmodel.linear("linear2", t10, 4096, ActiMode.AC_MODE_RELU);
-  t12 = ffmodel.linear("linear3", t11, 1000)
-  #t13 = ffmodel.softmax("softmax", t12)
+  t10 = ffmodel.dense("lienar1", t9, 4096, ActiMode.AC_MODE_RELU);
+  t11 = ffmodel.dense("linear2", t10, 4096, ActiMode.AC_MODE_RELU);
+  t12 = ffmodel.dense("linear3", t11, 1000)
+  t13 = ffmodel.softmax("softmax", t12, label)
   
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
@@ -34,17 +34,28 @@ def top_level_task():
   # Data Loader
   dataloader = DataLoader(ffmodel, input, label)
   
- # ffmodel.init_layers()
+  ffmodel.init_layers()
   
-  for epoch in range(0,1):
+  epochs = ffconfig.get_epochs()
+  print(epochs)
+  
+  ts_start = ffconfig.get_current_time()
+  for epoch in range(0,epochs):
     ffmodel.reset_metrics()
     iterations = 8192 / ffconfig.get_batch_size()
-    print(iterations)
-  #  for iter in range(0, int(iterations)):
-   #   ffmodel.forward()
-      #ffmodel.zero_gradidents()
+    for iter in range(0, int(iterations)):
+      if (epoch > 0):
+        ffconfig.start_trace(111)
+      ffmodel.forward()
+      ffmodel.zero_gradients()
       #ffmodel.backward()
       #ffmodel.update
+      if (epoch > 0):
+        ffconfig.end_trace(111)
+        
+  ts_end = ffconfig.get_current_time()
+  run_time = 1e-6 * (ts_end - ts_start);
+  print("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(run_time, 8192 * epochs / run_time));
 
 if __name__ == "__main__":
   print("alexnet")
