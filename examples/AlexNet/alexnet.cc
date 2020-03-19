@@ -70,10 +70,10 @@ void top_level_task(const Task* task,
   t = ff.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1);
   t = ff.pool2d("pool3", t, 3, 3, 2, 2, 0, 0);
   t = ff.flat("flat", t);
-  t = ff.linear("lienar1", t, 4096, AC_MODE_RELU/*relu*/);
-  t = ff.linear("linear2", t, 4096, AC_MODE_RELU/*relu*/);
-  t = ff.linear("linear3", t, 1000);
-  //t = ff.softmax("softmax", t);
+  t = ff.dense("lienar1", t, 4096, AC_MODE_RELU/*relu*/);
+  t = ff.dense("linear2", t, 4096, AC_MODE_RELU/*relu*/);
+  t = ff.dense("linear3", t, 1000);
+  t = ff.softmax("softmax", t, label);
   ff.optimizer = new SGDOptimizer(&ff, 0.01f);
   // Data Loader
   DataLoader data_loader(ff, input, label);
@@ -86,8 +86,7 @@ void top_level_task(const Task* task,
     future.get_void_result();
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
-  for (int epoch = 0; epoch < 0; epoch++) {
-  //for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
+  for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     //data_loader.reset();
     ff.reset_metrics();
     int iterations = 8192 / ffConfig.batchSize;

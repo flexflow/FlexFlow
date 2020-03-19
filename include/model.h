@@ -223,7 +223,7 @@ public:
   // Add a linear layer
   Tensor linear(std::string name,
                 const Tensor& input,
-                int outChannels,
+                int outDim,
                 ActiMode activation = AC_MODE_NONE,
                 bool use_bias = true,
                 Initializer* kernel_initializer = NULL,
@@ -235,8 +235,9 @@ public:
   // Add a flat layer
   Tensor flat(std::string name, Tensor input);
   // Add a softmax layer
-  Tensor softmax(std::string name, Tensor input);
-
+  Tensor softmax(std::string name,
+                 const Tensor& input,
+                 const Tensor& label);
   void mse_loss(const std::string& name,
                 const Tensor& logits,
                 const Tensor& labels,
@@ -567,8 +568,10 @@ public:
 
 class Softmax : public Op {
 public:
-  Softmax(std::string name, FFConfig config,
-          Tensor input, IndexSpaceT<1> part_is);
+  Softmax(FFModel& model,
+          const std::string& pcname,
+          const Tensor& logit,
+          const Tensor& label);
 
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -586,8 +589,7 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
 public:
-  IndexSpaceT<1> task_is;
-  LogicalPartition input_grad_lp;
+  IndexSpaceT<2> task_is;
   bool profiling;
 };
 
