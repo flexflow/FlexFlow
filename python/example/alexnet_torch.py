@@ -11,7 +11,7 @@ class AlexNet(nn.Module):
     self.conv2_4 = nn.Conv2d(384, 256, kernel_size=3, stride=1, padding=1)
     self.conv2_5 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
     self.maxpool2d_3 = nn.MaxPool2d(kernel_size=3, stride=2)
-    #self.flat = nn.Flatten()
+    self.flat = nn.Flatten()
     self.test = "test"
     #self.linear_1 = nn.Linear(256 * 6 * 6, 4096)
   

@@ -25,8 +25,13 @@ class Module(object):
     self.input = self.ffmodel.create_tensor_4d(dims, "", DataType.DT_FLOAT);
     self._layers = dict()
     self._nb_layers = 0
+    
+    dims_label = [self.ffconfig.get_batch_size(), 1]
+    self.label = self.ffmodel.create_tensor_2d(dims_label, "", DataType.DT_FLOAT);
+    self.dataloader = DataLoader(self.ffmodel, self.input, self.label)
   
   def __call__(self, input):
+    self.ffmodel.init_layers()
     return self.forward(input)
   
   def __setattr__(self, name, value):
