@@ -49,13 +49,15 @@ Tensor FFModel::dense(std::string name,
 // Deprecated API -- TO BE REMOVED
 Tensor FFModel::linear(std::string name,
                        const Tensor& input,
-                       int out_dim,
+                       int outDim,
                        ActiMode activation,
                        bool use_bias,
                        Initializer* kernel_initializer,
                        Initializer* bias_initializer)
 {
-  return dense(name, input, out_dim, activation,
+  fprintf(stderr, "FFModel::linear is deprecated and will be removed,"
+         "please use FFModel::dense instead");
+  return dense(name, input, outDim, activation,
                kernel_initializer, bias_initializer);
 }
 
