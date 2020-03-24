@@ -18,9 +18,9 @@ def top_level_task():
   
   
   # Data Loader
-  dataloader = DataLoader(ffmodel, input, label)
+  #dataloader = DataLoader(ffmodel, input, label)
   
-  ffmodel.init_layers()
+  #ffmodel.init_layers()
   ffmodel.print_layers()
 
 if __name__ == "__main__":
