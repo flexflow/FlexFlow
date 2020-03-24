@@ -83,6 +83,7 @@ Linear::Linear(FFModel& model,
   int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
   int in_dim = _input.adim[0];
   int batch_size = _input.adim[1];
+  printf("Linear in_dim %d, batch_size %d\n", in_dim, batch_size);
   {
     const int dims[2] = {batch_size, out_dim};
     output = model.create_tensor<2>(dims, task_is, DT_FLOAT);

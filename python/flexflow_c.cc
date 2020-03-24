@@ -409,6 +409,14 @@ flexflow_model_set_sgd_optimizer(
   handle->optimizer = static_cast<Optimizer *>(optimizer);
 }
 
+void
+flexflow_model_print_layers(
+  flexflow_model_t handle_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->print_layers();
+}
+
 // -----------------------------------------------------------------------
 // Tensor
 // -----------------------------------------------------------------------

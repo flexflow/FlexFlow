@@ -201,6 +201,10 @@ void
 flexflow_model_set_sgd_optimizer(
   flexflow_model_t handle, 
   flexflow_sgd_optimizer_t optimizer);
+  
+void
+flexflow_model_print_layers(
+  flexflow_model_t handle_);
 
 // -----------------------------------------------------------------------
 // Tensor
