@@ -238,7 +238,7 @@ void Flat::backward_task(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  TensorAccessorW<float, 2> acc_input_grad(
+  TensorAccessorW<float, 4> acc_input_grad(
       regions[0], task->regions[0], FID_DATA, ctx, runtime,
       true/*readOutput*/);
   TensorAccessorR<float, 2> acc_output_grad(
@@ -262,10 +262,12 @@ void Flat::backward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(FLAT_BWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap);
+                         TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+                        WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(output.part_grad, 0/*projection id*/,

@@ -109,6 +109,56 @@ void SGDOptimizer::update_task(const Task* task,
       }
       break;
     }
+    case 3:
+    {
+      TensorAccessorR<float, 3> accWGrad(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      TensorAccessorW<float, 3> accW(
+          regions[1], task->regions[1], FID_DATA, ctx, runtime,
+          true/*readOutput*/);
+      for (int i = 0; i < domain.get_dim()-1; i++) {
+        assert(accW.rect.lo[i] == accWGrad.rect.lo[i]);
+        assert(accW.rect.hi[i] == accWGrad.rect.hi[i]);
+      }
+      size = accW.rect.volume();
+      assert(accWGrad.rect.volume() % accW.rect.volume() == 0);
+      num_replicas = accWGrad.rect.volume() / accW.rect.volume();
+      w_grad_ptr = accWGrad.ptr;
+      w_ptr = accW.ptr;
+      if (op->momentum > 0.0f) {
+        TensorAccessorW<float, 3> accV(
+            regions[2], task->regions[2], FID_DATA, ctx, runtime,
+            true/*readOutput*/);
+        assert(accW.rect == accV.rect);
+        v_ptr = accV.ptr;
+      }
+      break;
+    }
+    case 4:
+    {
+      TensorAccessorR<float, 4> accWGrad(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      TensorAccessorW<float, 4> accW(
+          regions[1], task->regions[1], FID_DATA, ctx, runtime,
+          true/*readOutput*/);
+      for (int i = 0; i < domain.get_dim()-1; i++) {
+        assert(accW.rect.lo[i] == accWGrad.rect.lo[i]);
+        assert(accW.rect.hi[i] == accWGrad.rect.hi[i]);
+      }
+      size = accW.rect.volume();
+      assert(accWGrad.rect.volume() % accW.rect.volume() == 0);
+      num_replicas = accWGrad.rect.volume() / accW.rect.volume();
+      w_grad_ptr = accWGrad.ptr;
+      w_ptr = accW.ptr;
+      if (op->momentum > 0.0f) {
+        TensorAccessorW<float, 4> accV(
+            regions[2], task->regions[2], FID_DATA, ctx, runtime,
+            true/*readOutput*/);
+        assert(accW.rect == accV.rect);
+        v_ptr = accV.ptr;
+      }
+      break;
+    }
     default:
     {
       // Unsupported dims

@@ -561,7 +561,7 @@ void Conv2D::backward_task(const Task *task,
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_input_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
-      true/*readOutput*/);
+      false/*readOutput*/);
   TensorAccessorR<float, 4> acc_output(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_output_grad(
@@ -649,7 +649,7 @@ void Conv2D::backward(const FFModel& ff)
   // regions[1](O): input_grad (we only need grad tensors)
   launcher.add_region_requirement(
       RegionRequirement(inputs[0].part_grad, 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+                        WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2](I): output
   launcher.add_region_requirement(

@@ -233,7 +233,7 @@ void Softmax::backward_task(const Task *task,
       true/*readOutput*/);
   TensorAccessorR<float, 2> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TensorAccessorR<int, 1> acc_label(
+  TensorAccessorR<int, 2> acc_label(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   // make sure the image indices match!
   assert(acc_label.rect.hi[1] == acc_output.rect.hi[1]);
@@ -296,7 +296,7 @@ void Softmax::backward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+                        WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(output.part, 0/*projection id*/,
@@ -305,6 +305,7 @@ void Softmax::backward(const FFModel& ff)
   launcher.add_region_requirement(
       RegionRequirement(input_lps[1], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[1].region));
+  launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
