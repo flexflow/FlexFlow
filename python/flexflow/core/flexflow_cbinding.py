@@ -166,6 +166,15 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_linear_with_default_initializer(self.handle, name.encode('utf-8'), input.handle, out_dim, c_activation, use_bias)
     return Tensor(handle)
     
+  def concat(self, name, tensor_list, axis):
+    tensor_handle_list = []
+    n = 0
+    for tensor in tensor_list:
+      n = n + 1
+      tensor_handle_list.append(tensor.handle)
+    handle = ffc.flexflow_model_add_concat(self.handle, name.encode('utf-8'), n, tensor_handle_list, axis)
+    return Tensor(handle)
+    
   def flat(self, name, input):
     handle = ffc.flexflow_model_add_flat(self.handle, name.encode('utf-8'), input.handle)
     return Tensor(handle)

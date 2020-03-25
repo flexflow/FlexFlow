@@ -6,15 +6,17 @@ def top_level_task():
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
   ffmodel = FFModel(ffconfig)
   
-  dims = [ffconfig.get_batch_size(), 3, 229, 229]
+  dims_input = [ffconfig.get_batch_size(), 3, 229, 229]
   #print(dims)
-  input = ffmodel.create_tensor_4d(dims, "", DataType.DT_FLOAT);
+  input = ffmodel.create_tensor_4d(dims_input, "", DataType.DT_FLOAT);
   
   dims_label = [ffconfig.get_batch_size(), 1]
   #print(dims)
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
   
-  t1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  t1 = ffmodel.concat("concat", [ts0, ts1], 1)
   t2 = ffmodel.pool2d("pool1", t1, 3, 3, 2, 2, 0, 0)
   t3 = ffmodel.conv2d("conv2", t2, 192, 5, 5, 1, 1, 2, 2)
   t4 = ffmodel.pool2d("pool2", t3, 3, 3, 2, 2, 0, 0)
@@ -27,7 +29,9 @@ def top_level_task():
   t11 = ffmodel.dense("linear2", t10, 4096, ActiMode.AC_MODE_RELU);
   t12 = ffmodel.dense("linear3", t11, 1000)
   t13 = ffmodel.softmax("softmax", t12, label)
-  # t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  # t = ffmodel.concat("concat", [ts0, ts1], 1)
   # t = ffmodel.pool2d("pool1", t, 3, 3, 2, 2, 0, 0)
   # t = ffmodel.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2)
   # t = ffmodel.pool2d("pool2", t, 3, 3, 2, 2, 0, 0)

@@ -61,7 +61,10 @@ void top_level_task(const Task* task,
   }
   // Add layers
   flexflow_tensor_t t0 = input;
-  flexflow_tensor_t t1 = flexflow_model_add_conv2d(ffmodel, "conv1", t0, 64, 11, 11, 4, 4, 2, 2, AC_MODE_NONE, true);
+  flexflow_tensor_t ts[2];
+  ts[0] = flexflow_model_add_conv2d(ffmodel, "conv1", t0, 64, 11, 11, 4, 4, 2, 2, AC_MODE_NONE, true);
+  ts[1] = flexflow_model_add_conv2d(ffmodel, "conv1", t0, 64, 11, 11, 4, 4, 2, 2, AC_MODE_NONE, true);
+  flexflow_tensor_t t1 = flexflow_model_add_concat(ffmodel, "concat", 2, ts, 1);
   flexflow_tensor_t t2 = flexflow_model_add_pool2d(ffmodel, "pool1", t1, 3, 3, 2, 2, 0, 0, POOL_MAX, AC_MODE_NONE);
   flexflow_tensor_t t3 = flexflow_model_add_conv2d(ffmodel, "conv2", t2, 192, 5, 5, 1, 1, 2, 2, AC_MODE_NONE, true);
   flexflow_tensor_t t4 = flexflow_model_add_pool2d(ffmodel, "pool2", t3, 3, 3, 2, 2, 0, 0, POOL_MAX, AC_MODE_NONE);
@@ -147,7 +150,9 @@ void top_level_task(const Task* task,
          8192 * flexflow_config_get_epochs(ffconfig) / run_time);
   
   flexflow_tensor_destroy(input);
-  flexflow_tensor_destroy(label);       
+  flexflow_tensor_destroy(label);   
+  flexflow_tensor_destroy(ts[0]);
+  flexflow_tensor_destroy(ts[1]);    
   flexflow_tensor_destroy(t1);
   flexflow_tensor_destroy(t2);
   flexflow_tensor_destroy(t3);
