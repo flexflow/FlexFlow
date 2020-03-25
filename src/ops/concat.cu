@@ -87,6 +87,40 @@ Concat::Concat(FFModel& model,
       }
       break;
     }
+    case 3:
+    {
+      Rect<3> part_rect = domain;
+      output = model.create_tensor<3>(dims, IndexSpaceT<3>(task_is), DT_FLOAT);
+      for (int i = 0; i < numInputs; i++) {
+        Rect<3> input_rect = runtime->get_index_partition_color_space(
+            ctx, inputs[i].part.get_index_partition());
+        if (input_rect == part_rect) {
+          input_lps[i] = inputs[i].part;
+          input_grad_lps[i] = inputs[i].part_grad;
+        } else {
+           model.create_disjoint_partition<3>(inputs[i],
+               IndexSpaceT<3>(task_is), input_lps[i], input_grad_lps[i]);
+        }
+      }
+      break;
+    }
+    case 4:
+    {
+      Rect<4> part_rect = domain;
+      output = model.create_tensor<4>(dims, IndexSpaceT<4>(task_is), DT_FLOAT);
+      for (int i = 0; i < numInputs; i++) {
+        Rect<4> input_rect = runtime->get_index_partition_color_space(
+            ctx, inputs[i].part.get_index_partition());
+        if (input_rect == part_rect) {
+          input_lps[i] = inputs[i].part;
+          input_grad_lps[i] = inputs[i].part_grad;
+        } else {
+           model.create_disjoint_partition<4>(inputs[i],
+               IndexSpaceT<4>(task_is), input_lps[i], input_grad_lps[i]);
+        }
+      }
+      break;
+    }
     default:
     {
       fprintf(stderr, "Unsupported concat dimension number");
@@ -156,39 +190,50 @@ Concat::Concat(FFModel& model,
 #endif
 }
 
-#ifdef DEADCODE
 __host__
 OpMeta* Concat::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-  FFHandler handler = *((const FFHandler*) task->local_args);
-  ConcatMeta* m = new ConcatMeta(handler);
-  return m;
+  //FFHandler handler = *((const FFHandler*) task->local_args);
+  //ConcatMeta* m = new ConcatMeta(handler);
+  //return m;
+  // Return null since Concat ops don't need ConcatMeta
+  return NULL;
 }
-#endif
 
 void Concat::init(const FFModel& ff)
 {
-#ifdef DEADCODE
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
-  int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
-    FFHandler handler = ff.handlers[idx++];
-    argmap.set_point(*it, TaskArgument(&handler, sizeof(FFHandler)));
+  //Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+  //int idx = 0;
+  //for (PointInRectIterator<3> it(rect); it(); it++) {
+  //  FFHandler handler = ff.handlers[idx++];
+  //  argmap.set_point(*it, TaskArgument(&handler, sizeof(FFHandler)));
+  //}
+  IndexLauncher launcher(CONCAT_INIT_TASK_ID, task_is,
+    TaskArgument(this, sizeof(Concat)), argmap,
+    Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+    FFConfig::get_hash_id(std::string(name)));
+ 
+  launcher.add_region_requirement(
+    RegionRequirement(output.part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, output.region));
+  launcher.add_field(0, FID_DATA);
+  for (int i = 0; i < numInputs; i++) {
+    launcher.add_region_requirement(
+      RegionRequirement(input_lps[i], 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, inputs[i].region));
+    launcher.add_field(i + 1, FID_DATA);
   }
-  IndexLauncher init_launcher(CONCAT_INIT_TASK_ID, task_is,
-                              TaskArgument(this, sizeof(Concat)), argmap);
-  FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
-    meta[idx++] = fm.get_result<OpMeta*>(*it);
-  }
-#endif
+  //idx = 0;
+  //for (PointInRectIterator<3> it(rect); it(); it++) {
+  //  meta[idx++] = fm.get_result<OpMeta*>(*it);
+  //}
 }
 
 __global__
@@ -285,6 +330,32 @@ void Concat::forward_task(const Task *task,
       }
       break;
     }
+    case 3:
+    {
+      TensorAccessorW<float, 3> accOutput(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime,
+          false/*readOutput*/);
+      output = accOutput.ptr;
+      for (int i = 0; i < cc->numInputs; i++) {
+        TensorAccessorR<float, 3> accInput(
+            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
+        inputs[i] = accInput.ptr;
+      }
+      break;
+    }
+    case 4:
+    {
+      TensorAccessorW<float, 4> accOutput(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime,
+          false/*readOutput*/);
+      output = accOutput.ptr;
+      for (int i = 0; i < cc->numInputs; i++) {
+        TensorAccessorR<float, 4> accInput(
+            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
+        inputs[i] = accInput.ptr;
+      }
+      break;
+    }
     default:
       fprintf(stderr, "Unsupported concat dimension number");
       assert(false);
@@ -345,15 +416,13 @@ void Concat::forward(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, output.region,
-                        MAP_TO_ZC_MEMORY));
+    RegionRequirement(output.part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, output.region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-        RegionRequirement(input_lps[i], 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, inputs[i].region,
-                          MAP_TO_ZC_MEMORY));
+      RegionRequirement(input_lps[i], 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, inputs[i].region));
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -417,6 +486,32 @@ void Concat::backward_task(const Task *task,
       }
       break;
     }
+    case 3:
+    {
+      TensorAccessorR<float, 3> accOutputGrad(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      output_grad = accOutputGrad.ptr;
+      for (int i = 0; i < cc->numInputs; i++) {
+        TensorAccessorW<float, 3> accInputGrad(
+            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
+            false/*readOutput*/);
+        input_grads[i] = accInputGrad.ptr;
+      }
+      break;
+    }
+    case 4:
+    {
+      TensorAccessorR<float, 4> accOutputGrad(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      output_grad = accOutputGrad.ptr;
+      for (int i = 0; i < cc->numInputs; i++) {
+        TensorAccessorW<float, 4> accInputGrad(
+            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
+            false/*readOutput*/);
+        input_grads[i] = accInputGrad.ptr;
+      }
+      break;
+    }
     default:
       fprintf(stderr, "Unsupported concat dimension number");
       assert(false);
@@ -471,19 +566,17 @@ void Concat::backward(const FFModel& ff)
   }
 #endif
   IndexLauncher launcher(CONCAT_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Concat)), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+    TaskArgument(this, sizeof(Concat)), argmap,
+    Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+    FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-      RegionRequirement(output.part_grad, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, output.region_grad,
-                        MAP_TO_ZC_MEMORY));
+    RegionRequirement(output.part_grad, 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, output.region_grad));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-        RegionRequirement(input_grad_lps[i], 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad,
-                          MAP_TO_ZC_MEMORY));
+      RegionRequirement(input_grad_lps[i], 0/*projection id*/,
+        WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
