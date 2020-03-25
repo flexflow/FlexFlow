@@ -12,34 +12,34 @@ def top_level_task():
   
   dims_label = [ffconfig.get_batch_size(), 1]
   #print(dims)
-  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_FLOAT);
+  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
   
-  # t1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
-  # t2 = ffmodel.pool2d("pool1", t1, 3, 3, 2, 2, 0, 0)
-  # t3 = ffmodel.conv2d("conv2", t2, 192, 5, 5, 1, 1, 2, 2)
-  # t4 = ffmodel.pool2d("pool2", t3, 3, 3, 2, 2, 0, 0)
-  # t5 = ffmodel.conv2d("conv3", t4, 384, 3, 3, 1, 1, 1, 1)
-  # t6 = ffmodel.conv2d("conv4", t5, 256, 3, 3, 1, 1, 1, 1)
-  # t7 = ffmodel.conv2d("conv5", t6, 256, 3, 3, 1, 1, 1, 1)
-  # t8 = ffmodel.pool2d("pool3", t7, 3, 3, 2, 2, 0, 0)
-  # t9 = ffmodel.flat("flat", t8);
-  # t10 = ffmodel.dense("lienar1", t9, 4096, ActiMode.AC_MODE_RELU);
-  # t11 = ffmodel.dense("linear2", t10, 4096, ActiMode.AC_MODE_RELU);
-  # t12 = ffmodel.dense("linear3", t11, 1000)
-  # t13 = ffmodel.softmax("softmax", t12, label)
-  t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
-  t = ffmodel.pool2d("pool1", t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2)
-  t = ffmodel.pool2d("pool2", t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1)
-  t = ffmodel.conv2d("conv4", t, 256, 3, 3, 1, 1, 1, 1)
-  t = ffmodel.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1)
-  t = ffmodel.pool2d("pool3", t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.flat("flat", t);
-  t = ffmodel.dense("lienar1", t, 4096, ActiMode.AC_MODE_RELU);
-  t = ffmodel.dense("linear2", t, 4096, ActiMode.AC_MODE_RELU);
-  t = ffmodel.dense("linear3", t, 1000)
-  t = ffmodel.softmax("softmax", t, label)
+  t1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  t2 = ffmodel.pool2d("pool1", t1, 3, 3, 2, 2, 0, 0)
+  t3 = ffmodel.conv2d("conv2", t2, 192, 5, 5, 1, 1, 2, 2)
+  t4 = ffmodel.pool2d("pool2", t3, 3, 3, 2, 2, 0, 0)
+  t5 = ffmodel.conv2d("conv3", t4, 384, 3, 3, 1, 1, 1, 1)
+  t6 = ffmodel.conv2d("conv4", t5, 256, 3, 3, 1, 1, 1, 1)
+  t7 = ffmodel.conv2d("conv5", t6, 256, 3, 3, 1, 1, 1, 1)
+  t8 = ffmodel.pool2d("pool3", t7, 3, 3, 2, 2, 0, 0)
+  t9 = ffmodel.flat("flat", t8);
+  t10 = ffmodel.dense("lienar1", t9, 4096, ActiMode.AC_MODE_RELU);
+  t11 = ffmodel.dense("linear2", t10, 4096, ActiMode.AC_MODE_RELU);
+  t12 = ffmodel.dense("linear3", t11, 1000)
+  t13 = ffmodel.softmax("softmax", t12, label)
+  # t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  # t = ffmodel.pool2d("pool1", t, 3, 3, 2, 2, 0, 0)
+  # t = ffmodel.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2)
+  # t = ffmodel.pool2d("pool2", t, 3, 3, 2, 2, 0, 0)
+  # t = ffmodel.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1)
+  # t = ffmodel.conv2d("conv4", t, 256, 3, 3, 1, 1, 1, 1)
+  # t = ffmodel.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1)
+  # t = ffmodel.pool2d("pool3", t, 3, 3, 2, 2, 0, 0)
+  # t = ffmodel.flat("flat", t);
+  # t = ffmodel.dense("lienar1", t, 4096, ActiMode.AC_MODE_RELU);
+  # t = ffmodel.dense("linear2", t, 4096, ActiMode.AC_MODE_RELU);
+  # t = ffmodel.dense("linear3", t, 1000)
+  # t = ffmodel.softmax("softmax", t, label)
   
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
@@ -60,8 +60,8 @@ def top_level_task():
         ffconfig.start_trace(111)
       ffmodel.forward()
       ffmodel.zero_gradients()
-      #ffmodel.backward()
-      #ffmodel.update
+      ffmodel.backward()
+      ffmodel.update()
       if (epoch > 0):
         ffconfig.end_trace(111)
         

@@ -57,7 +57,7 @@ void top_level_task(const Task* task,
   flexflow_tensor_t label;
   {
     const int dims[] = {flexflow_config_get_batch_size(ffconfig), 1};
-    label = flexflow_tensor_2d_create(ffmodel, dims, "", DT_FLOAT, true);
+    label = flexflow_tensor_2d_create(ffmodel, dims, "", DT_INT32, true);
   }
   // Add layers
   flexflow_tensor_t t0 = input;
@@ -124,6 +124,8 @@ void top_level_task(const Task* task,
         runtime->begin_trace(ctx, 111/*trace_id*/);
       flexflow_model_forward(ffmodel);
       flexflow_model_zero_gradients(ffmodel);
+      flexflow_model_backward(ffmodel);
+      flexflow_model_update(ffmodel);
       //ff->forward();
       //ff->zero_gradients();
       //ff.backward();
@@ -193,17 +195,34 @@ DataLoader::DataLoader(FFModel& ff,
   log_app.print("Use random dataset...");
   num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
   log_app.print("Number of random samples = %d\n", num_samples);
-  IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, ""));
-  ArgumentMap argmap;
-  IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string("")));
-  launcher.add_region_requirement(
-      RegionRequirement(input.part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, input.region));
-  launcher.add_field(0, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  // Init input
+  {
+    IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, ""));
+    ArgumentMap argmap;
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
+                           TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(std::string("")));
+    launcher.add_region_requirement(
+        RegionRequirement(input.part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, input.region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  }
+  // Init label
+  {
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
+    ArgumentMap argmap;
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
+                           TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(std::string("")));
+    launcher.add_region_requirement(
+        RegionRequirement(label.part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, label.region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  }
 }
 
 void DataLoader::load_input(const Task *task,
