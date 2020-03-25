@@ -104,7 +104,7 @@ void top_level_task(const Task* task,
       ff.forward();
       ff.zero_gradients();
       ff.backward();
-      //ff.update();
+      ff.update();
       if (epoch > 0)
         runtime->end_trace(ctx, 111/*trace_id*/);
     }
