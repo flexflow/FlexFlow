@@ -1158,11 +1158,11 @@ void register_internal_tasks()
   }
   // Concat task
   {
-   TaskVariantRegistrar registrar(CONCAT_INIT_TASK_ID, "concat_init_task");
-   registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-   registrar.set_leaf();
-   Runtime::preregister_task_variant<OpMeta*, Concat::init_task>(
-       registrar, "concat_init_task");
+    TaskVariantRegistrar registrar(CONCAT_INIT_TASK_ID, "concat_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Concat::init_task>(
+        registrar, "concat_init_task");
   }
   {
     TaskVariantRegistrar registrar(CONCAT_FWD_TASK_ID, "Concat Forward");
