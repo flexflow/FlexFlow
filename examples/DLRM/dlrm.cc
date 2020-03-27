@@ -43,7 +43,7 @@ Tensor create_emb(FFModel* model, const Tensor& input,
 {
   float range = sqrt(1.0f / input_dim);
   Initializer* embed_init = new UniformInitializer(std::rand(), -range, range);
-  return model->embedding("embedding"+std::to_string(idx), input, input_dim, output_dim, embed_init);
+  return model->embedding("embedding"+std::to_string(idx), input, input_dim, output_dim, AGGR_MODE_SUM, embed_init);
 }
 
 Tensor interact_features(FFModel* model, const Tensor& x,
@@ -89,7 +89,8 @@ void top_level_task(const Task* task,
     parse_input_args(argv, argc, dlrmConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
         ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
-    print_vector("Embedding Size", dlrmConfig.embedding_size);
+    log_app.print("EmbeddingBagSize(%d)", dlrmConfig.embedding_bag_size);
+    print_vector("Embedding Vocab Sizes", dlrmConfig.embedding_size);
     print_vector("MLP Top", dlrmConfig.mlp_top);
     print_vector("MLP Bot", dlrmConfig.mlp_bot);
   }
@@ -101,7 +102,7 @@ void top_level_task(const Task* task,
 
   std::vector<Tensor> sparse_inputs;
   for (size_t i = 0; i < dlrmConfig.embedding_size.size(); i++) {
-    const int dims[] = {ffConfig.batchSize, 1};
+    const int dims[] = {ffConfig.batchSize, dlrmConfig.embedding_bag_size};
     Tensor input = ff.create_tensor<2>(dims, "embedding"+std::to_string(i), DT_INT64);
     sparse_inputs.push_back(input);
   }
@@ -131,10 +132,33 @@ void top_level_task(const Task* task,
   }
   ff.mse_loss("mse_loss"/*name*/, p, label, "average"/*reduction*/);
   // Use SGD Optimizer
-  ff.optimizer = new SGDOptimizer(&ff, 0.1f);
+  ff.optimizer = new SGDOptimizer(&ff, 0.01f);
   ff.init_layers();
   // Data Loader
   DataLoader data_loader(ff, dlrmConfig, sparse_inputs, dense_input, label);
+
+  // Warmup iterations
+  for (int iter = 0; iter < 1; iter++) {
+    data_loader.reset();
+    ff.reset_metrics();
+    data_loader.next_batch(ff);
+    ff.forward();
+    //ff.zero_gradients();
+    ff.backward();
+    ff.update();
+  }
+
+  //Start timer
+  {
+    runtime->issue_execution_fence(ctx);
+    TimingLauncher timer(MEASURE_MICRO_SECONDS);
+    Future future = runtime->issue_timing_measurement(ctx, timer);
+    future.get_void_result();
+  }
+  log_app.print("Warmup finished...Start timer...");
+  log_app.print("Num. epochs = %d", ffConfig.epochs);
+  log_app.print("Num. iterations/epoch = %d", data_loader.num_samples / ffConfig.batchSize);
+  printf("parameters.size() = %lu\n", ff.parameters.size());
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     data_loader.reset();
@@ -143,23 +167,26 @@ void top_level_task(const Task* task,
     for (int iter = 0; iter < iterations; iter++) {
       if (dlrmConfig.dataset_path.length() == 0) {
         // Only load data once for random input
-        if (iter == 0 && epoch == 0)
-          data_loader.next_batch(ff);
+        //if (iter == 0 && epoch == 0)
+          //data_loader.next_batch(ff);
       } else {
         data_loader.next_batch(ff);
       }
       runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
-      ff.zero_gradients();
+      //ff.zero_gradients();
       ff.backward();
-      ff.update();
+      //ff.update();
       runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
-  runtime->issue_execution_fence(ctx);
-  TimingLauncher timer(MEASURE_MICRO_SECONDS);
-  Future future = runtime->issue_timing_measurement(ctx, timer);
-  future.get_void_result();
+  // End timer
+  {
+    runtime->issue_execution_fence(ctx);
+    TimingLauncher timer(MEASURE_MICRO_SECONDS);
+    Future future = runtime->issue_timing_measurement(ctx, timer);
+    future.get_void_result();
+  }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
@@ -180,6 +207,10 @@ void parse_input_args(char **argv, int argc, DLRMConfig& config)
       while (std::getline(ss, word, '-')) {
         config.embedding_size.push_back(std::stoi(word));
       }
+      continue;
+    }
+    if (!strcmp(argv[i], "--embedding-bag-size")) {
+      config.embedding_bag_size = atoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--arch-mlp-bot")) {
@@ -233,7 +264,8 @@ DataLoader::DataLoader(FFModel& ff,
   num_samples = 0;
   if (dlrm.dataset_path == "") {
     log_app.print("Use random dataset...");
-    num_samples = 8192;
+    num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
+    log_app.print("Number of random samples = %d\n", num_samples);
   } else {
     log_app.print("Start loading dataset from %s", dlrm.dataset_path.c_str());
     hid_t file_id = H5Fopen(dlrm.dataset_path.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
@@ -271,9 +303,9 @@ DataLoader::DataLoader(FFModel& ff,
       hid_t y_dataset_id = H5Dopen2(file_id, "y", H5P_DEFAULT);
       hid_t y_space_id = H5Dget_space(y_dataset_id);
       hid_t y_type_id = H5Dget_type(y_dataset_id);
-      assert(H5Sget_simple_extent_dims(y_space_id, dims, maxdims) == 2);
+      H5Sget_simple_extent_dims(y_space_id, dims, maxdims);
       assert(num_samples == (int)dims[0]);
-      assert(dims[1] == 1);
+      //assert(dims[1] == 1);
       H5Tclose(y_type_id);
       H5Dclose(y_dataset_id);
       H5Sclose(y_space_id);
@@ -286,7 +318,7 @@ DataLoader::DataLoader(FFModel& ff,
     batch_sparse_inputs.push_back(_sparse_inputs[i]);
   }
   {
-    const int dims[] = {num_samples, (int)_sparse_inputs.size()};
+    const int dims[] = {num_samples, (int)_sparse_inputs.size()*dlrm.embedding_bag_size};
     full_sparse_input = ff.create_tensor<2>(dims, "", DT_INT64);
   }
   {
@@ -307,15 +339,15 @@ DataLoader::DataLoader(FFModel& ff,
   launcher.add_region_requirement(
       RegionRequirement(full_sparse_input.region,
                         WRITE_ONLY, EXCLUSIVE, full_sparse_input.region,
-                        MAP_TO_ZC_MEMORY));
+                        MAP_TO_FB_MEMORY));
   launcher.add_field(0, FID_DATA);
-  // regions[1]: full_sparse_input
+  // regions[1]: full_dense_input
   launcher.add_region_requirement(
       RegionRequirement(full_dense_input.region,
                         WRITE_ONLY, EXCLUSIVE, full_dense_input.region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
-  // regions[3]: full_sparse_input
+  // regions[3]: full_label
   launcher.add_region_requirement(
       RegionRequirement(full_label.region,
                         WRITE_ONLY, EXCLUSIVE, full_label.region,
@@ -411,9 +443,9 @@ void DataLoader::load_entire_dataset(const Task *task,
       hid_t y_dataset_id = H5Dopen2(file_id, "y", H5P_DEFAULT);
       hid_t y_space_id = H5Dget_space(y_dataset_id);
       hid_t y_type_id = H5Dget_type(y_dataset_id);
-      assert(H5Sget_simple_extent_dims(y_space_id, dims, maxdims) == 2);
+      H5Sget_simple_extent_dims(y_space_id, dims, maxdims);
       assert(num_samples == (int)dims[0]);
-      assert(dims[1] == 1);
+      //assert(dims[1] == 1);
       H5Dread(y_dataset_id, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
               label_input_ptr);
       H5Tclose(y_type_id);
@@ -432,7 +464,7 @@ void DataLoader::next_batch(FFModel& ff)
   for (size_t i = 0; i < batch_sparse_inputs.size(); i++) {
     int hash = batch_sparse_inputs.size() * 1000 + i;
     std::string pc_name = "embedding"+std::to_string(i);
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(pc_name));
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, pc_name));
     Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
     int idx = next_index;
@@ -440,6 +472,8 @@ void DataLoader::next_batch(FFModel& ff)
       SampleIdxs meta;
       assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
       meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      // Assert that we have enough slots to save the indices
+      assert(meta.num_samples <= MAX_NUM_SAMPLES);
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
@@ -448,22 +482,26 @@ void DataLoader::next_batch(FFModel& ff)
                            TaskArgument(&hash, sizeof(int)), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(pc_name));
+//#if 1
     // Full dataset in ZCM
     launcher.add_region_requirement(
         RegionRequirement(full_sparse_input.region, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, full_sparse_input.region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
+//#endif
     launcher.add_region_requirement(
         RegionRequirement(batch_sparse_inputs[i].part, 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, batch_sparse_inputs[i].region));
     launcher.add_field(1, FID_DATA);
+    //std::cout << "CUSTOM_CPU_TASK_ID_2" << std::endl; 
     runtime->execute_index_space(ctx, launcher);
+    //std::cout << "Done CUSTOM_CPU_TASK_ID_2" << std::endl; 
   }
   // Load Dense Input
   {
     std::string pc_name = "";
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(pc_name));
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, pc_name));
     Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
     int idx = next_index;
@@ -494,7 +532,7 @@ void DataLoader::next_batch(FFModel& ff)
   // Load Labels
   {
     std::string pc_name = "";
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(pc_name));
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, pc_name));
     Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
     int idx = next_index;
@@ -534,6 +572,14 @@ void DataLoader::reset()
   next_index = 0;
 }
 
+void DataLoader::load_sparse_input_cpu(const Task *task,
+                                   const std::vector<PhysicalRegion> &regions,
+                                   Context ctx,
+                                   Runtime* runtime)
+{
+  std::cout << "load_sparse_input_cpu" << std::endl;
+}
+
 void register_custom_tasks()
 {
   // Load entire dataset
@@ -554,7 +600,7 @@ void register_custom_tasks()
   }
   // Load Dense Inputs
   {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_2, "Load Densee Inputs");
+    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_2, "Load Dense Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<DataLoader::load_dense_input>(

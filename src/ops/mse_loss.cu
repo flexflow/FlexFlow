@@ -42,7 +42,7 @@ MSELoss::MSELoss(FFModel& model,
 : Op(pcname, _logit, _label), profiling(model.config.profiling),
 aggr_mode(_aggr)
 {
-  task_is = model.get_or_create_task_is(pcname);
+  task_is = model.get_or_create_task_is(2/*numDim*/, pcname);
   // Current assume 2D logit and label
   assert(_logit.numDim == 2);
   assert(_label.numDim == 2);
@@ -84,7 +84,7 @@ void multi_category_calc_loss(const float* logits,
     assert(true_label >= 0);
     for (int i = 0; i < out_dim; i++) {
       float diff = logits[b*out_dim+i] - labels[b*out_dim+i];
-      atomicAdd(&(perf->train_loss), scale * diff * diff);
+      atomicAdd(&(perf->train_loss), diff * diff);
     }
     atomicAdd(&(perf->train_all), 1);
     if (true_label == my_label)
@@ -104,7 +104,7 @@ void single_category_calc_loss(const float* logits,
   CUDA_KERNEL_LOOP(b, batch_size)
   {
     float diff = logits[b] - labels[b];
-    atomicAdd(&(perf->train_loss), scale * diff * diff);
+    atomicAdd(&(perf->train_loss), diff * diff);
     atomicAdd(&(perf->train_all), 1);
     if ((logits[b] < 0.5f) == (labels[b] < 0.5f))
       atomicAdd(&(perf->train_correct), 1);
@@ -149,7 +149,7 @@ PerfMetrics MSELoss::backward_task(const Task *task,
       break;
     case AGGR_MODE_AVG:
       // Divided by the global batch size
-      scale = 1.0f / (op->inputs[0].adim[0]);
+      scale = 1.0f / (op->inputs[0].adim[1]);
       break;
     default:
       assert(false);
@@ -173,6 +173,7 @@ PerfMetrics MSELoss::backward_task(const Task *task,
         accLogits.ptr, accLabels.ptr, perf, batch_size, out_dim, scale);
   }
   checkCUDA(cudaMemcpy(&perf_zc, perf, sizeof(PerfMetrics), cudaMemcpyDeviceToHost));
+  checkCUDA(cudaFree(perf));
   // Calculate backward
   mseloss_backward<<<GET_BLOCKS(accLogits.rect.volume()), CUDA_NUM_THREADS>>>(
       accLogitsGrad.ptr, accLogits.ptr, accLabels.ptr,

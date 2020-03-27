@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2020 Stanford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +18,16 @@
 
 Tensor FFModel::embedding(const std::string& pcname,
                           const Tensor& input,
-                          int inDim,
-                          int outDim,
+                          int num_entries,
+                          int out_dim,
+                          AggrMode aggr,
                           Initializer* kernel_initializer)
 {
   //assert(config.strategies.find(name) != config.strategies.end());
   //ParallelConfig pc = config.strategies[name];
   //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
-  Embedding* embed = new Embedding(*this, pcname, input, inDim,
-                                   outDim, kernel_initializer);
+  Embedding* embed = new Embedding(*this, pcname, input, num_entries,
+                                   out_dim, aggr, kernel_initializer);
   layers.push_back(embed);
   Parameter kernel;
   kernel.tensor = embed->kernel;
@@ -39,13 +40,14 @@ Embedding::Embedding(FFModel& model,
                      const std::string& pcname,
                      const Tensor& _input,
                      //std::stirng name,
-                     int inDim, int outDim,
+                     int num_entries, int outDim,
+                     AggrMode _aggr,
                      Initializer* kernel_initializer)
-: Op(pcname, _input), profiling(model.config.profiling)
+: Op(pcname, _input), aggr(_aggr), profiling(model.config.profiling)
 {
   assert(_input.numDim == 2);
   // Retrive the task indexspace for the op
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(pcname));
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
   
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
@@ -57,8 +59,9 @@ Embedding::Embedding(FFModel& model,
     output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
   }
   {
-    const int dims[2] = {outDim, inDim};
-    kernel = model.create_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
+    const int dims[2] = {outDim, num_entries};
+    // Embeddding weights and linear weights can be partitioned in the same way
+    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
   }
 #ifdef DEADCODE
   // Create kernel tensor
@@ -130,14 +133,24 @@ void embed_forward(const int64_t* input,
                    float* output,
                    const float* embed,
                    int out_dim,
-                   int batch_size)
+                   int in_dim,
+                   int batch_size,
+                   AggrMode aggr)
 {
   CUDA_KERNEL_LOOP(i, batch_size * out_dim)
   {
+    output[i] = 0;
     int idx = i / out_dim;
     int off = i % out_dim;
-    int64_t wordIdx = input[idx];
-    output[i] = embed[wordIdx * out_dim + off];
+    for (int j = 0; j < in_dim; j++) {
+      int64_t wordIdx = input[idx * in_dim + j];
+      output[i] += embed[wordIdx * out_dim + off];
+      if (aggr == AGGR_MODE_SUM) {
+      } else {
+        assert(aggr == AGGR_MODE_AVG);
+        output[i] /= in_dim;
+      }
+    }
   }
 }
 
@@ -146,14 +159,25 @@ void embed_backward(const int64_t* input,
                     const float* output,
                     float* embed,
                     int out_dim,
-                    int batch_size)
+                    int in_dim,
+                    int batch_size,
+                    AggrMode aggr)
 {
   CUDA_KERNEL_LOOP(i, batch_size * out_dim)
   {
     int idx = i / out_dim;
     int off = i % out_dim;
-    int64_t wordIdx = input[idx];
-    atomicAdd(embed + wordIdx * out_dim + off, output[i]);
+    float gradient;
+    if (aggr == AGGR_MODE_SUM) {
+       gradient = output[i];
+    } else {
+      assert(aggr == AGGR_MODE_AVG);
+      gradient = output[i] / in_dim;
+    }
+    for (int j = 0; j < in_dim; j++) {
+      int64_t wordIdx = input[idx * in_dim + j];
+      atomicAdd(embed + wordIdx * out_dim + off, gradient);
+    }
   }
 }
 
@@ -176,17 +200,17 @@ void Embedding::forward_task(const Task *task,
       regions[1], task->regions[1], FID_DATA, ctx, runtime, false/*readOutput*/);
   TensorAccessorR<float, 2> accWeight(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  assert(accInput.rect.hi[0] == accInput.rect.lo[0]);
   // Input matches Output
   assert(accInput.rect.hi[1] == accOutput.rect.hi[1]);
   assert(accInput.rect.lo[1] == accOutput.rect.lo[1]);
   // Weight matches Output
   assert(accWeight.rect.hi[1] == accOutput.rect.hi[0]);
   assert(accWeight.rect.lo[1] == accOutput.rect.lo[0]);
+  int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
   int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
   embed_forward<<<GET_BLOCKS(accOutput.rect.volume()), CUDA_NUM_THREADS>>>(
-      accInput.ptr, accOutput.ptr, accWeight.ptr, out_dim, batch_size);
+      accInput.ptr, accOutput.ptr, accWeight.ptr, out_dim, in_dim, batch_size, embed->aggr);
   checkCUDA(cudaDeviceSynchronize());
   if (embed->profiling) {
     print_tensor<2, int64_t>(accInput.ptr, accInput.rect, "[Embedding:forward:input]");
@@ -213,7 +237,8 @@ void Embedding::forward(const FFModel& ff)
   // regions[1]: output
   launcher.add_region_requirement(
       RegionRequirement(output.part, 0/*projection*/,
-                        WRITE_ONLY, EXCLUSIVE, output.region));
+                        WRITE_ONLY, EXCLUSIVE, output.region,
+                        MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   // regions[2]: weight
   launcher.add_region_requirement(
@@ -236,16 +261,20 @@ void Embedding::backward_task(const Task *task,
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 2> accWeightGrad(
       regions[2], task->regions[2], FID_DATA, ctx, runtime, true/*readOutput*/);
-  assert(accInput.rect.hi[0] == accInput.rect.lo[0]);
   // Input matches Output
   assert(accInput.rect.hi[1] == accOutput.rect.hi[1]);
   assert(accInput.rect.lo[1] == accOutput.rect.lo[1]);
   // WeightGrad matches Output
   assert(accWeightGrad.rect.hi[1] - accWeightGrad.rect.lo[1] == accOutput.rect.hi[0] - accOutput.rect.lo[0]);
+  int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
   int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
+  // Explicitly initialize accWegihtGrad to zero to aviod calling zero_gradients() before backward()
+  // as an optimization for DLRM
+  //assign_kernel<<<GET_BLOCKS(accWeightGrad.rect.volume()), CUDA_NUM_THREADS>>>(
+  //      accWeightGrad.ptr, accWeightGrad.rect.volume(), 0.0f);
   embed_backward<<<GET_BLOCKS(accOutput.rect.volume()), CUDA_NUM_THREADS>>>(
-      accInput.ptr, accOutput.ptr, accWeightGrad.ptr, out_dim, batch_size);
+      accInput.ptr, accOutput.ptr, accWeightGrad.ptr, out_dim, in_dim, batch_size, embed->aggr);
   checkCUDA(cudaDeviceSynchronize());
   if (embed->profiling) {
     print_tensor<2, float>(accOutput.ptr, accOutput.rect, "[Embedding:backward:output_grad]");
@@ -272,7 +301,8 @@ void Embedding::backward(const FFModel& ff)
   // regions[1]: output_grad
   launcher.add_region_requirement(
       RegionRequirement(output.part_grad, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, output.region_grad));
+                        READ_ONLY, EXCLUSIVE, output.region_grad,
+                        MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   // regions[2]: weight_grad
   launcher.add_region_requirement(

@@ -37,23 +37,27 @@ Tensor FFModel::dense(std::string name,
   Parameter kernel, bias;
   kernel.tensor = li->kernel;
   kernel.op = li;
-  bias.tensor = li->bias;
-  bias.op = li;
   parameters.push_back(kernel);
-  parameters.push_back(bias);
+  if (use_bias) {
+    bias.tensor = li->bias;
+    bias.op = li;
+    parameters.push_back(bias);
+  }
   return li->output;
 }
 
 // Deprecated API -- TO BE REMOVED
 Tensor FFModel::linear(std::string name,
                        const Tensor& input,
-                       int out_dim,
+                       int outDim,
                        ActiMode activation,
                        bool use_bias,
                        Initializer* kernel_initializer,
                        Initializer* bias_initializer)
 {
-  return dense(name, input, out_dim, activation,
+  fprintf(stderr, "FFModel::linear is deprecated and will be removed,"
+         "please use FFModel::dense instead");
+  return dense(name, input, outDim, activation,
                kernel_initializer, bias_initializer);
 }
 
@@ -70,7 +74,7 @@ Linear::Linear(FFModel& model,
 {
   assert(_input.numDim == 2);
   // Retrive the task indexspace for the op
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(pcname));
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
 
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
@@ -86,12 +90,12 @@ Linear::Linear(FFModel& model,
   // Create kernel tensor
   {
     const int dims[2] = {out_dim, in_dim};
-    kernel = model.create_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
+    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_dim};
-    bias = model.create_weight<1>(dims, task_is, DT_FLOAT, bias_initializer);
+    bias = model.create_linear_weight<1>(dims, task_is, DT_FLOAT, bias_initializer);
   }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(
@@ -99,7 +103,7 @@ Linear::Linear(FFModel& model,
   // Create replica tensor
   if (num_par_c > 1) {
     const int dims[3] = {num_par_c, batch_size, in_dim};
-    replica = model.create_replica<3>(dims, task_is, DT_FLOAT);
+    replica = model.create_linear_replica<3>(dims, task_is, DT_FLOAT);
     {
       Rect<2> extent(Point<2>(0, 0), Point<2>(in_dim-1, batch_size/num_par_n-1));
       Transform<2, 2> transform;
@@ -288,7 +292,7 @@ void Linear::forward_task(const Task *task,
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
   int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
-  int batch_size = acc_input.rect.hi[1] - acc_output.rect.lo[1] + 1;
+  int batch_size = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
   assert(acc_output.rect.volume() == out_dim * batch_size);
   assert(acc_kernel.rect.volume() == in_dim * out_dim);
   assert(acc_bias.rect.volume() == out_dim);
@@ -299,9 +303,12 @@ void Linear::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+#endif
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
                         out_dim, batch_size, in_dim,
                         &alpha, acc_kernel.ptr, in_dim,
@@ -327,6 +334,7 @@ void Linear::forward_task(const Task *task,
     printf("Linear forward time = %.2lfms\n", elapsed);
     print_tensor<2, float>(acc_input.ptr, acc_input.rect, "[Linear:forward:input]");
     print_tensor<2, float>(acc_kernel.ptr, acc_kernel.rect, "[Linear:forward:kernel]");
+    print_tensor<1, float>(acc_bias.ptr, acc_bias.rect, "[Linear:forward:bias]");
     print_tensor<2, float>(acc_output.ptr, acc_output.rect, "[Linear:forward:output]");
     checkCUDA(cudaDeviceSynchronize());
   }
@@ -440,9 +448,12 @@ void Linear::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+#endif
   if (linear->activation == AC_MODE_RELU) {
     reluBackward<<<GET_BLOCKS(acc_output.rect.volume()), CUDA_NUM_THREADS>>>(
         acc_output_grad.ptr, acc_output.ptr, acc_output.rect.volume());
@@ -499,7 +510,7 @@ void Linear::backward2_task(const Task *task,
   float alpha = 1.0f;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
   TensorAccessorW<float, 2> acc_input(
-      regions[0], task->regions[1], FID_DATA, ctx, runtime,
+      regions[0], task->regions[0], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   TensorAccessorR<float, 3> acc_replica(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
@@ -510,6 +521,7 @@ void Linear::backward2_task(const Task *task,
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   int num_replica = acc_replica.rect.hi[2] - acc_replica.rect.lo[2] + 1;
   const float *replica_ptr = acc_replica.ptr;
   for (int i = 1; i < num_replica; i++) {
@@ -541,7 +553,7 @@ void Linear::backward(const FFModel& ff)
                           READ_ONLY, EXCLUSIVE, inputs[0].region));
     launcher.add_field(0, FID_DATA);
     // regions[1](O): replica_grad 
-    if (replica.region != LogicalRegion::NO_REGION) {
+    if (replica.region_grad != LogicalRegion::NO_REGION) {
       launcher.add_region_requirement(
           RegionRequirement(replica.part_grad, 0/*projection id*/,
                             WRITE_ONLY, EXCLUSIVE, replica.region_grad));
@@ -579,7 +591,7 @@ void Linear::backward(const FFModel& ff)
     launcher.add_field(6, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
-  if (replica.region != LogicalRegion::NO_REGION) {
+  if (replica.region_grad != LogicalRegion::NO_REGION) {
     // We aggregate parameters from replica tensor to input tensor
     // Note we use input's task_is to reduce extra data transfers
     Rect<2> input_rect = runtime->get_index_partition_color_space(

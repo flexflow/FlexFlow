@@ -37,8 +37,13 @@
 using namespace Legion;
 
 struct ParallelConfig {
+  enum DeviceType {
+    GPU = 0,
+    CPU = 1,
+  };
+  DeviceType device_type;
   int nDims, dim[MAX_DIM];
-  int gpu[MAX_NUM_WORKERS];
+  int device_ids[MAX_NUM_WORKERS];
 };
 
 bool load_strategies_from_file(const std::string& filename,
@@ -51,7 +56,12 @@ class FFConfig {
 public:
   enum PreservedIDs{
     InvalidID = 0,
-    DataParallelismID = 1,
+    DataParallelism_1D = 1,
+    DataParallelism_2D = 2,
+    DataParallelism_3D = 3,
+    DataParallelism_4D = 4,
+    DataParallelism_5D = 5,
+    DataParallelism_6D = 6,
   };
 
   FFConfig();
@@ -59,7 +69,8 @@ public:
   //bool save_strategy_file(std::string filename);
   void parse_args(char** argv, int argc);
   static MappingTagID get_hash_id(const std::string& pcname);
-  bool find_parallel_config(const std::string& pcname,
+  bool find_parallel_config(int ndims,
+                            const std::string& pcname,
                             ParallelConfig& config);
 public:
   int epochs, batchSize, iterations, printFreq;

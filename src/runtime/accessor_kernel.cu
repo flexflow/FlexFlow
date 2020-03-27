@@ -47,26 +47,32 @@ TensorAccessorW<DT, dim>::TensorAccessorW(PhysicalRegion region,
     // FIXME: currently we zero init the region if not read output
     assign_kernel<DT><<<GET_BLOCKS(rect.volume()), CUDA_NUM_THREADS>>>(
         ptr, rect.volume(), 0.0f);
-    //checkCUDA(cudaDeviceSynchronize());
+    checkCUDA(cudaDeviceSynchronize());
   }
 }
 
 template class TensorAccessorR<float, 1>;
 template class TensorAccessorR<float, 2>;
 template class TensorAccessorR<float, 3>;
+template class TensorAccessorR<float, 4>;
 template class TensorAccessorR<int32_t, 1>;
 template class TensorAccessorR<int32_t, 2>;
 template class TensorAccessorR<int32_t, 3>;
+template class TensorAccessorR<int32_t, 4>;
 template class TensorAccessorR<int64_t, 1>;
 template class TensorAccessorR<int64_t, 2>;
 template class TensorAccessorR<int64_t, 3>;
+template class TensorAccessorR<int64_t, 4>;
 
 template class TensorAccessorW<float, 1>;
 template class TensorAccessorW<float, 2>;
 template class TensorAccessorW<float, 3>;
+template class TensorAccessorW<float, 4>;
 template class TensorAccessorW<int32_t, 1>;
 template class TensorAccessorW<int32_t, 2>;
 template class TensorAccessorW<int32_t, 3>;
+template class TensorAccessorW<int32_t, 4>;
 template class TensorAccessorW<int64_t, 1>;
 template class TensorAccessorW<int64_t, 2>;
 template class TensorAccessorW<int64_t, 3>;
+template class TensorAccessorW<int64_t, 4>;

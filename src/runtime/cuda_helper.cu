@@ -27,6 +27,16 @@ void assign_kernel(DT* ptr, coord_t size, DT value)
   }
 }
 
+template<typename DT>
+__global__
+void copy_kernel(DT* dst, const DT* src, coord_t size)
+{
+  CUDA_KERNEL_LOOP(i, size)
+  {
+    dst[i] = src[i];
+  }
+}
+
 __global__
 void reluBackward(float *grad_ptr, const float *output, int n)
 {
@@ -76,3 +86,4 @@ template __global__ void assign_kernel<float>(float* ptr, coord_t size, float va
 template __global__ void assign_kernel<int32_t>(int32_t* ptr, coord_t size, int32_t value);
 template __global__ void assign_kernel<int64_t>(int64_t* ptr, coord_t size, int64_t value);
 
+template __global__ void copy_kernel<float>(float* dst, const float* src, coord_t size);

@@ -14,14 +14,14 @@
  */
 
 #include "model.h"
-#define MAX_NUM_SAMPLES 4196
+#define MAX_NUM_SAMPLES 65536
 
 using namespace Legion;
 
 struct DLRMConfig {
   DLRMConfig(void)
   : sparse_feature_size(2), sigmoid_bot(-1), sigmoid_top(-1),
-    loss_threshold(0.0f),
+    embedding_bag_size(1), loss_threshold(0.0f),
     arch_interaction_op("cat"), dataset_path("") {
     embedding_size.push_back(4);
     //embedding_size.push_back(4);
@@ -31,7 +31,7 @@ struct DLRMConfig {
     mlp_top.push_back(8);
     mlp_top.push_back(2);
   }
-  int sparse_feature_size, sigmoid_bot, sigmoid_top;
+  int sparse_feature_size, sigmoid_bot, sigmoid_top, embedding_bag_size;
   float loss_threshold;
   std::vector<int> embedding_size, mlp_bot, mlp_top;
   std::string arch_interaction_op, dataset_path;
@@ -50,6 +50,10 @@ public:
                                   Context ctx,
                                   Runtime* runtime);
   static void load_sparse_input(const Task *task,
+                                const std::vector<PhysicalRegion> &regions,
+                                Context ctx,
+                                Runtime* runtime);
+  static void load_sparse_input_cpu(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
                                 Context ctx,
                                 Runtime* runtime);

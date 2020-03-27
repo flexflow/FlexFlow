@@ -109,6 +109,56 @@ void SGDOptimizer::update_task(const Task* task,
       }
       break;
     }
+    case 3:
+    {
+      TensorAccessorR<float, 3> accWGrad(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      TensorAccessorW<float, 3> accW(
+          regions[1], task->regions[1], FID_DATA, ctx, runtime,
+          true/*readOutput*/);
+      for (int i = 0; i < domain.get_dim()-1; i++) {
+        assert(accW.rect.lo[i] == accWGrad.rect.lo[i]);
+        assert(accW.rect.hi[i] == accWGrad.rect.hi[i]);
+      }
+      size = accW.rect.volume();
+      assert(accWGrad.rect.volume() % accW.rect.volume() == 0);
+      num_replicas = accWGrad.rect.volume() / accW.rect.volume();
+      w_grad_ptr = accWGrad.ptr;
+      w_ptr = accW.ptr;
+      if (op->momentum > 0.0f) {
+        TensorAccessorW<float, 3> accV(
+            regions[2], task->regions[2], FID_DATA, ctx, runtime,
+            true/*readOutput*/);
+        assert(accW.rect == accV.rect);
+        v_ptr = accV.ptr;
+      }
+      break;
+    }
+    case 4:
+    {
+      TensorAccessorR<float, 4> accWGrad(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      TensorAccessorW<float, 4> accW(
+          regions[1], task->regions[1], FID_DATA, ctx, runtime,
+          true/*readOutput*/);
+      for (int i = 0; i < domain.get_dim()-1; i++) {
+        assert(accW.rect.lo[i] == accWGrad.rect.lo[i]);
+        assert(accW.rect.hi[i] == accWGrad.rect.hi[i]);
+      }
+      size = accW.rect.volume();
+      assert(accWGrad.rect.volume() % accW.rect.volume() == 0);
+      num_replicas = accWGrad.rect.volume() / accW.rect.volume();
+      w_grad_ptr = accWGrad.ptr;
+      w_ptr = accW.ptr;
+      if (op->momentum > 0.0f) {
+        TensorAccessorW<float, 4> accV(
+            regions[2], task->regions[2], FID_DATA, ctx, runtime,
+            true/*readOutput*/);
+        assert(accW.rect == accV.rect);
+        v_ptr = accV.ptr;
+      }
+      break;
+    }
     default:
     {
       // Unsupported dims
@@ -125,6 +175,132 @@ void SGDOptimizer::update_task(const Task* task,
   sgd_update<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
       size, op->lr, op->weight_decay, op->momentum, op->nesterov,
       w_grad_ptr, v_ptr, w_ptr);
+  checkCUDA(cudaDeviceSynchronize());
+}
+
+// ==================================================================
+//                        Adam Optimizer
+// ==================================================================
+__global__
+void add_kernel(int count, float scale,
+                const float* src,
+                float* dst)
+{
+  CUDA_KERNEL_LOOP(i, count)
+  {
+    dst[i] += src[i] * scale;
+  }
+}
+
+__global__
+void scale_kernel(int count, float a, float b,
+                  float* ptr)
+{
+  CUDA_KERNEL_LOOP(i, count)
+  {
+    ptr[i] = (b - a) * ptr[i] + a;
+  }
+}
+
+__global__
+void adam_update(int count, float alpha_t,
+                 float beta1, float beta2,
+                 float weight_decay, float epsilon,
+                 const float *WGrad, float *M,
+                 float *V, float *W)
+{
+  // Reference for weight decay
+  // https://www.fast.ai/2018/07/02/adam-weight-decay/
+  CUDA_KERNEL_LOOP(i, count)
+  {
+    //W[i] -= weight_decay * alpha_t * W[i];
+    //float gt = WGrad[i];
+    float gt = WGrad[i] + weight_decay * W[i];
+    float mt = beta1 * M[i] + (1 - beta1) * gt;
+    float vt = beta2 * V[i] + (1 - beta2) * gt * gt;
+    M[i] = mt;
+    V[i] = vt;
+    W[i] -= alpha_t * mt / (sqrt(vt) + epsilon);
+  }
+}
+
+__host__
+void AdamOptimizer::update_task(const Task* task,
+                                const std::vector<PhysicalRegion>& regions,
+                                Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
+  const AdamOptimizer* op = (AdamOptimizer*) task->args;
+  Domain domain = runtime->get_index_space_domain(ctx,
+      task->regions[1].region.get_index_space());
+  const float *w_grad_ptr = NULL;
+  float *w_ptr = NULL, *v_ptr = NULL, *m_ptr = NULL;
+  size_t size = 0, num_replicas = 0;
+  switch(domain.get_dim()) {
+    case 1:
+    {
+      TensorAccessorR<float, 1> accWGrad(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      TensorAccessorW<float, 1> accW(
+          regions[1], task->regions[1], FID_DATA, ctx, runtime,
+          true/*readOutput*/);
+      TensorAccessorW<float, 1> accV(
+          regions[2], task->regions[2], FID_DATA, ctx, runtime,
+          true/*readOutput*/);
+      TensorAccessorW<float, 1> accM(
+          regions[3], task->regions[3], FID_DATA, ctx, runtime,
+          true/*readOutput*/);
+      size = accW.rect.volume();
+      assert(accWGrad.rect.volume() % accW.rect.volume() == 0);
+      num_replicas = accWGrad.rect.volume() / accW.rect.volume();
+      w_grad_ptr = accWGrad.ptr;
+      w_ptr = accW.ptr;
+      v_ptr = accV.ptr;
+      m_ptr = accM.ptr;
+      break;
+    }
+    case 2:
+    {
+      TensorAccessorR<float, 2> accWGrad(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      TensorAccessorW<float, 2> accW(
+          regions[1], task->regions[1], FID_DATA, ctx, runtime,
+          true/*readOutput*/);
+      TensorAccessorW<float, 2> accV(
+          regions[2], task->regions[2], FID_DATA, ctx, runtime,
+          true/*readOutput*/);
+      TensorAccessorW<float, 2> accM(
+          regions[3], task->regions[3], FID_DATA, ctx, runtime,
+          true/*readOutput*/);
+      size = accW.rect.volume();
+      assert(accWGrad.rect.volume() % accW.rect.volume() == 0);
+      num_replicas = accWGrad.rect.volume() / accW.rect.volume();
+      w_grad_ptr = accWGrad.ptr;
+      w_ptr = accW.ptr;
+      v_ptr = accV.ptr;
+      m_ptr = accM.ptr;
+      break;
+    }
+    default:
+    {
+      // Unsupported dims
+      assert(false);
+    }
+  }
+  // Step 1: gather gradients in the first replica
+  for (int i = 1; i < num_replicas; i++) {
+    const float* src = w_grad_ptr + i * size;
+    add_kernel<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
+        size, 1.0f, src, (float*)w_grad_ptr);
+  }
+  //fprintf(stderr, "alpha = %.8lf alpha_t = %.8lf decay = %.8lf\n",
+  //        op->alpha, op->alpha_t, op->weight_decay);
+  // Step 2: Adam update
+  adam_update<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
+      size, op->alpha_t, op->beta1, op->beta2,
+      op->weight_decay, op->epsilon,
+      w_grad_ptr, m_ptr, v_ptr, w_ptr);
   checkCUDA(cudaDeviceSynchronize());
 }
 

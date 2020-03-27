@@ -69,6 +69,7 @@ enum TaskIDs {
   DUMMY_TASK_ID,
   // Optimizer
   SGD_UPD_TASK_ID,
+  ADAM_UPD_TASK_ID,
   // Initializer
   GLOROT_INIT_TASK_ID,
   ZERO_INIT_TASK_ID,
@@ -93,6 +94,10 @@ enum TaskIDs {
   CUSTOM_CPU_TASK_ID_6,
   CUSTOM_CPU_TASK_ID_7,
   CUSTOM_CPU_TASK_ID_LAST,
+};
+
+enum ShardingID {
+  DataParallelShardingID = 135,
 };
 
 enum ActiMode {
@@ -200,23 +205,29 @@ public:
 
   // Add a 2D convolutional layer 
   Tensor conv2d(std::string name,
-                Tensor input, int outChannels,
+                const Tensor& input,
+                int outChannels,
                 int kernelH, int kernelW,
                 int strideH, int strideW,
                 int paddingH, int paddingW,
-                bool relu = false);
+                ActiMode activation = AC_MODE_NONE,
+                bool use_bias = true,
+                Initializer* krenel_initializer = NULL,
+                Initializer* bias_initializer = NULL);
   // Add an embedding layer
   Tensor embedding(const std::string& name,
                    const Tensor& input,
-                   int inDim, int outDim,
+                   int num_entires, int outDim,
+                   AggrMode aggr,
                    Initializer* kernel_initializer);
   // Add a 2D pooling layer
-  Tensor pool2d(std::string name,
-                Tensor input,
+  Tensor pool2d(const std::string& name,
+                const Tensor& input,
                 int kernelH, int kernelW,
                 int strideH, int strideW,
                 int paddingH, int paddingW,
-                PoolType type = POOL_MAX, bool relu = true);
+                PoolType type = POOL_MAX,
+                ActiMode activation = AC_MODE_NONE);
   // Add a batch_norm layer
   Tensor batch_norm(std::string name,
                     Tensor input,
@@ -232,7 +243,7 @@ public:
   // Add a linear layer
   Tensor linear(std::string name,
                 const Tensor& input,
-                int outChannels,
+                int outDim,
                 ActiMode activation = AC_MODE_NONE,
                 bool use_bias = true,
                 Initializer* kernel_initializer = NULL,
@@ -244,8 +255,9 @@ public:
   // Add a flat layer
   Tensor flat(std::string name, Tensor input);
   // Add a softmax layer
-  Tensor softmax(std::string name, Tensor input);
-
+  Tensor softmax(std::string name,
+                 const Tensor& input,
+                 const Tensor& label);
   void mse_loss(const std::string& name,
                 const Tensor& logits,
                 const Tensor& labels,
@@ -263,21 +275,32 @@ public:
                                  LogicalPartition& part_fwd,
                                  LogicalPartition& part_bwd);
 
+  template<int NDIM, int TDIM>
+  void create_data_parallel_partition_with_diff_dims(const Tensor& tensor,
+                                                     const IndexSpaceT<TDIM>& task_is,
+                                                     LogicalPartition& part_fwd,
+                                                     LogicalPartition& part_bwd);
   template<int NDIM>
   Tensor create_tensor(const int* dims,
                        const IndexSpaceT<NDIM>& part_is,
                        DataType data_type,
                        bool create_grad = true);
   template<int NDIM>
-  Tensor create_weight(const int* dims,
-                       const IndexSpaceT<2>& part_is,
-                       DataType data_type,
-                       Initializer* initializer,
-                       bool create_grad = true);
+  Tensor create_conv_weight(const int* dims,
+                            const IndexSpaceT<4>& part_is,
+                            DataType data_type,
+                            Initializer* initializer,
+                            bool create_grad = true);
   template<int NDIM>
-  Tensor create_replica(const int* dims,
-                        const IndexSpaceT<2>& part_is,
-                        DataType data_type);
+  Tensor create_linear_weight(const int* dims,
+                              const IndexSpaceT<2>& part_is,
+                              DataType data_type,
+                              Initializer* initializer,
+                              bool create_grad = true);
+  template<int NDIM>
+  Tensor create_linear_replica(const int* dims,
+                               const IndexSpaceT<2>& part_is,
+                               DataType data_type);
   static PerfMetrics update_metrics_task(const Task *task,
                                          const std::vector<PhysicalRegion> &regions,
                                          Context ctx, Runtime *runtime);
@@ -291,7 +314,7 @@ public:
   // Internal funcitons
   IndexSpace get_or_create_task_is(ParallelConfig pc);
   IndexSpace get_or_create_task_is(const Domain& domain);
-  IndexSpace get_or_create_task_is(const std::string& pcname);
+  IndexSpace get_or_create_task_is(int ndims, const std::string& pcname);
   IndexSpace get_task_is(const Domain& domain) const;
 public:
   FFConfig config;
@@ -308,41 +331,42 @@ private:
 
 class Conv2D : public Op {
 public:
-  Conv2D(std::string name, FFConfig config,
-         Tensor input, IndexSpaceT<4> task_is,
-         int inChannels, int outChannels,
+  Conv2D(FFModel& model, const std::string& pcname,
+         const Tensor& input,
+         int out_dim,
          int kernelH, int kernelW,
          int strideH, int strideW,
          int paddingH, int paddingW,
-         bool relu, bool first_layer);
+         ActiMode activation,
+         bool use_bias,
+         Initializer* kernel_initializer,
+         Initializer* bias_initializer);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
-  void update(const FFModel&);
+  //void update(const FFModel&);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  static void init_para_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
-                             Context ctx, Runtime *runtime);
+  //static void init_para_task(const Task *task,
+  //                           const std::vector<PhysicalRegion> &regions,
+  //                           Context ctx, Runtime *runtime);
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, HighLevelRuntime *runtime);
-  static void update_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
-                          Context ctx, HighLevelRuntime *runtime);
+  //static void update_task(const Task *task,
+  //                        const std::vector<PhysicalRegion> &regions,
+  //                        Context ctx, HighLevelRuntime *runtime);
 public:
   IndexSpaceT<4> task_is;
-  int in_channels, out_channels;
-  int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
-  bool relu, first_layer, profiling;
-  int num_replica;
-  float learning_rate;
-  Tensor locals[MAX_NUM_LOCALS];
+  int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
+  Tensor kernel, bias;
+  bool profiling;
+  ActiMode activation;
 };
 
 class Conv2DMeta : public OpMeta {
@@ -360,12 +384,13 @@ public:
 
 class Pool2D : public Op {
 public:
-  Pool2D(std::string name, FFConfig config,
-         Tensor input, IndexSpaceT<4> part_is,
+  Pool2D(FFModel& model,
+         const std::string& name,
+         const Tensor& input,
          int kernelH, int kernelW,
          int strideH, int strideW,
          int paddingH, int paddingW,
-         PoolType type, bool relu);
+         PoolType type, ActiMode _activation);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -384,7 +409,8 @@ public:
   IndexSpaceT<4> task_is;
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
-  bool relu, profiling;
+  ActiMode activation;
+  bool profiling;
 };
 
 class Pool2DMeta : public OpMeta {
@@ -488,8 +514,42 @@ public:
   Embedding(FFModel& model,
             const std::string& pcname,
             const Tensor& input,
-            int inDim, int outDim,
+            int num_entries, int outDim,
+            AggrMode _aggr,
             Initializer* kernel_initializer);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  //void update(const FFModel&);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  static void forward_task_cpu(const Task *task,
+                               const std::vector<PhysicalRegion> &regions,
+                               Context ctx, Runtime *runtime);
+  static void backward_task_cpu(const Task *task,
+                                const std::vector<PhysicalRegion> &regions,
+                                Context ctx, Runtime *runtime);
+public:
+  IndexSpaceT<2> task_is;
+  Tensor kernel;
+  AggrMode aggr;
+  bool profiling;
+};
+
+
+class Flat : public Op {
+public:
+  Flat(FFModel& model,
+       const std::string& pcname,
+       const Tensor& input);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -506,35 +566,6 @@ public:
                             Context ctx, Runtime *runtime);
 public:
   IndexSpaceT<2> task_is;
-  Tensor kernel;
-  bool profiling;
-};
-
-
-class Flat : public Op {
-public:
-  Flat(std::string name, FFConfig config,
-       Tensor input,
-       IndexSpaceT<4> part_is_3d,
-       IndexSpaceT<2> part_is_2d);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  //void update(const FFModel&);
-
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
-public:
-  IndexSpaceT<3> task_is_3d;
-  IndexSpaceT<2> task_is_2d;
-  LogicalPartition flat_lp, flat_grad_lp;
 };
 
 class FlatMeta : public OpMeta {
@@ -544,8 +575,10 @@ public:
 
 class Softmax : public Op {
 public:
-  Softmax(std::string name, FFConfig config,
-          Tensor input, IndexSpaceT<1> part_is);
+  Softmax(FFModel& model,
+          const std::string& pcname,
+          const Tensor& logit,
+          const Tensor& label);
 
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -562,8 +595,7 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
 public:
-  IndexSpaceT<1> task_is;
-  LogicalPartition input_grad_lp;
+  IndexSpaceT<2> task_is;
   bool profiling;
 };
 

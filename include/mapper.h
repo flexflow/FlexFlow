@@ -36,6 +36,10 @@ public:
                           const Task& task,
                           const SliceTaskInput& input,
                           SliceTaskOutput& output);
+  virtual void select_sharding_functor(const MapperContext ctx,
+                                       const Task& task,
+                                       const SelectShardingFunctorInput& input,
+                                       SelectShardingFunctorOutput& output);
   virtual void select_task_options(const MapperContext ctx,
                                    const Task& task,
                                    TaskOptions& output);
@@ -50,6 +54,7 @@ protected:
   std::vector<Processor>& gpus;
   std::map<Processor, Memory>& proc_fbmems, proc_zcmems;
   std::vector<Processor>& cpus;
+  std::map<unsigned long long, Processor> cache_update_tasks;
   // We use MappingTagID has the key since we will pass the tag to the mapper
   std::map<MappingTagID, ParallelConfig>& strategies;
 };
