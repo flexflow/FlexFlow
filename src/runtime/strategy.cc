@@ -34,14 +34,12 @@ bool FFConfig::find_parallel_config(int ndims,
     switch (ndims) {
       case 1:
       {
-        printf("%d pcname = %s\n", ndims, pcname.c_str());
         assert(strategies.find(DataParallelism_1D) != strategies.end());
         config = strategies[DataParallelism_1D];
         break;
       }
       case 2:
       {
-        printf("%d pcname = %s\n", ndims, pcname.c_str());
         assert(strategies.find(DataParallelism_2D) != strategies.end());
         config = strategies[DataParallelism_2D];
         break;
