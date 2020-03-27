@@ -260,8 +260,8 @@ void Softmax::backward_task(const Task *task,
   checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output.ptr,
                             acc_input_grad.rect.volume() * sizeof(float),
                             cudaMemcpyDeviceToDevice));
-  SoftmaxLossBackprop<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS>>>(
-      acc_input_grad.ptr, acc_label.ptr, num_labels, num_samples);
+  //SoftmaxLossBackprop<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS>>>(
+  //    acc_input_grad.ptr, acc_label.ptr, num_labels, num_samples);
 
   // Accouting for batch size in SGD
   float scalVal = 1.0f / static_cast<float>(num_samples);
