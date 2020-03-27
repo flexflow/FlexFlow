@@ -58,11 +58,11 @@ void top_level_task(const Task* task,
   Tensor label;
   {
     const int dims[] = {ffConfig.batchSize, 1};
-    label = ff.create_tensor<2>(dims, "", DT_FLOAT);
+    label = ff.create_tensor<2>(dims, "", DT_INT32);
   }
  
 //-----------------------------------------------------------------
-Tensor t = ff.conv2d("conv1", input, 32, 3, 3, 2, 2, 0, 0);
+  Tensor t = ff.conv2d("conv1", input, 32, 3, 3, 2, 2, 0, 0);
   t = ff.conv2d("conv2", t, 32, 3, 3, 1, 1, 0, 0);
   t = ff.conv2d("conv3", t, 64, 3, 3, 1, 1, 1, 1);
   t = ff.pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
@@ -82,11 +82,10 @@ Tensor t = ff.conv2d("conv1", input, 32, 3, 3, 2, 2, 0, 0);
   t = InceptionE(ff, t, "ie1_");
   t = ff.pool2d("pool1", t, 8, 8, 1, 1, 0, 0, POOL_AVG);
   t = ff.flat("flat", t);
-  t = ff.linear("linear1",t, 1000);
+  t = ff.dense("linear1",t, 1000);
   t = ff.softmax("softmax", t, label);
-
 //-----------------------------------------------------------------
-ff.optimizer = new SGDOptimizer(&ff, 0.01f);
+  ff.optimizer = new SGDOptimizer(&ff, 0.01f);
 
   // Data Loader
   DataLoader data_loader(ff, input, label);
@@ -102,7 +101,7 @@ ff.optimizer = new SGDOptimizer(&ff, 0.01f);
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     //data_loader.reset();
     ff.reset_metrics();
-    int iterations = 8192 / ffConfig.batchSize;
+    int iterations = data_loader.num_samples / ffConfig.batchSize;
  
     for (int iter = 0; iter < iterations; iter++) {
       //if (dlrmConfig.dataset_path.length() == 0) {
@@ -116,8 +115,8 @@ ff.optimizer = new SGDOptimizer(&ff, 0.01f);
         runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
-      //ff.backward();
-      //ff.update();
+      ff.backward();
+      ff.update();
       if (epoch > 0)
         runtime->end_trace(ctx, 111/*trace_id*/);
     }
@@ -154,19 +153,36 @@ DataLoader::DataLoader(FFModel& ff,
   Runtime* runtime = ff.config.lg_hlr;
   num_samples = 0;
   log_app.print("Use random dataset...");
-  num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
+  num_samples = 256 * ff.config.workersPerNode * ff.config.numNodes;
   log_app.print("Number of random samples = %d\n", num_samples);
-  IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, ""));
-  ArgumentMap argmap;
-  IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string("")));
-  launcher.add_region_requirement(
-      RegionRequirement(input.part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, input.region));
-  launcher.add_field(0, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  // Init input
+  {
+    IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, ""));
+    ArgumentMap argmap;
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
+                           TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(std::string("")));
+    launcher.add_region_requirement(
+        RegionRequirement(input.part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, input.region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  }
+  // Init label
+  {
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
+    ArgumentMap argmap;
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
+                           TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(std::string("")));
+    launcher.add_region_requirement(
+        RegionRequirement(label.part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, label.region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  }
 }
 
 void DataLoader::load_input(const Task *task,
