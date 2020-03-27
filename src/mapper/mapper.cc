@@ -181,7 +181,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
   if ((task.task_id == SGD_UPD_TASK_ID)
   && (cache_update_tasks.find(task_hash) == cache_update_tasks.end())) {
     cache_update_tasks[task_hash] = output.initial_proc;
-    printf("hash = %llu proc = %llu\n", task_hash, output.initial_proc.id);
+    //printf("hash = %llu proc = %llu\n", task_hash, output.initial_proc.id);
   }
 }
 
