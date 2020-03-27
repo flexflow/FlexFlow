@@ -8,11 +8,11 @@ def top_level_task():
   
   dims_input = [ffconfig.get_batch_size(), 3, 229, 229]
   #print(dims)
-  input = ffmodel.create_tensor_4d(dims_input, "", DataType.DT_FLOAT);
+  input = ffmodel.create_tensor_4d(dims_input, "", DataType.DT_FLOAT)
   
   dims_label = [ffconfig.get_batch_size(), 1]
   #print(dims)
-  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
+  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
   # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
   # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
@@ -40,8 +40,8 @@ def top_level_task():
   t = ffmodel.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1)
   t = ffmodel.pool2d("pool3", t, 3, 3, 2, 2, 0, 0)
   t = ffmodel.flat("flat", t);
-  t = ffmodel.dense("lienar1", t, 4096, ActiMode.AC_MODE_RELU);
-  t = ffmodel.dense("linear2", t, 4096, ActiMode.AC_MODE_RELU);
+  t = ffmodel.dense("lienar1", t, 4096, ActiMode.AC_MODE_RELU)
+  t = ffmodel.dense("linear2", t, 4096, ActiMode.AC_MODE_RELU)
   t = ffmodel.dense("linear3", t, 1000)
   t = ffmodel.softmax("softmax", t, label)
   
@@ -49,7 +49,7 @@ def top_level_task():
   ffmodel.set_sgd_optimizer(ffoptimizer)
   
   # Data Loader
-  dataloader = DataLoader(ffmodel, input, label)
+  dataloader = DataLoader(ffmodel, input, label, 1)
   
   ffmodel.init_layers()
   

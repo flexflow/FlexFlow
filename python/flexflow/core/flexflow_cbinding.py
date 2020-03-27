@@ -260,7 +260,7 @@ class NormInitializer(object):
 # -----------------------------------------------------------------------
 
 class DataLoader(object):
-  def __init__(self, ffmodel, input, label):
-    self.handle = ffc.flexflow_dataloader_create(ffmodel.handle, input.handle, label.handle)
+  def __init__(self, ffmodel, input, label, flag=1):
+    self.handle = ffc.flexflow_dataloader_create(ffmodel.handle, input.handle, label.handle, flag)
     self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_destroy)
   

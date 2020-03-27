@@ -305,7 +305,8 @@ flexflow_dataloader_t
 flexflow_dataloader_create(
   flexflow_model_t ffmodel_, 
   flexflow_tensor_t input_, 
-  flexflow_tensor_t label_);
+  flexflow_tensor_t label_,
+  int flag);
   
 void  
 flexflow_dataloader_destroy(

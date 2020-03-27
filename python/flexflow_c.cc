@@ -3,7 +3,7 @@
 
 class ImgDataLoader {
 public:
-  ImgDataLoader(FFModel& ff, Tensor input, Tensor label);
+  ImgDataLoader(FFModel& ff, Tensor input, Tensor label, int flag);
   static void load_input(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx,
@@ -578,12 +578,13 @@ flexflow_dataloader_t
 flexflow_dataloader_create(
   flexflow_model_t ffmodel_, 
   flexflow_tensor_t input_, 
-  flexflow_tensor_t label_)
+  flexflow_tensor_t label_,
+  int flag)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
   Tensor *input = FFCObjectWrapper::unwrap(input_);
   Tensor *label = FFCObjectWrapper::unwrap(label_);
-  ImgDataLoader *dataloader = new ImgDataLoader(*ffmodel, *input, *label);
+  ImgDataLoader *dataloader = new ImgDataLoader(*ffmodel, *input, *label, flag);
   return FFCObjectWrapper::wrap(dataloader);  
 }
 
@@ -635,7 +636,7 @@ flexflow_end_trace(
 }
 
 ImgDataLoader::ImgDataLoader(FFModel& ff,
-                       Tensor input, Tensor label)
+                       Tensor input, Tensor label, int flag)
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -658,7 +659,7 @@ ImgDataLoader::ImgDataLoader(FFModel& ff,
     runtime->execute_index_space(ctx, launcher);
   }
   // Init label
-  {
+  if (flag == 1){
     IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
     ArgumentMap argmap;
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,

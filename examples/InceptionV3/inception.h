@@ -15,7 +15,7 @@
 
 //#include "ops.h"
 
-Tensor InceptionA(FFModel ff, Tensor input, int pool_features, std::string prefix = "")
+Tensor InceptionA(FFModel& ff, Tensor input, int pool_features, std::string prefix = "")
 {
   Tensor t1 = ff.conv2d(prefix + "conv1", input, 64, 1, 1, 1, 1, 0, 0);
   Tensor t2 = ff.conv2d(prefix + "ia_conv2", input, 48, 1, 1, 1, 1, 0, 0);
@@ -32,7 +32,7 @@ Tensor InceptionA(FFModel ff, Tensor input, int pool_features, std::string prefi
   return output;
 }
 
-Tensor InceptionB(FFModel ff, Tensor input, std::string prefix = "")
+Tensor InceptionB(FFModel& ff, Tensor input, std::string prefix = "")
 {
   Tensor t1 = ff.conv2d(prefix + "conv1", input, 384, 3, 3, 2, 2, 0, 0);
   Tensor t2 = ff.conv2d(prefix + "conv2", input, 64, 1, 1, 1, 1, 0, 0);
@@ -45,7 +45,7 @@ Tensor InceptionB(FFModel ff, Tensor input, std::string prefix = "")
   return output;
 }
 
-Tensor InceptionC(FFModel ff, Tensor input, int channels, std::string prefix = "")
+Tensor InceptionC(FFModel& ff, Tensor input, int channels, std::string prefix = "")
 {
   Tensor t1 = ff.conv2d(prefix + "conv1", input, 192, 1, 1, 1, 1, 0, 0);
   Tensor t2 = ff.conv2d(prefix + "conv2", input, channels, 1, 1, 1, 1, 0, 0);
@@ -64,7 +64,7 @@ Tensor InceptionC(FFModel ff, Tensor input, int channels, std::string prefix = "
   return output;
 }
 
-Tensor InceptionD(FFModel ff, Tensor input, std::string prefix = "")
+Tensor InceptionD(FFModel& ff, Tensor input, std::string prefix = "")
 {
   Tensor t1 = ff.conv2d(prefix + "conv1", input, 192, 1, 1, 1, 1, 0, 0);
   t1 = ff.conv2d(prefix + "conv2", t1, 320, 3, 3, 2, 2, 0, 0);
@@ -79,7 +79,7 @@ Tensor InceptionD(FFModel ff, Tensor input, std::string prefix = "")
   return output;
 }
 
-Tensor InceptionE(FFModel ff, Tensor input, std::string prefix = "")
+Tensor InceptionE(FFModel& ff, Tensor input, std::string prefix = "")
 {
   Tensor t1 = ff.conv2d(prefix + "conv1", input, 320, 1, 1, 1, 1, 0, 0);
   Tensor t2i = ff.conv2d(prefix + "conv2", input, 384, 1, 1, 1, 1, 0, 0);
