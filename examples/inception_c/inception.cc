@@ -163,7 +163,7 @@ void top_level_task(const Task* task,
   flexflow_tensor_t t18 = InceptionE(ffmodel, t17, "ie1_");
   flexflow_tensor_t t19 = flexflow_model_add_pool2d(ffmodel, "pool1", t18, 8, 8, 1, 1, 0, 0, POOL_AVG, AC_MODE_NONE);
   flexflow_tensor_t t20 = flexflow_model_add_flat(ffmodel, "flat", t19);
-  flexflow_tensor_t t21 = flexflow_model_add_linear_with_default_initializer(ffmodel, "linear1",t20, 1000, AC_MODE_NONE, true);
+  flexflow_tensor_t t21 = flexflow_model_add_dense_with_default_initializer(ffmodel, "linear1",t20, 1000, AC_MODE_NONE, true);
   flexflow_tensor_t t22 = flexflow_model_add_softmax(ffmodel, "softmax", t21, label);
   
   //Tensor *tmp_t = static_cast<Tensor *>(t12.impl); 
@@ -189,7 +189,7 @@ void top_level_task(const Task* task,
 
     //data_loader.reset();
     ff->reset_metrics();
-    int iterations = 8192 / flexflow_config_get_batch_size(ffconfig);
+    int iterations = data_loader.num_samples / flexflow_config_get_batch_size(ffconfig);
  
     for (int iter = 0; iter < iterations; iter++) {
       //if (dlrmConfig.dataset_path.length() == 0) {
@@ -203,8 +203,8 @@ void top_level_task(const Task* task,
         runtime->begin_trace(ctx, 111/*trace_id*/);
       flexflow_model_forward(ffmodel);
       flexflow_model_zero_gradients(ffmodel);
-      //flexflow_model_backward(ffmodel);
-      //flexflow_model_update(ffmodel);
+      flexflow_model_backward(ffmodel);
+      flexflow_model_update(ffmodel);
       //ff->forward();
       //ff->zero_gradients();
       //ff.backward();
@@ -274,7 +274,7 @@ DataLoader::DataLoader(FFModel& ff,
   Runtime* runtime = ff.config.lg_hlr;
   num_samples = 0;
   log_app.print("Use random dataset...");
-  num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
+  num_samples = 256 * ff.config.workersPerNode * ff.config.numNodes;
   log_app.print("Number of random samples = %d\n", num_samples);
   // Init input
   {

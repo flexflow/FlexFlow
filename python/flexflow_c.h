@@ -312,6 +312,15 @@ void
 flexflow_dataloader_destroy(
   flexflow_dataloader_t handle_);
 
+void
+flexflow_dataloader_set_num_samples(
+  flexflow_dataloader_t handle_,
+  int samples);
+  
+int
+flexflow_dataloader_get_num_samples(
+  flexflow_dataloader_t handle_);
+
 // -----------------------------------------------------------------------
 // Timer
 // -----------------------------------------------------------------------

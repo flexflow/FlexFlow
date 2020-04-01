@@ -4,6 +4,7 @@
 class ImgDataLoader {
 public:
   ImgDataLoader(FFModel& ff, Tensor input, Tensor label, int flag);
+  void set_num_samples(int samples);
   static void load_input(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx,
@@ -596,6 +597,24 @@ flexflow_dataloader_destroy(
   delete handle;
 }
 
+void
+flexflow_dataloader_set_num_samples(
+  flexflow_dataloader_t handle_,
+  int samples)
+{
+  ImgDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_num_samples(samples);  
+  printf("dataloader set number of samples %d\n", samples);
+}
+
+int
+flexflow_dataloader_get_num_samples(
+  flexflow_dataloader_t handle_)
+{
+  ImgDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->num_samples;
+}
+
 // -----------------------------------------------------------------------
 // Timer
 // -----------------------------------------------------------------------
@@ -635,6 +654,10 @@ flexflow_end_trace(
   config->lg_hlr->end_trace(config->lg_ctx, trace_id);
 }
 
+// -----------------------------------------------------------------------
+// ImgDataLoader implementation
+// -----------------------------------------------------------------------
+
 ImgDataLoader::ImgDataLoader(FFModel& ff,
                        Tensor input, Tensor label, int flag)
 {
@@ -672,6 +695,11 @@ ImgDataLoader::ImgDataLoader(FFModel& ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
+}
+
+void ImgDataLoader::set_num_samples(int samples)
+{
+  num_samples = samples;
 }
 
 void ImgDataLoader::load_input(const Task *task,

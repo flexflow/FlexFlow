@@ -73,7 +73,7 @@ def top_level_task():
   
   dims_label = [ffconfig.get_batch_size(), 1]
   #print(dims)
-  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_FLOAT)
+  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
   t = ffmodel.conv2d("conv1", input, 32, 3, 3, 2, 2, 0, 0)
   t = ffmodel.conv2d("conv2", t, 32, 3, 3, 1, 1, 0, 0)
@@ -95,14 +95,15 @@ def top_level_task():
   t = InceptionE(ffmodel, t, "ie1_")
   t = ffmodel.pool2d("pool1", t, 8, 8, 1, 1, 0, 0, PoolType.POOL_AVG)
   t = ffmodel.flat("flat", t)
-  t = ffmodel.linear("linear1",t, 1000)
+  t = ffmodel.dense("linear1",t, 1000)
   t = ffmodel.softmax("softmax", t, label)
   
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
   
   # Data Loader
-  dataloader = DataLoader(ffmodel, input, label, 2)
+  dataloader = DataLoader(ffmodel, input, label, 1)
+  dataloader.set_num_samples(256 * ffconfig.get_workers_per_node() * ffconfig.get_num_nodes())
   
   ffmodel.init_layers()
   
@@ -111,14 +112,14 @@ def top_level_task():
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
     ffmodel.reset_metrics()
-    iterations = 8192 / ffconfig.get_batch_size()
+    iterations = dataloader.get_num_samples() / ffconfig.get_batch_size()
     for iter in range(0, int(iterations)):
       if (epoch > 0):
         ffconfig.start_trace(111)
       ffmodel.forward()
       ffmodel.zero_gradients()
-      #ffmodel.backward()
-      #ffmodel.update()
+      ffmodel.backward()
+      ffmodel.update()
       if (epoch > 0):
         ffconfig.end_trace(111)
         

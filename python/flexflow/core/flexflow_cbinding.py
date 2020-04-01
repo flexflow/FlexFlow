@@ -264,3 +264,9 @@ class DataLoader(object):
     self.handle = ffc.flexflow_dataloader_create(ffmodel.handle, input.handle, label.handle, flag)
     self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_destroy)
   
+  def set_num_samples(self, samples):
+    ffc.flexflow_dataloader_set_num_samples(self.handle, samples)
+      
+  def get_num_samples(self):
+    return ffc.flexflow_dataloader_get_num_samples(self.handle)
+  
