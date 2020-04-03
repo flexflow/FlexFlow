@@ -1,6 +1,6 @@
 # FlexFlow
 
-A distributed deep learning framework that accelerates distributed DNN training by automatically discovering fast parallelization strategies for a specific parallel machine.
+FlexFlow is a deep learning framework that accelerates distributed DNN training by automatically discovering fast parallelization strategies.
 
 ## Prerequisties
 * [CUDNN](https://developer.nvidia.com/cudnn) is used to perform low-level operations.
