@@ -11,7 +11,7 @@ A distributed deep learning framework that accelerates distributed DNN training 
 
 * (Optional) [NCCL](https://github.com/NVIDIA/nccl) is used for parameter synchronization. When NCCL is not available, FlexFlow uses the Legion DMA subsystem for transferring parameters.
 
-* (Optional) [GASNet](http://gasnet.lbl.gov) is used for multi-node executions. (see [installation instructions](http://legion.stanford.edu/gasnet))
+* (Optional) [GASNet](http://gasnet.lbl.gov) is used for multi-node executions. (see [GASNet installation instructions](http://legion.stanford.edu/gasnet))
 
 ## Install TASO
 See [instructions](INSTALL.md) to install FlexFlow from source.
