@@ -17,7 +17,6 @@ export FF_HOME=/path/to/FlexFlow
 Skip this step if the Protocol Buffer library is already installed.
 ```
 cd protobuf
-git submodule update --init --recursive
 ./autogen.sh
 ./configure
 make
