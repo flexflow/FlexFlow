@@ -269,4 +269,22 @@ class DataLoader(object):
       
   def get_num_samples(self):
     return ffc.flexflow_dataloader_get_num_samples(self.handle)
+    
+class RegionNdarray(object):
+  __slots__ = ['__array_interface__']
+  def __init__(self, shape, field_type, base_ptr, strides, read_only):
+    # See: https://docs.scipy.org/doc/numpy/reference/arrays.interface.html
+    self.__array_interface__ = {
+      'version': 3,
+      'shape': shape,
+      'typestr': field_type,
+      'data': (base_ptr, read_only),
+      'strides': strides,
+    }
+
+def malloc_int(size):
+  return ffc.flexflow_malloc_int(size)
+  
+def print_array_int(base_ptr, size):
+  ffc.flexflow_print_array_int(base_ptr, size)
   

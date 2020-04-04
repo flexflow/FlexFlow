@@ -342,6 +342,15 @@ void
 flexflow_end_trace(
   flexflow_config_t config, 
   int trace_id);
+  
+int*
+flexflow_malloc_int(
+  size_t size);
+
+void
+flexflow_print_array_int(
+  int *base_ptr,
+  size_t size);
 
 #ifdef __cplusplus
 }

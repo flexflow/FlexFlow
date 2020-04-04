@@ -654,6 +654,33 @@ flexflow_end_trace(
   config->lg_hlr->end_trace(config->lg_ctx, trace_id);
 }
 
+int*
+flexflow_malloc_int(
+  size_t size)
+{
+  int *ptr = NULL;
+  uintptr_t intptr; 
+  ptr = (int*)malloc(sizeof(int) * size);
+  for (int i = 0; i < size; i++) {
+    ptr[i] = 1;
+  }
+  intptr = (uintptr_t)(ptr);
+  printf("malloc int %p, %ld, size %ld\n", ptr, intptr, size);
+  return ptr;
+}
+
+void
+flexflow_print_array_int(
+  int *base_ptr,
+  size_t size)
+{
+  printf("base_ptr %p\n", base_ptr);
+  for (int i = 0; i < size; i++) {
+    printf("%d ", base_ptr[i]);
+  }   
+  printf("\n");
+}
+
 // -----------------------------------------------------------------------
 // ImgDataLoader implementation
 // -----------------------------------------------------------------------
