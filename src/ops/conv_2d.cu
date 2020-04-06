@@ -760,6 +760,68 @@ void Conv2D::update(const FFModel& ff)
 #endif
 
 __host__
+void Conv2D::inline_map_layer_kernel(const FFModel& ff)
+{
+  printf("inline map kernel conv2d layer\n");  
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  
+  RegionRequirement kernel_req(kernel.region, READ_WRITE, EXCLUSIVE, kernel.region);
+  kernel_req.add_field(FID_DATA);
+  InlineLauncher kernel_launcher(kernel_req);
+  kernel_physical_region = runtime->map_region(ctx, kernel_launcher);
+  kernel_physical_region.wait_until_valid();
+  acc_kernel = TensorAccessorW<float, 4>(kernel_physical_region, kernel_req, FID_DATA, ctx, runtime, true);
+}
+
+__host__
+void Conv2D::inline_unmap_layer_kernel(const FFModel& ff)
+{
+  printf("inline unmap kernel conv2d layer\n");  
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  runtime->unmap_region(ctx, kernel_physical_region);
+}
+
+__host__
+float* Conv2D::get_kernel_raw_ptr()
+{
+  const float *kernel_ptr = acc_kernel.ptr;
+  return (float*)kernel_ptr;
+}
+
+__host__
+void Conv2D::inline_map_layer_bias(const FFModel& ff)
+{
+  printf("inline map bias conv2d layer\n");  
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  
+  RegionRequirement bias_req(bias.region, READ_WRITE, EXCLUSIVE, bias.region);
+  bias_req.add_field(FID_DATA);
+  InlineLauncher bias_launcher(bias_req);
+  bias_physical_region = runtime->map_region(ctx, bias_launcher);
+  bias_physical_region.wait_until_valid();
+  acc_bias = TensorAccessorW<float, 1>(bias_physical_region, bias_req, FID_DATA, ctx, runtime, true);
+}
+
+__host__
+void Conv2D::inline_unmap_layer_bias(const FFModel& ff)
+{
+  printf("inline unmap bias conv2d layer\n");  
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  runtime->unmap_region(ctx, bias_physical_region);
+}
+
+__host__
+float* Conv2D::get_bias_raw_ptr()
+{
+  const float *bias_ptr = acc_bias.ptr;
+  return (float*)bias_ptr;
+}
+
+__host__
 void Conv2D::print_layer(const FFModel& ff)
 {
   printf("conv2d layer\n");  
@@ -801,9 +863,9 @@ void Conv2D::print_layer(const FFModel& ff)
   PhysicalRegion bias_grad_region = runtime->map_region(ctx, bias_grad_launcher);
   bias_grad_region.wait_until_valid();
   */
-  TensorAccessorR<float, 4> acc_kernel(kernel_region, kernel_req, FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 4> acc_kernel(kernel_region, kernel_req, FID_DATA, ctx, runtime, true);
 //  const AccessorRW<float, 1> acc_kernel_grad(kernel_grad_region, FID_DATA);
-  TensorAccessorR<float, 1> acc_bias(bias_region, bias_req, FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 1> acc_bias(bias_region, bias_req, FID_DATA, ctx, runtime, true);
   //const AccessorRW<float, 1> acc_bias_grad(bias_grad_region, FID_DATA);
   
   const float *kernel_ptr = acc_kernel.ptr;
@@ -812,31 +874,36 @@ void Conv2D::print_layer(const FFModel& ff)
   //float *bias_grad_ptr = acc_bias_grad.ptr;
   
   size_t kernel_size = acc_kernel.rect.volume();
+  int kernel_dim1 = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
+  int kernel_dim2 = acc_kernel.rect.hi[1] - acc_kernel.rect.lo[1] + 1;
+  int kernel_dim3 = acc_kernel.rect.hi[2] - acc_kernel.rect.lo[2] + 1;
+  int kernel_dim4 = acc_kernel.rect.hi[3] - acc_kernel.rect.lo[3] + 1;
   //size_t kernel_grad_size = rect_kernel_grad.volume();
   size_t bias_size = acc_bias.rect.volume();
   //size_t bias_grad_size = rect_bias_grad.volume();
-  printf("kernel, %d\n", kernel_size);
+  printf("kernel, %p, %d, [%d, %d, %d, %d]\n", kernel_ptr, kernel_size, kernel_dim1, kernel_dim2, kernel_dim3, kernel_dim4);
   //printf("kernel_grad, %d\n", kernel_grad_size);
-  printf("bias, %d\n", bias_size);
+  printf("bias, %p, %d\n", bias_ptr, bias_size);
   //printf("bias_grad, %d\n", bias_grad_size);
+
   
   for (int i = 0; i < bias_size; i++) {
-    printf("%f ", bias_ptr);
-    bias_ptr ++;
+    printf("%f ", bias_ptr[i]);
   }
   printf("\n");
+  
 /*  
   for (int i = 0; i < bias_grad_size; i++) {
     printf("%f ", bias_grad_ptr);
     bias_grad_ptr ++;
   }
   printf("\n");*/
-  
+/*  
   for (int i = 0; i < kernel_size; i++) {
-    printf("%f ", kernel_ptr);
-    kernel_ptr ++;
+    printf("%f ", kernel_ptr[i]);
   }
   printf("\n");
+  */
 /*  
   for (int i = 0; i < kernel_grad_size; i++) {
     printf("%f ", kernel_grad_ptr);

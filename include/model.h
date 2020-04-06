@@ -160,6 +160,12 @@ public:
   virtual void forward(const FFModel&) = 0;
   virtual void backward(const FFModel&) = 0;
   virtual void print_layer(const FFModel& model) = 0;
+  virtual void inline_map_layer_kernel(const FFModel& model) = 0;
+  virtual void inline_unmap_layer_kernel(const FFModel& model) = 0;
+  virtual float* get_kernel_raw_ptr() = 0;
+  virtual void inline_map_layer_bias(const FFModel& model) = 0;
+  virtual void inline_unmap_layer_bias(const FFModel& model) = 0;
+  virtual float* get_bias_raw_ptr() = 0;
   //virtual void update(const FFModel&) = 0;
 public:
   char name[MAX_OPNAME];
@@ -327,6 +333,12 @@ public:
   void backward(const FFModel&);
   //void update(const FFModel&);
   void print_layer(const FFModel& model);
+  void inline_map_layer_kernel(const FFModel& model);
+  void inline_unmap_layer_kernel(const FFModel& model);
+  float* get_kernel_raw_ptr();
+  void inline_map_layer_bias(const FFModel& model);
+  void inline_unmap_layer_bias(const FFModel& model);
+  float* get_bias_raw_ptr();
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -352,6 +364,10 @@ public:
   Tensor kernel, bias;
   bool profiling;
   ActiMode activation;
+  PhysicalRegion kernel_physical_region;
+  PhysicalRegion bias_physical_region;
+  TensorAccessorW<float, 4> acc_kernel;
+  TensorAccessorW<float, 1> acc_bias;
 };
 
 class Conv2DMeta : public OpMeta {

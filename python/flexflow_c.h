@@ -20,6 +20,7 @@ FF_NEW_OPAQUE_TYPE(flexflow_norm_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_conv2d_t);
 FF_NEW_OPAQUE_TYPE(flexflow_pool2d_t);
 FF_NEW_OPAQUE_TYPE(flexflow_linear_t);
+FF_NEW_OPAQUE_TYPE(flexflow_op_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dataloader_t);
 
 // -----------------------------------------------------------------------
@@ -204,7 +205,12 @@ flexflow_model_set_sgd_optimizer(
   
 void
 flexflow_model_print_layers(
-  flexflow_model_t handle_);
+  flexflow_model_t handle);
+
+flexflow_op_t
+flexflow_model_get_layer_by_id(
+  flexflow_model_t handle,
+  int layer_id);
 
 // -----------------------------------------------------------------------
 // Tensor
@@ -303,23 +309,23 @@ flexflow_norm_initializer_destroy(
 
 flexflow_dataloader_t
 flexflow_dataloader_create(
-  flexflow_model_t ffmodel_, 
-  flexflow_tensor_t input_, 
-  flexflow_tensor_t label_,
+  flexflow_model_t ffmodel, 
+  flexflow_tensor_t input, 
+  flexflow_tensor_t label,
   int flag);
   
 void  
 flexflow_dataloader_destroy(
-  flexflow_dataloader_t handle_);
+  flexflow_dataloader_t handle);
 
 void
 flexflow_dataloader_set_num_samples(
-  flexflow_dataloader_t handle_,
+  flexflow_dataloader_t handle,
   int samples);
   
 int
 flexflow_dataloader_get_num_samples(
-  flexflow_dataloader_t handle_);
+  flexflow_dataloader_t handle);
 
 // -----------------------------------------------------------------------
 // Timer
@@ -343,14 +349,46 @@ flexflow_end_trace(
   flexflow_config_t config, 
   int trace_id);
   
+// -----------------------------------------------------------------------
+// Op
+// -----------------------------------------------------------------------
+
+void
+flexflow_op_inline_map_weight(
+  flexflow_op_t handle,
+  flexflow_model_t model);
+
+void
+flexflow_op_inline_unmap_weight(
+  flexflow_op_t handle,
+  flexflow_model_t model);
+  
+float*
+flexflow_op_get_weight_raw_ptr(
+  flexflow_op_t handle); 
+
+void
+flexflow_op_inline_map_bias(
+  flexflow_op_t handle,
+  flexflow_model_t model);
+
+void
+flexflow_op_inline_unmap_bias(
+  flexflow_op_t handle,
+  flexflow_model_t model);
+  
+float*
+flexflow_op_get_bias_raw_ptr(
+  flexflow_op_t handle);  
+  
 int*
 flexflow_malloc_int(
-  size_t size);
+  int size);
 
 void
 flexflow_print_array_int(
   int *base_ptr,
-  size_t size);
+  int size);
 
 #ifdef __cplusplus
 }

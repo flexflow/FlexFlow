@@ -20,12 +20,15 @@ def top_level_task():
 
   arr = np.ones(10, dtype=np.float32)
   pointer, read_only_flag = arr.__array_interface__['data']
+  print("arr", pointer)
+  pointer, read_only_flag = arr.__array_interface__['data']
   arr_out = arr_from_ptr(pointer, '<f4', (10,))
   pointer, read_only_flag = arr_out.__array_interface__['data']
   print(pointer)
-  arr_out = arr_out + 1.1
+  arr_out += 1.1
   pointer, read_only_flag = arr_out.__array_interface__['data']
-  print(pointer)
+  print(arr_out)
+  print("arr2", pointer)
   #assert np.allclose(arr, arr_out)
   
   # base_ptr = malloc_int(6*6)
@@ -35,6 +38,7 @@ def top_level_task():
   # arr_from_ptr(base_ptr_int, '<f4', (10,))
   
   base_ptr = malloc_int(6*6)
+  print(base_ptr)
   base_ptr_int = int(ffi.cast("uintptr_t", base_ptr))
   print(base_ptr_int)
   shape = (6, 6)
@@ -42,7 +46,10 @@ def top_level_task():
   strides = None
   initializer = RegionNdarray(shape, "i", base_ptr_int, strides, False)
   array = np.asarray(initializer)
-  array[1,1] = 10
+  #array[1] = 10
+  #array = array +10
+  array += 10
+  #np.add(array, 11, out=array)
   pointer, read_only_flag = array.__array_interface__['data']
   print(array)
   print(pointer)

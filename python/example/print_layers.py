@@ -1,5 +1,7 @@
 from flexflow.core import *
 
+import numpy as np
+
 def top_level_task():
   ffconfig = FFConfig()
   ffconfig.parse_args()
@@ -12,15 +14,36 @@ def top_level_task():
   
   dims_label = [ffconfig.get_batch_size(), 1]
   #print(dims)
-  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_FLOAT);
+  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
   
-  t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2) 
   
   
   # Data Loader
-  #dataloader = DataLoader(ffmodel, input, label)
+  dataloader = DataLoader(ffmodel, input, label)
   
-  #ffmodel.init_layers()
+  ffmodel.init_layers()
+  
+  conv_2d1 = ffmodel.get_layer_by_id(0)
+  conv_2d1.inline_map_weight(ffmodel)
+  # raw_ptr = conv_2d1.get_weight_raw_ptr()
+  # print(raw_ptr)
+  # raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
+  # shape = (11, 11, 3, 64)
+  # strides = None
+  # initializer = RegionNdarray(shape, "<f4", raw_ptr_int, strides, False)
+  # array = np.asarray(initializer)
+  weight = conv_2d1.get_weight()
+  weight += 1.1
+  print(weight)
+  conv_2d1.inline_unmap_weight(ffmodel)
+  
+  conv_2d1.inline_map_bias(ffmodel)
+  bias = conv_2d1.get_bias()
+  bias += 1.2
+  print(bias)
+  conv_2d1.inline_unmap_bias(ffmodel)
+  
   ffmodel.print_layers()
 
 if __name__ == "__main__":

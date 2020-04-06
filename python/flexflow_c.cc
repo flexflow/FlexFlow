@@ -41,6 +41,7 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_zero_initializer_t, ZeroInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_uniform_initializer_t, UniformInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_norm_initializer_t, NormInitializer *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_op_t, Op *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_t, ImgDataLoader *);
 };
 
@@ -418,6 +419,16 @@ flexflow_model_print_layers(
   handle->print_layers();
 }
 
+flexflow_op_t
+flexflow_model_get_layer_by_id(
+  flexflow_model_t handle_,
+  int layer_id)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Op* layer = handle->layers[layer_id];
+  return FFCObjectWrapper::wrap(layer);  
+}
+
 // -----------------------------------------------------------------------
 // Tensor
 // -----------------------------------------------------------------------
@@ -654,9 +665,69 @@ flexflow_end_trace(
   config->lg_hlr->end_trace(config->lg_ctx, trace_id);
 }
 
+// -----------------------------------------------------------------------
+// Op
+// -----------------------------------------------------------------------
+
+void
+flexflow_op_inline_map_weight(
+  flexflow_op_t handle_,
+  flexflow_model_t model_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);  
+  handle->inline_map_layer_kernel(*model);
+}
+
+void
+flexflow_op_inline_unmap_weight(
+  flexflow_op_t handle_,
+  flexflow_model_t model_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);  
+  handle->inline_unmap_layer_kernel(*model);
+}
+
+float*
+flexflow_op_get_weight_raw_ptr(
+  flexflow_op_t handle_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->get_kernel_raw_ptr();
+}
+
+void
+flexflow_op_inline_map_bias(
+  flexflow_op_t handle_,
+  flexflow_model_t model_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);  
+  handle->inline_map_layer_bias(*model);
+}
+
+void
+flexflow_op_inline_unmap_bias(
+  flexflow_op_t handle_,
+  flexflow_model_t model_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);  
+  handle->inline_unmap_layer_bias(*model);
+}
+
+float*
+flexflow_op_get_bias_raw_ptr(
+  flexflow_op_t handle_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->get_bias_raw_ptr();
+}
+
 int*
 flexflow_malloc_int(
-  size_t size)
+  int size)
 {
   int *ptr = NULL;
   uintptr_t intptr; 
@@ -672,7 +743,7 @@ flexflow_malloc_int(
 void
 flexflow_print_array_int(
   int *base_ptr,
-  size_t size)
+  int size)
 {
   printf("base_ptr %p\n", base_ptr);
   for (int i = 0; i < size; i++) {
