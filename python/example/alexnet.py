@@ -50,6 +50,10 @@ def top_level_task():
   
   # Data Loader
   dataloader = DataLoader(ffmodel, input, label, 1)
+  #input.inline_map(ffconfig)
+  #input.inline_unmap(ffconfig)
+  #label.inline_map(ffconfig)
+  #label.inline_unmap(ffconfig)
   
   ffmodel.init_layers()
   

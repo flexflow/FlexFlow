@@ -616,69 +616,59 @@ void Linear::backward(const FFModel& ff)
 }
 
 __host__
+Tensor* Linear::get_weight()
+{
+  return &kernel;
+}
+
+__host__
+Tensor* Linear::get_bias()
+{
+  return &bias;
+}
+
+__host__
 void Linear::print_layer(const FFModel& ff)
 {
   printf("conv2d layer\n");  
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-#if 1
-  TaskLauncher launcher(LINEAR_PRINT_TASK_ID, TaskArgument(NULL, 0));
-  launcher.add_region_requirement(
-    RegionRequirement(kernel.region, READ_WRITE, EXCLUSIVE, kernel.region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-    RegionRequirement(kernel.region_grad, READ_WRITE, EXCLUSIVE, kernel.region_grad));
-  launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(
-    RegionRequirement(bias.region, READ_WRITE, EXCLUSIVE, bias.region));
-  launcher.add_field(2, FID_DATA);
-  launcher.add_region_requirement(
-    RegionRequirement(bias.region_grad, READ_WRITE, EXCLUSIVE, bias.region_grad));
-  launcher.add_field(3, FID_DATA);
-  Future fu = runtime->execute_task(ctx, launcher);
-  fu.wait();
-#endif
-}
 
-__host__
-void Linear::print_layer_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
-                              Context ctx, Runtime *runtime)
-{
-  assert(regions.size() == 4);
+  RegionRequirement kernel_req(kernel.region, READ_WRITE, EXCLUSIVE, kernel.region);
+  kernel_req.add_field(FID_DATA);
+  InlineLauncher kernel_launcher(kernel_req);
+  PhysicalRegion kernel_region = runtime->map_region(ctx, kernel_launcher);
+  kernel_region.wait_until_valid();
+  
+  RegionRequirement bias_req(bias.region, READ_WRITE, EXCLUSIVE, bias.region);
+  bias_req.add_field(FID_DATA);
+  InlineLauncher bias_launcher(bias_req);
+  PhysicalRegion bias_region = runtime->map_region(ctx, bias_launcher);
+  bias_region.wait_until_valid();
+  
+  TensorAccessorW<float, 2> acc_kernel(kernel_region, kernel_req, FID_DATA, ctx, runtime, true);
+  TensorAccessorW<float, 1> acc_bias(bias_region, bias_req, FID_DATA, ctx, runtime, true);
+  
+  const float *kernel_ptr = acc_kernel.ptr;
+  const float *bias_ptr = acc_bias.ptr;
+  
+  size_t kernel_size = acc_kernel.rect.volume();
+  int kernel_dim1 = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
+  int kernel_dim2 = acc_kernel.rect.hi[1] - acc_kernel.rect.lo[1] + 1;
+  size_t bias_size = acc_bias.rect.volume();
+  printf("kernel, %p, %d, [%d, %d]\n", kernel_ptr, kernel_size, kernel_dim1, kernel_dim2);
+  printf("bias, %p, %d\n", bias_ptr, bias_size);
 
-  const AccessorRW<float, 1> acc_kernel(regions[0], FID_DATA);
-  const AccessorRW<float, 1> acc_kernel_grad(regions[1], FID_DATA);
-  const AccessorRW<float, 1> acc_bias(regions[2], FID_DATA);
-  const AccessorRW<float, 1> acc_bias_grad(regions[3], FID_DATA);
   
-  Rect<1> rect_kernel, rect_kernel_grad, rect_bias, rect_bias_grad;
-  rect_kernel =
-    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  rect_kernel_grad =
-    runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  rect_bias =
-    runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
-  rect_bias_grad =
-    runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
+  for (int i = 0; i < bias_size; i++) {
+    printf("%f ", bias_ptr[i]);
+  }
+  printf("\n");
+  
+  for (int i = 0; i < kernel_size; i++) {
+    printf("%f ", kernel_ptr[i]);
+  }
+  printf("\n");
 
-  assert(acc_kernel.accessor.is_dense_arbitrary(rect_kernel));
-  assert(acc_kernel_grad.accessor.is_dense_arbitrary(rect_kernel_grad));
-  assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
-  assert(acc_bias_grad.accessor.is_dense_arbitrary(rect_bias_grad));
-  
-  float *kernel_ptr = acc_kernel.ptr(rect_kernel.lo);
-  float *kernel_grad_ptr = acc_kernel_grad.ptr(rect_kernel_grad.lo);
-  float *bias_ptr = acc_bias.ptr(rect_bias.lo);
-  float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
-  
-  size_t kernel_size = rect_kernel.volume();
-  size_t kernel_grad_size = rect_kernel_grad.volume();
-  size_t bias_size = rect_bias.volume();
-  size_t bias_grad_size = rect_bias_grad.volume();
-  printf("kernel, %d\n", kernel_size);
-  printf("kernel_grad, %d\n", kernel_grad_size);
-  printf("bias, %d\n", bias_size);
-  printf("bias_grad, %d\n", bias_grad_size);
 }
 

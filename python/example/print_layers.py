@@ -14,10 +14,10 @@ def top_level_task():
   
   dims_label = [ffconfig.get_batch_size(), 1]
   #print(dims)
-  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
+  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_FLOAT);
   
   t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2) 
-  
+  #t = ffmodel.dense("lienar1", label, 64, ActiMode.AC_MODE_RELU)
   
   # Data Loader
   dataloader = DataLoader(ffmodel, input, label)
@@ -30,10 +30,12 @@ def top_level_task():
   # print(input_array.shape)
   # input.inline_unmap(ffconfig)
   
-  t1 = ffmodel.get_tensor_by_id(1)
+  t1 = ffmodel.get_tensor_by_id(0)
   t1.inline_map(ffconfig)
   t1_array = t1.get_array_float(ffconfig)
+  t1_array *= 0.0
   t1_array += 1.2
+  print(t1_array.shape)
   print(t1_array)
   t1.inline_unmap(ffconfig)
   
@@ -43,6 +45,7 @@ def top_level_task():
   bias_tensor.inline_map(ffconfig)
   bias = bias_tensor.get_array_float(ffconfig)
   bias += 1.2
+  print(bias.shape)
   print(bias)
   bias_tensor.inline_unmap(ffconfig)
 
@@ -50,13 +53,15 @@ def top_level_task():
   weight_tensor.inline_map(ffconfig)
   weight = weight_tensor.get_array_float(ffconfig)
   weight += 1.1
+  print(weight.shape)
   print(weight)
   weight_tensor.inline_unmap(ffconfig)
-  
+
   weight_tensor.inline_map(ffconfig)
   weight2 = weight_tensor.get_array_float(ffconfig)
   weight2 += 1.1
-  #print(weight)
+  print(weight.shape)
+  print(weight)
   weight_tensor.inline_unmap(ffconfig)
   
   #ffmodel.print_layers()

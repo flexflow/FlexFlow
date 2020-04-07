@@ -485,8 +485,8 @@ public:
   void backward(const FFModel&);
   //void update(const FFModel&);
   void print_layer(const FFModel& model);
-  Tensor* get_weight() {return NULL;}
-  Tensor* get_bias() {return NULL;}
+  Tensor* get_weight();
+  Tensor* get_bias();
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
