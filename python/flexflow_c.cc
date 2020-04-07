@@ -46,6 +46,57 @@ public:
 };
 
 // -----------------------------------------------------------------------
+// Tensor
+// -----------------------------------------------------------------------
+
+void
+flexflow_tensor_inline_map(
+  flexflow_tensor_t handle_,
+  flexflow_config_t config_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  FFConfig *config = FFCObjectWrapper::unwrap(config_);  
+  handle->inline_map(*config);
+}
+
+void  
+flexflow_tensor_inline_unmap(
+  flexflow_tensor_t handle_,
+  flexflow_config_t config_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  FFConfig *config = FFCObjectWrapper::unwrap(config_);  
+  handle->inline_unmap(*config);
+}
+
+float*  
+flexflow_tensor_get_raw_ptr_float(
+  flexflow_tensor_t handle_,
+  flexflow_config_t config_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  FFConfig *config = FFCObjectWrapper::unwrap(config_);  
+  float *raw_ptr = handle->get_raw_ptr_float(*config);
+  return raw_ptr;
+}
+
+int
+flexflow_tensor_get_num_dims(
+  flexflow_tensor_t handle_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->numDim;
+}
+
+int*
+flexflow_tensor_get_dims(
+  flexflow_tensor_t handle_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  return &(handle->adim[0]);
+}
+
+// -----------------------------------------------------------------------
 // FFConfig
 // -----------------------------------------------------------------------
 
@@ -668,61 +719,22 @@ flexflow_end_trace(
 // -----------------------------------------------------------------------
 // Op
 // -----------------------------------------------------------------------
-
-void
-flexflow_op_inline_map_weight(
-  flexflow_op_t handle_,
-  flexflow_model_t model_)
-{
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);  
-  handle->inline_map_layer_kernel(*model);
-}
-
-void
-flexflow_op_inline_unmap_weight(
-  flexflow_op_t handle_,
-  flexflow_model_t model_)
-{
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);  
-  handle->inline_unmap_layer_kernel(*model);
-}
-
-float*
-flexflow_op_get_weight_raw_ptr(
+flexflow_tensor_t
+flexflow_op_get_weight(
   flexflow_op_t handle_)
 {
   Op *handle = FFCObjectWrapper::unwrap(handle_);
-  return handle->get_kernel_raw_ptr();
-}
+  Tensor *tensor = handle->get_weight();
+  return FFCObjectWrapper::wrap(tensor);  
+} 
 
-void
-flexflow_op_inline_map_bias(
-  flexflow_op_t handle_,
-  flexflow_model_t model_)
-{
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);  
-  handle->inline_map_layer_bias(*model);
-}
-
-void
-flexflow_op_inline_unmap_bias(
-  flexflow_op_t handle_,
-  flexflow_model_t model_)
-{
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);  
-  handle->inline_unmap_layer_bias(*model);
-}
-
-float*
-flexflow_op_get_bias_raw_ptr(
+flexflow_tensor_t
+flexflow_op_get_bias(
   flexflow_op_t handle_)
 {
   Op *handle = FFCObjectWrapper::unwrap(handle_);
-  return handle->get_bias_raw_ptr();
+  Tensor *tensor = handle->get_bias();
+  return FFCObjectWrapper::wrap(tensor);  
 }
 
 int*
@@ -819,4 +831,3 @@ void register_c_custom_tasks()
         registrar, "Load Inputs Task");
   }
 }
-

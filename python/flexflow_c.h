@@ -24,6 +24,32 @@ FF_NEW_OPAQUE_TYPE(flexflow_op_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dataloader_t);
 
 // -----------------------------------------------------------------------
+// Tensor
+// -----------------------------------------------------------------------
+void
+flexflow_tensor_inline_map(
+  flexflow_tensor_t handle,
+  flexflow_config_t config);
+
+void  
+flexflow_tensor_inline_unmap(
+  flexflow_tensor_t handle,
+  flexflow_config_t config);
+
+float*  
+flexflow_tensor_get_raw_ptr_float(
+  flexflow_tensor_t handle,
+  flexflow_config_t config);
+
+int
+flexflow_tensor_get_num_dims(
+  flexflow_tensor_t handle);
+
+int*
+flexflow_tensor_get_dims(
+  flexflow_tensor_t handle);
+
+// -----------------------------------------------------------------------
 // FFConfig
 // -----------------------------------------------------------------------
 
@@ -353,33 +379,13 @@ flexflow_end_trace(
 // Op
 // -----------------------------------------------------------------------
 
-void
-flexflow_op_inline_map_weight(
-  flexflow_op_t handle,
-  flexflow_model_t model);
-
-void
-flexflow_op_inline_unmap_weight(
-  flexflow_op_t handle,
-  flexflow_model_t model);
-  
-float*
-flexflow_op_get_weight_raw_ptr(
+flexflow_tensor_t
+flexflow_op_get_weight(
   flexflow_op_t handle); 
-
-void
-flexflow_op_inline_map_bias(
-  flexflow_op_t handle,
-  flexflow_model_t model);
-
-void
-flexflow_op_inline_unmap_bias(
-  flexflow_op_t handle,
-  flexflow_model_t model);
-  
-float*
-flexflow_op_get_bias_raw_ptr(
-  flexflow_op_t handle);  
+    
+flexflow_tensor_t
+flexflow_op_get_bias(
+  flexflow_op_t handle); 
   
 int*
 flexflow_malloc_int(

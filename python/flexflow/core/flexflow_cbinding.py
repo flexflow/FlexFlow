@@ -68,42 +68,14 @@ def enum_to_int(enum, enum_item):
 class Op(object):
   def __init__(self, handle):
     self.handle = handle
+  
+  def get_weight_tensor(self):
+    handle = ffc.flexflow_op_get_weight(self.handle)
+    return Tensor(handle, False)
     
-  def inline_map_weight(self, ffmodel):
-    ffc.flexflow_op_inline_map_weight(self.handle, ffmodel.handle)
-    
-  def inline_unmap_weight(self, ffmodel):
-    ffc.flexflow_op_inline_unmap_weight(self.handle, ffmodel.handle)
-    
-  def get_weight_raw_ptr(self):
-    return ffc.flexflow_op_get_weight_raw_ptr(self.handle)
-    
-  def get_weight(self):
-    raw_ptr = self.get_weight_raw_ptr()
-    raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
-    shape = (11, 11, 3, 64)
-    strides = None
-    initializer = RegionNdarray(shape, "<f4", raw_ptr_int, strides, False)
-    array = np.asarray(initializer)
-    return array
-    
-  def inline_map_bias(self, ffmodel):
-    ffc.flexflow_op_inline_map_bias(self.handle, ffmodel.handle)
-    
-  def inline_unmap_bias(self, ffmodel):
-    ffc.flexflow_op_inline_unmap_bias(self.handle, ffmodel.handle)
-    
-  def get_bias_raw_ptr(self):
-    return ffc.flexflow_op_get_bias_raw_ptr(self.handle)
-    
-  def get_bias(self):
-    raw_ptr = self.get_bias_raw_ptr()
-    raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
-    shape = (64,)
-    strides = None
-    initializer = RegionNdarray(shape, "<f4", raw_ptr_int, strides, False)
-    array = np.asarray(initializer)
-    return array
+  def get_bias_tensor(self):
+    handle = ffc.flexflow_op_get_bias(self.handle)
+    return Tensor(handle, False)
 
 # -----------------------------------------------------------------------
 # Conv2D
@@ -150,9 +122,48 @@ class FFConfig(object):
 # -----------------------------------------------------------------------
 
 class Tensor(object):
-  def __init__(self, handle):
+  def __init__(self, handle, deallocate=True):
     self.handle = handle
-    self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
+    self.num_dims = 0
+    self.dims = [0, 0, 0, 0]
+    if (deallocate == True):
+      #print("deallocate true")
+      self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
+      
+  def inline_map(self, config):
+    ffc.flexflow_tensor_inline_map(self.handle, config.handle);
+    if (self.num_dims == 0):
+      self.set_dims()
+    
+  def inline_unmap(self, config):
+    ffc.flexflow_tensor_inline_unmap(self.handle, config.handle);
+    
+  def get_raw_ptr(self, config):
+    return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, config.handle)
+    
+  def get_array_float(self, config):
+    raw_ptr = self.get_raw_ptr(config)
+    raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
+    
+    if (self.num_dims == 1):
+      shape = (self.dims[0],)
+    elif (self.num_dims == 2):
+      shape = (self.dims[0], self.dims[1])
+    elif (self.num_dims == 3):
+      shape = (self.dims[0], self.dims[1], self.dims[2])
+    elif (self.num_dims == 4):
+      shape = (self.dims[0], self.dims[1], self.dims[2], self.dims[3])
+    else:
+      assert 0, "unknow num_dims"
+    strides = None
+    initializer = RegionNdarray(shape, "<f4", raw_ptr_int, strides, False)
+    array = np.asarray(initializer)
+    return array
+    
+  def set_dims(self):
+    self.num_dims = ffc.flexflow_tensor_get_num_dims(self.handle)
+    d = ffc.flexflow_tensor_get_dims(self.handle)
+    self.dims = [d[0], d[1], d[2], d[3]]
 
 # -----------------------------------------------------------------------
 # FFModel
@@ -335,4 +346,3 @@ def malloc_int(size):
   
 def print_array_int(base_ptr, size):
   ffc.flexflow_print_array_int(base_ptr, size)
-  

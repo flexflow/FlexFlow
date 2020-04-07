@@ -102,11 +102,13 @@ Conv2D::Conv2D(FFModel& model,
   {
     const int dims[4] = {output_c, input_c, kernel_h, kernel_w};
     kernel = model.create_conv_weight<4>(dims, task_is, DT_FLOAT, kernel_initializer);
+    //printf("kernel ndim %d, [%d, %d, %d, %d]\n", kernel.numDim, kernel.adim[0], kernel.adim[1], kernel.adim[2], kernel.adim[3]);
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {output_c};
     bias = model.create_conv_weight<1>(dims, task_is, DT_FLOAT, bias_initializer);
+  //  printf("bias ndim %d, [%d, %d, %d, %d]\n", bias.numDim, bias.adim[0], bias.adim[1], bias.adim[2], bias.adim[3]);
   }
   // Compute partition bound for input
   Rect<4> input_rect = runtime->get_index_partition_color_space(
@@ -760,65 +762,15 @@ void Conv2D::update(const FFModel& ff)
 #endif
 
 __host__
-void Conv2D::inline_map_layer_kernel(const FFModel& ff)
+Tensor* Conv2D::get_weight()
 {
-  printf("inline map kernel conv2d layer\n");  
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  
-  RegionRequirement kernel_req(kernel.region, READ_WRITE, EXCLUSIVE, kernel.region);
-  kernel_req.add_field(FID_DATA);
-  InlineLauncher kernel_launcher(kernel_req);
-  kernel_physical_region = runtime->map_region(ctx, kernel_launcher);
-  kernel_physical_region.wait_until_valid();
-  acc_kernel = TensorAccessorW<float, 4>(kernel_physical_region, kernel_req, FID_DATA, ctx, runtime, true);
+  return &kernel;
 }
 
 __host__
-void Conv2D::inline_unmap_layer_kernel(const FFModel& ff)
+Tensor* Conv2D::get_bias()
 {
-  printf("inline unmap kernel conv2d layer\n");  
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  runtime->unmap_region(ctx, kernel_physical_region);
-}
-
-__host__
-float* Conv2D::get_kernel_raw_ptr()
-{
-  const float *kernel_ptr = acc_kernel.ptr;
-  return (float*)kernel_ptr;
-}
-
-__host__
-void Conv2D::inline_map_layer_bias(const FFModel& ff)
-{
-  printf("inline map bias conv2d layer\n");  
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  
-  RegionRequirement bias_req(bias.region, READ_WRITE, EXCLUSIVE, bias.region);
-  bias_req.add_field(FID_DATA);
-  InlineLauncher bias_launcher(bias_req);
-  bias_physical_region = runtime->map_region(ctx, bias_launcher);
-  bias_physical_region.wait_until_valid();
-  acc_bias = TensorAccessorW<float, 1>(bias_physical_region, bias_req, FID_DATA, ctx, runtime, true);
-}
-
-__host__
-void Conv2D::inline_unmap_layer_bias(const FFModel& ff)
-{
-  printf("inline unmap bias conv2d layer\n");  
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  runtime->unmap_region(ctx, bias_physical_region);
-}
-
-__host__
-float* Conv2D::get_bias_raw_ptr()
-{
-  const float *bias_ptr = acc_bias.ptr;
-  return (float*)bias_ptr;
+  return &bias;
 }
 
 __host__
@@ -898,12 +850,12 @@ void Conv2D::print_layer(const FFModel& ff)
     bias_grad_ptr ++;
   }
   printf("\n");*/
-/*  
+  
   for (int i = 0; i < kernel_size; i++) {
     printf("%f ", kernel_ptr[i]);
   }
   printf("\n");
-  */
+  
 /*  
   for (int i = 0; i < kernel_grad_size; i++) {
     printf("%f ", kernel_grad_ptr);

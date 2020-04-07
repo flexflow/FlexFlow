@@ -24,27 +24,35 @@ def top_level_task():
   
   ffmodel.init_layers()
   
-  conv_2d1 = ffmodel.get_layer_by_id(0)
-  conv_2d1.inline_map_weight(ffmodel)
-  # raw_ptr = conv_2d1.get_weight_raw_ptr()
-  # print(raw_ptr)
-  # raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
-  # shape = (11, 11, 3, 64)
-  # strides = None
-  # initializer = RegionNdarray(shape, "<f4", raw_ptr_int, strides, False)
-  # array = np.asarray(initializer)
-  weight = conv_2d1.get_weight()
-  weight += 1.1
-  print(weight)
-  conv_2d1.inline_unmap_weight(ffmodel)
+  # input.inline_map(ffconfig)
+  # input_array = input.get_array_float(ffconfig)
+  # input_array += 1.2
+  # print(input_array.shape)
+  # input.inline_unmap(ffconfig)
   
-  conv_2d1.inline_map_bias(ffmodel)
-  bias = conv_2d1.get_bias()
+  conv_2d1 = ffmodel.get_layer_by_id(0)
+
+  bias_tensor = conv_2d1.get_bias_tensor()
+  bias_tensor.inline_map(ffconfig)
+  bias = bias_tensor.get_array_float(ffconfig)
   bias += 1.2
   print(bias)
-  conv_2d1.inline_unmap_bias(ffmodel)
+  bias_tensor.inline_unmap(ffconfig)
+
+  weight_tensor = conv_2d1.get_weight_tensor()
+  weight_tensor.inline_map(ffconfig)
+  weight = weight_tensor.get_array_float(ffconfig)
+  weight += 1.1
+  print(weight)
+  weight_tensor.inline_unmap(ffconfig)
   
-  ffmodel.print_layers()
+  weight_tensor.inline_map(ffconfig)
+  weight2 = weight_tensor.get_array_float(ffconfig)
+  weight2 += 1.1
+  #print(weight)
+  weight_tensor.inline_unmap(ffconfig)
+  
+  #ffmodel.print_layers()
 
 if __name__ == "__main__":
   print("alexnet")

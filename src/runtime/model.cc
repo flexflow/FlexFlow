@@ -21,6 +21,54 @@ using namespace std;
 
 LegionRuntime::Logger::Category log_model("ff");
 
+void Tensor::inline_map(FFConfig &config)
+{
+  printf("inline map tensor\n");  
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  
+  RegionRequirement region_req(region, READ_WRITE, EXCLUSIVE, region);
+  region_req.add_field(FID_DATA);
+  InlineLauncher inline_launcher(region_req);
+  physical_region = runtime->map_region(ctx, inline_launcher);
+  physical_region.wait_until_valid();
+}
+
+void Tensor::inline_unmap(FFConfig &config)
+{
+  printf("inline unmap tensor\n");  
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  
+  runtime->unmap_region(ctx, physical_region);
+}
+
+float* Tensor::get_raw_ptr_float(FFConfig &config)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  RegionRequirement region_req(region, READ_WRITE, EXCLUSIVE, region);
+  region_req.add_field(FID_DATA);
+  float *raw_ptr = NULL;
+  if (numDim == 1) {
+    TensorAccessorW<float, 1> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (float*)acc.ptr;
+  } else if (numDim == 2) {
+    TensorAccessorW<float, 2> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (float*)acc.ptr;
+  } else if (numDim == 3) {
+    TensorAccessorW<float, 3> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (float*)acc.ptr;
+  } else if (numDim == 4) {
+    TensorAccessorW<float, 4> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (float*)acc.ptr;
+  } else {
+    printf("wrong numDim %d", numDim);
+    assert(0);
+  }
+  return raw_ptr;
+}
+
 Op::Op(const std::string& _name,
        const Tensor& _input)
 : numLocals(0), numInputs(1)
