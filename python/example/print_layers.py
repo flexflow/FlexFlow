@@ -30,6 +30,13 @@ def top_level_task():
   # print(input_array.shape)
   # input.inline_unmap(ffconfig)
   
+  t1 = ffmodel.get_tensor_by_id(1)
+  t1.inline_map(ffconfig)
+  t1_array = t1.get_array_float(ffconfig)
+  t1_array += 1.2
+  print(t1_array)
+  t1.inline_unmap(ffconfig)
+  
   conv_2d1 = ffmodel.get_layer_by_id(0)
 
   bias_tensor = conv_2d1.get_bias_tensor()

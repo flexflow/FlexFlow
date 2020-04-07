@@ -21,33 +21,8 @@ FF_NEW_OPAQUE_TYPE(flexflow_conv2d_t);
 FF_NEW_OPAQUE_TYPE(flexflow_pool2d_t);
 FF_NEW_OPAQUE_TYPE(flexflow_linear_t);
 FF_NEW_OPAQUE_TYPE(flexflow_op_t);
+FF_NEW_OPAQUE_TYPE(flexflow_parameter_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dataloader_t);
-
-// -----------------------------------------------------------------------
-// Tensor
-// -----------------------------------------------------------------------
-void
-flexflow_tensor_inline_map(
-  flexflow_tensor_t handle,
-  flexflow_config_t config);
-
-void  
-flexflow_tensor_inline_unmap(
-  flexflow_tensor_t handle,
-  flexflow_config_t config);
-
-float*  
-flexflow_tensor_get_raw_ptr_float(
-  flexflow_tensor_t handle,
-  flexflow_config_t config);
-
-int
-flexflow_tensor_get_num_dims(
-  flexflow_tensor_t handle);
-
-int*
-flexflow_tensor_get_dims(
-  flexflow_tensor_t handle);
 
 // -----------------------------------------------------------------------
 // FFConfig
@@ -237,6 +212,11 @@ flexflow_op_t
 flexflow_model_get_layer_by_id(
   flexflow_model_t handle,
   int layer_id);
+  
+flexflow_tensor_t
+flexflow_model_get_tensor_by_id(
+  flexflow_model_t handle,
+  int layer_id);
 
 // -----------------------------------------------------------------------
 // Tensor
@@ -260,6 +240,29 @@ flexflow_tensor_2d_create(
 
 void
 flexflow_tensor_destroy(
+  flexflow_tensor_t handle);
+
+void
+flexflow_tensor_inline_map(
+  flexflow_tensor_t handle,
+  flexflow_config_t config);
+
+void  
+flexflow_tensor_inline_unmap(
+  flexflow_tensor_t handle,
+  flexflow_config_t config);
+
+float*  
+flexflow_tensor_get_raw_ptr_float(
+  flexflow_tensor_t handle,
+  flexflow_config_t config);
+
+int
+flexflow_tensor_get_num_dims(
+  flexflow_tensor_t handle);
+
+int*
+flexflow_tensor_get_dims(
   flexflow_tensor_t handle);
   
 // -----------------------------------------------------------------------
@@ -386,6 +389,14 @@ flexflow_op_get_weight(
 flexflow_tensor_t
 flexflow_op_get_bias(
   flexflow_op_t handle); 
+
+// -----------------------------------------------------------------------
+// Parameter
+// -----------------------------------------------------------------------
+
+flexflow_tensor_t
+flexflow_parameter_get_tensor(
+  flexflow_parameter_t handle);  
   
 int*
 flexflow_malloc_int(

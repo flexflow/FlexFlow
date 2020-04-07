@@ -268,6 +268,11 @@ class FFModel(object):
   def get_layer_by_id(self, layer_id):
     handle = ffc.flexflow_model_get_layer_by_id(self.handle, layer_id)
     return Op(handle)
+    
+  def get_tensor_by_id(self, id):
+    handle = ffc.flexflow_model_get_tensor_by_id(self.handle, id)
+    return Tensor(handle, False)
+    
 
 # -----------------------------------------------------------------------
 # SGDOptimizer

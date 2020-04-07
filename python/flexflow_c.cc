@@ -42,59 +42,9 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_uniform_initializer_t, UniformInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_norm_initializer_t, NormInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_op_t, Op *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_parameter_t, Parameter *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_t, ImgDataLoader *);
 };
-
-// -----------------------------------------------------------------------
-// Tensor
-// -----------------------------------------------------------------------
-
-void
-flexflow_tensor_inline_map(
-  flexflow_tensor_t handle_,
-  flexflow_config_t config_)
-{
-  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
-  FFConfig *config = FFCObjectWrapper::unwrap(config_);  
-  handle->inline_map(*config);
-}
-
-void  
-flexflow_tensor_inline_unmap(
-  flexflow_tensor_t handle_,
-  flexflow_config_t config_)
-{
-  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
-  FFConfig *config = FFCObjectWrapper::unwrap(config_);  
-  handle->inline_unmap(*config);
-}
-
-float*  
-flexflow_tensor_get_raw_ptr_float(
-  flexflow_tensor_t handle_,
-  flexflow_config_t config_)
-{
-  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
-  FFConfig *config = FFCObjectWrapper::unwrap(config_);  
-  float *raw_ptr = handle->get_raw_ptr_float(*config);
-  return raw_ptr;
-}
-
-int
-flexflow_tensor_get_num_dims(
-  flexflow_tensor_t handle_)
-{
-  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
-  return handle->numDim;
-}
-
-int*
-flexflow_tensor_get_dims(
-  flexflow_tensor_t handle_)
-{
-  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
-  return &(handle->adim[0]);
-}
 
 // -----------------------------------------------------------------------
 // FFConfig
@@ -480,6 +430,16 @@ flexflow_model_get_layer_by_id(
   return FFCObjectWrapper::wrap(layer);  
 }
 
+flexflow_tensor_t
+flexflow_model_get_tensor_by_id(
+  flexflow_model_t handle_,
+  int layer_id)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *tensor = &(handle->parameters[layer_id].tensor);
+  return FFCObjectWrapper::wrap(tensor);  
+}
+
 // -----------------------------------------------------------------------
 // Tensor
 // -----------------------------------------------------------------------
@@ -521,6 +481,53 @@ flexflow_tensor_destroy(
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
   printf("delete Tensor %p\n", handle);
   delete handle;
+}
+
+void
+flexflow_tensor_inline_map(
+  flexflow_tensor_t handle_,
+  flexflow_config_t config_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  FFConfig *config = FFCObjectWrapper::unwrap(config_);  
+  handle->inline_map(*config);
+}
+
+void  
+flexflow_tensor_inline_unmap(
+  flexflow_tensor_t handle_,
+  flexflow_config_t config_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  FFConfig *config = FFCObjectWrapper::unwrap(config_);  
+  handle->inline_unmap(*config);
+}
+
+float*  
+flexflow_tensor_get_raw_ptr_float(
+  flexflow_tensor_t handle_,
+  flexflow_config_t config_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  FFConfig *config = FFCObjectWrapper::unwrap(config_);  
+  float *raw_ptr = handle->get_raw_ptr_float(*config);
+  return raw_ptr;
+}
+
+int
+flexflow_tensor_get_num_dims(
+  flexflow_tensor_t handle_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->numDim;
+}
+
+int*
+flexflow_tensor_get_dims(
+  flexflow_tensor_t handle_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  return &(handle->adim[0]);
 }
 
 // -----------------------------------------------------------------------
@@ -719,6 +726,7 @@ flexflow_end_trace(
 // -----------------------------------------------------------------------
 // Op
 // -----------------------------------------------------------------------
+
 flexflow_tensor_t
 flexflow_op_get_weight(
   flexflow_op_t handle_)
@@ -736,6 +744,19 @@ flexflow_op_get_bias(
   Tensor *tensor = handle->get_bias();
   return FFCObjectWrapper::wrap(tensor);  
 }
+
+// -----------------------------------------------------------------------
+// Parameter
+// -----------------------------------------------------------------------
+
+flexflow_tensor_t
+flexflow_parameter_get_tensor(
+  flexflow_parameter_t handle_)
+{
+  Parameter *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *tensor = &(handle->tensor);
+  return FFCObjectWrapper::wrap(tensor);  
+}  
 
 int*
 flexflow_malloc_int(
