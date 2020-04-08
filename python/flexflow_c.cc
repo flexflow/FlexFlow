@@ -810,7 +810,8 @@ ImgDataLoader::ImgDataLoader(FFModel& ff,
         RegionRequirement(input.part, 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, input.region));
     launcher.add_field(0, FID_DATA);
-    runtime->execute_index_space(ctx, launcher);
+    FutureMap fu = runtime->execute_index_space(ctx, launcher);
+    fu.wait_all_results();
   }
   // Init label
   if (flag == 1){
@@ -824,7 +825,8 @@ ImgDataLoader::ImgDataLoader(FFModel& ff,
         RegionRequirement(label.part, 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, label.region));
     launcher.add_field(0, FID_DATA);
-    runtime->execute_index_space(ctx, launcher);
+    FutureMap fu = runtime->execute_index_space(ctx, launcher);
+    fu.wait_all_results();
   }
 }
 

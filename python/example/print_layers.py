@@ -12,12 +12,12 @@ def top_level_task():
   #print(dims)
   input = ffmodel.create_tensor_4d(dims, "", DataType.DT_FLOAT);
   
-  dims_label = [ffconfig.get_batch_size(), 1]
+  dims_label = [ffconfig.get_batch_size(), 2]
   #print(dims)
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_FLOAT);
   
-  t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2) 
-  #t = ffmodel.dense("lienar1", label, 64, ActiMode.AC_MODE_RELU)
+  t1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2) 
+  t2 = ffmodel.dense("dense1", label, 128, ActiMode.AC_MODE_RELU)
   
   # Data Loader
   dataloader = DataLoader(ffmodel, input, label)
@@ -26,45 +26,59 @@ def top_level_task():
   
   # input.inline_map(ffconfig)
   # input_array = input.get_array_float(ffconfig)
-  # input_array += 1.2
-  # print(input_array.shape)
+  # input_array *= 0.0
   # input.inline_unmap(ffconfig)
   
-  t1 = ffmodel.get_tensor_by_id(0)
-  t1.inline_map(ffconfig)
-  t1_array = t1.get_array_float(ffconfig)
-  t1_array *= 0.0
-  t1_array += 1.2
-  print(t1_array.shape)
-  print(t1_array)
-  t1.inline_unmap(ffconfig)
+  #weight of conv2d
+  t3 = ffmodel.get_tensor_by_id(0)
+  t3.inline_map(ffconfig)
+  t3_array = t3.get_array_float(ffconfig)
+  t3_array *= 0.0
+  t3_array += 1.2
+  print(t3_array.shape)
+  t3.inline_unmap(ffconfig)
+  
   
   conv_2d1 = ffmodel.get_layer_by_id(0)
 
-  bias_tensor = conv_2d1.get_bias_tensor()
-  bias_tensor.inline_map(ffconfig)
-  bias = bias_tensor.get_array_float(ffconfig)
-  bias += 1.2
-  print(bias.shape)
-  print(bias)
-  bias_tensor.inline_unmap(ffconfig)
+  cbias_tensor = conv_2d1.get_bias_tensor()
+  cbias_tensor.inline_map(ffconfig)
+  cbias = cbias_tensor.get_array_float(ffconfig)
+  cbias *= 0.0
+  cbias += 1.1
+  print(cbias.shape)
+  print(cbias)
+  cbias_tensor.inline_unmap(ffconfig)
 
-  weight_tensor = conv_2d1.get_weight_tensor()
-  weight_tensor.inline_map(ffconfig)
-  weight = weight_tensor.get_array_float(ffconfig)
-  weight += 1.1
-  print(weight.shape)
-  print(weight)
-  weight_tensor.inline_unmap(ffconfig)
-
-  weight_tensor.inline_map(ffconfig)
-  weight2 = weight_tensor.get_array_float(ffconfig)
-  weight2 += 1.1
-  print(weight.shape)
-  print(weight)
-  weight_tensor.inline_unmap(ffconfig)
+  cweight_tensor = conv_2d1.get_weight_tensor()
+  cweight_tensor.inline_map(ffconfig)
+  cweight = cweight_tensor.get_array_float(ffconfig)
+  cweight += 1.2
+  print(cweight.shape)
+  #print(weight)
+  cweight_tensor.inline_unmap(ffconfig)
   
-  #ffmodel.print_layers()
+  dense1 = ffmodel.get_layer_by_id(1)
+
+  dbias_tensor = dense1.get_bias_tensor()
+  dbias_tensor.inline_map(ffconfig)
+  dbias = dbias_tensor.get_array_float(ffconfig)
+  dbias *= 0.0
+  dbias += 2.1
+  print(dbias.shape)
+  print(dbias)
+  dbias_tensor.inline_unmap(ffconfig)
+
+  dweight_tensor = dense1.get_weight_tensor()
+  dweight_tensor.inline_map(ffconfig)
+  dweight = dweight_tensor.get_array_float(ffconfig)
+  dweight *= 0.0
+  dweight += 2.2
+  print(dweight.shape)
+  #print(weight)
+  dweight_tensor.inline_unmap(ffconfig)
+  
+  ffmodel.print_layers()
 
 if __name__ == "__main__":
   print("alexnet")

@@ -126,25 +126,28 @@ class Tensor(object):
     self.handle = handle
     self.num_dims = 0
     self.dims = [0, 0, 0, 0]
+    self.mapped = False
     if (deallocate == True):
       #print("deallocate true")
       self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
       
   def inline_map(self, config):
     ffc.flexflow_tensor_inline_map(self.handle, config.handle);
+    self.mapped = True
     if (self.num_dims == 0):
       self.set_dims()
     
   def inline_unmap(self, config):
     ffc.flexflow_tensor_inline_unmap(self.handle, config.handle);
+    self.mapped = False
     
   def get_raw_ptr(self, config):
     return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, config.handle)
     
   def get_array_float(self, config):
+    assert self.mapped == True, "Tensor is not inline mapped."
     raw_ptr = self.get_raw_ptr(config)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
-    
     if (self.num_dims == 1):
       shape = (self.dims[0],)
     elif (self.num_dims == 2):

@@ -65,7 +65,7 @@ def top_level_task():
     iterations = 8192 / ffconfig.get_batch_size()
     for iter in range(0, int(iterations)):
       if (epoch > 0):
-        ffconfig.start_trace(111)
+        ffconfig.begin_trace(111)
       ffmodel.forward()
       ffmodel.zero_gradients()
       ffmodel.backward()
