@@ -141,12 +141,17 @@ class Tensor(object):
     ffc.flexflow_tensor_inline_unmap(self.handle, config.handle);
     self.mapped = False
     
-  def get_raw_ptr(self, config):
-    return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, config.handle)
+  def get_raw_ptr(self, config, data_type):
+    if (data_type == DataType.DT_FLOAT):    
+      return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, config.handle)
+    elif (data_type == DataType.DT_INT32):
+      return ffc.flexflow_tensor_get_raw_ptr_int32(self.handle, config.handle)
+    else:
+      assert 0, "unknown data type"
     
-  def get_array_float(self, config):
+  def get_array(self, config, data_type):
     assert self.mapped == True, "Tensor is not inline mapped."
-    raw_ptr = self.get_raw_ptr(config)
+    raw_ptr = self.get_raw_ptr(config, data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     if (self.num_dims == 1):
       shape = (self.dims[0],)
@@ -159,7 +164,7 @@ class Tensor(object):
     else:
       assert 0, "unknow num_dims"
     strides = None
-    initializer = RegionNdarray(shape, "<f4", raw_ptr_int, strides, False)
+    initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
     return array
     
@@ -339,8 +344,15 @@ class DataLoader(object):
     
 class RegionNdarray(object):
   __slots__ = ['__array_interface__']
-  def __init__(self, shape, field_type, base_ptr, strides, read_only):
+  def __init__(self, shape, data_type, base_ptr, strides, read_only):
     # See: https://docs.scipy.org/doc/numpy/reference/arrays.interface.html
+    if (data_type == DataType.DT_FLOAT):    
+      field_type = "<f4"
+    elif (data_type == DataType.DT_INT32):
+      field_type = "<i4"
+    else:
+      assert 0, "unknown data type"
+      field_type = "<f4"
     self.__array_interface__ = {
       'version': 3,
       'shape': shape,

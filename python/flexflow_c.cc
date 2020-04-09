@@ -510,7 +510,18 @@ flexflow_tensor_get_raw_ptr_float(
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
   FFConfig *config = FFCObjectWrapper::unwrap(config_);  
-  float *raw_ptr = handle->get_raw_ptr_float(*config);
+  float *raw_ptr = handle->get_raw_ptr<float>(*config);
+  return raw_ptr;
+}
+
+int32_t*  
+flexflow_tensor_get_raw_ptr_int32(
+  flexflow_tensor_t handle_,
+  flexflow_config_t config_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  FFConfig *config = FFCObjectWrapper::unwrap(config_);  
+  int32_t *raw_ptr = handle->get_raw_ptr<int32_t>(*config);
   return raw_ptr;
 }
 

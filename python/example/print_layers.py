@@ -8,31 +8,34 @@ def top_level_task():
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
   ffmodel = FFModel(ffconfig)
   
-  dims = [ffconfig.get_batch_size(), 3, 229, 229]
-  #print(dims)
-  input = ffmodel.create_tensor_4d(dims, "", DataType.DT_FLOAT);
+  dims1 = [ffconfig.get_batch_size(), 3, 229, 229]
+  input1 = ffmodel.create_tensor_4d(dims1, "", DataType.DT_FLOAT);
   
-  dims_label = [ffconfig.get_batch_size(), 2]
-  #print(dims)
-  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_FLOAT);
+  dims2 = [ffconfig.get_batch_size(), 2]
+  input2 = ffmodel.create_tensor_2d(dims2, "", DataType.DT_FLOAT);
   
-  t1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2) 
-  t2 = ffmodel.dense("dense1", label, 128, ActiMode.AC_MODE_RELU)
+  dims_label = [ffconfig.get_batch_size(), 1]
+  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
+  
+  t1 = ffmodel.conv2d("conv1", input1, 64, 11, 11, 4, 4, 2, 2) 
+  t2 = ffmodel.dense("dense1", input2, 128, ActiMode.AC_MODE_RELU)
   
   # Data Loader
-  dataloader = DataLoader(ffmodel, input, label)
+  dataloader = DataLoader(ffmodel, input1, label)
   
   ffmodel.init_layers()
   
-  # input.inline_map(ffconfig)
-  # input_array = input.get_array_float(ffconfig)
-  # input_array *= 0.0
-  # input.inline_unmap(ffconfig)
+  label.inline_map(ffconfig)
+  label_array = label.get_array(ffconfig, DataType.DT_INT32)
+  label_array *= 0
+  label_array += 1
+  print(label_array)
+  label.inline_unmap(ffconfig)
   
   #weight of conv2d
   t3 = ffmodel.get_tensor_by_id(0)
   t3.inline_map(ffconfig)
-  t3_array = t3.get_array_float(ffconfig)
+  t3_array = t3.get_array(ffconfig, DataType.DT_FLOAT)
   t3_array *= 0.0
   t3_array += 1.2
   print(t3_array.shape)
@@ -43,7 +46,7 @@ def top_level_task():
 
   cbias_tensor = conv_2d1.get_bias_tensor()
   cbias_tensor.inline_map(ffconfig)
-  cbias = cbias_tensor.get_array_float(ffconfig)
+  cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
   cbias *= 0.0
   cbias += 1.1
   print(cbias.shape)
@@ -52,7 +55,7 @@ def top_level_task():
 
   cweight_tensor = conv_2d1.get_weight_tensor()
   cweight_tensor.inline_map(ffconfig)
-  cweight = cweight_tensor.get_array_float(ffconfig)
+  cweight = cweight_tensor.get_array(ffconfig, DataType.DT_FLOAT)
   cweight += 1.2
   print(cweight.shape)
   #print(weight)
@@ -62,7 +65,7 @@ def top_level_task():
 
   dbias_tensor = dense1.get_bias_tensor()
   dbias_tensor.inline_map(ffconfig)
-  dbias = dbias_tensor.get_array_float(ffconfig)
+  dbias = dbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
   dbias *= 0.0
   dbias += 2.1
   print(dbias.shape)
@@ -71,7 +74,7 @@ def top_level_task():
 
   dweight_tensor = dense1.get_weight_tensor()
   dweight_tensor.inline_map(ffconfig)
-  dweight = dweight_tensor.get_array_float(ffconfig)
+  dweight = dweight_tensor.get_array(ffconfig, DataType.DT_FLOAT)
   dweight *= 0.0
   dweight += 2.2
   print(dweight.shape)

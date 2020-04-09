@@ -43,25 +43,26 @@ void Tensor::inline_unmap(FFConfig &config)
   runtime->unmap_region(ctx, physical_region);
 }
 
-float* Tensor::get_raw_ptr_float(FFConfig &config)
+template<typename T>
+T* Tensor::get_raw_ptr(FFConfig &config)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   RegionRequirement region_req(region, READ_WRITE, EXCLUSIVE, region);
   region_req.add_field(FID_DATA);
-  float *raw_ptr = NULL;
+  T *raw_ptr = NULL;
   if (numDim == 1) {
-    TensorAccessorW<float, 1> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
-    raw_ptr = (float*)acc.ptr;
+    TensorAccessorW<T, 1> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (T*)acc.ptr;
   } else if (numDim == 2) {
-    TensorAccessorW<float, 2> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
-    raw_ptr = (float*)acc.ptr;
+    TensorAccessorW<T, 2> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (T*)acc.ptr;
   } else if (numDim == 3) {
-    TensorAccessorW<float, 3> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
-    raw_ptr = (float*)acc.ptr;
+    TensorAccessorW<T, 3> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (T*)acc.ptr;
   } else if (numDim == 4) {
-    TensorAccessorW<float, 4> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
-    raw_ptr = (float*)acc.ptr;
+    TensorAccessorW<T, 4> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (T*)acc.ptr;
   } else {
     printf("wrong numDim %d", numDim);
     assert(0);
@@ -1365,3 +1366,6 @@ template Tensor FFModel::create_linear_weight<2>(const int* dims, const IndexSpa
 template Tensor FFModel::create_linear_weight<1>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
 
 template Tensor FFModel::create_linear_replica<3>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type);
+
+template float* Tensor::get_raw_ptr<float>(FFConfig &config);
+template int32_t* Tensor::get_raw_ptr<int32_t>(FFConfig &config);

@@ -256,6 +256,11 @@ float*
 flexflow_tensor_get_raw_ptr_float(
   flexflow_tensor_t handle,
   flexflow_config_t config);
+  
+int32_t*  
+flexflow_tensor_get_raw_ptr_int32(
+  flexflow_tensor_t handle,
+  flexflow_config_t config);
 
 int
 flexflow_tensor_get_num_dims(
