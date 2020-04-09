@@ -21,7 +21,7 @@ cd protobuf
 ./configure
 make
 ```
-* Build the NCCL library.
+* Build the NCCL library. (If using NCCL for parameter synchornization.)
 ```
 cd nccl
 make -j src.build NVCC_GENCODE="-gencode=arch=compute_XX,code=sm_XX"
