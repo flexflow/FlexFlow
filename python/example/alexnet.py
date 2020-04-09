@@ -51,14 +51,23 @@ def top_level_task():
   # Data Loader
   dataloader = DataLoader(ffmodel, input, label, 1)
   # input.inline_map(ffconfig)
-  # input_array = input.get_array_float(ffconfig)
-  # input_array *= 0.0
+  # input_array = input.get_array(ffconfig, DataType.DT_FLOAT)
+  # input_array *= 1.0
   # print(input_array.shape)
   # input.inline_unmap(ffconfig)
   # label.inline_map(ffconfig)
   # label.inline_unmap(ffconfig)
   
   ffmodel.init_layers()
+  
+ #  conv_2d1 = ffmodel.get_layer_by_id(11)
+ #  cbias_tensor = conv_2d1.get_weight_tensor()
+ #  cbias_tensor.inline_map(ffconfig)
+ #  cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
+ # # cbias += 0.125
+ #  print(cbias.shape)
+ #  print(cbias)
+ #  cbias_tensor.inline_unmap(ffconfig)
   
   epochs = ffconfig.get_epochs()
   
@@ -79,6 +88,15 @@ def top_level_task():
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, 8192 * epochs / run_time));
+  #ffmodel.print_layers(13)
+  
+  # conv_2d1 = ffmodel.get_layer_by_id(13)
+  # cbias_tensor = conv_2d1.get_weight_tensor()
+  # cbias_tensor.inline_map(ffconfig)
+  # cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
+  # print(cbias.shape)
+  # print(cbias)
+  # cbias_tensor.inline_unmap(ffconfig)
 
 if __name__ == "__main__":
   print("alexnet")

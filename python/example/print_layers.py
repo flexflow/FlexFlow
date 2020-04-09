@@ -82,7 +82,7 @@ def top_level_task():
   print(dweight)
   dweight_tensor.inline_unmap(ffconfig)
   
-  ffmodel.print_layers()
+  ffmodel.print_layers(-1)
 
 if __name__ == "__main__":
   print("alexnet")

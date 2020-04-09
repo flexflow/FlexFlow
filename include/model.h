@@ -298,7 +298,7 @@ public:
   void backward();
   void update();
   void zero_gradients();
-  void print_layers();
+  void print_layers(int id);
   // Internal funcitons
   IndexSpace get_or_create_task_is(ParallelConfig pc);
   IndexSpace get_or_create_task_is(const Domain& domain);

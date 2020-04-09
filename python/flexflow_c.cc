@@ -414,10 +414,11 @@ flexflow_model_set_sgd_optimizer(
 
 void
 flexflow_model_print_layers(
-  flexflow_model_t handle_)
+  flexflow_model_t handle_, 
+  int id)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->print_layers();
+  handle->print_layers(id);
 }
 
 flexflow_op_t

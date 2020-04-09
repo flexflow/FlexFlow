@@ -630,7 +630,7 @@ Tensor* Linear::get_bias()
 __host__
 void Linear::print_layer(const FFModel& ff)
 {
-  printf("conv2d layer\n");  
+  printf("linear layer\n");  
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
 
@@ -669,6 +669,9 @@ void Linear::print_layer(const FFModel& ff)
     printf("%f ", kernel_ptr[i]);
   }
   printf("\n");
+  
+  runtime->unmap_region(ctx, kernel_region);
+  runtime->unmap_region(ctx, bias_region);
 
 }
 

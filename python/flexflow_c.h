@@ -206,7 +206,8 @@ flexflow_model_set_sgd_optimizer(
   
 void
 flexflow_model_print_layers(
-  flexflow_model_t handle);
+  flexflow_model_t handle, 
+  int id);
 
 flexflow_op_t
 flexflow_model_get_layer_by_id(

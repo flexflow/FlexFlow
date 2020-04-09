@@ -762,10 +762,14 @@ void FFModel::zero_gradients(void)
   }
 }
 
-void FFModel::print_layers()
+void FFModel::print_layers(int id)
 {
-  for (size_t i = 0; i < layers.size(); i++) {
-    layers[i]->print_layer(*this);
+  if (id == -1) {
+    for (size_t i = 0; i < layers.size(); i++) {
+      layers[i]->print_layer(*this);
+    }
+  } else {
+    layers[id]->print_layer(*this);
   }
 }
 

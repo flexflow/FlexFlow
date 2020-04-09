@@ -279,8 +279,8 @@ class FFModel(object):
   def set_sgd_optimizer(self, optimizer):
     ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
   
-  def print_layers(self):
-    ffc.flexflow_model_print_layers(self.handle)
+  def print_layers(self, id=-1):
+    ffc.flexflow_model_print_layers(self.handle, id)
     
   def get_layer_by_id(self, layer_id):
     handle = ffc.flexflow_model_get_layer_by_id(self.handle, layer_id)
