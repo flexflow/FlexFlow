@@ -756,6 +756,25 @@ flexflow_op_get_bias(
   return FFCObjectWrapper::wrap(tensor);  
 }
 
+flexflow_tensor_t
+flexflow_op_get_input_by_id(
+  flexflow_op_t handle_,
+  int id)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *tensor = &(handle->inputs[id]);
+  return FFCObjectWrapper::wrap(tensor); 
+}
+
+flexflow_tensor_t
+flexflow_op_get_output(
+  flexflow_op_t handle_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *tensor = &(handle->output);
+  return FFCObjectWrapper::wrap(tensor);     
+} 
+
 // -----------------------------------------------------------------------
 // Parameter
 // -----------------------------------------------------------------------

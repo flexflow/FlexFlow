@@ -395,6 +395,15 @@ flexflow_tensor_t
 flexflow_op_get_bias(
   flexflow_op_t handle); 
 
+flexflow_tensor_t
+flexflow_op_get_input_by_id(
+  flexflow_op_t handle,
+  int id); 
+  
+flexflow_tensor_t
+flexflow_op_get_output(
+  flexflow_op_t handle); 
+
 // -----------------------------------------------------------------------
 // Parameter
 // -----------------------------------------------------------------------

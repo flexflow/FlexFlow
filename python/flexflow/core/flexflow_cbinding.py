@@ -76,6 +76,14 @@ class Op(object):
   def get_bias_tensor(self):
     handle = ffc.flexflow_op_get_bias(self.handle)
     return Tensor(handle, False)
+    
+  def get_input_tensor_by_id(self, id):
+    handle = ffc.flexflow_op_get_input_by_id(self.handle, id)
+    return Tensor(handle, False)
+    
+  def get_output_tensor(self):
+    handle = ffc.flexflow_op_get_output(self.handle)
+    return Tensor(handle, False)
 
 # -----------------------------------------------------------------------
 # Conv2D
@@ -152,6 +160,7 @@ class Tensor(object):
   def get_array(self, config, data_type):
     assert self.mapped == True, "Tensor is not inline mapped."
     raw_ptr = self.get_raw_ptr(config, data_type)
+    print("raw_ptr: ", raw_ptr)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     if (self.num_dims == 1):
       shape = (self.dims[0],)

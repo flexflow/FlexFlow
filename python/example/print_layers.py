@@ -29,6 +29,7 @@ def top_level_task():
   label_array = label.get_array(ffconfig, DataType.DT_INT32)
   label_array *= 0
   label_array += 1
+  print(label_array.shape)
   print(label_array)
   label.inline_unmap(ffconfig)
   
@@ -58,7 +59,7 @@ def top_level_task():
   cweight = cweight_tensor.get_array(ffconfig, DataType.DT_FLOAT)
   cweight += 1.2
   print(cweight.shape)
-  #print(weight)
+  #print(cweight)
   cweight_tensor.inline_unmap(ffconfig)
   
   dense1 = ffmodel.get_layer_by_id(1)
@@ -78,7 +79,7 @@ def top_level_task():
   dweight *= 0.0
   dweight += 2.2
   print(dweight.shape)
-  #print(weight)
+  print(dweight)
   dweight_tensor.inline_unmap(ffconfig)
   
   ffmodel.print_layers()
