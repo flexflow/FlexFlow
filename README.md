@@ -6,7 +6,7 @@ FlexFlow is a deep learning framework that accelerates distributed DNN training 
 * [CUDNN](https://developer.nvidia.com/cudnn) is used to perform low-level operations.
 Download CUDNN and install it locally or at the system level.
 ```
-export CUDNN=/path/to/cudnn
+export CUDNN_HOME=/path/to/cudnn
 ```
 
 * [Legion](http://legion.stanford.edu) is the underlying runtime FlexFlow built on.
