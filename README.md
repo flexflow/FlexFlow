@@ -13,7 +13,7 @@ FlexFlow is a deep learning framework that accelerates distributed DNN training 
 
 * (Optional) [GASNet](http://gasnet.lbl.gov) is used for multi-node executions. (see [GASNet installation instructions](http://legion.stanford.edu/gasnet))
 
-## Install TASO
+## Install FlexFlow
 See [instructions](INSTALL.md) to install FlexFlow from source.
 
 ## Build a DNN model
