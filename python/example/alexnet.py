@@ -62,12 +62,15 @@ def top_level_task():
   
  #  conv_2d1 = ffmodel.get_layer_by_id(11)
  #  cbias_tensor = conv_2d1.get_weight_tensor()
+ #  input_tensor = conv_2d1.get_input_tensor_by_id(0)
  #  cbias_tensor.inline_map(ffconfig)
  #  cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
  # # cbias += 0.125
  #  print(cbias.shape)
- #  print(cbias)
+ #  #print(cbias)
  #  cbias_tensor.inline_unmap(ffconfig)
+  
+
   
   epochs = ffconfig.get_epochs()
   
@@ -97,6 +100,11 @@ def top_level_task():
   # print(cbias.shape)
   # print(cbias)
   # cbias_tensor.inline_unmap(ffconfig)
+  
+  input_tensor.inline_map(ffconfig)
+  input_array = input_tensor.get_array(ffconfig, DataType.DT_FLOAT)
+  print(input_array.shape)
+  input_tensor.inline_unmap(ffconfig)
 
 if __name__ == "__main__":
   print("alexnet")

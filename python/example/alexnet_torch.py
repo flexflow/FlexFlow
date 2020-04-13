@@ -12,8 +12,10 @@ class AlexNet(nn.Module):
     self.conv2_5 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
     self.maxpool2d_3 = nn.MaxPool2d(kernel_size=3, stride=2)
     self.flat = nn.Flatten()
+    self.linear_1 = nn.Linear(256 * 6 * 6, 4096)
+    self.linear_2 = nn.Linear(4096, 4096)
+    self.linear_3 = nn.Linear(4096, 1000)
     self.test = "test"
-    #self.linear_1 = nn.Linear(256 * 6 * 6, 4096)
   
   def forward(self, x):
     x = self.conv2_1(x)
@@ -23,7 +25,9 @@ class AlexNet(nn.Module):
     x = self.conv2_3(x)
     x = self.conv2_4(x)
     x = self.conv2_5(x)
-    x = self.maxpool2d_3(x)
+    x = self.linear_1(x)
+    x = self.linear_2(x)
+    x = self.linear_3(x)
     return x
   
 def top_level_task():

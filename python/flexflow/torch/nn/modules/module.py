@@ -4,6 +4,7 @@ from flexflow.core import *
 from .conv import Conv2d
 from .pooling import MaxPool2d
 from .flatten import Flatten
+from .linear import Linear
 from .op import Op
 
 class _IncompatibleKeys(namedtuple('IncompatibleKeys', ['missing_keys', 'unexpected_keys'])):
@@ -47,6 +48,8 @@ class Module(object):
       self.input = self.ffmodel.pool2d(name, self.input, value.kernel_size, value.kernel_size, value.stride, value.stride, value.padding, value.padding)    
     elif (isinstance(value, Flatten) == True):
       self.input = self.ffmodel.flat(name, self.input)
+    elif (isinstance(value, Linear) == True):
+      self.input = self.ffmodel.dense(name, self.input, value.out_features, ActiMode.AC_MODE_RELU)
     else:
       #print("add others ", value)
       a=1
