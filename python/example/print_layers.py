@@ -11,14 +11,15 @@ def top_level_task():
   dims1 = [ffconfig.get_batch_size(), 3, 229, 229]
   input1 = ffmodel.create_tensor_4d(dims1, "", DataType.DT_FLOAT);
   
-  dims2 = [ffconfig.get_batch_size(), 2]
+  dims2 = [ffconfig.get_batch_size(), 32]
   input2 = ffmodel.create_tensor_2d(dims2, "", DataType.DT_FLOAT);
   
   dims_label = [ffconfig.get_batch_size(), 1]
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
   
   t1 = ffmodel.conv2d("conv1", input1, 64, 11, 11, 4, 4, 2, 2) 
-  t2 = ffmodel.dense("dense1", input2, 128, ActiMode.AC_MODE_RELU)
+  t2 = ffmodel.dense("dense1", input2, 16, ActiMode.AC_MODE_RELU)
+  #t3 = ffmodel.dense("dense1", t2, 128, ActiMode.AC_MODE_RELU)
   
   # Data Loader
   dataloader = DataLoader(ffmodel, input1, label)
@@ -78,11 +79,16 @@ def top_level_task():
   dweight = dweight_tensor.get_array(ffconfig, DataType.DT_FLOAT)
   dweight *= 0.0
   dweight += 2.2
+  # ct = 0.0
+  # for i in range(dweight.shape[0]):
+  #   for j in range(dweight.shape[1]):
+  #     dweight[i][j] = ct
+  #     ct += 1.0
   print(dweight.shape)
   print(dweight)
   dweight_tensor.inline_unmap(ffconfig)
   
-  ffmodel.print_layers(-1)
+  ffmodel.print_layers(1)
 
 if __name__ == "__main__":
   print("alexnet")

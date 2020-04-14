@@ -100,11 +100,6 @@ def top_level_task():
   # print(cbias.shape)
   # print(cbias)
   # cbias_tensor.inline_unmap(ffconfig)
-  
-  input_tensor.inline_map(ffconfig)
-  input_array = input_tensor.get_array(ffconfig, DataType.DT_FLOAT)
-  print(input_array.shape)
-  input_tensor.inline_unmap(ffconfig)
 
 if __name__ == "__main__":
   print("alexnet")

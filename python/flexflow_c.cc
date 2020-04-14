@@ -539,6 +539,7 @@ flexflow_tensor_get_dims(
   flexflow_tensor_t handle_)
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  printf("dims [%d, %d, %d, %d]\n", handle->adim[0], handle->adim[1], handle->adim[2], handle->adim[3]);
   return &(handle->adim[0]);
 }
 

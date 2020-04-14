@@ -11,7 +11,7 @@ def top_level_task():
   dims1 = [ffconfig.get_batch_size(), 3, 229, 229]
   input1 = ffmodel.create_tensor_4d(dims1, "", DataType.DT_FLOAT);
   
-  dims2 = [ffconfig.get_batch_size(), 2]
+  dims2 = [ffconfig.get_batch_size(), 256]
   input2 = ffmodel.create_tensor_2d(dims2, "", DataType.DT_FLOAT);
   
   dims_label = [ffconfig.get_batch_size(), 1]
@@ -36,6 +36,7 @@ def top_level_task():
   input2.inline_unmap(ffconfig)
   
   input1 = ffmodel.conv2d("conv1", input1, 64, 11, 11, 4, 4, 2, 2) 
+  input2 = ffmodel.dense("dense1", input2, 128, ActiMode.AC_MODE_RELU)
   input2 = ffmodel.dense("dense1", input2, 128, ActiMode.AC_MODE_RELU)
 
   
@@ -64,6 +65,13 @@ def top_level_task():
   print(input_array22.shape)
   print(input_array22)
   input_tensor2.inline_unmap(ffconfig)
+  
+  output_tensor2 = dense1.get_output_tensor()
+  output_tensor2.inline_map(ffconfig)
+  output_array22 = output_tensor2.get_array(ffconfig, DataType.DT_FLOAT)
+  print(output_array22.shape)
+  #print(output_array11)
+  output_tensor2.inline_unmap(ffconfig)
 
 
 if __name__ == "__main__":

@@ -165,11 +165,11 @@ class Tensor(object):
     if (self.num_dims == 1):
       shape = (self.dims[0],)
     elif (self.num_dims == 2):
-      shape = (self.dims[0], self.dims[1])
+      shape = (self.dims[1], self.dims[0])
     elif (self.num_dims == 3):
-      shape = (self.dims[0], self.dims[1], self.dims[2])
+      shape = (self.dims[2], self.dims[1], self.dims[1])
     elif (self.num_dims == 4):
-      shape = (self.dims[0], self.dims[1], self.dims[2], self.dims[3])
+      shape = (self.dims[3], self.dims[2], self.dims[1], self.dims[0])
     else:
       assert 0, "unknow num_dims"
     strides = None
