@@ -61,6 +61,19 @@ def enum_to_int(enum, enum_item):
   
   assert 0, "unknow enum type " + str(enum_item) + " " + str(enum)    
   return -1
+  
+def get_datatype_size(datatype):
+  if (datatype == DataType.DT_FLOAT):
+    return 4
+  elif (datatype == DataType.DT_DOUBLE):
+    return 8
+  elif (datatype == DataType.DT_INT32):
+    return 4
+  elif (datatype == DataType.DT_INT64):
+    return 8
+  else:
+    assert 0, "unknow datatype" + str(datatype)
+    return 0
 
 # -----------------------------------------------------------------------
 # Op
@@ -157,22 +170,38 @@ class Tensor(object):
     else:
       assert 0, "unknown data type"
     
-  def get_array(self, config, data_type):
+  def get_array(self, config, data_type, layout="O"):
     assert self.mapped == True, "Tensor is not inline mapped."
     raw_ptr = self.get_raw_ptr(config, data_type)
     print("raw_ptr: ", raw_ptr)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
-    if (self.num_dims == 1):
-      shape = (self.dims[0],)
-    elif (self.num_dims == 2):
-      shape = (self.dims[1], self.dims[0])
-    elif (self.num_dims == 3):
-      shape = (self.dims[2], self.dims[1], self.dims[1])
-    elif (self.num_dims == 4):
-      shape = (self.dims[3], self.dims[2], self.dims[1], self.dims[0])
-    else:
-      assert 0, "unknow num_dims"
     strides = None
+    if (layout == "O"):
+      if (self.num_dims == 1):
+        shape = (self.dims[0],)
+      elif (self.num_dims == 2):
+        shape = (self.dims[0], self.dims[1])
+      elif (self.num_dims == 3):
+        shape = (self.dims[0], self.dims[1], self.dims[2])
+      elif (self.num_dims == 4):
+        shape = (self.dims[0], self.dims[1], self.dims[2], self.dims[3])
+      else:
+        assert 0, "unknow num_dims"
+    else:
+      datatype_size = get_datatype_size(data_type)
+      if (self.num_dims == 1):
+        shape = (self.dims[0],)
+      elif (self.num_dims == 2):
+        shape = (self.dims[1], self.dims[0])
+        strides = (datatype_size, self.dims[1]*datatype_size)
+      elif (self.num_dims == 3):
+        shape = (self.dims[2], self.dims[1], self.dims[0])
+        strides = (datatype_size, self.dims[2]*datatype_size, self.dims[2]*self.dims[1]*datatype_size)
+      elif (self.num_dims == 4):
+        shape = (self.dims[3], self.dims[2], self.dims[1], self.dims[0])
+        strides = (datatype_size, self.dims[3]*datatype_size, self.dims[3]*self.dims[2]*datatype_size, self.dims[3]*self.dims[2]*self.dims[1]*datatype_size)
+      else:
+        assert 0, "unknow num_dims"
     initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
     return array

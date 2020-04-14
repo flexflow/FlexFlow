@@ -26,75 +26,42 @@ def top_level_task():
   
   ffmodel.init_layers()
   
-  label.inline_map(ffconfig)
-  label_array = label.get_array(ffconfig, DataType.DT_INT32)
-  label_array *= 0
-  label_array += 1
-  print(label_array.shape)
-  print(label_array)
-  label.inline_unmap(ffconfig)
-  
-  #weight of conv2d
-  t3 = ffmodel.get_tensor_by_id(0)
-  t3.inline_map(ffconfig)
-  t3_array = t3.get_array(ffconfig, DataType.DT_FLOAT)
-  t3_array *= 0.0
-  t3_array += 1.2
-  print(t3_array.shape)
-  t3.inline_unmap(ffconfig)
-  
   
   conv_2d1 = ffmodel.get_layer_by_id(0)
-
-  cbias_tensor = conv_2d1.get_bias_tensor()
-  cbias_tensor.inline_map(ffconfig)
-  cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
-  cbias *= 0.0
-  cbias += 1.1
-  print(cbias.shape)
-  print(cbias)
-  cbias_tensor.inline_unmap(ffconfig)
 
   cweight_tensor = conv_2d1.get_weight_tensor()
   cweight_tensor.inline_map(ffconfig)
   cweight = cweight_tensor.get_array(ffconfig, DataType.DT_FLOAT)
-  cweight += 1.2
-  # ct = 0.0
-  # for i in range(cweight.shape[0]):
-  #   for j in range(cweight.shape[1]):
-  #     for k in range(cweight.shape[2]):
-  #       for l in range(cweight.shape[3]):
-  #         cweight[i][j][k][l] = ct
-  #         ct += 1.0
-  # print(cweight.shape)
-  # print(cweight.strides)
-  # print(cweight)
+  ct = 0.0
+  for i in range(cweight.shape[0]):
+    for j in range(cweight.shape[1]):
+      for k in range(cweight.shape[2]):
+        for l in range(cweight.shape[3]):
+          cweight[i][j][k][l] = ct
+          ct += 1.0
+  print(cweight.shape)
+  print(cweight)
+  cweight_t = cweight_tensor.get_array(ffconfig, DataType.DT_FLOAT, "T")
+  print(cweight_t.shape)
+  print(cweight_t)
   cweight_tensor.inline_unmap(ffconfig)
   
   dense1 = ffmodel.get_layer_by_id(1)
-
-  dbias_tensor = dense1.get_bias_tensor()
-  dbias_tensor.inline_map(ffconfig)
-  dbias = dbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
-  dbias *= 0.0
-  dbias += 2.1
-  print(dbias.shape)
-  print(dbias)
-  dbias_tensor.inline_unmap(ffconfig)
 
   dweight_tensor = dense1.get_weight_tensor()
   dweight_tensor.inline_map(ffconfig)
   dweight = dweight_tensor.get_array(ffconfig, DataType.DT_FLOAT)
   dweight *= 0.0
-  dweight += 2.2
   ct = 0.0
-  # for i in range(dweight.shape[0]):
-  #   for j in range(dweight.shape[1]):
-  #     dweight[i][j] = ct
-  #     ct += 1.0
-  # print(dweight.shape)
-  # print(dweight.strides)
-  # #print(dweight)
+  for i in range(dweight.shape[0]):
+    for j in range(dweight.shape[1]):
+      dweight[i][j] = ct
+      ct += 1.0
+  print(dweight.shape)
+  print(dweight)
+  dweight_t = dweight_tensor.get_array(ffconfig, DataType.DT_FLOAT, "T")
+  print(dweight_t.shape)
+  print(dweight_t)
   dweight_tensor.inline_unmap(ffconfig)
   
   ffmodel.print_layers(-1)
