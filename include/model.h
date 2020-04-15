@@ -204,7 +204,6 @@ class Conv2D;
 class Pool2D;
 class Flat;
 class Linear;
-class Softmax;
 
 class FFModel {
 public:
