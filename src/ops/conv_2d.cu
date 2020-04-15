@@ -76,16 +76,6 @@ Conv2D* FFModel::conv2d(std::string name,
   Conv2D *conv = new Conv2D(*this, name, inChannels, outChannels, kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW, activation,
                             use_bias, kernel_initializer, bias_initializer);
-  layers.push_back(conv);
-  Parameter kernel, bias;
-  kernel.tensor = conv->kernel;
-  kernel.op = conv;
-  parameters.push_back(kernel);
-  if (use_bias) {
-    bias.tensor = conv->bias;
-    bias.op = conv;
-    parameters.push_back(bias);
-  }
   return conv;
 }
 
@@ -330,6 +320,7 @@ Conv2D::Conv2D(FFModel& model,
 
 Tensor Conv2D::init_input(FFModel& model, const Tensor& _input)
 {
+  add_to_model(model);
   assert(_input.numDim == 4);
   inputs[0] = _input;
     // Retrive the task indexspace for the op
@@ -371,16 +362,16 @@ Tensor Conv2D::init_input(FFModel& model, const Tensor& _input)
 
 void Conv2D::add_to_model(FFModel& model)
 {
-  // model.layers.push_back(this);
-  // Parameter _kernel, _bias;
-  // _kernel.tensor = this->kernel;
-  // _kernel.op = this;
-  // model.parameters.push_back(kernel);
-  // if (use_bias) {
-  //   _bias.tensor = this->bias;
-  //   _bias.op = this;
-  //   _model.parameters.push_back(bias);
-  // }
+  model.layers.push_back(this);
+  Parameter _kernel, _bias;
+  _kernel.tensor = kernel;
+  _kernel.op = this;
+  model.parameters.push_back(_kernel);
+  if (bias.numDim != 0) { // bias is used
+    _bias.tensor = bias;
+    _bias.op = this;
+    model.parameters.push_back(_bias);
+  }
 }
 
 cudnnConvolutionFwdAlgo_t

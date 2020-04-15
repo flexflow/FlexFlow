@@ -40,7 +40,6 @@ Pool2D* FFModel::pool2d(const std::string& name,
   Pool2D *pool = new Pool2D(*this, name, kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW,
                             type, activation);
-  layers.push_back(pool);
   return pool;
 }
 
@@ -182,6 +181,7 @@ Pool2D::Pool2D(FFModel& model,
 
 Tensor Pool2D::init_input(FFModel& model, const Tensor& _input)
 {
+  add_to_model(model);
   inputs[0] = _input;
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
@@ -215,6 +215,11 @@ Tensor Pool2D::init_input(FFModel& model, const Tensor& _input)
         _input, task_is, input_lps[0], input_grad_lps[0]);
   }
   return output;  
+}
+
+void Pool2D::add_to_model(FFModel& model)
+{
+  model.layers.push_back(this);
 }
 
 /*

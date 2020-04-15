@@ -63,16 +63,6 @@ Linear* FFModel::dense(std::string name,
   }
   Linear *li = new Linear(*this, name, inDim, outDim, activation, use_bias,
                           kernel_initializer, bias_initializer);
-  layers.push_back(li);
-  Parameter kernel, bias;
-  kernel.tensor = li->kernel;
-  kernel.op = li;
-  parameters.push_back(kernel);
-  if (use_bias) {
-    bias.tensor = li->bias;
-    bias.op = li;
-    parameters.push_back(bias);
-  }
   return li;
 }
 
@@ -225,6 +215,7 @@ Linear::Linear(FFModel& model,
 
 Tensor Linear::init_input(FFModel& model, const Tensor& _input)
 {
+  add_to_model(model);
   assert(_input.numDim == 2);
   inputs[0] = _input;
   // Retrive the task indexspace for the op
@@ -309,6 +300,21 @@ Tensor Linear::init_input(FFModel& model, const Tensor& _input)
   }
   return output;
 }
+
+void Linear::add_to_model(FFModel& model)
+{
+  model.layers.push_back(this);
+  Parameter _kernel, _bias;
+  _kernel.tensor = kernel;
+  _kernel.op = this;
+  model.parameters.push_back(_kernel);
+  if (bias.numDim != 0) { // bias is used
+    _bias.tensor = bias;
+    _bias.op = this;
+    model.parameters.push_back(_bias);
+  }
+}
+
 
 /*
   regions[0](O): output

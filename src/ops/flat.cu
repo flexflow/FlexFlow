@@ -31,7 +31,6 @@ Flat* FFModel::flat(std::string name)
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
   Flat *flat = new Flat(*this, name);
-  layers.push_back(flat);
   return flat;
 }
 
@@ -164,6 +163,7 @@ Flat::Flat(FFModel& model,
 
 Tensor Flat::init_input(FFModel& model, const Tensor& _input)
 {
+  add_to_model(model);
   inputs[0] = _input;
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
@@ -186,6 +186,11 @@ Tensor Flat::init_input(FFModel& model, const Tensor& _input)
   model.create_data_parallel_partition_with_diff_dims<4, 2>(
       _input, task_is, input_lps[0], input_grad_lps[0]);
   return output;
+}
+
+void Flat::add_to_model(FFModel& model)
+{
+  model.layers.push_back(this);
 }
 
 OpMeta* Flat::init_task(const Task *task,

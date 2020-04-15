@@ -65,9 +65,6 @@ void top_level_task(const Task* task,
   // Add layers
   Conv2D *conv1_0 = ff.conv2d("conv1", 3, 64, 11, 11, 4, 4, 2, 2);
   Conv2D *conv1_1 = ff.conv2d("conv1", 3, 64, 11, 11, 4, 4, 2, 2);
-  ts[0] = conv1_0->init_input(ff, input);
-  ts[1] = conv1_1->init_input(ff, input);
-  t = ff.concat("concat", 2, ts, 1/*axis*/);
   Pool2D *pool1 = ff.pool2d("pool1", 3, 3, 2, 2, 0, 0);
   Conv2D *conv2 = ff.conv2d("conv2", 64, 192, 5, 5, 1, 1, 2, 2);
   Pool2D *pool2 = ff.pool2d("pool2", 3, 3, 2, 2, 0, 0);
@@ -80,8 +77,9 @@ void top_level_task(const Task* task,
   Linear *linear2 = ff.dense("linear2", 4096, 4096, AC_MODE_RELU/*relu*/);
   Linear *linear3 = ff.dense("linear3", 4096, 1000);
   
-  //t = ff.init_inputs(input);
-
+  ts[0] = conv1_0->init_input(ff, input);
+  ts[1] = conv1_1->init_input(ff, input);
+  t = ff.concat("concat", 2, ts, 1/*axis*/);
   t = pool1->init_input(ff, t);
   t = conv2->init_input(ff, t);
   t = pool2->init_input(ff, t);
