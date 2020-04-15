@@ -26,6 +26,15 @@ Tensor FFModel::flat(std::string name, Tensor input)
   return flat->output;
 }
 
+Flat* FFModel::flat(std::string name)
+{
+  //assert(strategies.find(name) != strategies.end());
+  //ParallelConfig pc = strategies[name];
+  Flat *flat = new Flat(*this, name);
+  layers.push_back(flat);
+  return flat;
+}
+
 Flat::Flat(FFModel& model,
            const std::string& pcname,
            const Tensor& _input)
@@ -145,6 +154,38 @@ Flat::Flat(FFModel& model,
   flat_lp = runtime->get_logical_partition(ctx, output_lr, flat_ip);
 */
 #endif
+}
+
+Flat::Flat(FFModel& model,
+           const std::string& pcname)
+: Op(pcname)
+{
+}
+
+Tensor Flat::init_input(FFModel& model, const Tensor& _input)
+{
+  inputs[0] = _input;
+  std::string pcname = name;
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
+  int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
+  // Assert data parallelism for operators with dim changes
+  assert(num_par_c == 1);
+ 
+  int out_dim = _input.adim[0] * _input.adim[1] * _input.adim[2];
+  int batch_size = _input.adim[3];
+  // Create output tensor
+  {
+    const int dims[2] = {batch_size, out_dim};
+    output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
+  }
+  model.create_data_parallel_partition_with_diff_dims<4, 2>(
+      _input, task_is, input_lps[0], input_grad_lps[0]);
+  return output;
 }
 
 OpMeta* Flat::init_task(const Task *task,
