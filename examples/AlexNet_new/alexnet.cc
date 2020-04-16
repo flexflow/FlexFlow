@@ -120,7 +120,24 @@ void top_level_task(const Task* task,
       //}
       if (epoch > 0)
         runtime->begin_trace(ctx, 111/*trace_id*/);
-      ff.forward();
+      //ff.forward();
+      {
+        conv1_0->forward(ff);
+        conv1_1->forward(ff);
+        ff.layers[2]->forward(ff);
+        pool1->forward(ff);
+        conv2->forward(ff);
+        pool2->forward(ff);
+        conv3->forward(ff);
+        conv4->forward(ff);
+        conv5->forward(ff);
+        pool3->forward(ff);
+        flat->forward(ff);
+        linear1->forward(ff);
+        linear2->forward(ff);
+        linear3->forward(ff);
+        ff.layers[14]->forward(ff);
+      }
       ff.zero_gradients();
       ff.backward();
       ff.update();
