@@ -44,14 +44,15 @@ def top_level_task():
   label = model.ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
   dataloader = DataLoader(model.ffmodel, input, label, 1)
   
-  x = model(input)
+  t = model.init_inout(input)
+  model.ffmodel.init_layers()
   #print(model.__dict__)
   # x.inline_map(model.ffconfig)
   # x_array = x.get_array(model.ffconfig, DataType.DT_FLOAT)
   # print(x_array.shape)
   # #print(output_array11)
   # x.inline_unmap(model.ffconfig)
-  t = model.ffmodel.softmax("softmax", x, label)
+  output_tensor = model.ffmodel.softmax("softmax", t, label)
   softmax = model.ffmodel.get_layer_by_id(12)
   softmax.init(model.ffmodel)
 
@@ -64,7 +65,9 @@ def top_level_task():
    for iter in range(0, int(iterations)):
      if (epoch > 0):
        model.ffconfig.begin_trace(111)
-     model.ffmodel.forward()
+     #model.ffmodel.forward()
+     model(input)
+     softmax.forward(model.ffmodel)
      model.ffmodel.zero_gradients()
      model.ffmodel.backward()
      model.ffmodel.update()

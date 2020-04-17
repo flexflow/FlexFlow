@@ -46,5 +46,6 @@ class Conv2d(_ConvNd):
     
   def forward(self, input):
     print("conv2d forward ", self.layer_id);
+    input = self.handle.forward(self._ffmodel)
     return input
     

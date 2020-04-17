@@ -113,6 +113,10 @@ class Op(object):
   def _init_inout(self, model, input):
     handle = ffc.flexflow_op_init_inout(self.handle, model.handle, input.handle)
     return Tensor(handle)
+    
+  def forward(self, model):
+    ffc.flexflow_op_forward(self.handle, model.handle)
+    #return Tensor(handle)
 
 # -----------------------------------------------------------------------
 # Conv2D

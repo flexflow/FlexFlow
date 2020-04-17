@@ -30,15 +30,12 @@ class Module(object):
     self.ffmodel.set_sgd_optimizer(self.ffoptimizer)
   
   def __call__(self, input):
-    
-    output_tensor = self._init_inout(input)
-    self.ffmodel.init_layers()
-    forward_value = self.forward(input)
+    output_tensor = self.forward(input)
     return output_tensor;
   
   def __setattr__(self, name, value):
     if (isinstance(value, Op) == True):
-      #value.set_flexflow_model(self.ffmodel)
+      value.set_flexflow_model(self.ffmodel)
       value.layer_id = self._nb_layers
       self._layers[name] = value
       self._nb_layers += 1
@@ -56,7 +53,7 @@ class Module(object):
       a=1
     super(Module, self).__setattr__(name, value)
     
-  def _init_inout(self, input):
+  def init_inout(self, input):
     t = 0
     for layer in self._layers:
       layer_op = self._layers[layer]

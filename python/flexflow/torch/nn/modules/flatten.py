@@ -13,4 +13,5 @@ class Flatten(Op):
     
   def forward(self, input):
     print("flat forward ", self.layer_id);
+    self.handle.forward(self._ffmodel)
     return input

@@ -15,4 +15,5 @@ class Linear(Op):
       
   def forward(self, input):
     print("linear forward ", self.layer_id);
+    self.handle.forward(self._ffmodel)
     return input

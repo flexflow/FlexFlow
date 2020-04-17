@@ -26,6 +26,7 @@ class MaxPool2d(_MaxPoolNd):
     
   def forward(self, input):
     print("maxpool2d forward ", self.layer_id);
+    self.handle.forward(self._ffmodel)
     return input
     
 class AvgPool2d(object):
