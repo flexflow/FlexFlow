@@ -336,23 +336,6 @@ flexflow_model_add_dense_with_default_initializer(
 }
 
 flexflow_tensor_t
-flexflow_model_add_linear_with_default_initializer(
-  flexflow_model_t handle_,
-  const char* name,
-  const flexflow_tensor_t input_,
-  int out_dim,
-  enum ActiMode activation /* AC_MODE_NONE */,
-  bool use_bias /* true */)
-{
-  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->linear(name, *input, out_dim, activation, use_bias);
-  printf("Linear default new Tensor 4D %p, activation %d, use_bias %d\n", tensor, activation, use_bias);
-  return FFCObjectWrapper::wrap(tensor); 
-}
-
-flexflow_tensor_t
 flexflow_model_add_concat(
   flexflow_model_t handle_,
   const char* name,

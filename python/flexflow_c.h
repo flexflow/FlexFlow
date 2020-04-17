@@ -168,15 +168,6 @@ flexflow_model_add_dense_with_default_initializer(
   int out_dim,
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* true */);
-  
-flexflow_tensor_t
-flexflow_model_add_linear_with_default_initializer(
-  flexflow_model_t handle,
-  const char* name,
-  const flexflow_tensor_t input,
-  int out_dim,
-  enum ActiMode activation /* AC_MODE_NONE */,
-  bool use_bias /* true */);
 
 flexflow_tensor_t
 flexflow_model_add_concat(
