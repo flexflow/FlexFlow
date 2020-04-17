@@ -31,6 +31,7 @@ def top_level_task():
   # t13 = ffmodel.softmax("softmax", t12, label)
   ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
   ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  #t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
   t = ffmodel.concat("concat", [ts0, ts1], 1)
   t = ffmodel.pool2d("pool1", t, 3, 3, 2, 2, 0, 0)
   t = ffmodel.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2)
@@ -87,19 +88,20 @@ def top_level_task():
       ffmodel.update()
       if (epoch > 0):
         ffconfig.end_trace(111)
-        
+
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, 8192 * epochs / run_time));
   #ffmodel.print_layers(13)
   
-  # conv_2d1 = ffmodel.get_layer_by_id(13)
-  # cbias_tensor = conv_2d1.get_weight_tensor()
-  # cbias_tensor.inline_map(ffconfig)
-  # cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
-  # print(cbias.shape)
-  # print(cbias)
-  # cbias_tensor.inline_unmap(ffconfig)
+  conv_2d1 = ffmodel.get_layer_by_id(0)
+  cbias_tensor = conv_2d1.get_weight_tensor()
+  #cbias_tensor = conv_2d1.get_output_tensor()
+  cbias_tensor.inline_map(ffconfig)
+  cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
+  print(cbias.shape)
+  #print(cbias)
+  cbias_tensor.inline_unmap(ffconfig)
 
 if __name__ == "__main__":
   print("alexnet")

@@ -58,15 +58,15 @@ def top_level_task():
   cweight_tensor = conv_2d1.get_weight_tensor()
   cweight_tensor.inline_map(ffconfig)
   cweight = cweight_tensor.get_array(ffconfig, DataType.DT_FLOAT)
-  cweight += 1.2
-  # ct = 0.0
-  # for i in range(cweight.shape[0]):
-  #   for j in range(cweight.shape[1]):
-  #     for k in range(cweight.shape[2]):
-  #       for l in range(cweight.shape[3]):
-  #         cweight[i][j][k][l] = ct
-  #         ct += 1.0
-  # print(cweight.shape)
+  #cweight += 1.2
+  ct = 0.0
+  for i in range(cweight.shape[0]):
+    for j in range(cweight.shape[1]):
+      for k in range(cweight.shape[2]):
+        for l in range(cweight.shape[3]):
+          cweight[i][j][k][l] += ct
+          ct += 1.0
+  print(cweight.shape)
   # print(cweight.strides)
   # print(cweight)
   cweight_tensor.inline_unmap(ffconfig)
@@ -97,7 +97,7 @@ def top_level_task():
   # #print(dweight)
   dweight_tensor.inline_unmap(ffconfig)
   
-  ffmodel.print_layers(-1)
+  #ffmodel.print_layers(-1)
 
 if __name__ == "__main__":
   print("alexnet")

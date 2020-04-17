@@ -1,5 +1,6 @@
 from flexflow.core import *
 
+import torch
 import numpy as np
 
 def top_level_task():
@@ -52,19 +53,21 @@ def top_level_task():
   dweight_tensor.inline_map(ffconfig)
   dweight = dweight_tensor.get_array(ffconfig, DataType.DT_FLOAT)
   dweight *= 0.0
+  print(dweight.shape)
+ # print(dweight)
+  dweight_torch = torch.from_numpy(dweight)
   ct = 0.0
   for i in range(dweight.shape[0]):
     for j in range(dweight.shape[1]):
       dweight[i][j] = ct
       ct += 1.0
-  print(dweight.shape)
-  print(dweight)
+  print(dweight_torch)
   dweight_t = dweight_tensor.get_array(ffconfig, DataType.DT_FLOAT, "T")
   print(dweight_t.shape)
   print(dweight_t)
   dweight_tensor.inline_unmap(ffconfig)
   
-  ffmodel.print_layers(-1)
+  ffmodel.print_layers(1)
 
 if __name__ == "__main__":
   print("alexnet")
