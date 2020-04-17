@@ -27,18 +27,18 @@ def top_level_task():
   linear2 = ffmodel.dense_v2("linear2", 4096, 4096, ActiMode.AC_MODE_RELU)
   linear3 = ffmodel.dense_v2("linear3", 4096, 1000)
   
-  t = conv1.init_input(ffmodel, input);
-  t = pool1.init_input(ffmodel, t);
-  t = conv2.init_input(ffmodel, t);
-  t = pool2.init_input(ffmodel, t);
-  t = conv3.init_input(ffmodel, t);
-  t = conv4.init_input(ffmodel, t);
-  t = conv5.init_input(ffmodel, t);
-  t = pool3.init_input(ffmodel, t);
-  t = flat.init_input(ffmodel, t);
-  t = linear1.init_input(ffmodel, t);
-  t = linear2.init_input(ffmodel, t);
-  t = linear3.init_input(ffmodel, t);
+  t = conv1.init_inout(ffmodel, input);
+  t = pool1.init_inout(ffmodel, t);
+  t = conv2.init_inout(ffmodel, t);
+  t = pool2.init_inout(ffmodel, t);
+  t = conv3.init_inout(ffmodel, t);
+  t = conv4.init_inout(ffmodel, t);
+  t = conv5.init_inout(ffmodel, t);
+  t = pool3.init_inout(ffmodel, t);
+  t = flat.init_inout(ffmodel, t);
+  t = linear1.init_inout(ffmodel, t);
+  t = linear2.init_inout(ffmodel, t);
+  t = linear3.init_inout(ffmodel, t);
   t = ffmodel.softmax("softmax", t, label)
   
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)

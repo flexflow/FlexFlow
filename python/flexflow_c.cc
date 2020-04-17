@@ -41,10 +41,6 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_zero_initializer_t, ZeroInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_uniform_initializer_t, UniformInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_norm_initializer_t, NormInitializer *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_conv2d_t, Conv2D *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_pool2d_t, Pool2D *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_linear_t, Linear *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_flat_t, Flat *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_op_t, Op *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_parameter_t, Parameter *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_t, ImgDataLoader *);
@@ -227,8 +223,8 @@ flexflow_model_add_conv2d(
   return FFCObjectWrapper::wrap(tensor);   
 }
 
-flexflow_conv2d_t
-flexflow_model_add_conv2d_no_input(
+flexflow_op_t
+flexflow_model_add_conv2d_no_inout(
   flexflow_model_t handle_,
   const char* name,
   int in_channels,
@@ -241,8 +237,9 @@ flexflow_model_add_conv2d_no_input(
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Conv2D *conv2d = handle->conv2d(name, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation, use_bias);
+  Op *op = (Op*)conv2d;
   printf("Conv2d no input %p, activation %d, use_bias %d\n", conv2d, activation, use_bias);
-  return FFCObjectWrapper::wrap(conv2d);   
+  return FFCObjectWrapper::wrap(op);   
 }
 
 flexflow_tensor_t
@@ -340,8 +337,8 @@ flexflow_model_add_pool2d(
   return FFCObjectWrapper::wrap(tensor); 
 }
 
-flexflow_pool2d_t
-flexflow_model_add_pool2d_no_input(
+flexflow_op_t
+flexflow_model_add_pool2d_no_inout(
   flexflow_model_t handle_,
   const char* name,
   int kernel_h, int kernel_w,
@@ -352,8 +349,9 @@ flexflow_model_add_pool2d_no_input(
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Pool2D *pool2d = handle->pool2d(name, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, type, activation);
+  Op *op = (Op*)pool2d;
   printf("Pool2d no input %p, pool %d, activation %d\n", pool2d, type, activation);
-  return FFCObjectWrapper::wrap(pool2d); 
+  return FFCObjectWrapper::wrap(op); 
 }
 
 flexflow_tensor_t
@@ -373,8 +371,8 @@ flexflow_model_add_dense_with_default_initializer(
   return FFCObjectWrapper::wrap(tensor); 
 }
 
-flexflow_linear_t
-flexflow_model_add_dense_with_default_initializer_no_input(
+flexflow_op_t
+flexflow_model_add_dense_with_default_initializer_no_inout(
   flexflow_model_t handle_,
   const char* name,
   int in_dim,
@@ -422,15 +420,16 @@ flexflow_model_add_flat(
   return FFCObjectWrapper::wrap(tensor);  
 }
 
-flexflow_flat_t
-flexflow_model_add_flat_no_input(
+flexflow_op_t
+flexflow_model_add_flat_no_inout(
   flexflow_model_t handle_,
   const char* name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Flat *flat = handle->flat(name);
+  Op *op = (Op*)flat;
   printf("Flat no input %p\n", flat);
-  return FFCObjectWrapper::wrap(flat);  
+  return FFCObjectWrapper::wrap(op);  
 }
 
 flexflow_tensor_t
@@ -834,6 +833,30 @@ flexflow_op_init(
   handle->init(*model);
 } 
 
+flexflow_tensor_t
+flexflow_op_init_inout(
+  flexflow_op_t handle_,
+  flexflow_model_t model_,
+  flexflow_tensor_t input_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->init_inout(*model, *input);
+  return FFCObjectWrapper::wrap(tensor);   
+}
+
+void
+flexflow_op_forward(
+  flexflow_op_t handle_,
+  flexflow_model_t model_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  handle->forward(*model);
+}
+
 // -----------------------------------------------------------------------
 // Parameter
 // -----------------------------------------------------------------------
@@ -872,118 +895,6 @@ flexflow_print_array_int(
     printf("%d ", base_ptr[i]);
   }   
   printf("\n");
-}
-
-// -----------------------------------------------------------------------
-// Conv2D
-// -----------------------------------------------------------------------
-  
-flexflow_tensor_t
-flexflow_conv2d_init_input(
-  flexflow_conv2d_t handle_,
-  flexflow_model_t model_,
-  flexflow_tensor_t input_)
-{
-  Conv2D *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->init_input(*model, *input);
-  return FFCObjectWrapper::wrap(tensor);   
-}
-
-void
-flexflow_conv2d_forward(
-  flexflow_conv2d_t handle_,
-  flexflow_model_t model_)
-{
-  Conv2D *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
-  handle->forward(*model);
-}
-  
-// -----------------------------------------------------------------------
-// Pool2D
-// -----------------------------------------------------------------------
-
-flexflow_tensor_t
-flexflow_pool2d_init_input(
-  flexflow_pool2d_t handle_,
-  flexflow_model_t model_,
-  flexflow_tensor_t input_)
-{
-  Pool2D *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->init_input(*model, *input);
-  return FFCObjectWrapper::wrap(tensor);   
-}
-
-void
-flexflow_pool2d_forward(
-  flexflow_pool2d_t handle_,
-  flexflow_model_t model_)
-{
-  Pool2D *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
-  handle->forward(*model);
-}
-  
-// -----------------------------------------------------------------------
-// Linear
-// -----------------------------------------------------------------------
-
-flexflow_tensor_t
-flexflow_linear_init_input(
-  flexflow_linear_t handle_,
-  flexflow_model_t model_,
-  flexflow_tensor_t input_)
-{
-  Linear *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->init_input(*model, *input);
-  return FFCObjectWrapper::wrap(tensor);
-}
-
-void
-flexflow_linear_forward(
-  flexflow_linear_t handle_,
-  flexflow_model_t model_)
-{
-  Linear *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
-  handle->forward(*model);
-}
-  
-// -----------------------------------------------------------------------
-// Flat
-// -----------------------------------------------------------------------
-
-flexflow_tensor_t
-flexflow_flat_init_input(
-  flexflow_flat_t handle_,
-  flexflow_model_t model_,
-  flexflow_tensor_t input_)
-{
-  Flat *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->init_input(*model, *input);
-  return FFCObjectWrapper::wrap(tensor);   
-}
-
-void
-flexflow_flat_forward(
-  flexflow_flat_t handle_,
-  flexflow_model_t model_)
-{
-  Flat *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
-  handle->forward(*model);
 }
 
 // -----------------------------------------------------------------------

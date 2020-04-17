@@ -17,10 +17,6 @@ FF_NEW_OPAQUE_TYPE(flexflow_glorot_uniform_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_zero_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_uniform_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_norm_initializer_t);
-FF_NEW_OPAQUE_TYPE(flexflow_conv2d_t);
-FF_NEW_OPAQUE_TYPE(flexflow_pool2d_t);
-FF_NEW_OPAQUE_TYPE(flexflow_linear_t);
-FF_NEW_OPAQUE_TYPE(flexflow_flat_t);
 FF_NEW_OPAQUE_TYPE(flexflow_op_t);
 FF_NEW_OPAQUE_TYPE(flexflow_parameter_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dataloader_t);
@@ -114,8 +110,8 @@ flexflow_model_add_conv2d(
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* True */);
   
-flexflow_conv2d_t
-flexflow_model_add_conv2d_no_input(
+flexflow_op_t
+flexflow_model_add_conv2d_no_inout(
   flexflow_model_t handle,
   const char* name,
   int in_channels,
@@ -173,8 +169,8 @@ flexflow_model_add_pool2d(
   enum PoolType type /* POOL_MAX */, 
   enum ActiMode activation /* AC_MODE_NONE */);
   
-flexflow_pool2d_t
-flexflow_model_add_pool2d_no_input(
+flexflow_op_t
+flexflow_model_add_pool2d_no_inout(
   flexflow_model_t handle,
   const char* name,
   int kernel_h, int kernel_w,
@@ -192,8 +188,8 @@ flexflow_model_add_dense_with_default_initializer(
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* true */);
   
-flexflow_linear_t
-flexflow_model_add_dense_with_default_initializer_no_input(
+flexflow_op_t
+flexflow_model_add_dense_with_default_initializer_no_inout(
   flexflow_model_t handle,
   const char* name,
   int in_dim,
@@ -215,8 +211,8 @@ flexflow_model_add_flat(
   const char* name,
   flexflow_tensor_t input);
   
-flexflow_flat_t
-flexflow_model_add_flat_no_input(
+flexflow_op_t
+flexflow_model_add_flat_no_inout(
   flexflow_model_t handle,
   const char* name);
   
@@ -437,6 +433,18 @@ void
 flexflow_op_init(
   flexflow_op_t handle,
   flexflow_model_t model);
+  
+flexflow_tensor_t
+flexflow_op_init_inout(
+  flexflow_op_t handle,
+  flexflow_model_t model,
+  flexflow_tensor_t input);
+
+void
+flexflow_op_forward(
+  flexflow_op_t handle,
+  flexflow_model_t model);
+  
 
 // -----------------------------------------------------------------------
 // Parameter
@@ -454,66 +462,6 @@ void
 flexflow_print_array_int(
   int *base_ptr,
   int size);
-  
-// -----------------------------------------------------------------------
-// Conv2D
-// -----------------------------------------------------------------------
-  
-flexflow_tensor_t
-flexflow_conv2d_init_input(
-  flexflow_conv2d_t handle,
-  flexflow_model_t model,
-  flexflow_tensor_t input);
-
-void
-flexflow_conv2d_forward(
-  flexflow_conv2d_t handle,
-  flexflow_model_t model);
-  
-// -----------------------------------------------------------------------
-// Pool2D
-// -----------------------------------------------------------------------
-
-flexflow_tensor_t
-flexflow_pool2d_init_input(
-  flexflow_pool2d_t handle,
-  flexflow_model_t model,
-  flexflow_tensor_t input);
-  
-void
-flexflow_pool2d_forward(
-  flexflow_conv2d_t handle,
-  flexflow_model_t model);
-  
-// -----------------------------------------------------------------------
-// Linear
-// -----------------------------------------------------------------------
-
-flexflow_tensor_t
-flexflow_linear_init_input(
-  flexflow_linear_t handle,
-  flexflow_model_t model,
-  flexflow_tensor_t input);
-  
-void
-flexflow_linear_forward(
-  flexflow_conv2d_t handle,
-  flexflow_model_t model);
-  
-// -----------------------------------------------------------------------
-// Flat
-// -----------------------------------------------------------------------
-
-flexflow_tensor_t
-flexflow_flat_init_input(
-  flexflow_flat_t handle,
-  flexflow_model_t model,
-  flexflow_tensor_t input);
-  
-void
-flexflow_flat_forward(
-  flexflow_conv2d_t handle,
-  flexflow_model_t model);
 
 #ifdef __cplusplus
 }

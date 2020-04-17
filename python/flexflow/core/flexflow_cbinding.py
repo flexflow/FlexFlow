@@ -109,50 +109,38 @@ class Op(object):
     
   def init(self, model):
     ffc.flexflow_op_init(self.handle, model.handle)
+    
+  def init_inout(self, model, input):
+    handle = ffc.flexflow_op_init_inout(self.handle, model.handle, input.handle)
+    return Tensor(handle)
 
 # -----------------------------------------------------------------------
 # Conv2D
 # -----------------------------------------------------------------------
-class Conv2D(object):
+class Conv2D(Op):
   def __init__(self, handle):
-    self.handle = handle
-    
-  def init_input(self, model, input):
-    handle = ffc.flexflow_conv2d_init_input(self.handle, model.handle, input.handle)
-    return Tensor(handle) 
+    super(Conv2D, self).__init__(handle) 
     
 # -----------------------------------------------------------------------
 # Pool2D
 # -----------------------------------------------------------------------
-class Pool2D(object):
+class Pool2D(Op):
   def __init__(self, handle):
-    self.handle = handle
-    
-  def init_input(self, model, input):
-    handle = ffc.flexflow_pool2d_init_input(self.handle, model.handle, input.handle)
-    return Tensor(handle)
+    super(Pool2D, self).__init__(handle)
 
 # -----------------------------------------------------------------------
 # Linear
 # -----------------------------------------------------------------------
-class Linear(object):
+class Linear(Op):
   def __init__(self, handle):
-    self.handle = handle
-    
-  def init_input(self, model, input):
-    handle = ffc.flexflow_linear_init_input(self.handle, model.handle, input.handle)
-    return Tensor(handle)
+    super(Linear, self).__init__(handle)
 
 # -----------------------------------------------------------------------
 # Flat
 # -----------------------------------------------------------------------
-class Flat(object):
+class Flat(Op):
   def __init__(self, handle):
-    self.handle = handle
-    
-  def init_input(self, model, input):
-    handle = ffc.flexflow_flat_init_input(self.handle, model.handle, input.handle)
-    return Tensor(handle)
+    super(Flat, self).__init__(handle)
       
 # -----------------------------------------------------------------------
 # FFConfig
@@ -295,7 +283,7 @@ class FFModel(object):
     
   def conv2d_v2(self, name, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True):
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_conv2d_no_input(self.handle, name.encode('utf-8'), in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias)  
+    handle = ffc.flexflow_model_add_conv2d_no_inout(self.handle, name.encode('utf-8'), in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias)  
     self._add_layer(OpType.CONV2D)
     return Conv2D(handle)
     
@@ -324,7 +312,7 @@ class FFModel(object):
   def pool2d_v2(self, name, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE):
     c_pool_type = enum_to_int(PoolType, pool_type)
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_pool2d_no_input(self.handle, name.encode('utf-8'), kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
+    handle = ffc.flexflow_model_add_pool2d_no_inout(self.handle, name.encode('utf-8'), kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
     self._add_layer(OpType.POOL2D)
     return Pool2D(handle)
 
@@ -336,7 +324,7 @@ class FFModel(object):
     
   def dense_v2(self, name, in_dim, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True):
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_dense_with_default_initializer_no_input(self.handle, name.encode('utf-8'), in_dim, out_dim, c_activation, use_bias)
+    handle = ffc.flexflow_model_add_dense_with_default_initializer_no_inout(self.handle, name.encode('utf-8'), in_dim, out_dim, c_activation, use_bias)
     self._add_layer(OpType.LINEAR)
     return Linear(handle)
     
@@ -356,7 +344,7 @@ class FFModel(object):
     return Tensor(handle)
     
   def flat_v2(self, name):
-    handle = ffc.flexflow_model_add_flat_no_input(self.handle, name.encode('utf-8'))
+    handle = ffc.flexflow_model_add_flat_no_inout(self.handle, name.encode('utf-8'))
     self._add_layer(OpType.FLAT)
     return Flat(handle)
     
