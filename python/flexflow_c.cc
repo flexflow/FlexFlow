@@ -822,6 +822,16 @@ flexflow_op_get_output(
   Op *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor *tensor = &(handle->output);
   return FFCObjectWrapper::wrap(tensor);     
+}
+
+void
+flexflow_op_init(
+  flexflow_op_t handle_,
+  flexflow_model_t model_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  handle->init(*model);
 } 
 
 // -----------------------------------------------------------------------

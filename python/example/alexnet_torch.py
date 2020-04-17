@@ -51,7 +51,8 @@ def top_level_task():
   # #print(output_array11)
   # x.inline_unmap(model.ffconfig)
   t = model.ffmodel.softmax("softmax", x, label)
-  model.ffmodel.init_layers()
+  softmax = model.ffmodel.get_layer_by_id(12)
+  softmax.init(model.ffmodel)
  # print(model.__dict__)
  
   epochs = model.ffconfig.get_epochs()

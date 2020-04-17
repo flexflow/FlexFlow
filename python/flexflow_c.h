@@ -433,6 +433,11 @@ flexflow_tensor_t
 flexflow_op_get_output(
   flexflow_op_t handle); 
 
+void
+flexflow_op_init(
+  flexflow_op_t handle,
+  flexflow_model_t model);
+
 // -----------------------------------------------------------------------
 // Parameter
 // -----------------------------------------------------------------------

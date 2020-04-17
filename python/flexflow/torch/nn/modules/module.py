@@ -31,6 +31,7 @@ class Module(object):
   def __call__(self, input):
     
     forward_value = self.forward([input, self.ffmodel])
+    self.ffmodel.init_layers()
     input_tensor = forward_value[0]
     
     return forward_value[0];
