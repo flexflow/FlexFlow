@@ -214,7 +214,7 @@ Linear::Linear(FFModel& model,
   }
 }
 
-Tensor Linear::init_input(FFModel& model, const Tensor& _input)
+Tensor Linear::init_inout(FFModel& model, const Tensor& _input)
 {
   add_to_model(model);
   assert(_input.numDim == 2);

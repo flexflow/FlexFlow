@@ -161,7 +161,7 @@ Flat::Flat(FFModel& model,
 {
 }
 
-Tensor Flat::init_input(FFModel& model, const Tensor& _input)
+Tensor Flat::init_inout(FFModel& model, const Tensor& _input)
 {
   add_to_model(model);
   inputs[0] = _input;

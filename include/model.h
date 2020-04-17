@@ -162,6 +162,7 @@ public:
   Op(const std::string& _name);
 
   virtual void prefetch(const FFModel&);
+  virtual Tensor init_inout(FFModel&, const Tensor&) = 0;
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
   virtual void backward(const FFModel&) = 0;
@@ -369,7 +370,7 @@ public:
         bool use_bias,
         Initializer* kernel_initializer,
         Initializer* bias_initializer);
-  Tensor init_input(FFModel& model, const Tensor& input);
+  Tensor init_inout(FFModel& model, const Tensor& input);
   void add_to_model(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -443,7 +444,7 @@ public:
         int strideH, int strideW,
         int paddingH, int paddingW,
         PoolType type, ActiMode _activation);
-  Tensor init_input(FFModel& model, const Tensor& input);
+  Tensor init_inout(FFModel& model, const Tensor& input);
   void add_to_model(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -485,6 +486,7 @@ public:
             Tensor input, IndexSpaceT<4> part_is,
             bool relu);
   
+  Tensor init_inout(FFModel& model, const Tensor& input) { assert(0); return Tensor();}
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -540,7 +542,7 @@ public:
          bool use_bias,
          Initializer* kernel_initializer,
          Initializer* bias_initializer);
-  Tensor init_input(FFModel& model, const Tensor& input);
+  Tensor init_inout(FFModel& model, const Tensor& input);
   void add_to_model(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -595,6 +597,7 @@ public:
             int num_entries, int outDim,
             AggrMode _aggr,
             Initializer* kernel_initializer);
+  Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -633,7 +636,7 @@ public:
        const Tensor& input);
   Flat(FFModel& model,
       const std::string& pcname);
-  Tensor init_input(FFModel& model, const Tensor& input);
+  Tensor init_inout(FFModel& model, const Tensor& input);
   void add_to_model(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -667,6 +670,7 @@ public:
           const std::string& pcname,
           const Tensor& logit,
           const Tensor& label);
+  Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -702,6 +706,7 @@ public:
   Concat(FFModel& model,
          const std::string& name,
          int n, const Tensor* inputs, int axis);
+  Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -737,6 +742,7 @@ public:
           const Tensor& logit,
           const Tensor& label,
           AggrMode aggr);
+  Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
   void init(const FFModel& model);
   void forward(const FFModel& model);
   void backward(const FFModel& model);

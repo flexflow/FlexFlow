@@ -179,7 +179,7 @@ Pool2D::Pool2D(FFModel& model,
 {
 }
 
-Tensor Pool2D::init_input(FFModel& model, const Tensor& _input)
+Tensor Pool2D::init_inout(FFModel& model, const Tensor& _input)
 {
   add_to_model(model);
   inputs[0] = _input;
