@@ -45,6 +45,7 @@ def top_level_task():
   dataloader = DataLoader(model.ffmodel, input, label, 1)
   
   x = model(input)
+  #print(model.__dict__)
   # x.inline_map(model.ffconfig)
   # x_array = x.get_array(model.ffconfig, DataType.DT_FLOAT)
   # print(x_array.shape)
@@ -53,8 +54,7 @@ def top_level_task():
   t = model.ffmodel.softmax("softmax", x, label)
   softmax = model.ffmodel.get_layer_by_id(12)
   softmax.init(model.ffmodel)
- # print(model.__dict__)
- 
+
   epochs = model.ffconfig.get_epochs()
 
   ts_start = model.ffconfig.get_current_time()

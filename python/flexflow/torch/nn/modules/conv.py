@@ -7,7 +7,7 @@ class _ConvNd(Op):
   def __init__(self, in_channels, out_channels, kernel_size, stride,
                padding, dilation, transposed, output_padding,
                groups, bias, padding_mode):
-    #super(_ConvNd, self).__init__()
+    super(_ConvNd, self).__init__()
     if in_channels % groups != 0:
       raise ValueError('in_channels must be divisible by groups')
     if out_channels % groups != 0:
@@ -26,7 +26,6 @@ class _ConvNd(Op):
     self.output_padding = output_padding
     self.groups = groups
     self.padding_mode = padding_mode
-    self.handle = 0
       
 class Conv2d(_ConvNd):
   def __init__(self, in_channels, out_channels, kernel_size, stride=1,
@@ -46,8 +45,6 @@ class Conv2d(_ConvNd):
     return self.forward(input)
     
   def forward(self, input):
-    input_tensor = input[0]
-    ffmodel = input[1]
-    print("conv2d forward ", self._layer_id);
-    output_tensor = self.handle.init_inout(ffmodel, input_tensor);
-    return [output_tensor, ffmodel]
+    print("conv2d forward ", self.layer_id);
+    return input
+    

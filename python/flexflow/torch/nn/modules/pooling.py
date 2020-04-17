@@ -5,13 +5,13 @@ from .op import Op
 class _MaxPoolNd(Op):
   def __init__(self, kernel_size, stride=None, padding=0, dilation=1,
                return_indices=False, ceil_mode=False):
+    super(_MaxPoolNd, self).__init__()
     self.kernel_size = kernel_size
     self.stride = stride or kernel_size
     self.padding = padding
     self.dilation = dilation
     self.return_indices = return_indices
     self.ceil_mode = ceil_mode
-    self.handle = 0
     
 class MaxPool2d(_MaxPoolNd):
   def __init__(self, kernel_size, stride=None, padding=0, dilation=1,
@@ -25,11 +25,8 @@ class MaxPool2d(_MaxPoolNd):
     return self.forward(input)
     
   def forward(self, input):
-    input_tensor = input[0]
-    ffmodel = input[1]
-    print("maxpool2d forward ", self._layer_id);
-    output_tensor = self.handle.init_inout(ffmodel, input_tensor);
-    return [output_tensor, ffmodel]
+    print("maxpool2d forward ", self.layer_id);
+    return input
     
 class AvgPool2d(object):
   def __init__(self, kernel_size, stride=None, padding=0, ceil_mode=False,

@@ -24,23 +24,23 @@ class Module(object):
     
     self._layers = dict()
     self._nb_layers = 0
+    self._layer_inited = False
     
     self.ffoptimizer = SGDOptimizer(self.ffmodel, 0.01)
     self.ffmodel.set_sgd_optimizer(self.ffoptimizer)
   
   def __call__(self, input):
     
-    forward_value = self.forward([input, self.ffmodel])
+    output_tensor = self._init_inout(input)
     self.ffmodel.init_layers()
-    input_tensor = forward_value[0]
-    
-    return forward_value[0];
+    forward_value = self.forward(input)
+    return output_tensor;
   
   def __setattr__(self, name, value):
     if (isinstance(value, Op) == True):
-      value.set_flexflow_model(self.ffmodel)
-      value.set_layer_id(self._nb_layers)
-      self._layers[name] = self._nb_layers
+      #value.set_flexflow_model(self.ffmodel)
+      value.layer_id = self._nb_layers
+      self._layers[name] = value
       self._nb_layers += 1
       
     if (isinstance(value, Conv2d) == True):
@@ -55,3 +55,14 @@ class Module(object):
       #print("add others ", value)
       a=1
     super(Module, self).__setattr__(name, value)
+    
+  def _init_inout(self, input):
+    t = 0
+    for layer in self._layers:
+      layer_op = self._layers[layer]
+      layer_id = layer_op.layer_id
+      if (layer_id == 0):
+        t = layer_op.handle.init_inout(self.ffmodel, input);
+      else:
+        t = layer_op.handle.init_inout(self.ffmodel, t);
+    return t
