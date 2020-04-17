@@ -78,6 +78,7 @@ def top_level_task():
       if (epoch > 0):
         ffconfig.begin_trace(111)
       ffmodel.forward()
+              
       ffmodel.zero_gradients()
       ffmodel.backward()
       ffmodel.update()

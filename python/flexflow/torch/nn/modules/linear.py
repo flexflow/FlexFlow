@@ -7,10 +7,14 @@ class Linear(Op):
     print("create Linear")
     self.in_features = in_features
     self.out_features = out_features
+    self.handle = 0
     
   def __call__(self, input):
-      return self.forward(input)
+    return self.forward(input)
       
   def forward(self, input):
-      print("linear forward ", self._layer_id);
-      return input+1
+    input_tensor = input[0]
+    ffmodel = input[1]
+    print("linear forward ", self._layer_id);
+    output_tensor = self.handle.init_input(ffmodel, input_tensor);
+    return [output_tensor, ffmodel]

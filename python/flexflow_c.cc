@@ -881,6 +881,16 @@ flexflow_conv2d_init_input(
   *tensor = handle->init_input(*model, *input);
   return FFCObjectWrapper::wrap(tensor);   
 }
+
+void
+flexflow_conv2d_forward(
+  flexflow_conv2d_t handle_,
+  flexflow_model_t model_)
+{
+  Conv2D *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  handle->forward(*model);
+}
   
 // -----------------------------------------------------------------------
 // Pool2D
@@ -898,6 +908,16 @@ flexflow_pool2d_init_input(
   Tensor *tensor = new Tensor();
   *tensor = handle->init_input(*model, *input);
   return FFCObjectWrapper::wrap(tensor);   
+}
+
+void
+flexflow_pool2d_forward(
+  flexflow_pool2d_t handle_,
+  flexflow_model_t model_)
+{
+  Pool2D *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  handle->forward(*model);
 }
   
 // -----------------------------------------------------------------------
@@ -917,6 +937,16 @@ flexflow_linear_init_input(
   *tensor = handle->init_input(*model, *input);
   return FFCObjectWrapper::wrap(tensor);
 }
+
+void
+flexflow_linear_forward(
+  flexflow_linear_t handle_,
+  flexflow_model_t model_)
+{
+  Linear *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  handle->forward(*model);
+}
   
 // -----------------------------------------------------------------------
 // Flat
@@ -934,6 +964,16 @@ flexflow_flat_init_input(
   Tensor *tensor = new Tensor();
   *tensor = handle->init_input(*model, *input);
   return FFCObjectWrapper::wrap(tensor);   
+}
+
+void
+flexflow_flat_forward(
+  flexflow_flat_t handle_,
+  flexflow_model_t model_)
+{
+  Flat *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  handle->forward(*model);
 }
 
 // -----------------------------------------------------------------------

@@ -459,6 +459,11 @@ flexflow_conv2d_init_input(
   flexflow_conv2d_t handle,
   flexflow_model_t model,
   flexflow_tensor_t input);
+
+void
+flexflow_conv2d_forward(
+  flexflow_conv2d_t handle,
+  flexflow_model_t model);
   
 // -----------------------------------------------------------------------
 // Pool2D
@@ -470,6 +475,11 @@ flexflow_pool2d_init_input(
   flexflow_model_t model,
   flexflow_tensor_t input);
   
+void
+flexflow_pool2d_forward(
+  flexflow_conv2d_t handle,
+  flexflow_model_t model);
+  
 // -----------------------------------------------------------------------
 // Linear
 // -----------------------------------------------------------------------
@@ -480,6 +490,11 @@ flexflow_linear_init_input(
   flexflow_model_t model,
   flexflow_tensor_t input);
   
+void
+flexflow_linear_forward(
+  flexflow_conv2d_t handle,
+  flexflow_model_t model);
+  
 // -----------------------------------------------------------------------
 // Flat
 // -----------------------------------------------------------------------
@@ -489,6 +504,11 @@ flexflow_flat_init_input(
   flexflow_flat_t handle,
   flexflow_model_t model,
   flexflow_tensor_t input);
+  
+void
+flexflow_flat_forward(
+  flexflow_conv2d_t handle,
+  flexflow_model_t model);
 
 #ifdef __cplusplus
 }

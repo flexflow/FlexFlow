@@ -26,6 +26,7 @@ class _ConvNd(Op):
     self.output_padding = output_padding
     self.groups = groups
     self.padding_mode = padding_mode
+    self.handle = 0
       
 class Conv2d(_ConvNd):
   def __init__(self, in_channels, out_channels, kernel_size, stride=1,
@@ -45,5 +46,8 @@ class Conv2d(_ConvNd):
     return self.forward(input)
     
   def forward(self, input):
+    input_tensor = input[0]
+    ffmodel = input[1]
     print("conv2d forward ", self._layer_id);
-    return input+1
+    output_tensor = self.handle.init_input(ffmodel, input_tensor);
+    return [output_tensor, ffmodel]

@@ -11,6 +11,7 @@ class _MaxPoolNd(Op):
     self.dilation = dilation
     self.return_indices = return_indices
     self.ceil_mode = ceil_mode
+    self.handle = 0
     
 class MaxPool2d(_MaxPoolNd):
   def __init__(self, kernel_size, stride=None, padding=0, dilation=1,
@@ -24,8 +25,11 @@ class MaxPool2d(_MaxPoolNd):
     return self.forward(input)
     
   def forward(self, input):
+    input_tensor = input[0]
+    ffmodel = input[1]
     print("maxpool2d forward ", self._layer_id);
-    return input+1
+    output_tensor = self.handle.init_input(ffmodel, input_tensor);
+    return [output_tensor, ffmodel]
     
 class AvgPool2d(object):
   def __init__(self, kernel_size, stride=None, padding=0, ceil_mode=False,

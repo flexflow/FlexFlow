@@ -1,5 +1,7 @@
 import flexflow.torch.nn as nn
 
+from flexflow.core import *
+
 class AlexNet(nn.Module):
   def __init__(self):
     super(AlexNet, self).__init__()
@@ -25,6 +27,8 @@ class AlexNet(nn.Module):
     x = self.conv2_3(x)
     x = self.conv2_4(x)
     x = self.conv2_5(x)
+    x = self.maxpool2d_3(x)
+    x = self.flat(x)
     x = self.linear_1(x)
     x = self.linear_2(x)
     x = self.linear_3(x)
@@ -32,8 +36,43 @@ class AlexNet(nn.Module):
   
 def top_level_task():
   model = AlexNet()
-  x = model(7)
-  print(model.__dict__)
+  
+  dims = [model.ffconfig.get_batch_size(), 3, 229, 229]
+  input = model.ffmodel.create_tensor_4d(dims, "", DataType.DT_FLOAT);
+  
+  dims_label = [model.ffconfig.get_batch_size(), 1]
+  label = model.ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
+  dataloader = DataLoader(model.ffmodel, input, label, 1)
+  
+  x = model(input)
+  # x.inline_map(model.ffconfig)
+  # x_array = x.get_array(model.ffconfig, DataType.DT_FLOAT)
+  # print(x_array.shape)
+  # #print(output_array11)
+  # x.inline_unmap(model.ffconfig)
+  t = model.ffmodel.softmax("softmax", x, label)
+  model.ffmodel.init_layers()
+ # print(model.__dict__)
+ 
+  epochs = model.ffconfig.get_epochs()
+
+  ts_start = model.ffconfig.get_current_time()
+  for epoch in range(0,epochs):
+   model.ffmodel.reset_metrics()
+   iterations = 8192 / model.ffconfig.get_batch_size()
+   for iter in range(0, int(iterations)):
+     if (epoch > 0):
+       model.ffconfig.begin_trace(111)
+     model.ffmodel.forward()
+     model.ffmodel.zero_gradients()
+     model.ffmodel.backward()
+     model.ffmodel.update()
+     if (epoch > 0):
+       model.ffconfig.end_trace(111)
+
+  ts_end = model.ffconfig.get_current_time()
+  run_time = 1e-6 * (ts_end - ts_start);
+  print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, 8192 * epochs / run_time));
 
 if __name__ == "__main__":
   print("alexnet torch")
