@@ -91,15 +91,15 @@ class Op(object):
   def __init__(self, handle):
     self.handle = handle
   
-  def get_weight_tensor(self):
+  def _get_weight_tensor(self):
     handle = ffc.flexflow_op_get_weight(self.handle)
     return Tensor(handle, False)
     
-  def get_bias_tensor(self):
+  def _get_bias_tensor(self):
     handle = ffc.flexflow_op_get_bias(self.handle)
     return Tensor(handle, False)
     
-  def get_input_tensor_by_id(self, id):
+  def _get_input_tensor_by_id(self, id):
     handle = ffc.flexflow_op_get_input_by_id(self.handle, id)
     return Tensor(handle, False)
     
@@ -110,7 +110,7 @@ class Op(object):
   def init(self, model):
     ffc.flexflow_op_init(self.handle, model.handle)
     
-  def init_inout(self, model, input):
+  def _init_inout(self, model, input):
     handle = ffc.flexflow_op_init_inout(self.handle, model.handle, input.handle)
     return Tensor(handle)
 
@@ -121,12 +121,30 @@ class Conv2D(Op):
   def __init__(self, handle):
     super(Conv2D, self).__init__(handle) 
     
+  def get_weight_tensor(self):
+    return self._get_weight_tensor() 
+    
+  def get_bias_tensor(self):
+    return self._get_bias_tensor() 
+    
+  def get_input_tensor(self):
+    return self._get_input_tensor_by_id(0) 
+    
+  def init_inout(self, model, input):
+    return self._init_inout(model, input) 
+    
 # -----------------------------------------------------------------------
 # Pool2D
 # -----------------------------------------------------------------------
 class Pool2D(Op):
   def __init__(self, handle):
     super(Pool2D, self).__init__(handle)
+    
+  def get_input_tensor(self):
+    return self._get_input_tensor_by_id(0) 
+    
+  def init_inout(self, model, input):
+    return self._init_inout(model, input)
 
 # -----------------------------------------------------------------------
 # Linear
@@ -134,6 +152,18 @@ class Pool2D(Op):
 class Linear(Op):
   def __init__(self, handle):
     super(Linear, self).__init__(handle)
+    
+  def get_weight_tensor(self):
+    return self._get_weight_tensor() 
+    
+  def get_bias_tensor(self):
+    return self._get_bias_tensor() 
+    
+  def get_input_tensor(self):
+    return self._get_input_tensor_by_id(0) 
+    
+  def init_inout(self, model, input):
+    return self._init_inout(model, input)
 
 # -----------------------------------------------------------------------
 # Flat
@@ -141,6 +171,33 @@ class Linear(Op):
 class Flat(Op):
   def __init__(self, handle):
     super(Flat, self).__init__(handle)
+    
+  def get_input_tensor(self):
+    return self._get_input_tensor_by_id(0) 
+    
+  def init_inout(self, model, input):
+    return self._init_inout(model, input)
+    
+# -----------------------------------------------------------------------
+# Softmax
+# -----------------------------------------------------------------------
+class Softmax(Op):
+  def __init__(self, handle):
+    super(Softmax, self).__init__(handle)
+    
+# -----------------------------------------------------------------------
+# Embedding
+# -----------------------------------------------------------------------
+class Embedding(Op):
+  def __init__(self, handle):
+    super(Embedding, self).__init__(handle)
+    
+# -----------------------------------------------------------------------
+# Concat
+# -----------------------------------------------------------------------
+class Concat(Op):
+  def __init__(self, handle):
+    super(Concat, self).__init__(handle)
       
 # -----------------------------------------------------------------------
 # FFConfig
@@ -382,7 +439,23 @@ class FFModel(object):
     
   def get_layer_by_id(self, layer_id):
     handle = ffc.flexflow_model_get_layer_by_id(self.handle, layer_id)
-    return Op(handle)
+    if (self._layers[layer_id] == OpType.CONV2D):
+      return Conv2D(handle)
+    elif (self._layers[layer_id] == OpType.POOL2D):
+      return Pool2D(handle)
+    elif (self._layers[layer_id] == OpType.LINEAR):
+      return Linear(handle)
+    elif (self._layers[layer_id] == OpType.EMBEDDING):
+      return Embedding(handle)
+    elif (self._layers[layer_id] == OpType.FLAT):
+      return Flat(handle)
+    elif (self._layers[layer_id] == OpType.CONCAT):
+      return Concat(handle)
+    elif (self._layers[layer_id] == OpType.SOFTMAX):
+      return Softmax(handle)
+    else:
+      assert 0, "unknow layer type"
+      return 0
     
   def get_tensor_by_id(self, id):
     handle = ffc.flexflow_model_get_tensor_by_id(self.handle, id)

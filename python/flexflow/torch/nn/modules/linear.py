@@ -16,5 +16,5 @@ class Linear(Op):
     input_tensor = input[0]
     ffmodel = input[1]
     print("linear forward ", self._layer_id);
-    output_tensor = self.handle.init_input(ffmodel, input_tensor);
+    output_tensor = self.handle.init_inout(ffmodel, input_tensor);
     return [output_tensor, ffmodel]

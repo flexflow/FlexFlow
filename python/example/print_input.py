@@ -43,7 +43,7 @@ def top_level_task():
   ffmodel.init_layers()
   
   conv1 = ffmodel.get_layer_by_id(0)
-  input_tensor1 = conv1.get_input_tensor_by_id(0)
+  input_tensor1 = conv1.get_input_tensor()
   input_tensor1.inline_map(ffconfig)
   input_array11 = input_tensor1.get_array(ffconfig, DataType.DT_FLOAT)
   print(input_array11.shape)
@@ -59,7 +59,7 @@ def top_level_task():
   
   
   dense1 = ffmodel.get_layer_by_id(1)
-  input_tensor2 = dense1.get_input_tensor_by_id(0)
+  input_tensor2 = dense1.get_input_tensor()
   input_tensor2.inline_map(ffconfig)
   input_array22 = input_tensor2.get_array(ffconfig, DataType.DT_FLOAT)
   print(input_array22.shape)
