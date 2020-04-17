@@ -53,6 +53,32 @@ Tensor FFModel::conv2d(std::string name,
   return conv->output;
 }
 
+Conv2D* FFModel::conv2d(std::string name,
+                       int inChannels,
+                       int outChannels,
+                       int kernelH, int kernelW,
+                       int strideH, int strideW,
+                       int paddingH, int paddingW,
+                       ActiMode activation,
+                       bool use_bias,
+                       Initializer* kernel_initializer,
+                       Initializer* bias_initializer)
+{
+  if (kernel_initializer == NULL) {
+    int seed = std::rand();
+    //kernel_initializer = new GlorotUniform(seed);
+    kernel_initializer = new ZeroInitializer();
+  }
+  if (bias_initializer == NULL) {
+    bias_initializer = new ZeroInitializer();
+  }
+
+  Conv2D *conv = new Conv2D(*this, name, inChannels, outChannels, kernelH, kernelW,
+                            strideH, strideW, paddingH, paddingW, activation,
+                            use_bias, kernel_initializer, bias_initializer);
+  return conv;
+}
+
 /*
 locals[0] = kernel
 locals[1] = bias
@@ -256,6 +282,98 @@ Conv2D::Conv2D(FFModel& model,
     input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
   }
 #endif
+}
+
+Conv2D::Conv2D(FFModel& model,
+               const std::string& pcname,
+               int in_dim,
+               int out_dim,
+               int _kernel_h, int _kernel_w,
+               int _stride_h, int _stride_w,
+               int _padding_h, int _padding_w,
+               ActiMode _activation,
+               bool use_bias,
+               Initializer* kernel_initializer,
+               Initializer* bias_initializer)
+: Op(pcname),
+  in_channels(in_dim), out_channels(out_dim),
+  kernel_h(_kernel_h), kernel_w(_kernel_w),
+  stride_h(_stride_h), stride_w(_stride_w),
+  padding_h(_padding_h), padding_w(_padding_w),
+  activation(_activation), profiling(model.config.profiling)
+{
+  // Retrive the task indexspace for the op
+  task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
+
+  int input_c = in_dim;
+  int output_c = out_dim;
+  
+  // Create kernel
+  {
+    const int dims[4] = {output_c, input_c, kernel_h, kernel_w};
+    kernel = model.create_conv_weight<4>(dims, task_is, DT_FLOAT, kernel_initializer);
+  }
+  // Create bias tensor
+  if (use_bias) {
+    const int dims[1] = {output_c};
+    bias = model.create_conv_weight<1>(dims, task_is, DT_FLOAT, bias_initializer);
+  }
+}
+
+Tensor Conv2D::init_input(FFModel& model, const Tensor& _input)
+{
+  add_to_model(model);
+  assert(_input.numDim == 4);
+  inputs[0] = _input;
+    // Retrive the task indexspace for the op
+  std::string pcname = name;
+  task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
+
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  // Create output tensor
+  int input_w = _input.adim[0];
+  int input_h = _input.adim[1];
+  int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
+  int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
+  int output_c = out_channels;
+  int output_n = _input.adim[3];
+  int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
+  int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
+  int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
+  int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
+  {
+    const int dims[4] = {output_n, output_c, output_h, output_w};
+    output = model.create_tensor<4>(dims, task_is, DT_FLOAT);
+  }
+  // Compute partition bound for input
+  Rect<4> input_rect = runtime->get_index_partition_color_space(
+      ctx, inputs[0].part.get_index_partition());
+  // Currently assume we didn't split across the channel dimension
+  assert(num_par_c == 1);
+  if (input_rect == part_rect) {
+    input_lps[0] = inputs[0].part;
+    input_grad_lps[0] = inputs[0].part_grad;
+  } else {
+    model.create_disjoint_partition(
+        inputs[0], task_is, input_lps[0], input_grad_lps[0]);
+  }
+  return output;
+}
+
+void Conv2D::add_to_model(FFModel& model)
+{
+  model.layers.push_back(this);
+  Parameter _kernel, _bias;
+  _kernel.tensor = kernel;
+  _kernel.op = this;
+  model.parameters.push_back(_kernel);
+  if (bias.numDim != 0) { // bias is used
+    _bias.tensor = bias;
+    _bias.op = this;
+    model.parameters.push_back(_bias);
+  }
 }
 
 cudnnConvolutionFwdAlgo_t

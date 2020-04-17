@@ -46,6 +46,26 @@ Tensor FFModel::dense(std::string name,
   return li->output;
 }
 
+Linear* FFModel::dense(std::string name,
+                       int inDim,
+                       int outDim, 
+                       ActiMode activation,
+                       bool use_bias, 
+                       Initializer* kernel_initializer,
+                       Initializer* bias_initializer)
+{
+  if (kernel_initializer == NULL) {
+    int seed = std::rand();
+    kernel_initializer = new GlorotUniform(seed);
+  }
+  if (bias_initializer == NULL) {
+    bias_initializer = new ZeroInitializer();
+  }
+  Linear *li = new Linear(*this, name, inDim, outDim, activation, use_bias,
+                          kernel_initializer, bias_initializer);
+  return li;
+}
+
 // Deprecated API -- TO BE REMOVED
 Tensor FFModel::linear(std::string name,
                        const Tensor& input,
@@ -69,7 +89,9 @@ Linear::Linear(FFModel& model,
                bool use_bias,
                Initializer* kernel_initializer,
                Initializer* bias_initializer)
-: Op(pcname, _input), activation(_activation),
+: Op(pcname, _input), 
+  in_channels(_input.adim[0]), out_channels(out_dim),
+  activation(_activation),
   profiling(model.config.profiling)
 {
   assert(_input.numDim == 2);
@@ -163,6 +185,137 @@ Linear::Linear(FFModel& model,
     }
   }
 }
+
+Linear::Linear(FFModel& model,
+               const std::string& pcname,
+               int in_dim,
+               int out_dim,
+               ActiMode _activation,
+               bool use_bias,
+               Initializer* kernel_initializer,
+               Initializer* bias_initializer)
+: Op(pcname), 
+  in_channels(in_dim), out_channels(out_dim),
+  activation(_activation),
+  profiling(model.config.profiling)
+{
+  // Retrive the task indexspace for the op
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+
+  // Create kernel tensor
+  {
+    const int dims[2] = {out_dim, in_dim};
+    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
+  }
+  // Create bias tensor
+  if (use_bias) {
+    const int dims[1] = {out_dim};
+    bias = model.create_linear_weight<1>(dims, task_is, DT_FLOAT, bias_initializer);
+  }
+}
+
+Tensor Linear::init_input(FFModel& model, const Tensor& _input)
+{
+  add_to_model(model);
+  assert(_input.numDim == 2);
+  inputs[0] = _input;
+  // Retrive the task indexspace for the op
+  std::string pcname = name;
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
+  int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
+  int in_dim = _input.adim[0];
+  assert(in_dim == in_channels);
+  int batch_size = _input.adim[1];
+  {
+    const int dims[2] = {batch_size, out_channels};
+    output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
+  }
+  // Compute partition bound for input
+  Rect<2> input_rect = runtime->get_index_partition_color_space(
+      ctx, inputs[0].part.get_index_partition());
+  // Create replica tensor
+  if (num_par_c > 1) {
+    const int dims[3] = {num_par_c, batch_size, in_dim};
+    replica = model.create_linear_replica<3>(dims, task_is, DT_FLOAT);
+    {
+      Rect<2> extent(Point<2>(0, 0), Point<2>(in_dim-1, batch_size/num_par_n-1));
+      Transform<2, 2> transform;
+      transform[0][0] = 0;
+      transform[0][1] = 0;
+      transform[1][0] = 0;
+      transform[1][1] = batch_size/num_par_n;
+      IndexPartition ip = runtime->create_partition_by_restriction(
+          ctx, inputs[0].region.get_index_space(), task_is, transform, extent);
+      input_lps[0] = runtime->get_logical_partition(
+          ctx, inputs[0].region, ip);
+    }
+    // Backward use the same ip as inputs[0]
+    input_grad_lps[0] = inputs[0].part_grad;
+    {
+      IndexSpaceT<2> input_task_is = IndexSpaceT<2>(model.get_or_create_task_is(input_rect));
+      const coord_t num_parts[2] = {input_rect.hi[0] - input_rect.lo[0] + 1,
+                                    input_rect.hi[1] - input_rect.lo[1] + 1};
+      Rect<3> extent(Point<3>(0, 0, 0),
+          Point<3>(in_dim/num_parts[0]-1, batch_size/num_parts[1]-1, num_par_c-1));
+      Transform<3, 2> transform;
+      for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 2; j++)
+          transform[i][j] = 0;
+      transform[0][0] = in_dim / num_parts[0];
+      transform[1][1] = batch_size / num_parts[1];
+      IndexPartition ip = runtime->create_partition_by_restriction(
+          ctx, replica.region_grad.get_index_space(), input_task_is,
+          transform, extent);
+      assert(runtime->is_index_partition_disjoint(ctx, ip));
+      assert(runtime->is_index_partition_complete(ctx, ip));
+      // Note we use replica.part to save how to partition the replica
+      // to compute input_grad_lps
+      replica.part = runtime->get_logical_partition(
+          ctx, replica.region_grad, ip);
+    }
+  } else {
+    if (input_rect == part_rect) {
+      input_lps[0] = inputs[0].part;
+      input_grad_lps[0] = inputs[0].part_grad;
+    } else {
+      Rect<2> extent(Point<2>(0,0), Point<2>(in_dim-1,batch_size/num_par_n-1));
+      Transform<2, 2> transform;
+      transform[0][0] = 0;
+      transform[0][1] = 0;
+      transform[1][0] = 0;
+      transform[1][1] = batch_size / num_par_n;
+      IndexPartition ip = runtime->create_partition_by_restriction(
+          ctx, inputs[0].region.get_index_space(), task_is, transform, extent);
+      assert(runtime->is_index_partition_disjoint(ctx, ip));
+      assert(runtime->is_index_partition_complete(ctx, ip));
+      input_lps[0] = runtime->get_logical_partition(
+          ctx, inputs[0].region, ip);
+      input_grad_lps[0] = runtime->get_logical_partition(
+          ctx, inputs[0].region_grad, ip);
+    }
+  }
+  return output;
+}
+
+void Linear::add_to_model(FFModel& model)
+{
+  model.layers.push_back(this);
+  Parameter _kernel, _bias;
+  _kernel.tensor = kernel;
+  _kernel.op = this;
+  model.parameters.push_back(_kernel);
+  if (bias.numDim != 0) { // bias is used
+    _bias.tensor = bias;
+    _bias.op = this;
+    model.parameters.push_back(_bias);
+  }
+}
+
 
 /*
   regions[0](O): output
