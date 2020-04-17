@@ -33,6 +33,7 @@ def top_level_task():
   cweight_tensor = conv_2d1.get_weight_tensor()
   cweight_tensor.inline_map(ffconfig)
   cweight = cweight_tensor.get_array(ffconfig, DataType.DT_FLOAT)
+  cweight_torch = torch.from_numpy(cweight)
   ct = 0.0
   for i in range(cweight.shape[0]):
     for j in range(cweight.shape[1]):
@@ -41,7 +42,7 @@ def top_level_task():
           cweight[i][j][k][l] = ct
           ct += 1.0
   print(cweight.shape)
-  print(cweight)
+  print(cweight_torch)
   cweight_t = cweight_tensor.get_array(ffconfig, DataType.DT_FLOAT, "T")
   print(cweight_t.shape)
   print(cweight_t)
@@ -56,11 +57,14 @@ def top_level_task():
   print(dweight.shape)
  # print(dweight)
   dweight_torch = torch.from_numpy(dweight)
+  dweight_torch += 1
   ct = 0.0
   for i in range(dweight.shape[0]):
     for j in range(dweight.shape[1]):
-      dweight[i][j] = ct
+      dweight[i][j] += ct
       ct += 1.0
+  print(dweight.__array_interface__)
+  print(hex(dweight_torch.data_ptr()))
   print(dweight_torch)
   dweight_t = dweight_tensor.get_array(ffconfig, DataType.DT_FLOAT, "T")
   print(dweight_t.shape)
