@@ -80,7 +80,7 @@ CC_FLAGS += -DLEGION_REDOP_COMPLEX
 
 NO_BUILD_ALL=1
 .PHONY: all
-all: $(OUTFILE) flexflow/core/legion_cffi.py strategy.pb.cc
+all: flexflow/core/legion_cffi.py strategy.pb.cc $(OUTFILE)
 
 ###########################################################################
 #
@@ -89,6 +89,8 @@ all: $(OUTFILE) flexflow/core/legion_cffi.py strategy.pb.cc
 ###########################################################################
 
 include $(LG_RT_DIR)/runtime.mk
+
+DEFINE_HEADERS_DIR ?= ./
 
 flexflow/core/legion_cffi.py: legion_cffi.py.in legion_cffi_build.py
 	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
