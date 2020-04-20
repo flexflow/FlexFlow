@@ -7,8 +7,10 @@ FlexFlow can be built from source code using the following instructions.
 ```
 git clone --recursive https://github.com/flexflow/FlexFlow.git
 cd FlexFlow
+git submodule init
+git submodule update -r
 ```
-The `FF_HOME` exvirnoment is used for building and running FlexFlow. You can add the following line in `~/.bashrc`.
+The `FF_HOME` environment variable is used for building and running FlexFlow. You can add the following line in `~/.bashrc`.
 ```
 export FF_HOME=/path/to/FlexFlow
 ```
