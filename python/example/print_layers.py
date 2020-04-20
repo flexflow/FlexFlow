@@ -85,8 +85,8 @@ def top_level_task():
   dweight_tensor = dense1.get_weight_tensor()
   dweight_tensor.inline_map(ffconfig)
   dweight = dweight_tensor.get_array(ffconfig, DataType.DT_FLOAT)
-  dweight *= 0.0
-  dweight += 2.2
+  #dweight *= 0.0
+  #dweight += 2.2
   ct = 0.0
   # for i in range(dweight.shape[0]):
   #   for j in range(dweight.shape[1]):
@@ -97,7 +97,7 @@ def top_level_task():
   # #print(dweight)
   dweight_tensor.inline_unmap(ffconfig)
   
-  ffmodel.print_layers(-1)
+  ffmodel.print_layers(0)
 
 if __name__ == "__main__":
   print("alexnet")
