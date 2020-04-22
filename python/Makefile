@@ -80,7 +80,7 @@ CC_FLAGS += -DLEGION_REDOP_COMPLEX
 
 NO_BUILD_ALL=1
 .PHONY: all
-all: flexflow/core/legion_cffi.py strategy.pb.cc $(OUTFILE)
+all: strategy.pb.cc $(OUTFILE) flexflow/core/legion_cffi.py 
 
 ###########################################################################
 #

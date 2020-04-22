@@ -18,9 +18,6 @@ ifndef LG_RT_DIR
 LG_RT_DIR	?= ../../legion/runtime
 endif
 
-CUDNN_DIR ?= /scratch/shared/wwu12/cudnn
-CUDA_DIR ?= /spack/opt/spack/linux-scientific7-x86_64/gcc-7.3.0/cuda-10.0.130-etoqn3vlwx2os25n3rmtksntnu5ioorb
-
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 1		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
@@ -29,11 +26,6 @@ USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
-
-USE_PYTHON := 1
-PYTHON_EXE ?= python3.6
-PYTHON_LIB ?= /usr/lib64/libpython3.6m.so.1.0
-PYTHON_VERSION_MAJOR ?= 3
 
 # Put the binary file name here
 OUTFILE		?= inception
@@ -46,11 +38,11 @@ GEN_GPU_SRC	?= ../../src/ops/conv_2d.cu ../../src/runtime/model.cu ../../src/ops
 		../../src/runtime/cuda_helper.cu# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -I../../include/ -I/home/wwu12/opt/include -I$(CUDNN_DIR)/include -I$(CUDA_DIR)/include
+INC_FLAGS	?= -I../../include/ -I${FF_HOME}/protobuf/src -I${CUDNN_HOME}/include
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -L$(CUDNN_DIR)/lib64 -lcudnn -L$(CUDA_DIR)/lib64 -lcublas -lcurand -L/home/wwu12/opt/lib -lprotobuf
+LD_FLAGS	?= -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L${FF_HOME}/protobuf/src/.libs -L${CUDNN_HOME}/lib64
 # For Point and Rect typedefs
 CC_FLAGS	+= -std=c++11
 NVCC_FLAGS  	+= -std=c++11
@@ -61,4 +53,3 @@ NVCC_FLAGS  	+= -std=c++11
 ###########################################################################
 
 include $(LG_RT_DIR)/runtime.mk
-
