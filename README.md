@@ -4,6 +4,10 @@ FlexFlow is a deep learning framework that accelerates distributed DNN training 
 
 ## Prerequisties
 * [CUDNN](https://developer.nvidia.com/cudnn) is used to perform low-level operations.
+Download CUDNN and install it locally or at the system level.
+```
+export CUDNN_HOME=/path/to/cudnn
+```
 
 * [Legion](http://legion.stanford.edu) is the underlying runtime FlexFlow built on.
 
@@ -20,6 +24,7 @@ See [instructions](INSTALL.md) to install FlexFlow from source.
 See the [examples](examples) folders for existing FlexFlow applications. Use the following command line to build a DNN model (e.g., InceptionV3).
 ```
 ./ffcompile.sh examples/InceptionV3
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDNN_HOME/lib64:$FF_HOME/protobuf/src/libs
 ```
 
 ## Train a DNN model
