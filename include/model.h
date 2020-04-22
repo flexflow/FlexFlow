@@ -205,6 +205,7 @@ class Conv2D;
 class Pool2D;
 class Flat;
 class Linear;
+class Embedding;
 
 class FFModel {
 public:
@@ -237,6 +238,10 @@ public:
                    int num_entires, int outDim,
                    AggrMode aggr,
                    Initializer* kernel_initializer);
+  Embedding* embedding(const std::string& name,
+                       int num_entires, int outDim,
+                       AggrMode aggr,
+                       Initializer* kernel_initializer);
   // Add a 2D pooling layer
   Tensor pool2d(const std::string& name,
                 const Tensor& input,
@@ -581,7 +586,13 @@ public:
             int num_entries, int outDim,
             AggrMode _aggr,
             Initializer* kernel_initializer);
-  Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
+  Embedding(FFModel& model,
+            const std::string& pcname,
+            int num_entries, int outDim,
+            AggrMode _aggr,
+            Initializer* kernel_initializer);
+  Tensor init_inout(FFModel& model, const Tensor& input);
+  void add_to_model(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -604,6 +615,7 @@ public:
                                 Context ctx, Runtime *runtime);
 public:
   IndexSpaceT<2> task_is;
+  int out_channels;
   Tensor kernel;
   AggrMode aggr;
   bool profiling;
