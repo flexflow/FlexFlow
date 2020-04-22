@@ -36,6 +36,20 @@ Tensor FFModel::embedding(const std::string& pcname,
   return embed->output;
 }
 
+Embedding* FFModel::embedding(const std::string& pcname,
+                              int num_entries,
+                              int out_dim,
+                              AggrMode aggr,
+                              Initializer* kernel_initializer)
+{
+  //assert(config.strategies.find(name) != config.strategies.end());
+  //ParallelConfig pc = config.strategies[name];
+  //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
+  Embedding* embed = new Embedding(*this, pcname, num_entries,
+                                   out_dim, aggr, kernel_initializer);
+  return embed;
+}
+
 Embedding::Embedding(FFModel& model,
                      const std::string& pcname,
                      const Tensor& _input,
@@ -43,7 +57,7 @@ Embedding::Embedding(FFModel& model,
                      int num_entries, int outDim,
                      AggrMode _aggr,
                      Initializer* kernel_initializer)
-: Op(pcname, _input), aggr(_aggr), profiling(model.config.profiling)
+: Op(pcname, _input), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
 {
   assert(_input.numDim == 2);
   // Retrive the task indexspace for the op
@@ -117,6 +131,63 @@ Embedding::Embedding(FFModel& model,
     // to avoid data movement
     assert(false);
   }
+}
+
+Embedding::Embedding(FFModel& model,
+                     const std::string& pcname,
+                     int num_entries, int outDim,
+                     AggrMode _aggr,
+                     Initializer* kernel_initializer)
+: Op(pcname), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
+{
+  // Retrive the task indexspace for the op
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+  {
+    const int dims[2] = {outDim, num_entries};
+    // Embeddding weights and linear weights can be partitioned in the same way
+    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
+  }
+}
+
+Tensor Embedding::init_inout(FFModel& model, const Tensor& _input)
+{
+  add_to_model(model);
+  assert(_input.numDim == 2);
+  inputs[0] = _input;
+  // Retrive the task indexspace for the op
+  std::string pcname = name;
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+  
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  // Currently assume we can only partition over the sample dim
+  assert(part_rect.hi[0] == part_rect.lo[0]);
+  {
+    const int dims[2] = {inputs[0].adim[1], out_channels};
+    output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
+  }
+  // Compute partition bound for input
+  Rect<2> input_rect = runtime->get_index_partition_color_space(
+      ctx, inputs[0].part.get_index_partition());
+  if (input_rect == part_rect) {
+    input_lps[0] = inputs[0].part;
+    input_grad_lps[0] = inputs[0].part_grad;
+  } else {
+    // Currently assert input must have the same partition
+    // to avoid data movement
+    assert(false);
+  }
+  return output;
+}
+
+void Embedding::add_to_model(FFModel& model)
+{
+  model.layers.push_back(this);
+  Parameter _kernel;
+  _kernel.tensor = kernel;
+  _kernel.op = this;
+  model.parameters.push_back(_kernel);
 }
 
 //__host__
