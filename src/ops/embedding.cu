@@ -28,11 +28,7 @@ Tensor FFModel::embedding(const std::string& pcname,
   //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
   Embedding* embed = new Embedding(*this, pcname, input, num_entries,
                                    out_dim, aggr, kernel_initializer);
-  layers.push_back(embed);
-  Parameter kernel;
-  kernel.tensor = embed->kernel;
-  kernel.op = embed;
-  parameters.push_back(kernel);
+  embed->add_to_model(*this);
   return embed->output;
 }
 
@@ -60,23 +56,8 @@ Embedding::Embedding(FFModel& model,
 : Op(pcname, _input), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
 {
   assert(_input.numDim == 2);
-  // Retrive the task indexspace for the op
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  // Currently assume we can only partition over the sample dim
-  assert(part_rect.hi[0] == part_rect.lo[0]);
-  {
-    const int dims[2] = {inputs[0].adim[1], outDim};
-    output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
-  }
-  {
-    const int dims[2] = {outDim, num_entries};
-    // Embeddding weights and linear weights can be partitioned in the same way
-    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
-  }
+  create_kernel(model, num_entries, kernel_initializer);
+  create_output_and_partition(model);
 #ifdef DEADCODE
   // Create kernel tensor
   Rect<2> kernel_rect(Point<2>(0, 0), Point<2>(outDim-1, inDim-1));
@@ -120,17 +101,6 @@ Embedding::Embedding(FFModel& model,
     assert(runtime->is_index_partition_complete(ctx, ip));
   }
 #endif
-  // Compute partition bound for input
-  Rect<2> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0].part.get_index_partition());
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0].part;
-    input_grad_lps[0] = inputs[0].part_grad;
-  } else {
-    // Currently assert input must have the same partition
-    // to avoid data movement
-    assert(false);
-  }
 }
 
 Embedding::Embedding(FFModel& model,
@@ -140,13 +110,7 @@ Embedding::Embedding(FFModel& model,
                      Initializer* kernel_initializer)
 : Op(pcname), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
 {
-  // Retrive the task indexspace for the op
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  {
-    const int dims[2] = {outDim, num_entries};
-    // Embeddding weights and linear weights can be partitioned in the same way
-    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
-  }
+  create_kernel(model, num_entries, kernel_initializer);
 }
 
 Tensor Embedding::init_inout(FFModel& model, const Tensor& _input)
@@ -154,6 +118,33 @@ Tensor Embedding::init_inout(FFModel& model, const Tensor& _input)
   add_to_model(model);
   assert(_input.numDim == 2);
   inputs[0] = _input;
+  create_output_and_partition(model);
+  return output;
+}
+
+void Embedding::add_to_model(FFModel& model)
+{
+  model.layers.push_back(this);
+  Parameter _kernel;
+  _kernel.tensor = kernel;
+  _kernel.op = this;
+  model.parameters.push_back(_kernel);
+}
+
+void Embedding::create_kernel(FFModel& model, int num_entries, Initializer* kernel_initializer)
+{
+  // Retrive the task indexspace for the op
+  std::string pcname = name;
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+  {
+    const int dims[2] = {out_channels, num_entries};
+    // Embeddding weights and linear weights can be partitioned in the same way
+    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
+  }
+}
+
+void Embedding::create_output_and_partition(FFModel& model)
+{
   // Retrive the task indexspace for the op
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
@@ -178,16 +169,6 @@ Tensor Embedding::init_inout(FFModel& model, const Tensor& _input)
     // to avoid data movement
     assert(false);
   }
-  return output;
-}
-
-void Embedding::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
-  Parameter _kernel;
-  _kernel.tensor = kernel;
-  _kernel.op = this;
-  model.parameters.push_back(_kernel);
 }
 
 //__host__

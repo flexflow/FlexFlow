@@ -27,7 +27,7 @@ Tensor FFModel::pool2d(const std::string& name,
   Pool2D *pool = new Pool2D(*this, name, input,kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW,
                             type, activation);
-  layers.push_back(pool);
+  pool->add_to_model(*this);
   return pool->output;
 }
 
@@ -57,36 +57,7 @@ Pool2D::Pool2D(FFModel& model,
   pool_type(_type), activation(_activation),
   profiling(model.config.profiling)
 {
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
-  Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
-
-  int input_w = _input.adim[0];
-  int input_h = _input.adim[1];
-  int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
-  int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  int output_c = _input.adim[2];
-  int output_n = _input.adim[3];
-  {
-    const int dims[4] = {output_n, output_c, output_h, output_w};
-    output = model.create_tensor<4>(dims, task_is, DT_FLOAT);
-  }
-  //int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
-  //int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
-  int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
-  //int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
-  Rect<4> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0].part.get_index_partition());
-  //TODO: currently do not support splitting over the channel dimension
-  assert(num_par_c == 1);
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0].part;
-    input_grad_lps[0] = inputs[0].part_grad;
-  } else {
-    model.create_disjoint_partition(
-        _input, task_is, input_lps[0], input_grad_lps[0]);
-  }
+  create_output_and_partition(model);
 #ifdef DEADCODE
   LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
   LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
@@ -183,18 +154,29 @@ Tensor Pool2D::init_inout(FFModel& model, const Tensor& _input)
 {
   add_to_model(model);
   inputs[0] = _input;
+  create_output_and_partition(model);
+  return output;  
+}
+
+void Pool2D::add_to_model(FFModel& model)
+{
+  model.layers.push_back(this);
+}
+
+void Pool2D::create_output_and_partition(FFModel& model)
+{
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   std::string pcname = name;
   task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
   Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
 
-  int input_w = _input.adim[0];
-  int input_h = _input.adim[1];
+  int input_w = inputs[0].adim[0];
+  int input_h = inputs[0].adim[1];
   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  int output_c = _input.adim[2];
-  int output_n = _input.adim[3];
+  int output_c = inputs[0].adim[2];
+  int output_n = inputs[0].adim[3];
   {
     const int dims[4] = {output_n, output_c, output_h, output_w};
     output = model.create_tensor<4>(dims, task_is, DT_FLOAT);
@@ -212,14 +194,8 @@ Tensor Pool2D::init_inout(FFModel& model, const Tensor& _input)
     input_grad_lps[0] = inputs[0].part_grad;
   } else {
     model.create_disjoint_partition(
-        _input, task_is, input_lps[0], input_grad_lps[0]);
+        inputs[0], task_is, input_lps[0], input_grad_lps[0]);
   }
-  return output;  
-}
-
-void Pool2D::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
 }
 
 /*
