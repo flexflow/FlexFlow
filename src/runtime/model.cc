@@ -64,6 +64,17 @@ Op::Op(const std::string& _name,
   }
 }
 
+Op::Op(const std::string& _name)
+: numLocals(0), numInputs(1)
+{
+  assert(_name.length() < MAX_OPNAME);
+  std::strcpy(name, _name.c_str());
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    resetInputGrads[i] = true;
+  }
+}
+
 FFModel::FFModel(FFConfig& _config)
 : config(_config)
 {

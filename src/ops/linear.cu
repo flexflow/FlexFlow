@@ -33,17 +33,28 @@ Tensor FFModel::dense(std::string name,
   }
   Linear *li = new Linear(*this, name, input, outDim, activation, use_bias,
                           kernel_initializer, bias_initializer);
-  layers.push_back(li);
-  Parameter kernel, bias;
-  kernel.tensor = li->kernel;
-  kernel.op = li;
-  parameters.push_back(kernel);
-  if (use_bias) {
-    bias.tensor = li->bias;
-    bias.op = li;
-    parameters.push_back(bias);
-  }
+  li->add_to_model(*this);
   return li->output;
+}
+
+Linear* FFModel::dense(std::string name,
+                       int inDim,
+                       int outDim, 
+                       ActiMode activation,
+                       bool use_bias, 
+                       Initializer* kernel_initializer,
+                       Initializer* bias_initializer)
+{
+  if (kernel_initializer == NULL) {
+    int seed = std::rand();
+    kernel_initializer = new GlorotUniform(seed);
+  }
+  if (bias_initializer == NULL) {
+    bias_initializer = new ZeroInitializer();
+  }
+  Linear *li = new Linear(*this, name, inDim, outDim, activation, use_bias,
+                          kernel_initializer, bias_initializer);
+  return li;
 }
 
 // Deprecated API -- TO BE REMOVED
@@ -69,11 +80,78 @@ Linear::Linear(FFModel& model,
                bool use_bias,
                Initializer* kernel_initializer,
                Initializer* bias_initializer)
-: Op(pcname, _input), activation(_activation),
+: Op(pcname, _input), 
+  in_channels(_input.adim[0]), out_channels(out_dim),
+  activation(_activation),
   profiling(model.config.profiling)
 {
   assert(_input.numDim == 2);
+  create_kernel_bias(model, use_bias, kernel_initializer, bias_initializer);
+  create_output_and_partition(model);
+}
+
+Linear::Linear(FFModel& model,
+               const std::string& pcname,
+               int in_dim,
+               int out_dim,
+               ActiMode _activation,
+               bool use_bias,
+               Initializer* kernel_initializer,
+               Initializer* bias_initializer)
+: Op(pcname), 
+  in_channels(in_dim), out_channels(out_dim),
+  activation(_activation),
+  profiling(model.config.profiling)
+{
+  create_kernel_bias(model, use_bias, kernel_initializer, bias_initializer);
+}
+
+Tensor Linear::init_inout(FFModel& model, const Tensor& _input)
+{
+  add_to_model(model);
+  assert(_input.numDim == 2);
+  assert(_input.adim[0] == in_channels);
+  inputs[0] = _input;
+  create_output_and_partition(model);
+  return output;
+}
+
+void Linear::add_to_model(FFModel& model)
+{
+  model.layers.push_back(this);
+  Parameter _kernel, _bias;
+  _kernel.tensor = kernel;
+  _kernel.op = this;
+  model.parameters.push_back(_kernel);
+  if (bias.numDim != 0) { // bias is used
+    _bias.tensor = bias;
+    _bias.op = this;
+    model.parameters.push_back(_bias);
+  }
+}
+
+void Linear::create_kernel_bias(FFModel& model, bool use_bias, Initializer* kernel_initializer, Initializer* bias_initializer)
+{
   // Retrive the task indexspace for the op
+  std::string pcname = name;
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+
+  // Create kernel tensor
+  {
+    const int dims[2] = {out_channels, in_channels};
+    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
+  }
+  // Create bias tensor
+  if (use_bias) {
+    const int dims[1] = {out_channels};
+    bias = model.create_linear_weight<1>(dims, task_is, DT_FLOAT, bias_initializer);
+  }
+}
+
+void Linear::create_output_and_partition(FFModel& model)
+{
+  // Retrive the task indexspace for the op
+  std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
 
   Context ctx = model.config.lg_ctx;
@@ -81,21 +159,12 @@ Linear::Linear(FFModel& model,
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
   int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
   int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
-  int in_dim = _input.adim[0];
-  int batch_size = _input.adim[1];
+  int in_dim = inputs[0].adim[0];
+  assert(in_dim == in_channels);
+  int batch_size = inputs[0].adim[1];
   {
-    const int dims[2] = {batch_size, out_dim};
+    const int dims[2] = {batch_size, out_channels};
     output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
-  }
-  // Create kernel tensor
-  {
-    const int dims[2] = {out_dim, in_dim};
-    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
-  }
-  // Create bias tensor
-  if (use_bias) {
-    const int dims[1] = {out_dim};
-    bias = model.create_linear_weight<1>(dims, task_is, DT_FLOAT, bias_initializer);
   }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(
@@ -162,6 +231,7 @@ Linear::Linear(FFModel& model,
     }
   }
 }
+
 
 /*
   regions[0](O): output
