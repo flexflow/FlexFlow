@@ -66,7 +66,7 @@ void top_level_task(const Task* task,
   Conv2D *conv1_0 = ff.conv2d("conv1", 3, 64, 11, 11, 4, 4, 2, 2);
   Conv2D *conv1_1 = ff.conv2d("conv1", 3, 64, 11, 11, 4, 4, 2, 2);
   Pool2D *pool1 = ff.pool2d("pool1", 3, 3, 2, 2, 0, 0);
-  Conv2D *conv2 = ff.conv2d("conv2", 64, 192, 5, 5, 1, 1, 2, 2);
+  Conv2D *conv2 = ff.conv2d("conv2", 128, 192, 5, 5, 1, 1, 2, 2);
   Pool2D *pool2 = ff.pool2d("pool2", 3, 3, 2, 2, 0, 0);
   Conv2D *conv3 = ff.conv2d("conv3", 192, 384, 3, 3, 1, 1, 1, 1);
   Conv2D *conv4 = ff.conv2d("conv4", 384, 256, 3, 3, 1, 1, 1, 1);

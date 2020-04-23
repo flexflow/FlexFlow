@@ -218,6 +218,7 @@ Tensor Linear::init_inout(FFModel& model, const Tensor& _input)
 {
   add_to_model(model);
   assert(_input.numDim == 2);
+  assert(_input.adim[0] == in_channels);
   inputs[0] = _input;
   // Retrive the task indexspace for the op
   std::string pcname = name;

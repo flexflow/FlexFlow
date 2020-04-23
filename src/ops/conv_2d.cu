@@ -324,6 +324,7 @@ Tensor Conv2D::init_inout(FFModel& model, const Tensor& _input)
 {
   add_to_model(model);
   assert(_input.numDim == 4);
+  assert(_input.adim[2] == in_channels);
   inputs[0] = _input;
     // Retrive the task indexspace for the op
   std::string pcname = name;
@@ -454,7 +455,7 @@ OpMeta* Conv2D::init_task(const Task *task,
                                         1,
                                         1));
 
-  printf("filterDim: kernel(%d %d) c_out(%d)\n", conv->kernel_h, conv->kernel_w, conv->output.pdim[2]);
+  printf("filterDim: kernel(%d %d) c_in(%d), c_out(%d)\n", conv->kernel_h, conv->kernel_w, conv->inputs[0].pdim[2], conv->output.pdim[2]);
   checkCUDNN(cudnnSetFilter4dDescriptor(m->filterDesc,
                                         CUDNN_DATA_FLOAT,
                                         CUDNN_TENSOR_NCHW,

@@ -17,7 +17,7 @@ def top_level_task():
   conv1_1 = ffmodel.conv2d_v2("conv1", 3, 64, 11, 11, 4, 4, 2, 2)
   conv1_2 = ffmodel.conv2d_v2("conv1", 3, 64, 11, 11, 4, 4, 2, 2)
   pool1 = ffmodel.pool2d_v2("pool1", 3, 3, 2, 2, 0, 0)
-  conv2 = ffmodel.conv2d_v2("conv2", 64, 192, 5, 5, 1, 1, 2, 2)
+  conv2 = ffmodel.conv2d_v2("conv2", 128, 192, 5, 5, 1, 1, 2, 2)
   pool2 = ffmodel.pool2d_v2("pool2", 3, 3, 2, 2, 0, 0)
   conv3 = ffmodel.conv2d_v2("conv3", 192, 384, 3, 3, 1, 1, 1, 1)
   conv4 = ffmodel.conv2d_v2("conv4", 384, 256, 3, 3, 1, 1, 1, 1)
