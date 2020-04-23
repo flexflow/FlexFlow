@@ -944,25 +944,6 @@ void Conv2D::print_layer(const FFModel& ff)
 #endif
 }
 
-__host__
-void Conv2D::print_layer_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
-                              Context ctx, Runtime *runtime)
-{
-  assert(regions.size() == 2);
-
-  TensorAccessorR<float, 4> acc_kernel(regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 1> acc_bias(regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  
-  const float *kernel_ptr = acc_kernel.ptr;
-  const float *bias_ptr = acc_bias.ptr;
-  
-  size_t kernel_size = acc_kernel.rect.volume();
-  size_t bias_size = acc_bias.rect.volume();
-  printf("kernel, %d, %p\n", kernel_size, kernel_ptr);
-  printf("bias, %d, %p\n", bias_size, bias_ptr);
-}
-
 cudnnConvolutionFwdAlgo_t
 selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
                                   const cudnnTensorDescriptor_t xDesc, const void* x,

@@ -96,9 +96,6 @@ enum TaskIDs {
   CUSTOM_CPU_TASK_ID_6,
   CUSTOM_CPU_TASK_ID_7,
   CUSTOM_CPU_TASK_ID_LAST,
-  // Print tasks
-  CONV2D_PRINT_TASK_ID,
-  LINEAR_PRINT_TASK_ID,
 };
 
 enum ShardingID {
@@ -406,9 +403,6 @@ public:
   //static void update_task(const Task *task,
   //                        const std::vector<PhysicalRegion> &regions,
   //                        Context ctx, HighLevelRuntime *runtime);
-  static void print_layer_task(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
-                               Context ctx, HighLevelRuntime *runtime);
 private:
   void create_kernel_bias(FFModel& model, bool use_bias, Initializer* kernel_initializer, Initializer* bias_initializer);
   void create_output_and_partition(FFModel& model);
@@ -580,9 +574,6 @@ public:
   //static void update_task(const Task *task,
   //                        const std::vector<PhysicalRegion> &regions,
   //                        Context ctx, Runtime *runtime);
-  static void print_layer_task(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
-                               Context ctx, Runtime *runtime);
 private:
   void create_kernel_bias(FFModel& model, bool use_bias, Initializer* kernel_initializer, Initializer* bias_initializer);
   void create_output_and_partition(FFModel& model);

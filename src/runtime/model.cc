@@ -1307,14 +1307,6 @@ void register_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "dummy_task");
   }
-  
-  // Print task
-  {
-    TaskVariantRegistrar registrar(CONV2D_PRINT_TASK_ID, "conv2d_print_layer_task");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<Conv2D::print_layer_task>(registrar, "conv2d_print_layer_task");
-  }
 }
 
 #if !defined(FF_USE_PYTHON)
