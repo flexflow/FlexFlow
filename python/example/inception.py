@@ -108,7 +108,7 @@ def top_level_task():
   ffmodel.init_layers()
   
   epochs = ffconfig.get_epochs()
-  
+
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
     ffmodel.reset_metrics()
@@ -122,10 +122,20 @@ def top_level_task():
       ffmodel.update()
       if (epoch > 0):
         ffconfig.end_trace(111)
-        
+
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, 8192 * epochs / run_time));
+  
+  # conv_2d1 = ffmodel.get_layer_by_id(7)
+  # cbias_tensor = conv_2d1.get_weight_tensor()
+  # print(cbias_tensor)
+  # #cbias_tensor = conv_2d1.get_output_tensor()
+  # cbias_tensor.inline_map(ffconfig)
+  # cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
+  # print(cbias.shape)
+  # #print(cbias)
+  # cbias_tensor.inline_unmap(ffconfig)
 
 if __name__ == "__main__":
   print("alexnet")

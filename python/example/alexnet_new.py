@@ -94,8 +94,9 @@ def top_level_task():
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, 8192 * epochs / run_time));
   #ffmodel.print_layers(13)
   
-  conv_2d1 = ffmodel.get_layer_by_id(0)
+  conv_2d1 = ffmodel.get_layer_by_id(4)
   cbias_tensor = conv_2d1.get_weight_tensor()
+  print(cbias_tensor)
   #cbias_tensor = conv_2d1.get_output_tensor()
   cbias_tensor.inline_map(ffconfig)
   cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
