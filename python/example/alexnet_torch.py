@@ -68,7 +68,7 @@ def top_level_task():
      #model.ffmodel.forward()
      model(input)
      softmax.forward(model.ffmodel)
-     t = softmax.get_output_tensor()
+     #t = softmax.get_output_tensor()
      # t.inline_map(model.ffconfig)
      # input1_array = t.get_array(model.ffconfig, DataType.DT_FLOAT)
      # print(input1_array.shape)

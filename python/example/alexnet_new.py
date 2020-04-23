@@ -14,7 +14,8 @@ def top_level_task():
   #print(dims)
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
-  conv1 = ffmodel.conv2d_v2("conv1", 3, 64, 11, 11, 4, 4, 2, 2)
+  conv1_1 = ffmodel.conv2d_v2("conv1", 3, 64, 11, 11, 4, 4, 2, 2)
+  conv1_2 = ffmodel.conv2d_v2("conv1", 3, 64, 11, 11, 4, 4, 2, 2)
   pool1 = ffmodel.pool2d_v2("pool1", 3, 3, 2, 2, 0, 0)
   conv2 = ffmodel.conv2d_v2("conv2", 64, 192, 5, 5, 1, 1, 2, 2)
   pool2 = ffmodel.pool2d_v2("pool2", 3, 3, 2, 2, 0, 0)
@@ -27,7 +28,10 @@ def top_level_task():
   linear2 = ffmodel.dense_v2("linear2", 4096, 4096, ActiMode.AC_MODE_RELU)
   linear3 = ffmodel.dense_v2("linear3", 4096, 1000)
   
-  t = conv1.init_inout(ffmodel, input);
+  t1 = conv1_1.init_inout(ffmodel, input);
+  t2 = conv1_2.init_inout(ffmodel, input);
+  t = ffmodel.concat("concat", [t1, t2], 1)
+  #t = conv1_1.init_inout(ffmodel, input);
   t = pool1.init_inout(ffmodel, t);
   t = conv2.init_inout(ffmodel, t);
   t = pool2.init_inout(ffmodel, t);
