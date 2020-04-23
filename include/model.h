@@ -409,6 +409,9 @@ public:
   //static void update_task(const Task *task,
   //                        const std::vector<PhysicalRegion> &regions,
   //                        Context ctx, HighLevelRuntime *runtime);
+private:
+  void create_kernel_bias(FFModel& model, bool use_bias, Initializer* kernel_initializer, Initializer* bias_initializer);
+  void create_output_and_partition(FFModel& model);
 public:
   IndexSpaceT<4> task_is;
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
@@ -461,6 +464,8 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+private:
+  void create_output_and_partition(FFModel& model);
 public:
   IndexSpaceT<4> task_is;
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
@@ -562,6 +567,9 @@ public:
   //static void update_task(const Task *task,
   //                        const std::vector<PhysicalRegion> &regions,
   //                        Context ctx, Runtime *runtime);
+private:
+  void create_kernel_bias(FFModel& model, bool use_bias, Initializer* kernel_initializer, Initializer* bias_initializer);
+  void create_output_and_partition(FFModel& model);
 public:
   IndexSpaceT<2> task_is;
   int in_channels, out_channels;
@@ -613,6 +621,9 @@ public:
   static void backward_task_cpu(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
                                 Context ctx, Runtime *runtime);
+private:
+  void create_kernel(FFModel& model, int num_entries, Initializer* kernel_initializer);
+  void create_output_and_partition(FFModel& model);
 public:
   IndexSpaceT<2> task_is;
   int out_channels;
@@ -645,6 +656,8 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+private:
+  void create_output_and_partition(FFModel& model);
 public:
   IndexSpaceT<2> task_is;
 };

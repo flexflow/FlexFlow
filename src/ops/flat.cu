@@ -22,7 +22,7 @@ Tensor FFModel::flat(std::string name, Tensor input)
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
   Flat *flat = new Flat(*this, name, input);
-  layers.push_back(flat);
+  flat->add_to_model(*this);
   return flat->output;
 }
 
@@ -39,25 +39,7 @@ Flat::Flat(FFModel& model,
            const Tensor& _input)
 : Op(pcname, _input)
 {
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
-  int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
-  // Assert data parallelism for operators with dim changes
-  assert(num_par_c == 1);
- 
-  int out_dim = _input.adim[0] * _input.adim[1] * _input.adim[2];
-  int batch_size = _input.adim[3];
-  // Create output tensor
-  {
-    const int dims[2] = {batch_size, out_dim};
-    output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
-  }
-  model.create_data_parallel_partition_with_diff_dims<4, 2>(
-      _input, task_is, input_lps[0], input_grad_lps[0]);
+  create_output_and_partition(model);
 #ifdef DEADCODE
   Rect<2, coord_t> output_rect(Point<2>(0, 0), Point<2>(output_c-1, output_n-1));
   IndexSpaceT<2> output_is = runtime->create_index_space(ctx, output_rect);
@@ -165,6 +147,17 @@ Tensor Flat::init_inout(FFModel& model, const Tensor& _input)
 {
   add_to_model(model);
   inputs[0] = _input;
+  create_output_and_partition(model);
+  return output;
+}
+
+void Flat::add_to_model(FFModel& model)
+{
+  model.layers.push_back(this);
+}
+
+void Flat::create_output_and_partition(FFModel& model)
+{
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
 
@@ -176,21 +169,15 @@ Tensor Flat::init_inout(FFModel& model, const Tensor& _input)
   // Assert data parallelism for operators with dim changes
   assert(num_par_c == 1);
  
-  int out_dim = _input.adim[0] * _input.adim[1] * _input.adim[2];
-  int batch_size = _input.adim[3];
+  int out_dim = inputs[0].adim[0] * inputs[0].adim[1] * inputs[0].adim[2];
+  int batch_size = inputs[0].adim[3];
   // Create output tensor
   {
     const int dims[2] = {batch_size, out_dim};
     output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
   }
   model.create_data_parallel_partition_with_diff_dims<4, 2>(
-      _input, task_is, input_lps[0], input_grad_lps[0]);
-  return output;
-}
-
-void Flat::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
+      inputs[0], task_is, input_lps[0], input_grad_lps[0]);
 }
 
 OpMeta* Flat::init_task(const Task *task,
