@@ -47,3 +47,7 @@ class Conv2D(object):
     self.output_shape = (output_w, output_h, output_d, input_b)
     print("conv2d input ", self.input_shape)
     print("conv2d output ", self.output_shape)
+    
+  def __call__(self, input):
+    print("conv2d call")
+    return 1

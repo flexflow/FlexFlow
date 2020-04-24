@@ -4,6 +4,7 @@ from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activati
 import flexflow.core as ff
 
 def top_level_task():
+  
   model = Sequential()
   model.add(Conv2D(filters=64, input_shape=(229,229,3), kernel_size=(11,11), strides=(4,4), padding=(2,2)))
   model.add(MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid"))

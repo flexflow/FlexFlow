@@ -219,7 +219,7 @@ flexflow_model_add_conv2d(
   const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
   Tensor *tensor = new Tensor();
   *tensor = handle->conv2d(name, *input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation, use_bias);
-  printf("Conv2d new Tensor 4D %p, activation %d, use_bias %d\n", tensor, activation, use_bias);
+  printf("Conv2d new Tensor 4D %p (%d, %d, %d, %d), activation %d, use_bias %d\n", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], activation, use_bias);
   return FFCObjectWrapper::wrap(tensor);   
 }
 
@@ -333,7 +333,7 @@ flexflow_model_add_pool2d(
   Tensor *input = FFCObjectWrapper::unwrap(input_);
   Tensor *tensor = new Tensor();
   *tensor = handle->pool2d(name, *input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, type, activation);
-  printf("Pool2d new Tensor 4D %p, pool %d, activation %d\n", tensor, type, activation);
+  printf("Pool2d new Tensor 4D %p (%d, %d, %d, %d), pool %d, activation %d\n", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], type, activation);
   return FFCObjectWrapper::wrap(tensor); 
 }
 
@@ -367,7 +367,7 @@ flexflow_model_add_dense_with_default_initializer(
   const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
   Tensor *tensor = new Tensor();
   *tensor = handle->dense(name, *input, out_dim, activation, use_bias);
-  printf("Dense default new Tensor 4D %p, activation %d, use_bias %d\n", tensor, activation, use_bias);
+  printf("Dense default new Tensor 4D %p (%d, %d, %d, %d), activation %d, use_bias %d\n", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], activation, use_bias);
   return FFCObjectWrapper::wrap(tensor); 
 }
 
@@ -502,7 +502,7 @@ flexflow_tensor_4d_create(
   Tensor *tensor = new Tensor();
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   *tensor = model->create_tensor<4>(dims, pc_name, data_type, create_grad);
-  printf("new Tensor 4D %p\n", tensor);
+  printf("new Tensor 4D %p (%d, %d, %d, %d)\n", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -517,7 +517,7 @@ flexflow_tensor_2d_create(
   Tensor *tensor = new Tensor();
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   *tensor = model->create_tensor<2>(dims, pc_name, data_type, create_grad);
-  printf("new Tensor 2D %p\n", tensor);
+  printf("new Tensor 2D %p (%d, %d, %d, %d)\n", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
   return FFCObjectWrapper::wrap(tensor);
 }
 
