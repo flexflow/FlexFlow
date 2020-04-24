@@ -14,21 +14,22 @@ class Sequential(object):
     self.input_tensor = 0
     self.output_tensor = 0
     
-  def _init_inout(self, input_tensor, label_tensor):
+  def _create_layer_and_init_inout(self, input_tensor, label_tensor):
     int_t = 0
     out_t = 0
     self.input_tensor = input_tensor
     for layer_id in self._layers:
       layer = self._layers[layer_id]
+      assert layer.layer_id == layer_id, "wrong layer id"
       if (layer_id == 0):
         in_t = input_tensor
       else:
         in_t = out_t
         
       if (isinstance(layer, Conv2D) == True):
-        out_t = self.ffmodel.conv2d(layer.name, in_t, layer.out_channels, layer.kernel_size, layer.kernel_size, layer.stride, layer.stride, layer.padding, layer.padding)
+        out_t = self.ffmodel.conv2d(layer.name, in_t, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
       elif (isinstance(layer, MaxPooling2D) == True):
-        out_t = self.ffmodel.pool2d(layer.name, in_t, layer.kernel_size, layer.kernel_size, layer.stride, layer.stride, layer.padding, layer.padding)
+        out_t = self.ffmodel.pool2d(layer.name, in_t, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1])
       elif (isinstance(layer, Flatten) == True):
         out_t = self.ffmodel.flat(layer.name, in_t)
       elif (isinstance(layer, Dense) == True):
@@ -42,15 +43,32 @@ class Sequential(object):
   
   def add(self, layer):
     self._layers[self._nb_layers] = layer
+    layer.layer_id = self._nb_layers
     self._nb_layers += 1
     
+    if (isinstance(layer, Conv2D) == True):
+      if (layer.layer_id > 0):
+        prev_layer = self._layers[layer.layer_id-1]
+        layer.calculate_inout_shape(prev_layer.output_shape[0], prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3])
+    elif (isinstance(layer, MaxPooling2D) == True):
+      assert layer.layer_id != 0, "maxpool2d can not be the 1st layer"
+      prev_layer = self._layers[layer.layer_id-1]
+      layer.calculate_inout_shape(prev_layer.output_shape[0], prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3])
+    elif (isinstance(layer, Flatten) == True):
+      assert layer.layer_id != 0, "flatten can not be the 1st layer"
+      prev_layer = self._layers[layer.layer_id-1]
+      layer.calculate_inout_shape(prev_layer.output_shape)
+    elif (isinstance(layer, Dense) == True):
+      if (layer.layer_id > 0):
+        prev_layer = self._layers[layer.layer_id-1]
+        layer.calculate_inout_shape(prev_layer.output_shape[0])
       
   def compile(self):
     self.ffoptimizer = ff.SGDOptimizer(self.ffmodel, 0.01)
     self.ffmodel.set_sgd_optimizer(self.ffoptimizer)
     
   def fit(self, input_tensor, label_tensor):
-    self._init_inout(input_tensor, label_tensor)        
+    self._create_layer_and_init_inout(input_tensor, label_tensor)        
     self.ffmodel.init_layers()
     
     epochs = self.ffconfig.get_epochs()
