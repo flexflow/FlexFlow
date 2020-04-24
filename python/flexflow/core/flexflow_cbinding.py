@@ -250,6 +250,7 @@ class Tensor(object):
     self.num_dims = 0
     self.dims = [0, 0, 0, 0]
     self.mapped = False
+    self.set_dims()
     if (deallocate == True):
       #print("deallocate true")
       self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)

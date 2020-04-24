@@ -15,7 +15,7 @@ class Sequential(object):
     self.output_tensor = 0
     self.use_v2 = False
     
-  def _create_layer_and_init_inout(self, input_tensor, label_tensor):
+  def _create_layer_and_init_inout(self, input_tensor, label_tensor, verify_inout_shape=True):
     int_t = 0
     out_t = 0
     self.input_tensor = input_tensor
@@ -38,6 +38,9 @@ class Sequential(object):
       elif (isinstance(layer, Activation) == True):
         assert layer_id == self._nb_layers-1, "softmax is not in the last layer"
         out_t = self.ffmodel.softmax("softmax", in_t, label_tensor)
+        
+      if (verify_inout_shape == True):
+        layer.verify_inout_shape(in_t, out_t) 
       layer.handle = self.ffmodel.get_layer_by_id(layer_id)
       print(layer.handle)
     self.output_tensor = out_t
@@ -64,11 +67,11 @@ class Sequential(object):
     if (isinstance(layer, Conv2D) == True):
       if (layer.layer_id > 0):
         prev_layer = self._layers[layer.layer_id-1]
-        layer.calculate_inout_shape(prev_layer.output_shape[0], prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3])
+        layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3], prev_layer.output_shape[0])
     elif (isinstance(layer, MaxPooling2D) == True):
       assert layer.layer_id != 0, "maxpool2d can not be the 1st layer"
       prev_layer = self._layers[layer.layer_id-1]
-      layer.calculate_inout_shape(prev_layer.output_shape[0], prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3])
+      layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3], prev_layer.output_shape[0])
     elif (isinstance(layer, Flatten) == True):
       assert layer.layer_id != 0, "flatten can not be the 1st layer"
       prev_layer = self._layers[layer.layer_id-1]
@@ -76,7 +79,7 @@ class Sequential(object):
     elif (isinstance(layer, Dense) == True):
       if (layer.layer_id > 0):
         prev_layer = self._layers[layer.layer_id-1]
-        layer.calculate_inout_shape(prev_layer.output_shape[0])
+        layer.calculate_inout_shape(prev_layer.output_shape[1])
   
   def add_v2(self, layer):
     self.use_v2 = True
@@ -87,11 +90,11 @@ class Sequential(object):
     if (isinstance(layer, Conv2D) == True):
       if (layer.layer_id > 0):
         prev_layer = self._layers[layer.layer_id-1]
-        layer.calculate_inout_shape(prev_layer.output_shape[0], prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3])
+        layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3], prev_layer.output_shape[0])
     elif (isinstance(layer, MaxPooling2D) == True):
       assert layer.layer_id != 0, "maxpool2d can not be the 1st layer"
       prev_layer = self._layers[layer.layer_id-1]
-      layer.calculate_inout_shape(prev_layer.output_shape[0], prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3])
+      layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3], prev_layer.output_shape[0])
     elif (isinstance(layer, Flatten) == True):
       assert layer.layer_id != 0, "flatten can not be the 1st layer"
       prev_layer = self._layers[layer.layer_id-1]
@@ -99,7 +102,7 @@ class Sequential(object):
     elif (isinstance(layer, Dense) == True):
       if (layer.layer_id > 0):
         prev_layer = self._layers[layer.layer_id-1]
-        layer.calculate_inout_shape(prev_layer.output_shape[0])
+        layer.calculate_inout_shape(prev_layer.output_shape[1])
         
     if (isinstance(layer, Conv2D) == True):
       layer.handle = self.ffmodel.conv2d_v2(layer.name, layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
