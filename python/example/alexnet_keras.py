@@ -18,6 +18,20 @@ def top_level_task():
   model.add(Dense(4096, activation="relu"))
   model.add(Dense(1000))
   model.add(Activation("softmax"))
+  
+  # model.add_v2(Conv2D(filters=64, input_shape=(229,229,3), kernel_size=(11,11), strides=(4,4), padding=(2,2)))
+  # model.add_v2(MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid"))
+  # model.add_v2(Conv2D(filters=192, kernel_size=(5,5), strides=(1,1), padding=(2,2)))
+  # model.add_v2(MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid"))
+  # model.add_v2(Conv2D(filters=384, kernel_size=(3,3), strides=(1,1), padding=(1,1)))
+  # model.add_v2(Conv2D(filters=256, kernel_size=(3,3), strides=(1,1), padding=(1,1)))
+  # model.add_v2(Conv2D(filters=256, kernel_size=(3,3), strides=(1,1), padding=(1,1)))
+  # model.add_v2(MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid"))
+  # model.add_v2(Flatten())
+  # model.add_v2(Dense(4096, activation="relu"))
+  # model.add_v2(Dense(4096, activation="relu"))
+  # model.add_v2(Dense(1000))
+  # model.add_v2(Activation("softmax"))
 
   model.compile()
 
