@@ -857,6 +857,16 @@ flexflow_op_forward(
   handle->forward(*model);
 }
 
+void
+flexflow_op_add_to_model(
+  flexflow_op_t handle_,
+  flexflow_model_t model_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  handle->add_to_model(*model);
+}
+
 // -----------------------------------------------------------------------
 // Parameter
 // -----------------------------------------------------------------------

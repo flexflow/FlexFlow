@@ -1,6 +1,8 @@
 import flexflow.core as ff
 import math
 
+import builtins
+
 class Conv2D(object):
   def __init__(self, filters, input_shape=(0,), kernel_size=0, strides=0, padding=0, data_format=None, dilation_rate=(1, 1), activation=None, use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, kernel_constraint=None, bias_constraint=None):
     self.layer_id = -1
@@ -58,6 +60,6 @@ class Conv2D(object):
     assert out_dims[1] == self.output_shape[2]
     assert out_dims[2] == self.output_shape[3]
     
-  def __call__(self, input):
-    print("conv2d call")
-    return 1
+  def __call__(self, input_tensor):
+    output_tensor = builtins.internal_ffmodel.conv2d(self.name, input_tensor, self.out_channels, self.kernel_size[0], self.kernel_size[1], self.stride[0], self.stride[1], self.padding[0], self.padding[1], self.activation, self.use_bias)
+    return output_tensor

@@ -71,6 +71,10 @@ class Flatten(object):
     out_dims = output_tensor.dims
     assert out_dims[0] == self.output_shape[1]
     
+  def __call__(self, input_tensor):
+    output_tensor = builtins.internal_ffmodel.flat(self.name, input_tensor)
+    return output_tensor
+    
 class Activation(object):
   def __init__(self, type):
     if (type == "softmax"):

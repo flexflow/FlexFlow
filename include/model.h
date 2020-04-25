@@ -166,6 +166,7 @@ public:
   virtual void print_layer(const FFModel& model) = 0;
   virtual Tensor* get_weight() = 0;
   virtual Tensor* get_bias() = 0;
+  virtual void add_to_model(FFModel& model) = 0;
   //virtual void update(const FFModel&) = 0;
 public:
   char name[MAX_OPNAME];
@@ -498,6 +499,7 @@ public:
   void print_layer(const FFModel& model) {}
   Tensor* get_weight() {return NULL;}
   Tensor* get_bias() {return NULL;}
+  void add_to_model(FFModel& model) {assert(0);}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -694,6 +696,7 @@ public:
   void print_layer(const FFModel& model) {}
   Tensor* get_weight() {return NULL;}
   Tensor* get_bias() {return NULL;}
+  void add_to_model(FFModel& model) {assert(0);}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -730,6 +733,7 @@ public:
   void print_layer(const FFModel& model) {}
   Tensor* get_weight() {return NULL;}
   Tensor* get_bias() {return NULL;}
+  void add_to_model(FFModel& model) {assert(0);}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -766,6 +770,7 @@ public:
   void print_layer(const FFModel& model) {}
   Tensor* get_weight() {return NULL;}
   Tensor* get_bias() {return NULL;}
+  void add_to_model(FFModel& model) {assert(0);}
 
   static PerfMetrics backward_task(const Task *task,
                                    const std::vector<PhysicalRegion> &regions,

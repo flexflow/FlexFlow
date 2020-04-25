@@ -117,6 +117,9 @@ class Op(object):
   def forward(self, model):
     ffc.flexflow_op_forward(self.handle, model.handle)
     #return Tensor(handle)
+    
+  def add_to_model(self, model):
+    ffc.flexflow_op_add_to_model(self.handle, model.handle)
 
 # -----------------------------------------------------------------------
 # Conv2D

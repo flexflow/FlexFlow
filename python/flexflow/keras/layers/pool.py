@@ -1,6 +1,8 @@
 import flexflow.core as ff
 import math
 
+import builtins
+
 class MaxPooling2D(object):
   def __init__(self, pool_size, strides, padding="valid"):
     self.input_shape = (0, 0, 0, 0)
@@ -41,3 +43,7 @@ class MaxPooling2D(object):
     assert out_dims[0] == self.output_shape[1]
     assert out_dims[1] == self.output_shape[2]
     assert out_dims[2] == self.output_shape[3]
+    
+  def __call__(self, input_tensor):
+    output_tensor = builtins.internal_ffmodel.pool2d(self.name, input_tensor, self.kernel_size[0], self.kernel_size[1], self.stride[0], self.stride[1], self.padding[0], self.padding[1])
+    return output_tensor

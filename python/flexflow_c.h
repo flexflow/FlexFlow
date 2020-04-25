@@ -445,6 +445,11 @@ flexflow_op_forward(
   flexflow_op_t handle,
   flexflow_model_t model);
   
+void
+flexflow_op_add_to_model(
+  flexflow_op_t handle,
+  flexflow_model_t model);
+  
 
 // -----------------------------------------------------------------------
 // Parameter
