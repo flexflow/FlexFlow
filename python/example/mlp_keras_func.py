@@ -1,4 +1,4 @@
-from flexflow.keras.models import Model
+from flexflow.keras.models import Model, init_internal_model, delete_internal_model
 from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation
 
 import flexflow.core as ff
@@ -6,7 +6,7 @@ import flexflow.core as ff
 import builtins
 
 def top_level_task():
-  print("hello")
+  init_internal_model()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(builtins.internal_ffconfig.get_batch_size(), builtins.internal_ffconfig.get_workers_per_node(), builtins.internal_ffconfig.get_num_nodes()))
   
   dims = [builtins.internal_ffconfig.get_batch_size(), 784]
@@ -31,8 +31,7 @@ def top_level_task():
   
   model = Model(input1, output)
   
-  del builtins.internal_ffconfig
-  del builtins.internal_ffmodel
+  delete_internal_model()
 
 if __name__ == "__main__":
   print("alexnet keras")

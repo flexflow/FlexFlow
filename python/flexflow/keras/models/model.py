@@ -4,9 +4,14 @@ from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activati
 
 import builtins
 
-builtins.internal_ffconfig = ff.FFConfig()
-builtins.internal_ffconfig.parse_args()
-builtins.internal_ffmodel = ff.FFModel(builtins.internal_ffconfig)
+def init_internal_model():
+  builtins.internal_ffconfig = ff.FFConfig()
+  builtins.internal_ffconfig.parse_args()
+  builtins.internal_ffmodel = ff.FFModel(builtins.internal_ffconfig)
+
+def delete_internal_model():
+  del builtins.internal_ffconfig
+  del builtins.internal_ffmodel
 
 class Model(object):
   def __init__(self, input_tensor, output_tensor):
