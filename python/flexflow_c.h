@@ -19,6 +19,7 @@ FF_NEW_OPAQUE_TYPE(flexflow_uniform_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_norm_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_op_t);
 FF_NEW_OPAQUE_TYPE(flexflow_parameter_t);
+FF_NEW_OPAQUE_TYPE(flexflow_net_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dataloader_t);
 
 // -----------------------------------------------------------------------
@@ -363,15 +364,30 @@ flexflow_norm_initializer_destroy(
   flexflow_norm_initializer_t handle);
 
 // -----------------------------------------------------------------------
+// NetConfig
+// -----------------------------------------------------------------------
+
+flexflow_net_config_t
+flexflow_net_config_create();
+
+void
+flexflow_net_config_destroy(
+  flexflow_net_config_t handle);
+
+const char*
+flexflow_net_config_get_dataset_path(
+  flexflow_net_config_t handle);
+
+// -----------------------------------------------------------------------
 // DataLoader
 // -----------------------------------------------------------------------
 
 flexflow_dataloader_t
 flexflow_dataloader_create(
   flexflow_model_t ffmodel, 
+  flexflow_net_config_t netconfig,
   flexflow_tensor_t input, 
-  flexflow_tensor_t label,
-  int flag);
+  flexflow_tensor_t label);
   
 void  
 flexflow_dataloader_destroy(
@@ -385,6 +401,15 @@ flexflow_dataloader_set_num_samples(
 int
 flexflow_dataloader_get_num_samples(
   flexflow_dataloader_t handle);
+
+void
+flexflow_dataloader_reset(
+  flexflow_dataloader_t handle);
+
+void
+flowflow_dataloader_next_batch(
+  flexflow_dataloader_t handle,
+  flexflow_model_t ffmodel);
 
 // -----------------------------------------------------------------------
 // Timer

@@ -17,14 +17,17 @@ def top_level_task():
   dims_label = [ffconfig.get_batch_size(), 1]
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
   
-  dataloader = DataLoader(ffmodel, input1, input2)
+  alexnetconfig = NetConfig()
+  dataloader = DataLoader(ffmodel, alexnetconfig, input1, input2)
+  
+  dataloader.next_batch(ffmodel)
 
   input1.inline_map(ffconfig)
   input1_array = input1.get_array(ffconfig, DataType.DT_FLOAT)
-  input1_array *= 0
-  input1_array += 1.1
+  #input1_array *= 0
+  #input1_array += 1.1
   print(input1_array.shape)
- # print(input1_array)
+  print(input1_array)
   input1.inline_unmap(ffconfig)
   
   input2.inline_map(ffconfig)

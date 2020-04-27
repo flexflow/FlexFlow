@@ -41,9 +41,11 @@ def top_level_task():
 
   dims_label = [model.ffconfig.get_batch_size(), 1]
   label = model.ffmodel.create_tensor_2d(dims_label, "", ff.DataType.DT_INT32);
-  dataloader = ff.DataLoader(model.ffmodel, input, label, 1)
+  
+  alexnetconfig = ff.NetConfig()
+  dataloader = ff.DataLoader(model.ffmodel, alexnetconfig, input, label)
 
-  model.fit(input, label)
+  model.fit(input, label, dataloader, alexnetconfig)
 
 if __name__ == "__main__":
   print("alexnet keras")

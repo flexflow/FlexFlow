@@ -514,14 +514,25 @@ class NormInitializer(object):
   def __init__(self, seed, meanv, stddev):
     self.handle = ffc.flexflow_norm_initializer_create(seed, meanv, stddev)
     self._handle = ffi.gc(self.handle, ffc.flexflow_norm_initializer_destroy)
+
+# -----------------------------------------------------------------------
+# NetConfig
+# -----------------------------------------------------------------------
+
+class NetConfig(object):
+  def __init__(self):
+    self.handle = ffc.flexflow_net_config_create()
+    self._handle = ffi.gc(self.handle, ffc.flexflow_net_config_destroy)
+    cpath = ffc.flexflow_net_config_get_dataset_path(self.handle)
+    self.dataset_path = ffi.string(cpath)
     
 # -----------------------------------------------------------------------
 # DataLoader
 # -----------------------------------------------------------------------
 
 class DataLoader(object):
-  def __init__(self, ffmodel, input, label, flag=1):
-    self.handle = ffc.flexflow_dataloader_create(ffmodel.handle, input.handle, label.handle, flag)
+  def __init__(self, ffmodel, ffnetconfig, input, label):
+    self.handle = ffc.flexflow_dataloader_create(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle)
     self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_destroy)
   
   def set_num_samples(self, samples):
@@ -529,6 +540,12 @@ class DataLoader(object):
       
   def get_num_samples(self):
     return ffc.flexflow_dataloader_get_num_samples(self.handle)
+    
+  def next_batch(self, ffmodel):
+    ffc.flowflow_dataloader_next_batch(self.handle, ffmodel.handle)
+    
+  def reset(self):
+    ffc.flexflow_dataloader_reset(self.handle)
     
 class RegionNdarray(object):
   __slots__ = ['__array_interface__']

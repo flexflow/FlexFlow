@@ -102,7 +102,8 @@ def top_level_task():
   ffmodel.set_sgd_optimizer(ffoptimizer)
   
   # Data Loader
-  dataloader = DataLoader(ffmodel, input, label, 1)
+  alexnetconfig = NetConfig()
+  dataloader = DataLoader(ffmodel, alexnetconfig, input, label)
   dataloader.set_num_samples(256 * ffconfig.get_workers_per_node() * ffconfig.get_num_nodes())
   
   ffmodel.init_layers()
@@ -111,9 +112,15 @@ def top_level_task():
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
+    dataloader.reset()
     ffmodel.reset_metrics()
     iterations = dataloader.get_num_samples() / ffconfig.get_batch_size()
     for iter in range(0, int(iterations)):
+      if (len(alexnetconfig.dataset_path) == 0):
+        if (iter == 0 and epoch == 0):
+          dataloader.next_batch(ffmodel)
+      else:
+        dataloader.next_batch(ffmodel)
       if (epoch > 0):
         ffconfig.start_trace(111)
       ffmodel.forward()

@@ -1,17 +1,8 @@
-#include "model.h"
+#include <sstream>
+#include <fstream>
+#include <string>
+#include "flexflow_c_internal.h"
 #include "flexflow_c.h"
-
-class ImgDataLoader {
-public:
-  ImgDataLoader(FFModel& ff, Tensor input, Tensor label, int flag);
-  void set_num_samples(int samples);
-  static void load_input(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
-                         Context ctx,
-                         Runtime* runtime);
-public:
-  int num_samples;
-};
 
 class FFCObjectWrapper {
 public:
@@ -43,6 +34,7 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_norm_initializer_t, NormInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_op_t, Op *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_parameter_t, Parameter *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_net_config_t, NetConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_t, ImgDataLoader *);
 };
 
@@ -700,20 +692,48 @@ flexflow_norm_initializer_destroy(
 }
 
 // -----------------------------------------------------------------------
+// NetConfig
+// -----------------------------------------------------------------------
+flexflow_net_config_t
+flexflow_net_config_create()
+{
+  NetConfig *netconfig = new NetConfig();
+  return FFCObjectWrapper::wrap(netconfig);  
+}
+
+void
+flexflow_net_config_destroy(
+  flexflow_net_config_t handle_)
+{
+  NetConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  delete handle;
+}
+
+const char*
+flexflow_net_config_get_dataset_path(
+  flexflow_net_config_t handle_)
+{
+  NetConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  const char *cstr = handle->dataset_path.c_str();
+  return cstr;
+}
+
+// -----------------------------------------------------------------------
 // DataLoader
 // -----------------------------------------------------------------------
 
 flexflow_dataloader_t
 flexflow_dataloader_create(
   flexflow_model_t ffmodel_, 
+  flexflow_net_config_t netconfig_,
   flexflow_tensor_t input_, 
-  flexflow_tensor_t label_,
-  int flag)
+  flexflow_tensor_t label_)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
+  NetConfig *netconfig = FFCObjectWrapper::unwrap(netconfig_);
   Tensor *input = FFCObjectWrapper::unwrap(input_);
   Tensor *label = FFCObjectWrapper::unwrap(label_);
-  ImgDataLoader *dataloader = new ImgDataLoader(*ffmodel, *input, *label, flag);
+  ImgDataLoader *dataloader = new ImgDataLoader(*ffmodel, *netconfig, *input, *label);
   return FFCObjectWrapper::wrap(dataloader);  
 }
 
@@ -731,7 +751,7 @@ flexflow_dataloader_set_num_samples(
   int samples)
 {
   ImgDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->set_num_samples(samples);  
+  handle->num_samples = samples;  
   printf("dataloader set number of samples %d\n", samples);
 }
 
@@ -741,6 +761,24 @@ flexflow_dataloader_get_num_samples(
 {
   ImgDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
   return handle->num_samples;
+}
+
+void
+flexflow_dataloader_reset(
+  flexflow_dataloader_t handle_)
+{
+  ImgDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->reset();
+}
+
+void
+flowflow_dataloader_next_batch(
+  flexflow_dataloader_t handle_,
+  flexflow_model_t ffmodel_)
+{
+  ImgDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
+  handle->next_batch(*ffmodel);
 }
 
 // -----------------------------------------------------------------------
@@ -908,71 +946,261 @@ flexflow_print_array_int(
 }
 
 // -----------------------------------------------------------------------
+// NetConfig implementation
+// -----------------------------------------------------------------------
+NetConfig::NetConfig(void)
+{
+  const InputArgs &command_args = Runtime::get_input_args();
+  char **argv = command_args.argv;
+  int argc = command_args.argc;
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "--dataset")) {
+      dataset_path = std::string(argv[++i]);
+      continue;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
 // ImgDataLoader implementation
 // -----------------------------------------------------------------------
 
-ImgDataLoader::ImgDataLoader(FFModel& ff,
-                       Tensor input, Tensor label, int flag)
+ImgDataLoader::ImgDataLoader(FFModel& ff, 
+                             const NetConfig& alexnet,
+                             Tensor input, Tensor label)
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   num_samples = 0;
-  printf("Use random dataset...");
-  num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
-  printf("Number of random samples = %d\n", num_samples);
-  // Init input
+  if (alexnet.dataset_path == "") {
+    printf("Use random dataset...");
+    num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
+    printf("Number of random samples = %d\n", num_samples);
+  } else {
+    printf("Start loading dataset from %s\n", alexnet.dataset_path.c_str());
+    size_t filesize = get_file_size(alexnet.dataset_path);
+    assert(filesize % 3073 == 0);
+    num_samples = filesize / 3073;
+  }
+  // Create full input
+  {
+    batch_input = input;
+    const int dims[] = {num_samples, input.adim[2], input.adim[1], input.adim[0]};
+    full_input = ff.create_tensor<4>(dims, "", DT_FLOAT);
+  }
+  // Create full label
+  {
+    batch_label = label;
+    const int dims[] = {num_samples, label.adim[0]};
+    full_label = ff.create_tensor<2>(dims, "", DT_INT32);
+  }
+  // Load entire dataset
+  // TODO: Use index launcher instead of task launcher
+  const NetConfig* ptr = &alexnet;
+  TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
+      TaskArgument(&ptr, sizeof(NetConfig*)));
+  // regions[0]: full_input
+  launcher.add_region_requirement(
+      RegionRequirement(full_input.region, WRITE_ONLY,
+                        EXCLUSIVE, full_input.region,
+                        MAP_TO_ZC_MEMORY));
+  launcher.add_field(0, FID_DATA);
+  // regions[1]: full_label
+  launcher.add_region_requirement(
+      RegionRequirement(full_label.region, WRITE_ONLY,
+                        EXCLUSIVE, full_label.region,
+                        MAP_TO_ZC_MEMORY));
+  launcher.add_field(1, FID_DATA);
+  runtime->execute_task(ctx, launcher);
+  reset();
+  next_batch(ff);
+}
+
+__inline__
+int calc_offset(int c, int y, int x, int yscale, int xscale)
+{
+  return (c * yscale * xscale + y * xscale + x);
+}
+
+void nearest_neigh(unsigned char* image,
+                   unsigned char* buffer,
+                   int height, int width,
+                   int orig_height, int orig_width,
+                   float height_scale, float width_scale)
+{
+  for (int y = 0; y < height; y++) {
+    int y0 = std::min(static_cast<int>(roundf(y * height_scale)), orig_height - 1);
+    for (int x = 0; x < width; x++) {
+      int x0 = std::min(static_cast<int>(roundf(x * width_scale)), orig_width - 1);
+      for (int c = 0; c < 3; c++) {
+        int origOffset = calc_offset(y0, x0, c, orig_width, 3);
+        int offset = calc_offset(c, y, x, height, width);
+        image[offset] = buffer[origOffset];
+      }
+    }
+  }
+}
+
+void ImgDataLoader::load_entire_dataset(const Task *task,
+                                        const std::vector<PhysicalRegion> &regions,
+                                        Context ctx, Runtime* runtime)
+{
+  const NetConfig* alexnet = *((NetConfig**)task->args);
+  assert(regions.size() == 2);
+  assert(task->regions.size() == regions.size());
+  const AccessorWO<float, 4> acc_input(regions[0], FID_DATA);
+  const AccessorWO<int, 2> acc_label(regions[1], FID_DATA);
+  Rect<4> rect_input = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
+  Rect<2> rect_label = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  assert(acc_label.accessor.is_dense_arbitrary(rect_label));
+  float* input_ptr = acc_input.ptr(rect_input.lo);
+  int* label_ptr = acc_label.ptr(rect_label.lo);
+  int num_samples = rect_label.hi[1] - rect_label.lo[1] + 1;
+  assert(rect_input.hi[3] - rect_input.lo[3] + 1 == num_samples);
+  if (alexnet->dataset_path.length() == 0) {
+    printf("Start generating random input samples\n");
+    for (size_t i = 0; i < rect_label.volume(); i++)
+      label_ptr[i] = std::rand() % 10;
+    return;
+  }
+  printf("Start loading %d samples from %s\n",
+      num_samples, alexnet->dataset_path.c_str());
+  int height = rect_input.hi[1] - rect_input.lo[1] + 1;
+  int width = rect_input.hi[0] - rect_input.lo[0] + 1;
+  int origHeight = 32;
+  int origWidth = 32;
+  float heightScale = static_cast<float>(origHeight) / height;
+  float widthScale = static_cast<float>(origWidth) / width;
+  FILE* file = fopen(alexnet->dataset_path.c_str(), "rb");
+  unsigned char* image = (unsigned char*) malloc(3073);
+  unsigned char* buffer = (unsigned char*) malloc(3 * height * width);
+  for (int i = 0; i < num_samples; i++) {
+    size_t ret = fread(buffer, sizeof(unsigned char), 3073, file);
+    assert(ret = 3073);
+    if ((i+1) % 1000 == 0)
+      printf("Loaded %d samples\n", i+1);
+    label_ptr[i] = image[0];
+    nearest_neigh(image + 1, buffer, height, width,
+                  origHeight, origWidth, heightScale, widthScale);
+    int input_offset = i * 3 * height * width;
+    int buffer_offset = 0;
+    for (int h = 0; h < 3*height*width; h++)
+        input_ptr[input_offset++] = static_cast<float>(buffer[buffer_offset++]) / 255;
+  }
+  printf("Finish loading %d samples from %s\n",
+      num_samples, alexnet->dataset_path.c_str());
+  fclose(file);
+}
+
+void ImgDataLoader::next_batch(FFModel& ff)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  // Load input
   {
     IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, ""));
+    Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
+    int idx = next_index;
+    for (PointInRectIterator<4> it(rect); it(); it++) {
+      SampleIdxs meta;
+      assert(ff.config.batchSize % (rect.hi[3] - rect.lo[3] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[3] - rect.lo[3] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
-                           TaskArgument(NULL, 0), argmap,
+                           TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(std::string("")));
+                           FFConfig::get_hash_id(""));
     launcher.add_region_requirement(
-        RegionRequirement(input.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, input.region));
+        RegionRequirement(full_input.region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input.region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    FutureMap fu = runtime->execute_index_space(ctx, launcher);
-    fu.wait_all_results();
+    launcher.add_region_requirement(
+        RegionRequirement(batch_input.part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input.region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
   }
-  // Init label
-  if (flag == 1){
+  // Load label
+  {
     IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
+    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
-                           TaskArgument(NULL, 0), argmap,
+    int idx = next_index;
+    for (PointInRectIterator<2> it(rect); it(); it++) {
+      SampleIdxs meta;
+      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
+                           TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(std::string("")));
+                           FFConfig::get_hash_id(""));
     launcher.add_region_requirement(
-        RegionRequirement(label.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, label.region));
+        RegionRequirement(full_label.region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_label.region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    FutureMap fu = runtime->execute_index_space(ctx, launcher);
-    fu.wait_all_results();
+    launcher.add_region_requirement(
+        RegionRequirement(batch_label.part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_label.region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
   }
+  next_index += ff.config.batchSize;
 }
 
-void ImgDataLoader::set_num_samples(int samples)
+void ImgDataLoader::reset()
 {
-  num_samples = samples;
+  next_index = 0;
 }
 
-void ImgDataLoader::load_input(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx,
-                            Runtime* runtime)
+size_t ImgDataLoader::get_file_size(const std::string& filename)
 {
-  printf("CheckPoint#1\n");
+  std::streampos begin,end;
+  std::ifstream file(filename.c_str(), std::ios::binary);
+  begin = file.tellg();
+  file.seekg (0, std::ios::end);
+  end = file.tellg();
+  file.close();
+  size_t filesize = end - begin;
+  return filesize;
 }
 
 void register_c_custom_tasks()
 {
-  // Load Input
+  // Load entire dataset
+  {
+    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_1, "Load Entire Dataset");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ImgDataLoader::load_entire_dataset>(
+        registrar, "Load Entire Dataset Task");
+  }
+  // Load input
   {
     TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_1, "Load Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<ImgDataLoader::load_input>(
-        registrar, "Load Inputs Task");
+        registrar, "Load Input Task");
+  }
+  // Load label
+  {
+    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_2, "Load Labels");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ImgDataLoader::load_label>(
+        registrar, "Load Label Task");
   }
 }

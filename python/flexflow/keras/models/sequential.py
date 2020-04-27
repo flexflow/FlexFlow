@@ -121,7 +121,7 @@ class Sequential(object):
     self.ffoptimizer = ff.SGDOptimizer(self.ffmodel, 0.01)
     self.ffmodel.set_sgd_optimizer(self.ffoptimizer)
     
-  def fit(self, input_tensor, label_tensor):
+  def fit(self, input_tensor, label_tensor, dataloader, alexnetconfig):
     if (self.use_v2 == True):
       self._init_inout(input_tensor, label_tensor)
     else:
@@ -132,15 +132,19 @@ class Sequential(object):
   
     ts_start = self.ffconfig.get_current_time()
     for epoch in range(0,epochs):
+      dataloader.reset()
       self.ffmodel.reset_metrics()
-      iterations = 8192 / self.ffconfig.get_batch_size()
+      iterations = dataloader.get_num_samples() / self.ffconfig.get_batch_size()
+    
       for iter in range(0, int(iterations)):
+        if (len(alexnetconfig.dataset_path) == 0):
+          if (iter == 0 and epoch == 0):
+            dataloader.next_batch(self.ffmodel)
+        else:
+          dataloader.next_batch(self.ffmodel)
         if (epoch > 0):
-          self.ffconfig.begin_trace(111)
-        #self.ffmodel.forward()
-        for layer_id in self._layers:
-          layer = self._layers[layer_id]
-          layer.handle.forward(self.ffmodel)
+          ffconfig.begin_trace(111)
+        self.ffmodel.forward()
         self.ffmodel.zero_gradients()
         self.ffmodel.backward()
         self.ffmodel.update()
@@ -149,6 +153,6 @@ class Sequential(object):
 
     ts_end = self.ffconfig.get_current_time()
     run_time = 1e-6 * (ts_end - ts_start);
-    print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, 8192 * epochs / run_time));
+    print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, dataloader.get_num_samples() * epochs / run_time));
     
     

@@ -22,7 +22,8 @@ def top_level_task():
   #t3 = ffmodel.dense("dense1", t2, 128, ActiMode.AC_MODE_RELU)
   
   # Data Loader
-  dataloader = DataLoader(ffmodel, input1, label)
+  alexnetconfig = NetConfig()
+  dataloader = DataLoader(ffmodel, alexnetconfig, input1, label)
   
   ffmodel.init_layers()
   

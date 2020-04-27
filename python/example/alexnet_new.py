@@ -2,6 +2,8 @@ from flexflow.core import *
 
 def top_level_task():
   ffconfig = FFConfig()
+  alexnetconfig = NetConfig()
+  print(alexnetconfig.dataset_path)
   ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
   ffmodel = FFModel(ffconfig)
@@ -49,7 +51,7 @@ def top_level_task():
   ffmodel.set_sgd_optimizer(ffoptimizer)
   
   # Data Loader
-  dataloader = DataLoader(ffmodel, input, label, 1)
+  dataloader = DataLoader(ffmodel, alexnetconfig, input, label)
   # input.inline_map(ffconfig)
   # input_array = input.get_array(ffconfig, DataType.DT_FLOAT)
   # input_array *= 1.0
@@ -76,13 +78,19 @@ def top_level_task():
   
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
+    dataloader.reset()
     ffmodel.reset_metrics()
-    iterations = 8192 / ffconfig.get_batch_size()
+    iterations = dataloader.get_num_samples() / ffconfig.get_batch_size()
+    
     for iter in range(0, int(iterations)):
+      if (len(alexnetconfig.dataset_path) == 0):
+        if (iter == 0 and epoch == 0):
+          dataloader.next_batch(ffmodel)
+      else:
+        dataloader.next_batch(ffmodel)
       if (epoch > 0):
         ffconfig.begin_trace(111)
       ffmodel.forward()
-              
       ffmodel.zero_gradients()
       ffmodel.backward()
       ffmodel.update()
@@ -91,7 +99,7 @@ def top_level_task():
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
-  print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, 8192 * epochs / run_time));
+  print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, dataloader.get_num_samples() * epochs / run_time));
   #ffmodel.print_layers(13)
   
   conv_2d1 = ffmodel.get_layer_by_id(4)
