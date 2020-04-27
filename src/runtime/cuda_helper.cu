@@ -87,3 +87,4 @@ template __global__ void assign_kernel<int32_t>(int32_t* ptr, coord_t size, int3
 template __global__ void assign_kernel<int64_t>(int64_t* ptr, coord_t size, int64_t value);
 
 template __global__ void copy_kernel<float>(float* dst, const float* src, coord_t size);
+template __global__ void copy_kernel<int>(int* dst, const int* src, coord_t size);
