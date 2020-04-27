@@ -204,7 +204,7 @@ size_t get_file_size(const std::string& filename)
   end = file.tellg();
   file.close();
   size_t filesize = end - begin;
-  printf("filesizee(%s) = %zu\n", filename.c_str(), filesize);
+  printf("filesize(%s) = %zu\n", filename.c_str(), filesize);
   return filesize;
 }
 
