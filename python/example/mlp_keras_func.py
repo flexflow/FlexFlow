@@ -40,7 +40,8 @@ def top_level_task():
   
   dims2 = [builtins.internal_ffconfig.get_batch_size(), 3, 229, 229]
   input2 = builtins.internal_ffmodel.create_tensor_4d(dims2, "", ff.DataType.DT_FLOAT);
-  dataloader = ff.DataLoader(builtins.internal_ffmodel, input2, label, 1)
+  alexnetconfig = ff.NetConfig()
+  dataloader = ff.DataLoader(builtins.internal_ffmodel, alexnetconfig, input2, label)
   
   output = Conv2D(filters=64, input_shape=(229,229,3), kernel_size=(11,11), strides=(4,4), padding=(2,2))(input2)
   output = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid")(output)

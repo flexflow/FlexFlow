@@ -104,7 +104,7 @@ def top_level_task():
   #ffmodel.print_layers(13)
 
   conv_2d1 = ffmodel.get_layer_by_id(0)
-  cbias_tensor = conv_2d1.get_input_tensor()
+  cbias_tensor = conv_2d1.get_output_tensor()
   #cbias_tensor = conv_2d1.get_output_tensor()
   cbias_tensor.inline_map(ffconfig)
   cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)

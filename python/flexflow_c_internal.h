@@ -1,3 +1,6 @@
+#ifndef __FLEXFLOW_C_INTERNAL_H__
+#define __FLEXFLOW_C_INTERNAL_H__
+
 #include "model.h"
 
 struct NetConfig {
@@ -36,3 +39,5 @@ struct SampleIdxs {
   int num_samples;
   int idxs[MAX_NUM_SAMPLES];
 };
+
+#endif // __FLEXFLOW_C_INTERNAL_H__

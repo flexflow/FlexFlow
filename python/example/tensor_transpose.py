@@ -23,7 +23,10 @@ def top_level_task():
   #t3 = ffmodel.dense("dense1", t2, 128, ActiMode.AC_MODE_RELU)
   
   # Data Loader
-  dataloader = DataLoader(ffmodel, input1, label)
+  #dataloader = DataLoader(ffmodel, input1, label)
+  input1.inline_map(ffconfig)
+  input1_array = input1.get_array(ffconfig, DataType.DT_FLOAT)
+  input1.inline_unmap(ffconfig)
   
   ffmodel.init_layers()
   
