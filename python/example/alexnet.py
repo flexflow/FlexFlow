@@ -81,7 +81,7 @@ def top_level_task():
   for epoch in range(0,epochs):
     dataloader.reset()
     ffmodel.reset_metrics()
-    iterations = dataloader.get_num_samples() / ffconfig.get_batch_size()
+    iterations = int(dataloader.get_num_samples() / ffconfig.get_batch_size())
     
     for iter in range(0, int(iterations)):
       if (len(alexnetconfig.dataset_path) == 0):
@@ -104,12 +104,12 @@ def top_level_task():
   #ffmodel.print_layers(13)
 
   conv_2d1 = ffmodel.get_layer_by_id(0)
-  cbias_tensor = conv_2d1.get_output_tensor()
+  cbias_tensor = conv_2d1.get_input_tensor()
   #cbias_tensor = conv_2d1.get_output_tensor()
   cbias_tensor.inline_map(ffconfig)
   cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
   print(cbias.shape)
-  #print(cbias)
+  print(cbias[0,0,0,:])
   cbias_tensor.inline_unmap(ffconfig)
 
 if __name__ == "__main__":

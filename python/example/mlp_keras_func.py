@@ -87,7 +87,7 @@ def top_level_task():
   output = model.add_softmax(output, label)
 
   model.compile()
-  model.fit(input2, label)
+  model.fit(input2, label, dataloader, alexnetconfig)
   
   delete_internal_model()
 
