@@ -1,5 +1,6 @@
 from flexflow.keras.models import Sequential
 from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation
+import flexflow.keras.optimizers
 
 import flexflow.core as ff
 
@@ -34,7 +35,8 @@ def top_level_task():
   # model.add_v2(Dense(1000))
   # model.add_v2(Activation("softmax"))
 
-  model.compile()
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  model.compile(optimizer=opt)
 
   dims = [model.ffconfig.get_batch_size(), 3, 229, 229]
   input = model.ffmodel.create_tensor_4d(dims, "", ff.DataType.DT_FLOAT);

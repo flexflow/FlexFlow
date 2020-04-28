@@ -109,7 +109,7 @@ def top_level_task():
   cbias_tensor.inline_map(ffconfig)
   cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
   print(cbias.shape)
-  print(cbias[0,0,0,:])
+  print(cbias[0,0:2,0:4,:])
   cbias_tensor.inline_unmap(ffconfig)
 
 if __name__ == "__main__":

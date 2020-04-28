@@ -117,9 +117,10 @@ class Sequential(object):
     else:
       assert 0, "unknow layer"
       
-  def compile(self):
-    self.ffoptimizer = ff.SGDOptimizer(self.ffmodel, 0.01)
-    self.ffmodel.set_sgd_optimizer(self.ffoptimizer)
+  def compile(self, optimizer):
+    self.ffoptimizer = optimizer
+    optimizer.handle = ff.SGDOptimizer(self.ffmodel, optimizer.learning_rate)
+    self.ffmodel.set_sgd_optimizer(self.ffoptimizer.handle)
     
   def fit(self, input_tensor, label_tensor, dataloader, alexnetconfig):
     if (self.use_v2 == True):
