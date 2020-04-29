@@ -29,8 +29,7 @@ Tensor FFModel::conv2d(std::string name,
 {
   if (kernel_initializer == NULL) {
     int seed = std::rand();
-    //kernel_initializer = new GlorotUniform(seed);
-    kernel_initializer = new ZeroInitializer();
+    kernel_initializer = new GlorotUniform(seed);
   }
   if (bias_initializer == NULL) {
     bias_initializer = new ZeroInitializer();
@@ -57,8 +56,7 @@ Conv2D* FFModel::conv2d(std::string name,
 {
   if (kernel_initializer == NULL) {
     int seed = std::rand();
-    //kernel_initializer = new GlorotUniform(seed);
-    kernel_initializer = new ZeroInitializer();
+    kernel_initializer = new GlorotUniform(seed);
   }
   if (bias_initializer == NULL) {
     bias_initializer = new ZeroInitializer();
@@ -358,14 +356,16 @@ selectConvolutionBackwardDataAlgorithm(cudnnHandle_t handle,
   regions[1]: output
   regions[2](I): filter
   regions[3](I): bias
+  regions[4](O): filter_grad
+  regions[5](O): input_grad
 */
 __host__
 OpMeta* Conv2D::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-  assert(regions.size() == 4);
-  assert(task->regions.size() == 4);
+  assert(regions.size() == 6);
+  assert(task->regions.size() == 6);
   const Conv2D* conv = (Conv2D*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   TensorAccessorR<float, 4> acc_input(
@@ -377,7 +377,13 @@ OpMeta* Conv2D::init_task(const Task *task,
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   TensorAccessorR<float, 1> acc_bias(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
-
+  TensorAccessorW<float, 4> acc_kernel_grad(
+      regions[4], task->regions[4], FID_DATA, ctx, runtime,
+      false/*readOutput*/);
+  TensorAccessorW<float, 4> acc_input_grad(
+      regions[5], task->regions[5], FID_DATA, ctx, runtime,
+      false/*readOutput*/);
+ 
   Conv2DMeta* m = new Conv2DMeta(handle);
   m->relu = conv->activation == AC_MODE_RELU;
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
@@ -461,13 +467,13 @@ OpMeta* Conv2D::init_task(const Task *task,
                          m->handle.dnn, m->inputTensor, acc_input.ptr,
                          m->outputTensor, acc_output.ptr,
                          m->convDesc, m->handle.workSpace, m->handle.workSpaceSize,
-                         m->filterDesc, (void*)acc_kernel.ptr);
+                         m->filterDesc, acc_kernel_grad.ptr);
   // select backward data algorithm
   m->bwdDataAlgo = selectConvolutionBackwardDataAlgorithm(
                        m->handle.dnn, m->filterDesc, acc_kernel.ptr,
                        m->outputTensor, acc_output.ptr,
                        m->convDesc, m->handle.workSpace, m->handle.workSpaceSize,
-                       m->inputTensor, (void*)acc_input.ptr);
+                       m->inputTensor, acc_input_grad.ptr);
   if (m->relu) {
     checkCUDNN(cudnnCreateActivationDescriptor(&m->actiDesc));
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
@@ -507,6 +513,14 @@ void Conv2D::init(const FFModel& ff)
       RegionRequirement(bias.part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, bias.region));
   launcher.add_field(3, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(kernel.part_grad, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, kernel.region_grad));
+  launcher.add_field(4, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+  launcher.add_field(5, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;
