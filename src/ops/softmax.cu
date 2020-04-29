@@ -205,6 +205,33 @@ void Softmax::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+__global__
+void softmax_cross_entropy_calc_loss(const float* logits,
+                                     const int* labels,
+                                     PerfMetrics* perf,
+                                     int num_samples,
+                                     int num_labels)
+{
+  CUDA_KERNEL_LOOP(b, num_samples)
+  {
+    float max_val = -1.0f;
+    int my_label = -1;
+    for (int i = 0; i < num_labels; i++) {
+      float my_logit = logits[b*num_labels+i];
+      if (my_logit > max_val) {
+        max_val = my_logit;
+        my_label = i;
+      }
+    }
+    assert(my_label >= 0);
+    // https://pytorch.org/docs/stable/nn.html#crossentropyloss
+    atomicAdd(&(perf->train_loss), -log(logits[b*num_labels+labels[b]]));
+    atomicAdd(&(perf->train_all), 1);
+    if (labels[b] == my_label)
+      atomicAdd(&(perf->train_correct), 1);
+  }
+}
+
 __global__ void SoftmaxLossBackprop(float *input, const int *label, int num_labels, int batch_size)
 {
   CUDA_KERNEL_LOOP(i, batch_size)
@@ -220,9 +247,9 @@ __global__ void SoftmaxLossBackprop(float *input, const int *label, int num_labe
   regions[2](I): labels
 */
 __host__
-void Softmax::backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime)
+PerfMetrics Softmax::backward_task(const Task *task,
+                                   const std::vector<PhysicalRegion> &regions,
+                                   Context ctx, Runtime *runtime)
 {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
@@ -257,11 +284,25 @@ void Softmax::backward_task(const Task *task,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
+  // Calculate loss
+  PerfMetrics* perf;
+  PerfMetrics perf_zc;
+  perf_zc.train_loss = 0.0f;
+  perf_zc.train_correct = perf_zc.train_all = 0;
+  perf_zc.test_correct = perf_zc.test_all = 0;
+  perf_zc.val_correct = perf_zc.val_all = 0;
+  checkCUDA(cudaMalloc(&perf, sizeof(PerfMetrics)));
+  checkCUDA(cudaMemcpy(perf, &perf_zc, sizeof(PerfMetrics), cudaMemcpyHostToDevice));
+  softmax_cross_entropy_calc_loss<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS>>>(
+      acc_output.ptr, acc_label.ptr, perf, num_samples, num_labels);
+    checkCUDA(cudaMemcpy(&perf_zc, perf, sizeof(PerfMetrics), cudaMemcpyDeviceToHost));
+  checkCUDA(cudaFree(perf));
+  // Calculate backward
   checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output.ptr,
                             acc_input_grad.rect.volume() * sizeof(float),
                             cudaMemcpyDeviceToDevice));
-  //SoftmaxLossBackprop<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS>>>(
-  //    acc_input_grad.ptr, acc_label.ptr, num_labels, num_samples);
+  SoftmaxLossBackprop<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS>>>(
+      acc_input_grad.ptr, acc_label.ptr, num_labels, num_samples);
 
   // Accouting for batch size in SGD
   float scalVal = 1.0f / static_cast<float>(num_samples);
@@ -276,6 +317,7 @@ void Softmax::backward_task(const Task *task,
     cudaEventDestroy(t_end);
     printf("Softmax backward time = %.2fms\n", elapsed);
   }
+  return perf_zc;
 }
 
 __host__
@@ -307,6 +349,15 @@ void Softmax::backward(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, inputs[1].region));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+  FutureMap new_metrics = runtime->execute_index_space(ctx, launcher);
+  // Update metrics
+  TaskLauncher metrics_task(UPDATE_METRICS_TASK_ID, TaskArgument(NULL, 0));
+  metrics_task.add_future(ff.current_metrics);
+  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  for (PointInRectIterator<2> it(rect); it(); it++) {
+    metrics_task.add_future(new_metrics[*it]);
+  }
+  ((FFModel*)(&ff))->current_metrics = runtime->execute_task(ctx, metrics_task);
 }
 
 //void Softmax::update(const FFModel& ff)

@@ -76,9 +76,9 @@ void top_level_task(const Task* task,
   t = ff.flat("flat", t);
   t = ff.dense("lienar1", t, 4096, AC_MODE_RELU/*relu*/);
   t = ff.dense("linear2", t, 4096, AC_MODE_RELU/*relu*/);
-  t = ff.dense("linear3", t, 1000);
+  t = ff.dense("linear3", t, 10);
   t = ff.softmax("softmax", t, label);
-  ff.optimizer = new SGDOptimizer(&ff, 0.01f);
+  ff.optimizer = new SGDOptimizer(&ff, 0.001f);
   // Data Loader
   DataLoader data_loader(ff, alexnetConfig, input, label);
   ff.init_layers();

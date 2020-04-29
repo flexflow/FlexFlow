@@ -1201,7 +1201,7 @@ void register_internal_tasks()
     TaskVariantRegistrar registrar(SOFTMAX_BWD_TASK_ID, "softmax_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Softmax::backward_task>(
+    Runtime::preregister_task_variant<PerfMetrics, Softmax::backward_task>(
         registrar, "softmax_bwd_task");
   }
   // MSELoss
