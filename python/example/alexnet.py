@@ -45,10 +45,10 @@ def top_level_task():
   t = ffmodel.flat("flat", t);
   t = ffmodel.dense("lienar1", t, 4096, ActiMode.AC_MODE_RELU)
   t = ffmodel.dense("linear2", t, 4096, ActiMode.AC_MODE_RELU)
-  t = ffmodel.dense("linear3", t, 1000)
+  t = ffmodel.dense("linear3", t, 10)
   t = ffmodel.softmax("softmax", t, label)
 
-  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
+  ffoptimizer = SGDOptimizer(ffmodel, 0.001)
   ffmodel.set_sgd_optimizer(ffoptimizer)
 
   # Data Loader
@@ -82,7 +82,7 @@ def top_level_task():
     dataloader.reset()
     ffmodel.reset_metrics()
     iterations = int(dataloader.get_num_samples() / ffconfig.get_batch_size())
-    
+
     for iter in range(0, int(iterations)):
       if (len(alexnetconfig.dataset_path) == 0):
         if (iter == 0 and epoch == 0):
@@ -104,13 +104,15 @@ def top_level_task():
   #ffmodel.print_layers(13)
 
   conv_2d1 = ffmodel.get_layer_by_id(0)
-  cbias_tensor = conv_2d1.get_input_tensor()
-  #cbias_tensor = conv_2d1.get_output_tensor()
+  #cbias_tensor = conv_2d1.get_input_tensor()
+  cbias_tensor = conv_2d1.get_output_tensor()
   cbias_tensor.inline_map(ffconfig)
   cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
   print(cbias.shape)
-  print(cbias[0,0:2,0:4,:])
+  print(cbias)
   cbias_tensor.inline_unmap(ffconfig)
+  
+  #ffmodel.print_layers(0)
 
 if __name__ == "__main__":
   print("alexnet")

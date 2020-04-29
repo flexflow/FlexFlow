@@ -18,7 +18,7 @@ def top_level_task():
   model.add(Flatten())
   model.add(Dense(4096, activation="relu"))
   model.add(Dense(4096, activation="relu"))
-  model.add(Dense(1000))
+  model.add(Dense(10))
   model.add(Activation("softmax"))
   
   # model.add_v2(Conv2D(filters=64, input_shape=(229,229,3), kernel_size=(11,11), strides=(4,4), padding=(2,2)))
@@ -35,7 +35,7 @@ def top_level_task():
   # model.add_v2(Dense(1000))
   # model.add_v2(Activation("softmax"))
 
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt)
 
   dims = [model.ffconfig.get_batch_size(), 3, 229, 229]

@@ -154,6 +154,6 @@ class Sequential(object):
 
     ts_end = self.ffconfig.get_current_time()
     run_time = 1e-6 * (ts_end - ts_start);
-    print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, dataloader.get_num_samples() * epochs / run_time));
+    print("epochs %d, ELAPSED TIME = %.4fs, interations %d, samples %d, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, int(iterations), dataloader.get_num_samples(), dataloader.get_num_samples() * epochs / run_time));
     
     

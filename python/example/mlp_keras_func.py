@@ -42,6 +42,10 @@ def top_level_task():
   input2 = builtins.internal_ffmodel.create_tensor_4d(dims2, "", ff.DataType.DT_FLOAT);
   alexnetconfig = ff.NetConfig()
   dataloader = ff.DataLoader(builtins.internal_ffmodel, alexnetconfig, input2, label)
+  input2.inline_map(builtins.internal_ffconfig)
+  input2_array = input2.get_array(builtins.internal_ffconfig, ff.DataType.DT_FLOAT)
+  print(input2_array.shape)
+  input2.inline_unmap(builtins.internal_ffconfig)
   
   output = Conv2D(filters=64, input_shape=(229,229,3), kernel_size=(11,11), strides=(4,4), padding=(2,2))(input2)
   output = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid")(output)
@@ -54,7 +58,7 @@ def top_level_task():
   output = Flatten()(output)
   output = Dense(4096, activation="relu")(output)
   output = Dense(4096, activation="relu")(output)
-  output = Dense(1000)(output)
+  output = Dense(10)(output)
   
   conv1 = builtins.internal_ffmodel.get_layer_by_id(0)
   pool1 = builtins.internal_ffmodel.get_layer_by_id(1)

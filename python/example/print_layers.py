@@ -95,10 +95,10 @@ def top_level_task():
   #     ct += 1.0
   # print(dweight.shape)
   # print(dweight.strides)
-  # #print(dweight)
+  # print(dweight)
   dweight_tensor.inline_unmap(ffconfig)
   
-  ffmodel.print_layers(0)
+  #ffmodel.print_layers(0)
 
 if __name__ == "__main__":
   print("alexnet")
