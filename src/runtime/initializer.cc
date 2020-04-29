@@ -32,7 +32,7 @@ void GlorotUniform::init(Context ctx,
                          Runtime* runtime,
                          const Tensor* p)
 {
-  assert(p->numDim == 2);
+  assert(p->numDim >= 2);
   TaskLauncher launcher(GLOROT_INIT_TASK_ID,
                         TaskArgument(this, sizeof(GlorotUniform)));
   // regions[0]: p->region

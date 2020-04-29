@@ -53,11 +53,44 @@ void GlorotUniform::init_task(const Task* task,
 {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
-  TensorAccessorW<float, 2> accW(regions[0], task->regions[0],
-      FID_DATA, ctx, runtime, false/*readOutput*/);
-  int inputDim = accW.rect.hi[0] - accW.rect.lo[0] + 1;
-  int outputDim = accW.rect.hi[1] - accW.rect.lo[1] + 1;
-  float scale = sqrt(6.0 / (inputDim + outputDim));
+  Domain domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  float* w;
+  float scale = 0;
+  switch (domain.get_dim()) {
+    case 2:
+    {
+      TensorAccessorW<float, 2> accW(regions[0], task->regions[0],
+          FID_DATA, ctx, runtime, false/*readOutput*/);
+      w = accW.ptr;
+      int outputDim = accW.rect.hi[1] - accW.rect.lo[1] + 1;
+      int inputDim = accW.rect.volume() / outputDim;
+      scale = sqrt(6.0 / (inputDim + outputDim));
+      break;
+    }
+    case 3:
+    {
+      TensorAccessorW<float, 3> accW(regions[0], task->regions[0],
+          FID_DATA, ctx, runtime, false/*readOutput*/);
+      w = accW.ptr;
+      int outputDim = accW.rect.hi[2] - accW.rect.lo[2] + 1;
+      int inputDim = accW.rect.volume() / outputDim;
+      scale = sqrt(6.0 / (inputDim + outputDim));
+      break;
+    }
+    case 4:
+    {
+      TensorAccessorW<float, 4> accW(regions[0], task->regions[0],
+          FID_DATA, ctx, runtime, false/*readOutput*/);
+      w = accW.ptr;
+      int outputDim = accW.rect.hi[3] - accW.rect.lo[3] + 1;
+      int inputDim = accW.rect.volume() / outputDim;
+      scale = sqrt(6.0 / (inputDim + outputDim));
+      break;
+    }
+    default:
+      assert(false);
+  }
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
 #ifndef DISABLE_LEGION_CUDA_HIJACK
@@ -67,10 +100,10 @@ void GlorotUniform::init_task(const Task* task,
 #endif
   GlorotUniform* initializer = (GlorotUniform*) task->args;
   curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
-  fprintf(stderr, "seed = %d\n", initializer->seed);
-  checkCUDA(curandGenerateUniform(gen, accW.ptr, accW.rect.volume()));
-  scale_kernel<<<GET_BLOCKS(accW.rect.volume()), CUDA_NUM_THREADS>>>(
-      accW.ptr, accW.rect.volume(), -scale, scale);
+  fprintf(stderr, "seed = %d scale = %.4lf\n", initializer->seed, scale);
+  checkCUDA(curandGenerateUniform(gen, w, domain.get_volume()));
+  scale_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
+      w, domain.get_volume(), -scale, scale);
   checkCUDA(cudaDeviceSynchronize());
   curandDestroyGenerator(gen);
 }
