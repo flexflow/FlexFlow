@@ -43,6 +43,7 @@ def top_level_task():
     for i in range(0, y_train.shape[0]):
       for j in range(0, y_train.shape[1]):
         full_label_array[i, j] = y_train[i, j]
+    #full_label_array = y_train
    
     print(full_input_array.__array_interface__["strides"])
     print(full_input_array.shape, full_label_array.shape)
@@ -96,7 +97,6 @@ def top_level_task():
 
 
   epochs = ffconfig.get_epochs()
-  epochs = 10
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):

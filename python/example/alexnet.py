@@ -1,4 +1,5 @@
 from flexflow.core import *
+from flexflow.keras.datasets import cifar10
 
 def top_level_task():
   ffconfig = FFConfig()
@@ -18,22 +19,30 @@ def top_level_task():
   
   use_external = False
   if (use_external == True):
-    num_samples = 2560
+    num_samples = 10000
+    
+    (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
+    
+    x_train = x_train.astype('float32')
+    x_train /= 255
+    
+    full_input_np = np.zeros((num_samples, 3*229*229), dtype=np.float32)
+    x_train = x_train.reshape(num_samples, 3*32*32)
+    full_input_np[:, :3*32*32] = x_train
+    print(full_input_np.shape)
+    print(full_input_np.__array_interface__["strides"])
+    print(full_input_np[0,:])
+    
+    y_train = y_train.astype('int32')
+    full_label_np = y_train
     
     dims_full_input = [num_samples, 3, 229, 229]
-    #print(dims)
     full_input = ffmodel.create_tensor_4d(dims_full_input, "", DataType.DT_FLOAT)
 
     dims_full_label = [num_samples, 1]
-    #print(dims)
     full_label = ffmodel.create_tensor_2d(dims_full_label, "", DataType.DT_INT32)
-    
-    full_input_np = np.empty((num_samples, 3, 229, 229), dtype=np.float32)
-    full_input_np += 0.235
-    full_input.attach_numpy_array(ffconfig, full_input_np)
 
-    full_label_np = np.empty((num_samples, 1), dtype=np.int32)
-    full_label_np *= 0
+    full_input.attach_numpy_array(ffconfig, full_input_np)
     full_label.attach_numpy_array(ffconfig, full_label_np)
     
     dataloader = DataLoader(ffmodel, alexnetconfig, input, label, full_input, full_label, num_samples)
@@ -103,6 +112,7 @@ def top_level_task():
 
   epochs = ffconfig.get_epochs()
 
+
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
     dataloader.reset()
@@ -110,11 +120,11 @@ def top_level_task():
     iterations = int(dataloader.get_num_samples() / ffconfig.get_batch_size())
 
     for iter in range(0, int(iterations)):
-      if (len(alexnetconfig.dataset_path) == 0):
-        if (iter == 0 and epoch == 0):
-          dataloader.next_batch(ffmodel)
-      else:
-        dataloader.next_batch(ffmodel)
+      # if (len(alexnetconfig.dataset_path) == 0):
+      #   if (iter == 0 and epoch == 0):
+      #     dataloader.next_batch(ffmodel)
+      # else:
+      dataloader.next_batch(ffmodel)
       if (epoch > 0):
         ffconfig.begin_trace(111)
       ffmodel.forward()
@@ -133,10 +143,17 @@ def top_level_task():
   #cbias_tensor = conv_2d1.get_input_tensor()
   cbias_tensor = conv_2d1.get_input_tensor()
   cbias_tensor.inline_map(ffconfig)
-  cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
+  cbias = cbias_tensor.get_flat_array(ffconfig, DataType.DT_FLOAT)
   print(cbias.shape)
   print(cbias)
   cbias_tensor.inline_unmap(ffconfig)
+  
+  label.inline_map(ffconfig)
+  label_array = label.get_array(ffconfig, DataType.DT_INT32)
+  print(label_array.shape)
+  # print(cbias)
+  print(label_array)
+  label.inline_unmap(ffconfig)
   
   #ffmodel.print_layers(0)
 

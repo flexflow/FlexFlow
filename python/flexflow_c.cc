@@ -1285,24 +1285,27 @@ void ImgDataLoader::load_entire_dataset(const Task *task,
   float heightScale = static_cast<float>(origHeight) / height;
   float widthScale = static_cast<float>(origWidth) / width;
   FILE* file = fopen(alexnet->dataset_path.c_str(), "rb");
-  unsigned char* image = (unsigned char*) malloc(3073);
-  unsigned char* buffer = (unsigned char*) malloc(3 * height * width);
+  unsigned char* buffer = (unsigned char*) malloc(3073);
+  unsigned char* image = (unsigned char*) malloc(3 * height * width);
   for (int i = 0; i < num_samples; i++) {
     size_t ret = fread(buffer, sizeof(unsigned char), 3073, file);
     assert(ret = 3073);
     if ((i+1) % 1000 == 0)
       printf("Loaded %d samples\n", i+1);
-    label_ptr[i] = image[0];
-    nearest_neigh(image + 1, buffer, height, width,
+    label_ptr[i] = buffer[0];
+    nearest_neigh(image, buffer, height, width,
                   origHeight, origWidth, heightScale, widthScale);
     int input_offset = i * 3 * height * width;
-    int buffer_offset = 0;
+    int image_offset = 0;
     for (int h = 0; h < 3*height*width; h++)
-        input_ptr[input_offset++] = static_cast<float>(buffer[buffer_offset++]) / 255;
+        input_ptr[input_offset++] = static_cast<float>(image[image_offset++]) / 255;
   }
   printf("Finish loading %d samples from %s\n",
       num_samples, alexnet->dataset_path.c_str());
   fclose(file);
+  for (int i = 0; i < 32; i++) {
+    printf("%f ", input_ptr[i]);
+  }
 }
 
 void ImgDataLoader::next_batch(FFModel& ff)
