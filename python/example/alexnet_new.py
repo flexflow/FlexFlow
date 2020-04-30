@@ -51,7 +51,7 @@ def top_level_task():
   ffmodel.set_sgd_optimizer(ffoptimizer)
   
   # Data Loader
-  dataloader = DataLoader(ffmodel, alexnetconfig, input, label)
+  dataloader = DataLoader4D(ffmodel, alexnetconfig, input, label)
   # input.inline_map(ffconfig)
   # input_array = input.get_array(ffconfig, DataType.DT_FLOAT)
   # input_array *= 1.0

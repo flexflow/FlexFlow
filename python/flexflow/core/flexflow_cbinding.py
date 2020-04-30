@@ -352,6 +352,7 @@ class Tensor(object):
     self.mapped = False
     
   def attach_numpy_array(self, ffconfig, np_array):
+    assert np_array.__array_interface__['strides'] == None, "numpy array strides is not None"
     np_raw_ptr = np_array.__array_interface__['data']
     print("attach numpy array: ", np_raw_ptr)
     self.attach_raw_ptr(ffconfig, np_raw_ptr[0])
@@ -597,7 +598,7 @@ class DataLoader4D(object):
     
 class DataLoader2D(object):
   def __init__(self, ffmodel, input, label, full_input=0, full_label=0, num_samples=0):
-    self.handle = ffc.flexflow_dataloader_2d_create_v2(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
+    self.handle = ffc.flexflow_dataloader_2d_create_v2(ffmodel.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
     self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_2d_destroy)
   
   def set_num_samples(self, samples):

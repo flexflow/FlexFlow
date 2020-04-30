@@ -16,6 +16,8 @@ class Conv2D(object):
     self.padding = padding
     if (activation == None):
       self.activation = ff.ActiMode.AC_MODE_NONE
+    elif(activation =="relu"):
+      self.activation = ff.ActiMode.AC_MODE_RELU
     else:
       self.activation = ff.ActiMode.AC_MODE_NONE
     if (len(input_shape) == 4):
