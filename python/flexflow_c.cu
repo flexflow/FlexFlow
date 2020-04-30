@@ -22,6 +22,7 @@ void ImgDataLoader::load_input(const Task *task,
   for (int i = 1; i < batch_size; i++)
     assert(meta->idxs[i] == meta->idxs[0] + i);
   const float* input_zc = acc_full_input.ptr + meta->idxs[0] * channels * height * width;
+  //printf("load input %d %d %d %d\n", meta->idxs[0], channels, height, width);
   copy_kernel<<<GET_BLOCKS(acc_batch_input.rect.volume()), CUDA_NUM_THREADS>>>(
       acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());
   checkCUDA(cudaDeviceSynchronize());

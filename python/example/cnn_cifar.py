@@ -19,18 +19,34 @@ def top_level_task():
   
   use_external = True
   if (use_external == True):
-    num_samples = 10000
+    num_samples = 40000
     
     (x_train, y_train), (x_test, y_test) = cifar10.load_data()
+    
     x_train = x_train.astype('float32')
     x_train /= 255
-    x_train = x_train.transpose(2, 3, 1, 0)
+    #x_train = x_train.transpose(2, 3, 1, 0)
+    full_input_array = np.zeros((x_train.shape[0], x_train.shape[1], x_train.shape[2], x_train.shape[3]), dtype=np.float32)
+    ct = 0.0
+    for i in range(0, x_train.shape[0]):
+      for j in range(0, x_train.shape[1]):
+        for k in range(0, x_train.shape[2]):
+          for l in range(0, x_train.shape[3]):
+            full_input_array[i, j, k, l] = x_train[i, j, k, l]
+            ct += 1
+    
     y_train = y_train.astype('int32')
     y_train = y_train.transpose(1, 0)
-   # y_train *= 0
-    print(x_train.shape, y_train.shape)
-    print(x_train[:,:,:,0])
-    print(y_train)
+    full_label_array = np.zeros((y_train.shape[0], y_train.shape[1]), dtype=np.int32)
+    for i in range(0, y_train.shape[0]):
+      for j in range(0, y_train.shape[1]):
+        full_label_array[i, j] = y_train[i, j]
+   
+    print(full_input_array.__array_interface__["strides"])
+    print(full_input_array.shape, full_label_array.shape)
+    #print(full_input_array[0,:,:,:])
+    #print(full_label_array[0, 0:64])
+    print(full_label_array.__array_interface__["strides"])
     
     dims_full_input = [num_samples, 3, 32, 32]
     full_input = ffmodel.create_tensor_4d(dims_full_input, "", DataType.DT_FLOAT)
@@ -38,11 +54,13 @@ def top_level_task():
     dims_full_label = [num_samples, 1]
     full_label = ffmodel.create_tensor_2d(dims_full_label, "", DataType.DT_INT32)
     
-    full_input.attach_numpy_array(ffconfig, x_train)
-    full_label.attach_numpy_array(ffconfig, y_train)
+    full_input.attach_numpy_array(ffconfig, full_input_array)
+    full_label.attach_numpy_array(ffconfig, full_label_array)
     
-    dataloader = DataLoader(ffmodel, alexnetconfig, input, label, full_input, full_label)
-    dataloader.set_num_samples(10000)
+    dataloader = DataLoader(ffmodel, alexnetconfig, input, label, full_input, full_label, num_samples)
+    
+    full_input.detach_numpy_array(ffconfig)
+    full_label.detach_numpy_array(ffconfig)
   else:
     # Data Loader
     dataloader = DataLoader(ffmodel, alexnetconfig, input, label)
@@ -58,7 +76,7 @@ def top_level_task():
   t = ffmodel.dense("lienar1", t, 10)
   t = ffmodel.softmax("softmax", t, label)
 
-  ffoptimizer = SGDOptimizer(ffmodel, 0.0001)
+  ffoptimizer = SGDOptimizer(ffmodel, 0.001)
   ffmodel.set_sgd_optimizer(ffoptimizer)
 
   ffmodel.init_layers()
@@ -83,8 +101,8 @@ def top_level_task():
     ffmodel.reset_metrics()
     iterations = int(dataloader.get_num_samples() / ffconfig.get_batch_size())
     print(iterations, dataloader.get_num_samples())
-    
-    for iter in range(0, int(iterations)):
+
+    for iter in range(0, int(iterations-2)):
       # if (len(alexnetconfig.dataset_path) == 0):
       #   if (iter == 0 and epoch == 0):
       #     dataloader.next_batch(ffmodel)
@@ -105,17 +123,21 @@ def top_level_task():
   #ffmodel.print_layers(13)
 
   conv_2d1 = ffmodel.get_layer_by_id(0)
-  cbias_tensor = label#conv_2d1.get_input_tensor()
+  cbias_tensor = conv_2d1.get_input_tensor()
   #cbias_tensor = conv_2d1.get_output_tensor()
   cbias_tensor.inline_map(ffconfig)
-  cbias = cbias_tensor.get_array(ffconfig, DataType.DT_INT32)
+  cbias = cbias_tensor.get_flat_array(ffconfig, DataType.DT_FLOAT)
   print(cbias.shape)
   print(cbias)
   cbias_tensor.inline_unmap(ffconfig)
-  
-  if (use_external == True):
-    full_input.detach_numpy_array(ffconfig)
-    full_label.detach_numpy_array(ffconfig)
+
+  label.inline_map(ffconfig)
+  label_array = label.get_array(ffconfig, DataType.DT_INT32)
+  print(label_array.shape)
+  # print(cbias)
+  print(label_array)
+  label.inline_unmap(ffconfig)
+
 
 if __name__ == "__main__":
   print("alexnet")

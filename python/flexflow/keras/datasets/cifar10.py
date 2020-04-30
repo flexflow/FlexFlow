@@ -20,12 +20,12 @@ def load_data():
     origin = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
     path = get_file(dirname, origin=origin, untar=True)
 
-    num_train_samples = 20000
+    num_train_samples = 40000
 
     x_train = np.empty((num_train_samples, 3, 32, 32), dtype='uint8')
     y_train = np.empty((num_train_samples,), dtype='uint8')
 
-    for i in range(1, 3):
+    for i in range(1, 5):
         fpath = os.path.join(path, 'data_batch_' + str(i))
         (x_train[(i - 1) * 10000: i * 10000, :, :, :],
          y_train[(i - 1) * 10000: i * 10000]) = load_batch(fpath)

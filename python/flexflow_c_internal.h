@@ -11,7 +11,7 @@ struct NetConfig {
 class ImgDataLoader {
 public:
   ImgDataLoader(FFModel& ff, const NetConfig& alexnet, 
-                Tensor input, Tensor label, Tensor full_input_, Tensor full_label_);
+                Tensor input, Tensor label, Tensor full_input_, Tensor full_label_, int num_samples_);
   ImgDataLoader(FFModel& ff, const NetConfig& alexnet, 
                 Tensor input, Tensor label);
   static void load_input(const Task *task,
@@ -22,6 +22,10 @@ public:
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx,
                          Runtime* runtime);
+  static void load_entire_dataset_v2(const Task *task,
+                                  const std::vector<PhysicalRegion> &regions,
+                                  Context ctx,
+                                  Runtime* runtime);
   static void load_entire_dataset(const Task *task,
                                   const std::vector<PhysicalRegion> &regions,
                                   Context ctx,

@@ -412,7 +412,8 @@ flexflow_dataloader_create_v2(
   flexflow_tensor_t input, 
   flexflow_tensor_t label,
   flexflow_tensor_t full_input, 
-  flexflow_tensor_t full_label);
+  flexflow_tensor_t full_label,
+  int num_samples);
   
 void  
 flexflow_dataloader_destroy(

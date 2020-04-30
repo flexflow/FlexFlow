@@ -16,7 +16,7 @@ def top_level_task():
   #print(dims)
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
-  use_external = True
+  use_external = False
   if (use_external == True):
     num_samples = 2560
     
@@ -36,8 +36,10 @@ def top_level_task():
     full_label_np *= 0
     full_label.attach_numpy_array(ffconfig, full_label_np)
     
-    dataloader = DataLoader(ffmodel, alexnetconfig, input, label, full_input, full_label)
-    dataloader.set_num_samples(2560)
+    dataloader = DataLoader(ffmodel, alexnetconfig, input, label, full_input, full_label, num_samples)
+    
+    full_input.detach_numpy_array(ffconfig)
+    full_label.detach_numpy_array(ffconfig)
   else:
     # Data Loader
     dataloader = DataLoader(ffmodel, alexnetconfig, input, label)
@@ -137,10 +139,7 @@ def top_level_task():
   cbias_tensor.inline_unmap(ffconfig)
   
   #ffmodel.print_layers(0)
-  
-  if (use_external == True):
-    full_input.detach_numpy_array(ffconfig)
-    full_label.detach_numpy_array(ffconfig)
+
 
 if __name__ == "__main__":
   print("alexnet")

@@ -315,13 +315,33 @@ class Tensor(object):
     initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
     return array
+  
+  def get_flat_array(self, config, data_type):
+    assert self.mapped == True, "Tensor is not mapped."
+    raw_ptr = self.get_raw_ptr(config, data_type)
+    raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
+    print("raw_ptr: ", raw_ptr, raw_ptr_int)
+    strides = None
+    if (self.num_dims == 1):
+      shape = (self.dims[0],)
+    elif (self.num_dims == 2):
+      shape = (self.dims[0] * self.dims[1],)
+    elif (self.num_dims == 3):
+      shape = (self.dims[0] * self.dims[1] * self.dims[2],)
+    elif (self.num_dims == 4):
+      shape = (self.dims[0] * self.dims[1] * self.dims[2] * self.dims[3],)
+    else:
+      assert 0, "unknow num_dims"
+    initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
+    array = np.asarray(initializer)
+    return array
     
   def set_dims(self):
     self.num_dims = ffc.flexflow_tensor_get_num_dims(self.handle)
     d = ffc.flexflow_tensor_get_dims(self.handle)
     self.dims = [d[0], d[1], d[2], d[3]]
     
-  def attach_raw_ptr(self, ffconfig, raw_ptr, column_major=False):
+  def attach_raw_ptr(self, ffconfig, raw_ptr, column_major=True):
     assert self.mapped == False, "Tensor is already mapped."
     ffc.flexflow_tensor_attach_raw_ptr(self.handle, ffconfig.handle, raw_ptr, column_major)
     self.mapped = True
@@ -556,11 +576,11 @@ class NetConfig(object):
 # -----------------------------------------------------------------------
 
 class DataLoader(object):
-  def __init__(self, ffmodel, ffnetconfig, input, label, full_input=0, full_label=0):
+  def __init__(self, ffmodel, ffnetconfig, input, label, full_input=0, full_label=0, num_samples=0):
     if (full_input == 0):
       self.handle = ffc.flexflow_dataloader_create(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle)
     else:
-      self.handle = ffc.flexflow_dataloader_create_v2(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle, full_input.handle, full_label.handle)
+      self.handle = ffc.flexflow_dataloader_create_v2(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
     self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_destroy)
   
   def set_num_samples(self, samples):
