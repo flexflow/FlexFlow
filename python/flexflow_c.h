@@ -295,6 +295,18 @@ flexflow_tensor_get_num_dims(
 int*
 flexflow_tensor_get_dims(
   flexflow_tensor_t handle);
+
+void
+flexflow_tensor_attach_raw_ptr(
+  flexflow_tensor_t handle,
+  flexflow_config_t config,
+  uintptr_t ptr,
+  bool column_major);
+
+void
+flexflow_tensor_detach_raw_ptr(
+  flexflow_tensor_t handle,
+  flexflow_config_t config);
   
 // -----------------------------------------------------------------------
 // SGDOptimizer

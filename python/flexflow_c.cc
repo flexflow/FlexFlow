@@ -581,6 +581,29 @@ flexflow_tensor_get_dims(
   return &(handle->adim[0]);
 }
 
+void
+flexflow_tensor_attach_raw_ptr(
+  flexflow_tensor_t handle_,
+  flexflow_config_t config_,
+  uintptr_t ptr,
+  bool column_major)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  FFConfig *config = FFCObjectWrapper::unwrap(config_);  
+  void *raw_ptr = (void*)ptr;
+  handle->attach_raw_ptr(*config, raw_ptr, column_major);  
+}
+
+void
+flexflow_tensor_detach_raw_ptr(
+  flexflow_tensor_t handle_,
+  flexflow_config_t config_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  FFConfig *config = FFCObjectWrapper::unwrap(config_);
+  handle->detach_raw_ptr(*config);  
+}
+
 // -----------------------------------------------------------------------
 // SGDOptimizer
 // -----------------------------------------------------------------------

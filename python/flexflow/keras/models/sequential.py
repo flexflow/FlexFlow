@@ -145,7 +145,10 @@ class Sequential(object):
           dataloader.next_batch(self.ffmodel)
         if (epoch > 0):
           ffconfig.begin_trace(111)
-        self.ffmodel.forward()
+        #self.ffmodel.forward()
+        for layer_id in self._layers:
+          layer = self._layers[layer_id]
+          layer.handle.forward(self.ffmodel)
         self.ffmodel.zero_gradients()
         self.ffmodel.backward()
         self.ffmodel.update()

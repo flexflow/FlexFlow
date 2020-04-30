@@ -135,6 +135,8 @@ struct Tensor {
   void inline_unmap(FFConfig &config);
   template<typename T>
   T* get_raw_ptr(FFConfig &config);
+  void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major);
+  void detach_raw_ptr(FFConfig &config);
   int numDim, adim[MAX_DIM], pdim[MAX_DIM];
   LogicalRegion region, region_grad;
   LogicalPartition part, part_grad;

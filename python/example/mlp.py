@@ -1,4 +1,5 @@
 from flexflow.core import *
+import numpy as np
 
 def top_level_task():
   ffconfig = FFConfig()
@@ -11,6 +12,14 @@ def top_level_task():
   
   dims_label = [ffconfig.get_batch_size(), 1]
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
+ 
+  input1_np = np.empty((ffconfig.get_batch_size(), 784), dtype=np.float32)
+  input1_np += 0.235
+  input1.attach_numpy_array(ffconfig, input1_np)
+  
+  label_np = np.empty((ffconfig.get_batch_size(), 784), dtype=np.int32)
+  label_np *= 0
+  label.attach_numpy_array(ffconfig, label_np)
   
   t2 = ffmodel.dense("dense1", input1, 512, ActiMode.AC_MODE_RELU)
   t3 = ffmodel.dense("dense1", t2, 512, ActiMode.AC_MODE_RELU)
@@ -20,36 +29,11 @@ def top_level_task():
   # Data Loader
  # dataloader = DataLoader(ffmodel, input1, label)
  
-  input1.inline_map(ffconfig)
-  input1_array = input1.get_array(ffconfig, DataType.DT_FLOAT)
-  print(input1_array.shape)
-  input1.inline_unmap(ffconfig)
-  
-  label.inline_map(ffconfig)
-  label_array = label.get_array(ffconfig, DataType.DT_INT32)
-  print(label_array.shape)
-  label.inline_unmap(ffconfig)
   
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
   
   ffmodel.init_layers()
-  
-  dense1 = ffmodel.get_layer_by_id(0)
-
-  dbias_tensor = dense1.get_bias_tensor()
-  dbias_tensor.inline_map(ffconfig)
-  dbias = dbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
-  print(dbias.shape)
-  #print(dbias)
-  dbias_tensor.inline_unmap(ffconfig)
-
-  dweight_tensor = dense1.get_weight_tensor()
-  dweight_tensor.inline_map(ffconfig)
-  dweight = dweight_tensor.get_array(ffconfig, DataType.DT_FLOAT)
-  print(dweight.shape)
-  #print(dweight)
-  dweight_tensor.inline_unmap(ffconfig)
   
   epochs = ffconfig.get_epochs()
   
@@ -70,6 +54,24 @@ def top_level_task():
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, 8192 * epochs / run_time));
+  
+  input1.detach_numpy_array(ffconfig)
+  
+  dense1 = ffmodel.get_layer_by_id(0)
+
+  dbias_tensor = dense1.get_bias_tensor()
+  dbias_tensor.inline_map(ffconfig)
+  dbias = dbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
+  print(dbias.shape)
+  #print(dbias)
+  dbias_tensor.inline_unmap(ffconfig)
+
+  dweight_tensor = dense1.get_output_tensor()
+  dweight_tensor.inline_map(ffconfig)
+  dweight = dweight_tensor.get_array(ffconfig, DataType.DT_FLOAT)
+  print(dweight.shape)
+  print(dweight)
+  dweight_tensor.inline_unmap(ffconfig)
   
 if __name__ == "__main__":
   print("alexnet")

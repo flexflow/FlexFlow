@@ -39,7 +39,7 @@ void Tensor::inline_unmap(FFConfig &config)
   printf("inline unmap tensor\n");  
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
-  
+  assert(physical_region.is_valid() == true);
   runtime->unmap_region(ctx, physical_region);
 }
 
@@ -68,6 +68,28 @@ T* Tensor::get_raw_ptr(FFConfig &config)
     assert(0);
   }
   return raw_ptr;
+}
+
+void Tensor::attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  AttachLauncher launcher(EXTERNAL_INSTANCE, region, region);
+  std::vector<FieldID> fields(1, FID_DATA);
+  const Memory local_sysmem = Machine::MemoryQuery(Machine::get_machine())
+       .has_affinity_to(runtime->get_executing_processor(ctx))
+       .only_kind(Memory::SYSTEM_MEM)
+       .first();
+  launcher.attach_array_soa(raw_ptr, column_major,
+                            fields, local_sysmem);
+  physical_region = runtime->attach_external_resource(ctx, launcher);
+}
+
+void Tensor::detach_raw_ptr(FFConfig &config)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  runtime->detach_external_resource(ctx, physical_region);
 }
 
 Op::Op(const std::string& _name,

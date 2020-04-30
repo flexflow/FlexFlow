@@ -279,8 +279,8 @@ class Tensor(object):
   def get_array(self, config, data_type, layout="O"):
     assert self.mapped == True, "Tensor is not inline mapped."
     raw_ptr = self.get_raw_ptr(config, data_type)
-    print("raw_ptr: ", raw_ptr)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
+    print("raw_ptr: ", raw_ptr, raw_ptr_int)
     strides = None
     if (layout == "O"):
       if (self.num_dims == 1):
@@ -316,6 +316,21 @@ class Tensor(object):
     self.num_dims = ffc.flexflow_tensor_get_num_dims(self.handle)
     d = ffc.flexflow_tensor_get_dims(self.handle)
     self.dims = [d[0], d[1], d[2], d[3]]
+    
+  def attach_raw_ptr(self, ffconfig, raw_ptr, column_major=False):
+    ffc.flexflow_tensor_attach_raw_ptr(self.handle, ffconfig.handle, raw_ptr, column_major)
+    self.mapped = True
+    
+  def detach_raw_ptr(self, ffconfig):
+    ffc.flexflow_tensor_detach_raw_ptr(self.handle, ffconfig.handle)
+    self.mapped = False
+    
+  def attach_numpy_array(self, ffconfig, np_array):
+    np_raw_ptr = np_array.__array_interface__['data']
+    self.attach_raw_ptr(ffconfig, np_raw_ptr[0])
+    
+  def detach_numpy_array(self, ffconfig):
+    self.detach_raw_ptr(ffconfig)
 
 # -----------------------------------------------------------------------
 # FFModel
