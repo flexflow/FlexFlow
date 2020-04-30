@@ -36,6 +36,7 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_parameter_t, Parameter *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_net_config_t, NetConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_t, ImgDataLoader *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_2d_t, ImgDataLoader2D *);
 };
 
 // -----------------------------------------------------------------------
@@ -832,6 +833,73 @@ flowflow_dataloader_next_batch(
   handle->next_batch(*ffmodel);
 }
 
+
+//////
+
+flexflow_dataloader_2d_t
+flexflow_dataloader_2d_create_v2(
+  flexflow_model_t ffmodel_, 
+  flexflow_net_config_t netconfig_,
+  flexflow_tensor_t input_, 
+  flexflow_tensor_t label_,
+  flexflow_tensor_t full_input_, 
+  flexflow_tensor_t full_label_,
+  int num_samples)
+{
+  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
+  NetConfig *netconfig = FFCObjectWrapper::unwrap(netconfig_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *label = FFCObjectWrapper::unwrap(label_);
+  Tensor *full_input = FFCObjectWrapper::unwrap(full_input_);
+  Tensor *full_label = FFCObjectWrapper::unwrap(full_label_);
+  ImgDataLoader2D *dataloader = new ImgDataLoader2D(*ffmodel, *netconfig, *input, *label, *full_input, *full_label, num_samples);
+  return FFCObjectWrapper::wrap(dataloader);  
+}
+
+void  
+flexflow_dataloader_2d_destroy(
+  flexflow_dataloader_2d_t handle_)
+{
+  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
+  delete handle;
+}
+
+void
+flexflow_dataloader_2d_set_num_samples(
+  flexflow_dataloader_2d_t handle_,
+  int samples)
+{
+  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->num_samples = samples;  
+  printf("dataloader set number of samples %d\n", samples);
+}
+
+int
+flexflow_dataloader_2d_get_num_samples(
+  flexflow_dataloader_2d_t handle_)
+{
+  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->num_samples;
+}
+
+void
+flexflow_dataloader_2d_reset(
+  flexflow_dataloader_2d_t handle_)
+{
+  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->reset();
+}
+
+void
+flowflow_dataloader_2d_next_batch(
+  flexflow_dataloader_2d_t handle_,
+  flexflow_model_t ffmodel_)
+{
+  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
+  handle->next_batch(*ffmodel);
+}
+
 // -----------------------------------------------------------------------
 // Timer
 // -----------------------------------------------------------------------
@@ -1319,6 +1387,167 @@ size_t ImgDataLoader::get_file_size(const std::string& filename)
   return filesize;
 }
 
+ImgDataLoader2D::ImgDataLoader2D(FFModel& ff, 
+                             const NetConfig& alexnet,
+                             Tensor input, Tensor label, Tensor full_input_, Tensor full_label_, int num_samples_)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  num_samples = num_samples_;
+  // Create full input
+  {
+    batch_input = input;
+    const int dims[] = {num_samples, input.adim[0]};
+    full_input = ff.create_tensor<2>(dims, "", DT_FLOAT);
+  }
+  // Create full label
+  {
+    batch_label = label;
+    const int dims[] = {num_samples, label.adim[0]};
+    full_label = ff.create_tensor<2>(dims, "", DT_INT32);
+  }
+  // Load entire dataset
+  // TODO: Use index launcher instead of task launcher
+  const NetConfig* ptr = &alexnet;
+  TaskLauncher launcher(CUSTOM_CPU_TASK_ID_3,
+      TaskArgument(&ptr, sizeof(NetConfig*)));
+  // regions[0]: full_input
+  launcher.add_region_requirement(
+      RegionRequirement(full_input.region, WRITE_ONLY,
+                        EXCLUSIVE, full_input.region,
+                        MAP_TO_ZC_MEMORY));
+  launcher.add_field(0, FID_DATA);
+  // regions[1]: full_label
+  launcher.add_region_requirement(
+      RegionRequirement(full_label.region, WRITE_ONLY,
+                        EXCLUSIVE, full_label.region,
+                        MAP_TO_ZC_MEMORY));
+  launcher.add_field(1, FID_DATA);
+  // regions[2]: full_input_
+  launcher.add_region_requirement(
+      RegionRequirement(full_input_.region, READ_ONLY,
+                        EXCLUSIVE, full_input_.region));
+  launcher.add_field(2, FID_DATA);
+  // regions[3]: full_label_
+  launcher.add_region_requirement(
+      RegionRequirement(full_label_.region, READ_ONLY,
+                        EXCLUSIVE, full_label_.region));
+  launcher.add_field(3, FID_DATA);
+  Future fu = runtime->execute_task(ctx, launcher);
+  fu.wait();
+  reset();
+  next_batch(ff);
+}
+
+void ImgDataLoader2D::load_entire_dataset_v2(const Task *task,
+                                        const std::vector<PhysicalRegion> &regions,
+                                        Context ctx, Runtime* runtime)
+{
+  const NetConfig* alexnet = *((NetConfig**)task->args);
+  assert(regions.size() == 4);
+  assert(task->regions.size() == regions.size());
+  const AccessorWO<float, 2> acc_input(regions[0], FID_DATA);
+  const AccessorWO<int, 2> acc_label(regions[1], FID_DATA);
+  const AccessorRO<float, 2> acc_input_(regions[2], FID_DATA);
+  const AccessorRO<int, 2> acc_label_(regions[3], FID_DATA);
+  Rect<2> rect_input = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
+  Rect<2> rect_label = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  Rect<2> rect_input_ = runtime->get_index_space_domain(
+      ctx, task->regions[2].region.get_index_space());
+  assert(acc_input_.accessor.is_dense_arbitrary(rect_input_));
+  Rect<2> rect_label_ = runtime->get_index_space_domain(
+      ctx, task->regions[3].region.get_index_space());
+  assert(acc_label_.accessor.is_dense_arbitrary(rect_label_));
+  float* input_ptr = acc_input.ptr(rect_input.lo);
+  int* label_ptr = acc_label.ptr(rect_label.lo);
+  const float* input_ptr_ = acc_input_.ptr(rect_input_.lo);
+  const int* label_ptr_ = acc_label_.ptr(rect_label_.lo);
+  printf("Check ptr input %p %lu %lu, label %p %lu %lu\n", input_ptr_, (uintptr_t)input_ptr_, rect_input.volume(), label_ptr_, (uintptr_t)label_ptr_, rect_label.volume());
+  int num_samples = rect_label.hi[1] - rect_label.lo[1] + 1;
+  assert(rect_input.hi[1] - rect_input.lo[1] + 1 == num_samples);
+  assert(rect_label.volume() == rect_label_.volume());
+  assert(rect_input.volume() == rect_input_.volume());
+  memcpy(input_ptr, input_ptr_, sizeof(float)*rect_input.volume());
+  memcpy(label_ptr, label_ptr_, sizeof(int)*rect_label.volume());
+  for (int i = 0; i < 32; i++) {
+    printf("%f ", input_ptr[i]);
+  }
+  printf("\n");
+}
+
+void ImgDataLoader2D::next_batch(FFModel& ff)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  // Load input
+  {
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
+    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    int idx = next_index;
+    for (PointInRectIterator<2> it(rect); it(); it++) {
+      SampleIdxs meta;
+      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_3, task_is,
+                           TaskArgument(NULL,0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(""));
+    launcher.add_region_requirement(
+        RegionRequirement(full_input.region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input.region,
+                          MAP_TO_ZC_MEMORY));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_input.part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input.region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  }
+  // Load label
+  {
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
+    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    int idx = next_index;
+    for (PointInRectIterator<2> it(rect); it(); it++) {
+      SampleIdxs meta;
+      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_4, task_is,
+                           TaskArgument(NULL,0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(""));
+    launcher.add_region_requirement(
+        RegionRequirement(full_label.region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_label.region,
+                          MAP_TO_ZC_MEMORY));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_label.part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_label.region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  }
+  next_index += ff.config.batchSize;
+}
+
+void ImgDataLoader2D::reset()
+{
+  next_index = 0;
+}
+
 void register_c_custom_tasks()
 {
   // Load entire dataset
@@ -1352,5 +1581,30 @@ void register_c_custom_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<ImgDataLoader::load_label>(
         registrar, "Load Label Task");
+  }
+  
+  // Load entire dataset2
+  {
+    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_3, "2DLoad Entire Dataset2");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ImgDataLoader2D::load_entire_dataset_v2>(
+        registrar, "2DLoad Entire Dataset Task v2");
+  }
+  // Load input
+  {
+    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_3, "2DLoad Inputs");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ImgDataLoader2D::load_input>(
+        registrar, "2DLoad Input Task");
+  }
+  // Load label
+  {
+    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_4, "2DLoad Labels");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ImgDataLoader2D::load_label>(
+        registrar, "2DLoad Label Task");
   }
 }

@@ -595,6 +595,23 @@ class DataLoader(object):
   def reset(self):
     ffc.flexflow_dataloader_reset(self.handle)
     
+class DataLoader2D(object):
+  def __init__(self, ffmodel, ffnetconfig, input, label, full_input=0, full_label=0, num_samples=0):
+    self.handle = ffc.flexflow_dataloader_2d_create_v2(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
+    self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_2d_destroy)
+  
+  def set_num_samples(self, samples):
+    ffc.flexflow_dataloader_2d_set_num_samples(self.handle, samples)
+      
+  def get_num_samples(self):
+    return ffc.flexflow_dataloader_2d_get_num_samples(self.handle)
+    
+  def next_batch(self, ffmodel):
+    ffc.flowflow_dataloader_2d_next_batch(self.handle, ffmodel.handle)
+    
+  def reset(self):
+    ffc.flexflow_dataloader_2d_reset(self.handle)
+    
 class RegionNdarray(object):
   __slots__ = ['__array_interface__']
   def __init__(self, shape, data_type, base_ptr, strides, read_only):

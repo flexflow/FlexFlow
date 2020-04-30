@@ -26,14 +26,16 @@ def top_level_task():
     x_train = x_train.astype('float32')
     x_train /= 255
     #x_train = x_train.transpose(2, 3, 1, 0)
-    full_input_array = np.zeros((x_train.shape[0], x_train.shape[1], x_train.shape[2], x_train.shape[3]), dtype=np.float32)
-    ct = 0.0
-    for i in range(0, x_train.shape[0]):
-      for j in range(0, x_train.shape[1]):
-        for k in range(0, x_train.shape[2]):
-          for l in range(0, x_train.shape[3]):
-            full_input_array[i, j, k, l] = x_train[i, j, k, l]
-            ct += 1
+    #full_input_array = np.zeros((x_train.shape[0], x_train.shape[1], x_train.shape[2], x_train.shape[3]), dtype=np.float32)
+    full_input_array = x_train
+    print(full_input_array.__array_interface__["strides"])
+    # ct = 0.0
+    # for i in range(0, x_train.shape[0]):
+    #   for j in range(0, x_train.shape[1]):
+    #     for k in range(0, x_train.shape[2]):
+    #       for l in range(0, x_train.shape[3]):
+    #         full_input_array[i, j, k, l] = x_train[i, j, k, l]
+    #         ct += 1
     
     y_train = y_train.astype('int32')
     y_train = y_train.transpose(1, 0)
@@ -68,15 +70,15 @@ def top_level_task():
   t = ffmodel.conv2d("conv1", input, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
   t = ffmodel.conv2d("conv2", t, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
   t = ffmodel.pool2d("pool1", t, 2, 2, 2, 2, 0, 0,)
-  t = ffmodel.conv2d("conv3", t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.conv2d("conv4", t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.pool2d("pool2", t, 2, 2, 2, 2, 0, 0)
+  # t = ffmodel.conv2d("conv3", t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  # t = ffmodel.conv2d("conv4", t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  # t = ffmodel.pool2d("pool2", t, 2, 2, 2, 2, 0, 0)
   t = ffmodel.flat("flat", t);
-  t = ffmodel.dense("lienar1", t, 512, ActiMode.AC_MODE_RELU)
+  t = ffmodel.dense("lienar1", t, 256, ActiMode.AC_MODE_RELU)
   t = ffmodel.dense("lienar1", t, 10)
   t = ffmodel.softmax("softmax", t, label)
 
-  ffoptimizer = SGDOptimizer(ffmodel, 0.001)
+  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
 
   ffmodel.init_layers()
@@ -94,6 +96,7 @@ def top_level_task():
 
 
   epochs = ffconfig.get_epochs()
+  epochs = 10
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
