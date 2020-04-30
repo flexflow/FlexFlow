@@ -21,6 +21,7 @@ def top_level_task():
   label_np += 1
   
   label.attach_numpy_array(ffconfig, label_np)
+  print(label.is_mapped())
   label_array = label.get_array(ffconfig, DataType.DT_INT32)
   print(label_array)
   label.detach_numpy_array(ffconfig)

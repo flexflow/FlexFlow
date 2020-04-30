@@ -15,6 +15,31 @@ def top_level_task():
   dims_label = [ffconfig.get_batch_size(), 1]
   #print(dims)
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
+  
+  use_external = False
+  if (use_external == True):
+    num_samples = 2560
+    
+    dims_full_input = [num_samples, 3, 229, 229]
+    #print(dims)
+    full_input = ffmodel.create_tensor_4d(dims_full_input, "", DataType.DT_FLOAT)
+
+    dims_full_label = [num_samples, 1]
+    #print(dims)
+    full_label = ffmodel.create_tensor_2d(dims_full_label, "", DataType.DT_INT32)
+    
+    full_input_np = np.empty((num_samples, 3, 229, 229), dtype=np.float32)
+    full_input_np += 0.235
+    full_input.attach_numpy_array(ffconfig, full_input_np)
+
+    full_label_np = np.empty((num_samples, 1), dtype=np.int32)
+    full_label_np *= 0
+    full_label.attach_numpy_array(ffconfig, full_label_np)
+    
+    dataloader = DataLoader(ffmodel, alexnetconfig, input, label, full_input, full_label)
+  else:
+    # Data Loader
+    dataloader = DataLoader(ffmodel, alexnetconfig, input, label)
 
   # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
   # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
@@ -51,8 +76,6 @@ def top_level_task():
   ffoptimizer = SGDOptimizer(ffmodel, 0.001)
   ffmodel.set_sgd_optimizer(ffoptimizer)
 
-  # Data Loader
-  dataloader = DataLoader(ffmodel, alexnetconfig, input, label)
   # input.inline_map(ffconfig)
   # input_array = input.get_array(ffconfig, DataType.DT_FLOAT)
   # input_array *= 1.0
@@ -105,7 +128,7 @@ def top_level_task():
 
   conv_2d1 = ffmodel.get_layer_by_id(0)
   #cbias_tensor = conv_2d1.get_input_tensor()
-  cbias_tensor = conv_2d1.get_output_tensor()
+  cbias_tensor = conv_2d1.get_input_tensor()
   cbias_tensor.inline_map(ffconfig)
   cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
   print(cbias.shape)
@@ -113,6 +136,10 @@ def top_level_task():
   cbias_tensor.inline_unmap(ffconfig)
   
   #ffmodel.print_layers(0)
+  
+  if (use_external == True):
+    full_input.detach_numpy_array(ffconfig)
+    full_label.detach_numpy_array(ffconfig)
 
 if __name__ == "__main__":
   print("alexnet")

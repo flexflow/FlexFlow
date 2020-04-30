@@ -257,14 +257,18 @@ class Tensor(object):
     if (deallocate == True):
       #print("deallocate true")
       self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
+    if (self.is_mapped() == True):
+      self.mapped = True
       
   def inline_map(self, config):
+    assert self.mapped == False, "Tensor is already mapped."
     ffc.flexflow_tensor_inline_map(self.handle, config.handle);
     self.mapped = True
     if (self.num_dims == 0):
       self.set_dims()
     
   def inline_unmap(self, config):
+    assert self.mapped == True, "Tensor is not inline mapped."
     ffc.flexflow_tensor_inline_unmap(self.handle, config.handle);
     self.mapped = False
     
@@ -277,7 +281,7 @@ class Tensor(object):
       assert 0, "unknown data type"
     
   def get_array(self, config, data_type, layout="O"):
-    assert self.mapped == True, "Tensor is not inline mapped."
+    assert self.mapped == True, "Tensor is not mapped."
     raw_ptr = self.get_raw_ptr(config, data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     print("raw_ptr: ", raw_ptr, raw_ptr_int)
@@ -318,19 +322,25 @@ class Tensor(object):
     self.dims = [d[0], d[1], d[2], d[3]]
     
   def attach_raw_ptr(self, ffconfig, raw_ptr, column_major=False):
+    assert self.mapped == False, "Tensor is already mapped."
     ffc.flexflow_tensor_attach_raw_ptr(self.handle, ffconfig.handle, raw_ptr, column_major)
     self.mapped = True
     
   def detach_raw_ptr(self, ffconfig):
+    assert self.mapped == True, "Tensor is not mapped."
     ffc.flexflow_tensor_detach_raw_ptr(self.handle, ffconfig.handle)
     self.mapped = False
     
   def attach_numpy_array(self, ffconfig, np_array):
     np_raw_ptr = np_array.__array_interface__['data']
+    print("attach numpy array: ", np_raw_ptr)
     self.attach_raw_ptr(ffconfig, np_raw_ptr[0])
     
   def detach_numpy_array(self, ffconfig):
     self.detach_raw_ptr(ffconfig)
+    
+  def is_mapped(self):
+    return ffc.flexflow_tensor_is_mapped(self.handle)
 
 # -----------------------------------------------------------------------
 # FFModel
@@ -546,8 +556,11 @@ class NetConfig(object):
 # -----------------------------------------------------------------------
 
 class DataLoader(object):
-  def __init__(self, ffmodel, ffnetconfig, input, label):
-    self.handle = ffc.flexflow_dataloader_create(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle)
+  def __init__(self, ffmodel, ffnetconfig, input, label, full_input=0, full_label=0):
+    if (full_input == 0):
+      self.handle = ffc.flexflow_dataloader_create(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle)
+    else:
+      self.handle = ffc.flexflow_dataloader_create_v2(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle, full_input.handle, full_label.handle)
     self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_destroy)
   
   def set_num_samples(self, samples):

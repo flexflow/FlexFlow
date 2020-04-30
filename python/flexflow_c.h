@@ -308,6 +308,10 @@ flexflow_tensor_detach_raw_ptr(
   flexflow_tensor_t handle,
   flexflow_config_t config);
   
+bool
+flexflow_tensor_is_mapped(
+  flexflow_tensor_t handle);
+  
 // -----------------------------------------------------------------------
 // SGDOptimizer
 // -----------------------------------------------------------------------
@@ -400,6 +404,15 @@ flexflow_dataloader_create(
   flexflow_net_config_t netconfig,
   flexflow_tensor_t input, 
   flexflow_tensor_t label);
+  
+flexflow_dataloader_t
+flexflow_dataloader_create_v2(
+  flexflow_model_t ffmodel, 
+  flexflow_net_config_t netconfig,
+  flexflow_tensor_t input, 
+  flexflow_tensor_t label,
+  flexflow_tensor_t full_input, 
+  flexflow_tensor_t full_label);
   
 void  
 flexflow_dataloader_destroy(

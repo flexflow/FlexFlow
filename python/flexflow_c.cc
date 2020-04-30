@@ -604,6 +604,14 @@ flexflow_tensor_detach_raw_ptr(
   handle->detach_raw_ptr(*config);  
 }
 
+bool
+flexflow_tensor_is_mapped(
+  flexflow_tensor_t handle_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->physical_region.is_mapped();
+}
+
 // -----------------------------------------------------------------------
 // SGDOptimizer
 // -----------------------------------------------------------------------
@@ -757,6 +765,25 @@ flexflow_dataloader_create(
   Tensor *input = FFCObjectWrapper::unwrap(input_);
   Tensor *label = FFCObjectWrapper::unwrap(label_);
   ImgDataLoader *dataloader = new ImgDataLoader(*ffmodel, *netconfig, *input, *label);
+  return FFCObjectWrapper::wrap(dataloader);  
+}
+
+flexflow_dataloader_t
+flexflow_dataloader_create_v2(
+  flexflow_model_t ffmodel_, 
+  flexflow_net_config_t netconfig_,
+  flexflow_tensor_t input_, 
+  flexflow_tensor_t label_,
+  flexflow_tensor_t full_input_, 
+  flexflow_tensor_t full_label_)
+{
+  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
+  NetConfig *netconfig = FFCObjectWrapper::unwrap(netconfig_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *label = FFCObjectWrapper::unwrap(label_);
+  Tensor *full_input = FFCObjectWrapper::unwrap(full_input_);
+  Tensor *full_label = FFCObjectWrapper::unwrap(full_label_);
+  ImgDataLoader *dataloader = new ImgDataLoader(*ffmodel, *netconfig, *input, *label, *full_input, *full_label);
   return FFCObjectWrapper::wrap(dataloader);  
 }
 
@@ -987,6 +1014,32 @@ NetConfig::NetConfig(void)
 // -----------------------------------------------------------------------
 // ImgDataLoader implementation
 // -----------------------------------------------------------------------
+
+ImgDataLoader::ImgDataLoader(FFModel& ff, 
+                             const NetConfig& alexnet,
+                             Tensor input, Tensor label, Tensor full_input_, Tensor full_label_)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  num_samples = 0;
+  if (alexnet.dataset_path == "") {
+    printf("Use random dataset...");
+    num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
+    printf("Number of random samples = %d\n", num_samples);
+  } else {
+    printf("Start loading dataset from %s\n", alexnet.dataset_path.c_str());
+    size_t filesize = get_file_size(alexnet.dataset_path);
+    assert(filesize % 3073 == 0);
+    num_samples = filesize / 3073;
+  }
+  batch_input = input;
+  batch_label = label;
+  full_input = full_input_;
+  full_label = full_label_;
+  
+  reset();
+  next_batch(ff);
+}
 
 ImgDataLoader::ImgDataLoader(FFModel& ff, 
                              const NetConfig& alexnet,

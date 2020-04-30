@@ -17,7 +17,7 @@ def top_level_task():
   input1_np += 0.235
   input1.attach_numpy_array(ffconfig, input1_np)
   
-  label_np = np.empty((ffconfig.get_batch_size(), 784), dtype=np.int32)
+  label_np = np.empty((ffconfig.get_batch_size(), 1), dtype=np.int32)
   label_np *= 0
   label.attach_numpy_array(ffconfig, label_np)
   
@@ -55,8 +55,6 @@ def top_level_task():
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, 8192 * epochs / run_time));
   
-  input1.detach_numpy_array(ffconfig)
-  
   dense1 = ffmodel.get_layer_by_id(0)
 
   dbias_tensor = dense1.get_bias_tensor()
@@ -72,6 +70,9 @@ def top_level_task():
   print(dweight.shape)
   print(dweight)
   dweight_tensor.inline_unmap(ffconfig)
+  
+  input1.detach_numpy_array(ffconfig)
+  label.detach_numpy_array(ffconfig)
   
 if __name__ == "__main__":
   print("alexnet")
