@@ -1,6 +1,6 @@
 from flexflow.core import *
 from flexflow.keras.datasets import cifar10
-
+from keras.datasets import reuters
 def top_level_task():
   ffconfig = FFConfig()
   alexnetconfig = NetConfig()

@@ -1,4 +1,5 @@
 from . import optimizers
-from .models import *
-from .layers import *
 from . import datasets
+from . import utils
+from . import models
+from . import layers

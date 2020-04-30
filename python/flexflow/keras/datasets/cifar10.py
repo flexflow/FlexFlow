@@ -5,7 +5,7 @@ from __future__ import division
 from __future__ import print_function
 
 from .cifar import load_batch
-from .data_utils import get_file
+from ..utils.data_utils import get_file
 import numpy as np
 import os
 
