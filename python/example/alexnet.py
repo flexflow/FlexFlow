@@ -16,7 +16,7 @@ def top_level_task():
   #print(dims)
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
-  use_external = False
+  use_external = True
   if (use_external == True):
     num_samples = 2560
     
@@ -37,6 +37,7 @@ def top_level_task():
     full_label.attach_numpy_array(ffconfig, full_label_np)
     
     dataloader = DataLoader(ffmodel, alexnetconfig, input, label, full_input, full_label)
+    dataloader.set_num_samples(2560)
   else:
     # Data Loader
     dataloader = DataLoader(ffmodel, alexnetconfig, input, label)
