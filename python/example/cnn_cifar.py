@@ -17,11 +17,11 @@ def top_level_task():
   #print(dims)
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
-  use_external = True
+  use_external = False
   if (use_external == True):
-    num_samples = 40000
+    num_samples = 10000
     
-    (x_train, y_train), (x_test, y_test) = cifar10.load_data()
+    (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
     
     x_train = x_train.astype('float32')
     x_train /= 255
@@ -38,12 +38,12 @@ def top_level_task():
     #         ct += 1
     
     y_train = y_train.astype('int32')
-    y_train = y_train.transpose(1, 0)
-    full_label_array = np.zeros((y_train.shape[0], y_train.shape[1]), dtype=np.int32)
-    for i in range(0, y_train.shape[0]):
-      for j in range(0, y_train.shape[1]):
-        full_label_array[i, j] = y_train[i, j]
-    #full_label_array = y_train
+    # y_train = y_train.transpose(1, 0)
+    # full_label_array = np.zeros((y_train.shape[0], y_train.shape[1]), dtype=np.int32)
+    # for i in range(0, y_train.shape[0]):
+    #   for j in range(0, y_train.shape[1]):
+    #     full_label_array[i, j] = y_train[i, j]
+    full_label_array = y_train
    
     print(full_input_array.__array_interface__["strides"])
     print(full_input_array.shape, full_label_array.shape)
@@ -60,22 +60,22 @@ def top_level_task():
     full_input.attach_numpy_array(ffconfig, full_input_array)
     full_label.attach_numpy_array(ffconfig, full_label_array)
     
-    dataloader = DataLoader(ffmodel, alexnetconfig, input, label, full_input, full_label, num_samples)
+    dataloader = DataLoader4D(ffmodel, input, label, full_input, full_label, num_samples)
     
     full_input.detach_numpy_array(ffconfig)
     full_label.detach_numpy_array(ffconfig)
   else:
     # Data Loader
-    dataloader = DataLoader(ffmodel, alexnetconfig, input, label)
+    dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
 
   t = ffmodel.conv2d("conv1", input, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
   t = ffmodel.conv2d("conv2", t, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
   t = ffmodel.pool2d("pool1", t, 2, 2, 2, 2, 0, 0,)
-  # t = ffmodel.conv2d("conv3", t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  # t = ffmodel.conv2d("conv4", t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  # t = ffmodel.pool2d("pool2", t, 2, 2, 2, 2, 0, 0)
+  t = ffmodel.conv2d("conv3", t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.conv2d("conv4", t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.pool2d("pool2", t, 2, 2, 2, 2, 0, 0)
   t = ffmodel.flat("flat", t);
-  t = ffmodel.dense("lienar1", t, 256, ActiMode.AC_MODE_RELU)
+  t = ffmodel.dense("lienar1", t, 512, ActiMode.AC_MODE_RELU)
   t = ffmodel.dense("lienar1", t, 10)
   t = ffmodel.softmax("softmax", t, label)
 

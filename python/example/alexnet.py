@@ -45,13 +45,13 @@ def top_level_task():
     full_input.attach_numpy_array(ffconfig, full_input_np)
     full_label.attach_numpy_array(ffconfig, full_label_np)
     
-    dataloader = DataLoader(ffmodel, alexnetconfig, input, label, full_input, full_label, num_samples)
+    dataloader = DataLoader4D(ffmodel, input, label, full_input, full_label, num_samples)
     
     full_input.detach_numpy_array(ffconfig)
     full_label.detach_numpy_array(ffconfig)
   else:
     # Data Loader
-    dataloader = DataLoader(ffmodel, alexnetconfig, input, label)
+    dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
 
   # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
   # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)

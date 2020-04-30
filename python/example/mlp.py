@@ -38,7 +38,7 @@ def top_level_task():
     full_label.attach_numpy_array(ffconfig, y_train)
     print(y_train)
 
-    dataloader = DataLoader2D(ffmodel, alexnetconfig, input1, label, full_input, full_label, num_samples)
+    dataloader = DataLoader2D(ffmodel, input1, label, full_input, full_label, num_samples)
 
     full_input.detach_numpy_array(ffconfig)
     full_label.detach_numpy_array(ffconfig)

@@ -58,8 +58,8 @@ FF_SRC ?= $(FF_DIR)/src/mapper/mapper.cc $(FF_DIR)/src/runtime/strategy.cc $(FF_
 FF_GPU_SRC ?= $(FF_DIR)/src/ops/conv_2d.cu $(FF_DIR)/src/runtime/model.cu $(FF_DIR)/src/ops/pool_2d.cu $(FF_DIR)/src/ops/batch_norm.cu $(FF_DIR)/src/ops/linear.cu  \
 		$(FF_DIR)/src/ops/softmax.cu $(FF_DIR)/src/ops/concat.cu $(FF_DIR)/src/ops/flat.cu $(FF_DIR)/src/ops/embedding.cu $(FF_DIR)/src/ops/mse_loss.cu\
 		$(FF_DIR)/src/runtime/initializer_kernel.cu $(FF_DIR)/src/runtime/optimizer_kernel.cu $(FF_DIR)/src/runtime/accessor_kernel.cu\
-		$(FF_DIR)/src/runtime/cuda_helper.cu flexflow_c.cu
-GEN_SRC		?= main.cc flexflow/hello/hello.cc flexflow_c.cc strategy.pb.cc $(FF_SRC) # .cc files
+		$(FF_DIR)/src/runtime/cuda_helper.cu flexflow_dataloader.cu
+GEN_SRC		?= main.cc flexflow/hello/hello.cc flexflow_c.cc flexflow_dataloader.cc strategy.pb.cc $(FF_SRC) # .cc files
 GEN_GPU_SRC	?= $(FF_GPU_SRC)		# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
