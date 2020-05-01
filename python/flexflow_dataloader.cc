@@ -472,3 +472,290 @@ void ImgDataLoader2D::next_batch(FFModel& ff)
   }
   next_index += ff.config.batchSize;
 }
+
+SingleDataLoaderBase::SingleDataLoaderBase()
+{}
+
+void SingleDataLoaderBase::reset()
+{
+  next_index = 0;
+}
+
+SingleDataLoader4DFloat::SingleDataLoader4DFloat(FFModel& ff, Tensor input, Tensor full_input_, int num_samples_)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  num_samples = num_samples_;
+  // Create full input
+  {
+    batch_input = input;
+    const int dims[] = {num_samples, input.adim[2], input.adim[1], input.adim[0]};
+    full_input = ff.create_tensor<4>(dims, "", DT_FLOAT);
+  }
+  // Load entire dataset
+  // TODO: Use index launcher instead of task launcher
+  TaskLauncher launcher(CUSTOM_CPU_TASK_ID_4,
+      TaskArgument(NULL, 0));
+  // regions[0]: full_input
+  launcher.add_region_requirement(
+      RegionRequirement(full_input.region, WRITE_ONLY,
+                        EXCLUSIVE, full_input.region,
+                        MAP_TO_ZC_MEMORY));
+  launcher.add_field(0, FID_DATA);
+  // regions[2]: full_input_
+  launcher.add_region_requirement(
+      RegionRequirement(full_input_.region, READ_ONLY,
+                        EXCLUSIVE, full_input_.region));
+  launcher.add_field(1, FID_DATA);
+  Future fu = runtime->execute_task(ctx, launcher);
+  fu.wait();
+  reset();
+  next_batch(ff);
+}
+
+SingleDataLoader2DFloat::SingleDataLoader2DFloat(FFModel& ff, Tensor input, Tensor full_input_, int num_samples_)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  num_samples = num_samples_;
+  // Create full input
+  {
+    batch_input = input;
+    const int dims[] = {num_samples, input.adim[0]};
+    full_input = ff.create_tensor<2>(dims, "", DT_FLOAT);
+  }
+  // Load entire dataset
+  // TODO: Use index launcher instead of task launcher
+  TaskLauncher launcher(CUSTOM_CPU_TASK_ID_5,
+      TaskArgument(NULL, 0));
+  // regions[0]: full_input
+  launcher.add_region_requirement(
+      RegionRequirement(full_input.region, WRITE_ONLY,
+                        EXCLUSIVE, full_input.region,
+                        MAP_TO_ZC_MEMORY));
+  launcher.add_field(0, FID_DATA);
+  // regions[2]: full_input_
+  launcher.add_region_requirement(
+      RegionRequirement(full_input_.region, READ_ONLY,
+                        EXCLUSIVE, full_input_.region));
+  launcher.add_field(1, FID_DATA);
+  Future fu = runtime->execute_task(ctx, launcher);
+  fu.wait();
+  reset();
+  next_batch(ff);
+}
+
+SingleDataLoader2DInt::SingleDataLoader2DInt(FFModel& ff, Tensor input, Tensor full_input_, int num_samples_)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  num_samples = num_samples_;
+  // Create full input
+  {
+    batch_input = input;
+    const int dims[] = {num_samples, input.adim[0]};
+    full_input = ff.create_tensor<2>(dims, "", DT_INT32);
+  }
+  // Load entire dataset
+  // TODO: Use index launcher instead of task launcher
+  TaskLauncher launcher(CUSTOM_CPU_TASK_ID_6,
+      TaskArgument(NULL, 0));
+  // regions[0]: full_input
+  launcher.add_region_requirement(
+      RegionRequirement(full_input.region, WRITE_ONLY,
+                        EXCLUSIVE, full_input.region,
+                        MAP_TO_ZC_MEMORY));
+  launcher.add_field(0, FID_DATA);
+  // regions[2]: full_input_
+  launcher.add_region_requirement(
+      RegionRequirement(full_input_.region, READ_ONLY,
+                        EXCLUSIVE, full_input_.region));
+  launcher.add_field(1, FID_DATA);
+  Future fu = runtime->execute_task(ctx, launcher);
+  fu.wait();
+  reset();
+  next_batch(ff);
+}
+
+void SingleDataLoader4DFloat::load_entire_dataset_from_numpy(const Task *task,
+                                                             const std::vector<PhysicalRegion> &regions,
+                                                             Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == regions.size());
+  const AccessorWO<float, 4> acc_input(regions[0], FID_DATA);
+  const AccessorRO<float, 4> acc_input_(regions[1], FID_DATA);
+  Rect<4> rect_input = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
+  Rect<4> rect_input_ = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  assert(acc_input_.accessor.is_dense_arbitrary(rect_input_));
+  float* input_ptr = acc_input.ptr(rect_input.lo);
+  const float* input_ptr_ = acc_input_.ptr(rect_input_.lo);
+  printf("Check ptr input %p %lu %lu\n", input_ptr_, (uintptr_t)input_ptr_, rect_input.volume());
+  assert(rect_input.volume() == rect_input_.volume());
+  memcpy(input_ptr, input_ptr_, sizeof(float)*rect_input.volume());
+  for (int i = 0; i < 32; i++) {
+    printf("%f ", input_ptr[i]);
+  }
+  printf("\n");
+}
+
+void SingleDataLoader2DFloat::load_entire_dataset_from_numpy(const Task *task,
+                                                             const std::vector<PhysicalRegion> &regions,
+                                                             Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == regions.size());
+  const AccessorWO<float, 2> acc_input(regions[0], FID_DATA);
+  const AccessorRO<float, 2> acc_input_(regions[1], FID_DATA);
+  Rect<2> rect_input = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
+  Rect<2> rect_input_ = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  assert(acc_input_.accessor.is_dense_arbitrary(rect_input_));
+  float* input_ptr = acc_input.ptr(rect_input.lo);
+  const float* input_ptr_ = acc_input_.ptr(rect_input_.lo);
+  printf("Check ptr input %p %lu %lu\n", input_ptr_, (uintptr_t)input_ptr_, rect_input.volume());
+  assert(rect_input.volume() == rect_input_.volume());
+  memcpy(input_ptr, input_ptr_, sizeof(float)*rect_input.volume());
+  for (int i = 0; i < 32; i++) {
+    printf("%f ", input_ptr[i]);
+  }
+  printf("\n");
+}
+
+void SingleDataLoader2DInt::load_entire_dataset_from_numpy(const Task *task,
+                                                           const std::vector<PhysicalRegion> &regions,
+                                                           Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == regions.size());
+  const AccessorWO<int, 2> acc_label(regions[0], FID_DATA);
+  const AccessorRO<int, 2> acc_label_(regions[1], FID_DATA);
+  Rect<2> rect_label = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  assert(acc_label.accessor.is_dense_arbitrary(rect_label));
+  Rect<2> rect_label_ = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  assert(acc_label_.accessor.is_dense_arbitrary(rect_label_));
+  int* label_ptr = acc_label.ptr(rect_label.lo);
+  const int* label_ptr_ = acc_label_.ptr(rect_label_.lo);
+  printf("Check ptr label %p %lu %lu\n", label_ptr_, (uintptr_t)label_ptr_, rect_label.volume());
+  assert(rect_label.volume() == rect_label_.volume());
+  memcpy(label_ptr, label_ptr_, sizeof(int)*rect_label.volume());
+  for (int i = 0; i < 32; i++) {
+    printf("%d ", label_ptr[i]);
+  }
+  printf("\n");
+}
+
+void SingleDataLoader4DFloat::next_batch(FFModel& ff)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  // Load input
+  {
+    IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, ""));
+    Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    int idx = next_index;
+    for (PointInRectIterator<4> it(rect); it(); it++) {
+      SampleIdxs meta;
+      assert(ff.config.batchSize % (rect.hi[3] - rect.lo[3] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[3] - rect.lo[3] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_4, task_is,
+                           TaskArgument(NULL,0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(""));
+    launcher.add_region_requirement(
+        RegionRequirement(full_input.region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input.region,
+                          MAP_TO_ZC_MEMORY));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_input.part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input.region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  }
+  next_index += ff.config.batchSize;
+}
+
+void SingleDataLoader2DFloat::next_batch(FFModel& ff)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  // Load input
+  {
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
+    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    int idx = next_index;
+    for (PointInRectIterator<2> it(rect); it(); it++) {
+      SampleIdxs meta;
+      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_5, task_is,
+                           TaskArgument(NULL,0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(""));
+    launcher.add_region_requirement(
+        RegionRequirement(full_input.region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input.region,
+                          MAP_TO_ZC_MEMORY));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_input.part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input.region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  }
+  next_index += ff.config.batchSize;
+}
+
+void SingleDataLoader2DInt::next_batch(FFModel& ff)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  // Load label
+  {
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
+    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    int idx = next_index;
+    for (PointInRectIterator<2> it(rect); it(); it++) {
+      SampleIdxs meta;
+      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_6, task_is,
+                           TaskArgument(NULL,0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(""));
+    launcher.add_region_requirement(
+        RegionRequirement(full_input.region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input.region,
+                          MAP_TO_ZC_MEMORY));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_input.part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input.region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  }
+  next_index += ff.config.batchSize;
+}

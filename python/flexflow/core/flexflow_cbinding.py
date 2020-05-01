@@ -613,6 +613,61 @@ class DataLoader2D(object):
   def reset(self):
     ffc.flexflow_dataloader_2d_reset(self.handle)
     
+# -----------------------------------------------------------------------
+# Single DataLoader
+# -----------------------------------------------------------------------
+
+class SingleDataLoader4DFloat(object):
+  def __init__(self, ffmodel, input, full_input, num_samples=0):
+    self.handle = ffc.flexflow_single_dataloader_4d_float_create(ffmodel.handle, input.handle, full_input.handle, num_samples)
+    self._handle = ffi.gc(self.handle, ffc.flexflow_single_dataloader_4d_float_destroy)
+  
+  def set_num_samples(self, samples):
+    ffc.flexflow_single_dataloader_4d_float_set_num_samples(self.handle, samples)
+      
+  def get_num_samples(self):
+    return ffc.flexflow_single_dataloader_4d_float_get_num_samples(self.handle)
+    
+  def next_batch(self, ffmodel):
+    ffc.flowflow_single_dataloader_4d_float_next_batch(self.handle, ffmodel.handle)
+    
+  def reset(self):
+    ffc.flexflow_single_dataloader_4d_float_reset(self.handle)
+    
+class SingleDataLoader2DFloat(object):
+  def __init__(self, ffmodel, input, full_input, num_samples=0):
+    self.handle = ffc.flexflow_single_dataloader_2d_float_create(ffmodel.handle, input.handle, full_input.handle, num_samples)
+    self._handle = ffi.gc(self.handle, ffc.flexflow_single_dataloader_2d_float_destroy)
+  
+  def set_num_samples(self, samples):
+    ffc.flexflow_single_dataloader_2d_float_set_num_samples(self.handle, samples)
+      
+  def get_num_samples(self):
+    return ffc.flexflow_single_dataloader_2d_float_get_num_samples(self.handle)
+    
+  def next_batch(self, ffmodel):
+    ffc.flowflow_single_dataloader_2d_float_next_batch(self.handle, ffmodel.handle)
+    
+  def reset(self):
+    ffc.flexflow_single_dataloader_2d_float_reset(self.handle)
+    
+class SingleDataLoader2DInt(object):
+  def __init__(self, ffmodel, input, full_input, num_samples=0):
+    self.handle = ffc.flexflow_single_dataloader_2d_int_create(ffmodel.handle, input.handle, full_input.handle, num_samples)
+    self._handle = ffi.gc(self.handle, ffc.flexflow_single_dataloader_2d_int_destroy)
+  
+  def set_num_samples(self, samples):
+    ffc.flexflow_single_dataloader_2d_int_set_num_samples(self.handle, samples)
+      
+  def get_num_samples(self):
+    return ffc.flexflow_single_dataloader_2d_int_get_num_samples(self.handle)
+    
+  def next_batch(self, ffmodel):
+    ffc.flowflow_single_dataloader_2d_int_next_batch(self.handle, ffmodel.handle)
+    
+  def reset(self):
+    ffc.flexflow_single_dataloader_2d_int_reset(self.handle)
+    
 class RegionNdarray(object):
   __slots__ = ['__array_interface__']
   def __init__(self, shape, data_type, base_ptr, strides, read_only):

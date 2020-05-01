@@ -20,7 +20,7 @@ def top_level_task():
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
   use_external = True
-  use_resize = False
+  use_resize = True
   if (use_external == True):
     num_samples = 10000
     
@@ -60,13 +60,19 @@ def top_level_task():
     full_input.attach_numpy_array(ffconfig, full_input_np)
     full_label.attach_numpy_array(ffconfig, full_label_np)
     
-    dataloader = DataLoader4D(ffmodel, input, label, full_input, full_label, num_samples)
+    dataloader_input = SingleDataLoader4DFloat(ffmodel, input, full_input, num_samples)
+    dataloader_label = SingleDataLoader2DInt(ffmodel, label, full_label, num_samples)
     
     full_input.detach_numpy_array(ffconfig)
     full_label.detach_numpy_array(ffconfig)
+    
+    num_samples = dataloader_input.get_num_samples()
+    assert dataloader_input.get_num_samples() == dataloader_label.get_num_samples()
+    
   else:
     # Data Loader
     dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
+    num_samples = dataloader.get_num_samples()
 
   ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
   ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
@@ -114,16 +120,24 @@ def top_level_task():
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
-    dataloader.reset()
+    if (use_external == True):
+      dataloader_input.reset()
+      dataloader_label.reset()
+    else:
+      dataloader.reset()
     ffmodel.reset_metrics()
-    iterations = int(dataloader.get_num_samples() / ffconfig.get_batch_size())
+    iterations = int(num_samples / ffconfig.get_batch_size())
 
     for iter in range(0, int(iterations)):
       # if (len(alexnetconfig.dataset_path) == 0):
       #   if (iter == 0 and epoch == 0):
       #     dataloader.next_batch(ffmodel)
       # else:
-      dataloader.next_batch(ffmodel)
+      if (use_external == True):
+        dataloader_input.next_batch(ffmodel)
+        dataloader_label.next_batch(ffmodel)
+      else:
+        dataloader.next_batch(ffmodel)
       if (epoch > 0):
         ffconfig.begin_trace(111)
       ffmodel.forward()
@@ -135,7 +149,7 @@ def top_level_task():
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
-  print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, dataloader.get_num_samples() * epochs / run_time));
+  print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, num_samples * epochs / run_time));
   #ffmodel.print_layers(13)
 
   conv_2d1 = ffmodel.get_layer_by_id(0)

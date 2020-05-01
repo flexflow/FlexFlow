@@ -17,8 +17,8 @@ class Sequential(object):
     self.full_input_tensor = 0
     self.full_label_tensor = 0
     self.num_samples = 0
-    self.dataloader = 0
-    self.dataloader_dim = 0
+    self.dataloaders = []
+    self.dataloaders_dim = []
     self.use_v2 = False
     
   def _create_layer_and_init_inout(self, verify_inout_shape=True):
@@ -139,7 +139,7 @@ class Sequential(object):
     dims_label = [self.ffconfig.get_batch_size(), 1]
     self.label_tensor = self.ffmodel.create_tensor_2d(dims_label, "", ff.DataType.DT_INT32);
   
-  def create_data_loader(self, x_train, y_train):
+  def create_data_loaders(self, x_train, y_train):
     input_shape = x_train.shape
     self.num_samples = input_shape[0]
     
@@ -153,8 +153,12 @@ class Sequential(object):
       self.full_input_tensor.attach_numpy_array(self.ffconfig, x_train)
       self.full_label_tensor.attach_numpy_array(self.ffconfig, y_train)
 
-      self.dataloader = ff.DataLoader2D(self.ffmodel, self.input_tensor, self.label_tensor, self.full_input_tensor, self.full_label_tensor, self.num_samples)
-      self.dataloader_dim = 2
+      dataloader = ff.SingleDataLoader2DFloat(self.ffmodel, self.input_tensor, self.full_input_tensor, self.num_samples)
+      self.dataloaders.append(dataloader)
+      dataloader = ff.SingleDataLoader2DInt(self.ffmodel, self.label_tensor, self.full_label_tensor, self.num_samples)
+      self.dataloaders.append(dataloader)
+      self.dataloaders_dim.append(2)
+      self.dataloaders_dim.append(2)
       
     elif (len(input_shape) == 4):
       dims_input = [self.num_samples, input_shape[1], input_shape[2], input_shape[3]]
@@ -163,8 +167,12 @@ class Sequential(object):
       self.full_input_tensor.attach_numpy_array(self.ffconfig, x_train)
       self.full_label_tensor.attach_numpy_array(self.ffconfig, y_train)
 
-      self.dataloader = ff.DataLoader4D(self.ffmodel, self.input_tensor, self.label_tensor, self.full_input_tensor, self.full_label_tensor, self.num_samples)
-      self.dataloader_dim = 4
+      dataloader = ff.SingleDataLoader4DFloat(self.ffmodel, self.input_tensor, self.full_input_tensor, self.num_samples)
+      self.dataloaders.append(dataloader)
+      dataloader = ff.SingleDataLoader2DInt(self.ffmodel, self.label_tensor, self.full_label_tensor, self.num_samples)
+      self.dataloaders.append(dataloader)
+      self.dataloaders_dim.append(4)
+      self.dataloaders_dim.append(2)
       
     self.full_input_tensor.detach_numpy_array(self.ffconfig)
     self.full_label_tensor.detach_numpy_array(self.ffconfig)
@@ -172,12 +180,14 @@ class Sequential(object):
   def train(self, epochs):
     ts_start = self.ffconfig.get_current_time()
     for epoch in range(0,epochs):
-      self.dataloader.reset()
+      for dataloader in self.dataloaders:
+        dataloader.reset()
       self.ffmodel.reset_metrics()
-      iterations = self.dataloader.get_num_samples() / self.ffconfig.get_batch_size()
+      iterations = self.num_samples / self.ffconfig.get_batch_size()
 
       for iter in range(0, int(iterations)):
-        self.dataloader.next_batch(self.ffmodel)
+        for dataloader in self.dataloaders:
+          dataloader.next_batch(self.ffmodel)
         if (epoch > 0):
           self.ffconfig.begin_trace(111)
         #self.ffmodel.forward()
@@ -192,11 +202,11 @@ class Sequential(object):
 
     ts_end = self.ffconfig.get_current_time()
     run_time = 1e-6 * (ts_end - ts_start);
-    print("epochs %d, ELAPSED TIME = %.4fs, interations %d, samples %d, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, int(iterations), self.dataloader.get_num_samples(), self.dataloader.get_num_samples() * epochs / run_time));
+    print("epochs %d, ELAPSED TIME = %.4fs, interations %d, samples %d, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, int(iterations), self.num_samples, self.num_samples * epochs / run_time));
     
   def fit(self, input_tensor, label_tensor, epochs=1):
     self.create_input_and_label_tensor(input_tensor.shape, label_tensor.shape)
-    self.create_data_loader(input_tensor, label_tensor)
+    self.create_data_loaders(input_tensor, label_tensor)
     
     # if (self.use_v2 == True):
     #   self._init_inout(input_tensor, label_tensor)

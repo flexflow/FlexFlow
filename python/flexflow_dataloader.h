@@ -60,6 +60,57 @@ public:
   void next_batch(FFModel&);
 };
 
+class SingleDataLoaderBase {
+public:
+  SingleDataLoaderBase();
+  void reset(void);             
+public:
+  int num_samples, next_index;
+  Tensor full_input, batch_input;
+};
+
+class SingleDataLoader4DFloat : public SingleDataLoaderBase {
+public:
+  SingleDataLoader4DFloat(FFModel& ff, Tensor input, Tensor full_input_, int num_samples_);
+  static void load_input(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx,
+                         Runtime* runtime);
+  static void load_entire_dataset_from_numpy(const Task *task,
+                                             const std::vector<PhysicalRegion> &regions,
+                                             Context ctx,
+                                             Runtime* runtime);
+  void next_batch(FFModel&);             
+};
+
+class SingleDataLoader2DFloat : public SingleDataLoaderBase {
+public:
+  SingleDataLoader2DFloat(FFModel& ff, Tensor input, Tensor full_input_, int num_samples_);
+  static void load_input(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx,
+                         Runtime* runtime);
+  static void load_entire_dataset_from_numpy(const Task *task,
+                                             const std::vector<PhysicalRegion> &regions,
+                                             Context ctx,
+                                             Runtime* runtime);
+  void next_batch(FFModel&);             
+};
+
+class SingleDataLoader2DInt : public SingleDataLoaderBase {
+public:
+  SingleDataLoader2DInt(FFModel& ff, Tensor input, Tensor full_input_, int num_samples_);
+  static void load_input(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx,
+                         Runtime* runtime);
+  static void load_entire_dataset_from_numpy(const Task *task,
+                                             const std::vector<PhysicalRegion> &regions,
+                                             Context ctx,
+                                             Runtime* runtime);
+  void next_batch(FFModel&);             
+};
+
 #define MAX_NUM_SAMPLES 4196
 struct SampleIdxs {
   int num_samples;
