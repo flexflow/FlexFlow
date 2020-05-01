@@ -360,18 +360,20 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor& tensor
 // 1. the outer most dim of weight is channel out
 // 2. partition is 2D (sample, channel_out)
 template<int NDIM>
-Tensor FFModel::create_linear_weight(const int dims[],
-                                     const IndexSpaceT<2>& part_is,
-                                     DataType data_type,
-                                     Initializer* initializer,
-                                     bool create_grad)
+Parameter FFModel::create_linear_weight(Op* op,
+                                        const int dims[],
+                                        const IndexSpaceT<2>& part_is,
+                                        DataType data_type,
+                                        Initializer* initializer,
+                                        bool create_grad)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, part_is);
   int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
-  Tensor weight;
+  Parameter weight;
+  weight.op = op;
   weight.numDim = NDIM;
   for (int i = 0; i < NDIM; i++)
     weight.adim[i] = dims[NDIM-1-i];
@@ -446,11 +448,12 @@ Tensor FFModel::create_linear_weight(const int dims[],
 }
 
 template<int NDIM>
-Tensor FFModel::create_conv_weight(const int dims[],
-                                   const IndexSpaceT<4>& part_is,
-                                   DataType data_type,
-                                   Initializer* initializer,
-                                   bool create_grad)
+Parameter FFModel::create_conv_weight(Op* op,
+                                      const int dims[],
+                                      const IndexSpaceT<4>& part_is,
+                                      DataType data_type,
+                                      Initializer* initializer,
+                                      bool create_grad)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -461,7 +464,8 @@ Tensor FFModel::create_conv_weight(const int dims[],
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   // Currently assume we do not split over the channel dimension
   assert(num_par_c == 1);
-  Tensor weight;
+  Parameter weight;
+  weight.op = op;
   weight.numDim = NDIM;
   for (int i = 0; i < NDIM; i++)
     weight.adim[i] = dims[NDIM-1-i];
@@ -710,15 +714,15 @@ void FFModel::zero_gradients(void)
   Runtime* runtime = config.lg_hlr;
   for (size_t p = 0; p < parameters.size(); p++) {
     Domain domain = runtime->get_index_partition_color_space(
-        ctx, parameters[p].tensor.part_grad.get_index_partition());
+        ctx, parameters[p].part_grad.get_index_partition());
     IndexSpace task_is = get_or_create_task_is(domain);
     IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
                            TaskArgument(NULL, 0), arg_map,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(std::string(parameters[p].op->name)));
     launcher.add_region_requirement(
-        RegionRequirement(parameters[p].tensor.part_grad, 0/*projection*/,
-                          WRITE_ONLY, EXCLUSIVE, parameters[p].tensor.region_grad));
+        RegionRequirement(parameters[p].part_grad, 0/*projection*/,
+                          WRITE_ONLY, EXCLUSIVE, parameters[p].region_grad));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -1284,10 +1288,10 @@ template void FFModel::create_disjoint_partition<4>(const Tensor& tensor, const 
 template void FFModel::create_data_parallel_partition_with_diff_dims<4, 2>(const Tensor& tensor, const IndexSpaceT<2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
 
 
-template Tensor FFModel::create_conv_weight<4>(const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
-template Tensor FFModel::create_conv_weight<1>(const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
+template Parameter FFModel::create_conv_weight<4>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
+template Parameter FFModel::create_conv_weight<1>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
 
-template Tensor FFModel::create_linear_weight<2>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
-template Tensor FFModel::create_linear_weight<1>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
+template Parameter FFModel::create_linear_weight<2>(Op* op, const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
+template Parameter FFModel::create_linear_weight<1>(Op* op, const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
 
 template Tensor FFModel::create_linear_replica<3>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type);

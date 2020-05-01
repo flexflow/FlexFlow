@@ -160,15 +160,29 @@ struct Tensor {
   LogicalPartition part, part_grad;
 };
 
+class FFModel;
+class Op;
+class DataLoader;
+
+struct Parameter : Tensor {
+  Parameter(void) {}
+  template <typename T>
+  bool set_weights(const FFModel& model,
+                   const std::vector<int>& dims,
+                   const T* data);
+  template <typename T>
+  bool get_weights(const FFModel& model,
+                   T* data);
+  std::vector<int> get_dims();
+  Op* op; // Pointer to the operator that owns this parameter
+};
+
 class OpMeta {
 public:
   OpMeta(FFHandler _handle) : handle(_handle) {};
 public:
   FFHandler handle;
 };
-
-class FFModel;
-class DataLoader;
 
 class Op {
 public:
@@ -193,12 +207,6 @@ public:
   //Tensor locals[MAX_NUM_LOCALS];
   OpMeta* meta[MAX_NUM_WORKERS];
   int numLocals, numInputs;
-};
-
-class Parameter {
-public:
-  Tensor tensor;
-  Op* op;
 };
 
 class Conv2D;
@@ -322,17 +330,19 @@ public:
                        DataType data_type,
                        bool create_grad = true);
   template<int NDIM>
-  Tensor create_conv_weight(const int* dims,
-                            const IndexSpaceT<4>& part_is,
-                            DataType data_type,
-                            Initializer* initializer,
-                            bool create_grad = true);
+  Parameter create_conv_weight(Op* op,
+                               const int* dims,
+                               const IndexSpaceT<4>& part_is,
+                               DataType data_type,
+                               Initializer* initializer,
+                               bool create_grad = true);
   template<int NDIM>
-  Tensor create_linear_weight(const int* dims,
-                              const IndexSpaceT<2>& part_is,
-                              DataType data_type,
-                              Initializer* initializer,
-                              bool create_grad = true);
+  Parameter create_linear_weight(Op* op,
+                                 const int* dims,
+                                 const IndexSpaceT<2>& part_is,
+                                 DataType data_type,
+                                 Initializer* initializer,
+                                 bool create_grad = true);
   template<int NDIM>
   Tensor create_linear_replica(const int* dims,
                                const IndexSpaceT<2>& part_is,
@@ -415,7 +425,7 @@ private:
 public:
   IndexSpaceT<4> task_is;
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
-  Tensor kernel, bias;
+  Parameter kernel, bias;
   bool profiling;
   ActiMode activation;
 };
@@ -573,7 +583,8 @@ private:
 public:
   IndexSpaceT<2> task_is;
   int in_channels, out_channels;
-  Tensor kernel, bias, replica;
+  Parameter kernel, bias;
+  Tensor replica;
   bool profiling;
   ActiMode activation;
 };
@@ -627,7 +638,7 @@ private:
 public:
   IndexSpaceT<2> task_is;
   int out_channels;
-  Tensor kernel;
+  Parameter kernel;
   AggrMode aggr;
   bool profiling;
 };
