@@ -16,6 +16,7 @@ def top_level_task():
   
   x_train = x_train.astype('float32')
   x_train /= 255
+  #y_train = np.random.randint(1, 9, size=40000, dtype='int32')
   y_train = y_train.astype('int32')
   print("shape: ", x_train.shape)
   
@@ -34,7 +35,7 @@ def top_level_task():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
 
-  model.fit(x_train, y_train, epochs=10)
+  model.fit(x_train, y_train, epochs=1)
 
 if __name__ == "__main__":
   print("alexnet keras")

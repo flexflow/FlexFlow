@@ -23,6 +23,7 @@ def top_level_task():
   dataloader.next_batch(ffmodel)
 
   input1.inline_map(ffconfig)
+  input1.dims = [64, 3, 229, 229]
   input1_array = input1.get_array(ffconfig, DataType.DT_FLOAT)
   # input1_array *= 0
   # input1_array += 1.1
