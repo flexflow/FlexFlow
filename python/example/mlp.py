@@ -38,7 +38,9 @@ def top_level_task():
     full_label.attach_numpy_array(ffconfig, y_train)
     print(y_train)
 
-    dataloader = DataLoader2D(ffmodel, input1, label, full_input, full_label, num_samples)
+    #dataloader = DataLoader2D(ffmodel, input1, label, full_input, full_label, num_samples)
+    dataloader_input = SingleDataLoader(ffmodel, input1, full_input, num_samples, DataType.DT_FLOAT)
+    dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
 
     full_input.detach_numpy_array(ffconfig)
     full_label.detach_numpy_array(ffconfig)
@@ -48,6 +50,7 @@ def top_level_task():
     input1.inline_unmap(ffconfig)
     label.inline_map(ffconfig)
     label.inline_unmap(ffconfig)
+    num_samples = 2560
   
   t2 = ffmodel.dense("dense1", input1, 512, ActiMode.AC_MODE_RELU)
   t3 = ffmodel.dense("dense1", t2, 512, ActiMode.AC_MODE_RELU)
@@ -63,11 +66,13 @@ def top_level_task():
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
-    dataloader.reset()
+    dataloader_input.reset()
+    dataloader_label.reset()
     ffmodel.reset_metrics()
-    iterations = dataloader.get_num_samples() / ffconfig.get_batch_size()
-    for iter in range(0, int(iterations-5)):
-      dataloader.next_batch(ffmodel)
+    iterations = num_samples / ffconfig.get_batch_size()
+    for iter in range(0, int(iterations)):
+      dataloader_input.next_batch(ffmodel)
+      dataloader_label.next_batch(ffmodel)
       if (epoch > 0):
         ffconfig.begin_trace(111)
       ffmodel.forward()
@@ -79,13 +84,13 @@ def top_level_task():
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
-  print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, dataloader.get_num_samples() * epochs / run_time));
+  print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, num_samples * epochs / run_time));
  #
   dense1 = ffmodel.get_layer_by_id(0)
 
-  dbias_tensor = dense1.get_bias_tensor()
+  dbias_tensor = label#dense1.get_bias_tensor()
   dbias_tensor.inline_map(ffconfig)
-  dbias = dbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
+  dbias = dbias_tensor.get_array(ffconfig, DataType.DT_INT32)
   print(dbias.shape)
   print(dbias)
   dbias_tensor.inline_unmap(ffconfig)

@@ -918,6 +918,7 @@ flexflow_single_dataloader_destroy(
   flexflow_single_dataloader_t handle_)
 {
   SingleDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
+  printf("Delete SingleDataLoader %p\n", handle);
   delete handle;
 }
 

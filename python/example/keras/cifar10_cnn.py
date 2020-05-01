@@ -10,7 +10,7 @@ def top_level_task():
   
   num_classes = 10
   
-  num_samples = 40000
+  num_samples = 10000
   
   (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
   

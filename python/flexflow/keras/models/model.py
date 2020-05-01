@@ -35,7 +35,7 @@ class Model(object):
     output_tensor = self.ffmodel.softmax("softmax", input_tensor, label_tensor)
     
   def compile(self):
-    self.ffoptimizer = ff.SGDOptimizer(self.ffmodel, 0.01)
+    self.ffoptimizer = ff.SGDOptimizer(self.ffmodel, 0.001)
     self.ffmodel.set_sgd_optimizer(self.ffoptimizer)
     
   def fit(self, input_tensor, label_tensor, dataloader, alexnetconfig):    

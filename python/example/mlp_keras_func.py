@@ -41,7 +41,7 @@ def top_level_task():
   dims2 = [builtins.internal_ffconfig.get_batch_size(), 3, 229, 229]
   input2 = builtins.internal_ffmodel.create_tensor_4d(dims2, "", ff.DataType.DT_FLOAT);
   alexnetconfig = ff.NetConfig()
-  dataloader = ff.DataLoader(builtins.internal_ffmodel, alexnetconfig, input2, label)
+  dataloader = ff.DataLoader4D(builtins.internal_ffmodel, input2, label, ffnetconfig=alexnetconfig)
   input2.inline_map(builtins.internal_ffconfig)
   input2_array = input2.get_array(builtins.internal_ffconfig, ff.DataType.DT_FLOAT)
   print(input2_array.shape)
