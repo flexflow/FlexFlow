@@ -37,6 +37,7 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_single_dataloader_4d_float_t, SingleDataLoader4DFloat *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_single_dataloader_2d_float_t, SingleDataLoader2DFloat *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_single_dataloader_2d_int_t, SingleDataLoader2DInt *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_single_dataloader_t, SingleDataLoader *);
 };
 
 // -----------------------------------------------------------------------
@@ -1074,6 +1075,65 @@ flowflow_single_dataloader_2d_int_next_batch(
   handle->next_batch(*ffmodel);
 }
 
+flexflow_single_dataloader_t
+flexflow_single_dataloader_create(
+  flexflow_model_t ffmodel_, 
+  flexflow_tensor_t input_, 
+  flexflow_tensor_t full_input_, 
+  int num_samples,
+  enum DataType data_type)
+{
+  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *full_input = FFCObjectWrapper::unwrap(full_input_);
+  SingleDataLoader *dataloader = new SingleDataLoader(*ffmodel, *input, *full_input, num_samples, data_type);
+  return FFCObjectWrapper::wrap(dataloader);  
+}
+
+void  
+flexflow_single_dataloader_destroy(
+  flexflow_single_dataloader_t handle_)
+{
+  SingleDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
+  delete handle;
+}
+
+void
+flexflow_single_dataloader_set_num_samples(
+  flexflow_single_dataloader_t handle_,
+  int samples)
+{
+  SingleDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->num_samples = samples;  
+  printf("dataloader set number of samples %d\n", samples);
+}
+
+int
+flexflow_single_dataloader_get_num_samples(
+  flexflow_single_dataloader_t handle_)
+{
+  SingleDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->num_samples;
+}
+
+void
+flexflow_single_dataloader_reset(
+  flexflow_single_dataloader_t handle_)
+{
+  SingleDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->reset();
+}
+
+void
+flowflow_single_dataloader_next_batch(
+  flexflow_single_dataloader_t handle_,
+  flexflow_model_t ffmodel_)
+{
+  SingleDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
+  handle->next_batch(*ffmodel);
+}
+
 // -----------------------------------------------------------------------
 // Timer
 // -----------------------------------------------------------------------
@@ -1304,7 +1364,7 @@ void register_c_custom_tasks()
     Runtime::preregister_task_variant<ImgDataLoader2D::load_input>(
         registrar, "2D Load Input Task");
   }
-  
+#if 0  
   // 4D float Load entire dataset from numpy
   {
     TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_4, "4D Float Load Entire Dataset Numpy");
@@ -1331,7 +1391,11 @@ void register_c_custom_tasks()
     Runtime::preregister_task_variant<SingleDataLoader2DInt::load_entire_dataset_from_numpy>(
         registrar, "2D Int Load Entire Dataset Task Numpy");
   }
+#else
+  SingleDataLoader::register_cpu_tasks();
+#endif
   
+#if 0
   // 4D float load input
   {
     TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_4, "4D Float Load Inputs");
@@ -1356,4 +1420,7 @@ void register_c_custom_tasks()
     Runtime::preregister_task_variant<SingleDataLoader2DInt::load_input>(
         registrar, "2D Int Load Input Task");
   }
+#else
+  SingleDataLoader::register_gpu_tasks();
+#endif
 }

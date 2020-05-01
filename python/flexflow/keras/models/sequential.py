@@ -153,9 +153,9 @@ class Sequential(object):
       self.full_input_tensor.attach_numpy_array(self.ffconfig, x_train)
       self.full_label_tensor.attach_numpy_array(self.ffconfig, y_train)
 
-      dataloader = ff.SingleDataLoader2DFloat(self.ffmodel, self.input_tensor, self.full_input_tensor, self.num_samples)
+      dataloader = ff.SingleDataLoader(self.ffmodel, self.input_tensor, self.full_input_tensor, self.num_samples, ff.DataType.DT_FLOAT)
       self.dataloaders.append(dataloader)
-      dataloader = ff.SingleDataLoader2DInt(self.ffmodel, self.label_tensor, self.full_label_tensor, self.num_samples)
+      dataloader = ff.SingleDataLoader(self.ffmodel, self.label_tensor, self.full_label_tensor, self.num_samples, ff.DataType.DT_INT32)
       self.dataloaders.append(dataloader)
       self.dataloaders_dim.append(2)
       self.dataloaders_dim.append(2)
@@ -167,9 +167,9 @@ class Sequential(object):
       self.full_input_tensor.attach_numpy_array(self.ffconfig, x_train)
       self.full_label_tensor.attach_numpy_array(self.ffconfig, y_train)
 
-      dataloader = ff.SingleDataLoader4DFloat(self.ffmodel, self.input_tensor, self.full_input_tensor, self.num_samples)
+      dataloader = ff.SingleDataLoader(self.ffmodel, self.input_tensor, self.full_input_tensor, self.num_samples, ff.DataType.DT_FLOAT)
       self.dataloaders.append(dataloader)
-      dataloader = ff.SingleDataLoader2DInt(self.ffmodel, self.label_tensor, self.full_label_tensor, self.num_samples)
+      dataloader = ff.SingleDataLoader(self.ffmodel, self.label_tensor, self.full_label_tensor, self.num_samples, ff.DataType.DT_INT32)
       self.dataloaders.append(dataloader)
       self.dataloaders_dim.append(4)
       self.dataloaders_dim.append(2)

@@ -668,6 +668,24 @@ class SingleDataLoader2DInt(object):
   def reset(self):
     ffc.flexflow_single_dataloader_2d_int_reset(self.handle)
     
+class SingleDataLoader(object):
+  def __init__(self, ffmodel, input, full_input, num_samples, data_type):
+    c_data_type = enum_to_int(DataType, data_type)
+    self.handle = ffc.flexflow_single_dataloader_create(ffmodel.handle, input.handle, full_input.handle, num_samples, c_data_type)
+    self._handle = ffi.gc(self.handle, ffc.flexflow_single_dataloader_destroy)
+  
+  def set_num_samples(self, samples):
+    ffc.flexflow_single_dataloader_set_num_samples(self.handle, samples)
+      
+  def get_num_samples(self):
+    return ffc.flexflow_single_dataloader_get_num_samples(self.handle)
+    
+  def next_batch(self, ffmodel):
+    ffc.flowflow_single_dataloader_next_batch(self.handle, ffmodel.handle)
+    
+  def reset(self):
+    ffc.flexflow_single_dataloader_reset(self.handle)
+    
 class RegionNdarray(object):
   __slots__ = ['__array_interface__']
   def __init__(self, shape, data_type, base_ptr, strides, read_only):

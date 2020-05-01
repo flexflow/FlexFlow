@@ -25,6 +25,7 @@ FF_NEW_OPAQUE_TYPE(flexflow_dataloader_2d_t);
 FF_NEW_OPAQUE_TYPE(flexflow_single_dataloader_4d_float_t);
 FF_NEW_OPAQUE_TYPE(flexflow_single_dataloader_2d_float_t);
 FF_NEW_OPAQUE_TYPE(flexflow_single_dataloader_2d_int_t);
+FF_NEW_OPAQUE_TYPE(flexflow_single_dataloader_t);
 
 // -----------------------------------------------------------------------
 // FFConfig
@@ -562,6 +563,35 @@ flowflow_single_dataloader_2d_int_next_batch(
   flexflow_single_dataloader_2d_int_t handle,
   flexflow_model_t ffmodel);
 
+flexflow_single_dataloader_t
+flexflow_single_dataloader_create(
+  flexflow_model_t ffmodel, 
+  flexflow_tensor_t input, 
+  flexflow_tensor_t full_input, 
+  int num_samples,
+  enum DataType data_type);
+
+void  
+flexflow_single_dataloader_destroy(
+  flexflow_single_dataloader_t handle);
+
+void
+flexflow_single_dataloader_set_num_samples(
+  flexflow_single_dataloader_t handle,
+  int samples);
+
+int
+flexflow_single_dataloader_get_num_samples(
+  flexflow_single_dataloader_t handle);
+
+void
+flexflow_single_dataloader_reset(
+  flexflow_single_dataloader_t handle);
+
+void
+flowflow_single_dataloader_next_batch(
+  flexflow_single_dataloader_t handle,
+  flexflow_model_t ffmodel);
 
 // -----------------------------------------------------------------------
 // Timer

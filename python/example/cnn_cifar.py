@@ -15,7 +15,7 @@ def top_level_task():
   dims_label = [ffconfig.get_batch_size(), 1]
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
-  use_external = True
+  use_external = False
   if (use_external == True):
     num_samples = 10000
     
@@ -58,8 +58,8 @@ def top_level_task():
     full_input.attach_numpy_array(ffconfig, full_input_array)
     full_label.attach_numpy_array(ffconfig, full_label_array)
     
-    dataloader_input = SingleDataLoader4DFloat(ffmodel, input, full_input, num_samples)
-    dataloader_label = SingleDataLoader2DInt(ffmodel, label, full_label, num_samples)
+    dataloader_input = SingleDataLoader(ffmodel, input, full_input, num_samples, DataType.DT_FLOAT)
+    dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
     
     full_input.detach_numpy_array(ffconfig)
     full_label.detach_numpy_array(ffconfig)
