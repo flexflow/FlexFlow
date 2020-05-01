@@ -1,5 +1,5 @@
 from flexflow.keras.models import Sequential
-from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation
+from flexflow.keras.layers import Flatten, Dense, Activation
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 
