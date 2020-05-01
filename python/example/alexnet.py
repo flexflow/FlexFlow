@@ -1,6 +1,8 @@
 from flexflow.core import *
 from flexflow.keras.datasets import cifar10
 
+from PIL import Image
+
 def top_level_task():
   ffconfig = FFConfig()
   alexnetconfig = NetConfig()
@@ -17,21 +19,34 @@ def top_level_task():
   #print(dims)
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
-  use_external = False
+  use_external = True
+  use_resize = False
   if (use_external == True):
     num_samples = 10000
     
     (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
+
+    full_input_np = np.zeros((num_samples, 3, 229, 229), dtype=np.float32)
+    if (use_resize == True):
+      for i in range(0, num_samples):
+        image = x_train[i, :, :, :]
+        image = image.transpose(1, 2, 0)
+        pil_image = Image.fromarray(image)
+        pil_image = pil_image.resize((229,229), Image.NEAREST)
+        image = np.array(pil_image, dtype=np.float32)
+        image = image.transpose(2, 0, 1)
+        full_input_np[i, :, :, :] = image
+        if (i == 0):
+          print(image)
     
-    x_train = x_train.astype('float32')
-    x_train /= 255
-    
-    full_input_np = np.zeros((num_samples, 3*229*229), dtype=np.float32)
-    x_train = x_train.reshape(num_samples, 3*32*32)
-    full_input_np[:, :3*32*32] = x_train
+    else:
+      full_input_np = np.zeros((num_samples, 3, 229, 229), dtype=np.float32)
+      full_input_np[:, :3, :32, :32] = x_train
+
+    full_input_np /= 255
     print(full_input_np.shape)
     print(full_input_np.__array_interface__["strides"])
-    print(full_input_np[0,:])
+    print(full_input_np[0,:, :, :])
     
     y_train = y_train.astype('int32')
     full_label_np = y_train
@@ -53,21 +68,6 @@ def top_level_task():
     # Data Loader
     dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
 
-  # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
-  # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
-  # t1 = ffmodel.concat("concat", [ts0, ts1], 1)
-  # t2 = ffmodel.pool2d("pool1", t1, 3, 3, 2, 2, 0, 0)
-  # t3 = ffmodel.conv2d("conv2", t2, 192, 5, 5, 1, 1, 2, 2)
-  # t4 = ffmodel.pool2d("pool2", t3, 3, 3, 2, 2, 0, 0)
-  # t5 = ffmodel.conv2d("conv3", t4, 384, 3, 3, 1, 1, 1, 1)
-  # t6 = ffmodel.conv2d("conv4", t5, 256, 3, 3, 1, 1, 1, 1)
-  # t7 = ffmodel.conv2d("conv5", t6, 256, 3, 3, 1, 1, 1, 1)
-  # t8 = ffmodel.pool2d("pool3", t7, 3, 3, 2, 2, 0, 0)
-  # t9 = ffmodel.flat("flat", t8);
-  # t10 = ffmodel.dense("lienar1", t9, 4096, ActiMode.AC_MODE_RELU);
-  # t11 = ffmodel.dense("linear2", t10, 4096, ActiMode.AC_MODE_RELU);
-  # t12 = ffmodel.dense("linear3", t11, 1000)
-  # t13 = ffmodel.softmax("softmax", t12, label)
   ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
   ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
   #t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
@@ -111,7 +111,6 @@ def top_level_task():
 
 
   epochs = ffconfig.get_epochs()
-
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):

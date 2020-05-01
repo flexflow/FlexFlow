@@ -10,16 +10,14 @@ def top_level_task():
   ffmodel = FFModel(ffconfig)
   
   dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
-  #print(dims)
   input = ffmodel.create_tensor_4d(dims_input, "", DataType.DT_FLOAT)
 
   dims_label = [ffconfig.get_batch_size(), 1]
-  #print(dims)
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
-  use_external = False
+  use_external = True
   if (use_external == True):
-    num_samples = 10000
+    num_samples = 40000
     
     (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
     
@@ -97,6 +95,7 @@ def top_level_task():
 
 
   epochs = ffconfig.get_epochs()
+  epochs = 10
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):

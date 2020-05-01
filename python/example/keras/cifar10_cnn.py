@@ -4,6 +4,7 @@ import flexflow.keras.optimizers
 from flexflow.keras.datasets import cifar10
 
 import flexflow.core as ff
+import numpy as np
 
 def top_level_task():
   

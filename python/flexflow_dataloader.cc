@@ -216,12 +216,14 @@ void ImgDataLoader4D::load_entire_dataset(const Task *task,
   for (int i = 0; i < num_samples; i++) {
     size_t ret = fread(buffer, sizeof(unsigned char), 3073, file);
     assert(ret = 3073);
-    if ((i+1) % 1000 == 0) {
-      printf("Loaded %d samples\n", i+1);
+    if (i == 0) {
       for (int i = 0; i < 32; i++) {
         printf("%f ", static_cast<float>(buffer[i])/255);
       }
       printf("\n");
+    }
+    if ((i+1) % 1000 == 0) {
+      printf("Loaded %d samples\n", i+1);
     }
     label_ptr[i] = buffer[0];
     nearest_neigh(image, buffer, height, width,
