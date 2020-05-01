@@ -139,43 +139,43 @@ class Sequential(object):
     dims_label = [self.ffconfig.get_batch_size(), 1]
     self.label_tensor = self.ffmodel.create_tensor_2d(dims_label, "", ff.DataType.DT_INT32);
   
+  def create_single_data_loader(self, batch_tensor, full_array):
+    array_shape = full_array.shape
+    num_dim = len(array_shape)
+    print(array_shape)
+    
+    if (full_array.dtype == "float32"):
+      datatype = ff.DataType.DT_FLOAT
+    elif (full_array.dtype == "int32"):
+      datatype = ff.DataType.DT_INT32
+    else:
+      assert 0, "unsupported datatype"
+
+    if (num_dim == 2):
+      dims_input = [self.num_samples, array_shape[1]]
+      full_tensor = self.ffmodel.create_tensor_2d(dims_input, "", datatype);
+    elif (num_dim == 4):
+      dims_input = [self.num_samples, array_shape[1], array_shape[2], array_shape[3]]
+      full_tensor = self.ffmodel.create_tensor_4d(dims_input, "", datatype);
+    else:
+      assert 0, "unsupported dims"
+      
+    full_tensor.attach_numpy_array(self.ffconfig, full_array)
+    dataloader = ff.SingleDataLoader(self.ffmodel, batch_tensor, full_tensor, self.num_samples, datatype) 
+    self.dataloaders.append(dataloader)
+    self.dataloaders_dim.append(num_dim)
+    full_tensor.detach_numpy_array(self.ffconfig)
+    
+    return full_tensor
+    
+    
   def create_data_loaders(self, x_train, y_train):
     input_shape = x_train.shape
     self.num_samples = input_shape[0]
     
-    dims_label = [self.num_samples, 1]
-    self.full_label_tensor = self.ffmodel.create_tensor_2d(dims_label, "", ff.DataType.DT_INT32);
-    
-    if (len(input_shape) == 2):
-      dims_input = [self.num_samples, input_shape[1]]
-      self.full_input_tensor = self.ffmodel.create_tensor_2d(dims_input, "", ff.DataType.DT_FLOAT);
-      
-      self.full_input_tensor.attach_numpy_array(self.ffconfig, x_train)
-      self.full_label_tensor.attach_numpy_array(self.ffconfig, y_train)
-
-      dataloader = ff.SingleDataLoader(self.ffmodel, self.input_tensor, self.full_input_tensor, self.num_samples, ff.DataType.DT_FLOAT)
-      self.dataloaders.append(dataloader)
-      dataloader = ff.SingleDataLoader(self.ffmodel, self.label_tensor, self.full_label_tensor, self.num_samples, ff.DataType.DT_INT32)
-      self.dataloaders.append(dataloader)
-      self.dataloaders_dim.append(2)
-      self.dataloaders_dim.append(2)
-      
-    elif (len(input_shape) == 4):
-      dims_input = [self.num_samples, input_shape[1], input_shape[2], input_shape[3]]
-      self.full_input_tensor = self.ffmodel.create_tensor_4d(dims_input, "", ff.DataType.DT_FLOAT);
-      
-      self.full_input_tensor.attach_numpy_array(self.ffconfig, x_train)
-      self.full_label_tensor.attach_numpy_array(self.ffconfig, y_train)
-
-      dataloader = ff.SingleDataLoader(self.ffmodel, self.input_tensor, self.full_input_tensor, self.num_samples, ff.DataType.DT_FLOAT)
-      self.dataloaders.append(dataloader)
-      dataloader = ff.SingleDataLoader(self.ffmodel, self.label_tensor, self.full_label_tensor, self.num_samples, ff.DataType.DT_INT32)
-      self.dataloaders.append(dataloader)
-      self.dataloaders_dim.append(4)
-      self.dataloaders_dim.append(2)
-      
-    self.full_input_tensor.detach_numpy_array(self.ffconfig)
-    self.full_label_tensor.detach_numpy_array(self.ffconfig)
+    print(y_train.shape)
+    self.full_input_tensor = self.create_single_data_loader(self.input_tensor, x_train)
+    self.full_label_tensor = self.create_single_data_loader(self.label_tensor, y_train)
       
   def train(self, epochs):
     ts_start = self.ffconfig.get_current_time()

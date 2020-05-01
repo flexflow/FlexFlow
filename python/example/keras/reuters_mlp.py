@@ -27,13 +27,9 @@ def top_level_task():
   print('x_train shape:', x_train.shape)
   print('x_test shape:', x_test.shape)
 
-  print('Convert class vector to binary class matrix '
-        '(for use with categorical_crossentropy)')
-  y_train = flexflow.keras.utils.to_categorical(y_train, num_classes)
-  y_test = flexflow.keras.utils.to_categorical(y_test, num_classes)
   y_train = y_train.astype('int32')
+  y_train = np.reshape(y_train, (len(y_train), 1))
   print('y_train shape:', y_train.shape)
-  print('y_test shape:', y_test.shape)
   
   model = Sequential()
   model.add(Dense(512, input_shape=(max_words,), activation="relu"))

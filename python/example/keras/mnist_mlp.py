@@ -4,6 +4,7 @@ import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 
 import flexflow.core as ff
+import numpy as np
 
 def top_level_task():
   
@@ -15,6 +16,7 @@ def top_level_task():
   x_train = x_train.astype('float32')
   x_train /= 255
   y_train = y_train.astype('int32')
+  y_train = np.reshape(y_train, (len(y_train), 1))
   print("shape: ", x_train.shape)
   
   model = Sequential()
