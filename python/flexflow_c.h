@@ -22,9 +22,6 @@ FF_NEW_OPAQUE_TYPE(flexflow_parameter_t);
 FF_NEW_OPAQUE_TYPE(flexflow_net_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dataloader_4d_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dataloader_2d_t);
-FF_NEW_OPAQUE_TYPE(flexflow_single_dataloader_4d_float_t);
-FF_NEW_OPAQUE_TYPE(flexflow_single_dataloader_2d_float_t);
-FF_NEW_OPAQUE_TYPE(flexflow_single_dataloader_2d_int_t);
 FF_NEW_OPAQUE_TYPE(flexflow_single_dataloader_t);
 
 // -----------------------------------------------------------------------
@@ -475,93 +472,6 @@ flowflow_dataloader_2d_next_batch(
 // -----------------------------------------------------------------------
 // Single Dataloader
 // -----------------------------------------------------------------------
-  
-flexflow_single_dataloader_4d_float_t
-flexflow_single_dataloader_4d_float_create(
-  flexflow_model_t ffmodel, 
-  flexflow_tensor_t input, 
-  flexflow_tensor_t full_input, 
-  int num_samples);
-
-void  
-flexflow_single_dataloader_4d_float_destroy(
-  flexflow_single_dataloader_4d_float_t handle);
-
-void
-flexflow_single_dataloader_4d_float_set_num_samples(
-  flexflow_single_dataloader_4d_float_t handle,
-  int samples);
-
-int
-flexflow_single_dataloader_4d_float_get_num_samples(
-  flexflow_single_dataloader_4d_float_t handle);
-
-void
-flexflow_single_dataloader_4d_float_reset(
-  flexflow_single_dataloader_4d_float_t handle);
-
-void
-flowflow_single_dataloader_4d_float_next_batch(
-  flexflow_single_dataloader_4d_float_t handle,
-  flexflow_model_t ffmodel);
-
-flexflow_single_dataloader_2d_float_t
-flexflow_single_dataloader_2d_float_create(
-  flexflow_model_t ffmodel, 
-  flexflow_tensor_t input, 
-  flexflow_tensor_t full_input, 
-  int num_samples);
-
-void  
-flexflow_single_dataloader_2d_float_destroy(
-  flexflow_single_dataloader_2d_float_t handle);
-
-void
-flexflow_single_dataloader_2d_float_set_num_samples(
-  flexflow_single_dataloader_2d_float_t handle,
-  int samples);
-
-int
-flexflow_single_dataloader_2d_float_get_num_samples(
-  flexflow_single_dataloader_2d_float_t handle);
-
-void
-flexflow_single_dataloader_2d_float_reset(
-  flexflow_single_dataloader_2d_float_t handle);
-
-void
-flowflow_single_dataloader_2d_float_next_batch(
-  flexflow_single_dataloader_2d_float_t handle,
-  flexflow_model_t ffmodel);
-
-flexflow_single_dataloader_2d_int_t
-flexflow_single_dataloader_2d_int_create(
-  flexflow_model_t ffmodel, 
-  flexflow_tensor_t input, 
-  flexflow_tensor_t full_input, 
-  int num_samples);
-
-void  
-flexflow_single_dataloader_2d_int_destroy(
-  flexflow_single_dataloader_2d_int_t handle);
-
-void
-flexflow_single_dataloader_2d_int_set_num_samples(
-  flexflow_single_dataloader_2d_int_t handle,
-  int samples);
-
-int
-flexflow_single_dataloader_2d_int_get_num_samples(
-  flexflow_single_dataloader_2d_int_t handle);
-
-void
-flexflow_single_dataloader_2d_int_reset(
-  flexflow_single_dataloader_2d_int_t handle);
-
-void
-flowflow_single_dataloader_2d_int_next_batch(
-  flexflow_single_dataloader_2d_int_t handle,
-  flexflow_model_t ffmodel);
 
 flexflow_single_dataloader_t
 flexflow_single_dataloader_create(
