@@ -16,6 +16,8 @@ def top_level_task():
   #print(dims)
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
+  dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
+  
   conv1_1 = ffmodel.conv2d_v2("conv1", 3, 64, 11, 11, 4, 4, 2, 2)
   conv1_2 = ffmodel.conv2d_v2("conv1", 3, 64, 11, 11, 4, 4, 2, 2)
   pool1 = ffmodel.pool2d_v2("pool1", 3, 3, 2, 2, 0, 0)
@@ -28,7 +30,7 @@ def top_level_task():
   flat = ffmodel.flat_v2("flat");
   linear1 = ffmodel.dense_v2("lienar1", 256*6*6, 4096, ActiMode.AC_MODE_RELU)
   linear2 = ffmodel.dense_v2("linear2", 4096, 4096, ActiMode.AC_MODE_RELU)
-  linear3 = ffmodel.dense_v2("linear3", 4096, 1000)
+  linear3 = ffmodel.dense_v2("linear3", 4096, 10)
   
   t1 = conv1_1.init_inout(ffmodel, input);
   t2 = conv1_2.init_inout(ffmodel, input);
@@ -47,11 +49,11 @@ def top_level_task():
   t = linear3.init_inout(ffmodel, t);
   t = ffmodel.softmax("softmax", t, label)
   
-  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
+  ffoptimizer = SGDOptimizer(ffmodel, 0.001)
   ffmodel.set_sgd_optimizer(ffoptimizer)
   
   # Data Loader
-  dataloader = DataLoader4D(ffmodel, alexnetconfig, input, label)
+
   # input.inline_map(ffconfig)
   # input_array = input.get_array(ffconfig, DataType.DT_FLOAT)
   # input_array *= 1.0

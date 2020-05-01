@@ -23,7 +23,7 @@ def top_level_task():
   
   # Data Loader
   alexnetconfig = NetConfig()
-  dataloader = DataLoader(ffmodel, alexnetconfig, input1, label)
+  dataloader = DataLoader4D(ffmodel, input1, label, ffnetconfig=alexnetconfig)
   
   ffmodel.init_layers()
   

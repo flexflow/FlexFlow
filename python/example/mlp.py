@@ -51,7 +51,7 @@ def top_level_task():
   
   t2 = ffmodel.dense("dense1", input1, 512, ActiMode.AC_MODE_RELU)
   t3 = ffmodel.dense("dense1", t2, 512, ActiMode.AC_MODE_RELU)
-  t4 = ffmodel.dense("dense1", t3, 10, ActiMode.AC_MODE_RELU)
+  t4 = ffmodel.dense("dense1", t3, 10)
   t5 = ffmodel.softmax("softmax", t4, label)
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)

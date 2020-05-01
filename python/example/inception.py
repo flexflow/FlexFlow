@@ -103,7 +103,7 @@ def top_level_task():
   
   # Data Loader
   alexnetconfig = NetConfig()
-  dataloader = DataLoader(ffmodel, alexnetconfig, input, label)
+  dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
   dataloader.set_num_samples(256 * ffconfig.get_workers_per_node() * ffconfig.get_num_nodes())
   
   ffmodel.init_layers()

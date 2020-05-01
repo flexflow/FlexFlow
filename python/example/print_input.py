@@ -18,7 +18,7 @@ def top_level_task():
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
   
   alexnetconfig = NetConfig()
-  dataloader = DataLoader(ffmodel, alexnetconfig, input1, label)
+  dataloader = DataLoader4D(ffmodel, input1, label, ffnetconfig=alexnetconfig)
   dataloader.reset()
   dataloader.next_batch(ffmodel)
 

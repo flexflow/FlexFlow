@@ -1,6 +1,6 @@
 from flexflow.core import *
 from flexflow.keras.datasets import cifar10
-from keras.datasets import reuters
+
 def top_level_task():
   ffconfig = FFConfig()
   alexnetconfig = NetConfig()
@@ -17,7 +17,7 @@ def top_level_task():
   #print(dims)
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
-  use_external = True
+  use_external = False
   if (use_external == True):
     num_samples = 10000
     
