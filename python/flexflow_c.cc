@@ -474,7 +474,7 @@ flexflow_model_get_tensor_by_id(
   int layer_id)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *tensor = &(handle->parameters[layer_id].tensor);
+  Tensor *tensor = static_cast<Tensor*>(&(handle->parameters[layer_id]));
   return FFCObjectWrapper::wrap(tensor);  
 }
 
@@ -1091,7 +1091,7 @@ flexflow_parameter_get_tensor(
   flexflow_parameter_t handle_)
 {
   Parameter *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *tensor = &(handle->tensor);
+  Tensor *tensor = static_cast<Tensor*>(handle);
   return FFCObjectWrapper::wrap(tensor);  
 }  
 

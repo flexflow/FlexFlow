@@ -10,13 +10,13 @@ def top_level_task():
   
   num_classes = 10
   
-  num_samples = 10000
+  num_samples = 40000
   
   (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
   
   x_train = x_train.astype('float32')
   x_train /= 255
-  #y_train = np.random.randint(1, 9, size=40000, dtype='int32')
+  #y_train = np.random.randint(1, 9, size=(num_samples,1), dtype='int32')
   y_train = y_train.astype('int32')
   print("shape: ", x_train.shape)
   
@@ -35,7 +35,7 @@ def top_level_task():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
 
-  model.fit(x_train, y_train, epochs=1)
+  model.fit(x_train, y_train, epochs=10)
 
 if __name__ == "__main__":
   print("alexnet keras")

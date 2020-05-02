@@ -128,7 +128,7 @@ def top_level_task():
     ffmodel.reset_metrics()
     iterations = int(num_samples / ffconfig.get_batch_size())
 
-    for iter in range(0, int(iterations-2)):
+    for iter in range(0, int(iterations)):
       # if (len(alexnetconfig.dataset_path) == 0):
       #   if (iter == 0 and epoch == 0):
       #     dataloader.next_batch(ffmodel)

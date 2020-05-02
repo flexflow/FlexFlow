@@ -17,6 +17,7 @@ def top_level_task():
   x_train /= 255
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
+  #y_train = np.random.randint(1, 9, size=(len(y_train),1), dtype='int32')
   print("shape: ", x_train.shape)
   
   model = Sequential()
