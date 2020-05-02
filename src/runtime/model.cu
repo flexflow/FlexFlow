@@ -255,3 +255,116 @@ void FFModel::prefetch()
 //  for (int i = layers.size() - 1; i >= 0; i--)
 //    layers[i]->update(*this);
 //}
+
+
+template <typename T>
+bool Parameter::set_weights(const FFModel& ff,
+                            const std::vector<int>& dims,
+                            const T* data)
+{
+  //TODO: check data type matches
+  size_t volume = 1;
+  // Check dimensions
+  if (numDim != (int)dims.size())
+    return false;
+  for (int i = 0; i < numDim; i++) {
+    if (adim[numDim-1-i] != dims[i])
+      return false;
+    volume = volume * dims[i];
+  }
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  RegionRequirement req(region, WRITE_ONLY, EXCLUSIVE, region);
+  req.add_field(FID_DATA);
+  InlineLauncher launcher(req);
+  PhysicalRegion region = runtime->map_region(ctx, launcher);
+  region.wait_until_valid();
+  switch (numDim) {
+    case 1:
+    {
+      TensorAccessorW<T, 1> acc(region, req, FID_DATA, ctx, runtime, false);
+      assert(acc.rect.volume() == volume);
+      memcpy(acc.ptr, data, volume * sizeof(T));
+      break;
+    }
+    case 2:
+    {
+      TensorAccessorW<T, 2> acc(region, req, FID_DATA, ctx, runtime, false);
+      assert(acc.rect.volume() == volume);
+      memcpy(acc.ptr, data, volume * sizeof(T));
+      break;
+    }
+    case 3:
+    {
+      TensorAccessorW<T, 3> acc(region, req, FID_DATA, ctx, runtime, false);
+      assert(acc.rect.volume() == volume);
+      memcpy(acc.ptr, data, volume * sizeof(T));
+      break;
+    }
+    case 4:
+    {
+      TensorAccessorW<T, 4> acc(region, req, FID_DATA, ctx, runtime, false);
+      assert(acc.rect.volume() == volume);
+      memcpy(acc.ptr, data, volume * sizeof(T));
+      break;
+    }
+    default:
+      // Unsupported dim
+      assert(false);
+  }
+  runtime->unmap_region(ctx, region);
+  return true;
+}
+
+template <typename T>
+bool Parameter::get_weights(const FFModel& ff,
+                            T* data)
+{
+  //TODO: check data type matches
+  size_t volume = 1;
+  for (int i = 0; i < numDim; i++) {
+    volume = volume * adim[i];
+  }
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  RegionRequirement req(region, READ_ONLY, EXCLUSIVE, region);
+  req.add_field(FID_DATA);
+  InlineLauncher launcher(req);
+  PhysicalRegion region = runtime->map_region(ctx, launcher);
+  region.wait_until_valid();
+  switch (numDim) {
+    case 1:
+    {
+      TensorAccessorR<T, 1> acc(region, req, FID_DATA, ctx, runtime);
+      assert(acc.rect.volume() == volume);
+      memcpy(data, acc.ptr, volume * sizeof(T));
+      break;
+    }
+    case 2:
+    {
+      TensorAccessorR<T, 2> acc(region, req, FID_DATA, ctx, runtime);
+      assert(acc.rect.volume() == volume);
+      memcpy(data, acc.ptr, volume * sizeof(T));
+      break;
+    }
+    case 3:
+    {
+      TensorAccessorR<T, 3> acc(region, req, FID_DATA, ctx, runtime);
+      assert(acc.rect.volume() == volume);
+      memcpy(data, acc.ptr, volume * sizeof(T));
+      break;
+    }
+    case 4:
+    {
+      TensorAccessorR<T, 4> acc(region, req, FID_DATA, ctx, runtime);
+      assert(acc.rect.volume() == volume);
+      memcpy(data, acc.ptr, volume * sizeof(T));
+      break;
+    }
+    default:
+      // Unsupported dim
+      assert(false);
+  }
+  runtime->unmap_region(ctx, region);
+  return true;
+}

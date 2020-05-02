@@ -29,7 +29,7 @@ SGDOptimizer::SGDOptimizer(const FFModel* _model,
   Runtime* runtime = model->config.lg_hlr;
   Initializer* initializer = new ZeroInitializer();
   for (size_t i = 0; i < model->parameters.size(); i++) {
-    Tensor p = model->parameters[i].tensor;
+    Tensor p = model->parameters[i];
     Domain domain = runtime->get_index_space_domain(
         ctx, p.region.get_index_space());
     switch (domain.get_dim()) {
@@ -78,20 +78,20 @@ void SGDOptimizer::update(const Parameter* p)
                         FFConfig::get_hash_id(std::string(p->op->name)));
   // regions[0]: region_grad
   launcher.add_region_requirement(
-      RegionRequirement(p->tensor.region_grad,
-                        READ_ONLY, EXCLUSIVE, p->tensor.region_grad));
+      RegionRequirement(p->region_grad,
+                        READ_ONLY, EXCLUSIVE, p->region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[1]: region
   launcher.add_region_requirement(
-      RegionRequirement(p->tensor.region,
-                        READ_WRITE, EXCLUSIVE, p->tensor.region));
+      RegionRequirement(p->region,
+                        READ_WRITE, EXCLUSIVE, p->region));
   launcher.add_field(1, FID_DATA);
   if (momentum > 0.0f) {
     // regions[2]: v_region
-    assert(v_regions.find(p->tensor.region) != v_regions.end());
+    assert(v_regions.find(p->region) != v_regions.end());
     launcher.add_region_requirement(
-        RegionRequirement(v_regions[p->tensor.region],
-                          READ_WRITE, EXCLUSIVE, v_regions[p->tensor.region]));
+        RegionRequirement(v_regions[p->region],
+                          READ_WRITE, EXCLUSIVE, v_regions[p->region]));
     launcher.add_field(2, FID_DATA);
   }
   runtime->execute_task(ctx, launcher);
@@ -113,7 +113,7 @@ AdamOptimizer::AdamOptimizer(const FFModel* _model,
   Runtime* runtime = model->config.lg_hlr;
   Initializer* initializer = new ZeroInitializer();
   for (size_t i = 0; i < model->parameters.size(); i++) {
-    Tensor p = model->parameters[i].tensor;
+    Tensor p = model->parameters[i];
     Domain domain = runtime->get_index_space_domain(
         ctx, p.region.get_index_space());
     switch (domain.get_dim()) {
@@ -167,31 +167,31 @@ void AdamOptimizer::update(const Parameter* p)
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  assert(v_regions.find(p->tensor.region) != v_regions.end());
-  assert(m_regions.find(p->tensor.region) != m_regions.end());
+  assert(v_regions.find(p->region) != v_regions.end());
+  assert(m_regions.find(p->region) != m_regions.end());
   TaskLauncher launcher(ADAM_UPD_TASK_ID,
                         TaskArgument(this, sizeof(AdamOptimizer)),
                         Predicate::TRUE_PRED, 0/*mapper_id*/,
                         FFConfig::get_hash_id(std::string(p->op->name)));
   // regions[0]: region_grad
   launcher.add_region_requirement(
-      RegionRequirement(p->tensor.region_grad,
-                        READ_ONLY, EXCLUSIVE, p->tensor.region_grad));
+      RegionRequirement(p->region_grad,
+                        READ_ONLY, EXCLUSIVE, p->region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[1]: region
   launcher.add_region_requirement(
-      RegionRequirement(p->tensor.region,
-                        READ_WRITE, EXCLUSIVE, p->tensor.region));
+      RegionRequirement(p->region,
+                        READ_WRITE, EXCLUSIVE, p->region));
   launcher.add_field(1, FID_DATA);
   // regions[2]: w_region
   launcher.add_region_requirement(
-      RegionRequirement(v_regions[p->tensor.region],
-                        READ_WRITE, EXCLUSIVE, v_regions[p->tensor.region]));
+      RegionRequirement(v_regions[p->region],
+                        READ_WRITE, EXCLUSIVE, v_regions[p->region]));
   launcher.add_field(2, FID_DATA);
   // regions[3]: m_region
   launcher.add_region_requirement(
-      RegionRequirement(m_regions[p->tensor.region],
-                        READ_WRITE, EXCLUSIVE, m_regions[p->tensor.region]));
+      RegionRequirement(m_regions[p->region],
+                        READ_WRITE, EXCLUSIVE, m_regions[p->region]));
   launcher.add_field(3, FID_DATA);
   runtime->execute_task(ctx, launcher);
 }

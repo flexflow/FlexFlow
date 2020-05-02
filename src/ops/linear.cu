@@ -119,14 +119,9 @@ Tensor Linear::init_inout(FFModel& model, const Tensor& _input)
 void Linear::add_to_model(FFModel& model)
 {
   model.layers.push_back(this);
-  Parameter _kernel, _bias;
-  _kernel.tensor = kernel;
-  _kernel.op = this;
-  model.parameters.push_back(_kernel);
+  model.parameters.push_back(kernel);
   if (bias.numDim != 0) { // bias is used
-    _bias.tensor = bias;
-    _bias.op = this;
-    model.parameters.push_back(_bias);
+    model.parameters.push_back(bias);
   }
 }
 
@@ -139,12 +134,12 @@ void Linear::create_kernel_bias(FFModel& model, bool use_bias, Initializer* kern
   // Create kernel tensor
   {
     const int dims[2] = {out_channels, in_channels};
-    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
+    kernel = model.create_linear_weight<2>(this, dims, task_is, DT_FLOAT, kernel_initializer);
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_channels};
-    bias = model.create_linear_weight<1>(dims, task_is, DT_FLOAT, bias_initializer);
+    bias = model.create_linear_weight<1>(this, dims, task_is, DT_FLOAT, bias_initializer);
   }
 }
 

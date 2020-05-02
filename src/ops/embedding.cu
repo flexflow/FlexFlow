@@ -125,10 +125,7 @@ Tensor Embedding::init_inout(FFModel& model, const Tensor& _input)
 void Embedding::add_to_model(FFModel& model)
 {
   model.layers.push_back(this);
-  Parameter _kernel;
-  _kernel.tensor = kernel;
-  _kernel.op = this;
-  model.parameters.push_back(_kernel);
+  model.parameters.push_back(kernel);
 }
 
 void Embedding::create_kernel(FFModel& model, int num_entries, Initializer* kernel_initializer)
@@ -139,7 +136,7 @@ void Embedding::create_kernel(FFModel& model, int num_entries, Initializer* kern
   {
     const int dims[2] = {out_channels, num_entries};
     // Embeddding weights and linear weights can be partitioned in the same way
-    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
+    kernel = model.create_linear_weight<2>(this, dims, task_is, DT_FLOAT, kernel_initializer);
   }
 }
 
