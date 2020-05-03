@@ -33,6 +33,12 @@ class Model(object):
     
   def add_softmax(self, input_tensor, label_tensor):
     output_tensor = self.ffmodel.softmax("softmax", input_tensor, label_tensor)
+    print(self.ffmodel._nb_layers)
+    print(self._nb_layers)
+    layer = self.ffmodel.get_layer_by_id(self._nb_layers)
+    self._layers[self._nb_layers] = layer
+    layer.layer_id = self._nb_layers
+    self._nb_layers += 1
     
   def compile(self):
     self.ffoptimizer = ff.SGDOptimizer(self.ffmodel, 0.001)
@@ -57,7 +63,10 @@ class Model(object):
           dataloader.next_batch(self.ffmodel)
         if (epoch > 0):
           ffconfig.begin_trace(111)
-        self.ffmodel.forward()
+        #self.ffmodel.forward()
+        for layer_id in self._layers:
+          layer = self._layers[layer_id]
+          layer.forward(self.ffmodel)
         self.ffmodel.zero_gradients()
         self.ffmodel.backward()
         self.ffmodel.update()

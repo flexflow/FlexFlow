@@ -113,6 +113,13 @@ def top_level_task():
   print(cbias.shape)
   #print(cbias)
   cbias_tensor.inline_unmap(ffconfig)
+  
+  label.inline_map(ffconfig)
+  label_array = label.get_array(ffconfig, DataType.DT_INT32)
+  print(label_array.shape)
+  # print(cbias)
+  print(label_array)
+  label.inline_unmap(ffconfig)
 
 if __name__ == "__main__":
   print("alexnet")

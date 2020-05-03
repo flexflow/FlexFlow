@@ -16,6 +16,7 @@ def top_level_task():
   
   x_train = x_train.astype('float32')
   x_train /= 255
+  #x_train *= 0
   #y_train = np.random.randint(1, 9, size=(num_samples,1), dtype='int32')
   y_train = y_train.astype('int32')
   print("shape: ", x_train.shape)

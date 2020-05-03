@@ -118,7 +118,7 @@ class Op(object):
     ffc.flexflow_op_forward(self.handle, model.handle)
     #return Tensor(handle)
     
-  def add_to_model(self, model):
+  def _add_to_model(self, model):
     ffc.flexflow_op_add_to_model(self.handle, model.handle)
 
 # -----------------------------------------------------------------------
@@ -141,6 +141,10 @@ class Conv2D(Op):
     model.add_layer(OpType.CONV2D)
     return self._init_inout(model, input) 
     
+  def add_to_model(self, model):
+    model.add_layer(OpType.CONV2D)
+    self._add_to_model(model)
+    
 # -----------------------------------------------------------------------
 # Pool2D
 # -----------------------------------------------------------------------
@@ -154,6 +158,10 @@ class Pool2D(Op):
   def init_inout(self, model, input):
     model.add_layer(OpType.POOL2D)
     return self._init_inout(model, input)
+    
+  def add_to_model(self, model):
+    model.add_layer(OpType.POOL2D)
+    self._add_to_model(model)
 
 # -----------------------------------------------------------------------
 # Linear
@@ -174,6 +182,10 @@ class Linear(Op):
   def init_inout(self, model, input):
     model.add_layer(OpType.LINEAR)
     return self._init_inout(model, input)
+    
+  def add_to_model(self, model):
+    model.add_layer(OpType.LINEAR)
+    self._add_to_model(model)
 
 # -----------------------------------------------------------------------
 # Flat
@@ -189,12 +201,20 @@ class Flat(Op):
     model.add_layer(OpType.FLAT)
     return self._init_inout(model, input)
     
+  def add_to_model(self, model):
+    model.add_layer(OpType.FLAT)
+    self._add_to_model(model)
+    
 # -----------------------------------------------------------------------
 # Softmax
 # -----------------------------------------------------------------------
 class Softmax(Op):
   def __init__(self, handle):
     super(Softmax, self).__init__(handle)
+    
+  def add_to_model(self, model):
+    model.add_layer(OpType.SOFTMAX)
+    self._add_to_model(model)
     
 # -----------------------------------------------------------------------
 # Embedding
@@ -203,12 +223,20 @@ class Embedding(Op):
   def __init__(self, handle):
     super(Embedding, self).__init__(handle)
     
+  def add_to_model(self, model):
+    model.add_layer(OpType.EMBEDDING)
+    self._add_to_model(model)
+    
 # -----------------------------------------------------------------------
 # Concat
 # -----------------------------------------------------------------------
 class Concat(Op):
   def __init__(self, handle):
     super(Concat, self).__init__(handle)
+    
+  def add_to_model(self, model):
+    model.add_layer(OpType.CONCAT)
+    self._add_to_model(model)
       
 # -----------------------------------------------------------------------
 # FFConfig

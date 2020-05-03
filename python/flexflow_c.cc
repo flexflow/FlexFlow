@@ -591,6 +591,7 @@ flexflow_tensor_attach_raw_ptr(
   FFConfig *config = FFCObjectWrapper::unwrap(config_);  
   void *raw_ptr = (void*)ptr;
   handle->attach_raw_ptr(*config, raw_ptr, column_major);  
+  printf("Attach numpy array: %p, %d\n", raw_ptr, column_major);
 }
 
 void

@@ -15,7 +15,7 @@ def top_level_task():
   dims_label = [ffconfig.get_batch_size(), 1]
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
-  use_external = False
+  use_external = True
   if (use_external == True):
     num_samples = 10000
     
@@ -99,6 +99,7 @@ def top_level_task():
 
 
   epochs = ffconfig.get_epochs()
+  #epochs = 10
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
@@ -111,7 +112,7 @@ def top_level_task():
     iterations = int(num_samples / ffconfig.get_batch_size())
     print(iterations, num_samples)
 
-    for iter in range(0, int(iterations-2)):
+    for iter in range(0, int(iterations)):
       # if (len(alexnetconfig.dataset_path) == 0):
       #   if (iter == 0 and epoch == 0):
       #     dataloader.next_batch(ffmodel)

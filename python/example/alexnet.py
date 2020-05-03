@@ -19,7 +19,7 @@ def top_level_task():
   #print(dims)
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
-  use_external = True
+  use_external = False
   use_resize = True
   if (use_external == True):
     num_samples = 10000
@@ -127,6 +127,7 @@ def top_level_task():
       dataloader.reset()
     ffmodel.reset_metrics()
     iterations = int(num_samples / ffconfig.get_batch_size())
+    print(iterations, num_samples)
 
     for iter in range(0, int(iterations)):
       # if (len(alexnetconfig.dataset_path) == 0):

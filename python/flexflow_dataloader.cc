@@ -597,9 +597,11 @@ void SingleDataLoader::load_entire_dataset_from_numpy(const Task *task,
   Rect<NDIM> rect_input_ = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
   assert(acc_input_.accessor.is_dense_arbitrary(rect_input_));
+  assert(rect_input_.volume() == rect_input.volume());
+    
   DT* input_ptr = acc_input.ptr(rect_input.lo);
   const DT* input_ptr_ = acc_input_.ptr(rect_input_.lo);
-  printf("Check ptr input %p %lu %lu\n", input_ptr_, (uintptr_t)input_ptr_, rect_input.volume());
+  printf("Check ptr input_ %p %lu %lu, input %p %lu %lu\n", input_ptr_, (uintptr_t)input_ptr_, rect_input_.volume(), input_ptr, (uintptr_t)input_ptr, rect_input.volume());
   assert(rect_input.volume() == rect_input_.volume());
   memcpy(input_ptr, input_ptr_, sizeof(DT)*rect_input.volume());
   for (int i = 0; i < 32; i++) {
