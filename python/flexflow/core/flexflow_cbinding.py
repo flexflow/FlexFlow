@@ -93,11 +93,11 @@ class Op(object):
   
   def _get_weight_tensor(self):
     handle = ffc.flexflow_op_get_weight(self.handle)
-    return Tensor(handle, False)
+    return Parameter(handle)
     
   def _get_bias_tensor(self):
     handle = ffc.flexflow_op_get_bias(self.handle)
-    return Tensor(handle, False)
+    return Parameter(handle)
     
   def _get_input_tensor_by_id(self, id):
     handle = ffc.flexflow_op_get_input_by_id(self.handle, id)
@@ -390,6 +390,16 @@ class Tensor(object):
     
   def is_mapped(self):
     return ffc.flexflow_tensor_is_mapped(self.handle)
+    
+# -----------------------------------------------------------------------
+# Parameter
+# -----------------------------------------------------------------------
+
+class Parameter(Tensor):
+  def __init__(self, handle):
+    self.super_handle = ffc.flexflow_parameter_get_tensor(handle)
+    print(handle, self.super_handle)
+    super(Parameter, self).__init__(self.super_handle, deallocate=False)
 
 # -----------------------------------------------------------------------
 # FFModel

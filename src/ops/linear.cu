@@ -680,13 +680,13 @@ void Linear::backward(const FFModel& ff)
 }
 
 __host__
-Tensor* Linear::get_weight()
+Parameter* Linear::get_weight()
 {
   return &kernel;
 }
 
 __host__
-Tensor* Linear::get_bias()
+Parameter* Linear::get_bias()
 {
   return &bias;
 }

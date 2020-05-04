@@ -845,13 +845,13 @@ void Conv2D::update(const FFModel& ff)
 #endif
 
 __host__
-Tensor* Conv2D::get_weight()
+Parameter* Conv2D::get_weight()
 {
   return &kernel;
 }
 
 __host__
-Tensor* Conv2D::get_bias()
+Parameter* Conv2D::get_bias()
 {
   return &bias;
 }

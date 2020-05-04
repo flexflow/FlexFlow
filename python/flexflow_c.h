@@ -529,11 +529,11 @@ flexflow_end_trace(
 // Op
 // -----------------------------------------------------------------------
 
-flexflow_tensor_t
+flexflow_parameter_t
 flexflow_op_get_weight(
   flexflow_op_t handle); 
     
-flexflow_tensor_t
+flexflow_parameter_t
 flexflow_op_get_bias(
   flexflow_op_t handle); 
 
