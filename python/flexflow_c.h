@@ -575,6 +575,12 @@ flexflow_op_add_to_model(
 flexflow_tensor_t
 flexflow_parameter_get_tensor(
   flexflow_parameter_t handle);  
+
+void
+flexflow_parameter_get_weights_float(
+  flexflow_parameter_t handle,
+  flexflow_model_t model,
+  float *data);
   
 int*
 flexflow_malloc_int(

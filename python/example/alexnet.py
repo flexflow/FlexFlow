@@ -19,7 +19,7 @@ def top_level_task():
   #print(dims)
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
-  use_external = False
+  use_external = True
   use_resize = True
   if (use_external == True):
     num_samples = 10000

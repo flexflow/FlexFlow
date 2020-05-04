@@ -72,6 +72,9 @@ def top_level_task():
   print(cweight)
   cweight_tensor.inline_unmap(ffconfig)
   
+  np_array = cweight_tensor.get_weights(ffmodel)
+  print(np_array)
+  
   dense1 = ffmodel.get_layer_by_id(1)
 
   dbias_tensor = dense1.get_bias_tensor()
@@ -82,6 +85,9 @@ def top_level_task():
   print(dbias.shape)
   print(dbias)
   dbias_tensor.inline_unmap(ffconfig)
+  
+  np_array = dbias_tensor.get_weights(ffmodel)
+  print(np_array)
 
   dweight_tensor = dense1.get_weight_tensor()
   dweight_tensor.inline_map(ffconfig)

@@ -1094,7 +1094,19 @@ flexflow_parameter_get_tensor(
   Parameter *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor *tensor = static_cast<Tensor*>(handle);
   return FFCObjectWrapper::wrap(tensor);  
-}  
+}
+
+void
+flexflow_parameter_get_weights_float(
+  flexflow_parameter_t handle_,
+  flexflow_model_t model_,
+  float *data)
+{
+  Parameter *handle = FFCObjectWrapper::unwrap(handle_);
+  const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
+  handle->get_weights<float>(*model, data);
+}
+  
 
 int*
 flexflow_malloc_int(

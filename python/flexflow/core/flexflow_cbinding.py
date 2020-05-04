@@ -397,9 +397,30 @@ class Tensor(object):
 
 class Parameter(Tensor):
   def __init__(self, handle):
-    self.super_handle = ffc.flexflow_parameter_get_tensor(handle)
-    print(handle, self.super_handle)
-    super(Parameter, self).__init__(self.super_handle, deallocate=False)
+    self.parameter_handle = handle
+    super_handle = ffc.flexflow_parameter_get_tensor(handle)
+    print(handle, super_handle)
+    super(Parameter, self).__init__(super_handle, deallocate=False)
+    
+  def get_weights(self, ffmodel):
+    if (self.num_dims == 1):
+      shape = (self.dims[0],)
+    elif (self.num_dims == 2):
+      shape = (self.dims[0], self.dims[1])
+    elif (self.num_dims == 3):
+      shape = (self.dims[0], self.dims[1], self.dims[2])
+    elif (self.num_dims == 4):
+      shape = (self.dims[0], self.dims[1], self.dims[2], self.dims[3])
+    else:
+      assert 0, "unknow num_dims"
+    np_array = np.empty(shape, dtype=np.float32)
+    np_raw_ptr = np_array.__array_interface__['data']
+    raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+    print("get weights raw_ptr: ", raw_ptr, np_raw_ptr[0], shape)
+    ffc.flexflow_parameter_get_weights_float(self.parameter_handle, ffmodel.handle, raw_ptr)
+    return np_array
+    
+    
 
 # -----------------------------------------------------------------------
 # FFModel

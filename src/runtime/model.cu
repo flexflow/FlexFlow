@@ -368,3 +368,5 @@ bool Parameter::get_weights(const FFModel& ff,
   runtime->unmap_region(ctx, region);
   return true;
 }
+
+template bool Parameter::get_weights<float>(const FFModel& ff, float* data);
