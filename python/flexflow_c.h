@@ -241,8 +241,8 @@ flexflow_model_get_layer_by_id(
   flexflow_model_t handle,
   int layer_id);
   
-flexflow_tensor_t
-flexflow_model_get_tensor_by_id(
+flexflow_parameter_t
+flexflow_model_get_parameter_by_id(
   flexflow_model_t handle,
   int layer_id);
 
@@ -575,6 +575,14 @@ flexflow_op_add_to_model(
 flexflow_tensor_t
 flexflow_parameter_get_tensor(
   flexflow_parameter_t handle);  
+
+void
+flexflow_parameter_set_weights_float(
+  flexflow_parameter_t handle,
+  flexflow_model_t model,
+  int num_dim,
+  int *dims,
+  const float *data);
 
 void
 flexflow_parameter_get_weights_float(

@@ -402,6 +402,25 @@ class Parameter(Tensor):
     print(handle, super_handle)
     super(Parameter, self).__init__(super_handle, deallocate=False)
     
+  def set_weights(self, ffmodel, np_array):
+    np_shape = np_array.shape
+    num_dims = len(np_shape)
+    assert num_dims == self.num_dims, "please check dims"
+    if (num_dims == 1):
+      shape = [np_shape[0]]
+    elif (num_dims == 2):
+      shape = [np_shape[0], np_shape[1]]
+    elif (num_dims == 3):
+      shape = [np_shape[0], np_shape[1], np_shape[2]]
+    elif (num_dims == 4):
+      shape = [np_shape[0], np_shape[1], np_shape[2], np_shape[3]]
+    else:
+      assert 0, "unknow num_dims"
+    np_raw_ptr = np_array.__array_interface__['data']
+    raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+    print("set weights raw_ptr: ", raw_ptr, np_raw_ptr[0], shape)
+    ffc.flexflow_parameter_set_weights_float(self.parameter_handle, ffmodel.handle, num_dims, shape, raw_ptr)
+    
   def get_weights(self, ffmodel):
     if (self.num_dims == 1):
       shape = (self.dims[0],)
@@ -571,8 +590,8 @@ class FFModel(object):
       return 0
     
   def get_tensor_by_id(self, id):
-    handle = ffc.flexflow_model_get_tensor_by_id(self.handle, id)
-    return Tensor(handle, False)
+    handle = ffc.flexflow_model_get_parameter_by_id(self.handle, id)
+    return Parameter(handle)
     
 
 # -----------------------------------------------------------------------

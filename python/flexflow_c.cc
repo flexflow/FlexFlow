@@ -468,13 +468,13 @@ flexflow_model_get_layer_by_id(
   return FFCObjectWrapper::wrap(layer);  
 }
 
-flexflow_tensor_t
-flexflow_model_get_tensor_by_id(
+flexflow_parameter_t
+flexflow_model_get_parameter_by_id(
   flexflow_model_t handle_,
   int layer_id)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *tensor = static_cast<Tensor*>(&(handle->parameters[layer_id]));
+  Parameter *tensor = &(handle->parameters[layer_id]);
   return FFCObjectWrapper::wrap(tensor);  
 }
 
@@ -1094,6 +1094,23 @@ flexflow_parameter_get_tensor(
   Parameter *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor *tensor = static_cast<Tensor*>(handle);
   return FFCObjectWrapper::wrap(tensor);  
+}
+
+void
+flexflow_parameter_set_weights_float(
+  flexflow_parameter_t handle_,
+  flexflow_model_t model_,
+  int num_dim,
+  int *dims,
+  const float *data)
+{
+  Parameter *handle = FFCObjectWrapper::unwrap(handle_);
+  const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
+  std::vector<int> dims_vec;
+  for (int i = 0; i < num_dim; i++ ) {
+    dims_vec.push_back(dims[i]);
+  }
+  handle->set_weights<float>(*model, dims_vec, data);
 }
 
 void

@@ -37,14 +37,19 @@ def top_level_task():
   
   #weight of conv2d
   t3 = ffmodel.get_tensor_by_id(0)
+  
+  np_array = np.zeros((64, 3, 11, 11), dtype=np.float32)
+  np_array += 1.2
+  t3.set_weights(ffmodel, np_array)
+  
   t3.inline_map(ffconfig)
   t3_array = t3.get_array(ffconfig, DataType.DT_FLOAT)
-  t3_array *= 0.0
-  t3_array += 1.2
   print(t3_array.shape)
+  print(t3_array)
   t3.inline_unmap(ffconfig)
   
   
+  ###3
   conv_2d1 = ffmodel.get_layer_by_id(0)
 
   cbias_tensor = conv_2d1.get_bias_tensor()
