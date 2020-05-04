@@ -1096,7 +1096,7 @@ flexflow_parameter_get_tensor(
   return FFCObjectWrapper::wrap(tensor);  
 }
 
-void
+bool
 flexflow_parameter_set_weights_float(
   flexflow_parameter_t handle_,
   flexflow_model_t model_,
@@ -1110,10 +1110,10 @@ flexflow_parameter_set_weights_float(
   for (int i = 0; i < num_dim; i++ ) {
     dims_vec.push_back(dims[i]);
   }
-  handle->set_weights<float>(*model, dims_vec, data);
+  return handle->set_weights<float>(*model, dims_vec, data);
 }
 
-void
+bool
 flexflow_parameter_get_weights_float(
   flexflow_parameter_t handle_,
   flexflow_model_t model_,
@@ -1121,7 +1121,7 @@ flexflow_parameter_get_weights_float(
 {
   Parameter *handle = FFCObjectWrapper::unwrap(handle_);
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
-  handle->get_weights<float>(*model, data);
+  return handle->get_weights<float>(*model, data);
 }
   
 

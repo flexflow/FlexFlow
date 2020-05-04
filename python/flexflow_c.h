@@ -576,7 +576,7 @@ flexflow_tensor_t
 flexflow_parameter_get_tensor(
   flexflow_parameter_t handle);  
 
-void
+bool
 flexflow_parameter_set_weights_float(
   flexflow_parameter_t handle,
   flexflow_model_t model,
@@ -584,7 +584,7 @@ flexflow_parameter_set_weights_float(
   int *dims,
   const float *data);
 
-void
+bool
 flexflow_parameter_get_weights_float(
   flexflow_parameter_t handle,
   flexflow_model_t model,

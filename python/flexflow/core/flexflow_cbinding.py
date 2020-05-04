@@ -419,7 +419,8 @@ class Parameter(Tensor):
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
     print("set weights raw_ptr: ", raw_ptr, np_raw_ptr[0], shape)
-    ffc.flexflow_parameter_set_weights_float(self.parameter_handle, ffmodel.handle, num_dims, shape, raw_ptr)
+    ret_val = ffc.flexflow_parameter_set_weights_float(self.parameter_handle, ffmodel.handle, num_dims, shape, raw_ptr)
+    assert ret_val == True, ret_val
     
   def get_weights(self, ffmodel):
     if (self.num_dims == 1):
@@ -436,7 +437,8 @@ class Parameter(Tensor):
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
     print("get weights raw_ptr: ", raw_ptr, np_raw_ptr[0], shape)
-    ffc.flexflow_parameter_get_weights_float(self.parameter_handle, ffmodel.handle, raw_ptr)
+    ret_val = ffc.flexflow_parameter_get_weights_float(self.parameter_handle, ffmodel.handle, raw_ptr)
+    assert ret_val == True
     return np_array
     
     

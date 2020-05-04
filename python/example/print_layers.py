@@ -53,8 +53,14 @@ def top_level_task():
   conv_2d1 = ffmodel.get_layer_by_id(0)
 
   cbias_tensor = conv_2d1.get_bias_tensor()
+  
+  np_array = np.zeros((64), dtype=np.float32)
+  np_array += 22.222
+  cbias_tensor.set_weights(ffmodel, np_array)
+  
   cbias_tensor.inline_map(ffconfig)
   cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
+  print(cbias)
   cbias *= 0.0
   cbias += 1.1
   print(cbias.shape)
