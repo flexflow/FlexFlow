@@ -204,6 +204,12 @@ class Sequential(object):
     run_time = 1e-6 * (ts_end - ts_start);
     print("epochs %d, ELAPSED TIME = %.4fs, interations %d, samples %d, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, int(iterations), self.num_samples, self.num_samples * epochs / run_time));
     
+    self.label_tensor.inline_map(self.ffconfig)
+    label_array = self.label_tensor.get_array(self.ffconfig, ff.DataType.DT_INT32)
+    print(label_array.shape)
+    print(label_array)
+    self.label_tensor.inline_unmap(self.ffconfig)
+    
   def fit(self, input_tensor, label_tensor, epochs=1):
     self.create_input_and_label_tensor(input_tensor.shape, label_tensor.shape)
     self.create_data_loaders(input_tensor, label_tensor)

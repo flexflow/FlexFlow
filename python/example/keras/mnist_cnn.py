@@ -4,6 +4,7 @@ import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 
 import flexflow.core as ff
+
 import numpy as np
 
 def top_level_task():
@@ -33,7 +34,7 @@ def top_level_task():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
 
-  model.fit(x_train, y_train, epochs=12)
+  model.fit(x_train, y_train, epochs=1)
 
 if __name__ == "__main__":
   print("alexnet keras")
