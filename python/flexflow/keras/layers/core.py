@@ -36,7 +36,8 @@ class Dense(object):
     
   def verify_inout_shape(self, input_tensor, output_tensor):
     in_dims = input_tensor.dims
-    assert in_dims[0] == self.input_shape[1]
+    assert in_dims[0] == self.input_shape[1], "%d, %d" % (in_dims[0], self.input_shape[1])
+    print(in_dims[0], self.input_shape[1])
     out_dims = output_tensor.dims
     assert out_dims[0] == self.output_shape[1]
     
@@ -50,6 +51,21 @@ class Dense(object):
     self.outchannels = out_dims[0]
     self.verify_inout_shape(input_tensor, output_tensor)
     return output_tensor
+    
+  def get_weights(self, ffmodel):
+    assert self.handle != 0, "handle is not set correctly"
+    kernel_parameter = self.handle.get_weight_tensor()
+    bias_parameter = self.handle.get_bias_tensor()
+    kernel_array = kernel_parameter.get_weights(ffmodel)
+    bias_array = bias_parameter.get_weights(ffmodel)
+    return (kernel_array, bias_array)
+    
+  def set_weights(self, ffmodel, kernel, bias):
+    assert self.handle != 0, "handle is not set correctly"
+    kernel_parameter = self.handle.get_weight_tensor()
+    bias_parameter = self.handle.get_bias_tensor()
+    kernel_parameter.set_weights(ffmodel, kernel)
+    bias_parameter.set_weights(ffmodel, bias)
     
 class Flatten(object):
   def __init__(self):

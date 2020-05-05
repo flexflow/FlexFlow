@@ -65,3 +65,18 @@ class Conv2D(object):
   def __call__(self, input_tensor):
     output_tensor = builtins.internal_ffmodel.conv2d(self.name, input_tensor, self.out_channels, self.kernel_size[0], self.kernel_size[1], self.stride[0], self.stride[1], self.padding[0], self.padding[1], self.activation, self.use_bias)
     return output_tensor
+    
+  def get_weights(self, ffmodel):
+    assert self.handle != 0, "handle is not set correctly"
+    kernel_parameter = self.handle.get_weight_tensor()
+    bias_parameter = self.handle.get_bias_tensor()
+    kernel_array = kernel_parameter.get_weights(ffmodel)
+    bias_array = bias_parameter.get_weights(ffmodel)
+    return (kernel_array, bias_array)
+    
+  def set_weights(self, ffmodel, kernel, bias):
+    assert self.handle != 0, "handle is not set correctly"
+    kernel_parameter = self.handle.get_weight_tensor()
+    bias_parameter = self.handle.get_bias_tensor()
+    kernel_parameter.set_weights(ffmodel, kernel)
+    bias_parameter.set_weights(ffmodel, bias)
