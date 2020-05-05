@@ -38,19 +38,19 @@ class Dense(Layer):
     
   def verify_inout_shape(self, input_tensor, output_tensor):
     in_dims = input_tensor.dims
-    assert in_dims[0] == self.input_shape[1], "%d, %d" % (in_dims[0], self.input_shape[1])
-    print(in_dims[0], self.input_shape[1])
+    assert in_dims[1] == self.input_shape[1], "%d, %d" % (in_dims[0], self.input_shape[1])
+    print(in_dims[1], self.input_shape[1])
     out_dims = output_tensor.dims
-    assert out_dims[0] == self.output_shape[1]
+    assert out_dims[1] == self.output_shape[1]
     
   def __call__(self, input_tensor):
     output_tensor = builtins.internal_ffmodel.dense(self.name, input_tensor, self.out_channels, self.activation)
     in_dims = input_tensor.dims
-    self.input_shape = (in_dims[1], in_dims[0])
+    self.input_shape = (in_dims[0], in_dims[1])
     out_dims = output_tensor.dims
-    self.output_shape = (out_dims[1], out_dims[0])
-    self.in_channels = in_dims[0]
-    self.outchannels = out_dims[0]
+    self.output_shape = (out_dims[0], out_dims[1])
+    self.in_channels = in_dims[1]
+    self.outchannels = out_dims[1]
     self.verify_inout_shape(input_tensor, output_tensor)
     return output_tensor
     
@@ -77,7 +77,7 @@ class Flatten(Layer):
     
   def verify_inout_shape(self, input_tensor, output_tensor):
     out_dims = output_tensor.dims
-    assert out_dims[0] == self.output_shape[1]
+    assert out_dims[1] == self.output_shape[1]
     
   def __call__(self, input_tensor):
     output_tensor = builtins.internal_ffmodel.flat(self.name, input_tensor)

@@ -22,7 +22,7 @@ def top_level_task():
   print("shape: ", x_train.shape)
   
   model = Sequential()
-  model.add(Conv2D(filters=32, input_shape=(32,32,3), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
+  model.add(Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
   model.add(Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
   model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"))
   model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))

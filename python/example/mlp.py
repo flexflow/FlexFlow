@@ -21,10 +21,12 @@ def top_level_task():
     
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
     
+    print(x_train.shape)
     x_train = x_train.reshape(60000, 784)
     x_train = x_train.astype('float32')
     x_train /= 255
     y_train = y_train.astype('int32')
+    y_train = np.reshape(y_train, (len(y_train), 1))
     print(x_train.shape[0], 'train samples')
     print(y_train.shape)
     

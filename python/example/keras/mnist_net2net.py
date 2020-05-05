@@ -27,7 +27,7 @@ def create_teacher_model(num_classes, x_train, y_train):
   
 def create_teacher_model_cnn(num_classes, x_train, y_train):
   model = Sequential()
-  model.add(Conv2D(filters=32, input_shape=(28,28,1), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
+  model.add(Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
   model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
   model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"))
   model.add(Flatten())
@@ -44,17 +44,14 @@ def create_teacher_model_cnn(num_classes, x_train, y_train):
 def create_student_model(teacher_model, num_classes, x_train, y_train):
   dense1 = teacher_model.get_layer(0)
   d1_kernel, d1_bias = dense1.get_weights(teacher_model.ffmodel)
-  d1_kernel = np.reshape(d1_kernel, (d1_kernel.shape[1], d1_kernel.shape[0]))
   print(d1_kernel.shape, d1_bias.shape)
   # print(d1_kernel)
   # print(d1_bias)
   dense2 = teacher_model.get_layer(1)
   d2_kernel, d2_bias = dense2.get_weights(teacher_model.ffmodel)
-  d2_kernel = np.reshape(d2_kernel, (d2_kernel.shape[1], d2_kernel.shape[0]))
   
   dense3 = teacher_model.get_layer(2)
   d3_kernel, d3_bias = dense3.get_weights(teacher_model.ffmodel)
-  d3_kernel = np.reshape(d3_kernel, (d3_kernel.shape[1], d3_kernel.shape[0]))
   
   model = Sequential()
   model.add(Dense(512, input_shape=(784,), activation="relu"))
@@ -83,23 +80,19 @@ def create_student_model(teacher_model, num_classes, x_train, y_train):
 def create_student_model_cnn(teacher_model, num_classes, x_train, y_train):
   conv1 = teacher_model.get_layer(0)
   c1_kernel, c1_bias = conv1.get_weights(teacher_model.ffmodel)
-  c1_kernel = np.reshape(c1_kernel, (c1_kernel.shape[3], c1_kernel.shape[2], c1_kernel.shape[1], c1_kernel.shape[0]))
   print(c1_kernel.shape, c1_bias.shape)
 
   conv2 = teacher_model.get_layer(1)
   c2_kernel, c2_bias = conv2.get_weights(teacher_model.ffmodel)
-  c2_kernel = np.reshape(c2_kernel, (c2_kernel.shape[3], c2_kernel.shape[2], c2_kernel.shape[1], c2_kernel.shape[0]))
   
   dense1 = teacher_model.get_layer(4)
   d1_kernel, d1_bias = dense1.get_weights(teacher_model.ffmodel)
-  d1_kernel = np.reshape(d1_kernel, (d1_kernel.shape[1], d1_kernel.shape[0]))
   
   dense2 = teacher_model.get_layer(5)
   d2_kernel, d2_bias = dense2.get_weights(teacher_model.ffmodel)
-  d2_kernel = np.reshape(d2_kernel, (d2_kernel.shape[1], d2_kernel.shape[0]))
   
   model = Sequential()
-  model.add(Conv2D(filters=32, input_shape=(28,28,1), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
+  model.add(Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
   model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
   model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"))
   model.add(Flatten())
@@ -159,8 +152,8 @@ def cnn():
   
 
 def top_level_task():
-  #cnn()
-  mlp()
+  cnn()
+  #mlp()
 
 if __name__ == "__main__":
   print("alexnet keras")

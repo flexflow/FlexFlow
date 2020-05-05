@@ -163,7 +163,7 @@ def top_level_task():
   cbias_tensor.inline_unmap(ffconfig)
   
   label.inline_map(ffconfig)
-  label_array = label.get_array(ffconfig, DataType.DT_INT32)
+  label_array = label.get_flat_array(ffconfig, DataType.DT_INT32)
   print(label_array.shape)
   # print(cbias)
   print(label_array)

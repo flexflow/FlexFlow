@@ -96,7 +96,7 @@ class Sequential(object):
     elif (isinstance(layer, Dense) == True):
       if (layer.layer_id > 0):
         prev_layer = self._layers[layer.layer_id-1]
-        layer.calculate_inout_shape(prev_layer.output_shape[1])
+        layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[0])
   
   def add(self, layer):
     self.use_v2 = True
@@ -121,7 +121,7 @@ class Sequential(object):
     elif (isinstance(layer, Dense) == True):
       if (layer.layer_id > 0):
         prev_layer = self._layers[layer.layer_id-1]
-        layer.calculate_inout_shape(prev_layer.output_shape[1])
+        layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[0])
 
     if (isinstance(layer, Conv2D) == True):
       layer.handle = self.ffmodel.conv2d_v2(layer.name, layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
@@ -217,9 +217,15 @@ class Sequential(object):
     ts_end = self.ffconfig.get_current_time()
     run_time = 1e-6 * (ts_end - ts_start);
     print("epochs %d, ELAPSED TIME = %.4fs, interations %d, samples %d, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, int(iterations), self.num_samples, self.num_samples * epochs / run_time));
+
+    self.input_tensor.inline_map(self.ffconfig)
+    input_array = self.input_tensor.get_flat_array(self.ffconfig, ff.DataType.DT_FLOAT)
+    print(input_array.shape)
+    print(input_array)
+    self.input_tensor.inline_unmap(self.ffconfig)
     
     self.label_tensor.inline_map(self.ffconfig)
-    label_array = self.label_tensor.get_array(self.ffconfig, ff.DataType.DT_INT32)
+    label_array = self.label_tensor.get_flat_array(self.ffconfig, ff.DataType.DT_INT32)
     print(label_array.shape)
     print(label_array)
     self.label_tensor.inline_unmap(self.ffconfig)

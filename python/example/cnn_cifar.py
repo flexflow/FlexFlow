@@ -15,7 +15,7 @@ def top_level_task():
   dims_label = [ffconfig.get_batch_size(), 1]
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
-  use_external = False
+  use_external = True
   if (use_external == True):
     num_samples = 10000
     
@@ -147,7 +147,7 @@ def top_level_task():
   cbias_tensor.inline_unmap(ffconfig)
 
   label.inline_map(ffconfig)
-  label_array = label.get_array(ffconfig, DataType.DT_INT32)
+  label_array = label.get_flat_array(ffconfig, DataType.DT_INT32)
   print(label_array.shape)
   # print(cbias)
   print(label_array)

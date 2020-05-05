@@ -367,7 +367,17 @@ class Tensor(object):
   def set_dims(self):
     self.num_dims = ffc.flexflow_tensor_get_num_dims(self.handle)
     d = ffc.flexflow_tensor_get_dims(self.handle)
-    self.dims = [d[0], d[1], d[2], d[3]]
+    #print(d[0], d[1], d[2], d[3])
+    if (self.num_dims == 1):
+      self.dims = [d[0]]
+    elif (self.num_dims == 2):
+      self.dims = [d[1], d[0]]
+    elif (self.num_dims == 3):
+      self.dims = [d[2], d[1], d[0]]
+    elif (self.num_dims == 4):
+      self.dims = [d[3], d[2], d[1], d[0]]
+    else:
+      assert 0, "unknow num_dims"
     
   def attach_raw_ptr(self, ffconfig, raw_ptr, column_major=True):
     assert self.mapped == False, "Tensor is already mapped."
@@ -381,6 +391,24 @@ class Tensor(object):
     
   def attach_numpy_array(self, ffconfig, np_array):
     assert np_array.__array_interface__['strides'] == None, "numpy array strides is not None"
+    np_shape = np_array.shape
+    np_num_dims = len(np_shape)
+    if (self.num_dims == 1):
+      self.dims[0] == np_shape[0]
+    elif (self.num_dims == 2):
+      self.dims[0] == np_shape[0]
+      self.dims[1] == np_shape[1]
+    elif (self.num_dims == 3):
+      self.dims[0] == np_shape[0]
+      self.dims[1] == np_shape[1]
+      self.dims[2] == np_shape[2]
+    elif (self.num_dims == 4):
+      self.dims[0] == np_shape[0]
+      self.dims[1] == np_shape[1]
+      self.dims[2] == np_shape[2]
+      self.dims[3] == np_shape[3]
+    else:
+      assert 0, "unknow num_dims"
     np_raw_ptr = np_array.__array_interface__['data']
     print("attach numpy array: ", np_raw_ptr)
     self.attach_raw_ptr(ffconfig, np_raw_ptr[0])
