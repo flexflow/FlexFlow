@@ -123,7 +123,7 @@ def create_student_model_cnn(teacher_model, num_classes, x_train, y_train):
 
   model.fit(x_train, y_train, epochs=1)
   
-def mll():
+def mlp():
   num_classes = 10
 
   (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -159,7 +159,8 @@ def cnn():
   
 
 def top_level_task():
-  cnn()
+  #cnn()
+  mlp()
 
 if __name__ == "__main__":
   print("alexnet keras")

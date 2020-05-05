@@ -1,9 +1,13 @@
 import flexflow.core as ff
 
+from .base_layer import Layer
+
 import builtins
 
-class Dense(object):
+class Dense(Layer):
   def __init__(self, output_shape, input_shape=(0,), activation=None):
+    super(Dense, self).__init__("dense") 
+    
     self.out_channels = output_shape
     self.in_channels = 0
     self.input_shape = (0, 0)
@@ -21,8 +25,6 @@ class Dense(object):
       self.activation = ff.ActiMode.AC_MODE_RELU
     else:
       self.activation = ff.ActiMode.AC_MODE_NONE
-    self.handle = 0
-    self.name = "dense"
   
   def calculate_inout_shape(self, in_dim, input_b=0):
     assert in_dim != 0, "wrong in_dim"
@@ -53,26 +55,16 @@ class Dense(object):
     return output_tensor
     
   def get_weights(self, ffmodel):
-    assert self.handle != 0, "handle is not set correctly"
-    kernel_parameter = self.handle.get_weight_tensor()
-    bias_parameter = self.handle.get_bias_tensor()
-    kernel_array = kernel_parameter.get_weights(ffmodel)
-    bias_array = bias_parameter.get_weights(ffmodel)
-    return (kernel_array, bias_array)
+    return self._get_weights(ffmodel)
     
   def set_weights(self, ffmodel, kernel, bias):
-    assert self.handle != 0, "handle is not set correctly"
-    kernel_parameter = self.handle.get_weight_tensor()
-    bias_parameter = self.handle.get_bias_tensor()
-    kernel_parameter.set_weights(ffmodel, kernel)
-    bias_parameter.set_weights(ffmodel, bias)
+    self._set_weights(ffmodel, kernel, bias)
     
-class Flatten(object):
+class Flatten(Layer):
   def __init__(self):
+    super(Flatten, self).__init__("flat") 
     self.input_shape = 0
     self.output_shape = (0, 0)
-    self.handle = 0
-    self.name = "flat"
     
   def calculate_inout_shape(self, input_shape):
     self.input_shape = input_shape
@@ -91,8 +83,10 @@ class Flatten(object):
     output_tensor = builtins.internal_ffmodel.flat(self.name, input_tensor)
     return output_tensor
     
-class Activation(object):
+class Activation(Layer):
   def __init__(self, type):
+    super(Activation, self).__init__("activation") 
+    
     if (type == "softmax"):
       self.type = "softmax"
       

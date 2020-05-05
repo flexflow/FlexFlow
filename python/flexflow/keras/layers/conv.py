@@ -1,11 +1,14 @@
 import flexflow.core as ff
 import math
 
+from .base_layer import Layer
+
 import builtins
 
-class Conv2D(object):
+class Conv2D(Layer):
   def __init__(self, filters, input_shape=(0,), kernel_size=0, strides=0, padding=0, data_format=None, dilation_rate=(1, 1), activation=None, use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, kernel_constraint=None, bias_constraint=None):
-    self.layer_id = -1
+    super(Conv2D, self).__init__("conv2d") 
+    
     self.input_shape = (0, 0, 0, 0)
     self.output_shape = (0, 0, 0, 0)
     self.out_channels = filters
@@ -31,8 +34,6 @@ class Conv2D(object):
     else:
       self.in_channels = 0
     self.use_bias = use_bias
-    self.handle = 0
-    self.name = "conv2d"
     
   def calculate_inout_shape(self, input_w, input_h, input_d, input_b=0):
     assert input_w != 0, "wrong input_w"
@@ -67,16 +68,7 @@ class Conv2D(object):
     return output_tensor
     
   def get_weights(self, ffmodel):
-    assert self.handle != 0, "handle is not set correctly"
-    kernel_parameter = self.handle.get_weight_tensor()
-    bias_parameter = self.handle.get_bias_tensor()
-    kernel_array = kernel_parameter.get_weights(ffmodel)
-    bias_array = bias_parameter.get_weights(ffmodel)
-    return (kernel_array, bias_array)
+    return self._get_weights(ffmodel)
     
   def set_weights(self, ffmodel, kernel, bias):
-    assert self.handle != 0, "handle is not set correctly"
-    kernel_parameter = self.handle.get_weight_tensor()
-    bias_parameter = self.handle.get_bias_tensor()
-    kernel_parameter.set_weights(ffmodel, kernel)
-    bias_parameter.set_weights(ffmodel, bias)
+    self._set_weights(ffmodel, kernel, bias)

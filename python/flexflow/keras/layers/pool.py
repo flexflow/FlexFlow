@@ -1,10 +1,14 @@
 import flexflow.core as ff
 import math
 
+from .base_layer import Layer
+
 import builtins
 
-class MaxPooling2D(object):
+class MaxPooling2D(Layer):
   def __init__(self, pool_size, strides, padding="valid"):
+    super(MaxPooling2D, self).__init__("pool2d") 
+    
     self.input_shape = (0, 0, 0, 0)
     self.output_shape = (0, 0, 0, 0)
     self.out_channels = 0
@@ -17,8 +21,6 @@ class MaxPooling2D(object):
       self.padding = (0, 0)
     else:
       self.padding = (0, 0)
-    self.handle = 0
-    self.name = "pool2d"
     
   def calculate_inout_shape(self, input_w, input_h, input_d, input_b=0):
     assert input_w != 0, "wrong input_w"

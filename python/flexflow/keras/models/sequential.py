@@ -63,6 +63,7 @@ class Sequential(object):
         if (isinstance(layer, Activation) == True):
           assert layer_id == self._nb_layers-1, "softmax is not in the last layer"
           out_t = self.ffmodel.softmax("softmax", in_t, self.label_tensor)
+          assert layer.handle == 0, "layer handle is inited"
           layer.handle = self.ffmodel.get_layer_by_id(layer_id)
         else:
           out_t = layer.handle.init_inout(self.ffmodel, in_t);
@@ -75,6 +76,8 @@ class Sequential(object):
     
   def add_v1(self, layer):
     self._layers[self._nb_layers] = layer
+    assert layer.layer_id == -1, "layer id is inited"
+    assert layer.handle == 0, "layer handle is inited"
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
 
@@ -98,6 +101,8 @@ class Sequential(object):
   def add(self, layer):
     self.use_v2 = True
     self._layers[self._nb_layers] = layer
+    assert layer.layer_id == -1, "layer id is inited"
+    assert layer.handle == 0, "layer handle is inited"
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
 
