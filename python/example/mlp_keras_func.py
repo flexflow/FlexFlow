@@ -94,7 +94,7 @@ def top_level_task():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt)
   
-  model.fit_old(input2, label, dataloader, alexnetconfig)
+  model.fit_old(dataloader, alexnetconfig)
   
   delete_internal_model()
 

@@ -60,6 +60,9 @@ class BaseModel(object):
     input_shape = x_train.shape
     self.num_samples = input_shape[0]
     
+    assert self.input_tensor != 0, "input_tensor is not set"
+    assert self.label_tensor != 0, "label_tensor is not set"
+    
     print(y_train.shape)
     self.full_input_tensor = self.__create_single_data_loader(self.input_tensor, x_train)
     self.full_label_tensor = self.__create_single_data_loader(self.label_tensor, y_train)

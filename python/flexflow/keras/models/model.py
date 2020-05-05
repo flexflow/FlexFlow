@@ -18,6 +18,9 @@ class Model(BaseModel):
   def __init__(self, input_tensor, output_tensor):
     super(Model, self).__init__()
     
+    self.input_tensor = input_tensor
+    self.output_tensor = output_tensor
+    
   def add(self, layer):
     self._layers[self._nb_layers] = layer
     layer.layer_id = self._nb_layers
@@ -33,7 +36,12 @@ class Model(BaseModel):
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
     
-  def fit_old(self, input_tensor, label_tensor, dataloader, alexnetconfig):    
+  def fit(self, input_tensor, label_tensor, epochs=1):
+    self._create_data_loaders(input_tensor, label_tensor)     
+    self.ffmodel.init_layers()
+    self._train(epochs)
+    
+  def fit_old(self, dataloader, alexnetconfig):    
     self.ffmodel.init_layers()
     
     epochs = self.ffconfig.get_epochs()
