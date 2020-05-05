@@ -1,5 +1,6 @@
 import flexflow.core as ff
 
+from .base_model import BaseModel
 from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation
 
 import builtins
@@ -13,17 +14,9 @@ def delete_internal_model():
   del builtins.internal_ffconfig
   del builtins.internal_ffmodel
 
-class Model(object):
+class Model(BaseModel):
   def __init__(self, input_tensor, output_tensor):
-    self.ffconfig = ff.FFConfig()
-    self.ffconfig.parse_args()
-    print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self.ffconfig.get_batch_size(), self.ffconfig.get_workers_per_node(), self.ffconfig.get_num_nodes()))
-    self.ffmodel = ff.FFModel(self.ffconfig)
-    
-    self._layers = dict()
-    self._nb_layers = 0
-    self.input_tensor = input_tensor
-    self.output_tensor = output_tensor
+    super(Model, self).__init__()
     
   def add(self, layer):
     self._layers[self._nb_layers] = layer
@@ -40,11 +33,7 @@ class Model(object):
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
     
-  def compile(self):
-    self.ffoptimizer = ff.SGDOptimizer(self.ffmodel, 0.001)
-    self.ffmodel.set_sgd_optimizer(self.ffoptimizer)
-    
-  def fit(self, input_tensor, label_tensor, dataloader, alexnetconfig):    
+  def fit_old(self, input_tensor, label_tensor, dataloader, alexnetconfig):    
     self.ffmodel.init_layers()
     
     epochs = self.ffconfig.get_epochs()

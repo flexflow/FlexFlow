@@ -1,6 +1,7 @@
 from flexflow.keras.models import Model, init_internal_model, delete_internal_model
 from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation
 
+import flexflow.keras.optimizers
 import flexflow.core as ff
 
 import builtins
@@ -90,8 +91,10 @@ def top_level_task():
   
   output = model.add_softmax(output, label)
 
-  model.compile()
-  model.fit(input2, label, dataloader, alexnetconfig)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
+  model.compile(optimizer=opt)
+  
+  model.fit_old(input2, label, dataloader, alexnetconfig)
   
   delete_internal_model()
 
