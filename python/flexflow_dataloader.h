@@ -93,8 +93,7 @@ private:
 public:
   int num_samples, next_index;
   DataType datatype;
-  Tensor full_input, batch_input;
-  Tensor full_label, batch_label;             
+  Tensor full_input, batch_input;         
 };
 
 #define MAX_NUM_SAMPLES 4196

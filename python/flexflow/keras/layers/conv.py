@@ -22,7 +22,7 @@ class Conv2D(Layer):
     elif(activation =="relu"):
       self.activation = ff.ActiMode.AC_MODE_RELU
     else:
-      self.activation = ff.ActiMode.AC_MODE_NONE
+      assert 0, "activation is not supported"
     if (len(input_shape) == 4):
       self.in_channels = input_shape[1]
       self.input_shape = input_shape

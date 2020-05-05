@@ -47,7 +47,7 @@ def top_level_task():
   print(input2_array.shape)
   input2.inline_unmap(builtins.internal_ffconfig)
   
-  output = Conv2D(filters=64, input_shape=(229,229,3), kernel_size=(11,11), strides=(4,4), padding=(2,2))(input2)
+  output = Conv2D(filters=64, input_shape=(3,229,229), kernel_size=(11,11), strides=(4,4), padding=(2,2))(input2)
   output = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid")(output)
   output = Conv2D(filters=192, kernel_size=(5,5), strides=(1,1), padding=(2,2))(output)
   output = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid")(output)

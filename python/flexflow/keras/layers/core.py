@@ -21,10 +21,12 @@ class Dense(Layer):
         self.calculate_inout_shape(input_shape[0])
       else:
         self.in_channels = 0
-    if (activation == "relu"):
+    if (activation == None):
+      self.activation = ff.ActiMode.AC_MODE_NONE
+    elif(activation =="relu"):
       self.activation = ff.ActiMode.AC_MODE_RELU
     else:
-      self.activation = ff.ActiMode.AC_MODE_NONE
+      assert 0, "activation is not supported"
   
   def calculate_inout_shape(self, in_dim, input_b=0):
     assert in_dim != 0, "wrong in_dim"

@@ -19,6 +19,7 @@ class Sequential(object):
     self.num_samples = 0
     self.dataloaders = []
     self.dataloaders_dim = []
+    self.ffoptimizer = 0
     self.use_v2 = False
     
   def _create_layer_and_init_inout(self, verify_inout_shape=True):
