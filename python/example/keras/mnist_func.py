@@ -21,7 +21,7 @@ def mlp():
   #y_train = np.random.randint(1, 9, size=(len(y_train),1), dtype='int32')
   print("shape: ", x_train.shape)
   
-  dims_input = [builtins.internal_ffconfig.get_batch_size(), 784]
+  dims_input = (builtins.internal_ffconfig.get_batch_size(), 784)
   input_tensor = builtins.internal_ffmodel.create_tensor_2d(dims_input, "", ff.DataType.DT_FLOAT);
   
   dims_label = [builtins.internal_ffconfig.get_batch_size(), 1]
@@ -103,8 +103,8 @@ def cnn():
 def top_level_task():
   init_internal_model()
   
-  cnn()
-  #mlp()
+  #cnn()
+  mlp()
   
   delete_internal_model()
 

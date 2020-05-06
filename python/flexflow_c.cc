@@ -388,12 +388,14 @@ flexflow_model_add_concat(
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor *tensor = new Tensor();
   std::vector<Tensor> input_vec;
+  printf("concat input tensor");
   for (int i = 0; i < n; i++ ) {
     Tensor *t = FFCObjectWrapper::unwrap(input_[i]);
     input_vec.push_back(*t);
+    printf("%p ", t);
   }
   *tensor = handle->concat(name, n, input_vec.data(), axis);
-  printf("concat new Tensor 4D %p\n", tensor);
+  printf("\nconcat new Tensor 4D %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor); 
 }
 
@@ -584,12 +586,11 @@ void
 flexflow_tensor_attach_raw_ptr(
   flexflow_tensor_t handle_,
   flexflow_config_t config_,
-  uintptr_t ptr,
+  void *raw_ptr,
   bool column_major)
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
   FFConfig *config = FFCObjectWrapper::unwrap(config_);  
-  void *raw_ptr = (void*)ptr;
   handle->attach_raw_ptr(*config, raw_ptr, column_major);  
   printf("Attach numpy array: %p, %d\n", raw_ptr, column_major);
 }

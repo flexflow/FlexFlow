@@ -410,8 +410,9 @@ class Tensor(object):
     else:
       assert 0, "unknow num_dims"
     np_raw_ptr = np_array.__array_interface__['data']
-    print("attach numpy array: ", np_raw_ptr)
-    self.attach_raw_ptr(ffconfig, np_raw_ptr[0])
+    raw_ptr = ffi.cast("void*", np_raw_ptr[0])
+    print("attach numpy array: ", np_raw_ptr, raw_ptr, hex(np_raw_ptr[0]))
+    self.attach_raw_ptr(ffconfig, raw_ptr)
     
   def detach_numpy_array(self, ffconfig):
     self.detach_raw_ptr(ffconfig)
@@ -446,7 +447,7 @@ class Parameter(Tensor):
       assert 0, "unknow num_dims"
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-    print("set weights raw_ptr: ", raw_ptr, np_raw_ptr[0], shape)
+    print("set weights raw_ptr: ", raw_ptr, np_raw_ptr[0], hex(np_raw_ptr[0]), shape)
     ret_val = ffc.flexflow_parameter_set_weights_float(self.parameter_handle, ffmodel.handle, num_dims, shape, raw_ptr)
     assert ret_val == True, ret_val
     
@@ -464,7 +465,7 @@ class Parameter(Tensor):
     np_array = np.empty(shape, dtype=np.float32)
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-    print("get weights raw_ptr: ", raw_ptr, np_raw_ptr[0], shape)
+    print("get weights raw_ptr: ", raw_ptr, np_raw_ptr[0], hex(np_raw_ptr[0]), shape)
     ret_val = ffc.flexflow_parameter_get_weights_float(self.parameter_handle, ffmodel.handle, raw_ptr)
     assert ret_val == True
     return np_array
@@ -554,7 +555,8 @@ class FFModel(object):
     for tensor in tensor_list:
       n = n + 1
       tensor_handle_list.append(tensor.handle)
-    handle = ffc.flexflow_model_add_concat(self.handle, name.encode('utf-8'), n, tensor_handle_list, axis)
+    c_tensor_handle_list = ffi.new("flexflow_tensor_t[]", tensor_handle_list)
+    handle = ffc.flexflow_model_add_concat(self.handle, name.encode('utf-8'), n, c_tensor_handle_list, axis)
     self.add_layer(OpType.CONCAT)
     return Tensor(handle)
     

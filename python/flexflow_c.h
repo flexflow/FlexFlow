@@ -302,7 +302,7 @@ void
 flexflow_tensor_attach_raw_ptr(
   flexflow_tensor_t handle,
   flexflow_config_t config,
-  uintptr_t ptr,
+  void *raw_ptr,
   bool column_major);
 
 void
