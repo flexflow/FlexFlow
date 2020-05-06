@@ -1,5 +1,7 @@
 import flexflow.core as ff
 
+import builtins
+
 class Input(object):
   def __init__(self, shape=None, batch_shape=None,
                name=None, dtype=None, sparse=False,
@@ -17,10 +19,14 @@ class Input(object):
     self.batch_shape = batch_shape
     self.handle = 0
     self.num_dims = len(batch_shape)
+    self.name = name
+    self.__create_ff_tensor()
     
-  # def __create_ff_tensor(self):
-  #   if (self.num_dims == 2):
-  #   elif (self.num_dims == 4):
-  #   else:
-  #     assert 0, "un-supported dims"
+  def __create_ff_tensor(self):
+    if (self.num_dims == 2):
+      self.handle = builtins.internal_ffmodel.create_tensor_2d(self.batch_shape, "", self.dtype);
+    elif (self.num_dims == 4):
+      self.handle = builtins.internal_ffmodel.create_tensor_4d(self.batch_shape, "", self.dtype);
+    else:
+      assert 0, "un-supported dims"
     

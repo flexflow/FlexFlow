@@ -1,4 +1,4 @@
-from flexflow.keras.models import Model, init_internal_model, delete_internal_model
+from flexflow.keras.models import Model, init_internal_model, delete_internal_model, Input
 from flexflow.keras.layers import Flatten, Dense, Activation, Conv2D, MaxPooling2D
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
@@ -21,13 +21,11 @@ def mlp():
   #y_train = np.random.randint(1, 9, size=(len(y_train),1), dtype='int32')
   print("shape: ", x_train.shape)
   
-  dims_input = (builtins.internal_ffconfig.get_batch_size(), 784)
-  input_tensor = builtins.internal_ffmodel.create_tensor_2d(dims_input, "", ff.DataType.DT_FLOAT);
+  input_tensor = Input(batch_shape=(builtins.internal_ffconfig.get_batch_size(), 784), dtype="float32")
   
-  dims_label = [builtins.internal_ffconfig.get_batch_size(), 1]
-  label_tensor = builtins.internal_ffmodel.create_tensor_2d(dims_label, "", ff.DataType.DT_INT32);
+  label_tensor = Input(batch_shape=(builtins.internal_ffconfig.get_batch_size(), 1), dtype="int32")
   
-  output = Dense(512, input_shape=(784,), activation="relu")(input_tensor)
+  output = Dense(512, input_shape=(784,), activation="relu")(input_tensor.handle)
   output = Dense(512, activation="relu")(output)
   output = Dense(num_classes)(output)
   
@@ -35,14 +33,14 @@ def mlp():
   dense2 = builtins.internal_ffmodel.get_layer_by_id(1)
   dense3 = builtins.internal_ffmodel.get_layer_by_id(2)
   
-  model = Model(input_tensor, output)
-  model.label_tensor = label_tensor
+  model = Model(input_tensor.handle, output)
+  model.label_tensor = label_tensor.handle
   
   model.add(dense1)
   model.add(dense2)
   model.add(dense3)
   
-  output = model.add_softmax(output, label_tensor)
+  output = model.add_softmax(output, label_tensor.handle)
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
@@ -62,13 +60,11 @@ def cnn():
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
   
-  dims_input = [builtins.internal_ffconfig.get_batch_size(), 1, 28, 28]
-  input_tensor = builtins.internal_ffmodel.create_tensor_4d(dims_input, "", ff.DataType.DT_FLOAT);
+  input_tensor = Input(batch_shape=(builtins.internal_ffconfig.get_batch_size(), 1, 28, 28), dtype="float32")
   
-  dims_label = [builtins.internal_ffconfig.get_batch_size(), 1]
-  label_tensor = builtins.internal_ffmodel.create_tensor_2d(dims_label, "", ff.DataType.DT_INT32);
+  label_tensor = Input(batch_shape=(builtins.internal_ffconfig.get_batch_size(), 1), dtype="int32")
   
-  output = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
+  output = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor.handle)
   output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
   output = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output)
   output = Flatten()(output)
@@ -82,8 +78,8 @@ def cnn():
   dense1 = builtins.internal_ffmodel.get_layer_by_id(4)
   dense2 = builtins.internal_ffmodel.get_layer_by_id(5)
   
-  model = Model(input_tensor, output)
-  model.label_tensor = label_tensor
+  model = Model(input_tensor.handle, output)
+  model.label_tensor = label_tensor.handle
   
   model.add(conv1)
   model.add(conv2)
@@ -92,7 +88,7 @@ def cnn():
   model.add(dense1)
   model.add(dense2)
   
-  output = model.add_softmax(output, label_tensor)
+  output = model.add_softmax(output, label_tensor.handle)
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
@@ -103,8 +99,8 @@ def cnn():
 def top_level_task():
   init_internal_model()
   
-  #cnn()
-  mlp()
+  cnn()
+  #mlp()
   
   delete_internal_model()
 
