@@ -38,6 +38,12 @@ class Dense(Layer):
     print("dense input ", self.input_shape)
     print("dense output ", self.output_shape)
     
+  def verify_meta_data(self):
+    assert self.input_shape != (0, 0), "input shape is wrong"
+    assert self.output_shape != (0, 0), "output shape is wrong"
+    assert self.in_channels != 0, " in channels is wrong"
+    assert self.out_channels != 0, " out channels is wrong"
+    
   def verify_inout_shape(self, input_tensor, output_tensor):
     in_dims = input_tensor.dims
     assert in_dims[1] == self.input_shape[1], "%d, %d" % (in_dims[0], self.input_shape[1])
@@ -81,6 +87,10 @@ class Flatten(Layer):
     print("flat input ", self.input_shape)
     print("flat output ", self.output_shape)
     
+  def verify_meta_data(self):
+    assert self.input_shape != 0, "input shape is wrong"
+    assert self.output_shape != (0, 0), "output shape is wrong"
+    
   def verify_inout_shape(self, input_tensor, output_tensor):
     out_dims = output_tensor.dims
     assert out_dims[1] == self.output_shape[1]
@@ -99,6 +109,9 @@ class Activation(Layer):
     
     if (type == "softmax"):
       self.type = "softmax"
+      
+  def verify_meta_data(self):
+    assert self.type == "softmax", "type is wrong"
       
   def verify_inout_shape(self, input_tensor, output_tensor):
     v = 1

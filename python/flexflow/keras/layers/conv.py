@@ -25,11 +25,9 @@ class Conv2D(Layer):
       assert 0, "activation is not supported"
     if (len(input_shape) == 4):
       self.in_channels = input_shape[1]
-      self.input_shape = input_shape
       self.calculate_inout_shape(input_shape[1], input_shape[2], input_shape[3], input_shape[0])
     elif (len(input_shape) == 3):
       self.in_channels = input_shape[0]
-      self.input_shape = (0, input_shape[0], input_shape[1], input_shape[2])
       self.calculate_inout_shape(input_shape[0], input_shape[1], input_shape[2])
     else:
       self.in_channels = 0
@@ -39,11 +37,6 @@ class Conv2D(Layer):
     assert input_w != 0, "wrong input_w"
     assert input_h != 0, "wrong input_h"
     assert input_d != 0, "wrong input_d"
-    if (self.in_channels != 0): # check if user input is correct
-      assert self.in_channels == input_d, "wrong input_w"
-      assert self.input_shape[1] == input_d, "wrong input_w"
-      assert self.input_shape[2] == input_w, "wrong input_h"
-      assert self.input_shape[3] == input_h, "wrong input_d"
     self.input_shape = (input_b, input_d, input_w, input_h)
     self.in_channels = input_d
     output_w = 1 + math.floor((input_w + 2 * self.padding[0] - self.kernel_size[0]) / self.stride[0])
@@ -52,6 +45,12 @@ class Conv2D(Layer):
     self.output_shape = (input_b, output_d, output_w, output_h)
     print("conv2d input ", self.input_shape)
     print("conv2d output ", self.output_shape)
+  
+  def verify_meta_data(self):
+    assert self.input_shape != (0, 0, 0, 0), "input shape is wrong"
+    assert self.output_shape != (0, 0, 0, 0), "output shape is wrong"
+    assert self.in_channels != 0, " in channels is wrong"
+    assert self.out_channels != 0, " out channels is wrong"
     
   def verify_inout_shape(self, input_tensor, output_tensor):
     in_dims = input_tensor.dims

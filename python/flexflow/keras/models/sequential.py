@@ -34,6 +34,7 @@ class Sequential(BaseModel):
 
       if (verify_inout_shape == True):
         layer.verify_inout_shape(in_t, out_t)
+        
       layer.handle = self.ffmodel.get_layer_by_id(layer_id)
       print(layer.handle)
     self.output_tensor = out_t
@@ -58,6 +59,7 @@ class Sequential(BaseModel):
       
       assert layer.handle != 0, "layer handle is wrong"
       print(layer.handle)    
+      
       if (verify_inout_shape == True):
         layer.verify_inout_shape(in_t, out_t)
     self.output_tensor = out_t
@@ -85,6 +87,7 @@ class Sequential(BaseModel):
       if (layer.layer_id > 0):
         prev_layer = self._layers[layer.layer_id-1]
         layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[0])
+    layer.verify_meta_data()
   
   def add(self, layer):
     self.use_v2 = True
@@ -110,6 +113,8 @@ class Sequential(BaseModel):
       if (layer.layer_id > 0):
         prev_layer = self._layers[layer.layer_id-1]
         layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[0])
+        
+    layer.verify_meta_data()
 
     if (isinstance(layer, Conv2D) == True):
       layer.handle = self.ffmodel.conv2d_v2(layer.name, layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
