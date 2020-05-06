@@ -74,10 +74,12 @@ class Sequential(BaseModel):
     if (isinstance(layer, Conv2D) == True):
       if (layer.layer_id > 0):
         prev_layer = self._layers[layer.layer_id-1]
+        assert len(prev_layer.output_shape) == 4, "check prev layer"
         layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3], prev_layer.output_shape[0])
     elif (isinstance(layer, MaxPooling2D) == True):
       assert layer.layer_id != 0, "maxpool2d can not be the 1st layer"
       prev_layer = self._layers[layer.layer_id-1]
+      assert len(prev_layer.output_shape) == 4, "check prev layer"
       layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3], prev_layer.output_shape[0])
     elif (isinstance(layer, Flatten) == True):
       assert layer.layer_id != 0, "flatten can not be the 1st layer"
@@ -86,6 +88,7 @@ class Sequential(BaseModel):
     elif (isinstance(layer, Dense) == True):
       if (layer.layer_id > 0):
         prev_layer = self._layers[layer.layer_id-1]
+        assert len(prev_layer.output_shape) == 2, "check prev layer"
         layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[0])
     layer.verify_meta_data()
   
@@ -100,10 +103,12 @@ class Sequential(BaseModel):
     if (isinstance(layer, Conv2D) == True):
       if (layer.layer_id > 0):
         prev_layer = self._layers[layer.layer_id-1]
+        assert len(prev_layer.output_shape) == 4, "check prev layer"
         layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3], prev_layer.output_shape[0])
     elif (isinstance(layer, MaxPooling2D) == True):
       assert layer.layer_id != 0, "maxpool2d can not be the 1st layer"
       prev_layer = self._layers[layer.layer_id-1]
+      assert len(prev_layer.output_shape) == 4, "check prev layer"
       layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3], prev_layer.output_shape[0])
     elif (isinstance(layer, Flatten) == True):
       assert layer.layer_id != 0, "flatten can not be the 1st layer"
@@ -112,6 +117,7 @@ class Sequential(BaseModel):
     elif (isinstance(layer, Dense) == True):
       if (layer.layer_id > 0):
         prev_layer = self._layers[layer.layer_id-1]
+        assert len(prev_layer.output_shape) == 2, "check prev layer"
         layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[0])
         
     layer.verify_meta_data()
