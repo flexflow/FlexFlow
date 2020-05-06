@@ -148,4 +148,13 @@ class Sequential(BaseModel):
     
     self._train(epochs)
     
+  def summary(self):
+    model_summary = "Layer (type)\t\tOutput Shape\t\tInput Shape\n"
+    for layer_id in self._layers:
+      layer = self._layers[layer_id]
+      layer_summary = layer.get_summary()
+      model_summary += layer_summary
+      
+    return model_summary
+    
     

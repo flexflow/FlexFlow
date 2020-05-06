@@ -45,6 +45,10 @@ class Dense(Layer):
     out_dims = output_tensor.dims
     assert out_dims[1] == self.output_shape[1]
     
+  def get_summary(self):
+    summary = "%s (Dense)\t\t%s\t\t%s\n"%(self.name, self.output_shape, self.input_shape)
+    return summary
+    
   def __call__(self, input_tensor):
     output_tensor = builtins.internal_ffmodel.dense(self.name, input_tensor, self.out_channels, self.activation)
     in_dims = input_tensor.dims
@@ -81,6 +85,10 @@ class Flatten(Layer):
     out_dims = output_tensor.dims
     assert out_dims[1] == self.output_shape[1]
     
+  def get_summary(self):
+    summary = "%s (Flatten)\t\t%s\t\t%s\n"%(self.name, self.output_shape, self.input_shape)
+    return summary
+    
   def __call__(self, input_tensor):
     output_tensor = builtins.internal_ffmodel.flat(self.name, input_tensor)
     return output_tensor
@@ -94,3 +102,7 @@ class Activation(Layer):
       
   def verify_inout_shape(self, input_tensor, output_tensor):
     v = 1
+    
+  def get_summary(self):
+    summary = "%s (Softmax)\n"%(self.name)
+    return summary

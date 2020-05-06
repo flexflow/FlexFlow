@@ -46,6 +46,10 @@ class MaxPooling2D(Layer):
     assert out_dims[2] == self.output_shape[2]
     assert out_dims[3] == self.output_shape[3]
     
+  def get_summary(self):
+    summary = "%s (MaxPooling2D)\t\t%s\t\t%s\n"%(self.name, self.output_shape, self.input_shape)
+    return summary
+    
   def __call__(self, input_tensor):
     output_tensor = builtins.internal_ffmodel.pool2d(self.name, input_tensor, self.kernel_size[0], self.kernel_size[1], self.stride[0], self.stride[1], self.padding[0], self.padding[1])
     return output_tensor

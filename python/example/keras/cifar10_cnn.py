@@ -32,6 +32,8 @@ def top_level_task():
   model.add(Dense(512, activation="relu"))
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
+  
+  print(model.summary())
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)

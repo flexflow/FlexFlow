@@ -63,6 +63,10 @@ class Conv2D(Layer):
     assert out_dims[2] == self.output_shape[2]
     assert out_dims[3] == self.output_shape[3]
     
+  def get_summary(self):
+    summary = "%s (Conv2D)\t\t%s\t\t%s\n"%(self.name, self.output_shape, self.input_shape)
+    return summary
+    
   def __call__(self, input_tensor):
     output_tensor = builtins.internal_ffmodel.conv2d(self.name, input_tensor, self.out_channels, self.kernel_size[0], self.kernel_size[1], self.stride[0], self.stride[1], self.padding[0], self.padding[1], self.activation, self.use_bias)
     return output_tensor
