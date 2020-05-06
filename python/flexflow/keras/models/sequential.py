@@ -154,7 +154,8 @@ class Sequential(BaseModel):
     # if (self.use_v2 == True):
     self._init_inout()
     # else:
-    #self._create_layer_and_init_inout()        
+    #self._create_layer_and_init_inout()   
+    self._set_optimizer()     
     self.ffmodel.init_layers()
     
     self._train(epochs)

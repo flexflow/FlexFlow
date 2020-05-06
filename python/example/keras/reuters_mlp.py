@@ -36,7 +36,7 @@ def top_level_task():
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
 
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  opt = flexflow.keras.optimizers.Adam(learning_rate=0.01)
   model.compile(optimizer=opt)
 
   model.fit(x_train, y_train, epochs=epochs)

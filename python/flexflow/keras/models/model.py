@@ -37,11 +37,13 @@ class Model(BaseModel):
     self._nb_layers += 1
     
   def fit(self, input_tensor, label_tensor, epochs=1):
-    self._create_data_loaders(input_tensor, label_tensor)     
+    self._create_data_loaders(input_tensor, label_tensor)
+    self._set_optimizer()     
     self.ffmodel.init_layers()
     self._train(epochs)
     
   def fit_old(self, dataloader, alexnetconfig):    
+    self._set_optimizer() 
     self.ffmodel.init_layers()
     
     epochs = self.ffconfig.get_epochs()

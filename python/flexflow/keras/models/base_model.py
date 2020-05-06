@@ -1,5 +1,7 @@
 import flexflow.core as ff
 
+from flexflow.keras.optimizers import SGD, Adam 
+
 class BaseModel(object):
   def __init__(self):
     self.ffconfig = ff.FFConfig()
@@ -24,8 +26,17 @@ class BaseModel(object):
     
   def compile(self, optimizer):
     self.ffoptimizer = optimizer
-    optimizer.handle = ff.SGDOptimizer(self.ffmodel, optimizer.learning_rate)
-    self.ffmodel.set_sgd_optimizer(self.ffoptimizer.handle)
+      
+  def _set_optimizer(self):
+    assert self.ffoptimizer != 0, "optimizer is not set"
+    if (isinstance(self.ffoptimizer, SGD) == True):
+      self.ffoptimizer.handle = ff.SGDOptimizer(self.ffmodel, self.ffoptimizer.learning_rate)
+      self.ffmodel.set_sgd_optimizer(self.ffoptimizer.handle)
+    elif (isinstance(self.ffoptimizer, Adam) == True):
+      self.ffoptimizer.handle = ff.AdamOptimizer(self.ffmodel, self.ffoptimizer.learning_rate, self.ffoptimizer.beta1, self.ffoptimizer.beta2)
+      self.ffmodel.set_adam_optimizer(self.ffoptimizer.handle)
+    else:
+      assert 0, "unknown optimizer"
     
   def __create_single_data_loader(self, batch_tensor, full_array):
     array_shape = full_array.shape

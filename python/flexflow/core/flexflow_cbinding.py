@@ -597,6 +597,9 @@ class FFModel(object):
   
   def set_sgd_optimizer(self, optimizer):
     ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
+    
+  def set_adam_optimizer(self, optimizer):
+    ffc.flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
   
   def print_layers(self, id=-1):
     ffc.flexflow_model_print_layers(self.handle, id)
