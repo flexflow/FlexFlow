@@ -13,6 +13,7 @@ FF_NEW_OPAQUE_TYPE(flexflow_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_model_t);
 FF_NEW_OPAQUE_TYPE(flexflow_tensor_t);
 FF_NEW_OPAQUE_TYPE(flexflow_sgd_optimizer_t);
+FF_NEW_OPAQUE_TYPE(flexflow_adam_optimizer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_glorot_uniform_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_zero_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_uniform_initializer_t);
@@ -232,6 +233,11 @@ flexflow_model_set_sgd_optimizer(
   flexflow_sgd_optimizer_t optimizer);
   
 void
+flexflow_model_set_adam_optimizer(
+  flexflow_model_t handle, 
+  flexflow_adam_optimizer_t optimizer);
+  
+void
 flexflow_model_print_layers(
   flexflow_model_t handle, 
   int id);
@@ -329,6 +335,23 @@ flexflow_sgd_optimizer_create(
 void 
 flexflow_sgd_optimizer_destroy(
   flexflow_sgd_optimizer_t handle);
+
+// -----------------------------------------------------------------------
+// AdamOptimizer
+// -----------------------------------------------------------------------
+
+flexflow_adam_optimizer_t
+flexflow_adam_optimizer_create(
+  flexflow_model_t model,
+  double alpha /*0.001f*/, 
+  double beta1 /*0.9f*/,
+  double beta2 /*0.999f*/, 
+  double weight_decay /*0.0f*/,
+  double epsilon /*1e-8*/);
+
+void 
+flexflow_adam_optimizer_destroy(
+  flexflow_adam_optimizer_t handle);
 
 // -----------------------------------------------------------------------
 // GlorotUniform

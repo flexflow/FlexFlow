@@ -636,6 +636,15 @@ class SGDOptimizer(object):
     self._handle = ffi.gc(self.handle, ffc.flexflow_sgd_optimizer_destroy)  
     
 # -----------------------------------------------------------------------
+# AdamOptimizer
+# -----------------------------------------------------------------------
+    
+class AdamOptimizer(object):
+  def __init__(self, ffmodel, alpha=0.001, beta1=0.9, beta2=0.999, weight_decay=0.0, epsilon=1e-8):
+    self.handle = ffc.flexflow_adam_optimizer_create(ffmodel.handle, alpha, beta1, beta2, weight_decay, epsilon)
+    self._handle = ffi.gc(self.handle, ffc.flexflow_adam_optimizer_destroy)  
+    
+# -----------------------------------------------------------------------
 # GlorotUniform
 # -----------------------------------------------------------------------
 

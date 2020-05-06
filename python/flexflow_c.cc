@@ -25,6 +25,7 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_model_t, FFModel *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_tensor_t, Tensor *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_sgd_optimizer_t, SGDOptimizer *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_adam_optimizer_t, AdamOptimizer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_glorot_uniform_initializer_t, GlorotUniform *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_zero_initializer_t, ZeroInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_uniform_initializer_t, UniformInitializer *);
@@ -452,6 +453,16 @@ flexflow_model_set_sgd_optimizer(
 }
 
 void
+flexflow_model_set_adam_optimizer(
+  flexflow_model_t handle_, 
+  flexflow_adam_optimizer_t optimizer_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  AdamOptimizer *optimizer = FFCObjectWrapper::unwrap(optimizer_);
+  handle->optimizer = static_cast<Optimizer *>(optimizer);
+}
+
+void
 flexflow_model_print_layers(
   flexflow_model_t handle_, 
   int id)
@@ -637,6 +648,34 @@ flexflow_sgd_optimizer_destroy(
 {
   SGDOptimizer *handle = FFCObjectWrapper::unwrap(handle_);
   printf("delete SGDOptimizer %p\n", handle);
+  delete handle;
+}
+
+// -----------------------------------------------------------------------
+// AdamOptimizer
+// -----------------------------------------------------------------------
+
+flexflow_adam_optimizer_t
+flexflow_adam_optimizer_create(
+  flexflow_model_t model_,
+  double alpha /*0.001f*/, 
+  double beta1 /*0.9f*/,
+  double beta2 /*0.999f*/, 
+  double weight_decay /*0.0f*/,
+  double epsilon /*1e-8*/)
+{
+  const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
+  AdamOptimizer *optimizer = new AdamOptimizer(model, alpha, beta1, beta2, weight_decay, epsilon);
+  printf("new AdamOptimizer %p\n", optimizer);
+  return FFCObjectWrapper::wrap(optimizer);
+}
+
+void 
+flexflow_adam_optimizer_destroy(
+  flexflow_adam_optimizer_t handle_)
+{
+  AdamOptimizer *handle = FFCObjectWrapper::unwrap(handle_);
+  printf("delete AdamOptimizer %p\n", handle);
   delete handle;
 }
 
