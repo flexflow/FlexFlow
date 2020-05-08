@@ -92,6 +92,8 @@ class Sequential(BaseModel):
         prev_layer = self._layers[layer.layer_id-1]
         assert len(prev_layer.output_shape) == 2, "check prev layer"
         layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[0])
+    else:
+      prev_layer = self._layers[layer.layer_id-1]
     
     layer.verify_meta_data()
     
@@ -128,6 +130,8 @@ class Sequential(BaseModel):
         prev_layer = self._layers[layer.layer_id-1]
         assert len(prev_layer.output_shape) == 2, "check prev layer"
         layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[0])
+    else:
+      prev_layer = self._layers[layer.layer_id-1]
         
     layer.verify_meta_data()
     
