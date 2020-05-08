@@ -5,6 +5,8 @@ class Layer(object):
     self.layer_id = -1
     self.handle = 0
     self.name = name
+    self.prev_layers = []
+    self.next_layers = []
     
   def _get_weights(self, ffmodel):
     assert self.handle != 0, "handle is not set correctly"
@@ -20,4 +22,10 @@ class Layer(object):
     bias_parameter = self.handle.get_bias_tensor()
     kernel_parameter.set_weights(ffmodel, kernel)
     bias_parameter.set_weights(ffmodel, bias)
+    
+  def add_prev_layer(self, layer):
+    self.prev_layers.append(layer)
+    
+  def add_next_layer(self, layer):
+    self.next_layers.append(layer)
     

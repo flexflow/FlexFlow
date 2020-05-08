@@ -70,6 +70,8 @@ class Sequential(BaseModel):
     assert layer.handle == 0, "layer handle is inited"
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
+    
+    prev_layer = 0
 
     if (isinstance(layer, Conv2D) == True):
       if (layer.layer_id > 0):
@@ -90,7 +92,12 @@ class Sequential(BaseModel):
         prev_layer = self._layers[layer.layer_id-1]
         assert len(prev_layer.output_shape) == 2, "check prev layer"
         layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[0])
+    
     layer.verify_meta_data()
+    
+    if (prev_layer != 0):
+      layer.add_prev_layer(prev_layer)
+      prev_layer.add_next_layer(next_layer)
   
   def add(self, layer):
     self.use_v2 = True
@@ -99,6 +106,8 @@ class Sequential(BaseModel):
     assert layer.handle == 0, "layer handle is inited"
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
+    
+    prev_layer = 0
 
     if (isinstance(layer, Conv2D) == True):
       if (layer.layer_id > 0):
@@ -121,6 +130,10 @@ class Sequential(BaseModel):
         layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[0])
         
     layer.verify_meta_data()
+    
+    if (prev_layer != 0):
+      layer.add_prev_layer(prev_layer)
+      prev_layer.add_next_layer(layer)
 
     if (isinstance(layer, Conv2D) == True):
       layer.handle = self.ffmodel.conv2d_v2(layer.name, layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
@@ -166,6 +179,14 @@ class Sequential(BaseModel):
       layer = self._layers[layer_id]
       layer_summary = layer.get_summary()
       model_summary += layer_summary
+      
+    # layer = self._layers[0]
+    # layer_summary = layer.get_summary()
+    # model_summary += layer_summary
+    # while (len(layer.next_layers) != 0):
+    #    layer = layer.next_layers[0]
+    #    layer_summary = layer.get_summary()
+    #    model_summary += layer_summary
       
     return model_summary
     
