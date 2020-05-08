@@ -99,7 +99,7 @@ class Sequential(BaseModel):
     
     if (prev_layer != 0):
       layer.add_prev_layer(prev_layer)
-      prev_layer.add_next_layer(next_layer)
+      prev_layer.add_next_layer(layer)
   
   def add(self, layer):
     self.use_v2 = True
