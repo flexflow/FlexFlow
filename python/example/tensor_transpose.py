@@ -69,10 +69,18 @@ def top_level_task():
   print(dweight.__array_interface__)
   print(hex(dweight_torch.data_ptr()))
   print(dweight_torch)
+  
   dweight_t = dweight_tensor.get_array(ffconfig, DataType.DT_FLOAT, "T")
   print(dweight_t.shape)
   print(dweight_t)
   dweight_tensor.inline_unmap(ffconfig)
+  
+  dweight_np_array = dweight_tensor.get_weights(ffmodel)
+  print(dweight_np_array)
+  dweight_np_array+=2
+  dweight_tensor.set_weights(ffmodel, dweight_np_array)
+  dweight_np_array = dweight_tensor.get_weights(ffmodel)
+  print(dweight_np_array)
   
   ffmodel.print_layers(1)
 
