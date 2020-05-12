@@ -37,6 +37,8 @@ def create_teacher_model_cnn(num_classes, x_train, y_train):
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  
+  print(model.summary())
 
   model.fit(x_train, y_train, epochs=1)
   return model
@@ -112,6 +114,8 @@ def create_student_model_cnn(teacher_model, num_classes, x_train, y_train):
   conv2s.set_weights(model.ffmodel, c2_kernel, c2_bias)
   dense1s.set_weights(model.ffmodel, d1_kernel, d1_bias)
   dense2s.set_weights(model.ffmodel, d2_kernel, d2_bias)
+  
+  print(model.summary())
   
 
   model.fit(x_train, y_train, epochs=1)

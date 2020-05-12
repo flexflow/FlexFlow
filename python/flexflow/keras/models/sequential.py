@@ -191,7 +191,10 @@ class Sequential(BaseModel):
     #    layer = layer.next_layers[0]
     #    layer_summary = layer.get_summary()
     #    model_summary += layer_summary
-       
+    
+    # test_layer = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
+    # test_layer.add_next_layer(self._layers[2])
+    # self._layers[0].add_next_layer(test_layer)
     bfs_queue = []
     layer = self._layers[0]
     bfs_queue.append(layer)
@@ -202,7 +205,7 @@ class Sequential(BaseModel):
         if child not in bfs_queue:
           bfs_queue.append(child)
         else:
-          print("already in the queue")
+          print(child, "already in the queue")
     
       
     return model_summary
