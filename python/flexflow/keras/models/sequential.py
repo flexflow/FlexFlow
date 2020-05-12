@@ -191,6 +191,19 @@ class Sequential(BaseModel):
     #    layer = layer.next_layers[0]
     #    layer_summary = layer.get_summary()
     #    model_summary += layer_summary
+       
+    bfs_queue = []
+    layer = self._layers[0]
+    bfs_queue.append(layer)
+    while(len(bfs_queue) != 0):
+      layer = bfs_queue.pop(0)
+      print(layer)
+      for child in layer.next_layers:
+        if child not in bfs_queue:
+          bfs_queue.append(child)
+        else:
+          print("already in the queue")
+    
       
     return model_summary
     

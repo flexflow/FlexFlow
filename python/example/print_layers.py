@@ -76,7 +76,7 @@ def top_level_task():
     for j in range(cweight.shape[1]):
       for k in range(cweight.shape[2]):
         for l in range(cweight.shape[3]):
-          cweight[i][j][k][l] += ct
+          cweight[i][j][k][l] = ct + 0.02
           ct += 1.0
   print(cweight.shape)
   # print(cweight.strides)
