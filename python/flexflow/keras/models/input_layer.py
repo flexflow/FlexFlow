@@ -1,10 +1,9 @@
 import flexflow.core as ff
 
-import builtins
-
 class Tensor(object):
   def __init__(self, ffmodel=0, batch_shape=0, name=0, dtype=0, meta_only=False, ffhandle=0):
     self.ffhandle = ffhandle
+    self.input_layers = []
     self.output_layers = []
     print(dtype)
     if (dtype == "float32" or dtype == ff.DataType.DT_FLOAT):
@@ -43,5 +42,5 @@ class Input(Tensor):
   def __init__(self, shape=None, batch_shape=None,
                name="", dtype=None, sparse=False,
                tensor=None):
-    super(Input, self).__init__(builtins.internal_ffmodel, batch_shape, name, dtype, False) 
+    super(Input, self).__init__(0, batch_shape, name, dtype, meta_only=True) 
     

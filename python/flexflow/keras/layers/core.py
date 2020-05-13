@@ -1,6 +1,7 @@
 import flexflow.core as ff
 
 from .base_layer import Layer
+from flexflow.keras.models.input_layer import Tensor
 
 import builtins
 
@@ -58,8 +59,13 @@ class Dense(Layer):
   def __call__(self, input_tensor):
     in_dims = input_tensor.batch_shape
     self.calculate_inout_shape(in_dims[1], in_dims[0])
-    output_tensor = Tensor(batch_shape=self.output_shape, dtype="float32")
-    self.verify_inout_shape(input_tensor, output_tensor)
+    output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
+    input_tensor.input_layers.append(self)
+    output_tensor.output_layers.append(self)
+    if (len(input_tensor.output_layers) != 0):
+      assert len(input_tensor.output_layers) == 1, "check input tensor"
+      self.prev_layers.append(input_tensor.output_layers[0])
+      input_tensor.output_layers[0].next_layers.append(self)
     return output_tensor
     
   def get_weights(self, ffmodel):
@@ -96,7 +102,14 @@ class Flatten(Layer):
     return summary
     
   def __call__(self, input_tensor):
-    output_tensor = builtins.internal_ffmodel.flat(self.name, input_tensor)
+    in_dims = input_tensor.batch_shape
+    self.calculate_inout_shape(in_dims)
+    output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
+    input_tensor.input_layers.append(self)
+    output_tensor.output_layers.append(self)
+    assert len(input_tensor.output_layers) == 1, "check input tensor"
+    self.prev_layers.append(input_tensor.output_layers[0])
+    input_tensor.output_layers[0].next_layers.append(self)
     return output_tensor
     
 class Activation(Layer):
@@ -115,3 +128,12 @@ class Activation(Layer):
   def get_summary(self):
     summary = "%s (Softmax)\n"%(self.name)
     return summary
+    
+  def __call__(self, input_tensor):
+    output_tensor = Tensor(batch_shape=input_tensor.batch_shape, dtype=input_tensor.dtype, meta_only=True)
+    input_tensor.input_layers.append(self)
+    output_tensor.output_layers.append(self)
+    assert len(input_tensor.output_layers) == 1, "check input tensor"
+    self.prev_layers.append(input_tensor.output_layers[0])
+    input_tensor.output_layers[0].next_layers.append(self)
+    return output_tensor

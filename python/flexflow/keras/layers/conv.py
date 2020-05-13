@@ -2,6 +2,7 @@ import flexflow.core as ff
 import math
 
 from .base_layer import Layer
+from flexflow.keras.models.input_layer import Tensor
 
 import builtins
 
@@ -67,7 +68,15 @@ class Conv2D(Layer):
     return summary
     
   def __call__(self, input_tensor):
-    output_tensor = builtins.internal_ffmodel.conv2d(self.name, input_tensor, self.out_channels, self.kernel_size[0], self.kernel_size[1], self.stride[0], self.stride[1], self.padding[0], self.padding[1], self.activation, self.use_bias)
+    in_dims = input_tensor.batch_shape
+    self.calculate_inout_shape(in_dims[1], in_dims[2], in_dims[3], in_dims[0])
+    output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
+    input_tensor.input_layers.append(self)
+    output_tensor.output_layers.append(self)
+    if (len(input_tensor.output_layers) != 0):
+      assert len(input_tensor.output_layers) == 1, "check input tensor"
+      self.prev_layers.append(input_tensor.output_layers[0])
+      input_tensor.output_layers[0].next_layers.append(self)
     return output_tensor
     
   def get_weights(self, ffmodel):
