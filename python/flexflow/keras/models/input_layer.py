@@ -5,6 +5,7 @@ import builtins
 class Tensor(object):
   def __init__(self, ffmodel=0, batch_shape=0, name=0, dtype=0, meta_only=False, ffhandle=0):
     self.ffhandle = ffhandle
+    self.output_layers = []
     # create a tensor
     if (ffhandle == 0):
       if (dtype == "float32"):
