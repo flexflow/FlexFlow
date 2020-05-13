@@ -6,6 +6,8 @@ from flexflow.keras.datasets import cifar10
 
 import flexflow.core as ff
 import numpy as np
+
+from PIL import Image
   
 def mlp():
   num_classes = 10
@@ -114,11 +116,12 @@ def cifar_cnn_concat():
   y_train = y_train.astype('int32')
   print("shape: ", x_train.shape)
   
-  input_tensor = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  input_tensor1 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
   
-  t1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
+  t1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor1)
   ot1 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(t1)
-  t2 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
+  t2 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor2)
   ot2 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(t2)
   output_tensor = Concatenate(axis=1)([ot1, ot2])
   # output_tensor = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
@@ -134,21 +137,69 @@ def cifar_cnn_concat():
   output_tensor = Dense(num_classes)(output_tensor)
   output_tensor = Activation("softmax")(output_tensor)
 
-  model = Model(input_tensor, output_tensor)
+  model = Model([input_tensor1, input_tensor2], output_tensor)
   
   print(model.summary())
   
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
 
-  model.fit(x_train, y_train, epochs=1)
+  model.fit([x_train, x_train], y_train, epochs=1)
+  
+def cifar_alexnet_concat():
+  
+  num_samples = 10000
+  
+  (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
+
+  full_input_np = np.zeros((num_samples, 3, 229, 229), dtype=np.float32)
+  for i in range(0, num_samples):
+    image = x_train[i, :, :, :]
+    image = image.transpose(1, 2, 0)
+    pil_image = Image.fromarray(image)
+    pil_image = pil_image.resize((229,229), Image.NEAREST)
+    image = np.array(pil_image, dtype=np.float32)
+    image = image.transpose(2, 0, 1)
+    full_input_np[i, :, :, :] = image
+    if (i == 0):
+      print(image)
+  
+  full_input_np /= 255    
+  y_train = y_train.astype('int32')
+  full_label_np = y_train
+  
+  input_tensor = Input(batch_shape=[0, 3, 229, 229], dtype="float32")
+  
+  t1 = Conv2D(filters=64, input_shape=(3,229,229), kernel_size=(11,11), strides=(4,4), padding=(2,2))(input_tensor)
+  t2 = Conv2D(filters=64, input_shape=(3,229,229), kernel_size=(11,11), strides=(4,4), padding=(2,2))(input_tensor)
+  output = Concatenate(axis=1)([t1, t2])
+  output = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid")(output)
+  output = Conv2D(filters=192, kernel_size=(5,5), strides=(1,1), padding=(2,2))(output)
+  output = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid")(output)
+  output = Conv2D(filters=384, kernel_size=(3,3), strides=(1,1), padding=(1,1))(output)
+  output = Conv2D(filters=256, kernel_size=(3,3), strides=(1,1), padding=(1,1))(output)
+  output = Conv2D(filters=256, kernel_size=(3,3), strides=(1,1), padding=(1,1))(output)
+  output = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid")(output)
+  output = Flatten()(output)
+  output = Dense(4096, activation="relu")(output)
+  output = Dense(4096, activation="relu")(output)
+  output = Dense(10)(output)
+  output = Activation("softmax")(output)
+  
+  model = Model(input_tensor, output)
+  
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
+  model.compile(optimizer=opt)
+  
+  model.fit(full_input_np, full_label_np, epochs=1)
   
 
 def top_level_task():
   
   #cnn()
   #cnn_concat()
-  cifar_cnn_concat()
+  #cifar_cnn_concat()
+  cifar_alexnet_concat()
   #mlp()
 
 if __name__ == "__main__":

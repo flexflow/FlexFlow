@@ -13,14 +13,16 @@ class BaseModel(object):
     self.ffoptimizer = 0
     self._layers = dict()
     self._nb_layers = 0
-    self.input_tensor = 0
+    self.input_tensors = []
     self.output_tensor = 0
     self.label_tensor = 0
-    self.full_input_tensor = 0
+    self.full_input_tensors = []
     self.full_label_tensor = 0
     self.num_samples = 0
-    self.dataloaders = []
-    self.dataloaders_dim = []
+    self.input_dataloaders = []
+    self.input_dataloaders_dim = []
+    self.label_dataloader = 0
+    self.label_dataloader_dim = 0
     
   def get_layer(self, layer_id):
     return self._layers[layer_id]
@@ -60,34 +62,44 @@ class BaseModel(object):
       
     full_tensor.ffhandle.attach_numpy_array(self.ffconfig, full_array)
     dataloader = ff.SingleDataLoader(self.ffmodel, batch_tensor.ffhandle, full_tensor.ffhandle, self.num_samples, datatype) 
-    self.dataloaders.append(dataloader)
-    self.dataloaders_dim.append(num_dim)
     full_tensor.ffhandle.detach_numpy_array(self.ffconfig)
     
-    return full_tensor
+    return full_tensor, dataloader
     
-  def _create_data_loaders(self, x_train, y_train):
-    input_shape = x_train.shape
+  def _create_data_loaders(self, x_trains, y_train):
+    # Todo: check all num_samples, should be the same
+    input_shape = x_trains[0].shape
     self.num_samples = input_shape[0]
     
-    assert self.input_tensor != 0, "input_tensor is not set"
+    assert len(self.input_tensors) != 0, "input_tensor is not set"
     assert self.label_tensor != 0, "label_tensor is not set"
     
     print(y_train.shape)
-    self.full_input_tensor = self.__create_single_data_loader(self.input_tensor, x_train)
-    self.full_label_tensor = self.__create_single_data_loader(self.label_tensor, y_train)
+    idx = 0
+    for x_train in x_trains:
+      full_tensor, dataloader = self.__create_single_data_loader(self.input_tensors[idx], x_train)
+      self.full_input_tensors.append(full_tensor)
+      self.input_dataloaders.append(dataloader)
+      self.input_dataloaders_dim.append(len(input_shape))
+      idx += 1
+    full_tensor, dataloader = self.__create_single_data_loader(self.label_tensor, y_train)
+    self.full_label_tensor = full_tensor
+    self.label_dataloader = dataloader
+    self.label_dataloader_dim = len(input_shape)
     
   def _train(self, epochs):
     ts_start = self.ffconfig.get_current_time()
     for epoch in range(0,epochs):
-      for dataloader in self.dataloaders:
+      for dataloader in self.input_dataloaders:
         dataloader.reset()
+      self.label_dataloader.reset()
       self.ffmodel.reset_metrics()
       iterations = self.num_samples / self.ffconfig.get_batch_size()
 
       for iter in range(0, int(iterations)):
-        for dataloader in self.dataloaders:
+        for dataloader in self.input_dataloaders:
           dataloader.next_batch(self.ffmodel)
+        self.label_dataloader.next_batch(self.ffmodel)
         if (epoch > 0):
           self.ffconfig.begin_trace(111)
         self.ffmodel.forward()
@@ -104,11 +116,11 @@ class BaseModel(object):
     run_time = 1e-6 * (ts_end - ts_start);
     print("epochs %d, ELAPSED TIME = %.4fs, interations %d, samples %d, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, int(iterations), self.num_samples, self.num_samples * epochs / run_time));
 
-    self.input_tensor.ffhandle.inline_map(self.ffconfig)
-    input_array = self.input_tensor.ffhandle.get_flat_array(self.ffconfig, ff.DataType.DT_FLOAT)
+    self.input_tensors[0].ffhandle.inline_map(self.ffconfig)
+    input_array = self.input_tensors[0].ffhandle.get_flat_array(self.ffconfig, ff.DataType.DT_FLOAT)
     print(input_array.shape)
     print(input_array)
-    self.input_tensor.ffhandle.inline_unmap(self.ffconfig)
+    self.input_tensors[0].ffhandle.inline_unmap(self.ffconfig)
     
     self.label_tensor.ffhandle.inline_map(self.ffconfig)
     label_array = self.label_tensor.ffhandle.get_flat_array(self.ffconfig, ff.DataType.DT_INT32)

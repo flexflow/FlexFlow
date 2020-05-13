@@ -5,19 +5,23 @@ from .input_layer import Tensor
 from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Concatenate
 
 class Model(BaseModel):
-  def __init__(self, input_tensor, output_tensor):
+  def __init__(self, input_tensors, output_tensor):
     super(Model, self).__init__()
     
-    self.input_tensor = input_tensor
+    if (isinstance(input_tensors, list) == False):
+       input_tensors = [input_tensors]
+       
+    self.input_tensors = input_tensors
     self.output_tensor = output_tensor
     
     
     bfs_queue = []
-    for layer in input_tensor.input_layers:
-      bfs_queue.append(layer)
+    for input_tensor in self.input_tensors:
+      for layer in input_tensor.input_layers:
+        bfs_queue.append(layer)
     while(len(bfs_queue) != 0):
       layer = bfs_queue.pop(0)
-      print(layer)
+      #print(layer)
       self.add(layer)
       for child in layer.next_layers:
         if child not in bfs_queue:
@@ -25,14 +29,20 @@ class Model(BaseModel):
         else:
           print(child, "already in the queue")
     
+    idx = 0
+    for input_tensor in self.input_tensors:
+      input_tensor.set_batch_size(self.ffconfig.get_batch_size())
+      self.create_input_tensor(input_tensor.batch_shape, idx)
+      idx += 1
+
     label_shape = (self.ffconfig.get_batch_size(), 1)
-    input_tensor.set_batch_size(self.ffconfig.get_batch_size())
-    self.create_input_and_label_tensor(input_tensor.batch_shape, label_shape)      
+    self.create_label_tensor(label_shape)      
     self._init_inout()
     
-  def create_input_and_label_tensor(self, input_shape, label_shape):
-    self.input_tensor.create_ff_tensor(self.ffmodel)
+  def create_input_tensor(self, input_shape, idx):
+    self.input_tensors[idx].create_ff_tensor(self.ffmodel)
     
+  def create_label_tensor(self, label_shape): 
     self.label_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), 1], name="", dtype="int32")
   
   def _init_inout(self, verify_inout_shape=True):
@@ -87,8 +97,12 @@ class Model(BaseModel):
     else:
       assert 0, "unknow layer"
     
-  def fit(self, input_tensor, label_tensor, epochs=1):
-    self._create_data_loaders(input_tensor, label_tensor)
+  def fit(self, input_tensors, label_tensor, epochs=1):
+    assert self.output_tensor.ffhandle != 0, "tensor is not init"
+    if (isinstance(input_tensors, list) == False):
+       input_tensors = [input_tensors]
+    assert len(input_tensors) == len(self.input_tensors), "check len of input tensors"
+    self._create_data_loaders(input_tensors, label_tensor)
     self._set_optimizer()     
     self.ffmodel.init_layers()
     self._train(epochs)

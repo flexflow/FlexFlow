@@ -17,7 +17,7 @@ class Sequential(BaseModel):
       layer = self._layers[layer_id]
       assert layer.layer_id == layer_id, "wrong layer id"
       if (layer_id == 0):
-        in_t = self.input_tensor.ffhandle
+        in_t = self.input_tensors[0].ffhandle
       else:
         in_t = out_t
 
@@ -38,7 +38,7 @@ class Sequential(BaseModel):
         
       layer.ffhandle = self.ffmodel.get_layer_by_id(layer_id)
       print(layer.ffhandle)
-    self.output_tensor = Tensor(dtype=self.input_tensor.dtype, ffhandle=out_t)
+    self.output_tensor = Tensor(dtype=self.input_tensors[0].dtype, ffhandle=out_t)
     print("output tensor", self.output_tensor.batch_shape)
     
   def _init_inout(self, verify_inout_shape=True):
@@ -47,7 +47,7 @@ class Sequential(BaseModel):
     for layer_id in self._layers:
       layer = self._layers[layer_id]
       if (layer_id == 0):
-        in_t = self.input_tensor.ffhandle
+        in_t = self.input_tensors[0].ffhandle
         out_t = layer.ffhandle.init_inout(self.ffmodel, in_t);
       else:
         in_t = out_t
@@ -64,7 +64,7 @@ class Sequential(BaseModel):
       
       if (verify_inout_shape == True):
         layer.verify_inout_shape(in_t, out_t)
-    self.output_tensor = Tensor(dtype=self.input_tensor.dtype, ffhandle=out_t)
+    self.output_tensor = Tensor(dtype=self.input_tensors[0].dtype, ffhandle=out_t)
     print("output tensor", self.output_tensor.batch_shape)
     
   def add_v1(self, layer):
@@ -155,18 +155,23 @@ class Sequential(BaseModel):
     else:
       assert 0, "unknow layer"
     
-  def create_input_and_label_tensor(self, input_shape, label_shape):
+  def create_input_tensor(self, input_shape):
     if (len(input_shape) == 2):
-      self.input_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), input_shape[1]], name="", dtype="float32")
+      self.input_tensors.append(Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), input_shape[1]], name="", dtype="float32"))
       
     elif (len(input_shape) == 4):
-      self.input_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), input_shape[1], input_shape[2], input_shape[3]], name="", dtype="float32")
+      self.input_tensors.append(Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), input_shape[1], input_shape[2], input_shape[3]], name="", dtype="float32"))
     
+  def create_label_tensor(self, label_shape):
     self.label_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), 1], name="", dtype="int32")
     
-  def fit(self, input_tensor, label_tensor, epochs=1):
-    self.create_input_and_label_tensor(input_tensor.shape, label_tensor.shape)
-    self._create_data_loaders(input_tensor, label_tensor)
+  def fit(self, input_tensors, label_tensor, epochs=1):
+    assert isinstance(input_tensors, list) == False, "do not support multiple inputs"
+    input_tensors = [input_tensors]
+    for input_tensor in input_tensors:
+      self.create_input_tensor(input_tensor.shape)
+    self.create_label_tensor(label_tensor.shape)
+    self._create_data_loaders(input_tensors, label_tensor)
     
     # if (self.use_v2 == True):
     self._init_inout()
