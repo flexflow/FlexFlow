@@ -230,7 +230,7 @@ flexflow_model_add_conv2d_no_inout(
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Conv2D *conv2d = handle->conv2d(name, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation, use_bias);
   Op *op = (Op*)conv2d;
-  printf("Conv2d no input %p, activation %d, use_bias %d\n", conv2d, activation, use_bias);
+  printf("Conv2d no input layer %p, activation %d, use_bias %d\n", conv2d, activation, use_bias);
   return FFCObjectWrapper::wrap(op);   
 }
 
@@ -342,7 +342,7 @@ flexflow_model_add_pool2d_no_inout(
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Pool2D *pool2d = handle->pool2d(name, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, type, activation);
   Op *op = (Op*)pool2d;
-  printf("Pool2d no input %p, pool %d, activation %d\n", pool2d, type, activation);
+  printf("Pool2d no input layer %p, pool %d, activation %d\n", pool2d, type, activation);
   return FFCObjectWrapper::wrap(op); 
 }
 
@@ -359,7 +359,7 @@ flexflow_model_add_dense_with_default_initializer(
   const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
   Tensor *tensor = new Tensor();
   *tensor = handle->dense(name, *input, out_dim, activation, use_bias);
-  printf("Dense default new Tensor 4D %p (%d, %d, %d, %d), activation %d, use_bias %d\n", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], activation, use_bias);
+  printf("Dense default new Tensor 2D %p (%d, %d, %d, %d), activation %d, use_bias %d\n", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], activation, use_bias);
   return FFCObjectWrapper::wrap(tensor); 
 }
 
@@ -374,7 +374,7 @@ flexflow_model_add_dense_with_default_initializer_no_inout(
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Linear *linear = handle->dense(name, in_dim, out_dim, activation, use_bias);
-  printf("Dense default no input 4D %p, activation %d, use_bias %d\n", linear, activation, use_bias);
+  printf("Dense default no input layer %p, activation %d, use_bias %d\n", linear, activation, use_bias);
   return FFCObjectWrapper::wrap(linear); 
 }
 
@@ -396,7 +396,7 @@ flexflow_model_add_concat(
     printf("%p ", t);
   }
   *tensor = handle->concat(name, n, input_vec.data(), axis);
-  printf("\nconcat new Tensor 4D %p\n", tensor);
+  printf("\nconcat new Tensor %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor); 
 }
 
@@ -422,7 +422,7 @@ flexflow_model_add_flat_no_inout(
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Flat *flat = handle->flat(name);
   Op *op = (Op*)flat;
-  printf("Flat no input %p\n", flat);
+  printf("Flat no input layer %p\n", flat);
   return FFCObjectWrapper::wrap(op);  
 }
 
@@ -1100,6 +1100,7 @@ flexflow_op_init_inout(
   Tensor *input = FFCObjectWrapper::unwrap(input_);
   Tensor *tensor = new Tensor();
   *tensor = handle->init_inout(*model, *input);
+  printf("init inout new Tensor %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor);   
 }
 

@@ -217,7 +217,7 @@ def flexflow_top_level_task(raw_args, user_data, proc):
 
     # Execute postamble.
     c.legion_task_postamble(runtime[0], context[0], ffi.NULL, 0)
-    #print("real end top-level task")
+    print("real end top-level task")
     
 def get_legion_runtime():
     return top_level.runtime
