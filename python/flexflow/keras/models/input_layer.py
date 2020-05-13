@@ -4,7 +4,7 @@ class Tensor(object):
   def __init__(self, ffmodel=0, batch_shape=0, name=0, dtype=0, meta_only=False, ffhandle=0):
     self.ffhandle = ffhandle
     self.input_layers = []
-    self.output_layers = []
+    self.output_layer = 0
     print(dtype)
     if (dtype == "float32" or dtype == ff.DataType.DT_FLOAT):
       self.dtype = ff.DataType.DT_FLOAT
@@ -48,6 +48,9 @@ class Tensor(object):
       assert self.batch_shape[2] == ffhandle.dims[2]
       assert self.batch_shape[3] == ffhandle.dims[3]
     
+  def set_output_layer(self, layer):
+    assert self.output_layer == 0, "output layer has been set"
+    self.output_layer = layer
 
 class Input(Tensor):
   def __init__(self, shape=None, batch_shape=None,

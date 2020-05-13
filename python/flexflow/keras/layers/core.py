@@ -63,13 +63,14 @@ class Dense(Layer):
     self.input_tensors.append(input_tensor)
     self.output_tensor = output_tensor
     
-    output_tensor.output_layers.append(self)
-    if (len(input_tensor.output_layers) != 0):
-      assert len(input_tensor.output_layers) == 1, "check input tensor"
-      self.prev_layers.append(input_tensor.output_layers[0])
-      input_tensor.output_layers[0].next_layers.append(self)
+    output_tensor.set_output_layer(self)
+    # this is the first layer
     if (isinstance(input_tensor, Input) == True):
       input_tensor.set_input_layer(self)
+    else:
+      assert input_tensor.output_layer != 0, "check input tensor"
+      self.prev_layers.append(input_tensor.output_layer)
+      input_tensor.output_layer.next_layers.append(self)
     return output_tensor
     
   def get_weights(self, ffmodel):
@@ -112,10 +113,11 @@ class Flatten(Layer):
     self.input_tensors.append(input_tensor)
     self.output_tensor = output_tensor
     
-    output_tensor.output_layers.append(self)
-    assert len(input_tensor.output_layers) == 1, "check input tensor"
-    self.prev_layers.append(input_tensor.output_layers[0])
-    input_tensor.output_layers[0].next_layers.append(self)
+    output_tensor.set_output_layer(self)
+    
+    assert input_tensor.output_layer != 0, "check input tensor"
+    self.prev_layers.append(input_tensor.output_layer)
+    input_tensor.output_layer.next_layers.append(self)
     return output_tensor
     
 class Activation(Layer):
@@ -140,10 +142,11 @@ class Activation(Layer):
     self.input_tensors.append(input_tensor)
     self.output_tensor = output_tensor
     
-    output_tensor.output_layers.append(self)
-    assert len(input_tensor.output_layers) == 1, "check input tensor"
-    self.prev_layers.append(input_tensor.output_layers[0])
-    input_tensor.output_layers[0].next_layers.append(self)
+    output_tensor.set_output_layer(self)
+    
+    assert input_tensor.output_layer != 0, "check input tensor"
+    self.prev_layers.append(input_tensor.output_layer)
+    input_tensor.output_layer.next_layers.append(self)
     return output_tensor
     
 class Concatenate(Layer):
@@ -181,12 +184,13 @@ class Concatenate(Layer):
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensors[0].dtype, meta_only=True)
     self.output_tensor = output_tensor
     
-    output_tensor.output_layers.append(self)
+    output_tensor.set_output_layer(self)
+    
     for tensor in input_tensors:
       self.input_tensors.append(tensor)
-      assert len(tensor.output_layers) == 1, "check input tensor"
-      self.prev_layers.append(tensor.output_layers[0])
-      tensor.output_layers[0].next_layers.append(self)
+      assert tensor.output_layer != 0, "check input tensor"
+      self.prev_layers.append(tensor.output_layer)
+      tensor.output_layer.next_layers.append(self)
     return output_tensor
     
   def verify_meta_data(self):

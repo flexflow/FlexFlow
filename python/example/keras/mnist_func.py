@@ -116,6 +116,11 @@ def cifar_cnn_concat():
   
   input_tensor = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
   
+  # t1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
+  # ot1 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(t1)
+  # t2 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
+  # ot2 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(t2)
+  # output_tensor = Concatenate(axis=1)([ot1, ot2])
   output_tensor = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
   output_tensor = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor)
   output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
@@ -140,8 +145,8 @@ def top_level_task():
   
   #cnn()
   #cnn_concat()
-  #cifar_cnn_concat()
-  mlp()
+  cifar_cnn_concat()
+  #mlp()
 
 if __name__ == "__main__":
   print("alexnet keras")
