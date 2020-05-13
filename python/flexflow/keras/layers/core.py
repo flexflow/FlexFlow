@@ -56,9 +56,9 @@ class Dense(Layer):
     return summary
     
   def __call__(self, input_tensor):
-    output_tensor = builtins.internal_ffmodel.dense(self.name, input_tensor, self.out_channels, self.activation)
-    in_dims = input_tensor.dims
+    in_dims = input_tensor.batch_shape
     self.calculate_inout_shape(in_dims[1], in_dims[0])
+    output_tensor = Tensor(batch_shape=self.output_shape, dtype="float32")
     self.verify_inout_shape(input_tensor, output_tensor)
     return output_tensor
     

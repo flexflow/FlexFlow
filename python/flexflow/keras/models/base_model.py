@@ -52,9 +52,9 @@ class BaseModel(object):
       assert 0, "unsupported datatype"
 
     if (num_dim == 2):
-      full_tensor = Tensor(self.ffmodel, batch_shape=[self.num_samples, array_shape[1]], name="", dtype=full_array.dtype)
+      full_tensor = Tensor(self.ffmodel, batch_shape=[self.num_samples, array_shape[1]], name="", dtype=datatype)
     elif (num_dim == 4):
-      full_tensor = Tensor(self.ffmodel, batch_shape=[self.num_samples, array_shape[1], array_shape[2], array_shape[3]], name="", dtype=full_array.dtype)
+      full_tensor = Tensor(self.ffmodel, batch_shape=[self.num_samples, array_shape[1], array_shape[2], array_shape[3]], name="", dtype=datatype)
     else:
       assert 0, "unsupported dims"
       

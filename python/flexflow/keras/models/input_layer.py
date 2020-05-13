@@ -6,18 +6,19 @@ class Tensor(object):
   def __init__(self, ffmodel=0, batch_shape=0, name=0, dtype=0, meta_only=False, ffhandle=0):
     self.ffhandle = ffhandle
     self.output_layers = []
+    print(dtype)
+    if (dtype == "float32" or dtype == ff.DataType.DT_FLOAT):
+      self.dtype = ff.DataType.DT_FLOAT
+    elif (dtype == "float64" or dtype == ff.DataType.DT_DOUBLE):
+      self.dtype = ff.DataType.DT_DOUBLE
+    elif (dtype == "int32" or dtype == ff.DataType.DT_INT32):
+      self.dtype = ff.DataType.DT_INT32
+    elif (dtype == "int64" or dtype == ff.DataType.DT_INT64):
+      self.dtype = ff.DataType.DT_INT64
+    else:
+      assert 0, "not supported"
     # create a tensor
     if (ffhandle == 0):
-      if (dtype == "float32"):
-        self.dtype = ff.DataType.DT_FLOAT
-      elif (dtype == "float64"):
-        self.dtype = ff.DataType.DT_DOUBLE
-      elif (dtype == "int32"):
-        self.dtype = ff.DataType.DT_INT32
-      elif (dtype == "int64"):
-        self.dtype = ff.DataType.DT_INT64
-      else:
-        assert 0, "not supported"
       self.batch_shape = batch_shape
       self.name = name
       self.num_dims = len(batch_shape)
@@ -25,7 +26,6 @@ class Tensor(object):
         self.__create_ff_tensor(ffmodel)
     # init from handle
     else:
-      self.dtype = dtype
       self.name = ""
       self.num_dims = ffhandle.num_dims
       self.batch_shape = ffhandle.dims
