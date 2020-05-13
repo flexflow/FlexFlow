@@ -5,7 +5,6 @@ class Tensor(object):
     self.ffhandle = ffhandle
     self.input_layers = []
     self.output_layer = 0
-    print(dtype)
     if (dtype == "float32" or dtype == ff.DataType.DT_FLOAT):
       self.dtype = ff.DataType.DT_FLOAT
     elif (dtype == "float64" or dtype == ff.DataType.DT_DOUBLE):
@@ -51,6 +50,9 @@ class Tensor(object):
   def set_output_layer(self, layer):
     assert self.output_layer == 0, "output layer has been set"
     self.output_layer = layer
+    
+  def set_batch_size(self, size):
+    self.batch_shape[0] = size
 
 class Input(Tensor):
   def __init__(self, shape=None, batch_shape=None,

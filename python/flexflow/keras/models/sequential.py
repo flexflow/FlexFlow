@@ -177,37 +177,4 @@ class Sequential(BaseModel):
     
     self._train(epochs)
     
-  def summary(self):
-    model_summary = "Layer (type)\t\tOutput Shape\t\tInput Shape\n"
-    for layer_id in self._layers:
-      layer = self._layers[layer_id]
-      layer_summary = layer.get_summary()
-      model_summary += layer_summary
-      
-    # layer = self._layers[0]
-    # layer_summary = layer.get_summary()
-    # model_summary += layer_summary
-    # while (len(layer.next_layers) != 0):
-    #    layer = layer.next_layers[0]
-    #    layer_summary = layer.get_summary()
-    #    model_summary += layer_summary
-    
-    # test_layer = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
-    # test_layer.add_next_layer(self._layers[2])
-    # self._layers[0].add_next_layer(test_layer)
-    bfs_queue = []
-    layer = self._layers[0]
-    bfs_queue.append(layer)
-    while(len(bfs_queue) != 0):
-      layer = bfs_queue.pop(0)
-      print(layer)
-      for child in layer.next_layers:
-        if child not in bfs_queue:
-          bfs_queue.append(child)
-        else:
-          print(child, "already in the queue")
-    
-      
-    return model_summary
-    
     

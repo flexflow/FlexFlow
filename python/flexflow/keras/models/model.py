@@ -26,7 +26,7 @@ class Model(BaseModel):
           print(child, "already in the queue")
     
     label_shape = (self.ffconfig.get_batch_size(), 1)
-    input_tensor.batch_shape[0] = self.ffconfig.get_batch_size()
+    input_tensor.set_batch_size(self.ffconfig.get_batch_size())
     self.create_input_and_label_tensor(input_tensor.batch_shape, label_shape)      
     self._init_inout()
     

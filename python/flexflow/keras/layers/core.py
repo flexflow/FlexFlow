@@ -131,7 +131,7 @@ class Activation(Layer):
     assert self.type == "softmax", "type is wrong"
       
   def verify_inout_shape(self, input_tensor, output_tensor):
-    v = 1
+    pass
     
   def get_summary(self):
     summary = "%s (Softmax)\n"%(self.name)
@@ -161,22 +161,25 @@ class Concatenate(Layer):
     if (input_tensors[0].num_dims == 2):
       output_shape = [input_tensors[0].batch_shape[0], 0]
       for input_tensor in input_tensors:
-        output_shape[1] += input_tensor.batch_shape[1]
+        output_shape[self.axis] += input_tensor.batch_shape[self.axis]
       self.output_shape = (output_shape[0], output_shape[1])
     elif (input_tensors[0].num_dims == 4):
       output_shape = [input_tensors[0].batch_shape[0], 0, input_tensors[0].batch_shape[2], input_tensors[0].batch_shape[3]]
       for input_tensor in input_tensors:
-        output_shape[1] += input_tensor.batch_shape[1]
+        output_shape[self.axis] += input_tensor.batch_shape[self.axis]
       self.output_shape = (output_shape[0], output_shape[1], output_shape[2], output_shape[3])
     else:
       assert 0, "un-supported dims"
     print("concat output ", self.output_shape)
   
+  def verify_meta_data(self):
+   pass
+  
   def verify_inout_shape(self, input_tensor, output_tensor):
-    v = 1
+    pass
     
   def get_summary(self):
-    summary = "%s (Concatenate)\n"%(self.name)
+    summary = "%s (Concatenate)\t\t%s\n"%(self.name, self.output_shape)
     return summary
     
   def __call__(self, input_tensors):
@@ -192,6 +195,3 @@ class Concatenate(Layer):
       self.prev_layers.append(tensor.output_layer)
       tensor.output_layer.next_layers.append(self)
     return output_tensor
-    
-  def verify_meta_data(self):
-   v=1
