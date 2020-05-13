@@ -36,8 +36,8 @@ class Sequential(BaseModel):
       if (verify_inout_shape == True):
         layer.verify_inout_shape(in_t, out_t)
         
-      layer.handle = self.ffmodel.get_layer_by_id(layer_id)
-      print(layer.handle)
+      layer.ffhandle = self.ffmodel.get_layer_by_id(layer_id)
+      print(layer.ffhandle)
     self.output_tensor = Tensor(dtype=self.input_tensor.dtype, ffhandle=out_t)
     print("output tensor", self.output_tensor.batch_shape)
     
@@ -48,19 +48,19 @@ class Sequential(BaseModel):
       layer = self._layers[layer_id]
       if (layer_id == 0):
         in_t = self.input_tensor.ffhandle
-        out_t = layer.handle.init_inout(self.ffmodel, in_t);
+        out_t = layer.ffhandle.init_inout(self.ffmodel, in_t);
       else:
         in_t = out_t
         if (isinstance(layer, Activation) == True):
           assert layer_id == self._nb_layers-1, "softmax is not in the last layer"
           out_t = self.ffmodel.softmax("softmax", in_t, self.label_tensor.ffhandle)
-          assert layer.handle == 0, "layer handle is inited"
-          layer.handle = self.ffmodel.get_layer_by_id(layer_id)
+          assert layer.ffhandle == 0, "layer handle is inited"
+          layer.ffhandle = self.ffmodel.get_layer_by_id(layer_id)
         else:
-          out_t = layer.handle.init_inout(self.ffmodel, in_t);
+          out_t = layer.ffhandle.init_inout(self.ffmodel, in_t);
       
-      assert layer.handle != 0, "layer handle is wrong"
-      print(layer.handle)    
+      assert layer.ffhandle != 0, "layer handle is wrong"
+      print(layer.ffhandle)    
       
       if (verify_inout_shape == True):
         layer.verify_inout_shape(in_t, out_t)
@@ -70,7 +70,7 @@ class Sequential(BaseModel):
   def add_v1(self, layer):
     self._layers[self._nb_layers] = layer
     assert layer.layer_id == -1, "layer id is inited"
-    assert layer.handle == 0, "layer handle is inited"
+    assert layer.ffhandle == 0, "layer handle is inited"
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
     
@@ -108,7 +108,7 @@ class Sequential(BaseModel):
     self.use_v2 = True
     self._layers[self._nb_layers] = layer
     assert layer.layer_id == -1, "layer id is inited"
-    assert layer.handle == 0, "layer handle is inited"
+    assert layer.ffhandle == 0, "layer handle is inited"
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
     
@@ -143,13 +143,13 @@ class Sequential(BaseModel):
       prev_layer.add_next_layer(layer)
 
     if (isinstance(layer, Conv2D) == True):
-      layer.handle = self.ffmodel.conv2d_v2(layer.name, layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
+      layer.ffhandle = self.ffmodel.conv2d_v2(layer.name, layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
     elif (isinstance(layer, MaxPooling2D) == True):
-      layer.handle = self.ffmodel.pool2d_v2(layer.name, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1])
+      layer.ffhandle = self.ffmodel.pool2d_v2(layer.name, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1])
     elif (isinstance(layer, Flatten) == True):
-      layer.handle = self.ffmodel.flat_v2(layer.name)
+      layer.ffhandle = self.ffmodel.flat_v2(layer.name)
     elif (isinstance(layer, Dense) == True):
-      layer.handle = self.ffmodel.dense_v2(layer.name, layer.in_channels, layer.out_channels, layer.activation)
+      layer.ffhandle = self.ffmodel.dense_v2(layer.name, layer.in_channels, layer.out_channels, layer.activation)
     elif (isinstance(layer, Activation) == True):
       print("add softmax")
     else:

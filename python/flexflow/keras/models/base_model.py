@@ -31,11 +31,11 @@ class BaseModel(object):
   def _set_optimizer(self):
     assert self.ffoptimizer != 0, "optimizer is not set"
     if (isinstance(self.ffoptimizer, SGD) == True):
-      self.ffoptimizer.handle = ff.SGDOptimizer(self.ffmodel, self.ffoptimizer.learning_rate)
-      self.ffmodel.set_sgd_optimizer(self.ffoptimizer.handle)
+      self.ffoptimizer.ffhandle = ff.SGDOptimizer(self.ffmodel, self.ffoptimizer.learning_rate)
+      self.ffmodel.set_sgd_optimizer(self.ffoptimizer.ffhandle)
     elif (isinstance(self.ffoptimizer, Adam) == True):
-      self.ffoptimizer.handle = ff.AdamOptimizer(self.ffmodel, self.ffoptimizer.learning_rate, self.ffoptimizer.beta1, self.ffoptimizer.beta2)
-      self.ffmodel.set_adam_optimizer(self.ffoptimizer.handle)
+      self.ffoptimizer.ffhandle = ff.AdamOptimizer(self.ffmodel, self.ffoptimizer.learning_rate, self.ffoptimizer.beta1, self.ffoptimizer.beta2)
+      self.ffmodel.set_adam_optimizer(self.ffoptimizer.ffhandle)
     else:
       assert 0, "unknown optimizer"
     

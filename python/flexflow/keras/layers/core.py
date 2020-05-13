@@ -44,11 +44,11 @@ class Dense(Layer):
     assert self.in_channels != 0, " in channels is wrong"
     assert self.out_channels != 0, " out channels is wrong"
     
-  def verify_inout_shape(self, input_tensor, output_tensor):
-    in_dims = input_tensor.dims
+  def verify_inout_shape(self, input_tensor_handle, output_tensor_handle):
+    in_dims = input_tensor_handle.dims
     assert in_dims[1] == self.input_shape[1], "%d, %d" % (in_dims[0], self.input_shape[1])
     print(in_dims[1], self.input_shape[1])
-    out_dims = output_tensor.dims
+    out_dims = output_tensor_handle.dims
     assert out_dims[1] == self.output_shape[1]
     
   def get_summary(self):
@@ -91,8 +91,8 @@ class Flatten(Layer):
     assert self.input_shape != 0, "input shape is wrong"
     assert self.output_shape != (0, 0), "output shape is wrong"
     
-  def verify_inout_shape(self, input_tensor, output_tensor):
-    out_dims = output_tensor.dims
+  def verify_inout_shape(self, input_tensor_handle, output_tensor_handle):
+    out_dims = output_tensor_handle.dims
     assert out_dims[1] == self.output_shape[1]
     
   def get_summary(self):
