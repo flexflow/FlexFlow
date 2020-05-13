@@ -198,8 +198,8 @@ def top_level_task():
   
   #cnn()
   #cnn_concat()
-  #cifar_cnn_concat()
-  cifar_alexnet_concat()
+  cifar_cnn_concat()
+  #cifar_alexnet_concat()
   #mlp()
 
 if __name__ == "__main__":

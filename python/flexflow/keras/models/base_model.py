@@ -132,6 +132,11 @@ class BaseModel(object):
     model_summary = "Layer (type)\t\tOutput Shape\t\tInput Shape\n"
     for layer_id in self._layers:
       layer = self._layers[layer_id]
+      print(layer)
+      for prev_layer in layer.prev_layers:
+        print("\tprev:  ", prev_layer)
+      for next_layer in layer.next_layers:
+        print("\tnext:  ", next_layer)
       layer_summary = layer.get_summary()
       model_summary += layer_summary 
       

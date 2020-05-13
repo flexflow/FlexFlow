@@ -63,13 +63,23 @@ class Conv2D(Layer):
     assert out_dims[2] == self.output_shape[2]
     assert out_dims[3] == self.output_shape[3]
     
+  def verify_input_shape(self, input_tensor):
+    assert input_tensor.batch_shape[1] == self.input_shape[1]
+    assert input_tensor.batch_shape[2] == self.input_shape[2]
+    assert input_tensor.batch_shape[3] == self.input_shape[3]
+    
   def get_summary(self):
     summary = "%s (Conv2D)\t\t%s\t\t%s\n"%(self.name, self.output_shape, self.input_shape)
     return summary
     
   def __call__(self, input_tensor):
-    in_dims = input_tensor.batch_shape
-    self.calculate_inout_shape(in_dims[1], in_dims[2], in_dims[3], in_dims[0])
+    assert input_tensor.num_dims == 4, "shape of input tensor is wrong"
+    # input_shape is set via constructor
+    if (self.in_channels != 0):
+      self.verify_input_shape(input_tensor)
+    else:
+      in_dims = input_tensor.batch_shape
+      self.calculate_inout_shape(in_dims[1], in_dims[2], in_dims[3], in_dims[0])
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
     self.input_tensors.append(input_tensor)
     self.output_tensor = output_tensor

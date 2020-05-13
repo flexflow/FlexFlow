@@ -58,6 +58,8 @@ class MaxPooling2D(Layer):
     return summary
     
   def __call__(self, input_tensor):
+    assert input_tensor.num_dims == 4, "shape of input tensor is wrong"
+     
     in_dims = input_tensor.batch_shape
     self.calculate_inout_shape(in_dims[1], in_dims[2], in_dims[3], in_dims[0])
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
