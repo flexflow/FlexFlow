@@ -64,7 +64,7 @@ def cnn():
   
   label_tensor = Input(batch_shape=(builtins.internal_ffconfig.get_batch_size(), 1), dtype="int32")
   
-  output = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor.handle)
+  output = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor.ffhandle)
   output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
   output = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output)
   output = Flatten()(output)
@@ -78,8 +78,8 @@ def cnn():
   dense1 = builtins.internal_ffmodel.get_layer_by_id(4)
   dense2 = builtins.internal_ffmodel.get_layer_by_id(5)
   
-  model = Model(input_tensor.handle, output)
-  model.label_tensor = label_tensor.handle
+  model = Model(input_tensor, output)
+  model.label_tensor = label_tensor
   
   model.add(conv1)
   model.add(conv2)
@@ -88,7 +88,7 @@ def cnn():
   model.add(dense1)
   model.add(dense2)
   
-  output = model.add_softmax(output, label_tensor.handle)
+  output = model.add_softmax(output, label_tensor)
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)

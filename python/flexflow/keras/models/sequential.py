@@ -1,6 +1,7 @@
 import flexflow.core as ff
 
 from .base_model import BaseModel
+from .input_layer import Tensor
 from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation
 
 class Sequential(BaseModel):
@@ -16,7 +17,7 @@ class Sequential(BaseModel):
       layer = self._layers[layer_id]
       assert layer.layer_id == layer_id, "wrong layer id"
       if (layer_id == 0):
-        in_t = self.input_tensor
+        in_t = self.input_tensor.ffhandle
       else:
         in_t = out_t
 
@@ -30,14 +31,15 @@ class Sequential(BaseModel):
         out_t = self.ffmodel.dense(layer.name, in_t, layer.out_channels, layer.activation)
       elif (isinstance(layer, Activation) == True):
         assert layer_id == self._nb_layers-1, "softmax is not in the last layer"
-        out_t = self.ffmodel.softmax("softmax", in_t, self.label_tensor)
+        out_t = self.ffmodel.softmax("softmax", in_t, self.label_tensor.ffhandle)
 
       if (verify_inout_shape == True):
         layer.verify_inout_shape(in_t, out_t)
         
       layer.handle = self.ffmodel.get_layer_by_id(layer_id)
       print(layer.handle)
-    self.output_tensor = out_t
+    self.output_tensor = Tensor(dtype=self.input_tensor.dtype, ffhandle=out_t)
+    print("output tensor", self.output_tensor.batch_shape)
     
   def _init_inout(self, verify_inout_shape=True):
     int_t = 0
@@ -45,13 +47,13 @@ class Sequential(BaseModel):
     for layer_id in self._layers:
       layer = self._layers[layer_id]
       if (layer_id == 0):
-        in_t = self.input_tensor
+        in_t = self.input_tensor.ffhandle
         out_t = layer.handle.init_inout(self.ffmodel, in_t);
       else:
         in_t = out_t
         if (isinstance(layer, Activation) == True):
           assert layer_id == self._nb_layers-1, "softmax is not in the last layer"
-          out_t = self.ffmodel.softmax("softmax", in_t, self.label_tensor)
+          out_t = self.ffmodel.softmax("softmax", in_t, self.label_tensor.ffhandle)
           assert layer.handle == 0, "layer handle is inited"
           layer.handle = self.ffmodel.get_layer_by_id(layer_id)
         else:
@@ -62,7 +64,8 @@ class Sequential(BaseModel):
       
       if (verify_inout_shape == True):
         layer.verify_inout_shape(in_t, out_t)
-    self.output_tensor = out_t
+    self.output_tensor = Tensor(dtype=self.input_tensor.dtype, ffhandle=out_t)
+    print("output tensor", self.output_tensor.batch_shape)
     
   def add_v1(self, layer):
     self._layers[self._nb_layers] = layer
@@ -154,15 +157,12 @@ class Sequential(BaseModel):
     
   def create_input_and_label_tensor(self, input_shape, label_shape):
     if (len(input_shape) == 2):
-      dims_input = [self.ffconfig.get_batch_size(), input_shape[1]]
-      self.input_tensor = self.ffmodel.create_tensor_2d(dims_input, "", ff.DataType.DT_FLOAT);
+      self.input_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), input_shape[1]], name="", dtype="float32")
       
     elif (len(input_shape) == 4):
-      dims_input = [self.ffconfig.get_batch_size(), input_shape[1], input_shape[2], input_shape[3]]
-      self.input_tensor = self.ffmodel.create_tensor_4d(dims_input, "", ff.DataType.DT_FLOAT);
+      self.input_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), input_shape[1], input_shape[2], input_shape[3]], name="", dtype="float32")
     
-    dims_label = [self.ffconfig.get_batch_size(), 1]
-    self.label_tensor = self.ffmodel.create_tensor_2d(dims_label, "", ff.DataType.DT_INT32);
+    self.label_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), 1], name="", dtype="int32")
     
   def fit(self, input_tensor, label_tensor, epochs=1):
     self.create_input_and_label_tensor(input_tensor.shape, label_tensor.shape)

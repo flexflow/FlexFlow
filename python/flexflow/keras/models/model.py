@@ -28,7 +28,7 @@ class Model(BaseModel):
     layer.add_to_model(self.ffmodel)
     
   def add_softmax(self, input_tensor, label_tensor):
-    output_tensor = self.ffmodel.softmax("softmax", input_tensor, label_tensor)
+    output_tensor = self.ffmodel.softmax("softmax", input_tensor, label_tensor.ffhandle)
     print(self.ffmodel._nb_layers)
     print(self._nb_layers)
     layer = self.ffmodel.get_layer_by_id(self._nb_layers)

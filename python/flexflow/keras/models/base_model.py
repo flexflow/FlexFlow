@@ -1,5 +1,6 @@
 import flexflow.core as ff
 
+from .input_layer import Tensor
 from flexflow.keras.optimizers import SGD, Adam 
 
 class BaseModel(object):
@@ -51,19 +52,17 @@ class BaseModel(object):
       assert 0, "unsupported datatype"
 
     if (num_dim == 2):
-      dims_input = [self.num_samples, array_shape[1]]
-      full_tensor = self.ffmodel.create_tensor_2d(dims_input, "", datatype);
+      full_tensor = Tensor(self.ffmodel, batch_shape=[self.num_samples, array_shape[1]], name="", dtype=full_array.dtype)
     elif (num_dim == 4):
-      dims_input = [self.num_samples, array_shape[1], array_shape[2], array_shape[3]]
-      full_tensor = self.ffmodel.create_tensor_4d(dims_input, "", datatype);
+      full_tensor = Tensor(self.ffmodel, batch_shape=[self.num_samples, array_shape[1], array_shape[2], array_shape[3]], name="", dtype=full_array.dtype)
     else:
       assert 0, "unsupported dims"
       
-    full_tensor.attach_numpy_array(self.ffconfig, full_array)
-    dataloader = ff.SingleDataLoader(self.ffmodel, batch_tensor, full_tensor, self.num_samples, datatype) 
+    full_tensor.ffhandle.attach_numpy_array(self.ffconfig, full_array)
+    dataloader = ff.SingleDataLoader(self.ffmodel, batch_tensor.ffhandle, full_tensor.ffhandle, self.num_samples, datatype) 
     self.dataloaders.append(dataloader)
     self.dataloaders_dim.append(num_dim)
-    full_tensor.detach_numpy_array(self.ffconfig)
+    full_tensor.ffhandle.detach_numpy_array(self.ffconfig)
     
     return full_tensor
     
@@ -105,14 +104,14 @@ class BaseModel(object):
     run_time = 1e-6 * (ts_end - ts_start);
     print("epochs %d, ELAPSED TIME = %.4fs, interations %d, samples %d, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, int(iterations), self.num_samples, self.num_samples * epochs / run_time));
 
-    self.input_tensor.inline_map(self.ffconfig)
-    input_array = self.input_tensor.get_flat_array(self.ffconfig, ff.DataType.DT_FLOAT)
+    self.input_tensor.ffhandle.inline_map(self.ffconfig)
+    input_array = self.input_tensor.ffhandle.get_flat_array(self.ffconfig, ff.DataType.DT_FLOAT)
     print(input_array.shape)
     print(input_array)
-    self.input_tensor.inline_unmap(self.ffconfig)
+    self.input_tensor.ffhandle.inline_unmap(self.ffconfig)
     
-    self.label_tensor.inline_map(self.ffconfig)
-    label_array = self.label_tensor.get_flat_array(self.ffconfig, ff.DataType.DT_INT32)
+    self.label_tensor.ffhandle.inline_map(self.ffconfig)
+    label_array = self.label_tensor.ffhandle.get_flat_array(self.ffconfig, ff.DataType.DT_INT32)
     print(label_array.shape)
     print(label_array)
-    self.label_tensor.inline_unmap(self.ffconfig)
+    self.label_tensor.ffhandle.inline_unmap(self.ffconfig)
