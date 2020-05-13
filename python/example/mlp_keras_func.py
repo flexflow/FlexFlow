@@ -4,6 +4,8 @@ from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activati
 import flexflow.keras.optimizers
 import flexflow.core as ff
 
+from flexflow.keras.models import Tensor
+
 import builtins
 
 def top_level_task():
@@ -73,6 +75,9 @@ def top_level_task():
   dense1 = builtins.internal_ffmodel.get_layer_by_id(9)
   dense2 = builtins.internal_ffmodel.get_layer_by_id(10)
   dense3 = builtins.internal_ffmodel.get_layer_by_id(11)
+  
+  input2 = Tensor(dtype=ff.DataType.DT_FLOAT, ffhandle=input2)
+  label = Tensor(dtype=ff.DataType.DT_INT32, ffhandle=label)
   
   model = Model(input2, output)
   
