@@ -2,7 +2,7 @@ import flexflow.core as ff
 import math
 
 from .base_layer import Layer
-from flexflow.keras.models.input_layer import Tensor
+from flexflow.keras.models.input_layer import Tensor, Input
 
 import builtins
 
@@ -61,7 +61,9 @@ class MaxPooling2D(Layer):
     in_dims = input_tensor.batch_shape
     self.calculate_inout_shape(in_dims[1], in_dims[2], in_dims[3], in_dims[0])
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
-    input_tensor.input_layers.append(self)
+    self.input_tensors.append(input_tensor)
+    self.output_tensor = output_tensor
+    
     output_tensor.output_layers.append(self)
     assert len(input_tensor.output_layers) == 1, "check input tensor"
     self.prev_layers.append(input_tensor.output_layers[0])

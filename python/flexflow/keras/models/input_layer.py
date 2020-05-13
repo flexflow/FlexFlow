@@ -22,20 +22,31 @@ class Tensor(object):
       self.name = name
       self.num_dims = len(batch_shape)
       if (meta_only == False):
-        self.__create_ff_tensor(ffmodel)
+        self.create_ff_tensor(ffmodel)
     # init from handle
     else:
       self.name = ""
       self.num_dims = ffhandle.num_dims
       self.batch_shape = ffhandle.dims
     
-  def __create_ff_tensor(self, ffmodel):
+  def create_ff_tensor(self, ffmodel):
     if (self.num_dims == 2):
       self.ffhandle = ffmodel.create_tensor_2d(self.batch_shape, self.name, self.dtype);
     elif (self.num_dims == 4):
       self.ffhandle = ffmodel.create_tensor_4d(self.batch_shape, self.name, self.dtype);
     else:
       assert 0, "un-supported dims"
+      
+  def set_ffhandle(self, ffhandle):
+    assert self.ffhandle == 0, "check handle, already set"
+    self.ffhandle = ffhandle
+    assert self.num_dims == ffhandle.num_dims, "check tensor shape"
+    if (self.num_dims == 2):
+      assert self.batch_shape[1] == ffhandle.dims[1]
+    elif (self.num_dims == 4):
+      assert self.batch_shape[1] == ffhandle.dims[1]
+      assert self.batch_shape[2] == ffhandle.dims[2]
+      assert self.batch_shape[3] == ffhandle.dims[3]
     
 
 class Input(Tensor):
@@ -43,4 +54,7 @@ class Input(Tensor):
                name="", dtype=None, sparse=False,
                tensor=None):
     super(Input, self).__init__(0, batch_shape, name, dtype, meta_only=True) 
+    
+  def set_input_layer(self, layer):
+    self.input_layers.append(layer)
     

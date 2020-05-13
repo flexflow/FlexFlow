@@ -1,7 +1,7 @@
 import flexflow.core as ff
 
 from .base_layer import Layer
-from flexflow.keras.models.input_layer import Tensor
+from flexflow.keras.models.input_layer import Tensor, Input
 
 import builtins
 
@@ -60,12 +60,16 @@ class Dense(Layer):
     in_dims = input_tensor.batch_shape
     self.calculate_inout_shape(in_dims[1], in_dims[0])
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
-    input_tensor.input_layers.append(self)
+    self.input_tensors.append(input_tensor)
+    self.output_tensor = output_tensor
+    
     output_tensor.output_layers.append(self)
     if (len(input_tensor.output_layers) != 0):
       assert len(input_tensor.output_layers) == 1, "check input tensor"
       self.prev_layers.append(input_tensor.output_layers[0])
       input_tensor.output_layers[0].next_layers.append(self)
+    if (isinstance(input_tensor, Input) == True):
+      input_tensor.set_input_layer(self)
     return output_tensor
     
   def get_weights(self, ffmodel):
@@ -105,7 +109,9 @@ class Flatten(Layer):
     in_dims = input_tensor.batch_shape
     self.calculate_inout_shape(in_dims)
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
-    input_tensor.input_layers.append(self)
+    self.input_tensors.append(input_tensor)
+    self.output_tensor = output_tensor
+    
     output_tensor.output_layers.append(self)
     assert len(input_tensor.output_layers) == 1, "check input tensor"
     self.prev_layers.append(input_tensor.output_layers[0])
@@ -131,9 +137,57 @@ class Activation(Layer):
     
   def __call__(self, input_tensor):
     output_tensor = Tensor(batch_shape=input_tensor.batch_shape, dtype=input_tensor.dtype, meta_only=True)
-    input_tensor.input_layers.append(self)
+    self.input_tensors.append(input_tensor)
+    self.output_tensor = output_tensor
+    
     output_tensor.output_layers.append(self)
     assert len(input_tensor.output_layers) == 1, "check input tensor"
     self.prev_layers.append(input_tensor.output_layers[0])
     input_tensor.output_layers[0].next_layers.append(self)
     return output_tensor
+    
+class Concatenate(Layer):
+  def __init__(self, axis):
+    super(Concatenate, self).__init__("concatenate") 
+    
+    self.axis = axis
+    self.input_shape = (0, 0, 0, 0)
+    self.output_shape = (0, 0, 0, 0)
+    
+  def calculate_inout_shape(self, input_tensors):
+    if (input_tensors[0].num_dims == 2):
+      output_shape = [input_tensors[0].batch_shape[0], 0]
+      for input_tensor in input_tensors:
+        output_shape[1] += input_tensor.batch_shape[1]
+      self.output_shape = (output_shape[0], output_shape[1])
+    elif (input_tensors[0].num_dims == 4):
+      output_shape = [input_tensors[0].batch_shape[0], 0, input_tensors[0].batch_shape[2], input_tensors[0].batch_shape[3]]
+      for input_tensor in input_tensors:
+        output_shape[1] += input_tensor.batch_shape[1]
+      self.output_shape = (output_shape[0], output_shape[1], output_shape[2], output_shape[3])
+    else:
+      assert 0, "un-supported dims"
+    print("concat output ", self.output_shape)
+  
+  def verify_inout_shape(self, input_tensor, output_tensor):
+    v = 1
+    
+  def get_summary(self):
+    summary = "%s (Concatenate)\n"%(self.name)
+    return summary
+    
+  def __call__(self, input_tensors):
+    self.calculate_inout_shape(input_tensors)
+    output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensors[0].dtype, meta_only=True)
+    self.output_tensor = output_tensor
+    
+    output_tensor.output_layers.append(self)
+    for tensor in input_tensors:
+      self.input_tensors.append(tensor)
+      assert len(tensor.output_layers) == 1, "check input tensor"
+      self.prev_layers.append(tensor.output_layers[0])
+      tensor.output_layers[0].next_layers.append(self)
+    return output_tensor
+    
+  def verify_meta_data(self):
+   v=1

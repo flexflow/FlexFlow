@@ -1,5 +1,5 @@
 from flexflow.keras.models import Model, Input
-from flexflow.keras.layers import Flatten, Dense, Activation, Conv2D, MaxPooling2D
+from flexflow.keras.layers import Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 
@@ -19,14 +19,14 @@ def mlp():
   #y_train = np.random.randint(1, 9, size=(len(y_train),1), dtype='int32')
   print("shape: ", x_train.shape)
   
-  input_tensor = Input(batch_shape=(0, 784), dtype="float32")
+  input_tensor = Input(batch_shape=[0, 784], dtype="float32")
   
   output = Dense(512, input_shape=(784,), activation="relu")(input_tensor)
-  output = Dense(512, activation="relu")(output)
-  output = Dense(num_classes)(output)
-  output = Activation("softmax")(output)
+  output2 = Dense(512, activation="relu")(output)
+  output3 = Dense(num_classes)(output2)
+  output4 = Activation("softmax")(output3)
   
-  model = Model(input_tensor, output)
+  model = Model(input_tensor, output4)
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
@@ -46,7 +46,7 @@ def cnn():
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
   
-  input_tensor = Input(batch_shape=(0, 1, 28, 28), dtype="float32")
+  input_tensor = Input(batch_shape=[0, 1, 28, 28], dtype="float32")
   
   output = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
   output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
@@ -63,11 +63,78 @@ def cnn():
   
   model.fit(x_train, y_train, epochs=1)
   
+def cnn_concat():
+  num_classes = 10
+
+  img_rows, img_cols = 28, 28
+  
+  (x_train, y_train), (x_test, y_test) = mnist.load_data()
+  x_train = x_train.reshape(x_train.shape[0], 1, img_rows, img_cols)
+  
+  x_train = x_train.astype('float32')
+  x_train /= 255
+  y_train = y_train.astype('int32')
+  y_train = np.reshape(y_train, (len(y_train), 1))
+  
+  input_tensor = Input(batch_shape=[0, 1, 28, 28], dtype="float32")
+  
+  t1 = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
+  t2 = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
+  output = Concatenate(axis=1)([t1, t2])
+  output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
+  output = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output)
+  output = Flatten()(output)
+  output = Dense(128, activation="relu")(output)
+  output = Dense(num_classes)(output)
+  output = Activation("softmax")(output)
+
+  model = Model(input_tensor, output)
+  
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  model.compile(optimizer=opt)
+  
+  model.fit(x_train, y_train, epochs=1)
+  
+def cifar_cnn_concat():
+  num_classes = 10
+  
+  num_samples = 10000
+  
+  (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
+  
+  x_train = x_train.astype('float32')
+  x_train /= 255
+  #x_train *= 0
+  #y_train = np.random.randint(1, 9, size=(num_samples,1), dtype='int32')
+  y_train = y_train.astype('int32')
+  print("shape: ", x_train.shape)
+  
+  input_tensor = Input(batch_shape=[0, 1, 28, 28], dtype="float32")
+  
+  # output = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
+  # model.add(Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
+  # model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"))
+  # model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
+  # model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
+  # model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"))
+  # model.add(Flatten())
+  # model.add(Dense(512, activation="relu"))
+  # model.add(Dense(num_classes))
+  # model.add(Activation("softmax"))
+  #
+  # print(model.summary())
+  #
+  # opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  # model.compile(optimizer=opt)
+  #
+  # model.fit(x_train, y_train, epochs=1)
+  
 
 def top_level_task():
   
-  cnn()
-  #mlp()
+  #cnn()
+  #cnn_concat()
+  mlp()
 
 if __name__ == "__main__":
   print("alexnet keras")

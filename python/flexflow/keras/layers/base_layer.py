@@ -7,6 +7,8 @@ class Layer(object):
     self.name = name
     self.prev_layers = []
     self.next_layers = []
+    self.input_tensors = []
+    self.output_tensor = 0
     
   def _get_weights(self, ffmodel):
     assert self.ffhandle != 0, "handle is not set correctly"
