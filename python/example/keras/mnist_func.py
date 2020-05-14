@@ -39,6 +39,39 @@ def mlp():
   # del output
   # del output2
   # del output3
+
+def mlp_concat():
+  num_classes = 10
+
+  (x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+  x_train = x_train.reshape(60000, 784)
+  x_train = x_train.astype('float32')
+  x_train /= 255
+  y_train = y_train.astype('int32')
+  y_train = np.reshape(y_train, (len(y_train), 1))
+  #y_train = np.random.randint(1, 9, size=(len(y_train),1), dtype='int32')
+  print("shape: ", x_train.shape)
+  
+  input_tensor = Input(batch_shape=[0, 784], dtype="float32")
+  
+  t1 = Dense(512, input_shape=(784,), activation="relu")(input_tensor)
+  t2 = Dense(512, input_shape=(784,), activation="relu")(input_tensor)
+  t3 = Dense(512, input_shape=(784,), activation="relu")(input_tensor)
+  t4 = Dense(512, input_shape=(784,), activation="relu")(input_tensor)
+  output = Concatenate(axis=1)([t1, t2, t3, t4])
+  output2 = Dense(512, activation="relu")(output)
+  output3 = Dense(num_classes)(output2)
+  output4 = Activation("softmax")(output3)
+  
+  model = Model(input_tensor, output4)
+  
+  print(model.summary())
+
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  model.compile(optimizer=opt)
+
+  model.fit(x_train, y_train, epochs=1)
    
 def cnn():
   num_classes = 10
@@ -159,7 +192,9 @@ def cifar_cnn_concat():
   ot1 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(t1)
   t2 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor2)
   ot2 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(t2)
-  output_tensor = Concatenate(axis=1)([ot1, ot2])
+  t3 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor2)
+  ot3 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(t3)
+  output_tensor = Concatenate(axis=1)([ot1, ot2, ot3])
   # output_tensor = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
   # output_tensor = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor)
   output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
@@ -238,6 +273,7 @@ def top_level_task():
   cifar_cnn_concat()
   #cifar_alexnet_concat()
   #mlp()
+  #mlp_concat()
 
 if __name__ == "__main__":
   print("alexnet keras")
