@@ -197,8 +197,8 @@ def cifar_cnn_concat():
   input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
 
   ot1 = cifar_cnn_sub(input_tensor1, 1)
-  ot2 = cifar_cnn_sub(input_tensor1, 2)
-  ot3 = cifar_cnn_sub(input_tensor1, 3)
+  ot2 = cifar_cnn_sub(input_tensor2, 2)
+  ot3 = cifar_cnn_sub(input_tensor2, 3)
   output_tensor = Concatenate(axis=1)([ot1, ot2, ot3])
   output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
   o1 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor)
