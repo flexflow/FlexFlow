@@ -5,10 +5,14 @@ from .input_layer import Tensor
 from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation
 
 class Sequential(BaseModel):
-  def __init__(self):
+  def __init__(self, layer_list=[]):
     super(Sequential, self).__init__() 
 
     self.use_v2 = False
+    
+    if len(layer_list) > 0:
+      for layer in layer_list:
+        self.add(layer)
     
   def _create_layer_and_init_inout(self, verify_inout_shape=True):
     int_t = 0
