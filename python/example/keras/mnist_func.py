@@ -195,8 +195,8 @@ def cifar_cnn_concat():
   input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
 
   ot1 = cifar_cnn_sub(input_tensor1)
-  ot2 = cifar_cnn_sub(input_tensor2)
-  ot3 = cifar_cnn_sub(input_tensor2)
+  ot2 = cifar_cnn_sub(input_tensor1)
+  ot3 = cifar_cnn_sub(input_tensor1)
   output_tensor = Concatenate(axis=1)([ot1, ot2, ot3])
   # output_tensor = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
   # output_tensor = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor)

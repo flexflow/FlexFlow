@@ -9,6 +9,7 @@ class Layer(object):
     self.next_layers = []
     self.input_tensors = []
     self.output_tensor = 0
+    self.nb_visited_prev_layers = 0
     
   def _get_weights(self, ffmodel):
     assert self.ffhandle != 0, "handle is not set correctly"

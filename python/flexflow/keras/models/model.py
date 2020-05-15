@@ -15,16 +15,32 @@ class Model(BaseModel):
     self.output_tensor = output_tensor
     
     bfs_queue = []
-    for input_tensor in self.input_tensors:
-      for layer in input_tensor.input_layers:
-        bfs_queue.append(layer)
+    # for input_tensor in self.input_tensors:
+    #   for layer in input_tensor.input_layers:
+    #     bfs_queue.append(layer)
+    # while(len(bfs_queue) != 0):
+    #   layer = bfs_queue.pop(0)
+    #   #print(layer)
+    #   self.add(layer)
+    #   for child in layer.next_layers:
+    #     if child not in bfs_queue:
+    #       bfs_queue.append(child)
+    #     else:
+    #       print(child, "already in the queue")
+    
+    for input_tensor in reversed(self.input_tensors):
+      for layer in reversed(input_tensor.input_layers):
+        bfs_queue.append(layer) 
     while(len(bfs_queue) != 0):
-      layer = bfs_queue.pop(0)
+      layer = bfs_queue.pop()
       #print(layer)
       self.add(layer)
-      for child in layer.next_layers:
+      for child in reversed(layer.next_layers):
         if child not in bfs_queue:
-          bfs_queue.append(child)
+          if child.nb_visited_prev_layers == len(child.prev_layers)-1:
+            bfs_queue.append(child)
+          else:
+            child.nb_visited_prev_layers += 1
         else:
           print(child, "already in the queue")
     
