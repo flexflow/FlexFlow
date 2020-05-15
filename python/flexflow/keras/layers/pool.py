@@ -7,8 +7,8 @@ from flexflow.keras.models.input_layer import Tensor, Input
 import builtins
 
 class MaxPooling2D(Layer):
-  def __init__(self, pool_size, strides, padding="valid"):
-    super(MaxPooling2D, self).__init__("pool2d") 
+  def __init__(self, pool_size, strides, padding="valid", name="pool2d"):
+    super(MaxPooling2D, self).__init__(name) 
     
     self.input_shape = (0, 0, 0, 0)
     self.output_shape = (0, 0, 0, 0)

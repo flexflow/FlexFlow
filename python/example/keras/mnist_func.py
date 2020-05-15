@@ -55,10 +55,10 @@ def mlp_concat():
   
   input_tensor = Input(batch_shape=[0, 784], dtype="float32")
   
-  t1 = Dense(512, input_shape=(784,), activation="relu")(input_tensor)
-  t2 = Dense(512, input_shape=(784,), activation="relu")(input_tensor)
-  t3 = Dense(512, input_shape=(784,), activation="relu")(input_tensor)
-  t4 = Dense(512, input_shape=(784,), activation="relu")(input_tensor)
+  t1 = Dense(512, input_shape=(784,), activation="relu", name="dense1")(input_tensor)
+  t2 = Dense(512, input_shape=(784,), activation="relu", name="dense2")(input_tensor)
+  t3 = Dense(512, input_shape=(784,), activation="relu", name="dense3")(input_tensor)
+  t4 = Dense(512, input_shape=(784,), activation="relu", name="dense4")(input_tensor)
   output = Concatenate(axis=1)([t1, t2, t3, t4])
   output2 = Dense(512, activation="relu")(output)
   output3 = Dense(num_classes)(output2)
@@ -172,9 +172,11 @@ def cifar_cnn():
   model.fit(x_train, y_train, epochs=1)
 
 
-def cifar_cnn_sub(input_tensor):
-  t1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
-  ot1 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(t1)
+def cifar_cnn_sub(input_tensor, name_postfix):
+  name = "conv2d_0_" + str(name_postfix)
+  t1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu", name=name)(input_tensor)
+  name = "conv2d_1_" + str(name_postfix)
+  ot1 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu", name=name)(t1)
   return ot1
     
 def cifar_cnn_concat():
@@ -194,12 +196,10 @@ def cifar_cnn_concat():
   input_tensor1 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
   input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
 
-  ot1 = cifar_cnn_sub(input_tensor1)
-  ot2 = cifar_cnn_sub(input_tensor1)
-  ot3 = cifar_cnn_sub(input_tensor1)
+  ot1 = cifar_cnn_sub(input_tensor1, 1)
+  ot2 = cifar_cnn_sub(input_tensor1, 2)
+  ot3 = cifar_cnn_sub(input_tensor1, 3)
   output_tensor = Concatenate(axis=1)([ot1, ot2, ot3])
-  # output_tensor = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
-  # output_tensor = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor)
   output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
   o1 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor)
   o2 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor)
@@ -261,6 +261,8 @@ def cifar_alexnet_concat():
   output = Activation("softmax")(output)
   
   model = Model(input_tensor, output)
+  
+  print(model.summary())
   
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt)

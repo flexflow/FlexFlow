@@ -6,8 +6,8 @@ from flexflow.keras.models.input_layer import Tensor, Input
 import builtins
 
 class Dense(Layer):
-  def __init__(self, output_shape, input_shape=(0,), activation=None):
-    super(Dense, self).__init__("dense") 
+  def __init__(self, output_shape, input_shape=(0,), activation=None, name="dense"):
+    super(Dense, self).__init__(name) 
     
     self.out_channels = output_shape
     self.in_channels = 0
@@ -89,8 +89,8 @@ class Dense(Layer):
     self._set_weights(ffmodel, kernel, bias)
     
 class Flatten(Layer):
-  def __init__(self):
-    super(Flatten, self).__init__("flat") 
+  def __init__(self, name="flat"):
+    super(Flatten, self).__init__(name) 
     self.input_shape = 0
     self.output_shape = (0, 0)
     
@@ -130,8 +130,8 @@ class Flatten(Layer):
     return output_tensor
     
 class Activation(Layer):
-  def __init__(self, type):
-    super(Activation, self).__init__("activation") 
+  def __init__(self, type, name="activation"):
+    super(Activation, self).__init__(name) 
     
     if (type == "softmax"):
       self.type = "softmax"
@@ -161,8 +161,8 @@ class Activation(Layer):
     return output_tensor
     
 class Concatenate(Layer):
-  def __init__(self, axis):
-    super(Concatenate, self).__init__("concatenate") 
+  def __init__(self, axis, name="concatenate"):
+    super(Concatenate, self).__init__(name) 
     
     self.axis = axis
     self.input_shape = (0, 0, 0, 0)
