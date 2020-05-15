@@ -103,9 +103,9 @@ class BaseModel(object):
         if (epoch > 0):
           self.ffconfig.begin_trace(111)
         self.ffmodel.forward()
-        #for layer_id in self._layers:
-         #layer = self._layers[layer_id]
-         #layer.handle.forward(self.ffmodel)
+        # for layer_id in self._layers:
+        #  layer = self._layers[layer_id]
+        #  layer.ffhandle.forward(self.ffmodel)
         self.ffmodel.zero_gradients()
         self.ffmodel.backward()
         self.ffmodel.update()

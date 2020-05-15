@@ -170,7 +170,13 @@ def cifar_cnn():
   model.compile(optimizer=opt)
 
   model.fit(x_train, y_train, epochs=1)
-  
+
+
+def cifar_cnn_sub(input_tensor):
+  t1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
+  ot1 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(t1)
+  return ot1
+    
 def cifar_cnn_concat():
   num_classes = 10
   
@@ -187,13 +193,10 @@ def cifar_cnn_concat():
   
   input_tensor1 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
   input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
-  
-  t1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor1)
-  ot1 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(t1)
-  t2 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor2)
-  ot2 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(t2)
-  t3 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor2)
-  ot3 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(t3)
+
+  ot1 = cifar_cnn_sub(input_tensor1)
+  ot2 = cifar_cnn_sub(input_tensor2)
+  ot3 = cifar_cnn_sub(input_tensor2)
   output_tensor = Concatenate(axis=1)([ot1, ot2, ot3])
   # output_tensor = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
   # output_tensor = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor)

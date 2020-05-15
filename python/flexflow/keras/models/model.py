@@ -14,7 +14,6 @@ class Model(BaseModel):
     self.input_tensors = input_tensors
     self.output_tensor = output_tensor
     
-    
     bfs_queue = []
     for input_tensor in self.input_tensors:
       for layer in input_tensor.input_layers:
