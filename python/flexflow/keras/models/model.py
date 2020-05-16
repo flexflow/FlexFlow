@@ -30,7 +30,7 @@ class Model(BaseModel):
     #       print(child, "already in the queue")
     
     for input_tensor in reversed(self.input_tensors):
-      for layer in reversed(input_tensor.input_layers):
+      for layer in reversed(input_tensor.to_layers):
         bfs_queue.append(layer)
     while(len(bfs_queue) != 0):
       layer = bfs_queue.pop()

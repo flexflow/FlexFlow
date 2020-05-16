@@ -82,14 +82,14 @@ class Conv2D(Layer):
     self.input_tensors.append(input_tensor)
     self.output_tensor = output_tensor
     
-    output_tensor.set_output_layer(self)
+    output_tensor.set_from_layer(self)
     # this is the first layer
     if (isinstance(input_tensor, Input) == True):
-      input_tensor.set_input_layer(self)
+      input_tensor.set_to_layer(self)
     else:
-      assert input_tensor.output_layer != 0, "check input tensor"
-      self.prev_layers.append(input_tensor.output_layer)
-      input_tensor.output_layer.next_layers.append(self)
+      assert input_tensor.from_layer != 0, "check input tensor"
+      self.prev_layers.append(input_tensor.from_layer)
+      input_tensor.from_layer.next_layers.append(self)
 
     return output_tensor
     

@@ -3,8 +3,8 @@ import flexflow.core as ff
 class Tensor(object):
   def __init__(self, ffmodel=0, batch_shape=0, name=0, dtype=0, meta_only=False, ffhandle=0):
     self.ffhandle = ffhandle
-    self.input_layers = []
-    self.output_layer = 0
+    self.to_layers = []
+    self.from_layer = 0
     if (dtype == "float32" or dtype == ff.DataType.DT_FLOAT):
       self.dtype = ff.DataType.DT_FLOAT
     elif (dtype == "float64" or dtype == ff.DataType.DT_DOUBLE):
@@ -47,9 +47,9 @@ class Tensor(object):
       assert self.batch_shape[2] == ffhandle.dims[2]
       assert self.batch_shape[3] == ffhandle.dims[3]
     
-  def set_output_layer(self, layer):
-    assert self.output_layer == 0, "output layer has been set"
-    self.output_layer = layer
+  def set_from_layer(self, layer):
+    assert self.from_layer == 0, "from layer has been set"
+    self.from_layer = layer
     
   def set_batch_size(self, size):
     self.batch_shape[0] = size
@@ -60,6 +60,6 @@ class Input(Tensor):
                tensor=None):
     super(Input, self).__init__(0, batch_shape, name, dtype, meta_only=True) 
     
-  def set_input_layer(self, layer):
-    self.input_layers.append(layer)
+  def set_to_layer(self, layer):
+    self.to_layers.append(layer)
     

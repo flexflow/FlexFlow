@@ -41,11 +41,11 @@ class Concatenate(Layer):
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensors[0].dtype, meta_only=True)
     self.output_tensor = output_tensor
     
-    output_tensor.set_output_layer(self)
+    output_tensor.set_from_layer(self)
     
     for tensor in input_tensors:
       self.input_tensors.append(tensor)
-      assert tensor.output_layer != 0, "check input tensor"
-      self.prev_layers.append(tensor.output_layer)
-      tensor.output_layer.next_layers.append(self)
+      assert tensor.from_layer != 0, "check input tensor"
+      self.prev_layers.append(tensor.from_layer)
+      tensor.from_layer.next_layers.append(self)
     return output_tensor
