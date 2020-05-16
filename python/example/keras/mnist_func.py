@@ -346,14 +346,14 @@ def cifar_cnn_net2net():
   
   #teacher
   input_tensor1 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
-  
+
   c1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   c2 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   c3 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   c4 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   d1 = Dense(512, activation="relu")
   d2 = Dense(num_classes)
-  
+
   output_tensor = c1(input_tensor1)
   output_tensor = c2(output_tensor)
   output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
@@ -366,32 +366,38 @@ def cifar_cnn_net2net():
   output_tensor = Activation("softmax")(output_tensor)
 
   teacher_model = Model(input_tensor1, output_tensor)
-  
+
   print(teacher_model.summary())
-  
+
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   teacher_model.compile(optimizer=opt)
 
-  teacher_model.fit(x_train, y_train, epochs=1)  
-  
+  teacher_model.fit(x_train, y_train, epochs=1)
+
   c1_kernel, c1_bias = c1.get_weights(teacher_model.ffmodel)
   c2_kernel, c2_bias = c2.get_weights(teacher_model.ffmodel)
   c3_kernel, c3_bias = c3.get_weights(teacher_model.ffmodel)
   c4_kernel, c4_bias = c4.get_weights(teacher_model.ffmodel)
   d1_kernel, d1_bias = d1.get_weights(teacher_model.ffmodel)
   d2_kernel, d2_bias = d2.get_weights(teacher_model.ffmodel)
+
+  c2_kernel_new = np.concatenate((c2_kernel, c2_kernel), axis=1)
+  print(c2_kernel.shape, c2_kernel_new.shape, c2_bias.shape)
   
   #student model
   input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
-  
-  sc1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
+
+  sc1_1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
+  sc1_2 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   sc2 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   sc3 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   sc4 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   sd1 = Dense(512, activation="relu")
   sd2 = Dense(num_classes)
-  
-  output_tensor = sc1(input_tensor2)
+
+  t1 = sc1_1(input_tensor2)
+  t2 = sc1_2(input_tensor2)
+  output_tensor = Concatenate(axis=1)([t1, t2])
   output_tensor = sc2(output_tensor)
   output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
   output_tensor = sc3(output_tensor)
@@ -403,16 +409,17 @@ def cifar_cnn_net2net():
   output_tensor = Activation("softmax")(output_tensor)
 
   student_model = Model(input_tensor2, output_tensor)
-  
+
   print(student_model.summary())
-  
+
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   student_model.compile(optimizer=opt)
 
-  sc1.set_weights(student_model.ffmodel, c1_kernel, c1_bias)
-  sc2.set_weights(student_model.ffmodel, c2_kernel, c2_bias)
+  sc1_1.set_weights(student_model.ffmodel, c1_kernel, c1_bias)
+  sc1_2.set_weights(student_model.ffmodel, c1_kernel, c1_bias)
+  sc2.set_weights(student_model.ffmodel, c2_kernel_new, c2_bias)
   sc3.set_weights(student_model.ffmodel, c3_kernel, c3_bias)
-  sc4.set_weights(student_model.ffmodel, c4_kernel, c4_bias)  
+  sc4.set_weights(student_model.ffmodel, c4_kernel, c4_bias)
   sd1.set_weights(student_model.ffmodel, d1_kernel, d1_bias)
   sd2.set_weights(student_model.ffmodel, d2_kernel, d2_bias)
 
