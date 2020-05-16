@@ -34,7 +34,7 @@ class Layer(object):
     self.next_layers.append(layer)
     
   def _get_summary_name(self):
-    str_name = "{0:25}".format(self.name + self.layer_type)
+    str_name = "{0:25}".format(self.name + " (" + self.layer_type + ")")
     return str_name
     
   def _get_summary_connected_to(self):
