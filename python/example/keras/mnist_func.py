@@ -337,11 +337,11 @@ def top_level_task():
   #cnn()
   #cnn_concat()
   #cifar_cnn()
-  #cifar_cnn_concat()
+  cifar_cnn_concat()
   #cifar_alexnet_concat()
   #mlp()
   #mlp_concat()
-  mlp_net2net()
+  #mlp_net2net()
 
 if __name__ == "__main__":
   print("alexnet keras")

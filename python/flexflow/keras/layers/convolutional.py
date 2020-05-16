@@ -4,8 +4,6 @@ import math
 from .base_layer import Layer
 from flexflow.keras.models.input_layer import Tensor, Input
 
-import builtins
-
 class Conv2D(Layer):
   def __init__(self, filters, input_shape=(0,), kernel_size=0, strides=0, padding=0, data_format=None, dilation_rate=(1, 1), activation=None, use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, kernel_constraint=None, bias_constraint=None, name="conv2d"):
     super(Conv2D, self).__init__(name) 
@@ -68,8 +66,12 @@ class Conv2D(Layer):
     assert input_tensor.batch_shape[2] == self.input_shape[2]
     assert input_tensor.batch_shape[3] == self.input_shape[3]
     
+  def get_summary_name(self):
+    str_name = "%s (Conv2D)"%(self.name)
+    return str_name
+    
   def get_summary(self):
-    summary = "%s (Conv2D)\t\t%s\t\t%s\n"%(self.name, self.output_shape, self.input_shape)
+    summary = "%s\t\t%s\t\t%s\n"%(self.get_summary_name(), self.output_shape, self.input_shape)
     return summary
     
   def __call__(self, input_tensor):

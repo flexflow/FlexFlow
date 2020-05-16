@@ -4,8 +4,6 @@ import math
 from .base_layer import Layer
 from flexflow.keras.models.input_layer import Tensor, Input
 
-import builtins
-
 class MaxPooling2D(Layer):
   def __init__(self, pool_size, strides, padding="valid", name="pool2d"):
     super(MaxPooling2D, self).__init__(name) 
@@ -53,8 +51,12 @@ class MaxPooling2D(Layer):
     assert out_dims[2] == self.output_shape[2]
     assert out_dims[3] == self.output_shape[3]
     
+  def get_summary_name(self):
+    str_name = "%s (MaxPooling2D)"%(self.name)
+    return str_name
+    
   def get_summary(self):
-    summary = "%s (MaxPooling2D)\t\t%s\t\t%s\n"%(self.name, self.output_shape, self.input_shape)
+    summary = "%s\t\t%s\t\t%s\n"%(self.get_summary_name(), self.output_shape, self.input_shape)
     return summary
     
   def __call__(self, input_tensor):
