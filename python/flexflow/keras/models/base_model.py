@@ -129,7 +129,7 @@ class BaseModel(object):
     self.label_tensor.ffhandle.inline_unmap(self.ffconfig)
     
   def summary(self):
-    model_summary = "Layer (type)\t\tOutput Shape\t\tInput Shape\n"
+    model_summary = "Layer (type)\t\tOutput Shape\t\tInput Shape\tConnected to\n"
     for layer_id in self._layers:
       layer = self._layers[layer_id]
       print(layer)

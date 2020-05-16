@@ -6,7 +6,7 @@ from flexflow.keras.models.input_layer import Tensor, Input
 
 class MaxPooling2D(Layer):
   def __init__(self, pool_size, strides, padding="valid", name="pool2d"):
-    super(MaxPooling2D, self).__init__(name) 
+    super(MaxPooling2D, self).__init__(name, "MaxPooling2D") 
     
     self.input_shape = (0, 0, 0, 0)
     self.output_shape = (0, 0, 0, 0)
@@ -51,12 +51,8 @@ class MaxPooling2D(Layer):
     assert out_dims[2] == self.output_shape[2]
     assert out_dims[3] == self.output_shape[3]
     
-  def get_summary_name(self):
-    str_name = "%s (MaxPooling2D)"%(self.name)
-    return str_name
-    
   def get_summary(self):
-    summary = "%s\t\t%s\t\t%s\n"%(self.get_summary_name(), self.output_shape, self.input_shape)
+    summary = "%s%s\t\t%s%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
     return summary
     
   def __call__(self, input_tensor):

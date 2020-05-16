@@ -5,7 +5,7 @@ from flexflow.keras.models.input_layer import Tensor, Input
 
 class Concatenate(Layer):
   def __init__(self, axis, name="concatenate"):
-    super(Concatenate, self).__init__(name) 
+    super(Concatenate, self).__init__(name, "Concatenate") 
     
     self.axis = axis
     self.input_shape = (0, 0, 0, 0)
@@ -32,12 +32,8 @@ class Concatenate(Layer):
   def verify_inout_shape(self, input_tensor, output_tensor):
     pass
     
-  def get_summary_name(self):
-    str_name = "%s (Concatenate)"%(self.name)
-    return str_name
-    
   def get_summary(self):
-    summary = "%s\t\t%s\n"%(self.get_summary_name(), self.output_shape)
+    summary = "%s%s%s\n"%(self._get_summary_name(), self.output_shape, self._get_summary_connected_to())
     return summary
     
   def __call__(self, input_tensors):

@@ -5,7 +5,7 @@ from flexflow.keras.models.input_layer import Tensor, Input
 
 class Dense(Layer):
   def __init__(self, output_shape, input_shape=(0,), activation=None, name="dense"):
-    super(Dense, self).__init__(name) 
+    super(Dense, self).__init__(name, "Dense") 
     
     self.out_channels = output_shape
     self.in_channels = 0
@@ -52,13 +52,9 @@ class Dense(Layer):
     
   def verify_input_shape(self, input_tensor):
     assert input_tensor.batch_shape[1] == self.input_shape[1]
-  
-  def get_summary_name(self):
-    str_name = "%s (Dense)"%(self.name)
-    return str_name 
     
   def get_summary(self):
-    summary = "%s (Dense)\t\t%s\t\t%s\n"%(self.get_summary_name(), self.output_shape, self.input_shape)
+    summary = "%s%s\t\t%s%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
     return summary
     
   def __call__(self, input_tensor):
@@ -92,7 +88,7 @@ class Dense(Layer):
     
 class Flatten(Layer):
   def __init__(self, name="flat"):
-    super(Flatten, self).__init__(name) 
+    super(Flatten, self).__init__(name, "Flatten") 
     self.input_shape = 0
     self.output_shape = (0, 0)
     
@@ -113,12 +109,8 @@ class Flatten(Layer):
     out_dims = output_tensor_handle.dims
     assert out_dims[1] == self.output_shape[1]
     
-  def get_summary_name(self):
-    str_name = "%s (Flatten)"%(self.name)
-    return str_name
-    
   def get_summary(self):
-    summary = "%s\t\t%s\t\t%s\n"%(self.get_summary_name(), self.output_shape, self.input_shape)
+    summary = "%s%s\t\t%s%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
     return summary
     
   def __call__(self, input_tensor):    
@@ -137,23 +129,20 @@ class Flatten(Layer):
     
 class Activation(Layer):
   def __init__(self, type, name="activation"):
-    super(Activation, self).__init__(name) 
     
     if (type == "softmax"):
-      self.type = "softmax"
+      self.type = "Softmax"
+      
+    super(Activation, self).__init__(name, self.type) 
       
   def verify_meta_data(self):
-    assert self.type == "softmax", "type is wrong"
+    assert self.type == "Softmax", "type is wrong"
       
   def verify_inout_shape(self, input_tensor, output_tensor):
     pass
     
-  def get_summary_name(self):
-    str_name = "%s (Activation)"%(self.type)
-    return str_name
-    
   def get_summary(self):
-    summary = "%s\n"%(self.get_summary_name())
+    summary = "%s%s\n"%(self._get_summary_name(), self._get_summary_connected_to())
     return summary
     
   def __call__(self, input_tensor):
