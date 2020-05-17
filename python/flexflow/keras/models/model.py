@@ -17,7 +17,7 @@ class Model(BaseModel):
     bfs_queue = []
 
     # for input_tensor in self.input_tensors:
-    #   for layer in input_tensor.input_layers:
+    #   for layer in input_tensor.to_layers:
     #     bfs_queue.append(layer)
     # while(len(bfs_queue) != 0):
     #   layer = bfs_queue.pop(0)
