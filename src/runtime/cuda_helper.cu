@@ -81,6 +81,27 @@ void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
       para_ptr, grad_ptr, replica_size, scale_factor);
 }
 
+template<unsigned DIM, typename T>
+__host__
+void print_tensor(const T* ptr, Rect<DIM> rect, const char* prefix)
+{
+  // device synchronize to make sure the data are ready
+  checkCUDA(cudaDeviceSynchronize());
+  T* host_ptr;
+  checkCUDA(cudaHostAlloc(&host_ptr, sizeof(T) * rect.volume(),
+                          cudaHostAllocPortable | cudaHostAllocMapped));
+  checkCUDA(cudaMemcpy(host_ptr, ptr, sizeof(T) * rect.volume(),
+                       cudaMemcpyDeviceToHost));
+  checkCUDA(cudaDeviceSynchronize());
+  int idx = 0;
+  printf("%s", prefix);
+  for (PointInRectIterator<DIM> it(rect); it(); it++, idx++) {
+    printf(" %.4lf", (float)host_ptr[idx]);
+  }
+  printf("\n");
+  checkCUDA(cudaFreeHost(host_ptr));
+}
+
 
 template __global__ void assign_kernel<float>(float* ptr, coord_t size, float value);
 template __global__ void assign_kernel<int32_t>(int32_t* ptr, coord_t size, int32_t value);
@@ -88,3 +109,9 @@ template __global__ void assign_kernel<int64_t>(int64_t* ptr, coord_t size, int6
 
 template __global__ void copy_kernel<float>(float* dst, const float* src, coord_t size);
 template __global__ void copy_kernel<int>(int* dst, const int* src, coord_t size);
+
+template __host__ void print_tensor<1, float>(const float* ptr, Rect<1> rect, const char* prefix);
+template __host__ void print_tensor<2, float>(const float* ptr, Rect<2> rect, const char* prefix);
+template __host__ void print_tensor<3, float>(const float* ptr, Rect<3> rect, const char* prefix);
+template __host__ void print_tensor<4, float>(const float* ptr, Rect<4> rect, const char* prefix);
+template __host__ void print_tensor<2, long>(const long* ptr, Rect<2> rect, const char* prefix);

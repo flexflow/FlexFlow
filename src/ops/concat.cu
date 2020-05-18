@@ -272,6 +272,23 @@ void copy_with_stride(float* output,
   }
 }
 
+
+template<int N>
+void calc_blk_size(coord_t& num_blocks,
+                   coord_t& blk_size,
+                   Rect<N> rect,
+                   int axis)
+{
+  num_blocks = 1;
+  blk_size = 1;
+  for (int d = 0; d < N; d++) {
+    if (d <= axis)
+      blk_size *= (rect.hi[d] - rect.lo[d] + 1);
+    else
+      num_blocks *= (rect.hi[d] - rect.lo[d] + 1);
+  }
+}
+
 /*
   regions[0](O): output
   regions[1..numInputs](I): inputs
@@ -287,18 +304,7 @@ void Concat::forward_task(const Task *task,
   assert(task->regions.size() == cc->numInputs + 1);
   float *output;
   const float *inputs[MAX_NUM_INPUTS];
-  int num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
-  for (int d = 0; d < cc->output.numDim; d++) {
-    if (d <= axis)
-      output_blk_size *= cc->output.adim[d];
-    else
-      num_blocks *= cc->output.adim[d];
-  }
-  for (int i = 0; i < cc->numInputs; i++) {
-    input_blk_sizes[i] = 1;
-    for (int d = 0; d <= axis; d++)
-      input_blk_sizes[i] *= cc->inputs[i].adim[d];
-  }
+  coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(cc->numInputs <= MAX_NUM_INPUTS);
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -310,10 +316,14 @@ void Concat::forward_task(const Task *task,
           regions[0], task->regions[0], FID_DATA, ctx, runtime,
           false/*readOutput*/);
       output = accOutput.ptr;
+      calc_blk_size<1>(num_blocks, output_blk_size, accOutput.rect, axis);
       for (int i = 0; i < cc->numInputs; i++) {
         TensorAccessorR<float, 1> accInput(
             regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
         inputs[i] = accInput.ptr;
+        coord_t input_num_blocks = 1;
+        calc_blk_size<1>(input_num_blocks, input_blk_sizes[i], accInput.rect, axis);
+        assert(input_num_blocks == num_blocks);
       }
       break;
     }
@@ -323,10 +333,14 @@ void Concat::forward_task(const Task *task,
           regions[0], task->regions[0], FID_DATA, ctx, runtime,
           false/*readOutput*/);
       output = accOutput.ptr;
+      calc_blk_size<2>(num_blocks, output_blk_size, accOutput.rect, axis);
       for (int i = 0; i < cc->numInputs; i++) {
         TensorAccessorR<float, 2> accInput(
             regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
         inputs[i] = accInput.ptr;
+        coord_t input_num_blocks = 1;
+        calc_blk_size<2>(input_num_blocks, input_blk_sizes[i], accInput.rect, axis);
+        assert(input_num_blocks == num_blocks);
       }
       break;
     }
@@ -336,10 +350,14 @@ void Concat::forward_task(const Task *task,
           regions[0], task->regions[0], FID_DATA, ctx, runtime,
           false/*readOutput*/);
       output = accOutput.ptr;
+      calc_blk_size<3>(num_blocks, output_blk_size, accOutput.rect, axis);
       for (int i = 0; i < cc->numInputs; i++) {
         TensorAccessorR<float, 3> accInput(
             regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
         inputs[i] = accInput.ptr;
+        coord_t input_num_blocks = 1;
+        calc_blk_size<3>(input_num_blocks, input_blk_sizes[i], accInput.rect, axis);
+        assert(input_num_blocks == num_blocks);
       }
       break;
     }
@@ -349,10 +367,14 @@ void Concat::forward_task(const Task *task,
           regions[0], task->regions[0], FID_DATA, ctx, runtime,
           false/*readOutput*/);
       output = accOutput.ptr;
+      calc_blk_size<4>(num_blocks, output_blk_size, accOutput.rect, axis);
       for (int i = 0; i < cc->numInputs; i++) {
         TensorAccessorR<float, 4> accInput(
             regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
         inputs[i] = accInput.ptr;
+        coord_t input_num_blocks = 1;
+        calc_blk_size<4>(input_num_blocks, input_blk_sizes[i], accInput.rect, axis);
+        assert(input_num_blocks == num_blocks);
       }
       break;
     }
@@ -369,11 +391,10 @@ void Concat::forward_task(const Task *task,
   }
   checkCUDA(cudaDeviceSynchronize());
   if (cc->profiling) {
-    Rect<2> rect(Point<2>(0, 0), Point<2>(output_blk_size-1, domain.get_volume() / output_blk_size - 1));
-    //print_tensor<2, float>(output - output_blk_size, rect, "[Concat:forward:output]");
+    //print_tensor<4, float>(output - output_blk_size, output_rect, "[Concat:forward:output]");
     printf("output_blk_size=%zu\n", output_blk_size);
-    Rect<2> input_rec(Point<2>(0, 0), Point<2>(input_blk_sizes[0]-1, domain.get_volume() / output_blk_size - 1));
-    //print_tensor<2, float>(inputs[0], rect, "[Concat:forward:input0]");
+    //print_tensor<4, float>(inputs[0], input_rect[0], "[Concat:forward:input0]");
+    //print_tensor<4, float>(inputs[1], input_rect[1], "[Concat:forward:input1]");
   }
 #ifdef DEADCODE
   const AccessorWO<float, 3> acc_output(regions[0], FID_DATA);
@@ -443,18 +464,7 @@ void Concat::backward_task(const Task *task,
   assert(task->regions.size() == cc->numInputs + 1);
   const float *output_grad;
   float *input_grads[MAX_NUM_INPUTS];
-  int num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
-  for (int d = 0; d < cc->output.numDim; d++) {
-    if (d <= axis)
-      output_blk_size *= cc->output.adim[d];
-    else
-      num_blocks *= cc->output.adim[d];
-  }
-  for (int i = 0; i < cc->numInputs; i++) {
-    input_blk_sizes[i] = 1;
-    for (int d = 0; d <= axis; d++)
-      input_blk_sizes[i] *= cc->inputs[i].adim[d];
-  }
+  coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(cc->numInputs <= MAX_NUM_INPUTS);
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -465,11 +475,15 @@ void Concat::backward_task(const Task *task,
       TensorAccessorR<float, 1> accOutputGrad(
           regions[0], task->regions[0], FID_DATA, ctx, runtime);
       output_grad = accOutputGrad.ptr;
+      calc_blk_size<1>(num_blocks, output_blk_size, accOutputGrad.rect, axis);
       for (int i = 0; i < cc->numInputs; i++) {
         TensorAccessorW<float, 1> accInputGrad(
             regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
             false/*readOutput*/);
         input_grads[i] = accInputGrad.ptr;
+        coord_t input_num_blocks = 1;
+        calc_blk_size<1>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis);
+        assert(input_num_blocks == num_blocks);
       }
       break;
     }
@@ -478,11 +492,15 @@ void Concat::backward_task(const Task *task,
       TensorAccessorR<float, 2> accOutputGrad(
           regions[0], task->regions[0], FID_DATA, ctx, runtime);
       output_grad = accOutputGrad.ptr;
+      calc_blk_size<2>(num_blocks, output_blk_size, accOutputGrad.rect, axis);
       for (int i = 0; i < cc->numInputs; i++) {
         TensorAccessorW<float, 2> accInputGrad(
             regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
             false/*readOutput*/);
         input_grads[i] = accInputGrad.ptr;
+        coord_t input_num_blocks = 1;
+        calc_blk_size<2>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis);
+        assert(input_num_blocks == num_blocks);
       }
       break;
     }
@@ -491,11 +509,15 @@ void Concat::backward_task(const Task *task,
       TensorAccessorR<float, 3> accOutputGrad(
           regions[0], task->regions[0], FID_DATA, ctx, runtime);
       output_grad = accOutputGrad.ptr;
+      calc_blk_size<3>(num_blocks, output_blk_size, accOutputGrad.rect, axis);
       for (int i = 0; i < cc->numInputs; i++) {
         TensorAccessorW<float, 3> accInputGrad(
             regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
             false/*readOutput*/);
         input_grads[i] = accInputGrad.ptr;
+        coord_t input_num_blocks = 1;
+        calc_blk_size<3>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis);
+        assert(input_num_blocks == num_blocks);
       }
       break;
     }
@@ -504,11 +526,15 @@ void Concat::backward_task(const Task *task,
       TensorAccessorR<float, 4> accOutputGrad(
           regions[0], task->regions[0], FID_DATA, ctx, runtime);
       output_grad = accOutputGrad.ptr;
+      calc_blk_size<4>(num_blocks, output_blk_size, accOutputGrad.rect, axis);
       for (int i = 0; i < cc->numInputs; i++) {
         TensorAccessorW<float, 4> accInputGrad(
             regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
             false/*readOutput*/);
         input_grads[i] = accInputGrad.ptr;
+        coord_t input_num_blocks = 1;
+        calc_blk_size<4>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis);
+        assert(input_num_blocks == num_blocks);
       }
       break;
     }

@@ -580,6 +580,10 @@ void Conv2D::forward_task(const Task *task,
   if (conv->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
+    //print_tensor<4, float>(acc_input.ptr, acc_input.rect, "[Conv2D:forward:input]");
+    //print_tensor<4, float>(acc_kernel.ptr, acc_kernel.rect, "[Conv2D:forward:kernel]");
+    //print_tensor<1, float>(acc_bias.ptr, acc_bias.rect, "[Conv2D:forward:bias]");
+    //print_tensor<4, float>(acc_output.ptr, acc_output.rect, "[Conv2D:forward:output]");
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
@@ -706,6 +710,10 @@ void Conv2D::backward_task(const Task *task,
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("Conv2D backward time = %.2fms\n", elapsed);
+    //print_tensor<4, float>(acc_output_grad.ptr, acc_output_grad.rect, "[Conv2D:backward:output_grad]");
+    //print_tensor<4, float>(acc_kernel_grad.ptr, acc_kernel_grad.rect, "[Conv2D:backward:kernel_grad]");
+    //print_tensor<1, float>(acc_bias_grad.ptr, acc_bias_grad.rect, "[Conv2D:backward:bias_grad]");
+    //print_tensor<4, float>(acc_input_grad.ptr, acc_input_grad.rect, "[Conv2D:backward:input_grad]");
   }
 }
 
