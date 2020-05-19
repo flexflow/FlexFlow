@@ -76,21 +76,5 @@ void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
                int num_replica, float learning_rate);
 
 template<unsigned DIM, typename T>
-void print_tensor(const T* ptr, Rect<DIM> rect, const char* prefix)
-{
-  // device synchronize to make sure the data are ready
-  checkCUDA(cudaDeviceSynchronize());
-  T* host_ptr;
-  checkCUDA(cudaHostAlloc(&host_ptr, sizeof(T) * rect.volume(),
-                          cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpy(host_ptr, ptr, sizeof(T) * rect.volume(),
-                       cudaMemcpyDeviceToHost));
-  int idx = 0;
-  printf("%s", prefix);
-  for (PointInRectIterator<DIM> it(rect); it(); it++, idx++) {
-    printf(" %.4lf", (float)host_ptr[idx]);
-  }
-  printf("\n");
-  checkCUDA(cudaFreeHost(host_ptr));
-}
+void print_tensor(const T* ptr, Rect<DIM> rect, const char* prefix);
 #endif
