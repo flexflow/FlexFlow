@@ -3,6 +3,8 @@ import flexflow.core as ff
 from .input_layer import Tensor
 from flexflow.keras.optimizers import SGD, Adam 
 
+from PIL import Image
+
 class BaseModel(object):
   def __init__(self):
     self.ffconfig = ff.FFConfig()
@@ -120,6 +122,7 @@ class BaseModel(object):
     input_array = self.input_tensors[0].ffhandle.get_flat_array(self.ffconfig, ff.DataType.DT_FLOAT)
     print(input_array.shape)
     print(input_array)
+    #self.save_image(input_array, 2)
     self.input_tensors[0].ffhandle.inline_unmap(self.ffconfig)
     
     self.label_tensor.ffhandle.inline_map(self.ffconfig)
@@ -141,3 +144,11 @@ class BaseModel(object):
       model_summary += layer_summary 
       
     return model_summary
+    
+  def save_image(self, batch_image_array, id):
+    image_array = batch_image_array[id, :, :, :]
+    image_array = image_array.transpose(1, 2, 0)
+    image_array = image_array*255
+    image_array = image_array.astype('uint8')
+    pil_image = Image.fromarray(image_array).convert('RGB')
+    pil_image.save("img.jpeg")
