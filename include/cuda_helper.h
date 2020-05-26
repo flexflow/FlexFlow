@@ -77,4 +77,5 @@ void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
 
 template<unsigned DIM, typename T>
 void print_tensor(const T* ptr, Rect<DIM> rect, const char* prefix);
+
 #endif
