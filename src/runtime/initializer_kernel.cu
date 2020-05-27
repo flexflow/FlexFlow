@@ -231,3 +231,60 @@ void ZeroInitializer::init_task(const Task* task,
   }
   checkCUDA(cudaDeviceSynchronize());
 }
+
+void ConstantInitializer::init_task(const Task* task,
+                                    const std::vector<PhysicalRegion>& regions,
+                                    Context ctx, Runtime* runtime)
+{
+  ConstantInitializer* initializer = (ConstantInitializer*) task->args;
+  assert(regions.size() == task->regions.size());
+  for (size_t i = 0; i < regions.size(); i++) {
+    Domain domain = runtime->get_index_space_domain(
+        ctx, task->regions[i].region.get_index_space());
+    float* w;
+    switch (domain.get_dim()) {
+      case 0:
+      {
+        // Do not support 0-dim parameters
+        assert(false);
+        break;
+      }
+      case 1:
+      {
+        TensorAccessorW<float, 1> accW(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/);
+        w = accW.ptr;
+        break;
+      }
+      case 2:
+      {
+        TensorAccessorW<float, 2> accW(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/);
+        w = accW.ptr;
+        break;
+      }
+      case 3:
+      {
+        TensorAccessorW<float, 3> accW(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/);
+        w = accW.ptr;
+        break;
+      }
+      case 4:
+      {
+        TensorAccessorW<float, 4> accW(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/);
+        w = accW.ptr;
+        break;
+      }
+      default:
+      {
+         assert(false);
+         break;
+      }
+    }
+    assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
+        w, domain.get_volume(), initializer->value);
+  }
+  checkCUDA(cudaDeviceSynchronize());
+}
