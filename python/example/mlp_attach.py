@@ -27,6 +27,7 @@ def check_input(idx, x_train, input1, ffconfig):
     for j in range(0, 784):
       if (input_array[i][j] != x_train_batch[i][j]):
         print("wrong", input_array[i][j],  x_train_batch[i][j])
+        assert 0, "wrong"
   input1.inline_unmap(ffconfig)
   print("correct")
   

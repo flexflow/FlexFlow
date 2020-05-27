@@ -418,6 +418,9 @@ public:
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
+  void print_layer(const FFModel& model) {}
+  Parameter* get_weight() {return NULL;}
+  Parameter* get_bias() {return NULL;}
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
