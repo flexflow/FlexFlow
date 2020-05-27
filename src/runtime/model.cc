@@ -288,6 +288,22 @@ Tensor FFModel::create_tensor(const int dims[],
 }
 
 template<int NDIM>
+Tensor FFModel::create_constant(const int dims[],
+                                const std::string& pc_name,
+                                float value,
+                                DataType data_type)
+{
+  // constant created in this way is not part of any operator
+  // so we assume it does not have gradients
+  Tensor tensor = create_tensor<NDIM>(dims, pc_name, data_type, false/*create_grad*/);
+  ConstantInitializer initializer(value);
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  initializer.init(ctx, runtime, &tensor);
+  return tensor;
+}
+
+template<int NDIM>
 Tensor FFModel::create_tensor(const int dims[],
                               const IndexSpaceT<NDIM>& part_is,
                               DataType data_type,
@@ -1039,6 +1055,36 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<FFHandler, UtilityTasks::init_cuda_task>(
         registrar, "cuda_init_task");
   }
+  // ElementUnary task
+  {
+    TaskVariantRegistrar registrar(ELEMENTUNARY_FWD_TASK_ID, "ElementWiseUnary Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ElementUnary::forward_task>(
+        registrar, "ElementWiseUnary Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ELEMENTUNARY_BWD_TASK_ID, "ElementWiseUnary Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ElementUnary::backward_task>(
+        registrar, "ElementWiseUnary Backward Task");
+  }
+  // ElementBinary task
+  {
+    TaskVariantRegistrar registrar(ELEMENTBINARY_FWD_TASK_ID, "ElementWiseBinary Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ElementBinary::forward_task>(
+        registrar, "ElementWiseBinary Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ELEMENTBINARY_BWD_TASK_ID, "ElementWiseBinary Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ElementBinary::backward_task>(
+        registrar, "ElementWiseBinary Backward Task");
+  }
   // Conv2D task
   {
     TaskVariantRegistrar registrar(CONV2D_INIT_TASK_ID, "Conv2D Init");
@@ -1303,6 +1349,22 @@ void register_internal_tasks()
         registrar, "Zero Init Task");
   }
   {
+    TaskVariantRegistrar registrar(CONSTANT_INIT_TASK_ID,
+                                   "Constant Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ConstantInitializer::init_task_cpu>(
+        registrar, "Constant Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CONSTANT_INIT_TASK_ID,
+                                   "Constant Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ConstantInitializer::init_task>(
+        registrar, "Constant Init Task");
+  }
+  {
     TaskVariantRegistrar registrar(UNIFORM_INIT_TASK_ID,
                                    "Uniform Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
@@ -1379,6 +1441,10 @@ template Tensor FFModel::create_tensor<1>(const int* dims, const std::string& pc
 template Tensor FFModel::create_tensor<2>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
 template Tensor FFModel::create_tensor<3>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
 template Tensor FFModel::create_tensor<4>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
+template Tensor FFModel::create_constant<1>(const int* dims, const std::string& pc_name, float value, DataType data_type);
+template Tensor FFModel::create_constant<2>(const int* dims, const std::string& pc_name, float value, DataType data_type);
+template Tensor FFModel::create_constant<3>(const int* dims, const std::string& pc_name, float value, DataType data_type);
+template Tensor FFModel::create_constant<4>(const int* dims, const std::string& pc_name, float value, DataType data_type);
 template Tensor FFModel::create_tensor<1>(const int* dims, const IndexSpaceT<1>& part_is, DataType data_type, bool create_grad);
 template Tensor FFModel::create_tensor<2>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, bool create_grad);
 template Tensor FFModel::create_tensor<3>(const int* dims, const IndexSpaceT<3>& part_is, DataType data_type, bool create_grad);
