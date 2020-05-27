@@ -39,7 +39,7 @@ void top_level_task(const Task* task,
   FFModel ff(ffConfig);
   Tensor pcvec_n, pcvec, pcmax, pcmin;
   {
-    const int dims[] = {npcs, 1};
+    const int dims[] = {1, npcs};
     pcvec_n = ff.create_tensor<2>(dims, "", DT_FLOAT);
     pcvec = ff.create_tensor<2>(dims, "", DT_FLOAT);
     pcmax = ff.create_tensor<2>(dims, "", DT_FLOAT);
@@ -49,7 +49,7 @@ void top_level_task(const Task* task,
   for (int i = 1; i <= 5; i++) {
     // Treat sb1(:,i) as different tensors for different i
     // to allow additional parallelism across i's
-    const int dims[] = {nn_shl[i], 1};
+    const int dims[] = {1, nn_shl[i]};
     sb[i] = ff.create_tensor<2>(dims, "", DT_FLOAT);
   }
   //do i=1,npcs
@@ -65,13 +65,13 @@ void top_level_task(const Task* task,
     s_layer[0] = pcvec_n;
     for (int i = 1; i <= 5; i++) {
       //s1_layer = matmul(sw1(:,:,i),pcvec_n)
-      Tensor s_layer[i] = ff.dense("", s_layer[i-1], nn_shl[i]);
+      s_layer[i] = ff.dense("", s_layer[i-1], nn_shl[i]);
       // create a constant tensosrs: one, two, and minus_two
       // TODO: a potential optimization is to move the creations out of the loop
       // to avoid multiple creations
       Tensor one, two, minus_two;
       {
-        const int dims[] = {nn_shl[i], 1};
+        const int dims[] = {1, nn_shl[i]};
         one = ff.create_constant<2>(dims, "", 1, DT_FLOAT);
         two = ff.create_constant<2>(dims, "", 2, DT_FLOAT);
         minus_two = ff.create_constant<2>(dims, "", -2, DT_FLOAT);
