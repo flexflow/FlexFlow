@@ -37,6 +37,8 @@ enum TaskIDs {
   LABEL_INIT_TASK_ID,
   LOAD_IMAGES_TASK_ID,
   NORMALIZE_IMAGES_TASK_ID,
+  ELEMENT_FWD_TASK_ID,
+  ELEMENT_BWD_TASK_ID,
   CONV2D_INIT_TASK_ID,
   CONV2D_INIT_PARA_TASK_ID,
   CONV2D_FWD_TASK_ID,
@@ -196,6 +198,7 @@ public:
   int numLocals, numInputs;
 };
 
+class Element;
 class Conv2D;
 class Pool2D;
 class Flat;
@@ -205,7 +208,26 @@ class Embedding;
 class FFModel {
 public:
   FFModel(FFConfig &config);
-
+  // Add an add layer
+  Tensor add(std::string name,
+             const Tensor& x,
+             const Tensor& y);
+  Element* add(std::string name);
+  // Add a subtract layer
+  Tensor subtract(std::string name,
+                  const Tensor& x,
+                  const Tensor& y);
+  Element* subtract(std::string name);
+  // Add a multiply layer
+  Tensor multiply(std::string name,
+                  const Tensor& x,
+                  const Tensor& y);
+  Element* multiply(std::string name);
+  // Add a divide layer
+  Tensor divide(std::string name,
+                const Tensor& x,
+                const Tensor& y);
+  Element* divide(std::string name);
   // Add a 2D convolutional layer 
   Tensor conv2d(std::string name,
                 const Tensor& input,
@@ -361,6 +383,41 @@ public:
   //DataLoader *dataLoader;
 private:
   std::map<ParallelConfig, IndexSpace, ParaConfigCompare> taskIs;
+};
+
+class Element : public Op {
+public:
+  enum OpType {
+    OP_ADD,
+    OP_SUB,
+    OP_MUL,
+    OP_DIV,
+  };
+  Element(FFModel& model,
+          OpType type,
+          const std::string& pcname,
+          const Tensor& x,
+          const Tensor& y);
+  Element(FFModel& model,
+          OpType type,
+          const std::string& pcname);
+  Tensor init_inout(FFModel& model, const Tensor& input);
+  void add_to_model(FFModel& model);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, HighLevelRuntime *runtime);
+private:
+  template<int NDIM>
+  void create_output_and_partition(FFModel& model);
+public:
+  IndexSpace task_is;
+  OpType op_type;
 };
 
 class Conv2D : public Op {
