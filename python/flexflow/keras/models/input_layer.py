@@ -37,6 +37,7 @@ class Tensor(object):
       assert 0, "un-supported dims"
       
   def set_ffhandle(self, ffhandle):
+    assert isinstance(ffhandle, ff.Tensor) == True, "ffhandle is not the correct type"
     assert self.ffhandle == 0, "check handle, already set"
     self.ffhandle = ffhandle
     assert self.num_dims == ffhandle.num_dims, "check tensor shape"
