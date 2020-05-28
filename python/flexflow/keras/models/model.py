@@ -22,7 +22,7 @@ class Model(BaseModel):
     # while(len(bfs_queue) != 0):
     #   layer = bfs_queue.pop(0)
     #   #print(layer)
-    #   self.add(layer)
+    #   self._add_layer(layer)
     #   for child in layer.next_layers:
     #     if child not in bfs_queue:
     #       bfs_queue.append(child)
@@ -35,7 +35,7 @@ class Model(BaseModel):
     while(len(bfs_queue) != 0):
       layer = bfs_queue.pop()
       #print(layer)
-      self.add(layer)
+      self._add_layer(layer)
       for child in reversed(layer.next_layers):
         assert child not in bfs_queue, "already in the stack"
         if child.nb_visited_prev_layers == len(child.prev_layers)-1:
@@ -88,7 +88,7 @@ class Model(BaseModel):
         layer.verify_inout_shape(in_t, out_t)
     print("output tensor", self.output_tensor.batch_shape)
           
-  def add(self, layer):
+  def _add_layer(self, layer):
     self._layers[self._nb_layers] = layer
     assert layer.layer_id == -1, "layer id is inited"
     assert layer.ffhandle == 0, "layer handle is inited"
