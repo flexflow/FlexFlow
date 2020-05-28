@@ -77,12 +77,15 @@ class Model(BaseModel):
         layer = bfs_queue.pop()
         #print(layer)
         self._add_layer_and_init_inout(layer)
+        #self._add_layer_metadata(layer)
         for child in reversed(layer.next_layers):
           assert child not in bfs_queue, "already in the stack"
           if child.nb_visited_prev_layers == len(child.prev_layers)-1:
             bfs_queue.append(child)
           else:
             child.nb_visited_prev_layers += 1
+      
+      #self._init_layer_and_init_inout()
     
   def create_input_tensor(self, input_shape, idx):
     self.input_tensors[idx].create_ff_tensor(self.ffmodel)
@@ -118,6 +121,48 @@ class Model(BaseModel):
         in_t = layer.input_tensors[0].ffhandle
         layer.verify_inout_shape(in_t, out_t)
     print("output tensor", self.output_tensor.batch_shape)
+    
+  def _add_layer_metadata(self, layer):
+    self._layers[self._nb_layers] = layer
+    assert layer.layer_id == -1, "layer id is inited"
+    assert layer.ffhandle == 0, "layer handle is inited"
+    layer.layer_id = self._nb_layers
+    self._nb_layers += 1
+    
+  def _init_layer_and_init_inout(self, verify_inout_shape=True):
+    out_t = 0
+    for layer_id in self._layers:
+      layer = self._layers[layer_id]
+
+      if (isinstance(layer, Activation) == True):
+       assert layer.layer_id == self._nb_layers-1, "softmax is not in the last layer"
+       out_t = self.ffmodel.softmax("softmax", layer.input_tensors[0].ffhandle, self.label_tensor.ffhandle)
+      elif (isinstance(layer, Concatenate) == True):
+       t_ffhandle_list = []
+       for t in layer.input_tensors:
+         t_ffhandle_list.append(t.ffhandle)
+       out_t = self.ffmodel.concat("concat", t_ffhandle_list, layer.axis)
+      elif (isinstance(layer, Conv2D) == True):
+       out_t = self.ffmodel.conv2d(layer.name, layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
+      elif (isinstance(layer, MaxPooling2D) == True):
+       out_t = self.ffmodel.pool2d(layer.name, layer.input_tensors[0].ffhandle, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1])
+      elif (isinstance(layer, Flatten) == True):
+       out_t = self.ffmodel.flat(layer.name, layer.input_tensors[0].ffhandle)
+      elif (isinstance(layer, Dense) == True):
+       out_t = self.ffmodel.dense(layer.name, layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation)
+      else:
+       assert 0, "unknow layer"
+
+      layer.output_tensor.set_ffhandle(out_t)
+
+      assert layer.ffhandle == 0, "layer handle is inited"
+      layer.ffhandle = self.ffmodel.get_layer_by_id(layer.layer_id)
+      assert layer.ffhandle != 0, "layer handle is wrong"
+      print(layer.ffhandle)    
+
+      if (verify_inout_shape == True):
+       in_t = layer.input_tensors[0].ffhandle
+       layer.verify_inout_shape(in_t, out_t)
     
   def _add_layer_and_init_inout(self, layer, verify_inout_shape=True):
     out_t = 0
