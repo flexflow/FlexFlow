@@ -64,7 +64,9 @@ class Sequential(BaseModel):
           out_t = layer.ffhandle.init_inout(self.ffmodel, in_t);
       
       assert layer.ffhandle != 0, "layer handle is wrong"
-      print(layer.ffhandle)    
+      print(layer.ffhandle)
+      assert layer.output_tensor == 0, "wrong"
+      assert len(layer.input_tensors) == 0, "wrong"    
       
       if (verify_inout_shape == True):
         layer.verify_inout_shape(in_t, out_t)
