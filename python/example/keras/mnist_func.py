@@ -6,6 +6,7 @@ from flexflow.keras.datasets import cifar10
 
 import flexflow.core as ff
 import numpy as np
+import argparse
 
 from PIL import Image
   
@@ -129,6 +130,7 @@ def cnn_concat():
   output = Activation("softmax")(output)
 
   model = Model(input_tensor, output)
+  print(model.summary())
   
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
@@ -428,15 +430,31 @@ def cifar_cnn_net2net():
 
 def top_level_task():
   
-  #cnn()
-  #cnn_concat()
-  #cifar_cnn()
-  cifar_cnn_concat()
-  #cifar_alexnet_concat()
-  #mlp()
-  #mlp_concat()
-  #mlp_net2net()
-  #cifar_cnn_net2net()
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--type', default=4)
+  
+  args, unknown = parser.parse_known_args()
+  test_type = int(args.type)
+  print(test_type)
+  
+  if (test_type == 1):
+    cnn()
+  elif (test_type == 2):
+    cnn_concat()
+  elif (test_type == 3):
+    cifar_cnn()
+  elif (test_type == 4):
+    cifar_cnn_concat()
+  elif (test_type == 5):
+    cifar_alexnet_concat()
+  elif (test_type == 6):
+    mlp()
+  elif (test_type == 7):
+    mlp_concat()
+  elif (test_type == 8):
+    mlp_net2net()
+  elif (test_type == 9):
+    cifar_cnn_net2net()
 
 if __name__ == "__main__":
   print("alexnet keras")
