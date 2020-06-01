@@ -74,6 +74,10 @@ def top_level_task():
     dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
     num_samples = dataloader.get_num_samples()
 
+  # kernel_init = GlorotUniformInitializer(123)
+  # bias_init = ZeroInitializer()
+  # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
+  # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
   ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
   ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
   #t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)

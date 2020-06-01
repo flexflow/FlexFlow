@@ -54,6 +54,9 @@ def top_level_task():
     label.inline_unmap(ffconfig)
     num_samples = 2560
   
+  # kernel_init = GlorotUniformInitializer(123)
+  # bias_init = ZeroInitializer()
+  # t2 = ffmodel.dense("dense1", input1, 512, ActiMode.AC_MODE_RELU, True, kernel_init, bias_init)
   t2 = ffmodel.dense("dense1", input1, 512, ActiMode.AC_MODE_RELU)
   t3 = ffmodel.dense("dense1", t2, 512, ActiMode.AC_MODE_RELU)
   t4 = ffmodel.dense("dense1", t3, 10)

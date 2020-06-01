@@ -14,6 +14,7 @@ FF_NEW_OPAQUE_TYPE(flexflow_model_t);
 FF_NEW_OPAQUE_TYPE(flexflow_tensor_t);
 FF_NEW_OPAQUE_TYPE(flexflow_sgd_optimizer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_adam_optimizer_t);
+FF_NEW_OPAQUE_TYPE(flexflow_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_glorot_uniform_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_zero_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_uniform_initializer_t);
@@ -112,7 +113,9 @@ flexflow_model_add_conv2d(
   int stride_h, int stride_w,
   int padding_h, int padding_w,
   enum ActiMode activation /* AC_MODE_NONE */,
-  bool use_bias /* True */);
+  bool use_bias /* True */,
+  flexflow_initializer_t kernel_initializer,
+  flexflow_initializer_t bias_initializer);
   
 flexflow_op_t
 flexflow_model_add_conv2d_no_inout(
@@ -124,8 +127,20 @@ flexflow_model_add_conv2d_no_inout(
   int stride_h, int stride_w,
   int padding_h, int padding_w,
   enum ActiMode activation /* AC_MODE_NONE */,
-  bool use_bias /* True */);
+  bool use_bias /* True */,
+  flexflow_initializer_t kernel_initializer,
+  flexflow_initializer_t bias_initializer);
+  
+flexflow_tensor_t
+flexflow_model_add_embedding(
+  flexflow_model_t handle,
+  const char* name,
+  const flexflow_tensor_t input,
+  int num_entires, int out_dim,
+  enum AggrMode aggr,
+  flexflow_initializer_t kernel_initializer);  
 
+/* to be deleted */
 flexflow_tensor_t
 flexflow_model_add_embedding_with_glorot_uniform_initializer(
   flexflow_model_t handle,
@@ -184,22 +199,26 @@ flexflow_model_add_pool2d_no_inout(
   enum ActiMode activation /* AC_MODE_NONE */);
 
 flexflow_tensor_t
-flexflow_model_add_dense_with_default_initializer(
+flexflow_model_add_dense(
   flexflow_model_t handle,
   const char* name,
   const flexflow_tensor_t input,
   int out_dim,
   enum ActiMode activation /* AC_MODE_NONE */,
-  bool use_bias /* true */);
+  bool use_bias /* true */,
+  flexflow_initializer_t kernel_initializer,
+  flexflow_initializer_t bias_initializer);
   
 flexflow_op_t
-flexflow_model_add_dense_with_default_initializer_no_inout(
+flexflow_model_add_dense_no_inout(
   flexflow_model_t handle,
   const char* name,
   int in_dim,
   int out_dim,
   enum ActiMode activation /* AC_MODE_NONE */,
-  bool use_bias /* true */);
+  bool use_bias /* true */,
+  flexflow_initializer_t kernel_initializer,
+  flexflow_initializer_t bias_initializer);
 
 flexflow_tensor_t
 flexflow_model_add_concat(
@@ -319,6 +338,28 @@ flexflow_tensor_detach_raw_ptr(
 bool
 flexflow_tensor_is_mapped(
   flexflow_tensor_t handle);
+
+// -----------------------------------------------------------------------
+// Parameter
+// -----------------------------------------------------------------------
+
+flexflow_tensor_t
+flexflow_parameter_get_tensor(
+  flexflow_parameter_t handle);  
+
+bool
+flexflow_parameter_set_weights_float(
+  flexflow_parameter_t handle,
+  flexflow_model_t model,
+  int num_dim,
+  int *dims,
+  const float *data);
+
+bool
+flexflow_parameter_get_weights_float(
+  flexflow_parameter_t handle,
+  flexflow_model_t model,
+  float *data);
   
 // -----------------------------------------------------------------------
 // SGDOptimizer
@@ -354,6 +395,12 @@ flexflow_adam_optimizer_destroy(
   flexflow_adam_optimizer_t handle);
 
 // -----------------------------------------------------------------------
+// Initializer
+// -----------------------------------------------------------------------
+flexflow_initializer_t
+flexflow_initializer_create_null();
+
+// -----------------------------------------------------------------------
 // GlorotUniform
 // -----------------------------------------------------------------------
 
@@ -365,6 +412,10 @@ void
 flexflow_glorot_uniform_initializer_destroy(
   flexflow_glorot_uniform_initializer_t handle);
 
+flexflow_initializer_t
+flexflow_glorot_uniform_initializer_get_initializer(
+  flexflow_glorot_uniform_initializer_t handle);
+
 // -----------------------------------------------------------------------
 // ZeroInitializer
 // -----------------------------------------------------------------------
@@ -374,6 +425,10 @@ flexflow_zero_initializer_create(void);
 
 void  
 flexflow_zero_initializer_destroy(
+  flexflow_zero_initializer_t handle);
+
+flexflow_initializer_t  
+flexflow_zero_initializer_get_initializer(
   flexflow_zero_initializer_t handle);
 
 // -----------------------------------------------------------------------
@@ -390,6 +445,10 @@ void
 flexflow_uniform_initializer_destroy(
   flexflow_uniform_initializer_t handle);
 
+flexflow_initializer_t
+flexflow_uniform_initializer_get_initializer(
+  flexflow_uniform_initializer_t handle);
+
 // -----------------------------------------------------------------------
 // NormInitializer
 // -----------------------------------------------------------------------
@@ -402,6 +461,10 @@ flexflow_norm_initializer_create(
 
 void  
 flexflow_norm_initializer_destroy(
+  flexflow_norm_initializer_t handle);
+
+flexflow_initializer_t  
+flexflow_norm_initializer_get_initializer(
   flexflow_norm_initializer_t handle);
 
 // -----------------------------------------------------------------------
@@ -589,29 +652,6 @@ void
 flexflow_op_add_to_model(
   flexflow_op_t handle,
   flexflow_model_t model);
-  
-
-// -----------------------------------------------------------------------
-// Parameter
-// -----------------------------------------------------------------------
-
-flexflow_tensor_t
-flexflow_parameter_get_tensor(
-  flexflow_parameter_t handle);  
-
-bool
-flexflow_parameter_set_weights_float(
-  flexflow_parameter_t handle,
-  flexflow_model_t model,
-  int num_dim,
-  int *dims,
-  const float *data);
-
-bool
-flexflow_parameter_get_weights_float(
-  flexflow_parameter_t handle,
-  flexflow_model_t model,
-  float *data);
   
 int*
 flexflow_malloc_int(

@@ -526,29 +526,40 @@ class FFModel(object):
     handle = ffc.flexflow_tensor_2d_create(self.handle, c_dims, name.encode('utf-8'), c_data_type, create_grad);
     return Tensor(handle)
     
-  def conv2d(self, name, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True):
+  def conv2d(self, name, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_conv2d(self.handle, name.encode('utf-8'), input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias)  
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    bias_init_handle = self.__get_initializer_handle(bias_initializer)
+    handle = ffc.flexflow_model_add_conv2d(self.handle, name.encode('utf-8'), input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, kernel_init_handle, bias_init_handle)  
     self.add_layer(OpType.CONV2D)
     return Tensor(handle)
     
-  def conv2d_v2(self, name, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True):
+  def conv2d_v2(self, name, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_conv2d_no_inout(self.handle, name.encode('utf-8'), in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias)  
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    bias_init_handle = self.__get_initializer_handle(bias_initializer)
+    handle = ffc.flexflow_model_add_conv2d_no_inout(self.handle, name.encode('utf-8'), in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, kernel_init_handle, bias_init_handle)  
     return Conv2D(handle)
+    
+  # def embedding(self, name, input, num_entires, out_dim, aggr, kernel_initializer):
+  #   c_aggr = enum_to_int(AggrMode, aggr)
+  #   if type(kernel_initializer) is GlorotUniformInitializer:
+  #     handle = ffc.flexflow_model_add_embedding_with_glorot_uniform_initializer(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
+  #   elif type(kernel_initializer) is ZeroInitializer:
+  #     handle = ffc.flexflow_model_add_embedding_with_zero_initializer(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
+  #   elif type(kernel_initializer) is UniformInitializer:
+  #     handle = ffc.flexflow_model_add_embedding_with_uniform_initializer(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
+  #   elif type(kernel_initializer) is NormInitializer:
+  #     handle = ffc.flexflow_model_add_embedding_with_norm_initializer(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
+  #   else:
+  #     assert 0, "unknow initializer type"
+  #   self.add_layer(OpType.EMBEDDING)
+  #   return Tensor(handle)
     
   def embedding(self, name, input, num_entires, out_dim, aggr, kernel_initializer):
     c_aggr = enum_to_int(AggrMode, aggr)
-    if type(kernel_initializer) is GlorotUniformInitializer:
-      handle = ffc.flexflow_model_add_embedding_with_glorot_uniform_initializer(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
-    elif type(kernel_initializer) is ZeroInitializer:
-      handle = ffc.flexflow_model_add_embedding_with_zero_initializer(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
-    elif type(kernel_initializer) is UniformInitializer:
-      handle = ffc.flexflow_model_add_embedding_with_uniform_initializer(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
-    elif type(kernel_initializer) is NormInitializer:
-      handle = ffc.flexflow_model_add_embedding_with_norm_initializer(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
-    else:
-      assert 0, "unknow initializer type"
+    assert (type(kernel_initializer) is GlorotUniformInitializer) or (type(kernel_initializer) is ZeroInitializer) or (type(kernel_initializer) is UniformInitializer) or (type(kernel_initializer) is NormInitializer), "unknow initializer type"
+    handle = ffc.flexflow_model_add_embedding(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
     self.add_layer(OpType.EMBEDDING)
     return Tensor(handle)
     
@@ -565,15 +576,19 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_pool2d_no_inout(self.handle, name.encode('utf-8'), kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
     return Pool2D(handle)
 
-  def dense(self, name, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True):
+  def dense(self, name, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_dense_with_default_initializer(self.handle, name.encode('utf-8'), input.handle, out_dim, c_activation, use_bias)
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    bias_init_handle = self.__get_initializer_handle(bias_initializer)
+    handle = ffc.flexflow_model_add_dense(self.handle, name.encode('utf-8'), input.handle, out_dim, c_activation, use_bias, kernel_init_handle, bias_init_handle)
     self.add_layer(OpType.LINEAR)
     return Tensor(handle)
     
-  def dense_v2(self, name, in_dim, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True):
+  def dense_v2(self, name, in_dim, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_dense_with_default_initializer_no_inout(self.handle, name.encode('utf-8'), in_dim, out_dim, c_activation, use_bias)
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    bias_init_handle = self.__get_initializer_handle(bias_initializer)
+    handle = ffc.flexflow_model_add_dense_no_inout(self.handle, name.encode('utf-8'), in_dim, out_dim, c_activation, use_bias, kernel_init_handle, bias_init_handle)
     return Linear(handle)
     
   def concat(self, name, tensor_list, axis):
@@ -655,6 +670,12 @@ class FFModel(object):
     handle = ffc.flexflow_model_get_parameter_by_id(self.handle, id)
     return Parameter(handle)
     
+  def __get_initializer_handle(self, initializer):
+    if (initializer == None):
+      null_initializer = Initializer(None)
+      return null_initializer.handle
+    else:
+      return initializer.handle
 
 # -----------------------------------------------------------------------
 # SGDOptimizer
@@ -673,42 +694,56 @@ class AdamOptimizer(object):
   def __init__(self, ffmodel, alpha=0.001, beta1=0.9, beta2=0.999, weight_decay=0.0, epsilon=1e-8):
     self.handle = ffc.flexflow_adam_optimizer_create(ffmodel.handle, alpha, beta1, beta2, weight_decay, epsilon)
     self._handle = ffi.gc(self.handle, ffc.flexflow_adam_optimizer_destroy)  
-    
+
+# -----------------------------------------------------------------------
+# Initializer
+# -----------------------------------------------------------------------
+class Initializer(object):
+  def __init__(self, handle):
+    if (handle == None):      
+      self.handle = ffc.flexflow_initializer_create_null()
+    else:
+      self.handle = handle
+      
 # -----------------------------------------------------------------------
 # GlorotUniform
 # -----------------------------------------------------------------------
 
-class GlorotUniformInitializer(object):
+class GlorotUniformInitializer(Initializer):
   def __init__(self, seed):
-    self.handle = ffc.flexflow_glorot_uniform_initializer_create(seed)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_glorot_uniform_initializer_destroy)
+    self.glorot_handle = ffc.flexflow_glorot_uniform_initializer_create(seed)
+    self._glorot_handle = ffi.gc(self.glorot_handle, ffc.flexflow_glorot_uniform_initializer_destroy)
+    super_handle = ffc.flexflow_glorot_uniform_initializer_get_initializer(self.glorot_handle)
+    super(GlorotUniformInitializer, self).__init__(super_handle)
     
 # -----------------------------------------------------------------------
 # ZeroInitializer
 # -----------------------------------------------------------------------
 
-class ZeroInitializer(object):
+class ZeroInitializer(Initializer):
   def __init__(self):
-    self.handle = ffc.flexflow_zero_initializer_create()
-    self._handle = ffi.gc(self.handle, ffc.flexflow_zero_initializer_destroy)  
+    self.zero_handle = ffc.flexflow_zero_initializer_create()
+    self._zero_handle = ffi.gc(self.zero_handle, ffc.flexflow_zero_initializer_destroy)
+    super_handle = ffc.flexflow_zero_initializer_get_initializer(self.zero_handle)
+    super(ZeroInitializer, self).__init__(super_handle)  
     
 # -----------------------------------------------------------------------
 # UniformInitializer
 # -----------------------------------------------------------------------
 
-class UniformInitializer(object):
+class UniformInitializer(Initializer):
   def __init__(self, seed, minv, maxv):
-    self.handle = ffc.flexflow_uniform_initializer_create(seed, minv, maxv)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_uniform_initializer_destroy)
+    self.uniform_handle = ffc.flexflow_uniform_initializer_create(seed, minv, maxv)
+    self._uniform_handle = ffi.gc(self.uniform_handle, ffc.flexflow_uniform_initializer_destroy)
     
 # -----------------------------------------------------------------------
 # NormInitializer
 # -----------------------------------------------------------------------
 
-class NormInitializer(object):
+class NormInitializer(Initializer):
   def __init__(self, seed, meanv, stddev):
-    self.handle = ffc.flexflow_norm_initializer_create(seed, meanv, stddev)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_norm_initializer_destroy)
+    self.norm_handle = ffc.flexflow_norm_initializer_create(seed, meanv, stddev)
+    self._norm_handle = ffi.gc(self.norm_handle, ffc.flexflow_norm_initializer_destroy)
 
 # -----------------------------------------------------------------------
 # NetConfig
