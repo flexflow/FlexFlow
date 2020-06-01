@@ -1,3 +1,18 @@
+/* Copyright 2020 Stanford, Los Alamos National Laboratory
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "flexflow_dataloader.h"
 #include "flexflow_c.h"
 
@@ -1244,34 +1259,6 @@ flexflow_op_add_to_model(
   Op *handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   handle->add_to_model(*model);
-}
-  
-
-int*
-flexflow_malloc_int(
-  int size)
-{
-  int *ptr = NULL;
-  uintptr_t intptr; 
-  ptr = (int*)malloc(sizeof(int) * size);
-  for (int i = 0; i < size; i++) {
-    ptr[i] = 1;
-  }
-  intptr = (uintptr_t)(ptr);
-  printf("malloc int %p, %ld, size %ld\n", ptr, intptr, size);
-  return ptr;
-}
-
-void
-flexflow_print_array_int(
-  int *base_ptr,
-  int size)
-{
-  printf("base_ptr %p\n", base_ptr);
-  for (int i = 0; i < size; i++) {
-    printf("%d ", base_ptr[i]);
-  }   
-  printf("\n");
 }
 
 // -----------------------------------------------------------------------
