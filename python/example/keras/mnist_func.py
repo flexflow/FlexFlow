@@ -382,6 +382,7 @@ def cifar_cnn_net2net():
   c4_kernel, c4_bias = c4.get_weights(teacher_model.ffmodel)
   d1_kernel, d1_bias = d1.get_weights(teacher_model.ffmodel)
   d2_kernel, d2_bias = d2.get_weights(teacher_model.ffmodel)
+  #d2_kernel *= 0
 
   c2_kernel_new = np.concatenate((c2_kernel, c2_kernel), axis=1)
   print(c2_kernel.shape, c2_kernel_new.shape, c2_bias.shape)
