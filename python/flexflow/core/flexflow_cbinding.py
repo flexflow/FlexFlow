@@ -62,6 +62,8 @@ class OpType(Enum):
   SOFTMAX = 1015
   CONCAT = 1016
   FLAT = 1017
+  ELEMENT_UNARY = 1018
+  ELEMENT_BINARY = 1019
   
 def enum_to_int(enum, enum_item):
   for item in enum:
@@ -121,6 +123,20 @@ class Op(object):
   def _add_to_model(self, model):
     ffc.flexflow_op_add_to_model(self.handle, model.handle)
 
+# -----------------------------------------------------------------------
+# ElementBinary
+# -----------------------------------------------------------------------
+class ElementBinary(Op):
+  def __init__(self, handle):
+    super(ElementBinary, self).__init__(handle) 
+    
+# -----------------------------------------------------------------------
+# ElementUnary
+# -----------------------------------------------------------------------
+class ElementUnary(Op):
+  def __init__(self, handle):
+    super(ElementUnary, self).__init__(handle) 
+    
 # -----------------------------------------------------------------------
 # Conv2D
 # -----------------------------------------------------------------------
@@ -526,6 +542,31 @@ class FFModel(object):
     handle = ffc.flexflow_tensor_2d_create(self.handle, c_dims, name.encode('utf-8'), c_data_type, create_grad);
     return Tensor(handle)
     
+  def exp(self, name, x):
+    handle = ffc.flexflow_model_add_exp(self.handle, name.encode('utf-8'), x.handle)
+    self.add_layer(OpType.ELEMENT_UNARY)
+    return Tensor(handle)
+    
+  def add(self, name, x, y):
+    handle = ffc.flexflow_model_add_add(self.handle, name.encode('utf-8'), x.handle, y.handle)
+    self.add_layer(OpType.ELEMENT_BINARY)
+    return Tensor(handle)
+  
+  def subtract(self, name, x, y):
+    handle = ffc.flexflow_model_add_subtract(self.handle, name.encode('utf-8'), x.handle, y.handle)
+    self.add_layer(OpType.ELEMENT_BINARY)
+    return Tensor(handle)
+    
+  def multiply(self, name, x, y):
+    handle = ffc.flexflow_model_add_multiply(self.handle, name.encode('utf-8'), x.handle, y.handle)
+    self.add_layer(OpType.ELEMENT_BINARY)
+    return Tensor(handle)
+    
+  def divide(self, name, x, y):
+    handle = ffc.flexflow_model_add_divide(self.handle, name.encode('utf-8'), x.handle, y.handle)
+    self.add_layer(OpType.ELEMENT_BINARY)
+    return Tensor(handle)
+    
   def conv2d(self, name, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
@@ -662,6 +703,10 @@ class FFModel(object):
       return Concat(handle)
     elif (self._layers[layer_id] == OpType.SOFTMAX):
       return Softmax(handle)
+    elif (self._layers[layer_id] == OpType.ELEMENT_UNARY):
+      return ElementUnary(handle)
+    elif (self._layers[layer_id] == OpType.ELEMENT_BINARY):
+      return ElementBinary(handle)
     else:
       assert 0, "unknow layer type"
       return 0

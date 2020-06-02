@@ -212,6 +212,84 @@ flexflow_model_zero_gradients(
 }
 
 flexflow_tensor_t
+flexflow_model_add_exp(
+  flexflow_model_t handle_,
+  const char* name,
+  const flexflow_tensor_t x_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor *x = FFCObjectWrapper::unwrap_const(x_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->exp(name, *x);
+  printf("Exp new Tensor %p\n", tensor);
+  return FFCObjectWrapper::wrap(tensor);  
+}
+  
+flexflow_tensor_t
+flexflow_model_add_add(
+  flexflow_model_t handle_,
+  const char* name,
+  const flexflow_tensor_t x_,
+  const flexflow_tensor_t y_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor *x = FFCObjectWrapper::unwrap_const(x_);
+  const Tensor *y = FFCObjectWrapper::unwrap_const(y_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->add(name, *x, *y);
+  printf("Add new Tensor %p\n", tensor);
+  return FFCObjectWrapper::wrap(tensor);  
+}
+  
+flexflow_tensor_t
+flexflow_model_add_subtract(
+  flexflow_model_t handle_,
+  const char* name,
+  const flexflow_tensor_t x_,
+  const flexflow_tensor_t y_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor *x = FFCObjectWrapper::unwrap_const(x_);
+  const Tensor *y = FFCObjectWrapper::unwrap_const(y_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->subtract(name, *x, *y);
+  printf("Subtract new Tensor %p\n", tensor);
+  return FFCObjectWrapper::wrap(tensor);  
+}
+
+flexflow_tensor_t
+flexflow_model_add_multiply(
+  flexflow_model_t handle_,
+  const char* name,
+  const flexflow_tensor_t x_,
+  const flexflow_tensor_t y_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor *x = FFCObjectWrapper::unwrap_const(x_);
+  const Tensor *y = FFCObjectWrapper::unwrap_const(y_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->multiply(name, *x, *y);
+  printf("Multiply new Tensor %p\n", tensor);
+  return FFCObjectWrapper::wrap(tensor);  
+}
+  
+flexflow_tensor_t
+flexflow_model_add_divide(
+  flexflow_model_t handle_,
+  const char* name,
+  const flexflow_tensor_t x_,
+  const flexflow_tensor_t y_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor *x = FFCObjectWrapper::unwrap_const(x_);
+  const Tensor *y = FFCObjectWrapper::unwrap_const(y_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->divide(name, *x, *y);
+  printf("Divide new Tensor %p\n", tensor);
+  return FFCObjectWrapper::wrap(tensor);  
+}
+
+flexflow_tensor_t
 flexflow_model_add_conv2d(
   flexflow_model_t handle_,
   const char* name,
