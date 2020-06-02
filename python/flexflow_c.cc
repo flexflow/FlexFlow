@@ -566,8 +566,23 @@ flexflow_model_add_softmax(
   Tensor *label = FFCObjectWrapper::unwrap(label_);
   Tensor *tensor = new Tensor();
   *tensor = handle->softmax(name, *input, *label);
-  printf("Softmax new Tensor 4D %p\n", tensor);
+  printf("Softmax new Tensor %p\n", tensor);
   return FFCObjectWrapper::wrap(tensor);   
+}
+
+void
+flexflow_model_add_mse_loss(
+  flexflow_model_t handle_,
+  const char* name,
+  const flexflow_tensor_t logits_,
+  const flexflow_tensor_t labels_,
+  const char* reduction)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *logits = FFCObjectWrapper::unwrap(logits_);
+  Tensor *labels = FFCObjectWrapper::unwrap(labels_);
+  handle->mse_loss(name, *logits, *labels, reduction);
+  printf("MSE_Loss, %s\n", reduction); 
 }
 
 void

@@ -3,6 +3,7 @@ import numpy as np
 from flexflow.keras.datasets import mnist
 
 def top_level_task():
+  alexnetconfig = NetConfig()
   ffconfig = FFConfig()
   ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
@@ -37,15 +38,13 @@ def top_level_task():
   full_label.attach_numpy_array(ffconfig, y_train)
   print(y_train)
 
+  #dataloader = DataLoader2D(ffmodel, input1, label, full_input, full_label, num_samples)
   dataloader_input = SingleDataLoader(ffmodel, input1, full_input, num_samples, DataType.DT_FLOAT)
   dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
 
   full_input.detach_numpy_array(ffconfig)
   full_label.detach_numpy_array(ffconfig)
   
-  # kernel_init = GlorotUniformInitializer(123)
-  # bias_init = ZeroInitializer()
-  # t2 = ffmodel.dense("dense1", input1, 512, ActiMode.AC_MODE_RELU, True, kernel_init, bias_init)
   t2 = ffmodel.dense("dense1", input1, 512, ActiMode.AC_MODE_RELU)
   t3 = ffmodel.dense("dense1", t2, 512, ActiMode.AC_MODE_RELU)
   t4 = ffmodel.dense("dense1", t3, 10)

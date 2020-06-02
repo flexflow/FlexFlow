@@ -63,6 +63,7 @@ class OpType(Enum):
   FLAT = 1017
   ELEMENT_UNARY = 1018
   ELEMENT_BINARY = 1019
+  MSELOSS = 1020
   
 def enum_to_int(enum, enum_item):
   for item in enum:
@@ -252,6 +253,13 @@ class Concat(Op):
   def add_to_model(self, model):
     model.add_layer(OpType.CONCAT)
     self._add_to_model(model)
+    
+# -----------------------------------------------------------------------
+# MSELoss
+# -----------------------------------------------------------------------
+class MSELoss(Op):
+  def __init__(self, handle):
+    super(MSELoss, self).__init__(handle)
       
 # -----------------------------------------------------------------------
 # FFConfig
@@ -629,6 +637,10 @@ class FFModel(object):
     self.add_layer(OpType.SOFTMAX)
     return Tensor(handle)
     
+  def mse_loss(self, name, logits, labels, reduction):
+    ffc.flexflow_model_add_mse_loss(self.handle, name.encode('utf-8'), logits.handle, labels.handle, reduction.encode('utf-8'))
+    self.add_layer(OpType.MSELOSS)
+    
   def reset_metrics(self):
     ffc.flexflow_model_reset_metrics(self.handle)
     
@@ -679,6 +691,8 @@ class FFModel(object):
       return ElementUnary(handle)
     elif (self._layers[layer_id] == OpType.ELEMENT_BINARY):
       return ElementBinary(handle)
+    elif (self._layers[layer_id] == OpType.MSELOSS):
+      return MSELoss(handle)
     else:
       assert 0, "unknow layer type"
       return 0

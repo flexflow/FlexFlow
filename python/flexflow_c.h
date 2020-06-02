@@ -296,6 +296,14 @@ flexflow_model_add_softmax(
   const flexflow_tensor_t label);
   
 void
+flexflow_model_add_mse_loss(
+  flexflow_model_t handle,
+  const char* name,
+  const flexflow_tensor_t logits,
+  const flexflow_tensor_t labels,
+  const char* reduction);
+  
+void
 flexflow_model_set_sgd_optimizer(
   flexflow_model_t handle, 
   flexflow_sgd_optimizer_t optimizer);
