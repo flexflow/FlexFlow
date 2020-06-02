@@ -304,7 +304,7 @@ class Tensor(object):
     self.num_dims = 0
     self.dims = [0, 0, 0, 0]
     self.mapped = False
-    self.set_dims()
+    self.__set_dims()
     if (deallocate == True):
       #print("deallocate true")
       self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
@@ -316,24 +316,17 @@ class Tensor(object):
     ffc.flexflow_tensor_inline_map(self.handle, config.handle);
     self.mapped = True
     if (self.num_dims == 0):
-      self.set_dims()
+      assert 0, "wrong"
+      self.__set_dims()
     
   def inline_unmap(self, config):
     assert self.mapped == True, "Tensor is not inline mapped."
     ffc.flexflow_tensor_inline_unmap(self.handle, config.handle);
     self.mapped = False
     
-  def get_raw_ptr(self, config, data_type):
-    if (data_type == DataType.DT_FLOAT):    
-      return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, config.handle)
-    elif (data_type == DataType.DT_INT32):
-      return ffc.flexflow_tensor_get_raw_ptr_int32(self.handle, config.handle)
-    else:
-      assert 0, "unknown data type"
-    
   def get_array(self, config, data_type, layout="O"):
     assert self.mapped == True, "Tensor is not mapped."
-    raw_ptr = self.get_raw_ptr(config, data_type)
+    raw_ptr = self.__get_raw_ptr(config, data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     print("raw_ptr: ", raw_ptr, raw_ptr_int)
     strides = None
@@ -369,7 +362,7 @@ class Tensor(object):
   
   def get_flat_array(self, config, data_type):
     assert self.mapped == True, "Tensor is not mapped."
-    raw_ptr = self.get_raw_ptr(config, data_type)
+    raw_ptr = self.__get_raw_ptr(config, data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     print("raw_ptr: ", raw_ptr, raw_ptr_int)
     strides = None
@@ -386,31 +379,6 @@ class Tensor(object):
     initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
     return array
-    
-  def set_dims(self):
-    self.num_dims = ffc.flexflow_tensor_get_num_dims(self.handle)
-    d = ffc.flexflow_tensor_get_dims(self.handle)
-    #print(d[0], d[1], d[2], d[3])
-    if (self.num_dims == 1):
-      self.dims = [d[0]]
-    elif (self.num_dims == 2):
-      self.dims = [d[1], d[0]]
-    elif (self.num_dims == 3):
-      self.dims = [d[2], d[1], d[0]]
-    elif (self.num_dims == 4):
-      self.dims = [d[3], d[2], d[1], d[0]]
-    else:
-      assert 0, "unknow num_dims"
-    
-  def attach_raw_ptr(self, ffconfig, raw_ptr, column_major=True):
-    assert self.mapped == False, "Tensor is already mapped."
-    ffc.flexflow_tensor_attach_raw_ptr(self.handle, ffconfig.handle, raw_ptr, column_major)
-    self.mapped = True
-    
-  def detach_raw_ptr(self, ffconfig):
-    assert self.mapped == True, "Tensor is not mapped."
-    ffc.flexflow_tensor_detach_raw_ptr(self.handle, ffconfig.handle)
-    self.mapped = False
     
   def attach_numpy_array(self, ffconfig, np_array):
     assert np_array.__array_interface__['strides'] == None, "numpy array strides is not None"
@@ -435,13 +403,46 @@ class Tensor(object):
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("void*", np_raw_ptr[0])
     print("attach numpy array: ", np_raw_ptr, raw_ptr, hex(np_raw_ptr[0]))
-    self.attach_raw_ptr(ffconfig, raw_ptr)
+    self.__attach_raw_ptr(ffconfig, raw_ptr)
     
   def detach_numpy_array(self, ffconfig):
-    self.detach_raw_ptr(ffconfig)
+    self.__detach_raw_ptr(ffconfig)
     
   def is_mapped(self):
     return ffc.flexflow_tensor_is_mapped(self.handle)
+    
+  def __get_raw_ptr(self, config, data_type):
+    if (data_type == DataType.DT_FLOAT):    
+      return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, config.handle)
+    elif (data_type == DataType.DT_INT32):
+      return ffc.flexflow_tensor_get_raw_ptr_int32(self.handle, config.handle)
+    else:
+      assert 0, "unknown data type"
+    
+  def __set_dims(self):
+    self.num_dims = ffc.flexflow_tensor_get_num_dims(self.handle)
+    d = ffc.flexflow_tensor_get_dims(self.handle)
+    #print(d[0], d[1], d[2], d[3])
+    if (self.num_dims == 1):
+      self.dims = [d[0]]
+    elif (self.num_dims == 2):
+      self.dims = [d[1], d[0]]
+    elif (self.num_dims == 3):
+      self.dims = [d[2], d[1], d[0]]
+    elif (self.num_dims == 4):
+      self.dims = [d[3], d[2], d[1], d[0]]
+    else:
+      assert 0, "unknow num_dims"
+    
+  def __attach_raw_ptr(self, ffconfig, raw_ptr, column_major=True):
+    assert self.mapped == False, "Tensor is already mapped."
+    ffc.flexflow_tensor_attach_raw_ptr(self.handle, ffconfig.handle, raw_ptr, column_major)
+    self.mapped = True
+    
+  def __detach_raw_ptr(self, ffconfig):
+    assert self.mapped == True, "Tensor is not mapped."
+    ffc.flexflow_tensor_detach_raw_ptr(self.handle, ffconfig.handle)
+    self.mapped = False
     
 # -----------------------------------------------------------------------
 # Parameter
@@ -493,8 +494,6 @@ class Parameter(Tensor):
     assert ret_val == True
     return np_array
     
-    
-
 # -----------------------------------------------------------------------
 # FFModel
 # -----------------------------------------------------------------------
@@ -619,6 +618,7 @@ class FFModel(object):
       n = n + 1
       tensor_handle_list.append(tensor.handle)
     c_tensor_handle_list = ffi.new("flexflow_tensor_t[]", tensor_handle_list)
+    print(c_tensor_handle_list[0].impl, c_tensor_handle_list[1].impl)
     handle = ffc.flexflow_model_add_concat(self.handle, name.encode('utf-8'), n, c_tensor_handle_list, axis)
     self.add_layer(OpType.CONCAT)
     return Tensor(handle)
