@@ -417,19 +417,19 @@ class Tensor(object):
     np_shape = np_array.shape
     np_num_dims = len(np_shape)
     if (self.num_dims == 1):
-      self.dims[0] == np_shape[0]
+      assert self.dims[0] == np_shape[0], "wrong dim"
     elif (self.num_dims == 2):
-      self.dims[0] == np_shape[0]
-      self.dims[1] == np_shape[1]
+      assert self.dims[0] == np_shape[0], "wrong dim"
+      assert self.dims[1] == np_shape[1], "wrong dim"
     elif (self.num_dims == 3):
-      self.dims[0] == np_shape[0]
-      self.dims[1] == np_shape[1]
-      self.dims[2] == np_shape[2]
+      assert self.dims[0] == np_shape[0], "wrong dim"
+      assert self.dims[1] == np_shape[1], "wrong dim"
+      assert self.dims[2] == np_shape[2], "wrong dim"
     elif (self.num_dims == 4):
-      self.dims[0] == np_shape[0]
-      self.dims[1] == np_shape[1]
-      self.dims[2] == np_shape[2]
-      self.dims[3] == np_shape[3]
+      assert self.dims[0] == np_shape[0], "wrong dim"
+      assert self.dims[1] == np_shape[1], "wrong dim"
+      assert self.dims[2] == np_shape[2], "wrong dim"
+      assert self.dims[3] == np_shape[3], "wrong dim"
     else:
       assert 0, "unknow num_dims"
     np_raw_ptr = np_array.__array_interface__['data']
