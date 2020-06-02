@@ -3,7 +3,6 @@ import numpy as np
 from flexflow.keras.datasets import mnist
 
 def top_level_task():
-  alexnetconfig = NetConfig()
   ffconfig = FFConfig()
   ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
@@ -15,44 +14,34 @@ def top_level_task():
   dims_label = [ffconfig.get_batch_size(), 1]
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
   
-  use_external = True
-  if (use_external == True):
-    num_samples = 60000
-    
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
-    
-    print(x_train.shape)
-    x_train = x_train.reshape(60000, 784)
-    x_train = x_train.astype('float32')
-    x_train /= 255
-    y_train = y_train.astype('int32')
-    y_train = np.reshape(y_train, (len(y_train), 1))
-    print(x_train.shape[0], 'train samples')
-    print(y_train.shape)
-    
-    dims_full_input = [num_samples, 784]
-    full_input = ffmodel.create_tensor_2d(dims_full_input, "", DataType.DT_FLOAT)
+  num_samples = 60000
+  
+  (x_train, y_train), (x_test, y_test) = mnist.load_data()
+  
+  print(x_train.shape)
+  x_train = x_train.reshape(60000, 784)
+  x_train = x_train.astype('float32')
+  x_train /= 255
+  y_train = y_train.astype('int32')
+  y_train = np.reshape(y_train, (len(y_train), 1))
+  print(x_train.shape[0], 'train samples')
+  print(y_train.shape)
+  
+  dims_full_input = [num_samples, 784]
+  full_input = ffmodel.create_tensor_2d(dims_full_input, "", DataType.DT_FLOAT)
 
-    dims_full_label = [num_samples, 1]
-    full_label = ffmodel.create_tensor_2d(dims_full_label, "", DataType.DT_INT32)
+  dims_full_label = [num_samples, 1]
+  full_label = ffmodel.create_tensor_2d(dims_full_label, "", DataType.DT_INT32)
 
-    full_input.attach_numpy_array(ffconfig, x_train)
-    full_label.attach_numpy_array(ffconfig, y_train)
-    print(y_train)
+  full_input.attach_numpy_array(ffconfig, x_train)
+  full_label.attach_numpy_array(ffconfig, y_train)
+  print(y_train)
 
-    #dataloader = DataLoader2D(ffmodel, input1, label, full_input, full_label, num_samples)
-    dataloader_input = SingleDataLoader(ffmodel, input1, full_input, num_samples, DataType.DT_FLOAT)
-    dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
+  dataloader_input = SingleDataLoader(ffmodel, input1, full_input, num_samples, DataType.DT_FLOAT)
+  dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
 
-    full_input.detach_numpy_array(ffconfig)
-    full_label.detach_numpy_array(ffconfig)
-  else:
-    # Data Loader
-    input1.inline_map(ffconfig)
-    input1.inline_unmap(ffconfig)
-    label.inline_map(ffconfig)
-    label.inline_unmap(ffconfig)
-    num_samples = 2560
+  full_input.detach_numpy_array(ffconfig)
+  full_label.detach_numpy_array(ffconfig)
   
   # kernel_init = GlorotUniformInitializer(123)
   # bias_init = ZeroInitializer()

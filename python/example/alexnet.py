@@ -20,28 +20,24 @@ def top_level_task():
   label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
   
   use_external = True
-  use_resize = True
   if (use_external == True):
     num_samples = 10000
     
     (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
 
     full_input_np = np.zeros((num_samples, 3, 229, 229), dtype=np.float32)
-    if (use_resize == True):
-      for i in range(0, num_samples):
-        image = x_train[i, :, :, :]
-        image = image.transpose(1, 2, 0)
-        pil_image = Image.fromarray(image)
-        pil_image = pil_image.resize((229,229), Image.NEAREST)
-        image = np.array(pil_image, dtype=np.float32)
-        image = image.transpose(2, 0, 1)
-        full_input_np[i, :, :, :] = image
-        if (i == 0):
-          print(image)
     
-    else:
-      full_input_np = np.zeros((num_samples, 3, 229, 229), dtype=np.float32)
-      full_input_np[:, :3, :32, :32] = x_train
+    for i in range(0, num_samples):
+      image = x_train[i, :, :, :]
+      image = image.transpose(1, 2, 0)
+      pil_image = Image.fromarray(image)
+      pil_image = pil_image.resize((229,229), Image.NEAREST)
+      image = np.array(pil_image, dtype=np.float32)
+      image = image.transpose(2, 0, 1)
+      full_input_np[i, :, :, :] = image
+      if (i == 0):
+        print(image)
+    
 
     full_input_np /= 255
     print(full_input_np.shape)
