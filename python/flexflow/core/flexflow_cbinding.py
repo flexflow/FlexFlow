@@ -295,7 +295,6 @@ class Tensor(object):
     self.handle = handle
     self.num_dims = 0
     self.dims = [0, 0, 0, 0]
-    self.legion_dims = [0, 0, 0, 0]
     self.mapped = False
     self.set_dims()
     if (deallocate == True):
@@ -359,30 +358,6 @@ class Tensor(object):
     initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
     return array
-    
-  def get_array_2(self, config, data_type):
-    assert self.mapped == True, "Tensor is not mapped."
-    raw_ptr = self.get_raw_ptr(config, data_type)
-    raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
-    print("raw_ptr: ", raw_ptr, raw_ptr_int)
-    strides = None
-    datatype_size = get_datatype_size(data_type)
-    if (self.num_dims == 1):
-      shape = (self.legion_dims[0],)
-    elif (self.num_dims == 2):
-      shape = (self.legion_dims[1], self.legion_dims[0])
-      strides = (datatype_size, self.legion_dims[1]*datatype_size)
-    elif (self.num_dims == 3):
-      shape = (self.legion_dims[2], self.legion_dims[1], self.legion_dims[0])
-      strides = (datatype_size, self.legion_dims[2]*datatype_size, self.legion_dims[2]*self.legion_dims[1]*datatype_size)
-    elif (self.num_dims == 4):
-      shape = (self.legion_dims[3], self.legion_dims[2], self.legion_dims[1], self.legion_dims[0])
-      strides = (datatype_size, self.legion_dims[3]*datatype_size, self.legion_dims[3]*self.legion_dims[2]*datatype_size, self.legion_dims[3]*self.legion_dims[2]*self.legion_dims[1]*datatype_size)
-    else:
-      assert 0, "unknow num_dims"
-    initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
-    array = np.asarray(initializer)
-    return array
   
   def get_flat_array(self, config, data_type):
     assert self.mapped == True, "Tensor is not mapped."
@@ -418,8 +393,6 @@ class Tensor(object):
       self.dims = [d[3], d[2], d[1], d[0]]
     else:
       assert 0, "unknow num_dims"
-    self.legion_dims = [d[0], d[1], d[2], d[3]]
-    print("legion_dims", self.legion_dims)
     
   def attach_raw_ptr(self, ffconfig, raw_ptr, column_major=True):
     assert self.mapped == False, "Tensor is already mapped."
