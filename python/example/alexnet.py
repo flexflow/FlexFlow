@@ -58,6 +58,7 @@ def top_level_task():
     
     dataloader_input = SingleDataLoader(ffmodel, input, full_input, num_samples, DataType.DT_FLOAT)
     dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
+    #dataloader = DataLoader4D(ffmodel, input, label, full_input, full_label, num_samples)
     
     full_input.detach_numpy_array(ffconfig)
     full_label.detach_numpy_array(ffconfig)
@@ -114,7 +115,7 @@ def top_level_task():
  #  #print(cbias)
  #  cbias_tensor.inline_unmap(ffconfig)
 
-
+  #use_external = False
 
   epochs = ffconfig.get_epochs()
 
@@ -130,10 +131,6 @@ def top_level_task():
     print(iterations, num_samples)
 
     for iter in range(0, int(iterations)):
-      # if (len(alexnetconfig.dataset_path) == 0):
-      #   if (iter == 0 and epoch == 0):
-      #     dataloader.next_batch(ffmodel)
-      # else:
       if (use_external == True):
         dataloader_input.next_batch(ffmodel)
         dataloader_label.next_batch(ffmodel)
