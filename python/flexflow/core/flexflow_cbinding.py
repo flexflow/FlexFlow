@@ -92,6 +92,7 @@ def get_datatype_size(datatype):
 class Op(object):
   __slots__ = ['handle']
   def __init__(self, handle):
+    assert ffi.typeof(handle) == ffi.typeof('flexflow_op_t'), "Op handle is wrong"
     self.handle = handle
   
   def _get_weight_tensor(self):
@@ -303,6 +304,7 @@ class FFConfig(object):
 class Tensor(object):
   __slots__ = ['handle', '_handle', 'num_dims', 'dims', 'mapped']
   def __init__(self, handle, deallocate=True):
+    assert ffi.typeof(handle) == ffi.typeof('flexflow_tensor_t'), "Tensor handle is wrong"
     self.handle = handle
     self.num_dims = 0
     self.dims = [0, 0, 0, 0]
@@ -436,6 +438,7 @@ class Tensor(object):
 class Parameter(Tensor):
   __slots__ = ['parameter_handle']
   def __init__(self, handle):
+    assert ffi.typeof(handle) == ffi.typeof('flexflow_parameter_t'), "Parameter handle is wrong"
     self.parameter_handle = handle
     super_handle = ffc.flexflow_parameter_get_tensor(handle)
     print(handle, super_handle)
@@ -713,6 +716,7 @@ class Initializer(object):
       self.handle = ffc.flexflow_initializer_create_null()
     else:
       self.handle = handle
+    assert ffi.typeof(self.handle) == ffi.typeof('flexflow_initializer_t'), "Initializer handle is wrong"
       
 # -----------------------------------------------------------------------
 # GlorotUniform
@@ -819,6 +823,9 @@ class DataLoader2D(object):
 class SingleDataLoader(object):
   __slots__ = ['handle', '_handle']
   def __init__(self, ffmodel, input, full_input, num_samples, data_type):
+    assert type(ffmodel) is FFModel, "SingleDataLoader ffmodel is wrong"
+    assert type(input) is Tensor, "SingleDataLoader input is wrong"
+    assert type(full_input) is Tensor, "SingleDataLoader full_input is wrong"
     c_data_type = enum_to_int(DataType, data_type)
     self.handle = ffc.flexflow_single_dataloader_create(ffmodel.handle, input.handle, full_input.handle, num_samples, c_data_type)
     self._handle = ffi.gc(self.handle, ffc.flexflow_single_dataloader_destroy)
