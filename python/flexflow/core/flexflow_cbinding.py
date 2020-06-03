@@ -314,56 +314,40 @@ class Tensor(object):
     if (self.is_mapped() == True):
       self.mapped = True
       
-  def inline_map(self, config):
+  def inline_map(self, ffconfig):
     assert self.mapped == False, "Tensor is already mapped."
-    ffc.flexflow_tensor_inline_map(self.handle, config.handle);
+    ffc.flexflow_tensor_inline_map(self.handle, ffconfig.handle);
     self.mapped = True
     assert self.num_dims > 0, "check dims"
     
-  def inline_unmap(self, config):
+  def inline_unmap(self, ffconfig):
     assert self.mapped == True, "Tensor is not inline mapped."
-    ffc.flexflow_tensor_inline_unmap(self.handle, config.handle);
+    ffc.flexflow_tensor_inline_unmap(self.handle, ffconfig.handle);
     self.mapped = False
     
-  def get_array(self, config, data_type, layout="O"):
+  def get_array(self, ffconfig, data_type):
     assert self.mapped == True, "Tensor is not mapped."
-    raw_ptr = self.__get_raw_ptr(config, data_type)
+    raw_ptr = self.__get_raw_ptr(ffconfig, data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     print("raw_ptr: ", raw_ptr, raw_ptr_int)
     strides = None
-    if (layout == "O"):
-      if (self.num_dims == 1):
-        shape = (self.dims[0],)
-      elif (self.num_dims == 2):
-        shape = (self.dims[0], self.dims[1])
-      elif (self.num_dims == 3):
-        shape = (self.dims[0], self.dims[1], self.dims[2])
-      elif (self.num_dims == 4):
-        shape = (self.dims[0], self.dims[1], self.dims[2], self.dims[3])
-      else:
-        assert 0, "unknow num_dims"
+    if (self.num_dims == 1):
+      shape = (self.dims[0],)
+    elif (self.num_dims == 2):
+      shape = (self.dims[0], self.dims[1])
+    elif (self.num_dims == 3):
+      shape = (self.dims[0], self.dims[1], self.dims[2])
+    elif (self.num_dims == 4):
+      shape = (self.dims[0], self.dims[1], self.dims[2], self.dims[3])
     else:
-      datatype_size = get_datatype_size(data_type)
-      if (self.num_dims == 1):
-        shape = (self.dims[0],)
-      elif (self.num_dims == 2):
-        shape = (self.dims[1], self.dims[0])
-        strides = (datatype_size, self.dims[1]*datatype_size)
-      elif (self.num_dims == 3):
-        shape = (self.dims[2], self.dims[1], self.dims[0])
-        strides = (datatype_size, self.dims[2]*datatype_size, self.dims[2]*self.dims[1]*datatype_size)
-      elif (self.num_dims == 4):
-        shape = (self.dims[3], self.dims[2], self.dims[1], self.dims[0])
-        strides = (datatype_size, self.dims[3]*datatype_size, self.dims[3]*self.dims[2]*datatype_size, self.dims[3]*self.dims[2]*self.dims[1]*datatype_size)
-      else:
-        assert 0, "unknow num_dims"
+      assert 0, "unknow num_dims"
     initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
     return array
   
-  def get_flat_array(self, config, data_type):
+  def get_flat_array(self, ffconfig, data_type):
     assert self.mapped == True, "Tensor is not mapped."
-    raw_ptr = self.__get_raw_ptr(config, data_type)
+    raw_ptr = self.__get_raw_ptr(ffconfig, data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     print("raw_ptr: ", raw_ptr, raw_ptr_int)
     strides = None
