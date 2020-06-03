@@ -29,7 +29,7 @@ class BaseModel(object):
   def get_layer(self, layer_id):
     return self._layers[layer_id]
     
-  def compile(self, optimizer):
+  def _compile(self, optimizer):
     self.ffoptimizer = optimizer
       
   def _set_optimizer(self):

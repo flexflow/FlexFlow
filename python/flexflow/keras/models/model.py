@@ -223,6 +223,9 @@ class Model(BaseModel):
       print("add concatenate")
     else:
       assert 0, "unknow layer"
+      
+  def compile(self, optimizer):
+    self._compile(optimizer)
     
   def fit(self, input_tensors, label_tensor, epochs=1):
     assert self.output_tensor.ffhandle != 0, "tensor is not init"
