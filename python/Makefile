@@ -18,8 +18,8 @@ ifndef LG_RT_DIR
 $(error LG_RT_DIR variable is not defined, aborting build)
 endif
 
-ifndef FF_DIR
-$(error FF_DIR variable is not defined, aborting build)
+ifndef FF_HOME
+$(error FF_HOME variable is not defined, aborting build)
 endif
 
 ifndef PROTOBUF_DIR
@@ -54,17 +54,17 @@ PYTHON_VERSION_MAJOR ?= 3
 OUTFILE		?= flexflow_python
 
 # List all the application source files here
-FF_SRC ?= $(FF_DIR)/src/mapper/mapper.cc $(FF_DIR)/src/runtime/strategy.cc $(FF_DIR)/src/runtime/model.cc $(FF_DIR)/src/runtime/optimizer.cc $(FF_DIR)/src/runtime/initializer.cc $(FF_DIR)/src/ops/embedding.cc 
-FF_GPU_SRC ?= $(FF_DIR)/src/ops/conv_2d.cu $(FF_DIR)/src/runtime/model.cu $(FF_DIR)/src/ops/pool_2d.cu $(FF_DIR)/src/ops/batch_norm.cu $(FF_DIR)/src/ops/linear.cu  \
-		$(FF_DIR)/src/ops/softmax.cu $(FF_DIR)/src/ops/concat.cu $(FF_DIR)/src/ops/flat.cu $(FF_DIR)/src/ops/embedding.cu $(FF_DIR)/src/ops/mse_loss.cu \
-		$(FF_DIR)/src/ops/element_binary.cu $(FF_DIR)/src/ops/element_unary.cu \
-		$(FF_DIR)/src/runtime/initializer_kernel.cu $(FF_DIR)/src/runtime/optimizer_kernel.cu $(FF_DIR)/src/runtime/accessor_kernel.cu\
-		$(FF_DIR)/src/runtime/cuda_helper.cu flexflow_dataloader.cu
+FF_SRC ?= $(FF_HOME)/src/mapper/mapper.cc $(FF_HOME)/src/runtime/strategy.cc $(FF_HOME)/src/runtime/model.cc $(FF_HOME)/src/runtime/optimizer.cc $(FF_HOME)/src/runtime/initializer.cc $(FF_HOME)/src/ops/embedding.cc 
+FF_GPU_SRC ?= $(FF_HOME)/src/ops/conv_2d.cu $(FF_HOME)/src/runtime/model.cu $(FF_HOME)/src/ops/pool_2d.cu $(FF_HOME)/src/ops/batch_norm.cu $(FF_HOME)/src/ops/linear.cu  \
+		$(FF_HOME)/src/ops/softmax.cu $(FF_HOME)/src/ops/concat.cu $(FF_HOME)/src/ops/flat.cu $(FF_HOME)/src/ops/embedding.cu $(FF_HOME)/src/ops/mse_loss.cu \
+		$(FF_HOME)/src/ops/element_binary.cu $(FF_HOME)/src/ops/element_unary.cu \
+		$(FF_HOME)/src/runtime/initializer_kernel.cu $(FF_HOME)/src/runtime/optimizer_kernel.cu $(FF_HOME)/src/runtime/accessor_kernel.cu\
+		$(FF_HOME)/src/runtime/cuda_helper.cu flexflow_dataloader.cu
 GEN_SRC		?= main.cc flexflow/hello/hello.cc flexflow_c.cc flexflow_dataloader.cc strategy.pb.cc $(FF_SRC) # .cc files
 GEN_GPU_SRC	?= $(FF_GPU_SRC)		# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -I$(FF_DIR)/include -I$(PROTOBUF_DIR)/include -I$(CUDNN_DIR)/include -I$(CUDA_DIR)/include 
+INC_FLAGS	?= -I$(FF_HOME)/include -I$(PROTOBUF_DIR)/include -I$(CUDNN_DIR)/include -I$(CUDA_DIR)/include 
 CC_FLAGS	?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON -std=c++11
 NVCC_FLAGS	?= -std=c++11
 GASNET_FLAGS	?=
@@ -96,8 +96,8 @@ DEFINE_HEADERS_DIR ?= ./
 flexflow/core/legion_cffi.py: legion_cffi.py.in legion_cffi_build.py
 	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
 	
-strategy.pb.cc: $(FF_DIR)/src/runtime/strategy.proto
-	$(PROTOBUF_EXE) --proto_path=$(FF_DIR)/src/runtime strategy.proto --cpp_out=.
+strategy.pb.cc: $(FF_HOME)/src/runtime/strategy.proto
+	$(PROTOBUF_EXE) --proto_path=$(FF_HOME)/src/runtime strategy.proto --cpp_out=.
 
 clean::
 	$(RM) -f $(OUTFILE) $(SLIB_LEGION) $(SLIB_REALM) $(GEN_OBJS) $(GEN_GPU_OBJS) $(REALM_OBJS) $(LEGION_OBJS) $(GPU_RUNTIME_OBJS) $(MAPPER_OBJS) $(ASM_OBJS) legion_defines.h realm_defines.h flexflow/core/legion_cffi.py *.pyc

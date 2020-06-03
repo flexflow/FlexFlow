@@ -22,9 +22,9 @@ import subprocess
 import numpy as np
 from enum import Enum
 
-assert 'FF_DIR' in os.environ
-_flexflow_cxxheader_dir= os.path.join(os.environ['FF_DIR'], 'include')
-_flexflow_cheader_file = os.path.join(os.path.join(os.environ['FF_DIR'], 'python'), 'flexflow_c.h')
+assert 'FF_HOME' in os.environ
+_flexflow_cxxheader_dir= os.path.join(os.environ['FF_HOME'], 'include')
+_flexflow_cheader_file = os.path.join(os.path.join(os.environ['FF_HOME'], 'python'), 'flexflow_c.h')
 
 _flexflow_cheader = subprocess.check_output(['gcc', '-I', _flexflow_cxxheader_dir, '-E', '-P', _flexflow_cheader_file]).decode('utf-8')
 ffi = cffi.FFI()
