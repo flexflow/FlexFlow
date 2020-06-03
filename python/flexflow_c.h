@@ -188,43 +188,6 @@ flexflow_model_add_embedding(
   int num_entires, int out_dim,
   enum AggrMode aggr,
   flexflow_initializer_t kernel_initializer);  
-
-/* to be deleted */
-flexflow_tensor_t
-flexflow_model_add_embedding_with_glorot_uniform_initializer(
-  flexflow_model_t handle,
-  const char* name,
-  const flexflow_tensor_t input,
-  int num_entires, int out_dim,
-  enum AggrMode aggr,
-  flexflow_glorot_uniform_initializer_t kernel_initializer);  
-  
-flexflow_tensor_t
-flexflow_model_add_embedding_with_zero_initializer(
-  flexflow_model_t handle,
-  const char* name,
-  const flexflow_tensor_t input,
-  int num_entires, int out_dim,
-  enum AggrMode aggr,
-  flexflow_zero_initializer_t kernel_initializer);
-  
-flexflow_tensor_t
-flexflow_model_add_embedding_with_uniform_initializer(
-  flexflow_model_t handle,
-  const char* name,
-  const flexflow_tensor_t input,
-  int num_entires, int out_dim,
-  enum AggrMode aggr,
-  flexflow_uniform_initializer_t kernel_initializer);
-  
-flexflow_tensor_t
-flexflow_model_add_embedding_with_norm_initializer(
-  flexflow_model_t handle,
-  const char* name,
-  const flexflow_tensor_t input,
-  int num_entires, int out_dim,
-  enum AggrMode aggr,
-  flexflow_norm_initializer_t kernel_initializer);
   
 flexflow_tensor_t
 flexflow_model_add_pool2d(

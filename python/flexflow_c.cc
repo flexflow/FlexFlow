@@ -356,83 +356,6 @@ flexflow_model_add_embedding(
   return FFCObjectWrapper::wrap(tensor);   
 }
 
-/* to be deleted */
-flexflow_tensor_t
-flexflow_model_add_embedding_with_glorot_uniform_initializer(
-  flexflow_model_t handle_,
-  const char* name,
-  const flexflow_tensor_t input_,
-  int num_entires, int out_dim,
-  enum AggrMode aggr,
-  flexflow_glorot_uniform_initializer_t kernel_initializer_)
-{
-  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
-  Tensor *tensor = new Tensor();
-  GlorotUniform *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
-  Initializer *initializer = static_cast<Initializer *>(kernel_initializer);
-  *tensor = handle->embedding(name, *input, num_entires, out_dim, aggr, initializer);
-  printf("Embedding with GlorotUniform  new Tensor 4D %p\n", tensor);
-  return FFCObjectWrapper::wrap(tensor);   
-}
-  
-flexflow_tensor_t
-flexflow_model_add_embedding_with_zero_initializer(
-  flexflow_model_t handle_,
-  const char* name,
-  const flexflow_tensor_t input_,
-  int num_entires, int out_dim,
-  enum AggrMode aggr,
-  flexflow_zero_initializer_t kernel_initializer_)
-{
-  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
-  Tensor *tensor = new Tensor();
-  ZeroInitializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
-  Initializer *initializer = static_cast<Initializer *>(kernel_initializer);
-  *tensor = handle->embedding(name, *input, num_entires, out_dim, aggr, initializer);
-  printf("Embedding with ZeroInitializer new Tensor 4D %p\n", tensor);
-  return FFCObjectWrapper::wrap(tensor);  
-}
-  
-flexflow_tensor_t
-flexflow_model_add_embedding_with_uniform_initializer(
-  flexflow_model_t handle_,
-  const char* name,
-  const flexflow_tensor_t input_,
-  int num_entires, int out_dim,
-  enum AggrMode aggr,
-  flexflow_uniform_initializer_t kernel_initializer_)
-{
-  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
-  Tensor *tensor = new Tensor();
-  UniformInitializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
-  Initializer *initializer = static_cast<Initializer *>(kernel_initializer);
-  *tensor = handle->embedding(name, *input, num_entires, out_dim, aggr, initializer);
-  printf("Embedding with UniformInitializer new Tensor 4D %p\n", tensor);
-  return FFCObjectWrapper::wrap(tensor);  
-}
-  
-flexflow_tensor_t
-flexflow_model_add_embedding_with_norm_initializer(
-  flexflow_model_t handle_,
-  const char* name,
-  const flexflow_tensor_t input_,
-  int num_entires, int out_dim,
-  enum AggrMode aggr,
-  flexflow_norm_initializer_t kernel_initializer_)
-{
-  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  const Tensor *input = FFCObjectWrapper::unwrap_const(input_);
-  Tensor *tensor = new Tensor();
-  NormInitializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
-  Initializer *initializer = static_cast<Initializer *>(kernel_initializer);
-  *tensor = handle->embedding(name, *input, num_entires, out_dim, aggr, initializer);
-  printf("Embedding with NormInitializer new Tensor 4D %p\n", tensor);
-  return FFCObjectWrapper::wrap(tensor);    
-}
-
 flexflow_tensor_t
 flexflow_model_add_pool2d(
   flexflow_model_t handle_,
@@ -1107,9 +1030,6 @@ flowflow_dataloader_4d_next_batch(
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
   handle->next_batch(*ffmodel);
 }
-
-
-//////
 
 flexflow_dataloader_2d_t
 flexflow_dataloader_2d_create_v2(

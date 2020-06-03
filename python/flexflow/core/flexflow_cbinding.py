@@ -551,21 +551,6 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_conv2d_no_inout(self.handle, name.encode('utf-8'), in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, kernel_init_handle, bias_init_handle)  
     return Conv2D(handle)
     
-  # def embedding(self, name, input, num_entires, out_dim, aggr, kernel_initializer):
-  #   c_aggr = enum_to_int(AggrMode, aggr)
-  #   if type(kernel_initializer) is GlorotUniformInitializer:
-  #     handle = ffc.flexflow_model_add_embedding_with_glorot_uniform_initializer(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
-  #   elif type(kernel_initializer) is ZeroInitializer:
-  #     handle = ffc.flexflow_model_add_embedding_with_zero_initializer(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
-  #   elif type(kernel_initializer) is UniformInitializer:
-  #     handle = ffc.flexflow_model_add_embedding_with_uniform_initializer(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
-  #   elif type(kernel_initializer) is NormInitializer:
-  #     handle = ffc.flexflow_model_add_embedding_with_norm_initializer(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
-  #   else:
-  #     assert 0, "unknow initializer type"
-  #   self.add_layer(OpType.EMBEDDING)
-  #   return Tensor(handle)
-    
   def embedding(self, name, input, num_entires, out_dim, aggr, kernel_initializer):
     c_aggr = enum_to_int(AggrMode, aggr)
     assert (type(kernel_initializer) is GlorotUniformInitializer) or (type(kernel_initializer) is ZeroInitializer) or (type(kernel_initializer) is UniformInitializer) or (type(kernel_initializer) is NormInitializer), "unknow initializer type"
