@@ -90,6 +90,7 @@ def get_datatype_size(datatype):
 # Op
 # -----------------------------------------------------------------------
 class Op(object):
+  __slots__ = ['handle']
   def __init__(self, handle):
     self.handle = handle
   
@@ -266,6 +267,7 @@ class MSELoss(Op):
 # -----------------------------------------------------------------------
 
 class FFConfig(object):
+  __slots__ = ['handle', '_handle']
   def __init__(self):
     self.handle = ffc.flexflow_config_create()
     self._handle = ffi.gc(self.handle, ffc.flexflow_config_destroy)
@@ -299,6 +301,7 @@ class FFConfig(object):
 # -----------------------------------------------------------------------
 
 class Tensor(object):
+  __slots__ = ['handle', '_handle', 'num_dims', 'dims', 'mapped']
   def __init__(self, handle, deallocate=True):
     self.handle = handle
     self.num_dims = 0
@@ -315,9 +318,7 @@ class Tensor(object):
     assert self.mapped == False, "Tensor is already mapped."
     ffc.flexflow_tensor_inline_map(self.handle, config.handle);
     self.mapped = True
-    if (self.num_dims == 0):
-      assert 0, "wrong"
-      self.__set_dims()
+    assert self.num_dims > 0, "check dims"
     
   def inline_unmap(self, config):
     assert self.mapped == True, "Tensor is not inline mapped."
@@ -449,6 +450,7 @@ class Tensor(object):
 # -----------------------------------------------------------------------
 
 class Parameter(Tensor):
+  __slots__ = ['parameter_handle']
   def __init__(self, handle):
     self.parameter_handle = handle
     super_handle = ffc.flexflow_parameter_get_tensor(handle)
@@ -499,6 +501,7 @@ class Parameter(Tensor):
 # -----------------------------------------------------------------------
     
 class FFModel(object):
+  __slots__ = ['handle', '_handle', '_layers', '_nb_layers']
   def __init__(self, config):
     self.handle = ffc.flexflow_model_create(config.handle)
     self._handle = ffi.gc(self.handle, ffc.flexflow_model_destroy)
@@ -713,6 +716,7 @@ class FFModel(object):
 # -----------------------------------------------------------------------
     
 class SGDOptimizer(object):
+  __slots__ = ['handle', '_handle']
   def __init__(self, ffmodel, lr=0.01, momentum=0.0, nesterov=False, weight_decay=0.0):
     self.handle = ffc.flexflow_sgd_optimizer_create(ffmodel.handle, lr, momentum, nesterov, weight_decay)
     self._handle = ffi.gc(self.handle, ffc.flexflow_sgd_optimizer_destroy)  
@@ -722,6 +726,7 @@ class SGDOptimizer(object):
 # -----------------------------------------------------------------------
     
 class AdamOptimizer(object):
+  __slots__ = ['handle', '_handle']
   def __init__(self, ffmodel, alpha=0.001, beta1=0.9, beta2=0.999, weight_decay=0.0, epsilon=1e-8):
     self.handle = ffc.flexflow_adam_optimizer_create(ffmodel.handle, alpha, beta1, beta2, weight_decay, epsilon)
     self._handle = ffi.gc(self.handle, ffc.flexflow_adam_optimizer_destroy)  
@@ -730,6 +735,7 @@ class AdamOptimizer(object):
 # Initializer
 # -----------------------------------------------------------------------
 class Initializer(object):
+  __slots__ = ['handle']
   def __init__(self, handle):
     if (handle == None):      
       self.handle = ffc.flexflow_initializer_create_null()
@@ -741,6 +747,7 @@ class Initializer(object):
 # -----------------------------------------------------------------------
 
 class GlorotUniformInitializer(Initializer):
+  __slots__ = ['glorot_handle', '_glorot_handle']
   def __init__(self, seed):
     self.glorot_handle = ffc.flexflow_glorot_uniform_initializer_create(seed)
     self._glorot_handle = ffi.gc(self.glorot_handle, ffc.flexflow_glorot_uniform_initializer_destroy)
@@ -752,6 +759,7 @@ class GlorotUniformInitializer(Initializer):
 # -----------------------------------------------------------------------
 
 class ZeroInitializer(Initializer):
+  __slots__ = ['zero_handle', '_zero_handle']
   def __init__(self):
     self.zero_handle = ffc.flexflow_zero_initializer_create()
     self._zero_handle = ffi.gc(self.zero_handle, ffc.flexflow_zero_initializer_destroy)
@@ -763,6 +771,7 @@ class ZeroInitializer(Initializer):
 # -----------------------------------------------------------------------
 
 class UniformInitializer(Initializer):
+  __slots__ = ['uniform_handle', '_uniform_handle']
   def __init__(self, seed, minv, maxv):
     self.uniform_handle = ffc.flexflow_uniform_initializer_create(seed, minv, maxv)
     self._uniform_handle = ffi.gc(self.uniform_handle, ffc.flexflow_uniform_initializer_destroy)
@@ -772,6 +781,7 @@ class UniformInitializer(Initializer):
 # -----------------------------------------------------------------------
 
 class NormInitializer(Initializer):
+  __slots__ = ['norm_handle', '_norm_handle']
   def __init__(self, seed, meanv, stddev):
     self.norm_handle = ffc.flexflow_norm_initializer_create(seed, meanv, stddev)
     self._norm_handle = ffi.gc(self.norm_handle, ffc.flexflow_norm_initializer_destroy)
@@ -792,6 +802,7 @@ class NetConfig(object):
 # -----------------------------------------------------------------------
 
 class DataLoader4D(object):
+  __slots__ = ['handle', '_handle']
   def __init__(self, ffmodel, input, label, full_input=0, full_label=0, num_samples=0, ffnetconfig=0):
     if (ffnetconfig == 0):
       self.handle = ffc.flexflow_dataloader_4d_create_v2(ffmodel.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
@@ -812,6 +823,7 @@ class DataLoader4D(object):
     ffc.flexflow_dataloader_4d_reset(self.handle)
     
 class DataLoader2D(object):
+  __slots__ = ['handle', '_handle']
   def __init__(self, ffmodel, input, label, full_input=0, full_label=0, num_samples=0):
     self.handle = ffc.flexflow_dataloader_2d_create_v2(ffmodel.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
     self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_2d_destroy)
@@ -833,6 +845,7 @@ class DataLoader2D(object):
 # -----------------------------------------------------------------------
 
 class SingleDataLoader(object):
+  __slots__ = ['handle', '_handle']
   def __init__(self, ffmodel, input, full_input, num_samples, data_type):
     c_data_type = enum_to_int(DataType, data_type)
     self.handle = ffc.flexflow_single_dataloader_create(ffmodel.handle, input.handle, full_input.handle, num_samples, c_data_type)
@@ -868,9 +881,3 @@ class RegionNdarray(object):
       'data': (base_ptr, read_only),
       'strides': strides,
     }
-
-def malloc_int(size):
-  return ffc.flexflow_malloc_int(size)
-  
-def print_array_int(base_ptr, size):
-  ffc.flexflow_print_array_int(base_ptr, size)
