@@ -396,11 +396,11 @@ class Tensor(object):
   def is_mapped(self):
     return ffc.flexflow_tensor_is_mapped(self.handle)
     
-  def __get_raw_ptr(self, config, data_type):
+  def __get_raw_ptr(self, ffconfig, data_type):
     if (data_type == DataType.DT_FLOAT):    
-      return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, config.handle)
+      return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, ffconfig.handle)
     elif (data_type == DataType.DT_INT32):
-      return ffc.flexflow_tensor_get_raw_ptr_int32(self.handle, config.handle)
+      return ffc.flexflow_tensor_get_raw_ptr_int32(self.handle, ffconfig.handle)
     else:
       assert 0, "unknown data type"
     
@@ -486,11 +486,14 @@ class Parameter(Tensor):
     
 class FFModel(object):
   __slots__ = ['handle', '_handle', '_layers', '_nb_layers']
-  def __init__(self, config):
-    self.handle = ffc.flexflow_model_create(config.handle)
+  def __init__(self, ffconfig):
+    self.handle = ffc.flexflow_model_create(ffconfig.handle)
     self._handle = ffi.gc(self.handle, ffc.flexflow_model_destroy)
     self._layers = dict()
     self._nb_layers = 0
+    
+  def get_layers(self):
+    return self._layers
     
   def add_layer(self, type):
     self._layers[self._nb_layers] = type
