@@ -60,7 +60,7 @@ FF_GPU_SRC ?= $(FF_HOME)/src/ops/conv_2d.cu $(FF_HOME)/src/runtime/model.cu $(FF
 		$(FF_HOME)/src/ops/element_binary.cu $(FF_HOME)/src/ops/element_unary.cu \
 		$(FF_HOME)/src/runtime/initializer_kernel.cu $(FF_HOME)/src/runtime/optimizer_kernel.cu $(FF_HOME)/src/runtime/accessor_kernel.cu\
 		$(FF_HOME)/src/runtime/cuda_helper.cu flexflow_dataloader.cu
-GEN_SRC		?= main.cc flexflow/hello/hello.cc flexflow_c.cc flexflow_dataloader.cc strategy.pb.cc $(FF_SRC) # .cc files
+GEN_SRC		?= main.cc flexflow_c.cc flexflow_dataloader.cc strategy.pb.cc $(FF_SRC) # .cc files
 GEN_GPU_SRC	?= $(FF_GPU_SRC)		# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
