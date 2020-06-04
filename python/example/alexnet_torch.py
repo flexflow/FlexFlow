@@ -38,10 +38,10 @@ def top_level_task():
   model = AlexNet()
   
   dims = [model.ffconfig.get_batch_size(), 3, 229, 229]
-  input = model.ffmodel.create_tensor_4d(dims, "", DataType.DT_FLOAT);
+  input = model.ffmodel.create_tensor(dims, "", DataType.DT_FLOAT);
   
   dims_label = [model.ffconfig.get_batch_size(), 1]
-  label = model.ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
+  label = model.ffmodel.create_tensor(dims_label, "", DataType.DT_INT32);
   dataloader = DataLoader(model.ffmodel, input, label, 1)
   
   t = model.init_inout(input)

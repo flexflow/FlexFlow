@@ -10,11 +10,11 @@ def top_level_task():
   
   dims_input = [ffconfig.get_batch_size(), 3, 229, 229]
   #print(dims)
-  input = ffmodel.create_tensor_4d(dims_input, "", DataType.DT_FLOAT)
+  input = ffmodel.create_tensor(dims_input, "", DataType.DT_FLOAT)
   
   dims_label = [ffconfig.get_batch_size(), 1]
   #print(dims)
-  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
+  label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
   
   dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
   

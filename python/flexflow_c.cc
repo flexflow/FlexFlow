@@ -570,8 +570,9 @@ flexflow_model_get_parameter_by_id(
 // -----------------------------------------------------------------------
 
 flexflow_tensor_t
-flexflow_tensor_4d_create(
+flexflow_tensor_create(
   flexflow_model_t model_,
+  int num_dims,
   const int* dims, 
   const char* pc_name, 
   enum DataType data_type, 
@@ -579,23 +580,18 @@ flexflow_tensor_4d_create(
 {
   Tensor *tensor = new Tensor();
   FFModel *model = FFCObjectWrapper::unwrap(model_);
-  *tensor = model->create_tensor<4>(dims, pc_name, data_type, create_grad);
-  ffc_log.print("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
-  return FFCObjectWrapper::wrap(tensor);
-}
-
-flexflow_tensor_t
-flexflow_tensor_2d_create(
-  flexflow_model_t model_,
-  const int* dims, 
-  const char* pc_name, 
-  enum DataType data_type, 
-  bool create_grad /* true */)
-{
-  Tensor *tensor = new Tensor();
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
-  *tensor = model->create_tensor<2>(dims, pc_name, data_type, create_grad);
-  ffc_log.print("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
+  if (num_dims == 4) {
+    *tensor = model->create_tensor<4>(dims, pc_name, data_type, create_grad);
+    ffc_log.print("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
+  } else if (num_dims == 3) {
+    *tensor = model->create_tensor<3>(dims, pc_name, data_type, create_grad);
+    ffc_log.print("[Tensor] new 3D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
+  } else if (num_dims == 2) {
+    *tensor = model->create_tensor<2>(dims, pc_name, data_type, create_grad);
+    ffc_log.print("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
+  } else {
+    assert(0);
+  }
   return FFCObjectWrapper::wrap(tensor);
 }
 

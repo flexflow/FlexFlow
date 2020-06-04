@@ -10,10 +10,10 @@ def top_level_task():
   ffmodel = FFModel(ffconfig)
   
   dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
-  input = ffmodel.create_tensor_4d(dims_input, "", DataType.DT_FLOAT)
+  input = ffmodel.create_tensor(dims_input, "", DataType.DT_FLOAT)
 
   dims_label = [ffconfig.get_batch_size(), 1]
-  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
+  label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
   
   use_external = True
   if (use_external == True):
@@ -50,10 +50,10 @@ def top_level_task():
     print(full_label_array.__array_interface__["strides"])
     
     dims_full_input = [num_samples, 3, 32, 32]
-    full_input = ffmodel.create_tensor_4d(dims_full_input, "", DataType.DT_FLOAT)
+    full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
 
     dims_full_label = [num_samples, 1]
-    full_label = ffmodel.create_tensor_2d(dims_full_label, "", DataType.DT_INT32)
+    full_label = ffmodel.create_tensor(dims_full_label, "", DataType.DT_INT32)
     
     full_input.attach_numpy_array(ffconfig, full_input_array)
     full_label.attach_numpy_array(ffconfig, full_label_array)

@@ -9,10 +9,10 @@ def top_level_task():
   ffmodel = FFModel(ffconfig)
   
   dims1 = [ffconfig.get_batch_size(), 784]
-  input1 = ffmodel.create_tensor_2d(dims1, "", DataType.DT_FLOAT);
+  input1 = ffmodel.create_tensor(dims1, "", DataType.DT_FLOAT);
   
   dims_label = [ffconfig.get_batch_size(), 1]
-  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
+  label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32);
   
   num_samples = 60000
   
@@ -28,10 +28,10 @@ def top_level_task():
   print(y_train.shape)
   
   dims_full_input = [num_samples, 784]
-  full_input = ffmodel.create_tensor_2d(dims_full_input, "", DataType.DT_FLOAT)
+  full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
 
   dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor_2d(dims_full_label, "", DataType.DT_INT32)
+  full_label = ffmodel.create_tensor(dims_full_label, "", DataType.DT_INT32)
 
   full_input.attach_numpy_array(ffconfig, x_train)
   full_label.attach_numpy_array(ffconfig, y_train)

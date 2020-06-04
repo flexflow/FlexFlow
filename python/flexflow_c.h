@@ -296,16 +296,9 @@ flexflow_model_get_parameter_by_id(
 // -----------------------------------------------------------------------
 
 flexflow_tensor_t
-flexflow_tensor_4d_create(
+flexflow_tensor_create(
   flexflow_model_t model,
-  const int* dims, 
-  const char* pc_name, 
-  enum DataType data_type, 
-  bool create_grad /* true */);
-
-flexflow_tensor_t
-flexflow_tensor_2d_create(
-  flexflow_model_t model,
+  int num_dims, 
   const int* dims, 
   const char* pc_name, 
   enum DataType data_type, 

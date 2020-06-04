@@ -11,7 +11,7 @@ def top_level_task():
   
   dims_input = [8, 3, 10, 10]
   #print(dims)
-  input = ffmodel.create_tensor_4d(dims_input, "", DataType.DT_FLOAT)
+  input = ffmodel.create_tensor(dims_input, "", DataType.DT_FLOAT)
   
   input_np = np.zeros((10,10,3,8), dtype=np.float32)
   ct = 0.0

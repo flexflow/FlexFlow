@@ -9,13 +9,13 @@ def top_level_task():
   ffmodel = FFModel(ffconfig)
   
   dims1 = [ffconfig.get_batch_size(), 3, 229, 229]
-  input1 = ffmodel.create_tensor_4d(dims1, "", DataType.DT_FLOAT);
+  input1 = ffmodel.create_tensor(dims1, "", DataType.DT_FLOAT);
   
   dims2 = [ffconfig.get_batch_size(), 16]
-  input2 = ffmodel.create_tensor_2d(dims2, "", DataType.DT_FLOAT);
+  input2 = ffmodel.create_tensor(dims2, "", DataType.DT_FLOAT);
   
   dims_label = [ffconfig.get_batch_size(), 1]
-  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32);
+  label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32);
   
   t1 = ffmodel.conv2d("conv1", input1, 64, 11, 11, 4, 4, 2, 2) 
   t2 = ffmodel.dense("dense1", input2, 8, ActiMode.AC_MODE_RELU)

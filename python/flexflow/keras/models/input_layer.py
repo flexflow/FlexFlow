@@ -29,10 +29,8 @@ class Tensor(object):
       self.batch_shape = ffhandle.dims
     
   def create_ff_tensor(self, ffmodel):
-    if (self.num_dims == 2):
-      self.ffhandle = ffmodel.create_tensor_2d(self.batch_shape, self.name, self.dtype);
-    elif (self.num_dims == 4):
-      self.ffhandle = ffmodel.create_tensor_4d(self.batch_shape, self.name, self.dtype);
+    if (self.num_dims == 2 or self.num_dims == 4):
+      self.ffhandle = ffmodel.create_tensor(self.batch_shape, self.name, self.dtype);
     else:
       assert 0, "un-supported dims"
       

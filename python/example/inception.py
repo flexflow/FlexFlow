@@ -69,11 +69,11 @@ def top_level_task():
   
   dims_input = [ffconfig.get_batch_size(), 3, 299, 299]
   #print(dims)
-  input = ffmodel.create_tensor_4d(dims_input, "", DataType.DT_FLOAT)
+  input = ffmodel.create_tensor(dims_input, "", DataType.DT_FLOAT)
   
   dims_label = [ffconfig.get_batch_size(), 1]
   #print(dims)
-  label = ffmodel.create_tensor_2d(dims_label, "", DataType.DT_INT32)
+  label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
   
   t = ffmodel.conv2d("conv1", input, 32, 3, 3, 2, 2, 0, 0)
   t = ffmodel.conv2d("conv2", t, 32, 3, 3, 1, 1, 0, 0)

@@ -501,17 +501,12 @@ class FFModel(object):
   def add_layer(self, type):
     self._layers[self._nb_layers] = type
     self._nb_layers += 1
-    
-  def create_tensor_4d(self, dims, name, data_type, create_grad=True):
+
+  def create_tensor(self, dims, name, data_type, create_grad=True):
     c_dims = ffi.new("int[]", dims)
     c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc.flexflow_tensor_4d_create(self.handle, c_dims, name.encode('utf-8'), c_data_type, create_grad);
-    return Tensor(handle)
-    
-  def create_tensor_2d(self, dims, name, data_type, create_grad=True):
-    c_dims = ffi.new("int[]", dims)
-    c_data_type = enum_to_int(DataType, data_type)
-    handle = ffc.flexflow_tensor_2d_create(self.handle, c_dims, name.encode('utf-8'), c_data_type, create_grad);
+    num_dims = len(dims)
+    handle = ffc.flexflow_tensor_create(self.handle, num_dims, c_dims, name.encode('utf-8'), c_data_type, create_grad);
     return Tensor(handle)
     
   def exp(self, name, x):
