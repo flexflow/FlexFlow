@@ -185,8 +185,7 @@ public:
   virtual void forward(const FFModel&) = 0;
   virtual void backward(const FFModel&) = 0;
   virtual void print_layer(const FFModel& model) = 0;
-  virtual Parameter* get_weight() = 0;
-  virtual Parameter* get_bias() = 0;
+  virtual Parameter* get_parameter(int index) = 0;
   virtual void add_to_model(FFModel& model) = 0;
   //virtual void update(const FFModel&) = 0;
 public:
@@ -418,9 +417,8 @@ public:
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
-  void print_layer(const FFModel& model) {}
-  Parameter* get_weight() {return NULL;}
-  Parameter* get_bias() {return NULL;}
+  void print_layer(const FFModel& model) {assert(0);}
+  Parameter* get_parameter(int index) {return NULL;}
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -452,9 +450,8 @@ public:
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
-  void print_layer(const FFModel& model) {}
-  Parameter* get_weight() {return NULL;}
-  Parameter* get_bias() {return NULL;}
+  void print_layer(const FFModel& model) {assert(0);}
+  Parameter* get_parameter(int index) {return NULL;}
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -499,14 +496,7 @@ public:
   void backward(const FFModel&);
   //void update(const FFModel&);
   void print_layer(const FFModel& model);
-  void inline_map_layer_kernel(const FFModel& model);
-  void inline_unmap_layer_kernel(const FFModel& model);
-  float* get_kernel_raw_ptr();
-  void inline_map_layer_bias(const FFModel& model);
-  void inline_unmap_layer_bias(const FFModel& model);
-  float* get_bias_raw_ptr();
-  Parameter* get_weight();
-  Parameter* get_bias();
+  Parameter* get_parameter(int index);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -572,9 +562,8 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void update(const FFModel&);
-  void print_layer(const FFModel& model);
-  Parameter* get_weight() {return NULL;}
-  Parameter* get_bias() {return NULL;}
+  void print_layer(const FFModel& model) {assert(0);}
+  Parameter* get_parameter(int index) {assert(0); return NULL;}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -611,14 +600,13 @@ public:
             bool relu);
   
   Tensor init_inout(FFModel& model, const Tensor& input) { assert(0); return Tensor();}
+  void add_to_model(FFModel& model) {assert(0);}
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
   void update(const FFModel&);
-  void print_layer(const FFModel& model) {}
-  Parameter* get_weight() {return NULL;}
-  Parameter* get_bias() {return NULL;}
-  void add_to_model(FFModel& model) {assert(0);}
+  void print_layer(const FFModel& model) {assert(0);}
+  Parameter* get_parameter(int index) {assert(0);return NULL;}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -674,8 +662,7 @@ public:
   void backward(const FFModel&);
   //void update(const FFModel&);
   void print_layer(const FFModel& model);
-  Parameter* get_weight();
-  Parameter* get_bias();
+  Parameter* get_parameter(int index);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -734,9 +721,8 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   //void update(const FFModel&);
-  void print_layer(const FFModel& model) {}
-  Parameter* get_weight() {return NULL;}
-  Parameter* get_bias() {return NULL;}
+  void print_layer(const FFModel& model) {assert(0);}
+  Parameter* get_parameter(int index);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -778,9 +764,8 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   //void update(const FFModel&);
-  void print_layer(const FFModel& model) {}
-  Parameter* get_weight() {return NULL;}
-  Parameter* get_bias() {return NULL;}
+  void print_layer(const FFModel& model) {assert(0);}
+  Parameter* get_parameter(int index) {return NULL;}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -809,14 +794,13 @@ public:
           const Tensor& logit,
           const Tensor& label);
   Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
+  void add_to_model(FFModel& model) {assert(0);}
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
   //void update(const FFModel&);
-  void print_layer(const FFModel& model) {}
-  Parameter* get_weight() {return NULL;}
-  Parameter* get_bias() {return NULL;}
-  void add_to_model(FFModel& model) {assert(0);}
+  void print_layer(const FFModel& model) {assert(0);}
+  Parameter* get_parameter(int index) {assert(0); return NULL;}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -846,14 +830,13 @@ public:
          const std::string& name,
          int n, const Tensor* inputs, int axis);
   Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
+  void add_to_model(FFModel& model) {assert(0);}
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
   //void update(const FFModel&);
-  void print_layer(const FFModel& model) {}
-  Parameter* get_weight() {return NULL;}
-  Parameter* get_bias() {return NULL;}
-  void add_to_model(FFModel& model) {assert(0);}
+  void print_layer(const FFModel& model) {assert(0);}
+  Parameter* get_parameter(int index) {assert(0); return NULL;}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -883,14 +866,13 @@ public:
           const Tensor& label,
           AggrMode aggr);
   Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
+  void add_to_model(FFModel& model) {assert(0);}
   void init(const FFModel& model);
   void forward(const FFModel& model);
   void backward(const FFModel& model);
   //void update(const FFModel& model);
-  void print_layer(const FFModel& model) {}
-  Parameter* get_weight() {return NULL;}
-  Parameter* get_bias() {return NULL;}
-  void add_to_model(FFModel& model) {assert(0);}
+  void print_layer(const FFModel& model) {assert(0);}
+  Parameter* get_parameter(int index) {assert(0); return NULL;}
 
   static PerfMetrics backward_task(const Task *task,
                                    const std::vector<PhysicalRegion> &regions,

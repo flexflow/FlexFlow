@@ -94,13 +94,9 @@ class Op(object):
   def __init__(self, handle):
     assert ffi.typeof(handle) == ffi.typeof('flexflow_op_t'), "Op handle is wrong"
     self.handle = handle
-  
-  def _get_weight_tensor(self):
-    handle = ffc.flexflow_op_get_weight(self.handle)
-    return Parameter(handle)
-    
-  def _get_bias_tensor(self):
-    handle = ffc.flexflow_op_get_bias(self.handle)
+
+  def _get_parameter_tensor_by_id(self, id):
+    handle = ffc.flexflow_op_get_parameter_by_id(self.handle, id)
     return Parameter(handle)
     
   def _get_input_tensor_by_id(self, id):
@@ -147,10 +143,10 @@ class Conv2D(Op):
     super(Conv2D, self).__init__(handle) 
     
   def get_weight_tensor(self):
-    return self._get_weight_tensor() 
+    return self._get_parameter_tensor_by_id(0) 
     
   def get_bias_tensor(self):
-    return self._get_bias_tensor() 
+    return self._get_parameter_tensor_by_id(1) 
     
   def get_input_tensor(self):
     return self._get_input_tensor_by_id(0) 
@@ -189,10 +185,10 @@ class Linear(Op):
     super(Linear, self).__init__(handle)
     
   def get_weight_tensor(self):
-    return self._get_weight_tensor() 
+    return self._get_parameter_tensor_by_id(0) 
     
   def get_bias_tensor(self):
-    return self._get_bias_tensor() 
+    return self._get_parameter_tensor_by_id(1) 
     
   def get_input_tensor(self):
     return self._get_input_tensor_by_id(0) 

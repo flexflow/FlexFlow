@@ -1197,20 +1197,12 @@ flexflow_end_trace(
 // -----------------------------------------------------------------------
 
 flexflow_parameter_t
-flexflow_op_get_weight(
-  flexflow_op_t handle_)
+flexflow_op_get_parameter_by_id(
+  flexflow_op_t handle_,
+  int id)
 {
   Op *handle = FFCObjectWrapper::unwrap(handle_);
-  Parameter *tensor = handle->get_weight();
-  return FFCObjectWrapper::wrap(tensor);  
-} 
-
-flexflow_parameter_t
-flexflow_op_get_bias(
-  flexflow_op_t handle_)
-{
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
-  Parameter *tensor = handle->get_bias();
+  Parameter *tensor = handle->get_parameter(id);
   return FFCObjectWrapper::wrap(tensor);  
 }
 

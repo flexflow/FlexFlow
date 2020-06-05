@@ -466,8 +466,3 @@ void Pool2D::backward(const FFModel& ff)
 void Pool2D::update(const FFModel& ff)
 {
 }
-
-void Pool2D::print_layer(const FFModel& model)
-{
-  printf("pool2d layer\n");
-}

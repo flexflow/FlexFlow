@@ -680,15 +680,16 @@ void Linear::backward(const FFModel& ff)
 }
 
 __host__
-Parameter* Linear::get_weight()
+Parameter* Linear::get_parameter(int index)
 {
-  return &kernel;
-}
-
-__host__
-Parameter* Linear::get_bias()
-{
-  return &bias;
+  if (index == 0) {
+    return &kernel;
+  } else if (index == 1){
+    return &bias;
+  } else {
+    assert(0);
+    return NULL;
+  }
 }
 
 __host__

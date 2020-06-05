@@ -629,12 +629,9 @@ flexflow_end_trace(
 // -----------------------------------------------------------------------
 
 flexflow_parameter_t
-flexflow_op_get_weight(
-  flexflow_op_t handle); 
-    
-flexflow_parameter_t
-flexflow_op_get_bias(
-  flexflow_op_t handle); 
+flexflow_op_get_parameter_by_id(
+  flexflow_op_t handle,
+  int id);
 
 flexflow_tensor_t
 flexflow_op_get_input_by_id(

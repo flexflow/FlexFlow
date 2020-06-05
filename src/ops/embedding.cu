@@ -360,3 +360,14 @@ void Embedding::backward(const FFModel& ff)
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
+
+__host__
+Parameter* Embedding::get_parameter(int index)
+{
+  if (index == 0) {
+    return &kernel;
+  } else {
+    assert(0);
+    return NULL;
+  }
+}

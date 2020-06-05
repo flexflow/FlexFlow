@@ -853,15 +853,16 @@ void Conv2D::update(const FFModel& ff)
 #endif
 
 __host__
-Parameter* Conv2D::get_weight()
+Parameter* Conv2D::get_parameter(int index)
 {
-  return &kernel;
-}
-
-__host__
-Parameter* Conv2D::get_bias()
-{
-  return &bias;
+  if (index == 0) {
+    return &kernel;
+  } else if (index == 1){
+    return &bias;
+  } else {
+    assert(0);
+    return NULL;
+  }
 }
 
 __host__
