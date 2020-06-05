@@ -15,7 +15,7 @@
 
 #include "mapper.h"
 
-LegionRuntime::Logger::Category log_mapper("Mapper");
+LegionRuntime::Logger::Category log_ff_mapper("Mapper");
 
 FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor local,
                    const char *mapper_name,
@@ -327,9 +327,9 @@ void update_mappers(Machine machine, Runtime *runtime,
 
   if (strategyFile == "") {
     // No strategy file provided, use data parallelism
-    log_mapper.print("No strategy file provided. Use default data parallelism.");
+    log_ff_mapper.print("No strategy file provided. Use default data parallelism.");
   } else {
-    log_mapper.print("Load parallelization strategy from file %s",
+    log_ff_mapper.print("Load parallelization strategy from file %s",
                      strategyFile.c_str());
     load_strategies_from_file(strategyFile, *strategies);
   }
