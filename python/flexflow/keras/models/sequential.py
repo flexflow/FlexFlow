@@ -66,10 +66,11 @@ class Sequential(BaseModel):
   def fit(self, input_tensors, label_tensor, epochs=1):
     assert isinstance(input_tensors, list) == False, "do not support multiple inputs"
     input_tensors = [input_tensors]
-    self._verify_tensors(input_tensors, label_tensor)
     for input_tensor in input_tensors:
       self.create_input_tensor(input_tensor.shape)
     self.create_label_tensor(label_tensor.shape)
+    self._verify_tensors(input_tensors, label_tensor)
+        
     self._create_data_loaders(input_tensors, label_tensor)
     
     self.__init_inout() 
