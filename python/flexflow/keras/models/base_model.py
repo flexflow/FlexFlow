@@ -29,6 +29,19 @@ class BaseModel(object):
   def get_layer(self, layer_id):
     return self._layers[layer_id]
     
+  def _verify_tensors(self, input_arrays, label_array):
+    assert len(input_arrays) == len(self.input_tensors), "check len of input tensors"
+    # TODO: move check shape into another function
+    for np_array, t in zip(input_arrays, self.input_tensors):
+      np_shape = np_array.shape
+      assert len(np_shape) == t.num_dims, "check input shape"
+      for i in range(1, len(np_shape)):
+        assert np_shape[i] == t.batch_shape[i], "check input dims"
+    np_shape = label_array.shape
+    assert len(np_shape) == self.label_tensor.num_dims, "check label shape"
+    for i in range(1, len(np_shape)):
+      assert np_shape[i] == self.label_tensor.batch_shape[i], "check label dims"    
+    
   def _compile(self, optimizer):
     self.ffoptimizer = optimizer
       

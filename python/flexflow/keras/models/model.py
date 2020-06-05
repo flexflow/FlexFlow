@@ -231,7 +231,7 @@ class Model(BaseModel):
     assert self.output_tensor.ffhandle != 0, "tensor is not init"
     if (isinstance(input_tensors, list) == False):
        input_tensors = [input_tensors]
-    assert len(input_tensors) == len(self.input_tensors), "check len of input tensors"
+    self._verify_tensors(input_tensors, label_tensor)
     self._create_data_loaders(input_tensors, label_tensor)
     self._set_optimizer()     
     self.ffmodel.init_layers()

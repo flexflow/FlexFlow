@@ -441,6 +441,7 @@ class Parameter(Tensor):
     super(Parameter, self).__init__(super_handle, deallocate=False)
     
   def set_weights(self, ffmodel, np_array):
+    assert np_array.__array_interface__['strides'] == None, "Parameter set_weights, numpy array strides is not None"
     np_shape = np_array.shape
     num_dims = len(np_shape)
     assert num_dims == self.num_dims, "please check dims"
