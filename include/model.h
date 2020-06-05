@@ -418,7 +418,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  Parameter* get_parameter(int index) {return NULL;}
+  Parameter* get_parameter(int index) {assert(0); return NULL;}
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -451,7 +451,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  Parameter* get_parameter(int index) {return NULL;}
+  Parameter* get_parameter(int index) {assert(0); return NULL;}
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
