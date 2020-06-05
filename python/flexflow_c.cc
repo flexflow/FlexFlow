@@ -809,6 +809,7 @@ flexflow_glorot_uniform_initializer_create(
   int seed)
 {
   GlorotUniform *initializer = new GlorotUniform(seed);
+  ffc_log.print("[GlorotUniform] new %p", initializer);
   return FFCObjectWrapper::wrap(initializer); 
 }
 
@@ -817,6 +818,7 @@ flexflow_glorot_uniform_initializer_destroy(
   flexflow_glorot_uniform_initializer_t handle_)
 {
   GlorotUniform *handle = FFCObjectWrapper::unwrap(handle_);
+  ffc_log.print("[GlorotUniform] delete %p", handle);
   delete handle;
 }
 
@@ -837,6 +839,7 @@ flexflow_zero_initializer_t
 flexflow_zero_initializer_create(void)
 {
   ZeroInitializer *initializer = new ZeroInitializer();
+  ffc_log.print("[ZeroInitializer] new %p", initializer);
   return FFCObjectWrapper::wrap(initializer); 
 }
 
@@ -845,6 +848,7 @@ flexflow_zero_initializer_destroy(
   flexflow_zero_initializer_t handle_)
 {
   ZeroInitializer *handle = FFCObjectWrapper::unwrap(handle_);
+  ffc_log.print("[ZeroInitializer] delete %p", handle);
   delete handle;
 }
 
@@ -868,6 +872,7 @@ flexflow_uniform_initializer_create(
   float max)
 {
   UniformInitializer *initializer = new UniformInitializer(seed, min, max);
+  ffc_log.print("[UniformInitializer] new %p", initializer);
   return FFCObjectWrapper::wrap(initializer);  
 }
 
@@ -876,6 +881,7 @@ flexflow_uniform_initializer_destroy(
   flexflow_uniform_initializer_t handle_)
 {
   UniformInitializer *handle = FFCObjectWrapper::unwrap(handle_);
+  ffc_log.print("[UniformInitializer] delete %p", handle);
   delete handle;
 }
 
@@ -899,6 +905,7 @@ flexflow_norm_initializer_create(
   float stddev)
 {
   NormInitializer *initializer = new NormInitializer(seed, mean, stddev);
+  ffc_log.print("[NormInitializer] new %p", initializer);
   return FFCObjectWrapper::wrap(initializer);  
 }
 
@@ -907,6 +914,7 @@ flexflow_norm_initializer_destroy(
   flexflow_norm_initializer_t handle_)
 {
   NormInitializer *handle = FFCObjectWrapper::unwrap(handle_);
+  ffc_log.print("[NormInitializer] delete %p", handle);
   delete handle;
 }
 
