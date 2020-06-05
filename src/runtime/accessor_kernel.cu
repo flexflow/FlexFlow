@@ -16,6 +16,11 @@ TensorAccessorR<DT, dim>::TensorAccessorR(PhysicalRegion region,
   ptr = acc.ptr(rect);
 }
 
+template<typename DT, int dim>
+TensorAccessorR<DT, dim>::TensorAccessorR()
+{
+}
+
 template<typename DT>
 __global__
 void zero_array(DT* ptr, coord_t size)
@@ -49,6 +54,11 @@ TensorAccessorW<DT, dim>::TensorAccessorW(PhysicalRegion region,
         ptr, rect.volume(), 0.0f);
     checkCUDA(cudaDeviceSynchronize());
   }
+}
+
+template<typename DT, int dim>
+TensorAccessorW<DT, dim>::TensorAccessorW()
+{
 }
 
 template<typename DT>

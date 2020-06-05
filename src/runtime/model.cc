@@ -21,6 +21,77 @@ using namespace std;
 
 LegionRuntime::Logger::Category log_model("ff");
 
+void Tensor::inline_map(FFConfig &config)
+{
+  printf("inline map tensor\n");  
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  
+  RegionRequirement region_req(region, READ_WRITE, EXCLUSIVE, region);
+  region_req.add_field(FID_DATA);
+  InlineLauncher inline_launcher(region_req);
+  physical_region = runtime->map_region(ctx, inline_launcher);
+  physical_region.wait_until_valid();
+}
+
+void Tensor::inline_unmap(FFConfig &config)
+{
+  printf("inline unmap tensor\n");  
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  assert(physical_region.is_valid() == true);
+  runtime->unmap_region(ctx, physical_region);
+}
+
+template<typename T>
+T* Tensor::get_raw_ptr(FFConfig &config)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  RegionRequirement region_req(region, READ_WRITE, EXCLUSIVE, region);
+  region_req.add_field(FID_DATA);
+  T *raw_ptr = NULL;
+  if (numDim == 1) {
+    TensorAccessorW<T, 1> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (T*)acc.ptr;
+  } else if (numDim == 2) {
+    TensorAccessorW<T, 2> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (T*)acc.ptr;
+  } else if (numDim == 3) {
+    TensorAccessorW<T, 3> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (T*)acc.ptr;
+  } else if (numDim == 4) {
+    TensorAccessorW<T, 4> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (T*)acc.ptr;
+  } else {
+    printf("wrong numDim %d", numDim);
+    assert(0);
+  }
+  return raw_ptr;
+}
+
+void Tensor::attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  AttachLauncher launcher(EXTERNAL_INSTANCE, region, region);
+  std::vector<FieldID> fields(1, FID_DATA);
+  const Memory local_sysmem = Machine::MemoryQuery(Machine::get_machine())
+       .has_affinity_to(runtime->get_executing_processor(ctx))
+       .only_kind(Memory::SYSTEM_MEM)
+       .first();
+  launcher.attach_array_soa(raw_ptr, column_major,
+                            fields, local_sysmem);
+  physical_region = runtime->attach_external_resource(ctx, launcher);
+}
+
+void Tensor::detach_raw_ptr(FFConfig &config)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  runtime->detach_external_resource(ctx, physical_region);
+}
+
 Op::Op(const std::string& _name,
        const Tensor& _input)
 : numLocals(0), numInputs(1)
@@ -744,10 +815,22 @@ void FFModel::zero_gradients(void)
   }
 }
 
+void FFModel::print_layers(int id)
+{
+  if (id == -1) {
+    for (size_t i = 0; i < layers.size(); i++) {
+      layers[i]->print_layer(*this);
+    }
+  } else {
+    layers[id]->print_layer(*this);
+  }
+}
+
 PerfMetrics FFModel::update_metrics_task(const Task *task,
                                          const std::vector<PhysicalRegion>& regions,
                                          Context ctx, Runtime* runtime)
 {
+  printf("in update_metrics_task\n");
   if (task->futures.size() == 0) {
     // Create an empty future
     PerfMetrics perf;
@@ -962,18 +1045,8 @@ ShardID DataParallelShardingFunctor::shard(const DomainPoint &point,
   return (point[idx] - full_space.lo()[idx]) / samples_per_shard;
 }
 
-// ========================================================
-// Task and mapper registrations
-// ========================================================
-int main(int argc, char** argv)
+void register_internal_tasks()
 {
-  Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
-  {
-    TaskVariantRegistrar registrar(TOP_LEVEL_TASK_ID, "top_level");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_replicable();
-    Runtime::preregister_task_variant<top_level_task>(registrar, "top_level");
-  }
   // CNN_INIT_TASK
   {
     TaskVariantRegistrar registrar(FF_INIT_TASK_ID, "cuda_init_task");
@@ -1322,15 +1395,46 @@ int main(int argc, char** argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "dummy_task");
   }
+}
 
+#if !defined(FF_USE_PYTHON)
+// ========================================================
+// Task and mapper registrations
+// ========================================================
+int main(int argc, char** argv)
+{
+  Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
+  {
+    TaskVariantRegistrar registrar(TOP_LEVEL_TASK_ID, "top_level");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_replicable();
+    Runtime::preregister_task_variant<top_level_task>(registrar, "top_level");
+  }
+  
+  register_internal_tasks();
+ 
   // Register custom tasks
   register_custom_tasks();
 
-  Runtime::add_registration_callback(update_mappers);
   DataParallelShardingFunctor* sharding_functor = new DataParallelShardingFunctor();
   Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);
+  
+  Runtime::add_registration_callback(update_mappers);
   return Runtime::start(argc, argv);
 }
+
+#else
+void register_flexflow_tasks()
+{
+  register_internal_tasks();
+  
+  register_c_custom_tasks();
+  
+  DataParallelShardingFunctor* sharding_functor = new DataParallelShardingFunctor();
+  Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);
+}
+
+#endif // FF_USE_PYTHON
 
 // template instantiations
 template Tensor FFModel::create_tensor<1>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
@@ -1361,3 +1465,6 @@ template Parameter FFModel::create_linear_weight<2>(Op* op, const int* dims, con
 template Parameter FFModel::create_linear_weight<1>(Op* op, const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
 
 template Tensor FFModel::create_linear_replica<3>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type);
+
+template float* Tensor::get_raw_ptr<float>(FFConfig &config);
+template int32_t* Tensor::get_raw_ptr<int32_t>(FFConfig &config);

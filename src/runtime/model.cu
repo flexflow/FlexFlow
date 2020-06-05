@@ -274,7 +274,7 @@ bool Parameter::set_weights(const FFModel& ff,
   }
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  RegionRequirement req(region, WRITE_ONLY, EXCLUSIVE, region);
+  RegionRequirement req(region, READ_WRITE, EXCLUSIVE, region);
   req.add_field(FID_DATA);
   InlineLauncher launcher(req);
   PhysicalRegion region = runtime->map_region(ctx, launcher);
@@ -282,28 +282,28 @@ bool Parameter::set_weights(const FFModel& ff,
   switch (numDim) {
     case 1:
     {
-      TensorAccessorW<T, 1> acc(region, req, FID_DATA, ctx, runtime, false);
+      TensorAccessorW<T, 1> acc(region, req, FID_DATA, ctx, runtime, true);
       assert(acc.rect.volume() == volume);
       memcpy(acc.ptr, data, volume * sizeof(T));
       break;
     }
     case 2:
     {
-      TensorAccessorW<T, 2> acc(region, req, FID_DATA, ctx, runtime, false);
+      TensorAccessorW<T, 2> acc(region, req, FID_DATA, ctx, runtime, true);
       assert(acc.rect.volume() == volume);
       memcpy(acc.ptr, data, volume * sizeof(T));
       break;
     }
     case 3:
     {
-      TensorAccessorW<T, 3> acc(region, req, FID_DATA, ctx, runtime, false);
+      TensorAccessorW<T, 3> acc(region, req, FID_DATA, ctx, runtime, true);
       assert(acc.rect.volume() == volume);
       memcpy(acc.ptr, data, volume * sizeof(T));
       break;
     }
     case 4:
     {
-      TensorAccessorW<T, 4> acc(region, req, FID_DATA, ctx, runtime, false);
+      TensorAccessorW<T, 4> acc(region, req, FID_DATA, ctx, runtime, true);
       assert(acc.rect.volume() == volume);
       memcpy(acc.ptr, data, volume * sizeof(T));
       break;
@@ -368,3 +368,6 @@ bool Parameter::get_weights(const FFModel& ff,
   runtime->unmap_region(ctx, region);
   return true;
 }
+
+template bool Parameter::set_weights<float>(const FFModel& ff, const std::vector<int>& dims, const float* data);
+template bool Parameter::get_weights<float>(const FFModel& ff, float* data);

@@ -185,8 +185,8 @@ Conv2D::Conv2D(FFModel& model,
   output.part = output_lp;
   output.region_grad = output_grad_lr;
   output.part_grad = output_grad_lp;
-  printf("Create conv layer: output(n=%d c=%d h=%d w=%d)\n",
-         output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
+  printf("Create conv layer: name %s, output(n=%d c=%d h=%d w=%d)\n",
+         pcname.c_str(), output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
 
   // Compute partition bound for input
   Rect<4> input_part_rect =
@@ -851,6 +851,116 @@ void Conv2D::update(const FFModel& ff)
   }
 }
 #endif
+
+__host__
+Parameter* Conv2D::get_parameter(int index)
+{
+  if (index == 0) {
+    return &kernel;
+  } else if (index == 1){
+    return &bias;
+  } else {
+    assert(0);
+    return NULL;
+  }
+}
+
+__host__
+void Conv2D::print_layer(const FFModel& ff)
+{
+  printf("conv2d layer\n");  
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+#if 0
+  TaskLauncher launcher(CONV2D_PRINT_TASK_ID, TaskArgument(NULL, 0));
+  launcher.add_region_requirement(
+    RegionRequirement(kernel.region, READ_ONLY, EXCLUSIVE, kernel.region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+    RegionRequirement(bias.region, READ_ONLY, EXCLUSIVE, bias.region));
+  launcher.add_field(1, FID_DATA);
+  Future fu = runtime->execute_task(ctx, launcher);
+  fu.wait();
+#else
+  RegionRequirement kernel_req(kernel.region, READ_WRITE, EXCLUSIVE, kernel.region);
+  kernel_req.add_field(FID_DATA);
+  InlineLauncher kernel_launcher(kernel_req);
+  PhysicalRegion kernel_region = runtime->map_region(ctx, kernel_launcher);
+  kernel_region.wait_until_valid();
+
+/*  
+  RegionRequirement kernel_grad_req(kernel.region_grad, READ_WRITE, EXCLUSIVE, kernel.region_grad);
+  kernel_grad_req.add_field(FID_DATA);
+  InlineLauncher kernel_grad_launcher(kernel_grad_req);
+  PhysicalRegion kernel_grad_region = runtime->map_region(ctx, kernel_grad_launcher);
+  kernel_grad_region.wait_until_valid();
+*/  
+  RegionRequirement bias_req(bias.region, READ_WRITE, EXCLUSIVE, bias.region);
+  bias_req.add_field(FID_DATA);
+  InlineLauncher bias_launcher(bias_req);
+  PhysicalRegion bias_region = runtime->map_region(ctx, bias_launcher);
+  bias_region.wait_until_valid();
+/*  
+  RegionRequirement bias_grad_req(bias.region_grad, READ_WRITE, EXCLUSIVE, bias.region_grad);
+  bias_grad_req.add_field(FID_DATA);
+  InlineLauncher bias_grad_launcher(bias_grad_req);
+  PhysicalRegion bias_grad_region = runtime->map_region(ctx, bias_grad_launcher);
+  bias_grad_region.wait_until_valid();
+  */
+  TensorAccessorW<float, 4> acc_kernel(kernel_region, kernel_req, FID_DATA, ctx, runtime, true);
+//  const AccessorRW<float, 1> acc_kernel_grad(kernel_grad_region, FID_DATA);
+  TensorAccessorW<float, 1> acc_bias(bias_region, bias_req, FID_DATA, ctx, runtime, true);
+  //const AccessorRW<float, 1> acc_bias_grad(bias_grad_region, FID_DATA);
+  
+  const float *kernel_ptr = acc_kernel.ptr;
+  //float *kernel_grad_ptr = acc_kernel_grad.ptr;
+  const float *bias_ptr = acc_bias.ptr;
+  //float *bias_grad_ptr = acc_bias_grad.ptr;
+  
+  size_t kernel_size = acc_kernel.rect.volume();
+  int kernel_dim1 = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
+  int kernel_dim2 = acc_kernel.rect.hi[1] - acc_kernel.rect.lo[1] + 1;
+  int kernel_dim3 = acc_kernel.rect.hi[2] - acc_kernel.rect.lo[2] + 1;
+  int kernel_dim4 = acc_kernel.rect.hi[3] - acc_kernel.rect.lo[3] + 1;
+  //size_t kernel_grad_size = rect_kernel_grad.volume();
+  size_t bias_size = acc_bias.rect.volume();
+  //size_t bias_grad_size = rect_bias_grad.volume();
+  printf("kernel, %p, %d, [%d, %d, %d, %d]\n", kernel_ptr, kernel_size, kernel_dim1, kernel_dim2, kernel_dim3, kernel_dim4);
+  //printf("kernel_grad, %d\n", kernel_grad_size);
+  printf("bias, %p, %d\n", bias_ptr, bias_size);
+  //printf("bias_grad, %d\n", bias_grad_size);
+
+  
+  for (int i = 0; i < bias_size; i++) {
+    printf("%f ", bias_ptr[i]);
+  }
+  printf("\n");
+  
+/*  
+  for (int i = 0; i < bias_grad_size; i++) {
+    printf("%f ", bias_grad_ptr);
+    bias_grad_ptr ++;
+  }
+  printf("\n");*/
+  
+  for (int i = 0; i < kernel_size; i++) {
+    printf("%f ", kernel_ptr[i]);
+  }
+  printf("\n");
+  
+/*  
+  for (int i = 0; i < kernel_grad_size; i++) {
+    printf("%f ", kernel_grad_ptr);
+    kernel_grad_ptr ++;
+  }
+  printf("\n");
+  */
+  runtime->unmap_region(ctx, kernel_region);
+ // runtime->unmap_region(ctx, kernel_grad_region);
+  runtime->unmap_region(ctx, bias_region);
+//  runtime->unmap_region(ctx, bias_grad_region);
+#endif
+}
 
 cudnnConvolutionFwdAlgo_t
 selectConvolutionForwardAlgorithm(cudnnHandle_t handle,

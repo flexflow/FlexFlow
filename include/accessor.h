@@ -14,6 +14,7 @@ struct TensorAccessorR {
                   FieldID fid,
                   Context ctx,
                   Runtime* runtime);
+  TensorAccessorR();
   Rect<dim> rect;
   Memory memory;
   const DT *ptr;
@@ -27,6 +28,7 @@ struct TensorAccessorW {
                   Context ctx,
                   Runtime* runtime,
                   bool readOutput = false);
+  TensorAccessorW();
   Rect<dim> rect;
   Memory memory;
   DT *ptr;
