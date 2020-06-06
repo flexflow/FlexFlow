@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-#include "alexnet.h"
+#include "resnet.h"
 #include <sstream>
 #include <fstream>
 #include <string>
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_app("AlexNet");
+LegionRuntime::Logger::Category log_app("ResNet");
 
-void parse_input_args(char **argv, int argc, AlexNetConfig& config)
+void parse_input_args(char **argv, int argc, ResNetConfig& config)
 {
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--dataset")) {
@@ -31,18 +31,34 @@ void parse_input_args(char **argv, int argc, AlexNetConfig& config)
   }
 }
 
+Tensor BottleneckBlock(FFModel& ff,
+                       Tensor input,
+                       int out_channels,
+                       int stride)
+{
+  Tensor t = ff.conv2d("conv1", input, out_channels, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
+  t = ff.conv2d("conv2", t, out_channels, 3, 3, stride, stride, 1, 1, AC_MODE_RELU);
+  t = ff.conv2d("conv3", t, 4*out_channels, 1, 1, 1, 1, 0, 0);
+  return t;
+  if ((stride > 1) || (input.adim[1] != out_channels * 4)) {
+    printf("input.adim = %d out_channels*4 = %d\n", input.adim[1], out_channels*4);
+    input = ff.conv2d("conv4", input, 4*out_channels, 1, 1, stride, stride, 0, 0, AC_MODE_RELU);
+  }
+  return ff.add("add", input, t);
+}
+
 void top_level_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime)
 {
   FFConfig ffConfig;
-  AlexNetConfig alexnetConfig;
+  ResNetConfig resnetConfig;
   {
     const InputArgs &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
     ffConfig.parse_args(argv, argc);
-    parse_input_args(argv, argc, alexnetConfig);
+    parse_input_args(argv, argc, resnetConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
         ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
   }
@@ -62,25 +78,30 @@ void top_level_task(const Task* task,
     label = ff.create_tensor<2>(dims, "", DT_INT32);
   }
   // Add layers
-  Tensor t = input, ts[2];
-  t = ff.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
-  //ts[1] = ff.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2);
-  //t = ff.concat("concat", 2, ts, 1/*axis*/);
-  t = ff.pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
-  t = ff.pool2d("pool2", t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
-  t = ff.conv2d("conv4", t, 256, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
-  t = ff.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
-  t = ff.pool2d("pool3", t, 3, 3, 2, 2, 0, 0);
+  Tensor t = input;
+  t = ff.conv2d("conv", input, 64, 7, 7, 2, 2, 3, 3);
+  t = ff.pool2d("pool", t, 3, 3, 2, 2, 1, 1);
+  for (int i = 0; i < 3; i++)
+    t = BottleneckBlock(ff, t, 64, 1);
+  for (int i = 0; i < 4; i++) {
+    int stride = (i == 0) ? 2 : 1;
+    t = BottleneckBlock(ff, t, 128, stride);
+  }
+  for (int i = 0; i < 6; i++) {
+    int stride = (i==0) ? 2 : 1;
+    t = BottleneckBlock(ff, t, 256, stride);
+  }
+  for (int i = 0; i < 3; i++) {
+    int stride = (i==0) ? 2 : 1;
+    t = BottleneckBlock(ff, t, 512, stride);
+  }
+  t = ff.pool2d("pool", t, 7, 7, 1, 1, 0, 0, POOL_AVG);
   t = ff.flat("flat", t);
-  t = ff.dense("lienar1", t, 4096, AC_MODE_RELU/*relu*/);
-  t = ff.dense("linear2", t, 4096, AC_MODE_RELU/*relu*/);
-  t = ff.dense("linear3", t, 10);
+  t = ff.dense("lienar", t, 10);
   t = ff.softmax("softmax", t, label);
   ff.optimizer = new SGDOptimizer(&ff, 0.001f);
   // Data Loader
-  DataLoader data_loader(ff, alexnetConfig, input, label);
+  DataLoader data_loader(ff, resnetConfig, input, label);
   ff.init_layers();
   //Start timer
   {
@@ -96,7 +117,7 @@ void top_level_task(const Task* task,
     int iterations = data_loader.num_samples / ffConfig.batchSize;
  
     for (int iter = 0; iter < iterations; iter++) {
-      if (alexnetConfig.dataset_path.length() == 0) {
+      if (resnetConfig.dataset_path.length() == 0) {
         // Only load data once for random input
         if (iter == 0 && epoch == 0)
           data_loader.next_batch(ff);
@@ -139,21 +160,21 @@ size_t get_file_size(const std::string& filename)
 }
 
 DataLoader::DataLoader(FFModel& ff,
-                       const AlexNetConfig& alexnet,
+                       const ResNetConfig& resnet,
                        Tensor input, Tensor label)
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   num_samples = 0;
-  if (alexnet.dataset_path == "") {
+  if (resnet.dataset_path == "") {
     log_app.print("Use random dataset...");
     num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
     log_app.print("Number of random samples = %d\n", num_samples);
   } else {
-    log_app.print("Start loading dataset from %s", alexnet.dataset_path.c_str());
-    size_t filesize = get_file_size(alexnet.dataset_path);
-    assert(filesize % 3073 == 0);
-    num_samples = filesize / 3073;
+    log_app.print("Start loading dataset from %s", resnet.dataset_path.c_str());
+    size_t filesize = get_file_size(resnet.dataset_path);
+    assert(filesize % (3 * 360 * 360 + 1) == 0);
+    num_samples = filesize / (3 * 360 * 360 + 1);
   }
   // Create full input
   {
@@ -169,9 +190,9 @@ DataLoader::DataLoader(FFModel& ff,
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
-  const AlexNetConfig* ptr = &alexnet;
+  const ResNetConfig* ptr = &resnet;
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
-      TaskArgument(&ptr, sizeof(AlexNetConfig*)));
+      TaskArgument(&ptr, sizeof(ResNetConfig*)));
   // regions[0]: full_input
   launcher.add_region_requirement(
       RegionRequirement(full_input.region, WRITE_ONLY,
@@ -248,7 +269,7 @@ void DataLoader::load_entire_dataset(const Task *task,
   const std::vector<PhysicalRegion> &regions,
   Context ctx, Runtime* runtime)
 {
-  const AlexNetConfig* alexnet = *((AlexNetConfig**)task->args);
+  const ResNetConfig* resnet = *((ResNetConfig**)task->args);
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
   const AccessorWO<float, 4> acc_input(regions[0], FID_DATA);
@@ -263,26 +284,26 @@ void DataLoader::load_entire_dataset(const Task *task,
   int* label_ptr = acc_label.ptr(rect_label.lo);
   int num_samples = rect_label.hi[1] - rect_label.lo[1] + 1;
   assert(rect_input.hi[3] - rect_input.lo[3] + 1 == num_samples);
-  if (alexnet->dataset_path.length() == 0) {
+  if (resnet->dataset_path.length() == 0) {
     log_app.print("Start generating random input samples");
     for (size_t i = 0; i < rect_label.volume(); i++)
       label_ptr[i] = std::rand() % 10;
     return;
   }
   log_app.print("Start loading %d samples from %s\n",
-      num_samples, alexnet->dataset_path.c_str());
+      num_samples, resnet->dataset_path.c_str());
   int height = rect_input.hi[1] - rect_input.lo[1] + 1;
   int width = rect_input.hi[0] - rect_input.lo[0] + 1;
-  int origHeight = 32;
-  int origWidth = 32;
+  int origHeight = 360;
+  int origWidth = 360;
   float heightScale = static_cast<float>(origHeight) / height;
   float widthScale = static_cast<float>(origWidth) / width;
-  FILE* file = fopen(alexnet->dataset_path.c_str(), "rb");
-  unsigned char* buffer = (unsigned char*) malloc(3073);
+  FILE* file = fopen(resnet->dataset_path.c_str(), "rb");
+  unsigned char* buffer = (unsigned char*) malloc(3 * 360 * 360 + 1);
   unsigned char* image = (unsigned char*) malloc(3 * height * width);
   for (off_t i = 0; i < num_samples; i++) {
-    size_t ret = fread(buffer, sizeof(unsigned char), 3073, file);
-    assert(ret = 3073);
+    size_t ret = fread(buffer, sizeof(unsigned char), 3 * 360 * 360 + 1, file);
+    assert(ret = 3 * 360 * 360 + 1);
     if ((i+1) % 1000 == 0)
       log_app.print("Loaded %d samples", i+1);
     label_ptr[i] = buffer[0];
@@ -294,7 +315,7 @@ void DataLoader::load_entire_dataset(const Task *task,
         input_ptr[input_offset++] = static_cast<float>(image[image_offset++]) / 255;
   }
   log_app.print("Finish loading %d samples from %s\n",
-      num_samples, alexnet->dataset_path.c_str());
+      num_samples, resnet->dataset_path.c_str());
   fclose(file);
 }
 

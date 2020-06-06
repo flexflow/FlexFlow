@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "alexnet.h"
+#include "resnet.h"
 #include "cuda_helper.h"
 
 void DataLoader::load_input(const Task *task,
