@@ -63,15 +63,15 @@ void top_level_task(const Task* task,
   }
   // Add layers
   Tensor t = input, ts[2];
-  ts[0] = ff.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2);
-  ts[1] = ff.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2);
-  t = ff.concat("concat", 2, ts, 1/*axis*/);
+  t = ff.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
+  //ts[1] = ff.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2);
+  //t = ff.concat("concat", 2, ts, 1/*axis*/);
   t = ff.pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2);
+  t = ff.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
   t = ff.pool2d("pool2", t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1);
-  t = ff.conv2d("conv4", t, 256, 3, 3, 1, 1, 1, 1);
-  t = ff.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1);
+  t = ff.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+  t = ff.conv2d("conv4", t, 256, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+  t = ff.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
   t = ff.pool2d("pool3", t, 3, 3, 2, 2, 0, 0);
   t = ff.flat("flat", t);
   t = ff.dense("lienar1", t, 4096, AC_MODE_RELU/*relu*/);
@@ -286,7 +286,7 @@ void DataLoader::load_entire_dataset(const Task *task,
     if ((i+1) % 1000 == 0)
       log_app.print("Loaded %d samples", i+1);
     label_ptr[i] = buffer[0];
-    nearest_neigh(image, buffer, height, width,
+    nearest_neigh(image, buffer + 1, height, width,
                   origHeight, origWidth, heightScale, widthScale);
     off_t input_offset = i * 3 * height * width;
     off_t image_offset = 0;
