@@ -56,18 +56,18 @@ bool FFConfig::find_parallel_config(int ndims,
         config = strategies[DataParallelism_4D];
         break;
       }
-      case 5:
-      {
-        assert(strategies.find(DataParallelism_5D) != strategies.end());
-        config = strategies[DataParallelism_5D];
-        break;
-      }
-      case 6:
-      {
-        assert(strategies.find(DataParallelism_6D) != strategies.end());
-        config = strategies[DataParallelism_6D];
-        break;
-      }
+      //case 5:
+      //{
+      //  assert(strategies.find(DataParallelism_5D) != strategies.end());
+      //  config = strategies[DataParallelism_5D];
+      //  break;
+      //}
+      //case 6:
+      //{
+      //  assert(strategies.find(DataParallelism_6D) != strategies.end());
+      //  config = strategies[DataParallelism_6D];
+      //  break;
+      //}
       default:
       {
         // Unsupported dimension for data parallelism
