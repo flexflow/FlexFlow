@@ -333,7 +333,7 @@ void update_mappers(Machine machine, Runtime *runtime,
                      strategyFile.c_str());
     load_strategies_from_file(strategyFile, *strategies);
   }
-  for (int i = FFConfig::DataParallelism_1D; i <= FFConfig::DataParallelism_6D; i++) {
+  for (int i = FFConfig::DataParallelism_1D; i <= FFConfig::DataParallelism_4D; i++) {
     ParallelConfig pc;
     pc.device_type = ParallelConfig::GPU;
     pc.nDims = i - FFConfig::DataParallelism_1D + 1;

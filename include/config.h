@@ -60,8 +60,6 @@ public:
     DataParallelism_2D = 2,
     DataParallelism_3D = 3,
     DataParallelism_4D = 4,
-    DataParallelism_5D = 5,
-    DataParallelism_6D = 6,
   };
 
   FFConfig();
