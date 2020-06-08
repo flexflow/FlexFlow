@@ -102,9 +102,15 @@ class Op(object):
   def _get_input_tensor_by_id(self, id):
     handle = ffc.flexflow_op_get_input_by_id(self.handle, id)
     return Tensor(handle, False)
-    
+ 
   def get_output_tensor(self):
-    handle = ffc.flexflow_op_get_output(self.handle)
+    # get_output_tensor returns the first output since most ops
+    # only has one output
+    handle = ffc.flexflow_op_get_output_by_id(self.handle, 0)
+    return Tensor(handle, False)
+   
+  def get_output_tensor_by_id(self, id):
+    handle = ffc.flexflow_op_get_output_by_id(self.handle, id)
     return Tensor(handle, False)
     
   def init(self, model):

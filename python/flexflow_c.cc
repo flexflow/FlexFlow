@@ -1217,11 +1217,12 @@ flexflow_op_get_input_by_id(
 }
 
 flexflow_tensor_t
-flexflow_op_get_output(
-  flexflow_op_t handle_)
+flexflow_op_get_output_by_id(
+  flexflow_op_t handle_,
+  int id)
 {
   Op *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *tensor = &(handle->output);
+  Tensor *tensor = &(handle->outputs[id]);
   return FFCObjectWrapper::wrap(tensor);     
 }
 

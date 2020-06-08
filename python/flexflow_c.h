@@ -639,8 +639,9 @@ flexflow_op_get_input_by_id(
   int id); 
   
 flexflow_tensor_t
-flexflow_op_get_output(
-  flexflow_op_t handle); 
+flexflow_op_get_output_by_id(
+  flexflow_op_t handle,
+  int id); 
 
 void
 flexflow_op_init(
