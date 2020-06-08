@@ -383,8 +383,8 @@ void ElementBinary::backward_task(const Task *task,
                             Context ctx, Runtime* runtime)
 {
   const ElementBinary* ele = (const ElementBinary*) task->args;
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
+  assert(regions.size() == 5);
+  assert(task->regions.size() == 5);
   Domain out_grad_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain in0_domain = runtime->get_index_space_domain(
@@ -407,9 +407,9 @@ void ElementBinary::backward_task(const Task *task,
   const float* in2_ptr = helperGetTensorPointerR<float>(
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
   float* in1_grad_ptr = helperGetTensorPointerWO<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    regions[3], task->regions[3], FID_DATA, ctx, runtime);
   float* in2_grad_ptr = helperGetTensorPointerWO<float>(
-    regions[2], task->regions[2], FID_DATA, ctx, runtime);
+    regions[4], task->regions[4], FID_DATA, ctx, runtime);
 
   elewise_binary_backward_kernel<<<GET_BLOCKS(out_grad_domain.get_volume()), CUDA_NUM_THREADS>>>(
     out_grad_domain.get_volume(), ele->op_type, out_grad_ptr, in1_ptr, in2_ptr,
