@@ -513,7 +513,7 @@ void Conv2D::init(const FFModel& ff)
   launcher.add_field(3, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(weights[0].part_grad, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, weights[1].region_grad));
+                        WRITE_ONLY, EXCLUSIVE, weights[0].region_grad));
   launcher.add_field(4, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[0], 0/*projection id*/,
