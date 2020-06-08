@@ -94,7 +94,7 @@ void Tensor::detach_raw_ptr(FFConfig &config)
 
 Op::Op(const std::string& _name,
        const Tensor& _input)
-: numLocals(0), numInputs(1)
+: numInputs(1), numWeights(0), numOutputs(1)
 {
   assert(_name.length() < MAX_OPNAME);
   std::strcpy(name, _name.c_str());
@@ -108,7 +108,7 @@ Op::Op(const std::string& _name,
 Op::Op(const std::string& _name,
        const Tensor& _input1,
        const Tensor& _input2)
-: numLocals(0), numInputs(2)
+: numInputs(2), numWeights(0), numOutputs(1)
 {
   assert(_name.length() < MAX_OPNAME);
   std::strcpy(name, _name.c_str());
@@ -122,7 +122,7 @@ Op::Op(const std::string& _name,
 
 Op::Op(const std::string& _name,
        int n, const Tensor* _inputs)
-: numLocals(0), numInputs(n)
+: numInputs(n), numWeights(0), numOutputs(1)
 {
   assert(_name.length() < MAX_OPNAME);
   assert(n <= MAX_NUM_INPUTS);
@@ -136,7 +136,7 @@ Op::Op(const std::string& _name,
 }
 
 Op::Op(const std::string& _name)
-: numLocals(0), numInputs(1)
+: numInputs(0), numWeights(0), numOutputs(1)
 {
   assert(_name.length() < MAX_OPNAME);
   std::strcpy(name, _name.c_str());
@@ -460,7 +460,7 @@ Parameter FFModel::create_linear_weight(Op* op,
   int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
   Parameter weight;
-  weight.op = op;
+  weight.pcname = op->name;
   weight.numDim = NDIM;
   for (int i = 0; i < NDIM; i++)
     weight.adim[i] = dims[NDIM-1-i];
@@ -552,7 +552,7 @@ Parameter FFModel::create_conv_weight(Op* op,
   // Currently assume we do not split over the channel dimension
   assert(num_par_c == 1);
   Parameter weight;
-  weight.op = op;
+  weight.pcname = op->name;
   weight.numDim = NDIM;
   for (int i = 0; i < NDIM; i++)
     weight.adim[i] = dims[NDIM-1-i];
@@ -806,7 +806,7 @@ void FFModel::zero_gradients(void)
     IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
                            TaskArgument(NULL, 0), arg_map,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(std::string(parameters[p].op->name)));
+                           FFConfig::get_hash_id(std::string(parameters[p].pcname)));
     launcher.add_region_requirement(
         RegionRequirement(parameters[p].part_grad, 0/*projection*/,
                           WRITE_ONLY, EXCLUSIVE, parameters[p].region_grad));
@@ -1071,6 +1071,13 @@ void register_internal_tasks()
         registrar, "ElementWiseUnary Backward Task");
   }
   // ElementBinary task
+  {
+    TaskVariantRegistrar registrar(ELEMENTBINARY_INIT_TASK_ID, "ElementWiseBinary Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ElementBinary::init_task>(
+        registrar, "ElementWiseBinary Init Task");
+  }
   {
     TaskVariantRegistrar registrar(ELEMENTBINARY_FWD_TASK_ID, "ElementWiseBinary Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));

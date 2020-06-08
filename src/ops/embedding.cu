@@ -29,7 +29,7 @@ Tensor FFModel::embedding(const std::string& pcname,
   Embedding* embed = new Embedding(*this, pcname, input, num_entries,
                                    out_dim, aggr, kernel_initializer);
   embed->add_to_model(*this);
-  return embed->output;
+  return embed->outputs[0];
 }
 
 Embedding* FFModel::embedding(const std::string& pcname,
@@ -119,13 +119,13 @@ Tensor Embedding::init_inout(FFModel& model, const Tensor& _input)
   assert(_input.numDim == 2);
   inputs[0] = _input;
   create_output_and_partition(model);
-  return output;
+  return outputs[0];
 }
 
 void Embedding::add_to_model(FFModel& model)
 {
   model.layers.push_back(this);
-  model.parameters.push_back(kernel);
+  model.parameters.push_back(weights[0]);
 }
 
 void Embedding::create_kernel(FFModel& model, int num_entries, Initializer* kernel_initializer)
@@ -136,7 +136,7 @@ void Embedding::create_kernel(FFModel& model, int num_entries, Initializer* kern
   {
     const int dims[2] = {out_channels, num_entries};
     // Embeddding weights and linear weights can be partitioned in the same way
-    kernel = model.create_linear_weight<2>(this, dims, task_is, DT_FLOAT, kernel_initializer);
+    weights[numWeights++] = model.create_linear_weight<2>(this, dims, task_is, DT_FLOAT, kernel_initializer);
   }
 }
 
@@ -153,7 +153,7 @@ void Embedding::create_output_and_partition(FFModel& model)
   assert(part_rect.hi[0] == part_rect.lo[0]);
   {
     const int dims[2] = {inputs[0].adim[1], out_channels};
-    output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<2>(dims, task_is, DT_FLOAT);
   }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(
@@ -285,14 +285,14 @@ void Embedding::forward(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   // regions[1]: output
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection*/,
-                        WRITE_ONLY, EXCLUSIVE, output.region,
+      RegionRequirement(outputs[0].part, 0/*projection*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0].region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   // regions[2]: weight
   launcher.add_region_requirement(
-      RegionRequirement(kernel.part, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, kernel.region));
+      RegionRequirement(weights[0].part, 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -349,14 +349,14 @@ void Embedding::backward(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   // regions[1]: output_grad
   launcher.add_region_requirement(
-      RegionRequirement(output.part_grad, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, output.region_grad,
+      RegionRequirement(outputs[0].part_grad, 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0].region_grad,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   // regions[2]: weight_grad
   launcher.add_region_requirement(
-      RegionRequirement(kernel.part_grad, 0/*projection*/,
-                        READ_WRITE, EXCLUSIVE, kernel.region_grad));
+      RegionRequirement(weights[0].part_grad, 0/*projection*/,
+                        READ_WRITE, EXCLUSIVE, weights[0].region_grad));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -365,7 +365,7 @@ __host__
 Parameter* Embedding::get_parameter(int index)
 {
   if (index == 0) {
-    return &kernel;
+    return &weights[0];
   } else {
     assert(0);
     return NULL;

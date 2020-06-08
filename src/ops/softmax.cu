@@ -24,7 +24,7 @@ Tensor FFModel::softmax(std::string name,
   assert(_label.numDim == 2);
   Softmax *sm = new Softmax(*this, name, _logit, _label);
   layers.push_back(sm);
-  return sm->output;
+  return sm->outputs[0];
 }
 
 Softmax::Softmax(FFModel& model,
@@ -45,7 +45,7 @@ Softmax::Softmax(FFModel& model,
 
   {
     const int dims[2] = {_logit.adim[1], _logit.adim[0]};
-    output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<2>(dims, task_is, DT_FLOAT);
   }
   // Compute partition bound for input
   Rect<2> logit_rect = runtime->get_index_partition_color_space(
@@ -119,8 +119,8 @@ void Softmax::init(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, outputs[0].region));
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -198,8 +198,8 @@ void Softmax::forward(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(1, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
@@ -341,8 +341,8 @@ void Softmax::backward(const FFModel& ff)
                         WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[1], 0/*projection id*/,

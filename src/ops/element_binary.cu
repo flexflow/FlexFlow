@@ -22,7 +22,7 @@ Tensor FFModel::add(std::string name,
 {
   ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_ADD, name, in1, in2);
   ele->add_to_model(*this);
-  return ele->output;
+  return ele->outputs[0];
 }
 
 ElementBinary* FFModel::add(std::string name)
@@ -37,7 +37,7 @@ Tensor FFModel::subtract(std::string name,
 {
   ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_SUB, name, in1, in2);
   ele->add_to_model(*this);
-  return ele->output;
+  return ele->outputs[0];
 }
 
 ElementBinary* FFModel::subtract(std::string name)
@@ -52,7 +52,7 @@ Tensor FFModel::multiply(std::string name,
 {
   ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_MUL, name, in1, in2);
   ele->add_to_model(*this);
-  return ele->output;
+  return ele->outputs[0];
 }
 
 ElementBinary* FFModel::multiply(std::string name)
@@ -67,7 +67,7 @@ Tensor FFModel::divide(std::string name,
 {
   ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_DIV, name, in1, in2);
   ele->add_to_model(*this);
-  return ele->output;
+  return ele->outputs[0];
 }
 
 ElementBinary* FFModel::divide(std::string name)
@@ -174,7 +174,7 @@ Tensor ElementBinary::init_inout(FFModel& model,
       assert(false);
     }
   }
-  return output;
+  return outputs[0];
 }
 
 void ElementBinary::add_to_model(FFModel& model)
@@ -193,7 +193,7 @@ void ElementBinary::create_output_and_partition(FFModel& model)
   int dims[NDIM];
   for (int i = 0; i < NDIM; i++)
     dims[i] = inputs[0].adim[NDIM-1-i];
-  output = model.create_tensor<NDIM>(dims, IndexSpaceT<NDIM>(task_is), DT_FLOAT);
+  outputs[0] = model.create_tensor<NDIM>(dims, IndexSpaceT<NDIM>(task_is), DT_FLOAT);
   Rect<NDIM> input_rect;
   for (int i = 0; i < 2; i++) {
     input_rect = runtime->get_index_partition_color_space(
@@ -208,8 +208,34 @@ void ElementBinary::create_output_and_partition(FFModel& model)
   }
 }
 
+__host__
+void ElementBinary::init_task(const Task* task,
+                              const std::vector<PhysicalRegion> &regions,
+                              Context ctx, Runtime* runtime)
+{}
+
 void ElementBinary::init(const FFModel& ff)
 {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  IndexLauncher launcher(ELEMENTBINARY_FWD_TASK_ID, task_is,
+                         TaskArgument(this, sizeof(ElementBinary)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
+  launcher.add_region_requirement(
+    RegionRequirement(input_lps[0], 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[0].region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+    RegionRequirement(input_lps[1], 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[1].region));
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(
+    RegionRequirement(outputs[0].part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+  launcher.add_field(2, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
 }
 
 __global__
@@ -298,8 +324,8 @@ void ElementBinary::forward(const FFModel& ff)
       READ_ONLY, EXCLUSIVE, inputs[1].region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-    RegionRequirement(output.part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, output.region));
+    RegionRequirement(outputs[0].part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -401,8 +427,8 @@ void ElementBinary::backward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): output_grad
   launcher.add_region_requirement(
-    RegionRequirement(output.part_grad, 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, output.region_grad));
+    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
+                      READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[1](I): input0
   launcher.add_region_requirement(

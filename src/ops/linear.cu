@@ -34,7 +34,7 @@ Tensor FFModel::dense(std::string name,
   Linear *li = new Linear(*this, name, input, outDim, activation, use_bias,
                           kernel_initializer, bias_initializer);
   li->add_to_model(*this);
-  return li->output;
+  return li->outputs[0];
 }
 
 Linear* FFModel::dense(std::string name,
@@ -113,15 +113,16 @@ Tensor Linear::init_inout(FFModel& model, const Tensor& _input)
   assert(_input.adim[0] == in_channels);
   inputs[0] = _input;
   create_output_and_partition(model);
-  return output;
+  return outputs[0];
 }
 
 void Linear::add_to_model(FFModel& model)
 {
   model.layers.push_back(this);
-  model.parameters.push_back(kernel);
-  if (bias.numDim != 0) { // bias is used
-    model.parameters.push_back(bias);
+  model.parameters.push_back(weights[0]);
+  if (numWeights > 1) { // bias is used
+    assert(numWeights == 2);
+    model.parameters.push_back(weights[1]);
   }
 }
 
@@ -134,12 +135,12 @@ void Linear::create_kernel_bias(FFModel& model, bool use_bias, Initializer* kern
   // Create kernel tensor
   {
     const int dims[2] = {out_channels, in_channels};
-    kernel = model.create_linear_weight<2>(this, dims, task_is, DT_FLOAT, kernel_initializer);
+    weights[numWeights++] = model.create_linear_weight<2>(this, dims, task_is, DT_FLOAT, kernel_initializer);
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_channels};
-    bias = model.create_linear_weight<1>(this, dims, task_is, DT_FLOAT, bias_initializer);
+    weights[numWeights++] = model.create_linear_weight<1>(this, dims, task_is, DT_FLOAT, bias_initializer);
   }
 }
 
@@ -159,7 +160,7 @@ void Linear::create_output_and_partition(FFModel& model)
   int batch_size = inputs[0].adim[1];
   {
     const int dims[2] = {batch_size, out_channels};
-    output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<2>(dims, task_is, DT_FLOAT);
   }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(
@@ -311,16 +312,16 @@ void Linear::init(const FFModel& ff)
   //                      READ_ONLY, EXCLUSIVE, inputs[0].region));
   //launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(kernel.part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, kernel.region));
+      RegionRequirement(weights[0].part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(bias.part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, bias.region));
+      RegionRequirement(weights[1].part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[1].region));
   launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -425,16 +426,16 @@ void Linear::forward(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(kernel.part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, kernel.region));
+      RegionRequirement(weights[0].part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(bias.part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, bias.region));
+      RegionRequirement(weights[1].part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[1].region));
   launcher.add_field(3, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -631,28 +632,28 @@ void Linear::backward(const FFModel& ff)
     }
     // regions[2](I): output
     launcher.add_region_requirement(
-        RegionRequirement(output.part, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, output.region));
+        RegionRequirement(outputs[0].part, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, outputs[0].region));
     launcher.add_field(2, FID_DATA);
     // regions[3](I/O): output_grad
     launcher.add_region_requirement(
-        RegionRequirement(output.part_grad, 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, output.region_grad));
+        RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, outputs[0].region_grad));
     launcher.add_field(3, FID_DATA);
     // regions[4](I): filter
     launcher.add_region_requirement(
-        RegionRequirement(kernel.part, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, kernel.region));
+        RegionRequirement(weights[0].part, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, weights[0].region));
     launcher.add_field(4, FID_DATA);
     // regions[5](O): filter_grad
     launcher.add_region_requirement(
-        RegionRequirement(kernel.part_grad, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, kernel.region_grad));
+        RegionRequirement(weights[0].part_grad, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, weights[0].region_grad));
     launcher.add_field(5, FID_DATA);
     // regions[6](O): bias_grad
     launcher.add_region_requirement(
-        RegionRequirement(bias.part_grad, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, bias.region_grad));
+        RegionRequirement(weights[1].part_grad, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, weights[1].region_grad));
     launcher.add_field(6, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -683,9 +684,9 @@ __host__
 Parameter* Linear::get_parameter(int index)
 {
   if (index == 0) {
-    return &kernel;
+    return &weights[0];
   } else if (index == 1){
-    return &bias;
+    return &weights[1];
   } else {
     assert(0);
     return NULL;
@@ -699,13 +700,13 @@ void Linear::print_layer(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
 
-  RegionRequirement kernel_req(kernel.region, READ_WRITE, EXCLUSIVE, kernel.region);
+  RegionRequirement kernel_req(weights[0].region, READ_WRITE, EXCLUSIVE, weights[0].region);
   kernel_req.add_field(FID_DATA);
   InlineLauncher kernel_launcher(kernel_req);
   PhysicalRegion kernel_region = runtime->map_region(ctx, kernel_launcher);
   kernel_region.wait_until_valid();
   
-  RegionRequirement bias_req(bias.region, READ_WRITE, EXCLUSIVE, bias.region);
+  RegionRequirement bias_req(weights[1].region, READ_WRITE, EXCLUSIVE, weights[1].region);
   bias_req.add_field(FID_DATA);
   InlineLauncher bias_launcher(bias_req);
   PhysicalRegion bias_region = runtime->map_region(ctx, bias_launcher);

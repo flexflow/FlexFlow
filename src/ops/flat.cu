@@ -23,7 +23,7 @@ Tensor FFModel::flat(std::string name, Tensor input)
   //ParallelConfig pc = strategies[name];
   Flat *flat = new Flat(*this, name, input);
   flat->add_to_model(*this);
-  return flat->output;
+  return flat->outputs[0];
 }
 
 Flat* FFModel::flat(std::string name)
@@ -148,7 +148,7 @@ Tensor Flat::init_inout(FFModel& model, const Tensor& _input)
   add_to_model(model);
   inputs[0] = _input;
   create_output_and_partition(model);
-  return output;
+  return outputs[0];
 }
 
 void Flat::add_to_model(FFModel& model)
@@ -174,7 +174,7 @@ void Flat::create_output_and_partition(FFModel& model)
   // Create output tensor
   {
     const int dims[2] = {batch_size, out_dim};
-    output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<2>(dims, task_is, DT_FLOAT);
   }
   model.create_data_parallel_partition_with_diff_dims<4, 2>(
       inputs[0], task_is, input_lps[0], input_grad_lps[0]);
@@ -255,8 +255,8 @@ void Flat::forward(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -303,8 +303,8 @@ void Flat::backward(const FFModel& ff)
                         WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.part_grad, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, output.region_grad));
+      RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
