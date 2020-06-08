@@ -102,14 +102,8 @@ class Op(object):
   def _get_input_tensor_by_id(self, id):
     handle = ffc.flexflow_op_get_input_by_id(self.handle, id)
     return Tensor(handle, False)
- 
-  def get_output_tensor(self):
-    # get_output_tensor returns the first output since most ops
-    # only has one output
-    handle = ffc.flexflow_op_get_output_by_id(self.handle, 0)
-    return Tensor(handle, False)
-   
-  def get_output_tensor_by_id(self, id):
+
+  def _get_output_tensor_by_id(self, id):
     handle = ffc.flexflow_op_get_output_by_id(self.handle, id)
     return Tensor(handle, False)
     
@@ -157,6 +151,9 @@ class Conv2D(Op):
   def get_input_tensor(self):
     return self._get_input_tensor_by_id(0) 
     
+  def get_output_tensor(self):
+    return self._get_output_tensor_by_id(0)
+    
   def init_inout(self, model, input):
     model.add_layer(OpType.CONV2D)
     return self._init_inout(model, input) 
@@ -174,6 +171,9 @@ class Pool2D(Op):
     
   def get_input_tensor(self):
     return self._get_input_tensor_by_id(0) 
+    
+  def get_output_tensor(self):
+    return self._get_output_tensor_by_id(0)
     
   def init_inout(self, model, input):
     model.add_layer(OpType.POOL2D)
@@ -199,6 +199,9 @@ class Linear(Op):
   def get_input_tensor(self):
     return self._get_input_tensor_by_id(0) 
     
+  def get_output_tensor(self):
+    return self._get_output_tensor_by_id(0)
+    
   def init_inout(self, model, input):
     model.add_layer(OpType.LINEAR)
     return self._init_inout(model, input)
@@ -216,6 +219,9 @@ class Flat(Op):
     
   def get_input_tensor(self):
     return self._get_input_tensor_by_id(0) 
+    
+  def get_output_tensor(self):
+    return self._get_output_tensor_by_id(0)
     
   def init_inout(self, model, input):
     model.add_layer(OpType.FLAT)
@@ -304,16 +310,22 @@ class FFConfig(object):
 # -----------------------------------------------------------------------
 
 class Tensor(object):
-  __slots__ = ['handle', '_handle', 'num_dims', 'dims', 'mapped']
+  __slots__ = ['p_handle', 'handle', '_handle', 'num_dims', 'dims', 'mapped']
   def __init__(self, handle, deallocate=True):
-    assert ffi.typeof(handle) == ffi.typeof('flexflow_tensor_t'), "Tensor handle is wrong"
-    self.handle = handle
+    if (ffi.typeof(handle) == ffi.typeof('flexflow_tensor_t')):
+      self.p_handle = 0
+      self.handle = handle
+    elif (ffi.typeof(handle) == ffi.typeof('flexflow_parameter_t')):
+      self.p_handle = ffi.new('flexflow_tensor_t *')
+      self.p_handle.impl = handle.impl
+      self.handle = self.p_handle[0]
+    else:
+      assert 0, "Tensor handle is wrong"
     self.num_dims = 0
     self.dims = [0, 0, 0, 0]
     self.mapped = False
     self.__set_dims()
     if (deallocate == True):
-      #print("deallocate true")
       self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
     if (self.is_mapped() == True):
       self.mapped = True
@@ -442,9 +454,7 @@ class Parameter(Tensor):
   def __init__(self, handle):
     assert ffi.typeof(handle) == ffi.typeof('flexflow_parameter_t'), "Parameter handle is wrong"
     self.parameter_handle = handle
-    super_handle = ffc.flexflow_parameter_get_tensor(handle)
-    print(handle, super_handle)
-    super(Parameter, self).__init__(super_handle, deallocate=False)
+    super(Parameter, self).__init__(self.parameter_handle, deallocate=False)
     
   def set_weights(self, ffmodel, np_array):
     assert np_array.__array_interface__['strides'] == None, "Parameter set_weights, numpy array strides is not None"
@@ -708,12 +718,14 @@ class AdamOptimizer(object):
 # Initializer
 # -----------------------------------------------------------------------
 class Initializer(object):
-  __slots__ = ['handle']
-  def __init__(self, handle):
-    if (handle == None):      
-      self.handle = ffc.flexflow_initializer_create_null()
+  __slots__ = ['handle', 'p_handle']
+  def __init__(self, handle, p_handle=0):
+    self.p_handle = ffi.new('flexflow_initializer_t *')
+    if (handle == None):
+      self.p_handle.impl = ffi.NULL
     else:
-      self.handle = handle
+      self.p_handle.impl = handle.impl
+    self.handle = self.p_handle[0]
     assert ffi.typeof(self.handle) == ffi.typeof('flexflow_initializer_t'), "Initializer handle is wrong"
       
 # -----------------------------------------------------------------------
@@ -725,8 +737,7 @@ class GlorotUniformInitializer(Initializer):
   def __init__(self, seed):
     self.glorot_handle = ffc.flexflow_glorot_uniform_initializer_create(seed)
     self._glorot_handle = ffi.gc(self.glorot_handle, ffc.flexflow_glorot_uniform_initializer_destroy)
-    super_handle = ffc.flexflow_glorot_uniform_initializer_get_initializer(self.glorot_handle)
-    super(GlorotUniformInitializer, self).__init__(super_handle)
+    super(GlorotUniformInitializer, self).__init__(self.glorot_handle)
     
 # -----------------------------------------------------------------------
 # ZeroInitializer
@@ -737,8 +748,7 @@ class ZeroInitializer(Initializer):
   def __init__(self):
     self.zero_handle = ffc.flexflow_zero_initializer_create()
     self._zero_handle = ffi.gc(self.zero_handle, ffc.flexflow_zero_initializer_destroy)
-    super_handle = ffc.flexflow_zero_initializer_get_initializer(self.zero_handle)
-    super(ZeroInitializer, self).__init__(super_handle)  
+    super(ZeroInitializer, self).__init__(self.zero_handle)  
     
 # -----------------------------------------------------------------------
 # UniformInitializer
@@ -749,6 +759,7 @@ class UniformInitializer(Initializer):
   def __init__(self, seed, minv, maxv):
     self.uniform_handle = ffc.flexflow_uniform_initializer_create(seed, minv, maxv)
     self._uniform_handle = ffi.gc(self.uniform_handle, ffc.flexflow_uniform_initializer_destroy)
+    super(ZeroInitializer, self).__init__(self.uniform_handle)  
     
 # -----------------------------------------------------------------------
 # NormInitializer
@@ -759,6 +770,7 @@ class NormInitializer(Initializer):
   def __init__(self, seed, meanv, stddev):
     self.norm_handle = ffc.flexflow_norm_initializer_create(seed, meanv, stddev)
     self._norm_handle = ffi.gc(self.norm_handle, ffc.flexflow_norm_initializer_destroy)
+    super(ZeroInitializer, self).__init__(self.norm_handle)  
 
 # -----------------------------------------------------------------------
 # NetConfig

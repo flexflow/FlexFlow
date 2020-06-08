@@ -241,7 +241,7 @@ void ImgDataLoader4D::load_entire_dataset(const Task *task,
       printf("Loaded %d samples\n", i+1);
     }
     label_ptr[i] = buffer[0];
-    nearest_neigh(image, buffer, height, width,
+    nearest_neigh(image, buffer + 1, height, width,
                   origHeight, origWidth, heightScale, widthScale);
     int input_offset = i * 3 * height * width;
     int image_offset = 0;

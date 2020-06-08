@@ -222,7 +222,7 @@ def cifar_cnn_concat():
 
   model.fit([x_train, x_train], y_train, epochs=1)
   
-def cifar_alexnet_concat():
+def cifar_alexnet():
   
   num_samples = 10000
   
@@ -246,15 +246,13 @@ def cifar_alexnet_concat():
   
   input_tensor = Input(batch_shape=[0, 3, 229, 229], dtype="float32")
   
-  t1 = Conv2D(filters=64, input_shape=(3,229,229), kernel_size=(11,11), strides=(4,4), padding=(2,2))(input_tensor)
-  t2 = Conv2D(filters=64, input_shape=(3,229,229), kernel_size=(11,11), strides=(4,4), padding=(2,2))(input_tensor)
-  output = Concatenate(axis=1)([t1, t2])
+  output = Conv2D(filters=64, input_shape=(3,229,229), kernel_size=(11,11), strides=(4,4), padding=(2,2), activation="relu")(input_tensor)
   output = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid")(output)
-  output = Conv2D(filters=192, kernel_size=(5,5), strides=(1,1), padding=(2,2))(output)
+  output = Conv2D(filters=192, kernel_size=(5,5), strides=(1,1), padding=(2,2), activation="relu")(output)
   output = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid")(output)
-  output = Conv2D(filters=384, kernel_size=(3,3), strides=(1,1), padding=(1,1))(output)
-  output = Conv2D(filters=256, kernel_size=(3,3), strides=(1,1), padding=(1,1))(output)
-  output = Conv2D(filters=256, kernel_size=(3,3), strides=(1,1), padding=(1,1))(output)
+  output = Conv2D(filters=384, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
+  output = Conv2D(filters=256, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
+  output = Conv2D(filters=256, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
   output = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid")(output)
   output = Flatten()(output)
   output = Dense(4096, activation="relu")(output)
@@ -447,7 +445,7 @@ def top_level_task():
   elif (test_type == 4):
     cifar_cnn_concat()
   elif (test_type == 5):
-    cifar_alexnet_concat()
+    cifar_alexnet()
   elif (test_type == 6):
     mlp()
   elif (test_type == 7):

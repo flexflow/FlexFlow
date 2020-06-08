@@ -3,6 +3,15 @@ from flexflow.keras.datasets import cifar10
 
 from PIL import Image
 
+def BottleneckBlock(ff, input, out_channels, stride):
+  t = ff.conv2d("conv1", input, out_channels, 1, 1, 1, 1, 0, 0, ActiMode.AC_MODE_RELU)
+  t = ff.conv2d("conv2", t, out_channels, 3, 3, stride, stride, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ff.conv2d("conv3", t, 4*out_channels, 1, 1, 1, 1, 0, 0)
+  if ((stride > 1) or (input.dims[3] != out_channels * 4)):
+    print("input.adim = %d out_channels*4 = %d" %(input.dims[3], out_channels*4))
+    input = ff.conv2d("conv4", input, 4*out_channels, 1, 1, stride, stride, 0, 0, ActiMode.AC_MODE_RELU)
+  return ff.add("add", input, t)
+
 def top_level_task():
   ffconfig = FFConfig()
   alexnetconfig = NetConfig()
@@ -73,23 +82,31 @@ def top_level_task():
 
   kernel_init = GlorotUniformInitializer(123)
   bias_init = ZeroInitializer()
-  # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
-  # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
-  # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
-  # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
-  t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_RELU)
-  #t = ffmodel.concat("concat", [ts0, ts1], 1)
-  t = ffmodel.pool2d("pool1", t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2, ActiMode.AC_MODE_RELU)
-  t = ffmodel.pool2d("pool2", t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.conv2d("conv4", t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.pool2d("pool3", t, 3, 3, 2, 2, 0, 0)
+  t = ffmodel.conv2d("conv1", input, 64, 7, 7, 2, 2, 3, 3)
+  t = ffmodel.pool2d("pool1", t, 3, 3, 2, 2, 1, 1)
+  for i in range(0, 3):
+    t = BottleneckBlock(ffmodel, t, 64, 1)
+  for i in range(0, 4):
+    if (i == 0):
+      stride = 2
+    else:
+      stride = 1
+    t = BottleneckBlock(ffmodel, t, 128, stride)
+  for i in range(0, 6):
+    if (i == 0):
+      stride = 2
+    else:
+      stride = 1
+    t = BottleneckBlock(ffmodel, t, 256, stride)
+  for i in range(0, 3):
+    if (i == 0):
+      stride = 2
+    else:
+      stride = 1
+    t = BottleneckBlock(ffmodel, t, 512, stride);
+  t = ffmodel.pool2d("pool2", t, 7, 7, 1, 1, 0, 0, PoolType.POOL_AVG)
   t = ffmodel.flat("flat", t);
-  t = ffmodel.dense("lienar1", t, 4096, ActiMode.AC_MODE_RELU)
-  t = ffmodel.dense("linear2", t, 4096, ActiMode.AC_MODE_RELU)
-  t = ffmodel.dense("linear3", t, 10)
+  t = ffmodel.dense("linear1", t, 10)
   t = ffmodel.softmax("softmax", t, label)
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.001)
