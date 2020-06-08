@@ -698,15 +698,6 @@ flexflow_tensor_is_mapped(
 // Parameter
 // -----------------------------------------------------------------------
 
-flexflow_tensor_t
-flexflow_parameter_get_tensor(
-  flexflow_parameter_t handle_)
-{
-  Parameter *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *tensor = static_cast<Tensor*>(handle);
-  return FFCObjectWrapper::wrap(tensor);  
-}
-
 bool
 flexflow_parameter_set_weights_float(
   flexflow_parameter_t handle_,
@@ -822,15 +813,6 @@ flexflow_glorot_uniform_initializer_destroy(
   delete handle;
 }
 
-flexflow_initializer_t
-flexflow_glorot_uniform_initializer_get_initializer(
-  flexflow_glorot_uniform_initializer_t handle_)
-{
-  GlorotUniform *handle = FFCObjectWrapper::unwrap(handle_);
-  Initializer *initializer = static_cast<Initializer*>(handle);
-  return FFCObjectWrapper::wrap(initializer);  
-}
-
 // -----------------------------------------------------------------------
 // ZeroInitializer
 // -----------------------------------------------------------------------
@@ -850,15 +832,6 @@ flexflow_zero_initializer_destroy(
   ZeroInitializer *handle = FFCObjectWrapper::unwrap(handle_);
   ffc_log.print("[ZeroInitializer] delete %p", handle);
   delete handle;
-}
-
-flexflow_initializer_t  
-flexflow_zero_initializer_get_initializer(
-  flexflow_zero_initializer_t handle_)
-{
-  ZeroInitializer *handle = FFCObjectWrapper::unwrap(handle_);
-  Initializer *initializer = static_cast<Initializer*>(handle);
-  return FFCObjectWrapper::wrap(initializer); 
 }
 
 // -----------------------------------------------------------------------
@@ -885,15 +858,6 @@ flexflow_uniform_initializer_destroy(
   delete handle;
 }
 
-flexflow_initializer_t
-flexflow_uniform_initializer_get_initializer(
-  flexflow_uniform_initializer_t handle_)
-{
-  UniformInitializer *handle = FFCObjectWrapper::unwrap(handle_);
-  Initializer *initializer = static_cast<Initializer*>(handle);
-  return FFCObjectWrapper::wrap(initializer); 
-}
-
 // -----------------------------------------------------------------------
 // NormInitializer
 // -----------------------------------------------------------------------
@@ -916,15 +880,6 @@ flexflow_norm_initializer_destroy(
   NormInitializer *handle = FFCObjectWrapper::unwrap(handle_);
   ffc_log.print("[NormInitializer] delete %p", handle);
   delete handle;
-}
-
-flexflow_initializer_t  
-flexflow_norm_initializer_get_initializer(
-  flexflow_norm_initializer_t handle_)
-{
-  NormInitializer *handle = FFCObjectWrapper::unwrap(handle_);
-  Initializer *initializer = static_cast<Initializer*>(handle);
-  return FFCObjectWrapper::wrap(initializer); 
 }
 
 // -----------------------------------------------------------------------

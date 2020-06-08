@@ -356,10 +356,6 @@ flexflow_tensor_is_mapped(
 // Parameter
 // -----------------------------------------------------------------------
 
-flexflow_tensor_t
-flexflow_parameter_get_tensor(
-  flexflow_parameter_t handle);  
-
 bool
 flexflow_parameter_set_weights_float(
   flexflow_parameter_t handle,
@@ -425,10 +421,6 @@ void
 flexflow_glorot_uniform_initializer_destroy(
   flexflow_glorot_uniform_initializer_t handle);
 
-flexflow_initializer_t
-flexflow_glorot_uniform_initializer_get_initializer(
-  flexflow_glorot_uniform_initializer_t handle);
-
 // -----------------------------------------------------------------------
 // ZeroInitializer
 // -----------------------------------------------------------------------
@@ -438,10 +430,6 @@ flexflow_zero_initializer_create(void);
 
 void  
 flexflow_zero_initializer_destroy(
-  flexflow_zero_initializer_t handle);
-
-flexflow_initializer_t  
-flexflow_zero_initializer_get_initializer(
   flexflow_zero_initializer_t handle);
 
 // -----------------------------------------------------------------------
@@ -458,10 +446,6 @@ void
 flexflow_uniform_initializer_destroy(
   flexflow_uniform_initializer_t handle);
 
-flexflow_initializer_t
-flexflow_uniform_initializer_get_initializer(
-  flexflow_uniform_initializer_t handle);
-
 // -----------------------------------------------------------------------
 // NormInitializer
 // -----------------------------------------------------------------------
@@ -474,10 +458,6 @@ flexflow_norm_initializer_create(
 
 void  
 flexflow_norm_initializer_destroy(
-  flexflow_norm_initializer_t handle);
-
-flexflow_initializer_t  
-flexflow_norm_initializer_get_initializer(
   flexflow_norm_initializer_t handle);
 
 // -----------------------------------------------------------------------
