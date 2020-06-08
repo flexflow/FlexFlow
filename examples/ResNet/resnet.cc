@@ -39,7 +39,6 @@ Tensor BottleneckBlock(FFModel& ff,
   Tensor t = ff.conv2d("conv1", input, out_channels, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
   t = ff.conv2d("conv2", t, out_channels, 3, 3, stride, stride, 1, 1, AC_MODE_RELU);
   t = ff.conv2d("conv3", t, 4*out_channels, 1, 1, 1, 1, 0, 0);
-  return t;
   if ((stride > 1) || (input.adim[1] != out_channels * 4)) {
     printf("input.adim = %d out_channels*4 = %d\n", input.adim[1], out_channels*4);
     input = ff.conv2d("conv4", input, 4*out_channels, 1, 1, stride, stride, 0, 0, AC_MODE_RELU);

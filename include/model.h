@@ -37,6 +37,7 @@ enum TaskIDs {
   LABEL_INIT_TASK_ID,
   LOAD_IMAGES_TASK_ID,
   NORMALIZE_IMAGES_TASK_ID,
+  ELEMENTBINARY_INIT_TASK_ID,
   ELEMENTBINARY_FWD_TASK_ID,
   ELEMENTBINARY_BWD_TASK_ID,
   ELEMENTUNARY_FWD_TASK_ID,
@@ -162,7 +163,8 @@ struct Parameter : Tensor {
   bool get_weights(const FFModel& model,
                    T* data);
   std::vector<int> get_dims();
-  Op* op; // Pointer to the operator that owns this parameter
+  std::string pcname; // indicating how the parameter is parallelized
+  // Op* op; // Pointer to the operator that owns this parameter
 };
 
 class OpMeta {
@@ -190,14 +192,15 @@ public:
   //virtual void update(const FFModel&) = 0;
 public:
   char name[MAX_OPNAME];
-  Tensor output;
+  Tensor outputs[MAX_NUM_OUTPUTS];
   Tensor inputs[MAX_NUM_INPUTS];
+  Parameter weights[MAX_NUM_WEIGHTS];
   bool trainableInputs[MAX_NUM_INPUTS];
   bool resetInputGrads[MAX_NUM_INPUTS];
   LogicalPartition input_lps[MAX_NUM_INPUTS], input_grad_lps[MAX_NUM_INPUTS];
   //Tensor locals[MAX_NUM_LOCALS];
   OpMeta* meta[MAX_NUM_WORKERS];
-  int numLocals, numInputs;
+  int numInputs, numWeights, numOutputs;
 };
 
 class ElementBinary;
@@ -419,6 +422,9 @@ public:
   void backward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
   Parameter* get_parameter(int index) {assert(0); return NULL;}
+  static void init_task(const Task *task,
+                        const std::vector<PhysicalRegion> &regions,
+                        Context ctx, Runtime *runtime);
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -519,13 +525,12 @@ private:
 public:
   IndexSpaceT<4> task_is;
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
-  Parameter kernel, bias;
   bool profiling;
   ActiMode activation;
-  PhysicalRegion kernel_physical_region;
-  PhysicalRegion bias_physical_region;
-  TensorAccessorW<float, 4> acc_kernel;
-  TensorAccessorW<float, 1> acc_bias;
+  //PhysicalRegion kernel_physical_region;
+  //PhysicalRegion bias_physical_region;
+  //TensorAccessorW<float, 4> acc_kernel;
+  //TensorAccessorW<float, 1> acc_bias;
 };
 
 class Conv2DMeta : public OpMeta {
@@ -624,7 +629,7 @@ public:
   IndexSpaceT<4> task_is;
   bool relu, profiling;
   int num_replica;
-  Tensor locals[MAX_NUM_LOCALS];
+  //Tensor locals[MAX_NUM_LOCALS];
 };
 
 class BatchNormMeta : public OpMeta {
@@ -688,7 +693,6 @@ private:
 public:
   IndexSpaceT<2> task_is;
   int in_channels, out_channels;
-  Parameter kernel, bias;
   Tensor replica;
   bool profiling;
   ActiMode activation;
@@ -745,7 +749,6 @@ private:
 public:
   IndexSpaceT<2> task_is;
   int out_channels;
-  Parameter kernel;
   AggrMode aggr;
   bool profiling;
 };

@@ -21,7 +21,7 @@ Tensor FFModel::exp(std::string name,
 {
   ElementUnary *ele = new ElementUnary(*this, ElementUnary::OP_EXP, name, x);
   ele->add_to_model(*this);
-  return ele->output;
+  return ele->outputs[0];
 }
 
 ElementUnary* FFModel::exp(std::string name)
@@ -113,7 +113,7 @@ Tensor ElementUnary::init_inout(FFModel& model,
       assert(false);
     }
   }
-  return output;
+  return outputs[0];
 }
 
 void ElementUnary::add_to_model(FFModel& model)
@@ -132,7 +132,7 @@ void ElementUnary::create_output_and_partition(FFModel& model)
   int dims[NDIM];
   for (int i = 0; i < NDIM; i++)
     dims[i] = inputs[0].adim[NDIM-1-i];
-  output = model.create_tensor<NDIM>(dims, IndexSpaceT<NDIM>(task_is), DT_FLOAT);
+  outputs[0] = model.create_tensor<NDIM>(dims, IndexSpaceT<NDIM>(task_is), DT_FLOAT);
   Rect<NDIM> input_rect;
   input_rect = runtime->get_index_partition_color_space(
         ctx, inputs[0].part.get_index_partition());
@@ -209,8 +209,8 @@ void ElementUnary::forward(const FFModel& ff)
       READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-    RegionRequirement(output.part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, output.region));
+    RegionRequirement(outputs[0].part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -281,8 +281,8 @@ void ElementUnary::backward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): output_grad
   launcher.add_region_requirement(
-    RegionRequirement(output.part_grad, 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, output.region_grad));
+    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
+                      READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[1](I): input
   launcher.add_region_requirement(

@@ -40,7 +40,7 @@ Tensor FFModel::conv2d(std::string name,
                             strideH, strideW, paddingH, paddingW, activation,
                             use_bias, kernel_initializer, bias_initializer);
   conv->add_to_model(*this);
-  return conv->output;
+  return conv->outputs[0];
 }
 
 Conv2D* FFModel::conv2d(std::string name,
@@ -257,15 +257,16 @@ Tensor Conv2D::init_inout(FFModel& model, const Tensor& _input)
   assert(_input.adim[2] == in_channels);
   inputs[0] = _input;
   create_output_and_partition(model);
-  return output;
+  return outputs[0];
 }
 
 void Conv2D::add_to_model(FFModel& model)
 {
   model.layers.push_back(this);
-  model.parameters.push_back(kernel);
-  if (bias.numDim != 0) { // bias is used
-    model.parameters.push_back(bias);
+  model.parameters.push_back(weights[0]);
+  if (numWeights > 1) { // bias is used
+    assert(numWeights == 2);
+    model.parameters.push_back(weights[1]);
   }
 }
 
@@ -278,12 +279,14 @@ void Conv2D::create_kernel_bias(FFModel& model, bool use_bias, Initializer* kern
   // Create kernel
   {
     const int dims[4] = {out_channels, in_channels, kernel_h, kernel_w};
-    kernel = model.create_conv_weight<4>(this, dims, task_is, DT_FLOAT, kernel_initializer);
+    weights[0] = model.create_conv_weight<4>(this, dims, task_is, DT_FLOAT, kernel_initializer);
+    numWeights = 1;
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_channels};
-    bias = model.create_conv_weight<1>(this, dims, task_is, DT_FLOAT, bias_initializer);
+    weights[1] = model.create_conv_weight<1>(this, dims, task_is, DT_FLOAT, bias_initializer);
+    numWeights = 2;
   }
 }
 
@@ -309,7 +312,7 @@ void Conv2D::create_output_and_partition(FFModel& model)
   int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
   {
     const int dims[4] = {output_n, output_c, output_h, output_w};
-    output = model.create_tensor<4>(dims, task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<4>(dims, task_is, DT_FLOAT);
   }
   // Compute partition bound for input
   Rect<4> input_rect = runtime->get_index_partition_color_space(
@@ -393,8 +396,8 @@ OpMeta* Conv2D::init_task(const Task *task,
   int output_h = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
   printf("init conv (input): n(%d) c(%d) h(%d) w(%d)\n", conv->inputs[0].pdim[3],
          conv->inputs[0].pdim[2], input_h, input_w);
-  printf("init conv (output): n(%d) c_out(%d) h(%d) w(%d)\n", conv->output.pdim[3],
-         conv->output.pdim[2], output_h, output_w);
+  printf("init conv (output): n(%d) c_out(%d) h(%d) w(%d)\n", conv->outputs[0].pdim[3],
+         conv->outputs[0].pdim[2], output_h, output_w);
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
@@ -407,15 +410,15 @@ OpMeta* Conv2D::init_task(const Task *task,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
                                         1,
-                                        conv->output.pdim[2],
+                                        conv->outputs[0].pdim[2],
                                         1,
                                         1));
 
-  printf("filterDim: kernel(%d %d) c_in(%d), c_out(%d)\n", conv->kernel_h, conv->kernel_w, conv->inputs[0].pdim[2], conv->output.pdim[2]);
+  printf("filterDim: kernel(%d %d) c_in(%d), c_out(%d)\n", conv->kernel_h, conv->kernel_w, conv->inputs[0].pdim[2], conv->outputs[0].pdim[2]);
   checkCUDNN(cudnnSetFilter4dDescriptor(m->filterDesc,
                                         CUDNN_DATA_FLOAT,
                                         CUDNN_TENSOR_NCHW,
-                                        conv->output.pdim[2],
+                                        conv->outputs[0].pdim[2],
                                         conv->inputs[0].pdim[2],
                                         conv->kernel_h,
                                         conv->kernel_w));
@@ -443,8 +446,8 @@ OpMeta* Conv2D::init_task(const Task *task,
                                                    m->inputTensor,
                                                    m->filterDesc,
                                                    &n, &c, &h, &w));
-  assert(n == conv->output.pdim[3]);
-  assert(c == conv->output.pdim[2]);
+  assert(n == conv->outputs[0].pdim[3]);
+  assert(c == conv->outputs[0].pdim[2]);
   assert(h == output_h);
   assert(w == output_w);
 
@@ -497,20 +500,20 @@ void Conv2D::init(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(kernel.part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, kernel.region));
+      RegionRequirement(weights[0].part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(bias.part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, bias.region));
+      RegionRequirement(weights[1].part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[1].region));
   launcher.add_field(3, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(kernel.part_grad, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, kernel.region_grad));
+      RegionRequirement(weights[0].part_grad, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, weights[1].region_grad));
   launcher.add_field(4, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[0], 0/*projection id*/,
@@ -613,16 +616,16 @@ void Conv2D::forward(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(kernel.part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, kernel.region));
+      RegionRequirement(weights[0].part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(bias.region, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, bias.region));
+      RegionRequirement(weights[1].region, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[1].region));
   launcher.add_field(3, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -746,28 +749,28 @@ void Conv2D::backward(const FFModel& ff)
   launcher.add_field(1, FID_DATA);
   // regions[2](I): output
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(2, FID_DATA);
   // regions[3](I/O): output_grad
   launcher.add_region_requirement(
-      RegionRequirement(output.part_grad, 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, output.region_grad));
+      RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
+                        READ_WRITE, EXCLUSIVE, outputs[0].region_grad));
   launcher.add_field(3, FID_DATA);
   // regions[4](I): filter
   launcher.add_region_requirement(
-      RegionRequirement(kernel.part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, kernel.region));
+      RegionRequirement(weights[0].part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(4, FID_DATA);
   // regions[5](O): filter_grad
   launcher.add_region_requirement(
-      RegionRequirement(kernel.part_grad, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, kernel.region_grad));
+      RegionRequirement(weights[0].part_grad, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, weights[0].region_grad));
   launcher.add_field(5, FID_DATA);
   // regions[6](O): bias_grad
   launcher.add_region_requirement(
-      RegionRequirement(bias.part_grad, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, bias.region_grad));
+      RegionRequirement(weights[1].part_grad, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, weights[1].region_grad));
   launcher.add_field(6, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   // TODO: remove this line
@@ -856,9 +859,9 @@ __host__
 Parameter* Conv2D::get_parameter(int index)
 {
   if (index == 0) {
-    return &kernel;
-  } else if (index == 1){
-    return &bias;
+    return &weights[0];
+  } else if (index == 1) {
+    return &weights[1];
   } else {
     assert(0);
     return NULL;
@@ -882,7 +885,7 @@ void Conv2D::print_layer(const FFModel& ff)
   Future fu = runtime->execute_task(ctx, launcher);
   fu.wait();
 #else
-  RegionRequirement kernel_req(kernel.region, READ_WRITE, EXCLUSIVE, kernel.region);
+  RegionRequirement kernel_req(weights[0].region, READ_WRITE, EXCLUSIVE, weights[0].region);
   kernel_req.add_field(FID_DATA);
   InlineLauncher kernel_launcher(kernel_req);
   PhysicalRegion kernel_region = runtime->map_region(ctx, kernel_launcher);
@@ -895,7 +898,7 @@ void Conv2D::print_layer(const FFModel& ff)
   PhysicalRegion kernel_grad_region = runtime->map_region(ctx, kernel_grad_launcher);
   kernel_grad_region.wait_until_valid();
 */  
-  RegionRequirement bias_req(bias.region, READ_WRITE, EXCLUSIVE, bias.region);
+  RegionRequirement bias_req(weights[1].region, READ_WRITE, EXCLUSIVE, weights[1].region);
   bias_req.add_field(FID_DATA);
   InlineLauncher bias_launcher(bias_req);
   PhysicalRegion bias_region = runtime->map_region(ctx, bias_launcher);

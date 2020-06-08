@@ -75,7 +75,7 @@ void SGDOptimizer::update(const Parameter* p)
   TaskLauncher launcher(SGD_UPD_TASK_ID,
                         TaskArgument(this, sizeof(SGDOptimizer)),
                         Predicate::TRUE_PRED, 0/*mapper_id*/,
-                        FFConfig::get_hash_id(std::string(p->op->name)));
+                        FFConfig::get_hash_id(std::string(p->pcname)));
   // regions[0]: region_grad
   launcher.add_region_requirement(
       RegionRequirement(p->region_grad,
@@ -172,7 +172,7 @@ void AdamOptimizer::update(const Parameter* p)
   TaskLauncher launcher(ADAM_UPD_TASK_ID,
                         TaskArgument(this, sizeof(AdamOptimizer)),
                         Predicate::TRUE_PRED, 0/*mapper_id*/,
-                        FFConfig::get_hash_id(std::string(p->op->name)));
+                        FFConfig::get_hash_id(std::string(p->pcname)));
   // regions[0]: region_grad
   launcher.add_region_requirement(
       RegionRequirement(p->region_grad,

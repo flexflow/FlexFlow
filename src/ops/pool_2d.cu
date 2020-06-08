@@ -28,7 +28,7 @@ Tensor FFModel::pool2d(const std::string& name,
                             strideH, strideW, paddingH, paddingW,
                             type, activation);
   pool->add_to_model(*this);
-  return pool->output;
+  return pool->outputs[0];
 }
 
 Pool2D* FFModel::pool2d(const std::string& name,
@@ -155,7 +155,7 @@ Tensor Pool2D::init_inout(FFModel& model, const Tensor& _input)
   add_to_model(model);
   inputs[0] = _input;
   create_output_and_partition(model);
-  return output;  
+  return outputs[0];
 }
 
 void Pool2D::add_to_model(FFModel& model)
@@ -179,7 +179,7 @@ void Pool2D::create_output_and_partition(FFModel& model)
   int output_n = inputs[0].adim[3];
   {
     const int dims[4] = {output_n, output_c, output_h, output_w};
-    output = model.create_tensor<4>(dims, task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<4>(dims, task_is, DT_FLOAT);
   }
   //int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   //int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
@@ -224,8 +224,8 @@ OpMeta* Pool2D::init_task(const Task *task,
   int output_h = rect_output.hi[1] - rect_output.lo[1] + 1;
   printf("init pool (input): n(%d) c(%d) h(%d) w(%d)\n", pool->inputs[0].pdim[3],
         pool->inputs[0].pdim[2], input_h, input_w);
-  printf("init pool (output): n(%d) c(%d) h(%d) w(%d)\n", pool->output.pdim[3],
-        pool->output.pdim[2], output_h, output_w);
+  printf("init pool (output): n(%d) c(%d) h(%d) w(%d)\n", pool->outputs[0].pdim[3],
+        pool->outputs[0].pdim[2], output_h, output_w);
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
@@ -260,8 +260,8 @@ OpMeta* Pool2D::init_task(const Task *task,
   checkCUDNN(cudnnGetPooling2dForwardOutputDim(m->poolDesc,
                                                m->inputTensor,
                                                &n, &c, &h, &w));
-  assert(n == pool->output.pdim[3]);
-  assert(c == pool->output.pdim[2]);
+  assert(n == pool->outputs[0].pdim[3]);
+  assert(c == pool->outputs[0].pdim[2]);
   assert(h == output_h);
   assert(w == output_w);
 
@@ -292,8 +292,8 @@ void Pool2D::init(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   init_launcher.add_field(0, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, outputs[0].region));
   init_launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
@@ -354,8 +354,8 @@ void Pool2D::forward(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, outputs[0].region));
   launcher.add_field(1, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
@@ -451,13 +451,13 @@ void Pool2D::backward(const FFModel& ff)
   launcher.add_field(1, FID_DATA);
   // regions[2](I): output
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(2, FID_DATA);
   // regions[3](I): output_grad
   launcher.add_region_requirement(
-      RegionRequirement(output.part_grad, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, output.region_grad));
+      RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
   launcher.add_field(3, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);

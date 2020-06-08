@@ -22,7 +22,7 @@ Tensor FFModel::concat(std::string name,
 {
   Concat *cat = new Concat(*this, name, n, tensors, axis);
   layers.push_back(cat);
-  return cat->output;
+  return cat->outputs[0];
 }
 
 Concat::Concat(FFModel& model,
@@ -56,7 +56,7 @@ Concat::Concat(FFModel& model,
     case 1:
     {
       Rect<1> part_rect = domain;
-      output = model.create_tensor<1>(dims, IndexSpaceT<1>(task_is), DT_FLOAT);
+      outputs[0] = model.create_tensor<1>(dims, IndexSpaceT<1>(task_is), DT_FLOAT);
       for (int i = 0; i < numInputs; i++) {
         Rect<1> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -73,7 +73,7 @@ Concat::Concat(FFModel& model,
     case 2:
     {
       Rect<2> part_rect = domain;
-      output = model.create_tensor<2>(dims, IndexSpaceT<2>(task_is), DT_FLOAT);
+      outputs[0] = model.create_tensor<2>(dims, IndexSpaceT<2>(task_is), DT_FLOAT);
       for (int i = 0; i < numInputs; i++) {
         Rect<2> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -90,7 +90,7 @@ Concat::Concat(FFModel& model,
     case 3:
     {
       Rect<3> part_rect = domain;
-      output = model.create_tensor<3>(dims, IndexSpaceT<3>(task_is), DT_FLOAT);
+      outputs[0] = model.create_tensor<3>(dims, IndexSpaceT<3>(task_is), DT_FLOAT);
       for (int i = 0; i < numInputs; i++) {
         Rect<3> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -107,7 +107,7 @@ Concat::Concat(FFModel& model,
     case 4:
     {
       Rect<4> part_rect = domain;
-      output = model.create_tensor<4>(dims, IndexSpaceT<4>(task_is), DT_FLOAT);
+      outputs[0] = model.create_tensor<4>(dims, IndexSpaceT<4>(task_is), DT_FLOAT);
       for (int i = 0; i < numInputs; i++) {
         Rect<4> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -219,8 +219,8 @@ void Concat::init(const FFModel& ff)
     FFConfig::get_hash_id(std::string(name)));
  
   launcher.add_region_requirement(
-    RegionRequirement(output.part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, output.region));
+    RegionRequirement(outputs[0].part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
@@ -299,7 +299,7 @@ void Concat::forward_task(const Task *task,
 {
   const Concat* cc = (Concat*) task->args;
   // Note that our internal axis index ordering is opposite to other frameworks
-  int axis = cc->output.numDim - 1 - cc->axis;
+  int axis = cc->outputs[0].numDim - 1 - cc->axis;
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
   float *output;
@@ -308,7 +308,7 @@ void Concat::forward_task(const Task *task,
   assert(cc->numInputs <= MAX_NUM_INPUTS);
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  assert(domain.get_dim() == cc->output.numDim);
+  assert(domain.get_dim() == cc->outputs[0].numDim);
   switch (domain.get_dim()) {
     case 1:
     {
@@ -437,8 +437,8 @@ void Concat::forward(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-    RegionRequirement(output.part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, output.region));
+    RegionRequirement(outputs[0].part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
@@ -459,7 +459,7 @@ void Concat::backward_task(const Task *task,
 {
   const Concat* cc = (Concat*) task->args;
   // Note that our internal axis index ordering is opposite to other frameworks
-  int axis = cc->output.numDim - 1 - cc->axis;
+  int axis = cc->outputs[0].numDim - 1 - cc->axis;
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
   const float *output_grad;
@@ -468,7 +468,7 @@ void Concat::backward_task(const Task *task,
   assert(cc->numInputs <= MAX_NUM_INPUTS);
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  assert(domain.get_dim() == cc->output.numDim);
+  assert(domain.get_dim() == cc->outputs[0].numDim);
   switch (domain.get_dim()) {
     case 1:
     {
@@ -596,8 +596,8 @@ void Concat::backward(const FFModel& ff)
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-    RegionRequirement(output.part_grad, 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, output.region_grad));
+    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
