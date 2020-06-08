@@ -103,8 +103,8 @@ class Op(object):
     handle = ffc.flexflow_op_get_input_by_id(self.handle, id)
     return Tensor(handle, False)
     
-  def get_output_tensor(self):
-    handle = ffc.flexflow_op_get_output(self.handle)
+  def _get_output_tensor_by_id(self, id):
+    handle = ffc.flexflow_op_get_output_by_id(self.handle, id)
     return Tensor(handle, False)
     
   def init(self, model):
@@ -151,6 +151,9 @@ class Conv2D(Op):
   def get_input_tensor(self):
     return self._get_input_tensor_by_id(0) 
     
+  def get_output_tensor(self):
+    return self._get_output_tensor_by_id(0)
+    
   def init_inout(self, model, input):
     model.add_layer(OpType.CONV2D)
     return self._init_inout(model, input) 
@@ -168,6 +171,9 @@ class Pool2D(Op):
     
   def get_input_tensor(self):
     return self._get_input_tensor_by_id(0) 
+    
+  def get_output_tensor(self):
+    return self._get_output_tensor_by_id(0)
     
   def init_inout(self, model, input):
     model.add_layer(OpType.POOL2D)
@@ -193,6 +199,9 @@ class Linear(Op):
   def get_input_tensor(self):
     return self._get_input_tensor_by_id(0) 
     
+  def get_output_tensor(self):
+    return self._get_output_tensor_by_id(0)
+    
   def init_inout(self, model, input):
     model.add_layer(OpType.LINEAR)
     return self._init_inout(model, input)
@@ -210,6 +219,9 @@ class Flat(Op):
     
   def get_input_tensor(self):
     return self._get_input_tensor_by_id(0) 
+    
+  def get_output_tensor(self):
+    return self._get_output_tensor_by_id(0)
     
   def init_inout(self, model, input):
     model.add_layer(OpType.FLAT)
