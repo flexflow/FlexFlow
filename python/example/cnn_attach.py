@@ -15,6 +15,19 @@ def next_batch(idx, x_train, input1, ffconfig):
         for l in range(0, 32):
           input_array[i][j][k][l] = x_train_batch[i][j][k][l]
   input1.inline_unmap(ffconfig)
+  
+def next_batch_label(idx, x_train, input1, ffconfig):
+  start = idx*ffconfig.get_batch_size()
+  x_train_batch = x_train[start:start+ffconfig.get_batch_size(), :]
+  print(x_train_batch.shape)
+  
+  input1.inline_map(ffconfig)
+  input_array = input1.get_array(ffconfig, DataType.DT_INT32)
+  print(input_array.shape)
+  for i in range(0, ffconfig.get_batch_size()):
+    for j in range(0, 1):
+      input_array[i][j] = x_train_batch[i][j]
+  input1.inline_unmap(ffconfig)
 
 def top_level_task():
   ffconfig = FFConfig()
@@ -59,22 +72,8 @@ def top_level_task():
   print(full_input_array.shape, full_label_array.shape)
   print(full_label_array.__array_interface__["strides"])
   
-  dims_full_input = [num_samples, 3, 32, 32]
-  full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
-
-  dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor(dims_full_label, "", DataType.DT_INT32)
-  
-  full_input.attach_numpy_array(ffconfig, full_input_array)
-  full_label.attach_numpy_array(ffconfig, full_label_array)
-  
-  dataloader_input = SingleDataLoader(ffmodel, input, full_input, num_samples, DataType.DT_FLOAT)
-  dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
-  
-  full_input.detach_numpy_array(ffconfig)
-  full_label.detach_numpy_array(ffconfig)
-  
-  num_samples = dataloader_input.get_num_samples()
+  next_batch(0, x_train, input, ffconfig)
+  next_batch_label(0, y_train, label, ffconfig)
 
   t = ffmodel.conv2d("conv1", input, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
   t = ffmodel.conv2d("conv2", t, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
@@ -99,18 +98,14 @@ def top_level_task():
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
-    dataloader_input.reset()
-    dataloader_label.reset()
     ffmodel.reset_metrics()
     iterations = int(num_samples / ffconfig.get_batch_size())
     print(iterations, num_samples)
-
     ct = 0
     for iter in range(0, int(iterations)):
-      #dataloader_input.next_batch(ffmodel)
       next_batch(ct, x_train, input, ffconfig)
+      next_batch_label(ct, y_train, label, ffconfig)   
       ct += 1
-      dataloader_label.next_batch(ffmodel)
       if (epoch > 0):
         ffconfig.begin_trace(111)
       ffmodel.forward()

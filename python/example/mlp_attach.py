@@ -15,21 +15,18 @@ def next_batch(idx, x_train, input1, ffconfig):
       input_array[i][j] = x_train_batch[i][j]
   input1.inline_unmap(ffconfig)
   
-def check_input(idx, x_train, input1, ffconfig):
+def next_batch_label(idx, x_train, input1, ffconfig):
   start = idx*ffconfig.get_batch_size()
   x_train_batch = x_train[start:start+ffconfig.get_batch_size(), :]
   print(x_train_batch.shape)
   
   input1.inline_map(ffconfig)
-  input_array = input1.get_array(ffconfig, DataType.DT_FLOAT)
+  input_array = input1.get_array(ffconfig, DataType.DT_INT32)
   print(input_array.shape)
   for i in range(0, ffconfig.get_batch_size()):
-    for j in range(0, 784):
-      if (input_array[i][j] != x_train_batch[i][j]):
-        print("wrong", input_array[i][j],  x_train_batch[i][j])
-        assert 0, "wrong"
+    for j in range(0, 1):
+      input_array[i][j] = x_train_batch[i][j]
   input1.inline_unmap(ffconfig)
-  print("correct")
   
 
 def top_level_task():
@@ -58,25 +55,8 @@ def top_level_task():
   print(x_train.shape[0], 'train samples')
   print(y_train.shape)
   
-  dims_full_input = [num_samples, 784]
-  full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
-
-  dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor(dims_full_label, "", DataType.DT_INT32)
-
-  full_input.attach_numpy_array(ffconfig, x_train)
-  full_label.attach_numpy_array(ffconfig, y_train)
-  print(y_train)
-
-  #dataloader = DataLoader2D(ffmodel, input1, label, full_input, full_label, num_samples)
-  dataloader_input = SingleDataLoader(ffmodel, input1, full_input, num_samples, DataType.DT_FLOAT)
-  dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
-
-  full_input.detach_numpy_array(ffconfig)
-  full_label.detach_numpy_array(ffconfig)
-  
   next_batch(0, x_train, input1, ffconfig)
-  
+  next_batch_label(0, y_train, label, ffconfig)
   
   t2 = ffmodel.dense("dense1", input1, 512, ActiMode.AC_MODE_RELU)
   t3 = ffmodel.dense("dense1", t2, 512, ActiMode.AC_MODE_RELU)
@@ -88,23 +68,17 @@ def top_level_task():
 
   ffmodel.init_layers()
 
-  #check_input(0, x_train, input1, ffconfig)
-
   epochs = ffconfig.get_epochs()
   ct = 0
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
-    dataloader_input.reset()
-    dataloader_label.reset()
     ffmodel.reset_metrics()
     iterations = num_samples / ffconfig.get_batch_size()
     for iter in range(0, 100):
       next_batch(ct, x_train, input1, ffconfig)
-      check_input(ct, x_train, input1, ffconfig)
+      next_batch_label(ct, y_train, label, ffconfig)      
       ct += 1
-      #dataloader_input.next_batch(ffmodel)
-      dataloader_label.next_batch(ffmodel)
       if (epoch > 0):
         ffconfig.begin_trace(111)
       ffmodel.forward()

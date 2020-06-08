@@ -30,7 +30,7 @@ def top_level_task():
   #print(dims)
   label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
   
-  use_external = True
+  use_external = False
   if (use_external == True):
     num_samples = 10000
     
@@ -87,19 +87,19 @@ def top_level_task():
   t = ffmodel.conv2d("conv1", input, 64, 7, 7, 2, 2, 3, 3)
   t = ffmodel.pool2d("pool1", t, 3, 3, 2, 2, 1, 1)
   for i in range(0, 3):
-    t = BottleneckBlock(ffmodel, t, 64, 1);
+    t = BottleneckBlock(ffmodel, t, 64, 1)
   for i in range(0, 4):
     if (i == 0):
       stride = 2
     else:
       stride = 1
-    t = BottleneckBlock(ffmodel, t, 128, stride);
+    t = BottleneckBlock(ffmodel, t, 128, stride)
   for i in range(0, 6):
     if (i == 0):
       stride = 2
     else:
       stride = 1
-    t = BottleneckBlock(ffmodel, t, 256, stride);
+    t = BottleneckBlock(ffmodel, t, 256, stride)
   for i in range(0, 3):
     if (i == 0):
       stride = 2
