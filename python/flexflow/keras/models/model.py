@@ -14,6 +14,8 @@ class Model(BaseModel):
     self.input_tensors = input_tensors
     self.output_tensor = output_tensor
     
+    self._init_dag()
+    
   def _create_input_tensor(self, input_shape, idx):
     self.input_tensors[idx].create_ff_tensor(self.ffmodel)
     
@@ -51,12 +53,12 @@ class Model(BaseModel):
     
   def _add_layer_metadata(self, layer):
     self._layers[self._nb_layers] = layer
-    assert layer.layer_id == -1, "layer id is inited"
+    #assert layer.layer_id == -1, "layer id is inited"
     assert layer.ffhandle == 0, "layer handle is inited"
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
     
-  def _init_layer_and_init_inout(self, verify_inout_shape=True):
+  def _create_flexflow_layers(self, verify_inout_shape=True):
     out_t = 0
     for layer_id in self._layers:
       layer = self._layers[layer_id]
@@ -166,7 +168,7 @@ class Model(BaseModel):
     
     use_api = 2
     
-    if (use_api == 1):  
+    if (use_api == 1):  # no longer work
       # for input_tensor in self.input_tensors:
       #   for layer in input_tensor.to_layers:
       #     bfs_queue.append(layer)
@@ -215,20 +217,21 @@ class Model(BaseModel):
       while(len(bfs_queue) != 0):
         layer = bfs_queue.pop()
         #print(layer)
-        self._add_layer_and_init_inout(layer)
-        #self._add_layer_metadata(layer)
+        #self._add_layer_and_init_inout(layer)
+        self._add_layer_metadata(layer)
         for child in reversed(layer.next_layers):
           assert child not in bfs_queue, "already in the stack"
           if child.nb_visited_prev_layers == len(child.prev_layers)-1:
             bfs_queue.append(child)
           else:
             child.nb_visited_prev_layers += 1
-      
-      #self._init_layer_and_init_inout()
+      for layer_id in self._layers:
+        layer = self._layers[layer_id]
+        layer.nb_visited_prev_layers = 0          
       
   def compile(self, optimizer):
     self._create_input_and_label_tensors()
-    self._init_dag()
+    self._create_flexflow_layers()
     
     self._compile(optimizer)
     

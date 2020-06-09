@@ -241,8 +241,10 @@ def cifar_cnn_model_concat():
 
   ot1 = cifar_cnn_sub(input_tensor1, 1)
   model1 = Model(input_tensor1, ot1)
+  print(model1.summary())
   ot2 = cifar_cnn_sub(input_tensor2, 2)
   model2 = Model(input_tensor2, ot2)
+  print(model2.summary())
   output_tensor = Concatenate(axis=1)([model1.output_tensor, model2.output_tensor])
   output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
   output_tensor = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu", name="conv2d_0_4")(output_tensor)

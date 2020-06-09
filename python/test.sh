@@ -18,5 +18,6 @@ mpirun -np 1 ./flexflow_python example/alexnet.py -ll:py 1 -ll:gpu 2 -ll:fsize 2
 mpirun -np 1 ./flexflow_python example/mlp.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
 mpirun -np 1 ./flexflow_python example/cnn_attach.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
 mpirun -np 1 ./flexflow_python example/mlp_attach.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
-mpirun -np 1 ./flexflow_python example/cnn_cifar.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
-mpirun -np 1 ./flexflow_python example/keras/mnist_func.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --type 4
+#mpirun -np 1 ./flexflow_python example/cnn_cifar.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
+#mpirun -np 1 ./flexflow_python example/keras/mnist_func.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --type 4
+mpirun -np 1 ./flexflow_python example/keras/mnist_func.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --type 10
