@@ -154,10 +154,10 @@ def top_level_task():
   #cbias_tensor = conv_2d1.get_input_tensor()
   cbias_tensor = conv_2d1.get_input_tensor()
   cbias_tensor.inline_map(ffconfig)
-  cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
+  cbias = cbias_tensor.get_flat_array(ffconfig, DataType.DT_FLOAT)
   print(cbias.shape)
   print(cbias)
-  save_image(cbias, 2)
+  #save_image(cbias, 2)
   cbias_tensor.inline_unmap(ffconfig)
   
   label.inline_map(ffconfig)

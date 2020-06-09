@@ -135,8 +135,9 @@ Op::Op(const std::string& _name,
   }
 }
 
-Op::Op(const std::string& _name)
-: numInputs(0), numWeights(0), numOutputs(1)
+Op::Op(const std::string& _name,
+       int n)
+: numInputs(n), numWeights(0), numOutputs(1)
 {
   assert(_name.length() < MAX_OPNAME);
   std::strcpy(name, _name.c_str());

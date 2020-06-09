@@ -108,7 +108,7 @@ Embedding::Embedding(FFModel& model,
                      int num_entries, int outDim,
                      AggrMode _aggr,
                      Initializer* kernel_initializer)
-: Op(pcname), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
+: Op(pcname, 1), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
 {
   create_kernel(model, num_entries, kernel_initializer);
 }

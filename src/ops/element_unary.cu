@@ -73,7 +73,7 @@ ElementUnary::ElementUnary(FFModel& model,
 ElementUnary::ElementUnary(FFModel& model,
                            ElementUnary::OpType _op_type,
                            const std::string& pcname)
-: Op(pcname), op_type(_op_type)
+: Op(pcname, 1), op_type(_op_type)
 {}
 
 Tensor ElementUnary::init_inout(FFModel& model,

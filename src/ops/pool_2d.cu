@@ -141,7 +141,7 @@ Pool2D::Pool2D(FFModel& model,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
                PoolType _type, ActiMode _activation)
-: Op(pcname),
+: Op(pcname, 1),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),
   padding_h(_padding_h), padding_w(_padding_w),

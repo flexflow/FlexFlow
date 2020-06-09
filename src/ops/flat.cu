@@ -139,7 +139,7 @@ Flat::Flat(FFModel& model,
 
 Flat::Flat(FFModel& model,
            const std::string& pcname)
-: Op(pcname)
+: Op(pcname, 1)
 {
 }
 
