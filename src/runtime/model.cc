@@ -146,6 +146,36 @@ Op::Op(const std::string& _name)
   }
 }
 
+Parameter* Op::get_parameter(int index)
+{
+  assert(index < numWeights);
+  return &weights[index];
+}
+
+void Op::zero_grad(const FFModel& ff)
+{
+  Runtime* runtime = ff.config.lg_hlr;
+  Context ctx = ff.config.lg_ctx;
+  ArgumentMap argmap;
+  IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
+                         TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
+  for (int i = 0; i < numWeights; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(weights[i].part_grad, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, weights[i].region_grad));
+    launcher.add_field(i, FID_DATA);
+  }
+  for (int i = 0; i < numInputs; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(input_grad_lps[i], 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
+    launcher.add_field(i + numWeights, FID_DATA);
+  }
+  runtime->execute_index_space(ctx, launcher);
+}
+
 FFModel::FFModel(FFConfig& _config)
 : config(_config)
 {
@@ -796,6 +826,9 @@ void FFModel::update()
 
 void FFModel::zero_gradients(void)
 {
+  for (int l = layers.size() - 1; l >= 0; l--)
+    layers[l]->zero_grad(*this);
+#ifdef DEADCODE
   ArgumentMap arg_map;
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -813,6 +846,7 @@ void FFModel::zero_gradients(void)
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
+#endif
 }
 
 void FFModel::print_layers(int id)

@@ -135,12 +135,12 @@ void Linear::create_kernel_bias(FFModel& model, bool use_bias, Initializer* kern
   // Create kernel tensor
   {
     const int dims[2] = {out_channels, in_channels};
-    weights[numWeights++] = model.create_linear_weight<2>(this, dims, task_is, DT_FLOAT, kernel_initializer);
+    weights[numWeights++] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_channels};
-    weights[numWeights++] = model.create_linear_weight<1>(this, dims, task_is, DT_FLOAT, bias_initializer);
+    weights[numWeights++] = model.create_linear_weight<1>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, bias_initializer);
   }
 }
 
@@ -160,7 +160,7 @@ void Linear::create_output_and_partition(FFModel& model)
   int batch_size = inputs[0].adim[1];
   {
     const int dims[2] = {batch_size, out_channels};
-    outputs[0] = model.create_tensor<2>(dims, task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
   }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(
@@ -168,7 +168,7 @@ void Linear::create_output_and_partition(FFModel& model)
   // Create replica tensor
   if (num_par_c > 1) {
     const int dims[3] = {num_par_c, batch_size, in_dim};
-    replica = model.create_linear_replica<3>(dims, task_is, DT_FLOAT);
+    replica = model.create_linear_replica<3>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
     {
       Rect<2> extent(Point<2>(0, 0), Point<2>(in_dim-1, batch_size/num_par_n-1));
       Transform<2, 2> transform;
@@ -451,12 +451,12 @@ void sigmoid_backward(float *grad_ptr, const float *output, int n)
 
 /*
   regions[0](I): input
-  regions[1](O): replica_grad or input_grad
+  regions[1](I/O): replica_grad or input_grad
   regions[2](I): output
   regions[3](I/O): output_grad
   regions[4](I): filter
-  regions[5](O): filter_grad
-  regions[6](O): bias_grad
+  regions[5](I/O): filter_grad
+  regions[6](I/O): bias_grad
 */
 __host__
 void Linear::backward_task(const Task *task,
@@ -465,7 +465,7 @@ void Linear::backward_task(const Task *task,
 {
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
-  float alpha = 1.0f, beta = 0.0f;
+  float alpha = 1.0f;
   const Linear* linear = (Linear*) task->args;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
   float* input_grad = NULL;
@@ -481,13 +481,13 @@ void Linear::backward_task(const Task *task,
   if (domain.get_dim() == 3) {
     TensorAccessorW<float, 3> acc_replica_grad(
         regions[1], task->regions[1], FID_DATA, ctx, runtime,
-        false/*readOutput*/);
+        true/*readOutput*/);
     assert(acc_replica_grad.rect.volume() == in_dim * batch_size);
     input_grad = acc_replica_grad.ptr;
   } else {
     TensorAccessorW<float, 2> acc_replica_grad(
         regions[1], task->regions[1], FID_DATA, ctx, runtime,
-        false/*readOutput*/);
+        true/*readOutput*/);
     assert(acc_replica_grad.rect.volume() == in_dim * batch_size);
     input_grad = acc_replica_grad.ptr;
   }
@@ -498,10 +498,10 @@ void Linear::backward_task(const Task *task,
       regions[4], task->regions[4], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 2> acc_kernel_grad(
       regions[5], task->regions[5], FID_DATA, ctx, runtime,
-      false/*readOutput*/);
+      true/*readOutput*/);
   TensorAccessorW<float, 1> acc_bias_grad(
       regions[6], task->regions[6], FID_DATA, ctx, runtime,
-      false/*readOutput*/);
+      true/*readOutput*/);
   // make sure the sizes match
   assert(acc_output.rect.volume() == out_dim * batch_size);
   assert(acc_output_grad.rect.volume() == out_dim * batch_size);
@@ -531,23 +531,26 @@ void Linear::backward_task(const Task *task,
     assert(linear->activation == AC_MODE_NONE);
   }
   // Compute weight gradiant
+  // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_T,
                         in_dim, out_dim, batch_size,
                         &alpha, acc_input.ptr, in_dim,
                         acc_output_grad.ptr, out_dim,
-                        &beta, acc_kernel_grad.ptr, in_dim));
+                        &alpha, acc_kernel_grad.ptr, in_dim));
   // Compute bias gradiant
+  // NOTE: we use alpha=1 for bias_grad to accumulate gradients
   checkCUDA(cublasSgemv(m->handle.blas, CUBLAS_OP_N,
                         out_dim, batch_size,
                         &alpha, acc_output_grad.ptr, out_dim,
                         m->one_ptr, 1,
-                        &beta, acc_bias_grad.ptr, 1));
+                        &alpha, acc_bias_grad.ptr, 1));
   // Compute data gradiant
+  // NOTE: we use alpha=1 for input_grad to accumulate gradients
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_N,
                         in_dim, batch_size, out_dim,
                         &alpha, acc_kernel.ptr, in_dim,
                         acc_output_grad.ptr, out_dim,
-                        &beta, input_grad, in_dim));
+                        &alpha, input_grad, in_dim));
   if (linear->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -565,7 +568,7 @@ void Linear::backward_task(const Task *task,
 }
 
 /*
-  regions[0](O): input_grad
+  regions[0](I/O): input_grad
   regions[1](I): replicas
 */
 __host__
@@ -577,7 +580,7 @@ void Linear::backward2_task(const Task *task,
   const LinearMeta* m = *((LinearMeta**) task->local_args);
   TensorAccessorW<float, 2> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime,
-      false/*readOutput*/);
+      true/*readOutput*/);
   TensorAccessorR<float, 3> acc_replica(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(acc_input.rect.hi[0] == acc_replica.rect.hi[0]);
@@ -618,16 +621,16 @@ void Linear::backward(const FFModel& ff)
         RegionRequirement(input_lps[0], 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, inputs[0].region));
     launcher.add_field(0, FID_DATA);
-    // regions[1](O): replica_grad 
+    // regions[1](I/O): replica_grad 
     if (replica.region_grad != LogicalRegion::NO_REGION) {
       launcher.add_region_requirement(
           RegionRequirement(replica.part_grad, 0/*projection id*/,
-                            WRITE_ONLY, EXCLUSIVE, replica.region_grad));
+                            READ_WRITE, EXCLUSIVE, replica.region_grad));
       launcher.add_field(1, FID_DATA);
     } else {
       launcher.add_region_requirement(
           RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                            WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+                            READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
       launcher.add_field(1, FID_DATA);
     }
     // regions[2](I): output
@@ -645,15 +648,15 @@ void Linear::backward(const FFModel& ff)
         RegionRequirement(weights[0].part, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, weights[0].region));
     launcher.add_field(4, FID_DATA);
-    // regions[5](O): filter_grad
+    // regions[5](I/O): filter_grad
     launcher.add_region_requirement(
         RegionRequirement(weights[0].part_grad, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, weights[0].region_grad));
+                          READ_WRITE, EXCLUSIVE, weights[0].region_grad));
     launcher.add_field(5, FID_DATA);
-    // regions[6](O): bias_grad
+    // regions[6](I/O): bias_grad
     launcher.add_region_requirement(
         RegionRequirement(weights[1].part_grad, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, weights[1].region_grad));
+                          READ_WRITE, EXCLUSIVE, weights[1].region_grad));
     launcher.add_field(6, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -669,7 +672,7 @@ void Linear::backward(const FFModel& ff)
                            FFConfig::get_hash_id(std::string(name)));
     launcher.add_region_requirement(
         RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+                          READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
     launcher.add_field(0, FID_DATA);
     // Note that replica.part save's a partition of replica.region_grad
     launcher.add_region_requirement(
@@ -680,6 +683,7 @@ void Linear::backward(const FFModel& ff)
   }
 }
 
+/*
 __host__
 Parameter* Linear::get_parameter(int index)
 {
@@ -692,6 +696,7 @@ Parameter* Linear::get_parameter(int index)
     return NULL;
   }
 }
+*/
 
 __host__
 void Linear::print_layer(const FFModel& ff)

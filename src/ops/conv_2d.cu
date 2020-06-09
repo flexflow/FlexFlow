@@ -279,13 +279,13 @@ void Conv2D::create_kernel_bias(FFModel& model, bool use_bias, Initializer* kern
   // Create kernel
   {
     const int dims[4] = {out_channels, in_channels, kernel_h, kernel_w};
-    weights[0] = model.create_conv_weight<4>(this, dims, task_is, DT_FLOAT, kernel_initializer);
+    weights[0] = model.create_conv_weight<4>(this, dims, (IndexSpaceT<4>)task_is, DT_FLOAT, kernel_initializer);
     numWeights = 1;
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_channels};
-    weights[1] = model.create_conv_weight<1>(this, dims, task_is, DT_FLOAT, bias_initializer);
+    weights[1] = model.create_conv_weight<1>(this, dims, (IndexSpaceT<4>)task_is, DT_FLOAT, bias_initializer);
     numWeights = 2;
   }
 }
@@ -312,7 +312,7 @@ void Conv2D::create_output_and_partition(FFModel& model)
   int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
   {
     const int dims[4] = {output_n, output_c, output_h, output_w};
-    outputs[0] = model.create_tensor<4>(dims, task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<4>(dims, (IndexSpaceT<4>)task_is, DT_FLOAT);
   }
   // Compute partition bound for input
   Rect<4> input_rect = runtime->get_index_partition_color_space(
@@ -324,7 +324,7 @@ void Conv2D::create_output_and_partition(FFModel& model)
     input_grad_lps[0] = inputs[0].part_grad;
   } else {
     model.create_disjoint_partition(
-        inputs[0], task_is, input_lps[0], input_grad_lps[0]);
+        inputs[0], (IndexSpaceT<4>)task_is, input_lps[0], input_grad_lps[0]);
   }
 }
 
@@ -632,12 +632,12 @@ void Conv2D::forward(const FFModel& ff)
 
 /*
   regions[0](I): input
-  regions[1](O): input_grad
+  regions[1](I/O): input_grad
   regions[2](I): output
   regions[3](I/O): output_grad
   regions[4](I): filter
-  regions[5](O): filter_grad
-  regions[6](O): bias_grad
+  regions[5](I/O): filter_grad
+  regions[6](I/O): bias_grad
 */
 __host__
 void Conv2D::backward_task(const Task *task,
@@ -646,14 +646,15 @@ void Conv2D::backward_task(const Task *task,
 {
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
-  float alpha = 1.0f, beta = 0.0f;
+  float alpha = 1.0f;
+  //float beta = 0.0f;
   const Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_input_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
-      false/*readOutput*/);
+      true/*readOutput*/);
   TensorAccessorR<float, 4> acc_output(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_output_grad(
@@ -663,10 +664,10 @@ void Conv2D::backward_task(const Task *task,
       regions[4], task->regions[4], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_kernel_grad(
       regions[5], task->regions[5], FID_DATA, ctx, runtime,
-      false/*readOutput*/);
+      true/*readOutput*/);
   TensorAccessorW<float, 1> acc_bias_grad(
       regions[6], task->regions[6], FID_DATA, ctx, runtime,
-      false/*readOutput*/);
+      true/*readOutput*/);
 
   cudaEvent_t t_start, t_end;
   if (conv->profiling) {
@@ -685,25 +686,28 @@ void Conv2D::backward_task(const Task *task,
     reluBackward<<<GET_BLOCKS(n), CUDA_NUM_THREADS>>>(acc_output_grad.ptr, acc_output.ptr, n);
   }
   // Compute filter gradiant
+  // NOTE: we use alpha for kernel_grad to accumulate gradients
   checkCUDNN(cudnnConvolutionBackwardFilter(m->handle.dnn, &alpha,
                                             m->inputTensor, acc_input.ptr,
                                             m->outputTensor, acc_output_grad.ptr,
                                             m->convDesc, m->bwdFilterAlgo,
                                             m->handle.workSpace, m->handle.workSpaceSize,
-                                            &beta, m->filterDesc, acc_kernel_grad.ptr));
+                                            &alpha, m->filterDesc, acc_kernel_grad.ptr));
   // Compute bias gradiant
+  // NOTE: we use alpha for bias_grad to accumulate gradients
   checkCUDNN(cudnnConvolutionBackwardBias(m->handle.dnn, &alpha,
                                           m->outputTensor, acc_output_grad.ptr,
-                                          &beta, m->biasTensor, acc_bias_grad.ptr));
+                                          &alpha, m->biasTensor, acc_bias_grad.ptr));
   // no need to compute input_grad if we are the first layer
   if (!m->first_layer) {
     // Compute data gradiant
+    // NOTE: we use alpha for input_grad to accumulate gradients
     checkCUDNN(cudnnConvolutionBackwardData(m->handle.dnn, &alpha,
                                             m->filterDesc, acc_kernel.ptr,
                                             m->outputTensor, acc_output_grad.ptr,
                                             m->convDesc, m->bwdDataAlgo,
                                             m->handle.workSpace, m->handle.workSpaceSize,
-                                            &beta, m->inputTensor, acc_input_grad.ptr));
+                                            &alpha, m->inputTensor, acc_input_grad.ptr));
   }
   if (conv->profiling) {
     cudaEventRecord(t_end);
@@ -742,10 +746,10 @@ void Conv2D::backward(const FFModel& ff)
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
-  // regions[1](O): input_grad (we only need grad tensors)
+  // regions[1](I/O): input_grad
   launcher.add_region_requirement(
       RegionRequirement(inputs[0].part_grad, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+                        READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2](I): output
   launcher.add_region_requirement(
@@ -762,15 +766,15 @@ void Conv2D::backward(const FFModel& ff)
       RegionRequirement(weights[0].part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(4, FID_DATA);
-  // regions[5](O): filter_grad
+  // regions[5](I/O): filter_grad
   launcher.add_region_requirement(
       RegionRequirement(weights[0].part_grad, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, weights[0].region_grad));
+                        READ_WRITE, EXCLUSIVE, weights[0].region_grad));
   launcher.add_field(5, FID_DATA);
-  // regions[6](O): bias_grad
+  // regions[6](I/O): bias_grad
   launcher.add_region_requirement(
       RegionRequirement(weights[1].part_grad, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, weights[1].region_grad));
+                        READ_WRITE, EXCLUSIVE, weights[1].region_grad));
   launcher.add_field(6, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   // TODO: remove this line
@@ -855,6 +859,7 @@ void Conv2D::update(const FFModel& ff)
 }
 #endif
 
+/*
 __host__
 Parameter* Conv2D::get_parameter(int index)
 {
@@ -866,7 +871,7 @@ Parameter* Conv2D::get_parameter(int index)
     assert(0);
     return NULL;
   }
-}
+}*/
 
 __host__
 void Conv2D::print_layer(const FFModel& ff)

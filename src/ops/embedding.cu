@@ -136,7 +136,7 @@ void Embedding::create_kernel(FFModel& model, int num_entries, Initializer* kern
   {
     const int dims[2] = {out_channels, num_entries};
     // Embeddding weights and linear weights can be partitioned in the same way
-    weights[numWeights++] = model.create_linear_weight<2>(this, dims, task_is, DT_FLOAT, kernel_initializer);
+    weights[numWeights++] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
   }
 }
 
@@ -153,7 +153,7 @@ void Embedding::create_output_and_partition(FFModel& model)
   assert(part_rect.hi[0] == part_rect.lo[0]);
   {
     const int dims[2] = {inputs[0].adim[1], out_channels};
-    outputs[0] = model.create_tensor<2>(dims, task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
   }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(
@@ -361,6 +361,7 @@ void Embedding::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+/*
 __host__
 Parameter* Embedding::get_parameter(int index)
 {
@@ -371,3 +372,4 @@ Parameter* Embedding::get_parameter(int index)
     return NULL;
   }
 }
+*/
