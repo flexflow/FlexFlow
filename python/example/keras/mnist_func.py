@@ -305,16 +305,20 @@ def mlp_net2net():
   d1_kernel, d1_bias = d1.get_weights(teacher_model.ffmodel)
   d2_kernel, d2_bias = d2.get_weights(teacher_model.ffmodel)
   d3_kernel, d3_bias = d3.get_weights(teacher_model.ffmodel)
+  #d2_kernel_new = np.concatenate((d2_kernel, d2_kernel), axis=1)
   
   # student
   
   input_tensor2 = Input(batch_shape=[0, 784], dtype="float32")
   
-  sd1 = Dense(512, input_shape=(784,), activation="relu")
+  sd1_1 = Dense(512, input_shape=(784,), activation="relu")
+  #sd1_2 = Dense(512, input_shape=(784,), activation="relu")
   sd2 = Dense(512, activation="relu")
   sd3 = Dense(num_classes)
   
-  output = sd1(input_tensor2)
+  output = sd1_1(input_tensor2)
+  # t2 = sd1_2(input_tensor2)
+  # output = Concatenate(axis=1)([t1, t2])
   output = sd2(output)
   output = sd3(output)
   output = Activation("softmax")(output)
@@ -324,7 +328,8 @@ def mlp_net2net():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   student_model.compile(optimizer=opt)
   
-  sd1.set_weights(student_model.ffmodel, d1_kernel, d1_bias)
+  sd1_1.set_weights(student_model.ffmodel, d1_kernel, d1_bias)
+  # sd1_2.set_weights(student_model.ffmodel, d1_kernel, d1_bias)
   sd2.set_weights(student_model.ffmodel, d2_kernel, d2_bias)
   sd3.set_weights(student_model.ffmodel, d3_kernel, d3_bias)
 

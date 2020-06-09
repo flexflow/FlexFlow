@@ -468,7 +468,9 @@ class Parameter(Tensor):
     assert np_array.__array_interface__['strides'] == None, "Parameter set_weights, numpy array strides is not None"
     np_shape = np_array.shape
     num_dims = len(np_shape)
-    assert num_dims == self.num_dims, "please check dims"
+    assert num_dims == self.num_dims, "please check dims (%d == %d)" %(num_dims, self.num_dims)
+    for i in range(0, num_dims):
+      assert np_shape[i] == self.dims[i], "please check shape dim %d (%d == %d)" %(i, np_shape[i], self.dims[i])
     if (num_dims == 1):
       shape = [np_shape[0]]
     elif (num_dims == 2):

@@ -51,7 +51,7 @@ def top_level_task():
   input_tensor1.inline_map(ffconfig)
   input_array11 = input_tensor1.get_array(ffconfig, DataType.DT_FLOAT)
   print(input_array11.shape)
- # print(input_array11)
+  #print(input_array11)
   input_tensor1.inline_unmap(ffconfig)
   
   output_tensor1 = conv1.get_output_tensor()
