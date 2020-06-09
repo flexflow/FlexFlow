@@ -35,7 +35,7 @@ struct TensorAccessorW {
 };
 
 template<typename DT>
-const DT* helperGetTensorPointerR(PhysicalRegion region,
+const DT* helperGetTensorPointerRO(PhysicalRegion region,
                                   RegionRequirement req,
                                   FieldID fid,
                                   Context ctx,
@@ -43,6 +43,13 @@ const DT* helperGetTensorPointerR(PhysicalRegion region,
 
 template<typename DT>
 DT* helperGetTensorPointerWO(PhysicalRegion region,
+                             RegionRequirement req,
+                             FieldID fid,
+                             Context ctx,
+                             Runtime* runtime);
+
+template<typename DT>
+DT* helperGetTensorPointerRW(PhysicalRegion region,
                              RegionRequirement req,
                              FieldID fid,
                              Context ctx,

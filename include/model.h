@@ -186,12 +186,14 @@ public:
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
   virtual void backward(const FFModel&) = 0;
+  virtual void zero_grad(const FFModel&);
+  virtual Parameter* get_parameter(int index);
   virtual void print_layer(const FFModel& model) = 0;
-  virtual Parameter* get_parameter(int index) = 0;
   virtual void add_to_model(FFModel& model) = 0;
   //virtual void update(const FFModel&) = 0;
 public:
   char name[MAX_OPNAME];
+  IndexSpace task_is;
   Tensor outputs[MAX_NUM_OUTPUTS];
   Tensor inputs[MAX_NUM_INPUTS];
   Parameter weights[MAX_NUM_WEIGHTS];
@@ -421,7 +423,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  Parameter* get_parameter(int index) {assert(0); return NULL;}
+  //Parameter* get_parameter(int index) {assert(0); return NULL;}
   static void init_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime *runtime);
@@ -435,7 +437,7 @@ private:
   template<int NDIM>
   void create_output_and_partition(FFModel& model);
 public:
-  IndexSpace task_is;
+  //IndexSpace task_is;
   OpType op_type;
 };
 
@@ -457,7 +459,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  Parameter* get_parameter(int index) {assert(0); return NULL;}
+  //Parameter* get_parameter(int index) {assert(0); return NULL;}
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -468,7 +470,7 @@ private:
   template<int NDIM>
   void create_output_and_partition(FFModel& model);
 public:
-  IndexSpace task_is;
+  //IndexSpace task_is;
   OpType op_type;
 };
 
@@ -502,7 +504,7 @@ public:
   void backward(const FFModel&);
   //void update(const FFModel&);
   void print_layer(const FFModel& model);
-  Parameter* get_parameter(int index);
+  //Parameter* get_parameter(int index);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -523,7 +525,7 @@ private:
   void create_kernel_bias(FFModel& model, bool use_bias, Initializer* kernel_initializer, Initializer* bias_initializer);
   void create_output_and_partition(FFModel& model);
 public:
-  IndexSpaceT<4> task_is;
+  //IndexSpaceT<4> task_is;
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   bool profiling;
   ActiMode activation;
@@ -568,7 +570,7 @@ public:
   void backward(const FFModel&);
   void update(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  Parameter* get_parameter(int index) {assert(0); return NULL;}
+  //Parameter* get_parameter(int index) {assert(0); return NULL;}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -582,7 +584,7 @@ public:
 private:
   void create_output_and_partition(FFModel& model);
 public:
-  IndexSpaceT<4> task_is;
+  //IndexSpaceT<4> task_is;
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
   ActiMode activation;
@@ -611,7 +613,7 @@ public:
   void backward(const FFModel&);
   void update(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  Parameter* get_parameter(int index) {assert(0);return NULL;}
+  //Parameter* get_parameter(int index) {assert(0);return NULL;}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -626,7 +628,7 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
 public:
-  IndexSpaceT<4> task_is;
+  //IndexSpaceT<4> task_is;
   bool relu, profiling;
   int num_replica;
   //Tensor locals[MAX_NUM_LOCALS];
@@ -667,7 +669,7 @@ public:
   void backward(const FFModel&);
   //void update(const FFModel&);
   void print_layer(const FFModel& model);
-  Parameter* get_parameter(int index);
+  //Parameter* get_parameter(int index);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -691,7 +693,7 @@ private:
   void create_kernel_bias(FFModel& model, bool use_bias, Initializer* kernel_initializer, Initializer* bias_initializer);
   void create_output_and_partition(FFModel& model);
 public:
-  IndexSpaceT<2> task_is;
+  //IndexSpaceT<2> task_is;
   int in_channels, out_channels;
   Tensor replica;
   bool profiling;
@@ -726,7 +728,7 @@ public:
   void backward(const FFModel&);
   //void update(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  Parameter* get_parameter(int index);
+  //Parameter* get_parameter(int index);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -747,7 +749,7 @@ private:
   void create_kernel(FFModel& model, int num_entries, Initializer* kernel_initializer);
   void create_output_and_partition(FFModel& model);
 public:
-  IndexSpaceT<2> task_is;
+  //IndexSpaceT<2> task_is;
   int out_channels;
   AggrMode aggr;
   bool profiling;
@@ -768,7 +770,7 @@ public:
   void backward(const FFModel&);
   //void update(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  Parameter* get_parameter(int index) {return NULL;}
+  //Parameter* get_parameter(int index) {return NULL;}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -782,7 +784,7 @@ public:
 private:
   void create_output_and_partition(FFModel& model);
 public:
-  IndexSpaceT<2> task_is;
+  //IndexSpaceT<2> task_is;
 };
 
 class FlatMeta : public OpMeta {
@@ -803,7 +805,7 @@ public:
   void backward(const FFModel&);
   //void update(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  Parameter* get_parameter(int index) {assert(0); return NULL;}
+  //Parameter* get_parameter(int index) {assert(0); return NULL;}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -815,7 +817,7 @@ public:
                                    const std::vector<PhysicalRegion> &regions,
                                    Context ctx, Runtime *runtime);
 public:
-  IndexSpaceT<2> task_is;
+  //IndexSpaceT<2> task_is;
   bool profiling;
 };
 
@@ -839,7 +841,7 @@ public:
   void backward(const FFModel&);
   //void update(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  Parameter* get_parameter(int index) {assert(0); return NULL;}
+  //Parameter* get_parameter(int index) {assert(0); return NULL;}
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -852,7 +854,7 @@ public:
                             Context ctx, Runtime *runtime);
 public:
   int axis;
-  IndexSpace task_is;
+  //IndexSpace task_is;
   bool profiling;
 };
 
@@ -875,13 +877,13 @@ public:
   void backward(const FFModel& model);
   //void update(const FFModel& model);
   void print_layer(const FFModel& model) {assert(0);}
-  Parameter* get_parameter(int index) {assert(0); return NULL;}
+  //Parameter* get_parameter(int index) {assert(0); return NULL;}
 
   static PerfMetrics backward_task(const Task *task,
                                    const std::vector<PhysicalRegion> &regions,
                                    Context ctx, Runtime *runtime);
 public:
-  IndexSpaceT<2> task_is;
+  //IndexSpaceT<2> task_is;
   AggrMode aggr_mode;
   bool profiling;
 };

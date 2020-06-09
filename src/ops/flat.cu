@@ -174,10 +174,10 @@ void Flat::create_output_and_partition(FFModel& model)
   // Create output tensor
   {
     const int dims[2] = {batch_size, out_dim};
-    outputs[0] = model.create_tensor<2>(dims, task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
   }
   model.create_data_parallel_partition_with_diff_dims<4, 2>(
-      inputs[0], task_is, input_lps[0], input_grad_lps[0]);
+      inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
 }
 
 OpMeta* Flat::init_task(const Task *task,
@@ -262,13 +262,14 @@ void Flat::forward(const FFModel& ff)
 }
 
 /*
-  regions[0](O) : input_grad
+  regions[0](I/O) : input_grad
   regions[1](I) : output_grad
 */
 void Flat::backward_task(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx, Runtime *runtime)
 {
+  float alpha = 1.0f;
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   TensorAccessorW<float, 4> acc_input_grad(
@@ -277,10 +278,11 @@ void Flat::backward_task(const Task *task,
   TensorAccessorR<float, 2> acc_output_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
-
-  checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
-                            acc_input_grad.rect.volume() * sizeof(float),
-                            cudaMemcpyDeviceToDevice));
+  apply_add_with_scale<<<GET_BLOCKS(acc_input_grad.rect.volume()), CUDA_NUM_THREADS>>>(
+      acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume(), alpha);
+  //checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
+  //                          acc_input_grad.rect.volume() * sizeof(float),
+  //                          cudaMemcpyDeviceToDevice));
 }
 
 void Flat::backward(const FFModel& ff)
@@ -300,7 +302,7 @@ void Flat::backward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+                        READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(outputs[0].part_grad, 0/*projection id*/,

@@ -45,7 +45,7 @@ Softmax::Softmax(FFModel& model,
 
   {
     const int dims[2] = {_logit.adim[1], _logit.adim[0]};
-    outputs[0] = model.create_tensor<2>(dims, task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
   }
   // Compute partition bound for input
   Rect<2> logit_rect = runtime->get_index_partition_color_space(
@@ -57,14 +57,14 @@ Softmax::Softmax(FFModel& model,
     input_grad_lps[0] = inputs[0].part_grad;
   } else {
     model.create_disjoint_partition(
-        inputs[0], task_is, input_lps[0], input_grad_lps[0]);
+        inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
   }
   if (label_rect == part_rect) {
     input_lps[1] = inputs[1].part;
     input_grad_lps[1] = inputs[1].part_grad;
   } else {
     model.create_disjoint_partition(
-        inputs[1], task_is, input_lps[1], input_grad_lps[1]);
+        inputs[1], (IndexSpaceT<2>)task_is, input_lps[1], input_grad_lps[1]);
   }
 }
 

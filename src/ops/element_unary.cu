@@ -151,6 +151,8 @@ void ElementUnary::init(const FFModel& ff)
 
 __global__
 void elewise_unary_forward_kernel(coord_t volume,
+                                  const float alpha,
+                                  const float beta,
                                   ElementUnary::OpType type,
                                   const float* in,
                                   float* out)
@@ -160,7 +162,7 @@ void elewise_unary_forward_kernel(coord_t volume,
     switch (type) {
       case ElementUnary::OP_EXP:
       {
-        out[i] = exp(in[i]);
+        out[i] = alpha * exp(in[i]) + beta * out[i];
         break;
       }
       default:
@@ -178,6 +180,7 @@ void ElementUnary::forward_task(const Task* task,
                                 const std::vector<PhysicalRegion> &regions,
                                 Context ctx, Runtime* runtime)
 {
+  float alpha = 1.0f, beta = 0.0f;
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   const ElementUnary* ele = (const ElementUnary*) task->args;
@@ -187,12 +190,12 @@ void ElementUnary::forward_task(const Task* task,
     ctx, task->regions[1].region.get_index_space());
   assert(output_domain == input_domain);
 
-  const float* input_ptr = helperGetTensorPointerR<float>(
+  const float* input_ptr = helperGetTensorPointerRO<float>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float* output_ptr = helperGetTensorPointerWO<float>(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
   elewise_unary_forward_kernel<<<GET_BLOCKS(output_domain.get_volume()), CUDA_NUM_THREADS>>>(
-  output_domain.get_volume(), ele->op_type, input_ptr, output_ptr);
+  output_domain.get_volume(), alpha, beta, ele->op_type, input_ptr, output_ptr);
 }
 
 void ElementUnary::forward(const FFModel& ff)
@@ -218,6 +221,8 @@ void ElementUnary::forward(const FFModel& ff)
 
 __global__
 void elewise_unary_backward_kernel(coord_t volume,
+                                   const float alpha,
+                                   const float beta,
                                    ElementUnary::OpType type,
                                    const float* output_grad,
                                    const float* input,
@@ -229,7 +234,7 @@ void elewise_unary_backward_kernel(coord_t volume,
       case ElementUnary::OP_EXP:
       {
         //TODO: change to use output instead of recomputing
-        input_grad[i] = output_grad[i] * exp(input[i]);
+        input_grad[i] = alpha * output_grad[i] * exp(input[i]) + beta * input_grad[i];
         break;
       }
       default:
@@ -241,13 +246,14 @@ void elewise_unary_backward_kernel(coord_t volume,
 /*
   regions[0](I): output_grad
   regions[1](I): input
-  regions[2](O): input_grad
+  regions[2](I/O): input_grad
 */
 __host__
 void ElementUnary::backward_task(const Task* task,
                                  const std::vector<PhysicalRegion> &regions,
                                  Context ctx, Runtime* runtime)
 {
+  float alpha = 1.0f;
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   const ElementUnary* ele = (const ElementUnary*) task->args;
@@ -260,14 +266,14 @@ void ElementUnary::backward_task(const Task* task,
   assert(output_grad_domain == input_domain);
   assert(output_grad_domain == input_grad_domain);
 
-  const float* output_grad_ptr = helperGetTensorPointerR<float>(
+  const float* output_grad_ptr = helperGetTensorPointerRO<float>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  const float* input_ptr = helperGetTensorPointerR<float>(
+  const float* input_ptr = helperGetTensorPointerRO<float>(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  float* input_grad_ptr = helperGetTensorPointerWO<float>(
+  float* input_grad_ptr = helperGetTensorPointerRW<float>(
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
   elewise_unary_backward_kernel<<<GET_BLOCKS(input_domain.get_volume()), CUDA_NUM_THREADS>>>(
-    input_domain.get_volume(), ele->op_type, output_grad_ptr, input_ptr, input_grad_ptr);
+    input_domain.get_volume(), alpha, alpha, ele->op_type, output_grad_ptr, input_ptr, input_grad_ptr);
 }
 
 void ElementUnary::backward(const FFModel& ff)
@@ -289,10 +295,10 @@ void ElementUnary::backward(const FFModel& ff)
     RegionRequirement(input_lps[0], 0/*projection id*/,
                       READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(1, FID_DATA);
-  // regions[4](O): input1_grad
+  // regions[4](I/O): input1_grad
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                      WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+                      READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }

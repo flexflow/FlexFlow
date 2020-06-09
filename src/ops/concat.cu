@@ -451,7 +451,7 @@ void Concat::forward(const FFModel& ff)
 
 /*
   regions[0](I): output_grad
-  regions[1..numInputs](O): input_grad
+  regions[1..numInputs](I/O): input_grad
 */
 void Concat::backward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -479,7 +479,7 @@ void Concat::backward_task(const Task *task,
       for (int i = 0; i < cc->numInputs; i++) {
         TensorAccessorW<float, 1> accInputGrad(
             regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
-            false/*readOutput*/);
+            true/*readOutput*/);
         input_grads[i] = accInputGrad.ptr;
         coord_t input_num_blocks = 1;
         calc_blk_size<1>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis);
@@ -496,7 +496,7 @@ void Concat::backward_task(const Task *task,
       for (int i = 0; i < cc->numInputs; i++) {
         TensorAccessorW<float, 2> accInputGrad(
             regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
-            false/*readOutput*/);
+            true/*readOutput*/);
         input_grads[i] = accInputGrad.ptr;
         coord_t input_num_blocks = 1;
         calc_blk_size<2>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis);
@@ -513,7 +513,7 @@ void Concat::backward_task(const Task *task,
       for (int i = 0; i < cc->numInputs; i++) {
         TensorAccessorW<float, 3> accInputGrad(
             regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
-            false/*readOutput*/);
+            true/*readOutput*/);
         input_grads[i] = accInputGrad.ptr;
         coord_t input_num_blocks = 1;
         calc_blk_size<3>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis);
@@ -530,7 +530,7 @@ void Concat::backward_task(const Task *task,
       for (int i = 0; i < cc->numInputs; i++) {
         TensorAccessorW<float, 4> accInputGrad(
             regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
-            false/*readOutput*/);
+            true/*readOutput*/);
         input_grads[i] = accInputGrad.ptr;
         coord_t input_num_blocks = 1;
         calc_blk_size<4>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis);
@@ -602,7 +602,7 @@ void Concat::backward(const FFModel& ff)
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[i], 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
+        READ_WRITE, EXCLUSIVE, inputs[i].region_grad));
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
