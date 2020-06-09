@@ -14,83 +14,10 @@ class Model(BaseModel):
     self.input_tensors = input_tensors
     self.output_tensor = output_tensor
     
-    idx = 0
-    for input_tensor in self.input_tensors:
-      input_tensor.set_batch_size(self.ffconfig.get_batch_size())
-      self.create_input_tensor(input_tensor.batch_shape, idx)
-      idx += 1
-
-    label_shape = (self.ffconfig.get_batch_size(), 1)
-    self.create_label_tensor(label_shape)
-    
-    bfs_queue = []
-    
-    use_api = 2
-    
-    if (use_api == 1):  
-      # for input_tensor in self.input_tensors:
-      #   for layer in input_tensor.to_layers:
-      #     bfs_queue.append(layer)
-      # while(len(bfs_queue) != 0):
-      #   layer = bfs_queue.pop(0)
-      #   #print(layer)
-      #   self._add_layer(layer)
-      #   for child in layer.next_layers:
-      #     if child not in bfs_queue:
-      #       bfs_queue.append(child)
-      #     else:
-      #       print(child, "already in the queue")
-      
-      for input_tensor in reversed(self.input_tensors):
-        for layer in reversed(input_tensor.to_layers):
-          bfs_queue.append(layer)
-      while(len(bfs_queue) != 0):
-        layer = bfs_queue.pop()
-        #print(layer)
-        self._add_layer(layer)
-        for child in reversed(layer.next_layers):
-          assert child not in bfs_queue, "already in the stack"
-          if child.nb_visited_prev_layers == len(child.prev_layers)-1:
-            bfs_queue.append(child)
-          else:
-            child.nb_visited_prev_layers += 1
-      
-      self._init_inout()
-    else:
-      # for input_tensor in self.input_tensors:
-      #   for layer in input_tensor.to_layers:
-      #     bfs_queue.append(layer)
-      # while(len(bfs_queue) != 0):
-      #   layer = bfs_queue.pop(0)
-      #   #print(layer)
-      #   self._add_layer_and_init_inout(layer)
-      #   for child in layer.next_layers:
-      #     if child not in bfs_queue:
-      #       bfs_queue.append(child)
-      #     else:
-      #       print(child, "already in the queue")
-      
-      for input_tensor in reversed(self.input_tensors):
-        for layer in reversed(input_tensor.to_layers):
-          bfs_queue.append(layer)
-      while(len(bfs_queue) != 0):
-        layer = bfs_queue.pop()
-        #print(layer)
-        self._add_layer_and_init_inout(layer)
-        #self._add_layer_metadata(layer)
-        for child in reversed(layer.next_layers):
-          assert child not in bfs_queue, "already in the stack"
-          if child.nb_visited_prev_layers == len(child.prev_layers)-1:
-            bfs_queue.append(child)
-          else:
-            child.nb_visited_prev_layers += 1
-      
-      #self._init_layer_and_init_inout()
-    
-  def create_input_tensor(self, input_shape, idx):
+  def _create_input_tensor(self, input_shape, idx):
     self.input_tensors[idx].create_ff_tensor(self.ffmodel)
     
-  def create_label_tensor(self, label_shape): 
+  def _create_label_tensor(self, label_shape): 
     self.label_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), 1], name="", dtype="int32")
   
   def _init_inout(self, verify_inout_shape=True):
@@ -224,7 +151,85 @@ class Model(BaseModel):
     else:
       assert 0, "unknow layer"
       
+  def _create_input_and_label_tensors(self):
+    idx = 0
+    for input_tensor in self.input_tensors:
+      input_tensor.set_batch_size(self.ffconfig.get_batch_size())
+      self._create_input_tensor(input_tensor.batch_shape, idx)
+      idx += 1
+
+    label_shape = (self.ffconfig.get_batch_size(), 1)
+    self._create_label_tensor(label_shape)
+      
+  def _init_dag(self):
+    bfs_queue = []
+    
+    use_api = 2
+    
+    if (use_api == 1):  
+      # for input_tensor in self.input_tensors:
+      #   for layer in input_tensor.to_layers:
+      #     bfs_queue.append(layer)
+      # while(len(bfs_queue) != 0):
+      #   layer = bfs_queue.pop(0)
+      #   #print(layer)
+      #   self._add_layer(layer)
+      #   for child in layer.next_layers:
+      #     if child not in bfs_queue:
+      #       bfs_queue.append(child)
+      #     else:
+      #       print(child, "already in the queue")
+      
+      for input_tensor in reversed(self.input_tensors):
+        for layer in reversed(input_tensor.to_layers):
+          bfs_queue.append(layer)
+      while(len(bfs_queue) != 0):
+        layer = bfs_queue.pop()
+        #print(layer)
+        self._add_layer(layer)
+        for child in reversed(layer.next_layers):
+          assert child not in bfs_queue, "already in the stack"
+          if child.nb_visited_prev_layers == len(child.prev_layers)-1:
+            bfs_queue.append(child)
+          else:
+            child.nb_visited_prev_layers += 1
+      
+      self._init_inout()
+    else:
+      # for input_tensor in self.input_tensors:
+      #   for layer in input_tensor.to_layers:
+      #     bfs_queue.append(layer)
+      # while(len(bfs_queue) != 0):
+      #   layer = bfs_queue.pop(0)
+      #   #print(layer)
+      #   self._add_layer_and_init_inout(layer)
+      #   for child in layer.next_layers:
+      #     if child not in bfs_queue:
+      #       bfs_queue.append(child)
+      #     else:
+      #       print(child, "already in the queue")
+      
+      for input_tensor in reversed(self.input_tensors):
+        for layer in reversed(input_tensor.to_layers):
+          bfs_queue.append(layer)
+      while(len(bfs_queue) != 0):
+        layer = bfs_queue.pop()
+        #print(layer)
+        self._add_layer_and_init_inout(layer)
+        #self._add_layer_metadata(layer)
+        for child in reversed(layer.next_layers):
+          assert child not in bfs_queue, "already in the stack"
+          if child.nb_visited_prev_layers == len(child.prev_layers)-1:
+            bfs_queue.append(child)
+          else:
+            child.nb_visited_prev_layers += 1
+      
+      #self._init_layer_and_init_inout()
+      
   def compile(self, optimizer):
+    self._create_input_and_label_tensors()
+    self._init_dag()
+    
     self._compile(optimizer)
     
   def fit(self, input_tensors, label_tensor, epochs=1):
