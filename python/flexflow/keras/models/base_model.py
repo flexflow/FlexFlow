@@ -16,8 +16,8 @@ class BaseModel(object):
     self.ffoptimizer = 0
     self._layers = dict()
     self._nb_layers = 0
-    self.input_tensors = []
-    self.output_tensor = 0
+    self._input_tensors = []
+    self._output_tensor = 0
     self.label_tensor = 0
     self.full_input_tensors = []
     self.full_label_tensor = 0
@@ -29,25 +29,25 @@ class BaseModel(object):
     
   @property
   def input(self):
-    return self.input_tensors
+    return self._input_tensors
   
   @property
   def output(self):
-    return self.output_tensor
+    return self._output_tensor
     
   def get_layer(self, layer_id):
     return self._layers[layer_id]
     
   def _create_input_tensor(self, idx):
-    assert self.input_tensors[idx].batch_shape[0] != 0, "batch size is not set"
-    self.input_tensors[idx].create_ff_tensor(self.ffmodel)
+    assert self._input_tensors[idx].batch_shape[0] != 0, "batch size is not set"
+    self._input_tensors[idx].create_ff_tensor(self.ffmodel)
     
   def _create_label_tensor(self):
     self.label_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), 1], name="", dtype="int32")
     
   def _create_input_and_label_tensors(self):
     idx = 0
-    for input_tensor in self.input_tensors:
+    for input_tensor in self._input_tensors:
       input_tensor.set_batch_size(self.ffconfig.get_batch_size())
       self._create_input_tensor(idx)
       idx += 1
@@ -55,9 +55,9 @@ class BaseModel(object):
     self._create_label_tensor()
     
   def _verify_tensors(self, input_arrays, label_array):
-    assert len(input_arrays) == len(self.input_tensors), "check len of input tensors"
+    assert len(input_arrays) == len(self._input_tensors), "check len of input tensors"
     # TODO: move check shape into another function
-    for np_array, t in zip(input_arrays, self.input_tensors):
+    for np_array, t in zip(input_arrays, self._input_tensors):
       np_shape = np_array.shape
       assert len(np_shape) == t.num_dims, "check input shape"
       for i in range(1, len(np_shape)):
@@ -68,10 +68,10 @@ class BaseModel(object):
       assert np_shape[i] == self.label_tensor.batch_shape[i], "check label dims"    
       
   def _verify_output_tensors(self):
-    assert self._layers[self._nb_layers-1].output_tensor == self.output_tensor, "output tensor is wrong"
+    assert self._layers[self._nb_layers-1].output_tensor == self._output_tensor, "output tensor is wrong"
     
   def _verify_input_tensors(self):
-    for t in self.input_tensors:
+    for t in self._input_tensors:
       assert len(t.to_layers) > 0, "input tensor has not to_layers"
     
   def _compile(self, optimizer):
@@ -118,13 +118,13 @@ class BaseModel(object):
     input_shape = x_trains[0].shape
     self.num_samples = input_shape[0]
     
-    assert len(self.input_tensors) != 0, "input_tensor is not set"
+    assert len(self._input_tensors) != 0, "input_tensor is not set"
     assert self.label_tensor != 0, "label_tensor is not set"
     
     print(y_train.shape)
     idx = 0
     for x_train in x_trains:
-      full_tensor, dataloader = self.__create_single_data_loader(self.input_tensors[idx], x_train)
+      full_tensor, dataloader = self.__create_single_data_loader(self._input_tensors[idx], x_train)
       self.full_input_tensors.append(full_tensor)
       self.input_dataloaders.append(dataloader)
       self.input_dataloaders_dim.append(len(input_shape))
@@ -163,12 +163,12 @@ class BaseModel(object):
     run_time = 1e-6 * (ts_end - ts_start);
     print("epochs %d, ELAPSED TIME = %.4fs, interations %d, samples %d, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, int(iterations), self.num_samples, self.num_samples * epochs / run_time));
 
-    self.input_tensors[0].ffhandle.inline_map(self.ffconfig)
-    input_array = self.input_tensors[0].ffhandle.get_flat_array(self.ffconfig, ff.DataType.DT_FLOAT)
+    self._input_tensors[0].ffhandle.inline_map(self.ffconfig)
+    input_array = self._input_tensors[0].ffhandle.get_flat_array(self.ffconfig, ff.DataType.DT_FLOAT)
     print(input_array.shape)
     print(input_array)
     #self.save_image(input_array, 2)
-    self.input_tensors[0].ffhandle.inline_unmap(self.ffconfig)
+    self._input_tensors[0].ffhandle.inline_unmap(self.ffconfig)
     
     self.label_tensor.ffhandle.inline_map(self.ffconfig)
     label_array = self.label_tensor.ffhandle.get_flat_array(self.ffconfig, ff.DataType.DT_INT32)
@@ -257,7 +257,7 @@ class BaseModel(object):
       if (verify_inout_shape == True):
         in_t = layer.input_tensors[0].ffhandle
         layer.verify_inout_shape(in_t, out_t)
-    print("output tensor", self.output_tensor.batch_shape)
+    print("output tensor", self._output_tensor.batch_shape)
     
   def summary(self):
     model_summary = "Layer (type)\t\tOutput Shape\t\tInput Shape\tConnected to\n"

@@ -11,8 +11,8 @@ class Model(BaseModel):
     if (isinstance(input_tensors, list) == False):
        input_tensors = [input_tensors]
        
-    self.input_tensors = input_tensors
-    self.output_tensor = output_tensor
+    self._input_tensors = input_tensors
+    self._output_tensor = output_tensor
     
     self._init_dag()
     
@@ -26,7 +26,7 @@ class Model(BaseModel):
   def _init_dag(self):
     bfs_queue = []
     
-    # for input_tensor in self.input_tensors:
+    # for input_tensor in self._input_tensors:
     #   for layer in input_tensor.to_layers:
     #     bfs_queue.append(layer)
     # while(len(bfs_queue) != 0):
@@ -39,7 +39,7 @@ class Model(BaseModel):
     #     else:
     #       print(child, "already in the queue")
     
-    for input_tensor in reversed(self.input_tensors):
+    for input_tensor in reversed(self._input_tensors):
       for layer in reversed(input_tensor.to_layers):
         bfs_queue.append(layer)
     while(len(bfs_queue) != 0):
@@ -70,7 +70,7 @@ class Model(BaseModel):
     self._compile(optimizer)
     
   def fit(self, input_tensors, label_tensor, epochs=1):
-    assert self.output_tensor.ffhandle != 0, "tensor is not init"
+    assert self._output_tensor.ffhandle != 0, "tensor is not init"
     if (isinstance(input_tensors, list) == False):
        input_tensors = [input_tensors]
     self._verify_tensors(input_tensors, label_tensor)

@@ -22,10 +22,10 @@ class Sequential(BaseModel):
     if (layer.layer_id == 0):
       input_shape = list(layer.input_shape)
       input_tensor = Input(batch_shape=input_shape, dtype="float32")
-      self.input_tensors.append(input_tensor)
-      self.output_tensor = input_tensor
+      self._input_tensors.append(input_tensor)
+      self._output_tensor = input_tensor
       
-    self.output_tensor = layer(self.output_tensor)
+    self._output_tensor = layer(self._output_tensor)
     
     layer.verify_meta_data()
     
@@ -37,10 +37,11 @@ class Sequential(BaseModel):
     self._verify_output_tensors()
     self._verify_input_tensors()
     self._compile(optimizer)
-    print(self.input_tensors[0], self.output_tensor, self.input_tensors[0].ffhandle, self.output_tensor.ffhandle)
+    print(self._input_tensors[0], self._output_tensor, self._input_tensors[0].ffhandle, self._output_tensor.ffhandle)
     
   def fit(self, input_tensors, label_tensor, epochs=1):
     assert isinstance(input_tensors, list) == False, "do not support multiple inputs"
+    assert self._output_tensor.ffhandle != 0, "tensor is not init"
     input_tensors = [input_tensors]
     self._verify_tensors(input_tensors, label_tensor)
         
