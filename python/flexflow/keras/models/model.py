@@ -125,27 +125,24 @@ class Model(BaseModel):
       in_t = layer.input_tensors[0].ffhandle
       layer.verify_inout_shape(in_t, out_t)
           
-  def _add_layer(self, layer):
-    self._layers[self._nb_layers] = layer
-    assert layer.layer_id == -1, "layer id is inited"
-    assert layer.ffhandle == 0, "layer handle is inited"
-    layer.layer_id = self._nb_layers
-    self._nb_layers += 1
+  def _create_flexflow_layers_v2(self):
+    for layer_id in self._layers:
+      layer = self._layers[layer_id]
 
-    if (isinstance(layer, Conv2D) == True):
-      layer.ffhandle = self.ffmodel.conv2d_v2(layer.name, layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
-    elif (isinstance(layer, MaxPooling2D) == True):
-      layer.ffhandle = self.ffmodel.pool2d_v2(layer.name, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1])
-    elif (isinstance(layer, Flatten) == True):
-      layer.ffhandle = self.ffmodel.flat_v2(layer.name)
-    elif (isinstance(layer, Dense) == True):
-      layer.ffhandle = self.ffmodel.dense_v2(layer.name, layer.in_channels, layer.out_channels, layer.activation)
-    elif (isinstance(layer, Activation) == True):
-      print("add softmax")
-    elif (isinstance(layer, Concatenate) == True):
-      print("add concatenate")
-    else:
-      assert 0, "unknow layer"
+      if (isinstance(layer, Conv2D) == True):
+        layer.ffhandle = self.ffmodel.conv2d_v2(layer.name, layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
+      elif (isinstance(layer, MaxPooling2D) == True):
+        layer.ffhandle = self.ffmodel.pool2d_v2(layer.name, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1])
+      elif (isinstance(layer, Flatten) == True):
+        layer.ffhandle = self.ffmodel.flat_v2(layer.name)
+      elif (isinstance(layer, Dense) == True):
+        layer.ffhandle = self.ffmodel.dense_v2(layer.name, layer.in_channels, layer.out_channels, layer.activation)
+      elif (isinstance(layer, Activation) == True):
+        print("add softmax")
+      elif (isinstance(layer, Concatenate) == True):
+        print("add concatenate")
+      else:
+        assert 0, "unknow layer"
       
   def _create_input_and_label_tensors(self):
     idx = 0
@@ -159,72 +156,46 @@ class Model(BaseModel):
   def _init_dag(self):
     bfs_queue = []
     
-    use_api = 2
+    # for input_tensor in self.input_tensors:
+    #   for layer in input_tensor.to_layers:
+    #     bfs_queue.append(layer)
+    # while(len(bfs_queue) != 0):
+    #   layer = bfs_queue.pop(0)
+    #   #print(layer)
+    #   #self._add_layer_and_init_inout(layer)
+    #   self._add_layer_metadata(layer)
+    #   for child in layer.next_layers:
+    #     if child not in bfs_queue:
+    #       bfs_queue.append(child)
+    #     else:
+    #       print(child, "already in the queue")
     
-    if (use_api == 1):  # no longer work
-      # for input_tensor in self.input_tensors:
-      #   for layer in input_tensor.to_layers:
-      #     bfs_queue.append(layer)
-      # while(len(bfs_queue) != 0):
-      #   layer = bfs_queue.pop(0)
-      #   #print(layer)
-      #   self._add_layer(layer)
-      #   for child in layer.next_layers:
-      #     if child not in bfs_queue:
-      #       bfs_queue.append(child)
-      #     else:
-      #       print(child, "already in the queue")
-      
-      for input_tensor in reversed(self.input_tensors):
-        for layer in reversed(input_tensor.to_layers):
-          bfs_queue.append(layer)
-      while(len(bfs_queue) != 0):
-        layer = bfs_queue.pop()
-        #print(layer)
-        self._add_layer(layer)
-        for child in reversed(layer.next_layers):
-          assert child not in bfs_queue, "already in the stack"
-          if child.nb_visited_prev_layers == len(child.prev_layers)-1:
-            bfs_queue.append(child)
-          else:
-            child.nb_visited_prev_layers += 1
-      
-      self._init_inout()
-    else:
-      # for input_tensor in self.input_tensors:
-      #   for layer in input_tensor.to_layers:
-      #     bfs_queue.append(layer)
-      # while(len(bfs_queue) != 0):
-      #   layer = bfs_queue.pop(0)
-      #   #print(layer)
-      #   self._add_layer_and_init_inout(layer)
-      #   for child in layer.next_layers:
-      #     if child not in bfs_queue:
-      #       bfs_queue.append(child)
-      #     else:
-      #       print(child, "already in the queue")
-      
-      for input_tensor in reversed(self.input_tensors):
-        for layer in reversed(input_tensor.to_layers):
-          bfs_queue.append(layer)
-      while(len(bfs_queue) != 0):
-        layer = bfs_queue.pop()
-        #print(layer)
-        #self._add_layer_and_init_inout(layer)
-        self._add_layer_metadata(layer)
-        for child in reversed(layer.next_layers):
-          assert child not in bfs_queue, "already in the stack"
-          if child.nb_visited_prev_layers == len(child.prev_layers)-1:
-            bfs_queue.append(child)
-          else:
-            child.nb_visited_prev_layers += 1
-      for layer_id in self._layers:
-        layer = self._layers[layer_id]
-        layer.nb_visited_prev_layers = 0          
+    for input_tensor in reversed(self.input_tensors):
+      for layer in reversed(input_tensor.to_layers):
+        bfs_queue.append(layer)
+    while(len(bfs_queue) != 0):
+      layer = bfs_queue.pop()
+      #print(layer)
+      #self._add_layer_and_init_inout(layer)
+      self._add_layer_metadata(layer)
+      for child in reversed(layer.next_layers):
+        assert child not in bfs_queue, "already in the stack"
+        if child.nb_visited_prev_layers == len(child.prev_layers)-1:
+          bfs_queue.append(child)
+        else:
+          child.nb_visited_prev_layers += 1
+    for layer_id in self._layers:
+      layer = self._layers[layer_id]
+      layer.nb_visited_prev_layers = 0          
       
   def compile(self, optimizer):
     self._create_input_and_label_tensors()
-    self._create_flexflow_layers()
+    use_api = 1
+    if (use_api == 1):
+      self._create_flexflow_layers()
+    else:
+      self._create_flexflow_layers_v2()
+      self._init_inout()
     
     self._compile(optimizer)
     
