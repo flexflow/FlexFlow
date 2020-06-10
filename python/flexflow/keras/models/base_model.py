@@ -48,6 +48,13 @@ class BaseModel(object):
     assert len(np_shape) == self.label_tensor.num_dims, "check label shape"
     for i in range(1, len(np_shape)):
       assert np_shape[i] == self.label_tensor.batch_shape[i], "check label dims"    
+      
+  def _verify_output_tensors(self):
+    assert self._layers[self._nb_layers-1].output_tensor == self.output_tensor, "output tensor is wrong"
+    
+  def _verify_input_tensors(self):
+    for t in self.input_tensors:
+      assert len(t.to_layers) > 0, "input tensor has not to_layers"
     
   def _compile(self, optimizer):
     self.ffoptimizer = optimizer

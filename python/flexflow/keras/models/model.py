@@ -156,34 +156,34 @@ class Model(BaseModel):
   def _init_dag(self):
     bfs_queue = []
     
-    for input_tensor in self.input_tensors:
-      for layer in input_tensor.to_layers:
-        bfs_queue.append(layer)
-    while(len(bfs_queue) != 0):
-      layer = bfs_queue.pop(0)
-      #print(layer)
-      #self._add_layer_and_init_inout(layer)
-      self._add_layer_metadata(layer)
-      for child in layer.next_layers:
-        if child not in bfs_queue:
-          bfs_queue.append(child)
-        else:
-          print(child, "already in the queue")
-    
-    # for input_tensor in reversed(self.input_tensors):
-    #   for layer in reversed(input_tensor.to_layers):
+    # for input_tensor in self.input_tensors:
+    #   for layer in input_tensor.to_layers:
     #     bfs_queue.append(layer)
     # while(len(bfs_queue) != 0):
-    #   layer = bfs_queue.pop()
+    #   layer = bfs_queue.pop(0)
     #   #print(layer)
     #   #self._add_layer_and_init_inout(layer)
     #   self._add_layer_metadata(layer)
-    #   for child in reversed(layer.next_layers):
-    #     assert child not in bfs_queue, "already in the stack"
-    #     if child.nb_visited_prev_layers == len(child.prev_layers)-1:
+    #   for child in layer.next_layers:
+    #     if child not in bfs_queue:
     #       bfs_queue.append(child)
     #     else:
-    #       child.nb_visited_prev_layers += 1
+    #       print(child, "already in the queue")
+    
+    for input_tensor in reversed(self.input_tensors):
+      for layer in reversed(input_tensor.to_layers):
+        bfs_queue.append(layer)
+    while(len(bfs_queue) != 0):
+      layer = bfs_queue.pop()
+      #print(layer)
+      #self._add_layer_and_init_inout(layer)
+      self._add_layer_metadata(layer)
+      for child in reversed(layer.next_layers):
+        assert child not in bfs_queue, "already in the stack"
+        if child.nb_visited_prev_layers == len(child.prev_layers)-1:
+          bfs_queue.append(child)
+        else:
+          child.nb_visited_prev_layers += 1
     for layer_id in self._layers:
       layer = self._layers[layer_id]
       layer.nb_visited_prev_layers = 0          
@@ -197,6 +197,8 @@ class Model(BaseModel):
       self._create_flexflow_layers_v2()
       self._init_inout()
     
+    self._verify_output_tensors()
+    self._verify_input_tensors()
     self._compile(optimizer)
     
   def fit(self, input_tensors, label_tensor, epochs=1):

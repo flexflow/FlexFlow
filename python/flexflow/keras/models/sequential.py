@@ -37,6 +37,9 @@ class Sequential(BaseModel):
     self._create_label_tensor()
     self._create_flexflow_layers()
     #self._init_inout() 
+    
+    self._verify_output_tensors()
+    self._verify_input_tensors()
     self._compile(optimizer)
     print(self.input_tensors[0], self.output_tensor, self.input_tensors[0].ffhandle, self.output_tensor.ffhandle)
     
