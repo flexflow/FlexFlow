@@ -36,7 +36,9 @@ class Sequential(BaseModel):
     self._create_input_tensor(0)
     self._create_label_tensor()
     self._create_flexflow_layers()
+    #self._init_inout() 
     self._compile(optimizer)
+    print(self.input_tensors[0], self.output_tensor, self.input_tensors[0].ffhandle, self.output_tensor.ffhandle)
     
   def fit(self, input_tensors, label_tensor, epochs=1):
     assert isinstance(input_tensors, list) == False, "do not support multiple inputs"
@@ -45,7 +47,7 @@ class Sequential(BaseModel):
         
     self._create_data_loaders(input_tensors, label_tensor)
     
-    #self.__init_inout() 
+    #self._init_inout() 
     self._set_optimizer()     
     self.ffmodel.init_layers()
     
@@ -86,7 +88,7 @@ class Sequential(BaseModel):
        in_t = layer.input_tensors[0].ffhandle
        layer.verify_inout_shape(in_t, out_t)
     
-  def __create_flexflow_layers_v2(self):
+  def _create_flexflow_layers_v2(self):
     for layer_id in self._layers:
       layer = self._layers[layer_id]
       if (isinstance(layer, Conv2D) == True):
@@ -102,7 +104,7 @@ class Sequential(BaseModel):
       else:
         assert 0, "unknow layer"
     
-  def __init_inout(self, verify_inout_shape=True):
+  def _init_inout(self, verify_inout_shape=True):
     out_t = 0
     for layer_id in self._layers:
       layer = self._layers[layer_id]
