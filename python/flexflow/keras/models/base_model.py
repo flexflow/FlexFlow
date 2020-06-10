@@ -29,6 +29,13 @@ class BaseModel(object):
   def get_layer(self, layer_id):
     return self._layers[layer_id]
     
+  def _create_input_tensor(self, idx):
+    assert self.input_tensors[idx].batch_shape[0] != 0, "batch size is not set"
+    self.input_tensors[idx].create_ff_tensor(self.ffmodel)
+    
+  def _create_label_tensor(self):
+    self.label_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), 1], name="", dtype="int32")
+    
   def _verify_tensors(self, input_arrays, label_array):
     assert len(input_arrays) == len(self.input_tensors), "check len of input tensors"
     # TODO: move check shape into another function

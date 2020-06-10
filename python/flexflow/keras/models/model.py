@@ -15,12 +15,6 @@ class Model(BaseModel):
     self.output_tensor = output_tensor
     
     self._init_dag()
-    
-  def _create_input_tensor(self, input_shape, idx):
-    self.input_tensors[idx].create_ff_tensor(self.ffmodel)
-    
-  def _create_label_tensor(self, label_shape): 
-    self.label_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), 1], name="", dtype="int32")
   
   def _init_inout(self, verify_inout_shape=True):
     out_t = 0
@@ -157,11 +151,10 @@ class Model(BaseModel):
     idx = 0
     for input_tensor in self.input_tensors:
       input_tensor.set_batch_size(self.ffconfig.get_batch_size())
-      self._create_input_tensor(input_tensor.batch_shape, idx)
+      self._create_input_tensor(idx)
       idx += 1
 
-    label_shape = (self.ffconfig.get_batch_size(), 1)
-    self._create_label_tensor(label_shape)
+    self._create_label_tensor()
       
   def _init_dag(self):
     bfs_queue = []

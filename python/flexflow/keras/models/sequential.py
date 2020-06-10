@@ -1,7 +1,7 @@
 import flexflow.core as ff
 
 from .base_model import BaseModel
-from .input_layer import Tensor
+from .input_layer import Tensor, Input
 from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation
 
 class Sequential(BaseModel):
@@ -20,44 +20,16 @@ class Sequential(BaseModel):
     self._nb_layers += 1
     
     prev_layer = 0
-
-    if (isinstance(layer, Conv2D) == True):
-      if (layer.layer_id > 0):
-        prev_layer = self._layers[layer.layer_id-1]
-        assert len(prev_layer.output_shape) == 4, "check prev layer"
-        layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3], prev_layer.output_shape[0])
-    elif (isinstance(layer, MaxPooling2D) == True):
-      assert layer.layer_id != 0, "maxpool2d can not be the 1st layer"
-      prev_layer = self._layers[layer.layer_id-1]
-      assert len(prev_layer.output_shape) == 4, "check prev layer"
-      layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[2], prev_layer.output_shape[3], prev_layer.output_shape[0])
-    elif (isinstance(layer, Flatten) == True):
-      assert layer.layer_id != 0, "flatten can not be the 1st layer"
-      prev_layer = self._layers[layer.layer_id-1]
-      layer.calculate_inout_shape(prev_layer.output_shape)
-    elif (isinstance(layer, Dense) == True):
-      if (layer.layer_id > 0):
-        prev_layer = self._layers[layer.layer_id-1]
-        assert len(prev_layer.output_shape) == 2, "check prev layer"
-        layer.calculate_inout_shape(prev_layer.output_shape[1], prev_layer.output_shape[0])
-    else:
-      prev_layer = self._layers[layer.layer_id-1]
+    
+    if (layer.layer_id == 0):
+      input_shape = list(layer.input_shape)
+      input_tensor = Input(batch_shape=input_shape, dtype="float32")
+      self.input_tensors.append(input_tensor)
+      self.output_tensor = input_tensor
+      
+    self.output_tensor = layer(self.output_tensor)
     
     layer.verify_meta_data()
-    
-    if (prev_layer != 0):
-      layer.add_prev_layer(prev_layer)
-      prev_layer.add_next_layer(layer)
-    
-  def create_input_tensor(self, input_shape):
-    if (len(input_shape) == 2):
-      self.input_tensors.append(Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), input_shape[1]], name="", dtype="float32"))
-      
-    elif (len(input_shape) == 4):
-      self.input_tensors.append(Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), input_shape[1], input_shape[2], input_shape[3]], name="", dtype="float32"))
-    
-  def create_label_tensor(self, label_shape):
-    self.label_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), 1], name="", dtype="int32")
     
   def compile(self, optimizer):
     self._compile(optimizer)
@@ -66,9 +38,9 @@ class Sequential(BaseModel):
   def fit(self, input_tensors, label_tensor, epochs=1):
     assert isinstance(input_tensors, list) == False, "do not support multiple inputs"
     input_tensors = [input_tensors]
-    for input_tensor in input_tensors:
-      self.create_input_tensor(input_tensor.shape)
-    self.create_label_tensor(label_tensor.shape)
+    self.input_tensors[0].set_batch_size(self.ffconfig.get_batch_size())
+    self._create_input_tensor(0)
+    self._create_label_tensor()
     self._verify_tensors(input_tensors, label_tensor)
         
     self._create_data_loaders(input_tensors, label_tensor)
@@ -96,31 +68,25 @@ class Sequential(BaseModel):
         assert 0, "unknow layer"
     
   def __init_inout(self, verify_inout_shape=True):
-    int_t = 0
     out_t = 0
     for layer_id in self._layers:
       layer = self._layers[layer_id]
-      if (layer_id == 0):
-        in_t = self.input_tensors[0].ffhandle
-        out_t = layer.ffhandle.init_inout(self.ffmodel, in_t);
+
+      if (isinstance(layer, Activation) == True):
+        assert layer_id == self._nb_layers-1, "softmax is not in the last layer"
+        out_t = self.ffmodel.softmax("softmax", layer.input_tensors[0].ffhandle, self.label_tensor.ffhandle)
+        assert layer.ffhandle == 0, "layer handle is inited"
+        layer.ffhandle = self.ffmodel.get_layer_by_id(layer_id)
       else:
-        in_t = out_t
-        if (isinstance(layer, Activation) == True):
-          assert layer_id == self._nb_layers-1, "softmax is not in the last layer"
-          out_t = self.ffmodel.softmax("softmax", in_t, self.label_tensor.ffhandle)
-          assert layer.ffhandle == 0, "layer handle is inited"
-          layer.ffhandle = self.ffmodel.get_layer_by_id(layer_id)
-        else:
-          out_t = layer.ffhandle.init_inout(self.ffmodel, in_t);
+        out_t = layer.ffhandle.init_inout(self.ffmodel, layer.input_tensors[0].ffhandle);
       
+      layer.output_tensor.set_ffhandle(out_t)
       assert layer.ffhandle != 0, "layer handle is wrong"
-      print(layer.ffhandle)
-      assert layer.output_tensor == 0, "wrong"
-      assert len(layer.input_tensors) == 0, "wrong"    
+      print(layer.ffhandle)    
       
       if (verify_inout_shape == True):
+        in_t = layer.input_tensors[0].ffhandle
         layer.verify_inout_shape(in_t, out_t)
-    self.output_tensor = Tensor(dtype=self.input_tensors[0].dtype, ffhandle=out_t)
     print("output tensor", self.output_tensor.batch_shape)
     
     
