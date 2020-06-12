@@ -36,7 +36,7 @@
 
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n) \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); i += blockDim.x * gridDim.x)
+  for (coord_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); i += blockDim.x * gridDim.x)
 
 // Use 1024 threads per block, which requires cuda sm_2x or above
 const int CUDA_NUM_THREADS = 1024;
