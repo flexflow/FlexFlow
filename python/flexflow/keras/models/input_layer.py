@@ -17,7 +17,7 @@ class Tensor(object):
       assert 0, "not supported"
     # create a tensor
     if (ffhandle == 0):
-      self.batch_shape = batch_shape
+      self.batch_shape = tuple(batch_shape)
       self.name = name
       self.num_dims = len(batch_shape)
       if (meta_only == False):
@@ -51,7 +51,9 @@ class Tensor(object):
     self.from_layer = layer
     
   def set_batch_size(self, size):
-    self.batch_shape[0] = size
+    lst = list(self.batch_shape)
+    lst[0] = size
+    self.batch_shape = tuple(lst)
 
 class Input(Tensor):
   def __init__(self, shape=None, batch_shape=None,

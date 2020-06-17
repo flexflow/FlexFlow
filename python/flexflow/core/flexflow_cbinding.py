@@ -330,7 +330,7 @@ class Tensor(object):
     else:
       assert 0, "Tensor handle is wrong"
     self.num_dims = 0
-    self.dims = [0, 0, 0, 0]
+    self.dims = 0
     self.mapped = False
     self.__set_dims()
     if (deallocate == True):
@@ -355,14 +355,8 @@ class Tensor(object):
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     print("raw_ptr: ", raw_ptr, raw_ptr_int)
     strides = None
-    if (self.num_dims == 1):
-      shape = (self.dims[0],)
-    elif (self.num_dims == 2):
-      shape = (self.dims[0], self.dims[1])
-    elif (self.num_dims == 3):
-      shape = (self.dims[0], self.dims[1], self.dims[2])
-    elif (self.num_dims == 4):
-      shape = (self.dims[0], self.dims[1], self.dims[2], self.dims[3])
+    if (self.num_dims >= 1 or self.num_dims <= 4):
+      shape = self.dims
     else:
       assert 0, "unknow num_dims"
     initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
@@ -375,14 +369,9 @@ class Tensor(object):
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     print("raw_ptr: ", raw_ptr, raw_ptr_int)
     strides = None
-    if (self.num_dims == 1):
-      shape = (self.dims[0],)
-    elif (self.num_dims == 2):
-      shape = (self.dims[0] * self.dims[1],)
-    elif (self.num_dims == 3):
-      shape = (self.dims[0] * self.dims[1] * self.dims[2],)
-    elif (self.num_dims == 4):
-      shape = (self.dims[0] * self.dims[1] * self.dims[2] * self.dims[3],)
+    if (self.num_dims >= 1 or self.num_dims <= 4):
+      shape_prod = np.prod(self.dims)
+      shape = (shape_prod,)
     else:
       assert 0, "unknow num_dims"
     initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
@@ -392,23 +381,10 @@ class Tensor(object):
   def attach_numpy_array(self, ffconfig, np_array):
     assert np_array.__array_interface__['strides'] == None, "numpy array strides is not None"
     np_shape = np_array.shape
-    np_num_dims = len(np_shape)
-    if (self.num_dims == 1):
-      assert self.dims[0] == np_shape[0], "wrong dim"
-    elif (self.num_dims == 2):
-      assert self.dims[0] == np_shape[0], "wrong dim"
-      assert self.dims[1] == np_shape[1], "wrong dim"
-    elif (self.num_dims == 3):
-      assert self.dims[0] == np_shape[0], "wrong dim"
-      assert self.dims[1] == np_shape[1], "wrong dim"
-      assert self.dims[2] == np_shape[2], "wrong dim"
-    elif (self.num_dims == 4):
-      assert self.dims[0] == np_shape[0], "wrong dim"
-      assert self.dims[1] == np_shape[1], "wrong dim"
-      assert self.dims[2] == np_shape[2], "wrong dim"
-      assert self.dims[3] == np_shape[3], "wrong dim"
-    else:
-      assert 0, "unknow num_dims"
+    num_dims = len(np_shape)
+    assert num_dims == self.num_dims, "please check dims (%d == %d)" %(num_dims, self.num_dims)
+    for i in range(0, num_dims):
+      assert np_shape[i] == self.dims[i], "please check shape dim %d (%d == %d)" %(i, np_shape[i], self.dims[i])
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("void*", np_raw_ptr[0])
     print("attach numpy array: ", np_raw_ptr, raw_ptr, hex(np_raw_ptr[0]))
@@ -433,13 +409,13 @@ class Tensor(object):
     d = ffc.flexflow_tensor_get_dims(self.handle)
     #print(d[0], d[1], d[2], d[3])
     if (self.num_dims == 1):
-      self.dims = [d[0]]
+      self.dims = (d[0],)
     elif (self.num_dims == 2):
-      self.dims = [d[1], d[0]]
+      self.dims = (d[1], d[0])
     elif (self.num_dims == 3):
-      self.dims = [d[2], d[1], d[0]]
+      self.dims = (d[2], d[1], d[0])
     elif (self.num_dims == 4):
-      self.dims = [d[3], d[2], d[1], d[0]]
+      self.dims = (d[3], d[2], d[1], d[0])
     else:
       assert 0, "unknow num_dims"
     
@@ -471,33 +447,15 @@ class Parameter(Tensor):
     assert num_dims == self.num_dims, "please check dims (%d == %d)" %(num_dims, self.num_dims)
     for i in range(0, num_dims):
       assert np_shape[i] == self.dims[i], "please check shape dim %d (%d == %d)" %(i, np_shape[i], self.dims[i])
-    if (num_dims == 1):
-      shape = [np_shape[0]]
-    elif (num_dims == 2):
-      shape = [np_shape[0], np_shape[1]]
-    elif (num_dims == 3):
-      shape = [np_shape[0], np_shape[1], np_shape[2]]
-    elif (num_dims == 4):
-      shape = [np_shape[0], np_shape[1], np_shape[2], np_shape[3]]
-    else:
-      assert 0, "unknow num_dims"
+    c_dims = ffi.new("int[]", self.dims)
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-    print("set weights raw_ptr: ", raw_ptr, np_raw_ptr[0], hex(np_raw_ptr[0]), shape)
-    ret_val = ffc.flexflow_parameter_set_weights_float(self.parameter_handle, ffmodel.handle, num_dims, shape, raw_ptr)
+    print("set weights raw_ptr: ", raw_ptr, np_raw_ptr[0], hex(np_raw_ptr[0]), np_shape)
+    ret_val = ffc.flexflow_parameter_set_weights_float(self.parameter_handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
     assert ret_val == True, ret_val
     
   def get_weights(self, ffmodel):
-    if (self.num_dims == 1):
-      shape = (self.dims[0],)
-    elif (self.num_dims == 2):
-      shape = (self.dims[0], self.dims[1])
-    elif (self.num_dims == 3):
-      shape = (self.dims[0], self.dims[1], self.dims[2])
-    elif (self.num_dims == 4):
-      shape = (self.dims[0], self.dims[1], self.dims[2], self.dims[3])
-    else:
-      assert 0, "unknow num_dims"
+    shape = self.dims
     np_array = np.empty(shape, dtype=np.float32)
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])

@@ -259,7 +259,7 @@ def cifar_cnn_model_concat():
   
   print(model.summary())
   
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt)
 
   model.fit([x_train, x_train], y_train, epochs=1)
@@ -302,7 +302,7 @@ def cifar_cnn_model_concat_seq():
   
   print(model.summary())
   
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt)
 
   model.fit([x_train, x_train], y_train, epochs=1)
