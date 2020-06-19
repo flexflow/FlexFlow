@@ -74,7 +74,7 @@ ifndef PYTHON_LIB
           $(warning cannot find libpython$(PYTHON_VERSION_MAJOR).$(PYTHON_VERSION_MINOR)*.$(PYTHON_EXT) - falling back to using LD_LIBRARY_PATH)
           PYTHON_LIB :=
         endif
-	  endif
+      endif
     endif
   endif
 endif
