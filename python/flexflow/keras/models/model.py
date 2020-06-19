@@ -24,8 +24,7 @@ class Model(BaseModel):
     self._nb_layers += 1
       
   def _init_dag(self):
-    bfs_queue = []
-    
+    # bfs_queue = []    
     # for input_tensor in self._input_tensors:
     #   for layer in input_tensor.to_layers:
     #     bfs_queue.append(layer)
@@ -39,17 +38,18 @@ class Model(BaseModel):
     #     else:
     #       print(child, "already in the queue")
     
+    dfs_stack = []
     for input_tensor in reversed(self._input_tensors):
       for layer in reversed(input_tensor.to_layers):
-        bfs_queue.append(layer)
-    while(len(bfs_queue) != 0):
-      layer = bfs_queue.pop()
+        dfs_stack.append(layer)
+    while(len(dfs_stack) != 0):
+      layer = dfs_stack.pop()
       #print(layer)
       self._add_layer_metadata(layer)
       for child in reversed(layer.next_layers):
-        assert child not in bfs_queue, "already in the stack"
+        assert child not in dfs_stack, "already in the stack"
         if child.nb_visited_prev_layers == len(child.prev_layers)-1:
-          bfs_queue.append(child)
+          dfs_stack.append(child)
         else:
           child.nb_visited_prev_layers += 1
     for layer_id in self._layers:

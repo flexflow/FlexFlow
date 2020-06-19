@@ -68,7 +68,7 @@ class Dense(Layer):
       self.calculate_inout_shape(in_dims[1], in_dims[0])
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
     self.input_tensors.append(input_tensor)
-    self.output_tensor = output_tensor
+    self.output_tensors.append(output_tensor)
     
     output_tensor.set_from_layer(self)
     # this is the first layer
@@ -118,7 +118,7 @@ class Flatten(Layer):
     self.calculate_inout_shape(in_dims)
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
     self.input_tensors.append(input_tensor)
-    self.output_tensor = output_tensor
+    self.output_tensors.append(output_tensor)
     
     output_tensor.set_from_layer(self)
     
@@ -150,7 +150,7 @@ class Activation(Layer):
      
     output_tensor = Tensor(batch_shape=input_tensor.batch_shape, dtype=input_tensor.dtype, meta_only=True)
     self.input_tensors.append(input_tensor)
-    self.output_tensor = output_tensor
+    self.output_tensors.append(output_tensor)
     
     output_tensor.set_from_layer(self)
     

@@ -8,7 +8,7 @@ class Layer(object):
     self.prev_layers = []
     self.next_layers = []
     self.input_tensors = []
-    self.output_tensor = 0
+    self.output_tensors = []
     self.nb_visited_prev_layers = 0
     self.layer_type = layer_type
     

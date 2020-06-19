@@ -68,7 +68,7 @@ class BaseModel(object):
       assert np_shape[i] == self.label_tensor.batch_shape[i], "check label dims"    
       
   def _verify_output_tensors(self):
-    assert self._layers[self._nb_layers-1].output_tensor == self._output_tensor, "output tensor is wrong"
+    assert self._layers[self._nb_layers-1].output_tensors[0] == self._output_tensor, "output tensor is wrong"
     
   def _verify_input_tensors(self):
     for t in self._input_tensors:
@@ -219,7 +219,7 @@ class BaseModel(object):
       else:
        assert 0, "unknow layer"
 
-      layer.output_tensor.set_ffhandle(out_t)
+      layer.output_tensors[0].set_ffhandle(out_t)
 
       assert layer.ffhandle == 0, "layer handle is inited"
       layer.ffhandle = self.ffmodel.get_layer_by_id(layer.layer_id)
@@ -250,7 +250,7 @@ class BaseModel(object):
       else:
         out_t = layer.ffhandle.init_inout(self.ffmodel, layer.input_tensors[0].ffhandle);
       
-      layer.output_tensor.set_ffhandle(out_t)
+      layer.output_tensors[0].set_ffhandle(out_t)
       assert layer.ffhandle != 0, "layer handle is wrong"
       print(layer.ffhandle)    
       

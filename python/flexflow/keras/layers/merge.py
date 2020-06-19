@@ -39,7 +39,7 @@ class Concatenate(Layer):
   def __call__(self, input_tensors):
     self.calculate_inout_shape(input_tensors)
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensors[0].dtype, meta_only=True)
-    self.output_tensor = output_tensor
+    self.output_tensors.append(output_tensor)
     
     output_tensor.set_from_layer(self)
     
