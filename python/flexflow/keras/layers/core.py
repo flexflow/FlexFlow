@@ -50,7 +50,7 @@ class Dense(Layer):
     out_dims = output_tensor_handle.dims
     assert out_dims[1] == self.output_shape[1]
     
-  def verify_input_shape(self, input_tensor):
+  def verify_input_tensor_shape(self, input_tensor):
     assert input_tensor.batch_shape[1] == self.input_shape[1]
     
   def get_summary(self):
@@ -60,12 +60,12 @@ class Dense(Layer):
   def __call__(self, input_tensor):
     assert input_tensor.num_dims == 2, "shape of input tensor is wrong"
     
-    # input_shape is set via constructor
-    if (self.in_channels != 0):
-      self.verify_input_shape(input_tensor)
-    else:
+    # not the first layer
+    if (self.in_channels == 0):
       in_dims = input_tensor.batch_shape
       self.calculate_inout_shape(in_dims[1], in_dims[0])
+    self.verify_input_tensor_shape(input_tensor)
+    
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
     self.input_tensors.append(input_tensor)
     self.output_tensors.append(output_tensor)

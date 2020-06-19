@@ -7,6 +7,7 @@ from flexflow.keras.datasets import cifar10
 import flexflow.core as ff
 import numpy as np
 import argparse
+import gc
 
 from PIL import Image
   
@@ -548,6 +549,8 @@ def top_level_task():
     cifar_cnn_model_concat()
   elif (test_type == 11):
     cifar_cnn_model_concat_seq()
+    
+  gc.collect()
 
 if __name__ == "__main__":
   print("alexnet keras")

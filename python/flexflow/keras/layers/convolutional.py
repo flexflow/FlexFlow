@@ -46,10 +46,10 @@ class Conv2D(Layer):
     print("conv2d output ", self.output_shape)
   
   def verify_meta_data(self):
-    assert self.input_shape != (0, 0, 0, 0), "input shape is wrong"
-    assert self.output_shape != (0, 0, 0, 0), "output shape is wrong"
-    assert self.in_channels != 0, " in channels is wrong"
-    assert self.out_channels != 0, " out channels is wrong"
+    assert self.input_shape != (0, 0, 0, 0), "[Conv2D]: input shape is wrong"
+    assert self.output_shape != (0, 0, 0, 0), "[Conv2D]: output shape is wrong"
+    assert self.in_channels != 0, "[Conv2D]: in channels is wrong"
+    assert self.out_channels != 0, "[Conv2D]: out channels is wrong"
     
   def verify_inout_shape(self, input_tensor_handle, output_tensor_handle):
     in_dims = input_tensor_handle.dims
@@ -61,7 +61,7 @@ class Conv2D(Layer):
     assert out_dims[2] == self.output_shape[2]
     assert out_dims[3] == self.output_shape[3]
     
-  def verify_input_shape(self, input_tensor):
+  def verify_input_tensor_shape(self, input_tensor):
     assert input_tensor.batch_shape[1] == self.input_shape[1]
     assert input_tensor.batch_shape[2] == self.input_shape[2]
     assert input_tensor.batch_shape[3] == self.input_shape[3]
@@ -71,13 +71,13 @@ class Conv2D(Layer):
     return summary
     
   def __call__(self, input_tensor):
-    assert input_tensor.num_dims == 4, "shape of input tensor is wrong"
-    # input_shape is set via constructor
-    if (self.in_channels != 0):
-      self.verify_input_shape(input_tensor)
-    else:
+    assert input_tensor.num_dims == 4, "[Conv2D]: shape of input tensor is wrong"
+    # not the first layer
+    if (self.in_channels == 0):
       in_dims = input_tensor.batch_shape
       self.calculate_inout_shape(in_dims[1], in_dims[2], in_dims[3], in_dims[0])
+    self.verify_input_tensor_shape(input_tensor)
+    
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
     self.input_tensors.append(input_tensor)
     self.output_tensors.append(output_tensor)
@@ -87,7 +87,7 @@ class Conv2D(Layer):
     if (isinstance(input_tensor, Input) == True):
       input_tensor.set_to_layer(self)
     else:
-      assert input_tensor.from_layer != 0, "check input tensor"
+      assert input_tensor.from_layer != 0, "[Conv2D]: check input tensor"
       self.prev_layers.append(input_tensor.from_layer)
       input_tensor.from_layer.next_layers.append(self)
 
