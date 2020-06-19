@@ -55,8 +55,11 @@ ifndef PYTHON_LIB
     ifeq ($(strip $(PYTHON_LIB)),)
       PYTHON_LIB := $(wildcard $(abspath $(PYTHON_ROOT)/../lib/libpython$(PYTHON_VERSION_MAJOR).$(PYTHON_VERSION_MINOR)*.$(PYTHON_EXT)))
       ifeq ($(strip $(PYTHON_LIB)),)
-        $(warning cannot find libpython$(PYTHON_VERSION_MAJOR).$(PYTHON_VERSION_MINOR)*.$(PYTHON_EXT) - falling back to using LD_LIBRARY_PATH)
-        PYTHON_LIB :=
+        PYTHON_LIB := $(wildcard $(abspath $(PYTHON_ROOT)/../lib64/libpython$(PYTHON_VERSION_MAJOR).$(PYTHON_VERSION_MINOR)*.$(PYTHON_EXT)))
+        ifeq ($(strip $(PYTHON_LIB)),)
+          $(warning cannot find libpython$(PYTHON_VERSION_MAJOR).$(PYTHON_VERSION_MINOR)*.$(PYTHON_EXT) - falling back to using LD_LIBRARY_PATH)
+          PYTHON_LIB :=
+        endif
       endif
     endif
   endif
