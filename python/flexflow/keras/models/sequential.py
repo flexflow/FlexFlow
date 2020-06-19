@@ -20,8 +20,7 @@ class Sequential(BaseModel):
     self._nb_layers += 1
     
     if (layer.layer_id == 0):
-      input_shape = list(layer.input_shape)
-      input_tensor = Input(batch_shape=input_shape, dtype="float32")
+      input_tensor = Input(batch_shape=layer.input_shape, dtype="float32")
       self._input_tensors.append(input_tensor)
       self._output_tensor = input_tensor
       
