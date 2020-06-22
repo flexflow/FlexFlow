@@ -195,7 +195,7 @@ class BaseModel(object):
       else:
         assert 0, "unknow layer"
         
-  def _create_flexflow_layers(self, verify_inout_shape=True):
+  def _create_flexflow_layers(self):
     out_t = 0
     for layer_id in self._layers:
       layer = self._layers[layer_id]
@@ -225,12 +225,8 @@ class BaseModel(object):
       layer.ffhandle = self.ffmodel.get_layer_by_id(layer.layer_id)
       assert layer.ffhandle != 0, "layer handle is wrong"
       print(layer.ffhandle)    
-
-      if (verify_inout_shape == True):
-       in_t = layer.input_tensors[0].ffhandle
-       layer.verify_inout_shape(in_t, out_t)
        
-  def _init_inout(self, verify_inout_shape=True):
+  def _init_inout(self):
     out_t = 0
     for layer_id in self._layers:
       layer = self._layers[layer_id]
@@ -265,9 +261,9 @@ class BaseModel(object):
       layer = self._layers[layer_id]
       print(layer)
       for prev_layer in layer.prev_layers:
-        print("\tprev:  ", prev_layer)
+        print("\tprev: ", prev_layer)
       for next_layer in layer.next_layers:
-        print("\tnext:  ", next_layer)
+        print("\tnext: ", next_layer)
       layer_summary = layer.get_summary()
       model_summary += layer_summary 
       

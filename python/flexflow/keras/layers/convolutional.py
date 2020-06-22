@@ -51,24 +51,15 @@ class Conv2D(Layer):
     assert self.in_channels != 0, "[Conv2D]: in channels is wrong"
     assert self.out_channels != 0, "[Conv2D]: out channels is wrong"
     
-  def verify_inout_shape(self, input_tensor_handle, output_tensor_handle):
-    in_dims = input_tensor_handle.dims
-    assert in_dims[1] == self.input_shape[1]
-    assert in_dims[2] == self.input_shape[2]
-    assert in_dims[3] == self.input_shape[3]
-    out_dims = output_tensor_handle.dims
-    assert out_dims[1] == self.output_shape[1]
-    assert out_dims[2] == self.output_shape[2]
-    assert out_dims[3] == self.output_shape[3]
-    
-  def verify_input_tensor_shape(self, input_tensor):
-    assert input_tensor.batch_shape[1] == self.input_shape[1]
-    assert input_tensor.batch_shape[2] == self.input_shape[2]
-    assert input_tensor.batch_shape[3] == self.input_shape[3]
-    
   def get_summary(self):
     summary = "%s%s\t\t%s\t%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
     return summary
+    
+  def get_weights(self, ffmodel):
+    return self._get_weights(ffmodel)
+    
+  def set_weights(self, ffmodel, kernel, bias):
+    self._set_weights(ffmodel, kernel, bias)
     
   def __call__(self, input_tensor):
     assert input_tensor.num_dims == 4, "[Conv2D]: shape of input tensor is wrong"
@@ -76,9 +67,10 @@ class Conv2D(Layer):
     if (self.in_channels == 0):
       in_dims = input_tensor.batch_shape
       self.calculate_inout_shape(in_dims[1], in_dims[2], in_dims[3], in_dims[0])
-    self.verify_input_tensor_shape(input_tensor)
     
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
+    
+    self.__verify_inout_tensor_shape(input_tensor, output_tensor)
     self.input_tensors.append(input_tensor)
     self.output_tensors.append(output_tensor)
     
@@ -93,8 +85,12 @@ class Conv2D(Layer):
 
     return output_tensor
     
-  def get_weights(self, ffmodel):
-    return self._get_weights(ffmodel)
-    
-  def set_weights(self, ffmodel, kernel, bias):
-    self._set_weights(ffmodel, kernel, bias)
+  def __verify_inout_tensor_shape(self, input_tensor, output_tensor):
+    assert input_tensor.num_dims == 4, "[Conv2D]: check input tensor dims"
+    assert input_tensor.batch_shape[1] == self.input_shape[1]
+    assert input_tensor.batch_shape[2] == self.input_shape[2]
+    assert input_tensor.batch_shape[3] == self.input_shape[3]
+    assert output_tensor.num_dims == 4, "[Conv2D]: check output tensor dims"
+    assert output_tensor.batch_shape[1] == self.output_shape[1]
+    assert output_tensor.batch_shape[2] == self.output_shape[2]
+    assert output_tensor.batch_shape[3] == self.output_shape[3]
