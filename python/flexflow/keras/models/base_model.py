@@ -250,9 +250,6 @@ class BaseModel(object):
       assert layer.ffhandle != 0, "layer handle is wrong"
       print(layer.ffhandle)    
       
-      if (verify_inout_shape == True):
-        in_t = layer.input_tensors[0].ffhandle
-        layer.verify_inout_shape(in_t, out_t)
     print("output tensor", self._output_tensor.batch_shape)
     
   def summary(self):
