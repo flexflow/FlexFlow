@@ -35,6 +35,13 @@ class Layer(object):
   def add_next_layer(self, layer):
     self.next_layers.append(layer)
     
+  def reset_connection(self):
+    self.prev_layers.clear()
+    self.next_layers.clear()
+    self.input_tensors.clear()
+    self.output_tensors.clear()
+    self.nb_visited_prev_layers = 0
+    
   def _get_summary_name(self):
     str_name = "{0:25}".format(self.name + " (" + self.layer_type + ")")
     return str_name

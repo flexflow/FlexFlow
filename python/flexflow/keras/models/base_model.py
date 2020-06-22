@@ -34,6 +34,10 @@ class BaseModel(object):
   @property
   def output(self):
     return self._output_tensor
+  
+  @property  
+  def layers(self):
+    return self._layers
     
   def get_layer(self, layer_id):
     return self._layers[layer_id]

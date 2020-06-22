@@ -1,6 +1,7 @@
 import flexflow.core as ff
 
 from .base_model import BaseModel
+from flexflow.keras.layers.base_layer import Layer
 from .input_layer import Tensor, Input
 from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Concatenate
 
@@ -11,10 +12,16 @@ class Sequential(BaseModel):
     if len(layer_list) > 0:
       for layer in layer_list:
         self.add(layer)
+  
+  def add(self, item):
+    if (isinstance(item, Layer)):
+      assert item.layer_id == -1, "layer id is inited"
+      self.__add_layer(item)
+    elif (isinstance(item, BaseModel)):
+      self.__add_model(item)
     
-  def add(self, layer):
+  def __add_layer(self, layer):
     self._layers[self._nb_layers] = layer
-    assert layer.layer_id == -1, "layer id is inited"
     assert layer.ffhandle == 0, "layer handle is inited"
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
@@ -52,4 +59,9 @@ class Sequential(BaseModel):
     
     self._train(epochs)
     
-    
+  def __add_model(self, model):
+    for layer_id in model.layers:
+      layer = model.layers[layer_id]
+      layer.reset_connection()
+      self.__add_layer(layer)
+      
