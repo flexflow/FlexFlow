@@ -15,7 +15,15 @@ class Conv2D(Layer):
     self.kernel_size = kernel_size
     assert len(strides)==2, "wrong dim of stride"
     self.stride = strides
-    self.padding = padding
+    if (padding == "valid"):
+      self.padding = (0, 0)
+    elif (padding == "same"):
+      self.padding = (0, 0)
+    elif (isinstance(padding, list) or isinstance(padding, tuple)):
+      assert len(padding)==2, "[Conv2D]: wrong dim of padding"
+      self.padding = tuple(padding)
+    else:
+      assert 0, "[Conv2D]: check padding"
     if (activation == None):
       self.activation = ff.ActiMode.AC_MODE_NONE
     elif(activation =="relu"):

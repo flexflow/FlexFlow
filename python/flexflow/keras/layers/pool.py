@@ -18,8 +18,13 @@ class MaxPooling2D(Layer):
     self.stride = strides
     if (padding == "valid"):
       self.padding = (0, 0)
-    else:
+    elif (padding == "same"):
       self.padding = (0, 0)
+    elif (isinstance(padding, list) or isinstance(padding, tuple)):
+      assert len(padding)==2, "[MaxPooling2D]: wrong dim of padding"
+      self.padding = tuple(padding)
+    else:
+      assert 0, "[MaxPooling2D]: check padding"
     
   def calculate_inout_shape(self, input_d, input_w, input_h, input_b=0):
     assert input_w != 0, "wrong input_w"
