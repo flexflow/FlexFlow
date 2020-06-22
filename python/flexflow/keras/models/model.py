@@ -14,47 +14,14 @@ class Model(BaseModel):
     self._input_tensors = input_tensors
     self._output_tensor = output_tensor
     
-    self._init_dag()
+    self.__traverse_dag_dfs()
     
   def _add_layer_metadata(self, layer):
     self._layers[self._nb_layers] = layer
     #assert layer.layer_id == -1, "layer id is inited"
     assert layer.ffhandle == 0, "layer handle is inited"
     layer.layer_id = self._nb_layers
-    self._nb_layers += 1
-      
-  def _init_dag(self):
-    # bfs_queue = []    
-    # for input_tensor in self._input_tensors:
-    #   for layer in input_tensor.to_layers:
-    #     bfs_queue.append(layer)
-    # while(len(bfs_queue) != 0):
-    #   layer = bfs_queue.pop(0)
-    #   #print(layer)
-    #   self._add_layer_metadata(layer)
-    #   for child in layer.next_layers:
-    #     if child not in bfs_queue:
-    #       bfs_queue.append(child)
-    #     else:
-    #       print(child, "already in the queue")
-    
-    dfs_stack = []
-    for input_tensor in reversed(self._input_tensors):
-      for layer in reversed(input_tensor.to_layers):
-        dfs_stack.append(layer)
-    while(len(dfs_stack) != 0):
-      layer = dfs_stack.pop()
-      #print(layer)
-      self._add_layer_metadata(layer)
-      for child in reversed(layer.next_layers):
-        assert child not in dfs_stack, "already in the stack"
-        if child.nb_visited_prev_layers == len(child.prev_layers)-1:
-          dfs_stack.append(child)
-        else:
-          child.nb_visited_prev_layers += 1
-    for layer_id in self._layers:
-      layer = self._layers[layer_id]
-      layer.nb_visited_prev_layers = 0          
+    self._nb_layers += 1       
       
   def compile(self, optimizer):
     self._create_input_and_label_tensors()
@@ -78,4 +45,38 @@ class Model(BaseModel):
     self._set_optimizer()     
     self.ffmodel.init_layers()
     self._train(epochs)
+
+  def __traverse_dag_bfs(self):
+    bfs_queue = []
+    for input_tensor in self._input_tensors:
+     for layer in input_tensor.to_layers:
+       bfs_queue.append(layer)
+    while(len(bfs_queue) != 0):
+     layer = bfs_queue.pop(0)
+     #print(layer)
+     self._add_layer_metadata(layer)
+     for child in layer.next_layers:
+       if child not in bfs_queue:
+         bfs_queue.append(child)
+       else:
+         print(child, "already in the queue")
+    
+  def __traverse_dag_dfs(self):    
+    dfs_stack = []
+    for input_tensor in reversed(self._input_tensors):
+      for layer in reversed(input_tensor.to_layers):
+        dfs_stack.append(layer)
+    while(len(dfs_stack) != 0):
+      layer = dfs_stack.pop()
+      #print(layer)
+      self._add_layer_metadata(layer)
+      for child in reversed(layer.next_layers):
+        assert child not in dfs_stack, "already in the stack"
+        if child.nb_visited_prev_layers == len(child.prev_layers)-1:
+          dfs_stack.append(child)
+        else:
+          child.nb_visited_prev_layers += 1
+    for layer_id in self._layers:
+      layer = self._layers[layer_id]
+      layer.nb_visited_prev_layers = 0
     
