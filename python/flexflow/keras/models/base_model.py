@@ -1,7 +1,7 @@
 import flexflow.core as ff
 
 from .input_layer import Tensor
-from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Concatenate
+from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate
 from flexflow.keras.optimizers import SGD, Adam 
 
 from PIL import Image
@@ -186,8 +186,8 @@ class BaseModel(object):
 
       if (isinstance(layer, Conv2D) == True):
         layer.ffhandle = self.ffmodel.conv2d_v2(layer.name, layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
-      elif (isinstance(layer, MaxPooling2D) == True):
-        layer.ffhandle = self.ffmodel.pool2d_v2(layer.name, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1])
+      elif (isinstance(layer, Pooling2D) == True):
+        layer.ffhandle = self.ffmodel.pool2d_v2(layer.name, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.pool_type)
       elif (isinstance(layer, Flatten) == True):
         layer.ffhandle = self.ffmodel.flat_v2(layer.name)
       elif (isinstance(layer, Dense) == True):
@@ -214,8 +214,8 @@ class BaseModel(object):
        out_t = self.ffmodel.concat("concat", t_ffhandle_list, layer.axis)
       elif (isinstance(layer, Conv2D) == True):
        out_t = self.ffmodel.conv2d(layer.name, layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
-      elif (isinstance(layer, MaxPooling2D) == True):
-       out_t = self.ffmodel.pool2d(layer.name, layer.input_tensors[0].ffhandle, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1])
+      elif (isinstance(layer, Pooling2D) == True):
+       out_t = self.ffmodel.pool2d(layer.name, layer.input_tensors[0].ffhandle, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.pool_type)
       elif (isinstance(layer, Flatten) == True):
        out_t = self.ffmodel.flat(layer.name, layer.input_tensors[0].ffhandle)
       elif (isinstance(layer, Dense) == True):

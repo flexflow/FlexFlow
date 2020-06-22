@@ -4,9 +4,9 @@ import math
 from .base_layer import Layer
 from flexflow.keras.models.input_layer import Tensor, Input
 
-class MaxPooling2D(Layer):
-  def __init__(self, pool_size, strides, padding="valid", name="pool2d"):
-    super(MaxPooling2D, self).__init__(name, "MaxPooling2D") 
+class Pooling2D(Layer):
+  def __init__(self, pool_size, strides, padding="valid", name="pool2d", pool_type=ff.PoolType.POOL_MAX, layer_type="MaxPooling2D"):
+    super(Pooling2D, self).__init__(name, layer_type) 
     
     self.input_shape = 0
     self.output_shape = 0
@@ -21,10 +21,11 @@ class MaxPooling2D(Layer):
     elif (padding == "same"):
       self.padding = (0, 0)
     elif (isinstance(padding, list) or isinstance(padding, tuple)):
-      assert len(padding)==2, "[MaxPooling2D]: wrong dim of padding"
+      assert len(padding)==2, "[Pooling2D]: wrong dim of padding"
       self.padding = tuple(padding)
     else:
-      assert 0, "[MaxPooling2D]: check padding"
+      assert 0, "[Pooling2D]: check padding"
+    self.pool_type = pool_type
     
   def verify_meta_data(self):
     assert self.input_shape != (0, 0, 0, 0), "input shape is wrong"
@@ -67,3 +68,11 @@ class MaxPooling2D(Layer):
     assert output_tensor.batch_shape[1] == self.output_shape[1]
     assert output_tensor.batch_shape[2] == self.output_shape[2]
     assert output_tensor.batch_shape[3] == self.output_shape[3]
+    
+class MaxPooling2D(Pooling2D):
+  def __init__(self, pool_size, strides, padding="valid", name="maxpool2d"):
+    super(MaxPooling2D, self).__init__(pool_size, strides, padding, name, ff.PoolType.POOL_MAX, "MaxPooling2D") 
+    
+class AveragePooling2D(Pooling2D):
+  def __init__(self, pool_size, strides, padding="valid", name="maxpool2d"):
+    super(AveragePooling2D, self).__init__(pool_size, strides, padding, name, ff.PoolType.POOL_AVG, "AveragePooling2D") 
