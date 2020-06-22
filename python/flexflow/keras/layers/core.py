@@ -8,34 +8,22 @@ class Dense(Layer):
     super(Dense, self).__init__(name, "Dense") 
     
     self.out_channels = output_shape
-    self.in_channels = 0
-    self.input_shape = (0, 0)
-    self.output_shape = (0, 0)
+    self.input_shape = 0
+    self.output_shape = 0
     if (len(input_shape) == 2):
       self.in_channels = input_shape[1]
-      self.calculate_inout_shape(input_shape[1], input_shape[0])
+      self.input_shape = (input_shape[0], input_shape[1])
     elif (len(input_shape) == 1):
-      if (input_shape[0] != 0):
-        self.in_channels = input_shape[0]
-        self.calculate_inout_shape(input_shape[0])
-      else:
-        self.in_channels = 0
+      self.in_channels = input_shape[0]
+      self.input_shape = (0, input_shape[0])
+    else:
+      self.in_channels = 0
     if (activation == None):
       self.activation = ff.ActiMode.AC_MODE_NONE
     elif(activation =="relu"):
       self.activation = ff.ActiMode.AC_MODE_RELU
     else:
       assert 0, "activation is not supported"
-  
-  def calculate_inout_shape(self, in_dim, input_b=0):
-    assert in_dim != 0, "wrong in_dim"
-    if (self.in_channels != 0): # check if user input is correct
-      assert self.in_channels == in_dim, "wrong input_w"
-    self.output_shape = (input_b, self.out_channels)
-    self.input_shape = (input_b, in_dim)
-    self.in_channels = in_dim
-    print("dense input ", self.input_shape)
-    print("dense output ", self.output_shape)
     
   def verify_meta_data(self):
     assert self.input_shape != (0, 0), "input shape is wrong"
@@ -54,30 +42,22 @@ class Dense(Layer):
     self._set_weights(ffmodel, kernel, bias)
   
   def __call__(self, input_tensor):
-    assert input_tensor.num_dims == 2, "shape of input tensor is wrong"
+    return self._connect_layer_1_input_1_output(input_tensor)
     
-    # not the first layer
-    if (self.in_channels == 0):
-      in_dims = input_tensor.batch_shape
-      self.calculate_inout_shape(in_dims[1], in_dims[0])
+  def _calculate_inout_shape(self, input_tensor):
+    assert input_tensor.num_dims == 2, "[Dense]: shape of input tensor is wrong"
+    input_b = input_tensor.batch_shape[0]
+    in_dim = input_tensor.batch_shape[1]
+    assert in_dim != 0, "wrong in_dim"
+    if (self.in_channels != 0): # check if user input is correct
+      assert self.in_channels == in_dim, "wrong input_w"
+    self.output_shape = (input_b, self.out_channels)
+    self.input_shape = (input_b, in_dim)
+    self.in_channels = in_dim
+    print("dense input ", self.input_shape)
+    print("dense output ", self.output_shape)
     
-    output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
-    
-    self.__verify_inout_tensor_shape(input_tensor, output_tensor)
-    self.input_tensors.append(input_tensor)
-    self.output_tensors.append(output_tensor)
-    
-    output_tensor.set_from_layer(self)
-    # this is the first layer
-    if (isinstance(input_tensor, Input) == True):
-      input_tensor.set_to_layer(self)
-    else:
-      assert input_tensor.from_layer != 0, "check input tensor"
-      self.prev_layers.append(input_tensor.from_layer)
-      input_tensor.from_layer.next_layers.append(self)
-    return output_tensor
-    
-  def __verify_inout_tensor_shape(self, input_tensor, output_tensor):
+  def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
     assert input_tensor.num_dims == 2, "[Dense]: check input tensor dims"
     assert input_tensor.batch_shape[1] == self.input_shape[1]
     assert output_tensor.num_dims == 2, "[Dense]: check output tensor dims"
@@ -87,9 +67,21 @@ class Flatten(Layer):
   def __init__(self, name="flat"):
     super(Flatten, self).__init__(name, "Flatten") 
     self.input_shape = 0
-    self.output_shape = (0, 0)
+    self.output_shape = 0
     
-  def calculate_inout_shape(self, input_shape):
+  def verify_meta_data(self):
+    assert self.input_shape != 0, "input shape is wrong"
+    assert self.output_shape != (0, 0), "output shape is wrong"
+    
+  def get_summary(self):
+    summary = "%s%s\t\t%s%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
+    return summary
+    
+  def __call__(self, input_tensor):    
+    return self._connect_layer_1_input_1_output(input_tensor)
+    
+  def _calculate_inout_shape(self, input_tensor):
+    input_shape = input_tensor.batch_shape
     self.input_shape = input_shape
     flat_size = 1
     for i in range(1, len(input_shape)):
@@ -98,35 +90,7 @@ class Flatten(Layer):
     print("flat input ", self.input_shape)
     print("flat output ", self.output_shape)
     
-  def verify_meta_data(self):
-    assert self.input_shape != 0, "input shape is wrong"
-    assert self.output_shape != (0, 0), "output shape is wrong"
-    
-  def verify_inout_shape(self, input_tensor_handle, output_tensor_handle):
-    out_dims = output_tensor_handle.dims
-    assert out_dims[1] == self.output_shape[1]
-    
-  def get_summary(self):
-    summary = "%s%s\t\t%s%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
-    return summary
-    
-  def __call__(self, input_tensor):    
-    in_dims = input_tensor.batch_shape
-    self.calculate_inout_shape(in_dims)
-    output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
-    
-    self.__verify_inout_tensor_shape(input_tensor, output_tensor)
-    self.input_tensors.append(input_tensor)
-    self.output_tensors.append(output_tensor)
-    
-    output_tensor.set_from_layer(self)
-    
-    assert input_tensor.from_layer != 0, "check input tensor"
-    self.prev_layers.append(input_tensor.from_layer)
-    input_tensor.from_layer.next_layers.append(self)
-    return output_tensor
-    
-  def __verify_inout_tensor_shape(self, input_tensor, output_tensor):
+  def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
     assert input_tensor.num_dims == len(self.input_shape), "[Flatten]: check input tensor dims"
     for i in range (1, input_tensor.num_dims):
       assert input_tensor.batch_shape[i] == self.input_shape[i]
@@ -139,6 +103,9 @@ class Activation(Layer):
     if (type == "softmax"):
       self.type = "Softmax"
       
+    self.input_shape = 0
+    self.output_shape = 0
+      
     super(Activation, self).__init__(name, self.type) 
       
   def verify_meta_data(self):
@@ -149,15 +116,12 @@ class Activation(Layer):
     return summary
     
   def __call__(self, input_tensor):
-    assert input_tensor.num_dims == 2, "shape of input tensor is wrong"
-     
-    output_tensor = Tensor(batch_shape=input_tensor.batch_shape, dtype=input_tensor.dtype, meta_only=True)
-    self.input_tensors.append(input_tensor)
-    self.output_tensors.append(output_tensor)
+    return self._connect_layer_1_input_1_output(input_tensor)
     
-    output_tensor.set_from_layer(self)
+  def _calculate_inout_shape(self, input_tensor):
+    assert input_tensor.num_dims == 2, "[Activation]: shape of input tensor is wrong"
+    self.input_shape = input_tensor.batch_shape
+    self.output_shape = input_tensor.batch_shape
     
-    assert input_tensor.from_layer != 0, "check input tensor"
-    self.prev_layers.append(input_tensor.from_layer)
-    input_tensor.from_layer.next_layers.append(self)
-    return output_tensor
+  def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
+    pass

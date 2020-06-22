@@ -8,8 +8,8 @@ class MaxPooling2D(Layer):
   def __init__(self, pool_size, strides, padding="valid", name="pool2d"):
     super(MaxPooling2D, self).__init__(name, "MaxPooling2D") 
     
-    self.input_shape = (0, 0, 0, 0)
-    self.output_shape = (0, 0, 0, 0)
+    self.input_shape = 0
+    self.output_shape = 0
     self.out_channels = 0
     self.in_channels = 0
     assert len(pool_size)==2, "wrong dim of pool_size"
@@ -26,7 +26,25 @@ class MaxPooling2D(Layer):
     else:
       assert 0, "[MaxPooling2D]: check padding"
     
-  def calculate_inout_shape(self, input_d, input_w, input_h, input_b=0):
+  def verify_meta_data(self):
+    assert self.input_shape != (0, 0, 0, 0), "input shape is wrong"
+    assert self.output_shape != (0, 0, 0, 0), "output shape is wrong"
+    assert self.in_channels != 0, " in channels is wrong"
+    assert self.out_channels != 0, " out channels is wrong"
+    
+  def get_summary(self):
+    summary = "%s%s\t\t%s%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
+    return summary
+    
+  def __call__(self, input_tensor):
+    return self._connect_layer_1_input_1_output(input_tensor)
+    
+  def _calculate_inout_shape(self, input_tensor):
+    assert input_tensor.num_dims == 4, "[MaxPooling2D]: shape of input tensor is wrong"
+    input_b = input_tensor.batch_shape[0]
+    input_d = input_tensor.batch_shape[1]
+    input_w = input_tensor.batch_shape[2]
+    input_h = input_tensor.batch_shape[3]
     assert input_w != 0, "wrong input_w"
     assert input_h != 0, "wrong input_h"
     assert input_d != 0, "wrong input_d"
@@ -40,35 +58,7 @@ class MaxPooling2D(Layer):
     print("pool2d input ", self.input_shape)
     print("pool2d output ", self.output_shape)
     
-  def verify_meta_data(self):
-    assert self.input_shape != (0, 0, 0, 0), "input shape is wrong"
-    assert self.output_shape != (0, 0, 0, 0), "output shape is wrong"
-    assert self.in_channels != 0, " in channels is wrong"
-    assert self.out_channels != 0, " out channels is wrong"
-    
-  def get_summary(self):
-    summary = "%s%s\t\t%s%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
-    return summary
-    
-  def __call__(self, input_tensor):
-    assert input_tensor.num_dims == 4, "shape of input tensor is wrong"
-     
-    in_dims = input_tensor.batch_shape
-    self.calculate_inout_shape(in_dims[1], in_dims[2], in_dims[3], in_dims[0])
-    output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
-    
-    self.__verify_inout_tensor_shape(input_tensor, output_tensor)
-    self.input_tensors.append(input_tensor)
-    self.output_tensors.append(output_tensor)
-    
-    output_tensor.set_from_layer(self)
-    
-    assert input_tensor.from_layer != 0, "check input tensor"
-    self.prev_layers.append(input_tensor.from_layer)
-    input_tensor.from_layer.next_layers.append(self)
-    return output_tensor
-    
-  def __verify_inout_tensor_shape(self, input_tensor, output_tensor):
+  def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
     assert input_tensor.num_dims == 4, "[Conv2D]: check input tensor dims"
     assert input_tensor.batch_shape[1] == self.input_shape[1]
     assert input_tensor.batch_shape[2] == self.input_shape[2]

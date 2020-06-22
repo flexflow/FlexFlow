@@ -1,5 +1,7 @@
 import flexflow.core as ff
 
+from flexflow.keras.models.input_layer import Tensor, Input
+
 class Layer(object):
   def __init__(self, name, layer_type):
     self.layer_id = -1
@@ -42,4 +44,39 @@ class Layer(object):
     for layer in self.prev_layers:
       str_name += "\t%s"%(layer.name)
     return str_name
+    
+  def _connect_layer_1_input_1_output(self, input_tensor):
+    self._calculate_inout_shape(input_tensor)
+    output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
+    self._verify_inout_tensor_shape(input_tensor, output_tensor)
+    self.input_tensors.append(input_tensor)
+    self.output_tensors.append(output_tensor)
+    
+    output_tensor.set_from_layer(self)
+    
+    # this is the first layer
+    if (isinstance(input_tensor, Input) == True):
+      input_tensor.set_to_layer(self)
+    # other layers
+    else:
+      assert input_tensor.from_layer != 0, "[Layer]: check input tensor"
+      self.prev_layers.append(input_tensor.from_layer)
+      input_tensor.from_layer.next_layers.append(self)
+
+    return output_tensor
+    
+  def _connect_layer_n_input_1_output(self, input_tensors):
+    self._calculate_inout_shape(input_tensors)
+    output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensors[0].dtype, meta_only=True) 
+    self._verify_inout_tensor_shape(input_tensors, output_tensor)
+    self.output_tensors.append(output_tensor)
+    
+    output_tensor.set_from_layer(self)
+    
+    for tensor in input_tensors:
+      self.input_tensors.append(tensor)
+      assert tensor.from_layer != 0, "check input tensor"
+      self.prev_layers.append(tensor.from_layer)
+      tensor.from_layer.next_layers.append(self)
+    return output_tensor
     
