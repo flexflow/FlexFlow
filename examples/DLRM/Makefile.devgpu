@@ -18,6 +18,11 @@ ifndef LG_RT_DIR
 LG_RT_DIR	?= ../../legion/runtime
 endif
 
+ifndef FF_HOME
+$(error FF_HOME variable is not defined, aborting build)
+endif
+
+
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 0		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
