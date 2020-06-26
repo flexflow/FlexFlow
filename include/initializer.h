@@ -82,4 +82,20 @@ public:
   int seed;
   float mean, stddev;
 };
+
+class ConstantInitializer : public Initializer
+{
+public:
+  ConstantInitializer(float _value);
+  ~ConstantInitializer(void);
+  void init(Context ctx, Runtime* runtime, const Tensor* tensor);
+  static void init_task(const Task *task,
+                        const std::vector<PhysicalRegion> &regions,
+                        Context ctx, Runtime* runtime);
+  static void init_task_cpu(const Task *task,
+                        const std::vector<PhysicalRegion> &regions,
+                        Context ctx, Runtime *runtime);
+public:
+  float value;
+};
 #endif

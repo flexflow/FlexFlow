@@ -22,7 +22,7 @@ Tensor FFModel::batch_norm(std::string name, Tensor input, bool relu)
   IndexSpaceT<4> task_is;
   BatchNorm *bn = new BatchNorm(name, config, input, task_is, relu);
   layers.push_back(bn);
-  return bn->output;
+  return bn->outputs[0];
 }
 
 /*
@@ -96,26 +96,26 @@ BatchNorm::BatchNorm(std::string _name, FFConfig _config,
   LogicalPartition scale_grad_lp =
     runtime->get_logical_partition(ctx, scale_grad_lr, bias_grad_ip);
 
-  Tensor scale_tensor, bias_tensor;
+  Parameter scale_tensor, bias_tensor;
   scale_tensor.region = scale_lr;
   scale_tensor.region_grad = scale_grad_lr;
   scale_tensor.part = LogicalPartition::NO_PART;
   scale_tensor.part_grad = scale_grad_lp;
-  locals[0] = scale_tensor;
+  weights[0] = scale_tensor;
   bias_tensor.region = bias_lr;
   bias_tensor.region_grad = bias_grad_lr;
   bias_tensor.part = LogicalPartition::NO_PART;
   bias_tensor.part_grad = bias_grad_lp;
-  locals[1] = bias_tensor;
-  numLocals = 2;
+  weights[1] = bias_tensor;
+  numWeights = 2;
 
-  output = _input;
-  output.region = output_lr;
-  output.part = output_lp;
-  output.region_grad = output_grad_lr;
-  output.part_grad = output_grad_lp;
+  outputs[0] = _input;
+  outputs[0].region = output_lr;
+  outputs[0].part = output_lp;
+  outputs[0].region_grad = output_grad_lr;
+  outputs[0].part_grad = output_grad_lp;
   printf("Create bn layer: output(%d %d %d %d)\n",
-          output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
+          outputs[0].adim[3], outputs[0].adim[2], outputs[0].adim[1], outputs[0].adim[0]);
 
   input_lps[0] = _input.part;
 }
@@ -252,10 +252,10 @@ void BatchNorm::init(const FFModel& ff)
   {
     TaskLauncher para_launcher(BATCHNORM_INIT_PARA_TASK_ID, TaskArgument(NULL, 0));
     para_launcher.add_region_requirement(
-        RegionRequirement(locals[0].region, WRITE_DISCARD, EXCLUSIVE, locals[0].region));
+        RegionRequirement(weights[0].region, WRITE_DISCARD, EXCLUSIVE, weights[0].region));
     para_launcher.add_field(0, FID_DATA);
     para_launcher.add_region_requirement(
-        RegionRequirement(locals[1].region, WRITE_DISCARD, EXCLUSIVE, locals[1].region));
+        RegionRequirement(weights[1].region, WRITE_DISCARD, EXCLUSIVE, weights[1].region));
     para_launcher.add_field(1, FID_DATA);
     runtime->execute_task(ctx, para_launcher);
   }
@@ -272,16 +272,16 @@ void BatchNorm::init(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   init_launcher.add_field(0, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, outputs[0].region));
   init_launcher.add_field(1, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(locals[0].region, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, locals[0].region));
+      RegionRequirement(weights[0].region, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[0].region));
   init_launcher.add_field(2, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(locals[1].region, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, locals[1].region));
+      RegionRequirement(weights[1].region, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[1].region));
   init_launcher.add_field(3, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
@@ -375,16 +375,16 @@ void BatchNorm::forward(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, outputs[0].region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(locals[0].region, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, locals[0].region));
+      RegionRequirement(weights[0].region, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(locals[1].region, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, locals[1].region));
+      RegionRequirement(weights[1].region, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[1].region));
   launcher.add_field(3, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
@@ -392,12 +392,12 @@ void BatchNorm::forward(const FFModel& ff)
 
 /*
   regions[0](I): input
-  regions[1](O): input_grad
+  regions[1](I/O): input_grad
   regions[2](I): output
   regions[3](I/O): output_grad
   regions[4](I): scale
-  regions[5](O): scale_grad
-  regions[6](O): bias_grad
+  regions[5](I/O): scale_grad
+  regions[6](I/O): bias_grad
 */
 __host__
 void BatchNorm::backward_task(const Task *task,
@@ -407,16 +407,17 @@ void BatchNorm::backward_task(const Task *task,
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
-  float alpha = 1.0f, beta = 0.0f;
+  float alpha = 1.0f;
+  //float beta = 0.0f;
   const BatchNorm* bm = (BatchNorm*) task->args;
   const BatchNormMeta* m = *((BatchNormMeta**) task->local_args);
   const AccessorRO<float, 4> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 4> acc_input_grad(regions[1], FID_DATA);
+  const AccessorRW<float, 4> acc_input_grad(regions[1], FID_DATA);
   const AccessorRO<float, 4> acc_output(regions[2], FID_DATA);
   const AccessorRW<float, 4> acc_output_grad(regions[3], FID_DATA);
   const AccessorRO<float, 1> acc_scale(regions[4], FID_DATA);
-  const AccessorWO<float, 1> acc_scale_grad(regions[5], FID_DATA);
-  const AccessorWO<float, 1> acc_bias_grad(regions[6], FID_DATA);
+  const AccessorRW<float, 1> acc_scale_grad(regions[5], FID_DATA);
+  const AccessorRW<float, 1> acc_bias_grad(regions[6], FID_DATA);
   Rect<4> rect_input, rect_input_grad, rect_output, rect_output_grad;
   Rect<1> rect_scale, rect_scale_grad, rect_bias_grad;
   rect_input =
@@ -463,7 +464,7 @@ void BatchNorm::backward_task(const Task *task,
     reluBackward<<<GET_BLOCKS(n), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, n);
   }
   checkCUDNN(cudnnBatchNormalizationBackward(
-             m->handle.dnn, m->mode, &alpha, &beta, &alpha, &beta,
+             m->handle.dnn, m->mode, &alpha, &alpha, &alpha, &alpha,
              m->inputTensor, input_ptr, m->outputTensor, output_grad_ptr,
              m->inputTensor, input_grad_ptr, m->biasTensor, scale_ptr,
              scale_grad_ptr, bias_grad_ptr, CUDNN_BN_MIN_EPSILON,
@@ -500,35 +501,35 @@ void BatchNorm::backward(const FFModel& ff)
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
-  // regions[1](O): input_grad (we only need grad tensors)
+  // regions[1](I/O): input_grad (we only need grad tensors)
   launcher.add_region_requirement(
       RegionRequirement(inputs[0].part_grad, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, inputs[0].region_grad));
+                        READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2](I): output
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, output.region));
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(2, FID_DATA);
   // regions[3](I/O): output_grad
   launcher.add_region_requirement(
-      RegionRequirement(output.part_grad, 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, output.region_grad));
+      RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
+                        READ_WRITE, EXCLUSIVE, outputs[0].region_grad));
   launcher.add_field(3, FID_DATA);
   // regions[4](I): filter
   launcher.add_region_requirement(
-      RegionRequirement(locals[0].region, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, locals[0].region));
+      RegionRequirement(weights[0].region, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(4, FID_DATA);
-  // regions[5](O): filter_grad
+  // regions[5](I/O): filter_grad
   launcher.add_region_requirement(
-      RegionRequirement(locals[0].part_grad, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, locals[0].region_grad));
+      RegionRequirement(weights[0].part_grad, 0/*projection id*/,
+                        READ_WRITE, EXCLUSIVE, weights[0].region_grad));
   launcher.add_field(5, FID_DATA);
-  // regions[6](O): bias_grad
+  // regions[6](I/O): bias_grad
   launcher.add_region_requirement(
-      RegionRequirement(locals[1].part_grad, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, locals[1].region_grad));
+      RegionRequirement(weights[1].part_grad, 0/*projection id*/,
+                        READ_WRITE, EXCLUSIVE, weights[1].region_grad));
   launcher.add_field(6, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
 }

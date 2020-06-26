@@ -14,6 +14,7 @@ struct TensorAccessorR {
                   FieldID fid,
                   Context ctx,
                   Runtime* runtime);
+  TensorAccessorR();
   Rect<dim> rect;
   Memory memory;
   const DT *ptr;
@@ -27,8 +28,30 @@ struct TensorAccessorW {
                   Context ctx,
                   Runtime* runtime,
                   bool readOutput = false);
+  TensorAccessorW();
   Rect<dim> rect;
   Memory memory;
   DT *ptr;
 };
+
+template<typename DT>
+const DT* helperGetTensorPointerRO(PhysicalRegion region,
+                                  RegionRequirement req,
+                                  FieldID fid,
+                                  Context ctx,
+                                  Runtime* runtime);
+
+template<typename DT>
+DT* helperGetTensorPointerWO(PhysicalRegion region,
+                             RegionRequirement req,
+                             FieldID fid,
+                             Context ctx,
+                             Runtime* runtime);
+
+template<typename DT>
+DT* helperGetTensorPointerRW(PhysicalRegion region,
+                             RegionRequirement req,
+                             FieldID fid,
+                             Context ctx,
+                             Runtime* runtime);
 #endif

@@ -22,7 +22,8 @@
 // Define Runtime Constants
 // ========================================================
 #define MAX_NUM_INPUTS 32
-#define MAX_NUM_LOCALS 3
+#define MAX_NUM_WEIGHTS 4
+#define MAX_NUM_OUTPUTS 32
 #define MAX_NUM_WORKERS 1024
 #define MAX_DIM 4
 #define MAX_FILENAME 200
@@ -60,8 +61,6 @@ public:
     DataParallelism_2D = 2,
     DataParallelism_3D = 3,
     DataParallelism_4D = 4,
-    DataParallelism_5D = 5,
-    DataParallelism_6D = 6,
   };
 
   FFConfig();

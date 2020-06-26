@@ -28,12 +28,22 @@ Tensor FFModel::embedding(const std::string& pcname,
   //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
   Embedding* embed = new Embedding(*this, pcname, input, num_entries,
                                    out_dim, aggr, kernel_initializer);
-  layers.push_back(embed);
-  Parameter kernel;
-  kernel.tensor = embed->kernel;
-  kernel.op = embed;
-  parameters.push_back(kernel);
-  return embed->output;
+  embed->add_to_model(*this);
+  return embed->outputs[0];
+}
+
+Embedding* FFModel::embedding(const std::string& pcname,
+                              int num_entries,
+                              int out_dim,
+                              AggrMode aggr,
+                              Initializer* kernel_initializer)
+{
+  //assert(config.strategies.find(name) != config.strategies.end());
+  //ParallelConfig pc = config.strategies[name];
+  //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
+  Embedding* embed = new Embedding(*this, pcname, num_entries,
+                                   out_dim, aggr, kernel_initializer);
+  return embed;
 }
 
 Embedding::Embedding(FFModel& model,
@@ -43,26 +53,11 @@ Embedding::Embedding(FFModel& model,
                      int num_entries, int outDim,
                      AggrMode _aggr,
                      Initializer* kernel_initializer)
-: Op(pcname, _input), aggr(_aggr), profiling(model.config.profiling)
+: Op(pcname, _input), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
 {
   assert(_input.numDim == 2);
-  // Retrive the task indexspace for the op
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  // Currently assume we can only partition over the sample dim
-  assert(part_rect.hi[0] == part_rect.lo[0]);
-  {
-    const int dims[2] = {inputs[0].adim[1], outDim};
-    output = model.create_tensor<2>(dims, task_is, DT_FLOAT);
-  }
-  {
-    const int dims[2] = {outDim, num_entries};
-    // Embeddding weights and linear weights can be partitioned in the same way
-    kernel = model.create_linear_weight<2>(dims, task_is, DT_FLOAT, kernel_initializer);
-  }
+  create_kernel(model, num_entries, kernel_initializer);
+  create_output_and_partition(model);
 #ifdef DEADCODE
   // Create kernel tensor
   Rect<2> kernel_rect(Point<2>(0, 0), Point<2>(outDim-1, inDim-1));
@@ -106,6 +101,60 @@ Embedding::Embedding(FFModel& model,
     assert(runtime->is_index_partition_complete(ctx, ip));
   }
 #endif
+}
+
+Embedding::Embedding(FFModel& model,
+                     const std::string& pcname,
+                     int num_entries, int outDim,
+                     AggrMode _aggr,
+                     Initializer* kernel_initializer)
+: Op(pcname), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
+{
+  create_kernel(model, num_entries, kernel_initializer);
+}
+
+Tensor Embedding::init_inout(FFModel& model, const Tensor& _input)
+{
+  add_to_model(model);
+  assert(_input.numDim == 2);
+  inputs[0] = _input;
+  create_output_and_partition(model);
+  return outputs[0];
+}
+
+void Embedding::add_to_model(FFModel& model)
+{
+  model.layers.push_back(this);
+  model.parameters.push_back(weights[0]);
+}
+
+void Embedding::create_kernel(FFModel& model, int num_entries, Initializer* kernel_initializer)
+{
+  // Retrive the task indexspace for the op
+  std::string pcname = name;
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+  {
+    const int dims[2] = {out_channels, num_entries};
+    // Embeddding weights and linear weights can be partitioned in the same way
+    weights[numWeights++] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
+  }
+}
+
+void Embedding::create_output_and_partition(FFModel& model)
+{
+  // Retrive the task indexspace for the op
+  std::string pcname = name;
+  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+  
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  // Currently assume we can only partition over the sample dim
+  assert(part_rect.hi[0] == part_rect.lo[0]);
+  {
+    const int dims[2] = {inputs[0].adim[1], out_channels};
+    outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
+  }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(
       ctx, inputs[0].part.get_index_partition());
@@ -236,14 +285,14 @@ void Embedding::forward(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   // regions[1]: output
   launcher.add_region_requirement(
-      RegionRequirement(output.part, 0/*projection*/,
-                        WRITE_ONLY, EXCLUSIVE, output.region,
+      RegionRequirement(outputs[0].part, 0/*projection*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0].region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   // regions[2]: weight
   launcher.add_region_requirement(
-      RegionRequirement(kernel.part, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, kernel.region));
+      RegionRequirement(weights[0].part, 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -300,14 +349,27 @@ void Embedding::backward(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   // regions[1]: output_grad
   launcher.add_region_requirement(
-      RegionRequirement(output.part_grad, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, output.region_grad,
+      RegionRequirement(outputs[0].part_grad, 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0].region_grad,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   // regions[2]: weight_grad
   launcher.add_region_requirement(
-      RegionRequirement(kernel.part_grad, 0/*projection*/,
-                        READ_WRITE, EXCLUSIVE, kernel.region_grad));
+      RegionRequirement(weights[0].part_grad, 0/*projection*/,
+                        READ_WRITE, EXCLUSIVE, weights[0].region_grad));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
+
+/*
+__host__
+Parameter* Embedding::get_parameter(int index)
+{
+  if (index == 0) {
+    return &weights[0];
+  } else {
+    assert(0);
+    return NULL;
+  }
+}
+*/

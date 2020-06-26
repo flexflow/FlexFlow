@@ -21,9 +21,80 @@ using namespace std;
 
 LegionRuntime::Logger::Category log_model("ff");
 
+void Tensor::inline_map(FFConfig &config)
+{
+  printf("inline map tensor\n");  
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  
+  RegionRequirement region_req(region, READ_WRITE, EXCLUSIVE, region);
+  region_req.add_field(FID_DATA);
+  InlineLauncher inline_launcher(region_req);
+  physical_region = runtime->map_region(ctx, inline_launcher);
+  physical_region.wait_until_valid();
+}
+
+void Tensor::inline_unmap(FFConfig &config)
+{
+  printf("inline unmap tensor\n");  
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  assert(physical_region.is_valid() == true);
+  runtime->unmap_region(ctx, physical_region);
+}
+
+template<typename T>
+T* Tensor::get_raw_ptr(FFConfig &config)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  RegionRequirement region_req(region, READ_WRITE, EXCLUSIVE, region);
+  region_req.add_field(FID_DATA);
+  T *raw_ptr = NULL;
+  if (numDim == 1) {
+    TensorAccessorW<T, 1> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (T*)acc.ptr;
+  } else if (numDim == 2) {
+    TensorAccessorW<T, 2> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (T*)acc.ptr;
+  } else if (numDim == 3) {
+    TensorAccessorW<T, 3> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (T*)acc.ptr;
+  } else if (numDim == 4) {
+    TensorAccessorW<T, 4> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (T*)acc.ptr;
+  } else {
+    printf("wrong numDim %d", numDim);
+    assert(0);
+  }
+  return raw_ptr;
+}
+
+void Tensor::attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  AttachLauncher launcher(EXTERNAL_INSTANCE, region, region);
+  std::vector<FieldID> fields(1, FID_DATA);
+  const Memory local_sysmem = Machine::MemoryQuery(Machine::get_machine())
+       .has_affinity_to(runtime->get_executing_processor(ctx))
+       .only_kind(Memory::SYSTEM_MEM)
+       .first();
+  launcher.attach_array_soa(raw_ptr, column_major,
+                            fields, local_sysmem);
+  physical_region = runtime->attach_external_resource(ctx, launcher);
+}
+
+void Tensor::detach_raw_ptr(FFConfig &config)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  runtime->detach_external_resource(ctx, physical_region);
+}
+
 Op::Op(const std::string& _name,
        const Tensor& _input)
-: numLocals(0), numInputs(1)
+: numInputs(1), numWeights(0), numOutputs(1)
 {
   assert(_name.length() < MAX_OPNAME);
   std::strcpy(name, _name.c_str());
@@ -37,7 +108,7 @@ Op::Op(const std::string& _name,
 Op::Op(const std::string& _name,
        const Tensor& _input1,
        const Tensor& _input2)
-: numLocals(0), numInputs(2)
+: numInputs(2), numWeights(0), numOutputs(1)
 {
   assert(_name.length() < MAX_OPNAME);
   std::strcpy(name, _name.c_str());
@@ -51,7 +122,7 @@ Op::Op(const std::string& _name,
 
 Op::Op(const std::string& _name,
        int n, const Tensor* _inputs)
-: numLocals(0), numInputs(n)
+: numInputs(n), numWeights(0), numOutputs(1)
 {
   assert(_name.length() < MAX_OPNAME);
   assert(n <= MAX_NUM_INPUTS);
@@ -64,6 +135,47 @@ Op::Op(const std::string& _name,
   }
 }
 
+Op::Op(const std::string& _name)
+: numInputs(0), numWeights(0), numOutputs(1)
+{
+  assert(_name.length() < MAX_OPNAME);
+  std::strcpy(name, _name.c_str());
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    resetInputGrads[i] = true;
+  }
+}
+
+Parameter* Op::get_parameter(int index)
+{
+  assert(index < numWeights);
+  return &weights[index];
+}
+
+void Op::zero_grad(const FFModel& ff)
+{
+  Runtime* runtime = ff.config.lg_hlr;
+  Context ctx = ff.config.lg_ctx;
+  ArgumentMap argmap;
+  IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
+                         TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
+  for (int i = 0; i < numWeights; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(weights[i].part_grad, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, weights[i].region_grad));
+    launcher.add_field(i, FID_DATA);
+  }
+  for (int i = 0; i < numInputs; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(input_grad_lps[i], 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
+    launcher.add_field(i + numWeights, FID_DATA);
+  }
+  runtime->execute_index_space(ctx, launcher);
+}
+
 FFModel::FFModel(FFConfig& _config)
 : config(_config)
 {
@@ -74,7 +186,7 @@ FFModel::FFModel(FFConfig& _config)
   } else {
     load_strategies_from_file(config.strategyFile, config.strategies);
   }
-  for (int i = FFConfig::DataParallelism_1D; i <= FFConfig::DataParallelism_6D; i++) {
+  for (int i = FFConfig::DataParallelism_1D; i <= FFConfig::DataParallelism_4D; i++) {
     ParallelConfig pc;
     pc.device_type = ParallelConfig::GPU;
     pc.nDims = i - FFConfig::DataParallelism_1D + 1;
@@ -203,6 +315,22 @@ Tensor FFModel::create_tensor(const int dims[],
   assert(config.find_parallel_config(NDIM, pc_name, pc));
   IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(get_or_create_task_is(pc));
   return create_tensor(dims, task_is, data_type, create_grad);
+}
+
+template<int NDIM>
+Tensor FFModel::create_constant(const int dims[],
+                                const std::string& pc_name,
+                                float value,
+                                DataType data_type)
+{
+  // constant created in this way is not part of any operator
+  // so we assume it does not have gradients
+  Tensor tensor = create_tensor<NDIM>(dims, pc_name, data_type, false/*create_grad*/);
+  ConstantInitializer initializer(value);
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  initializer.init(ctx, runtime, &tensor);
+  return tensor;
 }
 
 template<int NDIM>
@@ -349,18 +477,20 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor& tensor
 // 1. the outer most dim of weight is channel out
 // 2. partition is 2D (sample, channel_out)
 template<int NDIM>
-Tensor FFModel::create_linear_weight(const int dims[],
-                                     const IndexSpaceT<2>& part_is,
-                                     DataType data_type,
-                                     Initializer* initializer,
-                                     bool create_grad)
+Parameter FFModel::create_linear_weight(Op* op,
+                                        const int dims[],
+                                        const IndexSpaceT<2>& part_is,
+                                        DataType data_type,
+                                        Initializer* initializer,
+                                        bool create_grad)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, part_is);
   int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
-  Tensor weight;
+  Parameter weight;
+  weight.pcname = op->name;
   weight.numDim = NDIM;
   for (int i = 0; i < NDIM; i++)
     weight.adim[i] = dims[NDIM-1-i];
@@ -435,11 +565,12 @@ Tensor FFModel::create_linear_weight(const int dims[],
 }
 
 template<int NDIM>
-Tensor FFModel::create_conv_weight(const int dims[],
-                                   const IndexSpaceT<4>& part_is,
-                                   DataType data_type,
-                                   Initializer* initializer,
-                                   bool create_grad)
+Parameter FFModel::create_conv_weight(Op* op,
+                                      const int dims[],
+                                      const IndexSpaceT<4>& part_is,
+                                      DataType data_type,
+                                      Initializer* initializer,
+                                      bool create_grad)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -450,7 +581,8 @@ Tensor FFModel::create_conv_weight(const int dims[],
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   // Currently assume we do not split over the channel dimension
   assert(num_par_c == 1);
-  Tensor weight;
+  Parameter weight;
+  weight.pcname = op->name;
   weight.numDim = NDIM;
   for (int i = 0; i < NDIM; i++)
     weight.adim[i] = dims[NDIM-1-i];
@@ -694,22 +826,37 @@ void FFModel::update()
 
 void FFModel::zero_gradients(void)
 {
+  for (int l = layers.size() - 1; l >= 0; l--)
+    layers[l]->zero_grad(*this);
+#ifdef DEADCODE
   ArgumentMap arg_map;
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   for (size_t p = 0; p < parameters.size(); p++) {
     Domain domain = runtime->get_index_partition_color_space(
-        ctx, parameters[p].tensor.part_grad.get_index_partition());
+        ctx, parameters[p].part_grad.get_index_partition());
     IndexSpace task_is = get_or_create_task_is(domain);
     IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
                            TaskArgument(NULL, 0), arg_map,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(std::string(parameters[p].op->name)));
+                           FFConfig::get_hash_id(std::string(parameters[p].pcname)));
     launcher.add_region_requirement(
-        RegionRequirement(parameters[p].tensor.part_grad, 0/*projection*/,
-                          WRITE_ONLY, EXCLUSIVE, parameters[p].tensor.region_grad));
+        RegionRequirement(parameters[p].part_grad, 0/*projection*/,
+                          WRITE_ONLY, EXCLUSIVE, parameters[p].region_grad));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
+  }
+#endif
+}
+
+void FFModel::print_layers(int id)
+{
+  if (id == -1) {
+    for (size_t i = 0; i < layers.size(); i++) {
+      layers[i]->print_layer(*this);
+    }
+  } else {
+    layers[id]->print_layer(*this);
   }
 }
 
@@ -717,6 +864,7 @@ PerfMetrics FFModel::update_metrics_task(const Task *task,
                                          const std::vector<PhysicalRegion>& regions,
                                          Context ctx, Runtime* runtime)
 {
+  printf("in update_metrics_task\n");
   if (task->futures.size() == 0) {
     // Create an empty future
     PerfMetrics perf;
@@ -931,18 +1079,8 @@ ShardID DataParallelShardingFunctor::shard(const DomainPoint &point,
   return (point[idx] - full_space.lo()[idx]) / samples_per_shard;
 }
 
-// ========================================================
-// Task and mapper registrations
-// ========================================================
-int main(int argc, char** argv)
+void register_internal_tasks()
 {
-  Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
-  {
-    TaskVariantRegistrar registrar(TOP_LEVEL_TASK_ID, "top_level");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_replicable();
-    Runtime::preregister_task_variant<top_level_task>(registrar, "top_level");
-  }
   // CNN_INIT_TASK
   {
     TaskVariantRegistrar registrar(FF_INIT_TASK_ID, "cuda_init_task");
@@ -950,6 +1088,43 @@ int main(int argc, char** argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<FFHandler, UtilityTasks::init_cuda_task>(
         registrar, "cuda_init_task");
+  }
+  // ElementUnary task
+  {
+    TaskVariantRegistrar registrar(ELEMENTUNARY_FWD_TASK_ID, "ElementWiseUnary Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ElementUnary::forward_task>(
+        registrar, "ElementWiseUnary Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ELEMENTUNARY_BWD_TASK_ID, "ElementWiseUnary Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ElementUnary::backward_task>(
+        registrar, "ElementWiseUnary Backward Task");
+  }
+  // ElementBinary task
+  {
+    TaskVariantRegistrar registrar(ELEMENTBINARY_INIT_TASK_ID, "ElementWiseBinary Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ElementBinary::init_task>(
+        registrar, "ElementWiseBinary Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ELEMENTBINARY_FWD_TASK_ID, "ElementWiseBinary Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ElementBinary::forward_task>(
+        registrar, "ElementWiseBinary Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ELEMENTBINARY_BWD_TASK_ID, "ElementWiseBinary Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ElementBinary::backward_task>(
+        registrar, "ElementWiseBinary Backward Task");
   }
   // Conv2D task
   {
@@ -1139,7 +1314,7 @@ int main(int argc, char** argv)
     TaskVariantRegistrar registrar(SOFTMAX_BWD_TASK_ID, "softmax_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Softmax::backward_task>(
+    Runtime::preregister_task_variant<PerfMetrics, Softmax::backward_task>(
         registrar, "softmax_bwd_task");
   }
   // MSELoss
@@ -1215,6 +1390,22 @@ int main(int argc, char** argv)
         registrar, "Zero Init Task");
   }
   {
+    TaskVariantRegistrar registrar(CONSTANT_INIT_TASK_ID,
+                                   "Constant Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ConstantInitializer::init_task_cpu>(
+        registrar, "Constant Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CONSTANT_INIT_TASK_ID,
+                                   "Constant Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ConstantInitializer::init_task>(
+        registrar, "Constant Init Task");
+  }
+  {
     TaskVariantRegistrar registrar(UNIFORM_INIT_TASK_ID,
                                    "Uniform Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
@@ -1245,21 +1436,56 @@ int main(int argc, char** argv)
     registrar.set_leaf();
     Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "dummy_task");
   }
+}
 
+#if !defined(FF_USE_PYTHON)
+// ========================================================
+// Task and mapper registrations
+// ========================================================
+int main(int argc, char** argv)
+{
+  Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
+  {
+    TaskVariantRegistrar registrar(TOP_LEVEL_TASK_ID, "top_level");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_replicable();
+    Runtime::preregister_task_variant<top_level_task>(registrar, "top_level");
+  }
+  
+  register_internal_tasks();
+ 
   // Register custom tasks
   register_custom_tasks();
 
-  Runtime::add_registration_callback(update_mappers);
   DataParallelShardingFunctor* sharding_functor = new DataParallelShardingFunctor();
   Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);
+  
+  Runtime::add_registration_callback(update_mappers);
   return Runtime::start(argc, argv);
 }
+
+#else
+void register_flexflow_tasks()
+{
+  register_internal_tasks();
+  
+  register_c_custom_tasks();
+  
+  DataParallelShardingFunctor* sharding_functor = new DataParallelShardingFunctor();
+  Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);
+}
+
+#endif // FF_USE_PYTHON
 
 // template instantiations
 template Tensor FFModel::create_tensor<1>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
 template Tensor FFModel::create_tensor<2>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
 template Tensor FFModel::create_tensor<3>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
 template Tensor FFModel::create_tensor<4>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
+template Tensor FFModel::create_constant<1>(const int* dims, const std::string& pc_name, float value, DataType data_type);
+template Tensor FFModel::create_constant<2>(const int* dims, const std::string& pc_name, float value, DataType data_type);
+template Tensor FFModel::create_constant<3>(const int* dims, const std::string& pc_name, float value, DataType data_type);
+template Tensor FFModel::create_constant<4>(const int* dims, const std::string& pc_name, float value, DataType data_type);
 template Tensor FFModel::create_tensor<1>(const int* dims, const IndexSpaceT<1>& part_is, DataType data_type, bool create_grad);
 template Tensor FFModel::create_tensor<2>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, bool create_grad);
 template Tensor FFModel::create_tensor<3>(const int* dims, const IndexSpaceT<3>& part_is, DataType data_type, bool create_grad);
@@ -1273,10 +1499,13 @@ template void FFModel::create_disjoint_partition<4>(const Tensor& tensor, const 
 template void FFModel::create_data_parallel_partition_with_diff_dims<4, 2>(const Tensor& tensor, const IndexSpaceT<2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
 
 
-template Tensor FFModel::create_conv_weight<4>(const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
-template Tensor FFModel::create_conv_weight<1>(const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
+template Parameter FFModel::create_conv_weight<4>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
+template Parameter FFModel::create_conv_weight<1>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
 
-template Tensor FFModel::create_linear_weight<2>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
-template Tensor FFModel::create_linear_weight<1>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
+template Parameter FFModel::create_linear_weight<2>(Op* op, const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
+template Parameter FFModel::create_linear_weight<1>(Op* op, const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
 
 template Tensor FFModel::create_linear_replica<3>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type);
+
+template float* Tensor::get_raw_ptr<float>(FFConfig &config);
+template int32_t* Tensor::get_raw_ptr<int32_t>(FFConfig &config);
