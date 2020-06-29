@@ -70,6 +70,10 @@ Linear::Linear(FFModel& model,
   profiling(model.config.profiling)
 {
   assert(_input.numDim == 2);
+  int batch_size = _input.adim[1];
+  outputs[0].numDim = 2;
+  outputs[0].adim[0] = out_channels;
+  outputs[0].adim[1] = batch_size;
 }
 
 Linear::Linear(FFModel& model,
@@ -85,10 +89,6 @@ Linear::Linear(FFModel& model,
   bias_initializer(_bias_initializer),
   profiling(model.config.profiling)
 {
-  int batch_size = inputs[0].adim[1];
-  outputs[0].numDim = 4;
-  outputs[0].adim[0] = out_channels;
-  outputs[0].adim[1] = batch_size;
 }
 
 Tensor Linear::init_inout(FFModel& model, const Tensor& _input)

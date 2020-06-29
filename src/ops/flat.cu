@@ -39,6 +39,12 @@ Flat::Flat(FFModel& model,
            const Tensor& _input)
 : Op(model, "Flat", _input)
 {
+  assert(_input.numDim == 4);
+  int out_dim = _input.adim[0] * _input.adim[1] * _input.adim[2];
+  int batch_size = _input.adim[3];
+  outputs[0].numDim = 2;
+  outputs[0].adim[0] = out_dim;
+  outputs[0].adim[1] = batch_size;
 }
 
 Flat::Flat(FFModel& model)

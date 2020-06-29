@@ -140,6 +140,9 @@ struct Tensor {
     region_grad = LogicalRegion::NO_REGION;
     part = LogicalPartition::NO_PART;
     part_grad = LogicalPartition::NO_PART;
+    owner_op = NULL;
+    owner_idx = 0;
+    guid = 0;
   }
   void inline_map(FFConfig &config);
   void inline_unmap(FFConfig &config);
@@ -152,6 +155,8 @@ struct Tensor {
   // Describes the ownership of this tensor
   Op* owner_op;
   int owner_idx;
+  // a global unique ID for each tensor
+  int guid;
   // The following fields are initialized after model.compile
   LogicalRegion region, region_grad;
   LogicalPartition part, part_grad;
@@ -374,17 +379,19 @@ public:
   void zero_gradients();
   void print_layers(int id);
   // Internal funcitons
+  Tensor get_tensor_from_guid(int guid);
   IndexSpace get_or_create_task_is(ParallelConfig pc);
   IndexSpace get_or_create_task_is(const Domain& domain);
   IndexSpace get_or_create_task_is(int ndims, const std::string& pcname);
   IndexSpace get_task_is(const Domain& domain) const;
 public:
-  int op_global_guid;
+  int op_global_guid, ts_global_guid;
   FFConfig config;
   Optimizer* optimizer;
   //Tensor inputImage, inputRaw, inputLabel;
   std::vector<Op*> layers;
   std::vector<Parameter> parameters;
+  std::map<int, Tensor> ts_guid_to_tensor;
   FFHandler handlers[MAX_NUM_WORKERS];
   Future current_metrics;
   //DataLoader *dataLoader;

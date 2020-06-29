@@ -201,7 +201,7 @@ void Op::zero_grad(const FFModel& ff)
 }
 
 FFModel::FFModel(FFConfig& _config)
-: config(_config)
+: op_global_guid(100), ts_global_guid(10000), config(_config)
 {
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
@@ -338,9 +338,17 @@ Tensor FFModel::new_tensor(const int dims[],
   tensor.owner_op = NULL;
   tensor.owner_idx = 0;
   tensor.numDim = NDIM;
+  tensor.data_type = data_type;
+  tensor.guid = ts_global_guid ++;
   for (int i = 0; i < NDIM; i++)
     tensor.adim[i] = dims[NDIM-1-i];
   return tensor;
+}
+
+Tensor FFModel::get_tensor_from_guid(int guid)
+{
+  assert(ts_guid_to_tensor.find(guid) != ts_guid_to_tensor.end());
+  return ts_guid_to_tensor[guid];
 }
 
 Tensor FFModel::create_tensor_and_partition(const Tensor& tensor,
@@ -354,22 +362,22 @@ Tensor FFModel::create_tensor_and_partition(const Tensor& tensor,
   switch (ndims) {
     case 1:
     {
-      return create_tensor_and_partition<1>(dims, pc_name, tensor.data_type, false);
+      return create_tensor_and_partition<1>(dims, pc_name, tensor.data_type, true);
       break;
     }
     case 2:
     {
-      return create_tensor_and_partition<1>(dims, pc_name, tensor.data_type, false);
+      return create_tensor_and_partition<2>(dims, pc_name, tensor.data_type, true);
       break;
     }
     case 3:
     {
-      return create_tensor_and_partition<1>(dims, pc_name, tensor.data_type, false);
+      return create_tensor_and_partition<3>(dims, pc_name, tensor.data_type, true);
       break;
     }
     case 4:
     {
-      return create_tensor_and_partition<1>(dims, pc_name, tensor.data_type, false);
+      return create_tensor_and_partition<4>(dims, pc_name, tensor.data_type, true);
       break;
     }
     default:
@@ -908,7 +916,9 @@ void FFModel::compile()
     for (int i = 0; i < op->numInputs; i++) {
       if (op->inputs[i].owner_op == NULL) {
         // User created tensor, use op's pcname to parallel
-        op->inputs[i] = create_tensor_and_partition(op->inputs[i], op->name);
+        Tensor t = create_tensor_and_partition(op->inputs[i], op->name);
+        ts_guid_to_tensor[op->inputs[i].guid] = t;
+        op->inputs[i] = t;
       } else {
         // Refresh op's input tensor
         int tsIdx = op->inputs[i].owner_idx;

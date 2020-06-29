@@ -54,31 +54,32 @@ void top_level_task(const Task* task,
   Tensor input;
   {
     const int dims[] = {ffConfig.batchSize, 3, 229, 229};
-    input = ff.create_tensor<4>(dims, "", DT_FLOAT);
+    input = ff.new_tensor<4>(dims, DT_FLOAT);
   }
   Tensor label;
   {
     const int dims[] = {ffConfig.batchSize, 1};
-    label = ff.create_tensor<2>(dims, "", DT_INT32);
+    label = ff.new_tensor<2>(dims, DT_INT32);
   }
   // Add layers
   Tensor t = input, ts[2];
-  t = ff.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
+  t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
   //ts[1] = ff.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2);
   //t = ff.concat("concat", 2, ts, 1/*axis*/);
-  t = ff.pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
-  t = ff.pool2d("pool2", t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
-  t = ff.conv2d("conv4", t, 256, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
-  t = ff.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
-  t = ff.pool2d("pool3", t, 3, 3, 2, 2, 0, 0);
-  t = ff.flat("flat", t);
-  t = ff.dense("lienar1", t, 4096, AC_MODE_RELU/*relu*/);
-  t = ff.dense("linear2", t, 4096, AC_MODE_RELU/*relu*/);
-  t = ff.dense("linear3", t, 10);
-  t = ff.softmax("softmax", t, label);
+  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+  t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
+  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+  t = ff.conv2d(t, 384, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+  t = ff.conv2d(t, 256, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+  t = ff.conv2d(t, 256, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+  t = ff.flat(t);
+  t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
+  t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
+  t = ff.dense(t, 10);
+  t = ff.softmax(t, label);
   ff.optimizer = new SGDOptimizer(&ff, 0.001f);
+  ff.compile();
   // Data Loader
   DataLoader data_loader(ff, alexnetConfig, input, label);
   ff.init_layers();
@@ -157,15 +158,15 @@ DataLoader::DataLoader(FFModel& ff,
   }
   // Create full input
   {
-    batch_input = input;
+    batch_input = ff.get_tensor_from_guid(input.guid);
     const int dims[] = {num_samples, input.adim[2], input.adim[1], input.adim[0]};
-    full_input = ff.create_tensor<4>(dims, "", DT_FLOAT);
+    full_input = ff.create_tensor_and_partition<4>(dims, "", DT_FLOAT);
   }
   // Create full label
   {
-    batch_label = label;
+    batch_label = ff.get_tensor_from_guid(label.guid);
     const int dims[] = {num_samples, label.adim[0]};
-    full_label = ff.create_tensor<2>(dims, "", DT_INT32);
+    full_label = ff.create_tensor_and_partition<2>(dims, "", DT_INT32);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
