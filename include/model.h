@@ -148,9 +148,10 @@ struct Tensor {
   void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major);
   void detach_raw_ptr(FFConfig &config);
   int numDim, adim[MAX_DIM], pdim[MAX_DIM];
+  DataType data_type;
   // Describes the ownership of this tensor
-  Op* ownerOp;
-  int ownerIdx;
+  Op* owner_op;
+  int owner_idx;
   // The following fields are initialized after model.compile
   LogicalRegion region, region_grad;
   LogicalPartition part, part_grad;
@@ -312,6 +313,9 @@ public:
   Tensor new_tensor(const int dims[],
                     DataType data_type,
                     bool create_grad = true);
+
+  Tensor create_tensor_and_partition(const Tensor& input,
+                                     const std::string& pc_name);
 
   template<int NDIM>
   Tensor create_tensor_and_partition(const int dims[],

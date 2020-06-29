@@ -106,8 +106,8 @@ Op::Op(FFModel& model,
     resetInputGrads[i] = true;
   }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    outputs[i].ownerOp = this;
-    outputs[i].ownerIdx = i;
+    outputs[i].owner_op = this;
+    outputs[i].owner_idx = i;
   }
 }
 
@@ -127,8 +127,8 @@ Op::Op(FFModel& model,
     resetInputGrads[i] = true;
   }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    outputs[i].ownerOp = this;
-    outputs[i].ownerIdx = i;
+    outputs[i].owner_op = this;
+    outputs[i].owner_idx = i;
   }
 }
 
@@ -148,8 +148,8 @@ Op::Op(FFModel& model,
     resetInputGrads[i] = true;
   }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    outputs[i].ownerOp = this;
-    outputs[i].ownerIdx = i;
+    outputs[i].owner_op = this;
+    outputs[i].owner_idx = i;
   }
 }
 
@@ -165,8 +165,8 @@ Op::Op(FFModel& model,
     resetInputGrads[i] = true;
   }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    outputs[i].ownerOp = this;
-    outputs[i].ownerIdx = i;
+    outputs[i].owner_op = this;
+    outputs[i].owner_idx = i;
   }
 }
 
@@ -335,12 +335,50 @@ Tensor FFModel::new_tensor(const int dims[],
                            bool create_grad)
 {
   Tensor tensor;
-  tensor.ownerOp = NULL;
-  tensor.ownerIdx = 0;
+  tensor.owner_op = NULL;
+  tensor.owner_idx = 0;
   tensor.numDim = NDIM;
   for (int i = 0; i < NDIM; i++)
     tensor.adim[i] = dims[NDIM-1-i];
   return tensor;
+}
+
+Tensor FFModel::create_tensor_and_partition(const Tensor& tensor,
+                                            const std::string& pc_name)
+{
+  int ndims = tensor.numDim;
+  int dims[MAX_DIM];
+  for (int i = 0; i < ndims; i++) {
+    dims[i] = tensor.adim[ndims-i-1];
+  }
+  switch (ndims) {
+    case 1:
+    {
+      return create_tensor_and_partition<1>(dims, pc_name, tensor.data_type, false);
+      break;
+    }
+    case 2:
+    {
+      return create_tensor_and_partition<1>(dims, pc_name, tensor.data_type, false);
+      break;
+    }
+    case 3:
+    {
+      return create_tensor_and_partition<1>(dims, pc_name, tensor.data_type, false);
+      break;
+    }
+    case 4:
+    {
+      return create_tensor_and_partition<1>(dims, pc_name, tensor.data_type, false);
+      break;
+    }
+    default:
+    {
+      // Unsupported dim
+      assert(false);
+      return tensor;
+    }
+  }
 }
 
 template<int NDIM>
@@ -378,6 +416,7 @@ Tensor FFModel::create_tensor_and_partition(const int dims[],
                                             bool create_grad)
 {
   Tensor tensor;
+  tensor.data_type = data_type;
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   // Step 1: create regions
@@ -865,15 +904,15 @@ void FFModel::update()
 void FFModel::compile()
 {
   for (size_t l = 0; l < layers.size(); l++) {
-    Op* op = layers[i];
+    Op* op = layers[l];
     for (int i = 0; i < op->numInputs; i++) {
-      if (op->inputs[i].ownerOp == NULL) {
+      if (op->inputs[i].owner_op == NULL) {
         // User created tensor, use op's pcname to parallel
-        assert(false);
+        op->inputs[i] = create_tensor_and_partition(op->inputs[i], op->name);
       } else {
         // Refresh op's input tensor
-        int tsIdx = op->inputs[i].ownerIdx;
-        op->inputs[i] = op->inputs[i].ownerOp->outputs[tsIdx];
+        int tsIdx = op->inputs[i].owner_idx;
+        op->inputs[i] = op->inputs[i].owner_op->outputs[tsIdx];
       }
     }
     op->create_output_and_partition(*this);

@@ -574,20 +574,20 @@ flexflow_tensor_create(
   flexflow_model_t model_,
   int num_dims,
   const int* dims, 
-  const char* pc_name, 
+  //const char* pc_name, 
   enum DataType data_type, 
   bool create_grad /* true */)
 {
   Tensor *tensor = new Tensor();
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   if (num_dims == 4) {
-    *tensor = model->new_tensor<4>(dims, pc_name, data_type, create_grad);
+    *tensor = model->new_tensor<4>(dims, data_type, create_grad);
     ffc_log.print("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
   } else if (num_dims == 3) {
-    *tensor = model->new_tensor<3>(dims, pc_name, data_type, create_grad);
+    *tensor = model->new_tensor<3>(dims, data_type, create_grad);
     ffc_log.print("[Tensor] new 3D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
   } else if (num_dims == 2) {
-    *tensor = model->new_tensor<2>(dims, pc_name, data_type, create_grad);
+    *tensor = model->new_tensor<2>(dims, data_type, create_grad);
     ffc_log.print("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
   } else {
     assert(0);
