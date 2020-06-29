@@ -16,95 +16,81 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::exp(std::string name,
-                    const Tensor& x)
+Tensor FFModel::exp(const Tensor& x)
 {
-  ElementUnary *ele = new ElementUnary(*this, ElementUnary::OP_EXP, name, x);
-  ele->add_to_model(*this);
+  ElementUnary *ele = new ElementUnary(*this, ElementUnary::OP_EXP, x);
+  layers.push_back(ele);
   return ele->outputs[0];
 }
 
-ElementUnary* FFModel::exp(std::string name)
+ElementUnary* FFModel::exp()
 {
-  ElementUnary* ele = new ElementUnary(*this, ElementUnary::OP_EXP, name);
+  ElementUnary* ele = new ElementUnary(*this, ElementUnary::OP_EXP);
+  layers.push_back(ele);
   return ele;
 }
 
 ElementUnary::ElementUnary(FFModel& model,
                            ElementUnary::OpType _op_type,
-                           const std::string& pcname,
                            const Tensor& x)
-: Op(pcname, x), op_type(_op_type)
+: Op(model, "ElementUnary_"+std::to_string(_op_type), x), op_type(_op_type)
 {
-  int dim = x.numDim;
-  switch (dim) {
-    case 1:
-    {
-      task_is = model.get_or_create_task_is(1, name);
-      create_output_and_partition<1>(model);
-      break;
-    }
-    case 2:
-    {
-      task_is = model.get_or_create_task_is(2, name);
-      create_output_and_partition<2>(model);
-      break;
-    }
-    case 3:
-    {
-      task_is = model.get_or_create_task_is(3, name);
-      create_output_and_partition<3>(model);
-      break;
-    }
-    case 4:
-    {
-      task_is = model.get_or_create_task_is(4, name);
-      create_output_and_partition<4>(model);
-      break;
-    }
-    default:
-    {
-      // Unsupported dim for ElementBinarywise operator
-      assert(false);
-    }
-  }
+  outputs[0].numDim = inputs[0].numDim;
+  for (int i = 0; i < outputs[0].numDim; i++)
+    outputs[0].adim[i] = inputs[0].adim[i];
 }
 
 ElementUnary::ElementUnary(FFModel& model,
-                           ElementUnary::OpType _op_type,
-                           const std::string& pcname)
-: Op(pcname), op_type(_op_type)
+                           ElementUnary::OpType _op_type)
+: Op(model, "ElementUnary_"+std::to_string(_op_type)), op_type(_op_type)
 {}
 
 Tensor ElementUnary::init_inout(FFModel& model,
                                 const Tensor& input)
 {
-  add_to_model(model);
   inputs[0] = input;
-  int dim = input.numDim;
+  create_output_and_partition(model);
+  return outputs[0];
+}
+
+/*
+void ElementUnary::add_to_model(FFModel& model)
+{
+  model.layers.push_back(this);
+}
+*/
+
+void ElementUnary::create_weights(FFModel& model)
+{
+  // Do nothing
+}
+
+void ElementUnary::create_output_and_partition(FFModel& model)
+{
+  int dim = inputs[0].numDim;
   switch (dim) {
     case 1:
     {
       task_is = model.get_or_create_task_is(1, name);
-      create_output_and_partition<1>(model);
+      create_output_and_partition_with_dim<1>(model);
       break;
     }
     case 2:
     {
       task_is = model.get_or_create_task_is(2, name);
-      create_output_and_partition<2>(model);
+      create_output_and_partition_with_dim<2>(model);
       break;
     }
     case 3:
     {
       task_is = model.get_or_create_task_is(3, name);
-      create_output_and_partition<3>(model);
+      create_output_and_partition_with_dim<3>(model);
       break;
     }
     case 4:
     {
       task_is = model.get_or_create_task_is(4, name);
-      create_output_and_partition<4>(model);
+      create_output_and_partition_with_dim<4>(model);
       break;
     }
     default:
@@ -113,16 +99,10 @@ Tensor ElementUnary::init_inout(FFModel& model,
       assert(false);
     }
   }
-  return outputs[0];
-}
-
-void ElementUnary::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
 }
 
 template<int NDIM>
-void ElementUnary::create_output_and_partition(FFModel& model)
+void ElementUnary::create_output_and_partition_with_dim(FFModel& model)
 {
   // Retrive the task indexspace for the op
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
@@ -132,7 +112,7 @@ void ElementUnary::create_output_and_partition(FFModel& model)
   int dims[NDIM];
   for (int i = 0; i < NDIM; i++)
     dims[i] = inputs[0].adim[NDIM-1-i];
-  outputs[0] = model.create_tensor<NDIM>(dims, IndexSpaceT<NDIM>(task_is), DT_FLOAT);
+  outputs[0] = model.create_tensor_and_partition<NDIM>(dims, IndexSpaceT<NDIM>(task_is), DT_FLOAT);
   Rect<NDIM> input_rect;
   input_rect = runtime->get_index_partition_color_space(
         ctx, inputs[0].part.get_index_partition());

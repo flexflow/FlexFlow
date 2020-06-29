@@ -18,8 +18,7 @@
 
 LegionRuntime::Logger::Category log_mse("mse");
 
-void FFModel::mse_loss(const std::string& pcname,
-                       const Tensor& _logit,
+void FFModel::mse_loss(const Tensor& _logit,
                        const Tensor& _label,
                        const std::string& reduction)
 {
@@ -30,22 +29,31 @@ void FFModel::mse_loss(const std::string& pcname,
     aggr = AGGR_MODE_AVG;
   else
     assert(reduction == "none");
-  MSELoss* op = new MSELoss(*this, pcname, _logit, _label, aggr);
+  MSELoss* op = new MSELoss(*this, _logit, _label, aggr);
   layers.push_back(op);
 }
 
 MSELoss::MSELoss(FFModel& model,
-                 const std::string& pcname,
                  const Tensor& _logit,
                  const Tensor& _label,
                  AggrMode _aggr)
-: Op(pcname, _logit, _label), profiling(model.config.profiling),
+: Op(model, "MSELoss", _logit, _label), profiling(model.config.profiling),
 aggr_mode(_aggr)
 {
+}
+
+void MSELoss::create_weights(FFModel& model)
+{
+  // Do nothing
+}
+
+void MSELoss::create_output_and_partition(FFModel& model)
+{
+  std::string pcname = name;
   task_is = model.get_or_create_task_is(2/*numDim*/, pcname);
   // Current assume 2D logit and label
-  assert(_logit.numDim == 2);
-  assert(_label.numDim == 2);
+  assert(inputs[0].numDim == 2);
+  assert(inputs[1].numDim == 2);
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is); 

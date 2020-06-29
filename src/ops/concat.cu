@@ -16,29 +16,47 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::concat(std::string name,
-                       int n, const Tensor* tensors,
+Tensor FFModel::concat(int n, const Tensor* tensors,
                        int axis)
 {
-  Concat *cat = new Concat(*this, name, n, tensors, axis);
+  Concat *cat = new Concat(*this, n, tensors, axis);
   layers.push_back(cat);
   return cat->outputs[0];
 }
 
 Concat::Concat(FFModel& model,
-               const std::string& pcname, 
                int _n, const Tensor* _tensors,
                int _axis)
- : Op(pcname, _n, _tensors), axis(_axis),
+: Op(model, "Concat_"+std::to_string(_axis), _n, _tensors), axis(_axis),
    profiling(model.config.profiling)
 {
+  int num_dim = inputs[0].numDim;
+  outputs[0].numDim = num_dim;
+  for (int i = 0; i < num_dim; i++)
+    outputs[0].adim[i] = inputs[0].adim[i];
+  for (int i = 1; i < numInputs; i++)
+    for (int j = 0; j < num_dim; j++) {
+      if (j != axis)
+        assert(inputs[i].adim[j] == outputs[0].adim[j]);
+      else
+        outputs[0].adim[j] += inputs[i].adim[j];
+    }
+}
+
+void Concat::create_weights(FFModel& model)
+{
+  // DO nothing
+}
+
+void Concat::create_output_and_partition(FFModel& model)
+{
   // Retrive the task indexspace for the op
+  std::string pcname = name;
   task_is = model.get_or_create_task_is(inputs[0].numDim, pcname);
 
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  FieldSpace fs = model.config.field_space;
   int dims[MAX_DIM], num_dim = inputs[0].numDim;
   assert(num_dim == domain.get_dim());
   for (int i = 0; i < num_dim; i++)
@@ -56,7 +74,7 @@ Concat::Concat(FFModel& model,
     case 1:
     {
       Rect<1> part_rect = domain;
-      outputs[0] = model.create_tensor<1>(dims, IndexSpaceT<1>(task_is), DT_FLOAT);
+      outputs[0] = model.create_tensor_and_partition<1>(dims, IndexSpaceT<1>(task_is), DT_FLOAT);
       for (int i = 0; i < numInputs; i++) {
         Rect<1> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -73,7 +91,7 @@ Concat::Concat(FFModel& model,
     case 2:
     {
       Rect<2> part_rect = domain;
-      outputs[0] = model.create_tensor<2>(dims, IndexSpaceT<2>(task_is), DT_FLOAT);
+      outputs[0] = model.create_tensor_and_partition<2>(dims, IndexSpaceT<2>(task_is), DT_FLOAT);
       for (int i = 0; i < numInputs; i++) {
         Rect<2> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -90,7 +108,7 @@ Concat::Concat(FFModel& model,
     case 3:
     {
       Rect<3> part_rect = domain;
-      outputs[0] = model.create_tensor<3>(dims, IndexSpaceT<3>(task_is), DT_FLOAT);
+      outputs[0] = model.create_tensor_and_partition<3>(dims, IndexSpaceT<3>(task_is), DT_FLOAT);
       for (int i = 0; i < numInputs; i++) {
         Rect<3> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -107,7 +125,7 @@ Concat::Concat(FFModel& model,
     case 4:
     {
       Rect<4> part_rect = domain;
-      outputs[0] = model.create_tensor<4>(dims, IndexSpaceT<4>(task_is), DT_FLOAT);
+      outputs[0] = model.create_tensor_and_partition<4>(dims, IndexSpaceT<4>(task_is), DT_FLOAT);
       for (int i = 0; i < numInputs; i++) {
         Rect<4> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -127,67 +145,7 @@ Concat::Concat(FFModel& model,
       assert(false);
     }
   }
-#ifdef DEADCODE
-  int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
-  int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
-  int num_par_n = part_rect.hi[2] - part_rect.lo[2] + 1;
-  int input_w = inputs[0].adim[0];
-  int input_h = inputs[0].adim[1];
-  int input_c = 0;
-  int input_n = inputs[0].adim[3];
-  for (int i = 0; i < numInputs; i++) {
-    assert(input_w == inputs[i].adim[0]);
-    assert(input_h == inputs[i].adim[1]);
-    assert(input_n == inputs[i].adim[3]);
-    input_c += inputs[i].adim[2];
-  }
-  int input_nc = input_n * input_c;
-  Rect<3, coord_t> output_rect(Point<3>(0, 0, 0),
-                      Point<3>(input_w-1, input_h-1, input_nc-1));
-  IndexSpaceT<3> output_is = runtime->create_index_space(ctx, output_rect);
-  LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
-  LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
-  Transform<3, 3, coord_t> transform;
-  int extent_w = (input_w + num_par_w - 1) / num_par_w;
-  int extent_h = (input_h + num_par_h - 1) / num_par_h;
-  int extent_nc = input_nc / num_par_n;
-  assert(input_nc % num_par_n == 0);
-  Rect<3, coord_t> extent(Point<3>(0, 0, 0), Point<3>(extent_w-1, extent_h-1, extent_nc-1));
-  transform[0][0] = extent_w; transform[0][1] = 0; transform[0][2] = 0;
-  transform[1][0] = 0; transform[1][1] = extent_h; transform[1][2] = 0;
-  transform[2][0] = 0; transform[2][1] = 0; transform[2][2] = extent_nc;
-  IndexPartition output_ip =
-    runtime->create_partition_by_restriction(ctx, output_is, task_is, transform, extent);
-  assert(runtime->is_index_partition_disjoint(ctx, output_ip));
-  assert(runtime->is_index_partition_complete(ctx, output_ip));
-  LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
-  LogicalPartition output_grad_lp =
-    runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
 
-  output.numDim = 4;
-  output.adim[0] = input_w;
-  output.adim[1] = input_h;
-  output.adim[2] = input_c;
-  output.adim[3] = inputs[0].adim[3];
-  output.pdim[0] = extent_w;
-  output.pdim[1] = extent_h;
-  output.pdim[2] = input_c;
-  output.pdim[3] = extent_nc / input_c;
-  assert(extent_nc % input_c == 0);
-  output.region = output_lr;
-  output.part = output_lp;
-  output.region_grad = output_grad_lr;
-  output.part_grad = output_grad_lp;
-  printf("Create concat layer: output(n=%d c=%d h=%d w=%d)\n",
-         output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
-  for (int i = 0; i < numInputs; i++) {
-    // For now, we assume our output has the same partition as all inputs
-    Rect<3> input_part_rect =
-      runtime->get_index_partition_color_space(ctx, inputs[i].part.get_index_partition());
-    assert(part_rect == input_part_rect);
-    input_lps[i] = inputs[i].part;
-  }
-#endif
 }
 
 __host__

@@ -92,57 +92,81 @@ void Tensor::detach_raw_ptr(FFConfig &config)
   runtime->detach_external_resource(ctx, physical_region);
 }
 
-Op::Op(const std::string& _name,
+Op::Op(FFModel& model,
+       const std::string& _name,
        const Tensor& _input)
 : numInputs(1), numWeights(0), numOutputs(1)
 {
-  assert(_name.length() < MAX_OPNAME);
-  std::strcpy(name, _name.c_str());
+  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  assert(pcname.length() < MAX_OPNAME);
+  std::strcpy(name, pcname.c_str());
   inputs[0] = _input;
   for (int i = 0; i < numInputs; i++) {
     trainableInputs[i] = true;
     resetInputGrads[i] = true;
   }
+  for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
+    outputs[i].ownerOp = this;
+    outputs[i].ownerIdx = i;
+  }
 }
 
-Op::Op(const std::string& _name,
+Op::Op(FFModel& model,
+       const std::string& _name,
        const Tensor& _input1,
        const Tensor& _input2)
 : numInputs(2), numWeights(0), numOutputs(1)
 {
-  assert(_name.length() < MAX_OPNAME);
-  std::strcpy(name, _name.c_str());
+  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  assert(pcname.length() < MAX_OPNAME);
+  std::strcpy(name, pcname.c_str());
   inputs[0] = _input1;
   inputs[1] = _input2;
   for (int i = 0; i < numInputs; i++) {
     trainableInputs[i] = true;
     resetInputGrads[i] = true;
   }
+  for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
+    outputs[i].ownerOp = this;
+    outputs[i].ownerIdx = i;
+  }
 }
 
-Op::Op(const std::string& _name,
+Op::Op(FFModel& model,
+       const std::string& _name,
        int n, const Tensor* _inputs)
 : numInputs(n), numWeights(0), numOutputs(1)
 {
-  assert(_name.length() < MAX_OPNAME);
+  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  assert(pcname.length() < MAX_OPNAME);
   assert(n <= MAX_NUM_INPUTS);
-  std::strcpy(name, _name.c_str());
+  std::strcpy(name, pcname.c_str());
   for (int i = 0; i < n; i++)
     inputs[i] = _inputs[i];
   for (int i = 0; i < numInputs; i++) {
     trainableInputs[i] = true;
     resetInputGrads[i] = true;
   }
+  for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
+    outputs[i].ownerOp = this;
+    outputs[i].ownerIdx = i;
+  }
 }
 
-Op::Op(const std::string& _name)
+Op::Op(FFModel& model,
+       const std::string& _name)
 : numInputs(0), numWeights(0), numOutputs(1)
 {
-  assert(_name.length() < MAX_OPNAME);
-  std::strcpy(name, _name.c_str());
+  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  assert(pcname.length() < MAX_OPNAME);
+  std::strcpy(name, pcname.c_str());
   for (int i = 0; i < numInputs; i++) {
     trainableInputs[i] = true;
     resetInputGrads[i] = true;
+  }
+  for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
+    outputs[i].ownerOp = this;
+    outputs[i].ownerIdx = i;
   }
 }
 
@@ -306,26 +330,40 @@ FFModel::FFModel(FFConfig& _config)
 }
 
 template<int NDIM>
-Tensor FFModel::create_tensor(const int dims[],
-                              const std::string& pc_name,
-                              DataType data_type,
-                              bool create_grad)
+Tensor FFModel::new_tensor(const int dims[],
+                           DataType data_type,
+                           bool create_grad)
+{
+  Tensor tensor;
+  tensor.ownerOp = NULL;
+  tensor.ownerIdx = 0;
+  tensor.numDim = NDIM;
+  for (int i = 0; i < NDIM; i++)
+    tensor.adim[i] = dims[NDIM-1-i];
+  return tensor;
+}
+
+template<int NDIM>
+Tensor FFModel::create_tensor_and_partition(const int dims[],
+                                            const std::string& pc_name,
+                                            DataType data_type,
+                                            bool create_grad)
 {
   ParallelConfig pc;
   assert(config.find_parallel_config(NDIM, pc_name, pc));
   IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(get_or_create_task_is(pc));
-  return create_tensor(dims, task_is, data_type, create_grad);
+  return create_tensor_and_partition(dims, task_is, data_type, create_grad);
 }
 
 template<int NDIM>
-Tensor FFModel::create_constant(const int dims[],
-                                const std::string& pc_name,
-                                float value,
-                                DataType data_type)
+Tensor FFModel::create_constant_and_partition(const int dims[],
+                                              const std::string& pc_name,
+                                              float value,
+                                              DataType data_type)
 {
   // constant created in this way is not part of any operator
   // so we assume it does not have gradients
-  Tensor tensor = create_tensor<NDIM>(dims, pc_name, data_type, false/*create_grad*/);
+  Tensor tensor = create_tensor_and_partition<NDIM>(dims, pc_name, data_type, false/*create_grad*/);
   ConstantInitializer initializer(value);
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -334,10 +372,10 @@ Tensor FFModel::create_constant(const int dims[],
 }
 
 template<int NDIM>
-Tensor FFModel::create_tensor(const int dims[],
-                              const IndexSpaceT<NDIM>& part_is,
-                              DataType data_type,
-                              bool create_grad)
+Tensor FFModel::create_tensor_and_partition(const int dims[],
+                                            const IndexSpaceT<NDIM>& part_is,
+                                            DataType data_type,
+                                            bool create_grad)
 {
   Tensor tensor;
   Context ctx = config.lg_ctx;
@@ -821,6 +859,28 @@ void FFModel::update()
   optimizer->next();
   for (size_t i = 0; i < parameters.size(); i++) {
     optimizer->update(&(parameters[i]));
+  }
+}
+
+void FFModel::compile()
+{
+  for (size_t l = 0; l < layers.size(); l++) {
+    Op* op = layers[i];
+    for (int i = 0; i < op->numInputs; i++) {
+      if (op->inputs[i].ownerOp == NULL) {
+        // User created tensor, use op's pcname to parallel
+        assert(false);
+      } else {
+        // Refresh op's input tensor
+        int tsIdx = op->inputs[i].ownerIdx;
+        op->inputs[i] = op->inputs[i].ownerOp->outputs[tsIdx];
+      }
+    }
+    op->create_output_and_partition(*this);
+    op->create_weights(*this);
+    for (int i = 0; i < op->numWeights; i++) {
+      parameters.push_back(op->weights[i]);
+    }
   }
 }
 
@@ -1478,18 +1538,23 @@ void register_flexflow_tasks()
 #endif // FF_USE_PYTHON
 
 // template instantiations
-template Tensor FFModel::create_tensor<1>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
-template Tensor FFModel::create_tensor<2>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
-template Tensor FFModel::create_tensor<3>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
-template Tensor FFModel::create_tensor<4>(const int* dims, const std::string& pc_name, DataType data_type, bool create_grad);
-template Tensor FFModel::create_constant<1>(const int* dims, const std::string& pc_name, float value, DataType data_type);
-template Tensor FFModel::create_constant<2>(const int* dims, const std::string& pc_name, float value, DataType data_type);
-template Tensor FFModel::create_constant<3>(const int* dims, const std::string& pc_name, float value, DataType data_type);
-template Tensor FFModel::create_constant<4>(const int* dims, const std::string& pc_name, float value, DataType data_type);
-template Tensor FFModel::create_tensor<1>(const int* dims, const IndexSpaceT<1>& part_is, DataType data_type, bool create_grad);
-template Tensor FFModel::create_tensor<2>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, bool create_grad);
-template Tensor FFModel::create_tensor<3>(const int* dims, const IndexSpaceT<3>& part_is, DataType data_type, bool create_grad);
-template Tensor FFModel::create_tensor<4>(const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, bool create_grad);
+template Tensor FFModel::new_tensor<1>(const int* dims, DataType data_type, bool create_grad);
+template Tensor FFModel::new_tensor<2>(const int* dims, DataType data_type, bool create_grad);
+template Tensor FFModel::new_tensor<3>(const int* dims, DataType data_type, bool create_grad);
+template Tensor FFModel::new_tensor<4>(const int* dims, DataType data_type, bool create_grad);
+
+template Tensor FFModel::create_tensor_and_partition<1>(const int* dims, const std::string& pcname, DataType data_type, bool create_grad);
+template Tensor FFModel::create_tensor_and_partition<2>(const int* dims, const std::string& pcname, DataType data_type, bool create_grad);
+template Tensor FFModel::create_tensor_and_partition<3>(const int* dims, const std::string& pcname, DataType data_type, bool create_grad);
+template Tensor FFModel::create_tensor_and_partition<4>(const int* dims, const std::string& pcname, DataType data_type, bool create_grad);
+template Tensor FFModel::create_constant_and_partition<1>(const int* dims, const std::string & pcname, float value, DataType data_type);
+template Tensor FFModel::create_constant_and_partition<2>(const int* dims, const std::string & pcname, float value, DataType data_type);
+template Tensor FFModel::create_constant_and_partition<3>(const int* dims, const std::string & pcname, float value, DataType data_type);
+template Tensor FFModel::create_constant_and_partition<4>(const int* dims, const std::string & pcname, float value, DataType data_type);
+template Tensor FFModel::create_tensor_and_partition<1>(const int* dims, const IndexSpaceT<1>& part_is, DataType data_type, bool create_grad);
+template Tensor FFModel::create_tensor_and_partition<2>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, bool create_grad);
+template Tensor FFModel::create_tensor_and_partition<3>(const int* dims, const IndexSpaceT<3>& part_is, DataType data_type, bool create_grad);
+template Tensor FFModel::create_tensor_and_partition<4>(const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, bool create_grad);
 
 template void FFModel::create_disjoint_partition<1>(const Tensor& tensor, const IndexSpaceT<1>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
 template void FFModel::create_disjoint_partition<2>(const Tensor& tensor, const IndexSpaceT<2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
