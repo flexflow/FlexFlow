@@ -115,6 +115,10 @@ flexflow_model_update(
   flexflow_model_t handle);
 
 void
+flexflow_model_compile(
+  flexflow_model_t handle);
+
+void
 flexflow_model_zero_gradients(
   flexflow_model_t handle);
 
@@ -155,7 +159,6 @@ flexflow_model_add_divide(
 flexflow_tensor_t
 flexflow_model_add_conv2d(
   flexflow_model_t handle,
-  const char* name,
   const flexflow_tensor_t input,
   int out_channels,
   int kernel_h, int kernel_w,
@@ -169,7 +172,6 @@ flexflow_model_add_conv2d(
 flexflow_op_t
 flexflow_model_add_conv2d_no_inout(
   flexflow_model_t handle,
-  const char* name,
   int in_channels,
   int out_channels,
   int kernel_h, int kernel_w,
@@ -183,7 +185,6 @@ flexflow_model_add_conv2d_no_inout(
 flexflow_tensor_t
 flexflow_model_add_embedding(
   flexflow_model_t handle,
-  const char* name,
   const flexflow_tensor_t input,
   int num_entires, int out_dim,
   enum AggrMode aggr,
@@ -192,7 +193,6 @@ flexflow_model_add_embedding(
 flexflow_tensor_t
 flexflow_model_add_pool2d(
   flexflow_model_t handle,
-  const char* name,
   flexflow_tensor_t input,
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
@@ -203,7 +203,6 @@ flexflow_model_add_pool2d(
 flexflow_op_t
 flexflow_model_add_pool2d_no_inout(
   flexflow_model_t handle,
-  const char* name,
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
@@ -213,7 +212,6 @@ flexflow_model_add_pool2d_no_inout(
 flexflow_tensor_t
 flexflow_model_add_dense(
   flexflow_model_t handle,
-  const char* name,
   const flexflow_tensor_t input,
   int out_dim,
   enum ActiMode activation /* AC_MODE_NONE */,
@@ -224,7 +222,6 @@ flexflow_model_add_dense(
 flexflow_op_t
 flexflow_model_add_dense_no_inout(
   flexflow_model_t handle,
-  const char* name,
   int in_dim,
   int out_dim,
   enum ActiMode activation /* AC_MODE_NONE */,
@@ -235,7 +232,6 @@ flexflow_model_add_dense_no_inout(
 flexflow_tensor_t
 flexflow_model_add_concat(
   flexflow_model_t handle,
-  const char* name,
   int n,
   flexflow_tensor_t* input,
   int axis);
@@ -243,25 +239,21 @@ flexflow_model_add_concat(
 flexflow_tensor_t
 flexflow_model_add_flat(
   flexflow_model_t handle,
-  const char* name,
   flexflow_tensor_t input);
   
 flexflow_op_t
 flexflow_model_add_flat_no_inout(
-  flexflow_model_t handle,
-  const char* name);
+  flexflow_model_t handle);
   
 flexflow_tensor_t
 flexflow_model_add_softmax(
   flexflow_model_t handle,
-  const char* name,
   const flexflow_tensor_t input,
   const flexflow_tensor_t label);
   
 void
 flexflow_model_add_mse_loss(
   flexflow_model_t handle,
-  const char* name,
   const flexflow_tensor_t logits,
   const flexflow_tensor_t labels,
   const char* reduction);
@@ -300,7 +292,6 @@ flexflow_tensor_create(
   flexflow_model_t model,
   int num_dims, 
   const int* dims, 
-  const char* pc_name, 
   enum DataType data_type, 
   bool create_grad /* true */);
 
