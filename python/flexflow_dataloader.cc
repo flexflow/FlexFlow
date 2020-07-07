@@ -97,13 +97,13 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff,
   }
   // Create full input
   {
-    batch_input = input;
+    batch_input = ff.get_tensor_from_guid(input.guid);
     const int dims[] = {num_samples, input.adim[2], input.adim[1], input.adim[0]};
     full_input = ff.create_tensor_and_partition<4>(dims, "", DT_FLOAT);
   }
   // Create full label
   {
-    batch_label = label;
+    batch_label = ff.get_tensor_from_guid(label.guid);
     const int dims[] = {num_samples, label.adim[0]};
     full_label = ff.create_tensor_and_partition<2>(dims, "", DT_INT32);
   }
@@ -343,13 +343,13 @@ ImgDataLoader2D::ImgDataLoader2D(FFModel& ff, Tensor input, Tensor label,
   num_samples = num_samples_;
   // Create full input
   {
-    batch_input = input;
+    batch_input = ff.get_tensor_from_guid(input.guid);
     const int dims[] = {num_samples, input.adim[0]};
     full_input = ff.create_tensor_and_partition<2>(dims, "", DT_FLOAT);
   }
   // Create full label
   {
-    batch_label = label;
+    batch_label = ff.get_tensor_from_guid(label.guid);
     const int dims[] = {num_samples, label.adim[0]};
     full_label = ff.create_tensor_and_partition<2>(dims, "", DT_INT32);
   }
@@ -497,11 +497,11 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_
   // Create full input
   assert(input.numDim == full_input_.numDim);
   if (input.numDim == 4) {
-    batch_input = input;
+    batch_input = ff.get_tensor_from_guid(input.guid);
     const int dims[] = {num_samples, input.adim[2], input.adim[1], input.adim[0]};
     full_input = ff.create_tensor_and_partition<4>(dims, "", datatype);
   } else if(input.numDim == 2) {
-    batch_input = input;
+    batch_input = ff.get_tensor_from_guid(input.guid);
     const int dims[] = {num_samples, input.adim[0]};
     full_input = ff.create_tensor_and_partition<2>(dims, "", datatype);
   } else {

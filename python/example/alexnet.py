@@ -19,7 +19,32 @@ def top_level_task():
   #print(dims)
   label = ffmodel.new_tensor(dims_label, DataType.DT_INT32)
   
-  use_external = True
+  kernel_init = GlorotUniformInitializer(123)
+  bias_init = ZeroInitializer()
+  # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
+  # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
+  # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_RELU)
+  #t = ffmodel.concat("concat", [ts0, ts1], 1)
+  t = ffmodel.pool2d("pool1", t, 3, 3, 2, 2, 0, 0)
+  t = ffmodel.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2, ActiMode.AC_MODE_RELU)
+  t = ffmodel.pool2d("pool2", t, 3, 3, 2, 2, 0, 0)
+  t = ffmodel.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.conv2d("conv4", t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.pool2d("pool3", t, 3, 3, 2, 2, 0, 0)
+  t = ffmodel.flat("flat", t);
+  t = ffmodel.dense("lienar1", t, 4096, ActiMode.AC_MODE_RELU)
+  t = ffmodel.dense("linear2", t, 4096, ActiMode.AC_MODE_RELU)
+  t = ffmodel.dense("linear3", t, 10)
+  t = ffmodel.softmax("softmax", t, label)
+
+  ffoptimizer = SGDOptimizer(ffmodel, 0.001)
+  ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.compile()
+  
+  use_external = False
   if (use_external == True):
     num_samples = 10000
     
@@ -70,30 +95,6 @@ def top_level_task():
     # Data Loader
     dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
     num_samples = dataloader.get_num_samples()
-
-  kernel_init = GlorotUniformInitializer(123)
-  bias_init = ZeroInitializer()
-  # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
-  # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
-  # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
-  # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
-  t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_RELU)
-  #t = ffmodel.concat("concat", [ts0, ts1], 1)
-  t = ffmodel.pool2d("pool1", t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2, ActiMode.AC_MODE_RELU)
-  t = ffmodel.pool2d("pool2", t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.conv2d("conv4", t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.pool2d("pool3", t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.flat("flat", t);
-  t = ffmodel.dense("lienar1", t, 4096, ActiMode.AC_MODE_RELU)
-  t = ffmodel.dense("linear2", t, 4096, ActiMode.AC_MODE_RELU)
-  t = ffmodel.dense("linear3", t, 10)
-  t = ffmodel.softmax("softmax", t, label)
-
-  ffoptimizer = SGDOptimizer(ffmodel, 0.001)
-  ffmodel.set_sgd_optimizer(ffoptimizer)
 
   # input.inline_map(ffconfig)
   # input_array = input.get_array(ffconfig, DataType.DT_FLOAT)
@@ -150,22 +151,21 @@ def top_level_task():
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, num_samples * epochs / run_time));
   #ffmodel.print_layers(13)
 
-  conv_2d1 = ffmodel.get_layer_by_id(0)
-  #cbias_tensor = conv_2d1.get_input_tensor()
-  cbias_tensor = conv_2d1.get_input_tensor()
-  cbias_tensor.inline_map(ffconfig)
-  cbias = cbias_tensor.get_flat_array(ffconfig, DataType.DT_FLOAT)
-  print(cbias.shape)
-  print(cbias)
-  #save_image(cbias, 2)
-  cbias_tensor.inline_unmap(ffconfig)
-  
-  label.inline_map(ffconfig)
-  label_array = label.get_flat_array(ffconfig, DataType.DT_INT32)
-  print(label_array.shape)
+  # conv_2d1 = ffmodel.get_layer_by_id(0)
+  # #cbias_tensor = conv_2d1.get_input_tensor()
+  # cbias_tensor = conv_2d1.get_input_tensor()
+  # cbias_tensor.inline_map(ffconfig)
+  # cbias = cbias_tensor.get_flat_array(ffconfig, DataType.DT_FLOAT)
+  # print(cbias.shape)
   # print(cbias)
-  print(label_array)
-  label.inline_unmap(ffconfig)
+  # cbias_tensor.inline_unmap(ffconfig)
+  #
+  # label.inline_map(ffconfig)
+  # label_array = label.get_flat_array(ffconfig, DataType.DT_INT32)
+  # print(label_array.shape)
+  # # print(cbias)
+  # print(label_array)
+  # label.inline_unmap(ffconfig)
   
   #ffmodel.print_layers(0)
   

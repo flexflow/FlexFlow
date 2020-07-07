@@ -559,7 +559,7 @@ class FFModel(object):
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_conv2d(self.handle, name.encode('utf-8'), input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, kernel_init_handle, bias_init_handle)  
+    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, kernel_init_handle, bias_init_handle)  
     self.add_layer(OpType.CONV2D)
     return Tensor(handle)
     
@@ -567,27 +567,27 @@ class FFModel(object):
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_conv2d_no_inout(self.handle, name.encode('utf-8'), in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, kernel_init_handle, bias_init_handle)  
+    handle = ffc.flexflow_model_add_conv2d_no_inout(self.handle, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, kernel_init_handle, bias_init_handle)  
     return Conv2D(handle)
     
   def embedding(self, name, input, num_entires, out_dim, aggr, kernel_initializer):
     c_aggr = enum_to_int(AggrMode, aggr)
     assert (type(kernel_initializer) is GlorotUniformInitializer) or (type(kernel_initializer) is ZeroInitializer) or (type(kernel_initializer) is UniformInitializer) or (type(kernel_initializer) is NormInitializer), "unknow initializer type"
-    handle = ffc.flexflow_model_add_embedding(self.handle, name.encode('utf-8'), input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
+    handle = ffc.flexflow_model_add_embedding(self.handle,  input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
     self.add_layer(OpType.EMBEDDING)
     return Tensor(handle)
     
   def pool2d(self, name, input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE):
     c_pool_type = enum_to_int(PoolType, pool_type)
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_pool2d(self.handle, name.encode('utf-8'), input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
+    handle = ffc.flexflow_model_add_pool2d(self.handle, input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
     self.add_layer(OpType.POOL2D)
     return Tensor(handle)
     
   def pool2d_v2(self, name, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE):
     c_pool_type = enum_to_int(PoolType, pool_type)
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_pool2d_no_inout(self.handle, name.encode('utf-8'), kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
+    handle = ffc.flexflow_model_add_pool2d_no_inout(self.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
     return Pool2D(handle)
     
   def batch_norm(self, name, input, relu=True):
@@ -599,7 +599,7 @@ class FFModel(object):
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_dense(self.handle, name.encode('utf-8'), input.handle, out_dim, c_activation, use_bias, kernel_init_handle, bias_init_handle)
+    handle = ffc.flexflow_model_add_dense(self.handle,  input.handle, out_dim, c_activation, use_bias, kernel_init_handle, bias_init_handle)
     self.add_layer(OpType.LINEAR)
     return Tensor(handle)
     
@@ -607,7 +607,7 @@ class FFModel(object):
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_dense_no_inout(self.handle, name.encode('utf-8'), in_dim, out_dim, c_activation, use_bias, kernel_init_handle, bias_init_handle)
+    handle = ffc.flexflow_model_add_dense_no_inout(self.handle,  in_dim, out_dim, c_activation, use_bias, kernel_init_handle, bias_init_handle)
     return Linear(handle)
     
   def concat(self, name, tensor_list, axis):
@@ -618,26 +618,26 @@ class FFModel(object):
       tensor_handle_list.append(tensor.handle)
     c_tensor_handle_list = ffi.new("flexflow_tensor_t[]", tensor_handle_list)
     print(c_tensor_handle_list[0].impl, c_tensor_handle_list[1].impl)
-    handle = ffc.flexflow_model_add_concat(self.handle, name.encode('utf-8'), n, c_tensor_handle_list, axis)
+    handle = ffc.flexflow_model_add_concat(self.handle, n, c_tensor_handle_list, axis)
     self.add_layer(OpType.CONCAT)
     return Tensor(handle)
     
   def flat(self, name, input):
-    handle = ffc.flexflow_model_add_flat(self.handle, name.encode('utf-8'), input.handle)
+    handle = ffc.flexflow_model_add_flat(self.handle, input.handle)
     self.add_layer(OpType.FLAT)
     return Tensor(handle)
     
   def flat_v2(self, name):
-    handle = ffc.flexflow_model_add_flat_no_inout(self.handle, name.encode('utf-8'))
+    handle = ffc.flexflow_model_add_flat_no_inout(self.handle)
     return Flat(handle)
     
   def softmax(self, name, input, label):
-    handle = ffc.flexflow_model_add_softmax(self.handle, name.encode('utf-8'), input.handle, label.handle)
+    handle = ffc.flexflow_model_add_softmax(self.handle, input.handle, label.handle)
     self.add_layer(OpType.SOFTMAX)
     return Tensor(handle)
     
   def mse_loss(self, name, logits, labels, reduction):
-    ffc.flexflow_model_add_mse_loss(self.handle, name.encode('utf-8'), logits.handle, labels.handle, reduction.encode('utf-8'))
+    ffc.flexflow_model_add_mse_loss(self.handle, logits.handle, labels.handle, reduction.encode('utf-8'))
     self.add_layer(OpType.MSELOSS)
     
   def reset_metrics(self):
@@ -657,6 +657,9 @@ class FFModel(object):
     
   def update(self):
     ffc.flexflow_model_update(self.handle)
+    
+  def compile(self):
+    ffc.flexflow_model_compile(self.handle)
     
   def zero_gradients(self):
     ffc.flexflow_model_zero_gradients(self.handle)
