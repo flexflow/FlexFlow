@@ -60,6 +60,7 @@ def top_level_task():
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.compile()
 
   ffmodel.init_layers()
 
