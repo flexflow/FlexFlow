@@ -393,14 +393,13 @@ flexflow_model_add_pool2d_no_inout(
 flexflow_tensor_t
 flexflow_model_add_batch_norm(
   flexflow_model_t handle_,
-  const char* name,
   const flexflow_tensor_t input_,
   bool relu)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor *input = FFCObjectWrapper::unwrap(input_);
   Tensor *tensor = new Tensor();
-  *tensor = handle->batch_norm(name, *input, relu);
+  *tensor = handle->batch_norm(*input, relu);
   ffc_log.print("[BatchNorm] new Tensor 4D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
   return FFCObjectWrapper::wrap(tensor); 
 }
