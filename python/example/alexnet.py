@@ -13,38 +13,13 @@ def top_level_task():
   
   dims_input = [ffconfig.get_batch_size(), 3, 229, 229]
   #print(dims)
-  input = ffmodel.create_tensor(dims_input, "input", DataType.DT_FLOAT)
+  input = ffmodel.create_tensor(dims_input, "", DataType.DT_FLOAT)
 
   dims_label = [ffconfig.get_batch_size(), 1]
   #print(dims)
-  label = ffmodel.create_tensor(dims_label, "label", DataType.DT_INT32)
+  label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
   
-  kernel_init = GlorotUniformInitializer(123)
-  bias_init = ZeroInitializer()
-  # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
-  # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
-  # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
-  # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
-  t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_RELU)
-  #t = ffmodel.concat("concat", [ts0, ts1], 1)
-  t = ffmodel.pool2d("pool1", t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2, ActiMode.AC_MODE_RELU)
-  t = ffmodel.pool2d("pool2", t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.conv2d("conv4", t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.pool2d("pool3", t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.flat("flat", t);
-  t = ffmodel.dense("lienar1", t, 4096, ActiMode.AC_MODE_RELU)
-  t = ffmodel.dense("linear2", t, 4096, ActiMode.AC_MODE_RELU)
-  t = ffmodel.dense("linear3", t, 10)
-  t = ffmodel.softmax("softmax", t, label)
-
-  ffoptimizer = SGDOptimizer(ffmodel, 0.001)
-  ffmodel.set_sgd_optimizer(ffoptimizer)
-  ffmodel.compile()
-  
-  use_external = False
+  use_external = True
   if (use_external == True):
     num_samples = 10000
     
@@ -73,10 +48,10 @@ def top_level_task():
     full_label_np = y_train
     
     dims_full_input = [num_samples, 3, 229, 229]
-    full_input = ffmodel.create_tensor(dims_full_input, "full_input", DataType.DT_FLOAT)
+    full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
 
     dims_full_label = [num_samples, 1]
-    full_label = ffmodel.create_tensor(dims_full_label, "full_label", DataType.DT_INT32)
+    full_label = ffmodel.create_tensor(dims_full_label, "", DataType.DT_INT32)
 
     full_input.attach_numpy_array(ffconfig, full_input_np)
     full_label.attach_numpy_array(ffconfig, full_label_np)
@@ -95,6 +70,31 @@ def top_level_task():
     # Data Loader
     dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
     num_samples = dataloader.get_num_samples()
+
+  kernel_init = GlorotUniformInitializer(123)
+  bias_init = ZeroInitializer()
+  # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
+  # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
+  # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
+  t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_RELU, True, kernel_init, bias_init)
+  #t = ffmodel.concat("concat", [ts0, ts1], 1)
+  t = ffmodel.pool2d("pool1", t, 3, 3, 2, 2, 0, 0)
+  t = ffmodel.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2, ActiMode.AC_MODE_RELU)
+  t = ffmodel.pool2d("pool2", t, 3, 3, 2, 2, 0, 0)
+  t = ffmodel.conv2d("conv3", t, 384, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.conv2d("conv4", t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.conv2d("conv5", t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.pool2d("pool3", t, 3, 3, 2, 2, 0, 0)
+  t = ffmodel.flat("flat", t);
+  t = ffmodel.dense("lienar1", t, 4096, ActiMode.AC_MODE_RELU)
+  t = ffmodel.dense("linear2", t, 4096, ActiMode.AC_MODE_RELU)
+  t = ffmodel.dense("linear3", t, 10)
+  t = ffmodel.softmax("softmax", t, label)
+
+  ffoptimizer = SGDOptimizer(ffmodel, 0.001)
+  ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.compile()
 
   # input.inline_map(ffconfig)
   # input_array = input.get_array(ffconfig, DataType.DT_FLOAT)
@@ -151,21 +151,22 @@ def top_level_task():
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, num_samples * epochs / run_time));
   #ffmodel.print_layers(13)
 
-  # conv_2d1 = ffmodel.get_layer_by_id(0)
-  # #cbias_tensor = conv_2d1.get_input_tensor()
-  # cbias_tensor = conv_2d1.get_input_tensor()
-  # cbias_tensor.inline_map(ffconfig)
-  # cbias = cbias_tensor.get_flat_array(ffconfig, DataType.DT_FLOAT)
-  # print(cbias.shape)
+  conv_2d1 = ffmodel.get_layer_by_id(0)
+  #cbias_tensor = conv_2d1.get_input_tensor()
+  cbias_tensor = conv_2d1.get_input_tensor()
+  cbias_tensor.inline_map(ffconfig)
+  cbias = cbias_tensor.get_flat_array(ffconfig, DataType.DT_FLOAT)
+  print(cbias.shape)
+  print(cbias)
+  #save_image(cbias, 2)
+  cbias_tensor.inline_unmap(ffconfig)
+  
+  label.inline_map(ffconfig)
+  label_array = label.get_flat_array(ffconfig, DataType.DT_INT32)
+  print(label_array.shape)
   # print(cbias)
-  # cbias_tensor.inline_unmap(ffconfig)
-  #
-  # label.inline_map(ffconfig)
-  # label_array = label.get_flat_array(ffconfig, DataType.DT_INT32)
-  # print(label_array.shape)
-  # # print(cbias)
-  # print(label_array)
-  # label.inline_unmap(ffconfig)
+  print(label_array)
+  label.inline_unmap(ffconfig)
   
   #ffmodel.print_layers(0)
   
