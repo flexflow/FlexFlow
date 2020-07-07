@@ -111,7 +111,7 @@ void Embedding::create_output_and_partition(FFModel& model)
   assert(part_rect.hi[0] == part_rect.lo[0]);
   {
     const int dims[2] = {inputs[0].adim[1], out_channels};
-    outputs[0] = model.create_tensor_and_partition<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
   }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(

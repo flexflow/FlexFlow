@@ -60,8 +60,8 @@ class Sequential(BaseModel):
     self.label_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), 1], name="", dtype="int32")
     
   def compile(self, optimizer):
-    self._compile(optimizer)
     self.__create_flexflow_layers()
+    self._compile(optimizer)
     
   def fit(self, input_tensors, label_tensor, epochs=1):
     assert isinstance(input_tensors, list) == False, "do not support multiple inputs"

@@ -112,7 +112,7 @@ void ElementUnary::create_output_and_partition_with_dim(FFModel& model)
   int dims[NDIM];
   for (int i = 0; i < NDIM; i++)
     dims[i] = inputs[0].adim[NDIM-1-i];
-  outputs[0] = model.create_tensor_and_partition<NDIM>(dims, IndexSpaceT<NDIM>(task_is), DT_FLOAT);
+  outputs[0] = model.create_tensor<NDIM>(dims, IndexSpaceT<NDIM>(task_is), DT_FLOAT);
   Rect<NDIM> input_rect;
   input_rect = runtime->get_index_partition_color_space(
         ctx, inputs[0].part.get_index_partition());

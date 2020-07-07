@@ -20,6 +20,7 @@ def top_level_task():
   t1 = ffmodel.conv2d("conv1", input1, 64, 11, 11, 4, 4, 2, 2) 
   t2 = ffmodel.dense("dense1", input2, 8, ActiMode.AC_MODE_RELU)
   #t3 = ffmodel.dense("dense1", t2, 128, ActiMode.AC_MODE_RELU)
+  ffmodel.compile()
   
   # Data Loader
   alexnetconfig = NetConfig()

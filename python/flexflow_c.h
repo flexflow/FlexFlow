@@ -298,7 +298,8 @@ flexflow_tensor_t
 flexflow_tensor_create(
   flexflow_model_t model,
   int num_dims, 
-  const int* dims, 
+  const int* dims,
+  const char* name,
   enum DataType data_type, 
   bool create_grad /* true */);
 

@@ -36,7 +36,7 @@ Concat::Concat(FFModel& model,
     outputs[0].adim[i] = inputs[0].adim[i];
   for (int i = 1; i < numInputs; i++)
     for (int j = 0; j < num_dim; j++) {
-      if (j != axis)
+      if (j != num_dim - 1 - axis)
         assert(inputs[i].adim[j] == outputs[0].adim[j]);
       else
         outputs[0].adim[j] += inputs[i].adim[j];
@@ -69,12 +69,12 @@ void Concat::create_output_and_partition(FFModel& model)
         dims[j] += inputs[i].adim[num_dim-1-j];
     }
   //for (int i = 0; i < num_dim; i++)
-  //  printf("concat: dim[%d] = %d\n", i, dims[i]);
+    //printf("concat: dim[%d] = %d\n", i, dims[i]);
   switch (domain.get_dim()) {
     case 1:
     {
       Rect<1> part_rect = domain;
-      outputs[0] = model.create_tensor_and_partition<1>(dims, IndexSpaceT<1>(task_is), DT_FLOAT);
+      outputs[0] = model.create_tensor<1>(dims, IndexSpaceT<1>(task_is), DT_FLOAT);
       for (int i = 0; i < numInputs; i++) {
         Rect<1> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -91,7 +91,7 @@ void Concat::create_output_and_partition(FFModel& model)
     case 2:
     {
       Rect<2> part_rect = domain;
-      outputs[0] = model.create_tensor_and_partition<2>(dims, IndexSpaceT<2>(task_is), DT_FLOAT);
+      outputs[0] = model.create_tensor<2>(dims, IndexSpaceT<2>(task_is), DT_FLOAT);
       for (int i = 0; i < numInputs; i++) {
         Rect<2> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -108,7 +108,7 @@ void Concat::create_output_and_partition(FFModel& model)
     case 3:
     {
       Rect<3> part_rect = domain;
-      outputs[0] = model.create_tensor_and_partition<3>(dims, IndexSpaceT<3>(task_is), DT_FLOAT);
+      outputs[0] = model.create_tensor<3>(dims, IndexSpaceT<3>(task_is), DT_FLOAT);
       for (int i = 0; i < numInputs; i++) {
         Rect<3> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -125,7 +125,7 @@ void Concat::create_output_and_partition(FFModel& model)
     case 4:
     {
       Rect<4> part_rect = domain;
-      outputs[0] = model.create_tensor_and_partition<4>(dims, IndexSpaceT<4>(task_is), DT_FLOAT);
+      outputs[0] = model.create_tensor<4>(dims, IndexSpaceT<4>(task_is), DT_FLOAT);
       for (int i = 0; i < numInputs; i++) {
         Rect<4> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());

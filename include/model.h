@@ -142,7 +142,6 @@ struct Tensor {
     part_grad = LogicalPartition::NO_PART;
     owner_op = NULL;
     owner_idx = 0;
-    guid = 0;
   }
   void inline_map(FFConfig &config);
   void inline_unmap(FFConfig &config);
@@ -155,8 +154,6 @@ struct Tensor {
   // Describes the ownership of this tensor
   Op* owner_op;
   int owner_idx;
-  // a global unique ID for each tensor
-  int guid;
   // The following fields are initialized after model.compile
   LogicalRegion region, region_grad;
   LogicalPartition part, part_grad;
@@ -186,17 +183,10 @@ public:
 
 class Op {
 public:
-<<<<<<< HEAD
   Op(FFModel& model, const std::string& _name, const Tensor& input);
   Op(FFModel& model, const std::string& _name, const Tensor& input1, const Tensor& input2);
   Op(FFModel& model, const std::string& _name, int num, const Tensor* inputs);
-  Op(FFModel& model, const std::string& _name);
-=======
-  Op(const std::string& _name, const Tensor& input);
-  Op(const std::string& _name, const Tensor& input1, const Tensor& input2);
-  Op(const std::string& _name, int num, const Tensor* inputs);
-  Op(const std::string& _name, int num);
->>>>>>> 65c475a40197210b184f4c031754c12cdeda108f
+  Op(FFModel& model, const std::string& _name, int numInputs);
 
   virtual void prefetch(const FFModel&);
   virtual Tensor init_inout(FFModel&, const Tensor&) = 0;
@@ -322,23 +312,15 @@ public:
                 const std::string& reduction);
 
   template<int NDIM>
-  Tensor new_tensor(const int dims[],
-                    DataType data_type,
-                    bool create_grad = true);
-
-  Tensor create_tensor_and_partition(const Tensor& input,
-                                     const std::string& pc_name);
-
+  Tensor create_tensor(const int dims[],
+                       const std::string& pc_name,
+                       DataType data_type,
+                       bool create_grad = true);
   template<int NDIM>
-  Tensor create_tensor_and_partition(const int dims[],
-                                     const std::string& pc_name,
-                                     DataType data_type,
-                                     bool create_grad = true);
-  template<int NDIM>
-  Tensor create_constant_and_partition(const int dims[],
-                                       const std::string& pc_name,
-                                       float value,
-                                       DataType date_type);
+  Tensor create_constant(const int dims[],
+                         const std::string& pc_name,
+                         float value,
+                         DataType date_type);
   template<int NDIM>
   void create_disjoint_partition(const Tensor& tensor,
                                  const IndexSpaceT<NDIM>& part_is,
@@ -351,10 +333,10 @@ public:
                                                      LogicalPartition& part_fwd,
                                                      LogicalPartition& part_bwd);
   template<int NDIM>
-  Tensor create_tensor_and_partition(const int* dims,
-                                     const IndexSpaceT<NDIM>& part_is,
-                                     DataType data_type,
-                                     bool create_grad = true);
+  Tensor create_tensor(const int* dims,
+                       const IndexSpaceT<NDIM>& part_is,
+                       DataType data_type,
+                       bool create_grad = true);
   template<int NDIM>
   Parameter create_conv_weight(Op* op,
                                const int* dims,
@@ -392,13 +374,12 @@ public:
   IndexSpace get_or_create_task_is(int ndims, const std::string& pcname);
   IndexSpace get_task_is(const Domain& domain) const;
 public:
-  int op_global_guid, ts_global_guid;
+  int op_global_guid;
   FFConfig config;
   Optimizer* optimizer;
   //Tensor inputImage, inputRaw, inputLabel;
   std::vector<Op*> layers;
   std::vector<Parameter> parameters;
-  std::map<int, Tensor> ts_guid_to_tensor;
   FFHandler handlers[MAX_NUM_WORKERS];
   Future current_metrics;
   //DataLoader *dataLoader;
