@@ -16,24 +16,36 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::softmax(std::string name,
-                        const Tensor& _logit,
+Tensor FFModel::softmax(const Tensor& _logit,
                         const Tensor& _label)
 {
   assert(_logit.numDim == 2);
   assert(_label.numDim == 2);
-  Softmax *sm = new Softmax(*this, name, _logit, _label);
+  Softmax *sm = new Softmax(*this, _logit, _label);
   layers.push_back(sm);
   return sm->outputs[0];
 }
 
 Softmax::Softmax(FFModel& model,
-                 const std::string& pcname,
                  const Tensor& _logit,
                  const Tensor& _label)
-: Op(pcname, _logit, _label), profiling(model.config.profiling)
+: Op(model, "Softmax", _logit, _label), profiling(model.config.profiling)
+{
+  outputs[0].numDim = 2;
+  outputs[0].adim[0] = _logit.adim[0];
+  outputs[0].adim[1] = _logit.adim[1];
+}
+
+
+void Softmax::create_weights(FFModel& model)
+{
+  // Do nothing since we don't ahve weights
+}
+
+void Softmax::create_output_and_partition(FFModel& model)
 {
   // Retrive the task indexspace for the op
+  std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
@@ -42,9 +54,8 @@ Softmax::Softmax(FFModel& model,
   int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
   // Current require data parallelism for Softmax
   assert(num_par_c == 1);
-
   {
-    const int dims[2] = {_logit.adim[1], _logit.adim[0]};
+    const int dims[2] = {inputs[0].adim[1], inputs[0].adim[0]};
     outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
   }
   // Compute partition bound for input

@@ -16,144 +16,59 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::flat(std::string name, Tensor input)
+Tensor FFModel::flat(const Tensor& input)
 {
   assert(input.numDim == 4);
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
-  Flat *flat = new Flat(*this, name, input);
-  flat->add_to_model(*this);
+  Flat *flat = new Flat(*this, input);
+  layers.push_back(flat);
   return flat->outputs[0];
 }
 
-Flat* FFModel::flat(std::string name)
+Flat* FFModel::flat()
 {
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
-  Flat *flat = new Flat(*this, name);
+  Flat *flat = new Flat(*this);
+  layers.push_back(flat);
   return flat;
 }
 
 Flat::Flat(FFModel& model,
-           const std::string& pcname,
            const Tensor& _input)
-: Op(pcname, _input)
+: Op(model, "Flat", _input)
 {
-  create_output_and_partition(model);
-#ifdef DEADCODE
-  Rect<2, coord_t> output_rect(Point<2>(0, 0), Point<2>(output_c-1, output_n-1));
-  IndexSpaceT<2> output_is = runtime->create_index_space(ctx, output_rect);
-  LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
-  LogicalRegion output_grad_lr =
-    runtime->create_logical_region(ctx, output_is, fs);
-  Transform<2, 2, coord_t> transform;
-  //int extent_c = input.pdim[0] * input.pdim[1] * input.pdim[2];
-  //int extent_n = input.pdim[3];
-  // We assume equal partition for load balancing
-  assert(output_c % fc_num_par_c == 0);
-  assert(output_n % fc_num_par_n == 0);
-  int extent_c = output_c / fc_num_par_c;
-  int extent_n = output_n / fc_num_par_n;
-  Rect<2, coord_t> extent(Point<2>(0, 0), Point<2>(extent_c-1,extent_n-1));
-  transform[0][0] = extent_c; transform[0][1] = 0;
-  transform[1][0] = 0; transform[1][1] = extent_n;
-  IndexPartition output_ip =
-    runtime->create_partition_by_restriction(ctx, output_is, task_is_2d, transform, extent);
-  assert(runtime->is_index_partition_disjoint(ctx, output_ip));
-  assert(runtime->is_index_partition_complete(ctx, output_ip));
-  LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
-  LogicalPartition output_grad_lp =
-    runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
-  output.numDim = 2;
-  output.adim[0] = output_c;
-  output.adim[1] = output_n;
-  output.pdim[0] = extent_c;
-  output.pdim[1] = extent_n;
-  output.region = output_lr;
-  output.region_grad = output_grad_lr;
-  output.part = output_lp;
-  output.part_grad = output_grad_lp;
-  printf("Create flat layer: input(N=%d C=%d H=%d W=%d) -> output(N=%d C=%d)\n",
-         _input.adim[3], _input.adim[2], _input.adim[1], _input.adim[0],
-         output.adim[1], output.adim[0]);
- 
-  FieldSpace proj_fs = runtime->create_field_space(ctx);
-  {
-    FieldAllocator allocator = runtime->create_field_allocator(ctx, proj_fs);
-    allocator.allocate_field(sizeof(Rect<2>), FID_DATA);
-  }
-  LogicalRegion proj_lr = runtime->create_logical_region(ctx, task_is_3d, proj_fs);
-  InlineLauncher launcher(
-      RegionRequirement(proj_lr, WRITE_DISCARD, EXCLUSIVE, proj_lr)
-                                           .add_field(FID_DATA));
-  PhysicalRegion proj_pr = runtime->map_region(ctx, launcher);
-  proj_pr.wait_until_valid();
-  coord_t subtotal = 0;
-  {
-    const FieldAccessor<WRITE_DISCARD, Rect<2>, 3, coord_t,
-              Realm::AffineAccessor<Rect<2>, 3, coord_t> > ra(proj_pr, FID_DATA);
-    Rect<3> rect = runtime->get_index_space_domain(ctx, task_is_3d);
-    for(PointInRectIterator<3> pir(rect); pir(); ++pir) {
-      IndexSpace subspace = runtime->get_index_subspace(_input.part.get_index_partition(), *pir);
-      Rect<3> subrect = runtime->get_index_space_domain(ctx, subspace);
-      // Currently we assume the size of each subregion is divisible by output_n (i.e., batch size)
-      assert(subrect.volume() % output_n == 0);
-      coord_t subsize = subrect.volume() / output_n;
-      ra[*pir] = Rect<2>(Point<2>(subtotal, 0), Point<2>(subtotal + subsize - 1, output_n - 1));
-      subtotal += subsize;
-    }
-  }
-  runtime->unmap_region(ctx, proj_pr);
-  Transform<3, 3, coord_t> proj_trans;
-  proj_trans[0][0] = 1; proj_trans[0][1] = 0; proj_trans[0][2] = 0;
-  proj_trans[1][0] = 0; proj_trans[1][1] = 1; proj_trans[1][2] = 0;
-  proj_trans[2][0] = 0; proj_trans[2][1] = 0; proj_trans[2][2] = 1;
-  Rect<3, coord_t> proj_extent(Point<3>(0, 0, 0), Point<3>(0, 0, 0));
-  IndexPartition proj_ip =
-    runtime->create_partition_by_restriction(ctx, task_is_3d, task_is_3d,
-                                             proj_trans, proj_extent);
-  LogicalPartition proj_lp =
-     runtime->get_logical_partition(ctx, proj_lr, proj_ip);
-  IndexPartition flat_ip =
-    runtime->create_partition_by_image_range(ctx, output_is,
-                         proj_lp, proj_lr, FID_DATA, task_is_3d);
-  assert(runtime->is_index_partition_disjoint(ctx, flat_ip));
-  assert(runtime->is_index_partition_complete(ctx, flat_ip));
-  flat_lp = runtime->get_logical_partition(ctx, output_lr, flat_ip);
-  flat_grad_lp = runtime->get_logical_partition(ctx, output_grad_lr, flat_ip);
-  return;
-/*
-  Transform<2, 3, coord_t> flat_trans;
-  flat_trans[0][0] = input.pdim[0] * input.pdim[1] * input.adim[2];
-  flat_trans[0][1] = input.adim[0] * input.pdim[1] * input.adim[2];
-  flat_trans[0][2] = 0;
-  flat_trans[1][0] = 0;
-  flat_trans[1][1] = 0;
-  flat_trans[1][2] = input.pdim[3];
-  IndexPartition flat_ip =
-    runtime->create_partition_by_restriction(ctx, output_is, part_is_3d, flat_trans, extent);
-  flat_lp = runtime->get_logical_partition(ctx, output_lr, flat_ip);
-*/
-#endif
+  assert(_input.numDim == 4);
+  int out_dim = _input.adim[0] * _input.adim[1] * _input.adim[2];
+  int batch_size = _input.adim[3];
+  outputs[0].numDim = 2;
+  outputs[0].adim[0] = out_dim;
+  outputs[0].adim[1] = batch_size;
 }
 
-Flat::Flat(FFModel& model,
-           const std::string& pcname)
-: Op(pcname, 1)
+Flat::Flat(FFModel& model)
+: Op(model, "Flat", 1)
 {
 }
 
 Tensor Flat::init_inout(FFModel& model, const Tensor& _input)
 {
-  add_to_model(model);
   inputs[0] = _input;
   create_output_and_partition(model);
   return outputs[0];
 }
 
+/*
 void Flat::add_to_model(FFModel& model)
 {
   model.layers.push_back(this);
+}
+*/
+
+void Flat::create_weights(FFModel& model)
+{
+  // Do nothing
 }
 
 void Flat::create_output_and_partition(FFModel& model)

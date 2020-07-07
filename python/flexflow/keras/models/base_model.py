@@ -80,6 +80,7 @@ class BaseModel(object):
     
   def _compile(self, optimizer):
     self.ffoptimizer = optimizer
+    self.ffmodel.compile()
       
   def _set_optimizer(self):
     assert self.ffoptimizer != 0, "optimizer is not set"

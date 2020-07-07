@@ -79,4 +79,3 @@ class Model(BaseModel):
     for layer_id in self._layers:
       layer = self._layers[layer_id]
       layer.nb_visited_prev_layers = 0
-    

@@ -16,8 +16,7 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::embedding(const std::string& pcname,
-                          const Tensor& input,
+Tensor FFModel::embedding(const Tensor& input,
                           int num_entries,
                           int out_dim,
                           AggrMode aggr,
@@ -26,14 +25,13 @@ Tensor FFModel::embedding(const std::string& pcname,
   //assert(config.strategies.find(name) != config.strategies.end());
   //ParallelConfig pc = config.strategies[name];
   //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
-  Embedding* embed = new Embedding(*this, pcname, input, num_entries,
+  Embedding* embed = new Embedding(*this, input, num_entries,
                                    out_dim, aggr, kernel_initializer);
-  embed->add_to_model(*this);
+  layers.push_back(embed);
   return embed->outputs[0];
 }
 
-Embedding* FFModel::embedding(const std::string& pcname,
-                              int num_entries,
+Embedding* FFModel::embedding(int num_entries,
                               int out_dim,
                               AggrMode aggr,
                               Initializer* kernel_initializer)
@@ -41,94 +39,54 @@ Embedding* FFModel::embedding(const std::string& pcname,
   //assert(config.strategies.find(name) != config.strategies.end());
   //ParallelConfig pc = config.strategies[name];
   //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
-  Embedding* embed = new Embedding(*this, pcname, num_entries,
+  Embedding* embed = new Embedding(*this, num_entries,
                                    out_dim, aggr, kernel_initializer);
+  layers.push_back(embed);
   return embed;
 }
 
 Embedding::Embedding(FFModel& model,
-                     const std::string& pcname,
                      const Tensor& _input,
                      //std::stirng name,
-                     int num_entries, int outDim,
+                     int _num_entries, int outDim,
                      AggrMode _aggr,
-                     Initializer* kernel_initializer)
-: Op(pcname, _input), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
+                     Initializer* _kernel_initializer)
+: Op(model, "Embed_"+std::to_string(_num_entries)+"x"+std::to_string(outDim), _input),
+  num_entries(_num_entries), out_channels(outDim), aggr(_aggr),
+  kernel_initializer(_kernel_initializer), profiling(model.config.profiling)
 {
   assert(_input.numDim == 2);
-  create_kernel(model, num_entries, kernel_initializer);
-  create_output_and_partition(model);
-#ifdef DEADCODE
-  // Create kernel tensor
-  Rect<2> kernel_rect(Point<2>(0, 0), Point<2>(outDim-1, inDim-1));
-  FieldSpace fs = runtime->create_field_space(ctx);
-  FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
-  allocator.allocate_field(sizeof(float), FID_DATA);
-  IndexSpaceT<2> kernel_is = runtime->create_index_space(ctx, kernel_rect);
-  kernel.region = runtime->create_logical_region(ctx, kernel_is, fs);
-  {
-    int num_part_c = part_rect.hi[0] - part_rect.lo[0] + 1;
-    int extent_c = (outDim + num_part_c - 1) / num_part_c;
-    Rect<2> extent(Point<2>(0, 0), Point<2>(extent_c, inDim-1));
-    Transform<2, 2> transform;
-    transform[0][0] = extent_c; transform[0][1] = 0;
-    transform[1][0] = 0; transform[1][1] = 0;
-    IndexPartition ip = runtime->create_partition_by_restriction(
-        ctx, kernel_is, task_is, transform, extent);
-    kernel.part = runtime->get_logical_partition(
-        ctx, kernel.region, ip);
-  }
-  // Create kernel tensor gradients
-  Rect<3> kernel_grad_rect(Point<3>(0, 0, 0),
-      Point<3>(outDim-1, inDim-1, part_rect.hi[1] - part_rect.lo[1]));
-  IndexSpaceT<3> kernel_grad_is = runtime->create_index_space(
-      ctx, kernel_grad_rect);
-  kernel.region_grad = runtime->create_logical_region(
-      ctx, kernel_grad_is, fs);
-  {
-    int num_part_c = part_rect.hi[0] - part_rect.lo[0] + 1;
-    int extent_c = (outDim + num_part_c - 1) / num_part_c;
-    Rect<3> extent(Point<3>(0, 0, 0), Point<3>(extent_c, inDim-1, 0));
-    Transform<3, 2> transform;
-    transform[0][0] = extent_c; transform[0][1] = 0;
-    transform[1][0] = 0; transform[1][1] = 0;
-    transform[2][0] = 0; transform[2][1] = 1;
-    IndexPartition ip = runtime->create_partition_by_restriction(
-        ctx, kernel_grad_is, task_is, transform, extent);
-    kernel.part_grad = runtime->get_logical_partition(
-        ctx, kernel.region_grad, ip);
-    assert(runtime->is_index_partition_disjoint(ctx, ip));
-    assert(runtime->is_index_partition_complete(ctx, ip));
-  }
-#endif
+  outputs[0].numDim = 2;
+  outputs[0].adim[0] = out_channels;
+  outputs[0].adim[1] = inputs[0].adim[1];
 }
 
 Embedding::Embedding(FFModel& model,
-                     const std::string& pcname,
-                     int num_entries, int outDim,
+                     int _num_entries, int outDim,
                      AggrMode _aggr,
                      Initializer* kernel_initializer)
-: Op(pcname, 1), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
+: Op(model, "Embed_"+std::to_string(_num_entries)+"x"+std::to_string(outDim), 1),
+  num_entries(_num_entries), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
 {
-  create_kernel(model, num_entries, kernel_initializer);
 }
 
 Tensor Embedding::init_inout(FFModel& model, const Tensor& _input)
 {
-  add_to_model(model);
   assert(_input.numDim == 2);
   inputs[0] = _input;
   create_output_and_partition(model);
   return outputs[0];
 }
 
+/*
 void Embedding::add_to_model(FFModel& model)
 {
   model.layers.push_back(this);
   model.parameters.push_back(weights[0]);
 }
+*/
 
-void Embedding::create_kernel(FFModel& model, int num_entries, Initializer* kernel_initializer)
+void Embedding::create_weights(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;

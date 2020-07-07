@@ -94,6 +94,7 @@ def top_level_task():
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.001)
   ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.compile()
 
   # input.inline_map(ffconfig)
   # input_array = input.get_array(ffconfig, DataType.DT_FLOAT)

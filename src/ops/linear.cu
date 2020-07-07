@@ -16,8 +16,7 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::dense(std::string name,
-                      const Tensor& input,
+Tensor FFModel::dense(const Tensor& input,
                       int outDim, 
                       ActiMode activation,
                       bool use_bias, 
@@ -31,15 +30,13 @@ Tensor FFModel::dense(std::string name,
   if (bias_initializer == NULL) {
     bias_initializer = new ZeroInitializer();
   }
-  Linear *li = new Linear(*this, name, input, outDim, activation, use_bias,
+  Linear *li = new Linear(*this, input, outDim, activation, use_bias,
                           kernel_initializer, bias_initializer);
-  li->add_to_model(*this);
+  layers.push_back(li);
   return li->outputs[0];
 }
 
-Linear* FFModel::dense(std::string name,
-                       int inDim,
-                       int outDim, 
+Linear* FFModel::dense(int inDim, int outDim, 
                        ActiMode activation,
                        bool use_bias, 
                        Initializer* kernel_initializer,
@@ -52,63 +49,50 @@ Linear* FFModel::dense(std::string name,
   if (bias_initializer == NULL) {
     bias_initializer = new ZeroInitializer();
   }
-  Linear *li = new Linear(*this, name, inDim, outDim, activation, use_bias,
+  Linear *li = new Linear(*this, inDim, outDim, activation, use_bias,
                           kernel_initializer, bias_initializer);
+  layers.push_back(li);
   return li;
 }
 
-// Deprecated API -- TO BE REMOVED
-Tensor FFModel::linear(std::string name,
-                       const Tensor& input,
-                       int outDim,
-                       ActiMode activation,
-                       bool use_bias,
-                       Initializer* kernel_initializer,
-                       Initializer* bias_initializer)
-{
-  fprintf(stderr, "FFModel::linear is deprecated and will be removed,"
-         "please use FFModel::dense instead");
-  return dense(name, input, outDim, activation,
-               kernel_initializer, bias_initializer);
-}
-
 Linear::Linear(FFModel& model,
-               const std::string& pcname,
                const Tensor& _input,
                int out_dim,
                ActiMode _activation,
-               bool use_bias,
-               Initializer* kernel_initializer,
-               Initializer* bias_initializer)
-: Op(pcname, _input), 
+               bool _use_bias,
+               Initializer* _kernel_initializer,
+               Initializer* _bias_initializer)
+: Op(model, "Dense_"+std::to_string(out_dim), _input), 
   in_channels(_input.adim[0]), out_channels(out_dim),
-  activation(_activation),
+  activation(_activation), use_bias(_use_bias),
+  kernel_initializer(_kernel_initializer),
+  bias_initializer(_bias_initializer),
   profiling(model.config.profiling)
 {
   assert(_input.numDim == 2);
-  create_kernel_bias(model, use_bias, kernel_initializer, bias_initializer);
-  create_output_and_partition(model);
+  int batch_size = _input.adim[1];
+  outputs[0].numDim = 2;
+  outputs[0].adim[0] = out_channels;
+  outputs[0].adim[1] = batch_size;
 }
 
 Linear::Linear(FFModel& model,
-               const std::string& pcname,
-               int in_dim,
-               int out_dim,
+               int in_dim, int out_dim,
                ActiMode _activation,
-               bool use_bias,
-               Initializer* kernel_initializer,
-               Initializer* bias_initializer)
-: Op(pcname, 1), 
+               bool _use_bias,
+               Initializer* _kernel_initializer,
+               Initializer* _bias_initializer)
+: Op(model, "Dense_"+std::to_string(out_dim), 1), 
   in_channels(in_dim), out_channels(out_dim),
-  activation(_activation),
+  activation(_activation), use_bias(_use_bias),
+  kernel_initializer(_kernel_initializer),
+  bias_initializer(_bias_initializer),
   profiling(model.config.profiling)
 {
-  create_kernel_bias(model, use_bias, kernel_initializer, bias_initializer);
 }
 
 Tensor Linear::init_inout(FFModel& model, const Tensor& _input)
 {
-  add_to_model(model);
   assert(_input.numDim == 2);
   assert(_input.adim[0] == in_channels);
   inputs[0] = _input;
@@ -116,6 +100,7 @@ Tensor Linear::init_inout(FFModel& model, const Tensor& _input)
   return outputs[0];
 }
 
+/*
 void Linear::add_to_model(FFModel& model)
 {
   model.layers.push_back(this);
@@ -125,8 +110,9 @@ void Linear::add_to_model(FFModel& model)
     model.parameters.push_back(weights[1]);
   }
 }
+*/
 
-void Linear::create_kernel_bias(FFModel& model, bool use_bias, Initializer* kernel_initializer, Initializer* bias_initializer)
+void Linear::create_weights(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;

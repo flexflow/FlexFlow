@@ -64,4 +64,3 @@ class Sequential(BaseModel):
       layer = model.layers[layer_id]
       layer.reset_connection()
       self.__add_layer(layer)
-      

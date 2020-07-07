@@ -22,9 +22,9 @@ ifndef FF_HOME
 $(error FF_HOME variable is not defined, aborting build)
 endif
 
-ifndef CUDNN_HOME
-$(error CUDNN_HOME variable is not defined, aborting build)
-endif
+#ifndef CUDNN_HOME
+#$(error CUDNN_HOME variable is not defined, aborting build)
+#endif
 
 
 # Flags for directing the runtime makefile what to include
