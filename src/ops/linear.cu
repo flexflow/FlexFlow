@@ -98,7 +98,7 @@ Linear::Linear(FFModel& model,
                bool use_bias,
                Initializer* kernel_initializer,
                Initializer* bias_initializer)
-: Op(pcname), 
+: Op(pcname, 1), 
   in_channels(in_dim), out_channels(out_dim),
   activation(_activation),
   profiling(model.config.profiling)

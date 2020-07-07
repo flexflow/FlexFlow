@@ -157,6 +157,7 @@ def top_level_task():
   cbias = cbias_tensor.get_flat_array(ffconfig, DataType.DT_FLOAT)
   print(cbias.shape)
   print(cbias)
+  #save_image(cbias, 2)
   cbias_tensor.inline_unmap(ffconfig)
   
   label.inline_map(ffconfig)
@@ -167,6 +168,14 @@ def top_level_task():
   label.inline_unmap(ffconfig)
   
   #ffmodel.print_layers(0)
+  
+def save_image(batch_image_array, id):
+  image_array = batch_image_array[id, :, :, :]
+  image_array = image_array.transpose(1, 2, 0)
+  image_array = image_array*255
+  image_array = image_array.astype('uint8')
+  pil_image = Image.fromarray(image_array).convert('RGB')
+  pil_image.save("img.jpeg")
 
 
 if __name__ == "__main__":

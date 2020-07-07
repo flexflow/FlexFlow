@@ -124,7 +124,7 @@ ElementBinary::ElementBinary(FFModel& model,
 ElementBinary::ElementBinary(FFModel& model,
                              ElementBinary::OpType _op_type,
                              const std::string& pcname)
-: Op(pcname), op_type(_op_type)
+: Op(pcname, 2), op_type(_op_type)
 {
 }
 

@@ -64,6 +64,7 @@ class OpType(Enum):
   ELEMENT_UNARY = 1018
   ELEMENT_BINARY = 1019
   MSELOSS = 1020
+  BATCH_NORM = 1021
   
 def enum_to_int(enum, enum_item):
   for item in enum:
@@ -270,6 +271,13 @@ class Concat(Op):
 class MSELoss(Op):
   def __init__(self, handle):
     super(MSELoss, self).__init__(handle)
+    
+# -----------------------------------------------------------------------
+# BatchNorm
+# -----------------------------------------------------------------------
+class BatchNorm(Op):
+  def __init__(self, handle):
+    super(BatchNorm, self).__init__(handle)
       
 # -----------------------------------------------------------------------
 # FFConfig
@@ -581,6 +589,11 @@ class FFModel(object):
     c_activation = enum_to_int(ActiMode, activation)
     handle = ffc.flexflow_model_add_pool2d_no_inout(self.handle, name.encode('utf-8'), kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
     return Pool2D(handle)
+    
+  def batch_norm(self, name, input, relu=True):
+    handle = ffc.flexflow_model_add_batch_norm(self.handle, name.encode('utf-8'), input.handle, relu)
+    self.add_layer(OpType.BATCH_NORM)
+    return Tensor(handle)
 
   def dense(self, name, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
     c_activation = enum_to_int(ActiMode, activation)
