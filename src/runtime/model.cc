@@ -154,8 +154,9 @@ Op::Op(FFModel& model,
 }
 
 Op::Op(FFModel& model,
-       const std::string& _name)
-: numInputs(0), numWeights(0), numOutputs(1)
+       const std::string& _name,
+       int _numInputs)
+: numInputs(_numInputs), numWeights(0), numOutputs(1)
 {
   std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);

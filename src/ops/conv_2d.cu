@@ -115,7 +115,7 @@ Conv2D::Conv2D(FFModel& model,
                bool _use_bias,
                Initializer* _kernel_initializer,
                Initializer* _bias_initializer)
-: Op(model, "Conv2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w)),
+: Op(model, "Conv2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w), 1),
   in_channels(in_dim), out_channels(out_dim),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),

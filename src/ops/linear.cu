@@ -82,7 +82,7 @@ Linear::Linear(FFModel& model,
                bool _use_bias,
                Initializer* _kernel_initializer,
                Initializer* _bias_initializer)
-: Op(model, "Dense_"+std::to_string(out_dim)), 
+: Op(model, "Dense_"+std::to_string(out_dim), 1), 
   in_channels(in_dim), out_channels(out_dim),
   activation(_activation), use_bias(_use_bias),
   kernel_initializer(_kernel_initializer),

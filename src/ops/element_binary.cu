@@ -94,7 +94,7 @@ ElementBinary::ElementBinary(FFModel& model,
 
 ElementBinary::ElementBinary(FFModel& model,
                              ElementBinary::OpType _op_type)
-: Op(model, "ElementBinary_"+std::to_string(_op_type)), op_type(_op_type)
+: Op(model, "ElementBinary_"+std::to_string(_op_type), 2), op_type(_op_type)
 {
 }
 

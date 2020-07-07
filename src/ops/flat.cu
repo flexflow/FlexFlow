@@ -48,7 +48,7 @@ Flat::Flat(FFModel& model,
 }
 
 Flat::Flat(FFModel& model)
-: Op(model, "Flat")
+: Op(model, "Flat", 1)
 {
 }
 
