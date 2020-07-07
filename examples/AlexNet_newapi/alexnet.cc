@@ -93,6 +93,7 @@ void top_level_task(const Task* task,
   t = linear3->init_inout(ff, t);
   t = ff.softmax("softmax", t, label);
   ff.optimizer = new SGDOptimizer(&ff, 0.01f);
+  ff.compile();
   // Data Loader
   DataLoader data_loader(ff, input, label);
   ff.init_layers();
