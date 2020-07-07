@@ -212,7 +212,6 @@ flexflow_model_add_pool2d_no_inout(
 flexflow_tensor_t
 flexflow_model_add_batch_norm(
   flexflow_model_t handle,
-  const char* name,
   const flexflow_tensor_t input,
   bool relu);
 

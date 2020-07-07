@@ -186,7 +186,7 @@ public:
   Op(FFModel& model, const std::string& _name, const Tensor& input);
   Op(FFModel& model, const std::string& _name, const Tensor& input1, const Tensor& input2);
   Op(FFModel& model, const std::string& _name, int num, const Tensor* inputs);
-  Op(FFModel& model, const std::string& _name, int numInputs);
+  Op(FFModel& model, const std::string& _name, int num);
 
   virtual void prefetch(const FFModel&);
   virtual Tensor init_inout(FFModel&, const Tensor&) = 0;
