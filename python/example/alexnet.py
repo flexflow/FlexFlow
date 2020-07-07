@@ -77,7 +77,7 @@ def top_level_task():
   # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
   # ts0 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
   # ts1 = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2)
-  t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_RELU)
+  t = ffmodel.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_RELU, True, kernel_init, bias_init)
   #t = ffmodel.concat("concat", [ts0, ts1], 1)
   t = ffmodel.pool2d("pool1", t, 3, 3, 2, 2, 0, 0)
   t = ffmodel.conv2d("conv2", t, 192, 5, 5, 1, 1, 2, 2, ActiMode.AC_MODE_RELU)
@@ -94,6 +94,7 @@ def top_level_task():
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.001)
   ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.compile()
 
   # input.inline_map(ffconfig)
   # input_array = input.get_array(ffconfig, DataType.DT_FLOAT)

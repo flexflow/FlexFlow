@@ -16,115 +16,85 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::add(std::string name,
-                    const Tensor& in1,
+Tensor FFModel::add(const Tensor& in1,
                     const Tensor& in2)
 {
-  ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_ADD, name, in1, in2);
-  ele->add_to_model(*this);
+  ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_ADD, in1, in2);
+  layers.push_back(ele);
   return ele->outputs[0];
 }
 
-ElementBinary* FFModel::add(std::string name)
+ElementBinary* FFModel::add()
 {
-  ElementBinary* ele = new ElementBinary(*this, ElementBinary::OP_ADD, name);
+  ElementBinary* ele = new ElementBinary(*this, ElementBinary::OP_ADD);
+  layers.push_back(ele);
   return ele;
 }
 
-Tensor FFModel::subtract(std::string name,
-                         const Tensor& in1,
+Tensor FFModel::subtract(const Tensor& in1,
                          const Tensor& in2)
 {
-  ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_SUB, name, in1, in2);
-  ele->add_to_model(*this);
+  ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_SUB, in1, in2);
+  layers.push_back(ele);
   return ele->outputs[0];
 }
 
-ElementBinary* FFModel::subtract(std::string name)
+ElementBinary* FFModel::subtract()
 {
-  ElementBinary* ele = new ElementBinary(*this, ElementBinary::OP_SUB, name);
+  ElementBinary* ele = new ElementBinary(*this, ElementBinary::OP_SUB);
+  layers.push_back(ele);
   return ele;
 }
 
-Tensor FFModel::multiply(std::string name,
-                         const Tensor& in1,
+Tensor FFModel::multiply(const Tensor& in1,
                          const Tensor& in2)
 {
-  ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_MUL, name, in1, in2);
-  ele->add_to_model(*this);
+  ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_MUL, in1, in2);
+  layers.push_back(ele);
   return ele->outputs[0];
 }
 
-ElementBinary* FFModel::multiply(std::string name)
+ElementBinary* FFModel::multiply()
 {
-  ElementBinary* ele = new ElementBinary(*this, ElementBinary::OP_MUL, name);
+  ElementBinary* ele = new ElementBinary(*this, ElementBinary::OP_MUL);
+  layers.push_back(ele);
   return ele;
 }
 
-Tensor FFModel::divide(std::string name,
-                       const Tensor& in1,
+Tensor FFModel::divide(const Tensor& in1,
                        const Tensor& in2)
 {
-  ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_DIV, name, in1, in2);
-  ele->add_to_model(*this);
+  ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_DIV, in1, in2);
+  layers.push_back(ele);
   return ele->outputs[0];
 }
 
-ElementBinary* FFModel::divide(std::string name)
+ElementBinary* FFModel::divide()
 {
-  ElementBinary* ele = new ElementBinary(*this, ElementBinary::OP_DIV, name);
+  ElementBinary* ele = new ElementBinary(*this, ElementBinary::OP_DIV);
+  layers.push_back(ele);
   return ele;
 }
 
 ElementBinary::ElementBinary(FFModel& model,
                              ElementBinary::OpType _op_type,
-                             const std::string& pcname,
                              const Tensor& in1,
                              const Tensor& in2)
-: Op(pcname, in1, in2), op_type(_op_type)
+: Op(model, "ElementBinary_"+std::to_string(_op_type), in1, in2), op_type(_op_type)
 {
   //TODO: implement broadcast op
   assert(in1.numDim == in2.numDim);
   int dim = in1.numDim;
-  for (int i = 0; i < dim; i++)
+  outputs[0].numDim = in1.numDim;
+  for (int i = 0; i < dim; i++) {
     assert(in1.adim[i] == in2.adim[i]);
-  switch (dim) {
-    case 1:
-    {
-      task_is = model.get_or_create_task_is(1, name);
-      create_output_and_partition<1>(model);
-      break;
-    }
-    case 2:
-    {
-      task_is = model.get_or_create_task_is(2, name);
-      create_output_and_partition<2>(model);
-      break;
-    }
-    case 3:
-    {
-      task_is = model.get_or_create_task_is(3, name);
-      create_output_and_partition<3>(model);
-      break;
-    }
-    case 4:
-    {
-      task_is = model.get_or_create_task_is(4, name);
-      create_output_and_partition<4>(model);
-      break;
-    }
-    default:
-    {
-      // Unsupported dim for ElementBinarywise operator
-      assert(false);
-    }
+    outputs[0].adim[i] = in1.adim[i];
   }
 }
 
 ElementBinary::ElementBinary(FFModel& model,
-                             ElementBinary::OpType _op_type,
-                             const std::string& pcname)
-: Op(pcname, 2), op_type(_op_type)
+                             ElementBinary::OpType _op_type)
+: Op(model, "ElementBinary_"+std::to_string(_op_type), 2), op_type(_op_type)
 {
 }
 
@@ -135,37 +105,54 @@ Tensor ElementBinary::init_inout(FFModel& model,
   // FlexFlow assumes a single tensor as input
   assert(false);
   Tensor in1 = input, in2 = input;
-  add_to_model(model);
   inputs[0] = in1;
   inputs[1] = in2;
+  create_output_and_partition(model);
+  return outputs[0];
+}
+
+/*
+void ElementBinary::add_to_model(FFModel& model)
+{
+  model.layers.push_back(this);
+}
+*/
+
+void ElementBinary::create_weights(FFModel& model)
+{
+  // Do nothing
+}
+
+void ElementBinary::create_output_and_partition(FFModel& model)
+{
   //TODO: implement broadcast op
-  assert(in1.numDim == in2.numDim);
-  int dim = in1.numDim;
+  assert(inputs[0].numDim == inputs[1].numDim);
+  int dim = inputs[0].numDim;
   for (int i = 0; i < dim; i++)
-    assert(in1.adim[i] == in2.adim[i]);
+    assert(inputs[0].adim[i] == inputs[1].adim[i]);
   switch (dim) {
     case 1:
     {
       task_is = model.get_or_create_task_is(1, name);
-      create_output_and_partition<1>(model);
+      create_output_and_partition_with_dim<1>(model);
       break;
     }
     case 2:
     {
       task_is = model.get_or_create_task_is(2, name);
-      create_output_and_partition<2>(model);
+      create_output_and_partition_with_dim<2>(model);
       break;
     }
     case 3:
     {
       task_is = model.get_or_create_task_is(3, name);
-      create_output_and_partition<3>(model);
+      create_output_and_partition_with_dim<3>(model);
       break;
     }
     case 4:
     {
       task_is = model.get_or_create_task_is(4, name);
-      create_output_and_partition<4>(model);
+      create_output_and_partition_with_dim<4>(model);
       break;
     }
     default:
@@ -174,16 +161,10 @@ Tensor ElementBinary::init_inout(FFModel& model,
       assert(false);
     }
   }
-  return outputs[0];
-}
-
-void ElementBinary::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
 }
 
 template<int NDIM>
-void ElementBinary::create_output_and_partition(FFModel& model)
+void ElementBinary::create_output_and_partition_with_dim(FFModel& model)
 {
   // Retrive the task indexspace for the op
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));

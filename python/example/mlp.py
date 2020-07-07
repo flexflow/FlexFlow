@@ -44,22 +44,23 @@ def top_level_task():
   full_input.detach_numpy_array(ffconfig)
   full_label.detach_numpy_array(ffconfig)
   
-  # t2 = ffmodel.dense("dense1", input1, 512, ActiMode.AC_MODE_RELU)
-  # t3 = ffmodel.dense("dense2", t2, 512, ActiMode.AC_MODE_RELU)
-  # t4 = ffmodel.dense("dense3", t3, 10)
+  t2 = ffmodel.dense("dense1", input1, 512, ActiMode.AC_MODE_RELU)
+  t3 = ffmodel.dense("dense2", t2, 512, ActiMode.AC_MODE_RELU)
+  t4 = ffmodel.dense("dense3", t3, 10)
   
-  d1 = ffmodel.dense_v2("dense1", 784, 512, ActiMode.AC_MODE_RELU)
-  d2 = ffmodel.dense_v2("dense2", 512, 512, ActiMode.AC_MODE_RELU)
-  d3 = ffmodel.dense_v2("dense3", 512, 10)
-  
-  t2 = d1.init_inout(ffmodel, input1)
-  t3 = d2.init_inout(ffmodel, t2)
-  t4 = d3.init_inout(ffmodel, t3)
+  # d1 = ffmodel.dense_v2("dense1", 784, 512, ActiMode.AC_MODE_RELU)
+  # d2 = ffmodel.dense_v2("dense2", 512, 512, ActiMode.AC_MODE_RELU)
+  # d3 = ffmodel.dense_v2("dense3", 512, 10)
+  #
+  # t2 = d1.init_inout(ffmodel, input1)
+  # t3 = d2.init_inout(ffmodel, t2)
+  # t4 = d3.init_inout(ffmodel, t3)
   
   t5 = ffmodel.softmax("softmax", t4, label)
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.compile()
 
   ffmodel.init_layers()
 

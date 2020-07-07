@@ -16,132 +16,64 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::pool2d(const std::string& name,
-                       const Tensor& input,
+Tensor FFModel::pool2d(const Tensor& input,
                        int kernelH, int kernelW,
                        int strideH, int strideW,
                        int paddingH, int paddingW,
                        PoolType type, ActiMode activation)
 {
   assert(input.numDim == 4); /*NCHW*/
-  Pool2D *pool = new Pool2D(*this, name, input,kernelH, kernelW,
+  Pool2D *pool = new Pool2D(*this, input,kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW,
                             type, activation);
-  pool->add_to_model(*this);
+  layers.push_back(pool);
   return pool->outputs[0];
 }
 
-Pool2D* FFModel::pool2d(const std::string& name,
-                       int kernelH, int kernelW,
-                       int strideH, int strideW,
-                       int paddingH, int paddingW,
-                       PoolType type, ActiMode activation)
+Pool2D* FFModel::pool2d(int kernelH, int kernelW,
+                        int strideH, int strideW,
+                        int paddingH, int paddingW,
+                        PoolType type, ActiMode activation)
 {
-  Pool2D *pool = new Pool2D(*this, name, kernelH, kernelW,
+  Pool2D *pool = new Pool2D(*this, kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW,
                             type, activation);
+  layers.push_back(pool);
   return pool;
 }
 
 Pool2D::Pool2D(FFModel& model,
-               const std::string& pcname,
                const Tensor& _input,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
                PoolType _type, ActiMode _activation)
-: Op(pcname, _input),
+: Op(model, "Pool2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w), _input),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),
   padding_h(_padding_h), padding_w(_padding_w),
   pool_type(_type), activation(_activation),
   profiling(model.config.profiling)
 {
-  create_output_and_partition(model);
-#ifdef DEADCODE
-  LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
-  LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
-  int extent_w = (output_w + num_par_w - 1) / num_par_w;
-  int extent_h = (output_h + num_par_h - 1) / num_par_h;
-  int extent_c = output_c / num_par_c;
-  int extent_n = output_n / num_par_n;
-  assert(output_c % num_par_c == 0);
-  assert(output_n % num_par_n == 0);
-  Rect<4> extent(Point<4>(0, 0, 0, 0),
-      Point<4>(extent_w-1, extent_h-1, extent_c-1, extent_n-1));
-  Transform<4, 4> transform;
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++)
-      transform[i][j] = 0;
-  transform[0][0] = extent_w; 
-  transform[1][1] = extent_h;
-  transform[2][2] = extent_c;
-  transform[3][3] = extent_n;
-  IndexPartition output_ip =
-    runtime->create_partition_by_restriction(ctx, output_is, task_is, transform, extent);
-  LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
-  LogicalPartition output_grad_lp =
-    runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
-
-  output.numDim = 4;
-  output.adim[0] = output_w;
-  output.adim[1] = output_h;
-  output.adim[2] = output_c;
-  output.adim[3] = output_n;
-  output.pdim[0] = extent_w;
-  output.pdim[1] = extent_h;
-  output.pdim[2] = extent_c;
-  output.pdim[3] = extent_n;
-  output.region = output_lr;
-  output.part = output_lp;
-  output.region_grad = output_grad_lr;
-  output.part_grad = output_grad_lp;
-  printf("Create pool2d layer: name %s, output(n=%d c=%d h=%d w=%d)\n",
-         _name.c_str(), output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
-
-  // Compute partition bound for input
-  Rect<4> input_part_rect =
-    runtime->get_index_partition_color_space(ctx, inputs[0].part.get_index_partition());
-  if (input_part_rect == part_rect) {
-    input_lps[0] = _input.part;
-  } else {
-    printf("WARNING: input has a different partition!!!\n");
-    IndexSpaceT<3> input_is = IndexSpaceT<3>(inputs[0].region.get_index_space());
-    //extent_w = stride_w * (output.pdim[0]-1) + kernel_w - 2 * padding_w;
-    //extent_h = stride_h * (output.pdim[1]-1) + kernel_h - 2 * padding_h;
-    //extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / config.num_par_n;
-    extent_w = (inputs[0].adim[0] + num_par_w - 1) / num_par_w;
-    extent_h = (inputs[0].adim[1] + num_par_h - 1) / num_par_h;
-    extent_c = inputs[0].adim[2] / num_par_c;
-    extent_n = inputs[0].adim[3] / num_par_n;
-    assert(inputs[0].adim[2] % num_par_c == 0);
-    assert(inputs[0].adim[3] % num_par_n == 0);
-    Rect<4> extent_i(Point<4>(0, 0, 0, 0),
-        Point<4>(extent_w-1, extent_h-1, extent_c-1, extent_n-1));
-    //transform[0][0] = stride_w * output.pdim[0];
-    //transform[1][1] = stride_h * output.pdim[1];
-    //transform[2][2] = extent_nc;
-    transform[0][0] = extent_w;
-    transform[1][1] = extent_h;
-    transform[2][2] = extent_c;
-    transform[3][3] = extent_n;
-
-    IndexPartition input_ip =
-      runtime->create_partition_by_restriction(ctx, input_is, task_is, transform, extent_i);
-    assert(runtime->is_index_partition_disjoint(ctx, input_ip));
-    assert(runtime->is_index_partition_complete(ctx, input_ip));
-    input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
-  }
-#endif
+  int input_w = inputs[0].adim[0];
+  int input_h = inputs[0].adim[1];
+  int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
+  int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
+  int output_c = inputs[0].adim[2];
+  int output_n = inputs[0].adim[3];
+  outputs[0].numDim = 4;
+  outputs[0].adim[0] = output_w;
+  outputs[0].adim[1] = output_h;
+  outputs[0].adim[2] = output_c;
+  outputs[0].adim[3] = output_n;
 }
 
 Pool2D::Pool2D(FFModel& model,
-               const std::string& pcname,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
                PoolType _type, ActiMode _activation)
-: Op(pcname, 1),
+: Op(model, "Pool2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w), 1),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),
   padding_h(_padding_h), padding_w(_padding_w),
@@ -152,16 +84,23 @@ Pool2D::Pool2D(FFModel& model,
 
 Tensor Pool2D::init_inout(FFModel& model, const Tensor& _input)
 {
-  add_to_model(model);
   inputs[0] = _input;
   create_output_and_partition(model);
   return outputs[0];
 }
 
+
+void Pool2D::create_weights(FFModel& model)
+{
+  // Do nothing since we don't have any weight
+}
+
+/*
 void Pool2D::add_to_model(FFModel& model)
 {
   model.layers.push_back(this);
 }
+*/
 
 void Pool2D::create_output_and_partition(FFModel& model)
 {

@@ -16,8 +16,7 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::conv2d(std::string name,
-                       const Tensor& input,
+Tensor FFModel::conv2d(const Tensor& input,
                        int outChannels,
                        int kernelH, int kernelW,
                        int strideH, int strideW,
@@ -36,23 +35,22 @@ Tensor FFModel::conv2d(std::string name,
   }
 
   assert(input.numDim == 4); /*NCHW*/
-  Conv2D *conv = new Conv2D(*this, name, input, outChannels, kernelH, kernelW,
+  Conv2D *conv = new Conv2D(*this, input, outChannels, kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW, activation,
                             use_bias, kernel_initializer, bias_initializer);
-  conv->add_to_model(*this);
+  layers.push_back(conv);
   return conv->outputs[0];
 }
 
-Conv2D* FFModel::conv2d(std::string name,
-                       int inChannels,
-                       int outChannels,
-                       int kernelH, int kernelW,
-                       int strideH, int strideW,
-                       int paddingH, int paddingW,
-                       ActiMode activation,
-                       bool use_bias,
-                       Initializer* kernel_initializer,
-                       Initializer* bias_initializer)
+Conv2D* FFModel::conv2d(int inChannels,
+                        int outChannels,
+                        int kernelH, int kernelW,
+                        int strideH, int strideW,
+                        int paddingH, int paddingW,
+                        ActiMode activation,
+                        bool use_bias,
+                        Initializer* kernel_initializer,
+                        Initializer* bias_initializer)
 {
   if (kernel_initializer == NULL) {
     int seed = std::rand();
@@ -62,9 +60,10 @@ Conv2D* FFModel::conv2d(std::string name,
     bias_initializer = new ZeroInitializer();
   }
 
-  Conv2D *conv = new Conv2D(*this, name, inChannels, outChannels, kernelH, kernelW,
+  Conv2D *conv = new Conv2D(*this, inChannels, outChannels, kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW, activation,
                             use_bias, kernel_initializer, bias_initializer);
+  layers.push_back(conv);
   return conv;
 }
 
@@ -73,186 +72,63 @@ locals[0] = kernel
 locals[1] = bias
 */
 Conv2D::Conv2D(FFModel& model,
-               const std::string& pcname,
                const Tensor& _input,
                int out_dim,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
                ActiMode _activation,
-               bool use_bias,
-               Initializer* kernel_initializer,
-               Initializer* bias_initializer)
-: Op(pcname, _input),
+               bool _use_bias,
+               Initializer* _kernel_initializer,
+               Initializer* _bias_initializer)
+: Op(model, "Conv2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w), _input),
   in_channels(_input.adim[2]), out_channels(out_dim),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),
   padding_h(_padding_h), padding_w(_padding_w),
-  activation(_activation), profiling(model.config.profiling)
+  activation(_activation), use_bias(_use_bias),
+  kernel_initializer(_kernel_initializer),
+  bias_initializer(_bias_initializer),
+  profiling(model.config.profiling)
 {
   assert(_input.numDim == 4);
-  create_kernel_bias(model, use_bias, kernel_initializer, bias_initializer);
-  create_output_and_partition(model);
-#ifdef DEADCODE
-  IndexSpaceT<4> output_is;
-  {
-    //const Legion::coord_t lo[4] = {0, 0, 0, 0};
-    //const Legion::coord_t hi[4] = {output_w-1, output_h-1, output_c-1, output_n-1};
-    Rect<4> output_rect(Point<4>(0, 0, 0, 0),
-        Point<4>(output_w-1, output_h-1, output_c-1, output_n-1));
-    output_is = runtime->create_index_space<4>(ctx, output_rect);
-  }
-  LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
-  LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
-  int extent_w = (output_w + num_par_w - 1) / num_par_w;
-  int extent_h = (output_h + num_par_h - 1) / num_par_h;
-  int extent_c = output_c / num_par_c;
-  int extent_n = output_n / num_par_n;
-  assert(output_c % num_par_c == 0);
-  assert(output_n % num_par_n == 0);
-  Transform<4, 4, coord_t> transform;
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++)
-      transform[i][j] = 0;
-  transform[0][0] = extent_w;
-  transform[1][1] = extent_h;
-  transform[2][2] = extent_c;
-  transform[3][3] = extent_n;
-  IndexPartition output_ip;
-  {
-    //int lo[4] = {0, 0, 0, 0};
-    //int hi[4] = {extent_w-1, extent_h-1, extent_c-1, extent_n-1};
-    Rect<4> extent(Realm::Point<4>(0, 0, 0, 0),
-        Realm::Point<4>(extent_w-1, extent_h-1, extent_c-1, extent_n-1));
-    output_ip = runtime->create_partition_by_restriction(ctx, output_is, task_is, transform, extent);
-    assert(runtime->is_index_partition_disjoint(ctx, output_ip));
-    assert(runtime->is_index_partition_complete(ctx, output_ip));
-  }
-  LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
-  LogicalPartition output_grad_lp =
-    runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
-
-  int kernel_nc = num_replica * in_channels * out_channels;
-  Rect<1, coord_t> kernel_rect(0, kernel_w * kernel_h * in_channels * out_channels - 1);
-  Rect<1, coord_t> kernel_grad_rect(0, kernel_w * kernel_h * kernel_nc - 1);
-  IndexSpaceT<1> kernel_is = runtime->create_index_space(ctx, kernel_rect);
-  IndexSpaceT<1> kernel_grad_is = runtime->create_index_space(ctx, kernel_grad_rect);
-  LogicalRegion kernel_lr = runtime->create_logical_region(ctx, kernel_is, fs);
-  LogicalRegion kernel_grad_lr = runtime->create_logical_region(ctx, kernel_grad_is, fs);
-  IndexPartition kernel_grad_ip =
-    runtime->create_equal_partition(ctx, kernel_grad_is, task_is);
-  LogicalPartition kernel_grad_lp =
-    runtime->get_logical_partition(ctx, kernel_grad_lr, kernel_grad_ip);
-  Tensor kernel_tensor;
-  kernel_tensor.numDim = 0;
-  kernel_tensor.region = kernel_lr;
-  kernel_tensor.region_grad = kernel_grad_lr;
-  kernel_tensor.part = LogicalPartition::NO_PART;
-  kernel_tensor.part_grad = kernel_grad_lp;
-  locals[0] = kernel_tensor;
-
-  int bias_nc = num_replica * out_channels;
-  Rect<1, coord_t> bias_grad_rect(0, bias_nc - 1);
-  Rect<1, coord_t> bias_rect(0, out_channels - 1);
-  IndexSpaceT<1> bias_is = runtime->create_index_space(ctx, bias_rect);
-  IndexSpaceT<1> bias_grad_is = runtime->create_index_space(ctx, bias_grad_rect);
-  LogicalRegion bias_lr = runtime->create_logical_region(ctx, bias_is, fs);
-  LogicalRegion bias_grad_lr =
-    runtime->create_logical_region(ctx, bias_grad_is, fs);
-  IndexPartition bias_grad_ip =
-    runtime->create_equal_partition(ctx, bias_grad_is, task_is);
-  LogicalPartition bias_grad_lp =
-    runtime->get_logical_partition(ctx, bias_grad_lr, bias_grad_ip);
-  Tensor bias_tensor;
-  bias_tensor.numDim = 0;
-  bias_tensor.region = bias_lr;
-  bias_tensor.region_grad = bias_grad_lr;
-  bias_tensor.part = LogicalPartition::NO_PART;
-  bias_tensor.part_grad = bias_grad_lp;
-  locals[1] = bias_tensor;
-  numLocals = 2;
-
-  output.numDim = 4;
-  output.adim[0] = output_w;
-  output.adim[1] = output_h;
-  output.adim[2] = out_channels;
-  output.adim[3] = _input.adim[3];
-  output.pdim[0] = extent_w;
-  output.pdim[1] = extent_h;
-  output.pdim[2] = extent_c;
-  output.pdim[3] = extent_n;
-  output.region = output_lr;
-  output.part = output_lp;
-  output.region_grad = output_grad_lr;
-  output.part_grad = output_grad_lp;
-  printf("Create conv layer: name %s, output(n=%d c=%d h=%d w=%d)\n",
-         pcname.c_str(), output.adim[3], output.adim[2], output.adim[1], output.adim[0]);
-
-  // Compute partition bound for input
-  Rect<4> input_part_rect =
-    runtime->get_index_partition_color_space(ctx, inputs[0].part.get_index_partition());
-  if (input_part_rect == part_rect) {
-    input_lps[0] = _input.part;
-  } else {
-    printf("WARNING: input has a different partition!!!\n");
-    IndexSpaceT<4> input_is = IndexSpaceT<4>(inputs[0].region.get_index_space());
-    //extent_w = stride_w * (output.pdim[0]-1) + kernel_w - 2 * padding_w;
-    //extent_h = stride_h * (output.pdim[1]-1) + kernel_h - 2 * padding_h;
-    //extent_nc = inputs[0].adim[2] * inputs[0].adim[3] / num_par_n;
-    extent_w = (inputs[0].adim[0] + num_par_w - 1) / num_par_w;
-    extent_h = (inputs[0].adim[1] + num_par_h - 1) / num_par_h;
-    extent_c = inputs[0].adim[2] / num_par_c;
-    extent_n = inputs[0].adim[3] / num_par_n;
-    assert(inputs[0].adim[2] % num_par_c == 0);
-    assert(inputs[0].adim[3] % num_par_n == 0);
-    //transform[0][0] = stride_w * output.pdim[0];
-    //transform[1][1] = stride_h * output.pdim[1];
-    //transform[2][2] = extent_nc;
-    transform[0][0] = extent_w;
-    transform[1][1] = extent_h;
-    transform[2][2] = extent_c;
-    transform[3][3] = extent_n;
-
-    IndexPartition input_ip;
-    {
-      //int lo[4] = {0, 0, 0, 0};
-      //int hi[4] = {extent_w-1, extent_h-1, extent_c-1, extent_n-1};
-      Rect<4> extent_i(Realm::Point<4>(0, 0, 0, 0),
-          Realm::Point<4>(extent_w-1, extent_h-1, extent_c-1, extent_n-1));
-      input_ip = runtime->create_partition_by_restriction(ctx,
-          input_is, task_is, transform, extent_i);
-      assert(runtime->is_index_partition_disjoint(ctx, input_ip));
-      assert(runtime->is_index_partition_complete(ctx, input_ip));
-    }
-    input_lps[0] = runtime->get_logical_partition(ctx, inputs[0].region, input_ip);
-  }
-#endif
+  // Set output shape
+  int input_w = inputs[0].adim[0];
+  int input_h = inputs[0].adim[1];
+  int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
+  int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
+  int output_c = out_channels;
+  int output_n = inputs[0].adim[3];
+  outputs[0].numDim = 4;
+  outputs[0].adim[0] = output_w;
+  outputs[0].adim[1] = output_h;
+  outputs[0].adim[2] = output_c;
+  outputs[0].adim[3] = output_n;
 }
 
 Conv2D::Conv2D(FFModel& model,
-               const std::string& pcname,
-               int in_dim,
-               int out_dim,
+               int in_dim, int out_dim,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
                ActiMode _activation,
-               bool use_bias,
-               Initializer* kernel_initializer,
-               Initializer* bias_initializer)
-: Op(pcname, 1),
+               bool _use_bias,
+               Initializer* _kernel_initializer,
+               Initializer* _bias_initializer)
+: Op(model, "Conv2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w), 1),
   in_channels(in_dim), out_channels(out_dim),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),
   padding_h(_padding_h), padding_w(_padding_w),
-  activation(_activation), profiling(model.config.profiling)
+  activation(_activation), use_bias(_use_bias),
+  kernel_initializer(_kernel_initializer),
+  bias_initializer(_bias_initializer),
+  profiling(model.config.profiling)
 {
-  create_kernel_bias(model, use_bias, kernel_initializer, bias_initializer);
 }
 
 Tensor Conv2D::init_inout(FFModel& model, const Tensor& _input)
 {
-  add_to_model(model);
   assert(_input.numDim == 4);
   assert(_input.adim[2] == in_channels);
   inputs[0] = _input;
@@ -260,17 +136,7 @@ Tensor Conv2D::init_inout(FFModel& model, const Tensor& _input)
   return outputs[0];
 }
 
-void Conv2D::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
-  model.parameters.push_back(weights[0]);
-  if (numWeights > 1) { // bias is used
-    assert(numWeights == 2);
-    model.parameters.push_back(weights[1]);
-  }
-}
-
-void Conv2D::create_kernel_bias(FFModel& model, bool use_bias, Initializer* kernel_initializer, Initializer* bias_initializer)
+void Conv2D::create_weights(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;

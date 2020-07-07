@@ -16,11 +16,11 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::batch_norm(std::string name, Tensor input, bool relu)
+Tensor FFModel::batch_norm(const Tensor& input,
+                           bool relu)
 {
   assert(input.numDim == 4); //Only support 4D BN for now
-  IndexSpaceT<4> task_is;
-  BatchNorm *bn = new BatchNorm(name, config, input, task_is, relu);
+  BatchNorm *bn = new BatchNorm(*this, input, relu);
   layers.push_back(bn);
   return bn->outputs[0];
 }
@@ -29,13 +29,13 @@ Tensor FFModel::batch_norm(std::string name, Tensor input, bool relu)
   locals[0] = scale
   locals[1] = bias
 */
-BatchNorm::BatchNorm(std::string _name, FFConfig _config,
-                     Tensor _input, IndexSpaceT<4> _task_is,
+BatchNorm::BatchNorm(FFModel& model,
+                     const Tensor& _input,
                      bool _relu)
-: Op(_name, _input), relu(_relu), profiling(_config.profiling)
+: Op(model, "BatchNorm", _input), relu(_relu), profiling(model.config.profiling)
 {
-  Context ctx = _config.lg_ctx;
-  HighLevelRuntime* runtime = _config.lg_hlr;
+  Context ctx = model.config.lg_ctx;
+  HighLevelRuntime* runtime = model.config.lg_hlr;
   Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
   num_replica = part_rect.volume();
   // Create output tensor
@@ -48,7 +48,7 @@ BatchNorm::BatchNorm(std::string _name, FFConfig _config,
   int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
   int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
 
-  FieldSpace fs = _config.field_space;
+  FieldSpace fs = model.config.field_space;
   Rect<4> output_rect(Point<4>(0, 0, 0, 0),
       Point<4>(output_w-1, output_h-1, output_c-1, output_n-1));
   IndexSpaceT<4> output_is = runtime->create_index_space(ctx, output_rect);
@@ -118,6 +118,19 @@ BatchNorm::BatchNorm(std::string _name, FFConfig _config,
           outputs[0].adim[3], outputs[0].adim[2], outputs[0].adim[1], outputs[0].adim[0]);
 
   input_lps[0] = _input.part;
+}
+
+
+void BatchNorm::create_weights(FFModel& model)
+{
+  // TODO
+  assert(false);
+}
+
+void BatchNorm::create_output_and_partition(FFModel& model)
+{
+  // TODO
+  assert(false);
 }
 
 /*
