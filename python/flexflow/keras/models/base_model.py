@@ -7,6 +7,11 @@ from flexflow.keras.optimizers import SGD, Adam
 from PIL import Image
 
 class BaseModel(object):
+  __slots__ = ['_ffconfig', '_ffmodel', '_ffoptimizer', '_layers', '_nb_layers', \
+               '_input_tensors', '_output_tensor', '_label_tensor', \
+               '_full_input_tensors', '_full_label_tensor', '_num_samples',\
+               '_input_dataloaders', '_input_dataloaders_dim', \
+               '_label_dataloader', '_label_dataloader_dim']
   def __init__(self):
     self._ffconfig = ff.FFConfig()
     self._ffconfig.parse_args()
@@ -228,7 +233,7 @@ class BaseModel(object):
       else:
        assert 0, "unknow layer"
 
-      layer.output_tensors[0].set_ffhandle(out_t)
+      layer.output_tensors[0].ffhandle = out_t
 
       assert layer.ffhandle == 0, "layer handle is inited"
       layer.ffhandle = self._ffmodel.get_layer_by_id(layer.layer_id)
@@ -255,7 +260,7 @@ class BaseModel(object):
       else:
         out_t = layer.ffhandle.init_inout(self._ffmodel, layer.input_tensors[0].ffhandle);
       
-      layer.output_tensors[0].set_ffhandle(out_t)
+      layer.output_tensors[0].ffhandle = out_t
       assert layer.ffhandle != 0, "layer handle is wrong"
       print(layer.ffhandle)    
       

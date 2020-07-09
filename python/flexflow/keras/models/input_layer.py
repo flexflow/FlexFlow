@@ -2,7 +2,7 @@ import flexflow.core as ff
 
 class Tensor(object):
   def __init__(self, ffmodel=0, batch_shape=0, name=0, dtype=0, meta_only=False, ffhandle=0):
-    self.ffhandle = ffhandle
+    self._ffhandle = ffhandle
     self.to_layers = []
     self.from_layer = 0
     if (dtype == "float32" or dtype == ff.DataType.DT_FLOAT):
@@ -27,20 +27,25 @@ class Tensor(object):
       self.name = ""
       self.num_dims = ffhandle.num_dims
       self.batch_shape = ffhandle.dims
+  
+  @property
+  def ffhandle(self):
+    return self._ffhandle
+  
+  @ffhandle.setter    
+  def ffhandle(self, handle):
+    assert isinstance(handle, ff.Tensor) == True, "[Tensor]: ffhandle is not the correct type"
+    assert self._ffhandle == 0, "[Tensor]: check handle, already set"
+    self._ffhandle = handle
+    if (self.batch_shape[0] == 0):
+      self.set_batch_size(handle.dims[0])
+    self.__verify_ffhandle_shape()
     
   def create_ff_tensor(self, ffmodel):
     if (self.num_dims == 2 or self.num_dims == 4):
-      self.ffhandle = ffmodel.create_tensor(self.batch_shape, self.name, self.dtype);
+      self._ffhandle = ffmodel.create_tensor(self.batch_shape, self.name, self.dtype);
     else:
       assert 0, "un-supported dims"
-    self.__verify_ffhandle_shape()
-      
-  def set_ffhandle(self, ffhandle):
-    assert isinstance(ffhandle, ff.Tensor) == True, "[Tensor]: ffhandle is not the correct type"
-    assert self.ffhandle == 0, "[Tensor]: check handle, already set"
-    self.ffhandle = ffhandle
-    if (self.batch_shape[0] == 0):
-      self.set_batch_size(ffhandle.dims[0])
     self.__verify_ffhandle_shape()
     
   def set_from_layer(self, layer):
@@ -53,11 +58,11 @@ class Tensor(object):
     self.batch_shape = tuple(lst)
     
   def __verify_ffhandle_shape(self):
-    assert self.num_dims == self.ffhandle.num_dims, "[Tensor]: check tensor shape"
+    assert self.num_dims == self._ffhandle.num_dims, "[Tensor]: check tensor shape"
     if (self.batch_shape[0] == 0):
-      self.set_batch_size(self.ffhandle.dims[0])
+      self.set_batch_size(self._ffhandle.dims[0])
     for i in range(0, self.num_dims):
-      assert self.batch_shape[i] == self.ffhandle.dims[i], "[Tensor]: please check shape dim %d (%d == %d)" %(i, self.batch_shape[i], self.ffhandle.dims[i])
+      assert self.batch_shape[i] == self._ffhandle.dims[i], "[Tensor]: please check shape dim %d (%d == %d)" %(i, self.batch_shape[i], self._ffhandle.dims[i])
 
 class Input(Tensor):
   def __init__(self, shape=None, batch_shape=None,

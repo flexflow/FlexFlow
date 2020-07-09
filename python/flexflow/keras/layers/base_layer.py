@@ -5,7 +5,7 @@ from flexflow.keras.models.input_layer import Tensor, Input
 class Layer(object):
   def __init__(self, name, layer_type):
     self.layer_id = -1
-    self.ffhandle = 0
+    self._ffhandle = 0
     self._name = name
     self.prev_layers = []
     self.next_layers = []
@@ -18,18 +18,26 @@ class Layer(object):
   def name(self):
     return self._name
     
+  @property
+  def ffhandle(self):
+    return self._ffhandle
+  
+  @ffhandle.setter
+  def ffhandle(self, handle):
+    self._ffhandle = handle
+    
   def _get_weights(self, ffmodel):
-    assert self.ffhandle != 0, "handle is not set correctly"
-    kernel_parameter = self.ffhandle.get_weight_tensor()
-    bias_parameter = self.ffhandle.get_bias_tensor()
+    assert self._ffhandle != 0, "handle is not set correctly"
+    kernel_parameter = self._ffhandle.get_weight_tensor()
+    bias_parameter = self._ffhandle.get_bias_tensor()
     kernel_array = kernel_parameter.get_weights(ffmodel)
     bias_array = bias_parameter.get_weights(ffmodel)
     return (kernel_array, bias_array)
     
   def _set_weights(self, ffmodel, kernel, bias):
-    assert self.ffhandle != 0, "handle is not set correctly"
-    kernel_parameter = self.ffhandle.get_weight_tensor()
-    bias_parameter = self.ffhandle.get_bias_tensor()
+    assert self._ffhandle != 0, "handle is not set correctly"
+    kernel_parameter = self._ffhandle.get_weight_tensor()
+    bias_parameter = self._ffhandle.get_bias_tensor()
     kernel_parameter.set_weights(ffmodel, kernel)
     bias_parameter.set_weights(ffmodel, bias)
     
