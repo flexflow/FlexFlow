@@ -55,7 +55,7 @@ class Sequential(BaseModel):
     
     #self._init_inout() 
     self._set_optimizer()     
-    self.ffmodel.init_layers()
+    self._ffmodel.init_layers()
     
     self._train(epochs)
     

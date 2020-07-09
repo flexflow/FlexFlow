@@ -334,6 +334,10 @@ int*
 flexflow_tensor_get_dims(
   flexflow_tensor_t handle);
 
+int
+flexflow_tensor_get_data_type(
+  flexflow_tensor_t handle);
+
 void
 flexflow_tensor_attach_raw_ptr(
   flexflow_tensor_t handle,

@@ -318,7 +318,7 @@ class FFConfig(object):
 # -----------------------------------------------------------------------
 
 class Tensor(object):
-  __slots__ = ['p_handle', 'handle', '_handle', 'num_dims', 'dims', 'mapped']
+  __slots__ = ['p_handle', 'handle', '_handle', 'num_dims', 'dims', 'data_type', 'mapped']
   def __init__(self, handle, deallocate=True):
     if (ffi.typeof(handle) == ffi.typeof('flexflow_tensor_t')):
       self.p_handle = 0
@@ -332,7 +332,8 @@ class Tensor(object):
     self.num_dims = 0
     self.dims = 0
     self.mapped = False
-    self.__set_dims()
+    self.__get_dims()
+    self.__get_data_type()
     if (deallocate == True):
       self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
     if (self.is_mapped() == True):
@@ -373,7 +374,7 @@ class Tensor(object):
       shape_prod = np.prod(self.dims)
       shape = (shape_prod,)
     else:
-      assert 0, "unknow num_dims"
+      assert 0, "unknown num_dims"
     initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
     return array
@@ -397,6 +398,7 @@ class Tensor(object):
     return ffc.flexflow_tensor_is_mapped(self.handle)
     
   def __get_raw_ptr(self, ffconfig, data_type):
+    assert data_type == self.data_type, "Tensor check data type"
     if (data_type == DataType.DT_FLOAT):    
       return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, ffconfig.handle)
     elif (data_type == DataType.DT_INT32):
@@ -404,7 +406,7 @@ class Tensor(object):
     else:
       assert 0, "unknown data type"
     
-  def __set_dims(self):
+  def __get_dims(self):
     self.num_dims = ffc.flexflow_tensor_get_num_dims(self.handle)
     d = ffc.flexflow_tensor_get_dims(self.handle)
     #print(d[0], d[1], d[2], d[3])
@@ -417,7 +419,22 @@ class Tensor(object):
     elif (self.num_dims == 4):
       self.dims = (d[3], d[2], d[1], d[0])
     else:
-      assert 0, "unknow num_dims"
+      assert 0, "unknown num_dims"
+      
+  def __get_data_type(self):
+    dtype = ffc.flexflow_tensor_get_data_type(self.handle)
+    if (dtype == 40):
+      self.data_type = DataType.DT_FLOAT
+    elif (dtype == 41):
+      self.data_type = DataType.DT_DOUBLE
+    elif (dtype == 42):
+      self.data_type = DataType.DT_INT32
+    elif (dtype == 43):
+      self.data_type = DataType.DT_INT64
+    elif (dtype == 44):
+      self.data_type = DataType.DT_BOOLEAN
+    else:
+      assert 0, "unknown data type"
     
   def __attach_raw_ptr(self, ffconfig, raw_ptr, column_major=True):
     assert self.mapped == False, "Tensor is already mapped."

@@ -25,12 +25,7 @@ class Model(BaseModel):
       
   def compile(self, optimizer):
     self._create_input_and_label_tensors()
-    use_api = 1
-    if (use_api == 1):
-      self._create_flexflow_layers()
-    else:
-      self._create_flexflow_layers_v2()
-      self._init_inout()
+    self._create_flexflow_layers()
     
     self._verify_output_tensors()
     self._verify_input_tensors()
@@ -43,7 +38,7 @@ class Model(BaseModel):
     self._verify_tensors(input_tensors, label_tensor)
     self._create_data_loaders(input_tensors, label_tensor)
     self._set_optimizer()     
-    self.ffmodel.init_layers()
+    self._ffmodel.init_layers()
     self._train(epochs)
 
   def __traverse_dag_bfs(self):

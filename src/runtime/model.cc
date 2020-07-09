@@ -109,6 +109,9 @@ Op::Op(FFModel& model,
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
   }
+  for (int i = 0; i < numOutputs; i++) {
+    outputs[i].data_type = inputs[0].data_type;
+  }
 }
 
 Op::Op(FFModel& model,
@@ -129,6 +132,9 @@ Op::Op(FFModel& model,
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
+  }
+  for (int i = 0; i < numOutputs; i++) {
+    outputs[i].data_type = inputs[0].data_type;
   }
 }
 
@@ -151,6 +157,9 @@ Op::Op(FFModel& model,
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
   }
+  for (int i = 0; i < numOutputs; i++) {
+    outputs[i].data_type = inputs[0].data_type;
+  }
 }
 
 Op::Op(FFModel& model,
@@ -168,6 +177,9 @@ Op::Op(FFModel& model,
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
+  }
+  for (int i = 0; i < numOutputs; i++) {
+    outputs[i].data_type = inputs[0].data_type;
   }
 }
 
@@ -518,6 +530,7 @@ Parameter FFModel::create_linear_weight(Op* op,
   Parameter weight;
   weight.pcname = op->name;
   weight.numDim = NDIM;
+  weight.data_type = data_type;
   for (int i = 0; i < NDIM; i++)
     weight.adim[i] = dims[NDIM-1-i];
   FieldSpace fs = runtime->create_field_space(ctx);
@@ -610,6 +623,7 @@ Parameter FFModel::create_conv_weight(Op* op,
   Parameter weight;
   weight.pcname = op->name;
   weight.numDim = NDIM;
+  weight.data_type = data_type;
   for (int i = 0; i < NDIM; i++)
     weight.adim[i] = dims[NDIM-1-i];
   FieldSpace fs = runtime->create_field_space(ctx);
@@ -693,6 +707,7 @@ Tensor FFModel::create_linear_replica(const int dims[],
   int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
   Tensor replica;
   replica.numDim = NDIM;
+  replica.data_type = data_type;
   for (int i = 0; i < NDIM; i++)
     replica.adim[i] = dims[NDIM-1-i];
   FieldSpace fs = runtime->create_field_space(ctx);

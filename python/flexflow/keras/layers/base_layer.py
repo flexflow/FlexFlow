@@ -6,13 +6,17 @@ class Layer(object):
   def __init__(self, name, layer_type):
     self.layer_id = -1
     self.ffhandle = 0
-    self.name = name
+    self._name = name
     self.prev_layers = []
     self.next_layers = []
     self.input_tensors = []
     self.output_tensors = []
     self.nb_visited_prev_layers = 0
     self.layer_type = layer_type
+    
+  @property
+  def name(self):
+    return self._name
     
   def _get_weights(self, ffmodel):
     assert self.ffhandle != 0, "handle is not set correctly"
@@ -43,7 +47,7 @@ class Layer(object):
     self.nb_visited_prev_layers = 0
     
   def _get_summary_name(self):
-    str_name = "{0:25}".format(self.name + " (" + self.layer_type + ")")
+    str_name = "{0:25}".format(self._name + " (" + self.layer_type + ")")
     return str_name
     
   def _get_summary_connected_to(self):
@@ -86,4 +90,3 @@ class Layer(object):
       self.prev_layers.append(tensor.from_layer)
       tensor.from_layer.next_layers.append(self)
     return output_tensor
-    

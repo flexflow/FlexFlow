@@ -8,24 +8,24 @@ from PIL import Image
 
 class BaseModel(object):
   def __init__(self):
-    self.ffconfig = ff.FFConfig()
-    self.ffconfig.parse_args()
-    print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self.ffconfig.get_batch_size(), self.ffconfig.get_workers_per_node(), self.ffconfig.get_num_nodes()))
-    self.ffmodel = ff.FFModel(self.ffconfig)
+    self._ffconfig = ff.FFConfig()
+    self._ffconfig.parse_args()
+    print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.get_batch_size(), self._ffconfig.get_workers_per_node(), self._ffconfig.get_num_nodes()))
+    self._ffmodel = ff.FFModel(self._ffconfig)
     
-    self.ffoptimizer = 0
+    self._ffoptimizer = 0
     self._layers = dict()
     self._nb_layers = 0
     self._input_tensors = []
     self._output_tensor = 0
-    self.label_tensor = 0
-    self.full_input_tensors = []
-    self.full_label_tensor = 0
-    self.num_samples = 0
-    self.input_dataloaders = []
-    self.input_dataloaders_dim = []
-    self.label_dataloader = 0
-    self.label_dataloader_dim = 0
+    self._label_tensor = 0
+    self._full_input_tensors = []
+    self._full_label_tensor = 0
+    self._num_samples = 0
+    self._input_dataloaders = []
+    self._input_dataloaders_dim = []
+    self._label_dataloader = 0
+    self._label_dataloader_dim = 0
     
   @property
   def input(self):
@@ -39,20 +39,24 @@ class BaseModel(object):
   def layers(self):
     return self._layers
     
+  @property
+  def ffmodel(self):
+    return self._ffmodel
+    
   def get_layer(self, layer_id):
     return self._layers[layer_id]
     
   def _create_input_tensor(self, idx):
     assert self._input_tensors[idx].batch_shape[0] != 0, "batch size is not set"
-    self._input_tensors[idx].create_ff_tensor(self.ffmodel)
+    self._input_tensors[idx].create_ff_tensor(self._ffmodel)
     
   def _create_label_tensor(self):
-    self.label_tensor = Tensor(self.ffmodel, batch_shape=[self.ffconfig.get_batch_size(), 1], name="", dtype="int32")
+    self._label_tensor = Tensor(self._ffmodel, batch_shape=[self._ffconfig.get_batch_size(), 1], name="", dtype="int32")
     
   def _create_input_and_label_tensors(self):
     idx = 0
     for input_tensor in self._input_tensors:
-      input_tensor.set_batch_size(self.ffconfig.get_batch_size())
+      input_tensor.set_batch_size(self._ffconfig.get_batch_size())
       self._create_input_tensor(idx)
       idx += 1
 
@@ -67,9 +71,9 @@ class BaseModel(object):
       for i in range(1, len(np_shape)):
         assert np_shape[i] == t.batch_shape[i], "check input dims"
     np_shape = label_array.shape
-    assert len(np_shape) == self.label_tensor.num_dims, "check label shape"
+    assert len(np_shape) == self._label_tensor.num_dims, "check label shape"
     for i in range(1, len(np_shape)):
-      assert np_shape[i] == self.label_tensor.batch_shape[i], "check label dims"    
+      assert np_shape[i] == self._label_tensor.batch_shape[i], "check label dims"    
       
   def _verify_output_tensors(self):
     assert self._layers[self._nb_layers-1].output_tensors[0] == self._output_tensor, "output tensor is wrong"
@@ -79,17 +83,17 @@ class BaseModel(object):
       assert len(t.to_layers) > 0, "input tensor has not to_layers"
     
   def _compile(self, optimizer):
-    self.ffoptimizer = optimizer
-    self.ffmodel.compile()
+    self._ffoptimizer = optimizer
+    self._ffmodel.compile()
       
   def _set_optimizer(self):
-    assert self.ffoptimizer != 0, "optimizer is not set"
-    if (isinstance(self.ffoptimizer, SGD) == True):
-      self.ffoptimizer.ffhandle = ff.SGDOptimizer(self.ffmodel, self.ffoptimizer.learning_rate)
-      self.ffmodel.set_sgd_optimizer(self.ffoptimizer.ffhandle)
-    elif (isinstance(self.ffoptimizer, Adam) == True):
-      self.ffoptimizer.ffhandle = ff.AdamOptimizer(self.ffmodel, self.ffoptimizer.learning_rate, self.ffoptimizer.beta1, self.ffoptimizer.beta2)
-      self.ffmodel.set_adam_optimizer(self.ffoptimizer.ffhandle)
+    assert self._ffoptimizer != 0, "optimizer is not set"
+    if (isinstance(self._ffoptimizer, SGD) == True):
+      self._ffoptimizer.ffhandle = ff.SGDOptimizer(self._ffmodel, self._ffoptimizer.learning_rate)
+      self._ffmodel.set_sgd_optimizer(self._ffoptimizer.ffhandle)
+    elif (isinstance(self._ffoptimizer, Adam) == True):
+      self._ffoptimizer.ffhandle = ff.AdamOptimizer(self._ffmodel, self._ffoptimizer.learning_rate, self._ffoptimizer.beta1, self._ffoptimizer.beta2)
+      self._ffmodel.set_adam_optimizer(self._ffoptimizer.ffhandle)
     else:
       assert 0, "unknown optimizer"
     
@@ -106,93 +110,93 @@ class BaseModel(object):
       assert 0, "unsupported datatype"
 
     if (num_dim == 2):
-      full_tensor = Tensor(self.ffmodel, batch_shape=[self.num_samples, array_shape[1]], name="", dtype=datatype)
+      full_tensor = Tensor(self._ffmodel, batch_shape=[self._num_samples, array_shape[1]], name="", dtype=datatype)
     elif (num_dim == 4):
-      full_tensor = Tensor(self.ffmodel, batch_shape=[self.num_samples, array_shape[1], array_shape[2], array_shape[3]], name="", dtype=datatype)
+      full_tensor = Tensor(self._ffmodel, batch_shape=[self._num_samples, array_shape[1], array_shape[2], array_shape[3]], name="", dtype=datatype)
     else:
       assert 0, "unsupported dims"
       
-    full_tensor.ffhandle.attach_numpy_array(self.ffconfig, full_array)
-    dataloader = ff.SingleDataLoader(self.ffmodel, batch_tensor.ffhandle, full_tensor.ffhandle, self.num_samples, datatype) 
-    full_tensor.ffhandle.detach_numpy_array(self.ffconfig)
+    full_tensor.ffhandle.attach_numpy_array(self._ffconfig, full_array)
+    dataloader = ff.SingleDataLoader(self._ffmodel, batch_tensor.ffhandle, full_tensor.ffhandle, self._num_samples, datatype) 
+    full_tensor.ffhandle.detach_numpy_array(self._ffconfig)
     
     return full_tensor, dataloader
     
   def _create_data_loaders(self, x_trains, y_train):
     # Todo: check all num_samples, should be the same
     input_shape = x_trains[0].shape
-    self.num_samples = input_shape[0]
+    self._num_samples = input_shape[0]
     
     assert len(self._input_tensors) != 0, "input_tensor is not set"
-    assert self.label_tensor != 0, "label_tensor is not set"
+    assert self._label_tensor != 0, "label_tensor is not set"
     
     print(y_train.shape)
     idx = 0
     for x_train in x_trains:
       full_tensor, dataloader = self.__create_single_data_loader(self._input_tensors[idx], x_train)
-      self.full_input_tensors.append(full_tensor)
-      self.input_dataloaders.append(dataloader)
-      self.input_dataloaders_dim.append(len(input_shape))
+      self._full_input_tensors.append(full_tensor)
+      self._input_dataloaders.append(dataloader)
+      self._input_dataloaders_dim.append(len(input_shape))
       idx += 1
-    full_tensor, dataloader = self.__create_single_data_loader(self.label_tensor, y_train)
-    self.full_label_tensor = full_tensor
-    self.label_dataloader = dataloader
-    self.label_dataloader_dim = len(input_shape)
+    full_tensor, dataloader = self.__create_single_data_loader(self._label_tensor, y_train)
+    self.__full_label_tensor = full_tensor
+    self._label_dataloader = dataloader
+    self._label_dataloader_dim = len(input_shape)
     
   def _train(self, epochs):
-    ts_start = self.ffconfig.get_current_time()
+    ts_start = self._ffconfig.get_current_time()
     for epoch in range(0,epochs):
-      for dataloader in self.input_dataloaders:
+      for dataloader in self._input_dataloaders:
         dataloader.reset()
-      self.label_dataloader.reset()
-      self.ffmodel.reset_metrics()
-      iterations = self.num_samples / self.ffconfig.get_batch_size()
+      self._label_dataloader.reset()
+      self._ffmodel.reset_metrics()
+      iterations = self._num_samples / self._ffconfig.get_batch_size()
 
       for iter in range(0, int(iterations)):
-        for dataloader in self.input_dataloaders:
-          dataloader.next_batch(self.ffmodel)
-        self.label_dataloader.next_batch(self.ffmodel)
+        for dataloader in self._input_dataloaders:
+          dataloader.next_batch(self._ffmodel)
+        self._label_dataloader.next_batch(self._ffmodel)
         if (epoch > 0):
-          self.ffconfig.begin_trace(111)
-        self.ffmodel.forward()
+          self._ffconfig.begin_trace(111)
+        self._ffmodel.forward()
         # for layer_id in self._layers:
         #   layer = self._layers[layer_id]
-        #   layer.ffhandle.forward(self.ffmodel)
-        self.ffmodel.zero_gradients()
-        self.ffmodel.backward()
-        self.ffmodel.update()
+        #   layer.ffhandle.forward(self._ffmodel)
+        self._ffmodel.zero_gradients()
+        self._ffmodel.backward()
+        self._ffmodel.update()
         if (epoch > 0):
-          self.ffconfig.end_trace(111)
+          self._ffconfig.end_trace(111)
 
-    ts_end = self.ffconfig.get_current_time()
+    ts_end = self._ffconfig.get_current_time()
     run_time = 1e-6 * (ts_end - ts_start);
-    print("epochs %d, ELAPSED TIME = %.4fs, interations %d, samples %d, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, int(iterations), self.num_samples, self.num_samples * epochs / run_time));
+    print("epochs %d, ELAPSED TIME = %.4fs, interations %d, samples %d, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, int(iterations), self._num_samples, self._num_samples * epochs / run_time));
 
-    self._input_tensors[0].ffhandle.inline_map(self.ffconfig)
-    input_array = self._input_tensors[0].ffhandle.get_flat_array(self.ffconfig, ff.DataType.DT_FLOAT)
+    self._input_tensors[0].ffhandle.inline_map(self._ffconfig)
+    input_array = self._input_tensors[0].ffhandle.get_flat_array(self._ffconfig, ff.DataType.DT_FLOAT)
     print(input_array.shape)
     print(input_array)
     #self.save_image(input_array, 2)
-    self._input_tensors[0].ffhandle.inline_unmap(self.ffconfig)
+    self._input_tensors[0].ffhandle.inline_unmap(self._ffconfig)
     
-    self.label_tensor.ffhandle.inline_map(self.ffconfig)
-    label_array = self.label_tensor.ffhandle.get_flat_array(self.ffconfig, ff.DataType.DT_INT32)
+    self._label_tensor.ffhandle.inline_map(self._ffconfig)
+    label_array = self._label_tensor.ffhandle.get_flat_array(self._ffconfig, ff.DataType.DT_INT32)
     print(label_array.shape)
     print(label_array)
-    self.label_tensor.ffhandle.inline_unmap(self.ffconfig)
+    self._label_tensor.ffhandle.inline_unmap(self._ffconfig)
     
   def _create_flexflow_layers_v2(self):
     for layer_id in self._layers:
       layer = self._layers[layer_id]
 
       if (isinstance(layer, Conv2D) == True):
-        layer.ffhandle = self.ffmodel.conv2d_v2(layer.name, layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
+        layer.ffhandle = self._ffmodel.conv2d_v2(layer.name, layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
       elif (isinstance(layer, Pooling2D) == True):
-        layer.ffhandle = self.ffmodel.pool2d_v2(layer.name, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.pool_type)
+        layer.ffhandle = self._ffmodel.pool2d_v2(layer.name, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.pool_type)
       elif (isinstance(layer, Flatten) == True):
-        layer.ffhandle = self.ffmodel.flat_v2(layer.name)
+        layer.ffhandle = self._ffmodel.flat_v2(layer.name)
       elif (isinstance(layer, Dense) == True):
-        layer.ffhandle = self.ffmodel.dense_v2(layer.name, layer.in_channels, layer.out_channels, layer.activation)
+        layer.ffhandle = self._ffmodel.dense_v2(layer.name, layer.in_channels, layer.out_channels, layer.activation)
       elif (isinstance(layer, Activation) == True):
         print("add softmax")
       elif (isinstance(layer, Concatenate) == True):
@@ -207,27 +211,27 @@ class BaseModel(object):
 
       if (isinstance(layer, Activation) == True):
        assert layer.layer_id == self._nb_layers-1, "softmax is not in the last layer"
-       out_t = self.ffmodel.softmax("softmax", layer.input_tensors[0].ffhandle, self.label_tensor.ffhandle)
+       out_t = self._ffmodel.softmax("softmax", layer.input_tensors[0].ffhandle, self._label_tensor.ffhandle)
       elif (isinstance(layer, Concatenate) == True):
        t_ffhandle_list = []
        for t in layer.input_tensors:
          t_ffhandle_list.append(t.ffhandle)
-       out_t = self.ffmodel.concat("concat", t_ffhandle_list, layer.axis)
+       out_t = self._ffmodel.concat("concat", t_ffhandle_list, layer.axis)
       elif (isinstance(layer, Conv2D) == True):
-       out_t = self.ffmodel.conv2d(layer.name, layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
+       out_t = self._ffmodel.conv2d(layer.name, layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
       elif (isinstance(layer, Pooling2D) == True):
-       out_t = self.ffmodel.pool2d(layer.name, layer.input_tensors[0].ffhandle, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.pool_type)
+       out_t = self._ffmodel.pool2d(layer.name, layer.input_tensors[0].ffhandle, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.pool_type)
       elif (isinstance(layer, Flatten) == True):
-       out_t = self.ffmodel.flat(layer.name, layer.input_tensors[0].ffhandle)
+       out_t = self._ffmodel.flat(layer.name, layer.input_tensors[0].ffhandle)
       elif (isinstance(layer, Dense) == True):
-       out_t = self.ffmodel.dense(layer.name, layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation)
+       out_t = self._ffmodel.dense(layer.name, layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation)
       else:
        assert 0, "unknow layer"
 
       layer.output_tensors[0].set_ffhandle(out_t)
 
       assert layer.ffhandle == 0, "layer handle is inited"
-      layer.ffhandle = self.ffmodel.get_layer_by_id(layer.layer_id)
+      layer.ffhandle = self._ffmodel.get_layer_by_id(layer.layer_id)
       assert layer.ffhandle != 0, "layer handle is wrong"
       print(layer.ffhandle)    
        
@@ -238,18 +242,18 @@ class BaseModel(object):
 
       if (isinstance(layer, Activation) == True):
         assert layer_id == self._nb_layers-1, "softmax is not in the last layer"
-        out_t = self.ffmodel.softmax("softmax", layer.input_tensors[0].ffhandle, self.label_tensor.ffhandle)
+        out_t = self._ffmodel.softmax("softmax", layer.input_tensors[0].ffhandle, self._label_tensor.ffhandle)
         assert layer.ffhandle == 0, "layer handle is inited"
-        layer.ffhandle = self.ffmodel.get_layer_by_id(layer_id)
+        layer.ffhandle = self._ffmodel.get_layer_by_id(layer_id)
       elif (isinstance(layer, Concatenate) == True):
         t_ffhandle_list = []
         for t in layer.input_tensors:
           t_ffhandle_list.append(t.ffhandle)
-        out_t = self.ffmodel.concat("concat", t_ffhandle_list, layer.axis)
+        out_t = self._ffmodel.concat("concat", t_ffhandle_list, layer.axis)
         assert layer.ffhandle == 0, "layer handle is inited"
-        layer.ffhandle = self.ffmodel.get_layer_by_id(layer_id)
+        layer.ffhandle = self._ffmodel.get_layer_by_id(layer_id)
       else:
-        out_t = layer.ffhandle.init_inout(self.ffmodel, layer.input_tensors[0].ffhandle);
+        out_t = layer.ffhandle.init_inout(self._ffmodel, layer.input_tensors[0].ffhandle);
       
       layer.output_tensors[0].set_ffhandle(out_t)
       assert layer.ffhandle != 0, "layer handle is wrong"
