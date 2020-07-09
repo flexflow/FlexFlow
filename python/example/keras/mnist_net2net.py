@@ -44,15 +44,15 @@ def create_teacher_model_cnn(num_classes, x_train, y_train):
   return model
   
 def create_student_model(teacher_model, num_classes, x_train, y_train):
-  dense1 = teacher_model.get_layer(0)
+  dense1 = teacher_model.get_layer(index=0)
   d1_kernel, d1_bias = dense1.get_weights(teacher_model.ffmodel)
   print(d1_kernel.shape, d1_bias.shape)
   # print(d1_kernel)
   # print(d1_bias)
-  dense2 = teacher_model.get_layer(1)
+  dense2 = teacher_model.get_layer(index=1)
   d2_kernel, d2_bias = dense2.get_weights(teacher_model.ffmodel)
   
-  dense3 = teacher_model.get_layer(2)
+  dense3 = teacher_model.get_layer(index=2)
   d3_kernel, d3_bias = dense3.get_weights(teacher_model.ffmodel)
   
   model = Sequential()
@@ -64,9 +64,9 @@ def create_student_model(teacher_model, num_classes, x_train, y_train):
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
   
-  dense1s = model.get_layer(0)
-  dense2s = model.get_layer(1)
-  dense3s = model.get_layer(2)
+  dense1s = model.get_layer(index=0)
+  dense2s = model.get_layer(index=1)
+  dense3s = model.get_layer(index=2)
   
   dense1s.set_weights(model.ffmodel, d1_kernel, d1_bias)
   dense2s.set_weights(model.ffmodel, d2_kernel, d2_bias)
@@ -80,17 +80,17 @@ def create_student_model(teacher_model, num_classes, x_train, y_train):
   model.fit(x_train, y_train, epochs=1)
   
 def create_student_model_cnn(teacher_model, num_classes, x_train, y_train):
-  conv1 = teacher_model.get_layer(0)
+  conv1 = teacher_model.get_layer(index=0)
   c1_kernel, c1_bias = conv1.get_weights(teacher_model.ffmodel)
   print(c1_kernel.shape, c1_bias.shape)
 
-  conv2 = teacher_model.get_layer(1)
+  conv2 = teacher_model.get_layer(index=1)
   c2_kernel, c2_bias = conv2.get_weights(teacher_model.ffmodel)
   
-  dense1 = teacher_model.get_layer(4)
+  dense1 = teacher_model.get_layer(index=4)
   d1_kernel, d1_bias = dense1.get_weights(teacher_model.ffmodel)
   
-  dense2 = teacher_model.get_layer(5)
+  dense2 = teacher_model.get_layer(index=5)
   d2_kernel, d2_bias = dense2.get_weights(teacher_model.ffmodel)
   
   model = Sequential()
@@ -98,17 +98,17 @@ def create_student_model_cnn(teacher_model, num_classes, x_train, y_train):
   model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
   model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"))
   model.add(Flatten())
-  model.add(Dense(128, activation="relu"))
+  model.add(Dense(128, activation="relu", name="dense1"))
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
   
-  conv1s = model.get_layer(0)
-  conv2s = model.get_layer(1)
-  dense1s = model.get_layer(4)
-  dense2s = model.get_layer(5)
+  conv1s = model.get_layer(index=0)
+  conv2s = model.get_layer(index=1)
+  dense1s = model.get_layer(name="dense1")
+  dense2s = model.get_layer(index=5)
   
   conv1s.set_weights(model.ffmodel, c1_kernel, c1_bias)
   conv2s.set_weights(model.ffmodel, c2_kernel, c2_bias)

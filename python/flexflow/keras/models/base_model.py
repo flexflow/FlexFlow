@@ -48,8 +48,28 @@ class BaseModel(object):
   def ffmodel(self):
     return self._ffmodel
     
-  def get_layer(self, layer_id):
-    return self._layers[layer_id]
+  @property
+  def ffconfig(self):
+    return self._ffconfig
+    
+  def get_layer(self, name=None, index=None):
+    if (index is not None):
+      if (self._nb_layers <= index):
+        raise ValueError('Was asked to retrieve layer at index ' +
+                         str(index) + ' but model only has ' +
+                         str(self._nb_layers) + ' layers.')
+      else:
+        return self._layers[index]
+    else:
+      if not name:
+        raise ValueError('Provide either a layer name or layer index.')
+    layer = None
+    for layer_id in self._layers:
+      if (self._layers[layer_id].name == name):
+        layer = self._layers[layer_id]
+        return layer
+    if not layer:
+      raise ValueError('No such layer: ' + name)
     
   def _create_input_tensor(self, idx):
     assert self._input_tensors[idx].batch_shape[0] != 0, "batch size is not set"

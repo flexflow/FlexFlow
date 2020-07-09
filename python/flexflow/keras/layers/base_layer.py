@@ -26,6 +26,20 @@ class Layer(object):
   def ffhandle(self, handle):
     self._ffhandle = handle
     
+  @property
+  def input(self):
+    if (len(self.input_tensors) == 1):
+      return self.input_tensors[0]
+    else:
+      return self.input_tensors 
+      
+  @property
+  def output(self):
+    if (len(self.output_tensors) == 1):
+      return self.output_tensors[0]
+    else:
+      return self.output_tensors
+    
   def _get_weights(self, ffmodel):
     assert self._ffhandle != 0, "handle is not set correctly"
     kernel_parameter = self._ffhandle.get_weight_tensor()
