@@ -17,7 +17,7 @@ class Model(BaseModel):
     self.__traverse_dag_dfs()
     
   def _add_layer_metadata(self, layer):
-    self._layers[self._nb_layers] = layer
+    self._layers.append(layer)
     #assert layer.layer_id == -1, "layer id is inited"
     assert layer.ffhandle == 0, "layer handle is inited"
     layer.layer_id = self._nb_layers
@@ -71,6 +71,5 @@ class Model(BaseModel):
           dfs_stack.append(child)
         else:
           child.nb_visited_prev_layers += 1
-    for layer_id in self._layers:
-      layer = self._layers[layer_id]
+    for layer in self._layers:
       layer.nb_visited_prev_layers = 0

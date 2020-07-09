@@ -19,7 +19,7 @@ class BaseModel(object):
     self._ffmodel = ff.FFModel(self._ffconfig)
     
     self._ffoptimizer = 0
-    self._layers = dict()
+    self._layers = []
     self._nb_layers = 0
     self._input_tensors = []
     self._output_tensor = 0
@@ -64,9 +64,8 @@ class BaseModel(object):
       if not name:
         raise ValueError('Provide either a layer name or layer index.')
     layer = None
-    for layer_id in self._layers:
-      if (self._layers[layer_id].name == name):
-        layer = self._layers[layer_id]
+    for layer in self._layers:
+      if (layer.name == name):
         return layer
     if not layer:
       raise ValueError('No such layer: ' + name)
@@ -184,8 +183,7 @@ class BaseModel(object):
         if (epoch > 0):
           self._ffconfig.begin_trace(111)
         self._ffmodel.forward()
-        # for layer_id in self._layers:
-        #   layer = self._layers[layer_id]
+        # for layer in self._layers:
         #   layer.ffhandle.forward(self._ffmodel)
         self._ffmodel.zero_gradients()
         self._ffmodel.backward()
@@ -211,8 +209,7 @@ class BaseModel(object):
     self._label_tensor.ffhandle.inline_unmap(self._ffconfig)
     
   def _create_flexflow_layers_v2(self):
-    for layer_id in self._layers:
-      layer = self._layers[layer_id]
+    for layer in self._layers:
 
       if (isinstance(layer, Conv2D) == True):
         layer.ffhandle = self._ffmodel.conv2d_v2(layer.name, layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
@@ -231,8 +228,7 @@ class BaseModel(object):
         
   def _create_flexflow_layers(self):
     out_t = 0
-    for layer_id in self._layers:
-      layer = self._layers[layer_id]
+    for layer in self._layers:
 
       if (isinstance(layer, Activation) == True):
        assert layer.layer_id == self._nb_layers-1, "softmax is not in the last layer"
@@ -262,8 +258,7 @@ class BaseModel(object):
        
   def _init_inout(self):
     out_t = 0
-    for layer_id in self._layers:
-      layer = self._layers[layer_id]
+    for layer in self._layers:
 
       if (isinstance(layer, Activation) == True):
         assert layer_id == self._nb_layers-1, "softmax is not in the last layer"
@@ -288,8 +283,7 @@ class BaseModel(object):
     
   def summary(self):
     model_summary = "Layer (type)\t\tOutput Shape\t\tInput Shape\tConnected to\n"
-    for layer_id in self._layers:
-      layer = self._layers[layer_id]
+    for layer in self._layers:
       print(layer)
       for prev_layer in layer.prev_layers:
         print("\tprev: ", prev_layer)

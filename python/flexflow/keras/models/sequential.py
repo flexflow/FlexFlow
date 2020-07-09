@@ -21,7 +21,7 @@ class Sequential(BaseModel):
       self.__add_model(item)
     
   def __add_layer(self, layer):
-    self._layers[self._nb_layers] = layer
+    self._layers.append(layer)
     assert layer.ffhandle == 0, "layer handle is inited"
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
@@ -60,7 +60,6 @@ class Sequential(BaseModel):
     self._train(epochs)
     
   def __add_model(self, model):
-    for layer_id in model.layers:
-      layer = model.layers[layer_id]
+    for layer in model.layers:
       layer.reset_connection()
       self.__add_layer(layer)
