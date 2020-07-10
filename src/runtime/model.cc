@@ -877,7 +877,6 @@ void FFModel::compile()
         // Refresh op's input tensor
         int tsIdx = op->inputs[i].owner_idx;
         op->inputs[i] = op->inputs[i].owner_op->outputs[tsIdx];
-        printf("[%d %d] dims[%d %d] owner_idx(%d) owner_op(%p)\n", l, i, op->inputs[i].adim[0], op->inputs[i].adim[1], op->inputs[i].owner_idx, op->inputs[i].owner_op);
       }
     }
     op->create_output_and_partition(*this);
