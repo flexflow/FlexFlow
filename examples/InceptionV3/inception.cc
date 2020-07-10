@@ -62,30 +62,31 @@ void top_level_task(const Task* task,
   }
  
 //-----------------------------------------------------------------
-  Tensor t = ff.conv2d("conv1", input, 32, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d("conv2", t, 32, 3, 3, 1, 1, 0, 0);
-  t = ff.conv2d("conv3", t, 64, 3, 3, 1, 1, 1, 1);
-  t = ff.pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d("conv4", t, 80, 1, 1, 1, 1, 0, 0);
-  t = ff.conv2d("conv5", t, 192, 3, 3, 1, 1, 1, 1);
-  t = ff.pool2d("pool1", t, 3, 3, 2, 2, 0, 0);
-  t = InceptionA(ff, t, 32, "ia1_");
-  t = InceptionA(ff, t, 64, "ia2_");
-  t = InceptionA(ff, t, 64, "ia3_");
-  t = InceptionB(ff, t, "ib1_");
-  t = InceptionC(ff, t, 128, "ic1_");
-  t = InceptionC(ff, t, 160, "ic2_");
-  t = InceptionC(ff, t, 160, "ic3_");
-  t = InceptionC(ff, t, 192, "ic4_");
-  t = InceptionD(ff, t, "id1_");
-  t = InceptionE(ff, t, "ie1_");
-  t = InceptionE(ff, t, "ie1_");
-  t = ff.pool2d("pool1", t, 8, 8, 1, 1, 0, 0, POOL_AVG);
-  t = ff.flat("flat", t);
-  t = ff.dense("linear1",t, 1000);
-  t = ff.softmax("softmax", t, label);
+  Tensor t = ff.conv2d(input, 32, 3, 3, 2, 2, 0, 0);
+  t = ff.conv2d(t, 32, 3, 3, 1, 1, 0, 0);
+  t = ff.conv2d(t, 64, 3, 3, 1, 1, 1, 1);
+  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+  t = ff.conv2d(t, 80, 1, 1, 1, 1, 0, 0);
+  t = ff.conv2d(t, 192, 3, 3, 1, 1, 1, 1);
+  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+  t = InceptionA(ff, t, 32);
+  t = InceptionA(ff, t, 64);
+  t = InceptionA(ff, t, 64);
+  t = InceptionB(ff, t);
+  t = InceptionC(ff, t, 128);
+  t = InceptionC(ff, t, 160);
+  t = InceptionC(ff, t, 160);
+  t = InceptionC(ff, t, 192);
+  t = InceptionD(ff, t);
+  t = InceptionE(ff, t);
+  t = InceptionE(ff, t);
+  t = ff.pool2d(t, 8, 8, 1, 1, 0, 0, POOL_AVG);
+  t = ff.flat(t);
+  t = ff.dense(t, 1000);
+  t = ff.softmax(t, label);
 //-----------------------------------------------------------------
   ff.optimizer = new SGDOptimizer(&ff, 0.01f);
+  ff.compile();
 
   // Data Loader
   DataLoader data_loader(ff, input, label);
