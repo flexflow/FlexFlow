@@ -75,16 +75,16 @@ def top_level_task():
   next_batch(0, x_train, input, ffconfig)
   next_batch_label(0, y_train, label, ffconfig)
 
-  t = ffmodel.conv2d("conv1", input, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.conv2d("conv2", t, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.pool2d("pool1", t, 2, 2, 2, 2, 0, 0,)
-  t = ffmodel.conv2d("conv3", t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.conv2d("conv4", t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.pool2d("pool2", t, 2, 2, 2, 2, 0, 0)
-  t = ffmodel.flat("flat", t);
-  t = ffmodel.dense("lienar1", t, 512, ActiMode.AC_MODE_RELU)
-  t = ffmodel.dense("lienar1", t, 10)
-  t = ffmodel.softmax("softmax", t, label)
+  t = ffmodel.conv2d(input, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.conv2d(t, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.pool2d(t, 2, 2, 2, 2, 0, 0,)
+  t = ffmodel.conv2d(t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.conv2d(t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.pool2d(t, 2, 2, 2, 2, 0, 0)
+  t = ffmodel.flat(t);
+  t = ffmodel.dense(t, 512, ActiMode.AC_MODE_RELU)
+  t = ffmodel.dense(t, 10)
+  t = ffmodel.softmax(t, label)
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)

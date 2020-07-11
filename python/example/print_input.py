@@ -39,9 +39,9 @@ def top_level_task():
   print(input2_array)
   input2.inline_unmap(ffconfig)
   
-  input1 = ffmodel.conv2d("conv1", input1, 64, 11, 11, 4, 4, 2, 2) 
-  input2 = ffmodel.dense("dense1", input2, 128, ActiMode.AC_MODE_RELU)
-  input2 = ffmodel.dense("dense1", input2, 128, ActiMode.AC_MODE_RELU)
+  input1 = ffmodel.conv2d(input1, 64, 11, 11, 4, 4, 2, 2) 
+  input2 = ffmodel.dense(input2, 128, ActiMode.AC_MODE_RELU)
+  input2 = ffmodel.dense(input2, 128, ActiMode.AC_MODE_RELU)
 
   
   ffmodel.init_layers()
