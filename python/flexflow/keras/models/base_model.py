@@ -262,14 +262,14 @@ class BaseModel(object):
 
       if (isinstance(layer, Activation) == True):
         assert layer_id == self._nb_layers-1, "softmax is not in the last layer"
-        out_t = self._ffmodel.softmax("softmax", layer.input_tensors[0].ffhandle, self._label_tensor.ffhandle)
+        out_t = self._ffmodel.softmax(layer.input_tensors[0].ffhandle, self._label_tensor.ffhandle)
         assert layer.ffhandle == 0, "layer handle is inited"
         layer.ffhandle = self._ffmodel.get_layer_by_id(layer_id)
       elif (isinstance(layer, Concatenate) == True):
         t_ffhandle_list = []
         for t in layer.input_tensors:
           t_ffhandle_list.append(t.ffhandle)
-        out_t = self._ffmodel.concat("concat", t_ffhandle_list, layer.axis)
+        out_t = self._ffmodel.concat(t_ffhandle_list, layer.axis)
         assert layer.ffhandle == 0, "layer handle is inited"
         layer.ffhandle = self._ffmodel.get_layer_by_id(layer_id)
       else:
