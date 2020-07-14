@@ -69,6 +69,19 @@ class BaseModel(object):
         return layer
     if not layer:
       raise ValueError('No such layer: ' + name)
+      
+  def summary(self):
+    model_summary = "Layer (type)\t\tOutput Shape\t\tInput Shape\tConnected to\n"
+    for layer in self._layers:
+      print(layer)
+      for prev_layer in layer.prev_layers:
+        print("\tprev: ", prev_layer)
+      for next_layer in layer.next_layers:
+        print("\tnext: ", next_layer)
+      layer_summary = layer.get_summary()
+      model_summary += layer_summary 
+      
+    return model_summary
     
   def _create_input_tensor(self, idx):
     assert self._input_tensors[idx].batch_shape[0] != 0, "batch size is not set"
@@ -280,19 +293,6 @@ class BaseModel(object):
       print(layer.ffhandle)    
       
     print("output tensor", self._output_tensor.batch_shape)
-    
-  def summary(self):
-    model_summary = "Layer (type)\t\tOutput Shape\t\tInput Shape\tConnected to\n"
-    for layer in self._layers:
-      print(layer)
-      for prev_layer in layer.prev_layers:
-        print("\tprev: ", prev_layer)
-      for next_layer in layer.next_layers:
-        print("\tnext: ", next_layer)
-      layer_summary = layer.get_summary()
-      model_summary += layer_summary 
-      
-    return model_summary
     
   def save_image(self, batch_image_array, id):
     image_array = batch_image_array[id, :, :, :]

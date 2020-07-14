@@ -3,16 +3,22 @@ import flexflow.core as ff
 from flexflow.keras.models.input_layer import Tensor, Input
 
 class Layer(object):
+  __slots__ = ['_ffhandle', '_name', '_layer_type', 'layer_id', \
+               'prev_layers', 'next_layers',\
+               'input_tensors', 'output_tensors', \
+               'input_shape', 'output_shape', 'nb_visited_prev_layers']
   def __init__(self, name, layer_type):
-    self.layer_id = -1
     self._ffhandle = 0
     self._name = name
+    self._layer_type = layer_type
+    self.layer_id = -1
     self.prev_layers = []
     self.next_layers = []
     self.input_tensors = []
     self.output_tensors = []
+    self.input_shape = 0
+    self.output_shape = 0
     self.nb_visited_prev_layers = 0
-    self.layer_type = layer_type
     
   @property
   def name(self):
@@ -40,6 +46,13 @@ class Layer(object):
     else:
       return self.output_tensors
     
+  def reset_connection(self):
+    self.prev_layers.clear()
+    self.next_layers.clear()
+    self.input_tensors.clear()
+    self.output_tensors.clear()
+    self.nb_visited_prev_layers = 0
+    
   def _get_weights(self, ffmodel):
     assert self._ffhandle != 0, "handle is not set correctly"
     kernel_parameter = self._ffhandle.get_weight_tensor()
@@ -55,21 +68,8 @@ class Layer(object):
     kernel_parameter.set_weights(ffmodel, kernel)
     bias_parameter.set_weights(ffmodel, bias)
     
-  def add_prev_layer(self, layer):
-    self.prev_layers.append(layer)
-    
-  def add_next_layer(self, layer):
-    self.next_layers.append(layer)
-    
-  def reset_connection(self):
-    self.prev_layers.clear()
-    self.next_layers.clear()
-    self.input_tensors.clear()
-    self.output_tensors.clear()
-    self.nb_visited_prev_layers = 0
-    
   def _get_summary_name(self):
-    str_name = "{0:25}".format(self._name + " (" + self.layer_type + ")")
+    str_name = "{0:25}".format(self._name + " (" + self._layer_type + ")")
     return str_name
     
   def _get_summary_connected_to(self):

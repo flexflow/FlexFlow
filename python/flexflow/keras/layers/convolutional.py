@@ -5,11 +5,12 @@ from .base_layer import Layer
 from flexflow.keras.models.input_layer import Tensor
 
 class Conv2D(Layer):
+  __slots__ = ['in_channels', 'out_channels', 'kernel_size', 'stride', \
+               'padding', 'activation', 'use_bias']
   def __init__(self, filters, input_shape=(0,), kernel_size=0, strides=0, padding=0, data_format=None, dilation_rate=(1, 1), activation=None, use_bias=True, kernel_initializer='glorot_uniform', bias_initializer='zeros', kernel_regularizer=None, bias_regularizer=None, activity_regularizer=None, kernel_constraint=None, bias_constraint=None, name="conv2d"):
     super(Conv2D, self).__init__(name, "Conv2D") 
     
-    self.input_shape = 0
-    self.output_shape = 0
+    self.in_channels = 0
     self.out_channels = filters
     assert len(kernel_size)==2, "wrong dim of kernel_size"
     self.kernel_size = kernel_size
@@ -36,8 +37,6 @@ class Conv2D(Layer):
     elif (len(input_shape) == 3):
       self.in_channels = input_shape[0]
       self.input_shape = (0, input_shape[0], input_shape[1], input_shape[2])
-    else:
-      self.in_channels = 0
     self.use_bias = use_bias
   
   def verify_meta_data(self):

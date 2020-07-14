@@ -20,21 +20,6 @@ class Sequential(BaseModel):
     elif (isinstance(item, BaseModel)):
       self.__add_model(item)
     
-  def __add_layer(self, layer):
-    self._layers.append(layer)
-    assert layer.ffhandle == 0, "layer handle is inited"
-    layer.layer_id = self._nb_layers
-    self._nb_layers += 1
-    
-    if (layer.layer_id == 0):
-      input_tensor = Input(batch_shape=layer.input_shape, dtype="float32")
-      self._input_tensors.append(input_tensor)
-      self._output_tensor = input_tensor
-      
-    self._output_tensor = layer(self._output_tensor)
-    
-    layer.verify_meta_data()
-    
   def compile(self, optimizer):
     self._create_input_and_label_tensors()
     self._create_flexflow_layers()
@@ -58,6 +43,21 @@ class Sequential(BaseModel):
     self._ffmodel.init_layers()
     
     self._train(epochs)
+    
+  def __add_layer(self, layer):
+    self._layers.append(layer)
+    assert layer.ffhandle == 0, "layer handle is inited"
+    layer.layer_id = self._nb_layers
+    self._nb_layers += 1
+    
+    if (layer.layer_id == 0):
+      input_tensor = Input(batch_shape=layer.input_shape, dtype="float32")
+      self._input_tensors.append(input_tensor)
+      self._output_tensor = input_tensor
+      
+    self._output_tensor = layer(self._output_tensor)
+    
+    layer.verify_meta_data()
     
   def __add_model(self, model):
     for layer in model.layers:

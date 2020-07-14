@@ -4,12 +4,11 @@ from .base_layer import Layer
 from flexflow.keras.models.input_layer import Tensor, Input
 
 class Concatenate(Layer):
+  __slots__ = ['axis']
   def __init__(self, axis, name="concatenate"):
     super(Concatenate, self).__init__(name, "Concatenate") 
     
     self.axis = axis
-    self.input_shape = 0
-    self.output_shape = 0
   
   def verify_meta_data(self):
    pass

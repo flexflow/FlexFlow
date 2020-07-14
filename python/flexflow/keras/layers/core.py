@@ -4,20 +4,18 @@ from .base_layer import Layer
 from flexflow.keras.models.input_layer import Tensor, Input
 
 class Dense(Layer):
+  __slots__ = ['in_channels', 'out_channels', 'activation']
   def __init__(self, output_shape, input_shape=(0,), activation=None, name="dense"):
     super(Dense, self).__init__(name, "Dense") 
     
+    self.in_channels = 0
     self.out_channels = output_shape
-    self.input_shape = 0
-    self.output_shape = 0
     if (len(input_shape) == 2):
       self.in_channels = input_shape[1]
       self.input_shape = (input_shape[0], input_shape[1])
     elif (len(input_shape) == 1):
       self.in_channels = input_shape[0]
       self.input_shape = (0, input_shape[0])
-    else:
-      self.in_channels = 0
     if (activation == None):
       self.activation = ff.ActiMode.AC_MODE_NONE
     elif(activation =="relu"):
@@ -66,8 +64,6 @@ class Dense(Layer):
 class Flatten(Layer):
   def __init__(self, name="flat"):
     super(Flatten, self).__init__(name, "Flatten") 
-    self.input_shape = 0
-    self.output_shape = 0
     
   def verify_meta_data(self):
     assert self.input_shape != 0, "input shape is wrong"
@@ -102,9 +98,6 @@ class Activation(Layer):
     
     if (type == "softmax"):
       self.type = "Softmax"
-      
-    self.input_shape = 0
-    self.output_shape = 0
       
     super(Activation, self).__init__(name, self.type) 
       

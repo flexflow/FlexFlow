@@ -5,13 +5,13 @@ from .base_layer import Layer
 from flexflow.keras.models.input_layer import Tensor, Input
 
 class Pooling2D(Layer):
+  __slots__ = ['in_channels', 'out_channels', 'kernel_size', 'stride', \
+               'padding', 'pool_type']
   def __init__(self, pool_size, strides, padding="valid", name="pool2d", pool_type=ff.PoolType.POOL_MAX, layer_type="MaxPooling2D"):
     super(Pooling2D, self).__init__(name, layer_type) 
     
-    self.input_shape = 0
-    self.output_shape = 0
-    self.out_channels = 0
     self.in_channels = 0
+    self.out_channels = 0
     assert len(pool_size)==2, "wrong dim of pool_size"
     self.kernel_size = pool_size
     assert len(strides)==2, "wrong dim of strides"
