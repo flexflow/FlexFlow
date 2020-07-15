@@ -69,8 +69,9 @@ class BaseModel(object):
         return layer
     if not layer:
       raise ValueError('No such layer: ' + name)
-      
-  def summary(self):
+  
+  # TODO: finish API    
+  def summary(self, line_length=None, positions=None, print_fn=None):
     model_summary = "Layer (type)\t\tOutput Shape\t\tInput Shape\tConnected to\n"
     for layer in self._layers:
       print(layer)
@@ -82,6 +83,60 @@ class BaseModel(object):
       model_summary += layer_summary 
       
     return model_summary
+  
+  #TODO: finish API  
+  def compile(self,  
+              optimizer, 
+              loss=None, 
+              metrics=None, 
+              loss_weights=None, 
+              weighted_metrics=None, 
+              run_eagerly=None, 
+              **kwargs):
+    self._create_input_and_label_tensors()
+    self._create_flexflow_layers()
+    
+    self._verify_output_tensors()
+    self._verify_input_tensors()
+    
+    self._ffoptimizer = optimizer
+    self._ffmodel.compile()
+    print(self._input_tensors[0], self._output_tensor, self._input_tensors[0].ffhandle, self._output_tensor.ffhandle)
+  
+  #TODO: finish API  
+  def fit(self, 
+          x=None, 
+          y=None, 
+          batch_size=None, 
+          epochs=1, 
+          verbose=1, 
+          callbacks=None, 
+          validation_split=0.0, 
+          validation_data=None, 
+          shuffle=True, 
+          class_weight=None, 
+          sample_weight=None, 
+          initial_epoch=0, 
+          steps_per_epoch=None, 
+          validation_steps=None, 
+          validation_batch_size=None, 
+          validation_freq=1, 
+          max_queue_size=10, 
+          workers=1, 
+          use_multiprocessing=False):
+    if (batch_size != None):
+      assert self._ffconfig.get_batch_size() == batch_size, "batch size is not correct use -b to set it"
+    assert self._output_tensor.ffhandle != 0, "tensor is not init"
+    if (isinstance(x, list) == False):
+      input_tensors = [x]
+    else:
+      input_tensors = x
+    label_tensor = y
+    self._verify_tensors(input_tensors, label_tensor)
+    self._create_data_loaders(input_tensors, label_tensor)
+    self._set_optimizer()     
+    self._ffmodel.init_layers()
+    self._train(epochs)
     
   def _create_input_tensor(self, idx):
     assert self._input_tensors[idx].batch_shape[0] != 0, "batch size is not set"
@@ -118,10 +173,6 @@ class BaseModel(object):
   def _verify_input_tensors(self):
     for t in self._input_tensors:
       assert len(t.to_layers) > 0, "input tensor has not to_layers"
-    
-  def _compile(self, optimizer):
-    self._ffoptimizer = optimizer
-    self._ffmodel.compile()
       
   def _set_optimizer(self):
     assert self._ffoptimizer != 0, "optimizer is not set"

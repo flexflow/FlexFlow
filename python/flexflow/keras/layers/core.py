@@ -5,11 +5,11 @@ from flexflow.keras.models.input_layer import Tensor, Input
 
 class Dense(Layer):
   __slots__ = ['in_channels', 'out_channels', 'activation']
-  def __init__(self, output_shape, input_shape=(0,), activation=None, name="dense"):
+  def __init__(self, units, input_shape=(0,), activation=None, name="dense"):
     super(Dense, self).__init__(name, "Dense") 
     
     self.in_channels = 0
-    self.out_channels = output_shape
+    self.out_channels = units
     if (len(input_shape) == 2):
       self.in_channels = input_shape[1]
       self.input_shape = (input_shape[0], input_shape[1])

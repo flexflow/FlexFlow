@@ -22,24 +22,6 @@ class Model(BaseModel):
     assert layer.ffhandle == 0, "layer handle is inited"
     layer.layer_id = self._nb_layers
     self._nb_layers += 1       
-      
-  def compile(self, optimizer):
-    self._create_input_and_label_tensors()
-    self._create_flexflow_layers()
-    
-    self._verify_output_tensors()
-    self._verify_input_tensors()
-    self._compile(optimizer)
-    
-  def fit(self, input_tensors, label_tensor, epochs=1):
-    assert self._output_tensor.ffhandle != 0, "tensor is not init"
-    if (isinstance(input_tensors, list) == False):
-       input_tensors = [input_tensors]
-    self._verify_tensors(input_tensors, label_tensor)
-    self._create_data_loaders(input_tensors, label_tensor)
-    self._set_optimizer()     
-    self._ffmodel.init_layers()
-    self._train(epochs)
 
   def __traverse_dag_bfs(self):
     bfs_queue = []
