@@ -61,6 +61,9 @@ class Dense(Layer):
     assert output_tensor.num_dims == 2, "[Dense]: check output tensor dims"
     assert output_tensor.batch_shape[1] == self.output_shape[1]
     
+  def _reset_layer(self):
+    self.in_channels = 0
+    
 class Flatten(Layer):
   def __init__(self, name="flat"):
     super(Flatten, self).__init__(name, "Flatten") 
@@ -93,6 +96,9 @@ class Flatten(Layer):
     assert output_tensor.num_dims == 2, "[Flatten]: check output tensor dims"
     assert output_tensor.batch_shape[1] == self.output_shape[1]
     
+  def _reset_layer(self):
+    pass
+    
 class Activation(Layer):
   def __init__(self, type, name="activation"):
     
@@ -117,4 +123,7 @@ class Activation(Layer):
     self.output_shape = input_tensor.batch_shape
     
   def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
+    pass
+    
+  def _reset_layer(self):
     pass

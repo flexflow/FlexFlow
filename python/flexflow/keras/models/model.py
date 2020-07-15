@@ -16,6 +16,15 @@ class Model(BaseModel):
     
     self.__traverse_dag_dfs()
     
+  def __call__(self, input_tensor):
+    for layer in self.layers:
+      layer.reset_layer()
+    self._output_tensor = input_tensor
+    for layer in self.layers:
+      self._output_tensor = layer(self._output_tensor)
+    self._input_tensors = [input_tensor]
+    return self._output_tensor
+    
   def _add_layer_metadata(self, layer):
     self._layers.append(layer)
     #assert layer.layer_id == -1, "layer id is inited"

@@ -82,6 +82,9 @@ class Pooling2D(Layer):
     assert output_tensor.batch_shape[1] == self.output_shape[1]
     assert output_tensor.batch_shape[2] == self.output_shape[2]
     assert output_tensor.batch_shape[3] == self.output_shape[3]
+  
+  def _reset_layer(self):
+    self.in_channels = 0
     
 class MaxPooling2D(Pooling2D):
   def __init__(self, pool_size=(2, 2), strides=None, padding="valid", name="maxpool2d"):

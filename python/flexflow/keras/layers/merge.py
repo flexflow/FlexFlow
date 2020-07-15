@@ -45,3 +45,6 @@ class Concatenate(Layer):
     assert output_tensor.num_dims == len(self.output_shape), "[Concatenate]: check output tensor dims"
     for i in range (1, output_tensor.num_dims):
       assert output_tensor.batch_shape[i] == self.output_shape[i]
+      
+  def _reset_layer(self):
+    pass

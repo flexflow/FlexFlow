@@ -46,6 +46,12 @@ class Layer(object):
     else:
       return self.output_tensors
     
+  def reset_layer(self):
+    self.reset_connection()
+    self.input_shape = 0
+    self.output_shape = 0
+    self._reset_layer()
+    
   def reset_connection(self):
     self.prev_layers.clear()
     self.next_layers.clear()
