@@ -1,6 +1,8 @@
 import flexflow.core as ff
 
 class Tensor(object):
+  __slots__ = ['_ffhandle', 'to_layers', 'from_layer', 'dtype', \
+               'batch_shape', 'name', 'num_dims']
   def __init__(self, ffmodel=0, batch_shape=0, name=0, dtype=0, meta_only=False, ffhandle=0):
     self._ffhandle = ffhandle
     self.to_layers = []
@@ -24,9 +26,9 @@ class Tensor(object):
         self.create_ff_tensor(ffmodel)
     # init from handle
     else:
+      self.batch_shape = ffhandle.dims
       self.name = ""
       self.num_dims = ffhandle.num_dims
-      self.batch_shape = ffhandle.dims
   
   @property
   def ffhandle(self):

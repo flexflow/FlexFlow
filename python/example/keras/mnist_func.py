@@ -438,7 +438,7 @@ def cifar_cnn_net2net():
   #teacher
   input_tensor1 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
 
-  c1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
+  c1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")
   c2 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   c3 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   c4 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
@@ -447,7 +447,7 @@ def cifar_cnn_net2net():
 
   output_tensor = c1(input_tensor1)
   output_tensor = c2(output_tensor)
-  output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
+  output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="same")(output_tensor)
   output_tensor = c3(output_tensor)
   output_tensor = c4(output_tensor)
   output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
@@ -479,8 +479,8 @@ def cifar_cnn_net2net():
   #student model
   input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
 
-  sc1_1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
-  sc1_2 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
+  sc1_1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")
+  sc1_2 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")
   sc2 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   sc3 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   sc4 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
@@ -491,7 +491,7 @@ def cifar_cnn_net2net():
   t2 = sc1_2(input_tensor2)
   output_tensor = Concatenate(axis=1)([t1, t2])
   output_tensor = sc2(output_tensor)
-  output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
+  output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="same")(output_tensor)
   output_tensor = sc3(output_tensor)
   output_tensor = sc4(output_tensor)
   output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)

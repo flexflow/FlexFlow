@@ -19,7 +19,7 @@ class Pooling2D(Layer):
     if (padding == "valid"):
       self.padding = (0, 0)
     elif (padding == "same"):
-      self.padding = (0, 0)
+      self.padding = "same"
     elif (isinstance(padding, list) or isinstance(padding, tuple)):
       assert len(padding)==2, "[Pooling2D]: wrong dim of padding"
       self.padding = tuple(padding)
@@ -44,18 +44,32 @@ class Pooling2D(Layer):
     assert input_tensor.num_dims == 4, "[MaxPooling2D]: shape of input tensor is wrong"
     input_b = input_tensor.batch_shape[0]
     input_d = input_tensor.batch_shape[1]
-    input_w = input_tensor.batch_shape[2]
-    input_h = input_tensor.batch_shape[3]
-    assert input_w != 0, "wrong input_w"
+    input_h = input_tensor.batch_shape[2]
+    input_w = input_tensor.batch_shape[3]
     assert input_h != 0, "wrong input_h"
+    assert input_w != 0, "wrong input_w"
     assert input_d != 0, "wrong input_d"
+    
+    #calculate padding for same
+    if (self.padding == 'same'):
+      if (input_h % self.stride[0] == 0):
+        padding_h = max(self.kernel_size[0] - self.stride[0], 0)
+      else:
+        padding_h = max(self.kernel_size[0] - (input_h % self.stride[0]), 0)
+      if (input_w % self.stride[1] == 0):
+        padding_w = max(self.kernel_size[1] - self.stride[1], 0)
+      else:
+        padding_w = max(self.kernel_size[1] - (input_w % self.stride[1]), 0)
+      self.padding = (padding_h//2, padding_w//2)
+      print("pool2d same padding ", self.padding)
+      
     self.input_shape = (input_b, input_d, input_w, input_h)
     self.in_channels = input_d
     self.out_channels = input_d
-    output_w = 1 + math.floor((input_w + 2 * self.padding[0] - self.kernel_size[0]) / self.stride[0])
-    output_h = 1 + math.floor((input_h + 2 * self.padding[1] - self.kernel_size[1]) / self.stride[1])
+    output_h = 1 + math.floor((input_h + 2 * self.padding[0] - self.kernel_size[0]) / self.stride[0])
+    output_w = 1 + math.floor((input_w + 2 * self.padding[1] - self.kernel_size[1]) / self.stride[1])
     output_d = self.out_channels
-    self.output_shape = (input_b, output_d, output_w, output_h)
+    self.output_shape = (input_b, output_d, output_h, output_w)
     print("pool2d input ", self.input_shape)
     print("pool2d output ", self.output_shape)
     
