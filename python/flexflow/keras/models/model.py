@@ -5,16 +5,25 @@ from .input_layer import Tensor
 from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Concatenate
 
 class Model(BaseModel):
-  def __init__(self, input_tensors, output_tensor):
+  def __init__(self, inputs, outputs):
     super(Model, self).__init__()
     
-    if (isinstance(input_tensors, list) == False):
-       input_tensors = [input_tensors]
+    if (isinstance(inputs, list) == False):
+       inputs = [inputs]
        
-    self._input_tensors = input_tensors
-    self._output_tensor = output_tensor
+    self._input_tensors = inputs
+    self._output_tensor = outputs
     
     self.__traverse_dag_dfs()
+    
+  def __call__(self, input_tensor):
+    for layer in self.layers:
+      layer.reset_layer()
+    self._output_tensor = input_tensor
+    for layer in self.layers:
+      self._output_tensor = layer(self._output_tensor)
+    self._input_tensors = [input_tensor]
+    return self._output_tensor
     
   def _add_layer_metadata(self, layer):
     self._layers.append(layer)

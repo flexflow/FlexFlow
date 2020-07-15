@@ -1,7 +1,7 @@
 import flexflow.core as ff
 
 from .input_layer import Tensor
-from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate
+from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract
 from flexflow.keras.optimizers import SGD, Adam 
 
 from PIL import Image
@@ -295,23 +295,27 @@ class BaseModel(object):
     for layer in self._layers:
 
       if (isinstance(layer, Activation) == True):
-       assert layer.layer_id == self._nb_layers-1, "softmax is not in the last layer"
-       out_t = self._ffmodel.softmax(layer.input_tensors[0].ffhandle, self._label_tensor.ffhandle)
+        assert layer.layer_id == self._nb_layers-1, "softmax is not in the last layer"
+        out_t = self._ffmodel.softmax(layer.input_tensors[0].ffhandle, self._label_tensor.ffhandle)
       elif (isinstance(layer, Concatenate) == True):
-       t_ffhandle_list = []
-       for t in layer.input_tensors:
-         t_ffhandle_list.append(t.ffhandle)
-       out_t = self._ffmodel.concat(t_ffhandle_list, layer.axis)
+        t_ffhandle_list = []
+        for t in layer.input_tensors:
+          t_ffhandle_list.append(t.ffhandle)
+        out_t = self._ffmodel.concat(t_ffhandle_list, layer.axis)
       elif (isinstance(layer, Conv2D) == True):
-       out_t = self._ffmodel.conv2d(layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
+        out_t = self._ffmodel.conv2d(layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
       elif (isinstance(layer, Pooling2D) == True):
-       out_t = self._ffmodel.pool2d(layer.input_tensors[0].ffhandle, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.pool_type)
+        out_t = self._ffmodel.pool2d(layer.input_tensors[0].ffhandle, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.pool_type)
       elif (isinstance(layer, Flatten) == True):
-       out_t = self._ffmodel.flat(layer.input_tensors[0].ffhandle)
+        out_t = self._ffmodel.flat(layer.input_tensors[0].ffhandle)
       elif (isinstance(layer, Dense) == True):
-       out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation)
+        out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation)
+      elif (isinstance(layer, Add) == True):
+        out_t = self._ffmodel.add(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
+      elif (isinstance(layer, Subtract) == True):
+        out_t = self._ffmodel.subtract(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       else:
-       assert 0, "unknow layer"
+        assert 0, "unknow layer"
 
       layer.output_tensors[0].ffhandle = out_t
 

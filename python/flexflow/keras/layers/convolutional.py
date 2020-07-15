@@ -117,3 +117,6 @@ class Conv2D(Layer):
     assert output_tensor.batch_shape[1] == self.output_shape[1]
     assert output_tensor.batch_shape[2] == self.output_shape[2]
     assert output_tensor.batch_shape[3] == self.output_shape[3]
+    
+  def _reset_layer(self):
+    self.in_channels = 0
