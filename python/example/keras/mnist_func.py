@@ -36,7 +36,7 @@ def mlp():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
 
-  model.fit(x_train, y_train, epochs=1)
+  model.fit(x_train, y_train, batch_size=64, epochs=1)
   
   # del output
   # del output2

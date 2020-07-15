@@ -19,30 +19,9 @@ class Sequential(BaseModel):
       self.__add_layer(item)
     elif (isinstance(item, BaseModel)):
       self.__add_model(item)
-    
-  def compile(self, optimizer):
-    self._create_input_and_label_tensors()
-    self._create_flexflow_layers()
-    #self._init_inout() 
-    
-    self._verify_output_tensors()
-    self._verify_input_tensors()
-    self._compile(optimizer)
-    print(self._input_tensors[0], self._output_tensor, self._input_tensors[0].ffhandle, self._output_tensor.ffhandle)
-    
-  def fit(self, input_tensors, label_tensor, epochs=1):
-    assert isinstance(input_tensors, list) == False, "do not support multiple inputs"
-    assert self._output_tensor.ffhandle != 0, "tensor is not init"
-    input_tensors = [input_tensors]
-    self._verify_tensors(input_tensors, label_tensor)
-        
-    self._create_data_loaders(input_tensors, label_tensor)
-    
-    #self._init_inout() 
-    self._set_optimizer()     
-    self._ffmodel.init_layers()
-    
-    self._train(epochs)
+  
+  def pop(self):
+    assert 0, "Not implemented"
     
   def __add_layer(self, layer):
     self._layers.append(layer)
