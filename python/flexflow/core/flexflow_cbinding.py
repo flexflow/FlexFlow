@@ -507,28 +507,28 @@ class FFModel(object):
     handle = ffc.flexflow_tensor_create(self.handle, num_dims, c_dims, name.encode('utf-8'), c_data_type, create_grad);
     return Tensor(handle)
     
-  def exp(self, name, x):
-    handle = ffc.flexflow_model_add_exp(self.handle, name.encode('utf-8'), x.handle)
+  def exp(self, x):
+    handle = ffc.flexflow_model_add_exp(self.handle, x.handle)
     self.add_layer(OpType.ELEMENT_UNARY)
     return Tensor(handle)
     
-  def add(self, name, x, y):
-    handle = ffc.flexflow_model_add_add(self.handle, name.encode('utf-8'), x.handle, y.handle)
+  def add(self, x, y):
+    handle = ffc.flexflow_model_add_add(self.handle, x.handle, y.handle)
     self.add_layer(OpType.ELEMENT_BINARY)
     return Tensor(handle)
   
-  def subtract(self, name, x, y):
-    handle = ffc.flexflow_model_add_subtract(self.handle, name.encode('utf-8'), x.handle, y.handle)
+  def subtract(self, x, y):
+    handle = ffc.flexflow_model_add_subtract(self.handle, x.handle, y.handle)
     self.add_layer(OpType.ELEMENT_BINARY)
     return Tensor(handle)
     
-  def multiply(self, name, x, y):
-    handle = ffc.flexflow_model_add_multiply(self.handle, name.encode('utf-8'), x.handle, y.handle)
+  def multiply(self, x, y):
+    handle = ffc.flexflow_model_add_multiply(self.handle, x.handle, y.handle)
     self.add_layer(OpType.ELEMENT_BINARY)
     return Tensor(handle)
     
-  def divide(self, name, x, y):
-    handle = ffc.flexflow_model_add_divide(self.handle, name.encode('utf-8'), x.handle, y.handle)
+  def divide(self, x, y):
+    handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle)
     self.add_layer(OpType.ELEMENT_BINARY)
     return Tensor(handle)
     
