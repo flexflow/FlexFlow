@@ -67,11 +67,11 @@ def mlp_concat():
   output4 = Activation("softmax")(output3)
   
   model = Model(input_tensor, output4)
-  
-  print(model.summary())
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  
+  print(model.summary())
 
   model.fit(x_train, y_train, epochs=1)
    
@@ -131,10 +131,10 @@ def cnn_concat():
   output = Activation("softmax")(output)
 
   model = Model(input_tensor, output)
-  print(model.summary())
   
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  print(model.summary())
   
   model.fit(x_train, y_train, epochs=1)
   
@@ -167,10 +167,9 @@ def cifar_cnn():
 
   model = Model(input_tensor1, output_tensor)
   
-  print(model.summary())
-  
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  print(model.summary())
 
   model.fit(x_train, y_train, epochs=1)
 
@@ -216,10 +215,9 @@ def cifar_cnn_concat():
 
   model = Model([input_tensor1, input_tensor2], output_tensor)
   
-  print(model.summary())
-  
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  print(model.summary())
 
   model.fit([x_train, x_train], y_train, epochs=1)
   
@@ -258,10 +256,9 @@ def cifar_cnn_model_concat():
 
   model = Model([input_tensor1, input_tensor2], output_tensor)
   
-  print(model.summary())
-  
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt)
+  print(model.summary())
 
   model.fit([x_train, x_train], y_train, epochs=1)
   
@@ -301,10 +298,9 @@ def cifar_cnn_model_concat_seq():
 
   model = Model([model1.input[0], model2.input[0]], output_tensor)
   
-  print(model.summary())
-  
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt)
+  print(model.summary())
 
   model.fit([x_train, x_train], y_train, epochs=1)
   
@@ -343,10 +339,9 @@ def cifar_cnn_model_call():
   output_tensor3 = model2(output_tensor3)
   model = Model(input_tensor3, output_tensor3)
   
-  print(model.summary())
-  
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  print(model.summary())
 
   model.fit(x_train, y_train, epochs=1)
   
@@ -390,10 +385,9 @@ def cifar_alexnet():
   
   model = Model(input_tensor, output)
   
-  print(model.summary())
-  
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt)
+  print(model.summary())
   
   model.fit(full_input_np, full_label_np, epochs=1)
 
@@ -500,10 +494,9 @@ def cifar_cnn_net2net():
 
   teacher_model = Model(input_tensor1, output_tensor)
 
-  print(teacher_model.summary())
-
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   teacher_model.compile(optimizer=opt)
+  print(teacher_model.summary())
 
   teacher_model.fit(x_train, y_train, epochs=1)
 
@@ -544,10 +537,9 @@ def cifar_cnn_net2net():
 
   student_model = Model(input_tensor2, output_tensor)
 
-  print(student_model.summary())
-
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   student_model.compile(optimizer=opt)
+  print(student_model.summary())
 
   sc1_1.set_weights(student_model.ffmodel, c1_kernel, c1_bias)
   sc1_2.set_weights(student_model.ffmodel, c1_kernel, c1_bias)
