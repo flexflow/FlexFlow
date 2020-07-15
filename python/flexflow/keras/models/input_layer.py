@@ -61,8 +61,6 @@ class Tensor(object):
     
   def __verify_ffhandle_shape(self):
     assert self.num_dims == self._ffhandle.num_dims, "[Tensor]: check tensor shape"
-    if (self.batch_shape[0] == 0):
-      self.set_batch_size(self._ffhandle.dims[0])
     for i in range(0, self.num_dims):
       assert self.batch_shape[i] == self._ffhandle.dims[i], "[Tensor]: please check shape dim %d (%d == %d)" %(i, self.batch_shape[i], self._ffhandle.dims[i])
 

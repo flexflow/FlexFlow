@@ -59,6 +59,14 @@ class Layer(object):
     self.output_tensors.clear()
     self.nb_visited_prev_layers = 0
     
+  def set_batch_size(self, size):
+    lst = list(self.input_shape)
+    lst[0] = size
+    self.input_shape = tuple(lst)
+    lst = list(self.output_shape)
+    lst[0] = size
+    self.output_shape = tuple(lst)
+    
   def _get_weights(self, ffmodel):
     assert self._ffhandle != 0, "handle is not set correctly"
     kernel_parameter = self._ffhandle.get_weight_tensor()

@@ -318,6 +318,7 @@ class BaseModel(object):
         assert 0, "unknow layer"
 
       layer.output_tensors[0].ffhandle = out_t
+      layer.set_batch_size(self._ffconfig.get_batch_size())
 
       assert layer.ffhandle == 0, "layer handle is inited"
       layer.ffhandle = self._ffmodel.get_layer_by_id(layer.layer_id)
