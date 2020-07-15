@@ -1,5 +1,5 @@
 from flexflow.keras.models import Model, Input, Sequential
-from flexflow.keras.layers import Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate
+from flexflow.keras.layers import Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, concatenate
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
@@ -122,7 +122,7 @@ def cnn_concat():
   
   t1 = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
   t2 = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
-  output = Concatenate(axis=1)([t1, t2])
+  output = concatenate([t1, t2])
   output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
   output = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output)
   output = Flatten()(output)

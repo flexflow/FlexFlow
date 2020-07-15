@@ -1,5 +1,5 @@
 from flexflow.keras.models import Model, Input, Sequential
-from flexflow.keras.layers import Add, Subtract, Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate
+from flexflow.keras.layers import Add, Subtract, Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, add, subtract
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
@@ -9,7 +9,7 @@ import numpy as np
 import argparse
 import gc
 
-def add():
+def add_test():
   input1 = Input(batch_shape=(0, 16), dtype="float32")
   x1 = Dense(8, activation='relu')(input1)
   input2 = Input(batch_shape=(0, 32), dtype="float32")
@@ -24,12 +24,12 @@ def add():
   print(model.summary())
   model.ffmodel.init_layers()
   
-def subtract():
+def subtract_test():
   input1 = Input(batch_shape=(0, 16), dtype="float32")
   x1 = Dense(8, activation='relu')(input1)
   input2 = Input(batch_shape=(0, 32), dtype="float32")
   x2 = Dense(8, activation='relu')(input2)
-  subtracted = Subtract()([x1, x2])
+  subtracted = subtract([x1, x2])
 
   out = Dense(4)(subtracted)
   model = Model([input1, input2], out)
@@ -41,8 +41,8 @@ def subtract():
 
 def top_level_task():
   
-  add()
-  subtract()
+  add_test()
+  subtract_test()
 
 
 if __name__ == "__main__":

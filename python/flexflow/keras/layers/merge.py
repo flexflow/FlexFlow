@@ -30,6 +30,9 @@ class _Merge(Layer):
   def _reset_layer(self):
     pass
     
+def concatenate(input_tensors, _axis=1):
+  return Concatenate(axis=_axis)(input_tensors)
+    
 class Concatenate(_Merge):
   __slots__ = ['axis']
   def __init__(self, axis, name="concatenate"):
@@ -52,6 +55,9 @@ class Concatenate(_Merge):
       assert 0, "un-supported dims"
     print("concat output ", self.output_shape)
     self.input_shape = input_tensors[0].batch_shape
+
+def add(input_tensors):
+  return Add()(input_tensors)
     
 class Add(_Merge):
   def __init__(self, name="add"):
@@ -62,6 +68,9 @@ class Add(_Merge):
     self.input_shape = input_tensors[0].batch_shape
     self.output_shape = input_tensors[0].batch_shape
     print("add output ", self.output_shape)
+
+def subtract(input_tensors):
+  return Subtract()(input_tensors)
     
 class Subtract(_Merge):
   def __init__(self, name="subtract"):
