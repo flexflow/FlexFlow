@@ -14,7 +14,7 @@ class Model(BaseModel):
     self._input_tensors = inputs
     self._output_tensor = outputs
     
-    self.__traverse_dag_bfs()
+    self.__traverse_dag_dfs()
     print("nb_layers", self._nb_layers)
     
   def __call__(self, input_tensor):
@@ -55,7 +55,7 @@ class Model(BaseModel):
         dfs_stack.append(layer)
     while(len(dfs_stack) != 0):
       layer = dfs_stack.pop()
-      print(layer)
+      #print(layer)
       self._add_layer_metadata(layer)
       for child in reversed(layer.next_layers):
         assert child not in dfs_stack, "already in the stack"
@@ -63,6 +63,5 @@ class Model(BaseModel):
           dfs_stack.append(child)
         else:
           child.nb_visited_prev_layers += 1
-          print("   ",child, child.nb_visited_prev_layers, " ", len(child.prev_layers))
     for layer in self._layers:
       layer.nb_visited_prev_layers = 0
