@@ -100,12 +100,10 @@ class Layer(object):
     self.output_tensors.append(output_tensor)
     
     output_tensor.set_from_layer(self)
+    input_tensor.set_to_layer(self)
     
-    # this is the first layer
-    if (isinstance(input_tensor, Input) == True):
-      input_tensor.set_to_layer(self)
-    # other layers
-    else:
+    # this is not the first layer
+    if (isinstance(input_tensor, Input) == False):
       assert input_tensor.from_layer != 0, "[Layer]: check input tensor"
       self.prev_layers.append(input_tensor.from_layer)
       input_tensor.from_layer.next_layers.append(self)
@@ -122,7 +120,10 @@ class Layer(object):
     
     for tensor in input_tensors:
       self.input_tensors.append(tensor)
-      assert tensor.from_layer != 0, "check input tensor"
-      self.prev_layers.append(tensor.from_layer)
-      tensor.from_layer.next_layers.append(self)
+      tensor.set_to_layer(self)
+      # not the first layer
+      if (isinstance(tensor, Input) == False):
+        assert tensor.from_layer != 0, "check input tensor"
+        self.prev_layers.append(tensor.from_layer)
+        tensor.from_layer.next_layers.append(self)
     return output_tensor

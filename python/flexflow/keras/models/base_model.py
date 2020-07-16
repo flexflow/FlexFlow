@@ -63,12 +63,10 @@ class BaseModel(object):
     else:
       if not name:
         raise ValueError('Provide either a layer name or layer index.')
-    layer = None
     for layer in self._layers:
       if (layer.name == name):
         return layer
-    if not layer:
-      raise ValueError('No such layer: ' + name)
+    raise ValueError('No such layer: ' + name)
   
   # TODO: finish API    
   def summary(self, line_length=None, positions=None, print_fn=None):
