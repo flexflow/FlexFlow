@@ -320,7 +320,7 @@ class BaseModel(object):
       elif (isinstance(layer, Flatten) == True):
         layer.ffhandle = self._ffmodel.flat_v2()
       elif (isinstance(layer, Dense) == True):
-        layer.ffhandle = self._ffmodel.dense_v2(layer.in_channels, layer.out_channels, layer.activation)
+        layer.ffhandle = self._ffmodel.dense_v2(layer.in_channels, layer.out_channels, layer.activation, layer.use_bias)
       elif (isinstance(layer, Activation) == True):
         print("add softmax")
       elif (isinstance(layer, Concatenate) == True):
@@ -347,7 +347,7 @@ class BaseModel(object):
       elif (isinstance(layer, Flatten) == True):
         out_t = self._ffmodel.flat(layer.input_tensors[0].ffhandle)
       elif (isinstance(layer, Dense) == True):
-        out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation)
+        out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation, layer.use_bias)
       elif (isinstance(layer, Add) == True):
         out_t = self._ffmodel.add(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       elif (isinstance(layer, Subtract) == True):
@@ -383,6 +383,7 @@ class BaseModel(object):
         out_t = layer.ffhandle.init_inout(self._ffmodel, layer.input_tensors[0].ffhandle);
       
       layer.output_tensors[0].ffhandle = out_t
+      layer.set_batch_size(self._ffconfig.get_batch_size())
       assert layer.ffhandle != 0, "layer handle is wrong"
       print(layer.ffhandle)    
       

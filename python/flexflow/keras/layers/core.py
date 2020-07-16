@@ -5,11 +5,36 @@ from flexflow.keras.models.input_layer import Tensor, Input
 
 class Dense(Layer):
   __slots__ = ['in_channels', 'out_channels', 'activation']
-  def __init__(self, units, input_shape=(0,), activation=None, name="dense"):
+  def __init__(self, units, input_shape=(0,), 
+               activation=None, use_bias=True,
+               kernel_initializer="glorot_uniform",
+               bias_initializer="zeros",
+               kernel_regularizer=None,
+               bias_regularizer=None,
+               activity_regularizer=None,
+               kernel_constraint=None,
+               bias_constraint=None
+               name="dense"):
+    if kernel_initializer != "glorot_uniform":
+      assert 0, "kernel_initializer is not supported"
+    if bias_initializer != "zeros":
+      assert 0, "bias_initializer is not supported"
+    if kernel_regularizer != None:
+      assert 0, "kernel_regularizer is not supported"
+    if bias_regularizer != None:
+      assert 0, "bias_regularizer is not supported"
+    if activity_regularizer != None:
+      assert 0, "activity_regularizer is not supported"
+    if kernel_constraint != None:
+      assert 0, "kernel_constraint is not supported"
+    if bias_constraint != None:
+      assert 0, "bias_constraint is not supported"
+    
     super(Dense, self).__init__(name, "Dense") 
     
     self.in_channels = 0
     self.out_channels = units
+    self.use_bias = use_bias
     if (len(input_shape) == 2):
       self.in_channels = input_shape[1]
       self.input_shape = (input_shape[0], input_shape[1])
@@ -65,7 +90,9 @@ class Dense(Layer):
     self.in_channels = 0
     
 class Flatten(Layer):
-  def __init__(self, name="flat"):
+  def __init__(self, data_format=None, name="flat"):
+    if data_format != None:
+      assert 0, "data_format is not supported"
     super(Flatten, self).__init__(name, "Flatten") 
     
   def verify_meta_data(self):
@@ -100,12 +127,12 @@ class Flatten(Layer):
     pass
     
 class Activation(Layer):
-  def __init__(self, type, name="activation"):
+  def __init__(self, activation, name="activation"):
     
-    if (type == "softmax"):
-      self.type = "Softmax"
+    if (activation == "softmax"):
+      self.activation = "Softmax"
       
-    super(Activation, self).__init__(name, self.type) 
+    super(Activation, self).__init__(name, self.activation) 
       
   def verify_meta_data(self):
     assert self.type == "Softmax", "type is wrong"

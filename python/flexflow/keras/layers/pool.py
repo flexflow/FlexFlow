@@ -87,9 +87,13 @@ class Pooling2D(Layer):
     self.in_channels = 0
     
 class MaxPooling2D(Pooling2D):
-  def __init__(self, pool_size=(2, 2), strides=None, padding="valid", name="maxpool2d"):
+  def __init__(self, pool_size=(2, 2), strides=None, padding="valid", data_format=None, name="maxpool2d"):
+    if data_format == 'channels_last':
+      assert 0, "data_format channels_last is not supported"
     super(MaxPooling2D, self).__init__(pool_size, strides, padding, name, ff.PoolType.POOL_MAX, "MaxPooling2D") 
     
 class AveragePooling2D(Pooling2D):
-  def __init__(self, pool_size=(2, 2), strides=None, padding="valid", name="maxpool2d"):
+  def __init__(self, pool_size=(2, 2), strides=None, padding="valid", data_format=None, name="maxpool2d"):
+    if data_format == 'channels_last':
+      assert 0, "data_format channels_last is not supported"
     super(AveragePooling2D, self).__init__(pool_size, strides, padding, name, ff.PoolType.POOL_AVG, "AveragePooling2D") 

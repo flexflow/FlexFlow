@@ -26,6 +26,27 @@ class Conv2D(Layer):
                kernel_constraint=None, 
                bias_constraint=None, 
                name="conv2d"):
+    if data_format == 'channels_last':
+      assert 0, "data_format channels_last is not supported"
+    if dilation_rate != (1,1):
+      assert 0, "dilation_rate is not supported"
+    if groups != 1:
+      assert 0, "groups is not supported"
+    if kernel_initializer != "glorot_uniform":
+      assert 0, "kernel_initializer is not supported"
+    if bias_initializer != "zeros":
+      assert 0, "bias_initializer is not supported"
+    if kernel_regularizer != None:
+      assert 0, "kernel_regularizer is not supported"
+    if bias_regularizer != None:
+      assert 0, "bias_regularizer is not supported"
+    if activity_regularizer != None:
+      assert 0, "activity_regularizer is not supported"
+    if kernel_constraint != None:
+      assert 0, "kernel_constraint is not supported"
+    if bias_constraint != None:
+      assert 0, "bias_constraint is not supported"
+    
     super(Conv2D, self).__init__(name, "Conv2D") 
     
     self.in_channels = 0
