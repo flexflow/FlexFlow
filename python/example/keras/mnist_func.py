@@ -103,6 +103,14 @@ def cnn():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
   
+  print(model.summary())
+  
+  flatten1 = model.get_layer(name='flat')
+  t1 = flatten1.output_tensors[0]
+  t2 = flatten1.input_tensors[0]
+  print("t1: ", t1.to_layers, " ", t1.from_layer)
+  print("t2: ", t2.to_layers, " ", t2.from_layer)
+  
   model.fit(x_train, y_train, epochs=1)
   
 def cnn_concat():

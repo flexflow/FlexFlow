@@ -54,6 +54,9 @@ class Tensor(object):
     assert self.from_layer == 0, "[Tensor]: from layer has been set"
     self.from_layer = layer
     
+  def set_to_layer(self, layer):
+    self.to_layers.append(layer)
+    
   def set_batch_size(self, size):
     lst = list(self.batch_shape)
     lst[0] = size
@@ -69,7 +72,3 @@ class Input(Tensor):
                name="", dtype=None, sparse=False,
                tensor=None):
     super(Input, self).__init__(0, batch_shape, name, dtype, meta_only=True) 
-    
-  def set_to_layer(self, layer):
-    self.to_layers.append(layer)
-    
