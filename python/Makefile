@@ -13,28 +13,15 @@
 # limitations under the License.
 #
 
-
-ifndef LG_RT_DIR
-$(error LG_RT_DIR variable is not defined, aborting build)
-endif
-
 ifndef FF_HOME
 $(error FF_HOME variable is not defined, aborting build)
 endif
 
-ifndef PROTOBUF_DIR
-PROTOBUF_DIR ?= /home/wwu12/opt
+ifndef LG_RT_DIR
+LG_RT_DIR	?= $(FF_HOME)/legion/runtime
 endif
 
-ifndef CUDNN_DIR
-CUDNN_DIR ?= /scratch/shared/wwu12/cudnn
-endif
-
-ifndef CUDA_DIR
-CUDA_DIR ?= /spack/opt/spack/linux-scientific7-x86_64/gcc-7.3.0/cuda-10.0.130-etoqn3vlwx2os25n3rmtksntnu5ioorb
-endif
-
-PROTOBUF_EXE ?= $(PROTOBUF_DIR)/bin/protoc
+PROTOBUF_EXE ?= $(FF_HOME)/protobuf/src/protoc
 
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 1		# Include debugging symbols
@@ -44,7 +31,6 @@ USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
-#REALM_NETWORKS ?= mpi
 
 USE_PYTHON := 1
 ifndef PYTHON_LIB
@@ -93,11 +79,11 @@ GEN_SRC		?= main.cc flexflow_c.cc flexflow_dataloader.cc strategy.pb.cc $(FF_SRC
 GEN_GPU_SRC	?= $(FF_GPU_SRC)		# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -I$(FF_HOME)/include -I$(PROTOBUF_DIR)/include -I$(CUDNN_DIR)/include -I$(CUDA_DIR)/include 
+INC_FLAGS	?= -I$(FF_HOME)/include -I$(FF_HOME)/protobuf/src -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
 CC_FLAGS	?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON -std=c++11
 NVCC_FLAGS	?= -std=c++11
 GASNET_FLAGS	?=
-LD_FLAGS	?= -L$(PROTOBUF_DIR)/lib -lprotobuf -L$(CUDNN_DIR)/lib64 -lcudnn -L$(CUDA_DIR)/lib64 -lcublas -lcurand
+LD_FLAGS	?= -lprotobuf -lcudnn -lcublas -lcurand -L$(FF_HOME)/protobuf/src/.libs -L$(CUDNN_HOME)/lib64 -L$(CUDNN_HOME)/lib64
 
 ifeq ($(shell uname), Darwin)
 	LD_FLAGS += -Wl,-force_load,liblegion.a
