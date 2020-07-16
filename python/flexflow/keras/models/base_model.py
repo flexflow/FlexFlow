@@ -70,6 +70,8 @@ class BaseModel(object):
   
   # TODO: finish API    
   def summary(self, line_length=None, positions=None, print_fn=None):
+    if line_length != None:
+      assert 0, "line_length is not supported"
     model_summary = "Layer (type)\t\tOutput Shape\t\tInput Shape\tConnected to\n"
     for layer in self._layers:
       print(layer)
@@ -91,6 +93,17 @@ class BaseModel(object):
               weighted_metrics=None, 
               run_eagerly=None, 
               **kwargs):
+    if loss != None:
+      assert 0, "loss is not supported"
+    if metrics != None:
+      assert 0, "metrics is not supported"
+    if loss_weights != None:
+      assert 0, "loss_weights is not supported"
+    if weighted_metrics != None:
+      assert 0, "weighted_metrics is not supported"
+    if run_eagerly != None:
+      assert 0, "run_eagerly is not supported"
+      
     self._create_input_and_label_tensors()
     self._create_flexflow_layers()
     
@@ -124,6 +137,33 @@ class BaseModel(object):
           use_multiprocessing=False):
     if (batch_size != None):
       assert self._ffconfig.get_batch_size() == batch_size, "batch size is not correct use -b to set it"
+    if validation_split != 0.0:
+      assert 0, "validation_split is not supported"  
+    if validation_data != None:
+      assert 0, "validation_data is not supported"
+    if shuffle != True:
+      assert 0, "shuffle is not supported"
+    if class_weight != None:
+      assert 0, "class_weight is not supported"
+    if sample_weight != None:
+      assert 0, "sample_weight is not supported"
+    if initial_epoch != 0:
+      assert 0, "initial_epoch is not supported"
+    if steps_per_epoch != None:
+      assert 0, "steps_per_epoch is not supported"
+    if validation_steps != None:
+      assert 0, "validation_steps is not supported"
+    if validation_batch_size != None:
+      assert 0, "validation_batch_size is not supported"
+    if validation_freq != 1:
+      assert 0, "validation_freq is not supported"
+    if max_queue_size != 10:
+      assert 0, "max_queue_size is not supported"
+    if workers != 1:
+      assert 0, "workers is not supported"
+    if use_multiprocessing != False:
+      assert 0, "use_multiprocessing is not supported"
+      
     assert self._output_tensor.ffhandle != 0, "tensor is not init"
     if (isinstance(x, list) == False):
       input_tensors = [x]
@@ -141,7 +181,7 @@ class BaseModel(object):
     self._input_tensors[idx].create_ff_tensor(self._ffmodel)
     
   def _create_label_tensor(self):
-    self._label_tensor = Tensor(self._ffmodel, batch_shape=[self._ffconfig.get_batch_size(), 1], name="", dtype="int32")
+    self._label_tensor = Tensor(ffmodel=self._ffmodel, batch_shape=(self._ffconfig.get_batch_size(), 1), name="", dtype="int32")
     
   def _create_input_and_label_tensors(self):
     idx = 0
