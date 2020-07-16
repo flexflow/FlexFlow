@@ -318,7 +318,7 @@ class FFConfig(object):
 # -----------------------------------------------------------------------
 
 class Tensor(object):
-  __slots__ = ['p_handle', 'handle', '_handle', 'num_dims', 'dims', 'mapped']
+  __slots__ = ['p_handle', 'handle', '_handle', 'num_dims', 'dims', 'data_type', 'mapped']
   def __init__(self, handle, deallocate=True):
     if (ffi.typeof(handle) == ffi.typeof('flexflow_tensor_t')):
       self.p_handle = 0
@@ -330,9 +330,10 @@ class Tensor(object):
     else:
       assert 0, "Tensor handle is wrong"
     self.num_dims = 0
-    self.dims = [0, 0, 0, 0]
+    self.dims = 0
     self.mapped = False
-    self.__set_dims()
+    self.__get_dims()
+    self.__get_data_type()
     if (deallocate == True):
       self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
     if (self.is_mapped() == True):
@@ -355,14 +356,8 @@ class Tensor(object):
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     print("raw_ptr: ", raw_ptr, raw_ptr_int)
     strides = None
-    if (self.num_dims == 1):
-      shape = (self.dims[0],)
-    elif (self.num_dims == 2):
-      shape = (self.dims[0], self.dims[1])
-    elif (self.num_dims == 3):
-      shape = (self.dims[0], self.dims[1], self.dims[2])
-    elif (self.num_dims == 4):
-      shape = (self.dims[0], self.dims[1], self.dims[2], self.dims[3])
+    if (self.num_dims >= 1 or self.num_dims <= 4):
+      shape = self.dims
     else:
       assert 0, "unknow num_dims"
     initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
@@ -375,16 +370,11 @@ class Tensor(object):
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     print("raw_ptr: ", raw_ptr, raw_ptr_int)
     strides = None
-    if (self.num_dims == 1):
-      shape = (self.dims[0],)
-    elif (self.num_dims == 2):
-      shape = (self.dims[0] * self.dims[1],)
-    elif (self.num_dims == 3):
-      shape = (self.dims[0] * self.dims[1] * self.dims[2],)
-    elif (self.num_dims == 4):
-      shape = (self.dims[0] * self.dims[1] * self.dims[2] * self.dims[3],)
+    if (self.num_dims >= 1 or self.num_dims <= 4):
+      shape_prod = np.prod(self.dims)
+      shape = (shape_prod,)
     else:
-      assert 0, "unknow num_dims"
+      assert 0, "unknown num_dims"
     initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
     return array
@@ -392,23 +382,10 @@ class Tensor(object):
   def attach_numpy_array(self, ffconfig, np_array):
     assert np_array.__array_interface__['strides'] == None, "numpy array strides is not None"
     np_shape = np_array.shape
-    np_num_dims = len(np_shape)
-    if (self.num_dims == 1):
-      assert self.dims[0] == np_shape[0], "wrong dim"
-    elif (self.num_dims == 2):
-      assert self.dims[0] == np_shape[0], "wrong dim"
-      assert self.dims[1] == np_shape[1], "wrong dim"
-    elif (self.num_dims == 3):
-      assert self.dims[0] == np_shape[0], "wrong dim"
-      assert self.dims[1] == np_shape[1], "wrong dim"
-      assert self.dims[2] == np_shape[2], "wrong dim"
-    elif (self.num_dims == 4):
-      assert self.dims[0] == np_shape[0], "wrong dim"
-      assert self.dims[1] == np_shape[1], "wrong dim"
-      assert self.dims[2] == np_shape[2], "wrong dim"
-      assert self.dims[3] == np_shape[3], "wrong dim"
-    else:
-      assert 0, "unknow num_dims"
+    num_dims = len(np_shape)
+    assert num_dims == self.num_dims, "please check dims (%d == %d)" %(num_dims, self.num_dims)
+    for i in range(0, num_dims):
+      assert np_shape[i] == self.dims[i], "please check shape dim %d (%d == %d)" %(i, np_shape[i], self.dims[i])
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("void*", np_raw_ptr[0])
     print("attach numpy array: ", np_raw_ptr, raw_ptr, hex(np_raw_ptr[0]))
@@ -421,6 +398,7 @@ class Tensor(object):
     return ffc.flexflow_tensor_is_mapped(self.handle)
     
   def __get_raw_ptr(self, ffconfig, data_type):
+    assert data_type == self.data_type, "Tensor check data type"
     if (data_type == DataType.DT_FLOAT):    
       return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, ffconfig.handle)
     elif (data_type == DataType.DT_INT32):
@@ -428,20 +406,35 @@ class Tensor(object):
     else:
       assert 0, "unknown data type"
     
-  def __set_dims(self):
+  def __get_dims(self):
     self.num_dims = ffc.flexflow_tensor_get_num_dims(self.handle)
     d = ffc.flexflow_tensor_get_dims(self.handle)
     #print(d[0], d[1], d[2], d[3])
     if (self.num_dims == 1):
-      self.dims = [d[0]]
+      self.dims = (d[0],)
     elif (self.num_dims == 2):
-      self.dims = [d[1], d[0]]
+      self.dims = (d[1], d[0])
     elif (self.num_dims == 3):
-      self.dims = [d[2], d[1], d[0]]
+      self.dims = (d[2], d[1], d[0])
     elif (self.num_dims == 4):
-      self.dims = [d[3], d[2], d[1], d[0]]
+      self.dims = (d[3], d[2], d[1], d[0])
     else:
-      assert 0, "unknow num_dims"
+      assert 0, "unknown num_dims"
+      
+  def __get_data_type(self):
+    dtype = ffc.flexflow_tensor_get_data_type(self.handle)
+    if (dtype == 40):
+      self.data_type = DataType.DT_FLOAT
+    elif (dtype == 41):
+      self.data_type = DataType.DT_DOUBLE
+    elif (dtype == 42):
+      self.data_type = DataType.DT_INT32
+    elif (dtype == 43):
+      self.data_type = DataType.DT_INT64
+    elif (dtype == 44):
+      self.data_type = DataType.DT_BOOLEAN
+    else:
+      assert 0, "unknown data type"
     
   def __attach_raw_ptr(self, ffconfig, raw_ptr, column_major=True):
     assert self.mapped == False, "Tensor is already mapped."
@@ -468,34 +461,18 @@ class Parameter(Tensor):
     assert np_array.__array_interface__['strides'] == None, "Parameter set_weights, numpy array strides is not None"
     np_shape = np_array.shape
     num_dims = len(np_shape)
-    assert num_dims == self.num_dims, "please check dims"
-    if (num_dims == 1):
-      shape = [np_shape[0]]
-    elif (num_dims == 2):
-      shape = [np_shape[0], np_shape[1]]
-    elif (num_dims == 3):
-      shape = [np_shape[0], np_shape[1], np_shape[2]]
-    elif (num_dims == 4):
-      shape = [np_shape[0], np_shape[1], np_shape[2], np_shape[3]]
-    else:
-      assert 0, "unknow num_dims"
+    assert num_dims == self.num_dims, "please check dims (%d == %d)" %(num_dims, self.num_dims)
+    for i in range(0, num_dims):
+      assert np_shape[i] == self.dims[i], "please check shape dim %d (%d == %d)" %(i, np_shape[i], self.dims[i])
+    c_dims = ffi.new("int[]", self.dims)
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-    print("set weights raw_ptr: ", raw_ptr, np_raw_ptr[0], hex(np_raw_ptr[0]), shape)
-    ret_val = ffc.flexflow_parameter_set_weights_float(self.parameter_handle, ffmodel.handle, num_dims, shape, raw_ptr)
+    print("set weights raw_ptr: ", raw_ptr, np_raw_ptr[0], hex(np_raw_ptr[0]), np_shape)
+    ret_val = ffc.flexflow_parameter_set_weights_float(self.parameter_handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
     assert ret_val == True, ret_val
     
   def get_weights(self, ffmodel):
-    if (self.num_dims == 1):
-      shape = (self.dims[0],)
-    elif (self.num_dims == 2):
-      shape = (self.dims[0], self.dims[1])
-    elif (self.num_dims == 3):
-      shape = (self.dims[0], self.dims[1], self.dims[2])
-    elif (self.num_dims == 4):
-      shape = (self.dims[0], self.dims[1], self.dims[2], self.dims[3])
-    else:
-      assert 0, "unknow num_dims"
+    shape = self.dims
     np_array = np.empty(shape, dtype=np.float32)
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
@@ -530,32 +507,32 @@ class FFModel(object):
     handle = ffc.flexflow_tensor_create(self.handle, num_dims, c_dims, name.encode('utf-8'), c_data_type, create_grad);
     return Tensor(handle)
     
-  def exp(self, name, x):
-    handle = ffc.flexflow_model_add_exp(self.handle, name.encode('utf-8'), x.handle)
+  def exp(self, x):
+    handle = ffc.flexflow_model_add_exp(self.handle, x.handle)
     self.add_layer(OpType.ELEMENT_UNARY)
     return Tensor(handle)
     
-  def add(self, name, x, y):
-    handle = ffc.flexflow_model_add_add(self.handle, name.encode('utf-8'), x.handle, y.handle)
+  def add(self, x, y):
+    handle = ffc.flexflow_model_add_add(self.handle, x.handle, y.handle)
     self.add_layer(OpType.ELEMENT_BINARY)
     return Tensor(handle)
   
-  def subtract(self, name, x, y):
-    handle = ffc.flexflow_model_add_subtract(self.handle, name.encode('utf-8'), x.handle, y.handle)
+  def subtract(self, x, y):
+    handle = ffc.flexflow_model_add_subtract(self.handle, x.handle, y.handle)
     self.add_layer(OpType.ELEMENT_BINARY)
     return Tensor(handle)
     
-  def multiply(self, name, x, y):
-    handle = ffc.flexflow_model_add_multiply(self.handle, name.encode('utf-8'), x.handle, y.handle)
+  def multiply(self, x, y):
+    handle = ffc.flexflow_model_add_multiply(self.handle, x.handle, y.handle)
     self.add_layer(OpType.ELEMENT_BINARY)
     return Tensor(handle)
     
-  def divide(self, name, x, y):
-    handle = ffc.flexflow_model_add_divide(self.handle, name.encode('utf-8'), x.handle, y.handle)
+  def divide(self, x, y):
+    handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle)
     self.add_layer(OpType.ELEMENT_BINARY)
     return Tensor(handle)
     
-  def conv2d(self, name, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
+  def conv2d(self, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
@@ -563,39 +540,39 @@ class FFModel(object):
     self.add_layer(OpType.CONV2D)
     return Tensor(handle)
     
-  def conv2d_v2(self, name, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
+  def conv2d_v2(self, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
     handle = ffc.flexflow_model_add_conv2d_no_inout(self.handle, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, kernel_init_handle, bias_init_handle)  
     return Conv2D(handle)
     
-  def embedding(self, name, input, num_entires, out_dim, aggr, kernel_initializer):
+  def embedding(self, input, num_entires, out_dim, aggr, kernel_initializer):
     c_aggr = enum_to_int(AggrMode, aggr)
     assert (type(kernel_initializer) is GlorotUniformInitializer) or (type(kernel_initializer) is ZeroInitializer) or (type(kernel_initializer) is UniformInitializer) or (type(kernel_initializer) is NormInitializer), "unknow initializer type"
     handle = ffc.flexflow_model_add_embedding(self.handle,  input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
     self.add_layer(OpType.EMBEDDING)
     return Tensor(handle)
     
-  def pool2d(self, name, input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE):
+  def pool2d(self, input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE):
     c_pool_type = enum_to_int(PoolType, pool_type)
     c_activation = enum_to_int(ActiMode, activation)
     handle = ffc.flexflow_model_add_pool2d(self.handle, input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
     self.add_layer(OpType.POOL2D)
     return Tensor(handle)
     
-  def pool2d_v2(self, name, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE):
+  def pool2d_v2(self, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE):
     c_pool_type = enum_to_int(PoolType, pool_type)
     c_activation = enum_to_int(ActiMode, activation)
     handle = ffc.flexflow_model_add_pool2d_no_inout(self.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
     return Pool2D(handle)
     
-  def batch_norm(self, name, input, relu=True):
+  def batch_norm(self, input, relu=True):
     handle = ffc.flexflow_model_add_batch_norm(self.handle, name.encode('utf-8'), input.handle, relu)
     self.add_layer(OpType.BATCH_NORM)
     return Tensor(handle)
 
-  def dense(self, name, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
+  def dense(self, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
@@ -603,14 +580,14 @@ class FFModel(object):
     self.add_layer(OpType.LINEAR)
     return Tensor(handle)
     
-  def dense_v2(self, name, in_dim, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
+  def dense_v2(self, in_dim, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
     handle = ffc.flexflow_model_add_dense_no_inout(self.handle,  in_dim, out_dim, c_activation, use_bias, kernel_init_handle, bias_init_handle)
     return Linear(handle)
     
-  def concat(self, name, tensor_list, axis):
+  def concat(self, tensor_list, axis):
     tensor_handle_list = []
     n = 0
     for tensor in tensor_list:
@@ -622,21 +599,21 @@ class FFModel(object):
     self.add_layer(OpType.CONCAT)
     return Tensor(handle)
     
-  def flat(self, name, input):
+  def flat(self, input):
     handle = ffc.flexflow_model_add_flat(self.handle, input.handle)
     self.add_layer(OpType.FLAT)
     return Tensor(handle)
     
-  def flat_v2(self, name):
+  def flat_v2(self):
     handle = ffc.flexflow_model_add_flat_no_inout(self.handle)
     return Flat(handle)
     
-  def softmax(self, name, input, label):
+  def softmax(self, input, label):
     handle = ffc.flexflow_model_add_softmax(self.handle, input.handle, label.handle)
     self.add_layer(OpType.SOFTMAX)
     return Tensor(handle)
     
-  def mse_loss(self, name, logits, labels, reduction):
+  def mse_loss(self, logits, labels, reduction):
     ffc.flexflow_model_add_mse_loss(self.handle, logits.handle, labels.handle, reduction.encode('utf-8'))
     self.add_layer(OpType.MSELOSS)
     

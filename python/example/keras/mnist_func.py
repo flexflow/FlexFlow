@@ -1,5 +1,5 @@
-from flexflow.keras.models import Model, Input
-from flexflow.keras.layers import Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate
+from flexflow.keras.models import Model, Input, Sequential
+from flexflow.keras.layers import Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, concatenate
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
@@ -7,6 +7,7 @@ from flexflow.keras.datasets import cifar10
 import flexflow.core as ff
 import numpy as np
 import argparse
+import gc
 
 from PIL import Image
   
@@ -35,7 +36,7 @@ def mlp():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
 
-  model.fit(x_train, y_train, epochs=1)
+  model.fit(x_train, y_train, batch_size=64, epochs=1)
   
   # del output
   # del output2
@@ -66,11 +67,11 @@ def mlp_concat():
   output4 = Activation("softmax")(output3)
   
   model = Model(input_tensor, output4)
-  
-  print(model.summary())
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  
+  print(model.summary())
 
   model.fit(x_train, y_train, epochs=1)
    
@@ -102,6 +103,14 @@ def cnn():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
   
+  print(model.summary())
+  
+  flatten1 = model.get_layer(name='flat')
+  t1 = flatten1.output_tensors[0]
+  t2 = flatten1.input_tensors[0]
+  print("t1: ", t1.to_layers, " ", t1.from_layer)
+  print("t2: ", t2.to_layers, " ", t2.from_layer)
+  
   model.fit(x_train, y_train, epochs=1)
   
 def cnn_concat():
@@ -121,7 +130,7 @@ def cnn_concat():
   
   t1 = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
   t2 = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
-  output = Concatenate(axis=1)([t1, t2])
+  output = concatenate([t1, t2])
   output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
   output = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output)
   output = Flatten()(output)
@@ -130,10 +139,10 @@ def cnn_concat():
   output = Activation("softmax")(output)
 
   model = Model(input_tensor, output)
-  print(model.summary())
   
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  print(model.summary())
   
   model.fit(x_train, y_train, epochs=1)
   
@@ -166,10 +175,9 @@ def cifar_cnn():
 
   model = Model(input_tensor1, output_tensor)
   
-  print(model.summary())
-  
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  print(model.summary())
 
   model.fit(x_train, y_train, epochs=1)
 
@@ -215,12 +223,135 @@ def cifar_cnn_concat():
 
   model = Model([input_tensor1, input_tensor2], output_tensor)
   
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  model.compile(optimizer=opt)
   print(model.summary())
+
+  model.fit([x_train, x_train], y_train, epochs=1)
+  
+def cifar_cnn_model_concat():
+  num_classes = 10
+  
+  num_samples = 10000
+  
+  (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
+  
+  x_train = x_train.astype('float32')
+  x_train /= 255
+  #x_train *= 0
+  #y_train = np.random.randint(1, 9, size=(num_samples,1), dtype='int32')
+  y_train = y_train.astype('int32')
+  print("shape: ", x_train.shape)
+  
+  input_tensor1 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+
+  ot1 = cifar_cnn_sub(input_tensor1, 1)
+  model1 = Model(input_tensor1, ot1)
+  print(model1.summary())
+  ot2 = cifar_cnn_sub(input_tensor2, 2)
+  model2 = Model(input_tensor2, ot2)
+  print(model2.summary())
+  output_tensor = Concatenate(axis=1)([model1.output, model2.output])
+  output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
+  output_tensor = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu", name="conv2d_0_4")(output_tensor)
+  output_tensor = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor)
+  output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
+  output_tensor = Flatten()(output_tensor)
+  output_tensor = Dense(512, activation="relu")(output_tensor)
+  output_tensor = Dense(num_classes)(output_tensor)
+  output_tensor = Activation("softmax")(output_tensor)
+
+  model = Model([input_tensor1, input_tensor2], output_tensor)
+  
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
+  model.compile(optimizer=opt)
+  print(model.summary())
+
+  model.fit([x_train, x_train], y_train, epochs=1)
+  
+def cifar_cnn_model_concat_seq():
+  num_classes = 10
+  
+  num_samples = 10000
+  
+  (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
+  
+  x_train = x_train.astype('float32')
+  x_train /= 255
+  #x_train *= 0
+  #y_train = np.random.randint(1, 9, size=(num_samples,1), dtype='int32')
+  y_train = y_train.astype('int32')
+  print("shape: ", x_train.shape)
+
+  model1 = Sequential()
+  model1.add(Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu", name="conv2d_0_0"))
+  model1.add(Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu", name="conv2d_1_0"))
+  print(model1.summary())
+
+  model2 = Sequential()
+  model2.add(Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu", name="conv2d_0_1"))
+  model2.add(Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu", name="conv2d_1_1"))
+  print(model2.summary())
+  
+  output_tensor = Concatenate(axis=1)([model1.output, model2.output])
+  output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
+  output_tensor = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu", name="conv2d_0_4")(output_tensor)
+  output_tensor = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor)
+  output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
+  output_tensor = Flatten()(output_tensor)
+  output_tensor = Dense(512, activation="relu")(output_tensor)
+  output_tensor = Dense(num_classes)(output_tensor)
+  output_tensor = Activation("softmax")(output_tensor)
+
+  model = Model([model1.input[0], model2.input[0]], output_tensor)
+  
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
+  model.compile(optimizer=opt)
+  print(model.summary())
+
+  model.fit([x_train, x_train], y_train, epochs=1)
+  
+def cifar_cnn_model_call():
+  num_classes = 10
+  
+  num_samples = 10000
+  
+  (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
+  
+  x_train = x_train.astype('float32')
+  x_train /= 255
+  #x_train *= 0
+  #y_train = np.random.randint(1, 9, size=(num_samples,1), dtype='int32')
+  y_train = y_train.astype('int32')
+  print("shape: ", x_train.shape)
+  
+  input_tensor1 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  output_tensor1 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor1)
+  output_tensor1 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor1)
+  output_tensor1 = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor1)
+  model1 = Model(input_tensor1, output_tensor1)
+  
+  input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  output_tensor2 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor2)
+  output_tensor2 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor2)
+  output_tensor2 = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor2)
+  output_tensor2 = Flatten()(output_tensor2)
+  output_tensor2 = Dense(512, activation="relu")(output_tensor2)
+  output_tensor2 = Dense(num_classes)(output_tensor2)
+  output_tensor2 = Activation("softmax")(output_tensor2)
+  model2 = Model(input_tensor2, output_tensor2)
+  
+  input_tensor3 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  output_tensor3 = model1(input_tensor3)
+  output_tensor3 = model2(output_tensor3)
+  model = Model(input_tensor3, output_tensor3)
   
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  print(model.summary())
 
-  model.fit([x_train, x_train], y_train, epochs=1)
+  model.fit(x_train, y_train, epochs=1)
   
 def cifar_alexnet():
   
@@ -262,10 +393,9 @@ def cifar_alexnet():
   
   model = Model(input_tensor, output)
   
-  print(model.summary())
-  
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt)
+  print(model.summary())
   
   model.fit(full_input_np, full_label_np, epochs=1)
 
@@ -305,16 +435,20 @@ def mlp_net2net():
   d1_kernel, d1_bias = d1.get_weights(teacher_model.ffmodel)
   d2_kernel, d2_bias = d2.get_weights(teacher_model.ffmodel)
   d3_kernel, d3_bias = d3.get_weights(teacher_model.ffmodel)
+  #d2_kernel_new = np.concatenate((d2_kernel, d2_kernel), axis=1)
   
   # student
   
   input_tensor2 = Input(batch_shape=[0, 784], dtype="float32")
   
-  sd1 = Dense(512, input_shape=(784,), activation="relu")
+  sd1_1 = Dense(512, input_shape=(784,), activation="relu")
+  #sd1_2 = Dense(512, input_shape=(784,), activation="relu")
   sd2 = Dense(512, activation="relu")
   sd3 = Dense(num_classes)
   
-  output = sd1(input_tensor2)
+  output = sd1_1(input_tensor2)
+  # t2 = sd1_2(input_tensor2)
+  # output = Concatenate(axis=1)([t1, t2])
   output = sd2(output)
   output = sd3(output)
   output = Activation("softmax")(output)
@@ -324,7 +458,8 @@ def mlp_net2net():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   student_model.compile(optimizer=opt)
   
-  sd1.set_weights(student_model.ffmodel, d1_kernel, d1_bias)
+  sd1_1.set_weights(student_model.ffmodel, d1_kernel, d1_bias)
+  # sd1_2.set_weights(student_model.ffmodel, d1_kernel, d1_bias)
   sd2.set_weights(student_model.ffmodel, d2_kernel, d2_bias)
   sd3.set_weights(student_model.ffmodel, d3_kernel, d3_bias)
 
@@ -347,7 +482,7 @@ def cifar_cnn_net2net():
   #teacher
   input_tensor1 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
 
-  c1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
+  c1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")
   c2 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   c3 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   c4 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
@@ -356,7 +491,7 @@ def cifar_cnn_net2net():
 
   output_tensor = c1(input_tensor1)
   output_tensor = c2(output_tensor)
-  output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
+  output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="same")(output_tensor)
   output_tensor = c3(output_tensor)
   output_tensor = c4(output_tensor)
   output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
@@ -367,10 +502,9 @@ def cifar_cnn_net2net():
 
   teacher_model = Model(input_tensor1, output_tensor)
 
-  print(teacher_model.summary())
-
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   teacher_model.compile(optimizer=opt)
+  print(teacher_model.summary())
 
   teacher_model.fit(x_train, y_train, epochs=1)
 
@@ -388,8 +522,8 @@ def cifar_cnn_net2net():
   #student model
   input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
 
-  sc1_1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
-  sc1_2 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
+  sc1_1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")
+  sc1_2 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")
   sc2 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   sc3 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
   sc4 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
@@ -400,7 +534,7 @@ def cifar_cnn_net2net():
   t2 = sc1_2(input_tensor2)
   output_tensor = Concatenate(axis=1)([t1, t2])
   output_tensor = sc2(output_tensor)
-  output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
+  output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="same")(output_tensor)
   output_tensor = sc3(output_tensor)
   output_tensor = sc4(output_tensor)
   output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
@@ -411,10 +545,9 @@ def cifar_cnn_net2net():
 
   student_model = Model(input_tensor2, output_tensor)
 
-  print(student_model.summary())
-
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   student_model.compile(optimizer=opt)
+  print(student_model.summary())
 
   sc1_1.set_weights(student_model.ffmodel, c1_kernel, c1_bias)
   sc1_2.set_weights(student_model.ffmodel, c1_kernel, c1_bias)
@@ -454,6 +587,14 @@ def top_level_task():
     mlp_net2net()
   elif (test_type == 9):
     cifar_cnn_net2net()
+  elif (test_type == 10):
+    cifar_cnn_model_concat()
+  elif (test_type == 11):
+    cifar_cnn_model_concat_seq()
+  elif (test_type == 12):
+    cifar_cnn_model_call()
+    
+  gc.collect()
 
 if __name__ == "__main__":
   print("alexnet keras")

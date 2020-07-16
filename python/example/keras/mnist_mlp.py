@@ -21,7 +21,8 @@ def top_level_task():
   print("shape: ", x_train.shape)
   
   model = Sequential()
-  model.add(Dense(512, input_shape=(784,), activation="relu"))
+  d1 = Dense(512, input_shape=(784,), activation="relu")
+  model.add(d1)
   model.add(Dense(512, activation="relu"))
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
@@ -32,6 +33,13 @@ def top_level_task():
   model.compile(optimizer=opt)
 
   model.fit(x_train, y_train, epochs=1)
+  
+  t1 = d1.input
+  t1.ffhandle.inline_map(model.ffconfig)
+  input_array = t1.ffhandle.get_flat_array(model.ffconfig, ff.DataType.DT_FLOAT)
+  print(input_array.shape)
+  print(input_array)
+  t1.ffhandle.inline_unmap(model.ffconfig)
 
 if __name__ == "__main__":
   print("alexnet keras")
