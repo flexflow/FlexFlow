@@ -260,8 +260,8 @@ def cifar_cnn_model_concat():
   y_train = y_train.astype('int32')
   print("shape: ", x_train.shape)
   
-  input_tensor1 = Input(batch_shape=(3, 32, 32), dtype="float32")
-  input_tensor2 = Input(batch_shape=(3, 32, 32), dtype="float32")
+  input_tensor1 = Input(shape=(3, 32, 32), dtype="float32")
+  input_tensor2 = Input(shape=(3, 32, 32), dtype="float32")
 
   ot1 = cifar_cnn_sub(input_tensor1, 1)
   model1 = Model(input_tensor1, ot1)
