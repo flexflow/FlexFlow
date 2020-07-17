@@ -1,6 +1,6 @@
 import flexflow.core as ff
 
-from flexflow.keras.models.input_layer import Tensor, Input
+from flexflow.keras.models.tensor import Tensor
 
 class Layer(object):
   __slots__ = ['_ffhandle', '_name', '_layer_type', 'layer_id', \
@@ -20,8 +20,8 @@ class Layer(object):
     self.next_layers = []
     self.input_tensors = []
     self.output_tensors = []
-    self.input_shape = 0
-    self.output_shape = 0
+    self.input_shape = None
+    self.output_shape = None
     self.nb_visited_prev_layers = 0
     
   @property
@@ -52,8 +52,8 @@ class Layer(object):
     
   def reset_layer(self):
     self.reset_connection()
-    self.input_shape = 0
-    self.output_shape = 0
+    self.input_shape = None
+    self.output_shape = None
     self._reset_layer()
     
   def reset_connection(self):
@@ -106,11 +106,9 @@ class Layer(object):
     output_tensor.set_from_layer(self)
     input_tensor.set_to_layer(self)
     
-    # this is not the first layer
-    if (isinstance(input_tensor, Input) == False):
-      assert input_tensor.from_layer != 0, "[Layer]: check input tensor"
-      self.prev_layers.append(input_tensor.from_layer)
-      input_tensor.from_layer.next_layers.append(self)
+    assert input_tensor.from_layer != 0, "[Layer]: check input tensor"
+    self.prev_layers.append(input_tensor.from_layer)
+    input_tensor.from_layer.next_layers.append(self)
 
     return output_tensor
     
@@ -125,9 +123,8 @@ class Layer(object):
     for tensor in input_tensors:
       self.input_tensors.append(tensor)
       tensor.set_to_layer(self)
-      # not the first layer
-      if (isinstance(tensor, Input) == False):
-        assert tensor.from_layer != 0, "check input tensor"
-        self.prev_layers.append(tensor.from_layer)
-        tensor.from_layer.next_layers.append(self)
+
+      assert tensor.from_layer != 0, "check input tensor"
+      self.prev_layers.append(tensor.from_layer)
+      tensor.from_layer.next_layers.append(self)
     return output_tensor

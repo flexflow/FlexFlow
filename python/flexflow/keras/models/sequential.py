@@ -2,8 +2,8 @@ import flexflow.core as ff
 
 from .base_model import BaseModel
 from flexflow.keras.layers.base_layer import Layer
-from .input_layer import Tensor, Input
-from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Concatenate
+from .tensor import Tensor
+from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Concatenate, Input
 
 class Sequential(BaseModel):
   def __init__(self, layers=None, name=None):
@@ -19,6 +19,8 @@ class Sequential(BaseModel):
       self.__add_layer(item)
     elif isinstance(item, BaseModel):
       self.__add_model(item)
+    elif isinstance(item, Tensor):
+      self.__add_input(item)
   
   def pop(self):
     assert 0, "Not implemented"
@@ -29,10 +31,10 @@ class Sequential(BaseModel):
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
     
-    if layer.layer_id == 0:
+    if layer.layer_id == 0 and len(self._input_layers) == 0:
+      assert layer.input_shape != None, "input shape is not set"
       input_tensor = Input(batch_shape=layer.input_shape, dtype="float32")
-      self._input_tensors.append(input_tensor)
-      self._output_tensor = input_tensor
+      self.__add_input(input_tensor)
       
     self._output_tensor = layer(self._output_tensor)
     
@@ -42,3 +44,8 @@ class Sequential(BaseModel):
     for layer in model.layers:
       layer.reset_connection()
       self.__add_layer(layer)
+      
+  def __add_input(self, tensor):
+    self._input_tensors.append(tensor)
+    self._output_tensor = tensor
+    self._input_layers.append(tensor.from_layer)

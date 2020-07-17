@@ -1,5 +1,5 @@
 from flexflow.keras.models import Sequential
-from flexflow.keras.layers import Flatten, Dense, Activation
+from flexflow.keras.layers import Flatten, Dense, Activation, Input
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import reuters
 from flexflow.keras.preprocessing.text import Tokenizer
@@ -32,12 +32,14 @@ def top_level_task():
   print('y_train shape:', y_train.shape)
   
   model = Sequential()
-  model.add(Dense(512, input_shape=(max_words,), activation="relu"))
+  model.add(Input(shape=(max_words,)))
+  model.add(Dense(512, activation="relu"))
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
 
   opt = flexflow.keras.optimizers.Adam(learning_rate=0.01)
   model.compile(optimizer=opt)
+  print(model.summary())
 
   model.fit(x_train, y_train, epochs=epochs)
 

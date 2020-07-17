@@ -2,7 +2,8 @@ import flexflow.core as ff
 import math
 
 from .base_layer import Layer
-from flexflow.keras.models.input_layer import Tensor
+from .input_layer import Input
+from flexflow.keras.models.tensor import Tensor
 
 class Conv2D(Layer):
   __slots__ = ['in_channels', 'out_channels', 'kernel_size', 'stride', \

@@ -93,9 +93,9 @@ class Tensor(object):
     for i in range(0, self.num_dims):
       assert self.batch_shape[i] == self._ffhandle.dims[i], "[Tensor]: please check shape dim %d (%d == %d)" %(i, self.batch_shape[i], self._ffhandle.dims[i])
 
-class Input(Tensor):
-  def __init__(self, shape=None, batch_size=None, name=None, 
-               dtype=None, sparse=False,
-               tensor=None, ragged=False,
-               **kwargs):
-    super(Input, self).__init__(ffmodel=None, shape=shape, name=name, dtype=dtype, meta_only=True, **kwargs) 
+# class Input(Tensor):
+#   def __init__(self, shape=None, batch_size=None, name=None,
+#                dtype=None, sparse=False,
+#                tensor=None, ragged=False,
+#                **kwargs):
+#     super(Input, self).__init__(ffmodel=None, shape=shape, name=name, dtype=dtype, meta_only=True, **kwargs)
