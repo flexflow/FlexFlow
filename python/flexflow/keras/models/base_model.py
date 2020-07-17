@@ -16,7 +16,7 @@ class BaseModel(object):
     self._ffconfig = ff.FFConfig()
     self._ffconfig.parse_args()
     print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.get_batch_size(), self._ffconfig.get_workers_per_node(), self._ffconfig.get_num_nodes()))
-    self._ffmodel = ff.FFModel(self._ffconfig)
+    self._ffmodel = None
     
     self._name = name
     self._ffoptimizer = None
@@ -104,7 +104,8 @@ class BaseModel(object):
       assert 0, "weighted_metrics is not supported"
     if run_eagerly != None:
       assert 0, "run_eagerly is not supported"
-      
+    
+    self._ffmodel = ff.FFModel(self._ffconfig)  
     self._create_input_and_label_tensors()
     self._create_flexflow_layers()
     
