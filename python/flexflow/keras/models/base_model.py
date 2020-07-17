@@ -307,7 +307,7 @@ class BaseModel(object):
       for iter in range(0, int(iterations)):
         if callbacks != None:
           for callback in callbacks:
-            callback.on_batch_begin(batch)
+            callback.on_batch_begin(iter)
             
         for dataloader in self._input_dataloaders:
           dataloader.next_batch(self._ffmodel)
@@ -325,11 +325,11 @@ class BaseModel(object):
           
         if callbacks != None:
           for callback in callbacks:
-            callback.on_batch_end(batch)
+            callback.on_batch_end(iter)
       
       if callbacks != None:
         for callback in callbacks:
-          callback.on_epoch_end()
+          callback.on_epoch_end(epoch)
 
     ts_end = self._ffconfig.get_current_time()
     run_time = 1e-6 * (ts_end - ts_start);
@@ -337,7 +337,7 @@ class BaseModel(object):
     
     if callbacks != None:
       for callback in callbacks:
-        callback.on_train_end(epoch)
+        callback.on_train_end()
 
     self._input_tensors[0].ffhandle.inline_map(self._ffconfig)
     input_array = self._input_tensors[0].ffhandle.get_flat_array(self._ffconfig, ff.DataType.DT_FLOAT)
