@@ -3,6 +3,7 @@ import flexflow.core as ff
 from .tensor import Tensor
 from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract
 from flexflow.keras.optimizers import SGD, Adam 
+from flexflow.keras.callbacks import Callback, LearningRateScheduler 
 
 from PIL import Image
 
@@ -45,6 +46,10 @@ class BaseModel(object):
   @property  
   def layers(self):
     return self._layers
+    
+  @property
+  def optimizer(self):
+    return self._ffoptimizer
     
   @property
   def ffmodel(self):
@@ -183,7 +188,7 @@ class BaseModel(object):
     self._create_data_loaders(input_tensors, label_tensor)
     self._set_optimizer()     
     self._ffmodel.init_layers()
-    self._train(epochs)
+    self._train(epochs, callbacks)
     
   def _create_input_tensor(self, idx):
     assert self._input_tensors[idx].batch_shape[0] != 0, "batch size is not set"
@@ -224,10 +229,10 @@ class BaseModel(object):
   def _set_optimizer(self):
     assert self._ffoptimizer != None, "optimizer is not set"
     if (isinstance(self._ffoptimizer, SGD) == True):
-      self._ffoptimizer.ffhandle = ff.SGDOptimizer(self._ffmodel, self._ffoptimizer.learning_rate)
+      self._ffoptimizer.ffhandle = ff.SGDOptimizer(self._ffmodel, self._ffoptimizer.lr, self._ffoptimizer.momentum, self._ffoptimizer.nesterov)
       self._ffmodel.set_sgd_optimizer(self._ffoptimizer.ffhandle)
     elif (isinstance(self._ffoptimizer, Adam) == True):
-      self._ffoptimizer.ffhandle = ff.AdamOptimizer(self._ffmodel, self._ffoptimizer.learning_rate, self._ffoptimizer.beta1, self._ffoptimizer.beta2)
+      self._ffoptimizer.ffhandle = ff.AdamOptimizer(self._ffmodel, self._ffoptimizer.lr, self._ffoptimizer.beta1, self._ffoptimizer.beta2, epsilon=self._ffoptimizer.epsilon)
       self._ffmodel.set_adam_optimizer(self._ffoptimizer.ffhandle)
     else:
       assert 0, "unknown optimizer"
@@ -278,9 +283,21 @@ class BaseModel(object):
     self._label_dataloader = dataloader
     self._label_dataloader_dim = len(input_shape)
     
-  def _train(self, epochs):
+  def _train(self, epochs, callbacks):
+    if callbacks != None:
+      for callback in callbacks:
+        callback.set_model(self)
+        
+    if callbacks != None:
+      for callback in callbacks:
+        callback.on_train_begin()
+        
     ts_start = self._ffconfig.get_current_time()
     for epoch in range(0,epochs):
+      if callbacks != None:
+        for callback in callbacks:
+          callback.on_epoch_begin(epoch)
+      
       for dataloader in self._input_dataloaders:
         dataloader.reset()
       self._label_dataloader.reset()
@@ -288,6 +305,10 @@ class BaseModel(object):
       iterations = self._num_samples / self._ffconfig.get_batch_size()
 
       for iter in range(0, int(iterations)):
+        if callbacks != None:
+          for callback in callbacks:
+            callback.on_batch_begin(iter)
+            
         for dataloader in self._input_dataloaders:
           dataloader.next_batch(self._ffmodel)
         self._label_dataloader.next_batch(self._ffmodel)
@@ -301,10 +322,22 @@ class BaseModel(object):
         self._ffmodel.update()
         if (epoch > 0):
           self._ffconfig.end_trace(111)
+          
+        if callbacks != None:
+          for callback in callbacks:
+            callback.on_batch_end(iter)
+      
+      if callbacks != None:
+        for callback in callbacks:
+          callback.on_epoch_end(epoch)
 
     ts_end = self._ffconfig.get_current_time()
     run_time = 1e-6 * (ts_end - ts_start);
     print("epochs %d, ELAPSED TIME = %.4fs, interations %d, samples %d, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, int(iterations), self._num_samples, self._num_samples * epochs / run_time));
+    
+    if callbacks != None:
+      for callback in callbacks:
+        callback.on_train_end()
 
     self._input_tensors[0].ffhandle.inline_map(self._ffconfig)
     input_array = self._input_tensors[0].ffhandle.get_flat_array(self._ffconfig, ff.DataType.DT_FLOAT)

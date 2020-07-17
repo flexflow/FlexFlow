@@ -696,6 +696,9 @@ class SGDOptimizer(object):
   def __init__(self, ffmodel, lr=0.01, momentum=0.0, nesterov=False, weight_decay=0.0):
     self.handle = ffc.flexflow_sgd_optimizer_create(ffmodel.handle, lr, momentum, nesterov, weight_decay)
     self._handle = ffi.gc(self.handle, ffc.flexflow_sgd_optimizer_destroy)  
+  
+  def set_learning_rate(self, learning_rate):
+    ffc.flexflow_sgd_optimizer_set_lr(self.handle, learning_rate)
     
 # -----------------------------------------------------------------------
 # AdamOptimizer
@@ -705,7 +708,10 @@ class AdamOptimizer(object):
   __slots__ = ['handle', '_handle']
   def __init__(self, ffmodel, alpha=0.001, beta1=0.9, beta2=0.999, weight_decay=0.0, epsilon=1e-8):
     self.handle = ffc.flexflow_adam_optimizer_create(ffmodel.handle, alpha, beta1, beta2, weight_decay, epsilon)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_adam_optimizer_destroy)  
+    self._handle = ffi.gc(self.handle, ffc.flexflow_adam_optimizer_destroy)
+    
+  def set_learning_rate(self, learning_rate):
+    ffc.flexflow_adam_optimizer_set_lr(self.handle, learning_rate)  
 
 # -----------------------------------------------------------------------
 # Initializer
