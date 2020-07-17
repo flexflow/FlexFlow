@@ -4,7 +4,7 @@ from .base_layer import Layer
 from flexflow.keras.models.input_layer import Tensor, Input
 
 class Dense(Layer):
-  __slots__ = ['in_channels', 'out_channels', 'activation']
+  __slots__ = ['in_channels', 'out_channels', 'activation', 'use_bias']
   def __init__(self, units, input_shape=(0,), 
                activation=None, use_bias=True,
                kernel_initializer="glorot_uniform",
@@ -13,8 +13,8 @@ class Dense(Layer):
                bias_regularizer=None,
                activity_regularizer=None,
                kernel_constraint=None,
-               bias_constraint=None
-               name="dense"):
+               bias_constraint=None,
+               **kwargs):
     if kernel_initializer != "glorot_uniform":
       assert 0, "kernel_initializer is not supported"
     if bias_initializer != "zeros":
@@ -30,7 +30,7 @@ class Dense(Layer):
     if bias_constraint != None:
       assert 0, "bias_constraint is not supported"
     
-    super(Dense, self).__init__(name, "Dense") 
+    super(Dense, self).__init__("dense", "Dense" ,**kwargs) 
     
     self.in_channels = 0
     self.out_channels = units
@@ -90,10 +90,10 @@ class Dense(Layer):
     self.in_channels = 0
     
 class Flatten(Layer):
-  def __init__(self, data_format=None, name="flat"):
+  def __init__(self, data_format=None, **kwargs):
     if data_format != None:
       assert 0, "data_format is not supported"
-    super(Flatten, self).__init__(name, "Flatten") 
+    super(Flatten, self).__init__("flat", "Flatten", **kwargs) 
     
   def verify_meta_data(self):
     assert self.input_shape != 0, "input shape is wrong"
@@ -127,12 +127,12 @@ class Flatten(Layer):
     pass
     
 class Activation(Layer):
-  def __init__(self, activation, name="activation"):
+  def __init__(self, activation, **kwargs):
     
     if (activation == "softmax"):
       self.activation = "Softmax"
       
-    super(Activation, self).__init__(name, self.activation) 
+    super(Activation, self).__init__("activation", self.activation, **kwargs) 
       
   def verify_meta_data(self):
     assert self.type == "Softmax", "type is wrong"

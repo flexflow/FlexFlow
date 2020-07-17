@@ -25,7 +25,7 @@ class Conv2D(Layer):
                activity_regularizer=None, 
                kernel_constraint=None, 
                bias_constraint=None, 
-               name="conv2d"):
+               **kwargs):
     if data_format == 'channels_last':
       assert 0, "data_format channels_last is not supported"
     if dilation_rate != (1,1):
@@ -47,7 +47,7 @@ class Conv2D(Layer):
     if bias_constraint != None:
       assert 0, "bias_constraint is not supported"
     
-    super(Conv2D, self).__init__(name, "Conv2D") 
+    super(Conv2D, self).__init__("conv2d", "Conv2D", **kwargs) 
     
     self.in_channels = 0
     self.out_channels = filters

@@ -7,14 +7,17 @@ class Tensor(object):
                shape=None, batch_size=None,
                name=None, dtype=None, 
                sparse=False, tensor=None, ragged=False,
-               batch_shape=None,
-               meta_only=False, ffhandle=None):
+               meta_only=False, ffhandle=None, **kwargs):
     if sparse != False:
       assert 0, "sparse is not supported"
     if tensor != None:
       assert 0, "tensor is not supported"
     if ragged != False:
       assert 0, "ragged is not supported"
+      
+    batch_shape = None
+    if "batch_shape" in kwargs:
+      batch_shape = kwargs["batch_shape"]
                
     self._ffhandle = ffhandle
     self.to_layers = []
@@ -93,5 +96,6 @@ class Tensor(object):
 class Input(Tensor):
   def __init__(self, shape=None, batch_size=None, name=None, 
                dtype=None, sparse=False,
-               tensor=None, ragged=False):
-    super(Input, self).__init__(ffmodel=None, shape=shape, name=name, dtype=dtype, meta_only=True) 
+               tensor=None, ragged=False,
+               **kwargs):
+    super(Input, self).__init__(ffmodel=None, shape=shape, name=name, dtype=dtype, meta_only=True, **kwargs) 

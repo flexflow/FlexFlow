@@ -7,7 +7,11 @@ class Layer(object):
                'prev_layers', 'next_layers',\
                'input_tensors', 'output_tensors', \
                'input_shape', 'output_shape', 'nb_visited_prev_layers']
-  def __init__(self, name, layer_type):
+  def __init__(self, default_name, layer_type, **kwargs):
+    name = default_name
+    if 'name' in kwargs:
+      name = kwargs["name"]
+      
     self._ffhandle = 0
     self._name = name
     self._layer_type = layer_type
