@@ -34,7 +34,7 @@ def top_level_task():
   #
   # model2 = Sequential(layers2)
   #
-  input_tensor = Input(batch_shape=[0, 12544], dtype="float32")
+  input_tensor = Input(shape=(12544,), dtype="float32")
   
   output = Dense(512, input_shape=(12544,), activation="relu")(input_tensor)
   output = Dense(num_classes)(output)

@@ -12,13 +12,14 @@ class BaseModel(object):
                '_full_input_tensors', '_full_label_tensor', '_num_samples',\
                '_input_dataloaders', '_input_dataloaders_dim', \
                '_label_dataloader', '_label_dataloader_dim']
-  def __init__(self):
+  def __init__(self, name):
     self._ffconfig = ff.FFConfig()
     self._ffconfig.parse_args()
     print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.get_batch_size(), self._ffconfig.get_workers_per_node(), self._ffconfig.get_num_nodes()))
     self._ffmodel = ff.FFModel(self._ffconfig)
     
-    self._ffoptimizer = 0
+    self._name = name
+    self._ffoptimizer = None
     self._layers = []
     self._nb_layers = 0
     self._input_tensors = []
@@ -70,6 +71,8 @@ class BaseModel(object):
   
   # TODO: finish API    
   def summary(self, line_length=None, positions=None, print_fn=None):
+    if line_length != None:
+      assert 0, "line_length is not supported"
     model_summary = "Layer (type)\t\tOutput Shape\t\tInput Shape\tConnected to\n"
     for layer in self._layers:
       print(layer)
@@ -91,6 +94,17 @@ class BaseModel(object):
               weighted_metrics=None, 
               run_eagerly=None, 
               **kwargs):
+    if loss != None:
+      assert 0, "loss is not supported"
+    if metrics != None:
+      assert 0, "metrics is not supported"
+    if loss_weights != None:
+      assert 0, "loss_weights is not supported"
+    if weighted_metrics != None:
+      assert 0, "weighted_metrics is not supported"
+    if run_eagerly != None:
+      assert 0, "run_eagerly is not supported"
+      
     self._create_input_and_label_tensors()
     self._create_flexflow_layers()
     
@@ -124,7 +138,34 @@ class BaseModel(object):
           use_multiprocessing=False):
     if (batch_size != None):
       assert self._ffconfig.get_batch_size() == batch_size, "batch size is not correct use -b to set it"
-    assert self._output_tensor.ffhandle != 0, "tensor is not init"
+    if validation_split != 0.0:
+      assert 0, "validation_split is not supported"  
+    if validation_data != None:
+      assert 0, "validation_data is not supported"
+    if shuffle != True:
+      assert 0, "shuffle is not supported"
+    if class_weight != None:
+      assert 0, "class_weight is not supported"
+    if sample_weight != None:
+      assert 0, "sample_weight is not supported"
+    if initial_epoch != 0:
+      assert 0, "initial_epoch is not supported"
+    if steps_per_epoch != None:
+      assert 0, "steps_per_epoch is not supported"
+    if validation_steps != None:
+      assert 0, "validation_steps is not supported"
+    if validation_batch_size != None:
+      assert 0, "validation_batch_size is not supported"
+    if validation_freq != 1:
+      assert 0, "validation_freq is not supported"
+    if max_queue_size != 10:
+      assert 0, "max_queue_size is not supported"
+    if workers != 1:
+      assert 0, "workers is not supported"
+    if use_multiprocessing != False:
+      assert 0, "use_multiprocessing is not supported"
+      
+    assert self._output_tensor.ffhandle != None, "tensor is not init"
     if (isinstance(x, list) == False):
       input_tensors = [x]
     else:
@@ -141,7 +182,7 @@ class BaseModel(object):
     self._input_tensors[idx].create_ff_tensor(self._ffmodel)
     
   def _create_label_tensor(self):
-    self._label_tensor = Tensor(self._ffmodel, batch_shape=[self._ffconfig.get_batch_size(), 1], name="", dtype="int32")
+    self._label_tensor = Tensor(ffmodel=self._ffmodel, batch_shape=(self._ffconfig.get_batch_size(), 1), name="", dtype="int32")
     
   def _create_input_and_label_tensors(self):
     idx = 0
@@ -173,7 +214,7 @@ class BaseModel(object):
       assert len(t.to_layers) > 0, "input tensor has not to_layers"
       
   def _set_optimizer(self):
-    assert self._ffoptimizer != 0, "optimizer is not set"
+    assert self._ffoptimizer != None, "optimizer is not set"
     if (isinstance(self._ffoptimizer, SGD) == True):
       self._ffoptimizer.ffhandle = ff.SGDOptimizer(self._ffmodel, self._ffoptimizer.learning_rate)
       self._ffmodel.set_sgd_optimizer(self._ffoptimizer.ffhandle)
@@ -280,7 +321,7 @@ class BaseModel(object):
       elif (isinstance(layer, Flatten) == True):
         layer.ffhandle = self._ffmodel.flat_v2()
       elif (isinstance(layer, Dense) == True):
-        layer.ffhandle = self._ffmodel.dense_v2(layer.in_channels, layer.out_channels, layer.activation)
+        layer.ffhandle = self._ffmodel.dense_v2(layer.in_channels, layer.out_channels, layer.activation, layer.use_bias)
       elif (isinstance(layer, Activation) == True):
         print("add softmax")
       elif (isinstance(layer, Concatenate) == True):
@@ -307,7 +348,7 @@ class BaseModel(object):
       elif (isinstance(layer, Flatten) == True):
         out_t = self._ffmodel.flat(layer.input_tensors[0].ffhandle)
       elif (isinstance(layer, Dense) == True):
-        out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation)
+        out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation, layer.use_bias)
       elif (isinstance(layer, Add) == True):
         out_t = self._ffmodel.add(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       elif (isinstance(layer, Subtract) == True):
@@ -318,9 +359,9 @@ class BaseModel(object):
       layer.output_tensors[0].ffhandle = out_t
       layer.set_batch_size(self._ffconfig.get_batch_size())
 
-      assert layer.ffhandle == 0, "layer handle is inited"
+      assert layer.ffhandle == None, "layer handle is inited"
       layer.ffhandle = self._ffmodel.get_layer_by_id(layer.layer_id)
-      assert layer.ffhandle != 0, "layer handle is wrong"
+      assert layer.ffhandle != None, "layer handle is wrong"
       print(layer.ffhandle)    
        
   def _init_inout(self):
@@ -343,7 +384,8 @@ class BaseModel(object):
         out_t = layer.ffhandle.init_inout(self._ffmodel, layer.input_tensors[0].ffhandle);
       
       layer.output_tensors[0].ffhandle = out_t
-      assert layer.ffhandle != 0, "layer handle is wrong"
+      layer.set_batch_size(self._ffconfig.get_batch_size())
+      assert layer.ffhandle != None, "layer handle is wrong"
       print(layer.ffhandle)    
       
     print("output tensor", self._output_tensor.batch_shape)

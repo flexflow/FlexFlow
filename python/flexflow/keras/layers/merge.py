@@ -4,8 +4,8 @@ from .base_layer import Layer
 from flexflow.keras.models.input_layer import Tensor, Input
 
 class _Merge(Layer):
-  def __init__(self, name, layer_type):
-    super(_Merge, self).__init__(name, layer_type) 
+  def __init__(self, default_name, layer_type):
+    super(_Merge, self).__init__(default_name, layer_type) 
   
   def verify_meta_data(self):
    pass
@@ -35,8 +35,8 @@ def concatenate(input_tensors, _axis=1):
     
 class Concatenate(_Merge):
   __slots__ = ['axis']
-  def __init__(self, axis, name="concatenate"):
-    super(Concatenate, self).__init__(name, "Concatenate") 
+  def __init__(self, axis, **kwargs):
+    super(Concatenate, self).__init__("concatenate", "Concatenate", **kwargs) 
     
     self.axis = axis
     
@@ -60,8 +60,8 @@ def add(input_tensors):
   return Add()(input_tensors)
     
 class Add(_Merge):
-  def __init__(self, name="add"):
-    super(Add, self).__init__(name, "Add") 
+  def __init__(self, **kwargs):
+    super(Add, self).__init__("add", "Add", **kwargs) 
     
   def _calculate_inout_shape(self, input_tensors):    
     assert len(input_tensors) == 2, "check input_tensors"   
@@ -73,8 +73,8 @@ def subtract(input_tensors):
   return Subtract()(input_tensors)
     
 class Subtract(_Merge):
-  def __init__(self, name="subtract"):
-    super(Subtract, self).__init__(name, "Subtract") 
+  def __init__(self, **kwargs):
+    super(Subtract, self).__init__("subtract", "Subtract", **kwargs) 
     
   def _calculate_inout_shape(self, input_tensors): 
     assert len(input_tensors) == 2, "check input_tensors"   
