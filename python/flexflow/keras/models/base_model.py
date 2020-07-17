@@ -12,12 +12,13 @@ class BaseModel(object):
                '_full_input_tensors', '_full_label_tensor', '_num_samples',\
                '_input_dataloaders', '_input_dataloaders_dim', \
                '_label_dataloader', '_label_dataloader_dim']
-  def __init__(self):
+  def __init__(self, name):
     self._ffconfig = ff.FFConfig()
     self._ffconfig.parse_args()
     print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.get_batch_size(), self._ffconfig.get_workers_per_node(), self._ffconfig.get_num_nodes()))
     self._ffmodel = ff.FFModel(self._ffconfig)
     
+    self._name = name
     self._ffoptimizer = 0
     self._layers = []
     self._nb_layers = 0

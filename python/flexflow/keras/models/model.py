@@ -5,7 +5,7 @@ from .input_layer import Tensor
 from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Concatenate
 
 class Model(BaseModel):
-  def __init__(self, inputs, outputs):
+  def __init__(self, inputs, outputs, name=None):
     super(Model, self).__init__()
     
     if (isinstance(inputs, list) == False):
