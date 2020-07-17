@@ -1,7 +1,8 @@
 import flexflow.core as ff
 
 from .base_layer import Layer
-from flexflow.keras.models.input_layer import Tensor, Input
+from .input_layer import Input
+from flexflow.keras.models.tensor import Tensor
 
 class Dense(Layer):
   __slots__ = ['in_channels', 'out_channels', 'activation', 'use_bias']

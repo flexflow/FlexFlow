@@ -1,8 +1,8 @@
 import flexflow.core as ff
 
 from .base_model import BaseModel
-from .input_layer import Tensor
-from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Concatenate
+from .tensor import Tensor
+from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Concatenate, Input
 
 class Model(BaseModel):
   def __init__(self, inputs, outputs, name=None):
@@ -10,8 +10,10 @@ class Model(BaseModel):
     
     if (isinstance(inputs, list) == False):
        inputs = [inputs]
-       
+    
     self._input_tensors = inputs
+    for input_tensor in inputs:
+      self._input_layers.append(input_tensor.from_layer)
     self._output_tensor = outputs
     
     self.__traverse_dag_dfs()

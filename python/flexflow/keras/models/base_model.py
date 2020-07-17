@@ -1,6 +1,6 @@
 import flexflow.core as ff
 
-from .input_layer import Tensor
+from .tensor import Tensor
 from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract
 from flexflow.keras.optimizers import SGD, Adam 
 
@@ -8,7 +8,7 @@ from PIL import Image
 
 class BaseModel(object):
   __slots__ = ['_ffconfig', '_ffmodel', '_ffoptimizer', '_layers', '_nb_layers', \
-               '_input_tensors', '_output_tensor', '_label_tensor', \
+               '_input_layers', '_input_tensors', '_output_tensor', '_label_tensor', \
                '_full_input_tensors', '_full_label_tensor', '_num_samples',\
                '_input_dataloaders', '_input_dataloaders_dim', \
                '_label_dataloader', '_label_dataloader_dim']
@@ -16,12 +16,13 @@ class BaseModel(object):
     self._ffconfig = ff.FFConfig()
     self._ffconfig.parse_args()
     print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.get_batch_size(), self._ffconfig.get_workers_per_node(), self._ffconfig.get_num_nodes()))
-    self._ffmodel = ff.FFModel(self._ffconfig)
+    self._ffmodel = None
     
     self._name = name
     self._ffoptimizer = None
     self._layers = []
     self._nb_layers = 0
+    self._input_layers = []
     self._input_tensors = []
     self._output_tensor = 0
     self._label_tensor = 0
@@ -73,7 +74,13 @@ class BaseModel(object):
   def summary(self, line_length=None, positions=None, print_fn=None):
     if line_length != None:
       assert 0, "line_length is not supported"
+    if print_fn != None:
+      assert 0, "print_fn is not supported"
+      
     model_summary = "Layer (type)\t\tOutput Shape\t\tInput Shape\tConnected to\n"
+    for layer in self._input_layers:
+      layer_summary = layer.get_summary()
+      model_summary += layer_summary
     for layer in self._layers:
       print(layer)
       for prev_layer in layer.prev_layers:
@@ -104,7 +111,8 @@ class BaseModel(object):
       assert 0, "weighted_metrics is not supported"
     if run_eagerly != None:
       assert 0, "run_eagerly is not supported"
-      
+    
+    self._ffmodel = ff.FFModel(self._ffconfig)  
     self._create_input_and_label_tensors()
     self._create_flexflow_layers()
     

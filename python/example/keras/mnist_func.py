@@ -1,5 +1,5 @@
-from flexflow.keras.models import Model, Input, Sequential
-from flexflow.keras.layers import Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, concatenate
+from flexflow.keras.models import Model, Sequential
+from flexflow.keras.layers import Input, Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, concatenate
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
@@ -55,18 +55,35 @@ def mlp_concat():
   #y_train = np.random.randint(1, 9, size=(len(y_train),1), dtype='int32')
   print("shape: ", x_train.shape)
   
-  input_tensor = Input(shape=(784,), dtype="float32")
+  input_tensor1 = Input(shape=(256,))
+  input_tensor2 = Input(shape=(256,))
+  input_tensor3 = Input(shape=(256,))
+  input_tensor4 = Input(shape=(256,))
   
-  t1 = Dense(512, input_shape=(784,), activation="relu", name="dense1")(input_tensor)
-  t2 = Dense(512, input_shape=(784,), activation="relu", name="dense2")(input_tensor)
-  t3 = Dense(512, input_shape=(784,), activation="relu", name="dense3")(input_tensor)
-  t4 = Dense(512, input_shape=(784,), activation="relu", name="dense4")(input_tensor)
+  t1 = Dense(512, activation="relu", name="dense1")(input_tensor1)
+  t1 = Dense(512, activation="relu", name="dense12")(t1)
+  model1 = Model(input_tensor1, t1)
+  t2 = Dense(512, activation="relu", name="dense2")(input_tensor2)
+  t2 = Dense(512, activation="relu", name="dense22")(t2)
+  model2 = Model(input_tensor2, t2)
+  t3 = Dense(512, activation="relu", name="dense3")(input_tensor3)
+  t3 = Dense(512, activation="relu", name="dense33")(t3)
+  model3 = Model(input_tensor3, t3)
+  t4 = Dense(512, activation="relu", name="dense4")(input_tensor4)
+  t4 = Dense(512, activation="relu", name="dense44")(t4)
+  model4 = Model(input_tensor4, t4)
+  
+  input_tensor = Input(shape=(784,))
+  t1 = model1(input_tensor)
+  t2 = model2(input_tensor)
+  t3 = model3(input_tensor)
+  t4 = model4(input_tensor)
   output = Concatenate(axis=1)([t1, t2, t3, t4])
-  output2 = Dense(512, activation="relu")(output)
-  output3 = Dense(num_classes)(output2)
-  output4 = Activation("softmax")(output3)
+  #output2 = Dense(512, activation="relu")(output)
+  output = Dense(num_classes)(output)
+  output = Activation("softmax")(output)
   
-  model = Model(input_tensor, output4)
+  model = Model(input_tensor, output)
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)

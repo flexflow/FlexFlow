@@ -1,5 +1,5 @@
-from flexflow.keras.models import Model, Input, Sequential
-from flexflow.keras.layers import Add, Subtract, Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, add, subtract
+from flexflow.keras.models import Model, Sequential
+from flexflow.keras.layers import Add, Subtract, Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, add, subtract, Input
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
@@ -42,7 +42,7 @@ def subtract_test():
 def top_level_task():
   
   add_test()
-  #subtract_test()
+  subtract_test()
 
 
 if __name__ == "__main__":
