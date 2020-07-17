@@ -3,6 +3,7 @@ import flexflow.core as ff
 from .tensor import Tensor
 from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract
 from flexflow.keras.optimizers import SGD, Adam 
+from flexflow.keras.callbacks import Callback, LearningRateScheduler 
 
 from PIL import Image
 
