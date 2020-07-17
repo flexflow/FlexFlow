@@ -1,7 +1,7 @@
 import flexflow.core as ff
 
 def get_value(x):
-  print("get_value")
+  return x
 
 def set_value(x, value):
-  print("set value")
+  x = value
