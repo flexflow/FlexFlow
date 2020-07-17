@@ -25,7 +25,7 @@ class Sequential(BaseModel):
     
   def __add_layer(self, layer):
     self._layers.append(layer)
-    assert layer.ffhandle == 0, "layer handle is inited"
+    assert layer.ffhandle == None, "layer handle is inited"
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
     

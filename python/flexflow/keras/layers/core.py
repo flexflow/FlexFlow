@@ -135,7 +135,7 @@ class Activation(Layer):
     super(Activation, self).__init__("activation", self.activation, **kwargs) 
       
   def verify_meta_data(self):
-    assert self.type == "Softmax", "type is wrong"
+    assert self.activation == "Softmax", "type is wrong"
     
   def get_summary(self):
     summary = "%s%s\n"%(self._get_summary_name(), self._get_summary_connected_to())

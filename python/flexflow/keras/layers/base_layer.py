@@ -12,7 +12,7 @@ class Layer(object):
     if 'name' in kwargs:
       name = kwargs["name"]
       
-    self._ffhandle = 0
+    self._ffhandle = None
     self._name = name
     self._layer_type = layer_type
     self.layer_id = -1
@@ -72,7 +72,7 @@ class Layer(object):
     self.output_shape = tuple(lst)
     
   def _get_weights(self, ffmodel):
-    assert self._ffhandle != 0, "handle is not set correctly"
+    assert self._ffhandle != None, "handle is not set correctly"
     kernel_parameter = self._ffhandle.get_weight_tensor()
     bias_parameter = self._ffhandle.get_bias_tensor()
     kernel_array = kernel_parameter.get_weights(ffmodel)
@@ -80,7 +80,7 @@ class Layer(object):
     return (kernel_array, bias_array)
     
   def _set_weights(self, ffmodel, kernel, bias):
-    assert self._ffhandle != 0, "handle is not set correctly"
+    assert self._ffhandle != None, "handle is not set correctly"
     kernel_parameter = self._ffhandle.get_weight_tensor()
     bias_parameter = self._ffhandle.get_bias_tensor()
     kernel_parameter.set_weights(ffmodel, kernel)

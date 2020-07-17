@@ -19,7 +19,7 @@ class BaseModel(object):
     self._ffmodel = ff.FFModel(self._ffconfig)
     
     self._name = name
-    self._ffoptimizer = 0
+    self._ffoptimizer = None
     self._layers = []
     self._nb_layers = 0
     self._input_tensors = []
@@ -165,7 +165,7 @@ class BaseModel(object):
     if use_multiprocessing != False:
       assert 0, "use_multiprocessing is not supported"
       
-    assert self._output_tensor.ffhandle != 0, "tensor is not init"
+    assert self._output_tensor.ffhandle != None, "tensor is not init"
     if (isinstance(x, list) == False):
       input_tensors = [x]
     else:
@@ -214,7 +214,7 @@ class BaseModel(object):
       assert len(t.to_layers) > 0, "input tensor has not to_layers"
       
   def _set_optimizer(self):
-    assert self._ffoptimizer != 0, "optimizer is not set"
+    assert self._ffoptimizer != None, "optimizer is not set"
     if (isinstance(self._ffoptimizer, SGD) == True):
       self._ffoptimizer.ffhandle = ff.SGDOptimizer(self._ffmodel, self._ffoptimizer.learning_rate)
       self._ffmodel.set_sgd_optimizer(self._ffoptimizer.ffhandle)
@@ -359,9 +359,9 @@ class BaseModel(object):
       layer.output_tensors[0].ffhandle = out_t
       layer.set_batch_size(self._ffconfig.get_batch_size())
 
-      assert layer.ffhandle == 0, "layer handle is inited"
+      assert layer.ffhandle == None, "layer handle is inited"
       layer.ffhandle = self._ffmodel.get_layer_by_id(layer.layer_id)
-      assert layer.ffhandle != 0, "layer handle is wrong"
+      assert layer.ffhandle != None, "layer handle is wrong"
       print(layer.ffhandle)    
        
   def _init_inout(self):
@@ -385,7 +385,7 @@ class BaseModel(object):
       
       layer.output_tensors[0].ffhandle = out_t
       layer.set_batch_size(self._ffconfig.get_batch_size())
-      assert layer.ffhandle != 0, "layer handle is wrong"
+      assert layer.ffhandle != None, "layer handle is wrong"
       print(layer.ffhandle)    
       
     print("output tensor", self._output_tensor.batch_shape)
