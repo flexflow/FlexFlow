@@ -115,3 +115,7 @@ if(${BUILD_DLRM} OR ${BUILD_ALL_EXAMPLES})
   target_include_directories(generate_dlrm_strategy PUBLIC ${FLOW_INCLUDE})
   target_link_libraries(generate_dlrm_strategy ${protobuf_lib_name})
 endif()
+
+if(${BUILD_MNIST} OR ${BUILD_ALL_EXAMPLES})
+  add_subdirectory(examples/mnist)
+endif()
