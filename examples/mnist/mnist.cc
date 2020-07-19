@@ -74,7 +74,7 @@ void top_level_task(const Task* task,
   t = ff.softmax(t, label);
 
 //-----------------------------------------------------------------
-  ff.optimizer = new SGDOptimizer(&ff, 0.01f, 0.5f);
+  ff.optimizer = new SGDOptimizer(&ff, 0.01f);
   ff.compile();
 
   // Data Loader
