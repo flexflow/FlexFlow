@@ -58,10 +58,10 @@ def top_level_task():
   next_batch(0, x_train, input1, ffconfig)
   next_batch_label(0, y_train, label, ffconfig)
   
-  t2 = ffmodel.dense("dense1", input1, 512, ActiMode.AC_MODE_RELU)
-  t3 = ffmodel.dense("dense1", t2, 512, ActiMode.AC_MODE_RELU)
-  t4 = ffmodel.dense("dense1", t3, 10)
-  t5 = ffmodel.softmax("softmax", t4, label)
+  t2 = ffmodel.dense(input1, 512, ActiMode.AC_MODE_RELU)
+  t3 = ffmodel.dense(t2, 512, ActiMode.AC_MODE_RELU)
+  t4 = ffmodel.dense(t3, 10)
+  t5 = ffmodel.softmax(t4, label)
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)

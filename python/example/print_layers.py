@@ -17,8 +17,8 @@ def top_level_task():
   dims_label = [ffconfig.get_batch_size(), 1]
   label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32);
   
-  t1 = ffmodel.conv2d("conv1", input1, 64, 11, 11, 4, 4, 2, 2) 
-  t2 = ffmodel.dense("dense1", input2, 8, ActiMode.AC_MODE_RELU)
+  t1 = ffmodel.conv2d(input1, 64, 11, 11, 4, 4, 2, 2) 
+  t2 = ffmodel.dense(input2, 8, ActiMode.AC_MODE_RELU)
   #t3 = ffmodel.dense("dense1", t2, 128, ActiMode.AC_MODE_RELU)
   ffmodel.compile()
   

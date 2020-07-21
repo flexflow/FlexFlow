@@ -125,34 +125,29 @@ flexflow_model_zero_gradients(
 flexflow_tensor_t
 flexflow_model_add_exp(
   flexflow_model_t handle,
-  const char* name,
   const flexflow_tensor_t x);
   
 flexflow_tensor_t
 flexflow_model_add_add(
   flexflow_model_t handle,
-  const char* name,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y);
   
 flexflow_tensor_t
 flexflow_model_add_subtract(
   flexflow_model_t handle,
-  const char* name,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y);
 
 flexflow_tensor_t
 flexflow_model_add_multiply(
   flexflow_model_t handle,
-  const char* name,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y);
   
 flexflow_tensor_t
 flexflow_model_add_divide(
   flexflow_model_t handle,
-  const char* name,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y);
 
@@ -332,6 +327,10 @@ flexflow_tensor_get_num_dims(
 
 int*
 flexflow_tensor_get_dims(
+  flexflow_tensor_t handle);
+
+int
+flexflow_tensor_get_data_type(
   flexflow_tensor_t handle);
 
 void

@@ -668,6 +668,14 @@ flexflow_tensor_get_dims(
   return &(handle->adim[0]);
 }
 
+int
+flexflow_tensor_get_data_type(
+  flexflow_tensor_t handle_)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  return static_cast<int>(handle->data_type);
+}
+
 void
 flexflow_tensor_attach_raw_ptr(
   flexflow_tensor_t handle_,
