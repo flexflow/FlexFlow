@@ -52,7 +52,7 @@ void top_level_task(const Task* task,
 
   Tensor input;
   {
-    const int dims[] = {ffConfig.batchSize, 3, 299, 299};
+    const int dims[] = {ffConfig.batchSize, 32, 36, 36};
     input = ff.create_tensor<4>(dims, "", DT_FLOAT);
   }
   Tensor label;
@@ -62,25 +62,38 @@ void top_level_task(const Task* task,
   }
  
 //-----------------------------------------------------------------
-  Tensor t = ff.conv2d(input, 32, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d(t, 32, 3, 3, 1, 1, 0, 0);
-  t = ff.conv2d(t, 64, 3, 3, 1, 1, 1, 1);
-  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d(t, 80, 1, 1, 1, 1, 0, 0);
-  t = ff.conv2d(t, 192, 3, 3, 1, 1, 1, 1);
-  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-  t = InceptionA(ff, t, 32);
-  t = InceptionA(ff, t, 64);
-  t = InceptionA(ff, t, 64);
-  t = InceptionB(ff, t);
-  t = InceptionC(ff, t, 128);
-  t = InceptionC(ff, t, 160);
-  t = InceptionC(ff, t, 160);
-  t = InceptionC(ff, t, 192);
-  t = InceptionD(ff, t);
-  t = InceptionE(ff, t);
-  t = InceptionE(ff, t);
-  t = ff.pool2d(t, 8, 8, 1, 1, 0, 0, POOL_AVG);
+  //Tensor t = ff.conv2d(input, 32, 3, 3, 2, 2, 0, 0, AC_MODE_RELU);
+  //t = ff.conv2d(t, 32, 3, 3, 1, 1, 0, 0, AC_MODE_RELU);
+  //t = ff.conv2d(t, 64, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+  //t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+  //t = ff.conv2d(t, 80, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
+  //t = ff.conv2d(t, 192, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+  //t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+
+  //Tensor t1 = ff.conv2d(input, 64, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
+  Tensor t2 = ff.conv2d(input, 48, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
+  t2 = ff.conv2d(t2, 64, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
+  Tensor t3 = ff.conv2d(input, 64, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
+  //t3 = ff.conv2d(t3, 64, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+  t3 = ff.conv2d(t3, 96, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+  //Tensor t4 = ff.pool2d(input, 3, 3, 1, 1, 1, 1, POOL_AVG);
+  //t4 = ff.conv2d(t4, pool_features, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
+  Tensor concat[4];
+  concat[0] = t2; concat[1] = t3;// concat[2] = t3;// concat[3] = t4;
+  Tensor t = ff.concat(2, concat, 1);
+
+  //t = InceptionA(ff, t, 32);
+  //t = InceptionA(ff, t, 64);
+  //t = InceptionA(ff, t, 64);
+  //t = InceptionB(ff, t);
+  //t = InceptionC(ff, t, 128);
+  //t = InceptionC(ff, t, 160);
+  //t = InceptionC(ff, t, 160);
+  //t = InceptionC(ff, t, 192);
+  //t = InceptionD(ff, t);
+  //t = InceptionE(ff, t);
+  //t = InceptionE(ff, t);
+  //t = ff.pool2d(t, 8, 8, 1, 1, 0, 0, POOL_AVG);
   t = ff.flat(t);
   t = ff.dense(t, 1000);
   t = ff.softmax(t, label);

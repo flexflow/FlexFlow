@@ -17,14 +17,14 @@
 
 Tensor InceptionA(FFModel& ff, Tensor input, int pool_features)
 {
-  Tensor t1 = ff.conv2d(input, 64, 1, 1, 1, 1, 0, 0);
-  Tensor t2 = ff.conv2d(input, 48, 1, 1, 1, 1, 0, 0);
-  t2 = ff.conv2d(t2, 64, 5, 5, 1, 1, 2, 2);
-  Tensor t3 = ff.conv2d(input, 64, 1, 1, 1, 1, 0, 0);
-  t3 = ff.conv2d(t3, 96, 3, 3, 1, 1, 1, 1);
-  t3 = ff.conv2d(t3, 96, 3, 3, 1, 1, 1, 1);
+  Tensor t1 = ff.conv2d(input, 64, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
+  Tensor t2 = ff.conv2d(input, 48, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
+  t2 = ff.conv2d(t2, 64, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
+  Tensor t3 = ff.conv2d(input, 64, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
+  t3 = ff.conv2d(t3, 96, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+  t3 = ff.conv2d(t3, 96, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
   Tensor t4 = ff.pool2d(input, 3, 3, 1, 1, 1, 1, POOL_AVG);
-  t4 = ff.conv2d(t4, pool_features, 1, 1, 1, 1, 0, 0);
+  t4 = ff.conv2d(t4, pool_features, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
   Tensor concat[4];
   concat[0] = t1; concat[1] = t2; concat[2] = t3; concat[3] = t4;
   Tensor output = ff.concat(4, concat, 1);
