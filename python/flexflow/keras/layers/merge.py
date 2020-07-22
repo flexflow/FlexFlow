@@ -20,11 +20,11 @@ class _Merge(Layer):
     
   def _verify_inout_tensor_shape(self, input_tensors, output_tensor):
     for input_tensor in input_tensors:
-      assert input_tensor.num_dims == len(self.input_shape), "[Concatenate]: check input tensor dims"
+      assert input_tensor.num_dims == len(self.input_shape), "[Merge]: check input tensor dims"
       for i in range (1, input_tensor.num_dims):
         print(input_tensor.batch_shape[i], self.input_shape[i], i)
         assert input_tensor.batch_shape[i] == self.input_shape[i]
-    assert output_tensor.num_dims == len(self.output_shape), "[Concatenate]: check output tensor dims"
+    assert output_tensor.num_dims == len(self.output_shape), "[Merge]: check output tensor dims"
     for i in range (1, output_tensor.num_dims):
       assert output_tensor.batch_shape[i] == self.output_shape[i]
       
@@ -81,4 +81,17 @@ class Subtract(_Merge):
     assert len(input_tensors) == 2, "check input_tensors"   
     self.input_shape = input_tensors[0].batch_shape
     self.output_shape = input_tensors[0].batch_shape
-    print("add output ", self.output_shape)
+    print("subtract output ", self.output_shape)
+
+def multiply(input_tensors):
+  return Multiply()(input_tensors)
+    
+class Multiply(_Merge):
+  def __init__(self, **kwargs):
+    super(Multiply, self).__init__("multiply", "Multiply", **kwargs) 
+    
+  def _calculate_inout_shape(self, input_tensors): 
+    assert len(input_tensors) == 2, "check input_tensors"   
+    self.input_shape = input_tensors[0].batch_shape
+    self.output_shape = input_tensors[0].batch_shape
+    print("multiply output ", self.output_shape)
