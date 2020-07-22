@@ -394,6 +394,8 @@ class BaseModel(object):
         out_t = self._ffmodel.add(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       elif (isinstance(layer, Subtract) == True):
         out_t = self._ffmodel.subtract(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
+      elif (isinstance(layer, Multiply) == True):
+        out_t = self._ffmodel.multiply(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       else:
         assert 0, "unknow layer"
 
