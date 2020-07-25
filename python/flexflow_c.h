@@ -383,6 +383,11 @@ void
 flexflow_sgd_optimizer_destroy(
   flexflow_sgd_optimizer_t handle);
 
+void 
+flexflow_sgd_optimizer_set_lr(
+  flexflow_sgd_optimizer_t handle, 
+  double lr);
+
 // -----------------------------------------------------------------------
 // AdamOptimizer
 // -----------------------------------------------------------------------
@@ -399,6 +404,11 @@ flexflow_adam_optimizer_create(
 void 
 flexflow_adam_optimizer_destroy(
   flexflow_adam_optimizer_t handle);
+
+void 
+flexflow_adam_optimizer_set_lr(
+  flexflow_adam_optimizer_t handle, 
+  double lr);
 
 // -----------------------------------------------------------------------
 // Initializer

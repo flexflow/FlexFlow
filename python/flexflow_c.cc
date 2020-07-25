@@ -766,6 +766,15 @@ flexflow_sgd_optimizer_destroy(
   delete handle;
 }
 
+void 
+flexflow_sgd_optimizer_set_lr(
+  flexflow_sgd_optimizer_t handle_, 
+  double lr)
+{
+  SGDOptimizer *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->lr = lr;
+}
+
 // -----------------------------------------------------------------------
 // AdamOptimizer
 // -----------------------------------------------------------------------
@@ -792,6 +801,15 @@ flexflow_adam_optimizer_destroy(
   AdamOptimizer *handle = FFCObjectWrapper::unwrap(handle_);
   ffc_log.print("AdamOptimizer delete %p", handle);
   delete handle;
+}
+
+void 
+flexflow_adam_optimizer_set_lr(
+  flexflow_adam_optimizer_t handle_, 
+  double lr)
+{
+  AdamOptimizer *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->alpha = lr;
 }
 
 // -----------------------------------------------------------------------

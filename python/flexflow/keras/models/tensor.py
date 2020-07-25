@@ -3,31 +3,57 @@ import flexflow.core as ff
 class Tensor(object):
   __slots__ = ['_ffhandle', 'to_layers', 'from_layer', 'dtype', \
                'batch_shape', 'name', 'num_dims']
-  def __init__(self, ffmodel=0, batch_shape=0, name=0, dtype=0, meta_only=False, ffhandle=0):
+  def __init__(self, ffmodel=None, 
+               shape=None, batch_size=None,
+               name=None, dtype=None, 
+               sparse=False, tensor=None, ragged=False,
+               meta_only=False, ffhandle=None, **kwargs):
+    if sparse != False:
+      assert 0, "sparse is not supported"
+    if tensor != None:
+      assert 0, "tensor is not supported"
+    if ragged != False:
+      assert 0, "ragged is not supported"
+      
+    batch_shape = None
+    if "batch_shape" in kwargs:
+      batch_shape = kwargs["batch_shape"]
+               
     self._ffhandle = ffhandle
     self.to_layers = []
     self.from_layer = 0
-    if (dtype == "float32" or dtype == ff.DataType.DT_FLOAT):
+    if dtype == None or dtype == "float32" or dtype == ff.DataType.DT_FLOAT:
       self.dtype = ff.DataType.DT_FLOAT
-    elif (dtype == "float64" or dtype == ff.DataType.DT_DOUBLE):
+    elif dtype == "float64" or dtype == ff.DataType.DT_DOUBLE:
       self.dtype = ff.DataType.DT_DOUBLE
-    elif (dtype == "int32" or dtype == ff.DataType.DT_INT32):
+    elif dtype == "int32" or dtype == ff.DataType.DT_INT32:
       self.dtype = ff.DataType.DT_INT32
-    elif (dtype == "int64" or dtype == ff.DataType.DT_INT64):
+    elif dtype == "int64" or dtype == ff.DataType.DT_INT64:
       self.dtype = ff.DataType.DT_INT64
     else:
       assert 0, "not supported"
-    # create a tensor
-    if (ffhandle == 0):
-      self.batch_shape = tuple(batch_shape)
+    
+    if name == None:
+      self.name = ""
+    else:
       self.name = name
-      self.num_dims = len(batch_shape)
+    
+    # create a tensor
+    if ffhandle == None:
+      if batch_shape != None:
+        self.batch_shape = batch_shape
+        self.num_dims = len(batch_shape)
+      else:
+        self.num_dims = len(shape) + 1
+        if batch_size == None:
+          self.batch_shape = (0,) + shape
+        else:
+          self.batch_shape = (batch_size,) + shape
       if (meta_only == False):
         self.create_ff_tensor(ffmodel)
     # init from handle
     else:
       self.batch_shape = ffhandle.dims
-      self.name = ""
       self.num_dims = ffhandle.num_dims
   
   @property
@@ -37,7 +63,7 @@ class Tensor(object):
   @ffhandle.setter    
   def ffhandle(self, handle):
     assert isinstance(handle, ff.Tensor) == True, "[Tensor]: ffhandle is not the correct type"
-    assert self._ffhandle == 0, "[Tensor]: check handle, already set"
+    assert self._ffhandle == None, "[Tensor]: check handle, already set"
     self._ffhandle = handle
     if (self.batch_shape[0] == 0):
       self.set_batch_size(handle.dims[0])
@@ -66,9 +92,3 @@ class Tensor(object):
     assert self.num_dims == self._ffhandle.num_dims, "[Tensor]: check tensor shape"
     for i in range(0, self.num_dims):
       assert self.batch_shape[i] == self._ffhandle.dims[i], "[Tensor]: please check shape dim %d (%d == %d)" %(i, self.batch_shape[i], self._ffhandle.dims[i])
-
-class Input(Tensor):
-  def __init__(self, shape=None, batch_shape=None,
-               name="", dtype=None, sparse=False,
-               tensor=None):
-    super(Input, self).__init__(0, batch_shape, name, dtype, meta_only=True) 

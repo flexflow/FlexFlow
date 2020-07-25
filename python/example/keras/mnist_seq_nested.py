@@ -1,5 +1,5 @@
-from flexflow.keras.models import Sequential, Model, Input
-from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, AveragePooling2D
+from flexflow.keras.models import Sequential, Model
+from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, AveragePooling2D, Input
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 
@@ -34,7 +34,7 @@ def top_level_task():
   #
   # model2 = Sequential(layers2)
   #
-  input_tensor = Input(batch_shape=[0, 12544], dtype="float32")
+  input_tensor = Input(shape=(12544,), dtype="float32")
   
   output = Dense(512, input_shape=(12544,), activation="relu")(input_tensor)
   output = Dense(num_classes)(output)
