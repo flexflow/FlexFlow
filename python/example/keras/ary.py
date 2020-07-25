@@ -1,5 +1,5 @@
-from flexflow.keras.models import Model, Input, Sequential
-from flexflow.keras.layers import Add, Subtract, Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, add, subtract
+from flexflow.keras.models import Model, Sequential
+from flexflow.keras.layers import Add, Subtract, Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, add, subtract, Input
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
@@ -10,9 +10,9 @@ import argparse
 import gc
 
 def add_test():
-  input1 = Input(batch_shape=(0, 16), dtype="float32")
+  input1 = Input(shape=(16, ), dtype="float32")
   x1 = Dense(8, activation='relu')(input1)
-  input2 = Input(batch_shape=(0, 32), dtype="float32")
+  input2 = Input(shape=(32,), dtype="float32")
   x2 = Dense(8, activation='relu')(input2)
   subtracted = Add()([x1, x2])
 
@@ -25,9 +25,9 @@ def add_test():
   model.ffmodel.init_layers()
   
 def subtract_test():
-  input1 = Input(batch_shape=(0, 16), dtype="float32")
+  input1 = Input(shape=(16, ), dtype="float32")
   x1 = Dense(8, activation='relu')(input1)
-  input2 = Input(batch_shape=(0, 32), dtype="float32")
+  input2 = Input(shape=(32, ), dtype="float32")
   x2 = Dense(8, activation='relu')(input2)
   subtracted = subtract([x1, x2])
 

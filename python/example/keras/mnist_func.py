@@ -1,5 +1,5 @@
-from flexflow.keras.models import Model, Input, Sequential
-from flexflow.keras.layers import Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, concatenate
+from flexflow.keras.models import Model, Sequential
+from flexflow.keras.layers import Input, Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, concatenate
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
@@ -24,7 +24,7 @@ def mlp():
   #y_train = np.random.randint(1, 9, size=(len(y_train),1), dtype='int32')
   print("shape: ", x_train.shape)
   
-  input_tensor = Input(batch_shape=[0, 784], dtype="float32")
+  input_tensor = Input(shape=(784,))
   
   output = Dense(512, input_shape=(784,), activation="relu")(input_tensor)
   output2 = Dense(512, activation="relu")(output)
@@ -55,18 +55,35 @@ def mlp_concat():
   #y_train = np.random.randint(1, 9, size=(len(y_train),1), dtype='int32')
   print("shape: ", x_train.shape)
   
-  input_tensor = Input(batch_shape=[0, 784], dtype="float32")
+  input_tensor1 = Input(shape=(256,))
+  input_tensor2 = Input(shape=(256,))
+  input_tensor3 = Input(shape=(256,))
+  input_tensor4 = Input(shape=(256,))
   
-  t1 = Dense(512, input_shape=(784,), activation="relu", name="dense1")(input_tensor)
-  t2 = Dense(512, input_shape=(784,), activation="relu", name="dense2")(input_tensor)
-  t3 = Dense(512, input_shape=(784,), activation="relu", name="dense3")(input_tensor)
-  t4 = Dense(512, input_shape=(784,), activation="relu", name="dense4")(input_tensor)
+  t1 = Dense(512, activation="relu", name="dense1")(input_tensor1)
+  t1 = Dense(512, activation="relu", name="dense12")(t1)
+  model1 = Model(input_tensor1, t1)
+  t2 = Dense(512, activation="relu", name="dense2")(input_tensor2)
+  t2 = Dense(512, activation="relu", name="dense22")(t2)
+  model2 = Model(input_tensor2, t2)
+  t3 = Dense(512, activation="relu", name="dense3")(input_tensor3)
+  t3 = Dense(512, activation="relu", name="dense33")(t3)
+  model3 = Model(input_tensor3, t3)
+  t4 = Dense(512, activation="relu", name="dense4")(input_tensor4)
+  t4 = Dense(512, activation="relu", name="dense44")(t4)
+  model4 = Model(input_tensor4, t4)
+  
+  input_tensor = Input(shape=(784,))
+  t1 = model1(input_tensor)
+  t2 = model2(input_tensor)
+  t3 = model3(input_tensor)
+  t4 = model4(input_tensor)
   output = Concatenate(axis=1)([t1, t2, t3, t4])
-  output2 = Dense(512, activation="relu")(output)
-  output3 = Dense(num_classes)(output2)
-  output4 = Activation("softmax")(output3)
+  #output2 = Dense(512, activation="relu")(output)
+  output = Dense(num_classes)(output)
+  output = Activation("softmax")(output)
   
-  model = Model(input_tensor, output4)
+  model = Model(input_tensor, output)
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
@@ -88,7 +105,7 @@ def cnn():
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
   
-  input_tensor = Input(batch_shape=[0, 1, 28, 28], dtype="float32")
+  input_tensor = Input(shape=(1, 28, 28), dtype="float32")
   
   output = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
   output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
@@ -126,7 +143,7 @@ def cnn_concat():
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
   
-  input_tensor = Input(batch_shape=[0, 1, 28, 28], dtype="float32")
+  input_tensor = Input(shape=(1, 28, 28), dtype="float32")
   
   t1 = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
   t2 = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
@@ -160,7 +177,7 @@ def cifar_cnn():
   y_train = y_train.astype('int32')
   print("shape: ", x_train.shape)
   
-  input_tensor1 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  input_tensor1 = Input(shape=(3, 32, 32), dtype="float32")
   
   output_tensor = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor1)
   output_tensor = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor)
@@ -203,8 +220,8 @@ def cifar_cnn_concat():
   y_train = y_train.astype('int32')
   print("shape: ", x_train.shape)
   
-  input_tensor1 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
-  input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  input_tensor1 = Input(shape=(3, 32, 32), dtype="float32")
+  input_tensor2 = Input(shape=(3, 32, 32), dtype="float32")
 
   ot1 = cifar_cnn_sub(input_tensor1, 1)
   ot2 = cifar_cnn_sub(input_tensor2, 2)
@@ -243,8 +260,8 @@ def cifar_cnn_model_concat():
   y_train = y_train.astype('int32')
   print("shape: ", x_train.shape)
   
-  input_tensor1 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
-  input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  input_tensor1 = Input(shape=(3, 32, 32), dtype="float32")
+  input_tensor2 = Input(shape=(3, 32, 32), dtype="float32")
 
   ot1 = cifar_cnn_sub(input_tensor1, 1)
   model1 = Model(input_tensor1, ot1)
@@ -326,13 +343,13 @@ def cifar_cnn_model_call():
   y_train = y_train.astype('int32')
   print("shape: ", x_train.shape)
   
-  input_tensor1 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  input_tensor1 = Input(shape=(3, 32, 32), dtype="float32")
   output_tensor1 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor1)
   output_tensor1 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor1)
   output_tensor1 = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor1)
   model1 = Model(input_tensor1, output_tensor1)
   
-  input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  input_tensor2 = Input(shape=(3, 32, 32), dtype="float32")
   output_tensor2 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor2)
   output_tensor2 = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output_tensor2)
   output_tensor2 = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor2)
@@ -342,7 +359,7 @@ def cifar_cnn_model_call():
   output_tensor2 = Activation("softmax")(output_tensor2)
   model2 = Model(input_tensor2, output_tensor2)
   
-  input_tensor3 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  input_tensor3 = Input(shape=(3, 32, 32), dtype="float32")
   output_tensor3 = model1(input_tensor3)
   output_tensor3 = model2(output_tensor3)
   model = Model(input_tensor3, output_tensor3)
@@ -375,7 +392,7 @@ def cifar_alexnet():
   y_train = y_train.astype('int32')
   full_label_np = y_train
   
-  input_tensor = Input(batch_shape=[0, 3, 229, 229], dtype="float32")
+  input_tensor = Input(shape=(3, 229, 229), dtype="float32")
   
   output = Conv2D(filters=64, input_shape=(3,229,229), kernel_size=(11,11), strides=(4,4), padding=(2,2), activation="relu")(input_tensor)
   output = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid")(output)
@@ -414,7 +431,7 @@ def mlp_net2net():
   
   #teacher
   
-  input_tensor1 = Input(batch_shape=[0, 784], dtype="float32")
+  input_tensor1 = Input(shape=(784,), dtype="float32")
   
   d1 = Dense(512, input_shape=(784,), activation="relu")
   d2 = Dense(512, activation="relu")
@@ -439,7 +456,7 @@ def mlp_net2net():
   
   # student
   
-  input_tensor2 = Input(batch_shape=[0, 784], dtype="float32")
+  input_tensor2 = Input(shape=(784,), dtype="float32")
   
   sd1_1 = Dense(512, input_shape=(784,), activation="relu")
   #sd1_2 = Dense(512, input_shape=(784,), activation="relu")
@@ -480,7 +497,7 @@ def cifar_cnn_net2net():
   print("shape: ", x_train.shape)
   
   #teacher
-  input_tensor1 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  input_tensor1 = Input(shape=(3, 32, 32), dtype="float32")
 
   c1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")
   c2 = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")
@@ -520,7 +537,7 @@ def cifar_cnn_net2net():
   print(c2_kernel.shape, c2_kernel_new.shape, c2_bias.shape)
   
   #student model
-  input_tensor2 = Input(batch_shape=[0, 3, 32, 32], dtype="float32")
+  input_tensor2 = Input(shape=(3, 32, 32), dtype="float32")
 
   sc1_1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")
   sc1_2 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding="same", activation="relu")

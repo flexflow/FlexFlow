@@ -2,37 +2,39 @@ import flexflow.core as ff
 
 from .base_model import BaseModel
 from flexflow.keras.layers.base_layer import Layer
-from .input_layer import Tensor, Input
-from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Concatenate
+from .tensor import Tensor
+from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Concatenate, Input
 
 class Sequential(BaseModel):
-  def __init__(self, layer_list=[]):
-    super(Sequential, self).__init__() 
+  def __init__(self, layers=None, name=None):
+    super(Sequential, self).__init__(name) 
     
-    if len(layer_list) > 0:
-      for layer in layer_list:
+    if isinstance(layers, list):
+      for layer in layers:
         self.add(layer)
   
   def add(self, item):
-    if (isinstance(item, Layer)):
+    if isinstance(item, Layer):
       assert item.layer_id == -1, "layer id is inited"
       self.__add_layer(item)
-    elif (isinstance(item, BaseModel)):
+    elif isinstance(item, BaseModel):
       self.__add_model(item)
+    elif isinstance(item, Tensor):
+      self.__add_input(item)
   
   def pop(self):
     assert 0, "Not implemented"
     
   def __add_layer(self, layer):
     self._layers.append(layer)
-    assert layer.ffhandle == 0, "layer handle is inited"
+    assert layer.ffhandle == None, "layer handle is inited"
     layer.layer_id = self._nb_layers
     self._nb_layers += 1
     
-    if (layer.layer_id == 0):
+    if layer.layer_id == 0 and len(self._input_layers) == 0:
+      assert layer.input_shape != None, "input shape is not set"
       input_tensor = Input(batch_shape=layer.input_shape, dtype="float32")
-      self._input_tensors.append(input_tensor)
-      self._output_tensor = input_tensor
+      self.__add_input(input_tensor)
       
     self._output_tensor = layer(self._output_tensor)
     
@@ -42,3 +44,8 @@ class Sequential(BaseModel):
     for layer in model.layers:
       layer.reset_connection()
       self.__add_layer(layer)
+      
+  def __add_input(self, tensor):
+    self._input_tensors.append(tensor)
+    self._output_tensor = tensor
+    self._input_layers.append(tensor.from_layer)

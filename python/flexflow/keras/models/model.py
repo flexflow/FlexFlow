@@ -1,17 +1,19 @@
 import flexflow.core as ff
 
 from .base_model import BaseModel
-from .input_layer import Tensor
-from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Concatenate
+from .tensor import Tensor
+from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Concatenate, Input
 
 class Model(BaseModel):
-  def __init__(self, inputs, outputs):
-    super(Model, self).__init__()
+  def __init__(self, inputs, outputs, name=None):
+    super(Model, self).__init__(name)
     
     if (isinstance(inputs, list) == False):
        inputs = [inputs]
-       
+    
     self._input_tensors = inputs
+    for input_tensor in inputs:
+      self._input_layers.append(input_tensor.from_layer)
     self._output_tensor = outputs
     
     self.__traverse_dag_dfs()
@@ -29,7 +31,7 @@ class Model(BaseModel):
   def _add_layer_metadata(self, layer):
     self._layers.append(layer)
     #assert layer.layer_id == -1, "layer id is inited"
-    assert layer.ffhandle == 0, "layer handle is inited"
+    assert layer.ffhandle == None, "layer handle is inited"
     layer.layer_id = self._nb_layers
     self._nb_layers += 1       
 

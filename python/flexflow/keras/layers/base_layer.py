@@ -1,14 +1,18 @@
 import flexflow.core as ff
 
-from flexflow.keras.models.input_layer import Tensor, Input
+from flexflow.keras.models.tensor import Tensor
 
 class Layer(object):
   __slots__ = ['_ffhandle', '_name', '_layer_type', 'layer_id', \
                'prev_layers', 'next_layers',\
                'input_tensors', 'output_tensors', \
                'input_shape', 'output_shape', 'nb_visited_prev_layers']
-  def __init__(self, name, layer_type):
-    self._ffhandle = 0
+  def __init__(self, default_name, layer_type, **kwargs):
+    name = default_name
+    if 'name' in kwargs:
+      name = kwargs["name"]
+      
+    self._ffhandle = None
     self._name = name
     self._layer_type = layer_type
     self.layer_id = -1
@@ -16,8 +20,8 @@ class Layer(object):
     self.next_layers = []
     self.input_tensors = []
     self.output_tensors = []
-    self.input_shape = 0
-    self.output_shape = 0
+    self.input_shape = None
+    self.output_shape = None
     self.nb_visited_prev_layers = 0
     
   @property
@@ -48,8 +52,8 @@ class Layer(object):
     
   def reset_layer(self):
     self.reset_connection()
-    self.input_shape = 0
-    self.output_shape = 0
+    self.input_shape = None
+    self.output_shape = None
     self._reset_layer()
     
   def reset_connection(self):
@@ -68,7 +72,7 @@ class Layer(object):
     self.output_shape = tuple(lst)
     
   def _get_weights(self, ffmodel):
-    assert self._ffhandle != 0, "handle is not set correctly"
+    assert self._ffhandle != None, "handle is not set correctly"
     kernel_parameter = self._ffhandle.get_weight_tensor()
     bias_parameter = self._ffhandle.get_bias_tensor()
     kernel_array = kernel_parameter.get_weights(ffmodel)
@@ -76,7 +80,7 @@ class Layer(object):
     return (kernel_array, bias_array)
     
   def _set_weights(self, ffmodel, kernel, bias):
-    assert self._ffhandle != 0, "handle is not set correctly"
+    assert self._ffhandle != None, "handle is not set correctly"
     kernel_parameter = self._ffhandle.get_weight_tensor()
     bias_parameter = self._ffhandle.get_bias_tensor()
     kernel_parameter.set_weights(ffmodel, kernel)
@@ -102,11 +106,9 @@ class Layer(object):
     output_tensor.set_from_layer(self)
     input_tensor.set_to_layer(self)
     
-    # this is not the first layer
-    if (isinstance(input_tensor, Input) == False):
-      assert input_tensor.from_layer != 0, "[Layer]: check input tensor"
-      self.prev_layers.append(input_tensor.from_layer)
-      input_tensor.from_layer.next_layers.append(self)
+    assert input_tensor.from_layer != 0, "[Layer]: check input tensor"
+    self.prev_layers.append(input_tensor.from_layer)
+    input_tensor.from_layer.next_layers.append(self)
 
     return output_tensor
     
@@ -121,9 +123,8 @@ class Layer(object):
     for tensor in input_tensors:
       self.input_tensors.append(tensor)
       tensor.set_to_layer(self)
-      # not the first layer
-      if (isinstance(tensor, Input) == False):
-        assert tensor.from_layer != 0, "check input tensor"
-        self.prev_layers.append(tensor.from_layer)
-        tensor.from_layer.next_layers.append(self)
+
+      assert tensor.from_layer != 0, "check input tensor"
+      self.prev_layers.append(tensor.from_layer)
+      tensor.from_layer.next_layers.append(self)
     return output_tensor

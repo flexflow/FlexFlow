@@ -2,13 +2,14 @@ import flexflow.core as ff
 import math
 
 from .base_layer import Layer
-from flexflow.keras.models.input_layer import Tensor, Input
+from .input_layer import Input
+from flexflow.keras.models.tensor import Tensor
 
 class Pooling2D(Layer):
   __slots__ = ['in_channels', 'out_channels', 'kernel_size', 'stride', \
                'padding', 'pool_type']
-  def __init__(self, pool_size, strides, padding="valid", name="pool2d", pool_type=ff.PoolType.POOL_MAX, layer_type="MaxPooling2D"):
-    super(Pooling2D, self).__init__(name, layer_type) 
+  def __init__(self, pool_size, strides, padding="valid", default_name="pool2d", pool_type=ff.PoolType.POOL_MAX, layer_type="MaxPooling2D", **kwargs):
+    super(Pooling2D, self).__init__(default_name, layer_type, **kwargs) 
     
     self.in_channels = 0
     self.out_channels = 0
@@ -87,9 +88,13 @@ class Pooling2D(Layer):
     self.in_channels = 0
     
 class MaxPooling2D(Pooling2D):
-  def __init__(self, pool_size=(2, 2), strides=None, padding="valid", name="maxpool2d"):
-    super(MaxPooling2D, self).__init__(pool_size, strides, padding, name, ff.PoolType.POOL_MAX, "MaxPooling2D") 
+  def __init__(self, pool_size=(2, 2), strides=None, padding="valid", data_format=None, **kwargs):
+    if data_format == 'channels_last':
+      assert 0, "data_format channels_last is not supported"
+    super(MaxPooling2D, self).__init__(pool_size, strides, padding, "maxpool2d", ff.PoolType.POOL_MAX, "MaxPooling2D", **kwargs) 
     
 class AveragePooling2D(Pooling2D):
-  def __init__(self, pool_size=(2, 2), strides=None, padding="valid", name="maxpool2d"):
-    super(AveragePooling2D, self).__init__(pool_size, strides, padding, name, ff.PoolType.POOL_AVG, "AveragePooling2D") 
+  def __init__(self, pool_size=(2, 2), strides=None, padding="valid", data_format=None, **kwargs):
+    if data_format == 'channels_last':
+      assert 0, "data_format channels_last is not supported"
+    super(AveragePooling2D, self).__init__(pool_size, strides, padding, "averagepool2d", ff.PoolType.POOL_AVG, "AveragePooling2D", **kwargs) 
