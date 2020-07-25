@@ -1,0 +1,33 @@
+[Global_Params]
+train_sources=['GDSC', 'CTRP', 'ALMANAC']
+test_sources=['train']
+cell_types=None
+cell_features=['rnaseq']
+drug_features=['descriptors', 'fingerprints']
+dense=[1000, 1000, 1000]
+dense_feature_layers=[1000, 1000, 1000]
+activation='relu'
+loss='mse'
+optimizer='adam'
+scaling='std'
+dropout=0
+epochs=10
+batch_size=32
+val_split=0.2
+cv=1
+max_val_loss=1.0
+learning_rate=None
+base_lr=None
+residual=False
+reduce_lr=False
+warmup_lr=False
+batch_normalization=False
+feature_subsample=0
+rng_seed=2018
+save_path='save/uno'
+no_gen=False
+verbose = False
+gpus = [0]
+
+[Monitor_Params]
+timeout=3600
