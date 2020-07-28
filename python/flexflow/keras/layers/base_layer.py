@@ -6,7 +6,7 @@ class Layer(object):
   __slots__ = ['_ffhandle', '_name', '_layer_type', '_initialized',\
                'layer_id', 'prev_layers', 'next_layers',\
                'input_tensors', 'output_tensors', \
-               'input_shape', 'output_shape', 'nb_visited_prev_layers']
+               'input_shape', 'output_shape', 'nb_visited_prev_layers', 'has_visited']
   def __init__(self, default_name, layer_type, **kwargs):
     name = default_name
     if 'name' in kwargs:
@@ -24,6 +24,7 @@ class Layer(object):
     self.input_shape = None
     self.output_shape = None
     self.nb_visited_prev_layers = 0
+    self.has_visited = False;
     
   @property
   def name(self):
@@ -64,6 +65,7 @@ class Layer(object):
     self.output_tensors.clear()
     self.nb_visited_prev_layers = 0
     self._initialized = False
+    self.has_visited = False
     
   def set_batch_size(self, size):
     lst = list(self.input_shape)

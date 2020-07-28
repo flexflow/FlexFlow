@@ -10,6 +10,7 @@ mpirun -np 1 ./flexflow_python example/keras/mnist_func.py -ll:py 1 -ll:gpu 1 -l
 mpirun -np 1 ./flexflow_python example/keras/mnist_func.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --type 8
 mpirun -np 1 ./flexflow_python example/keras/mnist_func.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --type 9
 mpirun -np 1 ./flexflow_python example/keras/mnist_func.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --type 12
+mpirun -np 1 ./flexflow_python example/keras/mnist_func.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --type 13
 mpirun -np 1 ./flexflow_python example/keras/callback.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
 mpirun -np 1 ./flexflow_python example/keras/ary.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
 mpirun -np 1 ./flexflow_python example/keras/mnist_mlp.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
