@@ -64,7 +64,7 @@ void GlorotUniform::init_task(const Task* task,
           FID_DATA, ctx, runtime, false/*readOutput*/);
       w = accW.ptr;
       int outputDim = accW.rect.hi[1] - accW.rect.lo[1] + 1;
-      int inputDim = accW.rect.volume() / outputDim;
+      int inputDim = accW.rect.hi[0] - accW.rect.lo[0] + 1;
       scale = sqrt(6.0 / (inputDim + outputDim));
       break;
     }
@@ -73,9 +73,17 @@ void GlorotUniform::init_task(const Task* task,
       TensorAccessorW<float, 3> accW(regions[0], task->regions[0],
           FID_DATA, ctx, runtime, false/*readOutput*/);
       w = accW.ptr;
-      int outputDim = accW.rect.hi[2] - accW.rect.lo[2] + 1;
-      int inputDim = accW.rect.volume() / outputDim;
-      scale = sqrt(6.0 / (inputDim + outputDim));
+      // reference: tensorflow code for computing fan_in/fan_out
+      // https://github.com/tensorflow/tensorflow/blob/r2.0/tensorflow/python/ops/init_ops.py#L1415-L1439
+      int num_dim = domain.get_dim();
+      coord_t receptive_field_size = 1;
+      for (int i = 0; i < num_dim - 2; i++)
+        receptive_field_size *= (accW.rect.hi[i] - accW.rect.lo[i] + 1);
+      coord_t c_in = accW.rect.hi[num_dim-2] - accW.rect.lo[num_dim-2] + 1;
+      coord_t c_out = accW.rect.hi[num_dim-1] - accW.rect.lo[num_dim-1] + 1;
+      coord_t fan_in = c_in * receptive_field_size;
+      coord_t fan_out = c_out * receptive_field_size;
+      scale = sqrt(6.0 / (fan_in + fan_out));
       break;
     }
     case 4:
@@ -83,9 +91,17 @@ void GlorotUniform::init_task(const Task* task,
       TensorAccessorW<float, 4> accW(regions[0], task->regions[0],
           FID_DATA, ctx, runtime, false/*readOutput*/);
       w = accW.ptr;
-      int outputDim = accW.rect.hi[3] - accW.rect.lo[3] + 1;
-      int inputDim = accW.rect.volume() / outputDim;
-      scale = sqrt(6.0 / (inputDim + outputDim));
+      // reference: tensorflow code for computing fan_in/fan_out
+      // https://github.com/tensorflow/tensorflow/blob/r2.0/tensorflow/python/ops/init_ops.py#L1415-L1439
+      int num_dim = domain.get_dim();
+      coord_t receptive_field_size = 1;
+      for (int i = 0; i < num_dim - 2; i++)
+        receptive_field_size *= (accW.rect.hi[i] - accW.rect.lo[i] + 1);
+      coord_t c_in = accW.rect.hi[num_dim-2] - accW.rect.lo[num_dim-2] + 1;
+      coord_t c_out = accW.rect.hi[num_dim-1] - accW.rect.lo[num_dim-1] + 1;
+      coord_t fan_in = c_in * receptive_field_size;
+      coord_t fan_out = c_out * receptive_field_size;
+      scale = sqrt(6.0 / (fan_in + fan_out));
       break;
     }
     default:

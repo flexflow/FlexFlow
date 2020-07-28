@@ -148,6 +148,7 @@ void Flat::forward_task(const Task *task,
   checkCUDA(cudaMemcpyAsync(acc_output.ptr, acc_input.ptr,
                             acc_input.rect.volume() * sizeof(float),
                             cudaMemcpyDeviceToDevice));
+  checkCUDA(cudaDeviceSynchronize());
 }
 
 void Flat::forward(const FFModel& ff)
@@ -198,6 +199,7 @@ void Flat::backward_task(const Task *task,
   //checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
   //                          acc_input_grad.rect.volume() * sizeof(float),
   //                          cudaMemcpyDeviceToDevice));
+  checkCUDA(cudaDeviceSynchronize());
 }
 
 void Flat::backward(const FFModel& ff)

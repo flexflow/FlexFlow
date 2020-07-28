@@ -171,6 +171,7 @@ void SGDOptimizer::update_task(const Task* task,
     apply_add_with_scale<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
         (float*) w_grad_ptr, src, size, 1.0f);
   }
+  checkCUDA(cudaDeviceSynchronize());
   // Step 2: SGD update
   sgd_update<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
       size, op->lr, op->weight_decay, op->momentum, op->nesterov,
@@ -294,6 +295,7 @@ void AdamOptimizer::update_task(const Task* task,
     add_kernel<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
         size, 1.0f, src, (float*)w_grad_ptr);
   }
+  checkCUDA(cudaDeviceSynchronize());
   //fprintf(stderr, "alpha = %.8lf alpha_t = %.8lf decay = %.8lf\n",
   //        op->alpha, op->alpha_t, op->weight_decay);
   // Step 2: Adam update

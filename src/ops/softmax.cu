@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+const float SOFTMAX_MIN_VALUE = 0.000001f;
+
 Tensor FFModel::softmax(const Tensor& _logit,
                         const Tensor& _label)
 {
@@ -235,8 +237,10 @@ void softmax_cross_entropy_calc_loss(const float* logits,
       }
     }
     assert(my_label >= 0);
+    // set my_logit to be non-zero to avoid inf loss
+    float my_logit = min(logits[b*num_labels+labels[b]], SOFTMAX_MIN_VALUE);
     // https://pytorch.org/docs/stable/nn.html#crossentropyloss
-    atomicAdd(&(perf->train_loss), -log(logits[b*num_labels+labels[b]]));
+    atomicAdd(&(perf->train_loss), -log(my_logit));
     atomicAdd(&(perf->train_all), 1);
     if (labels[b] == my_label)
       atomicAdd(&(perf->train_correct), 1);

@@ -44,17 +44,17 @@ GEN_GPU_SRC	?= ../../src/ops/conv_2d.cu ../../src/runtime/model.cu ../../src/ops
 		../../src/ops/softmax.cu ../../src/ops/concat.cu ../../src/ops/flat.cu ../../src/ops/embedding.cu ../../src/ops/mse_loss.cu\
 		../../src/ops/element_binary.cu ../../src/ops/element_unary.cu \
 		../../src/runtime/initializer_kernel.cu ../../src/runtime/optimizer_kernel.cu ../../src/runtime/accessor_kernel.cu\
-		../../src/runtime/cuda_helper.cu# .cu files
+		../../src/runtime/cuda_helper.cu inception.cu# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
 INC_FLAGS	?= -I../../include/ -I${FF_HOME}/protobuf/src -I${CUDNN_HOME}/include
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L${FF_HOME}/protobuf/src/.libs -L${CUDNN_HOME}/lib64
+LD_FLAGS	?= -lcuda -lcudart -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L${FF_HOME}/protobuf/src/.lib -L${CUDNN_HOME}/lib64
 # For Point and Rect typedefs
-CC_FLAGS	+= -std=c++11
-NVCC_FLAGS  	+= -std=c++11
+CC_FLAGS	+= -DDISABLE_LEGION_CUDA_HIJACK -std=c++11
+NVCC_FLAGS  	+= -DDISABLE_LEGION_CUDA_HIJACK -std=c++11
 ###########################################################################
 #
 #   Don't change anything below here

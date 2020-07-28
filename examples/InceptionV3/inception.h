@@ -13,87 +13,46 @@
  * limitations under the License.
  */
 
-//#include "ops.h"
+#include "model.h"
+#define MAX_NUM_SAMPLES 4196
 
-Tensor InceptionA(FFModel& ff, Tensor input, int pool_features)
-{
-  Tensor t1 = ff.conv2d(input, 64, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
-  Tensor t2 = ff.conv2d(input, 48, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
-  t2 = ff.conv2d(t2, 64, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
-  Tensor t3 = ff.conv2d(input, 64, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
-  t3 = ff.conv2d(t3, 96, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
-  t3 = ff.conv2d(t3, 96, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
-  Tensor t4 = ff.pool2d(input, 3, 3, 1, 1, 1, 1, POOL_AVG);
-  t4 = ff.conv2d(t4, pool_features, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
-  Tensor concat[4];
-  concat[0] = t1; concat[1] = t2; concat[2] = t3; concat[3] = t4;
-  Tensor output = ff.concat(4, concat, 1);
+using namespace Legion;
+using namespace std;
 
-  return output;
-}
+struct InceptionConfig {
+  InceptionConfig(void) {
+    // Set default configurations here
+  }
+  std::string dataset_path;
+};
 
-Tensor InceptionB(FFModel& ff, Tensor input)
-{
-  Tensor t1 = ff.conv2d(input, 384, 3, 3, 2, 2, 0, 0);
-  Tensor t2 = ff.conv2d(input, 64, 1, 1, 1, 1, 0, 0);
-  t2 = ff.conv2d(t2, 96, 3, 3, 1, 1, 1, 1);
-  t2 = ff.conv2d(t2, 96, 3, 3, 2, 2, 0, 0);
-  Tensor t3 = ff.pool2d(input, 3, 3, 2, 2, 0, 0);
-  Tensor concat[3];
-  concat[0] = t1; concat[1] = t2; concat[2] = t3;
-  Tensor output = ff.concat(3, concat, 1);
-  return output;
-}
 
-Tensor InceptionC(FFModel& ff, Tensor input, int channels)
-{
-  Tensor t1 = ff.conv2d(input, 192, 1, 1, 1, 1, 0, 0);
-  Tensor t2 = ff.conv2d(input, channels, 1, 1, 1, 1, 0, 0);
-  t2 = ff.conv2d(t2, channels, 1, 7, 1, 1, 0, 3);
-  t2 = ff.conv2d(t2, 192, 7, 1, 1, 1, 3, 0);
-  Tensor t3 = ff.conv2d(input, channels, 1, 1, 1, 1, 0, 0);
-  t3 = ff.conv2d(t3, channels, 7, 1, 1, 1, 3, 0);
-  t3 = ff.conv2d(t3, channels, 1, 7, 1, 1, 0, 3);
-  t3 = ff.conv2d(t3, channels, 7, 1, 1, 1, 3, 0);
-  t3 = ff.conv2d(t3, 192, 1, 7, 1, 1, 0, 3);
-  Tensor t4 = ff.pool2d(input, 3, 3, 1, 1, 1, 1, POOL_AVG);
-  t4 = ff.conv2d(t4, 192, 1, 1, 1, 1, 0, 0);
-  Tensor concat[4];
-  concat[0] = t1; concat[1] = t2; concat[2] = t3; concat[3] = t4;
-  Tensor output = ff.concat(4, concat, 1);
-  return output;
-}
+class DataLoader {
+public:
+  DataLoader(FFModel& ff, const InceptionConfig& alexnet,
+             Tensor _input, Tensor _label);
+  static void load_input(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx,
+                         Runtime* runtime);
+  static void load_label(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx,
+                         Runtime* runtime);
+  static void load_entire_dataset(const Task *task,
+                                  const std::vector<PhysicalRegion> &regions,
+                                  Context ctx,
+                                  Runtime* runtime);
+  void next_batch(FFModel&);
+  void reset(void);
+public:
+  int num_samples, next_index;
+  Tensor full_input, batch_input;
+  Tensor full_label, batch_label;
+};
 
-Tensor InceptionD(FFModel& ff, Tensor input)
-{
-  Tensor t1 = ff.conv2d(input, 192, 1, 1, 1, 1, 0, 0);
-  t1 = ff.conv2d(t1, 320, 3, 3, 2, 2, 0, 0);
-  Tensor t2 = ff.conv2d(input, 192, 1, 1, 1, 1, 0, 0);
-  t2 = ff.conv2d(t2, 192, 1, 7, 1, 1, 0, 3);
-  t2 = ff.conv2d(t2, 192, 7, 1, 1, 1, 3, 0);
-  t2 = ff.conv2d(t2, 192, 3, 3, 2, 2, 0, 0);
-  Tensor t3 = ff.pool2d(input, 3, 3, 2, 2, 0, 0);
-  Tensor concat[3];
-  concat[0] = t1; concat[1] = t2; concat[2] = t3;
-  Tensor output = ff.concat(3, concat, 1);
-  return output;
-}
+struct SampleIdxs {
+  int num_samples;
+  int idxs[MAX_NUM_SAMPLES];
+};
 
-Tensor InceptionE(FFModel& ff, Tensor input)
-{
-  Tensor t1 = ff.conv2d(input, 320, 1, 1, 1, 1, 0, 0);
-  Tensor t2i = ff.conv2d(input, 384, 1, 1, 1, 1, 0, 0);
-  Tensor t2 = ff.conv2d( t2i, 384, 1, 3, 1, 1, 0, 1);
-  Tensor t3 = ff.conv2d( t2i, 384, 3, 1, 1, 1, 1, 0);
-  Tensor t3i = ff.conv2d(input, 448, 1, 1, 1, 1, 0, 0);
-  t3i = ff.conv2d(t3i, 384, 3, 3, 1, 1, 1, 1);
-  Tensor t4 = ff.conv2d(t3i, 384, 1, 3, 1, 1, 0, 1);
-  Tensor t5 = ff.conv2d(t3i, 384, 3, 1, 1, 1, 1, 0);
-  Tensor t6 = ff.pool2d(input, 3, 3, 1, 1, 1, 1, POOL_AVG);
-  t6 = ff.conv2d(t6, 192, 1, 1, 1, 1, 0, 0);
-  Tensor concat[6];
-  concat[0] = t1; concat[1] = t2; concat[2] = t3;
-  concat[3] = t4; concat[4] = t5; concat[5] = t6;
-  Tensor output = ff.concat(6, concat, 1);
-  return output;
-}
