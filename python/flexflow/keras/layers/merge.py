@@ -19,6 +19,7 @@ class _Merge(Layer):
     return self._connect_layer_n_input_1_output(input_tensors)
     
   def _verify_inout_tensor_shape(self, input_tensors, output_tensor):
+    assert self.__check_duplications(input_tensors) == False, "[Merge]: dunpicated input_tensors is not supported"
     for input_tensor in input_tensors:
       assert input_tensor.num_dims == len(self.input_shape), "[Merge]: check input tensor dims"
       for i in range (1, input_tensor.num_dims):
@@ -30,6 +31,12 @@ class _Merge(Layer):
       
   def _reset_layer(self):
     pass
+    
+  def __check_duplications(self, input_tensors):
+    if len(input_tensors) == len(set(input_tensors)):
+      return False
+    else:
+      return True
     
 def concatenate(input_tensors, _axis=1):
   return Concatenate(axis=_axis)(input_tensors)

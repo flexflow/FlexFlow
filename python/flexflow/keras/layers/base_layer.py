@@ -3,8 +3,8 @@ import flexflow.core as ff
 from flexflow.keras.models.tensor import Tensor
 
 class Layer(object):
-  __slots__ = ['_ffhandle', '_name', '_layer_type', 'layer_id', \
-               'prev_layers', 'next_layers',\
+  __slots__ = ['_ffhandle', '_name', '_layer_type', '_initialized',\
+               'layer_id', 'prev_layers', 'next_layers',\
                'input_tensors', 'output_tensors', \
                'input_shape', 'output_shape', 'nb_visited_prev_layers']
   def __init__(self, default_name, layer_type, **kwargs):
@@ -15,6 +15,7 @@ class Layer(object):
     self._ffhandle = None
     self._name = name
     self._layer_type = layer_type
+    self._initialized = False
     self.layer_id = -1
     self.prev_layers = []
     self.next_layers = []
@@ -62,6 +63,7 @@ class Layer(object):
     self.input_tensors.clear()
     self.output_tensors.clear()
     self.nb_visited_prev_layers = 0
+    self._initialized = False
     
   def set_batch_size(self, size):
     lst = list(self.input_shape)
@@ -97,6 +99,8 @@ class Layer(object):
     return str_name
     
   def _connect_layer_1_input_1_output(self, input_tensor):
+    assert self._initialized == False, "[Layer]: layer is initialized, do not reuse the layer"
+    self._initialized = True
     self._calculate_inout_shape(input_tensor)
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensor.dtype, meta_only=True)
     self._verify_inout_tensor_shape(input_tensor, output_tensor)
@@ -113,6 +117,8 @@ class Layer(object):
     return output_tensor
     
   def _connect_layer_n_input_1_output(self, input_tensors):
+    assert self._initialized == False, "[Layer]: layer is initialized, do not reuse the layer"
+    self._initialized = True
     self._calculate_inout_shape(input_tensors)
     output_tensor = Tensor(batch_shape=self.output_shape, dtype=input_tensors[0].dtype, meta_only=True) 
     self._verify_inout_tensor_shape(input_tensors, output_tensor)
