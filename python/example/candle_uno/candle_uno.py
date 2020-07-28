@@ -76,7 +76,7 @@ def build_model(loader, args, permanent_dropout=True, silent=False):
       encoded = fea_input
     encoded_inputs.append(encoded)
 
-  merged = Concatenate(encoded_inputs)
+  merged = Concatenate(axis=1)(encoded_inputs)
 
   h = merged
   for i, layer in enumerate(args.dense):
@@ -185,6 +185,9 @@ def top_level_task():
                           cell_subset_path=args.cell_subset_path, drug_subset_path=args.drug_subset_path)
 
   model = build_model(loader, args)
+  print(model.summary())
+  opt = flexflow.keras.optimizers.SGD(learning_rate=args.learning_rate)
+  model.compile(optimizer=opt)
 
 if __name__ == "__main__":
   print("candle uno")

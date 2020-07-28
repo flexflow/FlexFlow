@@ -16,7 +16,7 @@ class Model(BaseModel):
       self._input_layers.append(input_tensor.from_layer)
     self._output_tensor = outputs
     
-    self.__traverse_dag_dfs()
+    self.__traverse_dag_bfs()
     print("nb_layers", self._nb_layers)
     
   def __call__(self, input_tensor):
