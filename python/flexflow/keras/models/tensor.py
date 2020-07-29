@@ -5,7 +5,7 @@ class Tensor(object):
                'batch_shape', 'name', 'num_dims']
   def __init__(self, ffmodel=None, 
                shape=None, batch_size=None,
-               name=None, dtype=None, 
+               dtype=None, 
                sparse=False, tensor=None, ragged=False,
                meta_only=False, ffhandle=None, **kwargs):
     if sparse != False:
@@ -32,11 +32,10 @@ class Tensor(object):
       self.dtype = ff.DataType.DT_INT64
     else:
       assert 0, "not supported"
-    
-    if name == None:
-      self.name = ""
-    else:
-      self.name = name
+      
+    self.name = ""
+    if "name" in kwargs:
+      self.name = kwargs["name"]
     
     # create a tensor
     if ffhandle == None:

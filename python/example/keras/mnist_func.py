@@ -124,8 +124,8 @@ def mlp_concat2():
   model4 = Model(input_tensor4, t4)
   
   input_tensor = Input(shape=(784,))
-  t00 = Input(shape=(512,))
-  t01 = Input(shape=(512,))
+  t00 = Input(shape=(784,), name="input_00")
+  t01 = Input(shape=(784,), name="input_01")
   t1 = model1(input_tensor)
   t2 = model2(input_tensor)
   t3 = model3(input_tensor)
@@ -142,7 +142,7 @@ def mlp_concat2():
   
   print(model.summary())
 
-  # model.fit(x_train, y_train, epochs=1)
+  model.fit([x_train, x_train, x_train], y_train, epochs=1)
    
 def cnn():
   num_classes = 10
