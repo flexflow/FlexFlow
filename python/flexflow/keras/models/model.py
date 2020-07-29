@@ -19,9 +19,6 @@ class Model(BaseModel):
     self.__traverse_dag_dfs()
     print("nb_layers", self._nb_layers)
     
-    for layer in self._input_layers:
-      print(layer.next_layers)
-    
   def __call__(self, input_tensor):
     for layer in self.layers:
       layer.reset_layer()
