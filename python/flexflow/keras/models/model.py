@@ -16,8 +16,11 @@ class Model(BaseModel):
       self._input_layers.append(input_tensor.from_layer)
     self._output_tensor = outputs
     
-    self.__traverse_dag_dfs()
+    self.__traverse_dag_bfs()
     print("nb_layers", self._nb_layers)
+    
+    for layer in self._input_layers:
+      print(layer.next_layers)
     
   def __call__(self, input_tensor):
     for layer in self.layers:
@@ -40,17 +43,21 @@ class Model(BaseModel):
     for input_layer in self._input_layers:
       bfs_queue.append(input_layer)
     while(len(bfs_queue) != 0):
-     layer = bfs_queue.pop(0)
-     if (isinstance(layer, InputLayer) == False):
-       print(layer)
-       self._add_layer_metadata(layer)
-       layer.has_visited = True
-     for child in layer.next_layers:
-       if child not in bfs_queue:
-         if child.has_visited == False:
-           bfs_queue.append(child)
-       else:
-         print(child, "already in the queue")
+      layer = bfs_queue.pop(0)
+      if (isinstance(layer, InputLayer) == False):
+       #print(layer)
+        self._add_layer_metadata(layer)
+      for child in layer.next_layers:
+        assert child not in bfs_queue, "already in the stack"
+        if child.nb_visited_prev_layers == len(child.prev_layers)-1:
+          if child.has_visited == False:
+            child.has_visited = True
+            bfs_queue.append(child)
+        else:
+          child.nb_visited_prev_layers += 1
+    for layer in self._layers:
+      layer.nb_visited_prev_layers = 0
+      layer.has_visited = False
     
   def __traverse_dag_dfs(self):    
     dfs_stack = []
@@ -61,13 +68,14 @@ class Model(BaseModel):
       if (isinstance(layer, InputLayer) == False):
         #print(layer)
         self._add_layer_metadata(layer)
-        layer.has_visited = True
       for child in reversed(layer.next_layers):
         assert child not in dfs_stack, "already in the stack"
         if child.nb_visited_prev_layers == len(child.prev_layers)-1:
           if child.has_visited == False:
+            child.has_visited = True
             dfs_stack.append(child)
         else:
           child.nb_visited_prev_layers += 1
     for layer in self._layers:
       layer.nb_visited_prev_layers = 0
+      layer.has_visited = False
