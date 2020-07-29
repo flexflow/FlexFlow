@@ -217,7 +217,7 @@ class BaseModel(object):
     np_shape = label_array.shape
     assert len(np_shape) == self._label_tensor.num_dims, "check label shape"
     for i in range(1, len(np_shape)):
-      assert np_shape[i] == self._label_tensor.batch_shape[i], "check label dims"    
+      assert np_shape[i] == self._label_tensor.batch_shape[i], "check label dims"
       
   def _verify_output_tensors(self):
     assert self._layers[self._nb_layers-1].output_tensors[0] == self._output_tensor, "output tensor is wrong"

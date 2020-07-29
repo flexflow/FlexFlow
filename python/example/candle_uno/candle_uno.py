@@ -45,25 +45,15 @@ def build_feature_model(input_shape, name='', dense_layers=[1000, 1000],
   return model
 
 def build_model(loader, args, permanent_dropout=True, silent=False):
-  input_models = {}
+  input_shapes = {}
   dropout_rate = args.dropout
   for fea_type, shape in loader.feature_shapes.items():
     base_type = fea_type.split('.')[0]
     if base_type in ['cell', 'drug']:
-      if args.dense_cell_feature_layers is not None and base_type == 'cell':
-        dense_feature_layers = args.dense_cell_feature_layers
-      elif args.dense_drug_feature_layers is not None and base_type == 'drug':
-        dense_feature_layers = args.dense_drug_feature_layers
-      else:
-        dense_feature_layers = args.dense_feature_layers
-
-      box = build_feature_model(input_shape=shape, name=fea_type,
-                                dense_layers=dense_feature_layers,
-                                dropout_rate=dropout_rate, permanent_dropout=permanent_dropout)
       if not silent:
         print('Feature encoding submodel for %s:', fea_type)
         #box.summary(print_fn=logger.debug)
-      input_models[fea_type] = box
+      input_shapes[fea_type] = shape
 
   inputs = []
   encoded_inputs = []
@@ -71,8 +61,16 @@ def build_model(loader, args, permanent_dropout=True, silent=False):
     shape = loader.feature_shapes[fea_type]
     fea_input = Input(shape, name='input.' + fea_name)
     inputs.append(fea_input)
-    if fea_type in input_models:
-      input_model = input_models[fea_type]
+    if fea_type in input_shapes:
+      if args.dense_cell_feature_layers is not None and base_type == 'cell':
+        dense_feature_layers = args.dense_cell_feature_layers
+      elif args.dense_drug_feature_layers is not None and base_type == 'drug':
+        dense_feature_layers = args.dense_drug_feature_layers
+      else:
+        dense_feature_layers = args.dense_feature_layers
+      input_model = build_feature_model(input_shape=shape, name=fea_type,
+                                        dense_layers=dense_feature_layers,
+                                        dropout_rate=dropout_rate, permanent_dropout=permanent_dropout)
       encoded = input_model(fea_input)
     else:
       encoded = fea_input
@@ -173,13 +171,9 @@ def top_level_task():
         print('Generating {} dataset. {} / {}'.format(partition, i, gen.steps))
 
     # save input_features and feature_shapes from loader
-    print('CheckPoint1');
     store.put('model', pd.DataFrame())
-    print('CheckPoint2');
     store.get_storer('model').attrs.input_features = loader.input_features
-    print('CheckPoint3');
     store.get_storer('model').attrs.feature_shapes = loader.feature_shapes
-    print('CheckPoint4');
 
     store.close()
     print('Completed generating {}'.format(fname))
@@ -192,8 +186,30 @@ def top_level_task():
 
   model = build_model(loader, args)
   print(model.summary())
-  opt = flexflow.keras.optimizers.SGD(learning_rate=args.learning_rate)
+  opt = flexflow.keras.optimizers.SGD()
   model.compile(optimizer=opt)
+
+  if args.use_exported_data is not None:
+    train_gen = DataFeeder(filename=args.use_exported_data, batch_size=args.batch_size, shuffle=args.shuffle, single=args.single, agg_dose=args.agg_dose)
+    val_gen = DataFeeder(partition='val', filename=args.use_exported_data, batch_size=args.batch_size, shuffle=args.shuffle, single=args.single, agg_dose=args.agg_dose)
+    test_gen = DataFeeder(partition='test', filename=args.use_exported_data, batch_size=args.batch_size, shuffle=args.shuffle, single=args.single, agg_dose=args.agg_dose)
+  else:
+    train_gen = CombinedDataGenerator(loader, fold=fold, batch_size=args.batch_size, shuffle=args.shuffle, single=args.single)
+    val_gen = CombinedDataGenerator(loader, partition='val', fold=fold, batch_size=args.batch_size, shuffle=args.shuffle, single=args.single)
+    test_gen = CombinedDataGenerator(loader, partition='test', fold=fold, batch_size=args.batch_size, shuffle=args.shuffle, single=args.single)
+
+  if args.no_gen:
+    x_train_list, y_train = train_gen.get_slice(size=train_gen.size, single=args.single)
+    model.fit(x_train_list, y_train, batch_size=args.batch_size, epochs=args.epochs)
+  else:
+    x_train_list, y_train = train_gen.getall()
+    x_train_list_np = []
+    for x_train in x_train_list:
+      x_train_np = np.ascontiguousarray(x_train.to_numpy())
+      x_train_list_np.append(x_train_np)
+    y_train_np = np.ascontiguousarray(y_train.to_numpy())
+    y_train_np = np.reshape(y_train_np, (-1, 1))
+    model.fit(x_train_list_np, y_train_np, batch_size=args.batch_size, epochs=args.epochs)
 
 if __name__ == "__main__":
   print("candle uno")
