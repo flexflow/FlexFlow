@@ -332,6 +332,7 @@ def cifar_cnn_model_concat():
   output_tensor = Activation("softmax")(output_tensor)
 
   model = Model([input_tensor1, input_tensor2], output_tensor)
+  print(model.summary())
   
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt)

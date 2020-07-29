@@ -5,7 +5,9 @@ import flexflow.keras.optimizers
 from flexflow.core import *
 import uno as benchmark
 from default_utils import finalize_parameters
-from uno_data import CombinedDataLoader
+from uno_data import CombinedDataLoader, CombinedDataGenerator, DataFeeder
+
+import pandas as pd
 
 def initialize_parameters(default_model='uno_default_model.txt'):
   # Build benchmark object
@@ -171,9 +173,13 @@ def top_level_task():
         print('Generating {} dataset. {} / {}'.format(partition, i, gen.steps))
 
     # save input_features and feature_shapes from loader
+    print('CheckPoint1');
     store.put('model', pd.DataFrame())
+    print('CheckPoint2');
     store.get_storer('model').attrs.input_features = loader.input_features
+    print('CheckPoint3');
     store.get_storer('model').attrs.feature_shapes = loader.feature_shapes
+    print('CheckPoint4');
 
     store.close()
     print('Completed generating {}'.format(fname))
