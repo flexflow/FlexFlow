@@ -20,6 +20,8 @@
 #include "initializer.h"
 #include "optimizer.h"
 #include "accessor.h"
+#include "loss_functions.h"
+#include "metrics_functions.h"
 #include <cudnn.h>
 #include <cuda_runtime.h>
 #include <curand.h>
@@ -72,8 +74,12 @@ enum TaskIDs {
   CONCAT_FWD_TASK_ID,
   CONCAT_BWD_TASK_ID,
   MSELOSS_BWD_TASK_ID,
+  //Metrics tasks
+  METRICS_COMP_TASK_ID,
   UPDATE_METRICS_TASK_ID,
   DUMMY_TASK_ID,
+  // Loss
+  LOSS_BWD_TASK_ID,
   // Optimizer
   SGD_UPD_TASK_ID,
   ADAM_UPD_TASK_ID,
@@ -110,12 +116,6 @@ enum ShardingID {
 
 enum FieldIDs {
   FID_DATA,
-};
-
-struct PerfMetrics
-{
-  float train_loss;
-  int train_all, train_correct, test_all, test_correct, val_all, val_correct;
 };
 
 struct FFHandler {
@@ -305,8 +305,7 @@ public:
   Tensor flat(const Tensor& input);
   Flat* flat();
   // Add a softmax layer
-  Tensor softmax(const Tensor& input,
-                 const Tensor& label);
+  Tensor softmax(const Tensor& input);
   void mse_loss(const Tensor& logits,
                 const Tensor& labels,
                 const std::string& reduction);
@@ -777,8 +776,7 @@ public:
 class Softmax : public Op {
 public:
   Softmax(FFModel& model,
-          const Tensor& logit,
-          const Tensor& label);
+          const Tensor& logit);
   Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
   //void add_to_model(FFModel& model) {assert(0);}
   void init(const FFModel&);
@@ -796,9 +794,9 @@ public:
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  static PerfMetrics backward_task(const Task *task,
-                                   const std::vector<PhysicalRegion> &regions,
-                                   Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
 public:
   //IndexSpaceT<2> task_is;
   bool profiling;

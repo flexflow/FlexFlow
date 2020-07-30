@@ -142,7 +142,7 @@ void update_metrics_label_kernel(
           cce += labels[b*num_classes+i] * -log(my_logit);
         }
       }
-      atomicAdd(&(perf->sparse_cce_loss), cce);
+      atomicAdd(&(perf->cce_loss), cce);
     }
     if (metrics.measure_mean_squared_error
     || metrics.measure_root_mean_squarted_error
@@ -225,7 +225,7 @@ void Metrics::compute()
     assert(false);
   }
   ArgumentMap argmap;
-  IndexLauncher launcher(LOSS_FUNC_TASK_ID, task_is,
+  IndexLauncher launcher(METRICS_COMP_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Metrics)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(pcname));

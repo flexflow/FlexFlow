@@ -77,7 +77,7 @@ void top_level_task(const Task* task,
   t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
   t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
   t = ff.dense(t, 10);
-  t = ff.softmax(t, label);
+  t = ff.softmax(t);
   ff.optimizer = new SGDOptimizer(&ff, 0.001f);
   ff.compile();
   // Data Loader

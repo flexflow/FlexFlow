@@ -156,7 +156,7 @@ void Loss::backward(const Tensor* logit,
     assert(false);
   }
   ArgumentMap argmap;
-  IndexLauncher launcher(LOSS_FUNC_TASK_ID, task_is,
+  IndexLauncher launcher(LOSS_BWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Loss)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(pcname));
