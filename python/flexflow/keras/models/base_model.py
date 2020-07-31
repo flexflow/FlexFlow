@@ -311,14 +311,14 @@ class BaseModel(object):
     idx = 0
     for x_train in x_trains:
       full_tensor, dataloader = self.__create_single_data_loader(self._input_tensors[idx], x_train)
-    #  self._full_input_tensors.append(full_tensor)
+      self._full_input_tensors.append(full_tensor)
       self._input_dataloaders.append(dataloader)
-     # self._input_dataloaders_dim.append(len(input_shape))
+      self._input_dataloaders_dim.append(len(input_shape))
       idx += 1
     full_tensor, dataloader = self.__create_single_data_loader(self._label_tensor, y_train)
-    #self.__full_label_tensor = full_tensor
+    self.__full_label_tensor = full_tensor
     self._label_dataloader = dataloader
-    #self._label_dataloader_dim = len(input_shape)
+    self._label_dataloader_dim = len(input_shape)
     
   def _train(self, epochs, callbacks):
     if callbacks != None:
