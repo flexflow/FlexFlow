@@ -23,17 +23,11 @@ def top_level_task():
   print("shape: ", x_train.shape, x_train.__array_interface__["strides"])
   
   layers = [Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"),
-           Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"),
-           MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"),
-           Flatten()]
+            Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"),
+            MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"),
+            Flatten()]
   model1 = Sequential(layers)
   
-  # layers2 = [Dense(128, input_shape=(12544,), activation="relu"),
-  #          Dense(num_classes),
-  #          Activation("softmax")]
-  #
-  # model2 = Sequential(layers2)
-  #
   input_tensor = Input(shape=(12544,), dtype="float32")
   
   output = Dense(512, input_shape=(12544,), activation="relu")(input_tensor)
@@ -50,9 +44,11 @@ def top_level_task():
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  
+  print(model.summary())
 
   model.fit(x_train, y_train, epochs=1)
 
 if __name__ == "__main__":
-  print("alexnet keras")
+  print("Sequential model, mnist cnn nested model")
   top_level_task()

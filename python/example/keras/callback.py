@@ -51,5 +51,5 @@ def top_level_task():
   model.fit(x_train, y_train, epochs=2, callbacks=[mylr_scheduler])
 
 if __name__ == "__main__":
-  print("alexnet keras")
+  print("Functional API, cifar10 cnn callback")
   top_level_task()

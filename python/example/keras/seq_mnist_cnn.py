@@ -22,31 +22,22 @@ def top_level_task():
   y_train = np.reshape(y_train, (len(y_train), 1))
   print("shape: ", x_train.shape, x_train.__array_interface__["strides"])
   
-  # model = Sequential()
-  # model.add(Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
-  # model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"))
-  # model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"))
-  # model.add(Flatten())
-  # model.add(Dense(128, activation="relu"))
-  # model.add(Dense(num_classes))
-  # model.add(Activation("softmax"))
-  
   layers = [Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"),
-           Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"),
-           MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"),
-           Flatten(),
-           Dense(128, activation="relu"),
-           Dense(num_classes),
-           Activation("softmax")]
+            Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"),
+            MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"),
+            Flatten(),
+            Dense(128, activation="relu"),
+            Dense(num_classes),
+            Activation("softmax")]
   model = Sequential(layers)
-  
-  print(model.summary())
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  
+  print(model.summary())
 
   model.fit(x_train, y_train, epochs=1)
 
 if __name__ == "__main__":
-  print("alexnet keras")
+  print("Sequential model, mnist cnn")
   top_level_task()

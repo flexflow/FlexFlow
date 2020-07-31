@@ -16,8 +16,6 @@ def top_level_task():
   
   x_train = x_train.astype('float32')
   x_train /= 255
-  #x_train *= 0
-  #y_train = np.random.randint(1, 9, size=(num_samples,1), dtype='int32')
   y_train = y_train.astype('int32')
   print("shape: ", x_train.shape)
   
@@ -32,14 +30,13 @@ def top_level_task():
   model.add(Dense(512, activation="relu"))
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
-  
-  print(model.summary())
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  print(model.summary())
 
   model.fit(x_train, y_train, epochs=1)
 
 if __name__ == "__main__":
-  print("alexnet keras")
+  print("Sequantial model, cifar10 cnn")
   top_level_task()

@@ -44,5 +44,5 @@ def top_level_task():
   model.fit(x_train, y_train, epochs=epochs)
 
 if __name__ == "__main__":
-  print("alexnet keras")
+  print("Sequential model, reuters mlp")
   top_level_task()

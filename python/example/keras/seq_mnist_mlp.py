@@ -17,7 +17,6 @@ def top_level_task():
   x_train /= 255
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
-  #y_train = np.random.randint(1, 9, size=(len(y_train),1), dtype='int32')
   print("shape: ", x_train.shape)
   
   model = Sequential()
@@ -26,21 +25,14 @@ def top_level_task():
   model.add(Dense(512, activation="relu"))
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
-  
-  print(model.summary())
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt)
+  
+  print(model.summary())
 
   model.fit(x_train, y_train, epochs=1)
-  
-  t1 = d1.input
-  t1.ffhandle.inline_map(model.ffconfig)
-  input_array = t1.ffhandle.get_flat_array(model.ffconfig, ff.DataType.DT_FLOAT)
-  print(input_array.shape)
-  print(input_array)
-  t1.ffhandle.inline_unmap(model.ffconfig)
 
 if __name__ == "__main__":
-  print("alexnet keras")
+  print("Sequential model, mnist mlp")
   top_level_task()
