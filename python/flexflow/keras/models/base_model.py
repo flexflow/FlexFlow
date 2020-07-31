@@ -4,6 +4,8 @@ from .tensor import Tensor
 from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract
 from flexflow.keras.optimizers import SGD, Adam 
 from flexflow.keras.callbacks import Callback, LearningRateScheduler 
+from flexflow.keras import losses
+from flexflow.keras import metrics
 
 from PIL import Image
 
@@ -12,7 +14,8 @@ class BaseModel(object):
                '_input_layers', '_input_tensors', '_output_tensor', '_label_tensor', \
                '_full_input_tensors', '_full_label_tensor', '_num_samples',\
                '_input_dataloaders', '_input_dataloaders_dim', \
-               '_label_dataloader', '_label_dataloader_dim']
+               '_label_dataloader', '_label_dataloader_dim', \
+               '_loss', '_metrics']
   def __init__(self, name):
     self._ffconfig = ff.FFConfig()
     self._ffconfig.parse_args()
@@ -34,6 +37,8 @@ class BaseModel(object):
     self._input_dataloaders_dim = []
     self._label_dataloader = 0
     self._label_dataloader_dim = 0
+    self._loss = None
+    self._metrics = []
     
   @property
   def input(self):
@@ -106,16 +111,46 @@ class BaseModel(object):
               weighted_metrics=None, 
               run_eagerly=None, 
               **kwargs):
-    if loss != None:
-      assert 0, "loss is not supported"
-    if metrics != None:
-      assert 0, "metrics is not supported"
     if loss_weights != None:
       assert 0, "loss_weights is not supported"
     if weighted_metrics != None:
       assert 0, "weighted_metrics is not supported"
     if run_eagerly != None:
       assert 0, "run_eagerly is not supported"
+    
+    if loss != None:  
+      if isinstance(loss, losses.Loss) == True:
+        self._loss = loss
+        print(loss)
+      elif loss == 'categorical_crossentropy':
+        self._loss = losses.CategoricalCrossentropy()
+        print('create CategoricalCrossentropy')
+      elif loss == 'sparse_categorical_crossentropy':
+        self._loss = losses.SparseCategoricalCrossentropy()
+      elif loss == 'mean_squared_error':
+        self._loss = losses.MeanSquaredError()
+      else:
+        assert 0, 'Unsupported loss'
+    
+    if metrics != None:
+      assert isinstance(x, list) == True, 'Metrics should be a list'  
+      for metric in metrics:
+        if isinstance(metric, losses.Metric) == True:
+          self._metrics.append(metric)
+        elif metric == 'accuracy':
+          self._metrics.append(metrics.Accuracy())
+        elif metric == 'categorical_crossentropy':
+          self._metrics.append(metrics.CategoricalCrossentropy())
+        elif metric == 'sparse_categorical_crossentropy':
+          self._metrics.append(metrics.SparseCategoricalCrossentropy())
+        elif metric == 'mean_squared_error':
+          self._metrics.append(metrics.MeanSquaredError())
+        elif metric == 'root_mean_squared_error':
+          self._metrics.append(metrics.RootMeanSquaredError())
+        elif metric == 'mean_absolute_error':
+          self._metrics.append(metrics.MeanAbsoluteError())
+        else:
+          assert 0, 'Unsupported metric'
     
     self._ffmodel = ff.FFModel(self._ffconfig)  
     self._create_input_and_label_tensors()
@@ -274,14 +309,14 @@ class BaseModel(object):
     idx = 0
     for x_train in x_trains:
       full_tensor, dataloader = self.__create_single_data_loader(self._input_tensors[idx], x_train)
-      self._full_input_tensors.append(full_tensor)
+    #  self._full_input_tensors.append(full_tensor)
       self._input_dataloaders.append(dataloader)
-      self._input_dataloaders_dim.append(len(input_shape))
+     # self._input_dataloaders_dim.append(len(input_shape))
       idx += 1
     full_tensor, dataloader = self.__create_single_data_loader(self._label_tensor, y_train)
-    self.__full_label_tensor = full_tensor
+    #self.__full_label_tensor = full_tensor
     self._label_dataloader = dataloader
-    self._label_dataloader_dim = len(input_shape)
+    #self._label_dataloader_dim = len(input_shape)
     
   def _train(self, epochs, callbacks):
     if callbacks != None:

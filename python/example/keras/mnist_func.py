@@ -3,6 +3,8 @@ from flexflow.keras.layers import Input, Flatten, Dense, Activation, Conv2D, Max
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
+from flexflow.keras import losses
+from flexflow.keras import metrics
 
 import flexflow.core as ff
 import numpy as np
@@ -34,7 +36,7 @@ def mlp():
   model = Model(input_tensor, output4)
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
-  model.compile(optimizer=opt)
+  model.compile(optimizer=opt, loss='categorical_crossentropy')
 
   model.fit(x_train, y_train, batch_size=64, epochs=1)
   
@@ -86,7 +88,7 @@ def mlp_concat():
   model = Model(input_tensor, output)
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
-  model.compile(optimizer=opt)
+  model.compile(optimizer=opt, loss=losses.CategoricalCrossentropy())
   
   print(model.summary())
 
