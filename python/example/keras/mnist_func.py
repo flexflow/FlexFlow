@@ -36,7 +36,7 @@ def mlp():
   model = Model(input_tensor, output4)
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
-  model.compile(optimizer=opt, loss='categorical_crossentropy')
+  model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy', metrics.CategoricalCrossentropy()])
 
   model.fit(x_train, y_train, batch_size=64, epochs=1)
   

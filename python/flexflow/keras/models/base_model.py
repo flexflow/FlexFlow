@@ -4,8 +4,8 @@ from .tensor import Tensor
 from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract
 from flexflow.keras.optimizers import SGD, Adam 
 from flexflow.keras.callbacks import Callback, LearningRateScheduler 
-from flexflow.keras import losses
-from flexflow.keras import metrics
+from flexflow.keras import losses as keras_losses
+from flexflow.keras import metrics as keras_metrics
 
 from PIL import Image
 
@@ -119,36 +119,38 @@ class BaseModel(object):
       assert 0, "run_eagerly is not supported"
     
     if loss != None:  
-      if isinstance(loss, losses.Loss) == True:
+      if isinstance(loss, keras_losses.Loss) == True:
         self._loss = loss
         print(loss)
       elif loss == 'categorical_crossentropy':
-        self._loss = losses.CategoricalCrossentropy()
+        self._loss = keras_losses.CategoricalCrossentropy()
         print('create CategoricalCrossentropy')
       elif loss == 'sparse_categorical_crossentropy':
-        self._loss = losses.SparseCategoricalCrossentropy()
+        self._loss = keras_losses.SparseCategoricalCrossentropy()
       elif loss == 'mean_squared_error':
-        self._loss = losses.MeanSquaredError()
+        self._loss = keras_losses.MeanSquaredError()
       else:
         assert 0, 'Unsupported loss'
     
     if metrics != None:
-      assert isinstance(x, list) == True, 'Metrics should be a list'  
+      assert isinstance(metrics, list) == True, 'Metrics should be a list'  
       for metric in metrics:
-        if isinstance(metric, losses.Metric) == True:
+        if isinstance(metric, keras_metrics.Metric) == True:
           self._metrics.append(metric)
+          print(metric)
         elif metric == 'accuracy':
-          self._metrics.append(metrics.Accuracy())
+          self._metrics.append(keras_metrics.Accuracy())
+          print('create Accuracy')
         elif metric == 'categorical_crossentropy':
-          self._metrics.append(metrics.CategoricalCrossentropy())
+          self._metrics.append(keras_metrics.CategoricalCrossentropy())
         elif metric == 'sparse_categorical_crossentropy':
-          self._metrics.append(metrics.SparseCategoricalCrossentropy())
+          self._metrics.append(keras_metrics.SparseCategoricalCrossentropy())
         elif metric == 'mean_squared_error':
-          self._metrics.append(metrics.MeanSquaredError())
+          self._metrics.append(keras_metrics.MeanSquaredError())
         elif metric == 'root_mean_squared_error':
-          self._metrics.append(metrics.RootMeanSquaredError())
+          self._metrics.append(keras_metrics.RootMeanSquaredError())
         elif metric == 'mean_absolute_error':
-          self._metrics.append(metrics.MeanAbsoluteError())
+          self._metrics.append(keras_metrics.MeanAbsoluteError())
         else:
           assert 0, 'Unsupported metric'
     
