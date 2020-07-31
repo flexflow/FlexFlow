@@ -16,38 +16,44 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Metrics::Metrics(const std::vector<std::string>& metrics)
+const float LOG_MIN_VALUE = 0.00000001f;
+
+Metrics::Metrics(const Loss* loss, const std::vector<std::string>& metrics)
 : measure_accuracy(false),
   measure_categorical_crossentropy(false),
   measure_sparse_categorical_crossentropy(false),
   measure_mean_squared_error(false),
-  measure_root_mean_sequarted_error(false),
-  measure_mean_absolute_error(false)
+  measure_root_mean_squared_error(false),
+  measure_mean_absolute_error(false),
+  loss_type(loss->type)
 {
-  for (size_t i = 0; i < metrics.length(); i++) {
-    switch (metrics[i]) {
-      case "accuracy":
-        measure_accuracy = true;
-        continue;
-      case "categorical_crossentropy":
-        measure_categorical_crossentropy = true;
-        continue;
-      case "sparse_categorical_crossentropy":
-        measure_sparse_categorical_crossentropy = true;
-        continue;
-      case "mean_squared_error":
-        measure_mean_squared_error = true;
-        continue;
-      case "root_mean_sequarted_error":
-        measure_root_mean_sequarted_error = true;
-        continue;
-      case "mean_absolute_error":
-        measure_mean_absolute_error = true;
-        continue;
-      default:
-        fprintf(stderr, "Unrecogonized Metrics: %s.\n", metrics[i].c_str());
-        assert(false);
+  for (size_t i = 0; i < metrics.size(); i++) {
+    if (metrics[i] == "accuracy") {
+      measure_accuracy = true;
+      continue;
     }
+    if (metrics[i] == "categorical_crossentropy") {
+      measure_categorical_crossentropy = true;
+      continue;
+    }
+    if (metrics[i] == "sparse_categorical_crossentropy") {
+      measure_sparse_categorical_crossentropy = true;
+      continue;
+    }
+    if (metrics[i] == "mean_squared_error") {
+      measure_mean_squared_error = true;
+      continue;
+    }
+    if (metrics[i] == "root_mean_squared_error") {
+      measure_root_mean_squared_error = true;
+      continue;
+    }
+    if (metrics[i] == "mean_absolute_error") {
+      measure_mean_absolute_error = true;
+      continue;
+    }
+    fprintf(stderr, "Unrecogonized Metrics: %s.\n", metrics[i].c_str());
+    assert(false);    
   }
 }
 
@@ -55,7 +61,7 @@ __global__
 void update_metrics_sparse_label_kernel(
     const float* logits,
     const int* labels,
-    PerfMetrics* perf
+    PerfMetrics* perf,
     const Metrics metrics,
     int num_samples,
     int num_classes)
@@ -78,11 +84,11 @@ void update_metrics_sparse_label_kernel(
         atomicAdd(&(perf->train_correct), 1);
     }
     if (metrics.measure_sparse_categorical_crossentropy) {
-      float my_logit = max(logits[b*num_labels+labels[b]], LOG_MIN_VALUE);
+      float my_logit = max(logits[b*num_classes+labels[b]], LOG_MIN_VALUE);
       atomicAdd(&(perf->sparse_cce_loss), -log(my_logit));
     }
     if (metrics.measure_mean_squared_error
-    || metrics.measure_root_mean_squarted_error
+    || metrics.measure_root_mean_squared_error
     || metrics.measure_mean_absolute_error)
     {
       float mse = 0.0f, mae = 0.0f;
@@ -106,7 +112,7 @@ __global__
 void update_metrics_label_kernel(
     const float* logits,
     const float* labels,
-    PerfMetrics* perf
+    PerfMetrics* perf,
     const Metrics metrics,
     int num_samples,
     int num_classes)
@@ -138,14 +144,14 @@ void update_metrics_label_kernel(
       float cce = 0.0f;
       for (int i = 0; i < num_classes; i++) {
         if (labels[b*num_classes+i] > 0.0f) {
-          float my_logit = max(logits[b*num_labels+labels[b]], LOG_MIN_VALUE);
+          float my_logit = max(logits[b*num_classes+i], LOG_MIN_VALUE);
           cce += labels[b*num_classes+i] * -log(my_logit);
         }
       }
       atomicAdd(&(perf->cce_loss), cce);
     }
     if (metrics.measure_mean_squared_error
-    || metrics.measure_root_mean_squarted_error
+    || metrics.measure_root_mean_squared_error
     || metrics.measure_mean_absolute_error)
     {
       float mse = 0.0f, mae = 0.0f;
@@ -184,7 +190,7 @@ PerfMetrics Metrics::compute_task(const Task *task,
     TensorAccessorR<int, 2> acc_label(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     int num_samples = acc_logit.rect.hi[1] - acc_logit.rect.lo[1] + 1;
-    int num_classes = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;a
+    int num_classes = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;
     assert(acc_label.rect.hi[1] == acc_logit.rect.hi[1]);
     assert(acc_label.rect.lo[1] == acc_logit.rect.lo[1]);
     assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
@@ -200,6 +206,8 @@ PerfMetrics Metrics::compute_task(const Task *task,
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     // other loss require label and logit have identical shape
     assert(acc_logit.rect == acc_label.rect);
+    int num_samples = acc_logit.rect.hi[1] - acc_logit.rect.lo[1] + 1;
+    int num_classes = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;
     update_metrics_label_kernel<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS>>>(
       acc_logit.ptr, acc_label.ptr, perf, *me, num_samples, num_classes);
   }
@@ -208,13 +216,16 @@ PerfMetrics Metrics::compute_task(const Task *task,
   return perf_zc;
 }
 
-void Metrics::compute()
+void Metrics::compute(FFModel* model,
+                      const Tensor* logit,
+                      const Tensor* label)
+
 {
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
-  IndexSpaceT<2> task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
+  IndexSpaceT<2> task_is = IndexSpaceT<2>(model->get_or_create_task_is(2, pcname));
+  Context ctx = model->config.lg_ctx;
+  Runtime* runtime = model->config.lg_hlr;
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
   Rect<2> logit_rect = runtime->get_index_partition_color_space(
       ctx, logit->part.get_index_partition());
@@ -240,9 +251,9 @@ void Metrics::compute()
   FutureMap new_metrics = runtime->execute_index_space(ctx, launcher);
   // Update metrics
   TaskLauncher metrics_task(UPDATE_METRICS_TASK_ID, TaskArgument(NULL, 0));
-  metrics_task.add_future(ff.current_metrics);
+  metrics_task.add_future(model->current_metrics);
   for (PointInRectIterator<2> it(part_rect); it(); it++) {
     metrics_task.add_future(new_metrics[*it]);
   }
-  ((FFModel*)(&ff))->current_metrics = runtime->execute_task(ctx, metrics_task);
+  model->current_metrics = runtime->execute_task(ctx, metrics_task);
 }

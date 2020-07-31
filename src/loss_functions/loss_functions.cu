@@ -16,9 +16,7 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Loss::Loss(FFModel* _model,
-           const std::string& loss)
-: model(_model)
+Loss::Loss(const std::string& loss)
 {
   if (loss == "categorical_crossentropy")
     type = CATEGORICAL_CROSSENTROPY;
@@ -34,7 +32,6 @@ Loss::Loss(FFModel* _model,
 __global__
 void sparse_categorical_crossentropy_loss_backward(
     float *logit_grad,
-    const float *logit,
     const int *label,
     coord_t num_samples,
     coord_t num_classes)
@@ -42,7 +39,7 @@ void sparse_categorical_crossentropy_loss_backward(
   CUDA_KERNEL_LOOP(i, num_samples)
   {
     int label_idx = label[i];
-    input[i * num_classes + label_idx] -= 1.0f;
+    logit_grad[i * num_classes + label_idx] -= 1.0f;
   }
 }
 
@@ -90,20 +87,19 @@ void Loss::backward_task(const Task *task,
     TensorAccessorR<int, 2> acc_label(
         regions[2], task->regions[2], FID_DATA, ctx, runtime);
     int num_samples = acc_logit.rect.hi[1] - acc_logit.rect.lo[1] + 1;
-    int num_classes = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;a
+    int num_classes = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;
     assert(acc_logit_grad.rect == acc_logit.rect);
     assert(acc_label.rect.hi[1] == acc_logit.rect.hi[1]);
     assert(acc_label.rect.lo[1] == acc_logit.rect.lo[1]);
     assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
-    checkCUDA(cudaMemcpyAsync(acc_logit_grad.ptr, acc_logit.ptr,
-                              acc_logit.rect.volume() * sizeof(float),
-                              cudaMemcpyDeviceToDevice));
-    sparse_categorical_crossentropy_loss_backward<<<GET_BLOCKS(num_samples, CUDA_NUM_THREADS>>>(
-        acc_logit_grad.ptr, acc_logit.ptr, acc_label.ptr,
-        num_samples, num_classes);
+    checkCUDA(cudaMemcpy(acc_logit_grad.ptr, acc_logit.ptr,
+                         acc_logit.rect.volume() * sizeof(float),
+                         cudaMemcpyDeviceToDevice));
+    sparse_categorical_crossentropy_loss_backward<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS>>>(
+        acc_logit_grad.ptr, acc_label.ptr, num_samples, num_classes);
     // Scale logit gradients by op->scale_factor
-    scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume(), CUDA_NUM_THREADS>>>(
-        acc_logit_grad.ptr, acc_logit_grad.rect.volume(), op->scale_factor, 0);
+    scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
+        acc_logit_grad.ptr, acc_logit_grad.rect.volume(), loss->scale_factor, 0);
   } else {
     TensorAccessorW<float, 2> acc_logit_grad(
         regions[0], task->regions[0], FID_DATA, ctx, runtime,
@@ -122,15 +118,15 @@ void Loss::backward_task(const Task *task,
           acc_logit_grad.ptr, acc_logit.ptr, acc_label.ptr,
           acc_logit.rect.volume());
       // Scale logit gradients by op->scale_factor
-      scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume(), CUDA_NUM_THREADS>>>(
-          acc_logit_grad.ptr, acc_logit_grad.rect.volume(), op->scale_factor, 0);
+      scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
+          acc_logit_grad.ptr, acc_logit_grad.rect.volume(), loss->scale_factor, 0);
     } else if (loss->type == Loss::MEAN_SQUARED_ERROR_AVG_REDUCE) {
       mean_squared_error_avg_loss_backward<<<GET_BLOCKS(acc_logit.rect.volume()), CUDA_NUM_THREADS>>>(
           acc_logit_grad.ptr, acc_logit.ptr, acc_label.ptr,
           acc_logit.rect.volume());
       // Scale logit gradients by op->scale_factor
-      scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume(), CUDA_NUM_THREADS>>>(
-          acc_logit_grad.ptr, acc_logit_grad.rect.volume(), op->scale_factor, 0);
+      scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
+          acc_logit_grad.ptr, acc_logit_grad.rect.volume(), loss->scale_factor, 0);
     } else {
       fprintf(stderr, "Unsupported loss --- report this error to the FlexFlow developer\n");
       assert(false);
@@ -138,14 +134,17 @@ void Loss::backward_task(const Task *task,
   }
 }
 
-void Loss::backward(const Tensor* logit,
+void Loss::backward(FFModel* model,
+                    const Tensor* logit,
                     const Tensor* label)
 {
+  // Compute scale factor for loss backpropagation
+  scale_factor = 1.0f/ logit->adim[logit->numDim-1];
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
-  IndexSpaceT<2> task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
+  IndexSpaceT<2> task_is = IndexSpaceT<2>(model->get_or_create_task_is(2, pcname));
+  Context ctx = model->config.lg_ctx;
+  Runtime* runtime = model->config.lg_hlr;
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
   Rect<2> logit_rect = runtime->get_index_partition_color_space(
       ctx, logit->part.get_index_partition());

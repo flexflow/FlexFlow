@@ -40,6 +40,9 @@ public:
 public:
   FFModel* model;
   Type type;
+  // scale factor for computing the logit gradients
+  // normally 1.0f / global_batch_size
+  float scale_factor; 
 };
 
 #endif

@@ -40,9 +40,10 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 OUTFILE		?= alexnet
 # List all the application source files here
 GEN_SRC		?= ../../src/runtime/model.cc ../../src/mapper/mapper.cc ../../src/runtime/initializer.cc ../../src/runtime/optimizer.cc\
-		../../src/ops/embedding.cc ../../src/runtime/strategy.pb.cc ../../src/runtime/strategy.cc alexnet.cc
+                ../../src/metrics_functions/metrics_functions.cc ../../src/ops/embedding.cc\
+		../../src/runtime/strategy.pb.cc ../../src/runtime/strategy.cc alexnet.cc
 GEN_GPU_SRC	?= ../../src/ops/conv_2d.cu ../../src/runtime/model.cu ../../src/ops/pool_2d.cu ../../src/ops/batch_norm.cu ../../src/ops/linear.cu  \
-		../../src/ops/softmax.cu ../../src/ops/concat.cu ../../src/ops/flat.cu ../../src/ops/embedding.cu ../../src/ops/mse_loss.cu\
+		../../src/ops/softmax.cu ../../src/ops/concat.cu ../../src/ops/flat.cu ../../src/ops/embedding.cu\
 		../../src/ops/element_binary.cu ../../src/ops/element_unary.cu\
 		../../src/loss_functions/loss_functions.cu ../../src/metrics_functions/metrics_functions.cu\
 		../../src/runtime/initializer_kernel.cu ../../src/runtime/optimizer_kernel.cu ../../src/runtime/accessor_kernel.cu\

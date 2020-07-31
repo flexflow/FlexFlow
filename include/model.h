@@ -845,6 +845,7 @@ public:
   ConcatMeta(FFHandler handle) : OpMeta(handle) {};
 };
 
+#ifdef DEADCODE
 class MSELoss : public Op {
 public:
   MSELoss(FFModel& model,
@@ -870,6 +871,7 @@ public:
   AggrMode aggr_mode;
   bool profiling;
 };
+#endif
 
 class UtilityTasks {
 public:
