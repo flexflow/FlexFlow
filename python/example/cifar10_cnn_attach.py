@@ -49,16 +49,6 @@ def top_level_task():
   
   x_train = x_train.astype('float32')
   x_train /= 255
-  
-  # x_train_t = x_train.transpose(3, 2, 1, 0)
-  #
-  # x_train = np.zeros((32,32,3,num_samples), dtype=np.float32)
-  #
-  # for i in range(0, num_samples):
-  #   for j in range(0, 3):
-  #     for k in range(0, 32):
-  #       for l in range(0, 32):
-  #         x_train[l][k][j][i] = x_train_t[l][k][j][i]
 
   full_input_array = x_train
   print(full_input_array.__array_interface__["strides"])
@@ -91,8 +81,6 @@ def top_level_task():
   ffmodel.compile()
 
   ffmodel.init_layers()
-
-
 
   epochs = ffconfig.get_epochs()
   #epochs = 10
@@ -139,5 +127,5 @@ def top_level_task():
 
 
 if __name__ == "__main__":
-  print("alexnet")
+  print("cifar10 cnn attach")
   top_level_task()

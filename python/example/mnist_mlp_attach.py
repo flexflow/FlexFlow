@@ -111,5 +111,5 @@ def top_level_task():
   
   
 if __name__ == "__main__":
-  print("alexnet")
+  print("mnist mlp attach")
   top_level_task()
