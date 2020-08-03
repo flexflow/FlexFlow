@@ -39,10 +39,12 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 OUTFILE		?= inception
 # List all the application source files here
 GEN_SRC		?= ../../src/runtime/model.cc ../../src/mapper/mapper.cc ../../src/runtime/initializer.cc ../../src/runtime/optimizer.cc\
-		../../src/ops/embedding.cc ../../src/runtime/strategy.pb.cc ../../src/runtime/strategy.cc inception.cc
+		../../src/metrics_functions/metrics_functions.cc ../../src/ops/embedding.cc\
+		../../src/runtime/strategy.pb.cc ../../src/runtime/strategy.cc inception.cc
 GEN_GPU_SRC	?= ../../src/ops/conv_2d.cu ../../src/runtime/model.cu ../../src/ops/pool_2d.cu ../../src/ops/batch_norm.cu ../../src/ops/linear.cu  \
-		../../src/ops/softmax.cu ../../src/ops/concat.cu ../../src/ops/flat.cu ../../src/ops/embedding.cu ../../src/ops/mse_loss.cu\
+		../../src/ops/softmax.cu ../../src/ops/concat.cu ../../src/ops/flat.cu ../../src/ops/embedding.cu\
 		../../src/ops/element_binary.cu ../../src/ops/element_unary.cu \
+		../../src/loss_functions/loss_functions.cu ../../src/metrics_functions/metrics_functions.cu\
 		../../src/runtime/initializer_kernel.cu ../../src/runtime/optimizer_kernel.cu ../../src/runtime/accessor_kernel.cu\
 		../../src/runtime/cuda_helper.cu inception.cu# .cu files
 
@@ -51,7 +53,7 @@ INC_FLAGS	?= -I../../include/ -I${FF_HOME}/protobuf/src -I${CUDNN_HOME}/include
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcuda -lcudart -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L${FF_HOME}/protobuf/src/.lib -L${CUDNN_HOME}/lib64
+LD_FLAGS	?= -lcuda -lcudart -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L${FF_HOME}/protobuf/src/.libs -L${CUDNN_HOME}/lib64
 # For Point and Rect typedefs
 CC_FLAGS	+= -DDISABLE_LEGION_CUDA_HIJACK -std=c++11
 NVCC_FLAGS  	+= -DDISABLE_LEGION_CUDA_HIJACK -std=c++11

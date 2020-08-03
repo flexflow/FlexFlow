@@ -143,7 +143,8 @@ void Loss::backward(FFModel* model,
                     const Tensor* label)
 {
   // Compute scale factor for loss backpropagation
-  scale_factor = 1.0f/ logit->adim[logit->numDim-1];
+  //scale_factor = 1.0f/ logit->adim[logit->numDim-1];
+  scale_factor = 1.0f;
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
   IndexSpaceT<2> task_is = IndexSpaceT<2>(model->get_or_create_task_is(2, pcname));
