@@ -81,6 +81,7 @@ void top_level_task(const Task* task,
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
+  metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
   // Data Loader
   DataLoader data_loader(ff, alexnetConfig, input, ff.label_tensor);
