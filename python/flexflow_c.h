@@ -116,6 +116,13 @@ flexflow_model_update(
 
 void
 flexflow_model_compile(
+  flexflow_model_t handle,
+  enum LossType loss_type,
+  enum MetricsType *metrics,
+  int nb_metrics);
+
+flexflow_tensor_t
+flexflow_model_get_label_tensor(
   flexflow_model_t handle);
 
 void
@@ -249,15 +256,14 @@ flexflow_model_add_flat_no_inout(
 flexflow_tensor_t
 flexflow_model_add_softmax(
   flexflow_model_t handle,
-  const flexflow_tensor_t input,
-  const flexflow_tensor_t label);
+  const flexflow_tensor_t input);
   
-void
-flexflow_model_add_mse_loss(
-  flexflow_model_t handle,
-  const flexflow_tensor_t logits,
-  const flexflow_tensor_t labels,
-  const char* reduction);
+// void
+// flexflow_model_add_mse_loss(
+//   flexflow_model_t handle,
+//   const flexflow_tensor_t logits,
+//   const flexflow_tensor_t labels,
+//   const char* reduction);
   
 void
 flexflow_model_set_sgd_optimizer(

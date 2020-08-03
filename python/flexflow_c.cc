@@ -207,10 +207,26 @@ flexflow_model_update(
 
 void
 flexflow_model_compile(
+  flexflow_model_t handle_,
+  enum LossType loss_type,
+  enum MetricsType *metrics,
+  int nb_metrics)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  std::vector<MetricsType> metrics_vec;
+  for (int i = 0; i < nb_metrics; i++) {
+    metrics_vec.push_back(metrics[i]);
+  }
+  handle->compile(loss_type, metrics_vec);
+}
+
+flexflow_tensor_t
+flexflow_model_get_label_tensor(
   flexflow_model_t handle_)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->compile();
+  Tensor *tensor = &(handle->label_tensor);
+  return FFCObjectWrapper::wrap(tensor); 
 }
 
 void
@@ -495,31 +511,29 @@ flexflow_model_add_flat_no_inout(
 flexflow_tensor_t
 flexflow_model_add_softmax(
   flexflow_model_t handle_,
-  const flexflow_tensor_t input_,
-  const flexflow_tensor_t label_)
+  const flexflow_tensor_t input_)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *label = FFCObjectWrapper::unwrap(label_);
   Tensor *tensor = new Tensor();
-  *tensor = handle->softmax(*input, *label);
+  *tensor = handle->softmax(*input);
   ffc_log.print("[Softmax] new Tensor %p", tensor);
   return FFCObjectWrapper::wrap(tensor);   
 }
 
-void
-flexflow_model_add_mse_loss(
-  flexflow_model_t handle_,
-  const flexflow_tensor_t logits_,
-  const flexflow_tensor_t labels_,
-  const char* reduction)
-{
-  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *logits = FFCObjectWrapper::unwrap(logits_);
-  Tensor *labels = FFCObjectWrapper::unwrap(labels_);
-  handle->mse_loss(*logits, *labels, reduction);
-  ffc_log.print("[MSE_Loss] reduction %s", reduction); 
-}
+// void
+// flexflow_model_add_mse_loss(
+//   flexflow_model_t handle_,
+//   const flexflow_tensor_t logits_,
+//   const flexflow_tensor_t labels_,
+//   const char* reduction)
+// {
+//   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+//   Tensor *logits = FFCObjectWrapper::unwrap(logits_);
+//   Tensor *labels = FFCObjectWrapper::unwrap(labels_);
+//   handle->mse_loss(*logits, *labels, reduction);
+//   ffc_log.print("[MSE_Loss] reduction %s", reduction);
+// }
 
 void
 flexflow_model_set_sgd_optimizer(

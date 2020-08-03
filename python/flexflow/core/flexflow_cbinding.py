@@ -53,6 +53,20 @@ class DataType(Enum):
   DT_INT64 = 43
   DT_BOOLEAN = 44
   
+class LossType(Enum):
+  LOSS_CATEGORICAL_CROSSENTROPY = 50
+  LOSS_SPARSE_CATEGORICAL_CROSSENTROPY = 51
+  LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE = 52
+  LOSS_MEAN_SQUARED_ERROR_SUM_REDUCE = 53
+  
+class MetricsType(Enum):
+  METRICS_ACCURACY = 1
+  METRICS_CATEGORICAL_CROSSENTROPY = 2
+  METRICS_SPARSE_CATEGORICAL_CROSSENTRPY = 4
+  METRICS_MEAN_SQUARED_ERROR = 8
+  METRICS_ROOT_MEAN_SQUARED_ERROR = 16
+  METRICS_MEAN_ABSOLUTE_ERROR=32
+  
 class OpType(Enum):
   CONV2D = 1011
   EMBEDDING = 1012
@@ -608,14 +622,14 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_flat_no_inout(self.handle)
     return Flat(handle)
     
-  def softmax(self, input, label):
-    handle = ffc.flexflow_model_add_softmax(self.handle, input.handle, label.handle)
+  def softmax(self, input):
+    handle = ffc.flexflow_model_add_softmax(self.handle, input.handle)
     self.add_layer(OpType.SOFTMAX)
     return Tensor(handle)
     
-  def mse_loss(self, logits, labels, reduction):
-    ffc.flexflow_model_add_mse_loss(self.handle, logits.handle, labels.handle, reduction.encode('utf-8'))
-    self.add_layer(OpType.MSELOSS)
+  # def mse_loss(self, logits, labels, reduction):
+  #   ffc.flexflow_model_add_mse_loss(self.handle, logits.handle, labels.handle, reduction.encode('utf-8'))
+  #   self.add_layer(OpType.MSELOSS)
     
   def reset_metrics(self):
     ffc.flexflow_model_reset_metrics(self.handle)
@@ -635,8 +649,9 @@ class FFModel(object):
   def update(self):
     ffc.flexflow_model_update(self.handle)
     
-  def compile(self):
-    ffc.flexflow_model_compile(self.handle)
+  def compile(self, loss_type, metrics):
+    c_metrics = ffi.new("enum MetricsType[]", metrics)
+    ffc.flexflow_model_compile(self.handle, loss_type, c_metrics, len(metrics))
     
   def zero_gradients(self):
     ffc.flexflow_model_zero_gradients(self.handle)
@@ -679,6 +694,10 @@ class FFModel(object):
   def get_tensor_by_id(self, id):
     handle = ffc.flexflow_model_get_parameter_by_id(self.handle, id)
     return Parameter(handle)
+    
+  def get_label_tensor(self):
+    handle = ffc.flexflow_model_get_label_tensor(self.handle)
+    return Tensor(handle, deallocate=False)
     
   def __get_initializer_handle(self, initializer):
     if (initializer == None):
