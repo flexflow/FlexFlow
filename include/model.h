@@ -312,7 +312,7 @@ public:
 
   template<int NDIM>
   Tensor create_tensor(const int dims[],
-                       const std::string& pc_name,
+                       const std::string& name,
                        DataType data_type,
                        bool create_grad = true);
   template<int NDIM>
@@ -363,7 +363,8 @@ public:
   void forward();
   void backward();
   void update();
-  void compile();
+  void compile(LossType loss_type, const std::vector<MetricsType>& metrics);
+  void compile(Optimizer* optimizer, LossType loss_type, const std::vector<MetricsType>& metrics);
   void zero_gradients();
   void print_layers(int id);
   // Internal funcitons
@@ -376,7 +377,12 @@ public:
   int op_global_guid;
   FFConfig config;
   Optimizer* optimizer;
+  Loss* loss_op;
+  Metrics* metrics_op;
   //Tensor inputImage, inputRaw, inputLabel;
+  Tensor label_tensor;
+  std::vector<Tensor> input_tensors;
+  
   std::vector<Op*> layers;
   std::vector<Parameter> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];

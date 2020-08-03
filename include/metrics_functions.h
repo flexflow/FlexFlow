@@ -41,18 +41,18 @@ public:
 class Metrics
 {
 public:
-  Metrics(const Loss* loss, const std::vector<std::string>& metrics);
+  Metrics(LossType _loss_type, const std::vector<MetricsType>& metrics);
   static PerfMetrics compute_task(const Task *task,
                                   const std::vector<PhysicalRegion> &regions,
                                   Context ctx, Runtime *runtime);
   void compute(FFModel* model, const Tensor* logit, const Tensor* label);
 public:
+  LossType loss_type;
   bool measure_accuracy;
   bool measure_categorical_crossentropy;
   bool measure_sparse_categorical_crossentropy;
   bool measure_mean_squared_error;
   bool measure_root_mean_squared_error;
   bool measure_mean_absolute_error;
-  Loss::Type loss_type;
 };
 #endif

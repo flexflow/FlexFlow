@@ -56,11 +56,11 @@ void top_level_task(const Task* task,
     const int dims[] = {ffConfig.batchSize, 3, 229, 229};
     input = ff.create_tensor<4>(dims, "", DT_FLOAT);
   }
-  Tensor label;
-  {
-    const int dims[] = {ffConfig.batchSize, 1};
-    label = ff.create_tensor<2>(dims, "", DT_INT32);
-  }
+  //Tensor label;
+  //{
+  //  const int dims[] = {ffConfig.batchSize, 1};
+  //  label = ff.create_tensor<2>(dims, "", DT_INT32);
+  //}
   // Add layers
   Tensor t = input, ts[2];
   t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
@@ -78,10 +78,12 @@ void top_level_task(const Task* task,
   t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
   t = ff.dense(t, 10);
   t = ff.softmax(t);
-  ff.optimizer = new SGDOptimizer(&ff, 0.001f);
-  ff.compile();
+  Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
+  std::vector<MetricsType> metrics;
+  metrics.push_back(METRICS_ACCURACY);
+  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
   // Data Loader
-  DataLoader data_loader(ff, alexnetConfig, input, label);
+  DataLoader data_loader(ff, alexnetConfig, input, ff.label_tensor);
   ff.init_layers();
   //Start timer
   {

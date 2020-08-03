@@ -17,6 +17,7 @@
 #define _FF_LOSS_FUNCTIONS_H_
 
 #include "legion.h"
+#include "ffconst.h"
 
 using namespace Legion;
 
@@ -26,20 +27,15 @@ class FFModel;
 class Loss
 {
 public:
-  enum Type {
-    CATEGORICAL_CROSSENTROPY,
-    SPARSE_CATEGORICAL_CROSSENTROPY,
-    MEAN_SQUARED_ERROR_AVG_REDUCE,
-    MEAN_SQUARED_ERROR_SUM_REDUCE,
-  };
   Loss(const std::string& loss);
+  Loss(LossType _loss_type);
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
   void backward(FFModel* model, const Tensor* logit, const Tensor* label);
 public:
   FFModel* model;
-  Type type;
+  LossType loss_type;
   // scale factor for computing the logit gradients
   // normally 1.0f / global_batch_size
   float scale_factor; 

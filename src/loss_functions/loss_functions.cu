@@ -19,15 +19,19 @@
 Loss::Loss(const std::string& loss)
 {
   if (loss == "categorical_crossentropy")
-    type = CATEGORICAL_CROSSENTROPY;
+    loss_type = LOSS_CATEGORICAL_CROSSENTROPY;
   else if (loss == "sparse_categorical_crossentropy")
-    type = SPARSE_CATEGORICAL_CROSSENTROPY;
+    loss_type = LOSS_SPARSE_CATEGORICAL_CROSSENTROPY;
   else if (loss == "mean_squared_error")
-    type = MEAN_SQUARED_ERROR_AVG_REDUCE;
+    loss_type = LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE;
   else
     // Unrecognized loss type
     assert(false);
 }
+
+Loss::Loss(LossType _loss_type)
+: loss_type(_loss_type)
+{}
 
 __global__
 void sparse_categorical_crossentropy_loss_backward(
@@ -77,7 +81,7 @@ void Loss::backward_task(const Task *task,
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   const Loss* loss = (Loss*) task->args;
-  if (loss->type == Loss::SPARSE_CATEGORICAL_CROSSENTROPY) {
+  if (loss->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     //sparse_categorical_crossentropy has label of dim: (batch_size, 1)
     TensorAccessorW<float, 2> acc_logit_grad(
         regions[0], task->regions[0], FID_DATA, ctx, runtime,
@@ -113,18 +117,18 @@ void Loss::backward_task(const Task *task,
     assert(acc_logit_grad.rect == acc_logit.rect);
     int num_samples = acc_logit.rect.hi[1] - acc_logit.rect.lo[1] + 1;
     int num_channels = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;
-    if (loss->type == Loss::CATEGORICAL_CROSSENTROPY) {
+    if (loss->loss_type == LOSS_CATEGORICAL_CROSSENTROPY) {
       categorical_crossentropy_loss_backward<<<GET_BLOCKS(acc_logit.rect.volume()), CUDA_NUM_THREADS>>>(
           acc_logit_grad.ptr, acc_logit.ptr, acc_label.ptr,
           acc_logit.rect.volume());
-      // Scale logit gradients by op->scale_factor
+      // Scale logit gradients by loss->scale_factor
       scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
           acc_logit_grad.ptr, acc_logit_grad.rect.volume(), loss->scale_factor, 0);
-    } else if (loss->type == Loss::MEAN_SQUARED_ERROR_AVG_REDUCE) {
+    } else if (loss->loss_type == LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE) {
       mean_squared_error_avg_loss_backward<<<GET_BLOCKS(acc_logit.rect.volume()), CUDA_NUM_THREADS>>>(
           acc_logit_grad.ptr, acc_logit.ptr, acc_label.ptr,
           acc_logit.rect.volume());
-      // Scale logit gradients by op->scale_factor
+      // Scale logit gradients by loss->scale_factor
       scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
           acc_logit_grad.ptr, acc_logit_grad.rect.volume(), loss->scale_factor, 0);
     } else {

@@ -437,6 +437,9 @@ Tensor FFModel::create_tensor(const int dims[],
     tensor.adim[i] = rect.hi[i] - rect.lo[i] + 1;
     tensor.pdim[i] = extent.hi[i] - extent.lo[i] + 1;
   }
+
+  // Add to the list of input tensors
+  input_tensors.push_back(tensor);
   return tensor;
 }
 
@@ -843,6 +846,13 @@ void FFModel::forward()
 
 void FFModel::backward()
 {
+  // Compute metrics
+  Op* final_layer = layers[layers.size()-1];
+  assert(final_layer->numOutputs == 1);
+  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor);
+  // Compute the gradients of the final layer wrt loss
+  loss_op->backward(this, &(final_layer->outputs[0]), &label_tensor);
+  // Perform backpropagation
   std::set<LogicalRegion> resetedInputGrads;
   for (int l = layers.size() - 1; l >= 0; l--) {
     for (int i = 0; i < layers[l]->numInputs; i++)
@@ -865,8 +875,19 @@ void FFModel::update()
   }
 }
 
-void FFModel::compile()
+void FFModel::compile(Optimizer* _optimizer,
+                      LossType loss_type,
+                      const std::vector<MetricsType>& metrics)
 {
+  optimizer = _optimizer;
+  compile(loss_type, metrics);
+}
+
+void FFModel::compile(LossType loss_type,
+                      const std::vector<MetricsType>& metrics)
+{
+  loss_op = new Loss(loss_type);
+  metrics_op = new Metrics(loss_type, metrics);
   for (size_t l = 0; l < layers.size(); l++) {
     Op* op = layers[l];
     for (int i = 0; i < op->numInputs; i++) {
@@ -884,6 +905,25 @@ void FFModel::compile()
     for (int i = 0; i < op->numWeights; i++) {
       parameters.push_back(op->weights[i]);
     }
+  }
+  Op* final_layer = layers[layers.size()-1];
+  // FIXME: currently assume the final layer has exactly one output
+  assert(final_layer->numOutputs == 1);
+  // FIXME: currently assume the logit is 2D
+  assert(final_layer->outputs[0].numDim == 2);
+  int batch_size = final_layer->outputs[0].adim[1];
+  int channel = final_layer->outputs[0].adim[0];
+  DataType label_type = DT_FLOAT;
+  if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
+    // assign channel = 1 for sparse categorical labels
+    channel = 1;
+    label_type = DT_INT32;
+  }
+  // create label tensor
+  {
+    // Note that FlexFlow's runtim internally reverse the array ordering
+    const int dims[] = {batch_size, channel};
+    label_tensor = create_tensor<2>(dims, "", label_type);
   }
 }
 

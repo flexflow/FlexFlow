@@ -18,42 +18,39 @@
 
 const float LOG_MIN_VALUE = 0.00000001f;
 
-Metrics::Metrics(const Loss* loss, const std::vector<std::string>& metrics)
+Metrics::Metrics(LossType _loss_type, const std::vector<MetricsType>& metrics)
 : measure_accuracy(false),
   measure_categorical_crossentropy(false),
   measure_sparse_categorical_crossentropy(false),
   measure_mean_squared_error(false),
   measure_root_mean_squared_error(false),
   measure_mean_absolute_error(false),
-  loss_type(loss->type)
+  loss_type(_loss_type)
 {
   for (size_t i = 0; i < metrics.size(); i++) {
-    if (metrics[i] == "accuracy") {
-      measure_accuracy = true;
-      continue;
+    switch (metrics[i]) {
+      case  METRICS_ACCURACY:
+        measure_accuracy = true;
+        continue;
+      case METRICS_CATEGORICAL_CROSSENTROPY:
+        measure_categorical_crossentropy = true;
+        continue;
+      case METRICS_SPARSE_CATEGORICAL_CROSSENTRPY:
+        measure_sparse_categorical_crossentropy = true;
+        continue;
+      case METRICS_MEAN_SQUARED_ERROR:
+        measure_mean_squared_error = true;
+        continue;
+      case METRICS_ROOT_MEAN_SQUARED_ERROR:
+        measure_root_mean_squared_error = true;
+        continue;
+      case METRICS_MEAN_ABSOLUTE_ERROR:
+        measure_mean_absolute_error = true;
+        continue;
+      default:
+        fprintf(stderr, "Unrecogonized metrics type\n");
+        assert(false);
     }
-    if (metrics[i] == "categorical_crossentropy") {
-      measure_categorical_crossentropy = true;
-      continue;
-    }
-    if (metrics[i] == "sparse_categorical_crossentropy") {
-      measure_sparse_categorical_crossentropy = true;
-      continue;
-    }
-    if (metrics[i] == "mean_squared_error") {
-      measure_mean_squared_error = true;
-      continue;
-    }
-    if (metrics[i] == "root_mean_squared_error") {
-      measure_root_mean_squared_error = true;
-      continue;
-    }
-    if (metrics[i] == "mean_absolute_error") {
-      measure_mean_absolute_error = true;
-      continue;
-    }
-    fprintf(stderr, "Unrecogonized Metrics: %s.\n", metrics[i].c_str());
-    assert(false);    
   }
 }
 
@@ -184,7 +181,7 @@ PerfMetrics Metrics::compute_task(const Task *task,
   checkCUDA(cudaMalloc(&perf, sizeof(PerfMetrics)));
   checkCUDA(cudaMemcpy(perf, &perf_zc, sizeof(PerfMetrics), cudaMemcpyHostToDevice));
 
-  if (me->loss_type == Loss::SPARSE_CATEGORICAL_CROSSENTROPY) {
+  if (me->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     TensorAccessorR<float, 2> acc_logit(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     TensorAccessorR<int, 2> acc_label(
