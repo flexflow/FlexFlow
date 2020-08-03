@@ -56,7 +56,7 @@ void Softmax::create_output_and_partition(FFModel& model)
     const int dims[2] = {inputs[0].adim[1], inputs[0].adim[0]};
     Tensor t = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
     outputs[0].region = t.region;
-    outputs[0].region_grad = t.region;
+    outputs[0].region_grad = t.region_grad;
     outputs[0].part = t.part;
     outputs[0].part_grad = t.part_grad;
   }
@@ -173,6 +173,7 @@ void Softmax::forward_task(const Task *task,
   if (softmax->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
+    //print_tensor<2, float>(acc_output.ptr, acc_output.rect, "[Softmax:forward:output]");
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
@@ -252,6 +253,8 @@ void Softmax::backward_task(const Task *task,
   if (softmax->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
+    //print_tensor<2, float>(acc_output_grad.ptr, acc_output_grad.rect, "[Softmax:backward:output_grad]");
+    //print_tensor<2, float>(acc_input_grad.ptr, acc_input_grad.rect, "[Softmax:backward:input_grad]");
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);

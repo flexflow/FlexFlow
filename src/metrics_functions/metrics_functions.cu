@@ -35,7 +35,7 @@ Metrics::Metrics(LossType _loss_type, const std::vector<MetricsType>& metrics)
       case METRICS_CATEGORICAL_CROSSENTROPY:
         measure_categorical_crossentropy = true;
         continue;
-      case METRICS_SPARSE_CATEGORICAL_CROSSENTRPY:
+      case METRICS_SPARSE_CATEGORICAL_CROSSENTROPY:
         measure_sparse_categorical_crossentropy = true;
         continue;
       case METRICS_MEAN_SQUARED_ERROR:

@@ -103,7 +103,7 @@ void Loss::backward_task(const Task *task,
         acc_logit_grad.ptr, acc_label.ptr, num_samples, num_classes);
     // Scale logit gradients by op->scale_factor
     scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
-        acc_logit_grad.ptr, acc_logit_grad.rect.volume(), loss->scale_factor, 0);
+        acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor);
   } else {
     TensorAccessorW<float, 2> acc_logit_grad(
         regions[0], task->regions[0], FID_DATA, ctx, runtime,
@@ -123,14 +123,14 @@ void Loss::backward_task(const Task *task,
           acc_logit.rect.volume());
       // Scale logit gradients by loss->scale_factor
       scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
-          acc_logit_grad.ptr, acc_logit_grad.rect.volume(), loss->scale_factor, 0);
+          acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor);
     } else if (loss->loss_type == LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE) {
       mean_squared_error_avg_loss_backward<<<GET_BLOCKS(acc_logit.rect.volume()), CUDA_NUM_THREADS>>>(
           acc_logit_grad.ptr, acc_logit.ptr, acc_label.ptr,
           acc_logit.rect.volume());
       // Scale logit gradients by loss->scale_factor
       scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
-          acc_logit_grad.ptr, acc_logit_grad.rect.volume(), loss->scale_factor, 0);
+          acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor);
     } else {
       fprintf(stderr, "Unsupported loss --- report this error to the FlexFlow developer\n");
       assert(false);
@@ -143,7 +143,8 @@ void Loss::backward(FFModel* model,
                     const Tensor* label)
 {
   // Compute scale factor for loss backpropagation
-  scale_factor = 1.0f/ logit->adim[logit->numDim-1];
+  //scale_factor = 1.0f/ logit->adim[logit->numDim-1];
+  scale_factor = 1.0f;
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
   IndexSpaceT<2> task_is = IndexSpaceT<2>(model->get_or_create_task_is(2, pcname));
