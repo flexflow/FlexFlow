@@ -204,10 +204,10 @@ void Op::zero_grad(const FFModel& ff)
                           WRITE_ONLY, EXCLUSIVE, weights[i].region_grad));
     launcher.add_field(i, FID_DATA);
   }
-  for (int i = 0; i < numInputs; i++) {
+  for (int i = 0; i < numOutputs; i++) {
     launcher.add_region_requirement(
-        RegionRequirement(input_grad_lps[i], 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
+        RegionRequirement(outputs[i].part_grad, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, outputs[i].region_grad));
     launcher.add_field(i + numWeights, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -437,6 +437,9 @@ Tensor FFModel::create_tensor(const int dims[],
     tensor.adim[i] = rect.hi[i] - rect.lo[i] + 1;
     tensor.pdim[i] = extent.hi[i] - extent.lo[i] + 1;
   }
+
+  // Add to the list of input tensors
+  input_tensors.push_back(tensor);
   return tensor;
 }
 
@@ -843,6 +846,13 @@ void FFModel::forward()
 
 void FFModel::backward()
 {
+  // Compute metrics
+  Op* final_layer = layers[layers.size()-1];
+  assert(final_layer->numOutputs == 1);
+  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor);
+  // Compute the gradients of the final layer wrt loss
+  loss_op->backward(this, &(final_layer->outputs[0]), &label_tensor);
+  // Perform backpropagation
   std::set<LogicalRegion> resetedInputGrads;
   for (int l = layers.size() - 1; l >= 0; l--) {
     for (int i = 0; i < layers[l]->numInputs; i++)
@@ -865,8 +875,19 @@ void FFModel::update()
   }
 }
 
-void FFModel::compile()
+void FFModel::compile(Optimizer* _optimizer,
+                      LossType loss_type,
+                      const std::vector<MetricsType>& metrics)
 {
+  optimizer = _optimizer;
+  compile(loss_type, metrics);
+}
+
+void FFModel::compile(LossType loss_type,
+                      const std::vector<MetricsType>& metrics)
+{
+  loss_op = new Loss(loss_type);
+  metrics_op = new Metrics(loss_type, metrics);
   for (size_t l = 0; l < layers.size(); l++) {
     Op* op = layers[l];
     for (int i = 0; i < op->numInputs; i++) {
@@ -884,6 +905,25 @@ void FFModel::compile()
     for (int i = 0; i < op->numWeights; i++) {
       parameters.push_back(op->weights[i]);
     }
+  }
+  Op* final_layer = layers[layers.size()-1];
+  // FIXME: currently assume the final layer has exactly one output
+  assert(final_layer->numOutputs == 1);
+  // FIXME: currently assume the logit is 2D
+  assert(final_layer->outputs[0].numDim == 2);
+  int batch_size = final_layer->outputs[0].adim[1];
+  int channel = final_layer->outputs[0].adim[0];
+  DataType label_type = DT_FLOAT;
+  if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
+    // assign channel = 1 for sparse categorical labels
+    channel = 1;
+    label_type = DT_INT32;
+  }
+  // create label tensor
+  {
+    // Note that FlexFlow's runtim internally reverse the array ordering
+    const int dims[] = {batch_size, channel};
+    label_tensor = create_tensor<2>(dims, "", label_type);
   }
 }
 
@@ -931,28 +971,19 @@ PerfMetrics FFModel::update_metrics_task(const Task *task,
   if (task->futures.size() == 0) {
     // Create an empty future
     PerfMetrics perf;
-    perf.train_loss = 0.0f;
-    perf.train_correct = perf.train_all = 0;
-    perf.test_correct = perf.test_all = 0;
-    perf.val_correct = perf.val_all = 0;
     return perf;
   }
   assert(task->futures.size() > 1);
   PerfMetrics all_metrics = task->futures[0].get_result<PerfMetrics>();
   for (size_t i = 1; i < task->futures.size(); i++) {
     PerfMetrics one_metrics = task->futures[i].get_result<PerfMetrics>();
-    all_metrics.train_loss += one_metrics.train_loss;
-    all_metrics.train_correct += one_metrics.train_correct;
-    all_metrics.train_all += one_metrics.train_all;
-    all_metrics.test_correct += one_metrics.test_correct;
-    all_metrics.test_all += one_metrics.test_all;
-    all_metrics.val_correct += one_metrics.val_correct;
-    all_metrics.val_all += one_metrics.val_all;
+    all_metrics.update(one_metrics);
   }
-  fprintf(stderr, "acc_train_loss: %.4lf train_accuracy: %.2lf%%(%d/%d)\n",
-          all_metrics.train_loss / all_metrics.train_all,
-          all_metrics.train_correct * 100.0f / all_metrics.train_all,
-          all_metrics.train_correct, all_metrics.train_all);
+  all_metrics.print();
+  //fprintf(stderr, "acc_train_loss: %.4lf train_accuracy: %.2lf%%(%d/%d)\n",
+  //        all_metrics.train_loss / all_metrics.train_all,
+  //        all_metrics.train_correct * 100.0f / all_metrics.train_all,
+  //        all_metrics.train_correct, all_metrics.train_all);
   return all_metrics;
 }
 
@@ -1377,17 +1408,33 @@ void register_internal_tasks()
     TaskVariantRegistrar registrar(SOFTMAX_BWD_TASK_ID, "softmax_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<PerfMetrics, Softmax::backward_task>(
+    Runtime::preregister_task_variant<Softmax::backward_task>(
         registrar, "softmax_bwd_task");
   }
-  // MSELoss
+  // compute Loss
   {
-    TaskVariantRegistrar registrar(MSELOSS_BWD_TASK_ID, "MSELoss Backward");
+    TaskVariantRegistrar registrar(LOSS_BWD_TASK_ID, "Loss Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<PerfMetrics, MSELoss::backward_task>(
+    Runtime::preregister_task_variant<Loss::backward_task>(
+        registrar, "Loss Backward Task");
+  }
+  // compute Metrics
+  {
+    TaskVariantRegistrar registrar(METRICS_COMP_TASK_ID, "MSELoss Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<PerfMetrics, Metrics::compute_task>(
         registrar, "MSELoss Backward Task");
   }
+  // MSELoss
+  //{
+  //  TaskVariantRegistrar registrar(MSELOSS_BWD_TASK_ID, "MSELoss Backward");
+  //  registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+  //  registrar.set_leaf();
+  //  Runtime::preregister_task_variant<PerfMetrics, MSELoss::backward_task>(
+  //      registrar, "MSELoss Backward Task");
+  //}
   // update metrics
   {
     TaskVariantRegistrar registrar(UPDATE_METRICS_TASK_ID, "Update Metrics");
