@@ -12,7 +12,7 @@ class CategoricalCrossentropy(Loss):
                reduction='auto',
                name='categorical_crossentropy'):
     super(CategoricalCrossentropy, self).__init__(name=name)
-    self.type = None
+    self.type = ff.LossType.LOSS_CATEGORICAL_CROSSENTROPY
 
 class SparseCategoricalCrossentropy(Loss):
   def __init__(self,
@@ -20,13 +20,13 @@ class SparseCategoricalCrossentropy(Loss):
                reduction='auto',
                name='sparse_categorical_crossentropy'):
     super(SparseCategoricalCrossentropy, self).__init__(name=name)
-    self.type = None
+    self.type = ff.LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY
     
 class MeanSquaredError(Loss):
   def __init__(self,
                reduction='auto',
                name='mean_squared_error'):
     super(MeanSquaredError, self).__init__(name=name)
-    self.type = None           
+    self.type = ff.LossType.LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE           
     
   

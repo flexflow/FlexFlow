@@ -155,14 +155,18 @@ class BaseModel(object):
           assert 0, 'Unsupported metric'
     
     self._ffmodel = ff.FFModel(self._ffconfig)  
-    self._create_input_and_label_tensors()
+    self._create_input_tensors()
     self._create_flexflow_layers()
     
     self._verify_output_tensors()
     self._verify_input_tensors()
     
     self._ffoptimizer = optimizer
-    self._ffmodel.compile()
+    metrics_type = []
+    for metric in self._metrics:
+      metrics_type.append(metric.type)
+    self._ffmodel.compile(loss_type=self._loss.type, metrics=metrics_type)
+    self._create_label_tensor()
     print(self._input_tensors[0], self._output_tensor, self._input_tensors[0].ffhandle, self._output_tensor.ffhandle)
   
   #TODO: finish API  
@@ -232,16 +236,15 @@ class BaseModel(object):
     self._input_tensors[idx].create_ff_tensor(self._ffmodel)
     
   def _create_label_tensor(self):
-    self._label_tensor = Tensor(ffmodel=self._ffmodel, batch_shape=(self._ffconfig.get_batch_size(), 1), name="", dtype="int32")
+    label_ffhandle = self._ffmodel.get_label_tensor()
+    self._label_tensor = Tensor(ffmodel=self._ffmodel, batch_shape=(self._ffconfig.get_batch_size(), 1), name="", dtype="int32", ffhandle=label_ffhandle)
     
-  def _create_input_and_label_tensors(self):
+  def _create_input_tensors(self):
     idx = 0
     for input_tensor in self._input_tensors:
       input_tensor.set_batch_size(self._ffconfig.get_batch_size())
       self._create_input_tensor(idx)
       idx += 1
-
-    self._create_label_tensor()
     
   def _verify_tensors(self, input_arrays, label_array):
     assert len(input_arrays) == len(self._input_tensors), "check len of input tensors"
@@ -413,7 +416,7 @@ class BaseModel(object):
 
       if (isinstance(layer, Activation) == True):
         assert layer.layer_id == self._nb_layers-1, "softmax is not in the last layer"
-        out_t = self._ffmodel.softmax(layer.input_tensors[0].ffhandle, self._label_tensor.ffhandle)
+        out_t = self._ffmodel.softmax(layer.input_tensors[0].ffhandle)
       elif (isinstance(layer, Concatenate) == True):
         t_ffhandle_list = []
         for t in layer.input_tensors:
@@ -450,7 +453,7 @@ class BaseModel(object):
 
       if (isinstance(layer, Activation) == True):
         assert layer_id == self._nb_layers-1, "softmax is not in the last layer"
-        out_t = self._ffmodel.softmax(layer.input_tensors[0].ffhandle, self._label_tensor.ffhandle)
+        out_t = self._ffmodel.softmax(layer.input_tensors[0].ffhandle)
         assert layer.ffhandle == 0, "layer handle is inited"
         layer.ffhandle = self._ffmodel.get_layer_by_id(layer_id)
       elif (isinstance(layer, Concatenate) == True):

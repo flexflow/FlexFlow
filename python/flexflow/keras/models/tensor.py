@@ -54,6 +54,7 @@ class Tensor(object):
     else:
       self.batch_shape = ffhandle.dims
       self.num_dims = ffhandle.num_dims
+      self.__verify_ffhandle_shape()
   
   @property
   def ffhandle(self):

@@ -48,7 +48,7 @@ def top_level_task():
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   teacher_model.compile(optimizer=opt)
-  print(teacher_model.summary())
+  model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
 
   teacher_model.fit(x_train, y_train, epochs=1)
 
@@ -91,7 +91,7 @@ def top_level_task():
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   student_model.compile(optimizer=opt)
-  print(student_model.summary())
+  model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
 
   sc1_1.set_weights(student_model.ffmodel, c1_kernel, c1_bias)
   sc1_2.set_weights(student_model.ffmodel, c1_kernel, c1_bias)

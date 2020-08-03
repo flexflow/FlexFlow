@@ -14,7 +14,7 @@ def create_teacher_model_mlp(num_classes, x_train, y_train):
   model.add(Activation("softmax"))
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
-  model.compile(optimizer=opt)
+  model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
 
   model.fit(x_train, y_train, epochs=1)
   
@@ -42,7 +42,7 @@ def create_student_model_mlp(teacher_model, num_classes, x_train, y_train):
   model.add(Activation("softmax"))
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
-  model.compile(optimizer=opt)
+  model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   
   dense1s = model.get_layer(index=0)
   dense2s = model.get_layer(index=1)

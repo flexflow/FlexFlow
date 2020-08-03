@@ -38,7 +38,7 @@ def top_level_task():
   model.add(Activation("softmax"))
 
   opt = flexflow.keras.optimizers.Adam(learning_rate=0.01)
-  model.compile(optimizer=opt)
+  model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
 
   model.fit(x_train, y_train, epochs=epochs)

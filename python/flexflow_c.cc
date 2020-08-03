@@ -209,13 +209,13 @@ void
 flexflow_model_compile(
   flexflow_model_t handle_,
   enum LossType loss_type,
-  enum MetricsType *metrics,
+  int *metrics,
   int nb_metrics)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   std::vector<MetricsType> metrics_vec;
   for (int i = 0; i < nb_metrics; i++) {
-    metrics_vec.push_back(metrics[i]);
+    metrics_vec.push_back(static_cast<MetricsType>(metrics[i]));
   }
   handle->compile(loss_type, metrics_vec);
 }

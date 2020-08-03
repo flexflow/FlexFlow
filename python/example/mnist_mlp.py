@@ -11,10 +11,21 @@ def top_level_task():
   dims1 = [ffconfig.get_batch_size(), 784]
   input1 = ffmodel.create_tensor(dims1, "", DataType.DT_FLOAT);
   
-  dims_label = [ffconfig.get_batch_size(), 1]
-  label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32);
+  # dims_label = [ffconfig.get_batch_size(), 1]
+  # label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32);
   
   num_samples = 60000
+  
+  t2 = ffmodel.dense(input1, 512, ActiMode.AC_MODE_RELU)
+  t3 = ffmodel.dense(t2, 512, ActiMode.AC_MODE_RELU)
+  t4 = ffmodel.dense(t3, 10)
+  
+  t5 = ffmodel.softmax(t4)
+
+  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
+  ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.compile(LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, [MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
+  label = ffmodel.get_label_tensor()
   
   (x_train, y_train), (x_test, y_test) = mnist.load_data()
   
@@ -43,16 +54,6 @@ def top_level_task():
 
   full_input.detach_numpy_array(ffconfig)
   full_label.detach_numpy_array(ffconfig)
-  
-  t2 = ffmodel.dense(input1, 512, ActiMode.AC_MODE_RELU)
-  t3 = ffmodel.dense(t2, 512, ActiMode.AC_MODE_RELU)
-  t4 = ffmodel.dense(t3, 10)
-  
-  t5 = ffmodel.softmax(t4, label)
-
-  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
-  ffmodel.set_sgd_optimizer(ffoptimizer)
-  ffmodel.compile()
 
   ffmodel.init_layers()
 

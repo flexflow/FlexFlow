@@ -53,7 +53,7 @@ def top_level_task():
   model = Model(input_tensor, output)
   
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
-  model.compile(optimizer=opt)
+  model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
   
   model.fit(full_input_np, full_label_np, epochs=1)

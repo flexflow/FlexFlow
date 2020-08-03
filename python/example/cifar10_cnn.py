@@ -12,8 +12,24 @@ def top_level_task():
   dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
   input = ffmodel.create_tensor(dims_input, "", DataType.DT_FLOAT)
 
-  dims_label = [ffconfig.get_batch_size(), 1]
-  label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
+  # dims_label = [ffconfig.get_batch_size(), 1]
+  # label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
+
+  t = ffmodel.conv2d(input, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.conv2d(t, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.pool2d(t, 2, 2, 2, 2, 0, 0,)
+  t = ffmodel.conv2d(t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.conv2d(t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.pool2d(t, 2, 2, 2, 2, 0, 0)
+  t = ffmodel.flat(t);
+  t = ffmodel.dense(t, 512, ActiMode.AC_MODE_RELU)
+  t = ffmodel.dense(t, 10)
+  t = ffmodel.softmax(t, label)
+
+  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
+  ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.compile(LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, [MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
+  label = ffmodel.get_label_tensor()
   
   use_external = True
   if (use_external == True):
@@ -55,21 +71,6 @@ def top_level_task():
     # Data Loader
     dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
     num_samples = dataloader.get_num_samples()
-
-  t = ffmodel.conv2d(input, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.conv2d(t, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.pool2d(t, 2, 2, 2, 2, 0, 0,)
-  t = ffmodel.conv2d(t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.conv2d(t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.pool2d(t, 2, 2, 2, 2, 0, 0)
-  t = ffmodel.flat(t);
-  t = ffmodel.dense(t, 512, ActiMode.AC_MODE_RELU)
-  t = ffmodel.dense(t, 10)
-  t = ffmodel.softmax(t, label)
-
-  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
-  ffmodel.set_sgd_optimizer(ffoptimizer)
-  ffmodel.compile()
 
   ffmodel.init_layers()
 

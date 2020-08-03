@@ -62,7 +62,7 @@ class LossType(Enum):
 class MetricsType(Enum):
   METRICS_ACCURACY = 1
   METRICS_CATEGORICAL_CROSSENTROPY = 2
-  METRICS_SPARSE_CATEGORICAL_CROSSENTRPY = 4
+  METRICS_SPARSE_CATEGORICAL_CROSSENTROPY = 4
   METRICS_MEAN_SQUARED_ERROR = 8
   METRICS_ROOT_MEAN_SQUARED_ERROR = 16
   METRICS_MEAN_ABSOLUTE_ERROR=32
@@ -649,9 +649,13 @@ class FFModel(object):
   def update(self):
     ffc.flexflow_model_update(self.handle)
     
-  def compile(self, loss_type, metrics):
-    c_metrics = ffi.new("enum MetricsType[]", metrics)
-    ffc.flexflow_model_compile(self.handle, loss_type, c_metrics, len(metrics))
+  def compile(self, loss_type=None, metrics=None):
+    c_loss_type = enum_to_int(LossType, loss_type)
+    metrics_int = []
+    for metric in metrics:
+      metrics_int.append(enum_to_int(MetricsType, metric))
+    c_metrics = ffi.new("int[]", metrics_int)
+    ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics))
     
   def zero_gradients(self):
     ffc.flexflow_model_zero_gradients(self.handle)

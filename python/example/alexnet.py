@@ -42,7 +42,7 @@ def top_level_task():
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.001)
   ffmodel.set_sgd_optimizer(ffoptimizer)
-  ffmodel.compile(LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, [MetricsType.METRICS_ACCURACY])
+  ffmodel.compile(LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, [MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
   label = ffmodel.get_label_tensor()
   
   use_external = True

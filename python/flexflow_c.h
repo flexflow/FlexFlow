@@ -118,7 +118,7 @@ void
 flexflow_model_compile(
   flexflow_model_t handle,
   enum LossType loss_type,
-  enum MetricsType *metrics,
+  int *metrics,
   int nb_metrics);
 
 flexflow_tensor_t
