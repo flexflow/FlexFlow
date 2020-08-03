@@ -17,7 +17,7 @@ def top_level_task():
   num_samples = 60000
   
   t = ffmodel.conv2d(input1, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU, True)
-  t = ffmodel.conv2d(t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU, True) # enable this line, then it could converge
+  t = ffmodel.conv2d(t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU, True)
   t = ffmodel.pool2d(t, 2, 2, 2, 2, 0, 0)
   t = ffmodel.flat(t);
   t = ffmodel.dense(t, 128, ActiMode.AC_MODE_RELU)
@@ -57,6 +57,7 @@ def top_level_task():
   ffmodel.init_layers()
 
   epochs = ffconfig.get_epochs()
+  num_samples = 10000
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
@@ -84,19 +85,17 @@ def top_level_task():
 
   dense1 = ffmodel.get_layer_by_id(0)
 
-  dbias_tensor = label#dense1.get_bias_tensor()
-  dbias_tensor.inline_map(ffconfig)
-  dbias = dbias_tensor.get_array(ffconfig, DataType.DT_INT32)
-  print(dbias.shape)
-  print(dbias)
-  dbias_tensor.inline_unmap(ffconfig)
+  label.inline_map(ffconfig)
+  label_array = label.get_array(ffconfig, DataType.DT_INT32)
+  print(label_array.shape)
+  print(label_array)
+  label.inline_unmap(ffconfig)
 
-  # dweight_tensor = dense1.get_output_tensor()
-  # dweight_tensor.inline_map(ffconfig)
-  # dweight = dweight_tensor.get_array(ffconfig, DataType.DT_FLOAT)
-  # print(dweight.shape)
-  # print(dweight)
-  # dweight_tensor.inline_unmap(ffconfig)
+  input1.inline_map(ffconfig)
+  input1_array = input1.get_array(ffconfig, DataType.DT_FLOAT)
+  print(input1_array.shape)
+  print(input1_array[10, :, :, :])
+  input1.inline_unmap(ffconfig)
   
   
 if __name__ == "__main__":
