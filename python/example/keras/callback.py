@@ -9,9 +9,9 @@ import numpy as np
 
 def lr_scheduler(epoch):
   if epoch == 0:
-    return 0.01
-  else:
     return 0.001
+  else:
+    return 0.002
 
 def top_level_task():
   print(K.backend())
@@ -48,7 +48,7 @@ def top_level_task():
   
   mylr_scheduler = LearningRateScheduler(lr_scheduler)
 
-  model.fit(x_train, y_train, epochs=3, callbacks=[mylr_scheduler])
+  model.fit(x_train, y_train, epochs=2, callbacks=[mylr_scheduler])
 
 if __name__ == "__main__":
   print("Functional API, cifar10 cnn callback")
