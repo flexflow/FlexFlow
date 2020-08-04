@@ -31,7 +31,7 @@ def top_level_task():
             Activation("softmax")]
   model = Sequential(layers)
 
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   
   print(model.summary())

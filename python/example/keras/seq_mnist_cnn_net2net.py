@@ -16,7 +16,7 @@ def create_teacher_model_cnn(num_classes, x_train, y_train):
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
 
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   
   print(model.summary())
@@ -47,7 +47,7 @@ def create_student_model_cnn(teacher_model, num_classes, x_train, y_train):
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
 
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   
   conv1s = model.get_layer(index=0)

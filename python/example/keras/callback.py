@@ -42,13 +42,13 @@ def top_level_task():
 
   model = Model(input_tensor1, output_tensor)
   
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
   
   mylr_scheduler = LearningRateScheduler(lr_scheduler)
 
-  model.fit(x_train, y_train, epochs=2, callbacks=[mylr_scheduler])
+  model.fit(x_train, y_train, epochs=3, callbacks=[mylr_scheduler])
 
 if __name__ == "__main__":
   print("Functional API, cifar10 cnn callback")

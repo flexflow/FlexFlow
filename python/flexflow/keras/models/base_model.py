@@ -118,41 +118,41 @@ class BaseModel(object):
     if run_eagerly != None:
       assert 0, "run_eagerly is not supported"
     
-    if loss != None:  
-      if isinstance(loss, keras_losses.Loss) == True:
-        self._loss = loss
-        print(loss)
-      elif loss == 'categorical_crossentropy':
-        self._loss = keras_losses.CategoricalCrossentropy()
-        print('create CategoricalCrossentropy')
-      elif loss == 'sparse_categorical_crossentropy':
-        self._loss = keras_losses.SparseCategoricalCrossentropy()
-      elif loss == 'mean_squared_error':
-        self._loss = keras_losses.MeanSquaredError()
-      else:
-        assert 0, 'Unsupported loss'
+    assert loss != None, "loss is None"  
+    if isinstance(loss, keras_losses.Loss) == True:
+      self._loss = loss
+      print(loss)
+    elif loss == 'categorical_crossentropy':
+      self._loss = keras_losses.CategoricalCrossentropy()
+      print('create CategoricalCrossentropy')
+    elif loss == 'sparse_categorical_crossentropy':
+      self._loss = keras_losses.SparseCategoricalCrossentropy()
+    elif loss == 'mean_squared_error':
+      self._loss = keras_losses.MeanSquaredError()
+    else:
+      assert 0, 'Unsupported loss'
     
-    if metrics != None:
-      assert isinstance(metrics, list) == True, 'Metrics should be a list'  
-      for metric in metrics:
-        if isinstance(metric, keras_metrics.Metric) == True:
-          self._metrics.append(metric)
-          print(metric)
-        elif metric == 'accuracy':
-          self._metrics.append(keras_metrics.Accuracy())
-          print('create Accuracy')
-        elif metric == 'categorical_crossentropy':
-          self._metrics.append(keras_metrics.CategoricalCrossentropy())
-        elif metric == 'sparse_categorical_crossentropy':
-          self._metrics.append(keras_metrics.SparseCategoricalCrossentropy())
-        elif metric == 'mean_squared_error':
-          self._metrics.append(keras_metrics.MeanSquaredError())
-        elif metric == 'root_mean_squared_error':
-          self._metrics.append(keras_metrics.RootMeanSquaredError())
-        elif metric == 'mean_absolute_error':
-          self._metrics.append(keras_metrics.MeanAbsoluteError())
-        else:
-          assert 0, 'Unsupported metric'
+    assert metrics != None, "metrics is None"
+    assert isinstance(metrics, list) == True, 'Metrics should be a list'  
+    for metric in metrics:
+      if isinstance(metric, keras_metrics.Metric) == True:
+        self._metrics.append(metric)
+        print(metric)
+      elif metric == 'accuracy':
+        self._metrics.append(keras_metrics.Accuracy())
+        print('create Accuracy')
+      elif metric == 'categorical_crossentropy':
+        self._metrics.append(keras_metrics.CategoricalCrossentropy())
+      elif metric == 'sparse_categorical_crossentropy':
+        self._metrics.append(keras_metrics.SparseCategoricalCrossentropy())
+      elif metric == 'mean_squared_error':
+        self._metrics.append(keras_metrics.MeanSquaredError())
+      elif metric == 'root_mean_squared_error':
+        self._metrics.append(keras_metrics.RootMeanSquaredError())
+      elif metric == 'mean_absolute_error':
+        self._metrics.append(keras_metrics.MeanAbsoluteError())
+      else:
+        assert 0, 'Unsupported metric'
     
     self._ffmodel = ff.FFModel(self._ffconfig)  
     self._create_input_tensors()
@@ -166,6 +166,8 @@ class BaseModel(object):
     for metric in self._metrics:
       metrics_type.append(metric.type)
     self._ffmodel.compile(loss_type=self._loss.type, metrics=metrics_type)
+    self._create_optimizer()
+    self._set_optimizer()
     self._create_label_tensor()
     print(self._input_tensors[0], self._output_tensor, self._input_tensors[0].ffhandle, self._output_tensor.ffhandle)
   
@@ -227,7 +229,6 @@ class BaseModel(object):
     label_tensor = y
     self._verify_tensors(input_tensors, label_tensor)
     self._create_data_loaders(input_tensors, label_tensor)
-    self._set_optimizer()     
     self._ffmodel.init_layers()
     self._train(epochs, callbacks)
     
@@ -266,13 +267,20 @@ class BaseModel(object):
     for t in self._input_tensors:
       assert len(t.to_layers) > 0, "input tensor has not to_layers"
       
-  def _set_optimizer(self):
+  def _create_optimizer(self):
     assert self._ffoptimizer != None, "optimizer is not set"
     if (isinstance(self._ffoptimizer, SGD) == True):
       self._ffoptimizer.ffhandle = ff.SGDOptimizer(self._ffmodel, self._ffoptimizer.lr, self._ffoptimizer.momentum, self._ffoptimizer.nesterov)
-      self._ffmodel.set_sgd_optimizer(self._ffoptimizer.ffhandle)
     elif (isinstance(self._ffoptimizer, Adam) == True):
       self._ffoptimizer.ffhandle = ff.AdamOptimizer(self._ffmodel, self._ffoptimizer.lr, self._ffoptimizer.beta1, self._ffoptimizer.beta2, epsilon=self._ffoptimizer.epsilon)
+    else:
+      assert 0, "unknown optimizer"
+      
+  def _set_optimizer(self):
+    assert self._ffoptimizer != None, "optimizer is not set"
+    if (isinstance(self._ffoptimizer, SGD) == True):
+      self._ffmodel.set_sgd_optimizer(self._ffoptimizer.ffhandle)
+    elif (isinstance(self._ffoptimizer, Adam) == True):
       self._ffmodel.set_adam_optimizer(self._ffoptimizer.ffhandle)
     else:
       assert 0, "unknown optimizer"
