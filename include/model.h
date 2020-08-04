@@ -49,6 +49,7 @@ enum TaskIDs {
   CONV2D_FWD_TASK_ID,
   CONV2D_BWD_TASK_ID,
   CONV2D_UPD_TASK_ID,
+  EMBED_INIT_TASK_ID,
   EMBED_FWD_TASK_ID,
   EMBED_BWD_TASK_ID,
   POOL2D_INIT_TASK_ID,
@@ -379,9 +380,8 @@ public:
   Optimizer* optimizer;
   Loss* loss_op;
   Metrics* metrics_op;
-  //Tensor inputImage, inputRaw, inputLabel;
   Tensor label_tensor;
-  std::vector<Tensor> input_tensors;
+  //std::vector<Tensor> input_tensors;
   
   std::vector<Op*> layers;
   std::vector<Parameter> parameters;
