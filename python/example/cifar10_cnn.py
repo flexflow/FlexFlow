@@ -24,7 +24,7 @@ def top_level_task():
   t = ffmodel.flat(t);
   t = ffmodel.dense(t, 512, ActiMode.AC_MODE_RELU)
   t = ffmodel.dense(t, 10)
-  t = ffmodel.softmax(t, label)
+  t = ffmodel.softmax(t)
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)

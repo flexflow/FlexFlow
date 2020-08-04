@@ -56,7 +56,7 @@ def top_level_task():
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
   
-  model.fit(full_input_np, full_label_np, epochs=1)
+  model.fit(full_input_np, full_label_np, epochs=10)
 
 if __name__ == "__main__":
   print("Functional API, cifar10 alexnet")
