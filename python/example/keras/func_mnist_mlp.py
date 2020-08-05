@@ -5,6 +5,8 @@ from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
 from flexflow.keras import losses
 from flexflow.keras import metrics
+from flexflow.keras.callbacks import Callback, VerifyMetrics
+from example.accuracy import ModelAccuracy
 
 import flexflow.core as ff
 import numpy as np
@@ -35,7 +37,7 @@ def top_level_task():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', metrics.SparseCategoricalCrossentropy()])
 
-  model.fit(x_train, y_train, batch_size=64, epochs=1)
+  model.fit(x_train, y_train, batch_size=64, epochs=1, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP)])
 
 if __name__ == "__main__":
   print("Functional API, mnist mlp")

@@ -1,6 +1,7 @@
 from flexflow.core import *
 from flexflow.keras.datasets import cifar10
 
+from accuracy import ModelAccuracy
 from PIL import Image
 
 def top_level_task():
@@ -150,6 +151,11 @@ def top_level_task():
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, num_samples * epochs / run_time));
+  perf_metrics = ffmodel.get_perf_metrics()
+  accuracy = perf_metrics.get_accuracy()
+  if accuracy < ModelAccuracy.CIFAR10_ALEXNET.value:
+    assert 0, 'Check Accuracy'
+
   #ffmodel.print_layers(13)
 
   conv_2d1 = ffmodel.get_layer_by_id(0)

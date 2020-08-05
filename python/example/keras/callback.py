@@ -1,9 +1,10 @@
 from flexflow.keras.models import Model, Sequential
 from flexflow.keras.layers import Input, Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, concatenate
 import flexflow.keras.optimizers
-from flexflow.keras.callbacks import Callback, LearningRateScheduler
+from flexflow.keras.callbacks import Callback, LearningRateScheduler, VerifyMetrics
 from flexflow.keras.datasets import cifar10
 from flexflow.keras import backend as K
+from example.accuracy import ModelAccuracy
 
 import numpy as np
 
@@ -48,7 +49,7 @@ def top_level_task():
   
   mylr_scheduler = LearningRateScheduler(lr_scheduler)
 
-  model.fit(x_train, y_train, epochs=2, callbacks=[mylr_scheduler])
+  model.fit(x_train, y_train, epochs=2, callbacks=[mylr_scheduler, VerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
 
 if __name__ == "__main__":
   print("Functional API, cifar10 cnn callback")

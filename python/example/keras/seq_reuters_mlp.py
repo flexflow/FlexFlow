@@ -3,7 +3,10 @@ from flexflow.keras.layers import Flatten, Dense, Activation, Input
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import reuters
 from flexflow.keras.preprocessing.text import Tokenizer
+from flexflow.keras.callbacks import Callback, VerifyMetrics
+
 import numpy as np
+from example.accuracy import ModelAccuracy
 
 def top_level_task():
   
@@ -41,7 +44,7 @@ def top_level_task():
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
 
-  model.fit(x_train, y_train, epochs=epochs)
+  model.fit(x_train, y_train, epochs=epochs, callbacks=[VerifyMetrics(ModelAccuracy.REUTERS_MLP)])
 
 if __name__ == "__main__":
   print("Sequential model, reuters mlp")

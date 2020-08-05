@@ -60,3 +60,15 @@ class LearningRateScheduler(Callback):
                          'should be float.')
     self.model.optimizer.set_learning_rate(lr)
     print("set learning rate ", self.model.optimizer.lr)
+    
+class VerifyMetrics(Callback):
+  def __init__(self, accuracy):
+    super(VerifyMetrics, self).__init__()
+    self.accuracy = accuracy.value
+
+  def on_train_end(self, logs=None):
+    perf_metrics = self.model.ffmodel.get_perf_metrics()
+    accuracy = perf_metrics.get_accuracy()
+    if accuracy < self.accuracy:
+      assert 0, "Accuracy is wrong"
+    

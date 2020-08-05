@@ -5,6 +5,8 @@ from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
 from flexflow.keras import losses
 from flexflow.keras import metrics
+from flexflow.keras.callbacks import Callback, VerifyMetrics
+from example.accuracy import ModelAccuracy
 
 import flexflow.core as ff
 import numpy as np
@@ -69,7 +71,7 @@ def top_level_task():
   sd2.set_weights(student_model.ffmodel, d2_kernel, d2_bias)
   sd3.set_weights(student_model.ffmodel, d3_kernel, d3_bias)
 
-  student_model.fit(x_train, y_train, epochs=1)
+  student_model.fit(x_train, y_train, epochs=1, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP)])
 
 if __name__ == "__main__":
   print("Functional API, mnist mlp teach student")

@@ -2,6 +2,8 @@ from flexflow.core import *
 import numpy as np
 from flexflow.keras.datasets import mnist
 
+from accuracy import ModelAccuracy
+
 def top_level_task():
   ffconfig = FFConfig()
   ffconfig.parse_args()
@@ -82,6 +84,11 @@ def top_level_task():
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, num_samples * epochs / run_time));
+  
+  perf_metrics = ffmodel.get_perf_metrics()
+  accuracy = perf_metrics.get_accuracy()
+  if accuracy < ModelAccuracy.MNIST_MLP.value:
+    assert 0, 'Check Accuracy'
 
   dense1 = ffmodel.get_layer_by_id(0)
 

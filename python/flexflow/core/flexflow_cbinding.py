@@ -713,6 +713,10 @@ class FFModel(object):
     handle = ffc.flexflow_model_get_label_tensor(self.handle)
     return Tensor(handle, deallocate=False)
     
+  def get_perf_metrics(self):
+    handle = ffc.flexflow_model_get_perf_metrics(self.handle)
+    return PerfMetrics(handle)
+    
   def __get_initializer_handle(self, initializer):
     if (initializer == None):
       null_initializer = Initializer(None)
@@ -803,6 +807,19 @@ class NormInitializer(Initializer):
     self.norm_handle = ffc.flexflow_norm_initializer_create(seed, meanv, stddev)
     self._norm_handle = ffi.gc(self.norm_handle, ffc.flexflow_norm_initializer_destroy)
     super(ZeroInitializer, self).__init__(self.norm_handle)  
+
+# -----------------------------------------------------------------------
+# PerfMetrics
+# -----------------------------------------------------------------------
+
+class PerfMetrics(object):
+  __slots__= ['handle', '_handle']
+  def __init__(self, handle):
+    self.handle = handle
+    self._handle = ffi.gc(self.handle, ffc.flexflow_per_metrics_destroy)
+    
+  def get_accuracy(self):
+    return ffc.flexflow_per_metrics_get_accuracy(self.handle)
 
 # -----------------------------------------------------------------------
 # NetConfig
