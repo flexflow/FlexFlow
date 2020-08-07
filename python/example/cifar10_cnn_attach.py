@@ -1,5 +1,21 @@
+# Copyright 2020 Stanford University, Los Alamos National Laboratory
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 from flexflow.core import *
 from flexflow.keras.datasets import cifar10
+from accuracy import ModelAccuracy
 
 def next_batch(idx, x_train, input1, ffconfig):
   start = idx*ffconfig.get_batch_size()
@@ -40,8 +56,8 @@ def top_level_task():
   dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
   input = ffmodel.create_tensor(dims_input, "", DataType.DT_FLOAT)
 
-  dims_label = [ffconfig.get_batch_size(), 1]
-  label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
+  # dims_label = [ffconfig.get_batch_size(), 1]
+  # label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
   
   num_samples = 10000
   
@@ -61,9 +77,6 @@ def top_level_task():
   print(full_input_array.__array_interface__["strides"])
   print(full_input_array.shape, full_label_array.shape)
   print(full_label_array.__array_interface__["strides"])
-  
-  next_batch(0, x_train, input, ffconfig)
-  next_batch_label(0, y_train, label, ffconfig)
 
   t = ffmodel.conv2d(input, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
   t = ffmodel.conv2d(t, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
@@ -74,11 +87,15 @@ def top_level_task():
   t = ffmodel.flat(t);
   t = ffmodel.dense(t, 512, ActiMode.AC_MODE_RELU)
   t = ffmodel.dense(t, 10)
-  t = ffmodel.softmax(t, label)
+  t = ffmodel.softmax(t)
 
-  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
+  ffoptimizer = SGDOptimizer(ffmodel, 0.001)
   ffmodel.set_sgd_optimizer(ffoptimizer)
-  ffmodel.compile()
+  ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
+  label = ffmodel.get_label_tensor()
+  
+  next_batch(0, x_train, input, ffconfig)
+  next_batch_label(0, y_train, label, ffconfig)
 
   ffmodel.init_layers()
 
@@ -107,7 +124,11 @@ def top_level_task():
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, num_samples * epochs / run_time));
-  #ffmodel.print_layers(13)
+  
+  perf_metrics = ffmodel.get_perf_metrics()
+  accuracy = perf_metrics.get_accuracy()
+  if accuracy < ModelAccuracy.CIFAR10_CNN.value:
+    assert 0, 'Check Accuracy'
 
   conv_2d1 = ffmodel.get_layer_by_id(0)
   cbias_tensor = conv_2d1.get_input_tensor()

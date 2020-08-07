@@ -1,10 +1,27 @@
+# Copyright 2020 Stanford University, Los Alamos National Laboratory
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 from flexflow.keras.models import Sequential
 from flexflow.keras.layers import Flatten, Dense, Activation, Conv2D, MaxPooling2D
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
+from flexflow.keras.callbacks import Callback, VerifyMetrics
 
 import flexflow.core as ff
 import numpy as np
+from example.accuracy import ModelAccuracy
 
 def create_teacher_model_mlp(num_classes, x_train, y_train):
   model = Sequential()
@@ -56,7 +73,7 @@ def create_student_model_mlp(teacher_model, num_classes, x_train, y_train):
   print(d3_kernel)
   print(d3_bias)
 
-  model.fit(x_train, y_train, epochs=1)
+  model.fit(x_train, y_train, epochs=1, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP)])
   
 def top_level_task():
   num_classes = 10

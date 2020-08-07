@@ -36,6 +36,7 @@ FF_NEW_OPAQUE_TYPE(flexflow_uniform_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_norm_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_op_t);
 FF_NEW_OPAQUE_TYPE(flexflow_parameter_t);
+FF_NEW_OPAQUE_TYPE(flexflow_perf_metrics_t);
 FF_NEW_OPAQUE_TYPE(flexflow_net_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dataloader_4d_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dataloader_2d_t);
@@ -289,6 +290,10 @@ flexflow_parameter_t
 flexflow_model_get_parameter_by_id(
   flexflow_model_t handle,
   int layer_id);
+  
+flexflow_perf_metrics_t
+flexflow_model_get_perf_metrics(
+  flexflow_model_t handle);
 
 // -----------------------------------------------------------------------
 // Tensor
@@ -472,6 +477,17 @@ flexflow_norm_initializer_create(
 void  
 flexflow_norm_initializer_destroy(
   flexflow_norm_initializer_t handle);
+
+// -----------------------------------------------------------------------
+// PerfMetrics
+// -----------------------------------------------------------------------
+void
+flexflow_per_metrics_destroy(
+  flexflow_perf_metrics_t handle);
+
+float
+flexflow_per_metrics_get_accuracy(
+  flexflow_perf_metrics_t handle);
 
 // -----------------------------------------------------------------------
 // NetConfig

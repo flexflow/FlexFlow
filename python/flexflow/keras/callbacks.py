@@ -1,3 +1,18 @@
+# Copyright 2020 Stanford University, Los Alamos National Laboratory
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import flexflow.core as ff
 import numpy as np
 
@@ -45,3 +60,15 @@ class LearningRateScheduler(Callback):
                          'should be float.')
     self.model.optimizer.set_learning_rate(lr)
     print("set learning rate ", self.model.optimizer.lr)
+    
+class VerifyMetrics(Callback):
+  def __init__(self, accuracy):
+    super(VerifyMetrics, self).__init__()
+    self.accuracy = accuracy.value
+
+  def on_train_end(self, logs=None):
+    perf_metrics = self.model.ffmodel.get_perf_metrics()
+    accuracy = perf_metrics.get_accuracy()
+    if accuracy < self.accuracy:
+      assert 0, "Accuracy is wrong"
+    

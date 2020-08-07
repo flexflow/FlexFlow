@@ -1,3 +1,18 @@
+# Copyright 2020 Stanford University, Los Alamos National Laboratory
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 from flexflow.keras.models import Model, Sequential
 from flexflow.keras.layers import Input, Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, concatenate
 import flexflow.keras.optimizers
@@ -5,6 +20,8 @@ from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
 from flexflow.keras import losses
 from flexflow.keras import metrics
+from flexflow.keras.callbacks import Callback, VerifyMetrics
+from example.accuracy import ModelAccuracy
 
 import flexflow.core as ff
 import numpy as np
@@ -46,9 +63,8 @@ def top_level_task():
 
   teacher_model = Model(input_tensor1, output_tensor)
 
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
-  teacher_model.compile(optimizer=opt)
-  model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
+  teacher_model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
 
   teacher_model.fit(x_train, y_train, epochs=1)
 
@@ -89,9 +105,8 @@ def top_level_task():
 
   student_model = Model(input_tensor2, output_tensor)
 
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
-  student_model.compile(optimizer=opt)
-  model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
+  student_model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
 
   sc1_1.set_weights(student_model.ffmodel, c1_kernel, c1_bias)
   sc1_2.set_weights(student_model.ffmodel, c1_kernel, c1_bias)
@@ -101,7 +116,7 @@ def top_level_task():
   sd1.set_weights(student_model.ffmodel, d1_kernel, d1_bias)
   sd2.set_weights(student_model.ffmodel, d2_kernel, d2_bias)
 
-  student_model.fit(x_train, y_train, epochs=1)
+  student_model.fit(x_train, y_train, epochs=1, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
 
 if __name__ == "__main__":
   print("Functional API, cifarf10 cnn teach student")

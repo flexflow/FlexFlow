@@ -48,6 +48,7 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_norm_initializer_t, NormInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_op_t, Op *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_parameter_t, Parameter *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_perf_metrics_t, PerfMetrics *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_net_config_t, NetConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_4d_t, ImgDataLoader4D *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_2d_t, ImgDataLoader2D *);
@@ -584,6 +585,17 @@ flexflow_model_get_parameter_by_id(
   return FFCObjectWrapper::wrap(tensor);  
 }
 
+flexflow_perf_metrics_t
+flexflow_model_get_perf_metrics(
+  flexflow_model_t handle_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  PerfMetrics *perf_metrics = new PerfMetrics();
+  *perf_metrics = handle->current_metrics.get_result<PerfMetrics>();
+  ffc_log.print("[Model] create PerfMetrics %p, train_correct %d\n", perf_metrics, perf_metrics->train_correct);
+  return FFCObjectWrapper::wrap(perf_metrics);   
+}
+
 // -----------------------------------------------------------------------
 // Tensor
 // -----------------------------------------------------------------------
@@ -925,6 +937,27 @@ flexflow_norm_initializer_destroy(
   NormInitializer *handle = FFCObjectWrapper::unwrap(handle_);
   ffc_log.print("[NormInitializer] delete %p", handle);
   delete handle;
+}
+
+// -----------------------------------------------------------------------
+// PerfMetrics
+// -----------------------------------------------------------------------
+void
+flexflow_per_metrics_destroy(
+  flexflow_perf_metrics_t handle_)
+{
+  PerfMetrics *handle = FFCObjectWrapper::unwrap(handle_);
+  delete handle;
+  ffc_log.print("[PerfMetrics] delete PerfMetrics %p", handle);
+}
+
+float
+flexflow_per_metrics_get_accuracy(
+  flexflow_perf_metrics_t handle_)
+{
+  PerfMetrics *handle = FFCObjectWrapper::unwrap(handle_);
+  float accuracy = handle->train_correct * 100.0f / handle->train_all;
+  return accuracy;
 }
 
 // -----------------------------------------------------------------------
@@ -1274,8 +1307,8 @@ flexflow_op_add_to_model(
   flexflow_op_t handle_,
   flexflow_model_t model_)
 {
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  // Op *handle = FFCObjectWrapper::unwrap(handle_);
+  // FFModel *model = FFCObjectWrapper::unwrap(model_);
   assert(false);
   // Temporarily remove the following API
   // add an assertion in case anyone uses this API

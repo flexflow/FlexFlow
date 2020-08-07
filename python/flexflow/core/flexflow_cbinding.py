@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright 2020 Stanford, Los Alamos National Laboratory
+# Copyright 2020 Stanford University, Los Alamos National Laboratory
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
@@ -649,13 +648,21 @@ class FFModel(object):
   def update(self):
     ffc.flexflow_model_update(self.handle)
     
-  def compile(self, loss_type=None, metrics=None):
+  def compile(self, optimizer=None, loss_type=None, metrics=None):
     c_loss_type = enum_to_int(LossType, loss_type)
     metrics_int = []
     for metric in metrics:
       metrics_int.append(enum_to_int(MetricsType, metric))
     c_metrics = ffi.new("int[]", metrics_int)
     ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics))
+    # if isinstance(optimizer, SGDOptimizer) == True:
+    #   self.set_sgd_optimizer(optimizer)
+    # elif isinstance(optimizer, AdamOptimizer) == True:
+    #   self.set_adam_optimizer(optimizer)
+    # elif optimizer == None:
+    #   pass
+    # else:
+    #   assert 0, "[Model]: unknown optimizer"
     
   def zero_gradients(self):
     ffc.flexflow_model_zero_gradients(self.handle)
@@ -664,6 +671,7 @@ class FFModel(object):
     ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
     
   def set_adam_optimizer(self, optimizer):
+    print("sdhajkdhagdahjkdgasjhdgj", optimizer.handle, self.handle)
     ffc.flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
   
   def print_layers(self, id=-1):
@@ -702,6 +710,10 @@ class FFModel(object):
   def get_label_tensor(self):
     handle = ffc.flexflow_model_get_label_tensor(self.handle)
     return Tensor(handle, deallocate=False)
+    
+  def get_perf_metrics(self):
+    handle = ffc.flexflow_model_get_perf_metrics(self.handle)
+    return PerfMetrics(handle)
     
   def __get_initializer_handle(self, initializer):
     if (initializer == None):
@@ -793,6 +805,19 @@ class NormInitializer(Initializer):
     self.norm_handle = ffc.flexflow_norm_initializer_create(seed, meanv, stddev)
     self._norm_handle = ffi.gc(self.norm_handle, ffc.flexflow_norm_initializer_destroy)
     super(ZeroInitializer, self).__init__(self.norm_handle)  
+
+# -----------------------------------------------------------------------
+# PerfMetrics
+# -----------------------------------------------------------------------
+
+class PerfMetrics(object):
+  __slots__= ['handle', '_handle']
+  def __init__(self, handle):
+    self.handle = handle
+    self._handle = ffi.gc(self.handle, ffc.flexflow_per_metrics_destroy)
+    
+  def get_accuracy(self):
+    return ffc.flexflow_per_metrics_get_accuracy(self.handle)
 
 # -----------------------------------------------------------------------
 # NetConfig

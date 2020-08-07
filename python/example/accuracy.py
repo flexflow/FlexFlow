@@ -13,9 +13,11 @@
 # limitations under the License.
 #
 
-from . import optimizers
-from . import datasets
-from . import utils
-from . import models
-from . import layers
-from . import backend
+from enum import Enum
+
+class ModelAccuracy(Enum):
+  MNIST_MLP = 90
+  MNIST_CNN = 90
+  REUTERS_MLP = 90
+  CIFAR10_CNN = 15
+  CIFAR10_ALEXNET = 11
