@@ -24,7 +24,10 @@ SGDOptimizer::SGDOptimizer(const FFModel* _model,
                            bool _nesterov, double _weight_decay)
 : Optimizer(_model), lr(_lr), momentum(_momentum),
   nesterov(_nesterov), weight_decay(_weight_decay)
-{
+{}
+
+void SGDOptimizer::init(void)
+{  
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
   Initializer* initializer = new ZeroInitializer();
@@ -108,6 +111,9 @@ AdamOptimizer::AdamOptimizer(const FFModel* _model,
 : Optimizer(_model), alpha(_alpha), beta1(_beta1), beta2(_beta2),
   weight_decay(_weight_decay),
   epsilon(_epsilon), alpha_t(_alpha), beta1_t(1.0f), beta2_t(1.0f)
+{}
+  
+void AdamOptimizer::init(void)
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;

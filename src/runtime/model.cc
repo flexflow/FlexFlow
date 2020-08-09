@@ -255,7 +255,8 @@ void Op::zero_grad(const FFModel& ff)
 }
 
 FFModel::FFModel(FFConfig& _config)
-: op_global_guid(100), config(_config)
+: op_global_guid(100), config(_config),
+  optimizer(NULL), loss_op(NULL), metrics_op(NULL)
 {
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
@@ -964,6 +965,9 @@ void FFModel::compile(LossType loss_type,
     const int dims[] = {batch_size, channel};
     label_tensor = create_tensor<2>(dims, "", label_type);
   }
+  // init optimizer
+  assert(optimizer != NULL);
+  optimizer->init();
 }
 
 void FFModel::zero_gradients(void)
