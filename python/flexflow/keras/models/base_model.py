@@ -284,10 +284,8 @@ class BaseModel(object):
       
   def _create_optimizer(self):
     assert self._ffoptimizer != None, "optimizer is not set"
-    if (isinstance(self._ffoptimizer, SGD) == True):
-      self._ffoptimizer.ffhandle = ff.SGDOptimizer(self._ffmodel, self._ffoptimizer.lr, self._ffoptimizer.momentum, self._ffoptimizer.nesterov)
-    elif (isinstance(self._ffoptimizer, Adam) == True):
-      self._ffoptimizer.ffhandle = ff.AdamOptimizer(self._ffmodel, self._ffoptimizer.lr, self._ffoptimizer.beta1, self._ffoptimizer.beta2, epsilon=self._ffoptimizer.epsilon)
+    if (isinstance(self._ffoptimizer, SGD) == True) or (isinstance(self._ffoptimizer, Adam) == True):
+      self._ffoptimizer.create_ffhandle(self._ffmodel)
     else:
       assert 0, "unknown optimizer"
       
