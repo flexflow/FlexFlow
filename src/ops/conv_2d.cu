@@ -253,17 +253,21 @@ OpMeta* Conv2D::init_task(const Task *task,
 
   int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int input_h = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
+  int input_c = acc_input.rect.hi[2] - acc_input.rect.lo[2] + 1;
+  int input_n = acc_input.rect.hi[3] - acc_input.rect.lo[3] + 1;
   int output_w = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
   int output_h = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
-  printf("init conv (input): n(%d) c(%d) h(%d) w(%d)\n", conv->inputs[0].pdim[3],
-         conv->inputs[0].pdim[2], input_h, input_w);
-  printf("init conv (output): n(%d) c_out(%d) h(%d) w(%d)\n", conv->outputs[0].pdim[3],
-         conv->outputs[0].pdim[2], output_h, output_w);
+  int output_c = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
+  int output_n = acc_output.rect.hi[3] - acc_output.rect.lo[3] + 1;
+  printf("init conv (input): n(%d) c(%d) h(%d) w(%d)\n",
+         input_n, input_c, input_h, input_w);
+  printf("init conv (output): n(%d) c(%d) h(%d) w(%d)\n",
+          output_n, output_c, output_h, output_w);
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
-                                        conv->inputs[0].pdim[3],
-                                        conv->inputs[0].pdim[2],
+                                        input_n,
+                                        input_c,
                                         input_h,
                                         input_w));
   
@@ -271,16 +275,16 @@ OpMeta* Conv2D::init_task(const Task *task,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
                                         1,
-                                        conv->outputs[0].pdim[2],
+                                        output_c,
                                         1,
                                         1));
 
-  printf("filterDim: kernel(%d %d) c_in(%d), c_out(%d)\n", conv->kernel_h, conv->kernel_w, conv->inputs[0].pdim[2], conv->outputs[0].pdim[2]);
+  printf("filterDim: kernel(%d %d) c_in(%d), c_out(%d)\n", conv->kernel_h, conv->kernel_w, input_c, output_c);
   checkCUDNN(cudnnSetFilter4dDescriptor(m->filterDesc,
                                         CUDNN_DATA_FLOAT,
                                         CUDNN_TENSOR_NCHW,
-                                        conv->outputs[0].pdim[2],
-                                        conv->inputs[0].pdim[2],
+                                        output_c,
+                                        input_c,
                                         conv->kernel_h,
                                         conv->kernel_w));
 
@@ -308,8 +312,8 @@ OpMeta* Conv2D::init_task(const Task *task,
                                                    m->inputTensor,
                                                    m->filterDesc,
                                                    &n, &c, &h, &w));
-  assert(n == conv->outputs[0].pdim[3]);
-  assert(c == conv->outputs[0].pdim[2]);
+  assert(n == output_n);
+  assert(c == output_c);
   assert(h == output_h);
   assert(w == output_w);
 

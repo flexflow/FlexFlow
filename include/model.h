@@ -127,7 +127,7 @@ struct Tensor {
     numDim = 0;
     for (int i = 0; i < MAX_DIM; i++) {
       adim[i] = 0;
-      pdim[i] = 0;
+      //pdim[i] = 0;
     }
     region = LogicalRegion::NO_REGION;
     region_grad = LogicalRegion::NO_REGION;
@@ -149,7 +149,7 @@ struct Tensor {
                              Tensor& tensor,
                              OperatorType type);
   size_t get_volume();
-  int numDim, adim[MAX_DIM], pdim[MAX_DIM];
+  int numDim, adim[MAX_DIM];
   DataType data_type;
   // Describes the ownership of this tensor
   Op* owner_op;

@@ -309,78 +309,6 @@ FFModel::FFModel(FFConfig& _config)
   for (PointInRectIterator<2> it(task_rect); it(); it++) {
     handlers[idx++] = fm.get_result<FFHandler>(*it);
   }
-#ifdef DEADCODE
-  // Build logical regions for images
-  Rect<4> part_rect(Point<4>(0, 0, 0, 0),
-      Point<4>(0, 0, 0, config.numNodes * config.workersPerNode-1));
-  IndexSpaceT<4> part_is = runtime->create_index_space(ctx, part_rect);
-  Rect<4> image_rect(Point<4>(0, 0, 0, 0),
-    Point<4>(config.inputWidth-1, config.inputHeight-1, 2, config.batchSize-1));
-  IndexSpaceT<4> image_is = runtime->create_index_space(ctx, image_rect);
-  LogicalRegion image_lr = runtime->create_logical_region(ctx, image_is,
-                               config.field_space);
-  //LogicalRegion image_grad_lr = runtime->create_logical_region(ctx, image_is,
-  //                                  config.field_space);
-  int extentW = config.inputWidth;
-  int extentH = config.inputHeight;
-  int extentC = 3;
-  assert(config.batchSize % (config.numNodes * config.workersPerNode) == 0);
-  int extentN = config.batchSize / (config.numNodes * config.workersPerNode);
-  Rect<4> extent(Point<4>(0, 0, 0, 0),
-                 Point<4>(extentW-1, extentH-1, extentC-1, extentN-1));
-  Transform<4, 4> transform;
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++)
-      transform[i][j] = 0;
-  transform[0][0] = extentW;
-  transform[1][1] = extentH;
-  transform[2][2] = 3;
-  transform[3][3] = extentN;
-  IndexPartition image_ip =
-    runtime->create_partition_by_restriction(ctx, image_is, part_is, transform, extent);
-  assert(runtime->is_index_partition_disjoint(ctx, image_ip));
-  assert(runtime->is_index_partition_complete(ctx, image_ip));
-  LogicalPartition image_lp = runtime->get_logical_partition(ctx, image_lr, image_ip);
-  //LogicalPartition image_grad_lp =
-  //  runtime->get_logical_partition(ctx, image_grad_lr, image_ip);
-  inputImage.numDim = 4;
-  inputImage.adim[0] = config.inputWidth;
-  inputImage.adim[1] = config.inputHeight;
-  inputImage.adim[2] = 3;
-  inputImage.adim[3] = config.batchSize;
-  inputImage.pdim[0] = extentW;
-  inputImage.pdim[1] = extentH;
-  inputImage.pdim[2] = 3;
-  inputImage.pdim[3] = extentN;
-  inputImage.region = image_lr;
-  inputImage.region_grad = LogicalRegion::NO_REGION;
-  inputImage.part = image_lp;
-  inputImage.part_grad = LogicalPartition::NO_PART;
-  // Build local regions for input raw images
-  int extentHWC = config.inputHeight * config.inputWidth * 3;
-  Rect<2> raw_rect(Point<2>(0, 0), Point<2>(extentHWC-1, config.batchSize-1));
-  IndexSpaceT<2> raw_is = runtime->create_index_space(ctx, raw_rect);
-  LogicalRegion raw_lr =
-      runtime->create_logical_region(ctx, raw_is, config.field_space);
-  Transform<2, 4> raw_trans;
-  Rect<2> raw_ext(Point<2>(0, 0), Point<2>(extentHWC-1, extentN-1));
-  for (int i = 0; i < 2; i++)
-    for (int j = 0; j < 4; j++)
-      raw_trans[i][j] = 0;
-  raw_trans[1][3] = extentN;
-  IndexPartition raw_ip =
-    runtime->create_partition_by_restriction(ctx, raw_is, part_is, raw_trans, raw_ext);
-  assert(runtime->is_index_partition_disjoint(ctx, raw_ip));
-  assert(runtime->is_index_partition_complete(ctx, raw_ip));
-  LogicalPartition raw_lp = runtime->get_logical_partition(ctx, raw_lr, raw_ip);
-  inputRaw.numDim = 2; //Dim [HWC, N]
-  inputRaw.adim[0] = extentHWC;
-  inputRaw.adim[1] = config.batchSize;
-  inputRaw.pdim[0] = extentHWC;
-  inputRaw.pdim[1] = extentN;
-  inputRaw.region = raw_lr;
-  inputRaw.part = raw_lp;
-#endif
 }
 
 template<int NDIM>
@@ -476,7 +404,7 @@ Tensor FFModel::create_tensor(const int dims[],
   tensor.numDim = NDIM;
   for (int i = 0; i < NDIM; i++) {
     tensor.adim[i] = rect.hi[i] - rect.lo[i] + 1;
-    tensor.pdim[i] = extent.hi[i] - extent.lo[i] + 1;
+    //tensor.pdim[i] = extent.hi[i] - extent.lo[i] + 1;
   }
 
   return tensor;

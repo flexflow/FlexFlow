@@ -148,27 +148,16 @@ OpMeta* BatchNorm::init_task(const Task *task,
   assert(task->regions.size() == 4);
   const BatchNorm* bm = (BatchNorm*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
-  const AccessorRO<float, 4> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 4> acc_output(regions[1], FID_DATA);
-  const AccessorRO<float, 1> acc_scale(regions[2], FID_DATA);
-  const AccessorRO<float, 1> acc_bias(regions[3], FID_DATA);
-  Rect<1> rect_scale, rect_bias;
-  Rect<4> rect_input, rect_output;
-  rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  rect_scale = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
-  rect_bias = runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
-  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
-  assert(acc_output.accessor.is_dense_arbitrary(rect_output));
-  assert(acc_scale.accessor.is_dense_arbitrary(rect_scale));
-  assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
-  const float *input_ptr = acc_input.ptr(rect_input.lo);
-  float *output_ptr = acc_output.ptr(rect_output.lo);
-  const float *scale_ptr = acc_scale.ptr(rect_scale.lo);
-  const float *bias_ptr = acc_bias.ptr(rect_bias.lo);
+  TensorAccessorR<float, 4> acc_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 4> acc_output(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, 1> acc_scale(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, 1> acc_bias(
+      regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
   BatchNormMeta* m = new BatchNormMeta(handle);
-#ifndef DISABLE_COMPUTATION
   m->relu = bm->relu;
   m->mode = CUDNN_BATCHNORM_SPATIAL;
 #if CUDNN_VERSION >= 7000
@@ -179,36 +168,41 @@ OpMeta* BatchNorm::init_task(const Task *task,
   checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&m->biasTensor));
 
-  assert(rect_input == rect_output);
-  int input_w = rect_input.hi[0] - rect_input.lo[0] + 1;
-  int input_h = rect_input.hi[1] - rect_input.lo[1] + 1;
-  int channel = bm->inputs[0].pdim[2];
+  assert(acc_input.rect == acc_output.rect);
+  int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
+  int input_h = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
+  int input_c = acc_input.rect.hi[2] - acc_input.rect.lo[2] + 1;
+  int input_n = acc_input.rect.hi[3] - acc_input.rect.lo[3] + 1;
+  int output_w = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
+  int output_h = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
+  int output_c = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
+  int output_n = acc_output.rect.hi[3] - acc_output.rect.lo[3] + 1;
+
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
-                                        bm->inputs[0].pdim[3],
-                                        channel, input_h, input_w));
+                                        input_n, input_c,
+                                        input_h, input_w));
   checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
-                                        bm->inputs[0].pdim[3],
-                                        channel, input_h, input_w));
+                                        output_n, output_c,
+                                        output_h, output_w));
   checkCUDNN(cudnnSetTensor4dDescriptor(m->biasTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
-                                        1, channel, 1, 1));
+                                        1, output_c, 1, 1));
   //float *runningMean, *runningVar, *saveMean, *saveVar;
-  checkCUDA(cudaMalloc(&m->runningMean, sizeof(float) * channel));
-  checkCUDA(cudaMalloc(&m->runningVar, sizeof(float) * channel));
-  checkCUDA(cudaMalloc(&m->saveMean, sizeof(float) * channel));
-  checkCUDA(cudaMalloc(&m->saveVar, sizeof(float) * channel));
+  checkCUDA(cudaMalloc(&m->runningMean, sizeof(float) * output_c));
+  checkCUDA(cudaMalloc(&m->runningVar, sizeof(float) * output_c));
+  checkCUDA(cudaMalloc(&m->saveMean, sizeof(float) * output_c));
+  checkCUDA(cudaMalloc(&m->saveVar, sizeof(float) * output_c));
   if (m->relu) {
     checkCUDNN(cudnnCreateActivationDescriptor(&m->actiDesc));
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
                                             CUDNN_PROPAGATE_NAN, 0.0));
     
   }
-#endif
   return m;
 }
 
@@ -315,30 +309,19 @@ void BatchNorm::forward_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, Runtime *runtime)
 {
-#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   float alpha = 1.0f, beta = 0.0f;
   const BatchNorm* bm = (BatchNorm*) task->args;
   const BatchNormMeta* m = *((BatchNormMeta**) task->local_args);
-  const AccessorRO<float, 4> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 4> acc_output(regions[1], FID_DATA);
-  const AccessorRO<float, 1> acc_scale(regions[2], FID_DATA);
-  const AccessorRO<float, 1> acc_bias(regions[3], FID_DATA);
-  Rect<4> rect_input, rect_output;
-  Rect<1> rect_scale, rect_bias;
-  rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  rect_scale = runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
-  rect_bias = runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
-  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
-  assert(acc_output.accessor.is_dense_arbitrary(rect_output));
-  assert(acc_scale.accessor.is_dense_arbitrary(rect_scale));
-  assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
-  const float *input_ptr = acc_input.ptr(rect_input.lo);
-  float *output_ptr = acc_output.ptr(rect_output.lo);
-  const float *scale_ptr = acc_scale.ptr(rect_scale.lo);
-  const float *bias_ptr = acc_bias.ptr(rect_bias.lo);  
+  TensorAccessorR<float, 4> acc_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 4> acc_output(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, 1> acc_scale(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, 1> acc_bias(
+      regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
   cudaEvent_t t_start, t_end;
   if (bm->profiling) {
@@ -346,15 +329,17 @@ void BatchNorm::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  coord_t numChannels = bm->inputs[0].pdim[2];
+#endif
+  coord_t numChannels = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
   assign_kernel<<<GET_BLOCKS(numChannels), CUDA_NUM_THREADS>>>(m->runningMean, numChannels, 0.0f);
   assign_kernel<<<GET_BLOCKS(numChannels), CUDA_NUM_THREADS>>>(m->runningVar, numChannels, 0.0f);
   checkCUDNN(cudnnBatchNormalizationForwardTraining(
-             m->handle.dnn, m->mode, &alpha, &beta, m->inputTensor, input_ptr,
-             m->outputTensor, output_ptr, m->biasTensor, scale_ptr, bias_ptr,
+             m->handle.dnn, m->mode, &alpha, &beta, m->inputTensor, acc_input.ptr,
+             m->outputTensor, acc_output.ptr, m->biasTensor, acc_scale.ptr, acc_bias.ptr,
              1.0, m->runningMean, m->runningVar, CUDNN_BN_MIN_EPSILON,
              m->saveMean, m->saveVar));
   if (bm->profiling) {
@@ -366,7 +351,6 @@ void BatchNorm::forward_task(const Task *task,
     cudaEventDestroy(t_end);
     printf("BatchNorm forward time (BF) = %.2fms\n", elapsed);
   }
-#endif
 }
 
 __host__
