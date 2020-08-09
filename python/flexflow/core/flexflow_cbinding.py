@@ -649,20 +649,21 @@ class FFModel(object):
     ffc.flexflow_model_update(self.handle)
     
   def compile(self, optimizer=None, loss_type=None, metrics=None):
+    if isinstance(optimizer, SGDOptimizer) == True:
+      self.set_sgd_optimizer(optimizer)
+    elif isinstance(optimizer, AdamOptimizer) == True:
+      self.set_adam_optimizer(optimizer)
+    elif optimizer == None:
+      pass
+    else:
+      assert 0, "[Model]: unknown optimizer"
+      
     c_loss_type = enum_to_int(LossType, loss_type)
     metrics_int = []
     for metric in metrics:
       metrics_int.append(enum_to_int(MetricsType, metric))
     c_metrics = ffi.new("int[]", metrics_int)
     ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics))
-    # if isinstance(optimizer, SGDOptimizer) == True:
-    #   self.set_sgd_optimizer(optimizer)
-    # elif isinstance(optimizer, AdamOptimizer) == True:
-    #   self.set_adam_optimizer(optimizer)
-    # elif optimizer == None:
-    #   pass
-    # else:
-    #   assert 0, "[Model]: unknown optimizer"
     
   def zero_gradients(self):
     ffc.flexflow_model_zero_gradients(self.handle)
@@ -671,7 +672,6 @@ class FFModel(object):
     ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
     
   def set_adam_optimizer(self, optimizer):
-    print("sdhajkdhagdahjkdgasjhdgj", optimizer.handle, self.handle)
     ffc.flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
   
   def print_layers(self, id=-1):

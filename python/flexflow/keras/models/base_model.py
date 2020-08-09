@@ -177,12 +177,11 @@ class BaseModel(object):
     self._verify_input_tensors()
     
     self._ffoptimizer = optimizer
+    self._create_optimizer()
     metrics_type = []
     for metric in self._metrics:
       metrics_type.append(metric.type)
-    self._ffmodel.compile(loss_type=self._loss.type, metrics=metrics_type)
-    self._create_optimizer()
-    self._set_optimizer()
+    self._ffmodel.compile(optimizer=self._ffoptimizer.ffhandle, loss_type=self._loss.type, metrics=metrics_type)
     self._create_label_tensor()
     print(self._input_tensors[0], self._output_tensor, self._input_tensors[0].ffhandle, self._output_tensor.ffhandle)
   
@@ -286,15 +285,6 @@ class BaseModel(object):
     assert self._ffoptimizer != None, "optimizer is not set"
     if (isinstance(self._ffoptimizer, SGD) == True) or (isinstance(self._ffoptimizer, Adam) == True):
       self._ffoptimizer.create_ffhandle(self._ffmodel)
-    else:
-      assert 0, "unknown optimizer"
-      
-  def _set_optimizer(self):
-    assert self._ffoptimizer != None, "optimizer is not set"
-    if (isinstance(self._ffoptimizer, SGD) == True):
-      self._ffmodel.set_sgd_optimizer(self._ffoptimizer.ffhandle)
-    elif (isinstance(self._ffoptimizer, Adam) == True):
-      self._ffmodel.set_adam_optimizer(self._ffoptimizer.ffhandle)
     else:
       assert 0, "unknown optimizer"
     
