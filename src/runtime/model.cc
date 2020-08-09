@@ -92,6 +92,47 @@ void Tensor::detach_raw_ptr(FFConfig &config)
   runtime->detach_external_resource(ctx, physical_region);
 }
 
+bool Tensor::get_input_sub_tensor(const ParallelConfig& pc,
+                                  Tensor& tensor,
+                                  OperatorType type)
+{
+  //TODO: consider reduction dim for conv2d and linear
+  if (pc.nDims != numDim)
+    return false;
+  for (int i = 0; i < numDim; i++)
+    if (adim[i] % pc.dim[i] != 0)
+      return false;
+  tensor.numDim = numDim;
+  for (int i = 0; i < numDim; i++)
+    tensor.adim[i] = adim[i] / pc.dim[i];
+  tensor.data_type = data_type;
+  return true;
+}
+
+bool Tensor::get_output_sub_tensor(const ParallelConfig& pc,
+                                   Tensor& tensor,
+                                   OperatorType type)
+{
+  if (pc.nDims != numDim)
+    return false;
+  for (int i = 0; i < numDim; i++)
+    if (adim[i] % pc.dim[i] != 0)
+      return false;
+  tensor.numDim = numDim;
+  for (int i = 0; i < numDim; i++)
+    tensor.adim[i] = adim[i] / pc.dim[i];
+  tensor.data_type = data_type;
+  return true;
+}
+
+size_t Tensor::get_volume()
+{
+  size_t volume = 1;
+  for (int i = 0; i < numDim; i++)
+    volume *= adim[i];
+  return volume;
+}
+
 Op::Op(FFModel& model,
        const std::string& _name,
        const Tensor& _input)

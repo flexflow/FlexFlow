@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2020 Stanford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,13 @@
 #include "legion.h"
 #include "config.h"
 #include "initializer.h"
+#include "simulator.h"
 #include "optimizer.h"
 #include "accessor.h"
 #include "loss_functions.h"
 #include "metrics_functions.h"
-#include <cudnn.h>
 #include <cuda_runtime.h>
 #include <curand.h>
-#include <cublas_v2.h>
 #include <unistd.h>
 
 using namespace Legion;
@@ -119,13 +118,6 @@ enum FieldIDs {
   FID_DATA,
 };
 
-struct FFHandler {
-  cudnnHandle_t dnn;
-  cublasHandle_t blas;
-  void *workSpace;
-  size_t workSpaceSize;
-};
-
 class FFModel;
 class Op;
 class DataLoader;
@@ -150,6 +142,13 @@ struct Tensor {
   T* get_raw_ptr(FFConfig &config);
   void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major);
   void detach_raw_ptr(FFConfig &config);
+  bool get_input_sub_tensor(const ParallelConfig& pc,
+                            Tensor& tensor,
+                            OperatorType type);
+  bool get_output_sub_tensor(const ParallelConfig& pc,
+                             Tensor& tensor,
+                             OperatorType type);
+  size_t get_volume();
   int numDim, adim[MAX_DIM], pdim[MAX_DIM];
   DataType data_type;
   // Describes the ownership of this tensor
@@ -467,6 +466,18 @@ public:
   OpType op_type;
 };
 
+class Conv2DMeta : public OpMeta {
+public:
+  Conv2DMeta(FFHandler handler);
+  cudnnTensorDescriptor_t inputTensor, biasTensor, outputTensor;
+  cudnnFilterDescriptor_t filterDesc;
+  cudnnActivationDescriptor_t actiDesc;
+  cudnnConvolutionDescriptor_t convDesc;
+  cudnnConvolutionFwdAlgo_t fwdAlgo;
+  cudnnConvolutionBwdFilterAlgo_t bwdFilterAlgo;
+  cudnnConvolutionBwdDataAlgo_t bwdDataAlgo;
+  bool relu;
+};
 
 class Conv2D : public Op {
 public:
@@ -481,14 +492,14 @@ public:
          Initializer* kernel_initializer,
          Initializer* bias_initializer);
   Conv2D(FFModel& model,
-        int in_dim, int out_dim,
-        int kernelH, int kernelW,
-        int strideH, int strideW,
-        int paddingH, int paddingW,
-        ActiMode activation,
-        bool use_bias,
-        Initializer* kernel_initializer,
-        Initializer* bias_initializer);
+         int in_dim, int out_dim,
+         int kernelH, int kernelW,
+         int strideH, int strideW,
+         int paddingH, int paddingW,
+         ActiMode activation,
+         bool use_bias,
+         Initializer* kernel_initializer,
+         Initializer* bias_initializer);
   Tensor init_inout(FFModel& model, const Tensor& input);
   //void add_to_model(FFModel& model);
   void init(const FFModel&);
@@ -504,18 +515,31 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  //static void init_para_task(const Task *task,
-  //                           const std::vector<PhysicalRegion> &regions,
-  //                           Context ctx, Runtime *runtime);
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, HighLevelRuntime *runtime);
-  //static void update_task(const Task *task,
-  //                        const std::vector<PhysicalRegion> &regions,
-  //                        Context ctx, HighLevelRuntime *runtime);
+  void forward_kernel(const Conv2DMeta* m,
+                      const float* input_ptr,
+                      float* output_ptr,
+                      const float* filter_ptr,
+                      const float* bias_ptr);
+  void backward_kernel(const Conv2DMeta* m,
+                       const float* input_ptr,
+                       float* input_grad_ptr,
+                       const float* output_ptr,
+                       float* output_grad_ptr,
+                       const float* kernel_ptr,
+                       float* kernel_grad_ptr,
+                       float* bias_ptr);
+  bool measure_forward_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time);
+  bool measure_backward_time(Simulator* sim,
+                             const ParallelConfig& pc,
+                             float& forward_time);
 public:
   //IndexSpaceT<4> task_is;
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
@@ -523,23 +547,6 @@ public:
   ActiMode activation;
   Initializer *kernel_initializer;
   Initializer *bias_initializer;
-  //PhysicalRegion kernel_physical_region;
-  //PhysicalRegion bias_physical_region;
-  //TensorAccessorW<float, 4> acc_kernel;
-  //TensorAccessorW<float, 1> acc_bias;
-};
-
-class Conv2DMeta : public OpMeta {
-public:
-  Conv2DMeta(FFHandler handler) : OpMeta(handler) {};
-  cudnnTensorDescriptor_t inputTensor, biasTensor, outputTensor;
-  cudnnFilterDescriptor_t filterDesc;
-  cudnnActivationDescriptor_t actiDesc;
-  cudnnConvolutionDescriptor_t convDesc;
-  cudnnConvolutionFwdAlgo_t fwdAlgo;
-  cudnnConvolutionBwdFilterAlgo_t bwdFilterAlgo;
-  cudnnConvolutionBwdDataAlgo_t bwdDataAlgo;
-  bool relu, first_layer;
 };
 
 class Pool2D : public Op {

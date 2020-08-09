@@ -13,54 +13,23 @@
 # limitations under the License.
 #
 
-ifndef LG_RT_DIR
-#$(error LG_RT_DIR variable is not defined, aborting build)
-LG_RT_DIR	?= ../../legion/runtime
-endif
-
-ifndef FF_HOME
-$(error FF_HOME variable is not defined, aborting build)
-endif
-
-#ifndef CUDNN_HOME
-#$(error CUDNN_HOME variable is not defined, aborting build)
-#endif
-
 # Flags for directing the runtime makefile what to include
-DEBUG           ?= 1		# Include debugging symbols
+DEBUG           ?= 0		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
-USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
+USE_HDF         ?= 1		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 
 # Put the binary file name here
 OUTFILE		?= inception
 # List all the application source files here
-GEN_SRC		?= ../../src/runtime/model.cc ../../src/mapper/mapper.cc ../../src/runtime/initializer.cc ../../src/runtime/optimizer.cc\
-		../../src/metrics_functions/metrics_functions.cc ../../src/ops/embedding.cc\
-		../../src/runtime/strategy.pb.cc ../../src/runtime/strategy.cc inception.cc
-GEN_GPU_SRC	?= ../../src/ops/conv_2d.cu ../../src/runtime/model.cu ../../src/ops/pool_2d.cu ../../src/ops/batch_norm.cu ../../src/ops/linear.cu  \
-		../../src/ops/softmax.cu ../../src/ops/concat.cu ../../src/ops/flat.cu ../../src/ops/embedding.cu\
-		../../src/ops/element_binary.cu ../../src/ops/element_unary.cu \
-		../../src/loss_functions/loss_functions.cu ../../src/metrics_functions/metrics_functions.cu\
-		../../src/runtime/initializer_kernel.cu ../../src/runtime/optimizer_kernel.cu ../../src/runtime/accessor_kernel.cu\
-		../../src/runtime/cuda_helper.cu inception.cu# .cu files
+GEN_SRC		= inception.cc
+GEN_GPU_SRC	= inception.cu
 
-# You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -I../../include/ -I${FF_HOME}/protobuf/src -I${CUDNN_HOME}/include
-CC_FLAGS	?=
-NVCC_FLAGS	?=
-GASNET_FLAGS	?=
-LD_FLAGS	?= -lcuda -lcudart -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L${FF_HOME}/protobuf/src/.libs -L${CUDNN_HOME}/lib64
-# For Point and Rect typedefs
-CC_FLAGS	+= -DDISABLE_LEGION_CUDA_HIJACK -std=c++11
-NVCC_FLAGS  	+= -DDISABLE_LEGION_CUDA_HIJACK -std=c++11
-###########################################################################
-#
-#   Don't change anything below here
-#   
-###########################################################################
+ifndef FF_HOME
+$(error FF_HOME variable is not defined, aborting build)
+endif
 
-include $(LG_RT_DIR)/runtime.mk
+include $(FF_HOME)/FlexFlow.mk

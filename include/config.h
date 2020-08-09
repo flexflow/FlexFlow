@@ -17,6 +17,8 @@
 #define _FLEXFLOW_CONFIG_H_
 #include <cstring>
 #include "legion.h"
+#include <cudnn.h>
+#include <cublas_v2.h>
 
 // ========================================================
 // Define Runtime Constants
@@ -45,6 +47,13 @@ struct ParallelConfig {
   DeviceType device_type;
   int nDims, dim[MAX_DIM];
   int device_ids[MAX_NUM_WORKERS];
+};
+
+struct FFHandler {
+  cudnnHandle_t dnn;
+  cublasHandle_t blas;
+  void *workSpace;
+  size_t workSpaceSize;
 };
 
 bool load_strategies_from_file(const std::string& filename,

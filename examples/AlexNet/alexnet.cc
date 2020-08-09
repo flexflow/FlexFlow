@@ -258,7 +258,7 @@ void DataLoader::load_entire_dataset(const Task *task,
     size_t ret = fread(buffer, sizeof(unsigned char), 3073, file);
     assert(ret = 3073);
     if ((i+1) % 1000 == 0)
-      log_app.print("Loaded %d samples", i+1);
+      log_app.print("Loaded %ld samples", i+1);
     label_ptr[i] = buffer[0];
     nearest_neigh(image, buffer + 1, height, width,
                   origHeight, origWidth, heightScale, widthScale);
