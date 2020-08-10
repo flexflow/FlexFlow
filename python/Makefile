@@ -17,11 +17,27 @@ ifndef FF_HOME
 $(error FF_HOME variable is not defined, aborting build)
 endif
 
+ifndef CUDA_HOME
+$(error CUDA_HOME variable is not defined, aborting build)
+endif
+
+ifndef CUDNN_HOME
+$(error CUDNN_HOME variable is not defined, aborting build)
+endif
+
 ifndef LG_RT_DIR
 LG_RT_DIR	?= $(FF_HOME)/legion/runtime
 endif
 
+ifdef PROTOBUF_DIR
+PROTOBUF_EXE ?= $(PROTOBUF_DIR)/bin/protoc
+PROTOBUF_LIB ?= $(PROTOBUF_DIR)/lib
+PROTOBUF_INC ?= $(PROTOBUF_DIR)/include
+else
 PROTOBUF_EXE ?= $(FF_HOME)/protobuf/src/protoc
+PROTOBUF_LIB ?= $(FF_HOME)/protobuf/src/.libs
+PROTOBUF_INC ?= ${FF_HOME}/protobuf/src
+endif
 
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 1		# Include debugging symbols
@@ -82,11 +98,11 @@ GEN_SRC		?= main.cc flexflow_c.cc flexflow_dataloader.cc strategy.pb.cc $(FF_SRC
 GEN_GPU_SRC	?= $(FF_GPU_SRC)		# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -I$(FF_HOME)/include -I$(FF_HOME)/protobuf/src -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
+INC_FLAGS	?= -I$(FF_HOME)/include -I$(PROTOBUF_INC) -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
 CC_FLAGS	?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON -std=c++11
 NVCC_FLAGS	?= -std=c++11
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lprotobuf -lcudnn -lcublas -lcurand -L$(FF_HOME)/protobuf/src/.libs -L$(CUDNN_HOME)/lib64 -L$(CUDNN_HOME)/lib64
+LD_FLAGS	?= -lprotobuf -lcudnn -lcublas -lcurand -L$(PROTOBUF_LIB) -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64
 
 ifeq ($(shell uname), Darwin)
 	LD_FLAGS += -Wl,-force_load,liblegion.a
