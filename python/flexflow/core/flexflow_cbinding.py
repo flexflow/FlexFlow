@@ -59,25 +59,25 @@ class LossType(Enum):
   LOSS_MEAN_SQUARED_ERROR_SUM_REDUCE = 53
   
 class MetricsType(Enum):
-  METRICS_ACCURACY = 1
-  METRICS_CATEGORICAL_CROSSENTROPY = 2
-  METRICS_SPARSE_CATEGORICAL_CROSSENTROPY = 4
-  METRICS_MEAN_SQUARED_ERROR = 8
-  METRICS_ROOT_MEAN_SQUARED_ERROR = 16
-  METRICS_MEAN_ABSOLUTE_ERROR=32
+  METRICS_ACCURACY = 1001
+  METRICS_CATEGORICAL_CROSSENTROPY = 1002
+  METRICS_SPARSE_CATEGORICAL_CROSSENTROPY = 1004
+  METRICS_MEAN_SQUARED_ERROR = 1008
+  METRICS_ROOT_MEAN_SQUARED_ERROR = 1016
+  METRICS_MEAN_ABSOLUTE_ERROR=1032
   
 class OpType(Enum):
-  CONV2D = 1011
-  EMBEDDING = 1012
-  POOL2D = 1013
-  LINEAR = 1014
-  SOFTMAX = 1015
-  CONCAT = 1016
-  FLAT = 1017
-  ELEMENT_UNARY = 1018
-  ELEMENT_BINARY = 1019
-  MSELOSS = 1020
-  BATCH_NORM = 1021
+  CONV2D = 2011
+  EMBEDDING = 2012
+  POOL2D = 2013
+  LINEAR = 2014
+  SOFTMAX = 2015
+  CONCAT = 2016
+  FLAT = 2017
+  ELEMENT_UNARY = 2018
+  ELEMENT_BINARY = 2019
+  MSELOSS = 2020
+  BATCH_NORM = 2021
   
 def enum_to_int(enum, enum_item):
   for item in enum:
@@ -649,20 +649,21 @@ class FFModel(object):
     ffc.flexflow_model_update(self.handle)
     
   def compile(self, optimizer=None, loss_type=None, metrics=None):
+    if isinstance(optimizer, SGDOptimizer) == True:
+      self.set_sgd_optimizer(optimizer)
+    elif isinstance(optimizer, AdamOptimizer) == True:
+      self.set_adam_optimizer(optimizer)
+    elif optimizer == None:
+      pass
+    else:
+      assert 0, "[Model]: unknown optimizer"
+      
     c_loss_type = enum_to_int(LossType, loss_type)
     metrics_int = []
     for metric in metrics:
       metrics_int.append(enum_to_int(MetricsType, metric))
     c_metrics = ffi.new("int[]", metrics_int)
     ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics))
-    # if isinstance(optimizer, SGDOptimizer) == True:
-    #   self.set_sgd_optimizer(optimizer)
-    # elif isinstance(optimizer, AdamOptimizer) == True:
-    #   self.set_adam_optimizer(optimizer)
-    # elif optimizer == None:
-    #   pass
-    # else:
-    #   assert 0, "[Model]: unknown optimizer"
     
   def zero_gradients(self):
     ffc.flexflow_model_zero_gradients(self.handle)
@@ -671,7 +672,6 @@ class FFModel(object):
     ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
     
   def set_adam_optimizer(self, optimizer):
-    print("sdhajkdhagdahjkdgasjhdgj", optimizer.handle, self.handle)
     ffc.flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
   
   def print_layers(self, id=-1):

@@ -20,11 +20,18 @@ class SGD(object):
     self.lr = learning_rate
     self.momentum = momentum
     self.nesterov = nesterov
-    self.ffhandle = None
+    self._ffhandle = None
+    
+  @property
+  def ffhandle(self):
+    return self._ffhandle
+    
+  def create_ffhandle(self, ffmodel):
+    self._ffhandle = ff.SGDOptimizer(ffmodel, self.lr, self.momentum, self.nesterov)
     
   def set_learning_rate(self, learning_rate):
     self.lr = learning_rate
-    self.ffhandle.set_learning_rate(learning_rate)
+    self._ffhandle.set_learning_rate(learning_rate)
     
 class Adam(object):
   def __init__(self, learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-07, amsgrad=False):
@@ -33,8 +40,15 @@ class Adam(object):
     self.beta2 = beta_2
     self.epsilon = epsilon
     self.amsgrad = amsgrad
-    self.ffhandle = None
+    self._ffhandle = None
+  
+  @property
+  def ffhandle(self):
+    return self._ffhandle
+    
+  def create_ffhandle(self, ffmodel):
+    self._ffhandle = ff.AdamOptimizer(ffmodel, self.lr, self.beta1, self.beta2, epsilon=self.epsilon)
     
   def set_learning_rate(self, learning_rate):
     self.lr = learning_rate
-    self.ffhandle.set_learning_rate(learning_rate)
+    self._ffhandle.set_learning_rate(learning_rate)
