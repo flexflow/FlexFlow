@@ -17,9 +17,13 @@
 #include "model.h"
 
 Simulator::Simulator(FFHandler _handle, void* _base_ptr, size_t _capacity)
-: handle(_handle), base_ptr((char*)_base_ptr), capacity(_capacity), offset(0)
+: handle(_handle), base_ptr((char*)_base_ptr), capacity(_capacity), offset(0),
+warmup_times(5), repeat_times(10)
 {
+  cudaEventCreate(&start_event);
+  cudaEventCreate(&end_event);
   conv2d_meta = new Conv2DMeta(handle);
+  linear_meta = new LinearMeta(handle, 4096);
 }
 
 void Simulator::free_all()

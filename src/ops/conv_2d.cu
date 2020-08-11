@@ -937,7 +937,7 @@ bool Conv2D::measure_forward_time(Simulator* sim,
   Tensor sub_output, sub_input;
   if(!outputs[0].get_output_sub_tensor(pc, sub_output, OP_CONV2D))
     return false;
-  if(!outputs[0].get_input_sub_tensor(pc, sub_input, OP_CONV2D))
+  if(!inputs[0].get_input_sub_tensor(pc, sub_input, OP_CONV2D))
     return false;
   int input_w = sub_input.adim[0];
   int input_h = sub_input.adim[1];

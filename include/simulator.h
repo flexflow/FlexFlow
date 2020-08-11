@@ -18,6 +18,7 @@
 #include "ffconst.h"
 #include "config.h"
 class Conv2DMeta;
+class LinearMeta;
 
 class Simulator {
 public:
@@ -29,7 +30,10 @@ public:
   char* base_ptr;
   size_t capacity;
   off_t offset;
+  int warmup_times, repeat_times;
+  cudaEvent_t start_event, end_event;
 public:
   Conv2DMeta* conv2d_meta;
+  LinearMeta* linear_meta;
 };
 #endif

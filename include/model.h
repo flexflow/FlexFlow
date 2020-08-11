@@ -643,6 +643,14 @@ public:
   bool relu;
 };
 
+class LinearMeta : public OpMeta {
+public:
+  LinearMeta(FFHandler handle, int batch_size);
+  cudnnTensorDescriptor_t outputTensor;
+  cudnnActivationDescriptor_t actiDesc;
+  const float *one_ptr;
+};
+
 class Linear : public Op {
 public:
   Linear(FFModel& model,
@@ -673,9 +681,6 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  //static void init_para_task(const Task *task,
-  //                           const std::vector<PhysicalRegion> &regions,
-  //                           Context ctx, Runtime *runtime);
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -685,25 +690,34 @@ public:
   static void backward2_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
-  //static void update_task(const Task *task,
-  //                        const std::vector<PhysicalRegion> &regions,
-  //                        Context ctx, Runtime *runtime);
+  void forward_kernel(const LinearMeta* m,
+                      const float* input_ptr,
+                      float* output_ptr,
+                      const float* filter_ptr,
+                      const float* bias_ptr,
+                      int in_dim, int out_dim, int batch_size);
+  void backward_kernel(const LinearMeta* m,
+                       const float* input_ptr,
+                       float* input_grad_ptr,
+                       const float* output_ptr,
+                       float* output_grad_ptr,
+                       const float* kernel_ptr,
+                       float* kernel_grad_ptr,
+                       float* bias_ptr,
+                       int in_dim, int out_dim, int batch_size);
+  bool measure_forward_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time);
+  bool measure_backward_time(Simulator* sim,
+                             const ParallelConfig& pc,
+                             float& forward_time);
 public:
-  //IndexSpaceT<2> task_is;
   int in_channels, out_channels;
   Tensor replica;
   bool profiling, use_bias;
   ActiMode activation;
   Initializer *kernel_initializer;
   Initializer *bias_initializer;
-};
-
-class LinearMeta : public OpMeta {
-public:
-  LinearMeta(FFHandler handle) : OpMeta(handle) {};
-  cudnnTensorDescriptor_t outputTensor;
-  cudnnActivationDescriptor_t actiDesc;
-  const float *one_ptr;
 };
 
 class Embedding : public Op {
