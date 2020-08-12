@@ -15,6 +15,7 @@
 
 import flexflow.core as ff
 from flexflow.core.flexflow_logger import fflogger
+import random
 
 from .base_layer import Layer
 from .input_layer import Input
@@ -142,6 +143,52 @@ class Flatten(Layer):
     
   def _reset_layer(self):
     pass
+    
+class Embedding(Layer):
+  def __init__(self, 
+               input_dim,
+               output_dim,
+               embeddings_initializer="uniform",
+               embeddings_regularizer=None,
+               activity_regularizer=None,
+               embeddings_constraint=None,
+               mask_zero=False,
+               input_length=None,
+               **kwargs):
+    self.input_dim = input_dim
+    self.out_channels = output_dim
+    self.input_length = input_length
+    
+    if embeddings_initializer == "uniform":
+      self.embeddings_initializer = ff.UniformInitializer(random.randint(0,1024), -0.05, 0.05)
+      
+    super(Embedding, self).__init__("embedding", "Embedding", **kwargs) 
+      
+  def verify_meta_data(self):
+    pass
+    
+  def get_summary(self):
+    summary = "%s%s\t\t%s%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
+    return summary
+    
+  def __call__(self, input_tensor):
+    return self._connect_layer_1_input_1_output(input_tensor)
+    
+  def _calculate_inout_shape(self, input_tensor):
+    assert input_tensor.num_dims == 2, "[Embedding]: shape of input tensor is wrong"
+    input_b = input_tensor.batch_shape[0]
+    in_dim = input_tensor.batch_shape[1]
+    assert in_dim != 0, "wrong in_dim"
+    assert self.input_length == in_dim, "wrong input_w"
+    self.output_shape = (input_b, self.out_channels)
+    self.input_shape = (input_b, self.input_length)
+    fflogger.debug("embedding input %s, output %s" %( str(self.input_shape), str(self.output_shape)))
+    
+  def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
+    assert input_tensor.num_dims == 2, "[Embedding]: check input tensor dims"
+    assert input_tensor.batch_shape[1] == self.input_shape[1]
+    assert output_tensor.num_dims == 2, "[Embedding]: check output tensor dims"
+    assert output_tensor.batch_shape[1] == self.output_shape[1]
     
 class Activation(Layer):
   def __init__(self, activation=None, **kwargs):

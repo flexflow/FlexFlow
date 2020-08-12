@@ -868,7 +868,7 @@ class UniformInitializer(Initializer):
   def __init__(self, seed, minv, maxv):
     self.uniform_handle = ffc.flexflow_uniform_initializer_create(seed, minv, maxv)
     self._uniform_handle = ffi.gc(self.uniform_handle, ffc.flexflow_uniform_initializer_destroy)
-    super(ZeroInitializer, self).__init__(self.uniform_handle)  
+    super(UniformInitializer, self).__init__(self.uniform_handle)  
     
 # -----------------------------------------------------------------------
 # NormInitializer
@@ -879,7 +879,7 @@ class NormInitializer(Initializer):
   def __init__(self, seed, meanv, stddev):
     self.norm_handle = ffc.flexflow_norm_initializer_create(seed, meanv, stddev)
     self._norm_handle = ffi.gc(self.norm_handle, ffc.flexflow_norm_initializer_destroy)
-    super(ZeroInitializer, self).__init__(self.norm_handle)  
+    super(NormInitializer, self).__init__(self.norm_handle)  
 
 # -----------------------------------------------------------------------
 # PerfMetrics

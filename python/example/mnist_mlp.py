@@ -18,7 +18,8 @@ def top_level_task():
   
   num_samples = 60000
   
-  t = ffmodel.dense(input1, 512, ActiMode.AC_MODE_RELU)
+  kernel_init = UniformInitializer(12, -1, 1)
+  t = ffmodel.dense(input1, 512, ActiMode.AC_MODE_RELU, kernel_initializer=kernel_init)
   t = ffmodel.dense(t, 512, ActiMode.AC_MODE_RELU)
   t = ffmodel.dense(t, 10)
   
