@@ -14,6 +14,7 @@
 #
 
 import flexflow.core as ff
+from flexflow.core.flexflow_logger import fflogger
 
 from .base_layer import Layer
 from .input_layer import Input
@@ -38,7 +39,6 @@ class _Merge(Layer):
     for input_tensor in input_tensors:
       assert input_tensor.num_dims == len(self.input_shape), "[Merge]: check input tensor dims"
       for i in range (1, input_tensor.num_dims):
-        print(input_tensor.batch_shape[i], self.input_shape[i], i)
         if isinstance(self, Concatenate) and self.axis == i:
           continue
         assert input_tensor.batch_shape[i] == self.input_shape[i]
@@ -78,7 +78,7 @@ class Concatenate(_Merge):
       self.output_shape = (output_shape[0], output_shape[1], output_shape[2], output_shape[3])
     else:
       assert 0, "un-supported dims"
-    print("concat output ", self.output_shape)
+    fflogger.debug("concat output %s" %( str(self.output_shape)))
     self.input_shape = input_tensors[0].batch_shape
 
 def add(input_tensors):
@@ -92,8 +92,8 @@ class Add(_Merge):
     assert len(input_tensors) == 2, "check input_tensors"   
     self.input_shape = input_tensors[0].batch_shape
     self.output_shape = input_tensors[0].batch_shape
-    print("add output ", self.output_shape)
-
+    fflogger.debug("add output %s" %( str(self.output_shape)))
+    
 def subtract(input_tensors):
   return Subtract()(input_tensors)
     
@@ -105,7 +105,7 @@ class Subtract(_Merge):
     assert len(input_tensors) == 2, "check input_tensors"   
     self.input_shape = input_tensors[0].batch_shape
     self.output_shape = input_tensors[0].batch_shape
-    print("subtract output ", self.output_shape)
+    fflogger.debug("subtract output %s" %( str(self.output_shape)))
 
 def multiply(input_tensors):
   return Multiply()(input_tensors)
@@ -118,4 +118,4 @@ class Multiply(_Merge):
     assert len(input_tensors) == 2, "check input_tensors"   
     self.input_shape = input_tensors[0].batch_shape
     self.output_shape = input_tensors[0].batch_shape
-    print("multiply output ", self.output_shape)
+    fflogger.debug("multiply output %s" %( str(self.output_shape)))

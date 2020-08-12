@@ -19,6 +19,7 @@ import cffi
 import os
 import subprocess
 import numpy as np
+from .flexflow_logger import fflogger
 from enum import Enum
 
 assert 'FF_HOME' in os.environ
@@ -407,7 +408,7 @@ class Tensor(object):
     assert self.mapped == True, "Tensor is not mapped."
     raw_ptr = self.__get_raw_ptr(ffconfig, data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
-    print("raw_ptr: ", raw_ptr, raw_ptr_int)
+    fflogger.debug("raw_ptr: %s, %d" %( str(raw_ptr), raw_ptr_int))
     strides = None
     if (self.num_dims >= 1 or self.num_dims <= 4):
       shape = self.dims
@@ -421,7 +422,7 @@ class Tensor(object):
     assert self.mapped == True, "Tensor is not mapped."
     raw_ptr = self.__get_raw_ptr(ffconfig, data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
-    print("raw_ptr: ", raw_ptr, raw_ptr_int)
+    fflogger.debug("raw_ptr: %s, %d" %( str(raw_ptr), raw_ptr_int))
     strides = None
     if (self.num_dims >= 1 or self.num_dims <= 4):
       shape_prod = np.prod(self.dims)
@@ -441,7 +442,7 @@ class Tensor(object):
       assert np_shape[i] == self.dims[i], "please check shape dim %d (%d == %d)" %(i, np_shape[i], self.dims[i])
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("void*", np_raw_ptr[0])
-    print("attach numpy array: ", np_raw_ptr, raw_ptr, hex(np_raw_ptr[0]))
+    fflogger.debug("attach numpy array: %s, %s, %s" %( str(np_raw_ptr), str(raw_ptr), hex(np_raw_ptr[0])))
     self.__attach_raw_ptr(ffconfig, raw_ptr)
     
   def detach_numpy_array(self, ffconfig):
@@ -462,7 +463,7 @@ class Tensor(object):
   def __get_dims(self):
     self.num_dims = ffc.flexflow_tensor_get_num_dims(self.handle)
     d = ffc.flexflow_tensor_get_dims(self.handle)
-    #print(d[0], d[1], d[2], d[3])
+    #fflogger.debug(d[0], d[1], d[2], d[3])
     if (self.num_dims == 1):
       self.dims = (d[0],)
     elif (self.num_dims == 2):
@@ -520,7 +521,7 @@ class Parameter(Tensor):
     c_dims = ffi.new("int[]", self.dims)
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-    print("set weights raw_ptr: ", raw_ptr, np_raw_ptr[0], hex(np_raw_ptr[0]), np_shape)
+    fflogger.debug("set weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(np_shape)))
     ret_val = ffc.flexflow_parameter_set_weights_float(self.parameter_handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
     assert ret_val == True, ret_val
     
@@ -529,7 +530,7 @@ class Parameter(Tensor):
     np_array = np.empty(shape, dtype=np.float32)
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-    print("get weights raw_ptr: ", raw_ptr, np_raw_ptr[0], hex(np_raw_ptr[0]), shape)
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     ret_val = ffc.flexflow_parameter_get_weights_float(self.parameter_handle, ffmodel.handle, raw_ptr)
     assert ret_val == True
     return np_array
@@ -647,7 +648,6 @@ class FFModel(object):
       n = n + 1
       tensor_handle_list.append(tensor.handle)
     c_tensor_handle_list = ffi.new("flexflow_tensor_t[]", tensor_handle_list)
-    print(c_tensor_handle_list[0].impl, c_tensor_handle_list[1].impl)
     handle = ffc.flexflow_model_add_concat(self.handle, n, c_tensor_handle_list, axis)
     self.add_layer(OpType.CONCAT)
     return Tensor(handle)

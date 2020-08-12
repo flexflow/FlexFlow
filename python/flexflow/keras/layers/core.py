@@ -14,6 +14,7 @@
 #
 
 import flexflow.core as ff
+from flexflow.core.flexflow_logger import fflogger
 
 from .base_layer import Layer
 from .input_layer import Input
@@ -95,8 +96,7 @@ class Dense(Layer):
     self.output_shape = (input_b, self.out_channels)
     self.input_shape = (input_b, in_dim)
     self.in_channels = in_dim
-    print("dense input ", self.input_shape)
-    print("dense output ", self.output_shape)
+    fflogger.debug("dense input %s, output %s" %( str(self.input_shape), str(self.output_shape)))
     
   def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
     assert input_tensor.num_dims == 2, "[Dense]: check input tensor dims"
@@ -131,8 +131,7 @@ class Flatten(Layer):
     for i in range(1, len(input_shape)):
       flat_size *= input_shape[i]
     self.output_shape = (input_shape[0], flat_size)
-    print("flat input ", self.input_shape)
-    print("flat output ", self.output_shape)
+    fflogger.debug("flat input %s, output %s" %( str(self.input_shape), str(self.output_shape)))
     
   def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
     assert input_tensor.num_dims == len(self.input_shape), "[Flatten]: check input tensor dims"

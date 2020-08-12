@@ -109,6 +109,11 @@ NVCC_FLAGS	?= -std=c++11
 GASNET_FLAGS	?=
 LD_FLAGS	?= -lprotobuf -lcudnn -lcublas -lcurand -L$(PROTOBUF_LIB) -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64
 
+ifeq ($(strip $(FF_ENABLE_DEBUG)), 1)
+CC_FLAGS += -DFF_DEBUG
+NVCC_FLAGS += -DFF_DEBUG
+endif
+
 ifeq ($(shell uname), Darwin)
 	LD_FLAGS += -Wl,-force_load,liblegion.a
 else
