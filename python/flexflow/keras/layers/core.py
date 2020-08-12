@@ -20,9 +20,11 @@ import random
 from .base_layer import Layer
 from .input_layer import Input
 from flexflow.keras.models.tensor import Tensor
+from flexflow.keras.initializers import Zeros, GlorotUniform, RandomUniform, RandomNormal, DefaultInitializer, Initializer
 
 class Dense(Layer):
-  __slots__ = ['in_channels', 'out_channels', 'activation', 'use_bias']
+  __slots__ = ['in_channels', 'out_channels', 'activation', 'use_bias', \
+               'kernel_initializer', 'bias_initializer']
   def __init__(self, units, input_shape=(0,), 
                activation=None, use_bias=True,
                kernel_initializer="glorot_uniform",
@@ -33,10 +35,6 @@ class Dense(Layer):
                kernel_constraint=None,
                bias_constraint=None,
                **kwargs):
-    if kernel_initializer != "glorot_uniform":
-      assert 0, "kernel_initializer is not supported"
-    if bias_initializer != "zeros":
-      assert 0, "bias_initializer is not supported"
     if kernel_regularizer != None:
       assert 0, "kernel_regularizer is not supported"
     if bias_regularizer != None:
@@ -49,6 +47,20 @@ class Dense(Layer):
       assert 0, "bias_constraint is not supported"
     
     super(Dense, self).__init__('dense', 'Dense', **kwargs) 
+    
+    if kernel_initializer == "glorot_uniform":
+      self.kernel_initializer = DefaultInitializer()
+    elif isinstance(kernel_initializer, Initializer) == True:
+      self.kernel_initializer = kernel_initializer
+    else:
+      assert 0, "[Dense]: unknown kernel_initializer"
+      
+    if bias_initializer == "zeros":
+      self.bias_initializer = DefaultInitializer()
+    elif isinstance(bias_initializer, Initializer) == True:
+      self.bias_initializer = bias_initializer
+    else:
+      assert 0, "[Dense]: unknown bias_initializer"
     
     self.in_channels = 0
     self.out_channels = units
@@ -160,7 +172,7 @@ class Embedding(Layer):
     self.input_length = input_length
     
     if embeddings_initializer == "uniform":
-      self.embeddings_initializer = ff.UniformInitializer(random.randint(0,1024), -0.05, 0.05)
+      self.embeddings_initializer = RandomUniform(random.randint(0,1024), -0.05, 0.05)
       
     super(Embedding, self).__init__("embedding", "Embedding", **kwargs) 
       

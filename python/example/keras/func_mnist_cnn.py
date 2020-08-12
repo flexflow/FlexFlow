@@ -22,6 +22,7 @@ from flexflow.keras import losses
 from flexflow.keras import metrics
 from flexflow.keras.callbacks import Callback, VerifyMetrics
 from example.accuracy import ModelAccuracy
+from flexflow.keras.initializers import GlorotUniform, Zeros
 
 import flexflow.core as ff
 import numpy as np
@@ -45,7 +46,7 @@ def top_level_task():
   
   output = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
 #  output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
-  output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1))(output)
+  output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), kernel_initializer=GlorotUniform(123), bias_initializer=Zeros())(output)
   output = Activation('relu')(output)
   output = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output)
   output = Dropout(0.25)(output)

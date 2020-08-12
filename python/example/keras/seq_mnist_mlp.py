@@ -18,6 +18,7 @@ from flexflow.keras.layers import Flatten, Dense, Activation, Dropout
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 from flexflow.keras.callbacks import Callback, VerifyMetrics
+from flexflow.keras.initializers import GlorotUniform, Zeros
 
 import flexflow.core as ff
 import numpy as np
@@ -37,7 +38,7 @@ def top_level_task():
   print("shape: ", x_train.shape)
   
   model = Sequential()
-  d1 = Dense(512, input_shape=(784,))
+  d1 = Dense(512, input_shape=(784,), kernel_initializer=GlorotUniform(123), bias_initializer=Zeros())
   model.add(d1)
   model.add(Activation('relu'))
   model.add(Dropout(0.2))
