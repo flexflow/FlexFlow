@@ -14,6 +14,7 @@
 #
 
 import flexflow.core as ff
+from flexflow.core.flexflow_logger import fflogger
 
 from .base_model import BaseModel
 from .tensor import Tensor
@@ -32,7 +33,7 @@ class Model(BaseModel):
     self._output_tensor = outputs
     
     self.__traverse_dag_dfs()
-    print("nb_layers", self._nb_layers)
+    fflogger.debug("nb_layers %d" %(self._nb_layers))
     
   def __call__(self, input_tensor):
     for layer in self.layers:
@@ -57,7 +58,7 @@ class Model(BaseModel):
     while(len(bfs_queue) != 0):
       layer = bfs_queue.pop(0)
       if (isinstance(layer, InputLayer) == False):
-       #print(layer)
+       #fflogger.debug(layer)
         self._add_layer_metadata(layer)
       for child in layer.next_layers:
         assert child not in bfs_queue, "already in the stack"
@@ -78,7 +79,7 @@ class Model(BaseModel):
     while(len(dfs_stack) != 0):
       layer = dfs_stack.pop()
       if (isinstance(layer, InputLayer) == False):
-        #print(layer)
+        #fflogger.debug(layer)
         self._add_layer_metadata(layer)
       for child in reversed(layer.next_layers):
         assert child not in dfs_stack, "already in the stack"

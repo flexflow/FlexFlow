@@ -14,9 +14,10 @@
 #
 
 import flexflow.core as ff
+from flexflow.core.flexflow_logger import fflogger
 
 from .tensor import Tensor
-from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract
+from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding
 from flexflow.keras.optimizers import SGD, Adam 
 from flexflow.keras.callbacks import Callback, LearningRateScheduler 
 from flexflow.keras import losses as keras_losses
@@ -107,11 +108,11 @@ class BaseModel(object):
       layer_summary = layer.get_summary()
       model_summary += layer_summary
     for layer in self._layers:
-      print(layer)
+      fflogger.debug(str(layer))
       for prev_layer in layer.prev_layers:
-        print("\tprev: ", prev_layer)
+        fflogger.debug("\tprev: %s" %( str(prev_layer)))
       for next_layer in layer.next_layers:
-        print("\tnext: ", next_layer)
+        fflogger.debug("\tnext: %s" %( str(next_layer)))
       layer_summary = layer.get_summary()
       model_summary += layer_summary 
       
@@ -136,10 +137,8 @@ class BaseModel(object):
     assert loss != None, "loss is None"  
     if isinstance(loss, keras_losses.Loss) == True:
       self._loss = loss
-      print(loss)
     elif loss == 'categorical_crossentropy':
       self._loss = keras_losses.CategoricalCrossentropy()
-      print('create CategoricalCrossentropy')
     elif loss == 'sparse_categorical_crossentropy':
       self._loss = keras_losses.SparseCategoricalCrossentropy()
     elif loss == 'mean_squared_error':
@@ -152,10 +151,8 @@ class BaseModel(object):
     for metric in metrics:
       if isinstance(metric, keras_metrics.Metric) == True:
         self._metrics.append(metric)
-        print(metric)
       elif metric == 'accuracy':
         self._metrics.append(keras_metrics.Accuracy())
-        print('create Accuracy')
       elif metric == 'categorical_crossentropy':
         self._metrics.append(keras_metrics.CategoricalCrossentropy())
       elif metric == 'sparse_categorical_crossentropy':
@@ -183,7 +180,7 @@ class BaseModel(object):
       metrics_type.append(metric.type)
     self._ffmodel.compile(optimizer=self._ffoptimizer.ffhandle, loss_type=self._loss.type, metrics=metrics_type)
     self._create_label_tensor()
-    print(self._input_tensors[0], self._output_tensor, self._input_tensors[0].ffhandle, self._output_tensor.ffhandle)
+    fflogger.debug("%s, %s, %s, %s" %( str(self._input_tensors[0]), str(self._output_tensor), str(self._input_tensors[0].ffhandle), str(self._output_tensor.ffhandle)))
   
   #TODO: finish API  
   def fit(self, 
@@ -291,7 +288,6 @@ class BaseModel(object):
   def __create_single_data_loader(self, batch_tensor, full_array):
     array_shape = full_array.shape
     num_dim = len(array_shape)
-    print(array_shape)
     
     if (full_array.dtype == "float32"):
       datatype = ff.DataType.DT_FLOAT
@@ -321,7 +317,6 @@ class BaseModel(object):
     assert len(self._input_tensors) != 0, "input_tensor is not set"
     assert self._label_tensor != 0, "label_tensor is not set"
     
-    print(y_train.shape)
     idx = 0
     for x_train in x_trains:
       full_tensor, dataloader = self.__create_single_data_loader(self._input_tensors[idx], x_train)
@@ -390,18 +385,18 @@ class BaseModel(object):
       for callback in callbacks:
         callback.on_train_end()
 
-    self._input_tensors[0].ffhandle.inline_map(self._ffconfig)
-    input_array = self._input_tensors[0].ffhandle.get_flat_array(self._ffconfig, ff.DataType.DT_FLOAT)
-    print(input_array.shape)
-    print(input_array)
-    #self.save_image(input_array, 2)
-    self._input_tensors[0].ffhandle.inline_unmap(self._ffconfig)
-    
-    self._label_tensor.ffhandle.inline_map(self._ffconfig)
-    label_array = self._label_tensor.ffhandle.get_flat_array(self._ffconfig, ff.DataType.DT_INT32)
-    print(label_array.shape)
-    print(label_array)
-    self._label_tensor.ffhandle.inline_unmap(self._ffconfig)
+    # self._input_tensors[0].ffhandle.inline_map(self._ffconfig)
+    # input_array = self._input_tensors[0].ffhandle.get_flat_array(self._ffconfig, ff.DataType.DT_FLOAT)
+    # print(input_array.shape)
+    # print(input_array)
+    # #self.save_image(input_array, 2)
+    # self._input_tensors[0].ffhandle.inline_unmap(self._ffconfig)
+    #
+    # self._label_tensor.ffhandle.inline_map(self._ffconfig)
+    # label_array = self._label_tensor.ffhandle.get_flat_array(self._ffconfig, ff.DataType.DT_INT32)
+    # print(label_array.shape)
+    # print(label_array)
+    # self._label_tensor.ffhandle.inline_unmap(self._ffconfig)
     
   def _create_flexflow_layers_v2(self):
     for layer in self._layers:
@@ -425,28 +420,43 @@ class BaseModel(object):
     out_t = 0
     for layer in self._layers:
 
-      if (isinstance(layer, Activation) == True):
-        assert layer.layer_id == self._nb_layers-1, "softmax is not in the last layer"
-        out_t = self._ffmodel.softmax(layer.input_tensors[0].ffhandle)
-      elif (isinstance(layer, Concatenate) == True):
+      if isinstance(layer, Activation) == True:
+        if layer.activation == 'softmax':
+          assert layer.layer_id == self._nb_layers-1, "softmax is not in the last layer"
+          out_t = self._ffmodel.softmax(layer.input_tensors[0].ffhandle)
+        elif layer.activation == 'relu':
+          out_t = self._ffmodel.relu(layer.input_tensors[0].ffhandle)
+        elif layer.activation == 'sigmoid':
+          out_t = self._ffmodel.sigmoid(layer.input_tensors[0].ffhandle)
+        elif layer.activation == 'tanh':
+          out_t = self._ffmodel.tanh(layer.input_tensors[0].ffhandle)
+        elif layer.activation == 'elu':
+          out_t = self._ffmodel.elu(layer.input_tensors[0].ffhandle)
+      elif isinstance(layer, Concatenate) == True:
         t_ffhandle_list = []
         for t in layer.input_tensors:
           t_ffhandle_list.append(t.ffhandle)
         out_t = self._ffmodel.concat(t_ffhandle_list, layer.axis)
-      elif (isinstance(layer, Conv2D) == True):
-        out_t = self._ffmodel.conv2d(layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
-      elif (isinstance(layer, Pooling2D) == True):
+      elif isinstance(layer, Conv2D) == True:
+        out_t = self._ffmodel.conv2d(layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle)
+      elif isinstance(layer, Pooling2D) == True:
         out_t = self._ffmodel.pool2d(layer.input_tensors[0].ffhandle, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.pool_type)
-      elif (isinstance(layer, Flatten) == True):
+      elif isinstance(layer, Flatten) == True:
         out_t = self._ffmodel.flat(layer.input_tensors[0].ffhandle)
-      elif (isinstance(layer, Dense) == True):
-        out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation, layer.use_bias)
-      elif (isinstance(layer, Add) == True):
+      elif isinstance(layer, Dense) == True:
+        out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation, layer.use_bias, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle)
+      elif isinstance(layer, Add) == True:
         out_t = self._ffmodel.add(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
-      elif (isinstance(layer, Subtract) == True):
+      elif isinstance(layer, Subtract) == True:
         out_t = self._ffmodel.subtract(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
-      elif (isinstance(layer, Multiply) == True):
+      elif isinstance(layer, Multiply) == True:
         out_t = self._ffmodel.multiply(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
+      elif isinstance(layer, Dropout) == True:
+        out_t = self._ffmodel.dropout(layer.input_tensors[0].ffhandle, layer.rate, layer.seed)
+      elif isinstance(layer, BatchNormalization) == True:
+        out_t = self._ffmodel.batch_norm(layer.input_tensors[0].ffhandle)
+      elif isinstance(layer, Embedding) == True:
+        out_t = self._ffmodel.embedding(layer.input_tensors[0].ffhandle, layer.input_dim, layer.out_channels, ff.AggrMode.AGGR_MODE_SUM, layer.embeddings_initializer.ffhandle)
       else:
         assert 0, "unknow layer"
 
@@ -456,7 +466,6 @@ class BaseModel(object):
       assert layer.ffhandle == None, "layer handle is inited"
       layer.ffhandle = self._ffmodel.get_layer_by_id(layer.layer_id)
       assert layer.ffhandle != None, "layer handle is wrong"
-      print(layer.ffhandle)    
        
   def _init_inout(self):
     out_t = 0
@@ -480,7 +489,6 @@ class BaseModel(object):
       layer.output_tensors[0].ffhandle = out_t
       layer.set_batch_size(self._ffconfig.get_batch_size())
       assert layer.ffhandle != None, "layer handle is wrong"
-      print(layer.ffhandle)    
       
     print("output tensor", self._output_tensor.batch_shape)
     

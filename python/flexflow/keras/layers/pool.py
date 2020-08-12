@@ -14,6 +14,7 @@
 #
 
 import flexflow.core as ff
+from flexflow.core.flexflow_logger import fflogger
 import math
 
 from .base_layer import Layer
@@ -77,7 +78,7 @@ class Pooling2D(Layer):
       else:
         padding_w = max(self.kernel_size[1] - (input_w % self.stride[1]), 0)
       self.padding = (padding_h//2, padding_w//2)
-      print("pool2d same padding ", self.padding)
+      fflogger.debug("pool2d same padding %s" %( str(self.padding)))
       
     self.input_shape = (input_b, input_d, input_w, input_h)
     self.in_channels = input_d
@@ -86,8 +87,7 @@ class Pooling2D(Layer):
     output_w = 1 + math.floor((input_w + 2 * self.padding[1] - self.kernel_size[1]) / self.stride[1])
     output_d = self.out_channels
     self.output_shape = (input_b, output_d, output_h, output_w)
-    print("pool2d input ", self.input_shape)
-    print("pool2d output ", self.output_shape)
+    fflogger.debug("pool2d input %s, output %s" %( str(self.input_shape), str(self.output_shape)))
     
   def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
     assert input_tensor.num_dims == 4, "[Conv2D]: check input tensor dims"

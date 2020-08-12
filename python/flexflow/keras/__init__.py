@@ -14,6 +14,7 @@
 #
 
 from . import optimizers
+from . import initializers
 from . import datasets
 from . import utils
 from . import models
