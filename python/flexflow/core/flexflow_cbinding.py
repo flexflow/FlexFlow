@@ -79,7 +79,7 @@ class OpType(Enum):
   MSELOSS = 2020
   BATCH_NORM = 2021
   RELU = 2022
-  SIGMOD = 2023
+  SIGMOID = 2023
   TANH = 2024
   ELU = 2025
   DROPOUT = 2026
@@ -314,9 +314,9 @@ class Relu(Op):
 # -----------------------------------------------------------------------
 # Sigmod
 # -----------------------------------------------------------------------
-class Sigmod(Op):
+class Sigmoid(Op):
   def __init__(self, handle):
-    super(Sigmod, self).__init__(handle)
+    super(Sigmoid, self).__init__(handle)
     
 # -----------------------------------------------------------------------
 # Relu
@@ -671,9 +671,9 @@ class FFModel(object):
     self.add_layer(OpType.RELU)
     return Tensor(handle)
     
-  def sigmod(self, input):
-    handle = ffc.flexflow_model_add_sigmod(self.handle, input.handle)
-    self.add_layer(OpType.SIGMOD)
+  def sigmoid(self, input):
+    handle = ffc.flexflow_model_add_sigmoid(self.handle, input.handle)
+    self.add_layer(OpType.SIGMOID)
     return Tensor(handle)
     
   def tanh(self, input):
@@ -766,7 +766,7 @@ class FFModel(object):
       return MSELoss(handle)
     elif (self._layers[layer_id] == OpType.RELU):
       return Dropout(handle)
-    elif (self._layers[layer_id] == OpType.SIGMOD):
+    elif (self._layers[layer_id] == OpType.SIGMOID):
       return Dropout(handle)
     elif (self._layers[layer_id] == OpType.TANH):
       return Dropout(handle)

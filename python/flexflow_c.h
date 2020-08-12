@@ -260,6 +260,26 @@ flexflow_model_add_softmax(
   const flexflow_tensor_t input);
   
 flexflow_tensor_t
+flexflow_model_add_relu(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input);
+  
+flexflow_tensor_t
+flexflow_model_add_sigmod(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input);
+    
+flexflow_tensor_t
+flexflow_model_add_tanh(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input);
+  
+flexflow_tensor_t
+flexflow_model_add_elu(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input);
+  
+flexflow_tensor_t
 flexflow_model_add_dropout(
   flexflow_model_t handle,
   const flexflow_tensor_t input,

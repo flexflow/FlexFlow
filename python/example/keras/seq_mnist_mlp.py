@@ -37,8 +37,9 @@ def top_level_task():
   print("shape: ", x_train.shape)
   
   model = Sequential()
-  d1 = Dense(512, input_shape=(784,), activation="relu")
+  d1 = Dense(512, input_shape=(784,))
   model.add(d1)
+  model.add(Activation('relu'))
   model.add(Dropout(0.2))
   model.add(Dense(512, activation="relu"))
   model.add(Dropout(0.2))

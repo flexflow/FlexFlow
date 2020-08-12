@@ -523,6 +523,58 @@ flexflow_model_add_softmax(
 }
 
 flexflow_tensor_t
+flexflow_model_add_relu(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->relu(*input);
+  ffc_log.print("[Relu] new Tensor %p", tensor);
+  return FFCObjectWrapper::wrap(tensor);   
+}
+  
+flexflow_tensor_t
+flexflow_model_add_sigmod(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->sigmoid(*input);
+  ffc_log.print("[Sigmoid] new Tensor %p", tensor);
+  return FFCObjectWrapper::wrap(tensor);   
+}
+    
+flexflow_tensor_t
+flexflow_model_add_tanh(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->tanh(*input);
+  ffc_log.print("[Tanh] new Tensor %p", tensor);
+  return FFCObjectWrapper::wrap(tensor);   
+}
+  
+flexflow_tensor_t
+flexflow_model_add_elu(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->elu(*input);
+  ffc_log.print("[Elu] new Tensor %p", tensor);
+  return FFCObjectWrapper::wrap(tensor);   
+}
+
+flexflow_tensor_t
 flexflow_model_add_dropout(
   flexflow_model_t handle_,
   const flexflow_tensor_t input_,

@@ -61,6 +61,8 @@ class Dense(Layer):
       self.activation = ff.ActiMode.AC_MODE_NONE
     elif(activation =="relu"):
       self.activation = ff.ActiMode.AC_MODE_RELU
+    elif(activation =="sigmoid"):
+      self.activation = ff.ActiMode.AC_MODE_SIGMOID
     else:
       assert 0, "activation is not supported"
     
@@ -143,15 +145,17 @@ class Flatten(Layer):
     pass
     
 class Activation(Layer):
-  def __init__(self, activation, **kwargs):
+  def __init__(self, activation=None, **kwargs):
     
-    if (activation == "softmax"):
-      self.activation = "Softmax"
+    if (activation == 'softmax') or (activation == 'relu') or (activation == 'sigmoid') or (activation == 'tanh') or (activation == 'elu'):
+      self.activation = activation
+    else:
+      assert 0, '[Activation]: unsupported activation'
       
-    super(Activation, self).__init__('activation', self.activation, **kwargs) 
+    super(Activation, self).__init__(self.activation, 'Activation', **kwargs) 
       
   def verify_meta_data(self):
-    assert self.activation == "Softmax", "type is wrong"
+    pass
     
   def get_summary(self):
     summary = "%s%s\t\t%s%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
@@ -161,7 +165,6 @@ class Activation(Layer):
     return self._connect_layer_1_input_1_output(input_tensor)
     
   def _calculate_inout_shape(self, input_tensor):
-    assert input_tensor.num_dims == 2, '[Activation]: shape of input tensor is wrong'
     self.input_shape = input_tensor.batch_shape
     self.output_shape = input_tensor.batch_shape
     

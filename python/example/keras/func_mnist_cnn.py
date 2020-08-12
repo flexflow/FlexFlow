@@ -14,7 +14,7 @@
 #
 
 from flexflow.keras.models import Model, Sequential
-from flexflow.keras.layers import Input, Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, concatenate
+from flexflow.keras.layers import Input, Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, concatenate, Dropout
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
@@ -44,8 +44,11 @@ def top_level_task():
   input_tensor = Input(shape=(1, 28, 28), dtype="float32")
   
   output = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
-  output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
+#  output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
+  output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1))(output)
+  output = Activation('relu')(output)
   output = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output)
+  output = Dropout(0.25)(output)
   output = Flatten()(output)
   output = Dense(128, activation="relu")(output)
   output = Dense(num_classes)(output)
