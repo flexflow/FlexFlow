@@ -522,6 +522,21 @@ flexflow_model_add_softmax(
   return FFCObjectWrapper::wrap(tensor);   
 }
 
+flexflow_tensor_t
+flexflow_model_add_dropout(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  float rate, 
+  unsigned long long seed)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->dropout(*input, rate, seed);
+  ffc_log.print("[Dropout] new Tensor %p", tensor);
+  return FFCObjectWrapper::wrap(tensor);   
+}
+
 // void
 // flexflow_model_add_mse_loss(
 //   flexflow_model_t handle_,

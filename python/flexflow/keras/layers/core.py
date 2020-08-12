@@ -46,7 +46,7 @@ class Dense(Layer):
     if bias_constraint != None:
       assert 0, "bias_constraint is not supported"
     
-    super(Dense, self).__init__("dense", "Dense" ,**kwargs) 
+    super(Dense, self).__init__('dense', 'Dense', **kwargs) 
     
     self.in_channels = 0
     self.out_channels = units
@@ -109,7 +109,7 @@ class Flatten(Layer):
   def __init__(self, data_format=None, **kwargs):
     if data_format != None:
       assert 0, "data_format is not supported"
-    super(Flatten, self).__init__("flat", "Flatten", **kwargs) 
+    super(Flatten, self).__init__('flat', 'Flatten', **kwargs) 
     
   def verify_meta_data(self):
     assert self.input_shape != 0, "input shape is wrong"
@@ -148,20 +148,52 @@ class Activation(Layer):
     if (activation == "softmax"):
       self.activation = "Softmax"
       
-    super(Activation, self).__init__("activation", self.activation, **kwargs) 
+    super(Activation, self).__init__('activation', self.activation, **kwargs) 
       
   def verify_meta_data(self):
     assert self.activation == "Softmax", "type is wrong"
     
   def get_summary(self):
-    summary = "%s%s\n"%(self._get_summary_name(), self._get_summary_connected_to())
+    summary = "%s%s\t\t%s%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
     return summary
     
   def __call__(self, input_tensor):
     return self._connect_layer_1_input_1_output(input_tensor)
     
   def _calculate_inout_shape(self, input_tensor):
-    assert input_tensor.num_dims == 2, "[Activation]: shape of input tensor is wrong"
+    assert input_tensor.num_dims == 2, '[Activation]: shape of input tensor is wrong'
+    self.input_shape = input_tensor.batch_shape
+    self.output_shape = input_tensor.batch_shape
+    
+  def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
+    pass
+    
+  def _reset_layer(self):
+    pass
+    
+class Dropout(Layer):
+  def __init__(self, rate, noise_shape=None, seed=None, **kwargs):
+    if noise_shape != None:
+      assert 0, "noise_shape is not supported"
+    self.rate = rate
+    self.noise_shape = noise_shape
+    if seed == None:
+      _seed = 0
+    self.seed = _seed
+      
+    super(Dropout, self).__init__('dropout', 'Dropout', **kwargs) 
+      
+  def verify_meta_data(self):
+    pass
+    
+  def get_summary(self):
+    summary = "%s%s\t\t%s%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
+    return summary
+    
+  def __call__(self, input_tensor):
+    return self._connect_layer_1_input_1_output(input_tensor)
+    
+  def _calculate_inout_shape(self, input_tensor):
     self.input_shape = input_tensor.batch_shape
     self.output_shape = input_tensor.batch_shape
     

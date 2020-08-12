@@ -14,7 +14,7 @@
 #
 
 from flexflow.keras.models import Sequential
-from flexflow.keras.layers import Flatten, Dense, Activation
+from flexflow.keras.layers import Flatten, Dense, Activation, Dropout
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 from flexflow.keras.callbacks import Callback, VerifyMetrics
@@ -39,7 +39,9 @@ def top_level_task():
   model = Sequential()
   d1 = Dense(512, input_shape=(784,), activation="relu")
   model.add(d1)
+  model.add(Dropout(0.2))
   model.add(Dense(512, activation="relu"))
+  model.add(Dropout(0.2))
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
 

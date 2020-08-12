@@ -16,7 +16,7 @@
 import flexflow.core as ff
 
 from .tensor import Tensor
-from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract
+from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout
 from flexflow.keras.optimizers import SGD, Adam 
 from flexflow.keras.callbacks import Callback, LearningRateScheduler 
 from flexflow.keras import losses as keras_losses
@@ -447,6 +447,8 @@ class BaseModel(object):
         out_t = self._ffmodel.subtract(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       elif (isinstance(layer, Multiply) == True):
         out_t = self._ffmodel.multiply(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
+      elif (isinstance(layer, Dropout) == True):
+        out_t = self._ffmodel.dropout(layer.input_tensors[0].ffhandle, layer.rate, layer.seed)
       else:
         assert 0, "unknow layer"
 

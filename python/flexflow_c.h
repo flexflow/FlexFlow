@@ -259,6 +259,13 @@ flexflow_model_add_softmax(
   flexflow_model_t handle,
   const flexflow_tensor_t input);
   
+flexflow_tensor_t
+flexflow_model_add_dropout(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input,
+  float rate, 
+  unsigned long long seed);
+  
 // void
 // flexflow_model_add_mse_loss(
 //   flexflow_model_t handle,

@@ -78,6 +78,11 @@ class OpType(Enum):
   ELEMENT_BINARY = 2019
   MSELOSS = 2020
   BATCH_NORM = 2021
+  RELU = 2022
+  SIGMOD = 2023
+  TANH = 2024
+  ELU = 2025
+  DROPOUT = 2026
   
 def enum_to_int(enum, enum_item):
   for item in enum:
@@ -291,6 +296,41 @@ class MSELoss(Op):
 class BatchNorm(Op):
   def __init__(self, handle):
     super(BatchNorm, self).__init__(handle)
+    
+# -----------------------------------------------------------------------
+# Dropout
+# -----------------------------------------------------------------------
+class Dropout(Op):
+  def __init__(self, handle):
+    super(Dropout, self).__init__(handle)
+    
+# -----------------------------------------------------------------------
+# Relu
+# -----------------------------------------------------------------------
+class Relu(Op):
+  def __init__(self, handle):
+    super(Relu, self).__init__(handle)
+    
+# -----------------------------------------------------------------------
+# Sigmod
+# -----------------------------------------------------------------------
+class Sigmod(Op):
+  def __init__(self, handle):
+    super(Sigmod, self).__init__(handle)
+    
+# -----------------------------------------------------------------------
+# Relu
+# -----------------------------------------------------------------------
+class Tanh(Op):
+  def __init__(self, handle):
+    super(Tanh, self).__init__(handle)
+    
+# -----------------------------------------------------------------------
+# Elu
+# -----------------------------------------------------------------------
+class Elu(Op):
+  def __init__(self, handle):
+    super(Elu, self).__init__(handle)
       
 # -----------------------------------------------------------------------
 # FFConfig
@@ -626,6 +666,31 @@ class FFModel(object):
     self.add_layer(OpType.SOFTMAX)
     return Tensor(handle)
     
+  def relu(self, input):
+    handle = ffc.flexflow_model_add_relu(self.handle, input.handle)
+    self.add_layer(OpType.RELU)
+    return Tensor(handle)
+    
+  def sigmod(self, input):
+    handle = ffc.flexflow_model_add_sigmod(self.handle, input.handle)
+    self.add_layer(OpType.SIGMOD)
+    return Tensor(handle)
+    
+  def tanh(self, input):
+    handle = ffc.flexflow_model_add_tanh(self.handle, input.handle)
+    self.add_layer(OpType.TANH)
+    return Tensor(handle)
+    
+  def elu(self, input):
+    handle = ffc.flexflow_model_add_elu(self.handle, input.handle)
+    self.add_layer(OpType.ELU)
+    return Tensor(handle)
+    
+  def dropout(self, input, rate, seed):
+    handle = ffc.flexflow_model_add_dropout(self.handle, input.handle, rate, seed)
+    self.add_layer(OpType.DROPOUT)
+    return Tensor(handle)
+    
   # def mse_loss(self, logits, labels, reduction):
   #   ffc.flexflow_model_add_mse_loss(self.handle, logits.handle, labels.handle, reduction.encode('utf-8'))
   #   self.add_layer(OpType.MSELOSS)
@@ -699,6 +764,16 @@ class FFModel(object):
       return ElementBinary(handle)
     elif (self._layers[layer_id] == OpType.MSELOSS):
       return MSELoss(handle)
+    elif (self._layers[layer_id] == OpType.RELU):
+      return Dropout(handle)
+    elif (self._layers[layer_id] == OpType.SIGMOD):
+      return Dropout(handle)
+    elif (self._layers[layer_id] == OpType.TANH):
+      return Dropout(handle)
+    elif (self._layers[layer_id] == OpType.ELU):
+      return Dropout(handle)
+    elif (self._layers[layer_id] == OpType.DROPOUT):
+      return Dropout(handle)
     else:
       assert 0, "unknow layer type"
       return 0
