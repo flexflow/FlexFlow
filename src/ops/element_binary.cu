@@ -440,3 +440,12 @@ void ElementBinary::backward(const FFModel& ff)
   launcher.add_field(4, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
+
+bool ElementBinary::measure_compute_time(Simulator* sim,
+                                         const ParallelConfig& pc,
+                                         float& forward_time,
+                                         float& backward_time)
+{
+  //TODO: implement measure_forward
+  return false;
+}

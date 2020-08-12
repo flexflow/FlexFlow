@@ -768,9 +768,10 @@ LinearMeta::LinearMeta(FFHandler handler, int batch_size)
     checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
 }
 
-bool Linear::measure_forward_time(Simulator* sim,
+bool Linear::measure_compute_time(Simulator* sim,
                                   const ParallelConfig& pc,
-                                  float& forward_time)
+                                  float& forward_time,
+                                  float& backward_time)
 {
   Tensor sub_output, sub_input;
   if (!outputs[0].get_output_sub_tensor(pc, sub_output, OP_LINEAR))
@@ -806,8 +807,8 @@ bool Linear::measure_forward_time(Simulator* sim,
   assert(input_ptr != NULL);
   float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
-  float* weight_ptr = (float*)sim->allocate((size_t)output_c * input_c, DT_FLOAT);
-  assert(weight_ptr != NULL);
+  float* kernel_ptr = (float*)sim->allocate((size_t)output_c * input_c, DT_FLOAT);
+  assert(kernel_ptr != NULL);
   float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
   assert(bias_ptr != NULL);
 
@@ -817,7 +818,7 @@ bool Linear::measure_forward_time(Simulator* sim,
     if (i == sim->warmup_times) {
       checkCUDA(cudaEventRecord(sim->start_event));
     }
-    forward_kernel(m, input_ptr, output_ptr, weight_ptr, bias_ptr,
+    forward_kernel(m, input_ptr, output_ptr, kernel_ptr, bias_ptr,
         input_c, output_c, input_n);
   }
   checkCUDA(cudaEventRecord(sim->end_event));
@@ -825,70 +826,22 @@ bool Linear::measure_forward_time(Simulator* sim,
   float milliseconds;
   cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
   forward_time = milliseconds / sim->repeat_times;
-  return true;
-}
 
-bool Linear::measure_backward_time(Simulator* sim,
-                                   const ParallelConfig& pc,
-                                   float& backward_time)
-{
-  Tensor sub_output, sub_input;
-  if (!outputs[0].get_output_sub_tensor(pc, sub_output, OP_LINEAR))
-    return false;
-  if (!outputs[0].get_input_sub_tensor(pc, sub_input, OP_LINEAR))
-    return false;
-  int input_c = sub_input.adim[0];
-  int input_n = sub_input.adim[1];
-  int output_c = sub_output.adim[0];
-  int output_n = sub_output.adim[1];
-  LinearMeta* m = sim->linear_meta;
-  if (activation != AC_MODE_NONE) {
-    cudnnActivationMode_t mode;
-    switch (activation) {
-      case AC_MODE_RELU:
-        mode = CUDNN_ACTIVATION_RELU;
-        break;
-      case AC_MODE_SIGMOID:
-        mode = CUDNN_ACTIVATION_SIGMOID;
-        break;
-      default:
-        // Unsupported activation mode
-        assert(false);
-    }
-    checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, mode,
-                                            CUDNN_PROPAGATE_NAN, 0.0));
-    checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
-        CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, output_n, output_c, 1, 1));
-  }
-  // allocate tensors in simulator
-  sim->free_all();
-  float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert(input_ptr != NULL);
-  float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert(input_grad_ptr != NULL);
-  float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert(output_ptr != NULL);
-  float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert(output_grad_ptr != NULL);
-  float* kernel_ptr = (float*)sim->allocate((size_t)output_c * input_c, DT_FLOAT);
-  assert(kernel_ptr != NULL);
-  float* kernel_grad_ptr = (float*)sim->allocate((size_t)output_c * input_c, DT_FLOAT);
-  assert(kernel_grad_ptr != NULL);
-  float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
-  assert(bias_ptr != NULL);
   // measure backward time
   checkCUDA(cudaDeviceSynchronize());
   for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
     if (i == sim->warmup_times) {
       checkCUDA(cudaEventRecord(sim->start_event));
     }
-    backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr,
-        kernel_ptr, kernel_grad_ptr, bias_ptr, input_c, output_c, input_n);
+    backward_kernel(m, input_ptr, input_ptr, output_ptr, output_ptr,
+        kernel_ptr, kernel_ptr, bias_ptr, input_c, output_c, input_n);
   }
   checkCUDA(cudaEventRecord(sim->end_event));
   checkCUDA(cudaEventSynchronize(sim->end_event));
-  float milliseconds;
   cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
   backward_time = milliseconds / sim->repeat_times;
+
   return true;
 }
+
+

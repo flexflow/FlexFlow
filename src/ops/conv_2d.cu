@@ -1,4 +1,4 @@
-/* Copyright 2018 Stanford
+/* Copyright 2020 Stanford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -930,9 +930,10 @@ Conv2DMeta::Conv2DMeta(FFHandler handler)
   checkCUDNN(cudnnCreateConvolutionDescriptor(&convDesc));
 }
 
-bool Conv2D::measure_forward_time(Simulator* sim,
+bool Conv2D::measure_compute_time(Simulator* sim,
                                   const ParallelConfig& pc,
-                                  float& forward_time)
+                                  float& forward_time,
+                                  float& backward_time)
 {
   Tensor sub_output, sub_input;
   if(!outputs[0].get_output_sub_tensor(pc, sub_output, OP_CONV2D))
@@ -985,77 +986,23 @@ bool Conv2D::measure_forward_time(Simulator* sim,
   assert(bias_ptr != NULL);
   
   // select forward algorithm
-  const int reqAlgCnt = 8;
-  int cnt = 0;
-  cudnnConvolutionFwdAlgoPerf_t perfResults[reqAlgCnt];
-  checkCUDNN(cudnnFindConvolutionForwardAlgorithmEx(
-      m->handle.dnn, m->inputTensor, input_ptr,
-      m->filterDesc, weight_ptr, m->convDesc, m->outputTensor, output_ptr,
-      reqAlgCnt, &cnt, perfResults,
-      m->handle.workSpace, m->handle.workSpaceSize));
-  assert(cnt > 0);
-  checkCUDNN(perfResults[0].status);
-  forward_time = perfResults[0].time;
-  return true;
-}
-
-bool Conv2D::measure_backward_time(Simulator* sim,
-                                   const ParallelConfig& pc,
-                                   float& backward_time)
-{
-  Tensor sub_output, sub_input;
-  if(!outputs[0].get_output_sub_tensor(pc, sub_output, OP_CONV2D))
-    return false;
-  if(!outputs[0].get_input_sub_tensor(pc, sub_input, OP_CONV2D))
-    return false;
-  int input_w = sub_input.adim[0];
-  int input_h = sub_input.adim[1];
-  int input_c = sub_input.adim[2];
-  int input_n = sub_input.adim[3];
-  int output_w = sub_output.adim[0];
-  int output_h = sub_output.adim[1];
-  int output_c = sub_output.adim[2];
-  int output_n = sub_output.adim[3];
-  int pad_h = ((output_h - 1) * stride_h + kernel_h - input_h + 1) / 2;
-  int pad_w = ((output_w - 1) * stride_w + kernel_w - input_w + 1) / 2;
-
-  Conv2DMeta* m = sim->conv2d_meta;
-  m->relu = activation == AC_MODE_RELU;
-  checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor, CUDNN_TENSOR_NCHW,
-      CUDNN_DATA_FLOAT, input_n, input_c, input_h, input_w));
-  checkCUDNN(cudnnSetTensor4dDescriptor(m->biasTensor, CUDNN_TENSOR_NCHW,
-      CUDNN_DATA_FLOAT, 1, output_c, 1, 1));
-  checkCUDNN(cudnnSetFilter4dDescriptor(m->filterDesc, CUDNN_DATA_FLOAT,
-      CUDNN_TENSOR_NCHW, output_c, input_c, kernel_h, kernel_w));
-  checkCUDNN(cudnnSetConvolution2dDescriptor(m->convDesc, pad_h, pad_w,
-      stride_h, stride_w, 1/*dilationH*/, 1/*dilationW*/,
-      CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
-  checkCUDNN(cudnnSetConvolutionMathType(m->convDesc, CUDNN_TENSOR_OP_MATH));
-  int n, c, h, w;
-  checkCUDNN(cudnnGetConvolution2dForwardOutputDim(m->convDesc,
-      m->inputTensor, m->filterDesc, &n, &c, &h, &w));
-  assert(n == output_n);
-  assert(c == output_c);
-  assert(h == output_h);
-  assert(w == output_w);
-  checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
-      CUDNN_NOT_PROPAGATE_NAN, 0.0));
-  checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor, CUDNN_TENSOR_NCHW,
-      CUDNN_DATA_FLOAT, n, c, h, w));
-  // allocate tensors in simulator
-  sim->free_all();
-  float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert(input_ptr != NULL);
-  float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert(output_ptr != NULL);
-  float* weight_ptr = (float*)sim->allocate((size_t)output_c * input_c * kernel_h * kernel_w, DT_FLOAT);
-  assert(weight_ptr != NULL);
-  float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
-  assert(bias_ptr != NULL);
-  // select forward algorithm
-  const int reqAlgCnt = 8;
-  int cnt = 0;
   {
+    const int reqAlgCnt = 8;
+    int cnt = 0;
+    cudnnConvolutionFwdAlgoPerf_t perfResults[reqAlgCnt];
+    checkCUDNN(cudnnFindConvolutionForwardAlgorithmEx(
+        m->handle.dnn, m->inputTensor, input_ptr,
+        m->filterDesc, weight_ptr, m->convDesc, m->outputTensor, output_ptr,
+        reqAlgCnt, &cnt, perfResults,
+        m->handle.workSpace, m->handle.workSpaceSize));
+    assert(cnt > 0);
+    checkCUDNN(perfResults[0].status);
+    forward_time = perfResults[0].time;
+  }
+  // select forward algorithm
+  {
+    const int reqAlgCnt = 8;
+    int cnt = 0;
     cudnnConvolutionBwdFilterAlgoPerf_t perfResults[reqAlgCnt];
     checkCUDNN(cudnnFindConvolutionBackwardFilterAlgorithmEx(
         m->handle.dnn, m->inputTensor, input_ptr,
@@ -1067,6 +1014,8 @@ bool Conv2D::measure_backward_time(Simulator* sim,
     backward_time = perfResults[0].time;
   }
   {
+    const int reqAlgCnt = 8;
+    int cnt = 0;
     cudnnConvolutionBwdDataAlgoPerf_t perfResults[reqAlgCnt];
     checkCUDNN(cudnnFindConvolutionBackwardDataAlgorithmEx(
         m->handle.dnn, m->filterDesc, weight_ptr,

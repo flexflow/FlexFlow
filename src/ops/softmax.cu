@@ -290,6 +290,11 @@ void Softmax::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-//void Softmax::update(const FFModel& ff)
-//{
-//}
+bool Softmax::measure_compute_time(Simulator* sim,
+                                   const ParallelConfig& pc,
+                                   float& forward_time,
+                                   float& backward_time)
+{
+  //TODO: implement measure_forward
+  return false;
+}

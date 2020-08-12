@@ -146,7 +146,7 @@ OpMeta* Pool2D::init_task(const Task *task,
                           Context ctx, Runtime *runtime)
 {
   assert(regions.size() == 2);
-  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
   const Pool2D* pool = (Pool2D*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   Pool2DMeta* m = new Pool2DMeta(handle);
@@ -396,6 +396,12 @@ void Pool2D::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Pool2D::update(const FFModel& ff)
+bool Pool2D::measure_compute_time(Simulator* sim,
+                                  const ParallelConfig& pc,
+                                  float& forward_time,
+                                  float& backward_time)
 {
+  //TODO: implement measure_forward
+  return false;
 }
+

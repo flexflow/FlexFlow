@@ -228,3 +228,13 @@ void Flat::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+bool Flat::measure_compute_time(Simulator* sim,
+                                const ParallelConfig& pc,
+                                float& forward_time,
+                                float& backward_time)
+{
+  // Assume flat has no cost
+  forward_time = 0;
+  backward_time = 0;
+  return true;
+}

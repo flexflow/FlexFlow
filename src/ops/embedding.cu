@@ -345,15 +345,11 @@ void Embedding::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-/*
-__host__
-Parameter* Embedding::get_parameter(int index)
+bool Embedding::measure_compute_time(Simulator* sim,
+                                     const ParallelConfig& pc,
+                                     float& forward_time,
+                                     float& backward_time)
 {
-  if (index == 0) {
-    return &weights[0];
-  } else {
-    assert(0);
-    return NULL;
-  }
+  //TODO: implement measure_forward
+  return false;
 }
-*/

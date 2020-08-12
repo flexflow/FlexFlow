@@ -938,7 +938,7 @@ PerfMetrics FFModel::update_metrics_task(const Task *task,
                                          const std::vector<PhysicalRegion>& regions,
                                          Context ctx, Runtime* runtime)
 {
-  printf("in update_metrics_task\n");
+  //printf("in update_metrics_task\n");
   if (task->futures.size() == 0) {
     // Create an empty future
     PerfMetrics perf;
@@ -1156,6 +1156,13 @@ void register_internal_tasks()
   }
   // ElementUnary task
   {
+    TaskVariantRegistrar registrar(ELEMENTUNARY_INIT_TASK_ID, "ElementWiseUnary Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, ElementUnary::init_task>(
+        registrar, "ElementWiseUnary Init Task");
+  }
+  {
     TaskVariantRegistrar registrar(ELEMENTUNARY_FWD_TASK_ID, "ElementWiseUnary Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -1227,6 +1234,28 @@ void register_internal_tasks()
   //  Runtime::preregister_task_variant<Conv2D::update_task>(
   //     registrar, "Conv2D Update Task");
   //}
+  // Dropout task
+  {
+    TaskVariantRegistrar registrar(DROPOUT_INIT_TASK_ID, "Dropout Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Dropout::init_task>(
+        registrar, "Dropout Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(DROPOUT_FWD_TASK_ID, "Dropout Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Dropout::forward_task>(
+        registrar, "Dropout Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(DROPOUT_BWD_TASK_ID, "Dropout Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Dropout::backward_task>(
+        registrar, "Dropout Backward Task");
+  }
   // Embedding task GPU
   {
     TaskVariantRegistrar registrar(EMBED_INIT_TASK_ID, "Embedding Init");

@@ -1,4 +1,6 @@
 #include "cuda_helper.h"
+#include "model.h"
+
 __global__
 void scale_kernel(float* ptr, coord_t size, float a, float b)
 {
@@ -102,6 +104,45 @@ void print_tensor(const T* ptr, Rect<DIM> rect, const char* prefix)
   checkCUDA(cudaFreeHost(host_ptr));
 }
 
+cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor, Domain domain)
+{
+  int dims[MAX_DIM];
+  switch (domain.get_dim()) {
+    case 1:
+    {
+      Rect<1> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      return cudnnSetTensor4dDescriptor(tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[0], 1, 1, 1);
+    }
+    case 2:
+    {
+      Rect<2> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      return cudnnSetTensor4dDescriptor(tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[1], dims[0], 1, 1);
+    }
+    case 3:
+    {
+      Rect<3> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      return cudnnSetTensor4dDescriptor(tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[2], dims[1], dims[0], 1);
+    }
+    case 4:
+    {
+      Rect<4> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      dims[3] = rect.hi[3] - rect.lo[3] + 1;
+      return cudnnSetTensor4dDescriptor(tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[3], dims[2], dims[1], dims[0]);
+    }
+    default:
+      assert(false && "Unsupported dim number");
+  }
+  return CUDNN_STATUS_BAD_PARAM;
+}
 
 template __global__ void assign_kernel<float>(float* ptr, coord_t size, float value);
 template __global__ void assign_kernel<int32_t>(int32_t* ptr, coord_t size, int32_t value);

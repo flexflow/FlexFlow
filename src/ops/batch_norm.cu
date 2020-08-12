@@ -531,8 +531,11 @@ void BatchNorm::backward(const FFModel& ff)
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
 }
 
-__host__
-void BatchNorm::update(const FFModel& ff)
+bool BatchNorm::measure_compute_time(Simulator* sim,
+                                     const ParallelConfig& pc,
+                                     float& forward_time,
+                                     float& backward_time)
 {
-  //FIXME: we didn't sync batch norm parameters for now
+  //TODO: implement measure_forward
+  return false;
 }
