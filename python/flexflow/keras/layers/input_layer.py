@@ -37,6 +37,9 @@ class InputLayer(Layer):
     summary = "%s%s\t\t%s\t%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
     return summary
     
+  def _reset_layer(self):
+    pass
+    
 def Input(shape=None, batch_size=None, 
           dtype=None, sparse=False,
           tensor=None, ragged=False,

@@ -29,19 +29,17 @@ class Model(BaseModel):
     
     self._input_tensors = inputs
     for input_tensor in inputs:
-      assert input_tensor.from_layer.initialized == False, "[Model]: input layer is initialized, do not reuse the layer"
       self._input_layers.append(input_tensor.from_layer)
-      input_tensor.from_layer.initialized = True
     self._output_tensor = outputs
     
     self.__traverse_dag_dfs()
     fflogger.debug("nb_layers %d" %(self._nb_layers))
     
   def __call__(self, input_tensor):
-    for layer in self.layers:
+    for layer in self._layers:
       layer.reset_layer()
     self._output_tensor = input_tensor
-    for layer in self.layers:
+    for layer in self._layers:
       self._output_tensor = layer(self._output_tensor)
     self._input_tensors = [input_tensor]
     return self._output_tensor
