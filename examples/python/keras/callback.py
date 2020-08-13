@@ -19,7 +19,7 @@ import flexflow.keras.optimizers
 from flexflow.keras.callbacks import Callback, LearningRateScheduler, VerifyMetrics, EpochVerifyMetrics
 from flexflow.keras.datasets import cifar10
 from flexflow.keras import backend as K
-from example.accuracy import ModelAccuracy
+from accuracy import ModelAccuracy
 
 import numpy as np
 

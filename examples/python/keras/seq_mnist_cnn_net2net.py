@@ -21,7 +21,7 @@ from flexflow.keras.callbacks import Callback, VerifyMetrics, EpochVerifyMetrics
 
 import flexflow.core as ff
 import numpy as np
-from example.accuracy import ModelAccuracy
+from accuracy import ModelAccuracy
   
 def create_teacher_model_cnn(num_classes, x_train, y_train):
   model = Sequential()

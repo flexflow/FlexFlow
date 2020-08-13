@@ -21,7 +21,7 @@ from flexflow.keras.datasets import cifar10
 from flexflow.keras import losses
 from flexflow.keras import metrics
 from flexflow.keras.callbacks import Callback, VerifyMetrics, EpochVerifyMetrics
-from example.accuracy import ModelAccuracy
+from accuracy import ModelAccuracy
 
 import flexflow.core as ff
 import numpy as np
@@ -31,37 +31,30 @@ import gc
 def top_level_task():
   num_classes = 10
 
-  img_rows, img_cols = 28, 28
-  
   (x_train, y_train), (x_test, y_test) = mnist.load_data()
-  x_train = x_train.reshape(x_train.shape[0], 1, img_rows, img_cols)
-  
+
+  x_train = x_train.reshape(60000, 784)
   x_train = x_train.astype('float32')
   x_train /= 255
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
+  print("shape: ", x_train.shape)
   
-  input_tensor = Input(shape=(1, 28, 28), dtype="float32")
+  input_tensor = Input(shape=(784,))
   
-  t1 = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
-  t2 = Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(input_tensor)
-  output = concatenate([t1, t2])
-  output = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu")(output)
-  output = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output)
-  output = Flatten()(output)
-  output = Dense(128, activation="relu")(output)
-  output = Dense(num_classes)(output)
-  output = Activation("softmax")(output)
+  output = Dense(512, input_shape=(784,), activation="relu")(input_tensor)
+  output2 = Dense(512, activation="relu")(output)
+  output3 = Dense(num_classes)(output2)
+  output4 = Activation("softmax")(output3)
+  
+  model = Model(input_tensor, output4)
 
-  model = Model(input_tensor, output)
-  
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
-  model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
-  print(model.summary())
-  
-  model.fit(x_train, y_train, epochs=5, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_CNN), EpochVerifyMetrics(ModelAccuracy.MNIST_CNN)])
+  model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', metrics.SparseCategoricalCrossentropy()])
+
+  model.fit(x_train, y_train, batch_size=64, epochs=5, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP), EpochVerifyMetrics(ModelAccuracy.MNIST_MLP)])
 
 if __name__ == "__main__":
-  print("Functional API, mnist cnn concat")
+  print("Functional API, mnist mlp")
   top_level_task()
   gc.collect()

@@ -21,7 +21,7 @@ from flexflow.keras.callbacks import Callback, VerifyMetrics, EpochVerifyMetrics
 
 import flexflow.core as ff
 import numpy as np
-from example.accuracy import ModelAccuracy
+from accuracy import ModelAccuracy
 
 def top_level_task():
   
