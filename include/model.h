@@ -231,34 +231,26 @@ class Embedding;
 class FFModel {
 public:
   FFModel(FFConfig &config);
+  // C++ APIs for constructing models
   // Add an exp layer
   Tensor exp(const Tensor& x);
-  ElementUnary* exp();
   // Add an add layer
   Tensor add(const Tensor& x,
              const Tensor& y);
-  ElementBinary* add();
   // Add a subtract layer
   Tensor subtract(const Tensor& x,
                   const Tensor& y);
-  ElementBinary* subtract();
   // Add a multiply layer
   Tensor multiply(const Tensor& x,
                   const Tensor& y);
-  ElementBinary* multiply();
   // Add a divide layer
   Tensor divide(const Tensor& x,
                 const Tensor& y);
-  ElementBinary* divide();
   // Add an activation layer
   Tensor relu(const Tensor& x);
-  ElementUnary* relu();
   Tensor sigmoid(const Tensor& x);
-  ElementUnary* sigmoid();
   Tensor tanh(const Tensor& x);
-  ElementUnary* tanh();
   Tensor elu(const Tensor& x);
-  ElementUnary* elu();
   // Add a 2D convolutional layer 
   Tensor conv2d(const Tensor& input,
                 int outChannels,
@@ -269,15 +261,6 @@ public:
                 bool use_bias = true,
                 Initializer* krenel_initializer = NULL,
                 Initializer* bias_initializer = NULL);
-  Conv2D* conv2d(int inChannels,
-                 int outChannels,
-                 int kernelH, int kernelW,
-                 int strideH, int strideW,
-                 int paddingH, int paddingW,
-                 ActiMode activation = AC_MODE_NONE,
-                 bool use_bias = true,
-                 Initializer* krenel_initializer = NULL,
-                 Initializer* bias_initializer = NULL);
   // Add a dropout layer
   Tensor dropout(const Tensor& input,
                  float rate,
@@ -287,9 +270,6 @@ public:
                    int num_entires, int outDim,
                    AggrMode aggr,
                    Initializer* kernel_initializer);
-  Embedding* embedding(int num_entires, int outDim,
-                       AggrMode aggr,
-                       Initializer* kernel_initializer);
   // Add a 2D pooling layer
   Tensor pool2d(const Tensor& input,
                 int kernelH, int kernelW,
@@ -297,11 +277,6 @@ public:
                 int paddingH, int paddingW,
                 PoolType type = POOL_MAX,
                 ActiMode activation = AC_MODE_NONE);
-  Pool2D* pool2d(int kernelH, int kernelW,
-                 int strideH, int strideW,
-                 int paddingH, int paddingW,
-                 PoolType type = POOL_MAX,
-                 ActiMode activation = AC_MODE_NONE);
   // Add a batch_norm layer
   Tensor batch_norm(const Tensor& input,
                     bool relu = true);
@@ -312,23 +287,14 @@ public:
                bool use_bias = true,
                Initializer* kernel_initializer = NULL,
                Initializer* bias_initializer = NULL);
-  Linear* dense(int inDim, int outDim,
-                ActiMode activation = AC_MODE_NONE,
-                bool use_bias = true,
-                Initializer* kernel_initializer = NULL,
-                Initializer* bias_initializer = NULL);
   // Add a concat layer
   Tensor concat(int n, const Tensor* tensors,
                 int axis);
   // Add a flat layer
   Tensor flat(const Tensor& input);
-  Flat* flat();
   // Add a softmax layer
   Tensor softmax(const Tensor& input);
-  void mse_loss(const Tensor& logits,
-                const Tensor& labels,
-                const std::string& reduction);
-
+  // Create input tensors and constants
   template<int NDIM>
   Tensor create_tensor(const int dims[],
                        const std::string& name,
@@ -339,6 +305,44 @@ public:
                          const std::string& pc_name,
                          float value,
                          DataType date_type);
+  // ========================================
+  // Functional APIs for constructing models
+  // ========================================
+  ElementUnary* exp();
+  ElementBinary* add();
+  ElementBinary* subtract();
+  ElementBinary* multiply();
+  ElementBinary* divide();
+  ElementUnary* relu();
+  ElementUnary* sigmoid();
+  ElementUnary* tanh();
+  ElementUnary* elu();
+  Conv2D* conv2d(int inChannels,
+                 int outChannels,
+                 int kernelH, int kernelW,
+                 int strideH, int strideW,
+                 int paddingH, int paddingW,
+                 ActiMode activation = AC_MODE_NONE,
+                 bool use_bias = true,
+                 Initializer* krenel_initializer = NULL,
+                 Initializer* bias_initializer = NULL);
+  Embedding* embedding(int num_entires, int outDim,
+                       AggrMode aggr,
+                       Initializer* kernel_initializer);
+  Pool2D* pool2d(int kernelH, int kernelW,
+                 int strideH, int strideW,
+                 int paddingH, int paddingW,
+                 PoolType type = POOL_MAX,
+                 ActiMode activation = AC_MODE_NONE);
+  Linear* dense(int inDim, int outDim,
+                ActiMode activation = AC_MODE_NONE,
+                bool use_bias = true,
+                Initializer* kernel_initializer = NULL,
+                Initializer* bias_initializer = NULL);
+  Flat* flat();
+  // ========================================
+  // Internal APIs that should not be invoked from applications
+  // ========================================
   template<int NDIM>
   void create_disjoint_partition(const Tensor& tensor,
                                  const IndexSpaceT<NDIM>& part_is,

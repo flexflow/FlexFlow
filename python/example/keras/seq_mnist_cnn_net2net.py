@@ -33,12 +33,12 @@ def create_teacher_model_cnn(num_classes, x_train, y_train):
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
 
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   
   print(model.summary())
 
-  model.fit(x_train, y_train, epochs=1)
+  model.fit(x_train, y_train, epochs=5)
   return model
   
 def create_student_model_cnn(teacher_model, num_classes, x_train, y_train):
@@ -64,7 +64,7 @@ def create_student_model_cnn(teacher_model, num_classes, x_train, y_train):
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
 
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   
   conv1s = model.get_layer(index=0)
@@ -79,7 +79,7 @@ def create_student_model_cnn(teacher_model, num_classes, x_train, y_train):
   
   print(model.summary())
   
-  model.fit(x_train, y_train, epochs=1, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_CNN)])
+  model.fit(x_train, y_train, epochs=5, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_CNN)])
    
 def top_level_task():
   num_classes = 10

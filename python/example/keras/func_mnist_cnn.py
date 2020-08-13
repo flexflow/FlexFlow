@@ -57,7 +57,7 @@ def top_level_task():
 
   model = Model(input_tensor, output)
   
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   
   print(model.summary())
@@ -68,7 +68,7 @@ def top_level_task():
   print("t1: ", t1.to_layers, " ", t1.from_layer)
   print("t2: ", t2.to_layers, " ", t2.from_layer)
   
-  model.fit(x_train, y_train, epochs=1, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_CNN)])
+  model.fit(x_train, y_train, epochs=5, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_CNN)])
 
 if __name__ == "__main__":
   print("Functional API, mnist cnn")

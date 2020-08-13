@@ -69,11 +69,11 @@ def top_level_task():
   
   model = Model(input_tensor, output)
   
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
   
-  model.fit(full_input_np, full_label_np, epochs=1, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_ALEXNET)])
+  model.fit(full_input_np, full_label_np, epochs=40, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_ALEXNET)])
 
 if __name__ == "__main__":
   print("Functional API, cifar10 alexnet")

@@ -187,7 +187,7 @@ def top_level_task():
   model = build_model(loader, args)
   print(model.summary())
   opt = flexflow.keras.optimizers.SGD()
-  model.compile(optimizer=opt)
+  model.compile(optimizer=opt, loss='mean_squared_error', metrics=['accuracy', 'mean_squared_error'])
 
   if args.use_exported_data is not None:
     train_gen = DataFeeder(filename=args.use_exported_data, batch_size=args.batch_size, shuffle=args.shuffle, single=args.single, agg_dose=args.agg_dose)

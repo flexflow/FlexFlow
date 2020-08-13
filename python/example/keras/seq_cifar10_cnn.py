@@ -48,11 +48,11 @@ def top_level_task():
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
 
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.02)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
 
-  model.fit(x_train, y_train, epochs=1, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
+  model.fit(x_train, y_train, epochs=30, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
 
 if __name__ == "__main__":
   print("Sequantial model, cifar10 cnn")

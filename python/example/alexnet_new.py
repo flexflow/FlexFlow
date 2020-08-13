@@ -49,7 +49,7 @@ def top_level_task():
   t = linear3.init_inout(ffmodel, t);
   t = ffmodel.softmax("softmax", t, label)
   
-  ffoptimizer = SGDOptimizer(ffmodel, 0.001)
+  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
   
   # Data Loader

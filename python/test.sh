@@ -26,17 +26,17 @@ mpirun -np 1 ./flexflow_python example/keras/func_mnist_mlp_net2net.py -ll:py 1 
 mpirun -np 1 ./flexflow_python example/keras/func_cifar10_cnn_net2net.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
 
 #Python
-mpirun -np 1 ./flexflow_python example/print_layers.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
-mpirun -np 1 ./flexflow_python example/alexnet.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
-mpirun -np 1 ./flexflow_python example/mnist_mlp.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
-mpirun -np 1 ./flexflow_python example/mnist_cnn.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
-mpirun -np 1 ./flexflow_python example/cifar10_cnn.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
-mpirun -np 1 ./flexflow_python example/cifar10_cnn_attach.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
-mpirun -np 1 ./flexflow_python example/mnist_mlp_attach.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
+mpirun -np 1 ./flexflow_python example/print_layers.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --epochs 5
+mpirun -np 1 ./flexflow_python example/alexnet.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --epochs 40
+mpirun -np 1 ./flexflow_python example/mnist_mlp.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --epochs 5
+mpirun -np 1 ./flexflow_python example/mnist_cnn.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --epochs 5
+mpirun -np 1 ./flexflow_python example/cifar10_cnn.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --epochs 40
+mpirun -np 1 ./flexflow_python example/cifar10_cnn_attach.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --epochs 5
+mpirun -np 1 ./flexflow_python example/mnist_mlp_attach.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --epochs 5
 
 #Possible crash
 mpirun -np 1 ./flexflow_python example/keras/func_cifar10_cnn_concat.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
 mpirun -np 1 ./flexflow_python example/keras/func_cifar10_cnn_concat_model.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
 mpirun -np 1 ./flexflow_python example/keras/func_cifar10_cnn_concat_seq_model.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
-mpirun -np 1 ./flexflow_python example/cifar10_cnn_concat.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
+mpirun -np 1 ./flexflow_python example/cifar10_cnn_concat.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192 --epochs 40
 

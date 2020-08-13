@@ -73,7 +73,7 @@ def create_student_model_mlp(teacher_model, num_classes, x_train, y_train):
   print(d3_kernel)
   print(d3_bias)
 
-  model.fit(x_train, y_train, epochs=1, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP)])
+  model.fit(x_train, y_train, epochs=5, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP)])
   
 def top_level_task():
   num_classes = 10
