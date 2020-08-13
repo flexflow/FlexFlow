@@ -14,7 +14,7 @@
 #
 
 from flexflow.keras.models import Sequential
-from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation
+from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Input
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
 from flexflow.keras.callbacks import Callback, VerifyMetrics
@@ -38,7 +38,8 @@ def top_level_task():
   y_train = np.reshape(y_train, (len(y_train), 1))
   print("shape: ", x_train.shape, x_train.__array_interface__["strides"])
   
-  layers = [Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"),
+  layers = [Input(shape=(1, 28, 28), dtype="float32"),
+            Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"),
             Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"),
             MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"),
             Flatten(),
