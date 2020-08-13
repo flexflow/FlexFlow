@@ -66,6 +66,14 @@ class Layer(object):
       return self.output_tensors[0]
     else:
       return self.output_tensors
+      
+  @property
+  def initialized(self):
+    return self._initialized
+  
+  @initialized.setter
+  def initialized(self, init):
+    self._initialized = init
     
   def reset_layer(self):
     self.reset_connection()
