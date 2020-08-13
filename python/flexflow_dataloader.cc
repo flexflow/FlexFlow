@@ -619,10 +619,10 @@ void SingleDataLoader::load_entire_dataset_from_numpy(const Task *task,
   printf("Check ptr input_ %p %lu %lu, input %p %lu %lu\n", input_ptr_, (uintptr_t)input_ptr_, rect_input_.volume(), input_ptr, (uintptr_t)input_ptr, rect_input.volume());
   assert(rect_input.volume() == rect_input_.volume());
   memcpy(input_ptr, input_ptr_, sizeof(DT)*rect_input.volume());
-  for (int i = 0; i < 32; i++) {
-    std::cout<<input_ptr[i]<<" ";
-  }
-  std::cout<<std::endl;
+  // for (int i = 0; i < 32; i++) {
+  //   std::cout<<input_ptr[i]<<" ";
+  // }
+  // std::cout<<std::endl;
 }
 
 void SingleDataLoader::register_cpu_tasks(void)

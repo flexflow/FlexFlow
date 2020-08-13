@@ -1,4 +1,20 @@
+# Copyright 2020 Stanford University, Los Alamos National Laboratory
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import flexflow.core as ff
+from flexflow.core.flexflow_logger import fflogger
 
 from .base_model import BaseModel
 from .tensor import Tensor
@@ -17,16 +33,13 @@ class Model(BaseModel):
     self._output_tensor = outputs
     
     self.__traverse_dag_dfs()
-    print("nb_layers", self._nb_layers)
-    
-    for layer in self._input_layers:
-      print(layer.next_layers)
+    fflogger.debug("nb_layers %d" %(self._nb_layers))
     
   def __call__(self, input_tensor):
-    for layer in self.layers:
+    for layer in self._layers:
       layer.reset_layer()
     self._output_tensor = input_tensor
-    for layer in self.layers:
+    for layer in self._layers:
       self._output_tensor = layer(self._output_tensor)
     self._input_tensors = [input_tensor]
     return self._output_tensor
@@ -45,7 +58,7 @@ class Model(BaseModel):
     while(len(bfs_queue) != 0):
       layer = bfs_queue.pop(0)
       if (isinstance(layer, InputLayer) == False):
-       #print(layer)
+       #fflogger.debug(layer)
         self._add_layer_metadata(layer)
       for child in layer.next_layers:
         assert child not in bfs_queue, "already in the stack"
@@ -66,7 +79,7 @@ class Model(BaseModel):
     while(len(dfs_stack) != 0):
       layer = dfs_stack.pop()
       if (isinstance(layer, InputLayer) == False):
-        #print(layer)
+        #fflogger.debug(layer)
         self._add_layer_metadata(layer)
       for child in reversed(layer.next_layers):
         assert child not in dfs_stack, "already in the stack"

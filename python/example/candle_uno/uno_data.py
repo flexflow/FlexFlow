@@ -1040,6 +1040,13 @@ class DataFeeder(keras.utils.data_utils.Sequence):
         y = self.store.select('y_{}'.format(self.partition), start=start, stop=stop)[self.target]
         return x, y
 
+    def getall(self):
+        start = 0
+        stop = self.size
+        x = [self.store.select('x_{0}_{1}'.format(self.partition, i), start=start, stop=stop) for i in range(self.input_size)]
+        y = self.store.select('y_{}'.format(self.partition), start=start, stop=stop)[self.target]
+        return x, y
+
     def reset(self):
         """ empty method implementation to match reset() in CombinedDataGenerator
         """

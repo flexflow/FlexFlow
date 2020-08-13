@@ -1,6 +1,7 @@
 #ifndef _LEGION_CNN_HELPER_H_
 #define _LEGION_CNN_HELPER_H_
 #include "legion.h"
+#include <cudnn.h>
 
 #define FatalError(s) do {                                             \
     std::stringstream _where, _message;                                \
@@ -78,4 +79,6 @@ void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
 template<unsigned DIM, typename T>
 void print_tensor(const T* ptr, Rect<DIM> rect, const char* prefix);
 
+cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
+                                                 Legion::Domain domain);
 #endif

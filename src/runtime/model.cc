@@ -92,6 +92,47 @@ void Tensor::detach_raw_ptr(FFConfig &config)
   runtime->detach_external_resource(ctx, physical_region);
 }
 
+bool Tensor::get_input_sub_tensor(const ParallelConfig& pc,
+                                  Tensor& tensor,
+                                  OperatorType type)
+{
+  //TODO: consider reduction dim for conv2d and linear
+  if (pc.nDims != numDim)
+    return false;
+  for (int i = 0; i < numDim; i++)
+    if (adim[i] % pc.dim[i] != 0)
+      return false;
+  tensor.numDim = numDim;
+  for (int i = 0; i < numDim; i++)
+    tensor.adim[i] = adim[i] / pc.dim[i];
+  tensor.data_type = data_type;
+  return true;
+}
+
+bool Tensor::get_output_sub_tensor(const ParallelConfig& pc,
+                                   Tensor& tensor,
+                                   OperatorType type)
+{
+  if (pc.nDims != numDim)
+    return false;
+  for (int i = 0; i < numDim; i++)
+    if (adim[i] % pc.dim[i] != 0)
+      return false;
+  tensor.numDim = numDim;
+  for (int i = 0; i < numDim; i++)
+    tensor.adim[i] = adim[i] / pc.dim[i];
+  tensor.data_type = data_type;
+  return true;
+}
+
+size_t Tensor::get_volume()
+{
+  size_t volume = 1;
+  for (int i = 0; i < numDim; i++)
+    volume *= adim[i];
+  return volume;
+}
+
 Op::Op(FFModel& model,
        const std::string& _name,
        const Tensor& _input)
@@ -204,17 +245,20 @@ void Op::zero_grad(const FFModel& ff)
                           WRITE_ONLY, EXCLUSIVE, weights[i].region_grad));
     launcher.add_field(i, FID_DATA);
   }
-  for (int i = 0; i < numInputs; i++) {
+  for (int i = 0; i < numOutputs; i++) {
     launcher.add_region_requirement(
-        RegionRequirement(input_grad_lps[i], 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
+        RegionRequirement(outputs[i].part_grad, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, outputs[i].region_grad));
+    //LogicalRegion lr = outputs[i].region_grad;
+    //printf("zero_grad:output[%d]: region(%d,%d,%d)\n", i, lr.get_index_space().get_id(), lr.get_field_space().get_id(), lr.get_tree_id());
     launcher.add_field(i + numWeights, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
 }
 
 FFModel::FFModel(FFConfig& _config)
-: op_global_guid(100), config(_config)
+: op_global_guid(100), config(_config),
+  optimizer(NULL), loss_op(NULL), metrics_op(NULL)
 {
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
@@ -268,78 +312,6 @@ FFModel::FFModel(FFConfig& _config)
   for (PointInRectIterator<2> it(task_rect); it(); it++) {
     handlers[idx++] = fm.get_result<FFHandler>(*it);
   }
-#ifdef DEADCODE
-  // Build logical regions for images
-  Rect<4> part_rect(Point<4>(0, 0, 0, 0),
-      Point<4>(0, 0, 0, config.numNodes * config.workersPerNode-1));
-  IndexSpaceT<4> part_is = runtime->create_index_space(ctx, part_rect);
-  Rect<4> image_rect(Point<4>(0, 0, 0, 0),
-    Point<4>(config.inputWidth-1, config.inputHeight-1, 2, config.batchSize-1));
-  IndexSpaceT<4> image_is = runtime->create_index_space(ctx, image_rect);
-  LogicalRegion image_lr = runtime->create_logical_region(ctx, image_is,
-                               config.field_space);
-  //LogicalRegion image_grad_lr = runtime->create_logical_region(ctx, image_is,
-  //                                  config.field_space);
-  int extentW = config.inputWidth;
-  int extentH = config.inputHeight;
-  int extentC = 3;
-  assert(config.batchSize % (config.numNodes * config.workersPerNode) == 0);
-  int extentN = config.batchSize / (config.numNodes * config.workersPerNode);
-  Rect<4> extent(Point<4>(0, 0, 0, 0),
-                 Point<4>(extentW-1, extentH-1, extentC-1, extentN-1));
-  Transform<4, 4> transform;
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++)
-      transform[i][j] = 0;
-  transform[0][0] = extentW;
-  transform[1][1] = extentH;
-  transform[2][2] = 3;
-  transform[3][3] = extentN;
-  IndexPartition image_ip =
-    runtime->create_partition_by_restriction(ctx, image_is, part_is, transform, extent);
-  assert(runtime->is_index_partition_disjoint(ctx, image_ip));
-  assert(runtime->is_index_partition_complete(ctx, image_ip));
-  LogicalPartition image_lp = runtime->get_logical_partition(ctx, image_lr, image_ip);
-  //LogicalPartition image_grad_lp =
-  //  runtime->get_logical_partition(ctx, image_grad_lr, image_ip);
-  inputImage.numDim = 4;
-  inputImage.adim[0] = config.inputWidth;
-  inputImage.adim[1] = config.inputHeight;
-  inputImage.adim[2] = 3;
-  inputImage.adim[3] = config.batchSize;
-  inputImage.pdim[0] = extentW;
-  inputImage.pdim[1] = extentH;
-  inputImage.pdim[2] = 3;
-  inputImage.pdim[3] = extentN;
-  inputImage.region = image_lr;
-  inputImage.region_grad = LogicalRegion::NO_REGION;
-  inputImage.part = image_lp;
-  inputImage.part_grad = LogicalPartition::NO_PART;
-  // Build local regions for input raw images
-  int extentHWC = config.inputHeight * config.inputWidth * 3;
-  Rect<2> raw_rect(Point<2>(0, 0), Point<2>(extentHWC-1, config.batchSize-1));
-  IndexSpaceT<2> raw_is = runtime->create_index_space(ctx, raw_rect);
-  LogicalRegion raw_lr =
-      runtime->create_logical_region(ctx, raw_is, config.field_space);
-  Transform<2, 4> raw_trans;
-  Rect<2> raw_ext(Point<2>(0, 0), Point<2>(extentHWC-1, extentN-1));
-  for (int i = 0; i < 2; i++)
-    for (int j = 0; j < 4; j++)
-      raw_trans[i][j] = 0;
-  raw_trans[1][3] = extentN;
-  IndexPartition raw_ip =
-    runtime->create_partition_by_restriction(ctx, raw_is, part_is, raw_trans, raw_ext);
-  assert(runtime->is_index_partition_disjoint(ctx, raw_ip));
-  assert(runtime->is_index_partition_complete(ctx, raw_ip));
-  LogicalPartition raw_lp = runtime->get_logical_partition(ctx, raw_lr, raw_ip);
-  inputRaw.numDim = 2; //Dim [HWC, N]
-  inputRaw.adim[0] = extentHWC;
-  inputRaw.adim[1] = config.batchSize;
-  inputRaw.pdim[0] = extentHWC;
-  inputRaw.pdim[1] = extentN;
-  inputRaw.region = raw_lr;
-  inputRaw.part = raw_lp;
-#endif
 }
 
 template<int NDIM>
@@ -435,8 +407,9 @@ Tensor FFModel::create_tensor(const int dims[],
   tensor.numDim = NDIM;
   for (int i = 0; i < NDIM; i++) {
     tensor.adim[i] = rect.hi[i] - rect.lo[i] + 1;
-    tensor.pdim[i] = extent.hi[i] - extent.lo[i] + 1;
+    //tensor.pdim[i] = extent.hi[i] - extent.lo[i] + 1;
   }
+
   return tensor;
 }
 
@@ -843,6 +816,13 @@ void FFModel::forward()
 
 void FFModel::backward()
 {
+  // Compute metrics
+  Op* final_layer = layers[layers.size()-1];
+  assert(final_layer->numOutputs == 1);
+  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor);
+  // Compute the gradients of the final layer wrt loss
+  loss_op->backward(this, &(final_layer->outputs[0]), &label_tensor);
+  // Perform backpropagation
   std::set<LogicalRegion> resetedInputGrads;
   for (int l = layers.size() - 1; l >= 0; l--) {
     for (int i = 0; i < layers[l]->numInputs; i++)
@@ -865,8 +845,19 @@ void FFModel::update()
   }
 }
 
-void FFModel::compile()
+void FFModel::compile(Optimizer* _optimizer,
+                      LossType loss_type,
+                      const std::vector<MetricsType>& metrics)
 {
+  optimizer = _optimizer;
+  compile(loss_type, metrics);
+}
+
+void FFModel::compile(LossType loss_type,
+                      const std::vector<MetricsType>& metrics)
+{
+  loss_op = new Loss(loss_type);
+  metrics_op = new Metrics(loss_type, metrics);
   for (size_t l = 0; l < layers.size(); l++) {
     Op* op = layers[l];
     for (int i = 0; i < op->numInputs; i++) {
@@ -885,6 +876,28 @@ void FFModel::compile()
       parameters.push_back(op->weights[i]);
     }
   }
+  Op* final_layer = layers[layers.size()-1];
+  // FIXME: currently assume the final layer has exactly one output
+  assert(final_layer->numOutputs == 1);
+  // FIXME: currently assume the logit is 2D
+  assert(final_layer->outputs[0].numDim == 2);
+  int batch_size = final_layer->outputs[0].adim[1];
+  int channel = final_layer->outputs[0].adim[0];
+  DataType label_type = DT_FLOAT;
+  if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
+    // assign channel = 1 for sparse categorical labels
+    channel = 1;
+    label_type = DT_INT32;
+  }
+  // create label tensor
+  {
+    // Note that FlexFlow's runtim internally reverse the array ordering
+    const int dims[] = {batch_size, channel};
+    label_tensor = create_tensor<2>(dims, "", label_type);
+  }
+  // init optimizer
+  assert(optimizer != NULL);
+  optimizer->init();
 }
 
 void FFModel::zero_gradients(void)
@@ -927,32 +940,23 @@ PerfMetrics FFModel::update_metrics_task(const Task *task,
                                          const std::vector<PhysicalRegion>& regions,
                                          Context ctx, Runtime* runtime)
 {
-  printf("in update_metrics_task\n");
+  //printf("in update_metrics_task\n");
   if (task->futures.size() == 0) {
     // Create an empty future
     PerfMetrics perf;
-    perf.train_loss = 0.0f;
-    perf.train_correct = perf.train_all = 0;
-    perf.test_correct = perf.test_all = 0;
-    perf.val_correct = perf.val_all = 0;
     return perf;
   }
   assert(task->futures.size() > 1);
   PerfMetrics all_metrics = task->futures[0].get_result<PerfMetrics>();
   for (size_t i = 1; i < task->futures.size(); i++) {
     PerfMetrics one_metrics = task->futures[i].get_result<PerfMetrics>();
-    all_metrics.train_loss += one_metrics.train_loss;
-    all_metrics.train_correct += one_metrics.train_correct;
-    all_metrics.train_all += one_metrics.train_all;
-    all_metrics.test_correct += one_metrics.test_correct;
-    all_metrics.test_all += one_metrics.test_all;
-    all_metrics.val_correct += one_metrics.val_correct;
-    all_metrics.val_all += one_metrics.val_all;
+    all_metrics.update(one_metrics);
   }
-  fprintf(stderr, "acc_train_loss: %.4lf train_accuracy: %.2lf%%(%d/%d)\n",
-          all_metrics.train_loss / all_metrics.train_all,
-          all_metrics.train_correct * 100.0f / all_metrics.train_all,
-          all_metrics.train_correct, all_metrics.train_all);
+  all_metrics.print();
+  //fprintf(stderr, "acc_train_loss: %.4lf train_accuracy: %.2lf%%(%d/%d)\n",
+  //        all_metrics.train_loss / all_metrics.train_all,
+  //        all_metrics.train_correct * 100.0f / all_metrics.train_all,
+  //        all_metrics.train_correct, all_metrics.train_all);
   return all_metrics;
 }
 
@@ -1154,6 +1158,13 @@ void register_internal_tasks()
   }
   // ElementUnary task
   {
+    TaskVariantRegistrar registrar(ELEMENTUNARY_INIT_TASK_ID, "ElementWiseUnary Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, ElementUnary::init_task>(
+        registrar, "ElementWiseUnary Init Task");
+  }
+  {
     TaskVariantRegistrar registrar(ELEMENTUNARY_FWD_TASK_ID, "ElementWiseUnary Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -1225,7 +1236,36 @@ void register_internal_tasks()
   //  Runtime::preregister_task_variant<Conv2D::update_task>(
   //     registrar, "Conv2D Update Task");
   //}
+  // Dropout task
+  {
+    TaskVariantRegistrar registrar(DROPOUT_INIT_TASK_ID, "Dropout Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Dropout::init_task>(
+        registrar, "Dropout Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(DROPOUT_FWD_TASK_ID, "Dropout Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Dropout::forward_task>(
+        registrar, "Dropout Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(DROPOUT_BWD_TASK_ID, "Dropout Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Dropout::backward_task>(
+        registrar, "Dropout Backward Task");
+  }
   // Embedding task GPU
+  {
+    TaskVariantRegistrar registrar(EMBED_INIT_TASK_ID, "Embedding Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Embedding::init_task>(
+        registrar, "Embedding Init Task");
+  }
   {
     TaskVariantRegistrar registrar(EMBED_FWD_TASK_ID, "Embedding Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
@@ -1377,17 +1417,33 @@ void register_internal_tasks()
     TaskVariantRegistrar registrar(SOFTMAX_BWD_TASK_ID, "softmax_bwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<PerfMetrics, Softmax::backward_task>(
+    Runtime::preregister_task_variant<Softmax::backward_task>(
         registrar, "softmax_bwd_task");
   }
-  // MSELoss
+  // compute Loss
   {
-    TaskVariantRegistrar registrar(MSELOSS_BWD_TASK_ID, "MSELoss Backward");
+    TaskVariantRegistrar registrar(LOSS_BWD_TASK_ID, "Loss Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<PerfMetrics, MSELoss::backward_task>(
+    Runtime::preregister_task_variant<Loss::backward_task>(
+        registrar, "Loss Backward Task");
+  }
+  // compute Metrics
+  {
+    TaskVariantRegistrar registrar(METRICS_COMP_TASK_ID, "MSELoss Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<PerfMetrics, Metrics::compute_task>(
         registrar, "MSELoss Backward Task");
   }
+  // MSELoss
+  //{
+  //  TaskVariantRegistrar registrar(MSELOSS_BWD_TASK_ID, "MSELoss Backward");
+  //  registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+  //  registrar.set_leaf();
+  //  Runtime::preregister_task_variant<PerfMetrics, MSELoss::backward_task>(
+  //      registrar, "MSELoss Backward Task");
+  //}
   // update metrics
   {
     TaskVariantRegistrar registrar(UPDATE_METRICS_TASK_ID, "Update Metrics");

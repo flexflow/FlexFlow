@@ -27,6 +27,7 @@ class Optimizer
 {
 public:
   Optimizer(const FFModel* _model);
+  virtual void init(void) = 0;
   virtual void next(void) = 0;
   virtual void update(const Parameter* p) = 0;
   const FFModel* model;
@@ -38,6 +39,7 @@ public:
   SGDOptimizer(const FFModel* _model,
                double lr = 0.01f, double momentum = 0.0f,
                bool nesterov = false, double weight_decay = 0.0f);
+  void init(void);
   void next(void);
   void update(const Parameter* p);
   void set_weight_decay(double _weight_decay);
@@ -58,6 +60,7 @@ public:
                 double _alpha = 0.001f, double _beta1 = 0.9f,
                 double _beta2 = 0.999f, double _weight_decay = 0.0f,
                 double _epsilon = 1e-8);
+  void init(void);
   void next(void);
   void update(const Parameter* p);
   void set_weight_decay(double _weight_decay);

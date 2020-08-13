@@ -90,6 +90,8 @@ void Flat::create_output_and_partition(FFModel& model)
   {
     const int dims[2] = {batch_size, out_dim};
     outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
+    outputs[0].owner_op = this;
+    outputs[0].owner_idx = 0;
   }
   model.create_data_parallel_partition_with_diff_dims<4, 2>(
       inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
@@ -120,6 +122,14 @@ void Flat::init(const FFModel& ff)
                          TaskArgument(this, sizeof(Flat)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
+  launcher.add_region_requirement(
+      RegionRequirement(input_lps[0], 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+  launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;
@@ -228,3 +238,13 @@ void Flat::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+bool Flat::measure_compute_time(Simulator* sim,
+                                const ParallelConfig& pc,
+                                float& forward_time,
+                                float& backward_time)
+{
+  // Assume flat has no cost
+  forward_time = 0;
+  backward_time = 0;
+  return true;
+}

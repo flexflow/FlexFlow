@@ -17,14 +17,30 @@ ifndef FF_HOME
 $(error FF_HOME variable is not defined, aborting build)
 endif
 
+#ifndef CUDA_HOME
+#$(error CUDA_HOME variable is not defined, aborting build)
+#endif
+
+#ifndef CUDNN_HOME
+#$(error CUDNN_HOME variable is not defined, aborting build)
+#endif
+
 ifndef LG_RT_DIR
 LG_RT_DIR	?= $(FF_HOME)/legion/runtime
 endif
 
+ifdef PROTOBUF_DIR
+PROTOBUF_EXE ?= $(PROTOBUF_DIR)/bin/protoc
+PROTOBUF_LIB ?= $(PROTOBUF_DIR)/lib
+PROTOBUF_INC ?= $(PROTOBUF_DIR)/include
+else
 PROTOBUF_EXE ?= $(FF_HOME)/protobuf/src/protoc
+PROTOBUF_LIB ?= $(FF_HOME)/protobuf/src/.libs
+PROTOBUF_INC ?= ${FF_HOME}/protobuf/src
+endif
 
 # Flags for directing the runtime makefile what to include
-DEBUG           ?= 1		# Include debugging symbols
+DEBUG           ?= 0		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
@@ -69,21 +85,34 @@ endif
 OUTFILE		?= flexflow_python
 
 # List all the application source files here
-FF_SRC ?= $(FF_HOME)/src/mapper/mapper.cc $(FF_HOME)/src/runtime/strategy.cc $(FF_HOME)/src/runtime/model.cc $(FF_HOME)/src/runtime/optimizer.cc $(FF_HOME)/src/runtime/initializer.cc $(FF_HOME)/src/ops/embedding.cc 
-FF_GPU_SRC ?= $(FF_HOME)/src/ops/conv_2d.cu $(FF_HOME)/src/runtime/model.cu $(FF_HOME)/src/ops/pool_2d.cu $(FF_HOME)/src/ops/batch_norm.cu $(FF_HOME)/src/ops/linear.cu  \
-		$(FF_HOME)/src/ops/softmax.cu $(FF_HOME)/src/ops/concat.cu $(FF_HOME)/src/ops/flat.cu $(FF_HOME)/src/ops/embedding.cu $(FF_HOME)/src/ops/mse_loss.cu \
+FF_SRC ?=	$(FF_HOME)/src/mapper/mapper.cc $(FF_HOME)/src/runtime/strategy.cc $(FF_HOME)/src/metrics_functions/metrics_functions.cc \
+		$(FF_HOME)/src/runtime/model.cc $(FF_HOME)/src/runtime/optimizer.cc $(FF_HOME)/src/runtime/initializer.cc \
+		$(FF_HOME)/src/ops/embedding.cc 
+FF_GPU_SRC ?= 	$(FF_HOME)/src/ops/conv_2d.cu $(FF_HOME)/src/runtime/model.cu\
+		$(FF_HOME)/src/ops/pool_2d.cu $(FF_HOME)/src/ops/batch_norm.cu\
+		$(FF_HOME)/src/ops/linear.cu  $(FF_HOME)/src/ops/dropout.cu\
+		$(FF_HOME)/src/ops/softmax.cu $(FF_HOME)/src/ops/concat.cu\
+		$(FF_HOME)/src/ops/flat.cu $(FF_HOME)/src/ops/embedding.cu \
 		$(FF_HOME)/src/ops/element_binary.cu $(FF_HOME)/src/ops/element_unary.cu \
-		$(FF_HOME)/src/runtime/initializer_kernel.cu $(FF_HOME)/src/runtime/optimizer_kernel.cu $(FF_HOME)/src/runtime/accessor_kernel.cu\
+    		$(FF_HOME)/src/loss_functions/loss_functions.cu\
+		$(FF_HOME)/src/metrics_functions/metrics_functions.cu\
+		$(FF_HOME)/src/runtime/initializer_kernel.cu $(FF_HOME)/src/runtime/optimizer_kernel.cu\
+		$(FF_HOME)/src/runtime/accessor_kernel.cu $(FF_HOME)/src/runtime/simulator.cu\
 		$(FF_HOME)/src/runtime/cuda_helper.cu flexflow_dataloader.cu
 GEN_SRC		?= main.cc flexflow_c.cc flexflow_dataloader.cc strategy.pb.cc $(FF_SRC) # .cc files
-GEN_GPU_SRC	?= $(FF_GPU_SRC)		# .cu files
+GEN_GPU_SRC	?= $(FF_GPU_SRC) # .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -I$(FF_HOME)/include -I$(FF_HOME)/protobuf/src -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
+INC_FLAGS	?= -I$(FF_HOME)/include -I$(PROTOBUF_INC) -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
 CC_FLAGS	?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON -std=c++11
 NVCC_FLAGS	?= -std=c++11
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lprotobuf -lcudnn -lcublas -lcurand -L$(FF_HOME)/protobuf/src/.libs -L$(CUDNN_HOME)/lib64 -L$(CUDNN_HOME)/lib64
+LD_FLAGS	?= -lprotobuf -lcudnn -lcublas -lcurand -L$(PROTOBUF_LIB) -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64
+
+ifeq ($(strip $(FF_ENABLE_DEBUG)), 1)
+CC_FLAGS += -DFF_DEBUG
+NVCC_FLAGS += -DFF_DEBUG
+endif
 
 ifeq ($(shell uname), Darwin)
 	LD_FLAGS += -Wl,-force_load,liblegion.a

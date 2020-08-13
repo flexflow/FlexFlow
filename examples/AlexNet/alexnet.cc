@@ -56,11 +56,11 @@ void top_level_task(const Task* task,
     const int dims[] = {ffConfig.batchSize, 3, 229, 229};
     input = ff.create_tensor<4>(dims, "", DT_FLOAT);
   }
-  Tensor label;
-  {
-    const int dims[] = {ffConfig.batchSize, 1};
-    label = ff.create_tensor<2>(dims, "", DT_INT32);
-  }
+  //Tensor label;
+  //{
+  //  const int dims[] = {ffConfig.batchSize, 1};
+  //  label = ff.create_tensor<2>(dims, "", DT_INT32);
+  //}
   // Add layers
   Tensor t = input, ts[2];
   t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
@@ -77,11 +77,14 @@ void top_level_task(const Task* task,
   t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
   t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
   t = ff.dense(t, 10);
-  t = ff.softmax(t, label);
-  ff.optimizer = new SGDOptimizer(&ff, 0.001f);
-  ff.compile();
+  t = ff.softmax(t);
+  Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
+  std::vector<MetricsType> metrics;
+  metrics.push_back(METRICS_ACCURACY);
+  metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
+  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
   // Data Loader
-  DataLoader data_loader(ff, alexnetConfig, input, label);
+  DataLoader data_loader(ff, alexnetConfig, input, ff.label_tensor);
   ff.init_layers();
   //Start timer
   {
@@ -255,7 +258,7 @@ void DataLoader::load_entire_dataset(const Task *task,
     size_t ret = fread(buffer, sizeof(unsigned char), 3073, file);
     assert(ret = 3073);
     if ((i+1) % 1000 == 0)
-      log_app.print("Loaded %d samples", i+1);
+      log_app.print("Loaded %ld samples", i+1);
     label_ptr[i] = buffer[0];
     nearest_neigh(image, buffer + 1, height, width,
                   origHeight, origWidth, heightScale, widthScale);

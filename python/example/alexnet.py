@@ -1,6 +1,7 @@
 from flexflow.core import *
 from flexflow.keras.datasets import cifar10
 
+from accuracy import ModelAccuracy
 from PIL import Image
 
 def top_level_task():
@@ -15,9 +16,35 @@ def top_level_task():
   #print(dims)
   input = ffmodel.create_tensor(dims_input, "", DataType.DT_FLOAT)
 
-  dims_label = [ffconfig.get_batch_size(), 1]
-  #print(dims)
-  label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
+  # dims_label = [ffconfig.get_batch_size(), 1]
+  # #print(dims)
+  # label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
+
+  kernel_init = GlorotUniformInitializer(123)
+  bias_init = ZeroInitializer()
+  # ts0 = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
+  # ts1 = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
+  # ts0 = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2)
+  # ts1 = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2)
+  t = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_RELU, True, kernel_init, bias_init)
+  #t = ffmodel.concat([ts0, ts1], 1)
+  t = ffmodel.pool2d(t, 3, 3, 2, 2, 0, 0)
+  t = ffmodel.conv2d(t, 192, 5, 5, 1, 1, 2, 2, ActiMode.AC_MODE_RELU)
+  t = ffmodel.pool2d(t, 3, 3, 2, 2, 0, 0)
+  t = ffmodel.conv2d(t, 384, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.conv2d(t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.conv2d(t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.pool2d(t, 3, 3, 2, 2, 0, 0)
+  t = ffmodel.flat(t);
+  t = ffmodel.dense(t, 4096, ActiMode.AC_MODE_RELU)
+  t = ffmodel.dense(t, 4096, ActiMode.AC_MODE_RELU)
+  t = ffmodel.dense(t, 10)
+  t = ffmodel.softmax(t)
+
+  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
+  ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
+  label = ffmodel.get_label_tensor()
   
   use_external = True
   if (use_external == True):
@@ -70,31 +97,6 @@ def top_level_task():
     # Data Loader
     dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
     num_samples = dataloader.get_num_samples()
-
-  kernel_init = GlorotUniformInitializer(123)
-  bias_init = ZeroInitializer()
-  # ts0 = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
-  # ts1 = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
-  # ts0 = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2)
-  # ts1 = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2)
-  t = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_RELU, True, kernel_init, bias_init)
-  #t = ffmodel.concat([ts0, ts1], 1)
-  t = ffmodel.pool2d(t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.conv2d(t, 192, 5, 5, 1, 1, 2, 2, ActiMode.AC_MODE_RELU)
-  t = ffmodel.pool2d(t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.conv2d(t, 384, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.conv2d(t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.conv2d(t, 256, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t = ffmodel.pool2d(t, 3, 3, 2, 2, 0, 0)
-  t = ffmodel.flat(t);
-  t = ffmodel.dense(t, 4096, ActiMode.AC_MODE_RELU)
-  t = ffmodel.dense(t, 4096, ActiMode.AC_MODE_RELU)
-  t = ffmodel.dense(t, 10)
-  t = ffmodel.softmax(t, label)
-
-  ffoptimizer = SGDOptimizer(ffmodel, 0.001)
-  ffmodel.set_sgd_optimizer(ffoptimizer)
-  ffmodel.compile()
 
   # input.inline_map(ffconfig)
   # input_array = input.get_array(ffconfig, DataType.DT_FLOAT)
@@ -149,6 +151,11 @@ def top_level_task():
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, num_samples * epochs / run_time));
+  perf_metrics = ffmodel.get_perf_metrics()
+  accuracy = perf_metrics.get_accuracy()
+  if accuracy < ModelAccuracy.CIFAR10_ALEXNET.value:
+    assert 0, 'Check Accuracy'
+
   #ffmodel.print_layers(13)
 
   conv_2d1 = ffmodel.get_layer_by_id(0)

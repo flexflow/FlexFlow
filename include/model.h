@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2020 Stanford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,13 @@
 #include "legion.h"
 #include "config.h"
 #include "initializer.h"
+#include "simulator.h"
 #include "optimizer.h"
 #include "accessor.h"
-#include <cudnn.h>
+#include "loss_functions.h"
+#include "metrics_functions.h"
 #include <cuda_runtime.h>
 #include <curand.h>
-#include <cublas_v2.h>
 #include <unistd.h>
 
 using namespace Legion;
@@ -40,6 +41,7 @@ enum TaskIDs {
   ELEMENTBINARY_INIT_TASK_ID,
   ELEMENTBINARY_FWD_TASK_ID,
   ELEMENTBINARY_BWD_TASK_ID,
+  ELEMENTUNARY_INIT_TASK_ID,
   ELEMENTUNARY_FWD_TASK_ID,
   ELEMENTUNARY_BWD_TASK_ID,
   CONV2D_INIT_TASK_ID,
@@ -47,6 +49,10 @@ enum TaskIDs {
   CONV2D_FWD_TASK_ID,
   CONV2D_BWD_TASK_ID,
   CONV2D_UPD_TASK_ID,
+  DROPOUT_INIT_TASK_ID,
+  DROPOUT_FWD_TASK_ID,
+  DROPOUT_BWD_TASK_ID,
+  EMBED_INIT_TASK_ID,
   EMBED_FWD_TASK_ID,
   EMBED_BWD_TASK_ID,
   POOL2D_INIT_TASK_ID,
@@ -72,8 +78,12 @@ enum TaskIDs {
   CONCAT_FWD_TASK_ID,
   CONCAT_BWD_TASK_ID,
   MSELOSS_BWD_TASK_ID,
+  //Metrics tasks
+  METRICS_COMP_TASK_ID,
   UPDATE_METRICS_TASK_ID,
   DUMMY_TASK_ID,
+  // Loss
+  LOSS_BWD_TASK_ID,
   // Optimizer
   SGD_UPD_TASK_ID,
   ADAM_UPD_TASK_ID,
@@ -112,19 +122,6 @@ enum FieldIDs {
   FID_DATA,
 };
 
-struct PerfMetrics
-{
-  float train_loss;
-  int train_all, train_correct, test_all, test_correct, val_all, val_correct;
-};
-
-struct FFHandler {
-  cudnnHandle_t dnn;
-  cublasHandle_t blas;
-  void *workSpace;
-  size_t workSpaceSize;
-};
-
 class FFModel;
 class Op;
 class DataLoader;
@@ -134,7 +131,7 @@ struct Tensor {
     numDim = 0;
     for (int i = 0; i < MAX_DIM; i++) {
       adim[i] = 0;
-      pdim[i] = 0;
+      //pdim[i] = 0;
     }
     region = LogicalRegion::NO_REGION;
     region_grad = LogicalRegion::NO_REGION;
@@ -149,7 +146,14 @@ struct Tensor {
   T* get_raw_ptr(FFConfig &config);
   void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major);
   void detach_raw_ptr(FFConfig &config);
-  int numDim, adim[MAX_DIM], pdim[MAX_DIM];
+  bool get_input_sub_tensor(const ParallelConfig& pc,
+                            Tensor& tensor,
+                            OperatorType type);
+  bool get_output_sub_tensor(const ParallelConfig& pc,
+                             Tensor& tensor,
+                             OperatorType type);
+  size_t get_volume();
+  int numDim, adim[MAX_DIM];
   DataType data_type;
   // Describes the ownership of this tensor
   Op* owner_op;
@@ -198,6 +202,8 @@ public:
   virtual void print_layer(const FFModel& model) = 0;
   virtual void create_weights(FFModel& model) = 0;
   virtual void create_output_and_partition(FFModel& model) = 0;
+  virtual bool measure_compute_time(Simulator* sim,
+      const ParallelConfig& pc, float& forward, float& backward) = 0;
   //virtual void add_to_model(FFModel& model) = 0;
   //virtual void update(const FFModel&) = 0;
 public:
@@ -225,25 +231,26 @@ class Embedding;
 class FFModel {
 public:
   FFModel(FFConfig &config);
+  // C++ APIs for constructing models
   // Add an exp layer
   Tensor exp(const Tensor& x);
-  ElementUnary* exp();
   // Add an add layer
   Tensor add(const Tensor& x,
              const Tensor& y);
-  ElementBinary* add();
   // Add a subtract layer
   Tensor subtract(const Tensor& x,
                   const Tensor& y);
-  ElementBinary* subtract();
   // Add a multiply layer
   Tensor multiply(const Tensor& x,
                   const Tensor& y);
-  ElementBinary* multiply();
   // Add a divide layer
   Tensor divide(const Tensor& x,
                 const Tensor& y);
-  ElementBinary* divide();
+  // Add an activation layer
+  Tensor relu(const Tensor& x);
+  Tensor sigmoid(const Tensor& x);
+  Tensor tanh(const Tensor& x);
+  Tensor elu(const Tensor& x);
   // Add a 2D convolutional layer 
   Tensor conv2d(const Tensor& input,
                 int outChannels,
@@ -254,23 +261,15 @@ public:
                 bool use_bias = true,
                 Initializer* krenel_initializer = NULL,
                 Initializer* bias_initializer = NULL);
-  Conv2D* conv2d(int inChannels,
-                 int outChannels,
-                 int kernelH, int kernelW,
-                 int strideH, int strideW,
-                 int paddingH, int paddingW,
-                 ActiMode activation = AC_MODE_NONE,
-                 bool use_bias = true,
-                 Initializer* krenel_initializer = NULL,
-                 Initializer* bias_initializer = NULL);
+  // Add a dropout layer
+  Tensor dropout(const Tensor& input,
+                 float rate,
+                 unsigned long long seed = 0);
   // Add an embedding layer
   Tensor embedding(const Tensor& input,
                    int num_entires, int outDim,
                    AggrMode aggr,
                    Initializer* kernel_initializer);
-  Embedding* embedding(int num_entires, int outDim,
-                       AggrMode aggr,
-                       Initializer* kernel_initializer);
   // Add a 2D pooling layer
   Tensor pool2d(const Tensor& input,
                 int kernelH, int kernelW,
@@ -278,11 +277,6 @@ public:
                 int paddingH, int paddingW,
                 PoolType type = POOL_MAX,
                 ActiMode activation = AC_MODE_NONE);
-  Pool2D* pool2d(int kernelH, int kernelW,
-                 int strideH, int strideW,
-                 int paddingH, int paddingW,
-                 PoolType type = POOL_MAX,
-                 ActiMode activation = AC_MODE_NONE);
   // Add a batch_norm layer
   Tensor batch_norm(const Tensor& input,
                     bool relu = true);
@@ -293,27 +287,17 @@ public:
                bool use_bias = true,
                Initializer* kernel_initializer = NULL,
                Initializer* bias_initializer = NULL);
-  Linear* dense(int inDim, int outDim,
-                ActiMode activation = AC_MODE_NONE,
-                bool use_bias = true,
-                Initializer* kernel_initializer = NULL,
-                Initializer* bias_initializer = NULL);
   // Add a concat layer
   Tensor concat(int n, const Tensor* tensors,
                 int axis);
   // Add a flat layer
   Tensor flat(const Tensor& input);
-  Flat* flat();
   // Add a softmax layer
-  Tensor softmax(const Tensor& input,
-                 const Tensor& label);
-  void mse_loss(const Tensor& logits,
-                const Tensor& labels,
-                const std::string& reduction);
-
+  Tensor softmax(const Tensor& input);
+  // Create input tensors and constants
   template<int NDIM>
   Tensor create_tensor(const int dims[],
-                       const std::string& pc_name,
+                       const std::string& name,
                        DataType data_type,
                        bool create_grad = true);
   template<int NDIM>
@@ -321,6 +305,44 @@ public:
                          const std::string& pc_name,
                          float value,
                          DataType date_type);
+  // ========================================
+  // Functional APIs for constructing models
+  // ========================================
+  ElementUnary* exp();
+  ElementBinary* add();
+  ElementBinary* subtract();
+  ElementBinary* multiply();
+  ElementBinary* divide();
+  ElementUnary* relu();
+  ElementUnary* sigmoid();
+  ElementUnary* tanh();
+  ElementUnary* elu();
+  Conv2D* conv2d(int inChannels,
+                 int outChannels,
+                 int kernelH, int kernelW,
+                 int strideH, int strideW,
+                 int paddingH, int paddingW,
+                 ActiMode activation = AC_MODE_NONE,
+                 bool use_bias = true,
+                 Initializer* krenel_initializer = NULL,
+                 Initializer* bias_initializer = NULL);
+  Embedding* embedding(int num_entires, int outDim,
+                       AggrMode aggr,
+                       Initializer* kernel_initializer);
+  Pool2D* pool2d(int kernelH, int kernelW,
+                 int strideH, int strideW,
+                 int paddingH, int paddingW,
+                 PoolType type = POOL_MAX,
+                 ActiMode activation = AC_MODE_NONE);
+  Linear* dense(int inDim, int outDim,
+                ActiMode activation = AC_MODE_NONE,
+                bool use_bias = true,
+                Initializer* kernel_initializer = NULL,
+                Initializer* bias_initializer = NULL);
+  Flat* flat();
+  // ========================================
+  // Internal APIs that should not be invoked from applications
+  // ========================================
   template<int NDIM>
   void create_disjoint_partition(const Tensor& tensor,
                                  const IndexSpaceT<NDIM>& part_is,
@@ -364,7 +386,8 @@ public:
   void forward();
   void backward();
   void update();
-  void compile();
+  void compile(LossType loss_type, const std::vector<MetricsType>& metrics);
+  void compile(Optimizer* optimizer, LossType loss_type, const std::vector<MetricsType>& metrics);
   void zero_gradients();
   void print_layers(int id);
   // Internal funcitons
@@ -377,7 +400,11 @@ public:
   int op_global_guid;
   FFConfig config;
   Optimizer* optimizer;
-  //Tensor inputImage, inputRaw, inputLabel;
+  Loss* loss_op;
+  Metrics* metrics_op;
+  Tensor label_tensor;
+  //std::vector<Tensor> input_tensors;
+  
   std::vector<Op*> layers;
   std::vector<Parameter> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
@@ -420,6 +447,10 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, HighLevelRuntime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
@@ -428,10 +459,21 @@ public:
   OpType op_type;
 };
 
+class ElementUnaryMeta : public OpMeta {
+public:
+  ElementUnaryMeta(FFHandler handle) : OpMeta(handle) {};
+  cudnnTensorDescriptor_t inputTensor, outputTensor;
+  cudnnActivationDescriptor_t actiDesc;
+};
+
 class ElementUnary : public Op {
 public:
   enum OpType {
-    OP_EXP,
+    EW_EXP,
+    EW_RELU,
+    EW_SIGMOID,
+    EW_TANH,
+    EW_ELU
   };
   ElementUnary(FFModel& model,
                OpType type,
@@ -447,13 +489,20 @@ public:
   //Parameter* get_parameter(int index) {assert(0); return NULL;}
   void create_weights(FFModel& model);
   void create_output_and_partition(FFModel& model);
-
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, HighLevelRuntime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
+  bool use_cudnn() const;
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
@@ -462,6 +511,18 @@ public:
   OpType op_type;
 };
 
+class Conv2DMeta : public OpMeta {
+public:
+  Conv2DMeta(FFHandler handler);
+  cudnnTensorDescriptor_t inputTensor, biasTensor, outputTensor;
+  cudnnFilterDescriptor_t filterDesc;
+  cudnnActivationDescriptor_t actiDesc;
+  cudnnConvolutionDescriptor_t convDesc;
+  cudnnConvolutionFwdAlgo_t fwdAlgo;
+  cudnnConvolutionBwdFilterAlgo_t bwdFilterAlgo;
+  cudnnConvolutionBwdDataAlgo_t bwdDataAlgo;
+  bool relu;
+};
 
 class Conv2D : public Op {
 public:
@@ -476,14 +537,14 @@ public:
          Initializer* kernel_initializer,
          Initializer* bias_initializer);
   Conv2D(FFModel& model,
-        int in_dim, int out_dim,
-        int kernelH, int kernelW,
-        int strideH, int strideW,
-        int paddingH, int paddingW,
-        ActiMode activation,
-        bool use_bias,
-        Initializer* kernel_initializer,
-        Initializer* bias_initializer);
+         int in_dim, int out_dim,
+         int kernelH, int kernelW,
+         int strideH, int strideW,
+         int paddingH, int paddingW,
+         ActiMode activation,
+         bool use_bias,
+         Initializer* kernel_initializer,
+         Initializer* bias_initializer);
   Tensor init_inout(FFModel& model, const Tensor& input);
   //void add_to_model(FFModel& model);
   void init(const FFModel&);
@@ -499,18 +560,29 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  //static void init_para_task(const Task *task,
-  //                           const std::vector<PhysicalRegion> &regions,
-  //                           Context ctx, Runtime *runtime);
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, HighLevelRuntime *runtime);
-  //static void update_task(const Task *task,
-  //                        const std::vector<PhysicalRegion> &regions,
-  //                        Context ctx, HighLevelRuntime *runtime);
+  void forward_kernel(const Conv2DMeta* m,
+                      const float* input_ptr,
+                      float* output_ptr,
+                      const float* filter_ptr,
+                      const float* bias_ptr);
+  void backward_kernel(const Conv2DMeta* m,
+                       const float* input_ptr,
+                       float* input_grad_ptr,
+                       const float* output_ptr,
+                       float* output_grad_ptr,
+                       const float* kernel_ptr,
+                       float* kernel_grad_ptr,
+                       float* bias_ptr);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
 public:
   //IndexSpaceT<4> task_is;
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
@@ -518,23 +590,54 @@ public:
   ActiMode activation;
   Initializer *kernel_initializer;
   Initializer *bias_initializer;
-  //PhysicalRegion kernel_physical_region;
-  //PhysicalRegion bias_physical_region;
-  //TensorAccessorW<float, 4> acc_kernel;
-  //TensorAccessorW<float, 1> acc_bias;
 };
 
-class Conv2DMeta : public OpMeta {
+class DropoutMeta : public OpMeta {
 public:
-  Conv2DMeta(FFHandler handler) : OpMeta(handler) {};
-  cudnnTensorDescriptor_t inputTensor, biasTensor, outputTensor;
-  cudnnFilterDescriptor_t filterDesc;
-  cudnnActivationDescriptor_t actiDesc;
-  cudnnConvolutionDescriptor_t convDesc;
-  cudnnConvolutionFwdAlgo_t fwdAlgo;
-  cudnnConvolutionBwdFilterAlgo_t bwdFilterAlgo;
-  cudnnConvolutionBwdDataAlgo_t bwdDataAlgo;
-  bool relu, first_layer;
+  DropoutMeta(FFHandler handle);
+  cudnnTensorDescriptor_t inputTensor, outputTensor;
+  cudnnDropoutDescriptor_t dropoutDesc;
+  void *reserveSpace, *dropoutStates;
+  size_t reserveSpaceSize, dropoutStateSize;
+};
+
+class Dropout : public Op {
+public:
+  Dropout(FFModel& model,
+          const Tensor& input,
+          float rate,
+          unsigned long long seed);
+  Tensor init_inout(FFModel& model, const Tensor& input);
+  //void add_to_model(FFModel& model);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  //Parameter* get_parameter(int index) {assert(0); return NULL;}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
+private:
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
+public:
+  //IndexSpaceT<4> task_is;
+  float rate;
+  unsigned long long seed;
+  bool profiling;
 };
 
 class Pool2D : public Op {
@@ -570,6 +673,10 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
 public:
   //IndexSpaceT<4> task_is;
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
@@ -614,6 +721,10 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
 public:
   //IndexSpaceT<4> task_is;
   bool relu, profiling;
@@ -629,6 +740,14 @@ public:
   cudnnBatchNormMode_t mode;
   float *runningMean, *runningVar, *saveMean, *saveVar;
   bool relu;
+};
+
+class LinearMeta : public OpMeta {
+public:
+  LinearMeta(FFHandler handle, int batch_size);
+  cudnnTensorDescriptor_t outputTensor;
+  cudnnActivationDescriptor_t actiDesc;
+  const float *one_ptr;
 };
 
 class Linear : public Op {
@@ -661,9 +780,6 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  //static void init_para_task(const Task *task,
-  //                           const std::vector<PhysicalRegion> &regions,
-  //                           Context ctx, Runtime *runtime);
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -673,25 +789,32 @@ public:
   static void backward2_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
-  //static void update_task(const Task *task,
-  //                        const std::vector<PhysicalRegion> &regions,
-  //                        Context ctx, Runtime *runtime);
+  void forward_kernel(const LinearMeta* m,
+                      const float* input_ptr,
+                      float* output_ptr,
+                      const float* filter_ptr,
+                      const float* bias_ptr,
+                      int in_dim, int out_dim, int batch_size);
+  void backward_kernel(const LinearMeta* m,
+                       const float* input_ptr,
+                       float* input_grad_ptr,
+                       const float* output_ptr,
+                       float* output_grad_ptr,
+                       const float* kernel_ptr,
+                       float* kernel_grad_ptr,
+                       float* bias_ptr,
+                       int in_dim, int out_dim, int batch_size);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
 public:
-  //IndexSpaceT<2> task_is;
   int in_channels, out_channels;
   Tensor replica;
   bool profiling, use_bias;
   ActiMode activation;
   Initializer *kernel_initializer;
   Initializer *bias_initializer;
-};
-
-class LinearMeta : public OpMeta {
-public:
-  LinearMeta(FFHandler handle) : OpMeta(handle) {};
-  cudnnTensorDescriptor_t outputTensor;
-  cudnnActivationDescriptor_t actiDesc;
-  const float *one_ptr;
 };
 
 class Embedding : public Op {
@@ -731,6 +854,10 @@ public:
   static void backward_task_cpu(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
                                 Context ctx, Runtime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
 public:
   //IndexSpaceT<2> task_is;
   int num_entries, out_channels;
@@ -765,6 +892,10 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
 public:
   //IndexSpaceT<2> task_is;
 };
@@ -777,8 +908,7 @@ public:
 class Softmax : public Op {
 public:
   Softmax(FFModel& model,
-          const Tensor& logit,
-          const Tensor& label);
+          const Tensor& logit);
   Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
   //void add_to_model(FFModel& model) {assert(0);}
   void init(const FFModel&);
@@ -796,9 +926,13 @@ public:
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  static PerfMetrics backward_task(const Task *task,
-                                   const std::vector<PhysicalRegion> &regions,
-                                   Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
 public:
   //IndexSpaceT<2> task_is;
   bool profiling;
@@ -836,6 +970,10 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
 public:
   int axis;
   //IndexSpace task_is;
@@ -845,32 +983,6 @@ public:
 class ConcatMeta : public OpMeta {
 public:
   ConcatMeta(FFHandler handle) : OpMeta(handle) {};
-};
-
-class MSELoss : public Op {
-public:
-  MSELoss(FFModel& model,
-          const Tensor& logit,
-          const Tensor& label,
-          AggrMode aggr);
-  Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
-  //void add_to_model(FFModel& model) {assert(0);}
-  void init(const FFModel& model);
-  void forward(const FFModel& model);
-  void backward(const FFModel& model);
-  //void update(const FFModel& model);
-  void print_layer(const FFModel& model) {assert(0);}
-  //Parameter* get_parameter(int index) {assert(0); return NULL;}
-  void create_weights(FFModel& model);
-  void create_output_and_partition(FFModel& model);
-
-  static PerfMetrics backward_task(const Task *task,
-                                   const std::vector<PhysicalRegion> &regions,
-                                   Context ctx, Runtime *runtime);
-public:
-  //IndexSpaceT<2> task_is;
-  AggrMode aggr_mode;
-  bool profiling;
 };
 
 class UtilityTasks {
@@ -894,29 +1006,6 @@ public:
                                     const std::vector<PhysicalRegion> &regions,
                                     Context ctx, Runtime *runtime);
 };
-
-#ifdef DEADCODE
-struct Sample {
-  int label;
-  char file[MAX_FILE_LENGTH];
-};
-
-struct DataLoadMeta {
-  int numSamples;
-  Sample samples[MAX_SAMPLES_PER_LOAD];
-};
-
-// class DataLoader
-class DataLoader {
-public:
-  DataLoader(std::string);
-  bool get_samples(int numSamples, DataLoadMeta &meta);
-  bool shuffle_samples(void);
-public:
-  std::vector<Sample> samples;
-  std::vector<Sample>::const_iterator sampleIter;
-};
-#endif
 
 void top_level_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,

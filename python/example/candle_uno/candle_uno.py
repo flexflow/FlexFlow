@@ -1,7 +1,13 @@
+from flexflow.keras.models import Model, Sequential
+from flexflow.keras.layers import Add, Subtract, Flatten, Dense, Activation, Conv2D, MaxPooling2D, Concatenate, add, subtract, Input
+import flexflow.keras.optimizers
+
 from flexflow.core import *
 import uno as benchmark
 from default_utils import finalize_parameters
-from uno_data import CombinedDataLoader
+from uno_data import CombinedDataLoader, CombinedDataGenerator, DataFeeder
+
+import pandas as pd
 
 def initialize_parameters(default_model='uno_default_model.txt'):
   # Build benchmark object
@@ -16,26 +22,38 @@ class Struct:
   def __init__(self, **entries):
     self.__dict__.update(entries)
 
+def build_feature_model(input_shape, name='', dense_layers=[1000, 1000],
+                        activation='relu', residual=False,
+                        dropout_rate=0, permanent_dropout=True):
+  print('input_shape', input_shape)
+  x_input = Input(shape=input_shape)
+  h = x_input
+  for i, layer in enumerate(dense_layers):
+    x = h
+    h = Dense(layer, activation=activation)(h)
+    if dropout_rate > 0:
+      if permanent_dropout:
+        h = PermanentDropout(dropout_rate)(h)
+      else:
+        h = Dropout(dropout_rate)(h)
+    if residual:
+      try:
+        h = Add([h, x])
+      except ValueError:
+        pass
+  model = Model(x_input, h, name=name)
+  return model
+
 def build_model(loader, args, permanent_dropout=True, silent=False):
-  input_models = {}
+  input_shapes = {}
   dropout_rate = args.dropout
   for fea_type, shape in loader.feature_shapes.items():
     base_type = fea_type.split('.')[0]
     if base_type in ['cell', 'drug']:
-      if args.dense_cell_feature_layers is not None and base_type == 'cell':
-        dense_feature_layers = args.dense_cell_feature_layers
-      elif args.dense_drug_feature_layers is not None and base_type == 'drug':
-        dense_feature_layers = args.dense_drug_feature_layers
-      else:
-        dense_feature_layers = args.dense_feature_layers
-
-      box = build_feature_model(input_shape=shape, name=fea_type,
-                                dense_layers=dense_feature_layers,
-                                dropout_rate=dropout_rate, permanent_dropout=permanent_dropout)
       if not silent:
-        logger.debug('Feature encoding submodel for %s:', fea_type)
-        box.summary(print_fn=logger.debug)
-      input_models[fea_type] = box
+        print('Feature encoding submodel for %s:', fea_type)
+        #box.summary(print_fn=logger.debug)
+      input_shapes[fea_type] = shape
 
   inputs = []
   encoded_inputs = []
@@ -43,14 +61,22 @@ def build_model(loader, args, permanent_dropout=True, silent=False):
     shape = loader.feature_shapes[fea_type]
     fea_input = Input(shape, name='input.' + fea_name)
     inputs.append(fea_input)
-    if fea_type in input_models:
-      input_model = input_models[fea_type]
+    if fea_type in input_shapes:
+      if args.dense_cell_feature_layers is not None and base_type == 'cell':
+        dense_feature_layers = args.dense_cell_feature_layers
+      elif args.dense_drug_feature_layers is not None and base_type == 'drug':
+        dense_feature_layers = args.dense_drug_feature_layers
+      else:
+        dense_feature_layers = args.dense_feature_layers
+      input_model = build_feature_model(input_shape=shape, name=fea_type,
+                                        dense_layers=dense_feature_layers,
+                                        dropout_rate=dropout_rate, permanent_dropout=permanent_dropout)
       encoded = input_model(fea_input)
     else:
       encoded = fea_input
     encoded_inputs.append(encoded)
 
-  merged = keras.layers.concatenate(encoded_inputs)
+  merged = Concatenate(axis=1)(encoded_inputs)
 
   h = merged
   for i, layer in enumerate(args.dense):
@@ -63,7 +89,7 @@ def build_model(loader, args, permanent_dropout=True, silent=False):
         h = Dropout(dropout_rate)(h)
     if args.residual:
       try:
-        h = keras.layers.add([h, x])
+        h = Add([h, x])
       except ValueError:
         pass
   output = Dense(1)(h)
@@ -142,7 +168,7 @@ def top_level_task():
           store.append('x_{}_{}'.format(partition, j), input_feature.astype('float32'), format='table', data_column=True)
         store.append('y_{}'.format(partition), y.astype({target: 'float32'}), format='table', data_column=True,
                      min_itemsize=config_min_itemsize)
-        logger.info('Generating {} dataset. {} / {}'.format(partition, i, gen.steps))
+        print('Generating {} dataset. {} / {}'.format(partition, i, gen.steps))
 
     # save input_features and feature_shapes from loader
     store.put('model', pd.DataFrame())
@@ -150,7 +176,7 @@ def top_level_task():
     store.get_storer('model').attrs.feature_shapes = loader.feature_shapes
 
     store.close()
-    logger.info('Completed generating {}'.format(fname))
+    print('Completed generating {}'.format(fname))
     return
 
   if args.use_exported_data is None:
@@ -159,6 +185,31 @@ def top_level_task():
                           cell_subset_path=args.cell_subset_path, drug_subset_path=args.drug_subset_path)
 
   model = build_model(loader, args)
+  print(model.summary())
+  opt = flexflow.keras.optimizers.SGD()
+  model.compile(optimizer=opt, loss='mean_squared_error', metrics=['accuracy', 'mean_squared_error'])
+
+  if args.use_exported_data is not None:
+    train_gen = DataFeeder(filename=args.use_exported_data, batch_size=args.batch_size, shuffle=args.shuffle, single=args.single, agg_dose=args.agg_dose)
+    val_gen = DataFeeder(partition='val', filename=args.use_exported_data, batch_size=args.batch_size, shuffle=args.shuffle, single=args.single, agg_dose=args.agg_dose)
+    test_gen = DataFeeder(partition='test', filename=args.use_exported_data, batch_size=args.batch_size, shuffle=args.shuffle, single=args.single, agg_dose=args.agg_dose)
+  else:
+    train_gen = CombinedDataGenerator(loader, fold=fold, batch_size=args.batch_size, shuffle=args.shuffle, single=args.single)
+    val_gen = CombinedDataGenerator(loader, partition='val', fold=fold, batch_size=args.batch_size, shuffle=args.shuffle, single=args.single)
+    test_gen = CombinedDataGenerator(loader, partition='test', fold=fold, batch_size=args.batch_size, shuffle=args.shuffle, single=args.single)
+
+  if args.no_gen:
+    x_train_list, y_train = train_gen.get_slice(size=train_gen.size, single=args.single)
+    model.fit(x_train_list, y_train, batch_size=args.batch_size, epochs=args.epochs)
+  else:
+    x_train_list, y_train = train_gen.getall()
+    x_train_list_np = []
+    for x_train in x_train_list:
+      x_train_np = np.ascontiguousarray(x_train.to_numpy())
+      x_train_list_np.append(x_train_np)
+    y_train_np = np.ascontiguousarray(y_train.to_numpy())
+    y_train_np = np.reshape(y_train_np, (-1, 1))
+    model.fit(x_train_list_np, y_train_np, batch_size=args.batch_size, epochs=args.epochs)
 
 if __name__ == "__main__":
   print("candle uno")

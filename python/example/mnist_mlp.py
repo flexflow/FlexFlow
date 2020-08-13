@@ -2,35 +2,9 @@ from flexflow.core import *
 import numpy as np
 from flexflow.keras.datasets import mnist
 
-def next_batch(idx, x_train, input1, ffconfig):
-  start = idx*ffconfig.get_batch_size()
-  x_train_batch = x_train[start:start+ffconfig.get_batch_size(), :]
-  print(x_train_batch.shape)
-  
-  input1.inline_map(ffconfig)
-  input_array = input1.get_array(ffconfig, DataType.DT_FLOAT)
-  print(input_array.shape)
-  for i in range(0, ffconfig.get_batch_size()):
-    for j in range(0, 784):
-      input_array[i][j] = x_train_batch[i][j]
-  input1.inline_unmap(ffconfig)
-  
-def next_batch_label(idx, x_train, input1, ffconfig):
-  start = idx*ffconfig.get_batch_size()
-  x_train_batch = x_train[start:start+ffconfig.get_batch_size(), :]
-  print(x_train_batch.shape)
-  
-  input1.inline_map(ffconfig)
-  input_array = input1.get_array(ffconfig, DataType.DT_INT32)
-  print(input_array.shape)
-  for i in range(0, ffconfig.get_batch_size()):
-    for j in range(0, 1):
-      input_array[i][j] = x_train_batch[i][j]
-  input1.inline_unmap(ffconfig)
-  
+from accuracy import ModelAccuracy
 
 def top_level_task():
-  alexnetconfig = NetConfig()
   ffconfig = FFConfig()
   ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
@@ -39,10 +13,22 @@ def top_level_task():
   dims1 = [ffconfig.get_batch_size(), 784]
   input1 = ffmodel.create_tensor(dims1, "", DataType.DT_FLOAT);
   
-  dims_label = [ffconfig.get_batch_size(), 1]
-  label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32);
+  # dims_label = [ffconfig.get_batch_size(), 1]
+  # label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32);
   
   num_samples = 60000
+  
+  kernel_init = UniformInitializer(12, -1, 1)
+  t = ffmodel.dense(input1, 512, ActiMode.AC_MODE_RELU, kernel_initializer=kernel_init)
+  t = ffmodel.dense(t, 512, ActiMode.AC_MODE_RELU)
+  t = ffmodel.dense(t, 10)
+  
+  t = ffmodel.softmax(t)
+
+  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
+  ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
+  label = ffmodel.get_label_tensor()
   
   (x_train, y_train), (x_test, y_test) = mnist.load_data()
   
@@ -55,31 +41,38 @@ def top_level_task():
   print(x_train.shape[0], 'train samples')
   print(y_train.shape)
   
-  next_batch(0, x_train, input1, ffconfig)
-  next_batch_label(0, y_train, label, ffconfig)
-  
-  t2 = ffmodel.dense(input1, 512, ActiMode.AC_MODE_RELU)
-  t3 = ffmodel.dense(t2, 512, ActiMode.AC_MODE_RELU)
-  t4 = ffmodel.dense(t3, 10)
-  t5 = ffmodel.softmax(t4, label)
+  dims_full_input = [num_samples, 784]
+  full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
 
-  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
-  ffmodel.set_sgd_optimizer(ffoptimizer)
-  ffmodel.compile()
+  dims_full_label = [num_samples, 1]
+  full_label = ffmodel.create_tensor(dims_full_label, "", DataType.DT_INT32)
+
+  full_input.attach_numpy_array(ffconfig, x_train)
+  full_label.attach_numpy_array(ffconfig, y_train)
+  print(y_train)
+
+  #dataloader = DataLoader2D(ffmodel, input1, label, full_input, full_label, num_samples)
+  dataloader_input = SingleDataLoader(ffmodel, input1, full_input, num_samples, DataType.DT_FLOAT)
+  dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
+
+  full_input.detach_numpy_array(ffconfig)
+  full_label.detach_numpy_array(ffconfig)
 
   ffmodel.init_layers()
 
   epochs = ffconfig.get_epochs()
-  ct = 0
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
+    dataloader_input.reset()
+    dataloader_label.reset()
+    # dataloader.reset()
     ffmodel.reset_metrics()
     iterations = num_samples / ffconfig.get_batch_size()
-    for iter in range(0, 100):
-      next_batch(ct, x_train, input1, ffconfig)
-      next_batch_label(ct, y_train, label, ffconfig)      
-      ct += 1
+    for iter in range(0, int(iterations)):
+      dataloader_input.next_batch(ffmodel)
+      dataloader_label.next_batch(ffmodel)
+      #dataloader.next_batch(ffmodel)
       if (epoch > 0):
         ffconfig.begin_trace(111)
       ffmodel.forward()
@@ -92,7 +85,12 @@ def top_level_task():
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, num_samples * epochs / run_time));
- #
+  
+  perf_metrics = ffmodel.get_perf_metrics()
+  accuracy = perf_metrics.get_accuracy()
+  if accuracy < ModelAccuracy.MNIST_MLP.value:
+    assert 0, 'Check Accuracy'
+
   dense1 = ffmodel.get_layer_by_id(0)
 
   dbias_tensor = label#dense1.get_bias_tensor()
@@ -111,5 +109,5 @@ def top_level_task():
   
   
 if __name__ == "__main__":
-  print("alexnet")
+  print("mnist mlp")
   top_level_task()

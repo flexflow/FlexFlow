@@ -1,4 +1,4 @@
-/* Copyright 2018 Stanford
+/* Copyright 2020 Stanford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -179,6 +179,8 @@ void Conv2D::create_output_and_partition(FFModel& model)
   {
     const int dims[4] = {output_n, output_c, output_h, output_w};
     outputs[0] = model.create_tensor<4>(dims, (IndexSpaceT<4>)task_is, DT_FLOAT);
+    outputs[0].owner_op = this;
+    outputs[0].owner_idx = 0;
   }
   // Compute partition bound for input
   Rect<4> input_rect = runtime->get_index_partition_color_space(
@@ -250,25 +252,24 @@ OpMeta* Conv2D::init_task(const Task *task,
  
   Conv2DMeta* m = new Conv2DMeta(handle);
   m->relu = conv->activation == AC_MODE_RELU;
-  checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
-  checkCUDNN(cudnnCreateTensorDescriptor(&m->biasTensor));
-  checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
-  checkCUDNN(cudnnCreateFilterDescriptor(&m->filterDesc));
-  checkCUDNN(cudnnCreateConvolutionDescriptor(&m->convDesc));
 
   int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int input_h = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
+  int input_c = acc_input.rect.hi[2] - acc_input.rect.lo[2] + 1;
+  int input_n = acc_input.rect.hi[3] - acc_input.rect.lo[3] + 1;
   int output_w = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
   int output_h = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
-  printf("init conv (input): n(%d) c(%d) h(%d) w(%d)\n", conv->inputs[0].pdim[3],
-         conv->inputs[0].pdim[2], input_h, input_w);
-  printf("init conv (output): n(%d) c_out(%d) h(%d) w(%d)\n", conv->outputs[0].pdim[3],
-         conv->outputs[0].pdim[2], output_h, output_w);
+  int output_c = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
+  int output_n = acc_output.rect.hi[3] - acc_output.rect.lo[3] + 1;
+  printf("init conv (input): n(%d) c(%d) h(%d) w(%d)\n",
+         input_n, input_c, input_h, input_w);
+  printf("init conv (output): n(%d) c(%d) h(%d) w(%d)\n",
+          output_n, output_c, output_h, output_w);
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
-                                        conv->inputs[0].pdim[3],
-                                        conv->inputs[0].pdim[2],
+                                        input_n,
+                                        input_c,
                                         input_h,
                                         input_w));
   
@@ -276,16 +277,16 @@ OpMeta* Conv2D::init_task(const Task *task,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
                                         1,
-                                        conv->outputs[0].pdim[2],
+                                        output_c,
                                         1,
                                         1));
 
-  printf("filterDim: kernel(%d %d) c_in(%d), c_out(%d)\n", conv->kernel_h, conv->kernel_w, conv->inputs[0].pdim[2], conv->outputs[0].pdim[2]);
+  printf("filterDim: kernel(%d %d) c_in(%d), c_out(%d)\n", conv->kernel_h, conv->kernel_w, input_c, output_c);
   checkCUDNN(cudnnSetFilter4dDescriptor(m->filterDesc,
                                         CUDNN_DATA_FLOAT,
                                         CUDNN_TENSOR_NCHW,
-                                        conv->outputs[0].pdim[2],
-                                        conv->inputs[0].pdim[2],
+                                        output_c,
+                                        input_c,
                                         conv->kernel_h,
                                         conv->kernel_w));
 
@@ -306,14 +307,15 @@ OpMeta* Conv2D::init_task(const Task *task,
                                              1/*upscale_y*/,
                                              CUDNN_CROSS_CORRELATION,
                                              CUDNN_DATA_FLOAT));
-
+  // enable tensor core when possible
+  checkCUDNN(cudnnSetConvolutionMathType(m->convDesc, CUDNN_TENSOR_OP_MATH));
   int n, c, h, w;
   checkCUDNN(cudnnGetConvolution2dForwardOutputDim(m->convDesc,
                                                    m->inputTensor,
                                                    m->filterDesc,
                                                    &n, &c, &h, &w));
-  assert(n == conv->outputs[0].pdim[3]);
-  assert(c == conv->outputs[0].pdim[2]);
+  assert(n == output_n);
+  assert(c == output_c);
   assert(h == output_h);
   assert(w == output_w);
 
@@ -393,6 +395,29 @@ void Conv2D::init(const FFModel& ff)
   }
 }
 
+void Conv2D::forward_kernel(const Conv2DMeta* m,
+                            const float* input_ptr,
+                            float* output_ptr,
+                            const float* filter_ptr,
+                            const float* bias_ptr)
+{
+  float alpha = 1.0f, beta = 0.0f;
+  checkCUDNN(cudnnConvolutionForward(m->handle.dnn, &alpha,
+                                     m->inputTensor, input_ptr,
+                                     m->filterDesc, filter_ptr,
+                                     m->convDesc, m->fwdAlgo,
+                                     m->handle.workSpace, m->handle.workSpaceSize,
+                                     &beta, m->outputTensor, output_ptr));
+
+  checkCUDNN(cudnnAddTensor(m->handle.dnn, &alpha, m->biasTensor,
+                            bias_ptr, &alpha, m->outputTensor, output_ptr));
+  if (m->relu) {
+    checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
+                                      &alpha, m->outputTensor, output_ptr,
+                                      &beta, m->outputTensor, output_ptr));
+  }
+}
+
 /*
   regions[0](I): input
   regions[1](O): output
@@ -406,8 +431,7 @@ void Conv2D::forward_task(const Task *task,
 {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  float alpha = 1.0f, beta = 0.0f;
-  const Conv2D* conv = (Conv2D*) task->args;
+  Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -432,20 +456,7 @@ void Conv2D::forward_task(const Task *task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  checkCUDNN(cudnnConvolutionForward(m->handle.dnn, &alpha,
-                                     m->inputTensor, acc_input.ptr,
-                                     m->filterDesc, acc_kernel.ptr,
-                                     m->convDesc, m->fwdAlgo,
-                                     m->handle.workSpace, m->handle.workSpaceSize,
-                                     &beta, m->outputTensor, acc_output.ptr));
-
-  checkCUDNN(cudnnAddTensor(m->handle.dnn, &alpha, m->biasTensor,
-                            acc_bias.ptr, &alpha, m->outputTensor, acc_output.ptr));
-  if (m->relu) {
-    checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
-                                      &alpha, m->outputTensor, acc_output.ptr,
-                                      &beta, m->outputTensor, acc_output.ptr));
-  }
+  conv->forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias.ptr);
   if (conv->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -496,6 +507,47 @@ void Conv2D::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Conv2D::backward_kernel(const Conv2DMeta* m,
+                             const float* input_ptr,
+                             float* input_grad_ptr,
+                             const float* output_ptr,
+                             float* output_grad_ptr,
+                             const float* kernel_ptr,
+                             float* kernel_grad_ptr,
+                             float* bias_grad_ptr)
+{
+  float alpha = 1.0f;
+  //float beta = 0.0f;
+  if (m->relu) {
+    cudnnDataType_t dataType;
+    int n, c, h, w, nStride, cStride, hStride, wStride;
+    checkCUDNN(cudnnGetTensor4dDescriptor(m->outputTensor, &dataType,
+        &n, &c, &h, &w, &nStride, &cStride, &hStride, &wStride));
+    reluBackward<<<GET_BLOCKS(n*c*h*w), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, n*c*h*w);
+  }
+  // Compute filter gradiant
+  // NOTE: we use alpha for kernel_grad to accumulate gradients
+  checkCUDNN(cudnnConvolutionBackwardFilter(m->handle.dnn, &alpha,
+                                            m->inputTensor, input_ptr,
+                                            m->outputTensor, output_grad_ptr,
+                                            m->convDesc, m->bwdFilterAlgo,
+                                            m->handle.workSpace, m->handle.workSpaceSize,
+                                            &alpha, m->filterDesc, kernel_grad_ptr));
+  // Compute bias gradiant
+  // NOTE: we use alpha for bias_grad to accumulate gradients
+  checkCUDNN(cudnnConvolutionBackwardBias(m->handle.dnn, &alpha,
+                                          m->outputTensor, output_grad_ptr,
+                                          &alpha, m->biasTensor, bias_grad_ptr));
+  // Compute data gradiant
+  // NOTE: we use alpha for input_grad to accumulate gradients
+  checkCUDNN(cudnnConvolutionBackwardData(m->handle.dnn, &alpha,
+                                          m->filterDesc, kernel_ptr,
+                                          m->outputTensor, output_grad_ptr,
+                                          m->convDesc, m->bwdDataAlgo,
+                                          m->handle.workSpace, m->handle.workSpaceSize,
+                                          &alpha, m->inputTensor, input_grad_ptr));
+}
+
 /*
   regions[0](I): input
   regions[1](I/O): input_grad
@@ -512,9 +564,7 @@ void Conv2D::backward_task(const Task *task,
 {
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
-  float alpha = 1.0f;
-  //float beta = 0.0f;
-  const Conv2D* conv = (Conv2D*) task->args;
+  Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -547,34 +597,10 @@ void Conv2D::backward_task(const Task *task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  if (m->relu) {
-    int n = acc_output.rect.volume();
-    reluBackward<<<GET_BLOCKS(n), CUDA_NUM_THREADS>>>(acc_output_grad.ptr, acc_output.ptr, n);
-  }
-  // Compute filter gradiant
-  // NOTE: we use alpha for kernel_grad to accumulate gradients
-  checkCUDNN(cudnnConvolutionBackwardFilter(m->handle.dnn, &alpha,
-                                            m->inputTensor, acc_input.ptr,
-                                            m->outputTensor, acc_output_grad.ptr,
-                                            m->convDesc, m->bwdFilterAlgo,
-                                            m->handle.workSpace, m->handle.workSpaceSize,
-                                            &alpha, m->filterDesc, acc_kernel_grad.ptr));
-  // Compute bias gradiant
-  // NOTE: we use alpha for bias_grad to accumulate gradients
-  checkCUDNN(cudnnConvolutionBackwardBias(m->handle.dnn, &alpha,
-                                          m->outputTensor, acc_output_grad.ptr,
-                                          &alpha, m->biasTensor, acc_bias_grad.ptr));
-  // no need to compute input_grad if we are the first layer
-  if (!m->first_layer) {
-    // Compute data gradiant
-    // NOTE: we use alpha for input_grad to accumulate gradients
-    checkCUDNN(cudnnConvolutionBackwardData(m->handle.dnn, &alpha,
-                                            m->filterDesc, acc_kernel.ptr,
-                                            m->outputTensor, acc_output_grad.ptr,
-                                            m->convDesc, m->bwdDataAlgo,
-                                            m->handle.workSpace, m->handle.workSpaceSize,
-                                            &alpha, m->inputTensor, acc_input_grad.ptr));
-  }
+  conv->backward_kernel(m, acc_input.ptr, acc_input_grad.ptr,
+                        acc_output.ptr, acc_output_grad.ptr,
+                        acc_kernel.ptr, acc_kernel_grad.ptr,
+                        acc_bias_grad.ptr);
   if (conv->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -894,4 +920,113 @@ selectConvolutionBackwardDataAlgorithm(cudnnHandle_t handle,
   checkCUDNN(perfResults[0].status);
   printf("bwdDataAlgo(%d) time(%.2lf)\n", perfResults[0].algo, perfResults[0].time);
   return perfResults[0].algo;
+}
+
+Conv2DMeta::Conv2DMeta(FFHandler handler)
+: OpMeta(handler)
+{
+  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&biasTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(cudnnCreateFilterDescriptor(&filterDesc));
+  checkCUDNN(cudnnCreateConvolutionDescriptor(&convDesc));
+}
+
+bool Conv2D::measure_compute_time(Simulator* sim,
+                                  const ParallelConfig& pc,
+                                  float& forward_time,
+                                  float& backward_time)
+{
+  Tensor sub_output, sub_input;
+  if(!outputs[0].get_output_sub_tensor(pc, sub_output, OP_CONV2D))
+    return false;
+  if(!inputs[0].get_input_sub_tensor(pc, sub_input, OP_CONV2D))
+    return false;
+  int input_w = sub_input.adim[0];
+  int input_h = sub_input.adim[1];
+  int input_c = sub_input.adim[2];
+  int input_n = sub_input.adim[3];
+  int output_w = sub_output.adim[0];
+  int output_h = sub_output.adim[1];
+  int output_c = sub_output.adim[2];
+  int output_n = sub_output.adim[3];
+  int pad_h = ((output_h - 1) * stride_h + kernel_h - input_h + 1) / 2;
+  int pad_w = ((output_w - 1) * stride_w + kernel_w - input_w + 1) / 2;
+
+  Conv2DMeta* m = sim->conv2d_meta;
+  m->relu = activation == AC_MODE_RELU;
+  checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor, CUDNN_TENSOR_NCHW,
+      CUDNN_DATA_FLOAT, input_n, input_c, input_h, input_w));
+  checkCUDNN(cudnnSetTensor4dDescriptor(m->biasTensor, CUDNN_TENSOR_NCHW,
+      CUDNN_DATA_FLOAT, 1, output_c, 1, 1));
+  checkCUDNN(cudnnSetFilter4dDescriptor(m->filterDesc, CUDNN_DATA_FLOAT,
+      CUDNN_TENSOR_NCHW, output_c, input_c, kernel_h, kernel_w));
+  checkCUDNN(cudnnSetConvolution2dDescriptor(m->convDesc, pad_h, pad_w,
+      stride_h, stride_w, 1/*dilationH*/, 1/*dilationW*/,
+      CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
+  checkCUDNN(cudnnSetConvolutionMathType(m->convDesc, CUDNN_TENSOR_OP_MATH));
+  int n, c, h, w;
+  checkCUDNN(cudnnGetConvolution2dForwardOutputDim(m->convDesc,
+      m->inputTensor, m->filterDesc, &n, &c, &h, &w));
+  assert(n == output_n);
+  assert(c == output_c);
+  assert(h == output_h);
+  assert(w == output_w);
+  checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
+      CUDNN_NOT_PROPAGATE_NAN, 0.0));
+  checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor, CUDNN_TENSOR_NCHW,
+      CUDNN_DATA_FLOAT, n, c, h, w));
+  // allocate tensors in simulator
+  sim->free_all();
+  float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert(input_ptr != NULL);
+  float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert(output_ptr != NULL);
+  float* weight_ptr = (float*)sim->allocate((size_t)output_c * input_c * kernel_h * kernel_w, DT_FLOAT);
+  assert(weight_ptr != NULL);
+  float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
+  assert(bias_ptr != NULL);
+  
+  // select forward algorithm
+  {
+    const int reqAlgCnt = 8;
+    int cnt = 0;
+    cudnnConvolutionFwdAlgoPerf_t perfResults[reqAlgCnt];
+    checkCUDNN(cudnnFindConvolutionForwardAlgorithmEx(
+        m->handle.dnn, m->inputTensor, input_ptr,
+        m->filterDesc, weight_ptr, m->convDesc, m->outputTensor, output_ptr,
+        reqAlgCnt, &cnt, perfResults,
+        m->handle.workSpace, m->handle.workSpaceSize));
+    assert(cnt > 0);
+    checkCUDNN(perfResults[0].status);
+    forward_time = perfResults[0].time;
+  }
+  // select forward algorithm
+  {
+    const int reqAlgCnt = 8;
+    int cnt = 0;
+    cudnnConvolutionBwdFilterAlgoPerf_t perfResults[reqAlgCnt];
+    checkCUDNN(cudnnFindConvolutionBackwardFilterAlgorithmEx(
+        m->handle.dnn, m->inputTensor, input_ptr,
+        m->outputTensor, output_ptr, m->convDesc, m->filterDesc, weight_ptr,
+        reqAlgCnt, &cnt, perfResults,
+        m->handle.workSpace, m->handle.workSpaceSize));
+    assert(cnt > 0);
+    checkCUDNN(perfResults[0].status);
+    backward_time = perfResults[0].time;
+  }
+  {
+    const int reqAlgCnt = 8;
+    int cnt = 0;
+    cudnnConvolutionBwdDataAlgoPerf_t perfResults[reqAlgCnt];
+    checkCUDNN(cudnnFindConvolutionBackwardDataAlgorithmEx(
+        m->handle.dnn, m->filterDesc, weight_ptr,
+        m->outputTensor, output_ptr, m->convDesc, m->inputTensor, input_ptr,
+        reqAlgCnt, &cnt, perfResults,
+        m->handle.workSpace, m->handle.workSpaceSize));
+    assert(cnt > 0);
+    checkCUDNN(perfResults[0].status);
+    backward_time += perfResults[0].time;
+  }
+  return true;
 }

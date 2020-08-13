@@ -142,11 +142,11 @@ void top_level_task(const Task* task,
     const int dims[] = {ffConfig.batchSize, 3, 299, 299};
     input = ff.create_tensor<4>(dims, "", DT_FLOAT);
   }
-  Tensor label;
-  {
-    const int dims[] = {ffConfig.batchSize, 1};
-    label = ff.create_tensor<2>(dims, "", DT_INT32);
-  }
+  //Tensor label;
+  //{
+  //  const int dims[] = {ffConfig.batchSize, 1};
+  //  label = ff.create_tensor<2>(dims, "", DT_INT32);
+  //}
  
 //-----------------------------------------------------------------
   Tensor t = ff.conv2d(input, 32, 3, 3, 2, 2, 0, 0, AC_MODE_RELU);
@@ -170,14 +170,17 @@ void top_level_task(const Task* task,
   t = InceptionE(ff, t);
   t = ff.pool2d(t, 8, 8, 1, 1, 0, 0, POOL_AVG);
   t = ff.flat(t);
-  t = ff.dense(t, 1000);
-  t = ff.softmax(t, label);
+  t = ff.dense(t, 10);
+  t = ff.softmax(t);
 //-----------------------------------------------------------------
-  ff.optimizer = new SGDOptimizer(&ff, 0.01f);
-  ff.compile();
+  Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
+  std::vector<MetricsType> metrics;
+  metrics.push_back(METRICS_ACCURACY);
+  metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
+  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
 
   // Data Loader
-  DataLoader data_loader(ff, inceptionConfig, input, label);
+  DataLoader data_loader(ff, inceptionConfig, input, ff.label_tensor);
   ff.init_layers();
   //Start timer
   {

@@ -1,11 +1,27 @@
+# Copyright 2020 Stanford University, Los Alamos National Laboratory
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 from flexflow.keras.models import Sequential, Model
 from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, AveragePooling2D, Input
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import mnist
+from flexflow.keras.callbacks import Callback, VerifyMetrics, EpochVerifyMetrics
 
 import flexflow.core as ff
-
 import numpy as np
+from example.accuracy import ModelAccuracy
 
 def top_level_task():
   
@@ -23,17 +39,11 @@ def top_level_task():
   print("shape: ", x_train.shape, x_train.__array_interface__["strides"])
   
   layers = [Conv2D(filters=32, input_shape=(1,28,28), kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"),
-           Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"),
-           MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"),
-           Flatten()]
+            Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding=(1,1), activation="relu"),
+            MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"),
+            Flatten()]
   model1 = Sequential(layers)
   
-  # layers2 = [Dense(128, input_shape=(12544,), activation="relu"),
-  #          Dense(num_classes),
-  #          Activation("softmax")]
-  #
-  # model2 = Sequential(layers2)
-  #
   input_tensor = Input(shape=(12544,), dtype="float32")
   
   output = Dense(512, input_shape=(12544,), activation="relu")(input_tensor)
@@ -49,10 +59,12 @@ def top_level_task():
   print(model.summary())
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
-  model.compile(optimizer=opt)
+  model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
+  
+  print(model.summary())
 
-  model.fit(x_train, y_train, epochs=1)
+  model.fit(x_train, y_train, epochs=5, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_CNN), EpochVerifyMetrics(ModelAccuracy.MNIST_CNN)])
 
 if __name__ == "__main__":
-  print("alexnet keras")
+  print("Sequential model, mnist cnn nested model")
   top_level_task()

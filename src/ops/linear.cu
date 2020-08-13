@@ -147,6 +147,8 @@ void Linear::create_output_and_partition(FFModel& model)
   {
     const int dims[2] = {batch_size, out_channels};
     outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
+    outputs[0].owner_op = this;
+    outputs[0].owner_idx = 0;
   }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(
@@ -243,16 +245,8 @@ OpMeta* Linear::init_task(const Task *task,
   int batch_size = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
   printf("init linear (input): in_dim(%d) out_dim(%d) batch_size(%d)\n",
       in_dim, out_dim, batch_size);
-  LinearMeta* m = new LinearMeta(handle);
+  LinearMeta* m = new LinearMeta(handle, batch_size);
 
-  float* dram_one_ptr = (float *) malloc(sizeof(float) * batch_size);
-  for (int i = 0; i < batch_size; i++)
-    dram_one_ptr[i] = 1.0f;
-  float* fb_one_ptr;
-  checkCUDA(cudaMalloc(&fb_one_ptr, sizeof(float) * batch_size));
-  checkCUDA(cudaMemcpy(fb_one_ptr, dram_one_ptr,
-                       sizeof(float) * batch_size, cudaMemcpyHostToDevice));
-  m->one_ptr = (const float*) fb_one_ptr;
   if (linear->activation != AC_MODE_NONE) {
     cudnnActivationMode_t mode;
     switch (linear->activation) {
@@ -266,10 +260,8 @@ OpMeta* Linear::init_task(const Task *task,
         // Unsupported activation mode
         assert(false);
     }
-    checkCUDNN(cudnnCreateActivationDescriptor(&m->actiDesc));
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, mode,
                                             CUDNN_PROPAGATE_NAN, 0.0));
-    checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
     checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
                                           CUDNN_TENSOR_NCHW,
                                           CUDNN_DATA_FLOAT,
@@ -317,6 +309,31 @@ void Linear::init(const FFModel& ff)
   }
 }
 
+void Linear::forward_kernel(const LinearMeta* m,
+                            const float* input_ptr,
+                            float* output_ptr,
+                            const float* kernel_ptr,
+                            const float* bias_ptr,
+                            int in_dim, int out_dim, int batch_size)
+{
+  float alpha = 1.0f, beta = 0.0f;
+  checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
+                        out_dim, batch_size, in_dim,
+                        &alpha, kernel_ptr, in_dim,
+                        input_ptr, in_dim, &beta,
+                        output_ptr, out_dim));
+  checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
+                        out_dim, batch_size, 1,
+                        &alpha, bias_ptr, 1,
+                        m->one_ptr, 1, &alpha,
+                        output_ptr, out_dim));
+  if (activation != AC_MODE_NONE) {
+    checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
+        &alpha, m->outputTensor, output_ptr,
+        &beta, m->outputTensor, output_ptr));
+  }
+}
+
 /*
   regions[0](I); input
   regions[1](O): output
@@ -330,8 +347,7 @@ void Linear::forward_task(const Task *task,
 {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  float alpha = 1.0f, beta = 0.0f;
-  const Linear* linear = (Linear*) task->args;
+  Linear* linear = (Linear*) task->args;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
   TensorAccessorR<float, 2> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -361,21 +377,9 @@ void Linear::forward_task(const Task *task,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
-                        out_dim, batch_size, in_dim,
-                        &alpha, acc_kernel.ptr, in_dim,
-                        acc_input.ptr, in_dim, &beta,
-                        acc_output.ptr, out_dim));
-  checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
-                        out_dim, batch_size, 1,
-                        &alpha, acc_bias.ptr, 1,
-                        m->one_ptr, 1, &alpha,
-                        acc_output.ptr, out_dim));
-  if (linear->activation != AC_MODE_NONE) {
-    checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
-        &alpha, m->outputTensor, acc_output.ptr,
-        &beta, m->outputTensor, acc_output.ptr));
-  }
+  linear->forward_kernel(m, acc_input.ptr, acc_output.ptr,
+      acc_kernel.ptr, acc_bias.ptr, in_dim, out_dim, batch_size);
+
   if (linear->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -388,7 +392,6 @@ void Linear::forward_task(const Task *task,
     //print_tensor<2, float>(acc_kernel.ptr, acc_kernel.rect, "[Linear:forward:kernel]");
     //print_tensor<1, float>(acc_bias.ptr, acc_bias.rect, "[Linear:forward:bias]");
     //print_tensor<2, float>(acc_output.ptr, acc_output.rect, "[Linear:forward:output]");
-    checkCUDA(cudaDeviceSynchronize());
   }
 }
 
@@ -435,6 +438,53 @@ void sigmoid_backward(float *grad_ptr, const float *output, int n)
   }
 }
 
+void Linear::backward_kernel(const LinearMeta* m,
+                             const float* input_ptr,
+                             float* input_grad_ptr,
+                             const float* output_ptr,
+                             float* output_grad_ptr,
+                             const float* kernel_ptr,
+                             float* kernel_grad_ptr,
+                             float* bias_grad_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int batch_size)
+{
+  float alpha = 1.0f;
+  int output_size = out_dim * batch_size;
+  if (activation == AC_MODE_RELU) {
+    reluBackward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS>>>(
+        output_grad_ptr, output_ptr, output_size);
+  } else if (activation == AC_MODE_SIGMOID) {
+    sigmoid_backward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS>>>(
+        output_grad_ptr, output_ptr, output_size);
+  } else {
+    // TODO: only support relu and sigmoid for now
+    assert(activation == AC_MODE_NONE);
+  }
+  // Compute weight gradiant
+  // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
+  checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_T,
+                        in_dim, out_dim, batch_size,
+                        &alpha, input_ptr, in_dim,
+                        output_grad_ptr, out_dim,
+                        &alpha, kernel_grad_ptr, in_dim));
+  // Compute bias gradiant
+  // NOTE: we use alpha=1 for bias_grad to accumulate gradients
+  checkCUDA(cublasSgemv(m->handle.blas, CUBLAS_OP_N,
+                        out_dim, batch_size,
+                        &alpha, output_grad_ptr, out_dim,
+                        m->one_ptr, 1,
+                        &alpha, bias_grad_ptr, 1));
+  // Compute data gradiant
+  // NOTE: we use alpha=1 for input_grad to accumulate gradients
+  checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_N,
+                        in_dim, batch_size, out_dim,
+                        &alpha, kernel_ptr, in_dim,
+                        output_grad_ptr, out_dim,
+                        &alpha, input_grad_ptr, in_dim));
+}
+
 /*
   regions[0](I): input
   regions[1](I/O): replica_grad or input_grad
@@ -451,8 +501,7 @@ void Linear::backward_task(const Task *task,
 {
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
-  float alpha = 1.0f;
-  const Linear* linear = (Linear*) task->args;
+  Linear* linear = (Linear*) task->args;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
   float* input_grad = NULL;
   TensorAccessorR<float, 2> acc_input(
@@ -506,37 +555,10 @@ void Linear::backward_task(const Task *task,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  if (linear->activation == AC_MODE_RELU) {
-    reluBackward<<<GET_BLOCKS(acc_output.rect.volume()), CUDA_NUM_THREADS>>>(
-        acc_output_grad.ptr, acc_output.ptr, acc_output.rect.volume());
-  } else if (linear->activation == AC_MODE_SIGMOID) {
-    sigmoid_backward<<<GET_BLOCKS(acc_output.rect.volume()), CUDA_NUM_THREADS>>>(
-        acc_output_grad.ptr, acc_output.ptr, acc_output.rect.volume());
-  } else {
-    // TODO: only support relu and sigmoid for now
-    assert(linear->activation == AC_MODE_NONE);
-  }
-  // Compute weight gradiant
-  // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
-  checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_T,
-                        in_dim, out_dim, batch_size,
-                        &alpha, acc_input.ptr, in_dim,
-                        acc_output_grad.ptr, out_dim,
-                        &alpha, acc_kernel_grad.ptr, in_dim));
-  // Compute bias gradiant
-  // NOTE: we use alpha=1 for bias_grad to accumulate gradients
-  checkCUDA(cublasSgemv(m->handle.blas, CUBLAS_OP_N,
-                        out_dim, batch_size,
-                        &alpha, acc_output_grad.ptr, out_dim,
-                        m->one_ptr, 1,
-                        &alpha, acc_bias_grad.ptr, 1));
-  // Compute data gradiant
-  // NOTE: we use alpha=1 for input_grad to accumulate gradients
-  checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_N,
-                        in_dim, batch_size, out_dim,
-                        &alpha, acc_kernel.ptr, in_dim,
-                        acc_output_grad.ptr, out_dim,
-                        &alpha, input_grad, in_dim));
+  linear->backward_kernel(m, acc_input.ptr, input_grad,
+      acc_output.ptr, acc_output_grad.ptr,
+      acc_kernel.ptr, acc_kernel_grad.ptr,
+      acc_bias_grad.ptr, in_dim, out_dim, batch_size);
   if (linear->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -549,7 +571,6 @@ void Linear::backward_task(const Task *task,
     //print_tensor<2, float>(acc_kernel_grad.ptr, acc_kernel_grad.rect, "[Linear:backward:kernel_grad]");
     //print_tensor<1, float>(acc_bias_grad.ptr, acc_bias_grad.rect, "[Linear:backward:bias_grad]");
     //print_tensor<2, float>(input_grad, acc_input.rect, "[Linear:backward:input_grad]");
-    checkCUDA(cudaDeviceSynchronize());
   }
 }
 
@@ -731,4 +752,98 @@ void Linear::print_layer(const FFModel& ff)
   runtime->unmap_region(ctx, bias_region);
 
 }
+
+LinearMeta::LinearMeta(FFHandler handler, int batch_size)
+: OpMeta(handler)
+{
+  // Allocate an all-one's vector
+  float* dram_one_ptr = (float *) malloc(sizeof(float) * batch_size);
+  for (int i = 0; i < batch_size; i++)
+    dram_one_ptr[i] = 1.0f;
+  float* fb_one_ptr;
+  checkCUDA(cudaMalloc(&fb_one_ptr, sizeof(float) * batch_size));
+  checkCUDA(cudaMemcpy(fb_one_ptr, dram_one_ptr,
+                       sizeof(float) * batch_size, cudaMemcpyHostToDevice));
+  one_ptr = (const float*) fb_one_ptr;
+  // Allocate descriptors
+  checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
+    checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+}
+
+bool Linear::measure_compute_time(Simulator* sim,
+                                  const ParallelConfig& pc,
+                                  float& forward_time,
+                                  float& backward_time)
+{
+  Tensor sub_output, sub_input;
+  if (!outputs[0].get_output_sub_tensor(pc, sub_output, OP_LINEAR))
+    return false;
+  if (!outputs[0].get_input_sub_tensor(pc, sub_input, OP_LINEAR))
+    return false;
+  int input_c = sub_input.adim[0];
+  int input_n = sub_input.adim[1];
+  int output_c = sub_output.adim[0];
+  int output_n = sub_output.adim[1];
+  LinearMeta* m = sim->linear_meta;
+  if (activation != AC_MODE_NONE) {
+    cudnnActivationMode_t mode;
+    switch (activation) {
+      case AC_MODE_RELU:
+        mode = CUDNN_ACTIVATION_RELU;
+        break;
+      case AC_MODE_SIGMOID:
+        mode = CUDNN_ACTIVATION_SIGMOID;
+        break;
+      default:
+        // Unsupported activation mode
+        assert(false);
+    }
+    checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, mode,
+                                            CUDNN_PROPAGATE_NAN, 0.0));
+    checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
+        CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, output_n, output_c, 1, 1));
+  }
+  // allocate tensors in simulator
+  sim->free_all();
+  float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert(input_ptr != NULL);
+  float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert(output_ptr != NULL);
+  float* kernel_ptr = (float*)sim->allocate((size_t)output_c * input_c, DT_FLOAT);
+  assert(kernel_ptr != NULL);
+  float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
+  assert(bias_ptr != NULL);
+
+  // measure forward time
+  checkCUDA(cudaDeviceSynchronize());
+  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
+    if (i == sim->warmup_times) {
+      checkCUDA(cudaEventRecord(sim->start_event));
+    }
+    forward_kernel(m, input_ptr, output_ptr, kernel_ptr, bias_ptr,
+        input_c, output_c, input_n);
+  }
+  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventSynchronize(sim->end_event));
+  float milliseconds;
+  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  forward_time = milliseconds / sim->repeat_times;
+
+  // measure backward time
+  checkCUDA(cudaDeviceSynchronize());
+  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
+    if (i == sim->warmup_times) {
+      checkCUDA(cudaEventRecord(sim->start_event));
+    }
+    backward_kernel(m, input_ptr, input_ptr, output_ptr, output_ptr,
+        kernel_ptr, kernel_ptr, bias_ptr, input_c, output_c, input_n);
+  }
+  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventSynchronize(sim->end_event));
+  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  backward_time = milliseconds / sim->repeat_times;
+
+  return true;
+}
+
 

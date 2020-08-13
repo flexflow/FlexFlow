@@ -119,6 +119,8 @@ void Pool2D::create_output_and_partition(FFModel& model)
   {
     const int dims[4] = {output_n, output_c, output_h, output_w};
     outputs[0] = model.create_tensor<4>(dims, (IndexSpaceT<4>)task_is, DT_FLOAT);
+    outputs[0].owner_op = this;
+    outputs[0].owner_idx = 0;
   }
   //int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   //int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
@@ -146,30 +148,38 @@ OpMeta* Pool2D::init_task(const Task *task,
                           Context ctx, Runtime *runtime)
 {
   assert(regions.size() == 2);
-  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
   const Pool2D* pool = (Pool2D*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   Pool2DMeta* m = new Pool2DMeta(handle);
-  Rect<4> rect_input, rect_output;
-  rect_input = runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  rect_output = runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
+  TensorAccessorR<float, 4> acc_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 4> acc_output(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime,
+      false/*readOutput*/);
+
   checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
   checkCUDNN(cudnnCreatePoolingDescriptor(&m->poolDesc));
 
-  int input_w = rect_input.hi[0] - rect_input.lo[0] + 1;
-  int input_h = rect_input.hi[1] - rect_input.lo[1] + 1;
-  int output_w = rect_output.hi[0] - rect_output.lo[0] + 1;
-  int output_h = rect_output.hi[1] - rect_output.lo[1] + 1;
-  printf("init pool (input): n(%d) c(%d) h(%d) w(%d)\n", pool->inputs[0].pdim[3],
-        pool->inputs[0].pdim[2], input_h, input_w);
-  printf("init pool (output): n(%d) c(%d) h(%d) w(%d)\n", pool->outputs[0].pdim[3],
-        pool->outputs[0].pdim[2], output_h, output_w);
+  int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
+  int input_h = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
+  int input_c = acc_input.rect.hi[2] - acc_input.rect.lo[2] + 1;
+  int input_n = acc_input.rect.hi[3] - acc_input.rect.lo[3] + 1;
+  int output_w = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
+  int output_h = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
+  int output_c = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
+  int output_n = acc_output.rect.hi[3] - acc_output.rect.lo[3] + 1;
+
+  printf("init pool (input): n(%d) c(%d) h(%d) w(%d)\n",
+         input_n, input_c, input_h, input_w);
+  printf("init pool (output): n(%d) c(%d) h(%d) w(%d)\n",
+         output_n, output_c, output_h, output_w);
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
-                                        pool->inputs[0].pdim[3],
-                                        pool->inputs[0].pdim[2],
+                                        input_n,
+                                        input_c,
                                         input_h,
                                         input_w));
   int pad_h = ((output_h - 1) * pool->stride_h + pool->kernel_h - input_h + 1) / 2;
@@ -199,8 +209,8 @@ OpMeta* Pool2D::init_task(const Task *task,
   checkCUDNN(cudnnGetPooling2dForwardOutputDim(m->poolDesc,
                                                m->inputTensor,
                                                &n, &c, &h, &w));
-  assert(n == pool->outputs[0].pdim[3]);
-  assert(c == pool->outputs[0].pdim[2]);
+  assert(n == output_n);
+  assert(c == output_c);
   assert(h == output_h);
   assert(w == output_w);
 
@@ -388,6 +398,12 @@ void Pool2D::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Pool2D::update(const FFModel& ff)
+bool Pool2D::measure_compute_time(Simulator* sim,
+                                  const ParallelConfig& pc,
+                                  float& forward_time,
+                                  float& backward_time)
 {
+  //TODO: implement measure_forward
+  return false;
 }
+

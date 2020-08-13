@@ -75,6 +75,8 @@ void Concat::create_output_and_partition(FFModel& model)
     {
       Rect<1> part_rect = domain;
       outputs[0] = model.create_tensor<1>(dims, IndexSpaceT<1>(task_is), DT_FLOAT);
+      outputs[0].owner_op = this;
+      outputs[0].owner_idx = 0;
       for (int i = 0; i < numInputs; i++) {
         Rect<1> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -92,6 +94,8 @@ void Concat::create_output_and_partition(FFModel& model)
     {
       Rect<2> part_rect = domain;
       outputs[0] = model.create_tensor<2>(dims, IndexSpaceT<2>(task_is), DT_FLOAT);
+      outputs[0].owner_op = this;
+      outputs[0].owner_idx = 0;
       for (int i = 0; i < numInputs; i++) {
         Rect<2> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -109,6 +113,8 @@ void Concat::create_output_and_partition(FFModel& model)
     {
       Rect<3> part_rect = domain;
       outputs[0] = model.create_tensor<3>(dims, IndexSpaceT<3>(task_is), DT_FLOAT);
+      outputs[0].owner_op = this;
+      outputs[0].owner_idx = 0;
       for (int i = 0; i < numInputs; i++) {
         Rect<3> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -126,6 +132,8 @@ void Concat::create_output_and_partition(FFModel& model)
     {
       Rect<4> part_rect = domain;
       outputs[0] = model.create_tensor<4>(dims, IndexSpaceT<4>(task_is), DT_FLOAT);
+      outputs[0].owner_op = this;
+      outputs[0].owner_idx = 0;
       for (int i = 0; i < numInputs; i++) {
         Rect<4> input_rect = runtime->get_index_partition_color_space(
             ctx, inputs[i].part.get_index_partition());
@@ -561,11 +569,19 @@ void Concat::backward(const FFModel& ff)
     launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[i], 0/*projection id*/,
         READ_WRITE, EXCLUSIVE, inputs[i].region_grad));
+    //LogicalRegion lr = inputs[i].region_grad;
+    //printf("concat[%d]: region(%d,%d,%d)\n", i+1, lr.get_index_space().get_id(), lr.get_field_space().get_id(), lr.get_tree_id());
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
 }
 
-//void Concat::update(const FFModel& ff)
-//{
-//}
+
+bool Concat::measure_compute_time(Simulator* sim,
+                                  const ParallelConfig& pc,
+                                  float& forward_time,
+                                  float& backward_time)
+{
+  //TODO: implement measure_forward
+  return false;
+}
