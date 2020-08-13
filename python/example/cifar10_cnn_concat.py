@@ -53,12 +53,6 @@ def top_level_task():
     
     y_train = y_train.astype('int32')
     full_label_array = y_train
-   
-    print(full_input_array.__array_interface__["strides"])
-    print(full_input_array.shape, full_label_array.shape)
-    #print(full_input_array[0,:,:,:])
-    #print(full_label_array[0, 0:64])
-    print(full_label_array.__array_interface__["strides"])
     
     dims_full_input = [num_samples, 3, 32, 32]
     full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
@@ -110,11 +104,6 @@ def top_level_task():
     print(iterations, num_samples)
 
     for iter in range(0, int(iterations)):
-      # if (len(alexnetconfig.dataset_path) == 0):
-      #   if (iter == 0 and epoch == 0):
-      #     dataloader.next_batch(ffmodel)
-      # else:
-    #  dataloader.next_batch(ffmodel)
       if (use_external == True):
         dataloader_input.next_batch(ffmodel)
         dataloader_label.next_batch(ffmodel)

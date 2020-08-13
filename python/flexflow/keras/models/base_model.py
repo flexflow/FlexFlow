@@ -25,13 +25,15 @@ from flexflow.keras import metrics as keras_metrics
 
 from PIL import Image
 
+tracing_id = 100
+
 class BaseModel(object):
   __slots__ = ['_ffconfig', '_ffmodel', '_ffoptimizer', '_layers', '_nb_layers', \
                '_input_layers', '_input_tensors', '_output_tensor', '_label_tensor', \
                '_full_input_tensors', '_full_label_tensor', '_num_samples',\
                '_input_dataloaders', '_input_dataloaders_dim', \
                '_label_dataloader', '_label_dataloader_dim', \
-               '_loss', '_metrics']
+               '_loss', '_metrics', '__tracing_id']
   def __init__(self, name):
     self._ffconfig = ff.FFConfig()
     self._ffconfig.parse_args()
@@ -55,6 +57,10 @@ class BaseModel(object):
     self._label_dataloader_dim = 0
     self._loss = None
     self._metrics = []
+    
+    global tracing_id
+    self.__tracing_id = tracing_id
+    tracing_id += 1
     
   @property
   def input(self):
@@ -361,7 +367,7 @@ class BaseModel(object):
           dataloader.next_batch(self._ffmodel)
         self._label_dataloader.next_batch(self._ffmodel)
         if (epoch > 0):
-          self._ffconfig.begin_trace(111)
+          self._ffconfig.begin_trace(self.__tracing_id)
         self._ffmodel.forward()
         # for layer in self._layers:
         #   layer.ffhandle.forward(self._ffmodel)
@@ -369,7 +375,7 @@ class BaseModel(object):
         self._ffmodel.backward()
         self._ffmodel.update()
         if (epoch > 0):
-          self._ffconfig.end_trace(111)
+          self._ffconfig.end_trace(self.__tracing_id)
           
         if callbacks != None:
           for callback in callbacks:

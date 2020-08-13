@@ -2,7 +2,7 @@ import logging
 
 def setup_custom_logger(name):
   logger = logging.getLogger(name)
-  logger.setLevel(logging.DEBUG)
+  logger.setLevel(logging.INFO) # set to DEBUG when debuging
   logger.propagate = 0
   if not logger.handlers:
     formatter = logging.Formatter(fmt='%(levelname)s - %(module)s - %(message)s')
