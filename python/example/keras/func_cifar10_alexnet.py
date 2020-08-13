@@ -20,7 +20,7 @@ from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
 from flexflow.keras import losses
 from flexflow.keras import metrics
-from flexflow.keras.callbacks import Callback, VerifyMetrics
+from flexflow.keras.callbacks import Callback, VerifyMetrics, EpochVerifyMetrics
 from example.accuracy import ModelAccuracy
 
 import flexflow.core as ff
@@ -73,7 +73,7 @@ def top_level_task():
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
   
-  model.fit(full_input_np, full_label_np, epochs=40, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_ALEXNET)])
+  model.fit(full_input_np, full_label_np, epochs=40, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_ALEXNET), EpochVerifyMetrics(ModelAccuracy.CIFAR10_ALEXNET)])
 
 if __name__ == "__main__":
   print("Functional API, cifar10 alexnet")

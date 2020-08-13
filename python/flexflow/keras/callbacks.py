@@ -71,4 +71,21 @@ class VerifyMetrics(Callback):
     accuracy = perf_metrics.get_accuracy()
     if accuracy < self.accuracy:
       assert 0, "Accuracy is wrong"
+      
+class EpochVerifyMetrics(Callback):
+  def __init__(self, accuracy, early_stop=True):
+    super(EpochVerifyMetrics, self).__init__()
+    self.accuracy = accuracy.value
+    self.early_stop = early_stop
+
+  def on_epoch_end(self, logs=None):
+    perf_metrics = self.model.ffmodel.get_perf_metrics()
+    accuracy = perf_metrics.get_accuracy()
+    if self.early_stop == False:
+      return False
+    if accuracy > self.accuracy:
+      return True
+    else:
+      return False
+      
     

@@ -20,7 +20,7 @@ from flexflow.keras.datasets import mnist
 from flexflow.keras.datasets import cifar10
 from flexflow.keras import losses
 from flexflow.keras import metrics
-from flexflow.keras.callbacks import Callback, VerifyMetrics
+from flexflow.keras.callbacks import Callback, VerifyMetrics, EpochVerifyMetrics
 from example.accuracy import ModelAccuracy
 
 
@@ -85,7 +85,7 @@ def top_level_task():
   
   print(model.summary())
 
-  model.fit([x_train, x_train, x_train], y_train, epochs=5, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP)])
+  model.fit([x_train, x_train, x_train], y_train, epochs=5, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP), EpochVerifyMetrics(ModelAccuracy.MNIST_MLP)])
 
 if __name__ == "__main__":
   print("Functional API, mnist mlp concat with input")

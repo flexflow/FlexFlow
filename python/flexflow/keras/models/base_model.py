@@ -19,7 +19,7 @@ from flexflow.core.flexflow_logger import fflogger
 from .tensor import Tensor
 from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding
 from flexflow.keras.optimizers import SGD, Adam 
-from flexflow.keras.callbacks import Callback, LearningRateScheduler 
+from flexflow.keras.callbacks import Callback, LearningRateScheduler, VerifyMetrics, EpochVerifyMetrics 
 from flexflow.keras import losses as keras_losses
 from flexflow.keras import metrics as keras_metrics
 
@@ -339,7 +339,9 @@ class BaseModel(object):
         callback.on_train_begin()
         
     ts_start = self._ffconfig.get_current_time()
-    for epoch in range(0,epochs):
+    epoch = 0
+    epoch_flag = True
+    while (epoch < epochs) and (epoch_flag == True):
       if callbacks != None:
         for callback in callbacks:
           callback.on_epoch_begin(epoch)
@@ -375,7 +377,12 @@ class BaseModel(object):
       
       if callbacks != None:
         for callback in callbacks:
-          callback.on_epoch_end(epoch)
+          early_stop = callback.on_epoch_end(epoch)
+          if early_stop == True:
+            print("Accuracy reaches, now early stop, epoch: %d" %(epoch))
+            epoch_flag = False
+          
+      epoch += 1 
 
     ts_end = self._ffconfig.get_current_time()
     run_time = 1e-6 * (ts_end - ts_start);

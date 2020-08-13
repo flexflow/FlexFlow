@@ -17,7 +17,7 @@ from flexflow.keras.models import Sequential
 from flexflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation
 import flexflow.keras.optimizers
 from flexflow.keras.datasets import cifar10
-from flexflow.keras.callbacks import Callback, VerifyMetrics
+from flexflow.keras.callbacks import Callback, VerifyMetrics, EpochVerifyMetrics
 
 import flexflow.core as ff
 import numpy as np
@@ -52,7 +52,7 @@ def top_level_task():
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
 
-  model.fit(x_train, y_train, epochs=30, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
+  model.fit(x_train, y_train, epochs=30, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN), EpochVerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
 
 if __name__ == "__main__":
   print("Sequantial model, cifar10 cnn")
