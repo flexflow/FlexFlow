@@ -54,11 +54,9 @@ void Softmax::create_output_and_partition(FFModel& model)
   assert(num_par_c == 1);
   {
     const int dims[2] = {inputs[0].adim[1], inputs[0].adim[0]};
-    Tensor t = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
-    outputs[0].region = t.region;
-    outputs[0].region_grad = t.region_grad;
-    outputs[0].part = t.part;
-    outputs[0].part_grad = t.part_grad;
+    outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
+    outputs[0].owner_op = this;
+    outputs[0].owner_idx = 0;
   }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(

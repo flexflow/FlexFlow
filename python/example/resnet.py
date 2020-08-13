@@ -109,7 +109,7 @@ def top_level_task():
   t = ffmodel.dense("linear1", t, 10)
   t = ffmodel.softmax("softmax", t, label)
 
-  ffoptimizer = SGDOptimizer(ffmodel, 0.001)
+  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
 
   # input.inline_map(ffconfig)

@@ -147,6 +147,8 @@ void Linear::create_output_and_partition(FFModel& model)
   {
     const int dims[2] = {batch_size, out_channels};
     outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
+    outputs[0].owner_op = this;
+    outputs[0].owner_idx = 0;
   }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(

@@ -179,6 +179,8 @@ void Conv2D::create_output_and_partition(FFModel& model)
   {
     const int dims[4] = {output_n, output_c, output_h, output_w};
     outputs[0] = model.create_tensor<4>(dims, (IndexSpaceT<4>)task_is, DT_FLOAT);
+    outputs[0].owner_op = this;
+    outputs[0].owner_idx = 0;
   }
   // Compute partition bound for input
   Rect<4> input_rect = runtime->get_index_partition_color_space(

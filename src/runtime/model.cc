@@ -249,6 +249,8 @@ void Op::zero_grad(const FFModel& ff)
     launcher.add_region_requirement(
         RegionRequirement(outputs[i].part_grad, 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, outputs[i].region_grad));
+    //LogicalRegion lr = outputs[i].region_grad;
+    //printf("zero_grad:output[%d]: region(%d,%d,%d)\n", i, lr.get_index_space().get_id(), lr.get_field_space().get_id(), lr.get_tree_id());
     launcher.add_field(i + numWeights, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);

@@ -175,6 +175,8 @@ void ElementBinary::create_output_and_partition_with_dim(FFModel& model)
   for (int i = 0; i < NDIM; i++)
     dims[i] = inputs[0].adim[NDIM-1-i];
   outputs[0] = model.create_tensor<NDIM>(dims, IndexSpaceT<NDIM>(task_is), DT_FLOAT);
+  outputs[0].owner_op = this;
+  outputs[0].owner_idx = 0;
   Rect<NDIM> input_rect;
   for (int i = 0; i < 2; i++) {
     input_rect = runtime->get_index_partition_color_space(

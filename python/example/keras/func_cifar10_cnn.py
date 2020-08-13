@@ -55,11 +55,11 @@ def top_level_task():
 
   model = Model(input_tensor1, output_tensor)
   
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
 
-  model.fit(x_train, y_train, epochs=1, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
+  model.fit(x_train, y_train, epochs=40, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
 
 if __name__ == "__main__":
   print("Functional API, cifar10 cnn")

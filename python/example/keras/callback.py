@@ -25,9 +25,9 @@ import numpy as np
 
 def lr_scheduler(epoch):
   if epoch == 0:
-    return 0.001
+    return 0.01
   else:
-    return 0.002
+    return 0.02
 
 def top_level_task():
   print(K.backend())
@@ -58,13 +58,13 @@ def top_level_task():
 
   model = Model(input_tensor1, output_tensor)
   
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.001)
+  opt = flexflow.keras.optimizers.SGD(learning_rate=0.02)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
   
   mylr_scheduler = LearningRateScheduler(lr_scheduler)
 
-  model.fit(x_train, y_train, epochs=2, callbacks=[mylr_scheduler, VerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
+  model.fit(x_train, y_train, epochs=40, callbacks=[mylr_scheduler, VerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
 
 if __name__ == "__main__":
   print("Functional API, cifar10 cnn callback")

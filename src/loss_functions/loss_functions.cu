@@ -132,7 +132,7 @@ void Loss::backward_task(const Task *task,
       scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
           acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor);
     } else {
-      fprintf(stderr, "Unsupported loss --- report this error to the FlexFlow developer\n");
+      fprintf(stderr, "Unsupported loss --- report this error to the FlexFlow developers\n");
       assert(false);
     }
   }
@@ -143,8 +143,8 @@ void Loss::backward(FFModel* model,
                     const Tensor* label)
 {
   // Compute scale factor for loss backpropagation
-  //scale_factor = 1.0f/ logit->adim[logit->numDim-1];
-  scale_factor = 1.0f;
+  scale_factor = 1.0f/ logit->adim[logit->numDim-1];
+  //scale_factor = 1.0f;
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
   IndexSpaceT<2> task_is = IndexSpaceT<2>(model->get_or_create_task_is(2, pcname));
