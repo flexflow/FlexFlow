@@ -29,7 +29,9 @@ class Model(BaseModel):
     
     self._input_tensors = inputs
     for input_tensor in inputs:
+      assert input_tensor.from_layer.initialized == False, "[Model]: input layer is initialized, do not reuse the layer"
       self._input_layers.append(input_tensor.from_layer)
+      input_tensor.from_layer.initialized = True
     self._output_tensor = outputs
     
     self.__traverse_dag_dfs()

@@ -202,6 +202,9 @@ class Embedding(Layer):
     assert output_tensor.num_dims == 2, "[Embedding]: check output tensor dims"
     assert output_tensor.batch_shape[1] == self.output_shape[1]
     
+  def _reset_layer(self):
+    pass
+    
 class Activation(Layer):
   def __init__(self, activation=None, **kwargs):
     

@@ -63,4 +63,6 @@ class Sequential(BaseModel):
   def __add_input(self, tensor):
     self._input_tensors.append(tensor)
     self._output_tensor = tensor
+    assert tensor.from_layer.initialized == False, "[Model]: input layer is initialized, do not reuse the layer"
     self._input_layers.append(tensor.from_layer)
+    tensor.from_layer.initialized = True
