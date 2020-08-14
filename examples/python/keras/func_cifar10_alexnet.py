@@ -21,7 +21,7 @@ from flexflow.keras.datasets import cifar10
 from flexflow.keras import losses
 from flexflow.keras import metrics
 from flexflow.keras.callbacks import Callback, VerifyMetrics, EpochVerifyMetrics
-from example.accuracy import ModelAccuracy
+from accuracy import ModelAccuracy
 
 import flexflow.core as ff
 import numpy as np
