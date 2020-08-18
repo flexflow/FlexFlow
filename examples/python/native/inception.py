@@ -164,7 +164,7 @@ def inception():
     dataloader_input.reset()
     dataloader_label.reset()
     ffmodel.reset_metrics()
-    iterations = dataloader.get_num_samples() / ffconfig.get_batch_size()
+    iterations = num_samples / ffconfig.get_batch_size()
     for iter in range(0, int(iterations)):
       #dataloader.next_batch(ffmodel)
       dataloader_input.next_batch(ffmodel)
