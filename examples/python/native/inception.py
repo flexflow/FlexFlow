@@ -61,7 +61,7 @@ def InceptionE(ffmodel, input):
   output = ffmodel.concat([t1, t2, t3, t4, t5, t6], 1)
   return output;
   
-def top_level_task():
+def inception():
   ffconfig = FFConfig()
   ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
@@ -71,9 +71,9 @@ def top_level_task():
   #print(dims)
   input = ffmodel.create_tensor(dims_input, "", DataType.DT_FLOAT)
   
-  dims_label = [ffconfig.get_batch_size(), 1]
-  #print(dims)
-  label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
+  # dims_label = [ffconfig.get_batch_size(), 1]
+  # #print(dims)
+  # label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
   
   t = ffmodel.conv2d(input, 32, 3, 3, 2, 2, 0, 0)
   t = ffmodel.conv2d(t, 32, 3, 3, 1, 1, 0, 0)
@@ -95,17 +95,17 @@ def top_level_task():
   t = InceptionE(ffmodel, t)
   t = ffmodel.pool2d(t, 8, 8, 1, 1, 0, 0, PoolType.POOL_AVG)
   t = ffmodel.flat(t)
-  t = ffmodel.dense(t, 1000)
-  t = ffmodel.softmax(t, label)
+  t = ffmodel.dense(t, 10)
+  t = ffmodel.softmax(t)
   
-  ffoptimizer = SGDOptimizer(ffmodel, 0.01)
+  ffoptimizer = SGDOptimizer(ffmodel, 0.001)
   ffmodel.set_sgd_optimizer(ffoptimizer)
-  ffmodel.compile()
+  ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
+  label = ffmodel.get_label_tensor()
   
   # Data Loader
   alexnetconfig = NetConfig()
   dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
-  dataloader.set_num_samples(256 * ffconfig.get_workers_per_node() * ffconfig.get_num_nodes())
   
   ffmodel.init_layers()
   
@@ -147,4 +147,4 @@ def top_level_task():
 
 if __name__ == "__main__":
   print("alexnet")
-  top_level_task()
+  inception()
