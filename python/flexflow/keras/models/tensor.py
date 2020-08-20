@@ -70,6 +70,7 @@ class Tensor(object):
       self.batch_shape = ffhandle.dims
       self.num_dims = ffhandle.num_dims
       self.__verify_ffhandle_shape()
+      self.__verify_ffhandle_dtype()
   
   @property
   def ffhandle(self):
@@ -83,6 +84,7 @@ class Tensor(object):
     if (self.batch_shape[0] == 0):
       self.set_batch_size(handle.dims[0])
     self.__verify_ffhandle_shape()
+    self.__verify_ffhandle_dtype()
     
   def create_ff_tensor(self, ffmodel):
     if (self.num_dims == 2 or self.num_dims == 4):
@@ -90,6 +92,7 @@ class Tensor(object):
     else:
       assert 0, "un-supported dims"
     self.__verify_ffhandle_shape()
+    self.__verify_ffhandle_dtype()
     
   def set_from_layer(self, layer):
     assert self.from_layer == 0, "[Tensor]: from layer has been set"
@@ -107,3 +110,6 @@ class Tensor(object):
     assert self.num_dims == self._ffhandle.num_dims, "[Tensor]: check tensor shape"
     for i in range(0, self.num_dims):
       assert self.batch_shape[i] == self._ffhandle.dims[i], "[Tensor]: please check shape dim %d (%d == %d)" %(i, self.batch_shape[i], self._ffhandle.dims[i])
+      
+  def __verify_ffhandle_dtype(self):
+    assert self.dtype == self._ffhandle.data_type
