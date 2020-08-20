@@ -33,7 +33,7 @@ class BaseModel(object):
                '_full_input_tensors', '_full_label_tensor', '_num_samples',\
                '_input_dataloaders', '_input_dataloaders_dim', \
                '_label_dataloader', '_label_dataloader_dim', \
-               '_loss', '_metrics', '__tracing_id']
+               '_loss', '_metrics', '_label_type', '__tracing_id']
   def __init__(self, name):
     self._ffconfig = ff.FFConfig()
     self._ffconfig.parse_args()
@@ -57,7 +57,8 @@ class BaseModel(object):
     self._label_dataloader_dim = 0
     self._loss = None
     self._metrics = []
-    
+    self._label_type = ff.DataType.DT_FLOAT   
+ 
     global tracing_id
     self.__tracing_id = tracing_id
     tracing_id += 1
@@ -147,6 +148,7 @@ class BaseModel(object):
       self._loss = keras_losses.CategoricalCrossentropy()
     elif loss == 'sparse_categorical_crossentropy':
       self._loss = keras_losses.SparseCategoricalCrossentropy()
+      self._label_type = ff.DataType.DT_INT32
     elif loss == 'mean_squared_error':
       self._loss = keras_losses.MeanSquaredError()
     else:
@@ -255,7 +257,7 @@ class BaseModel(object):
     
   def _create_label_tensor(self):
     label_ffhandle = self._ffmodel.get_label_tensor()
-    self._label_tensor = Tensor(ffmodel=self._ffmodel, batch_shape=(self._ffconfig.get_batch_size(), 1), name="", dtype="int32", ffhandle=label_ffhandle)
+    self._label_tensor = Tensor(ffmodel=self._ffmodel, batch_shape=(self._ffconfig.get_batch_size(), 1), name="", dtype=self._label_type, ffhandle=label_ffhandle)
     
   def _create_input_tensors(self):
     idx = 0
@@ -272,10 +274,13 @@ class BaseModel(object):
       assert len(np_shape) == t.num_dims, "check input shape"
       for i in range(1, len(np_shape)):
         assert np_shape[i] == t.batch_shape[i], "check input dims"
+      assert np_array.dtype == t.dtype_str, "check input dtype"   
+
     np_shape = label_array.shape
     assert len(np_shape) == self._label_tensor.num_dims, "check label shape"
     for i in range(1, len(np_shape)):
       assert np_shape[i] == self._label_tensor.batch_shape[i], "check label dims"
+    assert label_array.dtype == self._label_tensor.dtype_str
       
   def _verify_output_tensors(self):
     assert self._layers[self._nb_layers-1].output_tensors[0] == self._output_tensor, "output tensor is wrong"
@@ -294,7 +299,7 @@ class BaseModel(object):
   def __create_single_data_loader(self, batch_tensor, full_array):
     array_shape = full_array.shape
     num_dim = len(array_shape)
-    
+    print("dataloader type:", full_array.dtype)
     if (full_array.dtype == "float32"):
       datatype = ff.DataType.DT_FLOAT
     elif (full_array.dtype == "int32"):
@@ -406,7 +411,7 @@ class BaseModel(object):
     # self._input_tensors[0].ffhandle.inline_unmap(self._ffconfig)
     #
     # self._label_tensor.ffhandle.inline_map(self._ffconfig)
-    # label_array = self._label_tensor.ffhandle.get_flat_array(self._ffconfig, ff.DataType.DT_INT32)
+    # label_array = self._label_tensor.ffhandle.get_flat_array(self._ffconfig, self._label_type)
     # print(label_array.shape)
     # print(label_array)
     # self._label_tensor.ffhandle.inline_unmap(self._ffconfig)

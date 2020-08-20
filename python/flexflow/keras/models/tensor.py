@@ -83,7 +83,18 @@ class Tensor(object):
     if (self.batch_shape[0] == 0):
       self.set_batch_size(handle.dims[0])
     self.__verify_ffhandle_shape()
-    
+  
+  @property
+  def dtype_str(self):
+    if self.dtype == ff.DataType.DT_FLOAT:
+      return "float32"
+    elif self.dtype == ff.DataType.DT_DOUBLE:
+      return "float64"
+    elif self.dtype == ff.DataType.DT_INT32:
+      return "int32"
+    elif self.dtype == ff.DataType.DT_INT64:
+      return "int64"
+  
   def create_ff_tensor(self, ffmodel):
     if (self.num_dims == 2 or self.num_dims == 4):
       self._ffhandle = ffmodel.create_tensor(self.batch_shape, self.name, self.dtype);
