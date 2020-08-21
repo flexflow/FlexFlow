@@ -228,7 +228,7 @@ void ImgDataLoader4D::load_entire_dataset(const Task *task,
   FILE* file = fopen(alexnet->dataset_path.c_str(), "rb");
   unsigned char* buffer = (unsigned char*) malloc(3073);
   unsigned char* image = (unsigned char*) malloc(3 * height * width);
-  for (int i = 0; i < num_samples; i++) {
+  for (off_t i = 0; i < num_samples; i++) {
     size_t ret = fread(buffer, sizeof(unsigned char), 3073, file);
     assert(ret = 3073);
     if (i == 0) {
@@ -243,9 +243,9 @@ void ImgDataLoader4D::load_entire_dataset(const Task *task,
     label_ptr[i] = buffer[0];
     nearest_neigh(image, buffer + 1, height, width,
                   origHeight, origWidth, heightScale, widthScale);
-    int input_offset = i * 3 * height * width;
-    int image_offset = 0;
-    for (int h = 0; h < 3*height*width; h++)
+    off_t input_offset = i * 3 * height * width;
+    off_t image_offset = 0;
+    for (off_t h = 0; h < 3*height*width; h++)
         input_ptr[input_offset++] = static_cast<float>(image[image_offset++]) / 255;
   }
   printf("Finish loading %d samples from %s\n",
@@ -619,10 +619,10 @@ void SingleDataLoader::load_entire_dataset_from_numpy(const Task *task,
   printf("Check ptr input_ %p %lu %lu, input %p %lu %lu\n", input_ptr_, (uintptr_t)input_ptr_, rect_input_.volume(), input_ptr, (uintptr_t)input_ptr, rect_input.volume());
   assert(rect_input.volume() == rect_input_.volume());
   memcpy(input_ptr, input_ptr_, sizeof(DT)*rect_input.volume());
-  // for (int i = 0; i < 32; i++) {
-  //   std::cout<<input_ptr[i]<<" ";
-  // }
-  // std::cout<<std::endl;
+  for (int i = 0; i < 32; i++) {
+    std::cout<<input_ptr[i]<<" ";
+  }
+  std::cout<<std::endl;
 }
 
 void SingleDataLoader::register_cpu_tasks(void)
