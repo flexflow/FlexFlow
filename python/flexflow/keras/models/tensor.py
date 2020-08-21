@@ -121,9 +121,6 @@ class Tensor(object):
     assert self.num_dims == self._ffhandle.num_dims, "[Tensor]: check tensor shape"
     for i in range(0, self.num_dims):
       assert self.batch_shape[i] == self._ffhandle.dims[i], "[Tensor]: please check shape dim %d (%d == %d)" %(i, self.batch_shape[i], self._ffhandle.dims[i])
-<<<<<<< HEAD
       
   def __verify_ffhandle_dtype(self):
     assert self.dtype == self._ffhandle.data_type
-=======
->>>>>>> 133e79a5a742a4eba94a3533232c9063b69a6354
