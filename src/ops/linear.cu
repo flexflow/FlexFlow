@@ -216,7 +216,6 @@ void Linear::create_output_and_partition(FFModel& model)
   }
 }
 
-
 /*
   regions[0](O): output
   regions[1](I): kernel

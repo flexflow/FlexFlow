@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef _FLEXFLOW_RUNTIME_H_
-#define _FLEXFLOW_RUNTIME_H_
+#ifndef _FLEXFLOW_MODEL_H_
+#define _FLEXFLOW_MODEL_H_
 #include "legion.h"
 #include "config.h"
 #include "initializer.h"
@@ -1017,4 +1017,4 @@ void data_load_task(const Task* task,
 
 void register_custom_tasks();
 void register_c_custom_tasks();
-#endif//_FLEXFLOW_RUNTIME_H_
+#endif//_FLEXFLOW_MODEL_H_
