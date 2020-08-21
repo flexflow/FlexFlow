@@ -85,7 +85,18 @@ class Tensor(object):
       self.set_batch_size(handle.dims[0])
     self.__verify_ffhandle_shape()
     self.__verify_ffhandle_dtype()
-    
+      
+  @property
+  def dtype_str(self):
+    if self.dtype == ff.DataType.DT_FLOAT:
+      return "float32"
+    elif self.dtype == ff.DataType.DT_DOUBLE:
+      return "float64"
+    elif self.dtype == ff.DataType.DT_INT32:
+      return "int32"
+    elif self.dtype == ff.DataType.DT_INT64:
+      return "int64"
+  
   def create_ff_tensor(self, ffmodel):
     if (self.num_dims == 2 or self.num_dims == 4):
       self._ffhandle = ffmodel.create_tensor(self.batch_shape, self.name, self.dtype);
@@ -110,6 +121,9 @@ class Tensor(object):
     assert self.num_dims == self._ffhandle.num_dims, "[Tensor]: check tensor shape"
     for i in range(0, self.num_dims):
       assert self.batch_shape[i] == self._ffhandle.dims[i], "[Tensor]: please check shape dim %d (%d == %d)" %(i, self.batch_shape[i], self._ffhandle.dims[i])
+<<<<<<< HEAD
       
   def __verify_ffhandle_dtype(self):
     assert self.dtype == self._ffhandle.data_type
+=======
+>>>>>>> 133e79a5a742a4eba94a3533232c9063b69a6354
