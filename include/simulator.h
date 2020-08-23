@@ -20,6 +20,15 @@
 class Conv2DMeta;
 class LinearMeta;
 
+class Task {
+public:
+  Task();
+public:
+  ready
+};
+
+class 
+
 class Simulator {
 public:
   Simulator(FFHandler handle, void* base_ptr, size_t capacity);

@@ -900,6 +900,46 @@ void FFModel::compile(LossType loss_type,
   optimizer->init();
 }
 
+void FFModel::rewrite(const std::map<Op*, ParallelConfig>& current,
+                      std::map<Op* ParallelConfig>& next)
+{
+  next = current;
+  size_t opId = std::rand() % layers.size();
+  next[layers[opId]] = layers[opId]->get_random_parallel_config();
+}
+
+void FFModel::optimize(const std::map<Op*, ParallelConfig> initial,
+                       std::map<Op*, ParallelConfig>& best,
+                       size_t budget, float alpha)
+{
+  std::map<Op*, ParallelConfig> current = initial, next;
+  float best_runtime = simulator->simulate_runtime(this, current);
+  best = current;
+  float current_runtime = best_runtime;
+  for (size_t iter = 0; iter < budget; iter++) {
+    rewrite(current, next);
+    float next_runtime = simulator->simulate_runtime(this, next);
+    if (iter % 1000 == 0) {
+      printf("iter(%zu) cur(%.2lf) next(%.2lf) best(%.2lf)\n", iter,
+             current_runtime, next_runtime, best_runtime);
+    }
+    float rn = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+    float ratio = (next_runtime - current_runtime) / current_runtime;
+    float diff = (next_runtime - current_runtime);
+    if (next_runtime < best_runtime) {
+      best_runtime = next_runtime;
+      best = next;
+    }
+    if (next_runtime < current_runtime) {
+      current = next;
+      current_runtime = next_runtime;
+    } else if (rn < std::exp(-alpha * diff)) {
+      current = next;
+      current_runtime = next_runtime;
+    }
+  }
+}
+
 void FFModel::zero_gradients(void)
 {
   for (int l = layers.size() - 1; l >= 0; l--)

@@ -187,10 +187,10 @@ public:
 
 class Op {
 public:
-  Op(FFModel& model, const std::string& _name, const Tensor& input);
-  Op(FFModel& model, const std::string& _name, const Tensor& input1, const Tensor& input2);
-  Op(FFModel& model, const std::string& _name, int num, const Tensor* inputs);
-  Op(FFModel& model, const std::string& _name, int num);
+  Op(FFModel& model, OperatorType type, const std::string& _name, const Tensor& input);
+  Op(FFModel& model, OperatorType type, const std::string& _name, const Tensor& input1, const Tensor& input2);
+  Op(FFModel& model, OperatorType type, const std::string& _name, int num, const Tensor* inputs);
+  Op(FFModel& model, OperatorType type, const std::string& _name, int num);
 
   virtual void prefetch(const FFModel&);
   virtual Tensor init_inout(FFModel&, const Tensor&) = 0;
@@ -207,6 +207,7 @@ public:
   //virtual void add_to_model(FFModel& model) = 0;
   //virtual void update(const FFModel&) = 0;
 public:
+  OperatorType op_type;
   char name[MAX_OPNAME];
   IndexSpace task_is;
   Tensor outputs[MAX_NUM_OUTPUTS];
