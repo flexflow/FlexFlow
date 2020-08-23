@@ -32,7 +32,7 @@ Tensor FFModel::batch_norm(const Tensor& input,
 BatchNorm::BatchNorm(FFModel& model,
                      const Tensor& _input,
                      bool _relu)
-: Op(model, "BatchNorm", _input), relu(_relu), profiling(model.config.profiling)
+: Op(model, OP_BATCHNORM, "BatchNorm", _input), relu(_relu), profiling(model.config.profiling)
 {
   Context ctx = model.config.lg_ctx;
   HighLevelRuntime* runtime = model.config.lg_hlr;

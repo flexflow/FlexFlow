@@ -51,7 +51,7 @@ Embedding::Embedding(FFModel& model,
                      int _num_entries, int outDim,
                      AggrMode _aggr,
                      Initializer* _kernel_initializer)
-: Op(model, "Embed_"+std::to_string(_num_entries)+"x"+std::to_string(outDim), _input),
+: Op(model, OP_EMBEDDING, "Embed_"+std::to_string(_num_entries)+"x"+std::to_string(outDim), _input),
   num_entries(_num_entries), out_channels(outDim), aggr(_aggr),
   kernel_initializer(_kernel_initializer), profiling(model.config.profiling)
 {
@@ -65,7 +65,7 @@ Embedding::Embedding(FFModel& model,
                      int _num_entries, int outDim,
                      AggrMode _aggr,
                      Initializer* kernel_initializer)
-: Op(model, "Embed_"+std::to_string(_num_entries)+"x"+std::to_string(outDim), 1),
+: Op(model, OP_EMBEDDING, "Embed_"+std::to_string(_num_entries)+"x"+std::to_string(outDim), 1),
   num_entries(_num_entries), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
 {
 }

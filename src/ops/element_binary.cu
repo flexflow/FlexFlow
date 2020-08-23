@@ -80,7 +80,7 @@ ElementBinary::ElementBinary(FFModel& model,
                              ElementBinary::OpType _op_type,
                              const Tensor& in1,
                              const Tensor& in2)
-: Op(model, "ElementBinary_"+std::to_string(_op_type), in1, in2), op_type(_op_type)
+: Op(model, OP_ELEMENTWISE, "ElementBinary_"+std::to_string(_op_type), in1, in2), op_type(_op_type)
 {
   //TODO: implement broadcast op
   assert(in1.numDim == in2.numDim);
@@ -94,7 +94,7 @@ ElementBinary::ElementBinary(FFModel& model,
 
 ElementBinary::ElementBinary(FFModel& model,
                              ElementBinary::OpType _op_type)
-: Op(model, "ElementBinary_"+std::to_string(_op_type), 2), op_type(_op_type)
+: Op(model, OP_ELEMENTWISE, "ElementBinary_"+std::to_string(_op_type), 2), op_type(_op_type)
 {
 }
 

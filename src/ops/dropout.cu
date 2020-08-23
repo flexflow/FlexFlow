@@ -33,7 +33,7 @@ Dropout::Dropout(FFModel& model,
                  const Tensor& _input,
                  float _rate,
                  unsigned long long _seed)
-: Op(model, "Dropout", _input), rate(_rate), seed(_seed)
+: Op(model, OP_DROPOUT, "Dropout", _input), rate(_rate), seed(_seed)
 {
   // Set output shape
   outputs[0].numDim = inputs[0].numDim;

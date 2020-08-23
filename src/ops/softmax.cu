@@ -27,7 +27,7 @@ Tensor FFModel::softmax(const Tensor& _input)
 
 Softmax::Softmax(FFModel& model,
                  const Tensor& _input)
-: Op(model, "Softmax", _input), profiling(model.config.profiling)
+: Op(model, OP_SOFTMAX, "Softmax", _input), profiling(model.config.profiling)
 {
   outputs[0].numDim = 2;
   outputs[0].adim[0] = _input.adim[0];

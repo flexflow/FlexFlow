@@ -89,7 +89,7 @@ ElementUnary* FFModel::elu()
 ElementUnary::ElementUnary(FFModel& model,
                            ElementUnary::OpType _op_type,
                            const Tensor& x)
-: Op(model, "ElementUnary_"+std::to_string(_op_type), x), op_type(_op_type)
+: Op(model, OP_ELEMENTWISE, "ElementUnary_"+std::to_string(_op_type), x), op_type(_op_type)
 {
   outputs[0].numDim = inputs[0].numDim;
   for (int i = 0; i < outputs[0].numDim; i++)
@@ -98,7 +98,7 @@ ElementUnary::ElementUnary(FFModel& model,
 
 ElementUnary::ElementUnary(FFModel& model,
                            ElementUnary::OpType _op_type)
-: Op(model, "ElementUnary_"+std::to_string(_op_type), 1), op_type(_op_type)
+: Op(model, OP_ELEMENTWISE, "ElementUnary_"+std::to_string(_op_type), 1), op_type(_op_type)
 {}
 
 Tensor ElementUnary::init_inout(FFModel& model,

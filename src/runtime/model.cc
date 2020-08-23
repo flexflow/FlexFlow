@@ -134,9 +134,10 @@ size_t Tensor::get_volume()
 }
 
 Op::Op(FFModel& model,
+       OperatorType _op_type,
        const std::string& _name,
        const Tensor& _input)
-: numInputs(1), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1)
 {
   std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
@@ -156,10 +157,11 @@ Op::Op(FFModel& model,
 }
 
 Op::Op(FFModel& model,
+       OperatorType _op_type,
        const std::string& _name,
        const Tensor& _input1,
        const Tensor& _input2)
-: numInputs(2), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(2), numWeights(0), numOutputs(1)
 {
   std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
@@ -180,9 +182,10 @@ Op::Op(FFModel& model,
 }
 
 Op::Op(FFModel& model,
+       OperatorType _op_type,
        const std::string& _name,
        int n, const Tensor* _inputs)
-: numInputs(n), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(n), numWeights(0), numOutputs(1)
 {
   std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
@@ -204,9 +207,10 @@ Op::Op(FFModel& model,
 }
 
 Op::Op(FFModel& model,
+       OperatorType _op_type,
        const std::string& _name,
        int _numInputs)
-: numInputs(_numInputs), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(_numInputs), numWeights(0), numOutputs(1)
 {
   std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
@@ -254,6 +258,29 @@ void Op::zero_grad(const FFModel& ff)
     launcher.add_field(i + numWeights, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
+}
+
+ParallelConfig Op::get_random_parallel_config(const FFModel& ff)
+{
+  std::vector<int> candidates;
+  for (int i = 1; i < ff.config.workersPerNode; i++)
+    if (ff.config.workersPerNode % i == 0)
+      candidates.push_back(i);
+  for (int i = 1; i < ff.config.numNodes; i++)
+    if (ff.config.numNodes % i == 0)
+      candidates.push_back(i * ff.config.workersPerNode);
+  int idx = std::rand() % candidates.size();
+  int num_parts = candidates[idx];
+  ParallelConfig pc;
+  pc.device_type = ParallelConfig::GPU;
+  pc.nDims = outputs[0].numDim;
+  for (int i = 0; i < pc.nDims; i++)
+    pc.dim[i] = i == pc.nDims - 1 ? num_parts : 1;
+  int total_num_devices = ff.config.workersPerNode * ff.config.numNodes;
+  int start_idx = std::rand() % (total_num_devices - num_parts + 1);
+  for (int i = 0; i < num_parts; i++)
+    pc.device_ids[i] = start_idx + i;
+  return pc;
 }
 
 FFModel::FFModel(FFConfig& _config)
@@ -901,14 +928,15 @@ void FFModel::compile(LossType loss_type,
 }
 
 void FFModel::rewrite(const std::map<Op*, ParallelConfig>& current,
-                      std::map<Op* ParallelConfig>& next)
+                      std::map<Op*, ParallelConfig>& next)
 {
   next = current;
   size_t opId = std::rand() % layers.size();
-  next[layers[opId]] = layers[opId]->get_random_parallel_config();
+  next[layers[opId]] = layers[opId]->get_random_parallel_config(*this);
 }
 
-void FFModel::optimize(const std::map<Op*, ParallelConfig> initial,
+void FFModel::optimize(const std::map<Op*, ParallelConfig>& initial,
+                       Simulator* simulator,
                        std::map<Op*, ParallelConfig>& best,
                        size_t budget, float alpha)
 {
@@ -924,7 +952,7 @@ void FFModel::optimize(const std::map<Op*, ParallelConfig> initial,
              current_runtime, next_runtime, best_runtime);
     }
     float rn = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
-    float ratio = (next_runtime - current_runtime) / current_runtime;
+    //float ratio = (next_runtime - current_runtime) / current_runtime;
     float diff = (next_runtime - current_runtime);
     if (next_runtime < best_runtime) {
       best_runtime = next_runtime;

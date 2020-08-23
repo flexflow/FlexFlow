@@ -13,14 +13,31 @@
  * limitations under the License.
  */
 
-Task::Task()
+#include "simulator.h"
+#include "model.h"
+#include "queue"
+
+Device::Device(Device::DeviceType _type, int _node_id, int _gpu_id)
+: node_id(_node_id), gpu_id(_gpu_id), bandwidth(0.0f), type(_type)
+{
+  assert(type == DEVICE_GPU);
+}
+
+Device::Device(Device::DeviceType _type, float _bandwidth)
+: node_id(-1), gpu_id(-1), bandwidth(_bandwidth), type(_type)
+{
+  assert(type == DEVICE_COMM);
+}
+
+SimTask::SimTask()
 {}
 
-TaskManager::TaskManager(size_t max_num_tasks)
+TaskManager::TaskManager(size_t _max_num_tasks)
+: max_num_tasks(_max_num_tasks)
 {
-  tasks = (Task**) malloc(sizeof(Task*) * max_num_tasks);
+  tasks = (SimTask**) malloc(sizeof(SimTask*) * max_num_tasks);
   for (size_t i = 0; i < max_num_tasks; i++) {
-    tasks[i] = new Task();
+    tasks[i] = new SimTask();
   }
 }
 
@@ -31,41 +48,46 @@ void TaskManager::reset()
   hash_to_backward_task.clear();
 }
 
-Task* TaskManager::new_task()
+SimTask* TaskManager::new_task()
 {
-  Task* task = tasks[global_task_id++];
-  task->nextTasks.clear();
+  assert(global_task_id + 1 < max_num_tasks);
+  SimTask* task = tasks[global_task_id++];
+  task->ready_time = 0.0f;
+  task->run_time = 0.0f;
+  task->next_tasks.clear();
   task->counter = 0;
   task->device = NULL;
   return task;
 }
 
-Task* TaskManager::new_comm_task()
+SimTask* TaskManager::new_comm_task()
 {
-  Task* task = new_task();
-  task->type = TASK_COMM;
+  SimTask* task = new_task();
+  task->type = SimTask::TASK_COMM;
   return task; 
 }
 
-Task* TaskManager::new_forward_task(Op* op, int idx)
+SimTask* TaskManager::new_forward_task(Op* op, int idx)
 {
-  Task* task = new_task();
-  task->type = TASK_FORWARD;
+  SimTask* task = new_task();
+  task->type = SimTask::TASK_FORWARD;
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
   hash_to_forward_task[hash] = task;
+  return task;
 }
 
-Task* TaskManager::new_backward_task(Op* op, int idx)
+SimTask* TaskManager::new_backward_task(Op* op, int idx)
 {
-  Task* task = new_task();
-  task->type = TASK_BACKWARD;
+  SimTask* task = new_task();
+  task->type = SimTask::TASK_BACKWARD;
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
   hash_to_backward_task[hash] = task;
+  return task;
 }
 
-Task* TaskManager::get_forward_task(Op* op, int idx)
+SimTask* TaskManager::get_forward_task(Op* op, int idx)
 {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
@@ -73,7 +95,7 @@ Task* TaskManager::get_forward_task(Op* op, int idx)
   return hash_to_forward_task[hash];
 }
 
-Task* TaskManager::get_backward_task(Op* op, int idx)
+SimTask* TaskManager::get_backward_task(Op* op, int idx)
 {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
@@ -148,15 +170,15 @@ Device* Simulator::get_inter_node_comm_device_by_ids(int src_id,
 }
 
 void Simulator::add_task_dependencies_with_xfer(FFModel* model,
-                                                Task* src_task,
-                                                Task* dst_task,
+                                                SimTask* src_task,
+                                                SimTask* dst_task,
                                                 size_t intersect)
 {
   if (src_task->device == dst_task->device) {
     src_task->add_next_task(dst_task);
   } else if (src_task->device->node_id == dst_task->device->node_id) {
     // Intra-node communication
-    Task* task = task_manager->new_comm_task();
+    SimTask* task = task_manager->new_comm_task();
     task->device = get_inter_gpu_comm_device_by_ids(src_task->device->gpu_id,
                                                     dst_task->device->gpu_id);
     task->run_time = (float)intersect * sizeof(float) / task->device->bandwidth;
@@ -164,14 +186,14 @@ void Simulator::add_task_dependencies_with_xfer(FFModel* model,
     task->add_next_task(dst_task);
   } else {
     // Inter-node communication
-    Task* gpu_to_dram = task_manager->new_comm_task();
+    SimTask* gpu_to_dram = task_manager->new_comm_task();
     gpu_to_dram->device = get_gpu_to_dram_comm_device_by_id(src_task->device->gpu_id);
     gpu_to_dram->run_time = (float)intersect * sizeof(float) / gpu_to_dram->device->bandwidth;
-    Task* dram_to_dram = task_manager->new_comm_task();
+    SimTask* dram_to_dram = task_manager->new_comm_task();
     dram_to_dram->device = get_inter_node_comm_device_by_ids(src_task->device->node_id,
                                                              dst_task->device->node_id);
     dram_to_dram->run_time = (float)intersect * sizeof(float) / dram_to_dram->device->bandwidth;
-    Task* dram_to_gpu = task_manager->new_comm_task();
+    SimTask* dram_to_gpu = task_manager->new_comm_task();
     dram_to_gpu->device = get_dram_to_gpu_comm_device_by_id(dst_task->device->gpu_id);
     dram_to_gpu->run_time = (float)intersect * sizeof(float) / dram_to_gpu->device->bandwidth;
     src_task->add_next_task(gpu_to_dram);
@@ -232,10 +254,10 @@ float Simulator::simulate_runtime(FFModel* model,
     float forward_time = measure_op_forward_time(op, config);
     float backward_time = measure_op_backward_time(op, config);
     for (size_t j = 0; j < config.num_parts(); j++) {
-      Task* task1 = task_manager->new_forward_task(op, j);
+      SimTask* task1 = task_manager->new_forward_task(op, j);
       task1->device = get_compute_device_by_id(config.device_ids[j]);
       task1->run_time = forward_time;
-      Task* task2 = task_manager->new_backward_task(op, j);
+      SimTask* task2 = task_manager->new_backward_task(op, j);
       task2->device = get_compute_device_by_id(config.device_ids[j]);
       task2->run_time = backward_time;
       task1->add_next_task(task2);
@@ -245,27 +267,27 @@ float Simulator::simulate_runtime(FFModel* model,
   for (size_t l = 0; l < model->layers.size(); l++) {
     Op* op = model->layers[l];
     ParallelConfig config = global.find(op)->second;
-    for (size_t j = 0; j < op->inputTensors.size(); j++) {
-      Tensor t = op->inputTensors[j];
+    for (int j = 0; j < op->numInputs; j++) {
+      Tensor t = op->inputs[j];
       Op* pre_op = t.owner_op;
       if (pre_op == NULL) continue;
       ParallelConfig pre_config = global.find(pre_op)->second;
-      for (size_t dstId = 0; dstId < config.num_parts(); dstId ++) {
-        Rect dstR = op->get_input_tensor_shape(config, j, dstId);
-        for (size_t srcId = 0; srcId < pre_config.num_parts(); srcId ++) {
-          Rect srcR = pre_op->get_output_tensor_shape(pre_config, t.owner_idx, srcId);
-          if (intersect(srcR, dstR) > 0) {
+      for (int dstId = 0; dstId < config.num_parts(); dstId ++) {
+        Domain dstR = op->get_input_tensor_shape(config, j, dstId);
+        for (int srcId = 0; srcId < pre_config.num_parts(); srcId ++) {
+          Domain srcR = pre_op->get_output_tensor_shape(pre_config, t.owner_idx, srcId);
+          if (dstR.intersection(srcR).get_volume() > 0) {
             // Forward dependency
             {
-              Task* dstT = task_manager->get_forward_task(op, dstId);
-              Task* srcT = task_manager->get_forward_task(pre_op, srcId);
-              add_task_dependencies_with_xfer(model, srcT, dstT, intersect(srcR, dstR));
+              SimTask* dstT = task_manager->get_forward_task(op, dstId);
+              SimTask* srcT = task_manager->get_forward_task(pre_op, srcId);
+              add_task_dependencies_with_xfer(model, srcT, dstT, dstR.intersection(srcR).get_volume());
             }
             // Backward dependency
             {
-              Task* dstT = task_manager->get_backward_task(op, dstId);
-              Task* srcT = task_manager->get_backward_task(pre_op, srcId);
-              add_task_dependencies_with_xfer(model, dstT, srcT, intersect(srcR, dstR));
+              SimTask* dstT = task_manager->get_backward_task(op, dstId);
+              SimTask* srcT = task_manager->get_backward_task(pre_op, srcId);
+              add_task_dependencies_with_xfer(model, dstT, srcT, dstR.intersection(srcR).get_volume());
             }
           }
         }
@@ -273,12 +295,12 @@ float Simulator::simulate_runtime(FFModel* model,
     }
   }
   // Step 3: add ready tasks into ready_queue
-  std::set<Task*, TaskCompare> ready_queue;
+  std::priority_queue<SimTask*, std::vector<SimTask*>, SimTaskCompare> ready_queue;
   for (size_t l = 0; l < model->layers.size(); l++) {
     Op* op = model->layers[l];
     ParallelConfig config = global.find(op)->second;
     for (size_t i = 0; i < config.num_parts(); i++) {
-      Task* task = task_manager->get_forward_task(op, i);
+      SimTask* task = task_manager->get_forward_task(op, i);
       if (task->counter == 0)
         ready_queue.push(task);
     } 
@@ -287,7 +309,7 @@ float Simulator::simulate_runtime(FFModel* model,
   std::map<Device*, float> device_times;
   while (!ready_queue.empty()) {
     // Find the task with the earliest start time
-    Task* t = *ready_queue.top();
+    SimTask* t = ready_queue.top();
     ready_queue.pop();
     float ready_time = 0;
     if (device_times.find(t->device) != device_times.end()) {
@@ -297,7 +319,7 @@ float Simulator::simulate_runtime(FFModel* model,
     float end_time = start_time + t->run_time;
     device_times[t->device] = end_time;
     for (size_t i = 0; i < t->next_tasks.size(); i++) {
-      Task* next = t->next_tasks[i];
+      SimTask* next = t->next_tasks[i];
       next->ready_time = std::max(next->ready_time, end_time);
       next->counter --;
       if (next->counter == 0) {

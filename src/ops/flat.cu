@@ -37,7 +37,7 @@ Flat* FFModel::flat()
 
 Flat::Flat(FFModel& model,
            const Tensor& _input)
-: Op(model, "Flat", _input)
+: Op(model, OP_FLAT, "Flat", _input)
 {
   assert(_input.numDim == 4);
   int out_dim = _input.adim[0] * _input.adim[1] * _input.adim[2];
@@ -48,7 +48,7 @@ Flat::Flat(FFModel& model,
 }
 
 Flat::Flat(FFModel& model)
-: Op(model, "Flat", 1)
+: Op(model, OP_FLAT, "Flat", 1)
 {
 }
 

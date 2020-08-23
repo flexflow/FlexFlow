@@ -204,6 +204,9 @@ public:
   virtual void create_output_and_partition(FFModel& model) = 0;
   virtual bool measure_compute_time(Simulator* sim,
       const ParallelConfig& pc, float& forward, float& backward) = 0;
+  virtual ParallelConfig get_random_parallel_config(const FFModel& ff);
+  virtual Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx);
+  virtual Domain get_output_tensor_shape(const ParallelConfig& pc, int output_idx, int part_idx);
   //virtual void add_to_model(FFModel& model) = 0;
   //virtual void update(const FFModel&) = 0;
 public:
@@ -389,6 +392,12 @@ public:
   void update();
   void compile(LossType loss_type, const std::vector<MetricsType>& metrics);
   void compile(Optimizer* optimizer, LossType loss_type, const std::vector<MetricsType>& metrics);
+  void optimize(const std::map<Op*, ParallelConfig>& initial,
+                Simulator* simulator,
+                std::map<Op*, ParallelConfig>& best,
+                size_t budget, float alpha);
+  void rewrite(const std::map<Op*, ParallelConfig>& current,
+               std::map<Op*, ParallelConfig>& next);
   void zero_gradients();
   void print_layers(int id);
   // Internal funcitons

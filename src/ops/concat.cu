@@ -27,7 +27,7 @@ Tensor FFModel::concat(int n, const Tensor* tensors,
 Concat::Concat(FFModel& model,
                int _n, const Tensor* _tensors,
                int _axis)
-: Op(model, "Concat_"+std::to_string(_axis), _n, _tensors), axis(_axis),
+: Op(model, OP_CONCAT, "Concat_"+std::to_string(_axis), _n, _tensors), axis(_axis),
    profiling(model.config.profiling)
 {
   int num_dim = inputs[0].numDim;
