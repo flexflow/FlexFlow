@@ -283,6 +283,40 @@ ParallelConfig Op::get_random_parallel_config(const FFModel& ff)
   return pc;
 }
 
+Domain Op::get_output_tensor_shape(const ParallelConfig& pc,
+                                   int output_idx, int part_idx)
+{
+  assert(output_idx < numOutputs);
+  Domain d;
+  d.dim = outputs[output_idx].numDim;
+  for (int i = 0; i < d.dim; i++) {
+    // Assume an equal partitioning
+    assert(outputs[output_idx].adim[i] % pc.dim[i] == 0);
+    int dim_size = outputs[output_idx].adim[i] / pc.dim[i];
+    d.rect_data[i] = (part_idx % pc.dim[i]) * dim_size;
+    d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
+    part_idx = part_idx / pc.dim[i];
+  }
+  return d;
+}
+
+Domain Op::get_input_tensor_shape(const ParallelConfig& pc,
+                                  int input_idx, int part_idx)
+{
+  assert(input_idx < numInputs);
+  Domain d;
+  d.dim = inputs[input_idx].numDim;
+  for (int i = 0; i < d.dim; i++) {
+    // Assume an equal partitioning
+    assert(inputs[input_idx].adim[i] % pc.dim[i] == 0);
+    int dim_size = inputs[input_idx].adim[i] / pc.dim[i];
+    d.rect_data[i] = (part_idx % pc.dim[i]) * dim_size;
+    d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
+    part_idx = part_idx / pc.dim[i];
+  }
+  return d;
+}
+
 FFModel::FFModel(FFConfig& _config)
 : op_global_guid(100), config(_config),
   optimizer(NULL), loss_op(NULL), metrics_op(NULL)

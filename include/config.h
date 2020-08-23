@@ -44,7 +44,7 @@ struct ParallelConfig {
     GPU = 0,
     CPU = 1,
   };
-  int num_parts();
+  int num_parts() const;
   DeviceType device_type;
   int nDims, dim[MAX_DIM];
   int device_ids[MAX_NUM_WORKERS];

@@ -17,6 +17,14 @@
 #include "model.h"
 #include "queue"
 
+int ParallelConfig::num_parts() const
+{
+  int nparts = 1;
+  for (int i = 0; i < nDims; i++)
+    nparts *= dim[i];
+  return nparts;
+}
+
 Device::Device(Device::DeviceType _type, int _node_id, int _gpu_id)
 : node_id(_node_id), gpu_id(_gpu_id), bandwidth(0.0f), type(_type)
 {
@@ -31,6 +39,11 @@ Device::Device(Device::DeviceType _type, float _bandwidth)
 
 SimTask::SimTask()
 {}
+
+void SimTask::add_next_task(SimTask* task)
+{
+  next_tasks.push_back(task);
+}
 
 TaskManager::TaskManager(size_t _max_num_tasks)
 : max_num_tasks(_max_num_tasks)
@@ -253,7 +266,7 @@ float Simulator::simulate_runtime(FFModel* model,
     ParallelConfig config = global.find(op)->second;
     float forward_time = measure_op_forward_time(op, config);
     float backward_time = measure_op_backward_time(op, config);
-    for (size_t j = 0; j < config.num_parts(); j++) {
+    for (int j = 0; j < config.num_parts(); j++) {
       SimTask* task1 = task_manager->new_forward_task(op, j);
       task1->device = get_compute_device_by_id(config.device_ids[j]);
       task1->run_time = forward_time;
@@ -299,13 +312,14 @@ float Simulator::simulate_runtime(FFModel* model,
   for (size_t l = 0; l < model->layers.size(); l++) {
     Op* op = model->layers[l];
     ParallelConfig config = global.find(op)->second;
-    for (size_t i = 0; i < config.num_parts(); i++) {
+    for (int i = 0; i < config.num_parts(); i++) {
       SimTask* task = task_manager->get_forward_task(op, i);
       if (task->counter == 0)
         ready_queue.push(task);
     } 
   }
   // Step 4: perform simulation
+  float sim_time = 0.0f;
   std::map<Device*, float> device_times;
   while (!ready_queue.empty()) {
     // Find the task with the earliest start time
@@ -318,6 +332,8 @@ float Simulator::simulate_runtime(FFModel* model,
     float start_time = std::max(ready_time, t->ready_time);
     float end_time = start_time + t->run_time;
     device_times[t->device] = end_time;
+    if (end_time > sim_time)
+      sim_time = end_time;
     for (size_t i = 0; i < t->next_tasks.size(); i++) {
       SimTask* next = t->next_tasks[i];
       next->ready_time = std::max(next->ready_time, end_time);
@@ -327,5 +343,7 @@ float Simulator::simulate_runtime(FFModel* model,
       }
     }
   }
+  // TODO add parameter synchronization time
+  return sim_time;
 }
 
