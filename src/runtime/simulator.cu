@@ -15,8 +15,12 @@
 
 #include "simulator.h"
 #include "model.h"
+#include "realm/runtime_impl.h"
+#include "realm/cuda/cuda_module.h"
 
-Simulator::Simulator(FFModel* model, FFHandler handler, void* _base_ptr, size_t _capacity)
+Simulator::Simulator(const FFModel* model,
+                     FFHandler handler,
+                     void* _base_ptr, size_t _capacity)
 : base_ptr((char*)_base_ptr), capacity(_capacity), offset(0),
 warmup_times(5), repeat_times(10)
 {
@@ -67,3 +71,37 @@ warmup_times(5), repeat_times(10)
   // Initialize task manager
   task_manager = new TaskManager(max_num_tasks);
 }
+
+__host__
+SearchOutput Simulator::strategy_search_task(const Task *task,
+                                             const std::vector<PhysicalRegion> &regions,
+                                             Context ctx, Runtime *runtime)
+{
+  const FFModel* model = *((FFModel**) task->args);
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+         .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
+  Realm::MemoryImpl* memImpl =
+      Realm::get_runtime()->get_memory_impl(gpu_mem);
+  Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
+  off_t offset = memFBImpl->alloc_bytes_local(model->config.simulator_work_space_size);
+  void* base_ptr = memFBImpl->get_direct_ptr(offset, 0);
+  // Assume this task is running on GPU0
+  Simulator* simulator = new Simulator(model, model->handlers[0], base_ptr,
+      model->config.simulator_work_space_size);
+  std::map<Op*, ParallelConfig> strategies;
+  std::map<Op*, ParallelConfig>::const_iterator iter;
+  model->optimize(simulator, strategies, model->config.search_budget, model->config.search_alpha);
+  SearchOutput search_output;
+  search_output.num_ops = (int)strategies.size();
+  size_t idx = 0;
+  for (iter = strategies.begin(); iter != strategies.end(); iter++) {
+    search_output.mapping_tag_ids[idx] =
+        FFConfig::get_hash_id(std::string(iter->first->name));
+    search_output.configs[idx++] = iter->second;
+  }
+  // Start from data
+  memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);
+  delete(simulator);
+  return search_output;
+}
+

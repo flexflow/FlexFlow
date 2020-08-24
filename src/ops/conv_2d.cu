@@ -341,7 +341,6 @@ OpMeta* Conv2D::init_task(const Task *task,
                        m->convDesc, m->handle.workSpace, m->handle.workSpaceSize,
                        m->inputTensor, acc_input_grad.ptr);
   if (m->relu) {
-    checkCUDNN(cudnnCreateActivationDescriptor(&m->actiDesc));
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
                                             CUDNN_PROPAGATE_NAN, 0.0));
   }
@@ -930,6 +929,7 @@ Conv2DMeta::Conv2DMeta(FFHandler handler)
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateFilterDescriptor(&filterDesc));
   checkCUDNN(cudnnCreateConvolutionDescriptor(&convDesc));
+  checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
 }
 
 bool Conv2D::measure_compute_time(Simulator* sim,

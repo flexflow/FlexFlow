@@ -93,6 +93,8 @@ enum TaskIDs {
   CONSTANT_INIT_TASK_ID,
   UNIFORM_INIT_TASK_ID,
   NORMAL_INIT_TASK_ID,
+  // Search
+  STRATEGY_SEARCH_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
   CUSTOM_GPU_TASK_ID_1,
@@ -204,7 +206,8 @@ public:
   virtual void create_output_and_partition(FFModel& model) = 0;
   virtual bool measure_compute_time(Simulator* sim,
       const ParallelConfig& pc, float& forward, float& backward) = 0;
-  virtual ParallelConfig get_random_parallel_config(const FFModel& ff);
+  virtual ParallelConfig get_random_parallel_config(const FFModel& ff) const;
+  virtual ParallelConfig get_data_parallel_config(const FFModel& ff) const;
   virtual Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx);
   virtual Domain get_output_tensor_shape(const ParallelConfig& pc, int output_idx, int part_idx);
   //virtual void add_to_model(FFModel& model) = 0;
@@ -392,12 +395,11 @@ public:
   void update();
   void compile(LossType loss_type, const std::vector<MetricsType>& metrics);
   void compile(Optimizer* optimizer, LossType loss_type, const std::vector<MetricsType>& metrics);
-  void optimize(const std::map<Op*, ParallelConfig>& initial,
-                Simulator* simulator,
+  void optimize(Simulator* simulator,
                 std::map<Op*, ParallelConfig>& best,
-                size_t budget, float alpha);
+                size_t budget, float alpha) const;
   void rewrite(const std::map<Op*, ParallelConfig>& current,
-               std::map<Op*, ParallelConfig>& next);
+               std::map<Op*, ParallelConfig>& next) const;
   void zero_gradients();
   void print_layers(int id);
   // Internal funcitons

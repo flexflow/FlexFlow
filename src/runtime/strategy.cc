@@ -15,6 +15,7 @@
 
 #include "strategy.pb.h"
 #include "config.h"
+#include "simulator.h"
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -121,6 +122,15 @@ bool load_strategies_from_file(const std::string& filename,
     strategies[hash] = config;
   }
   printf("strategies.size() = %zu\n", strategies.size());
+  return true;
+}
+
+bool load_strategies_from_search_output(const SearchOutput& search_output,
+                                        std::map<MappingTagID, ParallelConfig>& strategies)
+{
+  for (int i = 0; i < search_output.num_ops; i++) {
+    strategies[search_output.mapping_tag_ids[i]] = search_output.configs[i];
+  };
   return true;
 }
 

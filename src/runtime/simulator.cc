@@ -182,8 +182,7 @@ Device* Simulator::get_inter_node_comm_device_by_ids(int src_id,
   return ids_to_inter_node_comm_device[hash];
 }
 
-void Simulator::add_task_dependencies_with_xfer(FFModel* model,
-                                                SimTask* src_task,
+void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
                                                 SimTask* dst_task,
                                                 size_t intersect)
 {
@@ -256,7 +255,7 @@ float Simulator::measure_op_backward_time(Op* op, const ParallelConfig& config)
   }
 }
 
-float Simulator::simulate_runtime(FFModel* model,
+float Simulator::simulate_runtime(const FFModel* model,
                                   const std::map<Op*, ParallelConfig>& global)
 {
   task_manager->reset();
@@ -294,13 +293,13 @@ float Simulator::simulate_runtime(FFModel* model,
             {
               SimTask* dstT = task_manager->get_forward_task(op, dstId);
               SimTask* srcT = task_manager->get_forward_task(pre_op, srcId);
-              add_task_dependencies_with_xfer(model, srcT, dstT, dstR.intersection(srcR).get_volume());
+              add_task_dependencies_with_xfer(srcT, dstT, dstR.intersection(srcR).get_volume());
             }
             // Backward dependency
             {
               SimTask* dstT = task_manager->get_backward_task(op, dstId);
               SimTask* srcT = task_manager->get_backward_task(pre_op, srcId);
-              add_task_dependencies_with_xfer(model, dstT, srcT, dstR.intersection(srcR).get_volume());
+              add_task_dependencies_with_xfer(dstT, srcT, dstR.intersection(srcR).get_volume());
             }
           }
         }
@@ -346,4 +345,3 @@ float Simulator::simulate_runtime(FFModel* model,
   // TODO add parameter synchronization time
   return sim_time;
 }
-

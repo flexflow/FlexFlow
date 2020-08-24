@@ -260,13 +260,26 @@ void Op::zero_grad(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-ParallelConfig Op::get_random_parallel_config(const FFModel& ff)
+ParallelConfig Op::get_data_parallel_config(const FFModel& ff) const
+{
+  int num_parts = ff.config.workersPerNode * ff.config.numNodes;
+  ParallelConfig pc;
+  pc.device_type = ParallelConfig::GPU;
+  pc.nDims = outputs[0].numDim;
+  for (int i = 0; i < pc.nDims; i++)
+    pc.dim[i] = i == pc.nDims - 1 ? num_parts : 1;
+  for (int i = 0; i < num_parts; i++)
+    pc.device_ids[i] = i;
+  return pc;
+}
+
+ParallelConfig Op::get_random_parallel_config(const FFModel& ff) const
 {
   std::vector<int> candidates;
-  for (int i = 1; i < ff.config.workersPerNode; i++)
+  for (int i = 1; i <= ff.config.workersPerNode; i++)
     if (ff.config.workersPerNode % i == 0)
       candidates.push_back(i);
-  for (int i = 1; i < ff.config.numNodes; i++)
+  for (int i = 1; i <= ff.config.numNodes; i++)
     if (ff.config.numNodes % i == 0)
       candidates.push_back(i * ff.config.workersPerNode);
   int idx = std::rand() % candidates.size();
@@ -324,10 +337,6 @@ FFModel::FFModel(FFConfig& _config)
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
   // Load strategy file
-  if (config.strategyFile == "") {
-  } else {
-    load_strategies_from_file(config.strategyFile, config.strategies);
-  }
   for (int i = FFConfig::DataParallelism_1D; i <= FFConfig::DataParallelism_4D; i++) {
     ParallelConfig pc;
     pc.device_type = ParallelConfig::GPU;
@@ -917,6 +926,22 @@ void FFModel::compile(Optimizer* _optimizer,
 void FFModel::compile(LossType loss_type,
                       const std::vector<MetricsType>& metrics)
 {
+  if (config.import_strategy_file.length() > 0) {
+    load_strategies_from_file(config.import_strategy_file, config.strategies);
+  } else if (config.search_budget > 0) {
+    // Launch the search task
+    Context ctx = config.lg_ctx;
+    Runtime* runtime = config.lg_hlr;
+    FFModel* model = this;
+    TaskLauncher launcher(STRATEGY_SEARCH_TASK_ID,
+        TaskArgument(&model, sizeof(FFModel*)));
+    Future future = runtime->execute_task(ctx, launcher);
+    SearchOutput search_output = future.get_result<SearchOutput>();
+    load_strategies_from_search_output(search_output, config.strategies);
+  } else {
+    // Do nothing
+  }
+
   loss_op = new Loss(loss_type);
   metrics_op = new Metrics(loss_type, metrics);
   for (size_t l = 0; l < layers.size(); l++) {
@@ -962,19 +987,22 @@ void FFModel::compile(LossType loss_type,
 }
 
 void FFModel::rewrite(const std::map<Op*, ParallelConfig>& current,
-                      std::map<Op*, ParallelConfig>& next)
+                      std::map<Op*, ParallelConfig>& next) const
 {
   next = current;
   size_t opId = std::rand() % layers.size();
   next[layers[opId]] = layers[opId]->get_random_parallel_config(*this);
 }
 
-void FFModel::optimize(const std::map<Op*, ParallelConfig>& initial,
-                       Simulator* simulator,
+void FFModel::optimize(Simulator* simulator,
                        std::map<Op*, ParallelConfig>& best,
-                       size_t budget, float alpha)
+                       size_t budget, float alpha) const
 {
-  std::map<Op*, ParallelConfig> current = initial, next;
+  // Start from data parallel
+  std::map<Op*, ParallelConfig> current, next;
+  for (size_t l = 0; l < layers.size(); l++) {
+    current[layers[l]] = layers[l]->get_data_parallel_config(*this);
+  }
   float best_runtime = simulator->simulate_runtime(this, current);
   best = current;
   float current_runtime = best_runtime;
@@ -1132,8 +1160,6 @@ struct DefaultConfig {
   const static int epochs = 1;
   const static int iterations = 1;
   const static int batchSize = 64;
-  const static int inputHeight = 224;
-  const static int inputWidth = 224;
   const static bool profiling = false;
   constexpr static float learningRate = 0.01f;
   constexpr static float weightDecay = 0.0001f;
@@ -1141,6 +1167,9 @@ struct DefaultConfig {
   const static int numNodes = 1;
   const static int workersPerNode = 0;
   const static int loadersPerNode = 4;
+  const static size_t searchBudget = 0;
+  const static size_t simulatorWorkSpaceSize = (size_t)2 * 1024 * 1024 * 1024; //2GB
+  constexpr static float searchAlpha = 1.0f;
 };
 
 FFConfig::FFConfig()
@@ -1148,8 +1177,6 @@ FFConfig::FFConfig()
   epochs = DefaultConfig::epochs;
   iterations = DefaultConfig::iterations;
   batchSize = DefaultConfig::batchSize;
-  inputHeight = DefaultConfig::inputHeight;
-  inputWidth = DefaultConfig::inputWidth;
   profiling = DefaultConfig::profiling;
   learningRate = DefaultConfig::learningRate;
   weightDecay = DefaultConfig::weightDecay;
@@ -1157,8 +1184,12 @@ FFConfig::FFConfig()
   numNodes = DefaultConfig::numNodes;
   loadersPerNode = DefaultConfig::loadersPerNode;
   workersPerNode = DefaultConfig::workersPerNode;
-  strategyFile = "";
-  datasetPath = "";
+  simulator_work_space_size = DefaultConfig::simulatorWorkSpaceSize;
+  search_budget = DefaultConfig::searchBudget;
+  search_alpha = DefaultConfig::searchAlpha;
+  import_strategy_file = "";
+  export_strategy_file = "";
+  dataset_path = "";
   syntheticInput = false;
 }
 
@@ -1191,11 +1222,23 @@ void FFConfig::parse_args(char **argv, int argc)
       continue;
     }
     if ((!strcmp(argv[i], "-d")) || (!strcmp(argv[i], "--dataset"))) {
-      datasetPath = std::string(argv[++i]);
+      dataset_path = std::string(argv[++i]);
       continue;
     }
-    if ((!strcmp(argv[i], "-s")) || (!strcmp(argv[i], "--strategy"))) {
-      strategyFile = std::string(argv[++i]);
+    if ((!strcmp(argv[i], "--budget")) || (!strcmp(argv[i], "--search-budget"))) {
+      search_budget =(size_t) atoll(argv[++i]);
+      continue;
+    }
+    if ((!strcmp(argv[i], "--alpha")) || (!strcmp(argv[i], "--search-alpha"))) {
+      search_alpha = atof(argv[++i]);
+      continue;
+    }
+    if ((!strcmp(argv[i], "-import")) || (!strcmp(argv[i], "--import-strategy"))) {
+      import_strategy_file = std::string(argv[++i]);
+      continue;
+    }
+    if ((!strcmp(argv[i], "-export")) || (!strcmp(argv[i], "--export-strategy"))) {
+      export_strategy_file = std::string(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "-ll:gpu"))
@@ -1649,6 +1692,15 @@ void register_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<NormInitializer::init_task>(
         registrar, "Normalize Init Task");
+  }
+  // Search
+  {
+    TaskVariantRegistrar registrar(STRATEGY_SEARCH_TASK_ID,
+                                   "Stretegy Search");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<SearchOutput, Simulator::strategy_search_task>(
+        registrar, "Stretegy Search Task");
   }
   // DUMMY task
   {
