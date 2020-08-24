@@ -87,7 +87,7 @@ OUTFILE		?= flexflow_python
 # List all the application source files here
 FF_SRC ?=	$(FF_HOME)/src/mapper/mapper.cc $(FF_HOME)/src/runtime/strategy.cc $(FF_HOME)/src/metrics_functions/metrics_functions.cc \
 		$(FF_HOME)/src/runtime/model.cc $(FF_HOME)/src/runtime/optimizer.cc $(FF_HOME)/src/runtime/initializer.cc \
-		$(FF_HOME)/src/ops/embedding.cc 
+		$(FF_HOME)/src/runtime/simulator.cc $(FF_HOME)/src/ops/embedding.cc 
 FF_GPU_SRC ?= 	$(FF_HOME)/src/ops/conv_2d.cu $(FF_HOME)/src/runtime/model.cu\
 		$(FF_HOME)/src/ops/pool_2d.cu $(FF_HOME)/src/ops/batch_norm.cu\
 		$(FF_HOME)/src/ops/linear.cu  $(FF_HOME)/src/ops/dropout.cu\
