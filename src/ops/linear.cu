@@ -74,6 +74,15 @@ Linear::Linear(FFModel& model,
   outputs[0].numDim = 2;
   outputs[0].adim[0] = out_channels;
   outputs[0].adim[1] = batch_size;
+  weights[0].numDim = 2;
+  weights[0].adim[0] = in_channels;
+  weights[0].adim[1] = out_channels;
+  numWeights = 1;
+  if (use_bias) {
+    weights[1].numDim = 1;
+    weights[1].adim[0] = out_channels;
+    numWeights = 2;
+  }
 }
 
 Linear::Linear(FFModel& model,
@@ -121,12 +130,15 @@ void Linear::create_weights(FFModel& model)
   // Create kernel tensor
   {
     const int dims[2] = {out_channels, in_channels};
-    weights[numWeights++] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
+    weights[0] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_channels};
-    weights[numWeights++] = model.create_linear_weight<1>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, bias_initializer);
+    weights[1] = model.create_linear_weight<1>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, bias_initializer);
+    assert(numWeights == 2);
+  } else {
+    assert(numWeights == 1);
   }
 }
 
@@ -842,7 +854,8 @@ bool Linear::measure_compute_time(Simulator* sim,
   cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
   backward_time = milliseconds / sim->repeat_times;
 
-  printf("forward_time(%.4lf) backward_time(%.4lf)\n", forward_time, backward_time);
+  printf("[Measure Linear] in(%d %d) out(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+         input_n, input_c, output_n, output_c, forward_time, backward_time);
   return true;
 }
 

@@ -330,6 +330,20 @@ Domain Op::get_input_tensor_shape(const ParallelConfig& pc,
   return d;
 }
 
+Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
+                                   int weight_idx, int part_idx)
+{
+  // Default data parallel weight replication
+  assert(weight_idx < numWeights);
+  Domain d;
+  d.dim = weights[weight_idx].numDim;
+  for (int i = 0; i < d.dim; i++) {
+    d.rect_data[i] = 0;
+    d.rect_data[i+d.dim] = weights[weight_idx].adim[i] - 1;
+  }
+  return d;
+}
+
 FFModel::FFModel(FFConfig& _config)
 : op_global_guid(100), config(_config),
   optimizer(NULL), loss_op(NULL), metrics_op(NULL)
@@ -1169,6 +1183,7 @@ struct DefaultConfig {
   const static size_t searchBudget = 0;
   const static size_t simulatorWorkSpaceSize = (size_t)2 * 1024 * 1024 * 1024; //2GB
   constexpr static float searchAlpha = 1.0f;
+  const static bool searchOverlapBackwardUpdate = false;
 };
 
 FFConfig::FFConfig()
@@ -1186,6 +1201,7 @@ FFConfig::FFConfig()
   simulator_work_space_size = DefaultConfig::simulatorWorkSpaceSize;
   search_budget = DefaultConfig::searchBudget;
   search_alpha = DefaultConfig::searchAlpha;
+  search_overlap_backward_update = DefaultConfig::searchOverlapBackwardUpdate;
   import_strategy_file = "";
   export_strategy_file = "";
   dataset_path = "";

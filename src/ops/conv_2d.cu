@@ -104,6 +104,17 @@ Conv2D::Conv2D(FFModel& model,
   outputs[0].adim[1] = output_h;
   outputs[0].adim[2] = output_c;
   outputs[0].adim[3] = output_n;
+  weights[0].numDim = 4;
+  weights[0].adim[0] = kernel_w;
+  weights[0].adim[1] = kernel_h;
+  weights[0].adim[2] = in_channels;
+  weights[0].adim[3] = out_channels;
+  numWeights = 1;
+  if (use_bias) {
+    weights[1].numDim = 1;
+    weights[1].adim[0] = out_channels;
+    numWeights = 2;
+  }
 }
 
 Conv2D::Conv2D(FFModel& model,
@@ -146,13 +157,14 @@ void Conv2D::create_weights(FFModel& model)
   {
     const int dims[4] = {out_channels, in_channels, kernel_h, kernel_w};
     weights[0] = model.create_conv_weight<4>(this, dims, (IndexSpaceT<4>)task_is, DT_FLOAT, kernel_initializer);
-    numWeights = 1;
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_channels};
     weights[1] = model.create_conv_weight<1>(this, dims, (IndexSpaceT<4>)task_is, DT_FLOAT, bias_initializer);
-    numWeights = 2;
+    assert(numWeights == 2);
+  } else {
+    assert(numWeights == 1);
   }
 }
 
@@ -1018,7 +1030,7 @@ bool Conv2D::measure_compute_time(Simulator* sim,
     checkCUDNN(perfResults[0].status);
     backward_time += perfResults[0].time;
   }
-  printf("input(%d %d %d %d) output(%d %d %d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+  printf("[Measure Conv2D] input(%d %d %d %d) output(%d %d %d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
          input_n, input_c, input_h, input_w, output_n, output_c, output_h, output_w,
          forward_time, backward_time);
   return true;

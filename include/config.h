@@ -94,6 +94,7 @@ public:
   size_t simulator_work_space_size;
   size_t search_budget;
   float search_alpha;
+  bool search_overlap_backward_update;
   std::string dataset_path;
   std::string import_strategy_file;
   std::string export_strategy_file;

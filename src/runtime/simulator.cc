@@ -74,6 +74,20 @@ SimTask* TaskManager::new_task()
   return task;
 }
 
+SimTask* TaskManager::new_update_task()
+{
+  SimTask* task = new_task();
+  task->type = SimTask::TASK_UPDATE;
+  return task;
+}
+
+SimTask* TaskManager::new_barrier_task()
+{
+  SimTask* task = new_task();
+  task->type = SimTask::TASK_BARRIER;
+  return task;
+}
+
 SimTask* TaskManager::new_comm_task()
 {
   SimTask* task = new_task();
@@ -195,6 +209,8 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
     task->device = get_inter_gpu_comm_device_by_ids(src_task->device->gpu_id,
                                                     dst_task->device->gpu_id);
     task->run_time = (float)intersect * sizeof(float) / task->device->bandwidth;
+    //printf("Comm task: run_time(%.4lf) size(%zu) bandwidth(%.4lf)\n",
+    //       task->run_time, intersect * sizeof(float), task->device->bandwidth);
     src_task->add_next_task(task);
     task->add_next_task(dst_task);
   } else {
@@ -283,10 +299,8 @@ float Simulator::simulate_runtime(const FFModel* model,
     for (int j = 0; j < op->numInputs; j++) {
       Tensor t = op->inputs[j];
       Op* pre_op = t.owner_op;
-      if (pre_op == NULL) {
-        printf("Skip input: l(%d) input_idx(%d)\n", l, j);
+      if (pre_op == NULL)
         continue;
-      }
       ParallelConfig pre_config = global.find(pre_op)->second;
       for (int dstId = 0; dstId < config.num_parts(); dstId ++) {
         Domain dstR = op->get_input_tensor_shape(config, j, dstId);
@@ -310,23 +324,106 @@ float Simulator::simulate_runtime(const FFModel* model,
       }
     }
   }
-  // Step 3: add ready tasks into ready_queue
+  if (model->config.search_overlap_backward_update) {
+    // Step 3a: consider backpropagation and weight update are overlapped
+    for (int l = model->layers.size()-1; l >= 0; l--) {
+      Op* op = model->layers[l];
+      ParallelConfig pc = global.find(op)->second;
+      for (int j = 0; j < op->numWeights; j++) {
+        std::set<int> synched;
+        for (int firstId = 0; firstId < pc.num_parts(); firstId++)
+          if (synched.find(firstId) == synched.end()) {
+            synched.insert(firstId);
+            Domain firstR = op->get_weight_tensor_shape(pc, j, firstId);
+            // Add a compute task for parameter update
+            SimTask* updateT = task_manager->new_update_task();
+            updateT->device = get_compute_device_by_id(pc.device_ids[firstId]);
+            updateT->run_time = 0.0f; // Assume update task takes no time
+            for (int nextId = firstId+1; nextId < pc.num_parts(); nextId++) {
+              Domain nextR = op->get_weight_tensor_shape(pc, j, nextId);
+              if (firstR.intersection(nextR).get_volume() > 0) {
+                // Assert all or nothing:
+                // The two weights must be fully overlapped or not at all
+                assert(firstR == nextR);
+                assert(synched.find(nextId) == synched.end());
+                synched.insert(nextId);
+                // Add comm. tasks from nextId to 
+                SimTask* workerT = task_manager->get_backward_task(op, nextId);
+                add_task_dependencies_with_xfer(workerT, updateT, 2*firstR.get_volume());
+              }
+            }
+          }
+      }
+    }
+  } else {
+    // Step 3b: Bulk Synchronous Model
+    // Add a per-device barrier before weight update
+    std::vector<SimTask*> barriers;
+    for (int d = 0; d < total_num_devices; d++) {
+      SimTask* t = task_manager->new_barrier_task();
+      t->device = get_compute_device_by_id(d);
+      t->run_time = 0;
+      barriers.push_back(t);
+    }
+    for (size_t l = 0; l < model->layers.size(); l++) {
+      Op* op = model->layers[l];
+      ParallelConfig pc = global.find(op)->second;
+      for (int j = 0; j < pc.num_parts(); j++) {
+        SimTask* backT = task_manager->get_backward_task(op, j);
+        backT->add_next_task(barriers[backT->device->gpu_id]);
+      }
+    }
+    for (size_t l = 0; l < model->layers.size(); l++) {
+      Op* op = model->layers[l];
+      ParallelConfig pc = global.find(op)->second;
+      for (int j = 0; j < op->numWeights; j++) {
+        std::set<int> synched;
+        for (int firstId = 0; firstId < pc.num_parts(); firstId++)
+          if (synched.find(firstId) == synched.end()) {
+            synched.insert(firstId);
+            Domain firstR = op->get_weight_tensor_shape(pc, j, firstId);
+            // Add a compute task for parameter update
+            SimTask* updateT = task_manager->new_update_task();
+            updateT->device = get_compute_device_by_id(pc.device_ids[firstId]);
+            updateT->run_time = 0.0f; // Assume update task takes no time
+            barriers[updateT->device->gpu_id]->add_next_task(updateT);
+            for (int nextId = firstId+1; nextId < pc.num_parts(); nextId++) {
+              Domain nextR = op->get_weight_tensor_shape(pc, j, nextId);
+              if (firstR.intersection(nextR).get_volume() > 0) {
+                // Assert all or nothing:
+                // The two weights must be fully overlapped or not at all
+                assert(firstR == nextR);
+                assert(synched.find(nextId) == synched.end());
+                synched.insert(nextId);
+                SimTask* backT = task_manager->get_backward_task(op, nextId);
+                assert(backT->device->gpu_id == pc.device_ids[nextId]);
+                SimTask* barrierT = barriers[backT->device->gpu_id];
+                // Add comm. tasks from barrierT to updateT
+                add_task_dependencies_with_xfer(barrierT, updateT, 2*firstR.get_volume());
+              }
+            }
+          }
+      }
+    }
+  }
+
+  // Step 4: add ready tasks into ready_queue
   std::priority_queue<SimTask*, std::vector<SimTask*>, SimTaskCompare> ready_queue;
   for (size_t l = 0; l < model->layers.size(); l++) {
     Op* op = model->layers[l];
     ParallelConfig config = global.find(op)->second;
     for (int i = 0; i < config.num_parts(); i++) {
       SimTask* task = task_manager->get_forward_task(op, i);
-      printf("[%zu][%d] type(%d) forward(%.4lf) counter(%d)\n",
-        l, i, op->op_type, task->run_time, task->counter);
+      //printf("[%zu][%d] type(%d) forward(%.4lf) counter(%d)\n",
+      //  l, i, op->op_type, task->run_time, task->counter);
       if (task->counter == 0)
         ready_queue.push(task);
     } 
   }
-  // Step 4: perform simulation
+  // Step 5: perform simulation
   float sim_time = 0.0f;
   std::map<Device*, float> device_times;
-  int idx = 0;
+  size_t idx = 0;
   while (!ready_queue.empty()) {
     // Find the task with the earliest start time
     SimTask* t = ready_queue.top();
@@ -339,7 +436,7 @@ float Simulator::simulate_runtime(const FFModel* model,
     float end_time = start_time + t->run_time;
     device_times[t->device] = end_time;
     printf("task[%d] type(%d) run_time(%.4lf) ready_time(%.4lf) start_time(%.4lf) device(%d)\n",
-        idx++, t->type, t->run_time, ready_time, start_time, t->device->gpu_id);
+        idx, t->type, t->run_time, ready_time, start_time, t->device->gpu_id);
     if (end_time > sim_time)
       sim_time = end_time;
     for (size_t i = 0; i < t->next_tasks.size(); i++) {
@@ -350,7 +447,10 @@ float Simulator::simulate_runtime(const FFModel* model,
         ready_queue.push(next);
       }
     }
+    idx++;
   }
+  // Assert all tasks were processed
+  assert(idx == task_manager->global_task_id);
   // TODO add parameter synchronization time
   return sim_time;
 }

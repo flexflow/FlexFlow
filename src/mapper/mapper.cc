@@ -176,6 +176,14 @@ void FFMapper::select_task_options(const MapperContext ctx,
       return;
     }
   }
+
+  if (task.task_id == STRATEGY_SEARCH_TASK_ID) {
+    output.initial_proc = gpus[0];
+    output.inline_task = false;
+    output.stealable = stealing_enabled;
+    output.map_locally = map_locally;
+    return;
+  }
   
   DefaultMapper::select_task_options(ctx, task, output);
   if ((task.task_id == SGD_UPD_TASK_ID)

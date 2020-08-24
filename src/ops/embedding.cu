@@ -59,6 +59,10 @@ Embedding::Embedding(FFModel& model,
   outputs[0].numDim = 2;
   outputs[0].adim[0] = out_channels;
   outputs[0].adim[1] = inputs[0].adim[1];
+  weights[0].numDim = 2;
+  weights[0].adim[0] = num_entries;
+  weights[0].adim[1] = out_channels;
+  numWeights = 1;
 }
 
 Embedding::Embedding(FFModel& model,
@@ -94,7 +98,8 @@ void Embedding::create_weights(FFModel& model)
   {
     const int dims[2] = {out_channels, num_entries};
     // Embeddding weights and linear weights can be partitioned in the same way
-    weights[numWeights++] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
+    weights[0] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
+    assert(numWeights == 1);
   }
 }
 

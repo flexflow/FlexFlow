@@ -45,6 +45,8 @@ public:
     TASK_FORWARD,
     TASK_BACKWARD,
     TASK_COMM,
+    TASK_UPDATE,
+    TASK_BARRIER,
   };
   SimTask();
   void add_next_task(SimTask* task);
@@ -67,12 +69,15 @@ class TaskManager {
 public:
   TaskManager(size_t max_num_tasks);
   void reset();
-  SimTask* new_task();
+  SimTask* new_barrier_task();
+  SimTask* new_update_task();
   SimTask* new_comm_task();
   SimTask* new_forward_task(Op* op, int idx);
   SimTask* new_backward_task(Op* op, int idx);
   SimTask* get_forward_task(Op* op, int idx);
   SimTask* get_backward_task(Op* op, int idx);
+private:
+  SimTask* new_task();
 public:
   size_t global_task_id, max_num_tasks;
   SimTask** tasks;
