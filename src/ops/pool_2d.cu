@@ -158,10 +158,6 @@ OpMeta* Pool2D::init_task(const Task *task,
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
 
-  checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
-  checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
-  checkCUDNN(cudnnCreatePoolingDescriptor(&m->poolDesc));
-
   int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int input_h = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
   int input_c = acc_input.rect.hi[2] - acc_input.rect.lo[2] + 1;
@@ -398,12 +394,117 @@ void Pool2D::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+Pool2DMeta::Pool2DMeta(FFHandler handler)
+: OpMeta(handler)
+{
+  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(cudnnCreatePoolingDescriptor(&poolDesc));
+}
+
 bool Pool2D::measure_compute_time(Simulator* sim,
                                   const ParallelConfig& pc,
                                   float& forward_time,
                                   float& backward_time)
 {
-  //TODO: implement measure_forward
+  Tensor sub_output, sub_input;
+  if(!outputs[0].get_output_sub_tensor(pc, sub_output, OP_CONV2D))
+    return false;
+  if(!inputs[0].get_input_sub_tensor(pc, sub_input, OP_CONV2D))
+    return false;
+  int input_w = sub_input.adim[0];
+  int input_h = sub_input.adim[1];
+  int input_c = sub_input.adim[2];
+  int input_n = sub_input.adim[3];
+  int output_w = sub_output.adim[0];
+  int output_h = sub_output.adim[1];
+  int output_c = sub_output.adim[2];
+  int output_n = sub_output.adim[3];
+  int pad_h = ((output_h - 1) * stride_h + kernel_h - input_h + 1) / 2;
+  int pad_w = ((output_w - 1) * stride_w + kernel_w - input_w + 1) / 2;
+  Pool2DMeta* m = sim->pool2d_meta;
+  checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
+                                        CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT,
+                                        input_n,
+                                        input_c,
+                                        input_h,
+                                        input_w));
+  cudnnPoolingMode_t mode;
+  if (pool_type == POOL_MAX)
+    mode = CUDNN_POOLING_MAX;
+  else {
+    assert(pool_type == POOL_AVG);
+    mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+  }
+  checkCUDNN(cudnnSetPooling2dDescriptor(m->poolDesc,
+                                         mode,
+                                         CUDNN_PROPAGATE_NAN,
+                                         kernel_h,
+                                         kernel_w,
+                                         pad_h,//pool->padding_h,
+                                         pad_w,//pool->padding_w,
+                                         stride_h,
+                                         stride_w));
+  int n, c, h, w;
+  checkCUDNN(cudnnGetPooling2dForwardOutputDim(m->poolDesc,
+                                               m->inputTensor,
+                                               &n, &c, &h, &w));
+  assert(n == output_n);
+  assert(c == output_c);
+  assert(h == output_h);
+  assert(w == output_w);
+
+  checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
+                                        CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT,
+                                        n, c, h, w));
+  // allocate tensors in simulator
+  sim->free_all();
+  float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert(input_ptr != NULL);
+  float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert(input_grad_ptr != NULL);
+  float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert(output_ptr != NULL);
+  float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert(output_grad_ptr != NULL);
+
+  float alpha = 1.0f, beta = 0.0f;
+  // measure forward time
+  checkCUDA(cudaDeviceSynchronize());
+  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
+    if (i == sim->warmup_times) {
+      checkCUDA(cudaEventRecord(sim->start_event));
+    }
+    checkCUDNN(cudnnPoolingForward(m->handle.dnn, m->poolDesc,
+                                   &alpha, m->inputTensor, input_ptr,
+                                   &beta, m->outputTensor, output_ptr));
+
+  }
+  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventSynchronize(sim->end_event));
+  float milliseconds;
+  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  forward_time = milliseconds / sim->repeat_times;
+
+  // measure backward time
+  checkCUDA(cudaDeviceSynchronize());
+  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
+    if (i == sim->warmup_times) {
+      checkCUDA(cudaEventRecord(sim->start_event));
+    }
+    checkCUDNN(cudnnPoolingBackward(m->handle.dnn, m->poolDesc,
+                                    &alpha, m->outputTensor, output_ptr,
+                                    m->outputTensor, output_grad_ptr,
+                                    m->inputTensor, input_ptr,
+                                    &alpha, m->inputTensor, input_grad_ptr));
+  }
+  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventSynchronize(sim->end_event));
+  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  backward_time = milliseconds / sim->repeat_times;
+
   return false;
 }
 

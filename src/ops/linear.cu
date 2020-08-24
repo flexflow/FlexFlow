@@ -842,6 +842,7 @@ bool Linear::measure_compute_time(Simulator* sim,
   cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
   backward_time = milliseconds / sim->repeat_times;
 
+  printf("forward_time(%.4lf) backward_time(%.4lf)\n", forward_time, backward_time);
   return true;
 }
 

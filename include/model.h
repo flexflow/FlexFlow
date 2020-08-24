@@ -699,7 +699,7 @@ public:
 
 class Pool2DMeta : public OpMeta {
 public:
-  Pool2DMeta(FFHandler handle) : OpMeta(handle) {};
+  Pool2DMeta(FFHandler handle);
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
   cudnnPoolingDescriptor_t poolDesc;
@@ -908,6 +908,8 @@ public:
                             const ParallelConfig& pc,
                             float& forward_time,
                             float& backward_time);
+
+  Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx);
 public:
   //IndexSpaceT<2> task_is;
 };

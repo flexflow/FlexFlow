@@ -936,8 +936,7 @@ void FFModel::compile(LossType loss_type,
     TaskLauncher launcher(STRATEGY_SEARCH_TASK_ID,
         TaskArgument(&model, sizeof(FFModel*)));
     Future future = runtime->execute_task(ctx, launcher);
-    SearchOutput search_output = future.get_result<SearchOutput>();
-    load_strategies_from_search_output(search_output, config.strategies);
+    future.get_void_result();
   } else {
     // Do nothing
   }
@@ -1009,7 +1008,7 @@ void FFModel::optimize(Simulator* simulator,
   for (size_t iter = 0; iter < budget; iter++) {
     rewrite(current, next);
     float next_runtime = simulator->simulate_runtime(this, next);
-    if (iter % 1000 == 0) {
+    if (iter % 1 == 0) {
       printf("iter(%zu) cur(%.2lf) next(%.2lf) best(%.2lf)\n", iter,
              current_runtime, next_runtime, best_runtime);
     }
@@ -1699,7 +1698,7 @@ void register_internal_tasks()
                                    "Stretegy Search");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<SearchOutput, Simulator::strategy_search_task>(
+    Runtime::preregister_task_variant<Simulator::strategy_search_task>(
         registrar, "Stretegy Search Task");
   }
   // DUMMY task

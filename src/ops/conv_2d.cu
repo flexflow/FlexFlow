@@ -266,29 +266,17 @@ OpMeta* Conv2D::init_task(const Task *task,
   printf("init conv (output): n(%d) c(%d) h(%d) w(%d)\n",
           output_n, output_c, output_h, output_w);
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        input_n,
-                                        input_c,
-                                        input_h,
-                                        input_w));
+      CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
+      input_n, input_c, input_h, input_w));
   
   checkCUDNN(cudnnSetTensor4dDescriptor(m->biasTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        1,
-                                        output_c,
-                                        1,
-                                        1));
+      CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
+      1, output_c, 1, 1));
 
   printf("filterDim: kernel(%d %d) c_in(%d), c_out(%d)\n", conv->kernel_h, conv->kernel_w, input_c, output_c);
   checkCUDNN(cudnnSetFilter4dDescriptor(m->filterDesc,
-                                        CUDNN_DATA_FLOAT,
-                                        CUDNN_TENSOR_NCHW,
-                                        output_c,
-                                        input_c,
-                                        conv->kernel_h,
-                                        conv->kernel_w));
+      CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW,
+      output_c, input_c, conv->kernel_h, conv->kernel_w));
 
   //printf("convDim: padding(%d %d) stride(%d %d)\n", conv->padding_h, conv->padding_w, conv->stride_h, conv->stride_w);
   int pad_h = ((output_h - 1) * conv->stride_h + conv->kernel_h - input_h + 1) / 2;
@@ -1000,6 +988,8 @@ bool Conv2D::measure_compute_time(Simulator* sim,
     assert(cnt > 0);
     checkCUDNN(perfResults[0].status);
     forward_time = perfResults[0].time;
+    //for (int i = 0; i < cnt; i++)
+    //  printf("conv forward: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time);
   }
   // select forward algorithm
   {
@@ -1028,5 +1018,9 @@ bool Conv2D::measure_compute_time(Simulator* sim,
     checkCUDNN(perfResults[0].status);
     backward_time += perfResults[0].time;
   }
+  printf("input(%d %d %d %d) output(%d %d %d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+         input_n, input_c, input_h, input_w, output_n, output_c, output_h, output_w,
+         forward_time, backward_time);
   return true;
 }
+

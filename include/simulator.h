@@ -20,6 +20,7 @@
 
 class Conv2DMeta;
 class LinearMeta;
+class Pool2DMeta;
 class Op;
 class FFModel;
 
@@ -78,13 +79,6 @@ public:
   std::map<size_t, SimTask*> hash_to_forward_task, hash_to_backward_task;
 };
 
-struct SearchOutput {
-  static const int max_num_ops = 0;
-  int num_ops;
-  MappingTagID mapping_tag_ids[max_num_ops];
-  ParallelConfig configs[max_num_ops];
-};
-
 class Simulator {
 public:
   Simulator(const FFModel* model, FFHandler handler, void* base_ptr, size_t capacity);
@@ -101,9 +95,9 @@ public:
   float measure_op_backward_time(Op* op, const ParallelConfig& config);
   float simulate_runtime(const FFModel* model,
       const std::map<Op*, ParallelConfig>& global);
-  static SearchOutput strategy_search_task(const Task *task,
-                                           const std::vector<PhysicalRegion> &regions,
-                                           Context ctx, Runtime *runtime);
+  static void strategy_search_task(const Task *task,
+                                   const std::vector<PhysicalRegion> &regions,
+                                   Context ctx, Runtime *runtime);
 public:
   char* base_ptr;
   size_t capacity;
@@ -122,8 +116,6 @@ public:
 public:
   Conv2DMeta* conv2d_meta;
   LinearMeta* linear_meta;
+  Pool2DMeta* pool2d_meta;
 };
-
-bool load_strategies_from_search_output(const SearchOutput& search_output,
-         std::map<MappingTagID, ParallelConfig>& strategies);
 #endif

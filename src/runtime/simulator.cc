@@ -43,6 +43,7 @@ SimTask::SimTask()
 void SimTask::add_next_task(SimTask* task)
 {
   next_tasks.push_back(task);
+  task->counter ++;
 }
 
 TaskManager::TaskManager(size_t _max_num_tasks)
@@ -251,7 +252,7 @@ float Simulator::measure_op_backward_time(Op* op, const ParallelConfig& config)
     hash_to_op_backward_time[hash] = backward_time;
     return backward_time;
   } else {
-    return hash_to_op_forward_time[hash];
+    return hash_to_op_backward_time[hash];
   }
 }
 
@@ -282,7 +283,10 @@ float Simulator::simulate_runtime(const FFModel* model,
     for (int j = 0; j < op->numInputs; j++) {
       Tensor t = op->inputs[j];
       Op* pre_op = t.owner_op;
-      if (pre_op == NULL) continue;
+      if (pre_op == NULL) {
+        printf("Skip input: l(%d) input_idx(%d)\n", l, j);
+        continue;
+      }
       ParallelConfig pre_config = global.find(pre_op)->second;
       for (int dstId = 0; dstId < config.num_parts(); dstId ++) {
         Domain dstR = op->get_input_tensor_shape(config, j, dstId);
@@ -313,6 +317,8 @@ float Simulator::simulate_runtime(const FFModel* model,
     ParallelConfig config = global.find(op)->second;
     for (int i = 0; i < config.num_parts(); i++) {
       SimTask* task = task_manager->get_forward_task(op, i);
+      printf("[%zu][%d] type(%d) forward(%.4lf) counter(%d)\n",
+        l, i, op->op_type, task->run_time, task->counter);
       if (task->counter == 0)
         ready_queue.push(task);
     } 
@@ -320,6 +326,7 @@ float Simulator::simulate_runtime(const FFModel* model,
   // Step 4: perform simulation
   float sim_time = 0.0f;
   std::map<Device*, float> device_times;
+  int idx = 0;
   while (!ready_queue.empty()) {
     // Find the task with the earliest start time
     SimTask* t = ready_queue.top();
@@ -331,6 +338,8 @@ float Simulator::simulate_runtime(const FFModel* model,
     float start_time = std::max(ready_time, t->ready_time);
     float end_time = start_time + t->run_time;
     device_times[t->device] = end_time;
+    printf("task[%d] type(%d) run_time(%.4lf) ready_time(%.4lf) start_time(%.4lf) device(%d)\n",
+        idx++, t->type, t->run_time, ready_time, start_time, t->device->gpu_id);
     if (end_time > sim_time)
       sim_time = end_time;
     for (size_t i = 0; i < t->next_tasks.size(); i++) {

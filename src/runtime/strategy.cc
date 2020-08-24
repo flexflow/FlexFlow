@@ -125,15 +125,6 @@ bool load_strategies_from_file(const std::string& filename,
   return true;
 }
 
-bool load_strategies_from_search_output(const SearchOutput& search_output,
-                                        std::map<MappingTagID, ParallelConfig>& strategies)
-{
-  for (int i = 0; i < search_output.num_ops; i++) {
-    strategies[search_output.mapping_tag_ids[i]] = search_output.configs[i];
-  };
-  return true;
-}
-
 bool save_strategies_to_file(const std::string& filename,
                              const std::map<MappingTagID, ParallelConfig>& strategies)
 {

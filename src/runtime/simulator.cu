@@ -33,6 +33,7 @@ warmup_times(5), repeat_times(10)
   cudaEventCreate(&end_event);
   conv2d_meta = new Conv2DMeta(handler);
   linear_meta = new LinearMeta(handler, 4096);
+  pool2d_meta = new Pool2DMeta(handler);
   int num_nodes = model->config.numNodes;
   int gpus_per_node = model->config.workersPerNode;
   total_num_devices = num_nodes * gpus_per_node;
@@ -73,9 +74,9 @@ warmup_times(5), repeat_times(10)
 }
 
 __host__
-SearchOutput Simulator::strategy_search_task(const Task *task,
-                                             const std::vector<PhysicalRegion> &regions,
-                                             Context ctx, Runtime *runtime)
+void Simulator::strategy_search_task(const Task *task,
+                                     const std::vector<PhysicalRegion> &regions,
+                                     Context ctx, Runtime *runtime)
 {
   const FFModel* model = *((FFModel**) task->args);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
@@ -89,19 +90,17 @@ SearchOutput Simulator::strategy_search_task(const Task *task,
   Simulator* simulator = new Simulator(model, model->handlers[0], base_ptr,
       model->config.simulator_work_space_size);
   std::map<Op*, ParallelConfig> strategies;
-  std::map<Op*, ParallelConfig>::const_iterator iter;
   model->optimize(simulator, strategies, model->config.search_budget, model->config.search_alpha);
-  SearchOutput search_output;
-  search_output.num_ops = (int)strategies.size();
-  size_t idx = 0;
-  for (iter = strategies.begin(); iter != strategies.end(); iter++) {
-    search_output.mapping_tag_ids[idx] =
-        FFConfig::get_hash_id(std::string(iter->first->name));
-    search_output.configs[idx++] = iter->second;
+  if (model->config.export_strategy_file.length() > 0) {
+    std::map<Op*, ParallelConfig>::const_iterator iter;
+    std::map<MappingTagID, ParallelConfig> strategy_output;
+    for (iter = strategies.begin(); iter != strategies.end(); iter++) {
+      strategy_output[FFConfig::get_hash_id(std::string(iter->first->name))] = iter->second;
+    }
+    save_strategies_to_file(model->config.export_strategy_file, strategy_output);
   }
   // Start from data
   memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);
   delete(simulator);
-  return search_output;
 }
 

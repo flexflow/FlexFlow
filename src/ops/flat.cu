@@ -248,3 +248,23 @@ bool Flat::measure_compute_time(Simulator* sim,
   backward_time = 0;
   return true;
 }
+
+Domain Flat::get_input_tensor_shape(const ParallelConfig& pc,
+                                  int input_idx, int part_idx)
+{
+  assert(input_idx < numInputs);
+  assert(pc.nDims == 2);
+  // Currently assume data parallelism for Flat
+  assert(pc.dim[0] == 1);
+  Domain d;
+  d.dim = inputs[input_idx].numDim;
+  for (int i = 0; i < d.dim-1; i++) {
+    d.rect_data[i] = 0;
+    d.rect_data[i+d.dim] = inputs[input_idx].adim[i] - 1;
+  }
+  assert(inputs[input_idx].adim[d.dim-1] % pc.num_parts() == 0);
+  int dim_size = inputs[input_idx].adim[d.dim-1] / pc.num_parts();
+  d.rect_data[d.dim-1] = part_idx * dim_size;
+  d.rect_data[2*d.dim-1] = d.rect_data[d.dim-1] + dim_size - 1;
+  return d;
+}
