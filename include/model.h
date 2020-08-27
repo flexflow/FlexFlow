@@ -194,25 +194,26 @@ public:
   Op(FFModel& model, OperatorType type, const std::string& _name, int num, const Tensor* inputs);
   Op(FFModel& model, OperatorType type, const std::string& _name, int num);
 
-  virtual void prefetch(const FFModel&);
-  virtual Tensor init_inout(FFModel&, const Tensor&) = 0;
+  // Pure virtual functions that must be implemented
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
   virtual void backward(const FFModel&) = 0;
-  virtual void zero_grad(const FFModel&);
-  virtual Parameter* get_parameter(int index);
-  virtual void print_layer(const FFModel& model) = 0;
   virtual void create_weights(FFModel& model) = 0;
   virtual void create_output_and_partition(FFModel& model) = 0;
+  virtual void print_layer(const FFModel& model) = 0;
   virtual bool measure_compute_time(Simulator* sim,
       const ParallelConfig& pc, float& forward, float& backward) = 0;
+  virtual Tensor init_inout(FFModel&, const Tensor&) = 0;
+  // Other virtual functions that can be optionally overwritten
   virtual ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   virtual ParallelConfig get_data_parallel_config(const FFModel& ff) const;
   virtual Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx);
   virtual Domain get_output_tensor_shape(const ParallelConfig& pc, int output_idx, int part_idx);
   virtual Domain get_weight_tensor_shape(const ParallelConfig& pc, int weight_idx, int part_idx);
-  //virtual void add_to_model(FFModel& model) = 0;
-  //virtual void update(const FFModel&) = 0;
+  // Helper functions
+  void prefetch(const FFModel&);
+  void zero_grad(const FFModel&);
+  Parameter* get_parameter(int index);
 public:
   OperatorType op_type;
   char name[MAX_OPNAME];
@@ -220,8 +221,8 @@ public:
   Tensor outputs[MAX_NUM_OUTPUTS];
   Tensor inputs[MAX_NUM_INPUTS];
   Parameter weights[MAX_NUM_WEIGHTS];
-  bool trainableInputs[MAX_NUM_INPUTS];
-  bool resetInputGrads[MAX_NUM_INPUTS];
+  //bool trainableInputs[MAX_NUM_INPUTS];
+  //bool resetInputGrads[MAX_NUM_INPUTS];
   LogicalPartition input_lps[MAX_NUM_INPUTS], input_grad_lps[MAX_NUM_INPUTS];
   //Tensor locals[MAX_NUM_LOCALS];
   OpMeta* meta[MAX_NUM_WORKERS];

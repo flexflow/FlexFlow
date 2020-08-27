@@ -143,10 +143,10 @@ Op::Op(FFModel& model,
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input;
-  for (int i = 0; i < numInputs; i++) {
-    trainableInputs[i] = true;
-    resetInputGrads[i] = true;
-  }
+  //for (int i = 0; i < numInputs; i++) {
+  //  trainableInputs[i] = true;
+  //  resetInputGrads[i] = true;
+  //}
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -168,10 +168,10 @@ Op::Op(FFModel& model,
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input1;
   inputs[1] = _input2;
-  for (int i = 0; i < numInputs; i++) {
-    trainableInputs[i] = true;
-    resetInputGrads[i] = true;
-  }
+  //for (int i = 0; i < numInputs; i++) {
+  //  trainableInputs[i] = true;
+  //  resetInputGrads[i] = true;
+  //}
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -193,10 +193,10 @@ Op::Op(FFModel& model,
   std::strcpy(name, pcname.c_str());
   for (int i = 0; i < n; i++)
     inputs[i] = _inputs[i];
-  for (int i = 0; i < numInputs; i++) {
-    trainableInputs[i] = true;
-    resetInputGrads[i] = true;
-  }
+  //for (int i = 0; i < numInputs; i++) {
+  //  trainableInputs[i] = true;
+  //  resetInputGrads[i] = true;
+  //}
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -215,10 +215,10 @@ Op::Op(FFModel& model,
   std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
-  for (int i = 0; i < numInputs; i++) {
-    trainableInputs[i] = true;
-    resetInputGrads[i] = true;
-  }
+  //for (int i = 0; i < numInputs; i++) {
+  //  trainableInputs[i] = true;
+  //  resetInputGrads[i] = true;
+  //}
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -907,8 +907,9 @@ void FFModel::backward()
   // Compute the gradients of the final layer wrt loss
   loss_op->backward(this, &(final_layer->outputs[0]), &label_tensor);
   // Perform backpropagation
-  std::set<LogicalRegion> resetedInputGrads;
+  // std::set<LogicalRegion> resetedInputGrads;
   for (int l = layers.size() - 1; l >= 0; l--) {
+#ifdef ENABLE_RESNET_INPUT_GRADIENT_OPTIMIZATION
     for (int i = 0; i < layers[l]->numInputs; i++)
       if (resetedInputGrads.find(layers[l]->inputs[i].region) == resetedInputGrads.end()) {
         resetedInputGrads.insert(layers[l]->inputs[i].region);
@@ -917,6 +918,7 @@ void FFModel::backward()
         // So we should not do it again
         layers[l]->resetInputGrads[i] = false;
       }
+#endif
     layers[l]->backward(*this);
   }
 }
