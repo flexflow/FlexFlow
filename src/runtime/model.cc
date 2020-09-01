@@ -276,12 +276,20 @@ ParallelConfig Op::get_data_parallel_config(const FFModel& ff) const
 ParallelConfig Op::get_random_parallel_config(const FFModel& ff) const
 {
   std::vector<int> candidates;
+  int batch_size = outputs[0].adim[outputs[0].numDim-1];
   for (int i = 1; i <= ff.config.workersPerNode; i++)
-    if (ff.config.workersPerNode % i == 0)
+    if (ff.config.workersPerNode % i == 0) {
+      if (batch_size % i != 0)
+        continue;
       candidates.push_back(i);
+    }
   for (int i = 1; i <= ff.config.numNodes; i++)
-    if (ff.config.numNodes % i == 0)
+    if (ff.config.numNodes % i == 0) {
+      if (batch_size % (i * ff.config.workersPerNode) != 0)
+        continue;
       candidates.push_back(i * ff.config.workersPerNode);
+    }
+  assert(candidates.size() > 0);
   int idx = std::rand() % candidates.size();
   int num_parts = candidates[idx];
   ParallelConfig pc;

@@ -151,20 +151,20 @@ void Embedding::init(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0]: input
-  launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
-  launcher.add_field(0, FID_DATA);
+  //launcher.add_region_requirement(
+  //  RegionRequirement(input_lps[0], 0/*projection*/,
+  //    READ_ONLY, EXCLUSIVE, inputs[0].region));
+  //launcher.add_field(0, FID_DATA);
   // regions[1]: output
   launcher.add_region_requirement(
     RegionRequirement(outputs[0].part, 0/*projection*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0].region));
-  launcher.add_field(1, FID_DATA);
+  launcher.add_field(0, FID_DATA);
   // regions[2]: weight
   launcher.add_region_requirement(
     RegionRequirement(weights[0].part, 0/*projection*/,
       READ_ONLY, EXCLUSIVE, weights[0].region));
-  launcher.add_field(2, FID_DATA);
+  launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
