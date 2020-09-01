@@ -72,40 +72,30 @@ target_link_libraries(flexflow Legion::Legion ${protobuf_lib_name} cudnn cublas 
 
 option(BUILD_RESNET "build resnet example" OFF)
 option(BUILD_ALEXNET "build alexnet example" OFF)
-option(BUILD_ALEXNET_NEWAPI "build alexnet_newapi example" OFF)
 option(BUILD_DLRM "build DLRM example" OFF)
 option(BUILD_INCEPTION "build inception example" OFF)
 option(BUILD_CANDLE_UNO "build candle uno example" OFF)
-option(BUILD_PCA "build PCA example" OFF)
 option(BUILD_ALL_EXAMPLES "build all examples. Overrides others" ON)
 
 if(${BUILD_RESNET} OR ${BUILD_ALL_EXAMPLES})
-  add_subdirectory(examples/ResNet)
+  add_subdirectory(examples/cpp/ResNet)
 endif()
 
 if(${BUILD_ALEXNET} OR ${BUILD_ALL_EXAMPLES})
-  add_subdirectory(examples/AlexNet)
-endif()
-
-if(${BUILD_ALEXNET_NEWAPI} OR ${BUILD_ALL_EXAMPLES})
-  add_subdirectory(examples/AlexNet_newapi)
+  add_subdirectory(examples/cpp/AlexNet)
 endif()
 
 if(${BUILD_INCEPTION} OR ${BUILD_ALL_EXAMPLES})
-  add_subdirectory(examples/InceptionV3)
-endif()
-
-if(${BUILD_PCA} OR ${BUILD_ALL_EXAMPLES})
-  add_subdirectory(examples/PCA)
+  add_subdirectory(examples/cpp/InceptionV3)
 endif()
 
 #TODO: Once functional add to BUILD_ALL_EXAMPLES
 if(${BUILD_CANDLE_UNO})
-  add_subdirectory(examples/candle_uno)
+  add_subdirectory(examples/cpp/candle_uno)
 endif()
 
 if(${BUILD_DLRM} OR ${BUILD_ALL_EXAMPLES})
-  add_subdirectory(examples/DLRM)
+  add_subdirectory(examples/cpp/DLRM)
 
   add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc ${FLOW_PB_SRC})
   target_include_directories(generate_dlrm_hetero_strategy PUBLIC ${FLOW_INCLUDE})
