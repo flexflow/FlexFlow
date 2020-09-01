@@ -435,8 +435,8 @@ float Simulator::simulate_runtime(const FFModel* model,
     float start_time = std::max(ready_time, t->ready_time);
     float end_time = start_time + t->run_time;
     device_times[t->device] = end_time;
-    printf("task[%d] type(%d) run_time(%.4lf) ready_time(%.4lf) start_time(%.4lf) device(%d)\n",
-        idx, t->type, t->run_time, ready_time, start_time, t->device->gpu_id);
+    //printf("task[%d] type(%d) run_time(%.4lf) ready_time(%.4lf) start_time(%.4lf) device(%d)\n",
+    //    idx, t->type, t->run_time, ready_time, start_time, t->device->gpu_id);
     if (end_time > sim_time)
       sim_time = end_time;
     for (size_t i = 0; i < t->next_tasks.size(); i++) {
