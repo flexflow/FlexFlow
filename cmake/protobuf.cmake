@@ -1,4 +1,4 @@
-if(NOT ${FLOW_USE_EXTERNAL_PROTOBUF})
+if(NOT ${FlexFlow_USE_External_Protobuf})
   set(protobuf_BUILD_TESTS OFF CACHE BOOL "Disable tests for protobuf")
   set(BUILD_SHARED_LIBS OFF)
   set(LIBRARY_POLICY STATIC)

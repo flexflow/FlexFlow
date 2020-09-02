@@ -9,14 +9,17 @@
 # set(Legion_CUDA_ARCH ${COMPUTE_CAPABILITY})
 # message( WARNING "legion dir: ${CMAKE_CURRENT_LIST_DIR}")
 # add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../legion ${CMAKE_CURRENT_BINARY_DIR}/legion)
-# if (NOT ${FLOW_USE_EXTERNAL_LEGION})
-# endif()
+if (NOT ${FlexFlow_USE_External_Legion})
+  set(LEGION_SRC_DIR ${PROJECT_SOURCE_DIR}/legion)
+else()
+  set(LEGION_SRC_DIR ${PROJECT_SOURCE_DIR}/legion-cr)
+endif()
 
 set(LEGION_NAME project_legion)
 
 message(STATUS "Building ${LEGION_NAME}")
 ExternalProject_Add(${LEGION_NAME}
- SOURCE_DIR ${PROJECT_SOURCE_DIR}/legion-cr
+ SOURCE_DIR ${LEGION_SRC_DIR}
  PREFIX ${LEGION_NAME}
  INSTALL_DIR ${LEGION_NAME}/install
  CONFIGURE_COMMAND ${CMAKE_COMMAND}
