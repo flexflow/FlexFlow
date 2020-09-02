@@ -11,8 +11,7 @@ set(CPU_SRC
 set(GPU_SRC
   flexflow_dataloader.cu)
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
-
 cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})
+set_target_properties(${project_target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
 target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
-target_link_libraries(${project_target} -Wl,--whole-archive flexflow legion realm -Wl,--no-whole-archive ${Protobuf_LIBRARIES} ${FLEXFLOW_EXT_LIBRARIES}  "-lz -lrt -ldl -rdynamic")
+target_link_libraries(${project_target} -Wl,--whole-archive flexflow legion realm -Wl,--no-whole-archive ${Protobuf_LIBRARIES} ${FLEXFLOW_EXT_LIBRARIES})

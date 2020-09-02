@@ -8,8 +8,6 @@ set(CPU_SOURCES
   alexnet.cu
   alexnet.h)
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -Wno-deprecated-gpu-targets -std=c+=11)
-
 cuda_add_executable(${project_target} ${CPU_SOURCES})
 target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
-target_link_libraries(${project_target} flexflow legion realm ${Protobuf_LIBRARIES} ${FLEXFLOW_EXT_LIBRARIES}  "-lz -lrt -ldl")
+target_link_libraries(${project_target} -Wl,--whole-archive flexflow legion realm -Wl,--no-whole-archive ${Protobuf_LIBRARIES} ${FLEXFLOW_EXT_LIBRARIES})

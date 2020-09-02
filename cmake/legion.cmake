@@ -1,22 +1,17 @@
-# include(utils)
-# detect_installed_gpus(COMPUTE_CAPABILITY)
-# message(${COMPUTE_CAPABILITY})
+include(utils)
+detect_installed_gpus(COMPUTE_CAPABILITY)
+#message(${COMPUTE_CAPABILITY})
 
-# option(Legion_USE_CUDA "ENABLE CUDA WITH LEGION" ON)
-# option(Legion_BUILD_APPS "BUILD LEGION APPS" ON)
-# set(Legion_MAX_DIM 4 CACHE STRING "Maximum number of dimensions")
-# set(LG_RT_DIR CACHE STRING "${CMAKE_CURRENT_BINARY_DIR}/legion/runtime/")
-# set(Legion_CUDA_ARCH ${COMPUTE_CAPABILITY})
-# message( WARNING "legion dir: ${CMAKE_CURRENT_LIST_DIR}")
-# add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../legion ${CMAKE_CURRENT_BINARY_DIR}/legion)
 if (NOT ${FlexFlow_USE_External_Legion})
   set(LEGION_SRC_DIR ${PROJECT_SOURCE_DIR}/legion)
 else()
-  set(LEGION_SRC_DIR ${PROJECT_SOURCE_DIR}/legion-cr)
+  message( STATUS "Use External Legion : ${EXTERNAL_LEGION_DIR}" )
+  set(LEGION_SRC_DIR ${EXTERNAL_LEGION_DIR})
 endif()
 
 set(LEGION_NAME project_legion)
 
+# TODO fix python version
 message(STATUS "Building ${LEGION_NAME}")
 ExternalProject_Add(${LEGION_NAME}
  SOURCE_DIR ${LEGION_SRC_DIR}
@@ -31,7 +26,7 @@ ExternalProject_Add(${LEGION_NAME}
    -DLegion_BUILD_EXAMPLES=OFF
    -DLegion_BUILD_APPS=OFF
    -DLegion_CUDA_ARCH=60
-   -DLegion_USE_Python=ON
+   -DLegion_USE_Python=${FlexFlow_USE_Python}
    -DLegion_Python_Version=3.6
    <SOURCE_DIR>
 )
@@ -43,4 +38,4 @@ set_property(TARGET legion PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib64/lible
 add_library(realm STATIC IMPORTED)
 set_property(TARGET realm PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib64/librealm.a)
 
-install(DIRECTORY ${INSTALL_DIR}/ DESTINATION ${INSTALL_DIR} USE_SOURCE_PERMISSIONS)
+#install(DIRECTORY ${INSTALL_DIR}/ DESTINATION ${INSTALL_DIR} USE_SOURCE_PERMISSIONS)

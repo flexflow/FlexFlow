@@ -1,0 +1,30 @@
+#!/bin/bash
+
+echo " Defaults for Linux machine"
+
+# set the CC and CXX, usually it is not needed as cmake can detect it
+#CC=${CC:="gcc"}
+#CXX=${CXX:="g++"}
+
+# add flags if needed
+#CC_FLAGS=${CC_FLAGS+=""}
+#NVCC_FLAGS=${NVCC_FLAGS+=""}
+#LD_FLAGS=${LD_FLAGS+=""}
+
+# set build type
+#BUILD_TYPE=Debug
+
+# set CUDNN dir
+CUDNN_DIR=/scratch/shared/wwu12/cudnn
+
+# enable Python
+USE_PYTHON=ON
+
+# set Legion dir, if not set, FlexFlow will use the default Legion in the repo
+LEGION_DIR=/home/wwu12/FlexFlow/legion-cr
+
+# set Protobuf dir, if not set, FlexFlow will use the default Protobuf in the repo
+PROTOBUF_DIR=/home/wwu12/opt
+
+. $(dirname $0)/config.inc
+run_cmake $*
