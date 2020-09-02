@@ -78,26 +78,26 @@ set(FLOW_GPU_SRC
   ${FLOW_ROOT}/src/runtime/simulator.cu)
   
 if(FlexFlow_USE_Python)
-  add_compile_options(-DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON -std=c++11)
- # add_subdirectory(python)
- set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -Wno-deprecated-gpu-targets -std=c++11)
-
-  list(APPEND FLOW_INCLUDE
-    ${FLOW_ROOT}/python)
-
-  list(APPEND FLOW_SRC
-    ${FLOW_ROOT}/python/flexflow_c.cc
-    ${FLOW_ROOT}/python/flexflow_dataloader.cc
-    ${FLOW_ROOT}/python/main.cc)
-    
-  list(APPEND FLOW_GPU_SRC
-    ${FLOW_ROOT}/python/flexflow_dataloader.cu)
-    
-  cuda_add_executable(flexflow_python ${FLOW_GPU_SRC} ${FLOW_SRC})
-  target_include_directories(flexflow_python PUBLIC ${FLOW_INCLUDE})
-  add_dependencies(flexflow_python ${LEGION_NAME})
-  target_link_libraries(flexflow_python -Wl,--whole-archive legion realm -Wl,--no-whole-archive ${Protobuf_LIBRARIES} ${FLEXFLOW_EXT_LIBRARIES}  "-lz -lrt -ldl -rdynamic")
-else()
+  add_compile_options(-DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON)
+  add_subdirectory(python)
+ # set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -Wno-deprecated-gpu-targets -std=c++11)
+ #
+ #  list(APPEND FLOW_INCLUDE
+ #    ${FLOW_ROOT}/python)
+ #
+ #  list(APPEND FLOW_SRC
+ #    ${FLOW_ROOT}/python/flexflow_c.cc
+ #    ${FLOW_ROOT}/python/flexflow_dataloader.cc
+ #    ${FLOW_ROOT}/python/main.cc)
+ #
+ #  list(APPEND FLOW_GPU_SRC
+ #    ${FLOW_ROOT}/python/flexflow_dataloader.cu)
+ #
+ #  cuda_add_executable(flexflow_python ${FLOW_GPU_SRC} ${FLOW_SRC})
+ #  target_include_directories(flexflow_python PUBLIC ${FLOW_INCLUDE})
+ #  add_dependencies(flexflow_python ${LEGION_NAME})
+ #  target_link_libraries(flexflow_python -Wl,--whole-archive legion realm -Wl,--no-whole-archive ${Protobuf_LIBRARIES} ${FLEXFLOW_EXT_LIBRARIES}  "-lz -lrt -ldl -rdynamic")
+endif()
 
 add_compile_options(-std=c++11)
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -Wno-deprecated-gpu-targets -std=c++11)
@@ -143,6 +143,4 @@ if(${BUILD_DLRM} OR ${BUILD_ALL_EXAMPLES})
   add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc ${FLOW_PB_SRC})
   target_include_directories(generate_dlrm_strategy PUBLIC ${FLOW_INCLUDE})
   target_link_libraries(generate_dlrm_strategy ${Protobuf_LIBRARIES})
-endif()
-
 endif()
