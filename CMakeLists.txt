@@ -6,7 +6,6 @@ include(ExternalProject)
 # Briefly change lib suffixes to get static zlib
 # set(_CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
 # SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 # Set a default build type if none was specified
@@ -20,6 +19,9 @@ endif()
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(LIBEXT ".so")
 endif()
+
+# build shared or static flexflow lib
+option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" OFF)
 
 # option for using Python, need to specify before include Legion
 option(FlexFlow_USE_Python "Use Python" OFF)  
@@ -112,7 +114,11 @@ set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/runtime/simulator.cu)
 
 # compile flexflow lib
-cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
+if(BUILD_SHARED_LIBS)
+  cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
+else()
+  cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
+endif()
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
 add_dependencies(flexflow ${LEGION_NAME})
 
