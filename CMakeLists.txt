@@ -7,6 +7,7 @@ include(ExternalProject)
 # set(_CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
 # SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
+set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
 
 # Set a default build type if none was specified
 set(default_build_type "Debug")
@@ -70,7 +71,6 @@ if(FlexFlow_USE_Python)
   add_subdirectory(python)
 endif()
 
-set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
 protobuf_generate_cpp(FLEXFLOW_PB_SRC FLEXFLOW_PB_HDR ${FLEXFLOW_ROOT}/src/runtime/strategy.proto)
 get_filename_component(FLEXFLOW_PB_INC_DIR ${FLEXFLOW_PB_HDR} DIRECTORY)
 
@@ -121,6 +121,7 @@ else()
 endif()
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
 add_dependencies(flexflow ${LEGION_NAME})
+add_dependencies(flexflow ${PROTOBUF_NAME})
 
 option(BUILD_RESNET "build resnet example" OFF)
 option(BUILD_ALEXNET "build alexnet example" OFF)

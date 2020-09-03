@@ -9,7 +9,7 @@ else()
   set(LEGION_SRC_DIR ${EXTERNAL_LEGION_DIR})
 endif()
 
-set(LEGION_NAME project_legion)
+set(LEGION_NAME ext_legion)
 
 # TODO fix python version
 message(STATUS "Building ${LEGION_NAME}")
@@ -38,4 +38,4 @@ set_property(TARGET legion PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib64/lible
 add_library(realm STATIC IMPORTED)
 set_property(TARGET realm PROPERTY IMPORTED_LOCATION ${INSTALL_DIR}/lib64/librealm.a)
 
-#install(DIRECTORY ${INSTALL_DIR}/ DESTINATION ${INSTALL_DIR} USE_SOURCE_PERMISSIONS)
+install(DIRECTORY ${INSTALL_DIR}/ DESTINATION ${CMAKE_INSTALL_PREFIX} USE_SOURCE_PERMISSIONS)

@@ -24,7 +24,7 @@ USE_PYTHON=ON
 LEGION_DIR=/home/wwu12/FlexFlow/legion-cr
 
 # set Protobuf dir, if not set, FlexFlow will use the default Protobuf in the repo
-PROTOBUF_DIR=/home/wwu12/opt
+#PROTOBUF_DIR=/home/wwu12/opt
 
 . $(dirname $0)/config.inc
 run_cmake $*
