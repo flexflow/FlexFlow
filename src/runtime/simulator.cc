@@ -409,17 +409,9 @@ float Simulator::simulate_runtime(const FFModel* model,
 
   // Step 4: add ready tasks into ready_queue
   std::priority_queue<SimTask*, std::vector<SimTask*>, SimTaskCompare> ready_queue;
-  for (size_t l = 0; l < model->layers.size(); l++) {
-    Op* op = model->layers[l];
-    ParallelConfig config = global.find(op)->second;
-    for (int i = 0; i < config.num_parts(); i++) {
-      SimTask* task = task_manager->get_forward_task(op, i);
-      //printf("[%zu][%d] type(%d) forward(%.4lf) counter(%d)\n",
-      //  l, i, op->op_type, task->run_time, task->counter);
-      if (task->counter == 0)
-        ready_queue.push(task);
-    } 
-  }
+  for (size_t i = 0; i < task_manager->global_task_id; i++)
+    if (task_manager->tasks[i]->counter == 0)
+      ready_queue.push(task_manager->tasks[i]);
   // Step 5: perform simulation
   float sim_time = 0.0f;
   std::map<Device*, float> device_times;
