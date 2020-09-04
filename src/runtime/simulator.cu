@@ -24,9 +24,9 @@ Simulator::Simulator(const FFModel* model,
 : base_ptr((char*)_base_ptr), capacity(_capacity), offset(0),
 warmup_times(5), repeat_times(10)
 {
-  float inter_gpu_bandwidth = 20 * 1024 * 1024.0f; /* MB/ms*/
-  float inter_node_bandwidth = 12 * 1024 * 1024.0f / model->config.numNodes; /* MB/ms*/
-  float gpu_dram_bandwidth = 16 * 1024 * 1024.0f; /* MB/ms*/
+  float inter_gpu_bandwidth = 20 * 1024 * 1024.0f; /* B/ms*/
+  float inter_node_bandwidth = 12 * 1024 * 1024.0f / model->config.numNodes; /* B/ms*/
+  float gpu_dram_bandwidth = 16 * 1024 * 1024.0f; /* B/ms*/
   size_t max_num_tasks = 1024 * 1024;
 
   cudaEventCreate(&start_event);
