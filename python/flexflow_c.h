@@ -170,7 +170,8 @@ flexflow_model_add_conv2d(
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* True */,
   flexflow_initializer_t kernel_initializer,
-  flexflow_initializer_t bias_initializer);
+  flexflow_initializer_t bias_initializer,
+  flexflow_op_t prev_conv);
   
 flexflow_op_t
 flexflow_model_add_conv2d_no_inout(
@@ -369,6 +370,10 @@ flexflow_tensor_get_dims(
 
 int
 flexflow_tensor_get_data_type(
+  flexflow_tensor_t handle);
+
+flexflow_op_t
+flexflow_tensor_get_owner_op(
   flexflow_tensor_t handle);
 
 void
