@@ -20,13 +20,14 @@ Tensor FFModel::embedding(const Tensor& input,
                           int num_entries,
                           int out_dim,
                           AggrMode aggr,
+                          const Op* shared_op,
                           Initializer* kernel_initializer)
 {
   //assert(config.strategies.find(name) != config.strategies.end());
   //ParallelConfig pc = config.strategies[name];
   //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
   Embedding* embed = new Embedding(*this, input, num_entries,
-                                   out_dim, aggr, kernel_initializer);
+                                   out_dim, aggr, shared_op, kernel_initializer);
   layers.push_back(embed);
   return embed->outputs[0];
 }
@@ -50,8 +51,9 @@ Embedding::Embedding(FFModel& model,
                      //std::stirng name,
                      int _num_entries, int outDim,
                      AggrMode _aggr,
+                     const Op* shared_op,
                      Initializer* _kernel_initializer)
-: Op(model, OP_EMBEDDING, "Embed_"+std::to_string(_num_entries)+"x"+std::to_string(outDim), _input),
+: Op(model, OP_EMBEDDING, shared_op, "Embed_"+std::to_string(_num_entries)+"x"+std::to_string(outDim), _input),
   num_entries(_num_entries), out_channels(outDim), aggr(_aggr),
   kernel_initializer(_kernel_initializer), profiling(model.config.profiling)
 {
