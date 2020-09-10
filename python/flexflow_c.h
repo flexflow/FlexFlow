@@ -112,6 +112,10 @@ flexflow_model_backward(
   flexflow_model_t handle);
 
 void
+flexflow_model_compute_metrics(
+  flexflow_model_t handle);
+
+void
 flexflow_model_update(
   flexflow_model_t handle);
 

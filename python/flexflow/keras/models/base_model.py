@@ -211,7 +211,7 @@ class BaseModel(object):
           max_queue_size=10, 
           workers=1, 
           use_multiprocessing=False):
-    if (batch_size != None):
+    if batch_size != None:
       assert self._ffconfig.get_batch_size() == batch_size, "batch size is not correct use -b to set it"
     if validation_split != 0.0:
       assert 0, "validation_split is not supported"  
@@ -249,7 +249,31 @@ class BaseModel(object):
     self._verify_tensors(input_tensors, label_tensor)
     self._create_data_loaders(input_tensors, label_tensor)
     self._ffmodel.init_layers()
-    self._train(epochs, callbacks)
+    self._train(epochs, callbacks, eval=False)
+    
+  def evaluate(self,
+               x=None,
+               y=None,
+               batch_size=None,
+               verbose=1,
+               sample_weight=None,
+               steps=None,
+               callbacks=None,
+               max_queue_size=10,
+               workers=1,
+               use_multiprocessing=False,
+               return_dict=False):
+    if batch_size != None:
+      assert self._ffconfig.get_batch_size() == batch_size, "batch size is not correct use -b to set it"
+    assert self._output_tensor.ffhandle != None, "tensor is not init"
+    if (isinstance(x, list) == False):
+      input_tensors = [x]
+    else:
+      input_tensors = x
+    label_tensor = y
+    self._verify_tensors(input_tensors, label_tensor)
+    self._create_data_loaders(input_tensors, label_tensor)
+    self._train(1, callbacks, eval=True)
     
   def _create_input_tensor(self, idx):
     assert self._input_tensors[idx].batch_shape[0] != 0, "batch size is not set"
@@ -340,7 +364,7 @@ class BaseModel(object):
     self._label_dataloader = dataloader
     self._label_dataloader_dim = len(input_shape)
     
-  def _train(self, epochs, callbacks):
+  def _train(self, epochs, callbacks, eval=False):
     if callbacks != None:
       for callback in callbacks:
         callback.set_model(self)
@@ -376,9 +400,12 @@ class BaseModel(object):
         self._ffmodel.forward()
         # for layer in self._layers:
         #   layer.ffhandle.forward(self._ffmodel)
-        self._ffmodel.zero_gradients()
-        self._ffmodel.backward()
-        self._ffmodel.update()
+        if eval == False:
+          self._ffmodel.zero_gradients()
+          self._ffmodel.backward()
+          self._ffmodel.update()
+        else:
+          self._ffmodel.compute_metrics()
         if (epoch > 0):
           self._ffconfig.end_trace(self.__tracing_id)
           

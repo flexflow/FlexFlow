@@ -205,6 +205,14 @@ flexflow_model_backward(
 }
 
 void
+flexflow_model_compute_metrics(
+  flexflow_model_t handle_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->compute_metrics();
+}
+
+void
 flexflow_model_update(
   flexflow_model_t handle_)
 {

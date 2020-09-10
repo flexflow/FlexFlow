@@ -906,6 +906,13 @@ void FFModel::forward()
     layers[i]->forward(*this);
 }
 
+void FFModel::compute_metrics()
+{
+  Op* final_layer = layers[layers.size()-1];
+  assert(final_layer->numOutputs == 1);
+  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor);
+}
+
 void FFModel::backward()
 {
   // Compute metrics

@@ -763,6 +763,9 @@ class FFModel(object):
   def backward(self):
     ffc.flexflow_model_backward(self.handle)
     
+  def compute_metrics(self):
+    ffc.flexflow_model_compute_metrics(self.handle)
+    
   def update(self):
     ffc.flexflow_model_update(self.handle)
     

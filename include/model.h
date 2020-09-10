@@ -393,6 +393,7 @@ public:
   void init_layers();
   void prefetch();
   void forward();
+  void compute_metrics();
   void backward();
   void update();
   void compile(LossType loss_type, const std::vector<MetricsType>& metrics);
