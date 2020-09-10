@@ -26,7 +26,7 @@ def top_level_task():
   # ts1 = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_NONE, True, kernel_init, bias_init)
   # ts0 = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2)
   # ts1 = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2)
-  t = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_RELU, True, kernel_init, bias_init)
+  t = ffmodel.conv2d(input, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_RELU, True, None, kernel_init, bias_init)
   #t = ffmodel.concat([ts0, ts1], 1)
   t = ffmodel.pool2d(t, 3, 3, 2, 2, 0, 0)
   t = ffmodel.conv2d(t, 192, 5, 5, 1, 1, 2, 2, ActiMode.AC_MODE_RELU)
