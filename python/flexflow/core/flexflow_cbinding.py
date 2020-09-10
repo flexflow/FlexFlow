@@ -433,6 +433,9 @@ class Tensor(object):
     if (self.is_mapped() == True):
       self.mapped = True
       
+    if owner_op_type != None:
+      assert self.owner_op != None
+      
   def inline_map(self, ffconfig):
     assert self.mapped == False, "Tensor is already mapped."
     ffc.flexflow_tensor_inline_map(self.handle, ffconfig.handle);
