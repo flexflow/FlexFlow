@@ -53,6 +53,7 @@ def top_level_task():
   print(model.summary())
 
   model.fit(x_train, y_train, epochs=5, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP), EpochVerifyMetrics(ModelAccuracy.MNIST_MLP)])
+  model.evaluate(x=x_train, y=y_train)
 
 if __name__ == "__main__":
   print("Sequential model, mnist mlp")

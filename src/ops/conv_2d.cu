@@ -23,6 +23,7 @@ Tensor FFModel::conv2d(const Tensor& input,
                        int paddingH, int paddingW,
                        ActiMode activation,
                        bool use_bias,
+                       const Op* shared_op,
                        Initializer* kernel_initializer,
                        Initializer* bias_initializer)
 {
@@ -37,7 +38,7 @@ Tensor FFModel::conv2d(const Tensor& input,
   assert(input.numDim == 4); /*NCHW*/
   Conv2D *conv = new Conv2D(*this, input, outChannels, kernelH, kernelW,
                             strideH, strideW, paddingH, paddingW, activation,
-                            use_bias, kernel_initializer, bias_initializer);
+                            use_bias, shared_op, kernel_initializer, bias_initializer);
   layers.push_back(conv);
   return conv->outputs[0];
 }
@@ -79,9 +80,10 @@ Conv2D::Conv2D(FFModel& model,
                int _padding_h, int _padding_w,
                ActiMode _activation,
                bool _use_bias,
+               const Op* shared_op,
                Initializer* _kernel_initializer,
                Initializer* _bias_initializer)
-: Op(model, OP_CONV2D, "Conv2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w), _input),
+: Op(model, OP_CONV2D, shared_op, "Conv2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w), _input),
   in_channels(_input.adim[2]), out_channels(out_dim),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),

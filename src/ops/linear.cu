@@ -19,7 +19,8 @@
 Tensor FFModel::dense(const Tensor& input,
                       int outDim, 
                       ActiMode activation,
-                      bool use_bias, 
+                      bool use_bias,
+                      const Op* shared_op,
                       Initializer* kernel_initializer,
                       Initializer* bias_initializer)
 {
@@ -31,14 +32,14 @@ Tensor FFModel::dense(const Tensor& input,
     bias_initializer = new ZeroInitializer();
   }
   Linear *li = new Linear(*this, input, outDim, activation, use_bias,
-                          kernel_initializer, bias_initializer);
+                          shared_op, kernel_initializer, bias_initializer);
   layers.push_back(li);
   return li->outputs[0];
 }
 
 Linear* FFModel::dense(int inDim, int outDim, 
                        ActiMode activation,
-                       bool use_bias, 
+                       bool use_bias,
                        Initializer* kernel_initializer,
                        Initializer* bias_initializer)
 {
@@ -60,9 +61,10 @@ Linear::Linear(FFModel& model,
                int out_dim,
                ActiMode _activation,
                bool _use_bias,
+               const Op* shared_op,
                Initializer* _kernel_initializer,
                Initializer* _bias_initializer)
-: Op(model, OP_LINEAR, "Dense_"+std::to_string(out_dim), _input), 
+: Op(model, OP_LINEAR, shared_op, "Dense_"+std::to_string(out_dim), _input), 
   in_channels(_input.adim[0]), out_channels(out_dim),
   activation(_activation), use_bias(_use_bias),
   kernel_initializer(_kernel_initializer),

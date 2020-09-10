@@ -332,6 +332,44 @@ class Tanh(Op):
 class Elu(Op):
   def __init__(self, handle):
     super(Elu, self).__init__(handle)
+
+# -----------------------------------------------------------------------
+# flexflow_op_t handle to Op
+# -----------------------------------------------------------------------    
+def convert_op_handle_to_op(op_type, handle):
+  if op_type == OpType.CONV2D:
+    return Conv2D(handle)
+  elif op_type == OpType.POOL2D:
+    return Pool2D(handle)
+  elif op_type == OpType.LINEAR:
+    return Linear(handle)
+  elif op_type == OpType.EMBEDDING:
+    return Embedding(handle)
+  elif op_type == OpType.FLAT:
+    return Flat(handle)
+  elif op_type == OpType.CONCAT:
+    return Concat(handle)
+  elif op_type == OpType.SOFTMAX:
+    return Softmax(handle)
+  elif op_type == OpType.ELEMENT_UNARY:
+    return ElementUnary(handle)
+  elif op_type == OpType.ELEMENT_BINARY:
+    return ElementBinary(handle)
+  elif op_type == OpType.MSELOSS:
+    return MSELoss(handle)
+  elif op_type == OpType.RELU:
+    return Dropout(handle)
+  elif op_type == OpType.SIGMOID:
+    return Dropout(handle)
+  elif op_type == OpType.TANH:
+    return Dropout(handle)
+  elif op_type == OpType.ELU:
+    return Dropout(handle)
+  elif op_type == OpType.DROPOUT:
+    return Dropout(handle)
+  else:
+    assert 0, "unknow layer type"
+    return None
       
 # -----------------------------------------------------------------------
 # FFConfig
@@ -372,8 +410,8 @@ class FFConfig(object):
 # -----------------------------------------------------------------------
 
 class Tensor(object):
-  __slots__ = ['p_handle', 'handle', '_handle', 'num_dims', 'dims', 'data_type', 'mapped']
-  def __init__(self, handle, deallocate=True):
+  __slots__ = ['p_handle', 'handle', '_handle', 'num_dims', 'dims', 'data_type', 'owner_op', 'owner_op_type', 'mapped']
+  def __init__(self, handle, deallocate=True, owner_op_type=None):
     if (ffi.typeof(handle) == ffi.typeof('flexflow_tensor_t')):
       self.p_handle = 0
       self.handle = handle
@@ -386,12 +424,17 @@ class Tensor(object):
     self.num_dims = 0
     self.dims = 0
     self.mapped = False
+    self.owner_op_type = owner_op_type
     self.__get_dims()
     self.__get_data_type()
+    self.__get_owner_op()
     if (deallocate == True):
       self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
     if (self.is_mapped() == True):
       self.mapped = True
+      
+    if owner_op_type != None:
+      assert self.owner_op != None
       
   def inline_map(self, ffconfig):
     assert self.mapped == False, "Tensor is already mapped."
@@ -489,6 +532,13 @@ class Tensor(object):
       self.data_type = DataType.DT_BOOLEAN
     else:
       assert 0, "unknown data type"
+      
+  def __get_owner_op(self):
+    op_handle = ffc.flexflow_tensor_get_owner_op(self.handle)
+    if op_handle.impl == ffi.NULL:
+      self.owner_op = None
+    else:
+      self.owner_op = convert_op_handle_to_op(self.owner_op_type, op_handle)
     
   def __attach_raw_ptr(self, ffconfig, raw_ptr, column_major=True):
     assert self.mapped == False, "Tensor is already mapped."
@@ -564,35 +614,36 @@ class FFModel(object):
   def exp(self, x):
     handle = ffc.flexflow_model_add_exp(self.handle, x.handle)
     self.add_layer(OpType.ELEMENT_UNARY)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.ELEMENT_UNARY)
     
   def add(self, x, y):
     handle = ffc.flexflow_model_add_add(self.handle, x.handle, y.handle)
     self.add_layer(OpType.ELEMENT_BINARY)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.ELEMENT_BINARY)
   
   def subtract(self, x, y):
     handle = ffc.flexflow_model_add_subtract(self.handle, x.handle, y.handle)
     self.add_layer(OpType.ELEMENT_BINARY)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.ELEMENT_BINARY)
     
   def multiply(self, x, y):
     handle = ffc.flexflow_model_add_multiply(self.handle, x.handle, y.handle)
     self.add_layer(OpType.ELEMENT_BINARY)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.ELEMENT_BINARY)
     
   def divide(self, x, y):
     handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle)
     self.add_layer(OpType.ELEMENT_BINARY)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.ELEMENT_BINARY)
     
-  def conv2d(self, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
+  def conv2d(self, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, shared_op=None, kernel_initializer=None, bias_initializer=None):
+    shared_op_handle = self.__get_op_handle(shared_op)
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, kernel_init_handle, bias_init_handle)  
+    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle)  
     self.add_layer(OpType.CONV2D)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.CONV2D)
     
   def conv2d_v2(self, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
     c_activation = enum_to_int(ActiMode, activation)
@@ -601,19 +652,20 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_conv2d_no_inout(self.handle, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, kernel_init_handle, bias_init_handle)  
     return Conv2D(handle)
     
-  def embedding(self, input, num_entires, out_dim, aggr, kernel_initializer):
+  def embedding(self, input, num_entires, out_dim, aggr, shared_op=None, kernel_initializer=None):
+    shared_op_handle = self.__get_op_handle(shared_op)
     c_aggr = enum_to_int(AggrMode, aggr)
     assert (type(kernel_initializer) is GlorotUniformInitializer) or (type(kernel_initializer) is ZeroInitializer) or (type(kernel_initializer) is UniformInitializer) or (type(kernel_initializer) is NormInitializer), "unknow initializer type"
-    handle = ffc.flexflow_model_add_embedding(self.handle,  input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
+    handle = ffc.flexflow_model_add_embedding(self.handle,  input.handle, num_entires, out_dim, c_aggr, shared_op_handle, kernel_initializer.handle)
     self.add_layer(OpType.EMBEDDING)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.EMBEDDING)
     
   def pool2d(self, input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE):
     c_pool_type = enum_to_int(PoolType, pool_type)
     c_activation = enum_to_int(ActiMode, activation)
     handle = ffc.flexflow_model_add_pool2d(self.handle, input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
     self.add_layer(OpType.POOL2D)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.POOL2D)
     
   def pool2d_v2(self, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE):
     c_pool_type = enum_to_int(PoolType, pool_type)
@@ -624,15 +676,16 @@ class FFModel(object):
   def batch_norm(self, input, relu=True):
     handle = ffc.flexflow_model_add_batch_norm(self.handle, name.encode('utf-8'), input.handle, relu)
     self.add_layer(OpType.BATCH_NORM)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
 
-  def dense(self, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
+  def dense(self, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, shared_op=None, kernel_initializer=None, bias_initializer=None):
+    shared_op_handle = self.__get_op_handle(shared_op)
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_dense(self.handle,  input.handle, out_dim, c_activation, use_bias, kernel_init_handle, bias_init_handle)
+    handle = ffc.flexflow_model_add_dense(self.handle,  input.handle, out_dim, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle)
     self.add_layer(OpType.LINEAR)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.LINEAR)
     
   def dense_v2(self, in_dim, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
     c_activation = enum_to_int(ActiMode, activation)
@@ -650,12 +703,12 @@ class FFModel(object):
     c_tensor_handle_list = ffi.new("flexflow_tensor_t[]", tensor_handle_list)
     handle = ffc.flexflow_model_add_concat(self.handle, n, c_tensor_handle_list, axis)
     self.add_layer(OpType.CONCAT)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.CONCAT)
     
   def flat(self, input):
     handle = ffc.flexflow_model_add_flat(self.handle, input.handle)
     self.add_layer(OpType.FLAT)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.FLAT)
     
   def flat_v2(self):
     handle = ffc.flexflow_model_add_flat_no_inout(self.handle)
@@ -664,32 +717,32 @@ class FFModel(object):
   def softmax(self, input):
     handle = ffc.flexflow_model_add_softmax(self.handle, input.handle)
     self.add_layer(OpType.SOFTMAX)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.SOFTMAX)
     
   def relu(self, input):
     handle = ffc.flexflow_model_add_relu(self.handle, input.handle)
     self.add_layer(OpType.RELU)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.RELU)
     
   def sigmoid(self, input):
     handle = ffc.flexflow_model_add_sigmoid(self.handle, input.handle)
     self.add_layer(OpType.SIGMOID)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.SIGMOID)
     
   def tanh(self, input):
     handle = ffc.flexflow_model_add_tanh(self.handle, input.handle)
     self.add_layer(OpType.TANH)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.TANH)
     
   def elu(self, input):
     handle = ffc.flexflow_model_add_elu(self.handle, input.handle)
     self.add_layer(OpType.ELU)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.ELU)
     
   def dropout(self, input, rate, seed):
     handle = ffc.flexflow_model_add_dropout(self.handle, input.handle, rate, seed)
     self.add_layer(OpType.DROPOUT)
-    return Tensor(handle)
+    return Tensor(handle, owner_op_type=OpType.DROPOUT)
     
   # def mse_loss(self, logits, labels, reduction):
   #   ffc.flexflow_model_add_mse_loss(self.handle, logits.handle, labels.handle, reduction.encode('utf-8'))
@@ -709,6 +762,9 @@ class FFModel(object):
     
   def backward(self):
     ffc.flexflow_model_backward(self.handle)
+    
+  def compute_metrics(self):
+    ffc.flexflow_model_compute_metrics(self.handle)
     
   def update(self):
     ffc.flexflow_model_update(self.handle)
@@ -744,39 +800,7 @@ class FFModel(object):
     
   def get_layer_by_id(self, layer_id):
     handle = ffc.flexflow_model_get_layer_by_id(self.handle, layer_id)
-    if (self._layers[layer_id] == OpType.CONV2D):
-      return Conv2D(handle)
-    elif (self._layers[layer_id] == OpType.POOL2D):
-      return Pool2D(handle)
-    elif (self._layers[layer_id] == OpType.LINEAR):
-      return Linear(handle)
-    elif (self._layers[layer_id] == OpType.EMBEDDING):
-      return Embedding(handle)
-    elif (self._layers[layer_id] == OpType.FLAT):
-      return Flat(handle)
-    elif (self._layers[layer_id] == OpType.CONCAT):
-      return Concat(handle)
-    elif (self._layers[layer_id] == OpType.SOFTMAX):
-      return Softmax(handle)
-    elif (self._layers[layer_id] == OpType.ELEMENT_UNARY):
-      return ElementUnary(handle)
-    elif (self._layers[layer_id] == OpType.ELEMENT_BINARY):
-      return ElementBinary(handle)
-    elif (self._layers[layer_id] == OpType.MSELOSS):
-      return MSELoss(handle)
-    elif (self._layers[layer_id] == OpType.RELU):
-      return Dropout(handle)
-    elif (self._layers[layer_id] == OpType.SIGMOID):
-      return Dropout(handle)
-    elif (self._layers[layer_id] == OpType.TANH):
-      return Dropout(handle)
-    elif (self._layers[layer_id] == OpType.ELU):
-      return Dropout(handle)
-    elif (self._layers[layer_id] == OpType.DROPOUT):
-      return Dropout(handle)
-    else:
-      assert 0, "unknow layer type"
-      return 0
+    return convert_op_handle_to_op(self._layers[layer_id], handle)
     
   def get_tensor_by_id(self, id):
     handle = ffc.flexflow_model_get_parameter_by_id(self.handle, id)
@@ -796,6 +820,15 @@ class FFModel(object):
       return null_initializer.handle
     else:
       return initializer.handle
+      
+  def __get_op_handle(self, shared_op):
+    if shared_op == None:
+      op_handle = ffi.new('flexflow_op_t *')
+      op_handle.impl = ffi.NULL
+      op = Op(op_handle[0])
+    else:
+      op = shared_op
+    return op.handle
 
 # -----------------------------------------------------------------------
 # SGDOptimizer

@@ -112,6 +112,10 @@ flexflow_model_backward(
   flexflow_model_t handle);
 
 void
+flexflow_model_compute_metrics(
+  flexflow_model_t handle);
+
+void
 flexflow_model_update(
   flexflow_model_t handle);
 
@@ -169,6 +173,7 @@ flexflow_model_add_conv2d(
   int padding_h, int padding_w,
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* True */,
+  flexflow_op_t shared_op,
   flexflow_initializer_t kernel_initializer,
   flexflow_initializer_t bias_initializer);
   
@@ -191,6 +196,7 @@ flexflow_model_add_embedding(
   const flexflow_tensor_t input,
   int num_entires, int out_dim,
   enum AggrMode aggr,
+  flexflow_op_t shared_op,
   flexflow_initializer_t kernel_initializer);  
   
 flexflow_tensor_t
@@ -225,6 +231,7 @@ flexflow_model_add_dense(
   int out_dim,
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* true */,
+  flexflow_op_t shared_op,
   flexflow_initializer_t kernel_initializer,
   flexflow_initializer_t bias_initializer);
   
@@ -369,6 +376,10 @@ flexflow_tensor_get_dims(
 
 int
 flexflow_tensor_get_data_type(
+  flexflow_tensor_t handle);
+
+flexflow_op_t
+flexflow_tensor_get_owner_op(
   flexflow_tensor_t handle);
 
 void
