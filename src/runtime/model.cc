@@ -158,6 +158,35 @@ Op::Op(FFModel& model,
 
 Op::Op(FFModel& model,
        OperatorType _op_type,
+       const Op* shared_op,
+       const std::string& _name,
+       const Tensor& _input)
+: op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1)
+{
+  std::string pcname;
+  if (shared_op == NULL) {
+    pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  } else {
+    pcname = std::string(shared_op->name);
+  }
+  assert(pcname.length() < MAX_OPNAME);
+  std::strcpy(name, pcname.c_str());
+  inputs[0] = _input;
+  //for (int i = 0; i < numInputs; i++) {
+  //  trainableInputs[i] = true;
+  //  resetInputGrads[i] = true;
+  //}
+  for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
+    outputs[i].owner_op = this;
+    outputs[i].owner_idx = i;
+  }
+  for (int i = 0; i < numOutputs; i++) {
+    outputs[i].data_type = inputs[0].data_type;
+  }
+}
+
+Op::Op(FFModel& model,
+       OperatorType _op_type,
        const std::string& _name,
        const Tensor& _input1,
        const Tensor& _input2)
@@ -1032,7 +1061,7 @@ void FFModel::optimize(Simulator* simulator,
   for (size_t iter = 0; iter < budget; iter++) {
     rewrite(current, next);
     float next_runtime = simulator->simulate_runtime(this, next);
-    if (iter % 1 == 0) {
+    if (iter % 100 == 0) {
       printf("iter(%zu) cur(%.2lf) next(%.2lf) best(%.2lf)\n", iter,
              current_runtime, next_runtime, best_runtime);
     }
@@ -1050,6 +1079,23 @@ void FFModel::optimize(Simulator* simulator,
       current = next;
       current_runtime = next_runtime;
     }
+  }
+  printf("=========== Best Discovered Strategy ==========\n");
+  std::map<Op*, ParallelConfig>::const_iterator it;
+  for (it = best.begin(); it != best.end(); it++) {
+    printf("[%s] num_dims(%d) dims[", it->first->name, it->second.nDims);
+    for (int i = 0; i < it->second.nDims; i++)
+      if (i < it->second.nDims - 1)
+        printf("%d,", it->second.dim[i]);
+      else
+        printf("%d", it->second.dim[i]);
+    printf("] device_ids[");
+    for (int i = 0; i < it->second.num_parts(); i++)
+      if (i < it->second.num_parts() - 1) 
+        printf("%d,", it->second.device_ids[i]);
+      else
+        printf("%d", it->second.device_ids[i]);
+    printf("]\n");
   }
 }
 

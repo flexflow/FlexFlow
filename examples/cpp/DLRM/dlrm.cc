@@ -33,7 +33,7 @@ Tensor create_mlp(FFModel* model, const Tensor& input,
     std_dev = sqrt(2.0f / ln[i+1]);
     Initializer* bias_init = new NormInitializer(std::rand(), 0, std_dev);
     ActiMode activation = i == sigmoid_layer ? AC_MODE_SIGMOID : AC_MODE_RELU;
-    t = model->dense(t, ln[i+1], activation, true/*bias*/, weight_init, bias_init);
+    t = model->dense(t, ln[i+1], activation, true/*bias*/, NULL/*weight_sharing*/, weight_init, bias_init);
   }
   return t;
 }
@@ -43,7 +43,7 @@ Tensor create_emb(FFModel* model, const Tensor& input,
 {
   float range = sqrt(1.0f / input_dim);
   Initializer* embed_init = new UniformInitializer(std::rand(), -range, range);
-  return model->embedding(input, input_dim, output_dim, AGGR_MODE_SUM, embed_init);
+  return model->embedding(input, input_dim, output_dim, AGGR_MODE_SUM, NULL/*weight_sharing*/, embed_init);
 }
 
 Tensor interact_features(FFModel* model, const Tensor& x,

@@ -194,6 +194,7 @@ public:
   Op(FFModel& model, OperatorType type, const std::string& _name, int num, const Tensor* inputs);
   Op(FFModel& model, OperatorType type, const std::string& _name, int num);
 
+  Op(FFModel& model, OperatorType type, const Op* shared_op, const std::string& _name, const Tensor& input);
   // Pure virtual functions that must be implemented
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
@@ -268,6 +269,7 @@ public:
                 int paddingH, int paddingW,
                 ActiMode activation = AC_MODE_NONE,
                 bool use_bias = true,
+                const Op* shared_op = NULL,
                 Initializer* krenel_initializer = NULL,
                 Initializer* bias_initializer = NULL);
   // Add a dropout layer
@@ -278,7 +280,8 @@ public:
   Tensor embedding(const Tensor& input,
                    int num_entires, int outDim,
                    AggrMode aggr,
-                   Initializer* kernel_initializer);
+                   const Op* shared_op = NULL,
+                   Initializer* kernel_initializer = NULL);
   // Add a 2D pooling layer
   Tensor pool2d(const Tensor& input,
                 int kernelH, int kernelW,
@@ -294,6 +297,7 @@ public:
                int outDim,
                ActiMode activation = AC_MODE_NONE,
                bool use_bias = true,
+               const Op* shared_op = NULL,
                Initializer* kernel_initializer = NULL,
                Initializer* bias_initializer = NULL);
   // Add a concat layer
@@ -548,6 +552,7 @@ public:
          int paddingH, int paddingW,
          ActiMode activation,
          bool use_bias,
+         const Op* shared_op,
          Initializer* kernel_initializer,
          Initializer* bias_initializer);
   Conv2D(FFModel& model,
@@ -771,6 +776,7 @@ public:
          int outChannels,
          ActiMode activation,
          bool use_bias,
+         const Op* shared_op,
          Initializer* kernel_initializer,
          Initializer* bias_initializer);
   Linear(FFModel& model,
@@ -837,6 +843,7 @@ public:
             const Tensor& input,
             int num_entries, int outDim,
             AggrMode _aggr,
+            const Op* shared_op,
             Initializer* kernel_initializer);
   Embedding(FFModel& model,
             int num_entries, int outDim,
