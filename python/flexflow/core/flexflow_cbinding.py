@@ -633,17 +633,12 @@ class FFModel(object):
     self.add_layer(OpType.ELEMENT_BINARY)
     return Tensor(handle, owner_op_type=OpType.ELEMENT_BINARY)
     
-  def conv2d(self, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None, prev_conv=None):
-    if prev_conv == None:
-      op_handle = ffi.new('flexflow_op_t *')
-      op_handle.impl = ffi.NULL
-      op = Op(op_handle[0])
-    else:
-      op = prev_conv
+  def conv2d(self, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, shared_op=None, kernel_initializer=None, bias_initializer=None):
+    shared_op_handle = self.__get_op_handle(shared_op)
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, kernel_init_handle, bias_init_handle, op.handle)  
+    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle)  
     self.add_layer(OpType.CONV2D)
     return Tensor(handle, owner_op_type=OpType.CONV2D)
     
@@ -654,10 +649,11 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_conv2d_no_inout(self.handle, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, kernel_init_handle, bias_init_handle)  
     return Conv2D(handle)
     
-  def embedding(self, input, num_entires, out_dim, aggr, kernel_initializer):
+  def embedding(self, input, num_entires, out_dim, aggr, shared_op=None, kernel_initializer=None):
+    shared_op_handle = self.__get_op_handle(shared_op)
     c_aggr = enum_to_int(AggrMode, aggr)
     assert (type(kernel_initializer) is GlorotUniformInitializer) or (type(kernel_initializer) is ZeroInitializer) or (type(kernel_initializer) is UniformInitializer) or (type(kernel_initializer) is NormInitializer), "unknow initializer type"
-    handle = ffc.flexflow_model_add_embedding(self.handle,  input.handle, num_entires, out_dim, c_aggr, kernel_initializer.handle)
+    handle = ffc.flexflow_model_add_embedding(self.handle,  input.handle, num_entires, out_dim, c_aggr, shared_op_handle, kernel_initializer.handle)
     self.add_layer(OpType.EMBEDDING)
     return Tensor(handle, owner_op_type=OpType.EMBEDDING)
     
@@ -679,11 +675,12 @@ class FFModel(object):
     self.add_layer(OpType.BATCH_NORM)
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
 
-  def dense(self, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
+  def dense(self, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, shared_op=None, kernel_initializer=None, bias_initializer=None):
+    shared_op_handle = self.__get_op_handle(shared_op)
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_dense(self.handle,  input.handle, out_dim, c_activation, use_bias, kernel_init_handle, bias_init_handle)
+    handle = ffc.flexflow_model_add_dense(self.handle,  input.handle, out_dim, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle)
     self.add_layer(OpType.LINEAR)
     return Tensor(handle, owner_op_type=OpType.LINEAR)
     
@@ -820,6 +817,15 @@ class FFModel(object):
       return null_initializer.handle
     else:
       return initializer.handle
+      
+  def __get_op_handle(self, shared_op):
+    if shared_op == None:
+      op_handle = ffi.new('flexflow_op_t *')
+      op_handle.impl = ffi.NULL
+      op = Op(op_handle[0])
+    else:
+      op = shared_op
+    return op.handle
 
 # -----------------------------------------------------------------------
 # SGDOptimizer

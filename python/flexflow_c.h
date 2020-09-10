@@ -173,9 +173,9 @@ flexflow_model_add_conv2d(
   int padding_h, int padding_w,
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* True */,
+  flexflow_op_t shared_op,
   flexflow_initializer_t kernel_initializer,
-  flexflow_initializer_t bias_initializer,
-  flexflow_op_t prev_conv);
+  flexflow_initializer_t bias_initializer);
   
 flexflow_op_t
 flexflow_model_add_conv2d_no_inout(
@@ -196,6 +196,7 @@ flexflow_model_add_embedding(
   const flexflow_tensor_t input,
   int num_entires, int out_dim,
   enum AggrMode aggr,
+  flexflow_op_t shared_op,
   flexflow_initializer_t kernel_initializer);  
   
 flexflow_tensor_t
@@ -230,6 +231,7 @@ flexflow_model_add_dense(
   int out_dim,
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* true */,
+  flexflow_op_t shared_op,
   flexflow_initializer_t kernel_initializer,
   flexflow_initializer_t bias_initializer);
   

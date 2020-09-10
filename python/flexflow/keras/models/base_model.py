@@ -483,13 +483,13 @@ class BaseModel(object):
           t_ffhandle_list.append(t.ffhandle)
         out_t = self._ffmodel.concat(t_ffhandle_list, layer.axis)
       elif isinstance(layer, Conv2D) == True:
-        out_t = self._ffmodel.conv2d(layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle)
+        out_t = self._ffmodel.conv2d(layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias, None, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle)
       elif isinstance(layer, Pooling2D) == True:
         out_t = self._ffmodel.pool2d(layer.input_tensors[0].ffhandle, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.pool_type)
       elif isinstance(layer, Flatten) == True:
         out_t = self._ffmodel.flat(layer.input_tensors[0].ffhandle)
       elif isinstance(layer, Dense) == True:
-        out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation, layer.use_bias, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle)
+        out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation, layer.use_bias, None, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle)
       elif isinstance(layer, Add) == True:
         out_t = self._ffmodel.add(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       elif isinstance(layer, Subtract) == True:
@@ -501,7 +501,7 @@ class BaseModel(object):
       elif isinstance(layer, BatchNormalization) == True:
         out_t = self._ffmodel.batch_norm(layer.input_tensors[0].ffhandle)
       elif isinstance(layer, Embedding) == True:
-        out_t = self._ffmodel.embedding(layer.input_tensors[0].ffhandle, layer.input_dim, layer.out_channels, ff.AggrMode.AGGR_MODE_SUM, layer.embeddings_initializer.ffhandle)
+        out_t = self._ffmodel.embedding(layer.input_tensors[0].ffhandle, layer.input_dim, layer.out_channels, ff.AggrMode.AGGR_MODE_SUM, None, layer.embeddings_initializer.ffhandle)
       else:
         assert 0, "unknow layer"
 
