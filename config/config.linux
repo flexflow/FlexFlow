@@ -21,10 +21,10 @@ CUDNN_DIR=/scratch/shared/wwu12/cudnn
 USE_PYTHON=ON
 
 # set Legion dir, if not set, FlexFlow will use the default Legion in the repo
-LEGION_DIR=/home/wwu12/FlexFlow/legion-cr
+LEGION_DIR=/home/wwu12/flexflow-tpl/build/legion/install
 
 # set Protobuf dir, if not set, FlexFlow will use the default Protobuf in the repo
-#PROTOBUF_DIR=/home/wwu12/opt
+PROTOBUF_DIR=/home/wwu12/flexflow-tpl/build/protobuf/install
 
 . $(dirname $0)/config.inc
 run_cmake $*

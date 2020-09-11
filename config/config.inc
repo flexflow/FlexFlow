@@ -40,12 +40,12 @@ fi
 
 # set Legion fir
 if [ -n "$LEGION_DIR" ]; then
-  SET_LEGION="-DFlexFlow_USE_External_Legion=ON -DEXTERNAL_LEGION_DIR=${LEGION_DIR}"
+  SET_LEGION="-DLEGION_ROOT=${LEGION_DIR}"
 fi
 
 # set Protobuf fir
 if [ -n "$PROTOBUF_DIR" ]; then
-  SET_PROTOBUF="-DFlexFlow_USE_External_Protobuf=ON -DEXTERNAL_PROTOBUF_DIR=${PROTOBUF_DIR}"
+  SET_PROTOBUF="-DPROTOBUF_ROOT=${PROTOBUF_DIR}"
 fi
 
 SRC_LOCATION=${SRC_LOCATION:=`dirname $0`/../}

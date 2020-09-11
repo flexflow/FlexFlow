@@ -25,7 +25,7 @@ endif()
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" OFF)
 
 # option for using Python, need to specify before include Legion
-option(FlexFlow_USE_Python "Use Python" OFF)  
+option(FlexFlow_USE_Python "Use Python" ON)  
 
 # ZLIB
 include(zlib)
@@ -34,11 +34,11 @@ include(zlib)
 include(cudacudnn)
 
 # Google Protobuf
-option(FlexFlow_USE_External_Protobuf "Use external Protobuf" OFF)
+#option(LEGION_ROOT "Legion root directory" "/home/wwu12/flexflow-tpl/build/legion/install")  
 include(protobuf)
 
 # Legion
-option(FlexFlow_USE_External_Legion "Use external Legion" OFF)
+#option(LEGION_ROOT "Legion root directory" "/home/wwu12/flexflow-tpl/build/legion/install")  
 include(legion)
 
 # Start build FlexFlow
@@ -120,8 +120,6 @@ else()
   cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
 endif()
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-add_dependencies(flexflow ${LEGION_NAME})
-add_dependencies(flexflow ${PROTOBUF_NAME})
 
 option(BUILD_RESNET "build resnet example" OFF)
 option(BUILD_ALEXNET "build alexnet example" OFF)
