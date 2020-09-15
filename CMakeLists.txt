@@ -24,8 +24,11 @@ endif()
 # build shared or static flexflow lib
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" OFF)
 
-# option for using Python, need to specify before include Legion
-option(FlexFlow_USE_Python "Use Python" ON)  
+# option for using Python
+option(ENABLE_PYTHON "Enable Python" ON)  
+
+# option for using Python
+option(ENABLE_GASNET "Run FlexFlow with GASNet" OFF)  
 
 # ZLIB
 include(zlib)
@@ -33,13 +36,22 @@ include(zlib)
 # CUDA and CUDNN
 include(cudacudnn)
 
-# Google Protobuf
-#option(LEGION_ROOT "Legion root directory" "/home/wwu12/flexflow-tpl/build/legion/install")  
+# Google Protobuf 
 include(protobuf)
 
 # Legion
-#option(LEGION_ROOT "Legion root directory" "/home/wwu12/flexflow-tpl/build/legion/install")  
 include(legion)
+
+# MPI
+if(ENABLE_GASNET) 
+  include(gasnet)
+endif()
+
+# Python
+if(ENABLE_PYTHON)
+  add_compile_options(-DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON)
+  add_subdirectory(python)
+endif()
 
 # Start build FlexFlow
 
@@ -64,12 +76,6 @@ list(APPEND LD_FLAGS
 add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
 link_libraries(${LD_FLAGS})
-
-# Use Python
-if(FlexFlow_USE_Python)
-  add_compile_options(-DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON)
-  add_subdirectory(python)
-endif()
 
 protobuf_generate_cpp(FLEXFLOW_PB_SRC FLEXFLOW_PB_HDR ${FLEXFLOW_ROOT}/src/runtime/strategy.proto)
 get_filename_component(FLEXFLOW_PB_INC_DIR ${FLEXFLOW_PB_HDR} DIRECTORY)
@@ -120,6 +126,9 @@ else()
   cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
 endif()
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+if(ENABLE_GASNET)
+  target_link_libraries(flexflow PRIVATE GASNet::GASNet)
+endif()
 
 option(BUILD_RESNET "build resnet example" OFF)
 option(BUILD_ALEXNET "build alexnet example" OFF)

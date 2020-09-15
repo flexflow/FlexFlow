@@ -20,6 +20,9 @@ CUDNN_DIR=/scratch/shared/wwu12/cudnn
 # enable Python
 USE_PYTHON=ON
 
+# enable MPI
+USE_GASNET=ON
+
 # set Legion dir, if not set, FlexFlow will use the default Legion in the repo
 LEGION_DIR=/home/wwu12/flexflow-tpl/build/legion/install
 
