@@ -1,8 +1,7 @@
 set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
 
-set(CUDNN_ROOT $ENV{CUDNN_ROOT})
 set(CUDA_ROOT $ENV{CUDA_ROOT})
-
+list(APPEND CMAKE_PREFIX_PATH ${CUDA_ROOT})
 find_package(CUDA REQUIRED)
 string(REGEX REPLACE "[^\;]*cudart[^\;]*(\;?)" "" CUDA_LIBRARIES "${CUDA_LIBRARIES}")
 set(CUDA_LIBRARIES ${CUDA_LIBRARIES})
@@ -13,6 +12,22 @@ if(CUDA_FOUND)
   set(CUDADRV_LIBRARIES ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/libcuda${LIBEXT})
   set(CUDA_CUBLAS_LIBRARIES ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcublas${LIBEXT})
   set(CUDA_curand_LIBRARY ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libcurand${LIBEXT})
+endif()
+
+# set CUDA ARCH
+# if CUDA_ARCH is not specified, then detect it
+if("${CUDA_ARCH}" STREQUAL "")
+  include(utils)
+  detect_installed_gpus(DETECTED_CUDA_ARCH)
+  message( STATUS "CUDA Detected CUDA_ARCH : ${DETECTED_CUDA_ARCH}" )
+  set(CUDA_ARCH ${DETECTED_CUDA_ARCH})
+endif()
+#if CUDA_ARCH is empty
+if("${CUDA_ARCH}" STREQUAL "")
+  set(CUDA_GENCODE "")
+else()
+  string(REPLACE "," ";" CUDA_GENCODE "${CUDA_ARCH}")
+  string(REGEX REPLACE "([0-9]+)" "-gencode arch=compute_\\1,code=sm_\\1" CUDA_GENCODE "${CUDA_GENCODE}")
 endif()
 
 # find cudnn
@@ -51,6 +66,7 @@ if(CUDA_FOUND)
   message( STATUS "CUDA driver libraries : ${CUDADRV_LIBRARIES}" )
   message( STATUS "CUBLAS libraries : ${CUDA_CUBLAS_LIBRARIES}" )
   message( STATUS "CURAND libraries : ${CUDA_curand_LIBRARY}" )
+  message( STATUS "CUDA Arch : ${CUDA_GENCODE}" )
 else()
   message( FATAL_ERROR "CUDA package not found -> specify search path via CUDA_ROOT variable")
 endif()

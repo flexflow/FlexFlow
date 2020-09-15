@@ -30,6 +30,9 @@ option(ENABLE_PYTHON "Enable Python" ON)
 # option for using Python
 option(ENABLE_GASNET "Run FlexFlow with GASNet" OFF)  
 
+# option for cuda arch
+set(CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
+
 # ZLIB
 include(zlib)
 
@@ -42,7 +45,7 @@ include(protobuf)
 # Legion
 include(legion)
 
-# MPI
+# GASNet
 if(ENABLE_GASNET) 
   include(gasnet)
 endif()
@@ -121,9 +124,9 @@ set(FLEXFLOW_GPU_SRC
 
 # compile flexflow lib
 if(BUILD_SHARED_LIBS)
-  cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
+  cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
 else()
-  cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
+  cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
 endif()
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
 if(ENABLE_GASNET)
