@@ -1,15 +1,15 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.10)
 
 project(FlexFlowExample_candle_uno)
 set(project_target candle_uno)
 
-set(CPU_SOURCES
+set(CPU_SRC
   candle_uno.cc
-  candle_uno.cu
   candle_uno.h)
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -Wno-deprecated-gpu-targets)
+set(GPU_SRC
+  candle_uno.cu)
 
-cuda_add_executable(${project_target} ${CPU_SOURCES})
-target_include_directories(${project_target} PRIVATE ${FLOW_INCLUDE} ${CMAKE_INSTALL_INCLUDEDIR})
-target_link_libraries(${project_target} flexflow)
+cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})
+target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
+target_link_libraries(${project_target} -Wl,--whole-archive flexflow legion realm -Wl,--no-whole-archive ${FLEXFLOW_EXT_LIBRARIES})
