@@ -202,7 +202,7 @@ void ElementBinary::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(ELEMENTBINARY_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(ELEMENTBINARY_INIT_TASK_ID, task_is,
                          TaskArgument(this, sizeof(ElementBinary)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));

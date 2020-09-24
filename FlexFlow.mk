@@ -45,13 +45,13 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 
 INC_FLAGS	+= -I${FF_HOME}/include/ -I${CUDNN}/include
 
-LD_FLAGS        += -lcuda -lcudart -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L${CUDNN}/lib64 #-mavx2 -mfma -mf16c
+LD_FLAGS        += -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L${CUDNN}/lib64 #-mavx2 -mfma -mf16c
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
 # For Point and Rect typedefs
-CC_FLAGS	+= -DDISABLE_LEGION_CUDA_HIJACK -std=c++11 #-DMAX_RETURN_SIZE=16777216
-NVCC_FLAGS  	+= -DDISABLE_LEGION_CUDA_HIJACK -std=c++11 #-DMAX_RETURN_SIZE=16777216
+CC_FLAGS	+= -std=c++11 #-DMAX_RETURN_SIZE=16777216
+NVCC_FLAGS  	+= -std=c++11 #-DMAX_RETURN_SIZE=16777216
 
 ifndef CUDA
 #$(error CUDA variable is not defined, aborting build)

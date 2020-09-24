@@ -970,6 +970,7 @@ void FFModel::backward()
 void FFModel::update()
 {
   optimizer->next();
+  return;
   for (size_t i = 0; i < parameters.size(); i++) {
     optimizer->update(&(parameters[i]));
   }
