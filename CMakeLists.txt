@@ -3,9 +3,6 @@ project(FlexFlow)
 
 include(ExternalProject) 
 
-# Briefly change lib suffixes to get static zlib
-# set(_CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
-# SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
 
