@@ -110,6 +110,7 @@ set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/ops/pool_2d.cu
   ${FLEXFLOW_ROOT}/src/ops/softmax.cu
   ${FLEXFLOW_ROOT}/src/ops/dropout.cu
+  ${FLEXFLOW_ROOT}/src/ops/batch_matmul.cu
   ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cu
   ${FLEXFLOW_ROOT}/src/loss_functions/loss_functions.cu
   ${FLEXFLOW_ROOT}/src/runtime/accessor_kernel.cu
