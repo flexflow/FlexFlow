@@ -327,7 +327,7 @@ void Linear::forward_kernel(const LinearMeta* m,
                             float* output_ptr,
                             const float* kernel_ptr,
                             const float* bias_ptr,
-                            int in_dim, int out_dim, int batch_size)
+                            int in_dim, int out_dim, int batch_size) const
 {
   float alpha = 1.0f, beta = 0.0f;
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
@@ -459,9 +459,7 @@ void Linear::backward_kernel(const LinearMeta* m,
                              const float* kernel_ptr,
                              float* kernel_grad_ptr,
                              float* bias_grad_ptr,
-                             int in_dim,
-                             int out_dim,
-                             int batch_size)
+                             int in_dim, int out_dim, int batch_size) const
 {
   float alpha = 1.0f;
   int output_size = out_dim * batch_size;

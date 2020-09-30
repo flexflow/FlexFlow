@@ -400,7 +400,7 @@ void Conv2D::forward_kernel(const Conv2DMeta* m,
                             const float* input_ptr,
                             float* output_ptr,
                             const float* filter_ptr,
-                            const float* bias_ptr)
+                            const float* bias_ptr) const
 {
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(cudnnConvolutionForward(m->handle.dnn, &alpha,
@@ -515,7 +515,7 @@ void Conv2D::backward_kernel(const Conv2DMeta* m,
                              float* output_grad_ptr,
                              const float* kernel_ptr,
                              float* kernel_grad_ptr,
-                             float* bias_grad_ptr)
+                             float* bias_grad_ptr) const
 {
   float alpha = 1.0f;
   //float beta = 0.0f;

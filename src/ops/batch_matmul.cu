@@ -17,11 +17,10 @@
 #include "cuda_helper.h"
 
 // return A*B+C
-BatchMatmul::BatchMatmul(FModel& model,
+BatchMatmul::BatchMatmul(FFModel& model,
                          const Tensor& A,
-                         const Tensor& B,
-                         const Tensor& C)
-: Op(model, OP_BATCHMATMUL, NULL, "BatchMatmul_", A, B, C)
+                         const Tensor& B)
+: Op(model, OP_BATCHMATMUL, "BatchMatmul_", A, B)
 {
   assert(A.numDim == B.numDim);
   for (int i = A.numDim-1; i >= 2; i++)
@@ -32,15 +31,22 @@ BatchMatmul::BatchMatmul(FModel& model,
     outputs[0].adim[i] = A.adim[i];
   outputs[0].adim[0] = B.adim[0];
   // C is not none
-  if (C != Tensor::NO_TENSOR) {
-    numInputs = 3;
-    assert(C.numDim == outputs[0].numDim);
-    for (int i = 0; i < C.numDim; i++)
-      assert(C.adim[i] == outputs[0].adim[i]);
-  } else {
+  //if (C != Tensor::NO_TENSOR) {
+  //  numInputs = 3;
+  //  assert(C.numDim == outputs[0].numDim);
+  //  for (int i = 0; i < C.numDim; i++)
+  //    assert(C.adim[i] == outputs[0].adim[i]);
+  //} else {
     numInputs = 2;
-  }
+  //}
   numWeights = 0;
+}
+
+Tensor BatchMatmul::init_inout(FFModel& model, const Tensor& _input)
+{
+  // Deprecated APIs --- remove soon
+  assert(false);
+  return outputs[0];
 }
 
 void BatchMatmul::create_weights(FFModel& model)
@@ -97,7 +103,7 @@ void BatchMatmul::create_output_and_partition_with_dim(FFModel& model)
   outputs[0].owner_op = this;
   outputs[0].owner_idx = 0;
   for (int i = 0; i < numInputs; i++) {
-    Rect<NDIM> input_rect = runtime->get_index_space_color_space(
+    Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
         ctx, inputs[i].part.get_index_partition());
     if (input_rect == part_rect) {
       input_lps[i] = inputs[i].part;
@@ -110,22 +116,50 @@ void BatchMatmul::create_output_and_partition_with_dim(FFModel& model)
 }
 
 __host__
-void BatchMatmul::init_task(const Task* task,
+OpMeta* BatchMatmul::init_task(const Task* task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
+  FFHandler handle = *((const FFHandler*) task->local_args);
+  BatchMatmulMeta* m = new BatchMatmulMeta(handle);
+  return m;
 }
 
-__host__
 void BatchMatmul::init(const FFModel& ff)
+{
+  int dim = outputs[0].numDim;
+  switch (dim) {
+    case 3:
+    {
+      init_with_dim<3>(ff);
+      break;
+    }
+    case 4:
+    {
+      init_with_dim<4>(ff);
+      break;
+    }
+    default:
+      assert(false);
+  }
+}
+
+template<int NDIM>
+void BatchMatmul::init_with_dim(const FFModel& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
+  int idx = 0;
+  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
+    FFHandler handle = ff.handlers[idx++];
+    argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
+  }
   IndexLauncher launcher(BATCHMATMUL_INIT_TASK_ID, task_is,
                          TaskArgument(this, sizeof(BatchMatmul)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hashid(std::string(name)));
+                         FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(outputs[0].part, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0].region));
@@ -136,7 +170,13 @@ void BatchMatmul::init(const FFModel& ff)
         READ_ONLY, EXCLUSIVE, inputs[i].region));
     launcher.add_field(i+1, FID_DATA);
   }
-  runtime->execute_index_space(ctx, launcher);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  idx = 0;
+  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
+    meta[idx++] = fm.get_result<OpMeta*>(*it);
+  }
+
 }
 
 /*
@@ -145,18 +185,18 @@ B: (batch, k, m)
 O: (batch, n, m)
 O = A * B
 */
-void BatchMatmul::forward_kernel(const BatchMatmulMeta* m,
+void BatchMatmul::forward_kernel(const BatchMatmulMeta* meta,
                                  float* o_ptr,
                                  const float* a_ptr,
                                  const float* b_ptr,
                                  const float* c_ptr,
-                                 int m, int n, int k, int batch)
+                                 int m, int n, int k, int batch) const
 {
   int a_stride = n * k;
   int b_stride = m * k;
   int o_stride = n * m;
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDA(cublasSgemmStridedBatched(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_N,
+  checkCUDA(cublasSgemmStridedBatched(meta->handle.blas, CUBLAS_OP_N, CUBLAS_OP_N,
       m, n, k, &alpha, b_ptr, m, b_stride, a_ptr, k, a_stride,
       &beta, o_ptr, m, o_stride, batch));
   // current assume c is null
@@ -178,6 +218,7 @@ void BatchMatmul::forward_task(const Task* task,
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   const BatchMatmul* bmm = (const BatchMatmul*) task->args;
+  const BatchMatmulMeta* meta = *((BatchMatmulMeta**) task->local_args);
   Domain out_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain a_domain = runtime->get_index_space_domain(
@@ -222,10 +263,10 @@ void BatchMatmul::forward_task(const Task* task,
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDA(cublasSetStream(meta->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
 #endif
-  bmm->forward_kernel(m, out_ptr, a_ptr, b_ptr, c_ptr,
+  bmm->forward_kernel(meta, out_ptr, a_ptr, b_ptr, c_ptr,
     m, n, k, batch);
   if (bmm->profiling) {
     cudaEventRecord(t_end);
@@ -272,7 +313,7 @@ void BatchMatmul::forward_with_dim(const FFModel& ff)
   IndexLauncher launcher(BATCHMATMUL_FWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(BatchMatmul)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hashid(std::string(name)));
+                         FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(outputs[0].part, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0].region));
@@ -293,7 +334,7 @@ O, OGrad: (batch, n, m)
 AGrad = OGrad * B^T
 BGrad = A^T * OGrad
 */
-void BatchMatmul::backward_kernel(const BatchMatmulMeta* m,
+void BatchMatmul::backward_kernel(const BatchMatmulMeta* meta,
                                   const float* o_ptr,
                                   const float* o_grad_ptr,
                                   const float* a_ptr,
@@ -301,16 +342,16 @@ void BatchMatmul::backward_kernel(const BatchMatmulMeta* m,
                                   const float* b_ptr,
                                   float* b_grad_ptr,
                                   float* c_grad_ptr,
-                                  int m, int n, int k, int batch)
+                                  int m, int n, int k, int batch) const
 {
   int a_stride = n * k;
   int b_stride = m * k;
   int o_stride = n * m;
   float alpha = 1.0f;
-  checkCUDA(cublasSgemmStridedBatched(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
+  checkCUDA(cublasSgemmStridedBatched(meta->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
       k, n, m, &alpha, b_ptr, m, b_stride, o_grad_ptr, m, o_stride,
       &alpha, a_grad_ptr, k, a_stride, batch));
-  checkCUDA(cublasSgemmStridedBatched(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_T,
+  checkCUDA(cublasSgemmStridedBatched(meta->handle.blas, CUBLAS_OP_N, CUBLAS_OP_T,
       m, k, n, &alpha, o_grad_ptr, m, o_stride, a_ptr, k, a_stride,
       &alpha, b_grad_ptr, m, b_stride, batch));
 }
@@ -334,7 +375,7 @@ void BatchMatmul::backward_task(const Task *task,
   assert(regions.size() == 6);
   assert(task->regions.size() == 6);
   BatchMatmul* bmm = (BatchMatmul*) task->args;
-  const BatchMatmulMeta* m = *((BatchMatmulMeta**) task->local_args);
+  const BatchMatmulMeta* meta = *((BatchMatmulMeta**) task->local_args);
   // output domains
   Domain out_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
@@ -380,10 +421,10 @@ void BatchMatmul::backward_task(const Task *task,
     regions[3], task->regions[3], FID_DATA, ctx, runtime);
   const float* b_ptr = helperGetTensorPointerRO<float>(
     regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  float* b_grad_ptr = helperGetTensorPointerRO<float>(
+  float* b_grad_ptr = helperGetTensorPointerRW<float>(
     regions[5], task->regions[5], FID_DATA, ctx, runtime);
 
-  const float* c_grad_ptr = NULL;
+  float* c_grad_ptr = NULL;
   cudaEvent_t t_start, t_end;
   if (bmm->profiling) {
     cudaEventCreate(&t_start);
@@ -393,10 +434,10 @@ void BatchMatmul::backward_task(const Task *task,
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDA(cublasSetStream(meta->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
 #endif
-  bmm->backward_kernel(m, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr,
+  bmm->backward_kernel(meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr,
     b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch);
   if (bmm->profiling) {
     cudaEventRecord(t_end);
@@ -452,7 +493,7 @@ void BatchMatmul::backward_with_dim(const FFModel& ff)
   IndexLauncher launcher(BATCHMATMUL_BWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(BatchMatmul)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hashid(std::string(name)));
+                         FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): output
   launcher.add_region_requirement(
     RegionRequirement(outputs[0].part, 0/*projection id*/,
@@ -492,7 +533,7 @@ void BatchMatmul::print_layer(const FFModel& ff)
   return;
 }
 
-BatchMatmul::BatchMatmul(FFhandler handler)
+BatchMatmulMeta::BatchMatmulMeta(FFHandler handler)
 : OpMeta(handler)
 {}
 
@@ -503,4 +544,5 @@ bool BatchMatmul::measure_compute_time(Simulator* sim,
 {
   // To be implemented
   assert(false);
+  return false;
 }

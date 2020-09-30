@@ -62,6 +62,9 @@ enum TaskIDs {
   BATCHNORM_INIT_PARA_TASK_ID,
   BATCHNORM_FWD_TASK_ID,
   BATCHNORM_BWD_TASK_ID,
+  BATCHMATMUL_INIT_TASK_ID,
+  BATCHMATMUL_FWD_TASK_ID,
+  BATCHMATMUL_BWD_TASK_ID,
   LINEAR_INIT_TASK_ID,
   LINEAR_INIT_PARA_TASK_ID,
   LINEAR_FWD_TASK_ID,
@@ -590,7 +593,7 @@ public:
                       const float* input_ptr,
                       float* output_ptr,
                       const float* filter_ptr,
-                      const float* bias_ptr);
+                      const float* bias_ptr) const;
   void backward_kernel(const Conv2DMeta* m,
                        const float* input_ptr,
                        float* input_grad_ptr,
@@ -598,7 +601,7 @@ public:
                        float* output_grad_ptr,
                        const float* kernel_ptr,
                        float* kernel_grad_ptr,
-                       float* bias_ptr);
+                       float* bias_ptr) const;
   bool measure_compute_time(Simulator* sim,
                             const ParallelConfig& pc,
                             float& forward_time,
@@ -815,7 +818,7 @@ public:
                       float* output_ptr,
                       const float* filter_ptr,
                       const float* bias_ptr,
-                      int in_dim, int out_dim, int batch_size);
+                      int in_dim, int out_dim, int batch_size) const;
   void backward_kernel(const LinearMeta* m,
                        const float* input_ptr,
                        float* input_grad_ptr,
@@ -824,7 +827,7 @@ public:
                        const float* kernel_ptr,
                        float* kernel_grad_ptr,
                        float* bias_ptr,
-                       int in_dim, int out_dim, int batch_size);
+                       int in_dim, int out_dim, int batch_size) const;
   bool measure_compute_time(Simulator* sim,
                             const ParallelConfig& pc,
                             float& forward_time,
@@ -836,6 +839,64 @@ public:
   ActiMode activation;
   Initializer *kernel_initializer;
   Initializer *bias_initializer;
+};
+
+class BatchMatmulMeta : public OpMeta {
+public:
+  BatchMatmulMeta(FFHandler handler);
+};
+
+class BatchMatmul : public Op {
+public:
+  BatchMatmul(FFModel& model,
+              const Tensor& A,
+              const Tensor& B);
+  Tensor init_inout(FFModel& model, const Tensor& input);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model);
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  void forward_kernel(const BatchMatmulMeta* meta,
+                      float* o_ptr,
+                      const float* a_ptr,
+                      const float* b_ptr,
+                      const float* c_ptr,
+                      int m, int n, int k, int batch) const;
+  void backward_kernel(const BatchMatmulMeta* meta,
+                       const float* o_ptr,
+                       const float* o_grad_ptr,
+                       const float* a_ptr,
+                       float* a_grad_ptr,
+                       const float* b_ptr,
+                       float* b_grad_ptr,
+                       float* c_grad_ptr,
+                       int m, int n, int k, int batch) const;
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
+private:
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
+  template<int NDIM>
+  void init_with_dim(const FFModel& ff);
+  template<int NDIM>
+  void forward_with_dim(const FFModel& ff);
+  template<int NDIM>
+  void backward_with_dim(const FFModel& ff);
+public:
+  bool profiling;
 };
 
 class Embedding : public Op {

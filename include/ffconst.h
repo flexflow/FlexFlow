@@ -53,6 +53,7 @@ enum OperatorType {
   OP_CONV2D,
   OP_DROPOUT,
   OP_LINEAR,
+  OP_BATCHMATMUL,
   OP_POOL2D,
   OP_RELU,
   OP_SIGMOID,

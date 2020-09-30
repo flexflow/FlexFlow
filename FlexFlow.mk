@@ -35,6 +35,7 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/embedding.cu\
 		${FF_HOME}/src/ops/element_binary.cu\
 		${FF_HOME}/src/ops/element_unary.cu\
+		${FF_HOME}/src/ops/batch_matmul.cu\
 		${FF_HOME}/src/loss_functions/loss_functions.cu\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cu\
 		${FF_HOME}/src/runtime/initializer_kernel.cu\
