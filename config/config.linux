@@ -1,0 +1,37 @@
+#!/bin/bash
+
+echo " Defaults for Linux machine"
+
+# set the CC and CXX, usually it is not needed as cmake can detect it
+# set CC and CXX to mpicc and mpic++ when enable gasnet
+CC=mpicc
+CXX=mpic++
+
+# add flags if needed
+#CC_FLAGS=${CC_FLAGS+=""}
+#NVCC_FLAGS=${NVCC_FLAGS+=""}
+#LD_FLAGS=${LD_FLAGS+=""}
+
+# set build type
+#BUILD_TYPE=Debug
+
+# set CUDA Arch
+#CUDA_ARCH=60
+
+# set CUDNN dir
+CUDNN_DIR=/scratch/shared/wwu12/cudnn
+
+# enable Python
+USE_PYTHON=ON
+
+# enable GASNet
+USE_GASNET=ON
+
+# set Legion dir, if not set, FlexFlow will use the default Legion in the repo
+LEGION_DIR=/home/wwu12/flexflow-tpl/build/legion/install
+
+# set Protobuf dir, if not set, FlexFlow will use the default Protobuf in the repo
+PROTOBUF_DIR=/home/wwu12/flexflow-tpl/build/protobuf/install
+
+. $(dirname $0)/config.inc
+run_cmake $*

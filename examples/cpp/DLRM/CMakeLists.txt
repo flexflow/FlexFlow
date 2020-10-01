@@ -1,17 +1,15 @@
-  
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.10)
 
-project(FlexFlowExample_ResNet)
+project(FlexFlowExample_DLRM)
 set(project_target dlrm)
 find_package(HDF5 REQUIRED COMPONENTS C)
-set(CPU_SOURCES
+set(CPU_SRC
   dlrm.cc
-  dlrm.cu
   dlrm.h)
 
+set(GPU_SRC
+  dlrm.cu)
 
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -Wno-deprecated-gpu-targets)
-
-cuda_add_executable(${project_target} ${CPU_SOURCES})
-target_include_directories(${project_target} PRIVATE ${FLOW_INCLUDE} ${CMAKE_INSTALL_INCLUDEDIR} ${HDF5_C_INCLUDE_DIRS})
-target_link_libraries(${project_target} flexflow ${HDF5_C_LIBRARIES})
+cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})
+target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR} ${HDF5_C_INCLUDE_DIRS})
+target_link_libraries(${project_target} -Wl,--whole-archive flexflow legion realm -Wl,--no-whole-archive ${FLEXFLOW_EXT_LIBRARIES} ${HDF5_C_LIBRARIES})

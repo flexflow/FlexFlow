@@ -1,6 +1,15 @@
-set(protobuf_BUILD_TESTS OFF CACHE BOOL "Disable tests for protobuf")
-set(BUILD_SHARED_LIBS OFF)
-set(LIBRARY_POLICY STATIC)
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../protobuf/cmake ${CMAKE_CURRENT_BINARY_DIR}/protobuf)
-include_directories(${CMAKE_CURRENT_LIST_DIR}/../protobuf/src)
-link_directories(${CMAKE_CURRENT_BINARY_DIR}/protobuf)
+list(APPEND CMAKE_PREFIX_PATH ${PROTOBUF_ROOT})
+find_package(Protobuf REQUIRED)
+
+if(Protobuf_FOUND)
+  list(APPEND FLEXFLOW_EXT_LIBRARIES ${Protobuf_LIBRARIES})
+  include_directories(${Protobuf_INCLUDE_DIRS})
+  message( STATUS "Protobuf version : ${Protobuf_VERSION}" )
+  message( STATUS "Protobuf include path : ${Protobuf_INCLUDE_DIRS}" )
+  message( STATUS "Protobuf libraries : ${Protobuf_LIBRARIES}" )
+  message( STATUS "Protobuf compiler : ${Protobuf_PROTOC_EXECUTABLE}" )
+else()
+  message( WARNING "Protobuf package not found -> specify search path via PROTOBUF_ROOT variable")
+endif()
+
+
