@@ -72,6 +72,14 @@ __global__
 void apply_add_with_scale(float *data_ptr, const float *grad_ptr,
                           size_t size, float scale);
 
+// Use by concat and split
+__global__
+void add_with_stride(float* output, const float* input,
+                     int num_blocks, int output_blk_size, int input_blk_size);
+__global__
+void copy_with_stride(float* output, const float* input,
+                      int num_blocks, int output_blk_size, int input_blk_size);
+
 __host__
 void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
                int num_replica, float learning_rate);

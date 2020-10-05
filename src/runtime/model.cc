@@ -1700,11 +1700,11 @@ void register_internal_tasks()
   }
   // Concat task
   {
-    TaskVariantRegistrar registrar(CONCAT_INIT_TASK_ID, "concat_init_task");
+    TaskVariantRegistrar registrar(CONCAT_INIT_TASK_ID, "Concat Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta*, Concat::init_task>(
-        registrar, "concat_init_task");
+        registrar, "Concat Init Task");
   }
   {
     TaskVariantRegistrar registrar(CONCAT_FWD_TASK_ID, "Concat Forward");
@@ -1719,6 +1719,72 @@ void register_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<Concat::backward_task>(
         registrar, "Concat Backward Task");
+  }
+  // Split task
+  {
+    TaskVariantRegistrar registrar(SPLIT_INIT_TASK_ID, "Split Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Split::init_task>(
+        registrar, "Split Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(SPLIT_FWD_TASK_ID, "Split Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Split::forward_task>(
+        registrar, "Split Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(SPLIT_BWD_TASK_ID, "Split Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Split::backward_task>(
+        registrar, "Split Backward Task");
+  }
+  // Reverse task
+  {
+    TaskVariantRegistrar registrar(REVERSE_INIT_TASK_ID, "Reverse Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Reverse::init_task>(
+        registrar, "Reverse Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(REVERSE_FWD_TASK_ID, "Reverse Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Reverse::forward_task>(
+        registrar, "Reverse Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(REVERSE_BWD_TASK_ID, "Reverse Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Reverse::backward_task>(
+        registrar, "Reverse Backward Task");
+  }
+  // Transpose task
+  {
+    TaskVariantRegistrar registrar(TRANSPOSE_INIT_TASK_ID, "Transpose Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Transpose::init_task>(
+        registrar, "Transpose Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(TRANSPOSE_FWD_TASK_ID, "Transpose Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Transpose::forward_task>(
+        registrar, "Transpose Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(TRANSPOSE_BWD_TASK_ID, "Transpose Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Transpose::backward_task>(
+        registrar, "Transpose Backward Task");
   }
   // Optimizer
   {

@@ -16,7 +16,15 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-// return A*B+C
+Tensor FFModel::batch_matmul(const Tensor& A,
+                             const Tensor& B)
+{
+  BatchMatmul* bmm = new BatchMatmul(*this, A, B);
+  layers.push_back(bmm);
+  return bmm->outputs[0];
+}
+
+// return A*B
 BatchMatmul::BatchMatmul(FFModel& model,
                          const Tensor& A,
                          const Tensor& B)
@@ -117,8 +125,8 @@ void BatchMatmul::create_output_and_partition_with_dim(FFModel& model)
 
 __host__
 OpMeta* BatchMatmul::init_task(const Task* task,
-                            const std::vector<PhysicalRegion>& regions,
-                            Context ctx, Runtime* runtime)
+                               const std::vector<PhysicalRegion>& regions,
+                               Context ctx, Runtime* runtime)
 {
   FFHandler handle = *((const FFHandler*) task->local_args);
   BatchMatmulMeta* m = new BatchMatmulMeta(handle);

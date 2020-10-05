@@ -80,6 +80,15 @@ enum TaskIDs {
   CONCAT_INIT_TASK_ID,
   CONCAT_FWD_TASK_ID,
   CONCAT_BWD_TASK_ID,
+  SPLIT_INIT_TASK_ID,
+  SPLIT_FWD_TASK_ID,
+  SPLIT_BWD_TASK_ID,
+  REVERSE_INIT_TASK_ID,
+  REVERSE_FWD_TASK_ID,
+  REVERSE_BWD_TASK_ID,
+  TRANSPOSE_INIT_TASK_ID,
+  TRANSPOSE_FWD_TASK_ID,
+  TRANSPOSE_BWD_TASK_ID,
   MSELOSS_BWD_TASK_ID,
   //Metrics tasks
   METRICS_COMP_TASK_ID,
@@ -295,6 +304,9 @@ public:
   // Add a batch_norm layer
   Tensor batch_norm(const Tensor& input,
                     bool relu = true);
+  // Add a batch_matmul layer
+  Tensor batch_matmul(const Tensor& A,
+                      const Tensor& B);
   // Add a dense layer
   Tensor dense(const Tensor& input,
                int outDim,
@@ -306,11 +318,18 @@ public:
   // Add a concat layer
   Tensor concat(int n, const Tensor* tensors,
                 int axis);
+  // Add a split layer
+  void split(const Tensor& input, Tensor* outputs,
+             const std::vector<int>& split, int axis);
   // Add a flat layer
   Tensor flat(const Tensor& input);
   // Add a softmax layer
   Tensor softmax(const Tensor& input);
   // Create input tensors and constants
+  Tensor transpose(const Tensor& input,
+                   const std::vector<int>& perm);
+  Tensor reverse(const Tensor& input,
+                 int axis);
   template<int NDIM>
   Tensor create_tensor(const int dims[],
                        const std::string& name,
@@ -1031,6 +1050,77 @@ public:
 #endif
 };
 
+class Transpose : public Op {
+public:
+  Transpose(FFModel& model,
+            const Tensor& input,
+            const std::vector<int>& perm);
+  Tensor init_inout(FFModel& model, const Tensor& input);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
+private:
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
+public:
+  int perm[MAX_DIM];
+};
+
+class Reverse : public Op {
+public:
+  Reverse(FFModel& model,
+          const Tensor& input,
+          int axis);
+  Tensor init_inout(FFModel& model, const Tensor& input);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
+private:
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
+public:
+  int axis;
+};
+
+class ConcatMeta : public OpMeta {
+public:
+  ConcatMeta(FFHandler handle) : OpMeta(handle) {};
+};
+
 class Concat : public Op {
 public:
   Concat(FFModel& model,
@@ -1065,9 +1155,43 @@ public:
   bool profiling;
 };
 
-class ConcatMeta : public OpMeta {
+class Split : public Op {
 public:
-  ConcatMeta(FFHandler handle) : OpMeta(handle) {};
+  Split(FFModel& model,
+        const Tensor& input,
+        const std::vector<int>& split,
+        int axis);
+  Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
+  //void add_to_model(FFModel& model) {assert(0);}
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  //void update(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  //Parameter* get_parameter(int index) {assert(0); return NULL;}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
+private:
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
+public:
+  int axis;
+  //IndexSpace task_is;
+  bool profiling;
 };
 
 class UtilityTasks {

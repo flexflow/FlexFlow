@@ -101,6 +101,7 @@ set(FLEXFLOW_SRC
 set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/ops/batch_norm.cu
   ${FLEXFLOW_ROOT}/src/ops/concat.cu
+  ${FLEXFLOW_ROOT}/src/ops/split.cu
   ${FLEXFLOW_ROOT}/src/ops/conv_2d.cu
   ${FLEXFLOW_ROOT}/src/ops/element_binary.cu
   ${FLEXFLOW_ROOT}/src/ops/element_unary.cu
@@ -111,6 +112,8 @@ set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/ops/softmax.cu
   ${FLEXFLOW_ROOT}/src/ops/dropout.cu
   ${FLEXFLOW_ROOT}/src/ops/batch_matmul.cu
+  ${FLEXFLOW_ROOT}/src/ops/reverse.cu
+  ${FLEXFLOW_ROOT}/src/ops/transpose.cu
   ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cu
   ${FLEXFLOW_ROOT}/src/loss_functions/loss_functions.cu
   ${FLEXFLOW_ROOT}/src/runtime/accessor_kernel.cu

@@ -30,6 +30,7 @@ Concat::Concat(FFModel& model,
 : Op(model, OP_CONCAT, "Concat_"+std::to_string(_axis), _n, _tensors), axis(_axis),
    profiling(model.config.profiling)
 {
+  //TODO: swich to use the Legion dim ordering
   int num_dim = inputs[0].numDim;
   outputs[0].numDim = num_dim;
   for (int i = 0; i < num_dim; i++)
@@ -41,6 +42,8 @@ Concat::Concat(FFModel& model,
       else
         outputs[0].adim[j] += inputs[i].adim[j];
     }
+  numOutputs = 1;
+  numWeights = 0;
 }
 
 void Concat::create_weights(FFModel& model)
@@ -201,43 +204,6 @@ void Concat::init(const FFModel& ff)
   //  meta[idx++] = fm.get_result<OpMeta*>(*it);
   //}
 }
-
-__global__
-void add_with_stride(float* output,
-                     const float* input,
-                     int num_blocks,
-                     int output_blk_size,
-                     int input_blk_size)
-{
-  int min_blk_size = min(output_blk_size, input_blk_size);
-  CUDA_KERNEL_LOOP(i, num_blocks * min_blk_size)
-  {
-    int blk_idx = i / min_blk_size;
-    int blk_offset = i % min_blk_size;
-    int input_offset = blk_idx * input_blk_size + blk_offset;
-    int output_offset = blk_idx * output_blk_size + blk_offset;
-    output[output_offset] += input[input_offset];
-  }
-}
-
-__global__
-void copy_with_stride(float* output,
-                      const float* input,
-                      int num_blocks,
-                      int output_blk_size,
-                      int input_blk_size)
-{
-  int min_blk_size = min(output_blk_size, input_blk_size);
-  CUDA_KERNEL_LOOP(i, num_blocks * min_blk_size)
-  {
-    int blk_idx = i / min_blk_size;
-    int blk_offset = i % min_blk_size;
-    int input_offset = blk_idx * input_blk_size + blk_offset;
-    int output_offset = blk_idx * output_blk_size + blk_offset;
-    output[output_offset] = input[input_offset];
-  }
-}
-
 
 template<int N>
 void calc_blk_size(coord_t& num_blocks,

@@ -67,6 +67,44 @@ void apply_add_with_scale(float *data_ptr, const float *grad_ptr,
   }
 }
 
+__global__
+void add_with_stride(float* output,
+                     const float* input,
+                     int num_blocks,
+                     int output_blk_size,
+                     int input_blk_size)
+{
+  int min_blk_size = min(output_blk_size, input_blk_size);
+  CUDA_KERNEL_LOOP(i, num_blocks * min_blk_size)
+  {
+    int blk_idx = i / min_blk_size;
+    int blk_offset = i % min_blk_size;
+    int input_offset = blk_idx * input_blk_size + blk_offset;
+    int output_offset = blk_idx * output_blk_size + blk_offset;
+    output[output_offset] += input[input_offset];
+  }
+}
+
+__global__
+void copy_with_stride(float* output,
+                      const float* input,
+                      int num_blocks,
+                      int output_blk_size,
+                      int input_blk_size)
+{
+  int min_blk_size = min(output_blk_size, input_blk_size);
+  CUDA_KERNEL_LOOP(i, num_blocks * min_blk_size)
+  {
+    int blk_idx = i / min_blk_size;
+    int blk_offset = i % min_blk_size;
+    int input_offset = blk_idx * input_blk_size + blk_offset;
+    int output_offset = blk_idx * output_blk_size + blk_offset;
+    output[output_offset] = input[input_offset];
+  }
+}
+
+
+
 __host__
 void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
                int num_replica, float learning_rate)
