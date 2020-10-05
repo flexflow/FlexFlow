@@ -441,6 +441,21 @@ flexflow_model_add_batch_norm(
 }
 
 flexflow_tensor_t
+flexflow_model_add_batch_matmul(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t a_,
+  const flexflow_tensor_t b_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *a = FFCObjectWrapper::unwrap(a_);
+  Tensor *b = FFCObjectWrapper::unwrap(b_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->batch_matmul(*a, *b);
+  DEBUG_PRINT("[BatchMatMul] new Tensor %p", tensor);
+  return FFCObjectWrapper::wrap(tensor); 
+}
+
+flexflow_tensor_t
 flexflow_model_add_dense(
   flexflow_model_t handle_,
   const flexflow_tensor_t input_,
@@ -507,6 +522,28 @@ flexflow_model_add_concat(
   return FFCObjectWrapper::wrap(tensor); 
 }
 
+void
+flexflow_model_add_split(
+  flexflow_model_t handle_,
+  flexflow_tensor_t input_,
+  int n,
+  flexflow_tensor_t* outputs_,
+  int* split,
+  int axis)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  std::vector<int> split_vec;
+  Tensor *outputs = new Tensor[n];
+  for (int i = 0; i < n; i++ ) {
+    split_vec.push_back(split[i]);
+  }
+  handle->split(*input, outputs, split_vec, axis);
+  for (int i = 0; i < n; i++ ) {
+    outputs_[i] = FFCObjectWrapper::wrap(&(outputs[i]));
+  }
+}
+
 flexflow_tensor_t
 flexflow_model_add_flat(
   flexflow_model_t handle_,
@@ -542,6 +579,39 @@ flexflow_model_add_softmax(
   *tensor = handle->softmax(*input);
   DEBUG_PRINT("[Softmax] new Tensor %p", tensor);
   return FFCObjectWrapper::wrap(tensor);   
+}
+
+flexflow_tensor_t
+flexflow_model_add_transpose(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  int n,
+  int* perm)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *tensor = new Tensor();
+  std::vector<int> perm_vec;
+  for (int i = 0; i < n; i++) {
+    perm_vec.push_back(perm[i]);
+  }
+  *tensor = handle->transpose(*input, perm_vec);
+  DEBUG_PRINT("[Softmax] new Tensor %p", tensor);
+  return FFCObjectWrapper::wrap(tensor);   
+}
+
+flexflow_tensor_t
+flexflow_model_add_reverse(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  int axis)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->reverse(*input, axis);
+  DEBUG_PRINT("[Reverse] new Tensor %p", tensor);
+  return FFCObjectWrapper::wrap(tensor); 
 }
 
 flexflow_tensor_t

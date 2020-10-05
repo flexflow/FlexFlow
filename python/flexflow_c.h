@@ -223,6 +223,12 @@ flexflow_model_add_batch_norm(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
   bool relu);
+  
+flexflow_tensor_t
+flexflow_model_add_batch_matmul(
+  flexflow_model_t handle,
+  const flexflow_tensor_t a,
+  const flexflow_tensor_t b);
 
 flexflow_tensor_t
 flexflow_model_add_dense(
@@ -252,6 +258,15 @@ flexflow_model_add_concat(
   flexflow_tensor_t* input,
   int axis);
   
+void
+flexflow_model_add_split(
+  flexflow_model_t handle,
+  flexflow_tensor_t input,
+  int n,
+  flexflow_tensor_t* outputs,
+  int* split,
+  int axis);
+  
 flexflow_tensor_t
 flexflow_model_add_flat(
   flexflow_model_t handle,
@@ -265,6 +280,19 @@ flexflow_tensor_t
 flexflow_model_add_softmax(
   flexflow_model_t handle,
   const flexflow_tensor_t input);
+  
+flexflow_tensor_t
+flexflow_model_add_transpose(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input,
+  int n,
+  int* perm);
+  
+flexflow_tensor_t
+flexflow_model_add_reverse(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input,
+  int axis);
   
 flexflow_tensor_t
 flexflow_model_add_relu(

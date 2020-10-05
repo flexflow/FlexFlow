@@ -84,6 +84,10 @@ class OpType(Enum):
   TANH = 2024
   ELU = 2025
   DROPOUT = 2026
+  BATCH_MATMUL = 2027
+  SPLIT = 2028
+  TRANSPOSE = 2029
+  REVERSE = 2030
   
 def enum_to_int(enum, enum_item):
   for item in enum:
@@ -332,6 +336,41 @@ class Tanh(Op):
 class Elu(Op):
   def __init__(self, handle):
     super(Elu, self).__init__(handle)
+    
+# -----------------------------------------------------------------------
+# Batch_Norm
+# -----------------------------------------------------------------------
+class Batch_Norm(Op):
+  def __init__(self, handle):
+    super(Batch_Norm, self).__init__(handle)
+    
+# -----------------------------------------------------------------------
+# Batch_Matmul
+# -----------------------------------------------------------------------
+class Batch_Matmul(Op):
+  def __init__(self, handle):
+    super(Batch_Matmul, self).__init__(handle)
+    
+# -----------------------------------------------------------------------
+# Split
+# -----------------------------------------------------------------------
+class Split(Op):
+  def __init__(self, handle):
+    super(Split, self).__init__(handle)
+    
+# -----------------------------------------------------------------------
+# Transpose
+# -----------------------------------------------------------------------
+class Transpose(Op):
+  def __init__(self, handle):
+    super(Transpose, self).__init__(handle)
+    
+# -----------------------------------------------------------------------
+# Reverse
+# -----------------------------------------------------------------------
+class Reverse(Op):
+  def __init__(self, handle):
+    super(Reverse, self).__init__(handle)
 
 # -----------------------------------------------------------------------
 # flexflow_op_t handle to Op
@@ -358,15 +397,25 @@ def convert_op_handle_to_op(op_type, handle):
   elif op_type == OpType.MSELOSS:
     return MSELoss(handle)
   elif op_type == OpType.RELU:
-    return Dropout(handle)
+    return Relu(handle)
   elif op_type == OpType.SIGMOID:
-    return Dropout(handle)
+    return Sigmoid(handle)
   elif op_type == OpType.TANH:
-    return Dropout(handle)
+    return Tanh(handle)
   elif op_type == OpType.ELU:
-    return Dropout(handle)
+    return Elu(handle)
   elif op_type == OpType.DROPOUT:
     return Dropout(handle)
+  elif op_type == OpType.BATCH_NORM:
+    return Batch_Norm(handle)
+  elif op_type == OpType.BATCH_MATMUL:
+    return Batch_Matmul(handle)
+  elif op_type == OpType.SPLIT:
+    return Split(handle)
+  elif op_type == OpType.TRANSPOSE:
+    return Transpose(handle)
+  elif op_type == OpType.REVERSE:
+    return Reverse(handle)
   else:
     assert 0, "unknow layer type"
     return None
@@ -674,9 +723,14 @@ class FFModel(object):
     return Pool2D(handle)
     
   def batch_norm(self, input, relu=True):
-    handle = ffc.flexflow_model_add_batch_norm(self.handle, name.encode('utf-8'), input.handle, relu)
+    handle = ffc.flexflow_model_add_batch_norm(self.handle, input.handle, relu)
     self.add_layer(OpType.BATCH_NORM)
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
+    
+  def batch_matmul(self, A, B):
+    handle = ffc.flexflow_model_add_batch_norm(self.handle, A.handle, B.handle)
+    self.add_layer(OpType.BATCH_MATMUL)
+    return Tensor(handle, owner_op_type=OpType.BATCH_MATMUL)
 
   def dense(self, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, shared_op=None, kernel_initializer=None, bias_initializer=None):
     shared_op_handle = self.__get_op_handle(shared_op)
@@ -705,6 +759,18 @@ class FFModel(object):
     self.add_layer(OpType.CONCAT)
     return Tensor(handle, owner_op_type=OpType.CONCAT)
     
+  def split(self, input, split, axis):
+    c_split = ffi.new("int[]", split)
+    tensor_handle_list = []
+    n = 0
+    for tensor in tensor_list:
+      n = n + 1
+      tensor_handle_list.append(tensor.handle)
+    c_outputs_handle_list = ffi.new("flexflow_tensor_t[]", tensor_handle_list)
+    handle = ffc.flexflow_model_add_concat(self.handle, n, c_tensor_handle_list, axis)
+    self.add_layer(OpType.CONCAT)
+    return Tensor(handle, owner_op_type=OpType.CONCAT)
+    
   def flat(self, input):
     handle = ffc.flexflow_model_add_flat(self.handle, input.handle)
     self.add_layer(OpType.FLAT)
@@ -718,6 +784,17 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_softmax(self.handle, input.handle)
     self.add_layer(OpType.SOFTMAX)
     return Tensor(handle, owner_op_type=OpType.SOFTMAX)
+    
+  def transpose(self, input, perm):
+    c_perm = ffi.new("int[]", perm)
+    handle = ffc.flexflow_model_add_transpose(self.handle, input.handle, len(perm), c_perm)
+    self.add_layer(OpType.REVERSE)
+    return Tensor(handle, owner_op_type=OpType.REVERSE)
+    
+  def reverse(self, input, axis):
+    handle = ffc.flexflow_model_add_reverse(self.handle, input.handle, axis)
+    self.add_layer(OpType.REVERSE)
+    return Tensor(handle, owner_op_type=OpType.REVERSE)
     
   def relu(self, input):
     handle = ffc.flexflow_model_add_relu(self.handle, input.handle)
