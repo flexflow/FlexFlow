@@ -760,16 +760,16 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.CONCAT)
     
   def split(self, input, split, axis):
+    n = len(split)
+    assert n <= 8, "Please increase 8"
     c_split = ffi.new("int[]", split)
-    tensor_handle_list = []
-    n = 0
-    for tensor in tensor_list:
-      n = n + 1
-      tensor_handle_list.append(tensor.handle)
-    c_outputs_handle_list = ffi.new("flexflow_tensor_t[]", tensor_handle_list)
-    handle = ffc.flexflow_model_add_concat(self.handle, n, c_tensor_handle_list, axis)
-    self.add_layer(OpType.CONCAT)
-    return Tensor(handle, owner_op_type=OpType.CONCAT)
+    c_outputs_handle_list = ffi.new("flexflow_tensor_t[8]")
+    ffc.flexflow_model_add_concat(self.handle, input.handle, n, c_outputs_handle_list, c_split, axis)
+    output_tensor_list = []
+    for i in range(n):
+      output_tensor_list.append(Tensor(c_outputs_handle_list[i], owner_op_type=OpType.SPLIT))
+    self.add_layer(OpType.SPLIT)
+    return output_tensor_list
     
   def flat(self, input):
     handle = ffc.flexflow_model_add_flat(self.handle, input.handle)
