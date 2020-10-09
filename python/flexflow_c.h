@@ -370,6 +370,15 @@ flexflow_tensor_create(
   enum DataType data_type, 
   bool create_grad /* true */);
 
+flexflow_tensor_t
+flexflow_constant_create(
+  flexflow_model_t model,
+  int num_dims, 
+  const int* dims,
+  const char* name,
+  float value,
+  enum DataType data_type);
+
 void
 flexflow_tensor_destroy(
   flexflow_tensor_t handle);

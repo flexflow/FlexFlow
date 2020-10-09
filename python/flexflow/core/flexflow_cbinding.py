@@ -542,7 +542,7 @@ class Tensor(object):
     
   def is_mapped(self):
     return ffc.flexflow_tensor_is_mapped(self.handle)
-    
+
   def __get_raw_ptr(self, ffconfig, data_type):
     assert data_type == self.data_type, "Tensor check data type"
     if (data_type == DataType.DT_FLOAT):    
@@ -564,6 +564,8 @@ class Tensor(object):
       self.dims = (d[2], d[1], d[0])
     elif (self.num_dims == 4):
       self.dims = (d[3], d[2], d[1], d[0])
+    elif (self.num_dims == 5):
+      self.dims = (d[4], d[3], d[2], d[1], d[0])
     else:
       assert 0, "unknown num_dims"
       
@@ -658,6 +660,13 @@ class FFModel(object):
     c_data_type = enum_to_int(DataType, data_type)
     num_dims = len(dims)
     handle = ffc.flexflow_tensor_create(self.handle, num_dims, c_dims, name.encode('utf-8'), c_data_type, create_grad);
+    return Tensor(handle)
+
+  def create_constant(self, dims, name, value, data_type):
+    c_dims = ffi.new("int[]", dims)
+    c_data_type = enum_to_int(DataType, data_type)
+    num_dims = len(dims)
+    handle = ffc.flexflow_constant_create(self.handle, num_dims, c_dims, name.encode('utf-8'), value, c_data_type);
     return Tensor(handle)
     
   def exp(self, x):

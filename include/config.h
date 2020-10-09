@@ -27,7 +27,6 @@
 #define MAX_NUM_WEIGHTS 4
 #define MAX_NUM_OUTPUTS 32
 #define MAX_NUM_WORKERS 1024
-#define MAX_DIM 4
 #define MAX_FILENAME 200
 #define MAX_OPNAME 64
 // DataLoader
@@ -71,6 +70,7 @@ public:
     DataParallelism_2D = 2,
     DataParallelism_3D = 3,
     DataParallelism_4D = 4,
+    DataParallelism_5D = 5,
   };
 
   FFConfig();

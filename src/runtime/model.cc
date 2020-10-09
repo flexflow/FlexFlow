@@ -388,7 +388,11 @@ FFModel::FFModel(FFConfig& _config)
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
   // Load strategy file
-  for (int i = FFConfig::DataParallelism_1D; i <= FFConfig::DataParallelism_4D; i++) {
+  int start_dim = FFConfig::DataParallelism_1D, end_dim = FFConfig::DataParallelism_4D;
+#if MAX_DIM >= 5
+  end_dim = FFConfig::DataParallelism_5D;
+#endif
+  for (int i = start_dim; i <= end_dim; i++) {
     ParallelConfig pc;
     pc.device_type = ParallelConfig::GPU;
     pc.nDims = i - FFConfig::DataParallelism_1D + 1;
@@ -879,6 +883,18 @@ IndexSpace FFModel::get_or_create_task_is(ParallelConfig pc)
       task_is = runtime->create_index_space(ctx, task_rect);
       break;
     }
+#if MAX_DIM >= 5
+    case 5:
+    {
+      Rect<5> task_rect;
+      for (int i = 0; i < 5; i++) {
+        task_rect.lo[i] = 0;
+        task_rect.hi[i] = pc.dim[i]-1;
+      }
+      task_is = runtime->create_index_space(ctx, task_rect);
+      break;
+    }
+#endif
     default:
       assert(false);
   }
@@ -1936,8 +1952,14 @@ template void FFModel::create_disjoint_partition<2>(const Tensor& tensor, const 
 template void FFModel::create_disjoint_partition<3>(const Tensor& tensor, const IndexSpaceT<3>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
 template void FFModel::create_disjoint_partition<4>(const Tensor& tensor, const IndexSpaceT<4>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
 
-template void FFModel::create_data_parallel_partition_with_diff_dims<4, 2>(const Tensor& tensor, const IndexSpaceT<2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
+#if MAX_DIM >= 5
+template Tensor FFModel::create_tensor<5>(const int* dims, const std::string& pcname, DataType data_type, bool create_grad);
+template Tensor FFModel::create_constant<5>(const int* dims, const std::string & pcname, float value, DataType data_type);
+template Tensor FFModel::create_tensor<5>(const int* dims, const IndexSpaceT<5>& part_is, DataType data_type, bool create_grad);
+template void FFModel::create_disjoint_partition<5>(const Tensor& tensor, const IndexSpaceT<5>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
+#endif
 
+template void FFModel::create_data_parallel_partition_with_diff_dims<4, 2>(const Tensor& tensor, const IndexSpaceT<2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
 
 template Parameter FFModel::create_conv_weight<4>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
 template Parameter FFModel::create_conv_weight<1>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);

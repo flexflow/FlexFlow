@@ -57,12 +57,14 @@ bool FFConfig::find_parallel_config(int ndims,
         config = strategies[DataParallelism_4D];
         break;
       }
-      //case 5:
-      //{
-      //  assert(strategies.find(DataParallelism_5D) != strategies.end());
-      //  config = strategies[DataParallelism_5D];
-      //  break;
-      //}
+#if MAX_DIM >= 5
+      case 5:
+      {
+        assert(strategies.find(DataParallelism_5D) != strategies.end());
+        config = strategies[DataParallelism_5D];
+        break;
+      }
+#endif
       //case 6:
       //{
       //  assert(strategies.find(DataParallelism_6D) != strategies.end());

@@ -770,7 +770,10 @@ flexflow_tensor_create(
 {
   Tensor *tensor = new Tensor();
   FFModel *model = FFCObjectWrapper::unwrap(model_);
-  if (num_dims == 4) {
+  if (num_dims == 5) {
+     *tensor = model->create_tensor<5>(dims, name, data_type, create_grad);
+    DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], tensor->adim[4]);
+  } else if (num_dims == 4) {
     *tensor = model->create_tensor<4>(dims, name, data_type, create_grad);
     DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
   } else if (num_dims == 3) {
@@ -784,6 +787,36 @@ flexflow_tensor_create(
   }
   return FFCObjectWrapper::wrap(tensor);
 }
+
+flexflow_tensor_t
+flexflow_constant_create(
+  flexflow_model_t model_,
+  int num_dims,
+  const int* dims,
+  const char* name,
+  float value,
+  enum DataType data_type)
+{
+  Tensor *tensor = new Tensor();
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  if (num_dims == 5) {
+    *tensor = model->create_constant<5>(dims, name, value, data_type);
+    DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], tensor->adim[4]);
+  } else if (num_dims == 4) {
+    *tensor = model->create_constant<4>(dims, name, value, data_type);
+    DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
+  } else if (num_dims == 3) {
+    *tensor = model->create_constant<3>(dims, name, value, data_type);
+    DEBUG_PRINT("[Tensor] new 3D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
+  } else if (num_dims == 2) {
+    *tensor = model->create_constant<2>(dims, name, value, data_type);
+    DEBUG_PRINT("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
+  } else {
+    assert(0);
+  }
+  return FFCObjectWrapper::wrap(tensor);
+}
+
 
 void
 flexflow_tensor_destroy(
