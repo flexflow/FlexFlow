@@ -13,11 +13,6 @@
 # limitations under the License.
 #
 
-ifndef LG_RT_DIR
-#$(error LG_RT_DIR variable is not defined, aborting build)
-LG_RT_DIR	?= ../../legion/runtime
-endif
-
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 0		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
@@ -28,30 +23,14 @@ USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 
 # Put the binary file name here
-app		?= candle_uno
-OUTFILE		?= $(app)
+OUTFILE		?= candle_uno
 # List all the application source files here
-GEN_SRC		?= ../../src/runtime/model.cc ../../src/mapper/mapper.cc ../../src/runtime/initializer.cc ../../src/runtime/optimizer.cc\
-		../../src/runtime/strategy.pb.cc ../../src/runtime/strategy.cc $(app).cc
-GEN_GPU_SRC	?= ../../src/ops/conv_2d.cu ../../src/runtime/model.cu ../../src/ops/pool_2d.cu ../../src/ops/batch_norm.cu ../../src/ops/linear.cu  \
-		../../src/ops/softmax.cu ../../src/ops/concat.cu ../../src/ops/flat.cu ../../src/ops/embedding.cu ../../src/ops/mse_loss.cu\
-		../../src/runtime/initializer_kernel.cu ../../src/runtime/optimizer_kernel.cu ../../src/runtime/accessor_kernel.cu\
-		../../src/runtime/cuda_helper.cu $(app).cu# .cu files
+GEN_SRC		= candle_uno.cc
+GEN_GPU_SRC	= candle_uno.cu
 
-# You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -I../../include/ -I${FF_HOME}/protobuf/src -I${CUDNN_HOME}/include
-CC_FLAGS	?=
-NVCC_FLAGS	?=
-GASNET_FLAGS	?=
-LD_FLAGS	?= -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L${FF_FLOW}/protobuf/src/.libs -L${CUDNN_HOME}/lib64
-# For Point and Rect typedefs
-CC_FLAGS	+= -std=c++11
-NVCC_FLAGS  += -std=c++11
-###########################################################################
-#
-#   Don't change anything below here
-#   
-###########################################################################
+ifndef FF_HOME
+$(error FF_HOME variable is not defined, aborting build)
+endif
 
-include $(LG_RT_DIR)/runtime.mk
+include $(FF_HOME)/FlexFlow.mk
 
