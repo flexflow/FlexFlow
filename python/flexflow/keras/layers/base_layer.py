@@ -91,9 +91,10 @@ class Layer(object):
     self.has_visited = False
     
   def set_batch_size(self, size):
-    lst = list(self.input_shape)
-    lst[0] = size
-    self.input_shape = tuple(lst)
+    if self.input_shape != None:
+      lst = list(self.input_shape)
+      lst[0] = size
+      self.input_shape = tuple(lst)
     lst = list(self.output_shape)
     lst[0] = size
     self.output_shape = tuple(lst)

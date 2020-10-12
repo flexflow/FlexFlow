@@ -17,6 +17,7 @@ if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests
 #Keras other
 ./flexflow_python $FF_HOME/examples/python/keras/callback.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
 ./flexflow_python $FF_HOME/examples/python/keras/unary.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
+./flexflow_python $FF_HOME/examples/python/keras/reshape.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
 
 #Functional API
 ./flexflow_python $FF_HOME/examples/python/keras/func_mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192

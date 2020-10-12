@@ -463,6 +463,10 @@ class BaseModel(object):
         
   def _create_flexflow_layers(self):
     out_t = 0
+    
+    for layer in self._input_layers:
+      layer.set_batch_size(self._ffconfig.get_batch_size())
+      
     for layer in self._layers:
       layer.set_batch_size(self._ffconfig.get_batch_size())
 
