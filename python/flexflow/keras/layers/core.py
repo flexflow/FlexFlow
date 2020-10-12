@@ -25,7 +25,7 @@ from flexflow.keras.initializers import Zeros, GlorotUniform, RandomUniform, Ran
 class Dense(Layer):
   __slots__ = ['in_channels', 'out_channels', 'activation', 'use_bias', \
                'kernel_initializer', 'bias_initializer']
-  def __init__(self, units, input_shape=(0,), 
+  def __init__(self, units, input_shape=None, 
                activation=None, use_bias=True,
                kernel_initializer="glorot_uniform",
                bias_initializer="zeros",
@@ -65,12 +65,13 @@ class Dense(Layer):
     self.in_channels = 0
     self.out_channels = units
     self.use_bias = use_bias
-    if (len(input_shape) == 2):
-      self.in_channels = input_shape[1]
-      self.input_shape = (input_shape[0], input_shape[1])
-    elif (len(input_shape) == 1):
-      self.in_channels = input_shape[0]
-      self.input_shape = (0, input_shape[0])
+    if input_shape != None:
+      if len(input_shape) == 2:
+        self.in_channels = input_shape[1]
+        self.input_shape = (input_shape[0], input_shape[1])
+      elif len(input_shape) == 1:
+        self.in_channels = input_shape[0]
+        self.input_shape = (0, input_shape[0])
     if (activation == None):
       self.activation = ff.ActiMode.AC_MODE_NONE
     elif(activation =="relu"):
@@ -260,6 +261,36 @@ class Dropout(Layer):
   def _calculate_inout_shape(self, input_tensor):
     self.input_shape = input_tensor.batch_shape
     self.output_shape = input_tensor.batch_shape
+    
+  def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
+    pass
+    
+  def _reset_layer(self):
+    pass
+    
+class Reshape(Layer):
+  def __init__(self, target_shape, input_shape=None, **kwargs):
+    #TODO: target shape does not support -1
+    self.target_shape = (0,) + target_shape
+    # TODO: input shape should not contain batch size for now
+    if input_shape != None:
+      self.input_shape = (0,) + input_shape
+      
+    super(Reshape, self).__init__('reshape', 'Reshape', **kwargs) 
+      
+  def verify_meta_data(self):
+    pass
+    
+  def get_summary(self):
+    summary = "%s%s\t\t%s%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
+    return summary
+    
+  def __call__(self, input_tensor):
+    return self._connect_layer_1_input_1_output(input_tensor)
+    
+  def _calculate_inout_shape(self, input_tensor):
+    self.input_shape = input_tensor.batch_shape
+    self.output_shape = self.target_shape
     
   def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
     pass

@@ -17,7 +17,7 @@ import flexflow.core as ff
 from flexflow.core.flexflow_logger import fflogger
 
 from .tensor import Tensor
-from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding
+from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding, Reshape
 from flexflow.keras.optimizers import SGD, Adam 
 from flexflow.keras.callbacks import Callback, LearningRateScheduler, VerifyMetrics, EpochVerifyMetrics 
 from flexflow.keras import losses as keras_losses
@@ -464,6 +464,7 @@ class BaseModel(object):
   def _create_flexflow_layers(self):
     out_t = 0
     for layer in self._layers:
+      layer.set_batch_size(self._ffconfig.get_batch_size())
 
       if isinstance(layer, Activation) == True:
         if layer.activation == 'softmax':
@@ -502,11 +503,12 @@ class BaseModel(object):
         out_t = self._ffmodel.batch_norm(layer.input_tensors[0].ffhandle)
       elif isinstance(layer, Embedding) == True:
         out_t = self._ffmodel.embedding(layer.input_tensors[0].ffhandle, layer.input_dim, layer.out_channels, ff.AggrMode.AGGR_MODE_SUM, None, layer.embeddings_initializer.ffhandle)
+      elif isinstance(layer, Reshape) == True:
+        out_t = self._ffmodel.reshape(layer.input_tensors[0].ffhandle, layer.output_shape)
       else:
         assert 0, "unknow layer"
 
       layer.output_tensors[0].ffhandle = out_t
-      layer.set_batch_size(self._ffconfig.get_batch_size())
 
       assert layer.ffhandle == None, "layer handle is inited"
       layer.ffhandle = self._ffmodel.get_layer_by_id(layer.layer_id)

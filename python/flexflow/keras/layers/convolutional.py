@@ -28,7 +28,7 @@ class Conv2D(Layer):
                'bias_initializer']
   def __init__(self, 
                filters, 
-               input_shape=(0,), 
+               input_shape=None, 
                kernel_size=0, 
                strides=(1, 1), 
                padding="valid", 
@@ -84,9 +84,9 @@ class Conv2D(Layer):
     self.kernel_size = kernel_size
     assert len(strides)==2, "wrong dim of stride"
     self.stride = strides
-    if (padding == "valid"):
+    if padding == "valid":
       self.padding = (0, 0)
-    elif (padding == "same"):
+    elif padding == "same":
       self.padding = "same"
     elif (isinstance(padding, list) or isinstance(padding, tuple)):
       assert len(padding)==2, "[Conv2D]: wrong dim of padding"
@@ -99,12 +99,13 @@ class Conv2D(Layer):
       self.activation = ff.ActiMode.AC_MODE_RELU
     else:
       assert 0, "activation is not supported"
-    if (len(input_shape) == 4):
-      self.in_channels = input_shape[1]
-      self.input_shape = (input_shape[0], input_shape[1], input_shape[2], input_shape[3])
-    elif (len(input_shape) == 3):
-      self.in_channels = input_shape[0]
-      self.input_shape = (0, input_shape[0], input_shape[1], input_shape[2])
+    if input_shape != None:
+      if len(input_shape) == 4:
+        self.in_channels = input_shape[1]
+        self.input_shape = (input_shape[0], input_shape[1], input_shape[2], input_shape[3])
+      elif len(input_shape) == 3:
+        self.in_channels = input_shape[0]
+        self.input_shape = (0, input_shape[0], input_shape[1], input_shape[2])
     self.use_bias = use_bias
   
   def verify_meta_data(self):
