@@ -59,8 +59,10 @@ void Reshape::create_output_and_partition(FFModel& model)
         create_output_and_partition_with_dim<1, 3>(model);
       } else if (outputs[0].numDim == 4) {
         create_output_and_partition_with_dim<1, 4>(model);
+#if MAX_DIM >= 5
       } else if (outputs[0].numDim == 5) {
         create_output_and_partition_with_dim<1, 5>(model);
+#endif
       } else {
         assert(false);
       }
@@ -76,8 +78,10 @@ void Reshape::create_output_and_partition(FFModel& model)
         create_output_and_partition_with_dim<2, 3>(model);
       } else if (outputs[0].numDim == 4) {
         create_output_and_partition_with_dim<2, 4>(model);
+#if MAX_DIM >= 5
       } else if (outputs[0].numDim == 5) {
         create_output_and_partition_with_dim<2, 5>(model);
+#endif
       } else {
         assert(false);
       }
@@ -93,8 +97,10 @@ void Reshape::create_output_and_partition(FFModel& model)
         create_output_and_partition_with_dim<3, 3>(model);
       } else if (outputs[0].numDim == 4) {
         create_output_and_partition_with_dim<3, 4>(model);
+#if MAX_DIM >= 5
       } else if (outputs[0].numDim == 5) {
         create_output_and_partition_with_dim<3, 5>(model);
+#endif
       } else {
         assert(false);
       }
@@ -110,13 +116,16 @@ void Reshape::create_output_and_partition(FFModel& model)
         create_output_and_partition_with_dim<4, 3>(model);
       } else if (outputs[0].numDim == 4) {
         create_output_and_partition_with_dim<4, 4>(model);
+#if MAX_DIM >= 5
       } else if (outputs[0].numDim == 5) {
         create_output_and_partition_with_dim<4, 5>(model);
+#endif
       } else {
         assert(false);
       }
       break;
     }
+#if MAX_DIM >= 5
     case 5:
     {
       if (outputs[0].numDim == 1) {
@@ -134,6 +143,7 @@ void Reshape::create_output_and_partition(FFModel& model)
       }
       break;
     }
+#endif
     default:
       assert(false);
   }
