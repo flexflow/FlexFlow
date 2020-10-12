@@ -83,6 +83,8 @@ ElementBinary::ElementBinary(FFModel& model,
 : Op(model, OP_ELEMENTWISE, "ElementBinary_"+std::to_string(_op_type), in1, in2), op_type(_op_type)
 {
   //TODO: implement broadcast op
+  numOutputs = 1;
+  numWeights = 0;
   assert(in1.numDim == in2.numDim);
   int dim = in1.numDim;
   outputs[0].numDim = in1.numDim;

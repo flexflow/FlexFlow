@@ -596,9 +596,29 @@ flexflow_model_add_transpose(
     perm_vec.push_back(perm[i]);
   }
   *tensor = handle->transpose(*input, perm_vec);
-  DEBUG_PRINT("[Softmax] new Tensor %p", tensor);
+  DEBUG_PRINT("[Transpose] new Tensor %p", tensor);
   return FFCObjectWrapper::wrap(tensor);   
 }
+
+flexflow_tensor_t
+flexflow_model_add_reshape(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  int n,
+  int* shape)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *tensor = new Tensor();
+  std::vector<int> shape_vec;
+  for (int i = 0; i < n; i++) {
+    shape_vec.push_back(shape[i]);
+  }
+  *tensor = handle->reshape(*input, shape_vec);
+  DEBUG_PRINT("[Reshape] new Tensor %p", tensor);
+  return FFCObjectWrapper::wrap(tensor);   
+}
+
 
 flexflow_tensor_t
 flexflow_model_add_reverse(
@@ -628,7 +648,7 @@ flexflow_model_add_relu(
 }
   
 flexflow_tensor_t
-flexflow_model_add_sigmod(
+flexflow_model_add_sigmoid(
   flexflow_model_t handle_,
   const flexflow_tensor_t input_)
 {

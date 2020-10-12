@@ -83,6 +83,9 @@ enum TaskIDs {
   SPLIT_INIT_TASK_ID,
   SPLIT_FWD_TASK_ID,
   SPLIT_BWD_TASK_ID,
+  RESHAPE_INIT_TASK_ID,
+  RESHAPE_FWD_TASK_ID,
+  RESHAPE_BWD_TASK_ID,
   REVERSE_INIT_TASK_ID,
   REVERSE_FWD_TASK_ID,
   REVERSE_BWD_TASK_ID,
@@ -328,6 +331,8 @@ public:
   // Create input tensors and constants
   Tensor transpose(const Tensor& input,
                    const std::vector<int>& perm);
+  Tensor reshape(const Tensor& input,
+                 const std::vector<int>& shape);
   Tensor reverse(const Tensor& input,
                  int axis);
   template<int NDIM>
@@ -1114,6 +1119,37 @@ private:
   void create_output_and_partition_with_dim(FFModel& model);
 public:
   int axis;
+};
+
+class Reshape : public Op {
+public:
+  Reshape(FFModel& model,
+            const Tensor& input,
+            const std::vector<int>& shape);
+  Tensor init_inout(FFModel& model, const Tensor& input){assert(0); return Tensor();}
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
+private:
+  template<int IDIM, int ODIM>
+  void create_output_and_partition_with_dim(FFModel& model);
 };
 
 class ConcatMeta : public OpMeta {

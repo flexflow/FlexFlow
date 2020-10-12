@@ -150,8 +150,6 @@ Op::Op(FFModel& model,
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
-  }
-  for (int i = 0; i < numOutputs; i++) {
     outputs[i].data_type = inputs[0].data_type;
   }
 }
@@ -179,8 +177,6 @@ Op::Op(FFModel& model,
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
-  }
-  for (int i = 0; i < numOutputs; i++) {
     outputs[i].data_type = inputs[0].data_type;
   }
 }
@@ -204,8 +200,6 @@ Op::Op(FFModel& model,
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
-  }
-  for (int i = 0; i < numOutputs; i++) {
     outputs[i].data_type = inputs[0].data_type;
   }
 }
@@ -229,8 +223,6 @@ Op::Op(FFModel& model,
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
-  }
-  for (int i = 0; i < numOutputs; i++) {
     outputs[i].data_type = inputs[0].data_type;
   }
 }
@@ -251,8 +243,6 @@ Op::Op(FFModel& model,
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
-  }
-  for (int i = 0; i < numOutputs; i++) {
     outputs[i].data_type = inputs[0].data_type;
   }
 }
@@ -1758,6 +1748,28 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<Split::backward_task>(
         registrar, "Split Backward Task");
   }
+  // Reshape task
+  {
+    TaskVariantRegistrar registrar(RESHAPE_INIT_TASK_ID, "Reshape Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Reshape::init_task>(
+        registrar, "Reshape Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(RESHAPE_FWD_TASK_ID, "Reshape Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Reshape::forward_task>(
+        registrar, "Reshape Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(RESHAPE_BWD_TASK_ID, "Reshape Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Reshape::backward_task>(
+        registrar, "Reshape Backward Task");
+  }
   // Reverse task
   {
     TaskVariantRegistrar registrar(REVERSE_INIT_TASK_ID, "Reverse Init");
@@ -1959,7 +1971,10 @@ template Tensor FFModel::create_tensor<5>(const int* dims, const IndexSpaceT<5>&
 template void FFModel::create_disjoint_partition<5>(const Tensor& tensor, const IndexSpaceT<5>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
 #endif
 
-template void FFModel::create_data_parallel_partition_with_diff_dims<4, 2>(const Tensor& tensor, const IndexSpaceT<2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
+#define DIMFUNC(D1,D2) \
+  template void FFModel::create_data_parallel_partition_with_diff_dims<D1, D2>(const Tensor& tensor, const IndexSpaceT<D2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
+  LEGION_FOREACH_NN(DIMFUNC)
+#undef DIMFUNC
 
 template Parameter FFModel::create_conv_weight<4>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
 template Parameter FFModel::create_conv_weight<1>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);

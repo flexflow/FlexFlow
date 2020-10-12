@@ -41,7 +41,7 @@ endif
 
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 1		# Include debugging symbols
-MAX_DIM         ?= 5		# Maximum number of dimensions
+MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
@@ -94,11 +94,12 @@ FF_GPU_SRC ?= 	$(FF_HOME)/src/ops/conv_2d.cu $(FF_HOME)/src/runtime/model.cu\
 		$(FF_HOME)/src/ops/softmax.cu $(FF_HOME)/src/ops/concat.cu\
 		$(FF_HOME)/src/ops/flat.cu $(FF_HOME)/src/ops/embedding.cu\
 		$(FF_HOME)/src/ops/element_binary.cu $(FF_HOME)/src/ops/element_unary.cu\
-    ${FF_HOME}/src/ops/batch_matmul.cu\
+    		${FF_HOME}/src/ops/batch_matmul.cu\
 		${FF_HOME}/src/ops/split.cu\
 		${FF_HOME}/src/ops/transpose.cu\
 		${FF_HOME}/src/ops/reverse.cu\
-    $(FF_HOME)/src/loss_functions/loss_functions.cu\
+		${FF_HOME}/src/ops/reshape.cu\
+		$(FF_HOME)/src/loss_functions/loss_functions.cu\
 		$(FF_HOME)/src/metrics_functions/metrics_functions.cu\
 		$(FF_HOME)/src/runtime/initializer_kernel.cu $(FF_HOME)/src/runtime/optimizer_kernel.cu\
 		$(FF_HOME)/src/runtime/accessor_kernel.cu $(FF_HOME)/src/runtime/simulator.cu\

@@ -37,6 +37,7 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/element_binary.cu\
 		${FF_HOME}/src/ops/element_unary.cu\
 		${FF_HOME}/src/ops/batch_matmul.cu\
+		${FF_HOME}/src/ops/reshape.cu\
 		${FF_HOME}/src/ops/reverse.cu\
 		${FF_HOME}/src/ops/transpose.cu\
 		${FF_HOME}/src/loss_functions/loss_functions.cu\
