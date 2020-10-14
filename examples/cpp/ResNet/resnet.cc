@@ -78,8 +78,8 @@ void top_level_task(const Task* task,
   // }
   // Add layers
   Tensor t = input;
-  t = ff.conv2d("conv", input, 64, 7, 7, 2, 2, 3, 3);
-  t = ff.pool2d("pool", t, 3, 3, 2, 2, 1, 1);
+  t = ff.conv2d(input, 64, 7, 7, 2, 2, 3, 3);
+  t = ff.pool2d(t, 3, 3, 2, 2, 1, 1);
   for (int i = 0; i < 3; i++)
     t = BottleneckBlock(ff, t, 64, 1);
   for (int i = 0; i < 4; i++) {
@@ -97,8 +97,8 @@ void top_level_task(const Task* task,
   t = ff.pool2d(t, 7, 7, 1, 1, 0, 0, POOL_AVG);
   t = ff.flat(t);
   t = ff.dense(t, 10);
-  t = ff.softmax(t, label);
-  ff.optimizer = new SGDOptimizer(&ff, 0.001f);
+  t = ff.softmax(t);
+  Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
