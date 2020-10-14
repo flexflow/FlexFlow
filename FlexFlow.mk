@@ -51,7 +51,7 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 INC_FLAGS	+= -I${FF_HOME}/include/ -I${CUDNN}/include
 
 LD_FLAGS        += -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L${CUDNN}/lib64 #-mavx2 -mfma -mf16c
-CC_FLAGS	?=
+CC_FLAGS	?= -DMAX_DIM=$(MAX_DIM)
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
 # For Point and Rect typedefs
