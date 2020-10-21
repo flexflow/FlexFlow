@@ -538,7 +538,6 @@ flexflow_model_add_split(
   std::vector<int> split_vec;
   Tensor *outputs = new Tensor[n];
   Tensor **outputs_aop = new Tensor*[n];
-  printf("malloc outputs %p\n", outputs);
   for (int i = 0; i < n; i++ ) {
     split_vec.push_back(split[i]);
   }

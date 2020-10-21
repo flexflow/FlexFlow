@@ -770,11 +770,12 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_dense_no_inout(self.handle,  in_dim, out_dim, c_activation, use_bias, kernel_init_handle, bias_init_handle)
     return Linear(handle)
     
-  def concat(self, tensor_list, axis):
+  def concat(self, tensors, axis):
+    assert type(tensors) is list, "tensors should be a list"
     tensor_handle_list = []
-    n = 0
-    for tensor in tensor_list:
-      n = n + 1
+    n = len(tensors)
+    assert n <= 32, "Please increase MAX_NUM_INPUTS"
+    for tensor in tensors:
       tensor_handle_list.append(tensor.handle)
     c_tensor_handle_list = ffi.new("flexflow_tensor_t[]", tensor_handle_list)
     handle = ffc.flexflow_model_add_concat(self.handle, n, c_tensor_handle_list, axis)
