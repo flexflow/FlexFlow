@@ -101,6 +101,7 @@ Conv2D::Conv2D(FFModel& model,
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
   int output_c = out_channels;
   int output_n = inputs[0].adim[3];
+  numOutputs = 1;
   outputs[0].numDim = 4;
   outputs[0].adim[0] = output_w;
   outputs[0].adim[1] = output_h;
@@ -576,7 +577,7 @@ void Conv2D::backward_task(const Task *task,
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_output_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime,
-      true/*rreadOutput*/);
+      true/*readOutput*/);
   TensorAccessorR<float, 4> acc_kernel(
       regions[4], task->regions[4], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_kernel_grad(

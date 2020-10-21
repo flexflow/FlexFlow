@@ -98,7 +98,7 @@ void top_level_task(const Task* task,
     data_loader.reset();
     ff.reset_metrics();
     int iterations = data_loader.num_samples / ffConfig.batchSize;
- 
+
     for (int iter = 0; iter < iterations; iter++) {
       if (alexnetConfig.dataset_path.length() == 0) {
         // Only load data once for random input

@@ -34,19 +34,21 @@ BatchNorm::BatchNorm(FFModel& model,
                      bool _relu)
 : Op(model, OP_BATCHNORM, "BatchNorm", _input), relu(_relu), profiling(model.config.profiling)
 {
-  Context ctx = model.config.lg_ctx;
-  HighLevelRuntime* runtime = model.config.lg_hlr;
-  Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  num_replica = part_rect.volume();
+  assert(_input.numDim == 4);
+  numOutputs = 1;
+  outputs[0] = _input;
+  numWeights = 2;
+  weights[0].numDim = 1;
+  weights[0].adim[0] = _input.adim[2];
+  weights[1].numDim = 1;
+  weights[1].adim[0] = _input.adim[2];
+  return;
+#ifdef DEADCODE
   // Create output tensor
   int output_w = _input.adim[0];
   int output_h = _input.adim[1];
   int output_c = _input.adim[2];
   int output_n = _input.adim[3];
-  int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
-  int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
-  int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
-  int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
 
   FieldSpace fs = model.config.field_space;
   Rect<4> output_rect(Point<4>(0, 0, 0, 0),
@@ -118,19 +120,61 @@ BatchNorm::BatchNorm(FFModel& model,
           outputs[0].adim[3], outputs[0].adim[2], outputs[0].adim[1], outputs[0].adim[0]);
 
   input_lps[0] = _input.part;
+#endif
 }
 
 
 void BatchNorm::create_weights(FFModel& model)
 {
-  // TODO
-  assert(false);
+  // Retrive the task indexspace for the op
+  std::string pcname = name;
+  task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
+  // Create scale and bias
+  Initializer* scale_initializer = new ConstantInitializer(1.0f);
+  Initializer* bias_initializer = new ConstantInitializer(0.0f);
+  const int dims[1] = {outputs[0].adim[2]};
+  weights[0] = model.create_conv_weight<1>(this, dims, (IndexSpaceT<4>)task_is, DT_FLOAT, scale_initializer);
+  weights[1] = model.create_conv_weight<1>(this, dims, (IndexSpaceT<4>)task_is, DT_FLOAT, bias_initializer);
 }
 
 void BatchNorm::create_output_and_partition(FFModel& model)
 {
-  // TODO
-  assert(false);
+  // Retrive the task indexspace for the op
+  std::string pcname = name;
+  task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
+
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  // Create output tensor
+  int output_w = outputs[0].adim[0];
+  int output_h = outputs[0].adim[1];
+  int output_c = outputs[0].adim[2];
+  int output_n = outputs[0].adim[3];
+  int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
+  int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
+  int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
+  int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
+  {
+    const int dims[4] = {output_n, output_c, output_h, output_w};
+    outputs[0] = model.create_tensor<4>(dims, (IndexSpaceT<4>)task_is, DT_FLOAT);
+    outputs[0].owner_op = this;
+    outputs[0].owner_idx = 0;
+  }
+  // Currently assume data parallelism for batch norm
+  assert(num_par_w == 1);
+  assert(num_par_h == 1);
+  assert(num_par_c == 1);
+  // Compute partition bound for input
+  Rect<4> input_rect = runtime->get_index_partition_color_space(
+      ctx, inputs[0].part.get_index_partition());
+  if (input_rect == part_rect) {
+    input_lps[0] = inputs[0].part;
+    input_grad_lps[0] = inputs[0].part_grad;
+  } else {
+    model.create_disjoint_partition(
+        inputs[0], (IndexSpaceT<4>)task_is, input_lps[0], input_grad_lps[0]);
+  }
 }
 
 /*
@@ -255,42 +299,33 @@ void BatchNorm::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  // First we initialize the scale and bias parameters
-  {
-    TaskLauncher para_launcher(BATCHNORM_INIT_PARA_TASK_ID, TaskArgument(NULL, 0));
-    para_launcher.add_region_requirement(
-        RegionRequirement(weights[0].region, WRITE_DISCARD, EXCLUSIVE, weights[0].region));
-    para_launcher.add_field(0, FID_DATA);
-    para_launcher.add_region_requirement(
-        RegionRequirement(weights[1].region, WRITE_DISCARD, EXCLUSIVE, weights[1].region));
-    para_launcher.add_field(1, FID_DATA);
-    runtime->execute_task(ctx, para_launcher);
-  }
   Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
   for (PointInRectIterator<4> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[idx++];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
-  IndexLauncher init_launcher(BATCHNORM_INIT_TASK_ID, task_is,
-                              TaskArgument(this, sizeof(BatchNorm)), argmap);
-  init_launcher.add_region_requirement(
+  IndexLauncher launcher(BATCHNORM_INIT_TASK_ID, task_is,
+                         TaskArgument(this, sizeof(BatchNorm)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
+  launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
-  init_launcher.add_field(0, FID_DATA);
-  init_launcher.add_region_requirement(
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
       RegionRequirement(outputs[0].part, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, outputs[0].region));
-  init_launcher.add_field(1, FID_DATA);
-  init_launcher.add_region_requirement(
+                        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(
       RegionRequirement(weights[0].region, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, weights[0].region));
-  init_launcher.add_field(2, FID_DATA);
-  init_launcher.add_region_requirement(
+  launcher.add_field(2, FID_DATA);
+  launcher.add_region_requirement(
       RegionRequirement(weights[1].region, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, weights[1].region));
-  init_launcher.add_field(3, FID_DATA);
-  FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
+  launcher.add_field(3, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;
   for (PointInRectIterator<4> it(rect); it(); it++) {
@@ -366,7 +401,9 @@ void BatchNorm::forward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(BATCHNORM_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(BatchNorm)), argmap);
+                         TaskArgument(this, sizeof(BatchNorm)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
@@ -401,51 +438,30 @@ void BatchNorm::backward_task(const Task *task,
                               const std::vector<PhysicalRegion> &regions,
                               Context ctx, Runtime *runtime)
 {
-#ifndef DISABLE_COMPUTATION
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   float alpha = 1.0f;
   //float beta = 0.0f;
   const BatchNorm* bm = (BatchNorm*) task->args;
   const BatchNormMeta* m = *((BatchNormMeta**) task->local_args);
-  const AccessorRO<float, 4> acc_input(regions[0], FID_DATA);
-  const AccessorRW<float, 4> acc_input_grad(regions[1], FID_DATA);
-  const AccessorRO<float, 4> acc_output(regions[2], FID_DATA);
-  const AccessorRW<float, 4> acc_output_grad(regions[3], FID_DATA);
-  const AccessorRO<float, 1> acc_scale(regions[4], FID_DATA);
-  const AccessorRW<float, 1> acc_scale_grad(regions[5], FID_DATA);
-  const AccessorRW<float, 1> acc_bias_grad(regions[6], FID_DATA);
-  Rect<4> rect_input, rect_input_grad, rect_output, rect_output_grad;
-  Rect<1> rect_scale, rect_scale_grad, rect_bias_grad;
-  rect_input =
-    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  rect_input_grad =
-    runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  rect_output =
-    runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
-  rect_output_grad =
-    runtime->get_index_space_domain(ctx, task->regions[3].region.get_index_space());
-  rect_scale =
-    runtime->get_index_space_domain(ctx, task->regions[4].region.get_index_space());
-  rect_scale_grad =
-    runtime->get_index_space_domain(ctx, task->regions[5].region.get_index_space());
-  rect_bias_grad =
-    runtime->get_index_space_domain(ctx, task->regions[6].region.get_index_space());
-  // make sure all regions are dense
-  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
-  assert(acc_input_grad.accessor.is_dense_arbitrary(rect_input_grad));
-  assert(acc_output.accessor.is_dense_arbitrary(rect_output));
-  assert(acc_output_grad.accessor.is_dense_arbitrary(rect_output_grad));
-  assert(acc_scale.accessor.is_dense_arbitrary(rect_scale));
-  assert(acc_scale_grad.accessor.is_dense_arbitrary(rect_scale_grad));
-  assert(acc_bias_grad.accessor.is_dense_arbitrary(rect_bias_grad));
-  const float *input_ptr = acc_input.ptr(rect_input.lo);
-  float *input_grad_ptr = acc_input_grad.ptr(rect_input_grad.lo);
-  const float *output_ptr = acc_output.ptr(rect_output.lo);
-  float *output_grad_ptr = acc_output_grad.ptr(rect_output_grad.lo);
-  const float *scale_ptr = acc_scale.ptr(rect_scale.lo);
-  float *scale_grad_ptr = acc_scale_grad.ptr(rect_scale_grad.lo);
-  float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
+  TensorAccessorR<float, 4> acc_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 4> acc_input_grad(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime,
+      true/*readOutput*/);
+  TensorAccessorR<float, 4> acc_output(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 4> acc_output_grad(
+      regions[3], task->regions[3], FID_DATA, ctx, runtime,
+      true/*readOutput*/);
+  TensorAccessorR<float, 1> acc_scale(
+      regions[4], task->regions[4], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 1> acc_scale_grad(
+      regions[5], task->regions[5], FID_DATA, ctx, runtime,
+      true/*readOutput*/);
+  TensorAccessorW<float, 1> acc_bias_grad(
+      regions[6], task->regions[6], FID_DATA, ctx, runtime,
+      true/*readOutput*/);
 
   cudaEvent_t t_start, t_end;
   if (bm->profiling) {
@@ -453,18 +469,20 @@ void BatchNorm::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
+#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+#endif
   if (m->relu) {
-    int n = rect_output.volume();
-    reluBackward<<<GET_BLOCKS(n), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, n);
+    int n = acc_output.rect.volume();
+    reluBackward<<<GET_BLOCKS(n), CUDA_NUM_THREADS>>>(acc_output_grad.ptr, acc_output.ptr, n);
   }
   checkCUDNN(cudnnBatchNormalizationBackward(
              m->handle.dnn, m->mode, &alpha, &alpha, &alpha, &alpha,
-             m->inputTensor, input_ptr, m->outputTensor, output_grad_ptr,
-             m->inputTensor, input_grad_ptr, m->biasTensor, scale_ptr,
-             scale_grad_ptr, bias_grad_ptr, CUDNN_BN_MIN_EPSILON,
+             m->inputTensor, acc_input.ptr, m->outputTensor, acc_output_grad.ptr,
+             m->inputTensor, acc_input_grad.ptr, m->biasTensor, acc_scale.ptr,
+             acc_scale_grad.ptr, acc_bias_grad.ptr, CUDNN_BN_MIN_EPSILON,
              m->saveMean, m->saveVar));
   if (bm->profiling) {
     cudaEventRecord(t_end);
@@ -475,7 +493,6 @@ void BatchNorm::backward_task(const Task *task,
     cudaEventDestroy(t_end);
     printf("BatchNorm backward time = %.2fms\n", elapsed);
   }
-#endif
 }
 
 __host__
@@ -492,7 +509,9 @@ void BatchNorm::backward(const FFModel& ff)
   }
 
   IndexLauncher launcher(BATCHNORM_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(BatchNorm)), argmap);
+                         TaskArgument(this, sizeof(BatchNorm)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): input
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
