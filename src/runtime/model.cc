@@ -379,7 +379,7 @@ FFModel::FFModel(FFConfig& _config)
   Context ctx = config.lg_ctx;
   // Load strategy file
   int start_dim = FFConfig::DataParallelism_1D, end_dim = FFConfig::DataParallelism_4D;
-#if MAX_DIM >= 5
+#if MAX_TENSOR_DIM >= 5
   end_dim = FFConfig::DataParallelism_5D;
 #endif
   for (int i = start_dim; i <= end_dim; i++) {
@@ -873,7 +873,7 @@ IndexSpace FFModel::get_or_create_task_is(ParallelConfig pc)
       task_is = runtime->create_index_space(ctx, task_rect);
       break;
     }
-#if MAX_DIM >= 5
+#if MAX_TENSOR_DIM >= 5
     case 5:
     {
       Rect<5> task_rect;
@@ -1964,7 +1964,7 @@ template void FFModel::create_disjoint_partition<2>(const Tensor& tensor, const 
 template void FFModel::create_disjoint_partition<3>(const Tensor& tensor, const IndexSpaceT<3>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
 template void FFModel::create_disjoint_partition<4>(const Tensor& tensor, const IndexSpaceT<4>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
 
-#if MAX_DIM >= 5
+#if MAX_TENSOR_DIM >= 5
 template Tensor FFModel::create_tensor<5>(const int* dims, const std::string& pcname, DataType data_type, bool create_grad);
 template Tensor FFModel::create_constant<5>(const int* dims, const std::string & pcname, float value, DataType data_type);
 template Tensor FFModel::create_tensor<5>(const int* dims, const IndexSpaceT<5>& part_is, DataType data_type, bool create_grad);

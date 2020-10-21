@@ -60,7 +60,7 @@ void Concat::create_output_and_partition(FFModel& model)
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  int dims[MAX_DIM], num_dim = inputs[0].numDim;
+  int dims[MAX_TENSOR_DIM], num_dim = inputs[0].numDim;
   assert(num_dim == domain.get_dim());
   for (int i = 0; i < num_dim; i++)
     dims[i] = inputs[0].adim[num_dim-1-i];

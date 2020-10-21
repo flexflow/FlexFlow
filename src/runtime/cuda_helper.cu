@@ -144,7 +144,7 @@ void print_tensor(const T* ptr, Rect<DIM> rect, const char* prefix)
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor, Domain domain)
 {
-  int dims[MAX_DIM];
+  int dims[MAX_TENSOR_DIM];
   switch (domain.get_dim()) {
     case 1:
     {

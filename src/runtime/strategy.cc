@@ -57,7 +57,7 @@ bool FFConfig::find_parallel_config(int ndims,
         config = strategies[DataParallelism_4D];
         break;
       }
-#if MAX_DIM >= 5
+#if MAX_TENSOR_DIM >= 5
       case 5:
       {
         assert(strategies.find(DataParallelism_5D) != strategies.end());

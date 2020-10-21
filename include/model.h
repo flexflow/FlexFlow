@@ -146,7 +146,7 @@ class DataLoader;
 struct Tensor {
   Tensor(void) {
     numDim = 0;
-    for (int i = 0; i < MAX_DIM; i++) {
+    for (int i = 0; i < MAX_TENSOR_DIM; i++) {
       adim[i] = 0;
       //pdim[i] = 0;
     }
@@ -170,7 +170,7 @@ struct Tensor {
                              Tensor& tensor,
                              OperatorType type);
   size_t get_volume();
-  int numDim, adim[MAX_DIM];
+  int numDim, adim[MAX_TENSOR_DIM];
   DataType data_type;
   // Describes the ownership of this tensor
   Op* owner_op;
@@ -1085,7 +1085,7 @@ private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
 public:
-  int perm[MAX_DIM];
+  int perm[MAX_TENSOR_DIM];
 };
 
 class Reverse : public Op {

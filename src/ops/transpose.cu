@@ -149,7 +149,7 @@ void Transpose::init(const FFModel& ff)
 struct TransposeStrides
 {
   int num_dim;
-  int in_strides[MAX_DIM], out_strides[MAX_DIM], perm[MAX_DIM];
+  int in_strides[MAX_TENSOR_DIM], out_strides[MAX_TENSOR_DIM], perm[MAX_TENSOR_DIM];
 };
 
 __global__

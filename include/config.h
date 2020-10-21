@@ -45,7 +45,7 @@ struct ParallelConfig {
   };
   int num_parts() const;
   DeviceType device_type;
-  int nDims, dim[MAX_DIM];
+  int nDims, dim[MAX_TENSOR_DIM];
   int device_ids[MAX_NUM_WORKERS];
 };
 

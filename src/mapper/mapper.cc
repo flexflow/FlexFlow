@@ -342,7 +342,7 @@ void update_mappers(Machine machine, Runtime *runtime,
     load_strategies_from_file(strategyFile, *strategies);
   }
   int start_dim = FFConfig::DataParallelism_1D, end_dim = FFConfig::DataParallelism_4D;
-#if MAX_DIM >= 5
+#if MAX_TENSOR_DIM >= 5
   end_dim = FFConfig::DataParallelism_5D;
 #endif
   for (int i = start_dim; i <= end_dim; i++) {

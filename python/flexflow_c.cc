@@ -818,7 +818,7 @@ flexflow_tensor_create(
   } else if (num_dims == 4) {
     *tensor = model->create_tensor<4>(dims, name, data_type, create_grad);
     DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
-#if MAX_DIM >= 5
+#if MAX_TENSOR_DIM >= 5
   } else if (num_dims == 5) {
      *tensor = model->create_tensor<5>(dims, name, data_type, create_grad);
     DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], tensor->adim[4]);
@@ -849,7 +849,7 @@ flexflow_constant_create(
   } else if (num_dims == 4) {
     *tensor = model->create_constant<4>(dims, name, value, data_type);
     DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
-#if MAX_DIM >= 5
+#if MAX_TENSOR_DIM >= 5
   } else if (num_dims == 5) {
     *tensor = model->create_constant<5>(dims, name, value, data_type);
     DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], tensor->adim[4]);
