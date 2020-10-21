@@ -794,7 +794,6 @@ class FFModel(object):
     ffc.flexflow_model_add_split(self.handle, input.handle, n, c_outputs_handle_list, c_split, axis)
     output_tensor_list = []
     for i in range(n):
-      print(c_outputs_handle_list[i].impl)
       tensor_p_handle = ffi.new("flexflow_tensor_t*")
       tensor_p_handle.impl = c_outputs_handle_list[i].impl
       output_tensor_list.append(Tensor(None, owner_op_type=OpType.SPLIT, p_handle=tensor_p_handle))
