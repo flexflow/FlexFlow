@@ -23,10 +23,10 @@ LegionRuntime::Logger::Category log_model("ff");
 
 void Tensor::inline_map(FFConfig &config)
 {
-  printf("inline map tensor\n");  
+  printf("inline map tensor\n");
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
-  
+
   RegionRequirement region_req(region, READ_WRITE, EXCLUSIVE, region);
   region_req.add_field(FID_DATA);
   InlineLauncher inline_launcher(region_req);
@@ -36,7 +36,7 @@ void Tensor::inline_map(FFConfig &config)
 
 void Tensor::inline_unmap(FFConfig &config)
 {
-  printf("inline unmap tensor\n");  
+  printf("inline unmap tensor\n");
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   assert(physical_region.is_valid() == true);
@@ -852,7 +852,7 @@ IndexSpace FFModel::get_or_create_task_is(ParallelConfig pc)
       Rect<1> task_rect(Point<1>(0), Point<1>(pc.dim[0]-1));
       task_is = runtime->create_index_space(ctx, task_rect);
       break;
-    } 
+    }
     case 2:
     {
       Rect<2> task_rect(Point<2>(0, 0), Point<2>(pc.dim[0]-1, pc.dim[1]-1));
@@ -930,7 +930,7 @@ void FFModel::reset_metrics()
 }
 
 void FFModel::init_layers()
-{ 
+{
   for (size_t i = 0; i < layers.size(); i++)
     layers[i]->init(*this);
 }
@@ -1057,6 +1057,9 @@ void FFModel::rewrite(const std::map<Op*, ParallelConfig>& current,
 {
   next = current;
   size_t opId = std::rand() % layers.size();
+  //TODO: need to make sure opId is not an output layer of the model
+  if (opId == layers.size() - 1)
+    return;
   next[layers[opId]] = layers[opId]->get_random_parallel_config(*this);
 }
 
@@ -1105,7 +1108,7 @@ void FFModel::optimize(Simulator* simulator,
         printf("%d", it->second.dim[i]);
     printf("] device_ids[");
     for (int i = 0; i < it->second.num_parts(); i++)
-      if (i < it->second.num_parts() - 1) 
+      if (i < it->second.num_parts() - 1)
         printf("%d,", it->second.device_ids[i]);
       else
         printf("%d", it->second.device_ids[i]);
@@ -1207,7 +1210,7 @@ DataLoader::DataLoader(std::string datasetPath)
       std::string sampleId(sp->d_name);
       if (sampleId == "." || sampleId == "..")
         continue;
-      
+
     }
     printf("%s/%s\n", trainPath.c_str(), labelId.c_str());
     closedir(labelDir);
@@ -1318,11 +1321,11 @@ void FFConfig::parse_args(char **argv, int argc)
       search_alpha = atof(argv[++i]);
       continue;
     }
-    if ((!strcmp(argv[i], "-import")) || (!strcmp(argv[i], "--import-strategy"))) {
+    if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i], "--import-strategy"))) {
       import_strategy_file = std::string(argv[++i]);
       continue;
     }
-    if ((!strcmp(argv[i], "-export")) || (!strcmp(argv[i], "--export-strategy"))) {
+    if ((!strcmp(argv[i], "--export")) || (!strcmp(argv[i], "--export-strategy"))) {
       export_strategy_file = std::string(argv[++i]);
       continue;
     }
@@ -1919,15 +1922,15 @@ int main(int argc, char** argv)
     registrar.set_replicable();
     Runtime::preregister_task_variant<top_level_task>(registrar, "top_level");
   }
-  
+
   register_internal_tasks();
- 
+
   // Register custom tasks
   register_custom_tasks();
 
   DataParallelShardingFunctor* sharding_functor = new DataParallelShardingFunctor();
   Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);
-  
+
   Runtime::add_registration_callback(update_mappers);
   return Runtime::start(argc, argv);
 }
@@ -1936,9 +1939,9 @@ int main(int argc, char** argv)
 void register_flexflow_tasks()
 {
   register_internal_tasks();
-  
+
   register_c_custom_tasks();
-  
+
   DataParallelShardingFunctor* sharding_functor = new DataParallelShardingFunctor();
   Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);
 }

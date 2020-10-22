@@ -235,7 +235,7 @@ void Metrics::compute(FFModel* model,
   Rect<2> label_rect = runtime->get_index_partition_color_space(
       ctx, label->part.get_index_partition());
   if((logit_rect != part_rect) || (label_rect != part_rect)) {
-    fprintf(stderr, "Encounter inconsistency in parallelizing loss computation");
+    fprintf(stderr, "Encounter inconsistency in parallelizing loss computation\n");
     assert(false);
   }
   ArgumentMap argmap;

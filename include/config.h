@@ -60,7 +60,7 @@ bool load_strategies_from_file(const std::string& filename,
          std::map<MappingTagID, ParallelConfig>& strategies);
 
 bool save_strategies_to_file(const std::string& filename,
-                             const std::map<MappingTagID, ParallelConfig>& strategies);
+                             const std::map<std::string, ParallelConfig>& strategies);
 
 class FFConfig {
 public:
@@ -80,7 +80,7 @@ public:
   static MappingTagID get_hash_id(const std::string& pcname);
   bool find_parallel_config(int ndims,
                             const std::string& pcname,
-                            ParallelConfig& config);
+                            ParallelConfig& config) const;
 public:
   int epochs, batchSize, iterations, printFreq;
   //int inputHeight, inputWidth;

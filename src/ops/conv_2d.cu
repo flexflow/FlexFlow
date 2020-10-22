@@ -356,9 +356,12 @@ void Conv2D::init(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
+  ParallelConfig pc;
+  std::string pcname = name;
+  ff.config.find_parallel_config(4, pcname, pc);
   int idx = 0;
   for (PointInRectIterator<4> it(rect); it(); it++) {
-    FFHandler handle = ff.handlers[idx++];
+    FFHandler handle = ff.handlers[pc.device_ids[idx++]];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
   IndexLauncher launcher(CONV2D_INIT_TASK_ID, task_is,

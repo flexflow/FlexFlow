@@ -276,7 +276,7 @@ public:
   Tensor sigmoid(const Tensor& x);
   Tensor tanh(const Tensor& x);
   Tensor elu(const Tensor& x);
-  // Add a 2D convolutional layer 
+  // Add a 2D convolutional layer
   Tensor conv2d(const Tensor& input,
                 int outChannels,
                 int kernelH, int kernelW,
@@ -450,7 +450,7 @@ public:
   Metrics* metrics_op;
   Tensor label_tensor;
   //std::vector<Tensor> input_tensors;
-  
+
   std::vector<Op*> layers;
   std::vector<Parameter> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
@@ -744,7 +744,7 @@ public:
 class BatchNorm : public Op {
 public:
   BatchNorm(FFModel& model, const Tensor& input, bool relu);
-  
+
   Tensor init_inout(FFModel& model, const Tensor& input) { assert(0); return Tensor();}
   //void add_to_model(FFModel& model) {assert(0);}
   void init(const FFModel&);

@@ -176,12 +176,6 @@ void Concat::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  //Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
-  //int idx = 0;
-  //for (PointInRectIterator<3> it(rect); it(); it++) {
-  //  FFHandler handler = ff.handlers[idx++];
-  //  argmap.set_point(*it, TaskArgument(&handler, sizeof(FFHandler)));
-  //}
   IndexLauncher launcher(CONCAT_INIT_TASK_ID, task_is,
     TaskArgument(this, sizeof(Concat)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -199,10 +193,6 @@ void Concat::init(const FFModel& ff)
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  //idx = 0;
-  //for (PointInRectIterator<3> it(rect); it(); it++) {
-  //  meta[idx++] = fm.get_result<OpMeta*>(*it);
-  //}
 }
 
 template<int N>

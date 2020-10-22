@@ -184,7 +184,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
     output.map_locally = map_locally;
     return;
   }
-  
+
   DefaultMapper::select_task_options(ctx, task, output);
   if ((task.task_id == SGD_UPD_TASK_ID)
   && (cache_update_tasks.find(task_hash) == cache_update_tasks.end())) {
@@ -317,7 +317,7 @@ void update_mappers(Machine machine, Runtime *runtime,
 
   for (std::map<Processor, Memory>::iterator it = proc_fbmems->begin();
        it != proc_fbmems->end(); it++) {
-    gpus->push_back(it->first); 
+    gpus->push_back(it->first);
   }
 */
   // Find strategy file path
@@ -326,7 +326,7 @@ void update_mappers(Machine machine, Runtime *runtime,
   char **argv = command_args.argv;
   int argc = command_args.argc;
   for (int i = 1; i < argc; i++) {
-    if ((!strcmp(argv[i], "-s")) || (!strcmp(argv[i], "--strategy"))) {
+    if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i], "--import-strategy"))) {
       strategyFile = std::string(argv[++i]);
       continue;
     }
