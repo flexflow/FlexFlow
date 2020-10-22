@@ -36,14 +36,23 @@ Tensor BottleneckBlock(FFModel& ff,
                        int out_channels,
                        int stride)
 {
-  Tensor t = ff.conv2d(input, out_channels, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
-  t = ff.conv2d(t, out_channels, 3, 3, stride, stride, 1, 1, AC_MODE_RELU);
+  Tensor t = ff.conv2d(input, out_channels, 1, 1, 1, 1, 0, 0, AC_MODE_NONE);
+  t = ff.batch_norm(t);
+  
+  t = ff.conv2d(t, out_channels, 3, 3, stride, stride, 1, 1, AC_MODE_NONE);
+  t = ff.batch_norm(t);
+  
   t = ff.conv2d(t, 4*out_channels, 1, 1, 1, 1, 0, 0);
-  if ((stride > 1) || (input.adim[1] != out_channels * 4)) {
+  t = ff.batch_norm(t, false);
+  
+  if ((stride > 1) || (input.adim[2] != out_channels * 4)) {
     printf("input.adim = %d out_channels*4 = %d\n", input.adim[1], out_channels*4);
-    input = ff.conv2d(input, 4*out_channels, 1, 1, stride, stride, 0, 0, AC_MODE_RELU);
+    input = ff.conv2d(input, 4*out_channels, 1, 1, stride, stride, 0, 0, AC_MODE_NONE);
+    input = ff.batch_norm(input, false);
   }
-  return ff.add(input, t);
+    
+  t = ff.add(input, t);
+  return ff.relu(t);
 }
 
 void top_level_task(const Task* task,
@@ -79,7 +88,9 @@ void top_level_task(const Task* task,
   // Add layers
   Tensor t = input;
   t = ff.conv2d(input, 64, 7, 7, 2, 2, 3, 3);
+  t = ff.batch_norm(t);
   t = ff.pool2d(t, 3, 3, 2, 2, 1, 1);
+  
   for (int i = 0; i < 3; i++)
     t = BottleneckBlock(ff, t, 64, 1);
   for (int i = 0; i < 4; i++) {
