@@ -950,13 +950,13 @@ class FFModel(object):
         ax = int(items[3])
         tensor_dict[op_name] = self.concat(tensors=input_tensors, axis=ax)
       
-      # elif op_type == OpType.OUTPUT:
-      #   pass
+      elif op_type == OpType.OUTPUT:
+        input_tensor = tensor_dict[prev_ops_list[0]]
+        tensor_dict[op_name] = input_tensor
+        output_tensor = tensor_dict[op_name]
         
       else:
         assert 0, "unknown op"
-        
-      output_tensor = tensor_dict[op_name]
       
     return output_tensor
       

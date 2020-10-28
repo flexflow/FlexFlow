@@ -15,6 +15,7 @@ class MLP(nn.Module):
     y = self.linear2(y)
     y = self.relu(y)
     y = self.linear3(y)
+    return y
 
 model = MLP()
 fx.torch_to_flexflow(model, "mlp.ff")

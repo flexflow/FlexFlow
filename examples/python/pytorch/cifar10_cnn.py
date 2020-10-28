@@ -33,7 +33,8 @@ class CNN(nn.Module):
     y = self.flat1(y)
     y = self.linear1(y)
     y = self.relu(y)
-    y = self.linear2(y)
+    yo = self.linear2(y)
+    return yo
 
 model = CNN()
 fx.torch_to_flexflow(model, "cnn.ff")

@@ -66,20 +66,18 @@ def torch_to_flexflow(model, filename):
   graph = __symbolic_trace(model)
   out_file = open(filename, "w")
   
-  # for node in graph:
-  #   print(node.inedges)
-  
   for node in graph:
+    op_str = node.name + ", "
     
     if type(node) == OutputNode:
-      # #FIXME assume there is 1 output
-      # assert len(node.inedges) == 1, "wrong format"
-      # op_str = op_str + "None:, "
-      # op_str = op_str + str(enum_to_int(OpType, OpType.OUTPUT)) + "\n"
-      pass
+      #FIXME assume there is 1 output
+      assert len(node.inedges) == 1, "wrong format"
+      inedge = node.inedges[0]
+      op_str = op_str + inedge.name + ":, "
+      op_str = op_str + str(enum_to_int(OpType, OpType.OUTPUT)) + "\n"
     
     if type(node) == FunctionNode:
-      op_str = node.name + ", "
+      print(node.function)
       #FIXME assume it is a merge
       assert len(node.inedges) == 2, "wrong format"
       inedges = node.inedges[0]
@@ -92,19 +90,15 @@ def torch_to_flexflow(model, filename):
       
       op_str = op_str + str(enum_to_int(OpType, OpType.CONCAT)) + ", "
       op_str = op_str + str(node.inedges[1]) + "\n"
-      
-      print(op_str)
-      out_file.write(op_str)
     
     if type(node) == ModuleNode:
       op_str = node.name + ", "
       assert len(node.inedges) == 1, "wrong format"
       inedge = node.inedges[0]
       if inedge.name == "x":
-        op_str = op_str + "input" + ":"
+        op_str = op_str + "input" + ":, "
       else:
-        op_str = op_str + inedge.name + ":"
-      op_str = op_str + ", "
+        op_str = op_str + inedge.name + ":, "
       
       if type(node.module) == torch.nn.modules.linear.Linear:
         op_str = op_str + str(enum_to_int(OpType, OpType.LINEAR)) + ", "
@@ -147,8 +141,8 @@ def torch_to_flexflow(model, filename):
       else:
         assert 0, "unknown op"
       
-      print(op_str)
-      out_file.write(op_str)
+    print(op_str)
+    out_file.write(op_str)
   
   out_file.close()
   
