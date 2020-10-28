@@ -863,7 +863,7 @@ class FFModel(object):
     
   def construct_model_from_file(self, input_tensors, filename):
     tensor_dict = {}
-    output_tensor = None
+    output_tensors = []
     in_file = open(filename, "r")
     lines = in_file.readlines()
     input_idx = 0
@@ -951,14 +951,16 @@ class FFModel(object):
         tensor_dict[op_name] = self.concat(tensors=input_tensors, axis=ax)
       
       elif op_type == OpType.OUTPUT:
-        input_tensor = tensor_dict[prev_ops_list[0]]
-        tensor_dict[op_name] = input_tensor
-        output_tensor = tensor_dict[op_name]
+        tensor_dict[op_name] = []
+        for i in prev_ops_list:
+          tensor_dict[op_name].append(tensor_dict[i])
+        output_tensors = tensor_dict[op_name]
+        #print(output_tensors[1].handle.impl)
         
       else:
         assert 0, "unknown op"
       
-    return output_tensor
+    return output_tensors
       
       
     

@@ -12,9 +12,9 @@ def top_level_task():
   dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
   input_tensor = ffmodel.create_tensor(dims_input, "", DataType.DT_FLOAT)
 
-  output_tensor = ffmodel.construct_model_from_file([input_tensor, input_tensor], "cnn.ff")
+  output_tensors = ffmodel.construct_model_from_file([input_tensor, input_tensor], "cnn.ff")
   
-  t = ffmodel.softmax(output_tensor)
+  t = ffmodel.softmax(output_tensors[0])
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)

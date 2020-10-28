@@ -67,37 +67,40 @@ def torch_to_flexflow(model, filename):
   out_file = open(filename, "w")
   
   for node in graph:
+    # op name
     op_str = node.name + ", "
     
+    # op inedges
+    inedges = node.inedges[0]
+    if type(inedges) == list:
+      pass
+    elif type(inedges) == tuple:
+      pass
+    else:
+      inedges = [inedges]
+    for inedge in inedges:
+      if inedge.name == "x":
+        op_str = op_str + "input" + ":"
+      else:
+        op_str = op_str + inedge.name + ":"
+    op_str = op_str + ", "
+    
+    #op type
     if type(node) == OutputNode:
       #FIXME assume there is 1 output
       assert len(node.inedges) == 1, "wrong format"
-      inedge = node.inedges[0]
-      op_str = op_str + inedge.name + ":, "
       op_str = op_str + str(enum_to_int(OpType, OpType.OUTPUT)) + "\n"
     
     if type(node) == FunctionNode:
       print(node.function)
       #FIXME assume it is a merge
       assert len(node.inedges) == 2, "wrong format"
-      inedges = node.inedges[0]
-      for inedge in inedges:
-        if inedge.name == "x":
-          op_str = op_str + "input" + ":"
-        else:
-          op_str = op_str + inedge.name + ":"
-      op_str = op_str + ", "
       
       op_str = op_str + str(enum_to_int(OpType, OpType.CONCAT)) + ", "
       op_str = op_str + str(node.inedges[1]) + "\n"
     
     if type(node) == ModuleNode:
       assert len(node.inedges) == 1, "wrong format"
-      inedge = node.inedges[0]
-      if inedge.name == "x":
-        op_str = op_str + "input" + ":, "
-      else:
-        op_str = op_str + inedge.name + ":, "
       
       if type(node.module) == torch.nn.modules.linear.Linear:
         op_str = op_str + str(enum_to_int(OpType, OpType.LINEAR)) + ", "

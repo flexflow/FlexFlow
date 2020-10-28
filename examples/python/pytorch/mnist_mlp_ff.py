@@ -15,9 +15,9 @@ def top_level_task():
   
   num_samples = 60000
   
-  output_tensor = ffmodel.construct_model_from_file([input_tensor], "mlp.ff")
+  output_tensors = ffmodel.construct_model_from_file([input_tensor], "mlp.ff")
   
-  t = ffmodel.softmax(output_tensor)
+  t = ffmodel.softmax(output_tensors[0])
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
