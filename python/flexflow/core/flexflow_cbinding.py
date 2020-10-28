@@ -929,6 +929,13 @@ class FFModel(object):
         activ = int_to_enum(ActiMode, int(items[7]))
         tensor_dict[op_name] = self.pool2d(input=input_tensor, kernel_h=kh, kernel_w=kh, stride_h=sh, stride_w=sh, padding_h=ph, padding_w=ph, pool_type=pt, activation=activ)
 
+      elif op_type == OpType.DROPOUT:
+        assert len(items) == 4, "wrong format"
+        assert len(prev_ops_list) == 1, "wrong format"
+        input_tensor = tensor_dict[prev_ops_list[0]]
+        r = int(item[3])
+        tensor_dict[op_name] = self.dropout(input=input_tensor, rate=r, seed=0)
+
       elif op_type == OpType.FLAT:
         assert len(items) == 3, "wrong format"
         assert len(prev_ops_list) == 1, "wrong format"
@@ -940,6 +947,24 @@ class FFModel(object):
         assert len(prev_ops_list) == 1, "wrong format"
         input_tensor = tensor_dict[prev_ops_list[0]]
         tensor_dict[op_name] = self.relu(input=input_tensor)
+        
+      elif op_type == OpType.SIGMOID:
+        assert len(items) == 3, "wrong format"
+        assert len(prev_ops_list) == 1, "wrong format"
+        input_tensor = tensor_dict[prev_ops_list[0]]
+        tensor_dict[op_name] = self.sigmoid(input=input_tensor)
+        
+      elif op_type == OpType.TANH:
+        assert len(items) == 3, "wrong format"
+        assert len(prev_ops_list) == 1, "wrong format"
+        input_tensor = tensor_dict[prev_ops_list[0]]
+        tensor_dict[op_name] = self.tanh(input=input_tensor)
+        
+      elif op_type == OpType.ELU:
+        assert len(items) == 3, "wrong format"
+        assert len(prev_ops_list) == 1, "wrong format"
+        input_tensor = tensor_dict[prev_ops_list[0]]
+        tensor_dict[op_name] = self.elu(input=input_tensor)
       
       elif op_type == OpType.CONCAT:
         assert len(items) == 4, "wrong format"

@@ -141,12 +141,25 @@ def torch_to_flexflow(model, filename):
         op_str = op_str + str(node.module.padding) + ", "
         op_str = op_str + str(enum_to_int(PoolType, PoolType.POOL_MAX)) + ", "
         op_str = op_str + str(enum_to_int(ActiMode, ActiMode.AC_MODE_NONE)) + "\n"
+
+      elif type(node.module) == torch.nn.modules.dropout.Dropout:
+        op_str = op_str + str(enum_to_int(OpType, OpType.DROPOUT)) + ", "
+        op_str = op_str + str(node.module.p) + "\n"
         
       elif type(node.module) == torch.nn.modules.flatten.Flatten:
         op_str = op_str + str(enum_to_int(OpType, OpType.FLAT)) + "\n"
           
       elif type(node.module) == torch.nn.modules.activation.ReLU:
         op_str = op_str + str(enum_to_int(OpType, OpType.RELU)) + "\n"
+        
+      elif type(node.module) == torch.nn.modules.activation.Sigmoid:
+        op_str = op_str + str(enum_to_int(OpType, OpType.SIGMOID)) + "\n"
+        
+      elif type(node.module) == torch.nn.modules.activation.Tanh:
+        op_str = op_str + str(enum_to_int(OpType, OpType.TANH)) + "\n"
+        
+      elif type(node.module) == torch.nn.modules.activation.ELU:
+        op_str = op_str + str(enum_to_int(OpType, OpType.ELU)) + "\n"
       
       else:
         assert 0, "unknown op"
