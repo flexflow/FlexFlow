@@ -44,8 +44,6 @@ class OpType(Enum):
   SOFTMAX = 2015
   CONCAT = 2016
   FLAT = 2017
-  ELEMENT_UNARY = 2018
-  ELEMENT_BINARY = 2019
   MSELOSS = 2020
   BATCH_NORM = 2021
   RELU = 2022
@@ -58,7 +56,12 @@ class OpType(Enum):
   RESHAPE = 2029
   TRANSPOSE = 2030
   REVERSE = 2031
-  OUTPUT = 2040
+  EXP = 2040
+  ADD = 2041
+  SUBTRACT = 2042
+  MULTIPLY = 2043
+  DIVIDE = 2044
+  OUTPUT = 2050
   
 def enum_to_int(enum, enum_item):
   for item in enum:

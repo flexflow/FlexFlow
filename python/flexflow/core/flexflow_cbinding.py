@@ -80,18 +80,39 @@ class Op(object):
     ffc.flexflow_op_add_to_model(self.handle, model.handle)
 
 # -----------------------------------------------------------------------
-# ElementBinary
+# Exp
 # -----------------------------------------------------------------------
-class ElementBinary(Op):
+class Exp(Op):
   def __init__(self, handle):
-    super(ElementBinary, self).__init__(handle) 
+    super(Exp, self).__init__(handle) 
     
 # -----------------------------------------------------------------------
-# ElementUnary
+# Add
 # -----------------------------------------------------------------------
-class ElementUnary(Op):
+class Add(Op):
   def __init__(self, handle):
-    super(ElementUnary, self).__init__(handle) 
+    super(Add, self).__init__(handle) 
+    
+# -----------------------------------------------------------------------
+# Subtract
+# -----------------------------------------------------------------------
+class Subtract(Op):
+  def __init__(self, handle):
+    super(Subtract, self).__init__(handle) 
+    
+# -----------------------------------------------------------------------
+# Multiple
+# -----------------------------------------------------------------------
+class Multiple(Op):
+  def __init__(self, handle):
+    super(Multiple, self).__init__(handle) 
+    
+# -----------------------------------------------------------------------
+# Divide
+# -----------------------------------------------------------------------
+class Divide(Op):
+  def __init__(self, handle):
+    super(Divide, self).__init__(handle) 
     
 # -----------------------------------------------------------------------
 # Conv2D
@@ -331,10 +352,16 @@ def convert_op_handle_to_op(op_type, handle):
     return Concat(handle)
   elif op_type == OpType.SOFTMAX:
     return Softmax(handle)
-  elif op_type == OpType.ELEMENT_UNARY:
-    return ElementUnary(handle)
-  elif op_type == OpType.ELEMENT_BINARY:
-    return ElementBinary(handle)
+  elif op_type == OpType.EXP:
+    return Exp(handle)
+  elif op_type == OpType.ADD:
+    return Add(handle)
+  elif op_type == OpType.SUBTRACT:
+    return Subtract(handle)
+  elif op_type == OpType.MULTIPLY:
+    return Multiply(handle)
+  elif op_type == OpType.DIVIDE:
+    return Divide(handle)
   elif op_type == OpType.MSELOSS:
     return MSELoss(handle)
   elif op_type == OpType.RELU:
@@ -617,28 +644,28 @@ class FFModel(object):
     
   def exp(self, x):
     handle = ffc.flexflow_model_add_exp(self.handle, x.handle)
-    self.add_layer(OpType.ELEMENT_UNARY)
-    return Tensor(handle, owner_op_type=OpType.ELEMENT_UNARY)
+    self.add_layer(OpType.EXP)
+    return Tensor(handle, owner_op_type=OpType.EXP)
     
   def add(self, x, y):
     handle = ffc.flexflow_model_add_add(self.handle, x.handle, y.handle)
-    self.add_layer(OpType.ELEMENT_BINARY)
-    return Tensor(handle, owner_op_type=OpType.ELEMENT_BINARY)
+    self.add_layer(OpType.ADD)
+    return Tensor(handle, owner_op_type=OpType.ADD)
   
   def subtract(self, x, y):
     handle = ffc.flexflow_model_add_subtract(self.handle, x.handle, y.handle)
-    self.add_layer(OpType.ELEMENT_BINARY)
-    return Tensor(handle, owner_op_type=OpType.ELEMENT_BINARY)
+    self.add_layer(OpType.SUBTRACT)
+    return Tensor(handle, owner_op_type=OpType.SUBTRACT)
     
   def multiply(self, x, y):
     handle = ffc.flexflow_model_add_multiply(self.handle, x.handle, y.handle)
-    self.add_layer(OpType.ELEMENT_BINARY)
-    return Tensor(handle, owner_op_type=OpType.ELEMENT_BINARY)
+    self.add_layer(OpType.MULTIPLY)
+    return Tensor(handle, owner_op_type=OpType.MULTIPLY)
     
   def divide(self, x, y):
     handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle)
-    self.add_layer(OpType.ELEMENT_BINARY)
-    return Tensor(handle, owner_op_type=OpType.ELEMENT_BINARY)
+    self.add_layer(OpType.DIVIDE)
+    return Tensor(handle, owner_op_type=OpType.DIVIDE)
     
   def conv2d(self, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, shared_op=None, kernel_initializer=None, bias_initializer=None):
     shared_op_handle = self.__get_op_handle(shared_op)

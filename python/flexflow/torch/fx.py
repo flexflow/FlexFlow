@@ -135,12 +135,26 @@ def torch_to_flexflow(model, filename):
           op_str = op_str + "0\n"
           
       elif type(node.module) == torch.nn.modules.pooling.MaxPool2d:
+        #FIXME MaxPool2d supports ceil_mode
         op_str = op_str + str(enum_to_int(OpType, OpType.POOL2D)) + ", "
         op_str = op_str + str(node.module.kernel_size) + ", "
         op_str = op_str + str(node.module.stride) + ", "
         op_str = op_str + str(node.module.padding) + ", "
         op_str = op_str + str(enum_to_int(PoolType, PoolType.POOL_MAX)) + ", "
         op_str = op_str + str(enum_to_int(ActiMode, ActiMode.AC_MODE_NONE)) + "\n"
+        
+      elif type(node.module) == torch.nn.modules.pooling.AvgPool2d:
+        #FIXME AvgPool2d supports ceil_mode
+        op_str = op_str + str(enum_to_int(OpType, OpType.POOL2D)) + ", "
+        op_str = op_str + str(node.module.kernel_size) + ", "
+        op_str = op_str + str(node.module.stride) + ", "
+        op_str = op_str + str(node.module.padding) + ", "
+        op_str = op_str + str(enum_to_int(PoolType, PoolType.POOL_AVG)) + ", "
+        op_str = op_str + str(enum_to_int(ActiMode, ActiMode.AC_MODE_NONE)) + "\n"
+        
+      elif type(node.module) == torch.nn.modules.batchnorm.BatchNorm2d:
+        # FIXME BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True) args are not in FF 
+        op_str = op_str + str(enum_to_int(OpType, OpType.BATCH_NORM)) + "\n"
 
       elif type(node.module) == torch.nn.modules.dropout.Dropout:
         op_str = op_str + str(enum_to_int(OpType, OpType.DROPOUT)) + ", "
@@ -162,6 +176,7 @@ def torch_to_flexflow(model, filename):
         op_str = op_str + str(enum_to_int(OpType, OpType.ELU)) + "\n"
       
       else:
+        print(node.module)
         assert 0, "unknown op"
       
     print(op_str)
