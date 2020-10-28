@@ -1,4 +1,5 @@
-import flexflow.torch.nn as nn
+import torch.nn as nn
+import flexflow.torch.fx as fx
 
 class MLP(nn.Module):
   def __init__(self):
@@ -16,4 +17,4 @@ class MLP(nn.Module):
     y = self.linear3(y)
 
 model = MLP()
-model.symbolic_trace()
+fx.torch_to_flexflow(model, "mlp.ff")
