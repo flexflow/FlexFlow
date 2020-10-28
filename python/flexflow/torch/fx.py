@@ -92,7 +92,6 @@ def torch_to_flexflow(model, filename):
       op_str = op_str + str(node.inedges[1]) + "\n"
     
     if type(node) == ModuleNode:
-      op_str = node.name + ", "
       assert len(node.inedges) == 1, "wrong format"
       inedge = node.inedges[0]
       if inedge.name == "x":
