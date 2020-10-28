@@ -758,8 +758,8 @@ class FFModel(object):
   def transpose(self, input, perm):
     c_perm = ffi.new("int[]", perm)
     handle = ffc.flexflow_model_add_transpose(self.handle, input.handle, len(perm), c_perm)
-    self.add_layer(OpType.REVERSE)
-    return Tensor(handle, owner_op_type=OpType.REVERSE)
+    self.add_layer(OpType.TRANSPOSE)
+    return Tensor(handle, owner_op_type=OpType.TRANSPOSE)
     
   def reverse(self, input, axis):
     handle = ffc.flexflow_model_add_reverse(self.handle, input.handle, axis)
