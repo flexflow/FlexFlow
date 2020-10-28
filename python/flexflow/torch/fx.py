@@ -92,12 +92,20 @@ def torch_to_flexflow(model, filename):
       op_str = op_str + str(enum_to_int(OpType, OpType.OUTPUT)) + "\n"
     
     if type(node) == FunctionNode:
-      print(node.function)
-      #FIXME assume it is a merge
-      assert len(node.inedges) == 2, "wrong format"
-      
-      op_str = op_str + str(enum_to_int(OpType, OpType.CONCAT)) + ", "
-      op_str = op_str + str(node.inedges[1]) + "\n"
+      function_name = str(node.function)
+      if function_name.find('add') >= 0:
+        assert len(node.inedges) == 2, "wrong number of inputs"
+        op_str = op_str + str(enum_to_int(OpType, OpType.ADD)) + ", "
+      elif function_name.find('cat') >= 0:
+        #FIXME assume it is a merge
+        op_str = op_str + str(enum_to_int(OpType, OpType.CONCAT)) + ", "
+        op_str = op_str + str(node.inedges[1]) + "\n"
+      elif function_name.find('flatten') >= 0:
+        assert len(node.inedges) == 1, "wrong number of inputs"
+        op_str = op_str + str(enum_to_int(OpType, OpType.FLAT)) + ", "
+      else:
+        # Unrecogonized type
+        assert False, "Unrecogonized built-in function: {}".format(function_name)
     
     if type(node) == ModuleNode:
       assert len(node.inedges) == 1, "wrong format"
