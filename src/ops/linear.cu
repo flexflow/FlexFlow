@@ -71,11 +71,12 @@ Linear::Linear(FFModel& model,
   bias_initializer(_bias_initializer),
   profiling(model.config.profiling)
 {
-  assert(_input.numDim == 2);
-  int batch_size = _input.adim[1];
-  outputs[0].numDim = 2;
-  outputs[0].adim[0] = out_channels;
-  outputs[0].adim[1] = batch_size;
+  numInputs = 1;
+  numOutputs = 1;
+  outputs[0].numDim = _input.numDim;
+  for (int i = 1; i < outputs[0].numDim; i++)
+    outputs[0].adim[i] = _input.adim[i];
+  outputs[0].adim[0] = out_dim;
   weights[0].numDim = 2;
   weights[0].adim[0] = in_channels;
   weights[0].adim[1] = out_channels;
@@ -104,7 +105,6 @@ Linear::Linear(FFModel& model,
 
 Tensor Linear::init_inout(FFModel& model, const Tensor& _input)
 {
-  assert(_input.numDim == 2);
   assert(_input.adim[0] == in_channels);
   inputs[0] = _input;
   create_output_and_partition(model);
@@ -123,21 +123,60 @@ void Linear::add_to_model(FFModel& model)
 }
 */
 
+
 void Linear::create_weights(FFModel& model)
+{
+  int dim = inputs[0].numDim;
+  switch (dim) {
+    case 1:
+    {
+      create_weights_with_dim<1>(model);
+      break;
+    }
+    case 2:
+    {
+      create_weights_with_dim<2>(model);
+      break;
+    }
+    case 3:
+    {
+      create_weights_with_dim<3>(model);
+      break;
+    }
+    case 4:
+    {
+      create_weights_with_dim<4>(model);
+      break;
+    }
+    case 5:
+    {
+      create_weights_with_dim<5>(model);
+      break;
+    }
+    default:
+    {
+      // Unsupported dim
+      assert(false);
+    }
+  }
+}
+
+template<int NDIM>
+void Linear::create_weights_with_dim(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
 
   // Create kernel tensor
   {
     const int dims[2] = {out_channels, in_channels};
-    weights[0] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
+    weights[0] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT, kernel_initializer);
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_channels};
-    weights[1] = model.create_linear_weight<1>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, bias_initializer);
+    weights[1] = model.create_linear_weight<1>(this, dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT, bias_initializer);
     assert(numWeights == 2);
   } else {
     assert(numWeights == 1);
@@ -146,38 +185,84 @@ void Linear::create_weights(FFModel& model)
 
 void Linear::create_output_and_partition(FFModel& model)
 {
+  int dim = inputs[0].numDim;
+  switch (dim) {
+    case 1:
+    {
+      create_output_and_partition_with_dim<1>(model);
+      break;
+    }
+    case 2:
+    {
+      create_output_and_partition_with_dim<2>(model);
+      break;
+    }
+    case 3:
+    {
+      create_output_and_partition_with_dim<3>(model);
+      break;
+    }
+    case 4:
+    {
+      create_output_and_partition_with_dim<4>(model);
+      break;
+    }
+    case 5:
+    {
+      create_output_and_partition_with_dim<5>(model);
+      break;
+    }
+    default:
+    {
+      // Unsupported dim for ElementWiseBinary operator
+      assert(false);
+    }
+  }
+}
+
+template<int NDIM>
+void Linear::create_output_and_partition_with_dim(FFModel& model)
+{
   // Retrive the task indexspace for the op
   std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
 
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
   int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
-  int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
+  int num_par_n = part_rect.hi[NDIM-1] - part_rect.lo[NDIM-1] + 1;
   int in_dim = inputs[0].adim[0];
   assert(in_dim == in_channels);
-  int batch_size = inputs[0].adim[1];
+  int batch_size = inputs[0].adim[NDIM-1];
   {
-    const int dims[2] = {batch_size, out_channels};
-    outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
+    int dims[NDIM];
+    for (int i = 0; i < NDIM; i++)
+      dims[i] = outputs[0].adim[NDIM-1-i];
+    outputs[0] = model.create_tensor<NDIM>(dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT);
     outputs[0].owner_op = this;
     outputs[0].owner_idx = 0;
   }
   // Compute partition bound for input
-  Rect<2> input_rect = runtime->get_index_partition_color_space(
+  Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
       ctx, inputs[0].part.get_index_partition());
   // Create replica tensor
   if (num_par_c > 1) {
     const int dims[3] = {num_par_c, batch_size, in_dim};
-    replica = model.create_linear_replica<3>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
+    replica = model.create_linear_replica<3>(dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT);
     {
-      Rect<2> extent(Point<2>(0, 0), Point<2>(in_dim-1, batch_size/num_par_n-1));
-      Transform<2, 2> transform;
-      transform[0][0] = 0;
-      transform[0][1] = 0;
-      transform[1][0] = 0;
-      transform[1][1] = batch_size/num_par_n;
+      Rect<NDIM> extent;
+      for (int i = 0; i < NDIM; i++) {
+        extent.lo[i] = 0;
+        assert(outputs[0].adim[i] % (part_rect.hi[i] - part_rect.lo[i] + 1) == 0);
+        extent.hi[i] = outputs[0].adim[i] / (part_rect.hi[i] - part_rect.lo[i] + 1) - 1;
+      }
+      Transform<NDIM, NDIM> transform;
+      for (int i = 0; i < NDIM; i++)
+        for (int j = 0; j < NDIM; j++)
+          transform[i][j] = 0;
+      for (int i = 1; i < NDIM; i++)
+        transform[i][i] = extent.hi[i] + 1;
       IndexPartition ip = runtime->create_partition_by_restriction(
           ctx, inputs[0].region.get_index_space(), task_is, transform, extent);
       input_lps[0] = runtime->get_logical_partition(
@@ -186,17 +271,21 @@ void Linear::create_output_and_partition(FFModel& model)
     // Backward use the same ip as inputs[0]
     input_grad_lps[0] = inputs[0].part_grad;
     {
-      IndexSpaceT<2> input_task_is = IndexSpaceT<2>(model.get_or_create_task_is(input_rect));
-      const coord_t num_parts[2] = {input_rect.hi[0] - input_rect.lo[0] + 1,
-                                    input_rect.hi[1] - input_rect.lo[1] + 1};
-      Rect<3> extent(Point<3>(0, 0, 0),
-          Point<3>(in_dim/num_parts[0]-1, batch_size/num_parts[1]-1, num_par_c-1));
-      Transform<3, 2> transform;
-      for (int i = 0; i < 3; i++)
-        for (int j = 0; j < 2; j++)
+      IndexSpaceT<NDIM> input_task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(input_rect));
+      Rect<NDIM+1> extent;
+      for (int i = 0; i < NDIM; i++) {
+        extent.lo[i] = 0;
+        assert(inputs[0].adim[i] % (input_rect.hi[i] - input_rect.lo[i] + 1) == 0);
+        extent.hi[i] = inputs[0].adim[i] / (input_rect.hi[i] - input_rect.lo[i] + 1) - 1;
+      }
+      extent.lo[NDIM] = 0;
+      extent.hi[NDIM] = num_par_c - 1;
+      Transform<NDIM+1, NDIM> transform;
+      for (int i = 0; i < NDIM+1; i++)
+        for (int j = 0; j < NDIM; j++)
           transform[i][j] = 0;
-      transform[0][0] = in_dim / num_parts[0];
-      transform[1][1] = batch_size / num_parts[1];
+      for (int i = 0; i < NDIM; i++)
+        transform[i][i] = inputs[0].adim[i] / (input_rect.hi[i] - input_rect.lo[i] + 1);
       IndexPartition ip = runtime->create_partition_by_restriction(
           ctx, replica.region_grad.get_index_space(), input_task_is,
           transform, extent);
@@ -212,12 +301,19 @@ void Linear::create_output_and_partition(FFModel& model)
       input_lps[0] = inputs[0].part;
       input_grad_lps[0] = inputs[0].part_grad;
     } else {
-      Rect<2> extent(Point<2>(0,0), Point<2>(in_dim-1,batch_size/num_par_n-1));
-      Transform<2, 2> transform;
-      transform[0][0] = 0;
-      transform[0][1] = 0;
-      transform[1][0] = 0;
-      transform[1][1] = batch_size / num_par_n;
+      Rect<NDIM> extent;
+      for (int i = 0; i < NDIM; i++) {
+        extent.lo[i] = 0;
+        assert(inputs[0].adim[i] % (part_rect.hi[i] - part_rect.lo[i] + 1) == 0);
+        extent.hi[i] = inputs[0].adim[i] / (part_rect.hi[i] - part_rect.lo[i] + 1) - 1;
+      }
+      Transform<NDIM, NDIM> transform;
+      for (int i = 0; i < NDIM; i++)
+        for (int j = 0; j < NDIM; j++) {
+          transform[i][j] = 0;
+          if (i==j)
+            transform[i][j] = extent.hi[i] + 1;
+        }
       IndexPartition ip = runtime->create_partition_by_restriction(
           ctx, inputs[0].region.get_index_space(), task_is, transform, extent);
       assert(runtime->is_index_partition_disjoint(ctx, ip));
@@ -237,7 +333,31 @@ void Linear::create_output_and_partition(FFModel& model)
 */
 OpMeta* Linear::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
-                          Context ctx, Runtime *runtime)
+                          Context ctx, Runtime* runtime)
+{
+  Domain out_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (out_domain.get_dim()) {
+    case 1:
+      return init_task_with_dim<1>(task, regions, ctx, runtime);
+    case 2:
+      return init_task_with_dim<2>(task, regions, ctx, runtime);
+    case 3:
+      return init_task_with_dim<3>(task, regions, ctx, runtime);
+    case 4:
+      return init_task_with_dim<4>(task, regions, ctx, runtime);
+    case 5:
+      return init_task_with_dim<5>(task, regions, ctx, runtime);
+    default:
+      assert(false);
+  }
+  return NULL;
+}
+
+template<int NDIM>
+OpMeta* Linear::init_task_with_dim(const Task *task,
+                                   const std::vector<PhysicalRegion> &regions,
+                                   Context ctx, Runtime *runtime)
 {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
@@ -245,7 +365,7 @@ OpMeta* Linear::init_task(const Task *task,
   FFHandler handle = *((const FFHandler*) task->local_args);
   //TensorAccessorR<float, 2> acc_input(
   //    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_output(
+  TensorAccessorW<float, NDIM> acc_output(
       regions[0], task->regions[0], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   TensorAccessorR<float, 2> acc_kernel(
@@ -255,7 +375,7 @@ OpMeta* Linear::init_task(const Task *task,
   //int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int in_dim = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
-  int batch_size = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
+  int batch_size = acc_output.rect.volume() / out_dim;
   printf("init linear (input): in_dim(%d) out_dim(%d) batch_size(%d)\n",
       in_dim, out_dim, batch_size);
   LinearMeta* m = new LinearMeta(handle, batch_size);
@@ -285,15 +405,35 @@ OpMeta* Linear::init_task(const Task *task,
 
 void Linear::init(const FFModel& ff)
 {
+  int dim = outputs[0].numDim;
+  switch (dim) {
+    case 1:
+      return init_with_dim<1>(ff);
+    case 2:
+      return init_with_dim<2>(ff);
+    case 3:
+      return init_with_dim<3>(ff);
+    case 4:
+      return init_with_dim<4>(ff);
+    case 5:
+      return init_with_dim<5>(ff);
+    default:
+      assert(false);
+  }
+}
+
+template<int NDIM>
+void Linear::init_with_dim(const FFModel& ff)
+{
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
   ParallelConfig pc;
   std::string pcname = name;
-  ff.config.find_parallel_config(2, pcname, pc);
+  ff.config.find_parallel_config(NDIM, pcname, pc);
   int idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
+  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[pc.device_ids[idx++]];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
@@ -320,7 +460,7 @@ void Linear::init(const FFModel& ff)
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
+  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
     meta[idx++] = fm.get_result<OpMeta*>(*it);
   }
 }
@@ -350,24 +490,47 @@ void Linear::forward_kernel(const LinearMeta* m,
   }
 }
 
+__host__
+void Linear::forward_task(const Task *task,
+                          const std::vector<PhysicalRegion> &regions,
+                          Context ctx, Runtime *runtime)
+{
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (in_domain.get_dim()) {
+    case 1:
+      return forward_task_with_dim<1>(task, regions, ctx, runtime);
+    case 2:
+      return forward_task_with_dim<2>(task, regions, ctx, runtime);
+    case 3:
+      return forward_task_with_dim<3>(task, regions, ctx, runtime);
+    case 4:
+      return forward_task_with_dim<4>(task, regions, ctx, runtime);
+    case 5:
+      return forward_task_with_dim<5>(task, regions, ctx, runtime);
+    default:
+      assert(false);
+  }
+}
+
 /*
   regions[0](I); input
   regions[1](O): output
   regions[2](I): kernel
   regions[3](I): bias
 */
-__host__
-void Linear::forward_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
-                          Context ctx, Runtime *runtime)
+template<int NDIM>
+void Linear::forward_task_with_dim(const Task *task,
+                                   const std::vector<PhysicalRegion> &regions,
+                                   Context ctx, Runtime *runtime)
 {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   Linear* linear = (Linear*) task->args;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
-  TensorAccessorR<float, 2> acc_input(
+  TensorAccessorR<float, NDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_output(
+  TensorAccessorW<float, NDIM> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   TensorAccessorR<float, 2> acc_kernel(
@@ -376,8 +539,9 @@ void Linear::forward_task(const Task *task,
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
   int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
-  int batch_size = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
+  int batch_size = acc_output.rect.volume() / out_dim;
   assert(acc_output.rect.volume() == out_dim * batch_size);
+  assert(acc_input.rect.volume() == in_dim * batch_size);
   assert(acc_kernel.rect.volume() == in_dim * out_dim);
   assert(acc_bias.rect.volume() == out_dim);
 
@@ -413,12 +577,32 @@ void Linear::forward_task(const Task *task,
 
 void Linear::forward(const FFModel& ff)
 {
+  int dim = outputs[0].numDim;
+  switch (dim) {
+    case 1:
+      return forward_with_dim<1>(ff);
+    case 2:
+      return forward_with_dim<2>(ff);
+    case 3:
+      return forward_with_dim<3>(ff);
+    case 4:
+      return forward_with_dim<4>(ff);
+    case 5:
+      return forward_with_dim<5>(ff);
+    default:
+      assert(false);
+  }
+}
+
+template<int NDIM>
+void Linear::forward_with_dim(const FFModel& ff)
+{
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
+  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
@@ -499,6 +683,28 @@ void Linear::backward_kernel(const LinearMeta* m,
                         &alpha, input_grad_ptr, in_dim));
 }
 
+void Linear::backward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime)
+{
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (in_domain.get_dim()) {
+    case 1:
+      return backward_task_with_dim<1>(task, regions, ctx, runtime);
+    case 2:
+      return backward_task_with_dim<2>(task, regions, ctx, runtime);
+    case 3:
+      return backward_task_with_dim<3>(task, regions, ctx, runtime);
+    case 4:
+      return backward_task_with_dim<4>(task, regions, ctx, runtime);
+    case 5:
+      return backward_task_with_dim<5>(task, regions, ctx, runtime);
+    default:
+      assert(false);
+  }
+}
+
 /*
   regions[0](I): input
   regions[1](I/O): replica_grad or input_grad
@@ -508,23 +714,24 @@ void Linear::backward_kernel(const LinearMeta* m,
   regions[5](I/O): filter_grad
   regions[6](I/O): bias_grad
 */
+template<int NDIM>
 __host__
-void Linear::backward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime)
+void Linear::backward_task_with_dim(const Task *task,
+                                    const std::vector<PhysicalRegion> &regions,
+                                    Context ctx, Runtime *runtime)
 {
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   Linear* linear = (Linear*) task->args;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
   float* input_grad = NULL;
-  TensorAccessorR<float, 2> acc_input(
+  TensorAccessorR<float, NDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 2> acc_output(
+  TensorAccessorR<float, NDIM> acc_output(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
-  int batch_size = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
+  int batch_size = acc_output.rect.volume() / out_dim;
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
   if (domain.get_dim() == 3) {
@@ -540,7 +747,7 @@ void Linear::backward_task(const Task *task,
     assert(acc_replica_grad.rect.volume() == in_dim * batch_size);
     input_grad = acc_replica_grad.ptr;
   }
-  TensorAccessorW<float, 2> acc_output_grad(
+  TensorAccessorW<float, NDIM> acc_output_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime,
       true/*readOutput*/);
   TensorAccessorR<float, 2> acc_kernel(
@@ -588,18 +795,42 @@ void Linear::backward_task(const Task *task,
   }
 }
 
+void Linear::backward2_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime)
+{
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (in_domain.get_dim()) {
+    case 1:
+      return backward2_task_with_dim<1>(task, regions, ctx, runtime);
+    case 2:
+      return backward2_task_with_dim<2>(task, regions, ctx, runtime);
+    case 3:
+      return backward2_task_with_dim<3>(task, regions, ctx, runtime);
+    case 4:
+      return backward2_task_with_dim<4>(task, regions, ctx, runtime);
+    case 5:
+      return backward2_task_with_dim<5>(task, regions, ctx, runtime);
+    default:
+      assert(false);
+  }
+}
+
+
 /*
   regions[0](I/O): input_grad
   regions[1](I): replicas
 */
+template<int NDIM>
 __host__
-void Linear::backward2_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime)
+void Linear::backward2_task_with_dim(const Task *task,
+                                     const std::vector<PhysicalRegion> &regions,
+                                     Context ctx, Runtime *runtime)
 {
   float alpha = 1.0f;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
-  TensorAccessorW<float, 2> acc_input(
+  TensorAccessorW<float, NDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime,
       true/*readOutput*/);
   TensorAccessorR<float, 3> acc_replica(
@@ -612,7 +843,7 @@ void Linear::backward2_task(const Task *task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  int num_replica = acc_replica.rect.hi[2] - acc_replica.rect.lo[2] + 1;
+  int num_replica = acc_replica.rect.hi[NDIM] - acc_replica.rect.lo[NDIM] + 1;
   const float *replica_ptr = acc_replica.ptr;
   for (int i = 1; i < num_replica; i++) {
     checkCUDA(cublasSaxpy(m->handle.blas, acc_input.rect.volume(),
@@ -623,12 +854,32 @@ void Linear::backward2_task(const Task *task,
 
 void Linear::backward(const FFModel& ff)
 {
+  int dim = outputs[0].numDim;
+  switch (dim) {
+    case 1:
+      return backward_with_dim<1>(ff);
+    case 2:
+      return backward_with_dim<2>(ff);
+    case 3:
+      return backward_with_dim<3>(ff);
+    case 4:
+      return backward_with_dim<4>(ff);
+    case 5:
+      return backward_with_dim<5>(ff);
+    default:
+      assert(false);
+  }
+}
+
+template<int NDIM>
+void Linear::backward_with_dim(const FFModel& ff)
+{
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
+  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
@@ -750,7 +1001,6 @@ void Linear::print_layer(const FFModel& ff)
   size_t bias_size = acc_bias.rect.volume();
   printf("kernel, %p, %d, [%d, %d]\n", kernel_ptr, kernel_size, kernel_dim1, kernel_dim2);
   printf("bias, %p, %d\n", bias_ptr, bias_size);
-
   
   for (int i = 0; i < bias_size; i++) {
     printf("%f ", bias_ptr[i]);
@@ -795,9 +1045,9 @@ bool Linear::measure_compute_time(Simulator* sim,
   if (!outputs[0].get_input_sub_tensor(pc, sub_input, OP_LINEAR))
     return false;
   int input_c = sub_input.adim[0];
-  int input_n = sub_input.adim[1];
+  int input_n = sub_input.get_volume() / input_c;
   int output_c = sub_output.adim[0];
-  int output_n = sub_output.adim[1];
+  int output_n = sub_output.get_volume() / output_c;
   LinearMeta* m = sim->linear_meta;
   if (activation != AC_MODE_NONE) {
     cudnnActivationMode_t mode;

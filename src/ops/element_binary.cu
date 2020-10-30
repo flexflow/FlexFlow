@@ -135,25 +135,21 @@ void ElementBinary::create_output_and_partition(FFModel& model)
   switch (dim) {
     case 1:
     {
-      task_is = model.get_or_create_task_is(1, name);
       create_output_and_partition_with_dim<1>(model);
       break;
     }
     case 2:
     {
-      task_is = model.get_or_create_task_is(2, name);
       create_output_and_partition_with_dim<2>(model);
       break;
     }
     case 3:
     {
-      task_is = model.get_or_create_task_is(3, name);
       create_output_and_partition_with_dim<3>(model);
       break;
     }
     case 4:
     {
-      task_is = model.get_or_create_task_is(4, name);
       create_output_and_partition_with_dim<4>(model);
       break;
     }

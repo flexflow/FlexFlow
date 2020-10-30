@@ -206,6 +206,15 @@ template class TensorAccessorW<int64_t, 2>;
 template class TensorAccessorW<int64_t, 3>;
 template class TensorAccessorW<int64_t, 4>;
 
+#if MAX_TENSOR_DIM >= 5
+  template class TensorAccessorR<float, 5>;
+  template class TensorAccessorR<int32_t, 5>;
+  template class TensorAccessorR<int64_t, 5>;
+  template class TensorAccessorW<float, 5>;
+  template class TensorAccessorW<int32_t, 5>;
+  template class TensorAccessorW<int64_t, 5>;
+#endif
+
 template const float* helperGetTensorPointerRO(
   PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
 

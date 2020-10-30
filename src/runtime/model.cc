@@ -602,19 +602,20 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor& tensor
 // This function assumes:
 // 1. the outer most dim of weight is channel out
 // 2. partition is 2D (sample, channel_out)
-template<int NDIM>
+template<int NDIM, int TDIM>
 Parameter FFModel::create_linear_weight(Op* op,
                                         const int dims[],
-                                        const IndexSpaceT<2>& part_is,
+                                        const IndexSpaceT<TDIM>& part_is,
                                         DataType data_type,
                                         Initializer* initializer,
                                         bool create_grad)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, part_is);
-  int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
-  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
+  Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  int num_parts[TDIM];
+  for (int i = 0; i < TDIM; i++)
+    num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
   Parameter weight;
   weight.pcname = op->name;
   weight.numDim = NDIM;
@@ -644,14 +645,14 @@ Parameter FFModel::create_linear_weight(Op* op,
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight.region = runtime->create_logical_region(ctx, is, fs);
-    assert(dims[0] % num_par_c == 0);
-    hi[NDIM-1] = dims[0] / num_par_c - 1;
+    assert(dims[0] % num_parts[0] == 0);
+    hi[NDIM-1] = dims[0] / num_parts[0] - 1;
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
-    Transform<NDIM, 2> transform;
+    Transform<NDIM, TDIM> transform;
     for (int i = 0; i < NDIM; i++)
-      for (int j = 0; j < 2; j++)
+      for (int j = 0; j < TDIM; j++)
         transform[i][j] = 0;
-    transform[NDIM-1][0] = dims[0] / num_par_c;
+    transform[NDIM-1][0] = dims[0] / num_parts[0];
     IndexPartition ip = runtime->create_partition_by_restriction(
         ctx, is, part_is, transform, extent);
     assert(runtime->is_index_partition_complete(ctx, ip));
@@ -669,18 +670,22 @@ Parameter FFModel::create_linear_weight(Op* op,
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
       hi[i] = dims[NDIM-1-i]-1;
-    hi[NDIM-1] = num_par_n * dims[0] -1;
+    int num_batches = 1;
+    for (int i = 1; i < TDIM; i++)
+      num_batches *= num_parts[i];
+    hi[NDIM-1] = num_batches * dims[0] -1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight.region_grad = runtime->create_logical_region(ctx, is, fs);
-    hi[NDIM-1] = dims[0] / num_par_c - 1;
+    hi[NDIM-1] = dims[0] / num_parts[0] - 1;
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
-    Transform<NDIM, 2> transform;
+    Transform<NDIM, TDIM> transform;
     for (int i = 0; i < NDIM; i++)
-      for (int j = 0; j < 2; j++)
+      for (int j = 0; j < TDIM; j++)
         transform[i][j] = 0;
-    transform[NDIM-1][0] = dims[0] / num_par_c;
-    transform[NDIM-1][1] = dims[0];
+    transform[NDIM-1][0] = dims[0] / num_parts[0];
+    for (int i = 1; i < TDIM; i++)
+      transform[NDIM-1][i] = transform[NDIM-1][i-1] * num_parts[i-1];
     IndexPartition ip = runtime->create_partition_by_restriction(
         ctx, is, part_is, transform, extent);
     assert(runtime->is_index_partition_complete(ctx, ip));
@@ -782,17 +787,18 @@ Parameter FFModel::create_conv_weight(Op* op,
   return weight;
 }
 
-template<int NDIM>
+template<int NDIM, int TDIM>
 Tensor FFModel::create_linear_replica(const int dims[],
-                                      const IndexSpaceT<2>& task_is,
+                                      const IndexSpaceT<TDIM>& task_is,
                                       DataType data_type)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   assert(NDIM >= 2);
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
-  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
+  Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  int num_parts[TDIM];
+  for (int i = 0; i < TDIM; i++)
+    num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
   Tensor replica;
   replica.numDim = NDIM;
   replica.data_type = data_type;
@@ -819,17 +825,17 @@ Tensor FFModel::create_linear_replica(const int dims[],
   Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
   IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
   replica.region_grad = runtime->create_logical_region(ctx, is, fs);
-  assert(dims[0] == num_par_c);
-  assert(dims[1] % num_par_n == 0);
-  hi[NDIM-1] = dims[0] / num_par_c - 1;
-  hi[NDIM-2] = dims[1] / num_par_n - 1;
+  assert(dims[0] == num_parts[0]);
+  assert(dims[1] % num_parts[1] == 0);
+  hi[NDIM-1] = dims[0] / num_parts[0] - 1;
+  hi[NDIM-2] = dims[1] / num_parts[1] - 1;
   Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
-  Transform<NDIM, 2> transform;
+  Transform<NDIM, TDIM> transform;
   for (int i = 0; i < NDIM; i++)
-    for (int j = 0; j < 2; j++)
+    for (int j = 0; j < TDIM; j++)
       transform[i][j] = 0;
   transform[NDIM-1][0] = 1;
-  transform[NDIM-2][1] = dims[1] / num_par_n;
+  transform[NDIM-2][1] = dims[1] / num_parts[1];
   IndexPartition ip = runtime->create_partition_by_restriction(
       ctx, is, task_is, transform, extent);
   assert(runtime->is_index_partition_disjoint(ctx, ip));
@@ -1982,10 +1988,15 @@ template void FFModel::create_disjoint_partition<5>(const Tensor& tensor, const 
 template Parameter FFModel::create_conv_weight<4>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
 template Parameter FFModel::create_conv_weight<1>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
 
-template Parameter FFModel::create_linear_weight<2>(Op* op, const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
-template Parameter FFModel::create_linear_weight<1>(Op* op, const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
+#define DIMFUNC(D1,D2) \
+  template Parameter FFModel::create_linear_weight<D1, D2>(Op* op, const int* dims, const IndexSpaceT<D2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
+  LEGION_FOREACH_NN(DIMFUNC)
+#undef DIMFUNC
 
-template Tensor FFModel::create_linear_replica<3>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type);
+#define DIMFUNC(D1,D2) \
+  template Tensor FFModel::create_linear_replica<D1>(const int* dims, const IndexSpaceT<D2>& part_is, DataType data_type);
+  LEGION_FOREACH_NN(DIMFUNC)
+#undef DIMFUNC
 
 template float* Tensor::get_raw_ptr<float>(FFConfig &config);
 template int32_t* Tensor::get_raw_ptr<int32_t>(FFConfig &config);

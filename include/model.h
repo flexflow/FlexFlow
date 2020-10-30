@@ -406,16 +406,16 @@ public:
                                DataType data_type,
                                Initializer* initializer,
                                bool create_grad = true);
-  template<int NDIM>
+  template<int NDIM, int TDIM>
   Parameter create_linear_weight(Op* op,
                                  const int* dims,
-                                 const IndexSpaceT<2>& part_is,
+                                 const IndexSpaceT<TDIM>& part_is,
                                  DataType data_type,
                                  Initializer* initializer,
                                  bool create_grad = true);
-  template<int NDIM>
+  template<int NDIM, int TDIM>
   Tensor create_linear_replica(const int* dims,
-                               const IndexSpaceT<2>& part_is,
+                               const IndexSpaceT<TDIM>& part_is,
                                DataType data_type);
   static PerfMetrics update_metrics_task(const Task *task,
                                          const std::vector<PhysicalRegion> &regions,
@@ -856,6 +856,33 @@ public:
                             const ParallelConfig& pc,
                             float& forward_time,
                             float& backward_time);
+private:
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
+  template<int NDIM>
+  void create_weights_with_dim(FFModel& model);
+  template<int NDIM>
+  void init_with_dim(const FFModel& ff);
+  template<int NDIM>
+  void forward_with_dim(const FFModel& ff);
+  template<int NDIM>
+  void backward_with_dim(const FFModel& ff);
+  template<int NDIM>
+  static OpMeta* init_task_with_dim(const Task *task,
+                                    const std::vector<PhysicalRegion> &regions,
+                                    Context ctx, Runtime *runtime);
+  template<int NDIM>
+  static void forward_task_with_dim(const Task *task,
+                                    const std::vector<PhysicalRegion> &regions,
+                                    Context ctx, Runtime *runtime);
+  template<int NDIM>
+  static void backward_task_with_dim(const Task *task,
+                                     const std::vector<PhysicalRegion> &regions,
+                                     Context ctx, Runtime *runtime);
+  template<int NDIM>
+  static void backward2_task_with_dim(const Task *task,
+                                      const std::vector<PhysicalRegion> &regions,
+                                      Context ctx, Runtime *runtime);
 public:
   int in_channels, out_channels;
   Tensor replica;
