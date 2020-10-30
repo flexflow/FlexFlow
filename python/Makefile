@@ -49,10 +49,6 @@ USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 
 USE_PYTHON := 1
-PYTHON_LIB := /usr/lib64/libpython3.so
-PYTHON_VERSION_MAJOR := 3
-PYTHON_VERSION_MINOR := 6
-PYTHON_EXE := /usr/bin/python3
 ifndef PYTHON_LIB
   ifndef PYTHON_ROOT
     PYTHON_EXE := $(shell which python3 | head -1)
