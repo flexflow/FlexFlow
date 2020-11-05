@@ -1055,25 +1055,34 @@ void FFModel::compile(LossType loss_type,
     case 1:
     {
       label_tensor = create_tensor<1>(dims, "", label_type);
+      break;
     }
     case 2:
     {
       label_tensor = create_tensor<2>(dims, "", label_type);
+      break;
     }
     case 3:
     {
       label_tensor = create_tensor<3>(dims, "", label_type);
+      break;
     }
     case 4:
     {
       label_tensor = create_tensor<4>(dims, "", label_type);
+      break;
     }
 #if MAX_TENSOR_DIM >= 5
     case 5:
     {
       label_tensor = create_tensor<5>(dims, "", label_type);
+      break;
     }
 #endif
+    default:
+    {
+      assert(false && "Unsupported dim");
+    }
   }
   // init optimizer
   assert(optimizer != NULL);
