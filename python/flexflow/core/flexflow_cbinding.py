@@ -244,13 +244,6 @@ class Concat(Op):
     self._add_to_model(model)
 
 # -----------------------------------------------------------------------
-# MSELoss
-# -----------------------------------------------------------------------
-class MSELoss(Op):
-  def __init__(self, handle):
-    super(MSELoss, self).__init__(handle)
-
-# -----------------------------------------------------------------------
 # BatchNorm
 # -----------------------------------------------------------------------
 class BatchNorm(Op):
@@ -676,13 +669,6 @@ class FFModel(object):
     self.add_layer(OpType.CONV2D)
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 
-  def conv2d_v2(self, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
-    c_activation = enum_to_int(ActiMode, activation)
-    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
-    bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_conv2d_no_inout(self.handle, in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, kernel_init_handle, bias_init_handle)
-    return Conv2D(handle)
-
   def embedding(self, input, num_entires, out_dim, aggr, shared_op=None, kernel_initializer=None):
     shared_op_handle = self.__get_op_handle(shared_op)
     c_aggr = enum_to_int(AggrMode, aggr)
@@ -697,12 +683,6 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_pool2d(self.handle, input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
     self.add_layer(OpType.POOL2D)
     return Tensor(handle, owner_op_type=OpType.POOL2D)
-
-  def pool2d_v2(self, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE):
-    c_pool_type = enum_to_int(PoolType, pool_type)
-    c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_pool2d_no_inout(self.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
-    return Pool2D(handle)
 
   def batch_norm(self, input, relu=True):
     handle = ffc.flexflow_model_add_batch_norm(self.handle, input.handle, relu)
@@ -722,13 +702,6 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_dense(self.handle,  input.handle, out_dim, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle)
     self.add_layer(OpType.LINEAR)
     return Tensor(handle, owner_op_type=OpType.LINEAR)
-
-  def dense_v2(self, in_dim, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, kernel_initializer=None, bias_initializer=None):
-    c_activation = enum_to_int(ActiMode, activation)
-    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
-    bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_dense_no_inout(self.handle,  in_dim, out_dim, c_activation, use_bias, kernel_init_handle, bias_init_handle)
-    return Linear(handle)
 
   def concat(self, tensors, axis):
     assert type(tensors) is list, "tensors should be a list"
@@ -766,10 +739,6 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_flat(self.handle, input.handle)
     self.add_layer(OpType.FLAT)
     return Tensor(handle, owner_op_type=OpType.FLAT)
-
-  def flat_v2(self):
-    handle = ffc.flexflow_model_add_flat_no_inout(self.handle)
-    return Flat(handle)
 
   def softmax(self, input):
     handle = ffc.flexflow_model_add_softmax(self.handle, input.handle)
@@ -817,10 +786,6 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_dropout(self.handle, input.handle, rate, seed)
     self.add_layer(OpType.DROPOUT)
     return Tensor(handle, owner_op_type=OpType.DROPOUT)
-
-  # def mse_loss(self, logits, labels, reduction):
-  #   ffc.flexflow_model_add_mse_loss(self.handle, logits.handle, labels.handle, reduction.encode('utf-8'))
-  #   self.add_layer(OpType.MSELOSS)
 
   def reset_metrics(self):
     ffc.flexflow_model_reset_metrics(self.handle)
@@ -1013,8 +978,6 @@ class FFModel(object):
         assert 0, "unknown op"
 
     return output_tensors
-
-
 
   def __get_initializer_handle(self, initializer):
     if (initializer == None):
