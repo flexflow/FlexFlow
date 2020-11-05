@@ -46,6 +46,7 @@ void SGDOptimizer::init(void)
       case 2:
       case 3:
       case 4:
+      case 5:
       {
         if (momentum > 0.0f) {
           v_regions[p.region] = runtime->create_logical_region(
@@ -133,6 +134,7 @@ void AdamOptimizer::init(void)
       case 2:
       case 3:
       case 4:
+      case 5:
       {
         v_regions[p.region] = runtime->create_logical_region(
             ctx, p.region.get_index_space(), p.region.get_field_space());

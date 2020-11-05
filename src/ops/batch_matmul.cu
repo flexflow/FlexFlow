@@ -68,24 +68,15 @@ void BatchMatmul::create_output_and_partition(FFModel& model)
   int dim = inputs[0].numDim;
   assert(dim == inputs[1].numDim);
   switch (dim) {
-    case 2:
-    {
-      task_is = model.get_or_create_task_is(2, name);
-      create_output_and_partition_with_dim<2>(model);
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      task_is = model.get_or_create_task_is(DIM, name); \
+      create_output_and_partition_with_dim<DIM>(model); \
+      break; \
     }
-    case 3:
-    {
-      task_is = model.get_or_create_task_is(3, name);
-      create_output_and_partition_with_dim<3>(model);
-      break;
-    }
-    case 4:
-    {
-      task_is = model.get_or_create_task_is(4, name);
-      create_output_and_partition_with_dim<4>(model);
-      break;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
     {
       // Unsupported dim for BatchMatmul operator
@@ -137,16 +128,14 @@ void BatchMatmul::init(const FFModel& ff)
 {
   int dim = outputs[0].numDim;
   switch (dim) {
-    case 3:
-    {
-      init_with_dim<3>(ff);
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      init_with_dim<DIM>(ff); \
+      break; \
     }
-    case 4:
-    {
-      init_with_dim<4>(ff);
-      break;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       assert(false);
   }
@@ -294,16 +283,14 @@ void BatchMatmul::forward(const FFModel& ff)
 {
   int dim = outputs[0].numDim;
   switch (dim) {
-    case 3:
-    {
-      forward_with_dim<3>(ff);
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      forward_with_dim<DIM>(ff); \
+      break; \
     }
-    case 4:
-    {
-      forward_with_dim<4>(ff);
-      break;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       assert(false);
   }
@@ -465,16 +452,14 @@ void BatchMatmul::backward(const FFModel& ff)
 {
   int dim = outputs[0].numDim;
   switch (dim) {
-    case 3:
-    {
-      backward_with_dim<3>(ff);
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      backward_with_dim<DIM>(ff); \
+      break; \
     }
-    case 4:
-    {
-      backward_with_dim<4>(ff);
-      break;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       assert(false);
   }

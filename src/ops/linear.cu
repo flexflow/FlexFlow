@@ -128,31 +128,14 @@ void Linear::create_weights(FFModel& model)
 {
   int dim = inputs[0].numDim;
   switch (dim) {
-    case 1:
-    {
-      create_weights_with_dim<1>(model);
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      create_weights_with_dim<DIM>(model); \
+      break; \
     }
-    case 2:
-    {
-      create_weights_with_dim<2>(model);
-      break;
-    }
-    case 3:
-    {
-      create_weights_with_dim<3>(model);
-      break;
-    }
-    case 4:
-    {
-      create_weights_with_dim<4>(model);
-      break;
-    }
-    case 5:
-    {
-      create_weights_with_dim<5>(model);
-      break;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
     {
       // Unsupported dim
@@ -187,31 +170,14 @@ void Linear::create_output_and_partition(FFModel& model)
 {
   int dim = inputs[0].numDim;
   switch (dim) {
-    case 1:
-    {
-      create_output_and_partition_with_dim<1>(model);
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      create_output_and_partition_with_dim<DIM>(model); \
+      break; \
     }
-    case 2:
-    {
-      create_output_and_partition_with_dim<2>(model);
-      break;
-    }
-    case 3:
-    {
-      create_output_and_partition_with_dim<3>(model);
-      break;
-    }
-    case 4:
-    {
-      create_output_and_partition_with_dim<4>(model);
-      break;
-    }
-    case 5:
-    {
-      create_output_and_partition_with_dim<5>(model);
-      break;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
     {
       // Unsupported dim for ElementWiseBinary operator
@@ -338,16 +304,11 @@ OpMeta* Linear::init_task(const Task *task,
   Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   switch (out_domain.get_dim()) {
-    case 1:
-      return init_task_with_dim<1>(task, regions, ctx, runtime);
-    case 2:
-      return init_task_with_dim<2>(task, regions, ctx, runtime);
-    case 3:
-      return init_task_with_dim<3>(task, regions, ctx, runtime);
-    case 4:
-      return init_task_with_dim<4>(task, regions, ctx, runtime);
-    case 5:
-      return init_task_with_dim<5>(task, regions, ctx, runtime);
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return init_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       assert(false);
   }
@@ -407,16 +368,11 @@ void Linear::init(const FFModel& ff)
 {
   int dim = outputs[0].numDim;
   switch (dim) {
-    case 1:
-      return init_with_dim<1>(ff);
-    case 2:
-      return init_with_dim<2>(ff);
-    case 3:
-      return init_with_dim<3>(ff);
-    case 4:
-      return init_with_dim<4>(ff);
-    case 5:
-      return init_with_dim<5>(ff);
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return init_with_dim<DIM>(ff);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       assert(false);
   }
@@ -498,16 +454,11 @@ void Linear::forward_task(const Task *task,
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   switch (in_domain.get_dim()) {
-    case 1:
-      return forward_task_with_dim<1>(task, regions, ctx, runtime);
-    case 2:
-      return forward_task_with_dim<2>(task, regions, ctx, runtime);
-    case 3:
-      return forward_task_with_dim<3>(task, regions, ctx, runtime);
-    case 4:
-      return forward_task_with_dim<4>(task, regions, ctx, runtime);
-    case 5:
-      return forward_task_with_dim<5>(task, regions, ctx, runtime);
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return forward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       assert(false);
   }
@@ -579,16 +530,11 @@ void Linear::forward(const FFModel& ff)
 {
   int dim = outputs[0].numDim;
   switch (dim) {
-    case 1:
-      return forward_with_dim<1>(ff);
-    case 2:
-      return forward_with_dim<2>(ff);
-    case 3:
-      return forward_with_dim<3>(ff);
-    case 4:
-      return forward_with_dim<4>(ff);
-    case 5:
-      return forward_with_dim<5>(ff);
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return forward_with_dim<DIM>(ff);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       assert(false);
   }
@@ -690,16 +636,11 @@ void Linear::backward_task(const Task *task,
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   switch (in_domain.get_dim()) {
-    case 1:
-      return backward_task_with_dim<1>(task, regions, ctx, runtime);
-    case 2:
-      return backward_task_with_dim<2>(task, regions, ctx, runtime);
-    case 3:
-      return backward_task_with_dim<3>(task, regions, ctx, runtime);
-    case 4:
-      return backward_task_with_dim<4>(task, regions, ctx, runtime);
-    case 5:
-      return backward_task_with_dim<5>(task, regions, ctx, runtime);
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       assert(false);
   }
@@ -802,16 +743,11 @@ void Linear::backward2_task(const Task *task,
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   switch (in_domain.get_dim()) {
-    case 1:
-      return backward2_task_with_dim<1>(task, regions, ctx, runtime);
-    case 2:
-      return backward2_task_with_dim<2>(task, regions, ctx, runtime);
-    case 3:
-      return backward2_task_with_dim<3>(task, regions, ctx, runtime);
-    case 4:
-      return backward2_task_with_dim<4>(task, regions, ctx, runtime);
-    case 5:
-      return backward2_task_with_dim<5>(task, regions, ctx, runtime);
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return backward2_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       assert(false);
   }
@@ -856,16 +792,11 @@ void Linear::backward(const FFModel& ff)
 {
   int dim = outputs[0].numDim;
   switch (dim) {
-    case 1:
-      return backward_with_dim<1>(ff);
-    case 2:
-      return backward_with_dim<2>(ff);
-    case 3:
-      return backward_with_dim<3>(ff);
-    case 4:
-      return backward_with_dim<4>(ff);
-    case 5:
-      return backward_with_dim<5>(ff);
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return backward_with_dim<DIM>(ff);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       assert(false);
   }

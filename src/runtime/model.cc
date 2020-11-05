@@ -853,44 +853,19 @@ IndexSpace FFModel::get_or_create_task_is(ParallelConfig pc)
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   switch (pc.nDims) {
-    case 1:
-    {
-      Rect<1> task_rect(Point<1>(0), Point<1>(pc.dim[0]-1));
-      task_is = runtime->create_index_space(ctx, task_rect);
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> task_rect; \
+      for (int i = 0; i < DIM; i++) { \
+        task_rect.lo[i] = 0; \
+        task_rect.hi[i] = pc.dim[i]-1; \
+      } \
+      task_is = runtime->create_index_space(ctx, task_rect); \
+      break; \
     }
-    case 2:
-    {
-      Rect<2> task_rect(Point<2>(0, 0), Point<2>(pc.dim[0]-1, pc.dim[1]-1));
-      task_is = runtime->create_index_space(ctx, task_rect);
-      break;
-    }
-    case 3:
-    {
-      Rect<3> task_rect(Point<3>(0, 0, 0),
-                        Point<3>(pc.dim[0]-1, pc.dim[1]-1, pc.dim[2]-1));
-      task_is = runtime->create_index_space(ctx, task_rect);
-      break;
-    }
-    case 4:
-    {
-      Rect<4> task_rect(Point<4>(0, 0, 0, 0),
-                        Point<4>(pc.dim[0]-1, pc.dim[1]-1, pc.dim[2]-1, pc.dim[3]-1));
-      task_is = runtime->create_index_space(ctx, task_rect);
-      break;
-    }
-#if MAX_TENSOR_DIM >= 5
-    case 5:
-    {
-      Rect<5> task_rect;
-      for (int i = 0; i < 5; i++) {
-        task_rect.lo[i] = 0;
-        task_rect.hi[i] = pc.dim[i]-1;
-      }
-      task_is = runtime->create_index_space(ctx, task_rect);
-      break;
-    }
-#endif
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       assert(false);
   }
@@ -1052,33 +1027,14 @@ void FFModel::compile(LossType loss_type,
   }
   // create label tensor
   switch (num_dims) {
-    case 1:
-    {
-      label_tensor = create_tensor<1>(dims, "", label_type);
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      label_tensor = create_tensor<DIM>(dims, "", label_type); \
+      break; \
     }
-    case 2:
-    {
-      label_tensor = create_tensor<2>(dims, "", label_type);
-      break;
-    }
-    case 3:
-    {
-      label_tensor = create_tensor<3>(dims, "", label_type);
-      break;
-    }
-    case 4:
-    {
-      label_tensor = create_tensor<4>(dims, "", label_type);
-      break;
-    }
-#if MAX_TENSOR_DIM >= 5
-    case 5:
-    {
-      label_tensor = create_tensor<5>(dims, "", label_type);
-      break;
-    }
-#endif
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
     {
       assert(false && "Unsupported dim");
@@ -1986,30 +1942,13 @@ void register_flexflow_tasks()
 #endif // FF_USE_PYTHON
 
 // template instantiations
-template Tensor FFModel::create_tensor<1>(const int* dims, const std::string& pcname, DataType data_type, bool create_grad);
-template Tensor FFModel::create_tensor<2>(const int* dims, const std::string& pcname, DataType data_type, bool create_grad);
-template Tensor FFModel::create_tensor<3>(const int* dims, const std::string& pcname, DataType data_type, bool create_grad);
-template Tensor FFModel::create_tensor<4>(const int* dims, const std::string& pcname, DataType data_type, bool create_grad);
-template Tensor FFModel::create_constant<1>(const int* dims, const std::string & pcname, float value, DataType data_type);
-template Tensor FFModel::create_constant<2>(const int* dims, const std::string & pcname, float value, DataType data_type);
-template Tensor FFModel::create_constant<3>(const int* dims, const std::string & pcname, float value, DataType data_type);
-template Tensor FFModel::create_constant<4>(const int* dims, const std::string & pcname, float value, DataType data_type);
-template Tensor FFModel::create_tensor<1>(const int* dims, const IndexSpaceT<1>& part_is, DataType data_type, bool create_grad);
-template Tensor FFModel::create_tensor<2>(const int* dims, const IndexSpaceT<2>& part_is, DataType data_type, bool create_grad);
-template Tensor FFModel::create_tensor<3>(const int* dims, const IndexSpaceT<3>& part_is, DataType data_type, bool create_grad);
-template Tensor FFModel::create_tensor<4>(const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, bool create_grad);
-
-template void FFModel::create_disjoint_partition<1>(const Tensor& tensor, const IndexSpaceT<1>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
-template void FFModel::create_disjoint_partition<2>(const Tensor& tensor, const IndexSpaceT<2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
-template void FFModel::create_disjoint_partition<3>(const Tensor& tensor, const IndexSpaceT<3>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
-template void FFModel::create_disjoint_partition<4>(const Tensor& tensor, const IndexSpaceT<4>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
-
-#if MAX_TENSOR_DIM >= 5
-template Tensor FFModel::create_tensor<5>(const int* dims, const std::string& pcname, DataType data_type, bool create_grad);
-template Tensor FFModel::create_constant<5>(const int* dims, const std::string & pcname, float value, DataType data_type);
-template Tensor FFModel::create_tensor<5>(const int* dims, const IndexSpaceT<5>& part_is, DataType data_type, bool create_grad);
-template void FFModel::create_disjoint_partition<5>(const Tensor& tensor, const IndexSpaceT<5>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
-#endif
+#define DIMFUNC(DIM) \
+  template Tensor FFModel::create_tensor<DIM>(const int* dims, const std::string& pcname, DataType data_type, bool create_grad); \
+  template Tensor FFModel::create_constant<DIM>(const int* dims, const std::string & pcname, float value, DataType data_type); \
+  template Tensor FFModel::create_tensor<DIM>(const int* dims, const IndexSpaceT<DIM>& part_is, DataType data_type, bool create_grad); \
+  template void FFModel::create_disjoint_partition<DIM>(const Tensor& tensor, const IndexSpaceT<DIM>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
+  LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
 
 #define DIMFUNC(D1,D2) \
   template void FFModel::create_data_parallel_partition_with_diff_dims<D1, D2>(const Tensor& tensor, const IndexSpaceT<D2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);

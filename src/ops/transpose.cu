@@ -57,38 +57,15 @@ void Transpose::create_output_and_partition(FFModel& model)
 {
   int dim = inputs[0].numDim;
   switch (dim) {
-    case 1:
-    {
-      task_is = model.get_or_create_task_is(1, name);
-      create_output_and_partition_with_dim<1>(model);
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      task_is = model.get_or_create_task_is(DIM, name); \
+      create_output_and_partition_with_dim<DIM>(model); \
+      break; \
     }
-    case 2:
-    {
-      task_is = model.get_or_create_task_is(2, name);
-      create_output_and_partition_with_dim<2>(model);
-      break;
-    }
-    case 3:
-    {
-      task_is = model.get_or_create_task_is(3, name);
-      create_output_and_partition_with_dim<3>(model);
-      break;
-    }
-    case 4:
-    {
-      task_is = model.get_or_create_task_is(4, name);
-      create_output_and_partition_with_dim<4>(model);
-      break;
-    }
-#if MAX_TENSOR_DIM >= 5
-    case 5:
-    {
-      task_is = model.get_or_create_task_is(5, name);
-      create_output_and_partition_with_dim<5>(model);
-      break;
-    }
-#endif
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
     {
       // Unsupported dim for ElementWiseUnary operator

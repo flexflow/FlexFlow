@@ -280,34 +280,16 @@ bool Parameter::set_weights(const FFModel& ff,
   PhysicalRegion region = runtime->map_region(ctx, launcher);
   region.wait_until_valid();
   switch (numDim) {
-    case 1:
-    {
-      TensorAccessorW<T, 1> acc(region, req, FID_DATA, ctx, runtime, true);
-      assert(acc.rect.volume() == volume);
-      memcpy(acc.ptr, data, volume * sizeof(T));
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorW<T, DIM> acc(region, req, FID_DATA, ctx, runtime, true); \
+      assert(acc.rect.volume() == volume); \
+      memcpy(acc.ptr, data, volume * sizeof(T)); \
+      break; \
     }
-    case 2:
-    {
-      TensorAccessorW<T, 2> acc(region, req, FID_DATA, ctx, runtime, true);
-      assert(acc.rect.volume() == volume);
-      memcpy(acc.ptr, data, volume * sizeof(T));
-      break;
-    }
-    case 3:
-    {
-      TensorAccessorW<T, 3> acc(region, req, FID_DATA, ctx, runtime, true);
-      assert(acc.rect.volume() == volume);
-      memcpy(acc.ptr, data, volume * sizeof(T));
-      break;
-    }
-    case 4:
-    {
-      TensorAccessorW<T, 4> acc(region, req, FID_DATA, ctx, runtime, true);
-      assert(acc.rect.volume() == volume);
-      memcpy(acc.ptr, data, volume * sizeof(T));
-      break;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       // Unsupported dim
       assert(false);
@@ -333,34 +315,16 @@ bool Parameter::get_weights(const FFModel& ff,
   PhysicalRegion region = runtime->map_region(ctx, launcher);
   region.wait_until_valid();
   switch (numDim) {
-    case 1:
-    {
-      TensorAccessorR<T, 1> acc(region, req, FID_DATA, ctx, runtime);
-      assert(acc.rect.volume() == volume);
-      memcpy(data, acc.ptr, volume * sizeof(T));
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorR<T, DIM> acc(region, req, FID_DATA, ctx, runtime); \
+      assert(acc.rect.volume() == volume); \
+      memcpy(data, acc.ptr, volume * sizeof(T)); \
+      break; \
     }
-    case 2:
-    {
-      TensorAccessorR<T, 2> acc(region, req, FID_DATA, ctx, runtime);
-      assert(acc.rect.volume() == volume);
-      memcpy(data, acc.ptr, volume * sizeof(T));
-      break;
-    }
-    case 3:
-    {
-      TensorAccessorR<T, 3> acc(region, req, FID_DATA, ctx, runtime);
-      assert(acc.rect.volume() == volume);
-      memcpy(data, acc.ptr, volume * sizeof(T));
-      break;
-    }
-    case 4:
-    {
-      TensorAccessorR<T, 4> acc(region, req, FID_DATA, ctx, runtime);
-      assert(acc.rect.volume() == volume);
-      memcpy(data, acc.ptr, volume * sizeof(T));
-      break;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       // Unsupported dim
       assert(false);

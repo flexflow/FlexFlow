@@ -133,26 +133,14 @@ void ElementBinary::create_output_and_partition(FFModel& model)
   for (int i = 0; i < dim; i++)
     assert(inputs[0].adim[i] == inputs[1].adim[i]);
   switch (dim) {
-    case 1:
-    {
-      create_output_and_partition_with_dim<1>(model);
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      create_output_and_partition_with_dim<DIM>(model); \
+      break; \
     }
-    case 2:
-    {
-      create_output_and_partition_with_dim<2>(model);
-      break;
-    }
-    case 3:
-    {
-      create_output_and_partition_with_dim<3>(model);
-      break;
-    }
-    case 4:
-    {
-      create_output_and_partition_with_dim<4>(model);
-      break;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
     {
       // Unsupported dim for ElementWiseBinary operator

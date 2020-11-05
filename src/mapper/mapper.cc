@@ -71,74 +71,25 @@ void FFMapper::slice_task(const MapperContext ctx,
     }
     switch (input.domain.get_dim())
     {
-      case 1:
-      {
-        Rect<1> rect = input.domain;
-        int cnt = 0;
-        for (PointInRectIterator<1> pir(rect); pir(); pir++) {
-          unsigned int idx = 0;
-          for (int i = input.domain.get_dim()-1; i >= 0; i--)
-            idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
-          assert(config_num_parts > idx);
-          //assert((int)gpus.size() > config.gpu[idx]);
-          Rect<1> slice(*pir, *pir);
-          output.slices[cnt++] = TaskSlice(slice,
-              (*devices)[config.device_ids[idx] % devices->size()],
-              false/*recurse*/, false/*stealable*/);
-        }
-        break;
+#define DIMFUNC(DIM) \
+      case DIM: \
+      { \
+        Rect<DIM> rect = input.domain; \
+        int cnt = 0; \
+        for (PointInRectIterator<DIM> pir(rect); pir(); pir++) { \
+          unsigned int idx = 0; \
+          for (int i = input.domain.get_dim()-1; i >= 0; i--) \
+            idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i]; \
+          assert(config_num_parts > idx); \
+          Rect<DIM> slice(*pir, *pir); \
+          output.slices[cnt++] = TaskSlice(slice, \
+              (*devices)[config.device_ids[idx] % devices->size()], \
+              false/*recurse*/, false/*stealable*/); \
+        } \
+        break; \
       }
-      case 2:
-      {
-        Rect<2> rect = input.domain;
-        int cnt = 0;
-        for (PointInRectIterator<2> pir(rect); pir(); pir++) {
-          unsigned int idx = 0;
-          for (int i = input.domain.get_dim()-1; i >= 0; i--)
-            idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
-          assert(config_num_parts > idx);
-          //assert((int)gpus.size() > config.gpu[idx]);
-          Rect<2> slice(*pir, *pir);
-          output.slices[cnt++] = TaskSlice(slice,
-              (*devices)[config.device_ids[idx] % devices->size()],
-              false/*recurse*/, false/*stealable*/);
-        }
-        break;
-      }
-      case 3:
-      {
-        Rect<3> rect = input.domain;
-        int cnt = 0;
-        for (PointInRectIterator<3> pir(rect); pir(); pir++) {
-          unsigned int idx = 0;
-          for (int i = input.domain.get_dim()-1; i >= 0; i--)
-            idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
-          assert(config_num_parts > idx);
-          //assert((int)gpus.size() > config.gpu[idx]);
-          Rect<3> slice(*pir, *pir);
-          output.slices[cnt++] = TaskSlice(slice,
-              (*devices)[config.device_ids[idx] % devices->size()],
-              false/*recurse*/, false/*stealable*/);
-        }
-        break;
-      }
-      case 4:
-      {
-        Rect<4> rect = input.domain;
-        int cnt = 0;
-        for (PointInRectIterator<4> pir(rect); pir(); pir++) {
-          unsigned int idx = 0;
-          for (int i = input.domain.get_dim()-1; i >= 0; i--)
-            idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i];
-          assert(config_num_parts > idx);
-          //assert((int)gpus.size() > config.gpu[idx]);
-          Rect<4> slice(*pir, *pir);
-          output.slices[cnt++] = TaskSlice(slice,
-              (*devices)[config.device_ids[idx] % devices->size()],
-              false/*recurse*/, false/*stealable*/);
-        }
-        break;
-      }
+      LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
       default:
         assert(false);
     }

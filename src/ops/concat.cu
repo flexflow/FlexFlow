@@ -74,103 +74,28 @@ void Concat::create_output_and_partition(FFModel& model)
   //for (int i = 0; i < num_dim; i++)
     //printf("concat: dim[%d] = %d\n", i, dims[i]);
   switch (domain.get_dim()) {
-    case 1:
-    {
-      Rect<1> part_rect = domain;
-      outputs[0] = model.create_tensor<1>(dims, IndexSpaceT<1>(task_is), DT_FLOAT);
-      outputs[0].owner_op = this;
-      outputs[0].owner_idx = 0;
-      for (int i = 0; i < numInputs; i++) {
-        Rect<1> input_rect = runtime->get_index_partition_color_space(
-            ctx, inputs[i].part.get_index_partition());
-        if (input_rect == part_rect) {
-          input_lps[i] = inputs[i].part;
-          input_grad_lps[i] = inputs[i].part_grad;
-        } else {
-          model.create_disjoint_partition<1>(inputs[i],
-              IndexSpaceT<1>(task_is), input_lps[i], input_grad_lps[i]);
-        }
-      }
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> part_rect = domain; \
+      outputs[0] = model.create_tensor<DIM>(dims, IndexSpaceT<DIM>(task_is), DT_FLOAT); \
+      outputs[0].owner_op = this; \
+      outputs[0].owner_idx = 0; \
+      for (int i = 0; i < numInputs; i++) { \
+        Rect<DIM> input_rect = runtime->get_index_partition_color_space( \
+            ctx, inputs[i].part.get_index_partition()); \
+        if (input_rect == part_rect) { \
+          input_lps[i] = inputs[i].part; \
+          input_grad_lps[i] = inputs[i].part_grad; \
+        } else { \
+          model.create_disjoint_partition<DIM>(inputs[i], \
+              IndexSpaceT<DIM>(task_is), input_lps[i], input_grad_lps[i]); \
+        } \
+      } \
+      break; \
     }
-    case 2:
-    {
-      Rect<2> part_rect = domain;
-      outputs[0] = model.create_tensor<2>(dims, IndexSpaceT<2>(task_is), DT_FLOAT);
-      outputs[0].owner_op = this;
-      outputs[0].owner_idx = 0;
-      for (int i = 0; i < numInputs; i++) {
-        Rect<2> input_rect = runtime->get_index_partition_color_space(
-            ctx, inputs[i].part.get_index_partition());
-        if (input_rect == part_rect) {
-          input_lps[i] = inputs[i].part;
-          input_grad_lps[i] = inputs[i].part_grad;
-        } else {
-           model.create_disjoint_partition<2>(inputs[i],
-               IndexSpaceT<2>(task_is), input_lps[i], input_grad_lps[i]);
-        }
-      }
-      break;
-    }
-    case 3:
-    {
-      Rect<3> part_rect = domain;
-      outputs[0] = model.create_tensor<3>(dims, IndexSpaceT<3>(task_is), DT_FLOAT);
-      outputs[0].owner_op = this;
-      outputs[0].owner_idx = 0;
-      for (int i = 0; i < numInputs; i++) {
-        Rect<3> input_rect = runtime->get_index_partition_color_space(
-            ctx, inputs[i].part.get_index_partition());
-        if (input_rect == part_rect) {
-          input_lps[i] = inputs[i].part;
-          input_grad_lps[i] = inputs[i].part_grad;
-        } else {
-           model.create_disjoint_partition<3>(inputs[i],
-               IndexSpaceT<3>(task_is), input_lps[i], input_grad_lps[i]);
-        }
-      }
-      break;
-    }
-    case 4:
-    {
-      Rect<4> part_rect = domain;
-      outputs[0] = model.create_tensor<4>(dims, IndexSpaceT<4>(task_is), DT_FLOAT);
-      outputs[0].owner_op = this;
-      outputs[0].owner_idx = 0;
-      for (int i = 0; i < numInputs; i++) {
-        Rect<4> input_rect = runtime->get_index_partition_color_space(
-            ctx, inputs[i].part.get_index_partition());
-        if (input_rect == part_rect) {
-          input_lps[i] = inputs[i].part;
-          input_grad_lps[i] = inputs[i].part_grad;
-        } else {
-           model.create_disjoint_partition<4>(inputs[i],
-               IndexSpaceT<4>(task_is), input_lps[i], input_grad_lps[i]);
-        }
-      }
-      break;
-    }
-#if MAX_TENSOR_DIM >= 5
-    case 5:
-    {
-      Rect<5> part_rect = domain;
-      outputs[0] = model.create_tensor<5>(dims, IndexSpaceT<5>(task_is), DT_FLOAT);
-      outputs[0].owner_op = this;
-      outputs[0].owner_idx = 0;
-      for (int i = 0; i < numInputs; i++) {
-        Rect<5> input_rect = runtime->get_index_partition_color_space(
-            ctx, inputs[i].part.get_index_partition());
-        if (input_rect == part_rect) {
-          input_lps[i] = inputs[i].part;
-          input_grad_lps[i] = inputs[i].part_grad;
-        } else {
-           model.create_disjoint_partition<5>(inputs[i],
-               IndexSpaceT<5>(task_is), input_lps[i], input_grad_lps[i]);
-        }
-      }
-      break;
-    }
-#endif
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
     {
       fprintf(stderr, "Unsupported concat dimension number");
@@ -253,74 +178,26 @@ void Concat::forward_task(const Task *task,
       ctx, task->regions[0].region.get_index_space());
   assert(domain.get_dim() == cc->outputs[0].numDim);
   switch (domain.get_dim()) {
-    case 1:
-    {
-      TensorAccessorW<float, 1> accOutput(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime,
-          false/*readOutput*/);
-      output = accOutput.ptr;
-      calc_blk_size<1>(num_blocks, output_blk_size, accOutput.rect, axis);
-      for (int i = 0; i < cc->numInputs; i++) {
-        TensorAccessorR<float, 1> accInput(
-            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
-        inputs[i] = accInput.ptr;
-        coord_t input_num_blocks = 1;
-        calc_blk_size<1>(input_num_blocks, input_blk_sizes[i], accInput.rect, axis);
-        assert(input_num_blocks == num_blocks);
-      }
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorW<float, DIM> accOutput( \
+          regions[0], task->regions[0], FID_DATA, ctx, runtime, \
+          false/*readOutput*/); \
+      output = accOutput.ptr; \
+      calc_blk_size<DIM>(num_blocks, output_blk_size, accOutput.rect, axis); \
+      for (int i = 0; i < cc->numInputs; i++) { \
+        TensorAccessorR<float, DIM> accInput( \
+            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime); \
+        inputs[i] = accInput.ptr; \
+        coord_t input_num_blocks = 1; \
+        calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], accInput.rect, axis); \
+        assert(input_num_blocks == num_blocks); \
+      } \
+      break; \
     }
-    case 2:
-    {
-      TensorAccessorW<float, 2> accOutput(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime,
-          false/*readOutput*/);
-      output = accOutput.ptr;
-      calc_blk_size<2>(num_blocks, output_blk_size, accOutput.rect, axis);
-      for (int i = 0; i < cc->numInputs; i++) {
-        TensorAccessorR<float, 2> accInput(
-            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
-        inputs[i] = accInput.ptr;
-        coord_t input_num_blocks = 1;
-        calc_blk_size<2>(input_num_blocks, input_blk_sizes[i], accInput.rect, axis);
-        assert(input_num_blocks == num_blocks);
-      }
-      break;
-    }
-    case 3:
-    {
-      TensorAccessorW<float, 3> accOutput(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime,
-          false/*readOutput*/);
-      output = accOutput.ptr;
-      calc_blk_size<3>(num_blocks, output_blk_size, accOutput.rect, axis);
-      for (int i = 0; i < cc->numInputs; i++) {
-        TensorAccessorR<float, 3> accInput(
-            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
-        inputs[i] = accInput.ptr;
-        coord_t input_num_blocks = 1;
-        calc_blk_size<3>(input_num_blocks, input_blk_sizes[i], accInput.rect, axis);
-        assert(input_num_blocks == num_blocks);
-      }
-      break;
-    }
-    case 4:
-    {
-      TensorAccessorW<float, 4> accOutput(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime,
-          false/*readOutput*/);
-      output = accOutput.ptr;
-      calc_blk_size<4>(num_blocks, output_blk_size, accOutput.rect, axis);
-      for (int i = 0; i < cc->numInputs; i++) {
-        TensorAccessorR<float, 4> accInput(
-            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
-        inputs[i] = accInput.ptr;
-        coord_t input_num_blocks = 1;
-        calc_blk_size<4>(input_num_blocks, input_blk_sizes[i], accInput.rect, axis);
-        assert(input_num_blocks == num_blocks);
-      }
-      break;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       fprintf(stderr, "Unsupported concat dimension number");
       assert(false);
@@ -413,74 +290,26 @@ void Concat::backward_task(const Task *task,
       ctx, task->regions[0].region.get_index_space());
   assert(domain.get_dim() == cc->outputs[0].numDim);
   switch (domain.get_dim()) {
-    case 1:
-    {
-      TensorAccessorR<float, 1> accOutputGrad(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      output_grad = accOutputGrad.ptr;
-      calc_blk_size<1>(num_blocks, output_blk_size, accOutputGrad.rect, axis);
-      for (int i = 0; i < cc->numInputs; i++) {
-        TensorAccessorW<float, 1> accInputGrad(
-            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
-            true/*readOutput*/);
-        input_grads[i] = accInputGrad.ptr;
-        coord_t input_num_blocks = 1;
-        calc_blk_size<1>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis);
-        assert(input_num_blocks == num_blocks);
-      }
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorR<float, DIM> accOutputGrad( \
+          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
+      output_grad = accOutputGrad.ptr; \
+      calc_blk_size<DIM>(num_blocks, output_blk_size, accOutputGrad.rect, axis); \
+      for (int i = 0; i < cc->numInputs; i++) { \
+        TensorAccessorW<float, DIM> accInputGrad( \
+            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime, \
+            true/*readOutput*/); \
+        input_grads[i] = accInputGrad.ptr; \
+        coord_t input_num_blocks = 1; \
+        calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis); \
+        assert(input_num_blocks == num_blocks); \
+      } \
+      break; \
     }
-    case 2:
-    {
-      TensorAccessorR<float, 2> accOutputGrad(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      output_grad = accOutputGrad.ptr;
-      calc_blk_size<2>(num_blocks, output_blk_size, accOutputGrad.rect, axis);
-      for (int i = 0; i < cc->numInputs; i++) {
-        TensorAccessorW<float, 2> accInputGrad(
-            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
-            true/*readOutput*/);
-        input_grads[i] = accInputGrad.ptr;
-        coord_t input_num_blocks = 1;
-        calc_blk_size<2>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis);
-        assert(input_num_blocks == num_blocks);
-      }
-      break;
-    }
-    case 3:
-    {
-      TensorAccessorR<float, 3> accOutputGrad(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      output_grad = accOutputGrad.ptr;
-      calc_blk_size<3>(num_blocks, output_blk_size, accOutputGrad.rect, axis);
-      for (int i = 0; i < cc->numInputs; i++) {
-        TensorAccessorW<float, 3> accInputGrad(
-            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
-            true/*readOutput*/);
-        input_grads[i] = accInputGrad.ptr;
-        coord_t input_num_blocks = 1;
-        calc_blk_size<3>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis);
-        assert(input_num_blocks == num_blocks);
-      }
-      break;
-    }
-    case 4:
-    {
-      TensorAccessorR<float, 4> accOutputGrad(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      output_grad = accOutputGrad.ptr;
-      calc_blk_size<4>(num_blocks, output_blk_size, accOutputGrad.rect, axis);
-      for (int i = 0; i < cc->numInputs; i++) {
-        TensorAccessorW<float, 4> accInputGrad(
-            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime,
-            true/*readOutput*/);
-        input_grads[i] = accInputGrad.ptr;
-        coord_t input_num_blocks = 1;
-        calc_blk_size<4>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis);
-        assert(input_num_blocks == num_blocks);
-      }
-      break;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       fprintf(stderr, "Unsupported concat dimension number");
       assert(false);

@@ -71,26 +71,14 @@ const DT* helperGetTensorPointerRO(PhysicalRegion region,
   Domain domain = runtime->get_index_space_domain(
       ctx, req.region.get_index_space());
   switch (domain.get_dim()) {
-    case 1:
-    {
-      TensorAccessorR<DT, 1> acc(region, req, fid, ctx, runtime);
-      return acc.ptr;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorR<DT, DIM> acc(region, req, fid, ctx, runtime); \
+      return acc.ptr; \
     }
-    case 2:
-    {
-      TensorAccessorR<DT, 2> acc(region, req, fid, ctx, runtime);
-      return acc.ptr;
-    }
-    case 3:
-    {
-      TensorAccessorR<DT, 3> acc(region, req, fid, ctx, runtime);
-      return acc.ptr;
-    }
-    case 4:
-    {
-      TensorAccessorR<DT, 4> acc(region, req, fid, ctx, runtime);
-      return acc.ptr;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
     {
       fprintf(stderr, "Unsupported accessor dimension");
@@ -110,27 +98,14 @@ DT* helperGetTensorPointerRW(PhysicalRegion region,
   Domain domain = runtime->get_index_space_domain(
       ctx, req.region.get_index_space());
   switch (domain.get_dim()) {
-    case 1:
-    {
-      TensorAccessorW<DT, 1> acc(region, req, fid, ctx, runtime, true/*readOutput*/);
-      return acc.ptr;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorW<DT, DIM> acc(region, req, fid, ctx, runtime, true/*readOutput*/); \
+      return acc.ptr; \
     }
-    case 2:
-    {
-      TensorAccessorW<DT, 2> acc(region, req, fid, ctx, runtime, true/*readOutput*/);
-
-      return acc.ptr;
-    }
-    case 3:
-    {
-      TensorAccessorW<DT, 3> acc(region, req, fid, ctx, runtime, true/*readOutput*/);
-      return acc.ptr;
-    }
-    case 4:
-    {
-      TensorAccessorW<DT, 4> acc(region, req, fid, ctx, runtime, true/*readOutput*/);
-      return acc.ptr;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
     {
       fprintf(stderr, "Unsupported accessor dimension");
@@ -150,27 +125,14 @@ DT* helperGetTensorPointerWO(PhysicalRegion region,
   Domain domain = runtime->get_index_space_domain(
       ctx, req.region.get_index_space());
   switch (domain.get_dim()) {
-    case 1:
-    {
-      TensorAccessorW<DT, 1> acc(region, req, fid, ctx, runtime, false/*readOutput*/);
-      return acc.ptr;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorW<DT, DIM> acc(region, req, fid, ctx, runtime, false/*readOutput*/); \
+      return acc.ptr; \
     }
-    case 2:
-    {
-      TensorAccessorW<DT, 2> acc(region, req, fid, ctx, runtime, false/*readOutput*/);
-
-      return acc.ptr;
-    }
-    case 3:
-    {
-      TensorAccessorW<DT, 3> acc(region, req, fid, ctx, runtime, false/*readOutput*/);
-      return acc.ptr;
-    }
-    case 4:
-    {
-      TensorAccessorW<DT, 4> acc(region, req, fid, ctx, runtime, false/*readOutput*/);
-      return acc.ptr;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
     {
       fprintf(stderr, "Unsupported accessor dimension");
@@ -180,40 +142,15 @@ DT* helperGetTensorPointerWO(PhysicalRegion region,
   }
 }
 
-template class TensorAccessorR<float, 1>;
-template class TensorAccessorR<float, 2>;
-template class TensorAccessorR<float, 3>;
-template class TensorAccessorR<float, 4>;
-template class TensorAccessorR<int32_t, 1>;
-template class TensorAccessorR<int32_t, 2>;
-template class TensorAccessorR<int32_t, 3>;
-template class TensorAccessorR<int32_t, 4>;
-template class TensorAccessorR<int64_t, 1>;
-template class TensorAccessorR<int64_t, 2>;
-template class TensorAccessorR<int64_t, 3>;
-template class TensorAccessorR<int64_t, 4>;
-
-template class TensorAccessorW<float, 1>;
-template class TensorAccessorW<float, 2>;
-template class TensorAccessorW<float, 3>;
-template class TensorAccessorW<float, 4>;
-template class TensorAccessorW<int32_t, 1>;
-template class TensorAccessorW<int32_t, 2>;
-template class TensorAccessorW<int32_t, 3>;
-template class TensorAccessorW<int32_t, 4>;
-template class TensorAccessorW<int64_t, 1>;
-template class TensorAccessorW<int64_t, 2>;
-template class TensorAccessorW<int64_t, 3>;
-template class TensorAccessorW<int64_t, 4>;
-
-#if MAX_TENSOR_DIM >= 5
-  template class TensorAccessorR<float, 5>;
-  template class TensorAccessorR<int32_t, 5>;
-  template class TensorAccessorR<int64_t, 5>;
-  template class TensorAccessorW<float, 5>;
-  template class TensorAccessorW<int32_t, 5>;
-  template class TensorAccessorW<int64_t, 5>;
-#endif
+#define DIMFUNC(DIM) \
+  template class TensorAccessorR<float, DIM>; \
+  template class TensorAccessorR<int32_t, DIM>; \
+  template class TensorAccessorR<int64_t, DIM>; \
+  template class TensorAccessorW<float, DIM>; \
+  template class TensorAccessorW<int32_t, DIM>; \
+  template class TensorAccessorW<int64_t, DIM>;
+  LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
 
 template const float* helperGetTensorPointerRO(
   PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
