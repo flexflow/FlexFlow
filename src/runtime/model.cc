@@ -1037,21 +1037,43 @@ void FFModel::compile(LossType loss_type,
   Op* final_layer = layers[layers.size()-1];
   // FIXME: currently assume the final layer has exactly one output
   assert(final_layer->numOutputs == 1);
-  // FIXME: currently assume the logit is 2D
-  assert(final_layer->outputs[0].numDim == 2);
-  int batch_size = final_layer->outputs[0].adim[1];
-  int channel = final_layer->outputs[0].adim[0];
+
+  //assert(final_layer->outputs[0].numDim == 2);
+  int dims[MAX_TENSOR_DIM], num_dims;
+  num_dims = final_layer->outputs[0].numDim;
+  // Note that FlexFlow's runtim internally reverse the array ordering
+  for (int i = 0; i < num_dims; i++)
+    dims[i] = final_layer->outputs[0].adim[num_dims-1-i];
   DataType label_type = DT_FLOAT;
   if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
-    // assign channel = 1 for sparse categorical labels
-    channel = 1;
+    // assign dims[num_dims-1] = 1 for sparse categorical labels
+    dims[num_dims-1] = 1;
     label_type = DT_INT32;
   }
   // create label tensor
-  {
-    // Note that FlexFlow's runtim internally reverse the array ordering
-    const int dims[] = {batch_size, channel};
-    label_tensor = create_tensor<2>(dims, "", label_type);
+  switch (num_dims) {
+    case 1:
+    {
+      label_tensor = create_tensor<1>(dims, "", label_type);
+    }
+    case 2:
+    {
+      label_tensor = create_tensor<2>(dims, "", label_type);
+    }
+    case 3:
+    {
+      label_tensor = create_tensor<3>(dims, "", label_type);
+    }
+    case 4:
+    {
+      label_tensor = create_tensor<4>(dims, "", label_type);
+    }
+#if MAX_TENSOR_DIM >= 5
+    case 5:
+    {
+      label_tensor = create_tensor<5>(dims, "", label_type);
+    }
+#endif
   }
   // init optimizer
   assert(optimizer != NULL);

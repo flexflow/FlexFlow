@@ -81,6 +81,14 @@ void Transpose::create_output_and_partition(FFModel& model)
       create_output_and_partition_with_dim<4>(model);
       break;
     }
+#if MAX_TENSOR_DIM >= 5
+    case 5:
+    {
+      task_is = model.get_or_create_task_is(5, name);
+      create_output_and_partition_with_dim<5>(model);
+      break;
+    }
+#endif
     default:
     {
       // Unsupported dim for ElementWiseUnary operator

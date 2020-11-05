@@ -150,6 +150,27 @@ void Concat::create_output_and_partition(FFModel& model)
       }
       break;
     }
+#if MAX_TENSOR_DIM >= 5
+    case 5:
+    {
+      Rect<5> part_rect = domain;
+      outputs[0] = model.create_tensor<5>(dims, IndexSpaceT<5>(task_is), DT_FLOAT);
+      outputs[0].owner_op = this;
+      outputs[0].owner_idx = 0;
+      for (int i = 0; i < numInputs; i++) {
+        Rect<5> input_rect = runtime->get_index_partition_color_space(
+            ctx, inputs[i].part.get_index_partition());
+        if (input_rect == part_rect) {
+          input_lps[i] = inputs[i].part;
+          input_grad_lps[i] = inputs[i].part_grad;
+        } else {
+           model.create_disjoint_partition<5>(inputs[i],
+               IndexSpaceT<5>(task_is), input_lps[i], input_grad_lps[i]);
+        }
+      }
+      break;
+    }
+#endif
     default:
     {
       fprintf(stderr, "Unsupported concat dimension number");
