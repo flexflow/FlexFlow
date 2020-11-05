@@ -36,7 +36,9 @@ BatchNorm::BatchNorm(FFModel& model,
 {
   assert(_input.numDim == 4);
   numOutputs = 1;
-  outputs[0] = _input;
+  outputs[0].numDim = _input.numDim;
+  for (int i = 0; i < outputs[0].numDim; i++)
+    outputs[0].adim[i] = _input.adim[i];
   numWeights = 2;
   weights[0].numDim = 1;
   weights[0].adim[0] = _input.adim[2];
