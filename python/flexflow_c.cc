@@ -1520,21 +1520,6 @@ flexflow_op_init(
   handle->init(*model);
 }
 
-flexflow_tensor_t
-flexflow_op_init_inout(
-  flexflow_op_t handle_,
-  flexflow_model_t model_,
-  flexflow_tensor_t input_)
-{
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->init_inout(*model, *input);
-  DEBUG_PRINT("[Op] init inout new Tensor %p", tensor);
-  return FFCObjectWrapper::wrap(tensor);
-}
-
 void
 flexflow_op_forward(
   flexflow_op_t handle_,
@@ -1543,19 +1528,6 @@ flexflow_op_forward(
   Op *handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   handle->forward(*model);
-}
-
-void
-flexflow_op_add_to_model(
-  flexflow_op_t handle_,
-  flexflow_model_t model_)
-{
-  // Op *handle = FFCObjectWrapper::unwrap(handle_);
-  // FFModel *model = FFCObjectWrapper::unwrap(model_);
-  assert(false);
-  // Temporarily remove the following API
-  // add an assertion in case anyone uses this API
-  //handle->add_to_model(*model);
 }
 
 // -----------------------------------------------------------------------

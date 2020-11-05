@@ -48,10 +48,12 @@ def get_datatype_size(datatype):
 # Op
 # -----------------------------------------------------------------------
 class Op(object):
-  __slots__ = ['handle']
-  def __init__(self, handle):
+  __slots__ = ['handle', 'idx', 'name']
+  def __init__(self, handle, idx=None, name=None):
     assert ffi.typeof(handle) == ffi.typeof('flexflow_op_t'), "Op handle is wrong"
     self.handle = handle
+    self.idx = idx
+    self.name = name
 
   def _get_parameter_tensor_by_id(self, id):
     handle = ffc.flexflow_op_get_parameter_by_id(self.handle, id)
@@ -68,10 +70,6 @@ class Op(object):
   def init(self, model):
     ffc.flexflow_op_init(self.handle, model.handle)
 
-  def _init_inout(self, model, input):
-    handle = ffc.flexflow_op_init_inout(self.handle, model.handle, input.handle)
-    return Tensor(handle)
-
   def forward(self, model):
     ffc.flexflow_op_forward(self.handle, model.handle)
     #return Tensor(handle)
@@ -83,43 +81,43 @@ class Op(object):
 # Exp
 # -----------------------------------------------------------------------
 class Exp(Op):
-  def __init__(self, handle):
-    super(Exp, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Exp, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Add
 # -----------------------------------------------------------------------
 class Add(Op):
-  def __init__(self, handle):
-    super(Add, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Add, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Subtract
 # -----------------------------------------------------------------------
 class Subtract(Op):
-  def __init__(self, handle):
-    super(Subtract, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Subtract, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Multiply
 # -----------------------------------------------------------------------
 class Multiply(Op):
-  def __init__(self, handle):
-    super(Multiply, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Multiply, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Divide
 # -----------------------------------------------------------------------
 class Divide(Op):
-  def __init__(self, handle):
-    super(Divide, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Divide, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Conv2D
 # -----------------------------------------------------------------------
 class Conv2D(Op):
-  def __init__(self, handle):
-    super(Conv2D, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Conv2D, self).__init__(handle, idx, name)
 
   def get_weight_tensor(self):
     return self._get_parameter_tensor_by_id(0)
@@ -132,21 +130,13 @@ class Conv2D(Op):
 
   def get_output_tensor(self):
     return self._get_output_tensor_by_id(0)
-
-  def init_inout(self, model, input):
-    model.add_layer(OpType.CONV2D)
-    return self._init_inout(model, input)
-
-  def add_to_model(self, model):
-    model.add_layer(OpType.CONV2D)
-    self._add_to_model(model)
 
 # -----------------------------------------------------------------------
 # Pool2D
 # -----------------------------------------------------------------------
 class Pool2D(Op):
-  def __init__(self, handle):
-    super(Pool2D, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Pool2D, self).__init__(handle, idx, name)
 
   def get_input_tensor(self):
     return self._get_input_tensor_by_id(0)
@@ -154,20 +144,12 @@ class Pool2D(Op):
   def get_output_tensor(self):
     return self._get_output_tensor_by_id(0)
 
-  def init_inout(self, model, input):
-    model.add_layer(OpType.POOL2D)
-    return self._init_inout(model, input)
-
-  def add_to_model(self, model):
-    model.add_layer(OpType.POOL2D)
-    self._add_to_model(model)
-
 # -----------------------------------------------------------------------
 # Linear
 # -----------------------------------------------------------------------
 class Linear(Op):
-  def __init__(self, handle):
-    super(Linear, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Linear, self).__init__(handle, idx, name)
 
   def get_weight_tensor(self):
     return self._get_parameter_tensor_by_id(0)
@@ -181,20 +163,12 @@ class Linear(Op):
   def get_output_tensor(self):
     return self._get_output_tensor_by_id(0)
 
-  def init_inout(self, model, input):
-    model.add_layer(OpType.LINEAR)
-    return self._init_inout(model, input)
-
-  def add_to_model(self, model):
-    model.add_layer(OpType.LINEAR)
-    self._add_to_model(model)
-
 # -----------------------------------------------------------------------
 # Flat
 # -----------------------------------------------------------------------
 class Flat(Op):
-  def __init__(self, handle):
-    super(Flat, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Flat, self).__init__(handle, idx, name)
 
   def get_input_tensor(self):
     return self._get_input_tensor_by_id(0)
@@ -202,183 +176,163 @@ class Flat(Op):
   def get_output_tensor(self):
     return self._get_output_tensor_by_id(0)
 
-  def init_inout(self, model, input):
-    model.add_layer(OpType.FLAT)
-    return self._init_inout(model, input)
-
-  def add_to_model(self, model):
-    model.add_layer(OpType.FLAT)
-    self._add_to_model(model)
-
 # -----------------------------------------------------------------------
 # Softmax
 # -----------------------------------------------------------------------
 class Softmax(Op):
-  def __init__(self, handle):
-    super(Softmax, self).__init__(handle)
-
-  def add_to_model(self, model):
-    model.add_layer(OpType.SOFTMAX)
-    self._add_to_model(model)
+  def __init__(self, handle, idx=None, name=None):
+    super(Softmax, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Embedding
 # -----------------------------------------------------------------------
 class Embedding(Op):
-  def __init__(self, handle):
-    super(Embedding, self).__init__(handle)
-
-  def add_to_model(self, model):
-    model.add_layer(OpType.EMBEDDING)
-    self._add_to_model(model)
+  def __init__(self, handle, idx=None, name=None):
+    super(Embedding, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Concat
 # -----------------------------------------------------------------------
 class Concat(Op):
-  def __init__(self, handle):
-    super(Concat, self).__init__(handle)
-
-  def add_to_model(self, model):
-    model.add_layer(OpType.CONCAT)
-    self._add_to_model(model)
+  def __init__(self, handle, idx=None, name=None):
+    super(Concat, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # BatchNorm
 # -----------------------------------------------------------------------
 class BatchNorm(Op):
-  def __init__(self, handle):
-    super(BatchNorm, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(BatchNorm, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Dropout
 # -----------------------------------------------------------------------
 class Dropout(Op):
-  def __init__(self, handle):
-    super(Dropout, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Dropout, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Relu
 # -----------------------------------------------------------------------
 class Relu(Op):
-  def __init__(self, handle):
-    super(Relu, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Relu, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Sigmod
 # -----------------------------------------------------------------------
 class Sigmoid(Op):
-  def __init__(self, handle):
-    super(Sigmoid, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Sigmoid, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Relu
 # -----------------------------------------------------------------------
 class Tanh(Op):
-  def __init__(self, handle):
-    super(Tanh, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Tanh, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Elu
 # -----------------------------------------------------------------------
 class Elu(Op):
-  def __init__(self, handle):
-    super(Elu, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Elu, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Batch_Norm
 # -----------------------------------------------------------------------
 class Batch_Norm(Op):
-  def __init__(self, handle):
-    super(Batch_Norm, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Batch_Norm, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Batch_Matmul
 # -----------------------------------------------------------------------
 class Batch_Matmul(Op):
-  def __init__(self, handle):
-    super(Batch_Matmul, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Batch_Matmul, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Split
 # -----------------------------------------------------------------------
 class Split(Op):
-  def __init__(self, handle):
-    super(Split, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Split, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Reshape
 # -----------------------------------------------------------------------
 class Reshape(Op):
-  def __init__(self, handle):
-    super(Reshape, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Reshape, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Transpose
 # -----------------------------------------------------------------------
 class Transpose(Op):
-  def __init__(self, handle):
-    super(Transpose, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Transpose, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Reverse
 # -----------------------------------------------------------------------
 class Reverse(Op):
-  def __init__(self, handle):
-    super(Reverse, self).__init__(handle)
+  def __init__(self, handle, idx=None, name=None):
+    super(Reverse, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # flexflow_op_t handle to Op
 # -----------------------------------------------------------------------
-def convert_op_handle_to_op(op_type, handle):
+def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
   if op_type == OpType.CONV2D:
-    return Conv2D(handle)
+    return Conv2D(handle, idx, name)
   elif op_type == OpType.POOL2D:
-    return Pool2D(handle)
+    return Pool2D(handle, idx, name)
   elif op_type == OpType.LINEAR:
-    return Linear(handle)
+    return Linear(handle, idx, name)
   elif op_type == OpType.EMBEDDING:
-    return Embedding(handle)
+    return Embedding(handle, idx, name)
   elif op_type == OpType.FLAT:
-    return Flat(handle)
+    return Flat(handle, idx, name)
   elif op_type == OpType.CONCAT:
-    return Concat(handle)
+    return Concat(handle, idx, name)
   elif op_type == OpType.SOFTMAX:
-    return Softmax(handle)
+    return Softmax(handle, idx, name)
   elif op_type == OpType.EXP:
-    return Exp(handle)
+    return Exp(handle, idx, name)
   elif op_type == OpType.ADD:
-    return Add(handle)
+    return Add(handle, idx, name)
   elif op_type == OpType.SUBTRACT:
-    return Subtract(handle)
+    return Subtract(handle, idx, name)
   elif op_type == OpType.MULTIPLY:
-    return Multiply(handle)
+    return Multiply(handle, idx, name)
   elif op_type == OpType.DIVIDE:
-    return Divide(handle)
+    return Divide(handle, idx, name)
   elif op_type == OpType.MSELOSS:
-    return MSELoss(handle)
+    return MSELoss(handle, idx, name)
   elif op_type == OpType.RELU:
-    return Relu(handle)
+    return Relu(handle, idx, name)
   elif op_type == OpType.SIGMOID:
-    return Sigmoid(handle)
+    return Sigmoid(handle, idx, name)
   elif op_type == OpType.TANH:
-    return Tanh(handle)
+    return Tanh(handle, idx, name)
   elif op_type == OpType.ELU:
-    return Elu(handle)
+    return Elu(handle, idx, name)
   elif op_type == OpType.DROPOUT:
-    return Dropout(handle)
+    return Dropout(handle, idx, name)
   elif op_type == OpType.BATCH_NORM:
-    return Batch_Norm(handle)
+    return Batch_Norm(handle, idx, name)
   elif op_type == OpType.BATCH_MATMUL:
-    return Batch_Matmul(handle)
+    return Batch_Matmul(handle, idx, name)
   elif op_type == OpType.SPLIT:
-    return Split(handle)
+    return Split(handle, idx, name)
   elif op_type == OpType.RESHAPE:
-    return Reshape(handle)
+    return Reshape(handle, idx, name)
   elif op_type == OpType.TRANSPOSE:
-    return Transpose(handle)
+    return Transpose(handle, idx, name)
   elif op_type == OpType.REVERSE:
-    return Reverse(handle)
+    return Reverse(handle, idx, name)
   else:
     assert 0, "unknow layer type"
     return None
@@ -422,7 +376,7 @@ class FFConfig(object):
 # -----------------------------------------------------------------------
 
 class Tensor(object):
-  __slots__ = ['p_handle', 'handle', '_handle', 'num_dims', 'dims', 'data_type', 'owner_op', 'owner_op_type', 'mapped']
+  __slots__ = ['p_handle', 'handle', '_handle', 'num_dims', 'dims', 'data_type', 'owner_op', 'mapped']
   def __init__(self, handle, deallocate=True, owner_op_type=None, p_handle=None):
     if handle == None and ffi.typeof(p_handle) == ffi.typeof('flexflow_tensor_t*'):
       self.p_handle = p_handle
@@ -439,10 +393,9 @@ class Tensor(object):
     self.num_dims = 0
     self.dims = 0
     self.mapped = False
-    self.owner_op_type = owner_op_type
     self.__get_dims()
     self.__get_data_type()
-    self.__get_owner_op()
+    self.__get_owner_op(owner_op_type)
     if (deallocate == True):
       self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
     if (self.is_mapped() == True):
@@ -550,12 +503,12 @@ class Tensor(object):
     else:
       assert 0, "unknown data type"
 
-  def __get_owner_op(self):
+  def __get_owner_op(self, op_type):
     op_handle = ffc.flexflow_tensor_get_owner_op(self.handle)
     if op_handle.impl == ffi.NULL:
       self.owner_op = None
     else:
-      self.owner_op = convert_op_handle_to_op(self.owner_op_type, op_handle)
+      self.owner_op = convert_op_handle_to_op(op_type, op_handle)
 
   def __attach_raw_ptr(self, ffconfig, raw_ptr, column_major=True):
     assert self.mapped == False, "Tensor is already mapped."
@@ -617,8 +570,10 @@ class FFModel(object):
   def get_layers(self):
     return self._layers
 
-  def add_layer(self, type):
-    self._layers[self._nb_layers] = type
+  def add_layer(self, op_type, name):
+    layer_id = self._nb_layers
+    op_handle = ffc.flexflow_model_get_layer_by_id(self.handle, layer_id)
+    self._layers[self._nb_layers] = convert_op_handle_to_op(op_type, op_handle, idx=layer_id, name=name)
     self._nb_layers += 1
 
   def create_tensor(self, dims, name, data_type, create_grad=True):
@@ -635,75 +590,75 @@ class FFModel(object):
     handle = ffc.flexflow_constant_create(self.handle, num_dims, c_dims, name.encode('utf-8'), value, c_data_type);
     return Tensor(handle)
 
-  def exp(self, x):
+  def exp(self, x, name=None):
     handle = ffc.flexflow_model_add_exp(self.handle, x.handle)
-    self.add_layer(OpType.EXP)
+    self.add_layer(OpType.EXP, name)
     return Tensor(handle, owner_op_type=OpType.EXP)
 
-  def add(self, x, y):
+  def add(self, x, y, name=None):
     handle = ffc.flexflow_model_add_add(self.handle, x.handle, y.handle)
-    self.add_layer(OpType.ADD)
+    self.add_layer(OpType.ADD, name)
     return Tensor(handle, owner_op_type=OpType.ADD)
 
-  def subtract(self, x, y):
+  def subtract(self, x, y, name=None):
     handle = ffc.flexflow_model_add_subtract(self.handle, x.handle, y.handle)
-    self.add_layer(OpType.SUBTRACT)
+    self.add_layer(OpType.SUBTRACT, name)
     return Tensor(handle, owner_op_type=OpType.SUBTRACT)
 
-  def multiply(self, x, y):
+  def multiply(self, x, y, name=None):
     handle = ffc.flexflow_model_add_multiply(self.handle, x.handle, y.handle)
-    self.add_layer(OpType.MULTIPLY)
+    self.add_layer(OpType.MULTIPLY, name)
     return Tensor(handle, owner_op_type=OpType.MULTIPLY)
 
-  def divide(self, x, y):
+  def divide(self, x, y, name=None):
     handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle)
-    self.add_layer(OpType.DIVIDE)
+    self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
 
-  def conv2d(self, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, shared_op=None, kernel_initializer=None, bias_initializer=None):
+  def conv2d(self, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, shared_op=None, kernel_initializer=None, bias_initializer=None, name=None):
     shared_op_handle = self.__get_op_handle(shared_op)
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
     handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle)
-    self.add_layer(OpType.CONV2D)
+    self.add_layer(OpType.CONV2D, name)
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 
-  def embedding(self, input, num_entires, out_dim, aggr, shared_op=None, kernel_initializer=None):
+  def embedding(self, input, num_entires, out_dim, aggr, shared_op=None, kernel_initializer=None, name=None):
     shared_op_handle = self.__get_op_handle(shared_op)
     c_aggr = enum_to_int(AggrMode, aggr)
     assert (type(kernel_initializer) is GlorotUniformInitializer) or (type(kernel_initializer) is ZeroInitializer) or (type(kernel_initializer) is UniformInitializer) or (type(kernel_initializer) is NormInitializer), "unknow initializer type"
     handle = ffc.flexflow_model_add_embedding(self.handle,  input.handle, num_entires, out_dim, c_aggr, shared_op_handle, kernel_initializer.handle)
-    self.add_layer(OpType.EMBEDDING)
+    self.add_layer(OpType.EMBEDDING, name)
     return Tensor(handle, owner_op_type=OpType.EMBEDDING)
 
-  def pool2d(self, input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE):
+  def pool2d(self, input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE, name=None):
     c_pool_type = enum_to_int(PoolType, pool_type)
     c_activation = enum_to_int(ActiMode, activation)
     handle = ffc.flexflow_model_add_pool2d(self.handle, input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
-    self.add_layer(OpType.POOL2D)
+    self.add_layer(OpType.POOL2D, name)
     return Tensor(handle, owner_op_type=OpType.POOL2D)
 
-  def batch_norm(self, input, relu=True):
+  def batch_norm(self, input, relu=True, name=None):
     handle = ffc.flexflow_model_add_batch_norm(self.handle, input.handle, relu)
-    self.add_layer(OpType.BATCH_NORM)
+    self.add_layer(OpType.BATCH_NORM, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
 
-  def batch_matmul(self, A, B):
+  def batch_matmul(self, A, B, name=None):
     handle = ffc.flexflow_model_add_batch_norm(self.handle, A.handle, B.handle)
-    self.add_layer(OpType.BATCH_MATMUL)
+    self.add_layer(OpType.BATCH_MATMUL, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_MATMUL)
 
-  def dense(self, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, shared_op=None, kernel_initializer=None, bias_initializer=None):
+  def dense(self, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, shared_op=None, kernel_initializer=None, bias_initializer=None, name=None):
     shared_op_handle = self.__get_op_handle(shared_op)
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
     handle = ffc.flexflow_model_add_dense(self.handle,  input.handle, out_dim, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle)
-    self.add_layer(OpType.LINEAR)
+    self.add_layer(OpType.LINEAR, name)
     return Tensor(handle, owner_op_type=OpType.LINEAR)
 
-  def concat(self, tensors, axis):
+  def concat(self, tensors, axis, name=None):
     assert type(tensors) is list, "tensors should be a list"
     tensor_handle_list = []
     n = len(tensors)
@@ -712,10 +667,10 @@ class FFModel(object):
       tensor_handle_list.append(tensor.handle)
     c_tensor_handle_list = ffi.new("flexflow_tensor_t[]", tensor_handle_list)
     handle = ffc.flexflow_model_add_concat(self.handle, n, c_tensor_handle_list, axis)
-    self.add_layer(OpType.CONCAT)
+    self.add_layer(OpType.CONCAT, name)
     return Tensor(handle, owner_op_type=OpType.CONCAT)
 
-  def split(self, input, sizes, axis):
+  def split(self, input, sizes, axis, name=None):
     if type(sizes) is list:
       split = sizes
     else:
@@ -731,60 +686,60 @@ class FFModel(object):
       tensor_p_handle = ffi.new("flexflow_tensor_t*")
       tensor_p_handle.impl = c_outputs_handle_list[i].impl
       output_tensor_list.append(Tensor(None, owner_op_type=OpType.SPLIT, p_handle=tensor_p_handle))
-    self.add_layer(OpType.SPLIT)
+    self.add_layer(OpType.SPLIT, name)
     del c_outputs_handle_list
     return output_tensor_list
 
-  def flat(self, input):
+  def flat(self, input, name=None):
     handle = ffc.flexflow_model_add_flat(self.handle, input.handle)
-    self.add_layer(OpType.FLAT)
+    self.add_layer(OpType.FLAT, name)
     return Tensor(handle, owner_op_type=OpType.FLAT)
 
-  def softmax(self, input):
+  def softmax(self, input, name=None):
     handle = ffc.flexflow_model_add_softmax(self.handle, input.handle)
-    self.add_layer(OpType.SOFTMAX)
+    self.add_layer(OpType.SOFTMAX, name)
     return Tensor(handle, owner_op_type=OpType.SOFTMAX)
 
-  def reshape(self, input, shape):
+  def reshape(self, input, shape, name=None):
     c_shape = ffi.new("int[]", shape)
     handle = ffc.flexflow_model_add_reshape(self.handle, input.handle, len(shape), c_shape)
-    self.add_layer(OpType.RESHAPE)
+    self.add_layer(OpType.RESHAPE, name)
     return Tensor(handle, owner_op_type=OpType.RESHAPE)
 
-  def transpose(self, input, perm):
+  def transpose(self, input, perm, name=None):
     c_perm = ffi.new("int[]", perm)
     handle = ffc.flexflow_model_add_transpose(self.handle, input.handle, len(perm), c_perm)
-    self.add_layer(OpType.TRANSPOSE)
+    self.add_layer(OpType.TRANSPOSE, name)
     return Tensor(handle, owner_op_type=OpType.TRANSPOSE)
 
-  def reverse(self, input, axis):
+  def reverse(self, input, axis, name=None):
     handle = ffc.flexflow_model_add_reverse(self.handle, input.handle, axis)
-    self.add_layer(OpType.REVERSE)
+    self.add_layer(OpType.REVERSE, name)
     return Tensor(handle, owner_op_type=OpType.REVERSE)
 
-  def relu(self, input):
+  def relu(self, input, name=None):
     handle = ffc.flexflow_model_add_relu(self.handle, input.handle)
-    self.add_layer(OpType.RELU)
+    self.add_layer(OpType.RELU, name)
     return Tensor(handle, owner_op_type=OpType.RELU)
 
-  def sigmoid(self, input):
+  def sigmoid(self, input, name=None):
     handle = ffc.flexflow_model_add_sigmoid(self.handle, input.handle)
-    self.add_layer(OpType.SIGMOID)
+    self.add_layer(OpType.SIGMOID, name)
     return Tensor(handle, owner_op_type=OpType.SIGMOID)
 
-  def tanh(self, input):
+  def tanh(self, input, name=None):
     handle = ffc.flexflow_model_add_tanh(self.handle, input.handle)
-    self.add_layer(OpType.TANH)
+    self.add_layer(OpType.TANH, name)
     return Tensor(handle, owner_op_type=OpType.TANH)
 
-  def elu(self, input):
+  def elu(self, input, name=None):
     handle = ffc.flexflow_model_add_elu(self.handle, input.handle)
-    self.add_layer(OpType.ELU)
+    self.add_layer(OpType.ELU, name)
     return Tensor(handle, owner_op_type=OpType.ELU)
 
-  def dropout(self, input, rate, seed):
+  def dropout(self, input, rate, seed, name=None):
     handle = ffc.flexflow_model_add_dropout(self.handle, input.handle, rate, seed)
-    self.add_layer(OpType.DROPOUT)
+    self.add_layer(OpType.DROPOUT, name)
     return Tensor(handle, owner_op_type=OpType.DROPOUT)
 
   def reset_metrics(self):
@@ -838,8 +793,7 @@ class FFModel(object):
     ffc.flexflow_model_print_layers(self.handle, id)
 
   def get_layer_by_id(self, layer_id):
-    handle = ffc.flexflow_model_get_layer_by_id(self.handle, layer_id)
-    return convert_op_handle_to_op(self._layers[layer_id], handle)
+    return self._layers[layer_id]
 
   def get_tensor_by_id(self, id):
     handle = ffc.flexflow_model_get_parameter_by_id(self.handle, id)
