@@ -46,7 +46,7 @@ Tensor BottleneckBlock(FFModel& ff,
   t = ff.batch_norm(t, false);
 
   if ((stride > 1) || (input.adim[2] != out_channels * 4)) {
-    printf("input.adim = %d out_channels*4 = %d\n", input.adim[1], out_channels*4);
+    printf("input.adim = %d out_channels*4 = %d\n", input.adim[2], out_channels*4);
     input = ff.conv2d(input, 4*out_channels, 1, 1, stride, stride, 0, 0, AC_MODE_NONE);
     input = ff.batch_norm(input, false);
   }
