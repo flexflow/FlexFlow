@@ -794,6 +794,14 @@ class FFModel(object):
 
   def get_layer_by_id(self, layer_id):
     return self._layers[layer_id]
+    
+  def get_layer_by_name(self, layer_name):
+    for layer_id in self._layers:
+      layer = self._layers[layer_id]
+      if layer.name == layer_name:
+        return layer
+    assert 0, "Can not find the layer with the name"
+    return None
 
   def get_tensor_by_id(self, id):
     handle = ffc.flexflow_model_get_parameter_by_id(self.handle, id)
@@ -843,7 +851,7 @@ class FFModel(object):
         od = int(items[3])
         activ = int_to_enum(ActiMode, int(items[4]))
         bias = bool(int(items[5]))
-        tensor_dict[op_name] = self.dense(input=input_tensor, out_dim=od, activation=activ, use_bias=bias)
+        tensor_dict[op_name] = self.dense(input=input_tensor, out_dim=od, activation=activ, use_bias=bias, name=op_name)
 
       elif op_type == OpType.CONV2D:
         assert len(items) == 12, "wrong format"
@@ -862,7 +870,7 @@ class FFModel(object):
         pw = int(items[9])
         activ = int_to_enum(ActiMode, int(items[10]))
         bias = bool(int(items[11]))
-        tensor_dict[op_name] = self.conv2d(input=input_tensor, out_channels=oc, kernel_h=kh, kernel_w=kw, stride_h=sh, stride_w=sw, padding_h=ph, padding_w=pw, activation=activ, use_bias=bias)
+        tensor_dict[op_name] = self.conv2d(input=input_tensor, out_channels=oc, kernel_h=kh, kernel_w=kw, stride_h=sh, stride_w=sw, padding_h=ph, padding_w=pw, activation=activ, use_bias=bias, name=op_name)
 
       elif op_type == OpType.POOL2D:
         assert len(items) == 8, "wrong format"
@@ -873,44 +881,44 @@ class FFModel(object):
         ph = int(items[5])
         pt = int_to_enum(PoolType, int(items[6]))
         activ = int_to_enum(ActiMode, int(items[7]))
-        tensor_dict[op_name] = self.pool2d(input=input_tensor, kernel_h=kh, kernel_w=kh, stride_h=sh, stride_w=sh, padding_h=ph, padding_w=ph, pool_type=pt, activation=activ)
+        tensor_dict[op_name] = self.pool2d(input=input_tensor, kernel_h=kh, kernel_w=kh, stride_h=sh, stride_w=sh, padding_h=ph, padding_w=ph, pool_type=pt, activation=activ, name=op_name)
 
       elif op_type == OpType.DROPOUT:
         assert len(items) == 4, "wrong format"
         assert len(prev_ops_list) == 1, "wrong format"
         input_tensor = tensor_dict[prev_ops_list[0]]
         r = int(item[3])
-        tensor_dict[op_name] = self.dropout(input=input_tensor, rate=r, seed=0)
+        tensor_dict[op_name] = self.dropout(input=input_tensor, rate=r, seed=0, name=op_name)
 
       elif op_type == OpType.FLAT:
         assert len(items) == 3, "wrong format"
         assert len(prev_ops_list) == 1, "wrong format"
         input_tensor = tensor_dict[prev_ops_list[0]]
-        tensor_dict[op_name] = self.flat(input=input_tensor)
+        tensor_dict[op_name] = self.flat(input=input_tensor, name=op_name)
 
       elif op_type == OpType.RELU:
         assert len(items) == 3, "wrong format"
         assert len(prev_ops_list) == 1, "wrong format"
         input_tensor = tensor_dict[prev_ops_list[0]]
-        tensor_dict[op_name] = self.relu(input=input_tensor)
+        tensor_dict[op_name] = self.relu(input=input_tensor, name=op_name)
 
       elif op_type == OpType.SIGMOID:
         assert len(items) == 3, "wrong format"
         assert len(prev_ops_list) == 1, "wrong format"
         input_tensor = tensor_dict[prev_ops_list[0]]
-        tensor_dict[op_name] = self.sigmoid(input=input_tensor)
+        tensor_dict[op_name] = self.sigmoid(input=input_tensor, name=op_name)
 
       elif op_type == OpType.TANH:
         assert len(items) == 3, "wrong format"
         assert len(prev_ops_list) == 1, "wrong format"
         input_tensor = tensor_dict[prev_ops_list[0]]
-        tensor_dict[op_name] = self.tanh(input=input_tensor)
+        tensor_dict[op_name] = self.tanh(input=input_tensor, name=op_name)
 
       elif op_type == OpType.ELU:
         assert len(items) == 3, "wrong format"
         assert len(prev_ops_list) == 1, "wrong format"
         input_tensor = tensor_dict[prev_ops_list[0]]
-        tensor_dict[op_name] = self.elu(input=input_tensor)
+        tensor_dict[op_name] = self.elu(input=input_tensor, name=op_name)
 
       elif op_type == OpType.CONCAT:
         assert len(items) == 4, "wrong format"
@@ -919,7 +927,7 @@ class FFModel(object):
         for i in prev_ops_list:
           input_tensors.append(tensor_dict[i])
         ax = int(items[3])
-        tensor_dict[op_name] = self.concat(tensors=input_tensors, axis=ax)
+        tensor_dict[op_name] = self.concat(tensors=input_tensors, axis=ax, name=op_name)
 
       elif op_type == OpType.OUTPUT:
         tensor_dict[op_name] = []

@@ -50,6 +50,10 @@ def top_level_task():
   num_samples = dataloader_input.get_num_samples()
 
   ffmodel.init_layers()
+  
+  layers = ffmodel.get_layers()
+  for layer in layers:
+    print(layers[layer].name)
 
   epochs = ffconfig.get_epochs()
 
