@@ -31,7 +31,7 @@ BatchMatmul::BatchMatmul(FFModel& model,
 : Op(model, OP_BATCHMATMUL, "BatchMatmul_", A, B)
 {
   assert(A.numDim == B.numDim);
-  for (int i = A.numDim-1; i >= 2; i++)
+  for (int i = A.numDim-1; i >= 2; i--)
     assert(A.adim[i] == B.adim[i]);
   assert(A.adim[0] == B.adim[1]);
   outputs[0].numDim = A.numDim;
@@ -98,7 +98,7 @@ void BatchMatmul::create_output_and_partition_with_dim(FFModel& model)
   int dims[NDIM];
   for (int i = 0; i < NDIM; i++)
     dims[i] = outputs[0].adim[NDIM-1-i];
-  outputs[0] = model.create_tensor<NDIM>(dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT);
+  outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
   outputs[0].owner_op = this;
   outputs[0].owner_idx = 0;
   for (int i = 0; i < numInputs; i++) {

@@ -27,8 +27,8 @@ void ImgDataLoader::reset()
   next_index = 0;
 }
 
-ImgDataLoader4D::ImgDataLoader4D(FFModel& ff, Tensor input, Tensor label, 
-                                 Tensor full_input_, Tensor full_label_, 
+ImgDataLoader4D::ImgDataLoader4D(FFModel& ff, Tensor input, Tensor label,
+                                 Tensor full_input_, Tensor full_label_,
                                  int num_samples_)
 {
   Context ctx = ff.config.lg_ctx;
@@ -38,13 +38,13 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff, Tensor input, Tensor label,
   {
     batch_input = input;
     const int dims[] = {num_samples, input.adim[2], input.adim[1], input.adim[0]};
-    full_input = ff.create_tensor<4>(dims, "", DT_FLOAT);
+    full_input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
   // Create full label
   {
     batch_label = label;
     const int dims[] = {num_samples, label.adim[0]};
-    full_label = ff.create_tensor<2>(dims, "", DT_INT32);
+    full_label = ff.create_tensor<2>(dims, DT_INT32);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
@@ -78,7 +78,7 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff, Tensor input, Tensor label,
   next_batch(ff);
 }
 
-ImgDataLoader4D::ImgDataLoader4D(FFModel& ff, 
+ImgDataLoader4D::ImgDataLoader4D(FFModel& ff,
                                  const NetConfig& alexnet,
                                  Tensor input, Tensor label)
 {
@@ -99,13 +99,13 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff,
   {
     batch_input = input;
     const int dims[] = {num_samples, input.adim[2], input.adim[1], input.adim[0]};
-    full_input = ff.create_tensor<4>(dims, "", DT_FLOAT);
+    full_input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
   // Create full label
   {
     batch_label = label;
     const int dims[] = {num_samples, label.adim[0]};
-    full_label = ff.create_tensor<2>(dims, "", DT_INT32);
+    full_label = ff.create_tensor<2>(dims, DT_INT32);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
@@ -334,8 +334,8 @@ size_t ImgDataLoader4D::get_file_size(const std::string& filename)
   return filesize;
 }
 
-ImgDataLoader2D::ImgDataLoader2D(FFModel& ff, Tensor input, Tensor label, 
-                                 Tensor full_input_, Tensor full_label_, 
+ImgDataLoader2D::ImgDataLoader2D(FFModel& ff, Tensor input, Tensor label,
+                                 Tensor full_input_, Tensor full_label_,
                                  int num_samples_)
 {
   Context ctx = ff.config.lg_ctx;
@@ -345,13 +345,13 @@ ImgDataLoader2D::ImgDataLoader2D(FFModel& ff, Tensor input, Tensor label,
   {
     batch_input = input;
     const int dims[] = {num_samples, input.adim[0]};
-    full_input = ff.create_tensor<2>(dims, "", DT_FLOAT);
+    full_input = ff.create_tensor<2>(dims, DT_FLOAT);
   }
   // Create full label
   {
     batch_label = label;
     const int dims[] = {num_samples, label.adim[0]};
-    full_label = ff.create_tensor<2>(dims, "", DT_INT32);
+    full_label = ff.create_tensor<2>(dims, DT_INT32);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
@@ -499,11 +499,11 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_
   if (input.numDim == 4) {
     batch_input = input;
     const int dims[] = {num_samples, input.adim[2], input.adim[1], input.adim[0]};
-    full_input = ff.create_tensor<4>(dims, "", datatype);
+    full_input = ff.create_tensor<4>(dims, datatype);
   } else if(input.numDim == 2) {
     batch_input = input;
     const int dims[] = {num_samples, input.adim[0]};
-    full_input = ff.create_tensor<2>(dims, "", datatype);
+    full_input = ff.create_tensor<2>(dims, datatype);
   } else {
     assert(0);
   }
@@ -613,7 +613,7 @@ void SingleDataLoader::load_entire_dataset_from_numpy(const Task *task,
       ctx, task->regions[1].region.get_index_space());
   assert(acc_input_.accessor.is_dense_arbitrary(rect_input_));
   assert(rect_input_.volume() == rect_input.volume());
-    
+
   DT* input_ptr = acc_input.ptr(rect_input.lo);
   const DT* input_ptr_ = acc_input_.ptr(rect_input_.lo);
   printf("Check ptr input_ %p %lu %lu, input %p %lu %lu\n", input_ptr_, (uintptr_t)input_ptr_, rect_input_.volume(), input_ptr, (uintptr_t)input_ptr, rect_input.volume());
@@ -635,7 +635,7 @@ void SingleDataLoader::register_cpu_tasks(void)
     Runtime::preregister_task_variant<SingleDataLoader::load_entire_dataset_from_numpy<float, 4>>(
         registrar, "4D Float Load Entire Dataset Task Numpy");
   }
-  
+
   // 2D float Load entire dataset from numpy
   {
     TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_5, "2D Float Load Entire Dataset Numpy");
@@ -644,7 +644,7 @@ void SingleDataLoader::register_cpu_tasks(void)
     Runtime::preregister_task_variant<SingleDataLoader::load_entire_dataset_from_numpy<float, 2>>(
         registrar, "2D Float Load Entire Dataset Task Numpy");
   }
-  
+
   // 2D int Load entire dataset from numpy
   {
     TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_6, "2D Int Load Entire Dataset Numpy");

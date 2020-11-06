@@ -54,7 +54,7 @@ void Softmax::create_output_and_partition(FFModel& model)
   assert(num_par_c == 1);
   {
     const int dims[2] = {inputs[0].adim[1], inputs[0].adim[0]};
-    outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
     outputs[0].owner_op = this;
     outputs[0].owner_idx = 0;
   }

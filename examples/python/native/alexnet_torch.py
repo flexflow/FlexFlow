@@ -18,7 +18,7 @@ class AlexNet(nn.Module):
     self.linear_2 = nn.Linear(4096, 4096)
     self.linear_3 = nn.Linear(4096, 1000)
     self.test = "test"
-  
+
   def forward(self, x):
     x = self.conv2_1(x)
     x = self.maxpool2d_1(x)
@@ -33,17 +33,17 @@ class AlexNet(nn.Module):
     x = self.linear_2(x)
     x = self.linear_3(x)
     return x
-  
+
 def top_level_task():
   model = AlexNet()
-  
+
   dims = [model.ffconfig.get_batch_size(), 3, 229, 229]
-  input = model.ffmodel.create_tensor(dims, "", DataType.DT_FLOAT);
-  
+  input = model.ffmodel.create_tensor(dims, DataType.DT_FLOAT);
+
   dims_label = [model.ffconfig.get_batch_size(), 1]
-  label = model.ffmodel.create_tensor(dims_label, "", DataType.DT_INT32);
+  label = model.ffmodel.create_tensor(dims_label, DataType.DT_INT32);
   dataloader = DataLoader(model.ffmodel, input, label, 1)
-  
+
   t = model.init_inout(input)
   model.ffmodel.init_layers()
   #print(model.__dict__)

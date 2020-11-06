@@ -89,7 +89,7 @@ void Split::create_output_and_partition_with_dim(FFModel& model)
     int dims[NDIM];
     for (int j = 0; j < NDIM; j++)
       dims[j] = outputs[i].adim[NDIM-1-j];
-    outputs[i] = model.create_tensor<NDIM>(dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT);
+    outputs[i] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
   }

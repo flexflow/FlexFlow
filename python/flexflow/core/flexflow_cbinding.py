@@ -576,18 +576,18 @@ class FFModel(object):
     self._layers[self._nb_layers] = convert_op_handle_to_op(op_type, op_handle, idx=layer_id, name=name)
     self._nb_layers += 1
 
-  def create_tensor(self, dims, name, data_type, create_grad=True):
+  def create_tensor(self, dims, data_type, create_grad=True):
     c_dims = ffi.new("int[]", dims)
     c_data_type = enum_to_int(DataType, data_type)
     num_dims = len(dims)
-    handle = ffc.flexflow_tensor_create(self.handle, num_dims, c_dims, name.encode('utf-8'), c_data_type, create_grad);
+    handle = ffc.flexflow_tensor_create(self.handle, num_dims, c_dims, c_data_type, create_grad);
     return Tensor(handle)
 
-  def create_constant(self, dims, name, value, data_type):
+  def create_constant(self, dims, value, data_type):
     c_dims = ffi.new("int[]", dims)
     c_data_type = enum_to_int(DataType, data_type)
     num_dims = len(dims)
-    handle = ffc.flexflow_constant_create(self.handle, num_dims, c_dims, name.encode('utf-8'), value, c_data_type);
+    handle = ffc.flexflow_constant_create(self.handle, num_dims, c_dims, value, c_data_type);
     return Tensor(handle)
 
   def exp(self, x, name=None):
@@ -645,7 +645,7 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
 
   def batch_matmul(self, A, B, name=None):
-    handle = ffc.flexflow_model_add_batch_norm(self.handle, A.handle, B.handle)
+    handle = ffc.flexflow_model_add_batch_matmul(self.handle, A.handle, B.handle)
     self.add_layer(OpType.BATCH_MATMUL, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_MATMUL)
 
@@ -794,7 +794,7 @@ class FFModel(object):
 
   def get_layer_by_id(self, layer_id):
     return self._layers[layer_id]
-    
+
   def get_layer_by_name(self, layer_name):
     for layer_id in self._layers:
       layer = self._layers[layer_id]

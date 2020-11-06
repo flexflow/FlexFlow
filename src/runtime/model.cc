@@ -429,10 +429,11 @@ FFModel::FFModel(FFConfig& _config)
   }
 }
 
+/*
 template<int NDIM>
 Tensor FFModel::create_tensor(const int dims[],
-                              const std::string& pc_name,
                               DataType data_type,
+                              Op* owner_op,
                               bool create_grad)
 {
   ParallelConfig pc;
@@ -440,16 +441,16 @@ Tensor FFModel::create_tensor(const int dims[],
   IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(get_or_create_task_is(pc));
   return create_tensor(dims, task_is, data_type, create_grad);
 }
+*/
 
 template<int NDIM>
 Tensor FFModel::create_constant(const int dims[],
-                                const std::string& pc_name,
                                 float value,
                                 DataType data_type)
 {
   // constant created in this way is not part of any operator
   // so we assume it does not have gradients
-  Tensor tensor = create_tensor<NDIM>(dims, pc_name, data_type, false/*create_grad*/);
+  Tensor tensor = create_tensor<NDIM>(dims, data_type, NULL/*owner_op*/, false/*create_grad*/);
   ConstantInitializer initializer(value);
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -459,14 +460,19 @@ Tensor FFModel::create_constant(const int dims[],
 
 template<int NDIM>
 Tensor FFModel::create_tensor(const int dims[],
-                              const IndexSpaceT<NDIM>& part_is,
                               DataType data_type,
+                              const Op* owner_op,
                               bool create_grad)
 {
   Tensor tensor;
   tensor.data_type = data_type;
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
+
+  std::string name = "";
+  if (owner_op != NULL)
+    name = std::string(owner_op->name);
+  IndexSpaceT<NDIM> part_is = (IndexSpaceT<NDIM>) get_or_create_task_is(NDIM, name);
   // Step 1: create regions
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator= runtime->create_field_allocator(ctx, fs);
@@ -525,6 +531,16 @@ Tensor FFModel::create_tensor(const int dims[],
     //tensor.pdim[i] = extent.hi[i] - extent.lo[i] + 1;
   }
 
+  // Initialize tensor with zero
+  ArgumentMap argmap;
+  IndexLauncher launcher(ZERO_INIT_TASK_ID, part_is,
+                         TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false, 0,
+                         FFConfig::get_hash_id(name));
+  launcher.add_region_requirement(
+      RegionRequirement(tensor.part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, tensor.region));
+  launcher.add_field(0, FID_DATA);
   return tensor;
 }
 
@@ -1030,7 +1046,7 @@ void FFModel::compile(LossType loss_type,
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      label_tensor = create_tensor<DIM>(dims, "", label_type); \
+      label_tensor = create_tensor<DIM>(dims, label_type); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -1943,9 +1959,8 @@ void register_flexflow_tasks()
 
 // template instantiations
 #define DIMFUNC(DIM) \
-  template Tensor FFModel::create_tensor<DIM>(const int* dims, const std::string& pcname, DataType data_type, bool create_grad); \
-  template Tensor FFModel::create_constant<DIM>(const int* dims, const std::string & pcname, float value, DataType data_type); \
-  template Tensor FFModel::create_tensor<DIM>(const int* dims, const IndexSpaceT<DIM>& part_is, DataType data_type, bool create_grad); \
+  template Tensor FFModel::create_tensor<DIM>(const int* dims, DataType data_type, const Op* owner_op, bool create_grad); \
+  template Tensor FFModel::create_constant<DIM>(const int* dims, float value, DataType data_type); \
   template void FFModel::create_disjoint_partition<DIM>(const Tensor& tensor, const IndexSpaceT<DIM>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
   LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC

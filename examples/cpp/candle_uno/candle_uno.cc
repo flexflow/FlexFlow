@@ -82,7 +82,7 @@ void top_level_task(const Task* task,
     print_vector("Dense Layers", candle_config.dense_layers);
     print_vector("Dense Feature Layers", candle_config.dense_feature_layers);
   }
-  
+
   ff_config.lg_ctx = ctx;
   ff_config.lg_hlr = runtime;
   ff_config.field_space = runtime->create_field_space(ctx);
@@ -109,7 +109,7 @@ void top_level_task(const Task* task,
     assert(feature_shapes.find(it->second) != feature_shapes.end());
     int shape = feature_shapes[it->second];
     const int dims[] = {ff_config.batchSize, shape};
-    Tensor input = ff.create_tensor<2>(dims, "", DT_FLOAT);
+    Tensor input = ff.create_tensor<2>(dims, DT_FLOAT);
     all_inputs.push_back(input);
     if (input_models.find(it->second) != input_models.end()) {
       Tensor encoded = build_feature_model(&ff, input, candle_config.dense_feature_layers);
@@ -127,7 +127,7 @@ void top_level_task(const Task* task,
   Tensor label;
   {
     const int dims[] = {ff_config.batchSize, 1};
-    label = ff.create_tensor<2>(dims, "", DT_FLOAT);
+    label = ff.create_tensor<2>(dims, DT_FLOAT);
   }
   ff.mse_loss("mse_loss", output, label, "average"/*reduction*/);
   // Use SGD Optimizer
@@ -242,13 +242,13 @@ DataLoader::DataLoader(FFModel& ff,
   for (size_t i = 0; i < _inputs.size(); i++) {
     batch_inputs.push_back(_inputs[i]);
     const int dims[] = {num_samples, _inputs[i].adim[0]};
-    Tensor full_input = ff.create_tensor<2>(dims, "", DT_FLOAT);
+    Tensor full_input = ff.create_tensor<2>(dims, DT_FLOAT);
     full_inputs.push_back(full_input);
   }
   {
     batch_label = _label;
     const int dims[] = {num_samples, 1};
-    full_label = ff.create_tensor<2>(dims, "", DT_FLOAT);
+    full_label = ff.create_tensor<2>(dims, DT_FLOAT);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher

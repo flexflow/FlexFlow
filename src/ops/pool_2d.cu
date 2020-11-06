@@ -118,7 +118,7 @@ void Pool2D::create_output_and_partition(FFModel& model)
   int output_n = inputs[0].adim[3];
   {
     const int dims[4] = {output_n, output_c, output_h, output_w};
-    outputs[0] = model.create_tensor<4>(dims, (IndexSpaceT<4>)task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<4>(dims, DT_FLOAT, this);
     outputs[0].owner_op = this;
     outputs[0].owner_idx = 0;
   }

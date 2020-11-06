@@ -24,15 +24,15 @@ def top_level_task():
   ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
   ffmodel = FFModel(ffconfig)
-  
+
   dims1 = [ffconfig.get_batch_size(), 1, 28, 28]
-  input1 = ffmodel.create_tensor(dims1, "", DataType.DT_FLOAT);
-  
+  input1 = ffmodel.create_tensor(dims1, DataType.DT_FLOAT);
+
   # dims_label = [ffconfig.get_batch_size(), 1]
-  # label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32);
-  
+  # label = ffmodel.create_tensor(dims_label, DataType.DT_INT32);
+
   num_samples = 60000
-  
+
   t = ffmodel.conv2d(input1, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU, True)
   t = ffmodel.conv2d(t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU, True)
   t = ffmodel.pool2d(t, 2, 2, 2, 2, 0, 0)
@@ -53,12 +53,12 @@ def top_level_task():
   x_train /= 255
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
-  
+
   dims_full_input = [num_samples, 1, 28, 28]
-  full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
+  full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
 
   dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor(dims_full_label, "", DataType.DT_INT32)
+  full_label = ffmodel.create_tensor(dims_full_label, DataType.DT_INT32)
 
   full_input.attach_numpy_array(ffconfig, x_train)
   full_label.attach_numpy_array(ffconfig, y_train)
@@ -98,7 +98,7 @@ def top_level_task():
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, num_samples * epochs / run_time));
-  
+
   perf_metrics = ffmodel.get_perf_metrics()
   accuracy = perf_metrics.get_accuracy()
   if accuracy < ModelAccuracy.MNIST_CNN.value:
@@ -117,8 +117,8 @@ def top_level_task():
   print(input1_array.shape)
   print(input1_array[10, :, :, :])
   input1.inline_unmap(ffconfig)
-  
-  
+
+
 if __name__ == "__main__":
   print("mnist mlp")
   top_level_task()

@@ -803,24 +803,23 @@ flexflow_tensor_create(
   flexflow_model_t model_,
   int num_dims,
   const int* dims,
-  const char* name,
   enum DataType data_type,
   bool create_grad /* true */)
 {
   Tensor *tensor = new Tensor();
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   if (num_dims == 2) {
-    *tensor = model->create_tensor<2>(dims, name, data_type, create_grad);
+    *tensor = model->create_tensor<2>(dims, data_type, NULL, create_grad);
     DEBUG_PRINT("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
   } else if (num_dims == 3) {
-    *tensor = model->create_tensor<3>(dims, name, data_type, create_grad);
+    *tensor = model->create_tensor<3>(dims, data_type, NULL, create_grad);
     DEBUG_PRINT("[Tensor] new 3D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
   } else if (num_dims == 4) {
-    *tensor = model->create_tensor<4>(dims, name, data_type, create_grad);
+    *tensor = model->create_tensor<4>(dims, data_type, NULL, create_grad);
     DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
 #if MAX_TENSOR_DIM >= 5
   } else if (num_dims == 5) {
-     *tensor = model->create_tensor<5>(dims, name, data_type, create_grad);
+     *tensor = model->create_tensor<5>(dims, data_type, NULL, create_grad);
     DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], tensor->adim[4]);
 #endif
   } else {
@@ -834,24 +833,23 @@ flexflow_constant_create(
   flexflow_model_t model_,
   int num_dims,
   const int* dims,
-  const char* name,
   float value,
   enum DataType data_type)
 {
   Tensor *tensor = new Tensor();
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   if (num_dims == 2) {
-    *tensor = model->create_constant<2>(dims, name, value, data_type);
+    *tensor = model->create_constant<2>(dims, value, data_type);
     DEBUG_PRINT("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
   } else if (num_dims == 3) {
-    *tensor = model->create_constant<3>(dims, name, value, data_type);
+    *tensor = model->create_constant<3>(dims, value, data_type);
     DEBUG_PRINT("[Tensor] new 3D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
   } else if (num_dims == 4) {
-    *tensor = model->create_constant<4>(dims, name, value, data_type);
+    *tensor = model->create_constant<4>(dims, value, data_type);
     DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
 #if MAX_TENSOR_DIM >= 5
   } else if (num_dims == 5) {
-    *tensor = model->create_constant<5>(dims, name, value, data_type);
+    *tensor = model->create_constant<5>(dims, value, data_type);
     DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], tensor->adim[4]);
 #endif
   } else {

@@ -50,7 +50,7 @@ def InceptionD(ffmodel, input):
   t3 = ffmodel.pool2d(input, 3, 3, 2, 2, 0, 0)
   output = ffmodel.concat([t1, t2, t3], 1)
   return output;
-  
+
 def InceptionE(ffmodel, input):
   t1 = ffmodel.conv2d(input, 320, 1, 1, 1, 1, 0, 0)
   t2i = ffmodel.conv2d(input, 384, 1, 1, 1, 1, 0, 0)
@@ -64,21 +64,21 @@ def InceptionE(ffmodel, input):
   t6 = ffmodel.conv2d(t6, 192, 1, 1, 1, 1, 0, 0)
   output = ffmodel.concat([t1, t2, t3, t4, t5, t6], 1)
   return output;
-  
+
 def inception():
   ffconfig = FFConfig()
   ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
   ffmodel = FFModel(ffconfig)
-  
+
   dims_input = [ffconfig.get_batch_size(), 3, 299, 299]
   #print(dims)
-  input = ffmodel.create_tensor(dims_input, "", DataType.DT_FLOAT)
-  
+  input = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
+
   # dims_label = [ffconfig.get_batch_size(), 1]
   # #print(dims)
-  # label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
-  
+  # label = ffmodel.create_tensor(dims_label, DataType.DT_INT32)
+
   t = ffmodel.conv2d(input, 32, 3, 3, 2, 2, 0, 0)
   t = ffmodel.conv2d(t, 32, 3, 3, 1, 1, 0, 0)
   t = ffmodel.conv2d(t, 64, 3, 3, 1, 1, 1, 1)
@@ -101,21 +101,21 @@ def inception():
   t = ffmodel.flat(t)
   t = ffmodel.dense(t, 10)
   t = ffmodel.softmax(t)
-  
+
   ffoptimizer = SGDOptimizer(ffmodel, 0.001)
   ffmodel.set_sgd_optimizer(ffoptimizer)
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
   label = ffmodel.get_label_tensor()
-  
+
   # Data Loader
   # alexnetconfig = NetConfig()
   # dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
   num_samples = 10000
-  
+
   (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
 
   full_input_np = np.zeros((num_samples, 3, 299, 299), dtype=np.float32)
-  
+
   for i in range(0, num_samples):
     image = x_train[i, :, :, :]
     image = image.transpose(1, 2, 0)
@@ -126,36 +126,36 @@ def inception():
     full_input_np[i, :, :, :] = image
     if (i == 0):
       print(image)
-  
+
 
   full_input_np /= 255
   print(full_input_np.shape)
   print(full_input_np.__array_interface__["strides"])
   print(full_input_np[0,:, :, :])
-  
+
   y_train = y_train.astype('int32')
   full_label_np = y_train
-  
+
   dims_full_input = [num_samples, 3, 299, 299]
-  full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
+  full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
 
   dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor(dims_full_label, "", DataType.DT_INT32)
+  full_label = ffmodel.create_tensor(dims_full_label, DataType.DT_INT32)
 
   full_input.attach_numpy_array(ffconfig, full_input_np)
   full_label.attach_numpy_array(ffconfig, full_label_np)
-  
+
   dataloader_input = SingleDataLoader(ffmodel, input, full_input, num_samples, DataType.DT_FLOAT)
   dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
-  
+
   full_input.detach_numpy_array(ffconfig)
   full_label.detach_numpy_array(ffconfig)
-  
+
   num_samples = dataloader_input.get_num_samples()
   assert dataloader_input.get_num_samples() == dataloader_label.get_num_samples()
-  
+
   ffmodel.init_layers()
-  
+
   epochs = ffconfig.get_epochs()
 
   ts_start = ffconfig.get_current_time()
@@ -181,7 +181,7 @@ def inception():
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, 8192 * epochs / run_time));
-  
+
   # conv_2d1 = ffmodel.get_layer_by_id(7)
   # cbias_tensor = conv_2d1.get_weight_tensor()
   # print(cbias_tensor)

@@ -11,14 +11,14 @@ def top_level_task():
   ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
   ffmodel = FFModel(ffconfig)
-  
+
   dims_input = [ffconfig.get_batch_size(), 3, 229, 229]
   #print(dims)
-  input = ffmodel.create_tensor(dims_input, "", DataType.DT_FLOAT)
+  input = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
   # dims_label = [ffconfig.get_batch_size(), 1]
   # #print(dims)
-  # label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
+  # label = ffmodel.create_tensor(dims_label, DataType.DT_INT32)
 
   kernel_init = GlorotUniformInitializer(123)
   bias_init = ZeroInitializer()
@@ -45,15 +45,15 @@ def top_level_task():
   ffmodel.set_sgd_optimizer(ffoptimizer)
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
   label = ffmodel.get_label_tensor()
-  
+
   use_external = True
   if (use_external == True):
     num_samples = 10000
-    
+
     (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
 
     full_input_np = np.zeros((num_samples, 3, 229, 229), dtype=np.float32)
-    
+
     for i in range(0, num_samples):
       image = x_train[i, :, :, :]
       image = image.transpose(1, 2, 0)
@@ -64,35 +64,35 @@ def top_level_task():
       full_input_np[i, :, :, :] = image
       if (i == 0):
         print(image)
-    
+
 
     full_input_np /= 255
     print(full_input_np.shape)
     print(full_input_np.__array_interface__["strides"])
     print(full_input_np[0,:, :, :])
-    
+
     y_train = y_train.astype('int32')
     full_label_np = y_train
-    
+
     dims_full_input = [num_samples, 3, 229, 229]
-    full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
+    full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
 
     dims_full_label = [num_samples, 1]
-    full_label = ffmodel.create_tensor(dims_full_label, "", DataType.DT_INT32)
+    full_label = ffmodel.create_tensor(dims_full_label, DataType.DT_INT32)
 
     full_input.attach_numpy_array(ffconfig, full_input_np)
     full_label.attach_numpy_array(ffconfig, full_label_np)
-    
+
     dataloader_input = SingleDataLoader(ffmodel, input, full_input, num_samples, DataType.DT_FLOAT)
     dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
     #dataloader = DataLoader4D(ffmodel, input, label, full_input, full_label, num_samples)
-    
+
     full_input.detach_numpy_array(ffconfig)
     full_label.detach_numpy_array(ffconfig)
-    
+
     num_samples = dataloader_input.get_num_samples()
     assert dataloader_input.get_num_samples() == dataloader_label.get_num_samples()
-    
+
   else:
     # Data Loader
     dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
@@ -167,16 +167,16 @@ def top_level_task():
   print(cbias)
   #save_image(cbias, 2)
   cbias_tensor.inline_unmap(ffconfig)
-  
+
   label.inline_map(ffconfig)
   label_array = label.get_flat_array(ffconfig, DataType.DT_INT32)
   print(label_array.shape)
   # print(cbias)
   print(label_array)
   label.inline_unmap(ffconfig)
-  
+
   #ffmodel.print_layers(0)
-  
+
 def save_image(batch_image_array, id):
   image_array = batch_image_array[id, :, :, :]
   image_array = image_array.transpose(1, 2, 0)
