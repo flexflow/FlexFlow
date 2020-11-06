@@ -54,6 +54,9 @@ def top_level_task():
   layers = ffmodel.get_layers()
   for layer in layers:
     print(layers[layer].name)
+    
+  layer = ffmodel.get_layer_by_name("relu_1")
+  print(layer)
 
   epochs = ffconfig.get_epochs()
 
