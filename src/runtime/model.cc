@@ -527,6 +527,7 @@ Tensor FFModel::create_tensor(const int dims[],
     //tensor.pdim[i] = extent.hi[i] - extent.lo[i] + 1;
   }
 
+#ifdef DEADCODE
   // Initialize tensor with zero
   ArgumentMap argmap;
   IndexLauncher launcher(ZERO_INIT_TASK_ID, part_is,
@@ -544,6 +545,7 @@ Tensor FFModel::create_tensor(const int dims[],
     launcher.add_field(1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
+#endif
   return tensor;
 }
 
@@ -845,16 +847,16 @@ Tensor FFModel::create_linear_replica(const int dims[],
   IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
   replica.region_grad = runtime->create_logical_region(ctx, is, fs);
   assert(dims[0] == num_parts[0]);
-  assert(dims[1] % num_parts[1] == 0);
+  //assert(dims[1] % num_parts[1] == 0);
   hi[NDIM-1] = dims[0] / num_parts[0] - 1;
-  hi[NDIM-2] = dims[1] / num_parts[1] - 1;
+  //hi[NDIM-2] = dims[1] / num_parts[1] - 1;
   Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
   Transform<NDIM, TDIM> transform;
   for (int i = 0; i < NDIM; i++)
     for (int j = 0; j < TDIM; j++)
       transform[i][j] = 0;
   transform[NDIM-1][0] = 1;
-  transform[NDIM-2][1] = dims[1] / num_parts[1];
+  //transform[NDIM-2][1] = dims[1] / num_parts[1];
   IndexPartition ip = runtime->create_partition_by_restriction(
       ctx, is, task_is, transform, extent);
   assert(runtime->is_index_partition_disjoint(ctx, ip));
