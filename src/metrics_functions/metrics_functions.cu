@@ -116,6 +116,7 @@ void update_metrics_label_kernel(
 {
   CUDA_KERNEL_LOOP(b, num_samples)
   {
+    atomicAdd(&(perf->train_all), 1);
     if (metrics.measure_accuracy) {
       if (num_classes == 1) {
         // accuracy does not make sense when num_classes = 1
@@ -135,10 +136,9 @@ void update_metrics_label_kernel(
             true_label = i;
           }
         }
-        printf("[%d] logit(%.4lf) label(%.4lf) my_label(%d) num_classes(%d)\n", b, logits[b], labels[b], my_label, num_classes);
+        //printf("[%d] logit(%.4lf) label(%.4lf) my_label(%d) num_classes(%d)\n", b, logits[b], labels[b], my_label, num_classes);
         assert(my_label >= 0);
         assert(true_label >= 0);
-        atomicAdd(&(perf->train_all), 1);
         if (true_label == my_label)
           atomicAdd(&(perf->train_correct), 1);
       }
@@ -213,7 +213,7 @@ PerfMetrics Metrics::compute_task(const Task *task,
     // Use CUDA_NUM_THREADS may result in out of resources so we set #threads=256
     update_metrics_label_kernel<<<GET_BLOCKS(num_samples), 256>>>(
       acc_logit.ptr, acc_label.ptr, perf, *me, num_samples, num_classes);
-  }
+    }
   checkCUDA(cudaMemcpy(&perf_zc, perf, sizeof(PerfMetrics), cudaMemcpyDeviceToHost));
   checkCUDA(cudaFree(perf));
   return perf_zc;
@@ -253,7 +253,7 @@ void Metrics::compute(FFModel* model,
   launcher.add_field(1, FID_DATA);
   FutureMap new_metrics = runtime->execute_index_space(ctx, launcher);
   // Update metrics
-  TaskLauncher metrics_task(UPDATE_METRICS_TASK_ID, TaskArgument(NULL, 0));
+  TaskLauncher metrics_task(UPDATE_METRICS_TASK_ID, TaskArgument(this, sizeof(Metrics)));
   metrics_task.add_future(model->current_metrics);
   for (PointInRectIterator<2> it(part_rect); it(); it++) {
     metrics_task.add_future(new_metrics[*it]);

@@ -407,10 +407,6 @@ FFModel::FFModel(FFConfig& _config)
   //  dataLoader = new DataLoader(config.datasetPath);
   //}
 
-  // Init performance metrics
-  TaskLauncher launcher(UPDATE_METRICS_TASK_ID, TaskArgument(NULL, 0));
-  current_metrics = runtime->execute_task(ctx, launcher);
-
   // Init CUDA library on each worker
   ArgumentMap local_args;
   size_t workSpaceSize = config.workSpaceSize;
@@ -929,7 +925,7 @@ void FFModel::reset_metrics()
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
-  TaskLauncher launcher(UPDATE_METRICS_TASK_ID, TaskArgument(NULL, 0));
+  TaskLauncher launcher(UPDATE_METRICS_TASK_ID, TaskArgument(metrics_op, sizeof(Metrics)));
   current_metrics = runtime->execute_task(ctx, launcher);
 }
 
@@ -997,12 +993,12 @@ void FFModel::compile(Optimizer* _optimizer,
 void FFModel::compile(LossType loss_type,
                       const std::vector<MetricsType>& metrics)
 {
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
   if (config.import_strategy_file.length() > 0) {
     load_strategies_from_file(config.import_strategy_file, config.strategies);
   } else if (config.search_budget > 0) {
     // Launch the search task
-    Context ctx = config.lg_ctx;
-    Runtime* runtime = config.lg_hlr;
     FFModel* model = this;
     TaskLauncher launcher(STRATEGY_SEARCH_TASK_ID,
         TaskArgument(&model, sizeof(FFModel*)));
@@ -1014,6 +1010,11 @@ void FFModel::compile(LossType loss_type,
 
   loss_op = new Loss(loss_type);
   metrics_op = new Metrics(loss_type, metrics);
+
+  // Init performance metrics
+  TaskLauncher launcher(UPDATE_METRICS_TASK_ID, TaskArgument(metrics_op, sizeof(Metrics)));
+  current_metrics = runtime->execute_task(ctx, launcher);
+
   for (size_t l = 0; l < layers.size(); l++) {
     Op* op = layers[l];
     for (int i = 0; i < op->numInputs; i++) {
@@ -1172,6 +1173,7 @@ PerfMetrics FFModel::update_metrics_task(const Task *task,
                                          const std::vector<PhysicalRegion>& regions,
                                          Context ctx, Runtime* runtime)
 {
+  Metrics* m = (Metrics*) task->args;
   //printf("in update_metrics_task\n");
   if (task->futures.size() == 0) {
     // Create an empty future
@@ -1184,7 +1186,7 @@ PerfMetrics FFModel::update_metrics_task(const Task *task,
     PerfMetrics one_metrics = task->futures[i].get_result<PerfMetrics>();
     all_metrics.update(one_metrics);
   }
-  all_metrics.print();
+  all_metrics.print(m);
   //fprintf(stderr, "acc_train_loss: %.4lf train_accuracy: %.2lf%%(%d/%d)\n",
   //        all_metrics.train_loss / all_metrics.train_all,
   //        all_metrics.train_correct * 100.0f / all_metrics.train_all,

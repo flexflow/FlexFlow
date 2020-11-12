@@ -340,6 +340,7 @@ void ElementUnary::forward_task(const Task* task,
     elewise_unary_forward_kernel<<<GET_BLOCKS(output_domain.get_volume()), CUDA_NUM_THREADS>>>(
     output_domain.get_volume(), alpha, beta, ele->op_type, input_ptr, output_ptr);
   }
+  
 }
 
 void ElementUnary::forward(const FFModel& ff)

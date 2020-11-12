@@ -21,6 +21,7 @@
 
 class Tensor;
 class FFModel;
+class Metrics;
 
 class PerfMetrics
 {
@@ -28,7 +29,7 @@ public:
   PerfMetrics(void);
   void update(const PerfMetrics& one);
   void apply_scale(float scale_factor);
-  void print();
+  void print(const Metrics* m);
 public:
   int train_all, train_correct; // measure_accuracy
   float cce_loss; // measure_categorical_crossentropy

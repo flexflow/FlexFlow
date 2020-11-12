@@ -137,6 +137,7 @@ void print_tensor(const T* ptr, Rect<DIM> rect, const char* prefix)
   printf("%s", prefix);
   for (PointInRectIterator<DIM> it(rect); it(); it++, idx++) {
     printf(" %.4lf", (float)host_ptr[idx]);
+    if (idx >= 16) break;
   }
   printf("\n");
   checkCUDA(cudaFreeHost(host_ptr));

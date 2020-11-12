@@ -41,30 +41,30 @@ void PerfMetrics::apply_scale(float scale)
   mae_loss *= scale;
 }
 
-void PerfMetrics::print(void)
+void PerfMetrics::print(const Metrics* m)
 {
   std::string output = "[Metrics]";
-  if (train_all > 0) {
+  if (m->measure_accuracy) {
     float accuracy = train_correct * 100.0f / train_all;
     output = output + " accuracy: " + std::to_string(accuracy) + "% ("
            + std::to_string(train_correct) + " / "
            + std::to_string(train_all) + ")";
   }
-  if (cce_loss > 0) {
+  if (m->measure_categorical_crossentropy) {
     float avg_cce_loss = cce_loss / train_all;
     output = output + " categorical_crossentropy: " + std::to_string(avg_cce_loss);
   }
-  if (sparse_cce_loss > 0) {
+  if (m->measure_sparse_categorical_crossentropy) {
     float avg_cce_loss = sparse_cce_loss / train_all;
     output = output + " sparse_categorical_crossentropy: " + std::to_string(avg_cce_loss);
   }
-  if (mse_loss > 0) {
+  if (m->measure_mean_squared_error) {
     output = output + " mean_squared_error: " + std::to_string(mse_loss / train_all);
   }
-  if (rmse_loss > 0) {
+  if (m->measure_root_mean_squared_error) {
     output = output + " root_mean_squared_error: " + std::to_string(rmse_loss / train_all);
   }
-  if (mae_loss > 0) {
+  if (m->measure_mean_absolute_error) {
     output = output + " mean_absolute_error: " + std::to_string(mae_loss / train_all);
   }
   fprintf(stderr, "%s\n", output.c_str());
