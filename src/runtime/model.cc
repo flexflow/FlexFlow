@@ -1409,7 +1409,7 @@ void register_internal_tasks()
     TaskVariantRegistrar registrar(ELEMENTBINARY_INIT_TASK_ID, "ElementWiseBinary Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<ElementBinary::init_task>(
+    Runtime::preregister_task_variant<OpMeta*, ElementBinary::init_task>(
         registrar, "ElementWiseBinary Init Task");
   }
   {

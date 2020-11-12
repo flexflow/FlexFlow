@@ -21,6 +21,8 @@
 class Conv2DMeta;
 class LinearMeta;
 class Pool2DMeta;
+class ElementUnaryMeta;
+class ElementBinaryMeta;
 class Op;
 class FFModel;
 
@@ -122,5 +124,7 @@ public:
   Conv2DMeta* conv2d_meta;
   LinearMeta* linear_meta;
   Pool2DMeta* pool2d_meta;
+  ElementUnaryMeta* ele_unary_meta;
+  ElementBinaryMeta* ele_binary_meta;
 };
 #endif

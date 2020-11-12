@@ -460,20 +460,22 @@ private:
   std::map<ParallelConfig, IndexSpace, ParaConfigCompare> taskIs;
 };
 
+class ElementBinaryMeta : public OpMeta {
+public:
+  ElementBinaryMeta(FFHandler handle);
+  cudnnTensorDescriptor_t inputTensor, outputTensor;
+  cudnnOpTensorDescriptor_t opDesc;
+  OperatorType op_type;
+};
+
 class ElementBinary : public Op {
 public:
-  enum OpType {
-    OP_ADD,
-    OP_SUB,
-    OP_MUL,
-    OP_DIV,
-  };
   ElementBinary(FFModel& model,
-                OpType type,
+                OperatorType type,
                 const Tensor& x,
                 const Tensor& y);
   ElementBinary(FFModel& model,
-                OpType type);
+                OperatorType type);
   Tensor init_inout(FFModel& model, const Tensor& input);
   //void add_to_model(FFModel& model);
   void init(const FFModel&);
@@ -484,9 +486,9 @@ public:
   void create_weights(FFModel& model);
   void create_output_and_partition(FFModel& model);
 
-  static void init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -498,34 +500,38 @@ public:
                             float& forward_time,
                             float& backward_time);
 private:
+  void forward_kernel(const ElementBinaryMeta* m,
+                      const float* in1_ptr,
+                      const float* in2_ptr,
+                      float* out_ptr) const;
+  void backward_kernel(const ElementBinaryMeta* m,
+                       const float* out_grad_ptr,
+                       const float* in1_ptr,
+                       const float* in2_ptr,
+                       float* in1_grad_ptr,
+                       float* in2_grad_ptr) const;
+private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
 public:
   //IndexSpace task_is;
-  OpType op_type;
+  OperatorType op_type;
 };
 
 class ElementUnaryMeta : public OpMeta {
 public:
-  ElementUnaryMeta(FFHandler handle) : OpMeta(handle) {};
+  ElementUnaryMeta(FFHandler handle);
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
 };
 
 class ElementUnary : public Op {
 public:
-  enum OpType {
-    EW_EXP,
-    EW_RELU,
-    EW_SIGMOID,
-    EW_TANH,
-    EW_ELU
-  };
   ElementUnary(FFModel& model,
-               OpType type,
+               OperatorType type,
                const Tensor& x);
   ElementUnary(FFModel& model,
-               OpType type);
+               OperatorType type);
   Tensor init_inout(FFModel& model, const Tensor& input);
   //void add_to_model(FFModel& model);
   void init(const FFModel&);
@@ -552,9 +558,6 @@ public:
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
-public:
-  //IndexSpace task_is;
-  OpType op_type;
 };
 
 class Conv2DMeta : public OpMeta {

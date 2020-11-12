@@ -34,6 +34,8 @@ warmup_times(5), repeat_times(10)
   conv2d_meta = new Conv2DMeta(handler);
   linear_meta = new LinearMeta(handler, 4096);
   pool2d_meta = new Pool2DMeta(handler);
+  ele_unary_meta = new ElementUnaryMeta(handler);
+  ele_binary_meta = new ElementBinaryMeta(handler);
   int num_nodes = model->config.numNodes;
   int gpus_per_node = model->config.workersPerNode;
   total_num_devices = num_nodes * gpus_per_node;

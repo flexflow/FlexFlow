@@ -973,7 +973,7 @@ bool Linear::measure_compute_time(Simulator* sim,
   Tensor sub_output, sub_input;
   if (!outputs[0].get_output_sub_tensor(pc, sub_output, OP_LINEAR))
     return false;
-  if (!outputs[0].get_input_sub_tensor(pc, sub_input, OP_LINEAR))
+  if (!inputs[0].get_input_sub_tensor(pc, sub_input, OP_LINEAR))
     return false;
   int input_c = sub_input.adim[0];
   int input_n = sub_input.get_volume() / input_c;

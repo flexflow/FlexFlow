@@ -19,14 +19,14 @@
 Tensor FFModel::add(const Tensor& in1,
                     const Tensor& in2)
 {
-  ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_ADD, in1, in2);
+  ElementBinary *ele = new ElementBinary(*this, OP_EW_ADD, in1, in2);
   layers.push_back(ele);
   return ele->outputs[0];
 }
 
 ElementBinary* FFModel::add()
 {
-  ElementBinary* ele = new ElementBinary(*this, ElementBinary::OP_ADD);
+  ElementBinary* ele = new ElementBinary(*this, OP_EW_ADD);
   layers.push_back(ele);
   return ele;
 }
@@ -34,14 +34,14 @@ ElementBinary* FFModel::add()
 Tensor FFModel::subtract(const Tensor& in1,
                          const Tensor& in2)
 {
-  ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_SUB, in1, in2);
+  ElementBinary *ele = new ElementBinary(*this, OP_EW_SUB, in1, in2);
   layers.push_back(ele);
   return ele->outputs[0];
 }
 
 ElementBinary* FFModel::subtract()
 {
-  ElementBinary* ele = new ElementBinary(*this, ElementBinary::OP_SUB);
+  ElementBinary* ele = new ElementBinary(*this, OP_EW_SUB);
   layers.push_back(ele);
   return ele;
 }
@@ -49,14 +49,14 @@ ElementBinary* FFModel::subtract()
 Tensor FFModel::multiply(const Tensor& in1,
                          const Tensor& in2)
 {
-  ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_MUL, in1, in2);
+  ElementBinary *ele = new ElementBinary(*this, OP_EW_MUL, in1, in2);
   layers.push_back(ele);
   return ele->outputs[0];
 }
 
 ElementBinary* FFModel::multiply()
 {
-  ElementBinary* ele = new ElementBinary(*this, ElementBinary::OP_MUL);
+  ElementBinary* ele = new ElementBinary(*this, OP_EW_MUL);
   layers.push_back(ele);
   return ele;
 }
@@ -64,23 +64,23 @@ ElementBinary* FFModel::multiply()
 Tensor FFModel::divide(const Tensor& in1,
                        const Tensor& in2)
 {
-  ElementBinary *ele = new ElementBinary(*this, ElementBinary::OP_DIV, in1, in2);
+  ElementBinary *ele = new ElementBinary(*this, OP_EW_DIV, in1, in2);
   layers.push_back(ele);
   return ele->outputs[0];
 }
 
 ElementBinary* FFModel::divide()
 {
-  ElementBinary* ele = new ElementBinary(*this, ElementBinary::OP_DIV);
+  ElementBinary* ele = new ElementBinary(*this, OP_EW_DIV);
   layers.push_back(ele);
   return ele;
 }
 
 ElementBinary::ElementBinary(FFModel& model,
-                             ElementBinary::OpType _op_type,
+                             OperatorType _op_type,
                              const Tensor& in1,
                              const Tensor& in2)
-: Op(model, OP_ELEMENTWISE, "ElementBinary_"+std::to_string(_op_type), in1, in2), op_type(_op_type)
+: Op(model, _op_type, "ElementBinary_"+std::to_string(_op_type), in1, in2), op_type(_op_type)
 {
   //TODO: implement broadcast op
   numOutputs = 1;
@@ -95,8 +95,8 @@ ElementBinary::ElementBinary(FFModel& model,
 }
 
 ElementBinary::ElementBinary(FFModel& model,
-                             ElementBinary::OpType _op_type)
-: Op(model, OP_ELEMENTWISE, "ElementBinary_"+std::to_string(_op_type), 2), op_type(_op_type)
+                             OperatorType _op_type)
+: Op(model, _op_type, "ElementBinary_"+std::to_string(_op_type), 2), op_type(_op_type)
 {
 }
 
@@ -178,16 +178,65 @@ void ElementBinary::create_output_and_partition_with_dim(FFModel& model)
 }
 
 __host__
-void ElementBinary::init_task(const Task* task,
-                              const std::vector<PhysicalRegion> &regions,
-                              Context ctx, Runtime* runtime)
-{}
+OpMeta* ElementBinary::init_task(const Task* task,
+                                 const std::vector<PhysicalRegion> &regions,
+                                 Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
+  ElementBinary* eb = (ElementBinary*) task->args;
+  FFHandler handle = *((FFHandler*) task->local_args);
+  ElementBinaryMeta* m = new ElementBinaryMeta(handle);
+  m->op_type = eb->op_type;
+  cudnnOpTensorOp_t mode;
+  switch (eb->op_type) {
+    case OP_EW_ADD:
+    case OP_EW_SUB:
+      mode = CUDNN_OP_TENSOR_ADD;
+      break;
+    case OP_EW_MUL:
+      mode = CUDNN_OP_TENSOR_MUL;
+      break;
+    default:
+      assert(false);
+  }
+  checkCUDNN(cudnnSetOpTensorDescriptor(m->opDesc, mode,
+      CUDNN_DATA_FLOAT, CUDNN_PROPAGATE_NAN));
+  Domain input_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain output_domain = runtime->get_index_space_domain(
+    ctx, task->regions[2].region.get_index_space());
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
+  return m;
+}
 
 void ElementBinary::init(const FFModel& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      ParallelConfig pc; \
+      std::string pcname = name; \
+      ff.config.find_parallel_config(DIM, pcname, pc); \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        FFHandler handle = ff.handlers[pc.device_ids[idx++]]; \
+        argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
   IndexLauncher launcher(ELEMENTBINARY_INIT_TASK_ID, task_is,
                          TaskArgument(this, sizeof(ElementBinary)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -204,45 +253,93 @@ void ElementBinary::init(const FFModel& ff)
     RegionRequirement(outputs[0].part, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(2, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        meta[idx++] = fm.get_result<OpMeta*>(*it); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
 }
 
 __global__
 void elewise_binary_forward_kernel(coord_t volume,
                                    const float alpha,
                                    const float beta,
-                                   ElementBinary::OpType type,
+                                   OperatorType type,
                                    const float* in1,
                                    const float* in2,
                                    float* out)
 {
-  CUDA_KERNEL_LOOP(i, volume)
-  {
     switch (type) {
-      case ElementBinary::OP_ADD:
+      case OP_EW_ADD:
       {
-        out[i] = alpha * (in1[i] + in2[i]) + beta * out[i];
+        CUDA_KERNEL_LOOP(i, volume)
+        {
+          out[i] = alpha * (in1[i] + in2[i]) + beta * out[i];
+	}
         break;
       }
-      case ElementBinary::OP_SUB:
+      case OP_EW_SUB:
       {
-        out[i] = alpha * (in1[i] - in2[i]) + beta * out[i];
+        CUDA_KERNEL_LOOP(i, volume)
+        {
+          out[i] = alpha * (in1[i] - in2[i]) + beta * out[i];
+        }
         break;
       }
-      case ElementBinary::OP_MUL:
+      case OP_EW_MUL:
       {
-        out[i] = alpha * in1[i] * in2[i] + beta * out[i];
+        CUDA_KERNEL_LOOP(i, volume)
+        {
+          out[i] = alpha * in1[i] * in2[i] + beta * out[i];
+        }
         break;
       }
-      case ElementBinary::OP_DIV:
+      case OP_EW_DIV:
       {
-        out[i] = alpha * (in1[i] / in2[i]) + beta * out[i];
+        CUDA_KERNEL_LOOP(i, volume)
+        {
+          out[i] = alpha * (in1[i] / in2[i]) + beta * out[i];
+        }
         break;
       }
       default:
         assert(false);
     }
+}
+
+void ElementBinary::forward_kernel(const ElementBinaryMeta* m,
+                                   const float* in1_ptr,
+                                   const float* in2_ptr,
+                                   float* out_ptr) const
+{
+  float alpha1 = 1.0f, alpha2 = 1.0f, beta = 0.0f;
+  switch (m->op_type) {
+    case OP_EW_SUB:
+      alpha2 = -1.0f;
+      break;
+    case OP_EW_ADD:
+    case OP_EW_MUL:
+      break;
+    default:
+      assert(false);
   }
+  checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
+      &alpha1, m->inputTensor, in1_ptr,
+      &alpha2, m->inputTensor, in2_ptr,
+      &beta, m->outputTensor, out_ptr));
 }
 
 /*
@@ -255,11 +352,10 @@ void ElementBinary::forward_task(const Task* task,
                                  const std::vector<PhysicalRegion> &regions,
                                  Context ctx, Runtime* runtime)
 {
-  float alpha = 1.0f;
-  float beta = 0.0f;
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   const ElementBinary* ele = (const ElementBinary*) task->args;
+  const ElementBinaryMeta* m = *((ElementBinaryMeta**) task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain in2_domain = runtime->get_index_space_domain(
@@ -275,8 +371,15 @@ void ElementBinary::forward_task(const Task* task,
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
   float* out_ptr = helperGetTensorPointerWO<float>(
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  elewise_binary_forward_kernel<<<GET_BLOCKS(out_domain.get_volume()), CUDA_NUM_THREADS>>>(
-      out_domain.get_volume(), alpha, beta, ele->op_type, in1_ptr, in2_ptr, out_ptr);
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+#endif
+  ele->forward_kernel(m, in1_ptr, in2_ptr, out_ptr);
+  //elewise_binary_forward_kernel<<<GET_BLOCKS(out_domain.get_volume()), CUDA_NUM_THREADS>>>(
+  //  out_domain.get_volume(), alpha, beta, ele->op_type, in1_ptr, in2_ptr, out_ptr);
 }
 
 void ElementBinary::forward(const FFModel& ff)
@@ -284,6 +387,24 @@ void ElementBinary::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
   IndexLauncher launcher(ELEMENTBINARY_FWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(ElementBinary)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -307,7 +428,7 @@ __global__
 void elewise_binary_backward_kernel(coord_t volume,
                                     const float alpha,
                                     const float beta,
-                                    ElementBinary::OpType type,
+                                    OperatorType type,
                                     const float* out_grad,
                                     const float* in1,
                                     const float* in2,
@@ -317,25 +438,25 @@ void elewise_binary_backward_kernel(coord_t volume,
   CUDA_KERNEL_LOOP(i, volume)
   {
     switch (type) {
-      case ElementBinary::OP_ADD:
+      case OP_EW_ADD:
       {
         in1_grad[i] = alpha * out_grad[i] + beta * in1_grad[i];
         in2_grad[i] = alpha * out_grad[i] + beta * in2_grad[i];
         break;
       }
-      case ElementBinary::OP_SUB:
+      case OP_EW_SUB:
       {
         in1_grad[i] = alpha * out_grad[i] + beta * in1_grad[i];
         in2_grad[i] = - alpha * out_grad[i] + beta * in2_grad[i];
         break;
       }
-      case ElementBinary::OP_MUL:
+      case OP_EW_MUL:
       {
         in1_grad[i] = alpha * out_grad[i] * in2[i] + beta * in1_grad[i];
         in2_grad[i] = alpha * out_grad[i] * in1[i] + beta * in2_grad[i];
         break;
       }
-      case ElementBinary::OP_DIV:
+      case OP_EW_DIV:
       {
         in1_grad[i] = alpha * out_grad[i] / in2[i] + beta * in1_grad[i];
         in2_grad[i] = - alpha * out_grad[i] * in1[i] / (in2[i] * in2[i]) + beta * in2_grad[i];
@@ -346,6 +467,54 @@ void elewise_binary_backward_kernel(coord_t volume,
     }
   }
 }
+
+void ElementBinary::backward_kernel(const ElementBinaryMeta* m,
+                                    const float* out_grad_ptr,
+                                    const float* in1_ptr,
+                                    const float* in2_ptr,
+                                    float* in1_grad_ptr, 
+                                    float* in2_grad_ptr) const
+{
+  float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f;
+  switch (m->op_type) {
+    case OP_EW_ADD:
+    case OP_EW_SUB:
+      alpha1 = 1.0f;
+      alpha2 = 0.0f;
+      break;
+    case OP_EW_MUL:
+      alpha1 = 1.0f;
+      alpha2 = 1.0f;
+      break;
+    default:
+      assert(false);
+  }
+  checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
+      &alpha1, m->outputTensor, out_grad_ptr,
+      &alpha2, m->inputTensor, in2_ptr,
+      &beta, m->inputTensor, in1_grad_ptr));
+  switch (m->op_type) {
+    case OP_EW_ADD:
+      alpha1 = 1.0f;
+      alpha2 = 0.0f;
+      break;
+    case OP_EW_SUB:
+      alpha1 = -1.0f;
+      alpha2 = 0.0f;
+      break;
+    case OP_EW_MUL:
+      alpha1 = 1.0f;
+      alpha2 = 1.0f;
+      break;
+    default:
+      assert(false);
+  }
+  checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
+      &alpha1, m->outputTensor, out_grad_ptr,
+      &alpha2, m->inputTensor, in1_ptr,
+      &beta, m->inputTensor, in2_grad_ptr));
+}
+
 /*
   regions[0](I): out_grad
   regions[1](I): in0
@@ -357,8 +526,8 @@ void ElementBinary::backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime* runtime)
 {
-  float alpha = 1.0f;
   const ElementBinary* ele = (const ElementBinary*) task->args;
+  const ElementBinaryMeta* m = *((ElementBinaryMeta**) task->local_args);
   assert(regions.size() == 5);
   assert(task->regions.size() == 5);
   Domain out_grad_domain = runtime->get_index_space_domain(
@@ -387,9 +556,17 @@ void ElementBinary::backward_task(const Task *task,
   float* in2_grad_ptr = helperGetTensorPointerRW<float>(
     regions[4], task->regions[4], FID_DATA, ctx, runtime);
 
-  elewise_binary_backward_kernel<<<GET_BLOCKS(out_grad_domain.get_volume()), CUDA_NUM_THREADS>>>(
-    out_grad_domain.get_volume(), alpha, alpha, ele->op_type, out_grad_ptr, in1_ptr, in2_ptr,
-    in1_grad_ptr, in2_grad_ptr);
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+#endif
+
+  ele->backward_kernel(m, out_grad_ptr, in1_ptr, in2_ptr, in1_grad_ptr, in2_grad_ptr);
+  //elewise_binary_backward_kernel<<<GET_BLOCKS(out_grad_domain.get_volume()), CUDA_NUM_THREADS>>>(
+    //out_grad_domain.get_volume(), alpha, alpha, ele->op_type, out_grad_ptr, in1_ptr, in2_ptr,
+    //in1_grad_ptr, in2_grad_ptr);
 }
 
 void ElementBinary::backward(const FFModel& ff)
@@ -397,6 +574,25 @@ void ElementBinary::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+
   IndexLauncher launcher(ELEMENTBINARY_BWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(ElementBinary)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -429,11 +625,101 @@ void ElementBinary::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+ElementBinaryMeta::ElementBinaryMeta(FFHandler handler)
+: OpMeta(handler)
+{
+  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(cudnnCreateOpTensorDescriptor(&opDesc));
+  op_type = OP_ANY;
+}
+
 bool ElementBinary::measure_compute_time(Simulator* sim,
                                          const ParallelConfig& pc,
                                          float& forward_time,
                                          float& backward_time)
 {
-  //TODO: implement measure_forward
-  return false;
+  Tensor sub_output, sub_input1, sub_input0;
+  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type))
+    return false;
+  if (!inputs[0].get_input_sub_tensor(pc, sub_input0, op_type))
+    return false;
+  if (!inputs[1].get_input_sub_tensor(pc, sub_input1, op_type))
+    return false;
+  ElementBinaryMeta* m = sim->ele_binary_meta;
+  m->op_type = op_type;
+  cudnnOpTensorOp_t mode;
+  switch (op_type) {
+    case OP_EW_ADD:
+    case OP_EW_SUB:
+      mode = CUDNN_OP_TENSOR_ADD;
+      break;
+    case OP_EW_MUL:
+      mode = CUDNN_OP_TENSOR_MUL;
+      break;
+    default:
+      assert(false);
+  }
+  checkCUDNN(cudnnSetOpTensorDescriptor(m->opDesc, mode,
+      CUDNN_DATA_FLOAT, CUDNN_PROPAGATE_NAN));
+  Domain input_domain, output_domain;
+  input_domain.dim = sub_input0.numDim;
+  for (int i = 0; i < sub_input0.numDim; i++) {
+    input_domain.rect_data[i] = 0;
+    input_domain.rect_data[i+Domain::MAX_RECT_DIM] = sub_input0.adim[i]-1;
+  }
+  output_domain.dim = sub_output.numDim;
+  for (int i = 0; i < sub_output.numDim; i++) {
+    output_domain.rect_data[i] = 0;
+    output_domain.rect_data[i+Domain::MAX_RECT_DIM] = sub_output.adim[i]-1;
+  }
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
+  sim->free_all();
+  float* input0_ptr = (float*)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
+  assert(input0_ptr != NULL);
+  float* input0_grad_ptr = (float*)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
+  assert(input0_grad_ptr != NULL);
+  float* input1_ptr = (float*)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
+  assert(input1_ptr != NULL);
+  float* input1_grad_ptr = (float*)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
+  assert(input1_grad_ptr != NULL);
+  float* output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert(output_ptr != NULL);
+  // measure forward time
+  checkCUDA(cudaDeviceSynchronize());
+  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
+    if (i == sim->warmup_times) {
+      checkCUDA(cudaEventRecord(sim->start_event));
+    }
+    forward_kernel(m, input0_ptr, input1_ptr, output_ptr);
+    //elewise_binary_forward_kernel<<<GET_BLOCKS(sub_output.get_volume()), CUDA_NUM_THREADS>>>(
+    //    sub_output.get_volume(), alpha, beta, op_type,
+    //    input0_ptr, input1_ptr, output_ptr);
+  }
+  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventSynchronize(sim->end_event));
+  float milliseconds;
+  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  forward_time = milliseconds / sim->repeat_times;
+
+  // measure backward time
+  checkCUDA(cudaDeviceSynchronize());
+  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
+    if (i == sim->warmup_times) {
+      checkCUDA(cudaEventRecord(sim->start_event));
+    }
+    backward_kernel(m, output_ptr, input0_ptr, input1_ptr, input0_grad_ptr, input1_grad_ptr);
+    //elewise_binary_backward_kernel<<<GET_BLOCKS(sub_output.get_volume()), CUDA_NUM_THREADS>>>(
+    //    sub_output.get_volume(), alpha, alpha, op_type,
+    //    output_ptr, input0_ptr, input1_ptr, input0_grad_ptr, input1_grad_ptr);
+  }
+  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventSynchronize(sim->end_event));
+  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  backward_time = milliseconds / sim->repeat_times;
+
+  printf("[Measure Elewise Binary] num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
+         sub_output.get_volume(), forward_time, backward_time);
+  return true;
 }

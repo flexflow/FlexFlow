@@ -18,78 +18,78 @@
 
 Tensor FFModel::exp(const Tensor& x)
 {
-  ElementUnary *ele = new ElementUnary(*this, ElementUnary::EW_EXP, x);
+  ElementUnary *ele = new ElementUnary(*this, OP_EXP, x);
   layers.push_back(ele);
   return ele->outputs[0];
 }
 
 ElementUnary* FFModel::exp()
 {
-  ElementUnary* ele = new ElementUnary(*this, ElementUnary::EW_EXP);
+  ElementUnary* ele = new ElementUnary(*this, OP_EXP);
   layers.push_back(ele);
   return ele;
 }
 
 Tensor FFModel::relu(const Tensor& x)
 {
-  ElementUnary *ele = new ElementUnary(*this, ElementUnary::EW_RELU, x);
+  ElementUnary *ele = new ElementUnary(*this, OP_RELU, x);
   layers.push_back(ele);
   return ele->outputs[0];
 }
 
 ElementUnary* FFModel::relu()
 {
-  ElementUnary* ele = new ElementUnary(*this, ElementUnary::EW_RELU);
+  ElementUnary* ele = new ElementUnary(*this, OP_RELU);
   layers.push_back(ele);
   return ele;
 }
 
 Tensor FFModel::sigmoid(const Tensor& x)
 {
-  ElementUnary *ele = new ElementUnary(*this, ElementUnary::EW_SIGMOID, x);
+  ElementUnary *ele = new ElementUnary(*this, OP_SIGMOID, x);
   layers.push_back(ele);
   return ele->outputs[0];
 }
 
 ElementUnary* FFModel::sigmoid()
 {
-  ElementUnary* ele = new ElementUnary(*this, ElementUnary::EW_SIGMOID);
+  ElementUnary* ele = new ElementUnary(*this, OP_SIGMOID);
   layers.push_back(ele);
   return ele;
 }
 
 Tensor FFModel::tanh(const Tensor& x)
 {
-  ElementUnary *ele = new ElementUnary(*this, ElementUnary::EW_TANH, x);
+  ElementUnary *ele = new ElementUnary(*this, OP_TANH, x);
   layers.push_back(ele);
   return ele->outputs[0];
 }
 
 ElementUnary* FFModel::tanh()
 {
-  ElementUnary* ele = new ElementUnary(*this, ElementUnary::EW_TANH);
+  ElementUnary* ele = new ElementUnary(*this, OP_TANH);
   layers.push_back(ele);
   return ele;
 }
 
 Tensor FFModel::elu(const Tensor& x)
 {
-  ElementUnary *ele = new ElementUnary(*this, ElementUnary::EW_ELU, x);
+  ElementUnary *ele = new ElementUnary(*this, OP_ELU, x);
   layers.push_back(ele);
   return ele->outputs[0];
 }
 
 ElementUnary* FFModel::elu()
 {
-  ElementUnary* ele = new ElementUnary(*this, ElementUnary::EW_ELU);
+  ElementUnary* ele = new ElementUnary(*this, OP_ELU);
   layers.push_back(ele);
   return ele;
 }
 
 ElementUnary::ElementUnary(FFModel& model,
-                           ElementUnary::OpType _op_type,
+                           OperatorType _op_type,
                            const Tensor& x)
-: Op(model, OP_ELEMENTWISE, "ElementUnary_"+std::to_string(_op_type), x), op_type(_op_type)
+: Op(model, _op_type, "ElementUnary_"+std::to_string(_op_type), x)
 {
   outputs[0].numDim = inputs[0].numDim;
   for (int i = 0; i < outputs[0].numDim; i++)
@@ -97,8 +97,8 @@ ElementUnary::ElementUnary(FFModel& model,
 }
 
 ElementUnary::ElementUnary(FFModel& model,
-                           ElementUnary::OpType _op_type)
-: Op(model, OP_ELEMENTWISE, "ElementUnary_"+std::to_string(_op_type), 1), op_type(_op_type)
+                           OperatorType _op_type)
+: Op(model, _op_type, "ElementUnary_"+std::to_string(_op_type), 1)
 {}
 
 Tensor ElementUnary::init_inout(FFModel& model,
@@ -111,13 +111,13 @@ Tensor ElementUnary::init_inout(FFModel& model,
 
 bool ElementUnary::use_cudnn() const
 {
-  if (op_type == EW_RELU)
+  if (op_type == OP_RELU)
     return true;
-  if (op_type == EW_SIGMOID)
+  if (op_type == OP_SIGMOID)
     return true;
-  if (op_type == EW_TANH)
+  if (op_type == OP_TANH)
     return true;
-  if (op_type == EW_ELU)
+  if (op_type == OP_ELU)
     return true;
   return false;
 }
@@ -190,23 +190,20 @@ OpMeta* ElementUnary::init_task(const Task *task,
   ElementUnary* eu = (ElementUnary*) task->args;
   FFHandler handle = *((FFHandler*) task->local_args);
   ElementUnaryMeta* m = new ElementUnaryMeta(handle);
-  checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
-  checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
-  checkCUDNN(cudnnCreateActivationDescriptor(&m->actiDesc));
   if (eu->use_cudnn())
   {
     cudnnActivationMode_t mode;
     switch (eu->op_type) {
-      case EW_SIGMOID:
+      case OP_SIGMOID:
         mode = CUDNN_ACTIVATION_SIGMOID;
         break;
-      case EW_RELU:
+      case OP_RELU:
         mode = CUDNN_ACTIVATION_RELU;
         break;
-      case EW_TANH:
+      case OP_TANH:
         mode = CUDNN_ACTIVATION_TANH;
         break;
-      case EW_ELU:
+      case OP_ELU:
         mode = CUDNN_ACTIVATION_ELU;
         break;
       default:
@@ -217,7 +214,7 @@ OpMeta* ElementUnary::init_task(const Task *task,
     Domain input_domain = runtime->get_index_space_domain(
         ctx, task->regions[0].region.get_index_space());
     Domain output_domain = runtime->get_index_space_domain(
-        ctx, task->regions[0].region.get_index_space());
+        ctx, task->regions[1].region.get_index_space());
 
     checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
     checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
@@ -287,14 +284,14 @@ __global__
 void elewise_unary_forward_kernel(coord_t volume,
                                   const float alpha,
                                   const float beta,
-                                  ElementUnary::OpType type,
+                                  OperatorType type,
                                   const float* in,
                                   float* out)
 {
   CUDA_KERNEL_LOOP(i, volume)
   {
     switch (type) {
-      case ElementUnary::EW_EXP:
+      case OP_EXP:
       {
         out[i] = alpha * exp(in[i]) + beta * out[i];
         break;
@@ -387,7 +384,7 @@ __global__
 void elewise_unary_backward_kernel(coord_t volume,
                                    const float alpha,
                                    const float beta,
-                                   ElementUnary::OpType type,
+                                   OperatorType type,
                                    const float* output_grad,
                                    const float* input,
                                    float* input_grad)
@@ -395,7 +392,7 @@ void elewise_unary_backward_kernel(coord_t volume,
   CUDA_KERNEL_LOOP(i, volume)
   {
     switch (type) {
-      case ElementUnary::EW_EXP:
+      case OP_EXP:
       {
         //TODO: change to use output instead of recomputing
         input_grad[i] = alpha * output_grad[i] * exp(input[i]) + beta * input_grad[i];
@@ -443,6 +440,11 @@ void ElementUnary::backward_task(const Task* task,
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
   const float* output_grad_ptr = helperGetTensorPointerRO<float>(
     regions[3], task->regions[3], FID_DATA, ctx, runtime);
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+#endif
   if (ele->use_cudnn()) {
     checkCUDNN(cudnnActivationBackward(m->handle.dnn, m->actiDesc, 
         &alpha, m->outputTensor, output_ptr, m->outputTensor, output_grad_ptr,
@@ -504,11 +506,115 @@ void ElementUnary::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+ElementUnaryMeta::ElementUnaryMeta(FFHandler handler)
+: OpMeta(handler)
+{
+  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
+}
+
 bool ElementUnary::measure_compute_time(Simulator* sim,
                                         const ParallelConfig& pc,
                                         float& forward_time,
                                         float& backward_time)
 {
-  //TODO: implement measure_forward
-  return false;
+  Tensor sub_output, sub_input;
+  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type))
+    return false;
+  if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type))
+    return false;
+  ElementUnaryMeta* m = sim->ele_unary_meta;
+  if (use_cudnn())
+  {
+    cudnnActivationMode_t mode;
+    switch (op_type) {
+      case OP_SIGMOID:
+        mode = CUDNN_ACTIVATION_SIGMOID;
+        break;
+      case OP_RELU:
+        mode = CUDNN_ACTIVATION_RELU;
+        break;
+      case OP_TANH:
+        mode = CUDNN_ACTIVATION_TANH;
+        break;
+      case OP_ELU:
+        mode = CUDNN_ACTIVATION_ELU;
+        break;
+      default:
+        assert(false);
+    }
+    checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, mode,
+                                            CUDNN_PROPAGATE_NAN, 0.0));
+    Domain input_domain, output_domain;
+    input_domain.dim = sub_input.numDim;
+    for (int i = 0; i < sub_input.numDim; i++) {
+      input_domain.rect_data[i] = 0;
+      input_domain.rect_data[i+Domain::MAX_RECT_DIM] = sub_input.adim[i]-1;
+    }
+    output_domain.dim = sub_output.numDim;
+    for (int i = 0; i < sub_output.numDim; i++) {
+      output_domain.rect_data[i] = 0;
+      output_domain.rect_data[i+Domain::MAX_RECT_DIM] = sub_output.adim[i]-1;
+    }
+    checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
+    checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
+  }
+  sim->free_all();
+  float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert(input_ptr != NULL);
+  float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert(input_grad_ptr != NULL);
+  float* output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert(output_ptr != NULL);
+  float* output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert(output_grad_ptr != NULL);
+
+  float alpha = 1.0f, beta = 0.0f;
+  // measure forward time
+  checkCUDA(cudaDeviceSynchronize());
+  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
+    if (i == sim->warmup_times) {
+      checkCUDA(cudaEventRecord(sim->start_event));
+    }
+    if (use_cudnn()) {
+      checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
+          &alpha, m->inputTensor, input_ptr,
+          &beta, m->outputTensor, output_ptr));
+    } else {
+      elewise_unary_forward_kernel<<<GET_BLOCKS(sub_output.get_volume()), CUDA_NUM_THREADS>>>(
+          sub_output.get_volume(), alpha, beta, op_type,
+          input_ptr, output_ptr);
+    }
+  }
+  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventSynchronize(sim->end_event));
+  float milliseconds;
+  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  forward_time = milliseconds / sim->repeat_times;
+
+  // measure backward time
+  checkCUDA(cudaDeviceSynchronize());
+  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
+    if (i == sim->warmup_times) {
+      checkCUDA(cudaEventRecord(sim->start_event));
+    }
+    if (use_cudnn()) {
+      checkCUDNN(cudnnActivationBackward(m->handle.dnn, m->actiDesc, 
+          &alpha, m->outputTensor, output_ptr, m->outputTensor, output_grad_ptr,
+          m->inputTensor, input_ptr, &alpha, m->inputTensor, input_grad_ptr));
+    } else {
+      elewise_unary_backward_kernel<<<GET_BLOCKS(sub_output.get_volume()), CUDA_NUM_THREADS>>>(
+          sub_output.get_volume(), alpha, alpha, op_type,
+          output_ptr, input_ptr, input_grad_ptr);
+    }
+  }
+  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventSynchronize(sim->end_event));
+  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  backward_time = milliseconds / sim->repeat_times;
+
+  printf("[Measure Elewise Unary] num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
+         sub_output.get_volume(), forward_time, backward_time);
+  return true;
 }
