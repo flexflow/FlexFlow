@@ -7,29 +7,29 @@ def top_level_task():
   ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
   ffmodel = FFModel(ffconfig)
-  
+
   dims1 = [ffconfig.get_batch_size(), 3, 229, 229]
-  input1 = ffmodel.create_tensor(dims1, "", DataType.DT_FLOAT);
-  
+  input1 = ffmodel.create_tensor(dims1, DataType.DT_FLOAT);
+
   dims2 = [ffconfig.get_batch_size(), 16]
-  input2 = ffmodel.create_tensor(dims2, "", DataType.DT_FLOAT);
-  
+  input2 = ffmodel.create_tensor(dims2, DataType.DT_FLOAT);
+
   dims_label = [ffconfig.get_batch_size(), 1]
-  label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32);
-  
-  t1 = ffmodel.conv2d(input1, 64, 11, 11, 4, 4, 2, 2) 
+  label = ffmodel.create_tensor(dims_label, DataType.DT_INT32);
+
+  t1 = ffmodel.conv2d(input1, 64, 11, 11, 4, 4, 2, 2)
   t2 = ffmodel.dense(input2, 8, ActiMode.AC_MODE_RELU)
   #t3 = ffmodel.dense("dense1", t2, 128, ActiMode.AC_MODE_RELU)
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.compile(optimizer=ffoptimizer, loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
   label = ffmodel.get_label_tensor()
-  
+
   # Data Loader
   alexnetconfig = NetConfig()
   dataloader = DataLoader4D(ffmodel, input1, label, ffnetconfig=alexnetconfig)
-  
+
   ffmodel.init_layers()
-  
+
   label.inline_map(ffconfig)
   label_array = label.get_array(ffconfig, DataType.DT_INT32)
   label_array *= 0
@@ -37,30 +37,30 @@ def top_level_task():
   print(label_array.shape)
   print(label_array)
   label.inline_unmap(ffconfig)
-  
+
   #weight of conv2d
   t3 = ffmodel.get_tensor_by_id(0)
-  
+
   np_array = np.zeros((64, 3, 11, 11), dtype=np.float32)
   np_array += 1.2
   t3.set_weights(ffmodel, np_array)
-  
+
   t3.inline_map(ffconfig)
   t3_array = t3.get_array(ffconfig, DataType.DT_FLOAT)
   print(t3_array.shape)
   print(t3_array)
   t3.inline_unmap(ffconfig)
-  
-  
+
+
   ###3
   conv_2d1 = ffmodel.get_layer_by_id(0)
 
   cbias_tensor = conv_2d1.get_bias_tensor()
-  
+
   np_array = np.zeros((64), dtype=np.float32)
   np_array += 22.222
   cbias_tensor.set_weights(ffmodel, np_array)
-  
+
   cbias_tensor.inline_map(ffconfig)
   cbias = cbias_tensor.get_array(ffconfig, DataType.DT_FLOAT)
   print(cbias)
@@ -85,10 +85,10 @@ def top_level_task():
   # print(cweight.strides)
   print(cweight)
   cweight_tensor.inline_unmap(ffconfig)
-  
+
   np_array = cweight_tensor.get_weights(ffmodel)
   print(np_array)
-  
+
   dense1 = ffmodel.get_layer_by_id(1)
 
   dbias_tensor = dense1.get_bias_tensor()
@@ -99,7 +99,7 @@ def top_level_task():
   print(dbias.shape)
   print(dbias)
   dbias_tensor.inline_unmap(ffconfig)
-  
+
   np_array = dbias_tensor.get_weights(ffmodel)
   print(np_array)
 
@@ -117,7 +117,7 @@ def top_level_task():
   # print(dweight.strides)
   # print(dweight)
   dweight_tensor.inline_unmap(ffconfig)
-  
+
   ffmodel.print_layers(0)
 
 if __name__ == "__main__":

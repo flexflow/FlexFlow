@@ -337,12 +337,11 @@ public:
                  int axis);
   template<int NDIM>
   Tensor create_tensor(const int dims[],
-                       const std::string& name,
                        DataType data_type,
+                       const Op* owner_op = NULL,
                        bool create_grad = true);
   template<int NDIM>
   Tensor create_constant(const int dims[],
-                         const std::string& pc_name,
                          float value,
                          DataType date_type);
   // ========================================
@@ -394,11 +393,12 @@ public:
                                                      const IndexSpaceT<TDIM>& task_is,
                                                      LogicalPartition& part_fwd,
                                                      LogicalPartition& part_bwd);
-  template<int NDIM>
-  Tensor create_tensor(const int* dims,
-                       const IndexSpaceT<NDIM>& part_is,
-                       DataType data_type,
-                       bool create_grad = true);
+  // Deprecated API --- to be removed
+  //template<int NDIM>
+  //Tensor create_tensor(const int* dims,
+  //                     const IndexSpaceT<NDIM>& part_is,
+  //                     DataType data_type,
+  //                     bool create_grad = true);
   template<int NDIM>
   Parameter create_conv_weight(Op* op,
                                const int* dims,

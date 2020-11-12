@@ -443,24 +443,6 @@ class BaseModel(object):
     # print(label_array)
     # self._label_tensor.ffhandle.inline_unmap(self._ffconfig)
 
-  def _create_flexflow_layers_v2(self):
-    for layer in self._layers:
-
-      if (isinstance(layer, Conv2D) == True):
-        layer.ffhandle = self._ffmodel.conv2d_v2(layer.in_channels, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias)
-      elif (isinstance(layer, Pooling2D) == True):
-        layer.ffhandle = self._ffmodel.pool2d_v2(layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.pool_type)
-      elif (isinstance(layer, Flatten) == True):
-        layer.ffhandle = self._ffmodel.flat_v2()
-      elif (isinstance(layer, Dense) == True):
-        layer.ffhandle = self._ffmodel.dense_v2(layer.in_channels, layer.out_channels, layer.activation, layer.use_bias)
-      elif (isinstance(layer, Activation) == True):
-        print("add softmax")
-      elif (isinstance(layer, Concatenate) == True):
-        print("add concatenate")
-      else:
-        assert 0, "unknow layer"
-
   def _create_flexflow_layers(self):
     out_t = 0
 
@@ -517,31 +499,6 @@ class BaseModel(object):
       assert layer.ffhandle == None, "layer handle is inited"
       layer.ffhandle = self._ffmodel.get_layer_by_id(layer.layer_id)
       assert layer.ffhandle != None, "layer handle is wrong"
-
-  def _init_inout(self):
-    out_t = 0
-    for layer in self._layers:
-
-      if (isinstance(layer, Activation) == True):
-        assert layer_id == self._nb_layers-1, "softmax is not in the last layer"
-        out_t = self._ffmodel.softmax(layer.input_tensors[0].ffhandle)
-        assert layer.ffhandle == 0, "layer handle is inited"
-        layer.ffhandle = self._ffmodel.get_layer_by_id(layer_id)
-      elif (isinstance(layer, Concatenate) == True):
-        t_ffhandle_list = []
-        for t in layer.input_tensors:
-          t_ffhandle_list.append(t.ffhandle)
-        out_t = self._ffmodel.concat(t_ffhandle_list, layer.axis)
-        assert layer.ffhandle == 0, "layer handle is inited"
-        layer.ffhandle = self._ffmodel.get_layer_by_id(layer_id)
-      else:
-        out_t = layer.ffhandle.init_inout(self._ffmodel, layer.input_tensors[0].ffhandle);
-
-      layer.output_tensors[0].ffhandle = out_t
-      layer.set_batch_size(self._ffconfig.get_batch_size())
-      assert layer.ffhandle != None, "layer handle is wrong"
-
-    print("output tensor", self._output_tensor.batch_shape)
 
   def save_image(self, batch_image_array, id):
     image_array = batch_image_array[id, :, :, :]

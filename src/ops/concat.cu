@@ -78,7 +78,7 @@ void Concat::create_output_and_partition(FFModel& model)
     case DIM: \
     { \
       Rect<DIM> part_rect = domain; \
-      outputs[0] = model.create_tensor<DIM>(dims, IndexSpaceT<DIM>(task_is), DT_FLOAT); \
+      outputs[0] = model.create_tensor<DIM>(dims, DT_FLOAT, this); \
       outputs[0].owner_op = this; \
       outputs[0].owner_idx = 0; \
       for (int i = 0; i < numInputs; i++) { \

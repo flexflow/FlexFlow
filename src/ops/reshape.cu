@@ -163,7 +163,7 @@ void Reshape::create_output_and_partition_with_dim(FFModel& model)
   int output_shape[ODIM];
   for (int i = 0; i < ODIM; i++)
     output_shape[i] = outputs[0].adim[ODIM-1-i];
-  outputs[0] = model.create_tensor<ODIM>(output_shape, IndexSpaceT<ODIM>(task_is), DT_FLOAT);
+  outputs[0] = model.create_tensor<ODIM>(output_shape, DT_FLOAT, this);
   model.create_data_parallel_partition_with_diff_dims<IDIM, ODIM>(
       inputs[0], (IndexSpaceT<ODIM>)task_is, input_lps[0], input_grad_lps[0]);
 }

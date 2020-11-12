@@ -9,29 +9,29 @@ def top_level_task():
   ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
   ffmodel = FFModel(ffconfig)
-  
+
   dims1 = [ffconfig.get_batch_size(), 784]
-  input1 = ffmodel.create_tensor(dims1, "", DataType.DT_FLOAT);
-  
+  input1 = ffmodel.create_tensor(dims1, DataType.DT_FLOAT);
+
   # dims_label = [ffconfig.get_batch_size(), 1]
-  # label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32);
-  
+  # label = ffmodel.create_tensor(dims_label, DataType.DT_INT32);
+
   num_samples = 60000
-  
+
   kernel_init = UniformInitializer(12, -1, 1)
   t = ffmodel.dense(input1, 512, ActiMode.AC_MODE_RELU, kernel_initializer=kernel_init)
   t = ffmodel.dense(t, 512, ActiMode.AC_MODE_RELU)
   t = ffmodel.dense(t, 10)
-  
+
   t = ffmodel.softmax(t)
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
   label = ffmodel.get_label_tensor()
-  
+
   (x_train, y_train), (x_test, y_test) = mnist.load_data()
-  
+
   print(x_train.shape)
   x_train = x_train.reshape(60000, 784)
   x_train = x_train.astype('float32')
@@ -40,12 +40,12 @@ def top_level_task():
   y_train = np.reshape(y_train, (len(y_train), 1))
   print(x_train.shape[0], 'train samples')
   print(y_train.shape)
-  
+
   dims_full_input = [num_samples, 784]
-  full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
+  full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
 
   dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor(dims_full_label, "", DataType.DT_INT32)
+  full_label = ffmodel.create_tensor(dims_full_label, DataType.DT_INT32)
 
   full_input.attach_numpy_array(ffconfig, x_train)
   full_label.attach_numpy_array(ffconfig, y_train)
@@ -85,7 +85,7 @@ def top_level_task():
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, num_samples * epochs / run_time));
-  
+
   perf_metrics = ffmodel.get_perf_metrics()
   accuracy = perf_metrics.get_accuracy()
   if accuracy < ModelAccuracy.MNIST_MLP.value:
@@ -106,8 +106,8 @@ def top_level_task():
   # print(dweight.shape)
   # print(dweight)
   # dweight_tensor.inline_unmap(ffconfig)
-  
-  
+
+
 if __name__ == "__main__":
   print("mnist mlp")
   top_level_task()

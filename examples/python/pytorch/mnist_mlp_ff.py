@@ -9,14 +9,14 @@ def top_level_task():
   ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
   ffmodel = FFModel(ffconfig)
-  
+
   dims = [ffconfig.get_batch_size(), 784]
-  input_tensor = ffmodel.create_tensor(dims, "", DataType.DT_FLOAT);
-  
+  input_tensor = ffmodel.create_tensor(dims, DataType.DT_FLOAT);
+
   num_samples = 60000
-  
+
   output_tensors = ffmodel.construct_model_from_file([input_tensor], "mlp.ff")
-  
+
   t = ffmodel.softmax(output_tensors[0])
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
@@ -34,10 +34,10 @@ def top_level_task():
   y_train = np.reshape(y_train, (len(y_train), 1))
 
   dims_full_input = [num_samples, 784]
-  full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
+  full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
 
   dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor(dims_full_label, "", DataType.DT_INT32)
+  full_label = ffmodel.create_tensor(dims_full_label, DataType.DT_INT32)
 
   full_input.attach_numpy_array(ffconfig, x_train)
   full_label.attach_numpy_array(ffconfig, y_train)
@@ -78,7 +78,7 @@ def top_level_task():
   # accuracy = perf_metrics.get_accuracy()
   # if accuracy < ModelAccuracy.MNIST_MLP.value:
   #   assert 0, 'Check Accuracy'
-  
+
 if __name__ == "__main__":
   print("mnist mlp")
   top_level_task()

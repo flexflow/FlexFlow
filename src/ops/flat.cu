@@ -89,7 +89,7 @@ void Flat::create_output_and_partition(FFModel& model)
   // Create output tensor
   {
     const int dims[2] = {batch_size, out_dim};
-    outputs[0] = model.create_tensor<2>(dims, (IndexSpaceT<2>)task_is, DT_FLOAT);
+    outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
     outputs[0].owner_op = this;
     outputs[0].owner_idx = 0;
   }
