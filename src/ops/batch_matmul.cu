@@ -512,13 +512,13 @@ void BatchMatmul::backward_with_dim(const FFModel& ff)
   launcher.add_field(3, FID_DATA);
   // regions[4](I): B
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+    RegionRequirement(input_lps[1], 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[1].region));
   launcher.add_field(4, FID_DATA);
   // regions[5](I/O): B_grad
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+    RegionRequirement(input_grad_lps[1], 0/*projection id*/,
+      READ_WRITE, EXCLUSIVE, inputs[1].region_grad));
   launcher.add_field(5, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }

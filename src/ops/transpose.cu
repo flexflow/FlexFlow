@@ -176,7 +176,7 @@ void Transpose::forward_task(const Task* task,
   const float* in_ptr = helperGetTensorPointerRO<float>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float* out_ptr = helperGetTensorPointerWO<float>(
-    regions[2], task->regions[2], FID_DATA, ctx, runtime);
+    regions[1], task->regions[1], FID_DATA, ctx, runtime);
   TransposeStrides info;
   info.num_dim = out_domain.get_dim();
   for (int i = 0; i < info.num_dim; i++) {
@@ -229,7 +229,7 @@ void Transpose::backward_task(const Task* task,
   const float* out_grad_ptr = helperGetTensorPointerRO<float>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float* in_grad_ptr = helperGetTensorPointerRW<float>(
-    regions[2], task->regions[2], FID_DATA, ctx, runtime);
+    regions[1], task->regions[1], FID_DATA, ctx, runtime);
   TransposeStrides info;
   info.num_dim = in_grad_domain.get_dim();
   for (int i = 0; i < info.num_dim; i++) {

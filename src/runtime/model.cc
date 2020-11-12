@@ -541,6 +541,13 @@ Tensor FFModel::create_tensor(const int dims[],
       RegionRequirement(tensor.part, 0/*projection id*/,
                         WRITE_ONLY, EXCLUSIVE, tensor.region));
   launcher.add_field(0, FID_DATA);
+  if (create_grad) {
+    launcher.add_region_requirement(
+        RegionRequirement(tensor.part_grad, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, tensor.region_grad));
+    launcher.add_field(1, FID_DATA);
+  }
+  runtime->execute_index_space(ctx, launcher);
   return tensor;
 }
 

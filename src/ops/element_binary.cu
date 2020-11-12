@@ -351,7 +351,7 @@ void elewise_binary_backward_kernel(coord_t volume,
   regions[1](I): in0
   regions[2](I): in1
   regions[3](I/O): in0_grad
-  regions[4](I/O): in1_grad
+  regions[4](I/O): in1_grad (Missing if in0=in1)
 */
 void ElementBinary::backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
@@ -359,8 +359,8 @@ void ElementBinary::backward_task(const Task *task,
 {
   float alpha = 1.0f;
   const ElementBinary* ele = (const ElementBinary*) task->args;
-  assert(regions.size() == 5);
-  assert(task->regions.size() == 5);
+  assert(regions.size() == 5 || regions.size() == 4);
+  assert(task->regions.size() == regions.size());
   Domain out_grad_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain in0_domain = runtime->get_index_space_domain(
@@ -369,12 +369,9 @@ void ElementBinary::backward_task(const Task *task,
     ctx, task->regions[2].region.get_index_space());
   Domain in0_grad_domain = runtime->get_index_space_domain(
     ctx, task->regions[3].region.get_index_space());
-  Domain in1_grad_domain = runtime->get_index_space_domain(
-    ctx, task->regions[4].region.get_index_space());
   assert(out_grad_domain == in0_domain);
   assert(out_grad_domain == in1_domain);
   assert(out_grad_domain == in0_grad_domain);
-  assert(out_grad_domain == in1_grad_domain);
 
   const float* out_grad_ptr = helperGetTensorPointerRO<float>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -384,9 +381,17 @@ void ElementBinary::backward_task(const Task *task,
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
   float* in1_grad_ptr = helperGetTensorPointerRW<float>(
     regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  float* in2_grad_ptr = helperGetTensorPointerRW<float>(
-    regions[4], task->regions[4], FID_DATA, ctx, runtime);
 
+  float* in2_grad_ptr = NULL;
+  if (regions.size() == 5) {
+    Domain in1_grad_domain = runtime->get_index_space_domain(
+      ctx, task->regions[4].region.get_index_space());
+    assert(out_grad_domain == in1_grad_domain);
+    in2_grad_ptr = helperGetTensorPointerRW<float>(
+      regions[4], task->regions[4], FID_DATA, ctx, runtime);
+  } else {
+    in2_grad_ptr = in1_grad_ptr;
+  }
   elewise_binary_backward_kernel<<<GET_BLOCKS(out_grad_domain.get_volume()), CUDA_NUM_THREADS>>>(
     out_grad_domain.get_volume(), alpha, alpha, ele->op_type, out_grad_ptr, in1_ptr, in2_ptr,
     in1_grad_ptr, in2_grad_ptr);
@@ -421,11 +426,13 @@ void ElementBinary::backward(const FFModel& ff)
     RegionRequirement(input_grad_lps[0], 0/*projection id*/,
                       READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(3, FID_DATA);
-  // regions[4](I/O): input1_grad
-  launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[1], 0/*projection id*/,
-                      READ_WRITE, EXCLUSIVE, inputs[1].region_grad));
-  launcher.add_field(4, FID_DATA);
+  if (inputs[0].region_grad != inputs[1].region_grad) {
+    // regions[4](I/O): input1_grad
+    launcher.add_region_requirement(
+      RegionRequirement(input_grad_lps[1], 0/*projection id*/,
+                        READ_WRITE, EXCLUSIVE, inputs[1].region_grad));
+    launcher.add_field(4, FID_DATA);
+  }
   runtime->execute_index_space(ctx, launcher);
 }
 
