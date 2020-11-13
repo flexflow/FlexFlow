@@ -185,7 +185,7 @@ void Split::forward_task(const Task *task,
         out_ptr[i], in_ptr, num_blks, out_blk_size[i], in_blk_size);
     in_ptr += out_blk_size[i];
   }
-  checkCUDA(cudaDeviceSynchronize());
+  //checkCUDA(cudaDeviceSynchronize());
 }
 
 void Split::forward(const FFModel& ff)
@@ -246,7 +246,7 @@ void Split::backward_task(const Task *task,
         in_grad_ptr, out_grad_ptr[i], num_blks, in_blk_size, out_blk_size[i]);
     in_grad_ptr += out_blk_size[i];
   }
-  checkCUDA(cudaDeviceSynchronize());
+  //checkCUDA(cudaDeviceSynchronize());
 }
 
 void Split::backward(const FFModel& ff)

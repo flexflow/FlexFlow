@@ -155,7 +155,8 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
 
 Memory FFMapper::default_policy_select_target_memory(MapperContext ctx,
                                                      Processor target_proc,
-                                                     const RegionRequirement &req)
+                                                     const RegionRequirement &req,
+                                                     MemoryConstraint mc)
 {
   if (target_proc.kind() == Processor::TOC_PROC) {
     if (req.tag == MAP_TO_ZC_MEMORY) {
@@ -164,7 +165,7 @@ Memory FFMapper::default_policy_select_target_memory(MapperContext ctx,
     } else {
       assert(req.tag == 0);
       //return DefaultMapper::default_policy_select_target_memory(
-      //           ctx, target_proc, req);
+      //           ctx, target_proc, req, mc);
       assert(proc_fbmems.find(target_proc) != proc_fbmems.end());
       return proc_fbmems[target_proc];
     }
@@ -173,7 +174,7 @@ Memory FFMapper::default_policy_select_target_memory(MapperContext ctx,
     return proc_zcmems[target_proc];
   } else {
     return DefaultMapper::default_policy_select_target_memory(
-               ctx, target_proc, req);
+               ctx, target_proc, req, mc);
   }
 }
 
@@ -183,6 +184,7 @@ void FFMapper::map_task(const MapperContext ctx,
                         MapTaskOutput& output)
 {
   // Convolve forward
+#ifdef DEADCODE
   if ((task.task_id == CONV2D_INIT_TASK_ID)
      || (task.task_id == CONV2D_FWD_TASK_ID)
      || (task.task_id == CONV2D_BWD_TASK_ID))
@@ -213,6 +215,7 @@ void FFMapper::map_task(const MapperContext ctx,
       }
     }
   } else
+#endif
     DefaultMapper::map_task(ctx, task, input, output);
 }
 

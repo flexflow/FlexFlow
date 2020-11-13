@@ -209,10 +209,10 @@ void Concat::forward_task(const Task *task,
     //       output, num_blocks, output_blk_size, i, input_blk_sizes[i]);
     output += input_blk_sizes[i];
   }
-  checkCUDA(cudaDeviceSynchronize());
   if (cc->profiling) {
+    checkCUDA(cudaDeviceSynchronize());
     //print_tensor<4, float>(output - output_blk_size, output_rect, "[Concat:forward:output]");
-    printf("output_blk_size=%zu\n", output_blk_size);
+    //printf("output_blk_size=%zu\n", output_blk_size);
     //print_tensor<4, float>(inputs[0], input_rect[0], "[Concat:forward:input0]");
     //print_tensor<4, float>(inputs[1], input_rect[1], "[Concat:forward:input1]");
   }
@@ -319,8 +319,8 @@ void Concat::backward_task(const Task *task,
         input_grads[i], output_grad, num_blocks, input_blk_sizes[i], output_blk_size);
     output_grad += input_blk_sizes[i];
   }
-  checkCUDA(cudaDeviceSynchronize());
   if (cc->profiling) {
+    checkCUDA(cudaDeviceSynchronize());
     int batch_size = domain.get_volume() / output_blk_size;
     Rect<2> output_rect(Point<2>(0, 0), Point<2>(output_blk_size-1, batch_size - 1));
     Rect<2> input_rect(Point<2>(0, 0), Point<2>(input_blk_sizes[0]-1, batch_size - 1));
