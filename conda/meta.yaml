@@ -1,0 +1,26 @@
+package:  
+  name: flexflow
+  version: "1.0"
+
+source:
+  get_url: https://github.com/flexflow/FlexFlow.git
+  get_rev: 223e38c2f5c4c827adc829d8b02796dc65b6b623
+
+build:
+  number: 0
+
+requirements:
+  build:
+    - make
+    - git
+    - zlib
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+  host:
+    - python
+    - cffi
+  run:
+    - cffi
+    - numpy
+    - python
+    - zlib
