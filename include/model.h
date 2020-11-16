@@ -26,6 +26,7 @@
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <unistd.h>
+#include <mpi.h>
 
 using namespace Legion;
 
@@ -182,7 +183,11 @@ struct Tensor {
 };
 
 struct Parameter : Tensor {
-  Parameter(void) {}
+  enum CommType {
+    PS,
+    NCCL,
+  };
+  Parameter() {}
   template <typename T>
   bool set_weights(const FFModel& model,
                    const std::vector<int>& dims,
@@ -191,6 +196,7 @@ struct Parameter : Tensor {
   bool get_weights(const FFModel& model,
                    T* data);
   std::vector<int> get_dims();
+  CommType type;
   std::string pcname; // indicating how the parameter is parallelized
   // Op* op; // Pointer to the operator that owns this parameter
 };
@@ -405,7 +411,8 @@ public:
                                const IndexSpaceT<4>& part_is,
                                DataType data_type,
                                Initializer* initializer,
-                               bool create_grad = true);
+                               bool create_grad = true,
+                               Parameter::CommType comm_type = Parameter::PS);
   template<int NDIM, int TDIM>
   Parameter create_linear_weight(Op* op,
                                  const int* dims,
@@ -442,6 +449,8 @@ public:
   IndexSpace get_or_create_task_is(const Domain& domain);
   IndexSpace get_or_create_task_is(int ndims, const std::string& pcname);
   IndexSpace get_task_is(const Domain& domain) const;
+  IndexSpace get_task_is(ParallelConfig pc) const;
+  IndexSpace get_task_is(int ndims, const std::string& pcname) const;
 public:
   int op_global_guid;
   FFConfig config;

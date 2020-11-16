@@ -407,14 +407,31 @@ FFModel::FFModel(FFConfig& _config)
   //  dataLoader = new DataLoader(config.datasetPath);
   //}
 
-  // Init CUDA library on each worker
-  ArgumentMap local_args;
-  size_t workSpaceSize = config.workSpaceSize;
+  ArgumentMap argmap;
   Rect<2> task_rect(Point<2>(0, 0),
                     Point<2>(0, config.workersPerNode * config.numNodes - 1));
   IndexSpaceT<2> task_is = runtime->create_index_space(ctx, task_rect);
+  // Init NCCL id
+  int my_rank = -1, all_ranks = -1;
+  MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &all_ranks);
+  fprintf(stderr, "MPI: myrank(%d) allranks(%d)\n", my_rank, all_ranks);
+  ncclUniqueId id;
+  if (my_rank == 0) ncclGetUniqueId(&id);
+  MPI_Bcast((void *)&id, sizeof(id), MPI_BYTE, 0, MPI_COMM_WORLD);
+  int rank = 0;
+  for (PointInRectIterator<2> it(task_rect); it(); it++) {
+    FFInitInfo info;
+    info.ncclId = id;
+    info.myRank = rank++;
+    info.allRanks = config.workersPerNode * config.numNodes;
+    info.workSpaceSize = config.workSpaceSize;
+    argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
+  }
+
+  // Init CUDA library on each worker
   IndexLauncher initLauncher(FF_INIT_TASK_ID, task_is,
-                             TaskArgument(&workSpaceSize, sizeof(workSpaceSize)), local_args,
+                             TaskArgument(NULL, 0), argmap,
                              Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                              FFConfig::DataParallelism_2D);
   FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
@@ -447,10 +464,21 @@ Tensor FFModel::create_constant(const int dims[],
   // constant created in this way is not part of any operator
   // so we assume it does not have gradients
   Tensor tensor = create_tensor<NDIM>(dims, data_type, NULL/*owner_op*/, false/*create_grad*/);
-  ConstantInitializer initializer(value);
+  IndexSpaceT<NDIM> part_is = (IndexSpaceT<NDIM>) get_or_create_task_is(NDIM, "");
+  ConstantInitializer* init =  new ConstantInitializer(value);
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
-  initializer.init(ctx, runtime, &tensor);
+  ArgumentMap argmap;
+  IndexLauncher launcher(CONSTANT_INIT_TASK_ID, part_is,
+      TaskArgument(init, sizeof(ConstantInitializer)), argmap,
+      Predicate::TRUE_PRED, false, 0,
+      FFConfig::get_hash_id(""));
+  launcher.add_region_requirement(
+      RegionRequirement(tensor.part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, tensor.region));
+  launcher.add_field(0, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
   return tensor;
 }
 
@@ -684,7 +712,7 @@ Parameter FFModel::create_linear_weight(Op* op,
   if (initializer == NULL) {
     assert(false); // add weight initializer should be set before
   } else {
-    initializer->init(ctx, runtime, &weight);
+    initializer->init(this, &weight);
   }
   // Step 3: backward region
   if (create_grad) {
@@ -723,7 +751,8 @@ Parameter FFModel::create_conv_weight(Op* op,
                                       const IndexSpaceT<4>& part_is,
                                       DataType data_type,
                                       Initializer* initializer,
-                                      bool create_grad)
+                                      bool create_grad,
+                                      Parameter::CommType comm_type)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -735,6 +764,7 @@ Parameter FFModel::create_conv_weight(Op* op,
   // Currently assume we do not split over the channel dimension
   assert(num_par_c == 1);
   Parameter weight;
+  weight.type = comm_type;
   weight.pcname = op->name;
   weight.numDim = NDIM;
   weight.data_type = data_type;
@@ -756,7 +786,7 @@ Parameter FFModel::create_conv_weight(Op* op,
       assert(false);
   }
   // Step 1: forward region and partition
-  {
+  if (weight.type == Parameter::PS) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
       hi[i] = dims[NDIM-1-i]-1;
@@ -772,12 +802,40 @@ Parameter FFModel::create_conv_weight(Op* op,
     assert(runtime->is_index_partition_complete(ctx, ip));
     weight.part = runtime->get_logical_partition(
         ctx, weight.region, ip);
+  } else if (weight.type == Parameter::NCCL) {
+    assert(num_par_c == 1);
+    Point<NDIM> hi;
+    for (int i = 0; i < NDIM; i++)
+      hi[i] = dims[NDIM-1-i]-1;
+    hi[NDIM-1] = num_par_n * num_par_h * num_par_w * dims[0] - 1;
+    Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
+    IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
+    weight.region = runtime->create_logical_region(ctx, is, fs);
+    hi[NDIM-1] = dims[0]-1;
+    Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
+    Transform<NDIM, 4> transform;
+    for (int i = 0; i < NDIM; i++)
+      for (int j = 0; j < 4; j++)
+        transform[i][j] = 0;
+    transform[NDIM-1][0] = dims[0];
+    transform[NDIM-1][1] = dims[0] * num_par_w;
+    transform[NDIM-1][2] = dims[0] * num_par_w * num_par_h;
+    transform[NDIM-1][3] = dims[0] * num_par_w * num_par_h * num_par_c;
+    IndexPartition ip = runtime->create_partition_by_restriction(
+        ctx, is, part_is, transform, extent);
+    assert(runtime->is_index_partition_complete(ctx, ip));
+    assert(runtime->is_index_partition_disjoint(ctx, ip));
+    weight.part = runtime->get_logical_partition(
+        ctx, weight.region, ip); 
+  } else {
+    // Unsupported Parameter type
+    assert(false);
   }
   // Step 2: initialize region
   if (initializer == NULL) {
     assert(false); // add weight initializer should be set before
   } else {
-    initializer->init(ctx, runtime, &weight);
+    initializer->init(this, &weight);
   }
   // Step 3: backwar regin and partition
   if (create_grad) {
@@ -866,6 +924,14 @@ Tensor FFModel::create_linear_replica(const int dims[],
   return replica;
 }
 
+IndexSpace FFModel::get_task_is(ParallelConfig pc) const
+{
+  std::map<ParallelConfig, IndexSpace, ParaConfigCompare>::const_iterator iter;
+  iter = taskIs.find(pc);
+  assert(iter != taskIs.end());
+  return iter->second;
+}
+
 IndexSpace FFModel::get_or_create_task_is(ParallelConfig pc)
 {
   if (taskIs.find(pc) != taskIs.end())
@@ -909,6 +975,13 @@ IndexSpace FFModel::get_or_create_task_is(int ndims, const std::string& pcname)
   ParallelConfig pc;
   assert(config.find_parallel_config(ndims, pcname, pc));
   return get_or_create_task_is(pc);
+}
+
+IndexSpace FFModel::get_task_is(int ndims, const std::string& pcname) const
+{
+  ParallelConfig pc;
+  assert(config.find_parallel_config(ndims, pcname, pc));
+  return get_task_is(pc);
 }
 
 IndexSpace FFModel::get_task_is(const Domain& domain) const
@@ -1948,6 +2021,26 @@ int main(int argc, char** argv)
   // Register custom tasks
   register_custom_tasks();
 
+  // Init MPI
+#if defined(GASNET_CONDUIT_MPI) || defined(REALM_USE_MPI)
+  // The GASNet MPI conduit and/or the Realm MPI network layer
+  // require that MPI be initialized for multiple threads
+  int provided;
+  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+  // If you fail this assertion, then your version of MPI
+  // does not support calls from multiple threads and you 
+  // cannot use the GASNet MPI conduit
+  if (provided < MPI_THREAD_MULTIPLE)
+    printf("ERROR: Your implementation of MPI does not support "
+           "MPI_THREAD_MULTIPLE which is required for use of the "
+           "GASNet MPI conduit or the Realm MPI network layer "
+           "with the Legion-MPI Interop!\n");
+  assert(provided == MPI_THREAD_MULTIPLE);
+#else
+  // Perform MPI start-up like normal for most GASNet conduits
+  MPI_Init(&argc, &argv);
+#endif
+
   DataParallelShardingFunctor* sharding_functor = new DataParallelShardingFunctor();
   Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);
 
@@ -1981,8 +2074,8 @@ void register_flexflow_tasks()
   LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 
-template Parameter FFModel::create_conv_weight<4>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
-template Parameter FFModel::create_conv_weight<1>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
+template Parameter FFModel::create_conv_weight<4>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad, Parameter::CommType comm_type);
+template Parameter FFModel::create_conv_weight<1>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad, Parameter::CommType comm_type);
 
 #define DIMFUNC(D1,D2) \
   template Parameter FFModel::create_linear_weight<D1, D2>(Op* op, const int* dims, const IndexSpaceT<D2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);

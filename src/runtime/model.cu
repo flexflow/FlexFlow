@@ -23,13 +23,17 @@ FFHandler UtilityTasks::init_cuda_task(
               Context ctx, HighLevelRuntime *runtime)
 {
   assert(regions.size() == 0);
-  assert(task->arglen == sizeof(size_t));
-  size_t workSpaceSize = *(const size_t*) task->args;
-  printf("workSpaceSize (%d MB)\n", workSpaceSize / 1024 / 1024);
+  assert(task->local_arglen == sizeof(FFInitInfo));
+  const FFInitInfo* info = (FFInitInfo*) task->local_args;
+  //assert(task->arglen == sizeof(size_t));
+  //size_t workSpaceSize = *(const size_t*) task->args;
+  printf("workSpaceSize (%d MB)\n", info->workSpaceSize / 1024 / 1024);
   FFHandler handle;
-  handle.workSpaceSize = workSpaceSize;
+  handle.workSpaceSize = info->workSpaceSize;
   checkCUDA(cublasCreate(&handle.blas));
   checkCUDNN(cudnnCreate(&handle.dnn));
+  checkNCCL(ncclCommInitRank(&handle.nccl, info->allRanks, info->ncclId, info->myRank));
+  fprintf(stderr, "handle.nccl(%p)\n", handle.nccl);
   //std::set<Memory> memFB;
   //assert(memFB.size() == 1);
   //assert(memFB.begin()->kind() == Memory::GPU_FB_MEM);
@@ -38,7 +42,7 @@ FFHandler UtilityTasks::init_cuda_task(
   //Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
   //off_t offset = memFBImpl->alloc_bytes(workSpaceSize);
   //handle.workSpace = memFBImpl->get_direct_ptr(offset, 0);
-  checkCUDA(cudaMalloc(&handle.workSpace, workSpaceSize));
+  checkCUDA(cudaMalloc(&handle.workSpace, handle.workSpaceSize));
   return handle;
 }
 

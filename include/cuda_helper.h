@@ -35,6 +35,15 @@
     }                                                                  \
 } while(0)
 
+#define checkNCCL(cmd) do {                         \
+  ncclResult_t r = cmd;                             \
+  if (r!= ncclSuccess) {                            \
+    printf("Failed, NCCL error %s:%d '%s'\n",             \
+        __FILE__,__LINE__,ncclGetErrorString(r));   \
+    exit(EXIT_FAILURE);                             \
+  }                                                 \
+} while(0)
+
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n) \
   for (coord_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); i += blockDim.x * gridDim.x)

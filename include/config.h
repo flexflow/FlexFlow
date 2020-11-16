@@ -19,6 +19,7 @@
 #include "legion.h"
 #include <cudnn.h>
 #include <cublas_v2.h>
+#include <nccl.h>
 
 // ========================================================
 // Define Runtime Constants
@@ -52,8 +53,15 @@ struct ParallelConfig {
 struct FFHandler {
   cudnnHandle_t dnn;
   cublasHandle_t blas;
+  ncclComm_t nccl;
   void *workSpace;
   size_t workSpaceSize;
+};
+
+struct FFInitInfo {
+  ncclUniqueId ncclId;
+  size_t workSpaceSize;
+  int myRank, allRanks;
 };
 
 bool load_strategies_from_file(const std::string& filename,
