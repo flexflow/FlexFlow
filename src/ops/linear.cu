@@ -154,12 +154,14 @@ void Linear::create_weights_with_dim(FFModel& model)
   // Create kernel tensor
   {
     const int dims[2] = {out_channels, in_channels};
-    weights[0] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT, kernel_initializer);
+    weights[0] = model.create_linear_weight<2, NDIM>(this, dims, DT_FLOAT,
+        kernel_initializer, true/*create_grad*/, Parameter::NCCL/*comm_type*/);
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_channels};
-    weights[1] = model.create_linear_weight<1>(this, dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT, bias_initializer);
+    weights[1] = model.create_linear_weight<1, NDIM>(this, dims, DT_FLOAT,
+        bias_initializer, true/*create_grad*/, Parameter::NCCL/*comm_type*/);
     assert(numWeights == 2);
   } else {
     assert(numWeights == 1);

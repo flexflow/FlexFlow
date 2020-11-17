@@ -262,7 +262,7 @@ void FFModel::prefetch()
 
 
 template <typename T>
-bool Parameter::set_weights(const FFModel& ff,
+bool Parameter::set_weights(const FFModel* ff,
                             const std::vector<int>& dims,
                             const T* data)
 {
@@ -276,8 +276,8 @@ bool Parameter::set_weights(const FFModel& ff,
       return false;
     volume = volume * dims[i];
   }
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Context ctx = ff->config.lg_ctx;
+  Runtime* runtime = ff->config.lg_hlr;
   RegionRequirement req(region, READ_WRITE, EXCLUSIVE, region);
   req.add_field(FID_DATA);
   InlineLauncher launcher(req);
@@ -303,7 +303,7 @@ bool Parameter::set_weights(const FFModel& ff,
 }
 
 template <typename T>
-bool Parameter::get_weights(const FFModel& ff,
+bool Parameter::get_weights(const FFModel* ff,
                             T* data)
 {
   //TODO: check data type matches
@@ -311,8 +311,8 @@ bool Parameter::get_weights(const FFModel& ff,
   for (int i = 0; i < numDim; i++) {
     volume = volume * adim[i];
   }
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Context ctx = ff->config.lg_ctx;
+  Runtime* runtime = ff->config.lg_hlr;
   RegionRequirement req(region, READ_ONLY, EXCLUSIVE, region);
   req.add_field(FID_DATA);
   InlineLauncher launcher(req);
@@ -337,5 +337,5 @@ bool Parameter::get_weights(const FFModel& ff,
   return true;
 }
 
-template bool Parameter::set_weights<float>(const FFModel& ff, const std::vector<int>& dims, const float* data);
-template bool Parameter::get_weights<float>(const FFModel& ff, float* data);
+template bool Parameter::set_weights<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
+template bool Parameter::get_weights<float>(const FFModel* ff, float* data);

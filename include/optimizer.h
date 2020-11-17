@@ -49,8 +49,7 @@ public:
   double lr, momentum;
   bool nesterov;
   double weight_decay;
-  std::map<LogicalRegion, LogicalRegion> v_regions;
-  std::map<LogicalRegion, LogicalPartition> v_parts;
+  std::map<LogicalRegion, Parameter> v_values;
 };
 
 class AdamOptimizer : public Optimizer
@@ -69,6 +68,6 @@ public:
                           Context ctx, Runtime* runtime);
   double alpha, beta1, beta2, weight_decay, epsilon;
   double alpha_t, beta1_t, beta2_t;
-  std::map<LogicalRegion, LogicalRegion> v_regions, m_regions;
+  std::map<LogicalRegion, Parameter> v_values, m_values;
 };
 #endif

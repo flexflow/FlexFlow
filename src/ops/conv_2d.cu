@@ -153,18 +153,18 @@ Tensor Conv2D::init_inout(FFModel& model, const Tensor& _input)
 void Conv2D::create_weights(FFModel& model)
 {
   // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
-  
+  task_is = (IndexSpaceT<4>)model.get_or_create_task_is(4, name);
   // Create kernel
   {
     const int dims[4] = {out_channels, in_channels, kernel_h, kernel_w};
-    weights[0] = model.create_conv_weight<4>(this, dims, (IndexSpaceT<4>)task_is, DT_FLOAT, kernel_initializer);
+    weights[0] = model.create_conv_weight<4>(this, dims, DT_FLOAT,
+        kernel_initializer, true/*create_grad*/, Parameter::NCCL/*comm_type*/);
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_channels};
-    weights[1] = model.create_conv_weight<1>(this, dims, (IndexSpaceT<4>)task_is, DT_FLOAT, bias_initializer);
+    weights[1] = model.create_conv_weight<1>(this, dims, DT_FLOAT,
+        bias_initializer, true/*create_grad*/, Parameter::NCCL/*comm_type*/);
     assert(numWeights == 2);
   } else {
     assert(numWeights == 1);

@@ -100,7 +100,7 @@ void Embedding::create_weights(FFModel& model)
   {
     const int dims[2] = {out_channels, num_entries};
     // Embeddding weights and linear weights can be partitioned in the same way
-    weights[0] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
+    weights[0] = model.create_linear_weight<2, 2>(this, dims, DT_FLOAT, kernel_initializer);
     assert(numWeights == 1);
   }
 }

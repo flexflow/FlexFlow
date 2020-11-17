@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2020 Facebook, Stanford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,27 @@
 
 Optimizer::Optimizer(const FFModel* _model)
 : model(_model) {}
+
+Parameter create_replica_parameter(const FFModel* model,
+                                   const Parameter& p)
+{
+  Context ctx = model->config.lg_ctx;
+  Runtime* runtime = model->config.lg_hlr;
+  Parameter v;
+  v.type = p.type;
+  v.pcname = p.pcname;
+  v.region = runtime->create_logical_region(
+      ctx, p.region.get_index_space(), p.region.get_field_space());
+  if (v.type == Parameter::PS) {
+    // Do nothing
+  } else if (v.type == Parameter::NCCL) {
+    v.part = runtime->get_logical_partition(
+        ctx, v.region, p.part.get_index_partition());
+  } else {
+    assert(false);
+  }
+  return v;
+}
 
 SGDOptimizer::SGDOptimizer(const FFModel* _model,
                            double _lr, double _momentum,
@@ -49,11 +70,8 @@ void SGDOptimizer::init(void)
       case 5:
       {
         if (momentum > 0.0f) {
-          v_regions[p.region] = runtime->create_logical_region(
-              ctx, p.region.get_index_space(), p.region.get_field_space());
-          Parameter t;
-          t.region = v_regions[p.region];
-          initializer->init(model, &t);
+          v_values[p.region] = create_replica_parameter(model, p);
+          initializer->init(model, &v_values[p.region]);
         }
         break;
       }
@@ -76,29 +94,59 @@ void SGDOptimizer::update(const Parameter* p)
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  TaskLauncher launcher(SGD_UPD_TASK_ID,
-                        TaskArgument(this, sizeof(SGDOptimizer)),
-                        Predicate::TRUE_PRED, 0/*mapper_id*/,
-                        FFConfig::get_hash_id(std::string(p->pcname)));
-  // regions[0]: region_grad
-  launcher.add_region_requirement(
-      RegionRequirement(p->region_grad,
-                        READ_ONLY, EXCLUSIVE, p->region_grad));
-  launcher.add_field(0, FID_DATA);
-  // regions[1]: region
-  launcher.add_region_requirement(
-      RegionRequirement(p->region,
-                        READ_WRITE, EXCLUSIVE, p->region));
-  launcher.add_field(1, FID_DATA);
-  if (momentum > 0.0f) {
-    // regions[2]: v_region
-    assert(v_regions.find(p->region) != v_regions.end());
+  if (p->type == Parameter::PS) {
+    TaskLauncher launcher(SGD_UPD_TASK_ID,
+        TaskArgument(this, sizeof(SGDOptimizer)),
+        Predicate::TRUE_PRED, 0/*mapper_id*/,
+        FFConfig::get_hash_id(std::string(p->pcname)));
+    // regions[0]: region_grad
     launcher.add_region_requirement(
-        RegionRequirement(v_regions[p->region],
-                          READ_WRITE, EXCLUSIVE, v_regions[p->region]));
-    launcher.add_field(2, FID_DATA);
+        RegionRequirement(p->region_grad,
+                          READ_ONLY, EXCLUSIVE, p->region_grad));
+    launcher.add_field(0, FID_DATA);
+    // regions[1]: region
+    launcher.add_region_requirement(
+        RegionRequirement(p->region,
+                          READ_WRITE, EXCLUSIVE, p->region));
+    launcher.add_field(1, FID_DATA);
+    if (momentum > 0.0f) {
+      // regions[2]: v_region
+      assert(v_values.find(p->region) != v_values.end());
+      launcher.add_region_requirement(
+          RegionRequirement(v_values[p->region].region,
+                            READ_WRITE, EXCLUSIVE, v_values[p->region].region));
+      launcher.add_field(2, FID_DATA);
+    }
+    runtime->execute_task(ctx, launcher);
+  } else if (p->type == Parameter::NCCL) {
+    IndexSpace task_is = model->get_task_is(p->numDim, p->pcname);
+    ArgumentMap argmap;
+    IndexLauncher launcher(SGD_UPD_TASK_ID, task_is,
+        TaskArgument(this, sizeof(SGDOptimizer)), argmap,
+        Predicate::TRUE_PRED, 0/*mapper_id*/,
+        FFConfig::get_hash_id(std::string(p->pcname)));
+    // regions[0]: region_grad
+    launcher.add_region_requirement(
+        RegionRequirement(p->part_grad, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, p->region_grad));
+    launcher.add_field(0, FID_DATA);
+    // regions[1]: region
+    launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, p->region));
+    launcher.add_field(1, FID_DATA);
+    if (momentum > 0.0f) {
+      // regions[2]: v_value
+      assert(v_values.find(p->region) != v_values.end());
+      launcher.add_region_requirement(
+          RegionRequirement(v_values[p->region].part, 0/*projection id*/,
+                            READ_WRITE, EXCLUSIVE, v_values[p->region].region));
+      launcher.add_field(2, FID_DATA);
+    }
+    runtime->execute_index_space(ctx, launcher);
+  } else {
+    assert(false);
   }
-  runtime->execute_task(ctx, launcher);
 }
 
 // ------------------------------------------------------------------
@@ -136,16 +184,10 @@ void AdamOptimizer::init(void)
       case 4:
       case 5:
       {
-        v_regions[p.region] = runtime->create_logical_region(
-            ctx, p.region.get_index_space(), p.region.get_field_space());
-        m_regions[p.region] = runtime->create_logical_region(
-            ctx, p.region.get_index_space(), p.region.get_field_space());
-        Parameter t;
-        // Zeros v_regions and m_regions
-        t.region = v_regions[p.region];
-        initializer->init(model, &t);
-        t.region = m_regions[p.region];
-        initializer->init(model, &t);
+        v_values[p.region] = create_replica_parameter(model, p);
+        m_values[p.region] = create_replica_parameter(model, p);
+        initializer->init(model, &v_values[p.region]);
+        initializer->init(model, &m_values[p.region]);
         break;
       }
       default:
@@ -176,31 +218,63 @@ void AdamOptimizer::update(const Parameter* p)
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  assert(v_regions.find(p->region) != v_regions.end());
-  assert(m_regions.find(p->region) != m_regions.end());
-  TaskLauncher launcher(ADAM_UPD_TASK_ID,
-                        TaskArgument(this, sizeof(AdamOptimizer)),
-                        Predicate::TRUE_PRED, 0/*mapper_id*/,
-                        FFConfig::get_hash_id(std::string(p->pcname)));
-  // regions[0]: region_grad
-  launcher.add_region_requirement(
-      RegionRequirement(p->region_grad,
-                        READ_ONLY, EXCLUSIVE, p->region_grad));
-  launcher.add_field(0, FID_DATA);
-  // regions[1]: region
-  launcher.add_region_requirement(
-      RegionRequirement(p->region,
-                        READ_WRITE, EXCLUSIVE, p->region));
-  launcher.add_field(1, FID_DATA);
-  // regions[2]: w_region
-  launcher.add_region_requirement(
-      RegionRequirement(v_regions[p->region],
-                        READ_WRITE, EXCLUSIVE, v_regions[p->region]));
-  launcher.add_field(2, FID_DATA);
-  // regions[3]: m_region
-  launcher.add_region_requirement(
-      RegionRequirement(m_regions[p->region],
-                        READ_WRITE, EXCLUSIVE, m_regions[p->region]));
-  launcher.add_field(3, FID_DATA);
-  runtime->execute_task(ctx, launcher);
+  assert(v_values.find(p->region) != v_values.end());
+  assert(m_values.find(p->region) != m_values.end());
+  if (p->type == Parameter::PS) {
+    TaskLauncher launcher(ADAM_UPD_TASK_ID,
+        TaskArgument(this, sizeof(AdamOptimizer)),
+        Predicate::TRUE_PRED, 0/*mapper_id*/,
+        FFConfig::get_hash_id(std::string(p->pcname)));
+    // regions[0]: region_grad
+    launcher.add_region_requirement(
+        RegionRequirement(p->region_grad,
+                          READ_ONLY, EXCLUSIVE, p->region_grad));
+    launcher.add_field(0, FID_DATA);
+    // regions[1]: region
+    launcher.add_region_requirement(
+        RegionRequirement(p->region,
+                          READ_WRITE, EXCLUSIVE, p->region));
+    launcher.add_field(1, FID_DATA);
+    // regions[2]: w_region
+    launcher.add_region_requirement(
+        RegionRequirement(v_values[p->region].region,
+                          READ_WRITE, EXCLUSIVE, v_values[p->region].region));
+    launcher.add_field(2, FID_DATA);
+    // regions[3]: m_region
+    launcher.add_region_requirement(
+        RegionRequirement(m_values[p->region].region,
+                          READ_WRITE, EXCLUSIVE, m_values[p->region].region));
+    launcher.add_field(3, FID_DATA);
+    runtime->execute_task(ctx, launcher);
+  } else if (p->type == Parameter::NCCL) {
+    IndexSpace task_is = model->get_task_is(p->numDim, p->pcname);
+    ArgumentMap argmap;
+    IndexLauncher launcher(ADAM_UPD_TASK_ID, task_is,
+        TaskArgument(this, sizeof(AdamOptimizer)), argmap,
+        Predicate::TRUE_PRED, 0/*mapper_id*/,
+        FFConfig::get_hash_id(p->pcname));
+    // regions[0]: region_grad
+    launcher.add_region_requirement(
+        RegionRequirement(p->part_grad, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, p->region_grad));
+    launcher.add_field(0, FID_DATA);
+    // regions[1]: region
+    launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, p->region));
+    launcher.add_field(1, FID_DATA);
+    // regions[2]: w_region
+    launcher.add_region_requirement(
+        RegionRequirement(v_values[p->region].part, 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, v_values[p->region].region));
+    launcher.add_field(2, FID_DATA);
+    // regions[3]: m_region
+    launcher.add_region_requirement(
+        RegionRequirement(m_values[p->region].part, 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, m_values[p->region].region));
+    launcher.add_field(3, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  } else {
+    assert(false);
+  }
 }

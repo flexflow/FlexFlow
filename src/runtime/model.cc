@@ -654,11 +654,13 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor& tensor
 template<int NDIM, int TDIM>
 Parameter FFModel::create_linear_weight(Op* op,
                                         const int dims[],
-                                        const IndexSpaceT<TDIM>& part_is,
                                         DataType data_type,
                                         Initializer* initializer,
-                                        bool create_grad)
+                                        bool create_grad,
+                                        Parameter::CommType comm_type)
 {
+  std::string pcname = op->name;
+  IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>)get_or_create_task_is(TDIM, pcname);
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
@@ -666,6 +668,7 @@ Parameter FFModel::create_linear_weight(Op* op,
   for (int i = 0; i < TDIM; i++)
     num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
   Parameter weight;
+  weight.type = comm_type;
   weight.pcname = op->name;
   weight.numDim = NDIM;
   weight.data_type = data_type;
@@ -687,7 +690,7 @@ Parameter FFModel::create_linear_weight(Op* op,
       assert(false);
   }
   // Step 1: forward region and partition
-  {
+  if (weight.type == Parameter::PS) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
       hi[i] = dims[NDIM-1-i]-1;
@@ -707,6 +710,38 @@ Parameter FFModel::create_linear_weight(Op* op,
     assert(runtime->is_index_partition_complete(ctx, ip));
     weight.part = runtime->get_logical_partition(
         ctx, weight.region, ip);
+  } else if (weight.type == Parameter::NCCL) {
+    // Currently only support data parallel for operators with NCCL
+    ParallelConfig pconfig;
+    config.find_parallel_config(TDIM, pcname, pconfig);
+    assert(pconfig.is_data_parallel());
+    Point<NDIM> hi;
+    for (int i = 0; i < NDIM; i++)
+      hi[i] = dims[NDIM-1-i]-1;
+    int num_batches = 1;
+    for (int i = 1; i < TDIM; i++)
+      num_batches *= num_parts[i];
+    hi[NDIM-1] = num_batches * dims[0] -1;
+    Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
+    IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
+    weight.region = runtime->create_logical_region(ctx, is, fs);
+    hi[NDIM-1] = dims[0] / num_parts[0] - 1;
+    Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
+    Transform<NDIM, TDIM> transform;
+    for (int i = 0; i < NDIM; i++)
+      for (int j = 0; j < TDIM; j++)
+        transform[i][j] = 0;
+    transform[NDIM-1][0] = dims[0] / num_parts[0];
+    for (int i = 1; i < TDIM; i++)
+      transform[NDIM-1][i] = transform[NDIM-1][i-1] * num_parts[i-1];
+    IndexPartition ip = runtime->create_partition_by_restriction(
+        ctx, is, part_is, transform, extent);
+    assert(runtime->is_index_partition_complete(ctx, ip));
+    assert(runtime->is_index_partition_disjoint(ctx, ip));
+    weight.part = runtime->get_logical_partition(
+        ctx, weight.region_grad, ip);
+  } else {
+    assert(false);
   }
   // Step 2: initialize region
   if (initializer == NULL) {
@@ -748,7 +783,6 @@ Parameter FFModel::create_linear_weight(Op* op,
 template<int NDIM>
 Parameter FFModel::create_conv_weight(Op* op,
                                       const int dims[],
-                                      const IndexSpaceT<4>& part_is,
                                       DataType data_type,
                                       Initializer* initializer,
                                       bool create_grad,
@@ -756,6 +790,8 @@ Parameter FFModel::create_conv_weight(Op* op,
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
+  std::string pcname = op->name;
+  IndexSpaceT<4> part_is = (IndexSpaceT<4>) get_or_create_task_is(4, pcname);
   Rect<4> part_rect = runtime->get_index_space_domain(ctx, part_is);
   int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
   int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
@@ -2074,11 +2110,11 @@ void register_flexflow_tasks()
   LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 
-template Parameter FFModel::create_conv_weight<4>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad, Parameter::CommType comm_type);
-template Parameter FFModel::create_conv_weight<1>(Op* op, const int* dims, const IndexSpaceT<4>& part_is, DataType data_type, Initializer* initializer, bool create_grad, Parameter::CommType comm_type);
+template Parameter FFModel::create_conv_weight<4>(Op* op, const int* dims, DataType data_type, Initializer* initializer, bool create_grad, Parameter::CommType comm_type);
+template Parameter FFModel::create_conv_weight<1>(Op* op, const int* dims, DataType data_type, Initializer* initializer, bool create_grad, Parameter::CommType comm_type);
 
 #define DIMFUNC(D1,D2) \
-  template Parameter FFModel::create_linear_weight<D1, D2>(Op* op, const int* dims, const IndexSpaceT<D2>& part_is, DataType data_type, Initializer* initializer, bool create_grad);
+  template Parameter FFModel::create_linear_weight<D1, D2>(Op* op, const int* dims, DataType data_type, Initializer* initializer, bool create_grad, Parameter::CommType comm_type);
   LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 

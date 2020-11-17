@@ -17,6 +17,7 @@
 #define _FLEXFLOW_MODEL_H_
 #include "legion.h"
 #include "config.h"
+#include "tensor.h"
 #include "initializer.h"
 #include "simulator.h"
 #include "optimizer.h"
@@ -143,63 +144,6 @@ enum FieldIDs {
 class FFModel;
 class Op;
 class DataLoader;
-
-struct Tensor {
-  Tensor(void) {
-    numDim = 0;
-    for (int i = 0; i < MAX_TENSOR_DIM; i++) {
-      adim[i] = 0;
-      //pdim[i] = 0;
-    }
-    region = LogicalRegion::NO_REGION;
-    region_grad = LogicalRegion::NO_REGION;
-    part = LogicalPartition::NO_PART;
-    part_grad = LogicalPartition::NO_PART;
-    owner_op = NULL;
-    owner_idx = 0;
-  }
-  void inline_map(FFConfig &config);
-  void inline_unmap(FFConfig &config);
-  template<typename T>
-  T* get_raw_ptr(FFConfig &config);
-  void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major);
-  void detach_raw_ptr(FFConfig &config);
-  bool get_input_sub_tensor(const ParallelConfig& pc,
-                            Tensor& tensor,
-                            OperatorType type);
-  bool get_output_sub_tensor(const ParallelConfig& pc,
-                             Tensor& tensor,
-                             OperatorType type);
-  size_t get_volume();
-  int numDim, adim[MAX_TENSOR_DIM];
-  DataType data_type;
-  // Describes the ownership of this tensor
-  Op* owner_op;
-  int owner_idx;
-  // The following fields are initialized after model.compile
-  LogicalRegion region, region_grad;
-  LogicalPartition part, part_grad;
-  PhysicalRegion physical_region;
-};
-
-struct Parameter : Tensor {
-  enum CommType {
-    PS,
-    NCCL,
-  };
-  Parameter() {}
-  template <typename T>
-  bool set_weights(const FFModel& model,
-                   const std::vector<int>& dims,
-                   const T* data);
-  template <typename T>
-  bool get_weights(const FFModel& model,
-                   T* data);
-  std::vector<int> get_dims();
-  CommType type;
-  std::string pcname; // indicating how the parameter is parallelized
-  // Op* op; // Pointer to the operator that owns this parameter
-};
 
 class OpMeta {
 public:
@@ -407,19 +351,18 @@ public:
   //                     bool create_grad = true);
   template<int NDIM>
   Parameter create_conv_weight(Op* op,
-                               const int* dims,
-                               const IndexSpaceT<4>& part_is,
-                               DataType data_type,
-                               Initializer* initializer,
-                               bool create_grad = true,
-                               Parameter::CommType comm_type = Parameter::PS);
+      const int* dims,
+      DataType data_type,
+      Initializer* initializer,
+      bool create_grad = true,
+      Parameter::CommType comm_type = Parameter::PS);
   template<int NDIM, int TDIM>
   Parameter create_linear_weight(Op* op,
-                                 const int* dims,
-                                 const IndexSpaceT<TDIM>& part_is,
-                                 DataType data_type,
-                                 Initializer* initializer,
-                                 bool create_grad = true);
+      const int* dims,
+      DataType data_type,
+      Initializer* initializer,
+      bool create_grad = true,
+      Parameter::CommType comm_type = Parameter::PS);
   template<int NDIM, int TDIM>
   Tensor create_linear_replica(const int* dims,
                                const IndexSpaceT<TDIM>& part_is,

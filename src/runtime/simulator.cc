@@ -25,6 +25,20 @@ int ParallelConfig::num_parts() const
   return nparts;
 }
 
+bool ParallelConfig::is_data_parallel() const
+{
+  int nparts = 1;
+  for (int i = 0; i < nDims; i++) {
+    nparts *= dim[i];
+    if ((i < nDims-1) && (dim[i] > 1))
+      return false;
+  }
+  for (int i = 0; i < nparts; i++)
+    if (device_ids[i] != i)
+      return false;
+  return true;
+}
+
 Device::Device(Device::DeviceType _type, int _node_id, int _gpu_id)
 : node_id(_node_id), gpu_id(_gpu_id), bandwidth(0.0f), type(_type)
 {

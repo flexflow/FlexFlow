@@ -135,8 +135,8 @@ void BatchNorm::create_weights(FFModel& model)
   Initializer* scale_initializer = new ConstantInitializer(1.0f);
   Initializer* bias_initializer = new ConstantInitializer(0.0f);
   const int dims[1] = {outputs[0].adim[2]};
-  weights[0] = model.create_conv_weight<1>(this, dims, (IndexSpaceT<4>)task_is, DT_FLOAT, scale_initializer);
-  weights[1] = model.create_conv_weight<1>(this, dims, (IndexSpaceT<4>)task_is, DT_FLOAT, bias_initializer);
+  weights[0] = model.create_conv_weight<1>(this, dims, DT_FLOAT, scale_initializer);
+  weights[1] = model.create_conv_weight<1>(this, dims, DT_FLOAT, bias_initializer);
 }
 
 void BatchNorm::create_output_and_partition(FFModel& model)

@@ -45,6 +45,7 @@ struct ParallelConfig {
     CPU = 1,
   };
   int num_parts() const;
+  bool is_data_parallel() const;
   DeviceType device_type;
   int nDims, dim[MAX_TENSOR_DIM];
   int device_ids[MAX_NUM_WORKERS];
