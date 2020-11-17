@@ -31,6 +31,8 @@ ffi = cffi.FFI()
 ffi.cdef(_flexflow_cheader)
 ffc = ffi.dlopen(None)
 
+ff_tracing_id = 200
+
 def get_datatype_size(datatype):
   if (datatype == DataType.DT_FLOAT):
     return 4
@@ -560,12 +562,16 @@ class Parameter(Tensor):
 # -----------------------------------------------------------------------
 
 class FFModel(object):
-  __slots__ = ['handle', '_handle', '_layers', '_nb_layers']
+  __slots__ = ['handle', '_handle', '_layers', '_nb_layers', '_ffconfig', '_tracing_id']
   def __init__(self, ffconfig):
     self.handle = ffc.flexflow_model_create(ffconfig.handle)
     self._handle = ffi.gc(self.handle, ffc.flexflow_model_destroy)
     self._layers = dict()
     self._nb_layers = 0
+    self._ffconfig = ffconfig
+    global ff_tracing_id
+    self._tracing_id = ff_tracing_id
+    ff_tracing_id += 1
 
   def get_layers(self):
     return self._layers
@@ -779,6 +785,39 @@ class FFModel(object):
       metrics_int.append(enum_to_int(MetricsType, metric))
     c_metrics = ffi.new("int[]", metrics_int)
     ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics))
+    
+  def train(self, dataloaders, epochs=1, batch_size=64):
+    num_samples = dataloaders[0].get_num_samples()
+    batch_size = self._ffconfig.get_batch_size()
+    for epoch in range(0,epochs):
+      for d in dataloaders:
+        d.reset()
+      self.reset_metrics()
+      iterations = num_samples / batch_size
+      for iter in range(0, int(iterations)):
+        for d in dataloaders:
+          d.next_batch(self)
+        if (epoch > 0):
+          self._ffconfig.begin_trace(self._tracing_id)
+        self.forward()
+        self.zero_gradients()
+        self.backward()
+        self.update()
+        if (epoch > 0):
+          self._ffconfig.end_trace(self._tracing_id)
+          
+  def eval(self, dataloaders):
+    num_samples = dataloaders[0].get_num_samples()
+    batch_size = self._ffconfig.get_batch_size()
+    for d in dataloaders:
+      d.reset()
+    self.reset_metrics()
+    iterations = num_samples / batch_size
+    for iter in range(0, int(iterations)):
+      for d in dataloaders:
+        d.next_batch(self)
+      self.forward()
+      self.compute_metrics()
 
   def zero_gradients(self):
     ffc.flexflow_model_zero_gradients(self.handle)

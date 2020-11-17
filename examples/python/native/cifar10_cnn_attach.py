@@ -54,10 +54,7 @@ def top_level_task():
   ffmodel = FFModel(ffconfig)
 
   dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
-  input = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
-
-  # dims_label = [ffconfig.get_batch_size(), 1]
-  # label = ffmodel.create_tensor(dims_label, DataType.DT_INT32)
+  input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
   num_samples = 10000
 
@@ -78,7 +75,7 @@ def top_level_task():
   print(full_input_array.shape, full_label_array.shape)
   print(full_label_array.__array_interface__["strides"])
 
-  t = ffmodel.conv2d(input, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t = ffmodel.conv2d(input_tensor, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
   t = ffmodel.conv2d(t, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
   t = ffmodel.pool2d(t, 2, 2, 2, 2, 0, 0,)
   t = ffmodel.conv2d(t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
@@ -92,15 +89,14 @@ def top_level_task():
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
-  label = ffmodel.get_label_tensor()
+  label_tensor = ffmodel.get_label_tensor()
 
-  next_batch(0, x_train, input, ffconfig)
-  next_batch_label(0, y_train, label, ffconfig)
+  next_batch(0, x_train, input_tensor, ffconfig)
+  next_batch_label(0, y_train, label_tensor, ffconfig)
 
   ffmodel.init_layers()
 
   epochs = ffconfig.get_epochs()
-  #epochs = 10
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
