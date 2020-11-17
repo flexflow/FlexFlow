@@ -79,9 +79,6 @@ def torch_to_flexflow(model, filename):
     else:
       inedges = [inedges]
     for inedge in inedges:
-      if inedge.name == "x":
-        op_str = op_str + "input" + ":"
-      else:
         op_str = op_str + inedge.name + ":"
     op_str = op_str + ", "
     

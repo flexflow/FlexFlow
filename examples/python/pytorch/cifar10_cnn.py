@@ -16,10 +16,10 @@ class CNN(nn.Module):
     self.linear2 = nn.Linear(512, 10)
     self.relu = nn.ReLU()
 
-  def forward(self, x):
-    y1 = self.conv1(x)
+  def forward(self, input1, input2):
+    y1 = self.conv1(input1)
     y1 = self.relu(y1)
-    y2 = self.conv1(x)
+    y2 = self.conv1(input2)
     y2 = self.relu(y2)
     y = torch.cat((y1, y2), 1)
     y = self.conv2(y)

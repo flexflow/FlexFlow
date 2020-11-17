@@ -34,7 +34,7 @@ class PyTorchModel(object):
       #get op name
       op_name = items[0]
 
-      #get previous ops
+      #get previous ops' name
       prev_ops_list = items[1].split(":")
       prev_ops_list = [i.strip() for i in prev_ops_list]
       for i in prev_ops_list:
@@ -43,15 +43,19 @@ class PyTorchModel(object):
 
       #get op type
       op_type = int_to_enum(OpType, int(items[2]))
+      
+      # setup input tensors
+      for i in prev_ops_list:
+        # op can not be find in dict, it must be the input
+        if self.tensor_dict.get(i) == None:
+          print("input tensor ", i)
+          self.tensor_dict[i] = input_tensors[input_idx]
+          input_idx += 1
 
       if op_type == OpType.LINEAR:
         assert len(items) == 6, "wrong format"
         assert len(prev_ops_list) == 1, "wrong format"
-        if prev_ops_list[0] == "input":
-          input_tensor = input_tensors[input_idx]
-          input_idx += 1
-        else:
-          input_tensor = self.tensor_dict[prev_ops_list[0]]
+        input_tensor = self.tensor_dict[prev_ops_list[0]]
         od = int(items[3])
         activ = int_to_enum(ActiMode, int(items[4]))
         bias = bool(int(items[5]))
@@ -60,11 +64,7 @@ class PyTorchModel(object):
       elif op_type == OpType.CONV2D:
         assert len(items) == 12, "wrong format"
         assert len(prev_ops_list) == 1, "wrong format"
-        if prev_ops_list[0] == "input":
-          input_tensor = input_tensors[input_idx]
-          input_idx += 1
-        else:
-          input_tensor = self.tensor_dict[prev_ops_list[0]]
+        input_tensor = self.tensor_dict[prev_ops_list[0]]
         oc = int(items[3])
         kh = int(items[4])
         kw = int(items[5])
