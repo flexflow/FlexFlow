@@ -43,16 +43,13 @@ class PyTorchModel(object):
 
       #get op type
       op_type = int_to_enum(OpType, int(items[2]))
-      
-      # setup input tensors
-      for i in prev_ops_list:
-        # op can not be find in dict, it must be the input
-        if self.tensor_dict.get(i) == None:
-          print("input tensor ", i)
-          self.tensor_dict[i] = input_tensors[input_idx]
-          input_idx += 1
+          
+      if op_type == OpType.INPUT:
+        assert len(prev_ops_list) == 0, "wrong format"
+        self.tensor_dict[op_name] = input_tensors[input_idx]
+        input_idx += 1
 
-      if op_type == OpType.LINEAR:
+      elif op_type == OpType.LINEAR:
         assert len(items) == 6, "wrong format"
         assert len(prev_ops_list) == 1, "wrong format"
         input_tensor = self.tensor_dict[prev_ops_list[0]]
@@ -123,6 +120,12 @@ class PyTorchModel(object):
         assert len(prev_ops_list) == 1, "wrong format"
         input_tensor = self.tensor_dict[prev_ops_list[0]]
         self.tensor_dict[op_name] = ffmodel.elu(input=input_tensor, name=op_name)
+        
+      elif op_type == OpType.SOFTMAX:
+        assert len(items) == 3, "wrong format"
+        assert len(prev_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[prev_ops_list[0]]
+        self.tensor_dict[op_name] = ffmodel.softmax(input=input_tensor, name=op_name)
 
       elif op_type == OpType.CONCAT:
         assert len(items) == 4, "wrong format"

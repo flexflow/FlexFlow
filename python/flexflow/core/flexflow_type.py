@@ -61,7 +61,8 @@ class OpType(Enum):
   SUBTRACT = 2042
   MULTIPLY = 2043
   DIVIDE = 2044
-  OUTPUT = 2050
+  INPUT = 2050
+  OUTPUT = 2051
 
 def enum_to_int(enum, enum_item):
   for item in enum:

@@ -20,8 +20,6 @@ def top_level_task():
   
   output_tensors = torch_model.apply(ffmodel, [input_tensor])
 
-  t = ffmodel.softmax(output_tensors[0])
-
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
