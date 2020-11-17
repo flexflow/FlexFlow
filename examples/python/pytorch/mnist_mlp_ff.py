@@ -1,6 +1,7 @@
 from flexflow.core import *
 import numpy as np
 from flexflow.keras.datasets import mnist
+from flexflow.torch.model import PyTorchModel
 
 #from accuracy import ModelAccuracy
 
@@ -15,7 +16,9 @@ def top_level_task():
 
   num_samples = 60000
 
-  output_tensors = ffmodel.construct_model_from_file([input_tensor], "mlp.ff")
+  torch_model = PyTorchModel("mlp.ff")
+  
+  output_tensors = torch_model.apply(ffmodel, [input_tensor])
 
   t = ffmodel.softmax(output_tensors[0])
 
