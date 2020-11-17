@@ -17,7 +17,7 @@ def top_level_task():
   num_samples = 60000
   
   onnx_model = ONNXModel("mnist_mlp.onnx")
-  t = onnx_model.apply(ffmodel, input1)
+  t = onnx_model.apply(ffmodel, {"input.1": input1})
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)

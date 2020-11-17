@@ -116,8 +116,8 @@ class ONNXModel(object):
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.softmax({})".format(node.input[0]))
 
-    def apply(self, ffmodel, input):
-        self.symbol_table[self.model.graph.input[0].name] = input
+    def apply(self, ffmodel, input_dict):
+        self.symbol_table = input_dict.copy()
         for node in self.model.graph.node:
             handler_name = 'handle' + node.op_type
             if hasattr(self, handler_name):

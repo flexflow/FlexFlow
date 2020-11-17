@@ -22,7 +22,7 @@ def top_level_task():
   # label = ffmodel.create_tensor(dims_label, "", DataType.DT_INT32)
 
   onnx_model = ONNXModel("resnet18.onnx")
-  t = onnx_model.apply(ffmodel, input)
+  t = onnx_model.apply(ffmodel, {"input.1": input})
   t = ffmodel.softmax(t)
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
