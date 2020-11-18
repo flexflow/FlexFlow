@@ -26,14 +26,11 @@ def top_level_task():
   
   (x_train, y_train), (x_test, y_test) = mnist.load_data()
   
-  print(x_train.shape)
   x_train = x_train.reshape(60000, 784)
   x_train = x_train.astype('float32')
   x_train /= 255
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
-  print(x_train.shape[0], 'train samples')
-  print(y_train.shape)
   
   dims_full_input = [num_samples, 784]
   full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
@@ -43,9 +40,7 @@ def top_level_task():
 
   full_input.attach_numpy_array(ffconfig, x_train)
   full_label.attach_numpy_array(ffconfig, y_train)
-  print(y_train)
 
-  #dataloader = DataLoader2D(ffmodel, input1, label, full_input, full_label, num_samples)
   dataloader_input = SingleDataLoader(ffmodel, input1, full_input, num_samples, DataType.DT_FLOAT)
   dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
 
@@ -57,24 +52,8 @@ def top_level_task():
   epochs = ffconfig.get_epochs()
 
   ts_start = ffconfig.get_current_time()
-  for epoch in range(0,epochs):
-    dataloader_input.reset()
-    dataloader_label.reset()
-    # dataloader.reset()
-    ffmodel.reset_metrics()
-    iterations = num_samples / ffconfig.get_batch_size()
-    for iter in range(0, int(iterations)):
-      dataloader_input.next_batch(ffmodel)
-      dataloader_label.next_batch(ffmodel)
-      #dataloader.next_batch(ffmodel)
-      if (epoch > 0):
-        ffconfig.begin_trace(111)
-      ffmodel.forward()
-      ffmodel.zero_gradients()
-      ffmodel.backward()
-      ffmodel.update()
-      if (epoch > 0):
-        ffconfig.end_trace(111)
+  
+  ffmodel.train((dataloader_input, dataloader_label), epochs)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
@@ -84,8 +63,7 @@ def top_level_task():
   accuracy = perf_metrics.get_accuracy()
   if accuracy < ModelAccuracy.MNIST_MLP.value:
     assert 0, 'Check Accuracy'
-
   
 if __name__ == "__main__":
-  print("mnist mlp")
+  print("mnist mlp onnx")
   top_level_task()
