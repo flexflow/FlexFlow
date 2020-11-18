@@ -29,9 +29,9 @@ CandleConfig::CandleConfig(void)
 {
   // Set default configurations here
   for (int i = 0; i < 3; i++)
-    dense_layers.push_back(1000);
+    dense_layers.push_back(4192);
   for (int i = 0; i < 3; i++)
-    dense_feature_layers.push_back(1000);
+    dense_feature_layers.push_back(4192);
   feature_shapes["dose"] = 1;
   feature_shapes["cell.rnaseq"] = 942;
   feature_shapes["drug.descriptors"] = 5270;
@@ -41,8 +41,8 @@ CandleConfig::CandleConfig(void)
   input_features["cell.rnaseq"] = "cell.rnaseq";
   input_features["drug1.descriptors"] = "drug.descriptors";
   input_features["drug1.fingerprints"] = "drug.fingerprints";
-  //input_features["drug2.descriptors"] = "drug.descriptors";
-  //input_features["drug2.fingerprints"] = "drug.fingerprints";
+  input_features["drug2.descriptors"] = "drug.descriptors";
+  input_features["drug2.fingerprints"] = "drug.fingerprints";
 }
 
 Tensor build_feature_model(FFModel* model, const Tensor& input,
