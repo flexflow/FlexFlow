@@ -70,7 +70,6 @@ struct Parameter : Tensor {
   };
   Parameter() {
     type = NONE;
-    pcname = "";
   }
   template <typename T>
   bool set_weights(const FFModel* model,
@@ -81,7 +80,7 @@ struct Parameter : Tensor {
                    T* data);
   std::vector<int> get_dims();
   CommType type;
-  std::string pcname; // indicating how the parameter is parallelized
+  // std::string pcname; // indicating how the parameter is parallelized
   // Op* op; // Pointer to the operator that owns this parameter
 };
 

@@ -101,7 +101,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
                                    TaskOptions& output)
 {
   unsigned long long task_hash = compute_task_hash(task);
-  if (task.task_id == SGD_UPD_TASK_ID) {
+  if (task.task_id == SGD_UPD_TASK_ID && false) {
     // For SGD Update, pick a processor from config
     // TODO: perform similar optimizations for other Optimizer
     MappingTagID hash = task.tag;
@@ -137,7 +137,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
   }
 
   DefaultMapper::select_task_options(ctx, task, output);
-  if ((task.task_id == SGD_UPD_TASK_ID)
+  if ((task.task_id == SGD_UPD_TASK_ID) && false
   && (cache_update_tasks.find(task_hash) == cache_update_tasks.end())) {
     cache_update_tasks[task_hash] = output.initial_proc;
     //printf("hash = %llu proc = %llu\n", task_hash, output.initial_proc.id);

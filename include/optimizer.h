@@ -17,6 +17,7 @@
 #define _FF_OPTIMIZER_H_
 
 #include "legion.h"
+#include "tensor.h"
 
 using namespace Legion;
 
@@ -49,6 +50,7 @@ public:
   double lr, momentum;
   bool nesterov;
   double weight_decay;
+  Parameter::CommType comm_type;
   std::map<LogicalRegion, Parameter> v_values;
 };
 
@@ -68,6 +70,7 @@ public:
                           Context ctx, Runtime* runtime);
   double alpha, beta1, beta2, weight_decay, epsilon;
   double alpha_t, beta1_t, beta2_t;
+  Parameter::CommType comm_type;
   std::map<LogicalRegion, Parameter> v_values, m_values;
 };
 #endif

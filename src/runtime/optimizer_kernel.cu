@@ -46,6 +46,7 @@ void SGDOptimizer::update_task(const Task* task,
                                Context ctx, Runtime* runtime)
 {
   const SGDOptimizer* op = (SGDOptimizer*) task->args;
+  FFHandler handler = *((FFHandler*) task->local_args);
   if (op->momentum > 0.0f) {
     assert(regions.size() == 3);
     assert(task->regions.size() == 3);
@@ -93,13 +94,33 @@ void SGDOptimizer::update_task(const Task* task,
       assert(false);
     }
   }
-  // Step 1: gather gradients in the first replica
-  for (int i = 1; i < num_replicas; i++) {
-    const float* src = w_grad_ptr + i * size;
-    apply_add_with_scale<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
-        (float*) w_grad_ptr, src, size, 1.0f);
+
+  // Use NCCL to sync gradients
+  if (op->comm_type == Parameter::NCCL) {
+    assert(num_replicas == 1);
+    checkCUDA(cudaDeviceSynchronize());
+    printf("Begin nccl allreduce: ptr(%p) nccl(%p) \n", w_grad_ptr, handler.nccl);
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+    cudaStream_t stream;
+    checkCUDA(cudaStreamCreate(&stream));
+    checkNCCL(ncclAllReduce(w_grad_ptr, (float*) w_grad_ptr, size, ncclFloat,
+        ncclSum, handler.nccl, stream));
+#elif
+    checkNCCL(ncclAllReduce(w_grad_ptr, (float*) w_grad_ptr, size, ncclFloat,
+        ncclSum, handler.nccl));
+#endif
+    printf("End nccl allreduce: ptr(%p) nccl(%p)\n", w_grad_ptr, handler.nccl);
+  } else if (op->comm_type == Parameter::PS) {
+    // Gather gradients in the first replica
+    for (int i = 1; i < num_replicas; i++) {
+      const float* src = w_grad_ptr + i * size;
+      apply_add_with_scale<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
+          (float*) w_grad_ptr, src, size, 1.0f);
+    }
+    checkCUDA(cudaDeviceSynchronize());
+  } else {
+    assert(false);
   }
-  checkCUDA(cudaDeviceSynchronize());
   // Step 2: SGD update
   sgd_update<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
       size, op->lr, op->weight_decay, op->momentum, op->nesterov,
@@ -161,6 +182,7 @@ void AdamOptimizer::update_task(const Task* task,
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   const AdamOptimizer* op = (AdamOptimizer*) task->args;
+  FFHandler handler = *((FFHandler*) task->local_args);
   Domain domain = runtime->get_index_space_domain(ctx,
       task->regions[1].region.get_index_space());
   const float *w_grad_ptr = NULL;
@@ -217,13 +239,29 @@ void AdamOptimizer::update_task(const Task* task,
       assert(false);
     }
   }
-  // Step 1: gather gradients in the first replica
-  for (int i = 1; i < num_replicas; i++) {
-    const float* src = w_grad_ptr + i * size;
-    add_kernel<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
-        size, 1.0f, src, (float*)w_grad_ptr);
+  // Use NCCL to sync gradients
+  if (op->comm_type == Parameter::NCCL) {
+    assert(num_replicas == 1);
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+    cudaStream_t stream;
+    checkCUDA(cudaStreamCreate(&stream));
+    checkNCCL(ncclAllReduce(w_grad_ptr, (float*)w_grad_ptr, size, ncclFloat,
+        ncclSum, handler.nccl, stream));
+#elif
+    checkNCCL(ncclAllReduce(w_grad_ptr, (float*)w_grad_ptr, size, ncclFloat,
+        ncclSum, handler.nccl));
+#endif
+  } else if (op->comm_type == Parameter::PS) {
+    // Gather gradients in the first replica
+    for (int i = 1; i < num_replicas; i++) {
+      const float* src = w_grad_ptr + i * size;
+      add_kernel<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
+          size, 1.0f, src, (float*)w_grad_ptr);
+    }
+    checkCUDA(cudaDeviceSynchronize());
+  } else {
+    assert(false);
   }
-  checkCUDA(cudaDeviceSynchronize());
   //fprintf(stderr, "alpha = %.8lf alpha_t = %.8lf decay = %.8lf\n",
   //        op->alpha, op->alpha_t, op->weight_decay);
   // Step 2: Adam update

@@ -26,7 +26,7 @@ Parameter create_replica_parameter(const FFModel* model,
   Runtime* runtime = model->config.lg_hlr;
   Parameter v;
   v.type = p.type;
-  v.pcname = p.pcname;
+  v.owner_op = p.owner_op;
   v.region = runtime->create_logical_region(
       ctx, p.region.get_index_space(), p.region.get_field_space());
   if (v.type == Parameter::PS) {
@@ -94,11 +94,13 @@ void SGDOptimizer::update(const Parameter* p)
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
+  assert(p->owner_op != NULL);
   if (p->type == Parameter::PS) {
+    this->comm_type = Parameter::NCCL;
     TaskLauncher launcher(SGD_UPD_TASK_ID,
         TaskArgument(this, sizeof(SGDOptimizer)),
         Predicate::TRUE_PRED, 0/*mapper_id*/,
-        FFConfig::get_hash_id(std::string(p->pcname)));
+        FFConfig::get_hash_id(std::string(p->owner_op->name)));
     // regions[0]: region_grad
     launcher.add_region_requirement(
         RegionRequirement(p->region_grad,
@@ -119,12 +121,34 @@ void SGDOptimizer::update(const Parameter* p)
     }
     runtime->execute_task(ctx, launcher);
   } else if (p->type == Parameter::NCCL) {
-    IndexSpace task_is = model->get_task_is(p->numDim, p->pcname);
+    IndexSpace task_is = p->owner_op->task_is;
+    assert(task_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
+    Domain domain = runtime->get_index_space_domain(ctx, task_is);
+    switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+      case DIM: \
+      { \
+        Rect<DIM> rect = domain; \
+        ParallelConfig pc; \
+        model->config.find_parallel_config(DIM, p->owner_op->name, pc); \
+        int idx = 0; \
+        for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+          FFHandler handle = model->handlers[pc.device_ids[idx++]]; \
+          argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
+        } \
+        break; \
+      }
+      LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+      default:
+        assert(false);
+    }
+    this->comm_type = Parameter::NCCL;
     IndexLauncher launcher(SGD_UPD_TASK_ID, task_is,
         TaskArgument(this, sizeof(SGDOptimizer)), argmap,
-        Predicate::TRUE_PRED, 0/*mapper_id*/,
-        FFConfig::get_hash_id(std::string(p->pcname)));
+        Predicate::TRUE_PRED, true/*must_epoch*/, 0/*mapper_id*/,
+        FFConfig::get_hash_id(p->owner_op->name));
     // regions[0]: region_grad
     launcher.add_region_requirement(
         RegionRequirement(p->part_grad, 0/*projection id*/,
@@ -143,7 +167,10 @@ void SGDOptimizer::update(const Parameter* p)
                             READ_WRITE, EXCLUSIVE, v_values[p->region].region));
       launcher.add_field(2, FID_DATA);
     }
+    //MustEpochLauncher must_epoch_launcher;
+    //must_epoch_launcher.add_index_task(launcher);
     runtime->execute_index_space(ctx, launcher);
+    //runtime->execute_must_epoch(ctx, must_epoch_launcher);
   } else {
     assert(false);
   }
@@ -220,11 +247,13 @@ void AdamOptimizer::update(const Parameter* p)
   Runtime* runtime = model->config.lg_hlr;
   assert(v_values.find(p->region) != v_values.end());
   assert(m_values.find(p->region) != m_values.end());
+  assert(p->owner_op != NULL);
   if (p->type == Parameter::PS) {
+    this->comm_type = Parameter::PS;
     TaskLauncher launcher(ADAM_UPD_TASK_ID,
         TaskArgument(this, sizeof(AdamOptimizer)),
         Predicate::TRUE_PRED, 0/*mapper_id*/,
-        FFConfig::get_hash_id(std::string(p->pcname)));
+        FFConfig::get_hash_id(std::string(p->owner_op->name)));
     // regions[0]: region_grad
     launcher.add_region_requirement(
         RegionRequirement(p->region_grad,
@@ -247,12 +276,34 @@ void AdamOptimizer::update(const Parameter* p)
     launcher.add_field(3, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if (p->type == Parameter::NCCL) {
-    IndexSpace task_is = model->get_task_is(p->numDim, p->pcname);
+    IndexSpace task_is = p->owner_op->task_is;
+    assert(task_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
+    Domain domain = runtime->get_index_space_domain(ctx, task_is);
+    switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+      case DIM: \
+      { \
+        Rect<DIM> rect = domain; \
+        ParallelConfig pc; \
+        model->config.find_parallel_config(DIM, p->owner_op->name, pc); \
+        int idx = 0; \
+        for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+          FFHandler handle = model->handlers[pc.device_ids[idx++]]; \
+          argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
+        } \
+        break; \
+      }
+      LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+      default:
+        assert(false);
+    }
+    this->comm_type = Parameter::NCCL;
     IndexLauncher launcher(ADAM_UPD_TASK_ID, task_is,
         TaskArgument(this, sizeof(AdamOptimizer)), argmap,
-        Predicate::TRUE_PRED, 0/*mapper_id*/,
-        FFConfig::get_hash_id(p->pcname));
+        Predicate::TRUE_PRED, true/*must_epoch*/, 0/*mapper_id*/,
+        FFConfig::get_hash_id(p->owner_op->name));
     // regions[0]: region_grad
     launcher.add_region_requirement(
         RegionRequirement(p->part_grad, 0/*projection id*/,
@@ -273,7 +324,10 @@ void AdamOptimizer::update(const Parameter* p)
         RegionRequirement(m_values[p->region].part, 0/*projection id*/,
                           READ_WRITE, EXCLUSIVE, m_values[p->region].region));
     launcher.add_field(3, FID_DATA);
-    runtime->execute_index_space(ctx, launcher);
+    MustEpochLauncher must_epoch_launcher;
+    must_epoch_launcher.add_index_task(launcher);
+    //runtime->execute_index_space(ctx, launcher);
+    runtime->execute_must_epoch(ctx, must_epoch_launcher);
   } else {
     assert(false);
   }

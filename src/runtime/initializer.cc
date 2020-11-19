@@ -43,31 +43,21 @@ void GlorotUniform::init(const FFModel* ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if (p->type == Parameter::NCCL) {
-    assert(p->numDim >= 2);
-    switch (p->numDim) {
-#define DIMFUNC(DIM) \
-      case DIM: \
-      { \
-        ArgumentMap argmap; \
-        IndexSpaceT<DIM> task_is = (IndexSpaceT<DIM>) ff->get_task_is(DIM, p->pcname); \
-        IndexLauncher launcher(GLOROT_INIT_TASK_ID, task_is, \
-                               TaskArgument(this, sizeof(GlorotUniform)), argmap, \
-                               Predicate::TRUE_PRED, false, 0, \
-                               FFConfig::get_hash_id(p->pcname)); \
-        launcher.add_region_requirement( \
-            RegionRequirement(p->part, 0/*projection id*/, \
-                WRITE_ONLY, EXCLUSIVE, p->region)); \
-        launcher.add_field(0, FID_DATA); \
-        runtime->execute_index_space(ctx, launcher); \
-        break; \
-      }
-      LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-      default:
-      {
-        assert(false);
-      }
-    }
+    assert(p->owner_op != NULL);
+    IndexSpace task_is = p->owner_op->task_is;
+    assert(task_is != IndexSpace::NO_SPACE);
+    Domain domain = runtime->get_index_space_domain(ctx, task_is);
+    assert(domain.get_dim() >= 2);
+    ArgumentMap argmap;
+    IndexLauncher launcher(GLOROT_INIT_TASK_ID, task_is,
+        TaskArgument(this, sizeof(GlorotUniform)), argmap,
+        Predicate::TRUE_PRED, false, 0,
+        FFConfig::get_hash_id(p->owner_op->name));
+    launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection id*/,
+            WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
   } else {
     assert(false);
   }
@@ -93,28 +83,19 @@ void ZeroInitializer::init(const FFModel* ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if (p->type == Parameter::NCCL) {
-    switch (p->numDim) {
-#define DIMFUNC(DIM) \
-      case DIM: \
-      { \
-        ArgumentMap argmap; \
-        IndexSpaceT<DIM> task_is = (IndexSpaceT<DIM>) ff->get_task_is(DIM, p->pcname); \
-        IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is, \
-                               TaskArgument(NULL, 0), argmap, \
-                               Predicate::TRUE_PRED, false, 0, \
-                               FFConfig::get_hash_id(p->pcname)); \
-        launcher.add_region_requirement( \
-            RegionRequirement(p->part, 0/*projection id*/, \
-                WRITE_ONLY, EXCLUSIVE, p->region)); \
-        launcher.add_field(0, FID_DATA); \
-        runtime->execute_index_space(ctx, launcher); \
-        break; \
-      }
-      LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-      default:
-        assert(false);
-    }
+    assert(p->owner_op != NULL);
+    IndexSpace task_is = p->owner_op->task_is;
+    assert(task_is != IndexSpace::NO_SPACE);
+    ArgumentMap argmap;
+    IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
+       TaskArgument(NULL, 0), argmap,
+       Predicate::TRUE_PRED, false, 0,
+       FFConfig::get_hash_id(p->owner_op->name));
+    launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection id*/,
+            WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
   } else {
     assert(false);
   }
@@ -195,28 +176,19 @@ void UniformInitializer::init(const FFModel* ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if (p->type == Parameter::NCCL) {
-    switch (p->numDim) {
-#define DIMFUNC(DIM) \
-      case DIM: \
-      { \
-        ArgumentMap argmap; \
-        IndexSpaceT<DIM> task_is = (IndexSpaceT<DIM>) ff->get_task_is(DIM, p->pcname); \
-        IndexLauncher launcher(UNIFORM_INIT_TASK_ID, task_is, \
-            TaskArgument(this, sizeof(UniformInitializer)), argmap, \
-            Predicate::TRUE_PRED, false, 0, \
-            FFConfig::get_hash_id(p->pcname)); \
-        launcher.add_region_requirement( \
-            RegionRequirement(p->part, 0/*projection id*/, \
-                WRITE_ONLY, EXCLUSIVE, p->region)); \
-        launcher.add_field(0, FID_DATA); \
-        runtime->execute_index_space(ctx, launcher); \
-        break; \
-      }
-      LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-      default:
-        assert(false);
-    }
+    assert(p->owner_op != NULL);
+    IndexSpace task_is = p->owner_op->task_is;
+    assert(task_is != IndexSpace::NO_SPACE);
+    ArgumentMap argmap;
+    IndexLauncher launcher(UNIFORM_INIT_TASK_ID, task_is,
+        TaskArgument(this, sizeof(UniformInitializer)), argmap,
+        Predicate::TRUE_PRED, false, 0,
+        FFConfig::get_hash_id(p->owner_op->name));
+    launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection id*/,
+            WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
   } else {
     assert(false);
   }
@@ -242,28 +214,19 @@ void NormInitializer::init(const FFModel* ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if (p->type == Parameter::NCCL) {
-    switch (p->numDim) {
-#define DIMFUNC(DIM) \
-      case DIM: \
-      { \
-        ArgumentMap argmap; \
-        IndexSpaceT<DIM> task_is = (IndexSpaceT<DIM>) ff->get_task_is(DIM, p->pcname); \
-        IndexLauncher launcher(NORMAL_INIT_TASK_ID, task_is, \
-            TaskArgument(this, sizeof(NormInitializer)), argmap, \
-            Predicate::TRUE_PRED, false, 0, \
-            FFConfig::get_hash_id(p->pcname)); \
-        launcher.add_region_requirement( \
-            RegionRequirement(p->part, 0/*projection id*/, \
-                WRITE_ONLY, EXCLUSIVE, p->region)); \
-        launcher.add_field(0, FID_DATA); \
-        runtime->execute_index_space(ctx, launcher); \
-        break; \
-      }
-      LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-      default:
-        assert(false);
-    }
+    assert(p->owner_op != NULL);
+    IndexSpace task_is = p->owner_op->task_is;
+    assert(task_is != IndexSpace::NO_SPACE);
+    ArgumentMap argmap;
+    IndexLauncher launcher(NORMAL_INIT_TASK_ID, task_is,
+        TaskArgument(this, sizeof(NormInitializer)), argmap,
+        Predicate::TRUE_PRED, false, 0,
+        FFConfig::get_hash_id(p->owner_op->name));
+    launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection id*/,
+            WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
   } else {
     assert(false);
   }
@@ -292,28 +255,19 @@ void ConstantInitializer::init(const FFModel* ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if(p->type == Parameter::NCCL) {
-    switch (p->numDim) {
-#define DIMFUNC(DIM) \
-      case DIM: \
-      { \
-        ArgumentMap argmap; \
-        IndexSpaceT<DIM> task_is = (IndexSpaceT<DIM>) ff->get_task_is(DIM, p->pcname); \
-        IndexLauncher launcher(CONSTANT_INIT_TASK_ID, task_is, \
-            TaskArgument(this, sizeof(ConstantInitializer)), argmap, \
-            Predicate::TRUE_PRED, false, 0, \
-            FFConfig::get_hash_id(p->pcname)); \
-        launcher.add_region_requirement( \
-            RegionRequirement(p->part, 0/*projection id*/, \
-                WRITE_ONLY, EXCLUSIVE, p->region)); \
-        launcher.add_field(0, FID_DATA); \
-        runtime->execute_index_space(ctx, launcher); \
-        break; \
-      }
-      LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-      default:
-        assert(false);
-    }
+    assert(p->owner_op != NULL);
+    IndexSpace task_is = p->owner_op->task_is;
+    assert(task_is != IndexSpace::NO_SPACE);
+    ArgumentMap argmap;
+    IndexLauncher launcher(CONSTANT_INIT_TASK_ID, task_is,
+        TaskArgument(this, sizeof(ConstantInitializer)), argmap,
+        Predicate::TRUE_PRED, false, 0,
+        FFConfig::get_hash_id(p->owner_op->name));
+    launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection id*/,
+            WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
   } else {
     assert(false);
   }

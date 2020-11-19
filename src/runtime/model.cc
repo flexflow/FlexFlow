@@ -669,7 +669,7 @@ Parameter FFModel::create_linear_weight(Op* op,
     num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
   Parameter weight;
   weight.type = comm_type;
-  weight.pcname = op->name;
+  weight.owner_op = op;
   weight.numDim = NDIM;
   weight.data_type = data_type;
   for (int i = 0; i < NDIM; i++)
@@ -739,7 +739,7 @@ Parameter FFModel::create_linear_weight(Op* op,
     assert(runtime->is_index_partition_complete(ctx, ip));
     assert(runtime->is_index_partition_disjoint(ctx, ip));
     weight.part = runtime->get_logical_partition(
-        ctx, weight.region_grad, ip);
+        ctx, weight.region, ip);
   } else {
     assert(false);
   }
@@ -801,7 +801,7 @@ Parameter FFModel::create_conv_weight(Op* op,
   assert(num_par_c == 1);
   Parameter weight;
   weight.type = comm_type;
-  weight.pcname = op->name;
+  weight.owner_op = op;
   weight.numDim = NDIM;
   weight.data_type = data_type;
   for (int i = 0; i < NDIM; i++)
@@ -992,6 +992,8 @@ IndexSpace FFModel::get_or_create_task_is(ParallelConfig pc)
     default:
       assert(false);
   }
+  printf("ndim(%d) dims[%d %d %d %d]\n",
+      pc.nDims, pc.dim[0], pc.dim[1], pc.dim[2], pc.dim[3]);
   taskIs[pc] = task_is;
   return task_is;
 }
@@ -1087,7 +1089,6 @@ void FFModel::backward()
 void FFModel::update()
 {
   optimizer->next();
-  //return;
   for (size_t i = 0; i < parameters.size(); i++) {
     optimizer->update(&(parameters[i]));
   }
