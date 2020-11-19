@@ -75,9 +75,6 @@ def inception():
   #print(dims)
   input = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
-  # dims_label = [ffconfig.get_batch_size(), 1]
-  # #print(dims)
-  # label = ffmodel.create_tensor(dims_label, DataType.DT_INT32)
 
   t = ffmodel.conv2d(input, 32, 3, 3, 2, 2, 0, 0)
   t = ffmodel.conv2d(t, 32, 3, 3, 1, 1, 0, 0)
@@ -107,9 +104,6 @@ def inception():
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
   label = ffmodel.get_label_tensor()
 
-  # Data Loader
-  # alexnetconfig = NetConfig()
-  # dataloader = DataLoader4D(ffmodel, input, label, ffnetconfig=alexnetconfig)
   num_samples = 10000
 
   (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
@@ -124,9 +118,6 @@ def inception():
     image = np.array(pil_image, dtype=np.float32)
     image = image.transpose(2, 0, 1)
     full_input_np[i, :, :, :] = image
-    if (i == 0):
-      print(image)
-
 
   full_input_np /= 255
   print(full_input_np.shape)
@@ -159,24 +150,8 @@ def inception():
   epochs = ffconfig.get_epochs()
 
   ts_start = ffconfig.get_current_time()
-  for epoch in range(0,epochs):
-    # dataloader.reset()
-    dataloader_input.reset()
-    dataloader_label.reset()
-    ffmodel.reset_metrics()
-    iterations = num_samples / ffconfig.get_batch_size()
-    for iter in range(0, int(iterations)):
-      #dataloader.next_batch(ffmodel)
-      dataloader_input.next_batch(ffmodel)
-      dataloader_label.next_batch(ffmodel)
-      if (epoch > 0):
-        ffconfig.start_trace(111)
-      ffmodel.forward()
-      ffmodel.zero_gradients()
-      ffmodel.backward()
-      ffmodel.update()
-      if (epoch > 0):
-        ffconfig.end_trace(111)
+  
+  ffmodel.train((dataloader_input, dataloader_label), epochs)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
@@ -193,5 +168,5 @@ def inception():
   # cbias_tensor.inline_unmap(ffconfig)
 
 if __name__ == "__main__":
-  print("alexnet")
+  print("inception")
   inception()

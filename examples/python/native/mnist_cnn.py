@@ -25,15 +25,12 @@ def top_level_task():
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
   ffmodel = FFModel(ffconfig)
 
-  dims1 = [ffconfig.get_batch_size(), 1, 28, 28]
-  input1 = ffmodel.create_tensor(dims1, DataType.DT_FLOAT);
-
-  # dims_label = [ffconfig.get_batch_size(), 1]
-  # label = ffmodel.create_tensor(dims_label, DataType.DT_INT32);
+  dims_input = [ffconfig.get_batch_size(), 1, 28, 28]
+  input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT);
 
   num_samples = 60000
 
-  t = ffmodel.conv2d(input1, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU, True)
+  t = ffmodel.conv2d(input_tensor, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU, True)
   t = ffmodel.conv2d(t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU, True)
   t = ffmodel.pool2d(t, 2, 2, 2, 2, 0, 0)
   t = ffmodel.flat(t);
@@ -44,7 +41,7 @@ def top_level_task():
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
-  label = ffmodel.get_label_tensor()
+  label_tensor = ffmodel.get_label_tensor()
 
   img_rows, img_cols = 28, 28
   (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -62,11 +59,9 @@ def top_level_task():
 
   full_input.attach_numpy_array(ffconfig, x_train)
   full_label.attach_numpy_array(ffconfig, y_train)
-  print(y_train)
 
-  #dataloader = DataLoader2D(ffmodel, input1, label, full_input, full_label, num_samples)
-  dataloader_input = SingleDataLoader(ffmodel, input1, full_input, num_samples, DataType.DT_FLOAT)
-  dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
+  dataloader_input = SingleDataLoader(ffmodel, input_tensor, full_input, num_samples, DataType.DT_FLOAT)
+  dataloader_label = SingleDataLoader(ffmodel, label_tensor, full_label, num_samples, DataType.DT_INT32)
 
   full_input.detach_numpy_array(ffconfig)
   full_label.detach_numpy_array(ffconfig)
@@ -76,24 +71,8 @@ def top_level_task():
   epochs = ffconfig.get_epochs()
 
   ts_start = ffconfig.get_current_time()
-  for epoch in range(0,epochs):
-    dataloader_input.reset()
-    dataloader_label.reset()
-    # dataloader.reset()
-    ffmodel.reset_metrics()
-    iterations = num_samples / ffconfig.get_batch_size()
-    for iter in range(0, int(iterations)):
-      dataloader_input.next_batch(ffmodel)
-      dataloader_label.next_batch(ffmodel)
-      #dataloader.next_batch(ffmodel)
-      if (epoch > 0):
-        ffconfig.begin_trace(111)
-      ffmodel.forward()
-      ffmodel.zero_gradients()
-      ffmodel.backward()
-      ffmodel.update()
-      if (epoch > 0):
-        ffconfig.end_trace(111)
+  
+  ffmodel.train((dataloader_input, dataloader_label), epochs)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
@@ -104,21 +83,6 @@ def top_level_task():
   if accuracy < ModelAccuracy.MNIST_CNN.value:
     assert 0, 'Check Accuracy'
 
-  dense1 = ffmodel.get_layer_by_id(0)
-
-  label.inline_map(ffconfig)
-  label_array = label.get_array(ffconfig, DataType.DT_INT32)
-  print(label_array.shape)
-  print(label_array)
-  label.inline_unmap(ffconfig)
-
-  input1.inline_map(ffconfig)
-  input1_array = input1.get_array(ffconfig, DataType.DT_FLOAT)
-  print(input1_array.shape)
-  print(input1_array[10, :, :, :])
-  input1.inline_unmap(ffconfig)
-
-
 if __name__ == "__main__":
-  print("mnist mlp")
+  print("mnist cnn")
   top_level_task()

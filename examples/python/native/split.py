@@ -12,14 +12,13 @@ def top_level_task():
   ffmodel = FFModel(ffconfig)
 
   dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
-  input = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
+  input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
-  t1 = ffmodel.conv2d(input, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t2 = ffmodel.conv2d(input, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
-  t3 = ffmodel.conv2d(input, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t1 = ffmodel.conv2d(input_tensor, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t2 = ffmodel.conv2d(input_tensor, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
+  t3 = ffmodel.conv2d(input_tensor, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
   t = ffmodel.concat([t1, t2, t3], 1)
   ts = ffmodel.split(t, 3, 1)
-  print("new", ts[0].handle.impl)
   t = ffmodel.conv2d(ts[1], 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
   t = ffmodel.pool2d(t, 2, 2, 2, 2, 0, 0,)
   t = ffmodel.conv2d(t, 64, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
@@ -29,12 +28,11 @@ def top_level_task():
   t = ffmodel.dense(t, 512, ActiMode.AC_MODE_RELU)
   t = ffmodel.dense(t, 10)
   t = ffmodel.softmax(t)
-  print("end model", ts[0].handle.impl)
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
-  label = ffmodel.get_label_tensor()
+  label_tensor = ffmodel.get_label_tensor()
 
   num_samples = 10000
 
@@ -63,8 +61,8 @@ def top_level_task():
   full_input.attach_numpy_array(ffconfig, full_input_array)
   full_label.attach_numpy_array(ffconfig, full_label_array)
 
-  dataloader_input = SingleDataLoader(ffmodel, input, full_input, num_samples, DataType.DT_FLOAT)
-  dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
+  dataloader_input = SingleDataLoader(ffmodel, input_tensor, full_input, num_samples, DataType.DT_FLOAT)
+  dataloader_label = SingleDataLoader(ffmodel, label_tensor, full_label, num_samples, DataType.DT_INT32)
 
   full_input.detach_numpy_array(ffconfig)
   full_label.detach_numpy_array(ffconfig)
@@ -79,24 +77,8 @@ def top_level_task():
   #epochs = 10
 
   ts_start = ffconfig.get_current_time()
-  for epoch in range(0,epochs):
-    dataloader_input.reset()
-    dataloader_label.reset()
-    ffmodel.reset_metrics()
-    iterations = int(num_samples / ffconfig.get_batch_size())
-    print(iterations, num_samples)
 
-    for iter in range(0, int(iterations)):
-      dataloader_input.next_batch(ffmodel)
-      dataloader_label.next_batch(ffmodel)
-      if (epoch > 0):
-        ffconfig.begin_trace(111)
-      ffmodel.forward()
-      ffmodel.zero_gradients()
-      ffmodel.backward()
-      ffmodel.update()
-      if (epoch > 0):
-        ffconfig.end_trace(111)
+  ffmodel.train((dataloader_input, dataloader_label), epochs)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
@@ -107,9 +89,6 @@ def top_level_task():
   # if accuracy < ModelAccuracy.CIFAR10_CNN.value:
   #   assert 0, 'Check Accuracy'
 
-  print("end", ts[0].handle.impl)
-
-
 if __name__ == "__main__":
-  print("cifar10 cnn")
+  print("cifar10 cnn split")
   top_level_task()

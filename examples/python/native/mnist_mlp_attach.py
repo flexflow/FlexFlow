@@ -52,11 +52,8 @@ def top_level_task():
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
   ffmodel = FFModel(ffconfig)
 
-  dims1 = [ffconfig.get_batch_size(), 784]
-  input1 = ffmodel.create_tensor(dims1, DataType.DT_FLOAT);
-
-  # dims_label = [ffconfig.get_batch_size(), 1]
-  # label = ffmodel.create_tensor(dims_label, DataType.DT_INT32);
+  dims_input = [ffconfig.get_batch_size(), 784]
+  input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT);
 
   num_samples = 60000
 
@@ -71,7 +68,7 @@ def top_level_task():
   print(x_train.shape[0], 'train samples')
   print(y_train.shape)
 
-  t2 = ffmodel.dense(input1, 512, ActiMode.AC_MODE_RELU)
+  t2 = ffmodel.dense(input_tensor, 512, ActiMode.AC_MODE_RELU)
   t3 = ffmodel.dense(t2, 512, ActiMode.AC_MODE_RELU)
   t4 = ffmodel.dense(t3, 10)
   t5 = ffmodel.softmax(t4)
@@ -79,10 +76,10 @@ def top_level_task():
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
-  label = ffmodel.get_label_tensor()
+  label_tensor = ffmodel.get_label_tensor()
 
-  next_batch(0, x_train, input1, ffconfig)
-  next_batch_label(0, y_train, label, ffconfig)
+  next_batch(0, x_train, input_tensor, ffconfig)
+  next_batch_label(0, y_train, label_tensor, ffconfig)
 
   ffmodel.init_layers()
 

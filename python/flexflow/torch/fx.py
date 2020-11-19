@@ -36,6 +36,10 @@ class FunctionNode(Node):
 class OutputNode(Node):
   def __init__(self, name, inedges):
     super(OutputNode, self).__init__(name, inedges)
+    
+class InputNode(Node):
+  def __init__(self, name):
+    super(InputNode, self).__init__(name, None)
 
 def __symbolic_trace(model):
   assert isinstance(model, torch.nn.Module), "model must be a torch.nn.Module"
@@ -50,8 +54,7 @@ def __symbolic_trace(model):
       assert node.target in modules_by_name, "cannot find module %s in model".format(node.target)
       graph.append(ModuleNode(node.name, node.args, modules_by_name[node.target]))
     elif node.op == "placeholder":
-      # need to check that the users have provided placeholder shape information
-      pass
+      graph.append(InputNode(node.name))
     elif node.op == "get_attr":
       pass
     elif node.op == "call_function" or node.op == "call_method":
@@ -71,21 +74,27 @@ def torch_to_flexflow(model, filename):
     op_str = node.name + ", "
     
     # op inedges
-    inedges = node.inedges[0]
-    if type(inedges) == list:
+    #input
+    if node.inedges == None:
       pass
-    elif type(inedges) == tuple:
-      pass
+    #others
     else:
-      inedges = [inedges]
-    for inedge in inedges:
-      if inedge.name == "x":
-        op_str = op_str + "input" + ":"
+      inedges = node.inedges[0]
+      if type(inedges) == list:
+        pass
+      elif type(inedges) == tuple:
+        pass
       else:
-        op_str = op_str + inedge.name + ":"
+        inedges = [inedges]
+      for inedge in inedges:
+          op_str = op_str + inedge.name + ":"
     op_str = op_str + ", "
     
     #op type
+    if type(node) == InputNode:
+      assert node.inedges == None, "wrong format"
+      op_str = op_str + str(enum_to_int(OpType, OpType.INPUT)) + "\n"
+      
     if type(node) == OutputNode:
       #FIXME assume there is 1 output
       assert len(node.inedges) == 1, "wrong format"
@@ -174,6 +183,9 @@ def torch_to_flexflow(model, filename):
         
       elif type(node.module) == torch.nn.modules.activation.ELU:
         op_str = op_str + str(enum_to_int(OpType, OpType.ELU)) + "\n"
+        
+      elif type(node.module) == torch.nn.modules.activation.Softmax:
+        op_str = op_str + str(enum_to_int(OpType, OpType.SOFTMAX)) + "\n"
       
       else:
         print(node.module)
