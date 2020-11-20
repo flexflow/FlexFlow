@@ -79,14 +79,19 @@ For users that prefer to program in C/C++. FlexFlow supports a C++ program infer
 ### Command-Line Flags
 In addition to setting runtime configurations in a FlexFlow Python/C++ program, the FlexFlow runtime also accepts command-line arguments for various runtime parameters: 
 
+Training flags:
 * `-e` or `--epochs`: number of total epochs to run (default: 1)
 * `-b` or `--batch-size`: global batch size in each iteration (default: 64)
-* `-p` or `--print-freq`: print frequency (default 10)
+* `-p` or `--print-freq`: print frequency (default: 10)
 * `-d` or `--dataset`: path to the training dataset. If not set, synthetic data is used to conduct training. 
-* `-ll:gpu`: number of GPU processors to use on each node
+* `-ll:gpu`: number of GPU processors to use on each node (default: 0)
 * `-ll:fsize`: size of device memory on each GPU (in MB)
 * `-ll:zsize`: size of zero-copy memory (pinned DRAM with direct GPU access) on each node (in MB). This is used for prefecthing training images from disk.
 * `-ll:cpu`: number of data loading workers (default: 4)
+* `--nodes`: number of compute nodes to use for training (default: 1)
+* `-dm:memoize`: enable the FlexFlow memoization optimizations to reduce runtime overhead (default: disable)
+
+For auto-tuning related flags: see [performance autotuning](SEARCH.md).
 
 ### Contributing
 Please let us know if you encounter any bugs or have any suggestions by [submitting an issue](https://github.com/flexflow/flexflow/issues).
