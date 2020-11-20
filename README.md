@@ -5,9 +5,7 @@ FlexFlow is a deep learning framework that accelerates distributed DNN training 
 ## Install FlexFlow
 To install FlexFlow from source code, please read the [instructions](INSTALL.md). If you would like to quickly try FlexFlow, we also provide prebuilt [docker images](INSTALL.md) with all dependencies pre-installed. You can also use `conda` to install the FlexFlow Python package (coming soon).
 
-## Use FlexFlow
-
-### TensorFlow Keras Support
+## TensorFlow Keras Support
 Users can use FlexFlow to accelerate the training procedure of existing TensorFlow Keras models by just changing the following import header lines.
 ```python
 from flexflow.keras.models import Model, Sequential
@@ -38,7 +36,7 @@ During model compilation (i.e., `model.compile` in Keras), FlexFlow can [autotun
 
 **More FlexFlow Keras examples**: see the [keras examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/keras).
 
-### PyTorch Support
+## PyTorch Support
 Users can also use FlexFlow to optimize the parallelization performance of existing PyTorch models in two steps. First, a PyTorch model can be exported to the FlexFlow model format using `flexflow.torch.fx.torch_to_flexflow`.
 ```python
 import torch
@@ -65,18 +63,18 @@ def top_level_task():
 
 **More FlexFlow PyTorch examples**: see the [pytorch examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/pytorch).
 
-### ONNX Support
+## ONNX Support
 Similar to the PyTorch front-end, FlexFlow also supports training existing ONNX models by loading the models using `flexflow.onnx.model.ONNXModel`.
 
 **More FlexFlow ONNX examples**: see the [ONNX examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/keras).
 
-### C++ Interface
+## C++ Interface
 For users that prefer to program in C/C++. FlexFlow supports a C++ program inference that is equivalent to its Python APIs.
 
 **More FlexFlow C++ examples**: see the [C++ examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/c++).
 
 
-### Command-Line Flags
+## Command-Line Flags
 In addition to setting runtime configurations in a FlexFlow Python/C++ program, the FlexFlow runtime also accepts command-line arguments for various runtime parameters: 
 
 Training flags:
@@ -93,20 +91,20 @@ Training flags:
 
 For auto-tuning related flags: see [performance autotuning](SEARCH.md).
 
-### Contributing
+## Contributing
 Please let us know if you encounter any bugs or have any suggestions by [submitting an issue](https://github.com/flexflow/flexflow/issues).
 
 We welcome all contributions to FlexFlow from bug fixes to new features and extensions.
 
 Please subscribe to the FlexFlow users mailing list for 
 
-### Citations
+## Citations
 * Zhihao Jia, Matei Zaharia, and Alex Aiken. [Beyond Data and Model Parallelism for Deep Neural Networks](https://cs.stanford.edu/~zhihao/papers/sysml19a.pdf). In Proceedings of the 2nd Conference on Machine Learning and Systems (MLSys), Palo Alto, CA, April 2019.
 
 * Zhihao Jia, Sina Lin, Charles R. Qi, and Alex Aiken. [Exploring Hidden Dimensions in Parallelizing Convolutional Neural Networks](http://proceedings.mlr.press/v80/jia18a/jia18a.pdf). In Proceedings of the International Conference on Machine Learning (ICML), Stockholm, Sweden, July 2018.
 
-### The Team
+## The Team
 FlexFlow is developed and maintained by teams at CMU, Facebook, Los Alamos National Lab, MIT, and Stanford (alphabetically).
 
-### License
+## License
 FlexFlow uses Apache License 2.0.
