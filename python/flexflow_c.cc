@@ -992,7 +992,7 @@ flexflow_parameter_set_weights_float(
   for (int i = 0; i < num_dim; i++ ) {
     dims_vec.push_back(dims[i]);
   }
-  return handle->set_weights<float>(*model, dims_vec, data);
+  return handle->set_weights<float>(model, dims_vec, data);
 }
 
 bool
@@ -1003,7 +1003,7 @@ flexflow_parameter_get_weights_float(
 {
   Parameter *handle = FFCObjectWrapper::unwrap(handle_);
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
-  return handle->get_weights<float>(*model, data);
+  return handle->get_weights<float>(model, data);
 }
 
 // -----------------------------------------------------------------------

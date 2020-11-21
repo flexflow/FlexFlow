@@ -23,9 +23,9 @@ using namespace Legion;
 
 #include "mapper.h"
 
-enum MainTaskIDs {
-  MAIN_TASK_ID = 111,
-};
+//enum MainTaskIDs {
+//  PYTHON_TOP_LEVEL_TASK_ID = 11111,
+//};
 
 VariantID preregister_python_task_variant(
   const TaskVariantRegistrar &registrar,
@@ -83,7 +83,7 @@ int main(int argc, char **argv)
   Realm::Python::PythonModule::import_python_module("flexflow.core");
 
   {
-    TaskVariantRegistrar registrar(MAIN_TASK_ID, "flexflow_top_level_task");
+    TaskVariantRegistrar registrar(PYTHON_TOP_LEVEL_TASK_ID, "flexflow_top_level_task");
     registrar.add_constraint(ProcessorConstraint(Processor::PY_PROC));
     registrar.set_replicable();
     preregister_python_task_variant(registrar, "flexflow.core", "flexflow_top_level_task");
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
   register_flexflow_tasks();
   
 
-  Runtime::set_top_level_task_id(MAIN_TASK_ID);
+  Runtime::set_top_level_task_id(PYTHON_TOP_LEVEL_TASK_ID);
   
   Runtime::add_registration_callback(update_mappers);
   

@@ -143,6 +143,23 @@ void FFMapper::select_task_options(const MapperContext ctx,
   output.stealable = false;
   output.map_locally = true;
 
+  if (task.task_id == STRATEGY_SEARCH_TASK_ID) {
+    output.initial_proc = local_gpus[0];
+    return;
+  }
+  if (task.task_id == UPDATE_METRICS_TASK_ID) {
+    output.initial_proc = local_cpus[0];
+    return;
+  }
+  if (task.task_id == TOP_LEVEL_TASK_ID) {
+    output.initial_proc = local_cpus[0];
+    return;
+  }
+  if (task.task_id == PYTHON_TOP_LEVEL_TASK_ID) {
+    output.initial_proc = local_pys[0];
+    return;
+  }
+
   if (is_parameter_server_update_task(task.task_id)
   || is_initializer_task(task.task_id)) {
     // For Parameter Server Update, pick a processor from config
@@ -169,16 +186,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
     output.initial_proc = local_gpus[task_hash % local_gpus.size()];
     cache_update_tasks[task_hash] = output.initial_proc;
   }
-
-  if (task.task_id == STRATEGY_SEARCH_TASK_ID) {
-    output.initial_proc = local_gpus[0];
-    return;
-  }
-
-  if (task.task_id == UPDATE_METRICS_TASK_ID) {
-    output.initial_proc = local_cpus[0];
-    return;
-  }
+  assert(false);
 }
 
 void FFMapper::slice_task(const MapperContext ctx,

@@ -40,11 +40,11 @@ PROTOBUF_INC ?= ${FF_HOME}/protobuf/src
 endif
 
 # Flags for directing the runtime makefile what to include
-DEBUG           ?= 0		# Include debugging symbols
+DEBUG           ?= 1		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
-USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
+USE_GASNET      ?= 1		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 
@@ -112,7 +112,7 @@ INC_FLAGS	?= -I$(FF_HOME)/include -I$(PROTOBUF_INC) -I$(CUDNN_HOME)/include -I$(
 CC_FLAGS	?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON -DMAX_TENSOR_DIM=$(MAX_DIM) -std=c++11
 NVCC_FLAGS	?= -DMAX_TENSOR_DIM=$(MAX_DIM) -std=c++11
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lprotobuf -lcudnn -lcublas -lcurand -L$(PROTOBUF_LIB) -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64
+LD_FLAGS	?= -lprotobuf -lcudnn -lcublas -lcurand -lnccl -L$(PROTOBUF_LIB) -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64
 
 ifeq ($(strip $(FF_ENABLE_DEBUG)), 1)
 CC_FLAGS += -DFF_DEBUG

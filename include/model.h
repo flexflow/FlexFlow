@@ -134,6 +134,9 @@ enum TaskIDs {
   CUSTOM_CPU_TASK_ID_6,
   CUSTOM_CPU_TASK_ID_7,
   CUSTOM_CPU_TASK_ID_LAST,
+  // Make sure PYTHON_TOP_LEVEL_TASK_ID is
+  // consistent with python/main.cc
+  PYTHON_TOP_LEVEL_TASK_ID = 11111,
 };
 
 enum ShardingID {
