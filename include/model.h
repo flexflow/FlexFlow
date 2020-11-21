@@ -101,9 +101,12 @@ enum TaskIDs {
   DUMMY_TASK_ID,
   // Loss
   LOSS_BWD_TASK_ID,
-  // Optimizer
-  SGD_UPD_TASK_ID,
-  ADAM_UPD_TASK_ID,
+  // Optimizer with PS
+  SGD_UPD_PS_TASK_ID,
+  ADAM_UPD_PS_TASK_ID,
+  // Optimizer with NCCL
+  SGD_UPD_NCCL_TASK_ID,
+  ADAM_UPD_NCCL_TASK_ID,
   // Initializer
   GLOROT_INIT_TASK_ID,
   ZERO_INIT_TASK_ID,

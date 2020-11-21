@@ -44,7 +44,10 @@ public:
   void next(void);
   void update(const Parameter* p);
   void set_weight_decay(double _weight_decay);
-  static void update_task(const Task* task,
+  static void ps_update_task(const Task* task,
+                          const std::vector<PhysicalRegion>& regions,
+                          Context ctx, Runtime* runtime);
+  static void nccl_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);
   double lr, momentum;
@@ -65,12 +68,14 @@ public:
   void next(void);
   void update(const Parameter* p);
   void set_weight_decay(double _weight_decay);
-  static void update_task(const Task* task,
+  static void ps_update_task(const Task* task,
+                          const std::vector<PhysicalRegion>& regions,
+                          Context ctx, Runtime* runtime);
+  static void nccl_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);
   double alpha, beta1, beta2, weight_decay, epsilon;
   double alpha_t, beta1_t, beta2_t;
-  Parameter::CommType comm_type;
   std::map<LogicalRegion, Parameter> v_values, m_values;
 };
 #endif

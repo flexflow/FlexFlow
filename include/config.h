@@ -75,11 +75,16 @@ class FFConfig {
 public:
   enum PreservedIDs{
     InvalidID = 0,
-    DataParallelism_1D = 1,
-    DataParallelism_2D = 2,
-    DataParallelism_3D = 3,
-    DataParallelism_4D = 4,
-    DataParallelism_5D = 5,
+    DataParallelism_GPU_1D = 1,
+    DataParallelism_GPU_2D = 2,
+    DataParallelism_GPU_3D = 3,
+    DataParallelism_GPU_4D = 4,
+    DataParallelism_GPU_5D = 5,
+    DataParallelism_CPU_1D = 11,
+    DataParallelism_CPU_2D = 12,
+    DataParallelism_CPU_3D = 13,
+    DataParallelism_CPU_4D = 14,
+    DataParallelism_CPU_5D = 15,
   };
 
   FFConfig();
@@ -93,7 +98,7 @@ public:
 public:
   int epochs, batchSize, iterations, printFreq;
   //int inputHeight, inputWidth;
-  int numNodes, loadersPerNode, workersPerNode;
+  int numNodes, cpusPerNode, workersPerNode;
   float learningRate, weightDecay;
   size_t workSpaceSize;
   Context lg_ctx;

@@ -378,20 +378,31 @@ FFModel::FFModel(FFConfig& _config)
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
   // Load strategy file
-  int start_dim = FFConfig::DataParallelism_1D, end_dim = FFConfig::DataParallelism_4D;
+  int start_dim = 1, end_dim = 4;
 #if MAX_TENSOR_DIM >= 5
-  end_dim = FFConfig::DataParallelism_5D;
+  end_dim = 5;
 #endif
   for (int i = start_dim; i <= end_dim; i++) {
     ParallelConfig pc;
     pc.device_type = ParallelConfig::GPU;
-    pc.nDims = i - FFConfig::DataParallelism_1D + 1;
+    pc.nDims = i;
     for (int j = 0; j < pc.nDims; j++)
       pc.dim[j] = 1;
     pc.dim[pc.nDims-1] = config.workersPerNode * config.numNodes;
     for (int j = 0; j < pc.dim[pc.nDims-1]; j++)
       pc.device_ids[j] = j;
-    config.strategies[i] = pc;
+    config.strategies[FFConfig::DataParallelism_GPU_1D+i-1] = pc;
+  }
+  for (int i = start_dim; i <= end_dim; i++) {
+    ParallelConfig pc;
+    pc.device_type = ParallelConfig::CPU;
+    pc.nDims = i;
+    for (int j = 0; j < pc.nDims; j++)
+      pc.dim[j] = 1;
+    pc.dim[pc.nDims-1] = config.cpusPerNode * config.numNodes;
+    for (int j = 0; j < pc.dim[pc.nDims-1]; j++)
+      pc.device_ids[j] = j;
+    config.strategies[FFConfig::DataParallelism_CPU_1D+i-1] = pc;
   }
 
   // Create field space
@@ -433,7 +444,7 @@ FFModel::FFModel(FFConfig& _config)
   IndexLauncher initLauncher(FF_INIT_TASK_ID, task_is,
                              TaskArgument(NULL, 0), argmap,
                              Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                             FFConfig::DataParallelism_2D);
+                             FFConfig::DataParallelism_GPU_2D);
   FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
   fm.wait_all_results();
   int idx = 0;
@@ -1382,7 +1393,7 @@ struct DefaultConfig {
   const static size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
   const static int numNodes = 1;
   const static int workersPerNode = 0;
-  const static int loadersPerNode = 4;
+  const static int cpusPerNode = 0;
   const static size_t searchBudget = 0;
   const static size_t simulatorWorkSpaceSize = (size_t)2 * 1024 * 1024 * 1024; //2GB
   constexpr static float searchAlpha = 1.0f;
@@ -1399,7 +1410,7 @@ FFConfig::FFConfig()
   weightDecay = DefaultConfig::weightDecay;
   workSpaceSize = DefaultConfig::workSpaceSize;
   numNodes = DefaultConfig::numNodes;
-  loadersPerNode = DefaultConfig::loadersPerNode;
+  cpusPerNode = DefaultConfig::cpusPerNode;
   workersPerNode = DefaultConfig::workersPerNode;
   simulator_work_space_size = DefaultConfig::simulatorWorkSpaceSize;
   search_budget = DefaultConfig::searchBudget;
@@ -1471,7 +1482,7 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if (!strcmp(argv[i], "-ll:cpu"))
     {
-      loadersPerNode = atoi(argv[++i]);
+      cpusPerNode = atoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--profiling"))
@@ -1949,20 +1960,36 @@ void register_internal_tasks()
   }
   // Optimizer
   {
-    TaskVariantRegistrar registrar(SGD_UPD_TASK_ID,
-                                   "SGD Update");
+    TaskVariantRegistrar registrar(SGD_UPD_PS_TASK_ID,
+                                   "SGD Parameter Server Update");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<SGDOptimizer::update_task>(
-        registrar, "SGD Update Task");
+    Runtime::preregister_task_variant<SGDOptimizer::ps_update_task>(
+        registrar, "SGD Parameter Server Update Task");
   }
   {
-    TaskVariantRegistrar registrar(ADAM_UPD_TASK_ID,
-                                   "Adam Update");
+    TaskVariantRegistrar registrar(SGD_UPD_NCCL_TASK_ID,
+                                   "SGD NCCL Update");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<AdamOptimizer::update_task>(
-        registrar, "Adam Update Task");
+    Runtime::preregister_task_variant<SGDOptimizer::nccl_update_task>(
+        registrar, "SGD NCCL Update Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ADAM_UPD_PS_TASK_ID,
+                                   "Adam Parameter Server Update");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AdamOptimizer::ps_update_task>(
+        registrar, "Adam Parameter Server Update Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ADAM_UPD_NCCL_TASK_ID,
+                                   "Adam NCCL Update");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AdamOptimizer::nccl_update_task>(
+        registrar, "Adam NCCL Update Task");
   }
   // Initializer
   {

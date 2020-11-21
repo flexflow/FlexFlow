@@ -96,8 +96,7 @@ void SGDOptimizer::update(const Parameter* p)
   Runtime* runtime = model->config.lg_hlr;
   assert(p->owner_op != NULL);
   if (p->type == Parameter::PS) {
-    this->comm_type = Parameter::NCCL;
-    TaskLauncher launcher(SGD_UPD_TASK_ID,
+    TaskLauncher launcher(SGD_UPD_PS_TASK_ID,
         TaskArgument(this, sizeof(SGDOptimizer)),
         Predicate::TRUE_PRED, 0/*mapper_id*/,
         FFConfig::get_hash_id(std::string(p->owner_op->name)));
@@ -144,8 +143,7 @@ void SGDOptimizer::update(const Parameter* p)
       default:
         assert(false);
     }
-    this->comm_type = Parameter::NCCL;
-    IndexLauncher launcher(SGD_UPD_TASK_ID, task_is,
+    IndexLauncher launcher(SGD_UPD_NCCL_TASK_ID, task_is,
         TaskArgument(this, sizeof(SGDOptimizer)), argmap,
         Predicate::TRUE_PRED, true/*must_epoch*/, 0/*mapper_id*/,
         FFConfig::get_hash_id(p->owner_op->name));
@@ -249,8 +247,7 @@ void AdamOptimizer::update(const Parameter* p)
   assert(m_values.find(p->region) != m_values.end());
   assert(p->owner_op != NULL);
   if (p->type == Parameter::PS) {
-    this->comm_type = Parameter::PS;
-    TaskLauncher launcher(ADAM_UPD_TASK_ID,
+    TaskLauncher launcher(ADAM_UPD_PS_TASK_ID,
         TaskArgument(this, sizeof(AdamOptimizer)),
         Predicate::TRUE_PRED, 0/*mapper_id*/,
         FFConfig::get_hash_id(std::string(p->owner_op->name)));
@@ -299,8 +296,7 @@ void AdamOptimizer::update(const Parameter* p)
       default:
         assert(false);
     }
-    this->comm_type = Parameter::NCCL;
-    IndexLauncher launcher(ADAM_UPD_TASK_ID, task_is,
+    IndexLauncher launcher(ADAM_UPD_NCCL_TASK_ID, task_is,
         TaskArgument(this, sizeof(AdamOptimizer)), argmap,
         Predicate::TRUE_PRED, true/*must_epoch*/, 0/*mapper_id*/,
         FFConfig::get_hash_id(p->owner_op->name));
