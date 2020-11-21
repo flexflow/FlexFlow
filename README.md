@@ -87,7 +87,6 @@ Training flags:
 * `-ll:zsize`: size of zero-copy memory (pinned DRAM with direct GPU access) on each node (in MB). This is used for prefecthing training images from disk.
 * `-ll:cpu`: number of data loading workers (default: 4)
 * `--nodes`: number of compute nodes to use for training (default: 1)
-* `-dm:memoize`: enable the FlexFlow memoization optimizations to reduce runtime overhead (default: disable)
 
 For auto-tuning related flags: see [performance autotuning](SEARCH.md).
 
