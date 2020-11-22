@@ -18,7 +18,6 @@
 #include <string>
 #include "flexflow_dataloader.h"
 
-
 ImgDataLoader::ImgDataLoader()
 {}
 
@@ -509,11 +508,11 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_
   }
   int task_id = -1;
   if (input.numDim == 4 && datatype == DT_FLOAT) {
-    task_id = CUSTOM_CPU_TASK_ID_4;
+    task_id = PY_DL_4D_FLOAT_LOAD_ENTIRE_CPU_TASK_ID;
   } else if (input.numDim == 2 && datatype == DT_FLOAT) {
-    task_id = CUSTOM_CPU_TASK_ID_5;
+    task_id = PY_DL_2D_FLOAT_LOAD_ENTIRE_CPU_TASK_ID;
   } else if (input.numDim == 2 && datatype == DT_INT32) {
-    task_id = CUSTOM_CPU_TASK_ID_6;
+    task_id = PY_DL_2D_INT_LOAD_ENTIRE_CPU_TASK_ID;
   } else {
     assert(0);
   }
@@ -545,14 +544,15 @@ void SingleDataLoader::reset()
 
 void SingleDataLoader::next_batch(FFModel& ff)
 {
+  int task_id = -1;
   if (full_input.numDim == 4 && datatype == DT_FLOAT) {
-    int task_id = CUSTOM_GPU_TASK_ID_4;
+    task_id = PY_DL_4D_FLOAT_LOAD_BATCH_GPU_TASK_ID;
     next_batch_xd_launcher<4>(ff, task_id);
   } else if (full_input.numDim == 2 && datatype == DT_FLOAT) {
-    int task_id = CUSTOM_GPU_TASK_ID_5;
+    task_id = PY_DL_2D_FLOAT_LOAD_BATCH_GPU_TASK_ID;
     next_batch_xd_launcher<2>(ff, task_id);
   } else if (full_input.numDim == 2 && datatype == DT_INT32) {
-    int task_id = CUSTOM_GPU_TASK_ID_6;
+    task_id = PY_DL_2D_INT_LOAD_BATCH_GPU_TASK_ID;
     next_batch_xd_launcher<2>(ff, task_id);
   } else {
     assert(0);
@@ -629,7 +629,7 @@ void SingleDataLoader::register_cpu_tasks(void)
 {
   // 4D float Load entire dataset from numpy
   {
-    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_4, "4D Float Load Entire Dataset Numpy");
+    TaskVariantRegistrar registrar(PY_DL_4D_FLOAT_LOAD_ENTIRE_CPU_TASK_ID, "4D Float Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<SingleDataLoader::load_entire_dataset_from_numpy<float, 4>>(
@@ -638,7 +638,7 @@ void SingleDataLoader::register_cpu_tasks(void)
 
   // 2D float Load entire dataset from numpy
   {
-    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_5, "2D Float Load Entire Dataset Numpy");
+    TaskVariantRegistrar registrar(PY_DL_2D_FLOAT_LOAD_ENTIRE_CPU_TASK_ID, "2D Float Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<SingleDataLoader::load_entire_dataset_from_numpy<float, 2>>(
@@ -647,7 +647,7 @@ void SingleDataLoader::register_cpu_tasks(void)
 
   // 2D int Load entire dataset from numpy
   {
-    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_6, "2D Int Load Entire Dataset Numpy");
+    TaskVariantRegistrar registrar(PY_DL_2D_INT_LOAD_ENTIRE_CPU_TASK_ID, "2D Int Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<SingleDataLoader::load_entire_dataset_from_numpy<int, 2>>(
@@ -659,7 +659,7 @@ void SingleDataLoader::register_gpu_tasks(void)
 {
   // 4D float load input
   {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_4, "4D Float Load Inputs");
+    TaskVariantRegistrar registrar(PY_DL_4D_FLOAT_LOAD_BATCH_GPU_TASK_ID, "4D Float Load Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<SingleDataLoader::load_input_4d<float>>(
@@ -667,7 +667,7 @@ void SingleDataLoader::register_gpu_tasks(void)
   }
   // 2D float load input
   {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_5, "2D Float Load Inputs");
+    TaskVariantRegistrar registrar(PY_DL_2D_FLOAT_LOAD_BATCH_GPU_TASK_ID, "2D Float Load Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<SingleDataLoader::load_input_2d<float>>(
@@ -675,7 +675,7 @@ void SingleDataLoader::register_gpu_tasks(void)
   }
   // 2D int load input
   {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_6, "2D int Load Inputs");
+    TaskVariantRegistrar registrar(PY_DL_2D_INT_LOAD_BATCH_GPU_TASK_ID, "2D int Load Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<SingleDataLoader::load_input_2d<int>>(
