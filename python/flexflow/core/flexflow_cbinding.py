@@ -397,13 +397,13 @@ class Tensor(object):
     self.mapped = False
     self.__get_dims()
     self.__get_data_type()
-    self.__get_owner_op(owner_op_type)
     if (deallocate == True):
       self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
     if (self.is_mapped() == True):
       self.mapped = True
 
     if owner_op_type != None:
+      self.__get_owner_op(owner_op_type)
       assert self.owner_op != None
 
   def inline_map(self, ffconfig):
