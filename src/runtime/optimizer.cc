@@ -145,7 +145,7 @@ void SGDOptimizer::update(const Parameter* p)
     }
     IndexLauncher launcher(SGD_UPD_NCCL_TASK_ID, task_is,
         TaskArgument(this, sizeof(SGDOptimizer)), argmap,
-        Predicate::TRUE_PRED, true/*must_epoch*/, 0/*mapper_id*/,
+        Predicate::TRUE_PRED, false/*must_epoch*/, 0/*mapper_id*/,
         FFConfig::get_hash_id(p->owner_op->name));
     // regions[0]: region_grad
     launcher.add_region_requirement(
@@ -167,7 +167,7 @@ void SGDOptimizer::update(const Parameter* p)
     }
     //MustEpochLauncher must_epoch_launcher;
     //must_epoch_launcher.add_index_task(launcher);
-    runtime->execute_index_space(ctx, launcher);
+    FutureMap fm = runtime->execute_index_space(ctx, launcher);
     //runtime->execute_must_epoch(ctx, must_epoch_launcher);
   } else {
     assert(false);
@@ -298,7 +298,7 @@ void AdamOptimizer::update(const Parameter* p)
     }
     IndexLauncher launcher(ADAM_UPD_NCCL_TASK_ID, task_is,
         TaskArgument(this, sizeof(AdamOptimizer)), argmap,
-        Predicate::TRUE_PRED, true/*must_epoch*/, 0/*mapper_id*/,
+        Predicate::TRUE_PRED, false/*must_epoch*/, 0/*mapper_id*/,
         FFConfig::get_hash_id(p->owner_op->name));
     // regions[0]: region_grad
     launcher.add_region_requirement(
@@ -320,10 +320,10 @@ void AdamOptimizer::update(const Parameter* p)
         RegionRequirement(m_values[p->region].part, 0/*projection id*/,
                           READ_WRITE, EXCLUSIVE, m_values[p->region].region));
     launcher.add_field(3, FID_DATA);
-    MustEpochLauncher must_epoch_launcher;
-    must_epoch_launcher.add_index_task(launcher);
-    //runtime->execute_index_space(ctx, launcher);
-    runtime->execute_must_epoch(ctx, must_epoch_launcher);
+    //MustEpochLauncher must_epoch_launcher;
+    //must_epoch_launcher.add_index_task(launcher);
+    FutureMap fm = runtime->execute_index_space(ctx, launcher);
+    //runtime->execute_must_epoch(ctx, must_epoch_launcher);
   } else {
     assert(false);
   }

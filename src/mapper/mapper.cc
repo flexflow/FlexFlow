@@ -186,7 +186,19 @@ void FFMapper::select_task_options(const MapperContext ctx,
     output.initial_proc = local_gpus[task_hash % local_gpus.size()];
     cache_update_tasks[task_hash] = output.initial_proc;
   }
-  assert(false);
+
+  if ((task.task_id >= CUSTOM_CPU_TASK_ID_FIRST)
+     && (task.task_id <= CUSTOM_CPU_TASK_ID_LAST))
+  {
+    if (!task.is_index_space) {
+      output.initial_proc = local_cpus[0];
+      return;
+    }
+  }
+
+  // Assert that all single tasks should be handled and returned before
+  // So task must be an indextask
+  assert(task.is_index_space);
 }
 
 void FFMapper::slice_task(const MapperContext ctx,
