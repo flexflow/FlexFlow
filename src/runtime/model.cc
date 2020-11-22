@@ -2072,6 +2072,9 @@ void register_internal_tasks()
 // ========================================================
 int main(int argc, char** argv)
 {
+  // This needs to be set, otherwise NCCL will try to use group kernel launches,
+  // which are not compatible with the Realm CUDA hijack.
+  setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
   Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
   {
     TaskVariantRegistrar registrar(TOP_LEVEL_TASK_ID, "top_level");
