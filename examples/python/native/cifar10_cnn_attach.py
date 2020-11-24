@@ -105,8 +105,8 @@ def top_level_task():
     print(iterations, num_samples)
     ct = 0
     for iter in range(0, int(iterations)):
-      next_batch(ct, x_train, input, ffconfig)
-      next_batch_label(ct, y_train, label, ffconfig)
+      next_batch(ct, x_train, input_tensor, ffconfig)
+      next_batch_label(ct, y_train, label_tensor, ffconfig)
       ct += 1
       ffconfig.begin_trace(111)
       ffmodel.forward()
@@ -133,12 +133,12 @@ def top_level_task():
   print(cbias)
   cbias_tensor.inline_unmap(ffconfig)
 
-  label.inline_map(ffconfig)
-  label_array = label.get_flat_array(ffconfig, DataType.DT_INT32)
+  label_tensor.inline_map(ffconfig)
+  label_array = label_tensor.get_flat_array(ffconfig, DataType.DT_INT32)
   print(label_array.shape)
   # print(cbias)
   print(label_array)
-  label.inline_unmap(ffconfig)
+  label_tensor.inline_unmap(ffconfig)
 
 
 if __name__ == "__main__":

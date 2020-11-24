@@ -332,26 +332,8 @@ void FFMapper::map_task(const MapperContext ctx,
         missing_fields[idx].empty())
       continue;
     // Select a memory for the req
-    Memory target_mem;
-    if (task.target_proc.kind() == Processor::TOC_PROC) {
-      if (task.regions[idx].tag == MAP_TO_ZC_MEMORY) {
-        assert(proc_zcmems.find(task.target_proc) != proc_zcmems.end());
-        target_mem = proc_zcmems[task.target_proc];
-      } else {
-        assert(task.regions[idx].tag == 0);
-        assert(proc_fbmems.find(task.target_proc) != proc_fbmems.end());
-        target_mem = proc_fbmems[task.target_proc];
-      }
-    } else if (task.target_proc.kind() == Processor::LOC_PROC) {
-      assert(proc_zcmems.find(task.target_proc) != proc_zcmems.end());
-      target_mem = proc_zcmems[task.target_proc];
-    } else if (task.target_proc.kind() == Processor::PY_PROC) {
-      assert(proc_zcmems.find(task.target_proc) != proc_zcmems.end());
-      target_mem = proc_zcmems[task.target_proc];
-    } else {
-      // Unknown processor kind
-      assert(false);
-    }
+    Memory target_mem = default_select_target_memory(ctx,
+        task.target_proc, task.regions[idx]);
     // Assert no virtual mapping for now
     assert((task.regions[idx].tag & DefaultMapper::VIRTUAL_MAP) == 0);
     // Check to see if any of the valid instances satisfy the requirement
@@ -534,7 +516,92 @@ void FFMapper::map_inline(const MapperContext        ctx,
                           const MapInlineInput&      input,
                                 MapInlineOutput&     output)
 {
-  assert(false);
+  LayoutConstraintSet creation_constraints;
+  Memory target_memory = Memory::NO_MEMORY;
+  if (inline_op.layout_constraint_id > 0) {
+    // Find our constraints
+    creation_constraints = runtime->find_layout_constraints(ctx,
+                                        inline_op.layout_constraint_id);
+    if (creation_constraints.memory_constraint.is_valid())
+    {
+      Machine::MemoryQuery valid_mems(machine);
+      valid_mems.has_affinity_to(inline_op.parent_task->current_proc);
+      valid_mems.only_kind(
+          creation_constraints.memory_constraint.get_kind());
+      if (valid_mems.count() == 0)
+      {
+        log_ff_mapper.error("FlexFlow mapper error. Mapper %s could find no "
+            "valid memories for the constraints requested by "
+            "inline mapping %lld in parent task %s (ID %lld).",
+            get_mapper_name(), inline_op.get_unique_id(),
+            inline_op.parent_task->get_task_name(),
+            inline_op.parent_task->get_unique_id());
+        assert(false);
+      }
+      target_memory = valid_mems.first(); // just take the first one
+    }
+    else
+      target_memory = default_select_target_memory(ctx,
+          inline_op.parent_task->current_proc, inline_op.requirement);
+    if (creation_constraints.field_constraint.field_set.empty())
+      creation_constraints.add_constraint(FieldConstraint(
+            inline_op.requirement.privilege_fields, false/*contig*/));
+  } else {
+    // No constraints so do what we want
+    target_memory = default_select_target_memory(ctx,
+        inline_op.parent_task->current_proc, inline_op.requirement);
+    // Copy over any valid instances for our target memory, then try to
+    // do an acquire on them and see which instances are no longer valid
+    if (!input.valid_instances.empty())
+    {
+      for (std::vector<PhysicalInstance>::const_iterator it =
+            input.valid_instances.begin(); it !=
+            input.valid_instances.end(); it++)
+      {
+        if (it->get_location() == target_memory)
+          output.chosen_instances.push_back(*it);
+      }
+      if (!output.chosen_instances.empty())
+        runtime->acquire_and_filter_instances(ctx,
+                                          output.chosen_instances);
+    }
+    // Now see if we have any fields which we still make space for
+    std::set<FieldID> missing_fields =
+      inline_op.requirement.privilege_fields;
+    for (std::vector<PhysicalInstance>::const_iterator it =
+          output.chosen_instances.begin(); it !=
+          output.chosen_instances.end(); it++)
+    {
+      it->remove_space_fields(missing_fields);
+      if (missing_fields.empty())
+        break;
+    }
+    // If we've satisfied all our fields, then we are done
+    if (missing_fields.empty())
+      return;
+    // Otherwise, let's make an instance for our missing fields
+    LayoutConstraintID our_layout_id = default_select_layout_constraints(
+        ctx, target_memory, inline_op.requirement, true);
+    creation_constraints = runtime->find_layout_constraints(ctx, our_layout_id);
+    creation_constraints.add_constraint(
+        FieldConstraint(missing_fields, false/*contig*/, false/*inorder*/));
+  }
+  PhysicalInstance result;
+  size_t footprint;
+  if (!default_make_instance(ctx, target_memory, creation_constraints,
+      result, true/*meets_constraints*/, inline_op.requirement, &footprint))
+  {
+    log_ff_mapper.error("FlexFlow Mapper failed allocation of size %zd bytes"
+        " for region requirement of inline ammping in task %s (UID %lld)"
+        " in memory " IDFMT "for processor " IDFMT ".", footprint,
+        inline_op.parent_task->get_task_name(),
+        inline_op.parent_task->get_unique_id(),
+        target_memory.id,
+        inline_op.parent_task->current_proc.id);
+    assert(false);
+  } else {
+    output.chosen_instances.push_back(result);
+  }
 }
 
 void FFMapper::select_inline_sources(const MapperContext        ctx,
@@ -846,7 +913,7 @@ void FFMapper::memoize_operation(const MapperContext  ctx,
   }
   // Memoize all other mapping decisions
   // FIXME: currently disabled memoize optimization
-  output.memoize = true;
+  output.memoize = false;
 }
 
 // Mapping control and stealing
@@ -938,8 +1005,35 @@ Memory FFMapper::default_policy_select_target_memory(MapperContext ctx,
 }
 #endif
 
+Memory FFMapper::default_select_target_memory(
+    MapperContext ctx,
+    Processor target_proc,
+    const RegionRequirement &req)
+{
+  if (target_proc.kind() == Processor::TOC_PROC) {
+    if (req.tag == MAP_TO_ZC_MEMORY) {
+      assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
+      return proc_zcmems[target_proc];
+    } else {
+      assert(req.tag == 0);
+      assert(proc_fbmems.find(target_proc) != proc_fbmems.end());
+      return proc_fbmems[target_proc];
+    }
+  } else if (target_proc.kind() == Processor::LOC_PROC) {
+    assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
+    return proc_zcmems[target_proc];
+  } else if (target_proc.kind() == Processor::PY_PROC) {
+    assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
+    return proc_zcmems[target_proc];
+  } else {
+    // Unknown processor kind
+    assert(false);
+    return Memory::NO_MEMORY;
+  }
+}
+
 bool FFMapper::default_make_instance(
-         MapperContext ctx, Memory target_mem,
+    MapperContext ctx, Memory target_mem,
          const LayoutConstraintSet &constraints,
          PhysicalInstance &result,
          bool meets_constraints,

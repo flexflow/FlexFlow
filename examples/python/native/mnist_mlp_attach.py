@@ -91,8 +91,8 @@ def top_level_task():
     ffmodel.reset_metrics()
     iterations = num_samples / ffconfig.get_batch_size()
     for iter in range(0, 100):
-      next_batch(ct, x_train, input1, ffconfig)
-      next_batch_label(ct, y_train, label, ffconfig)
+      next_batch(ct, x_train, input_tensor, ffconfig)
+      next_batch_label(ct, y_train, label_tensor, ffconfig)
       ct += 1
       ffconfig.begin_trace(111)
       ffmodel.forward()
@@ -112,7 +112,7 @@ def top_level_task():
 
   dense1 = ffmodel.get_layer_by_id(0)
 
-  dbias_tensor = label#dense1.get_bias_tensor()
+  dbias_tensor = label_tensor#dense1.get_bias_tensor()
   dbias_tensor.inline_map(ffconfig)
   dbias = dbias_tensor.get_array(ffconfig, DataType.DT_INT32)
   print(dbias.shape)

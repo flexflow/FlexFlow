@@ -259,6 +259,9 @@ private: //static inline methods
                      const std::pair<PhysicalInstance,unsigned> &right)
     { return (left.second < right.second); }
 private: // Default helper functions
+  Memory default_select_target_memory(MapperContext ctx,
+		                      Processor target_proc,
+				      const RegionRequirement &req);
   bool default_make_instance(MapperContext ctx,
                              Memory target_mem,
                              const LayoutConstraintSet &constraints,
