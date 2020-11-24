@@ -907,13 +907,13 @@ void FFMapper::memoize_operation(const MapperContext  ctx,
                                        MemoizeOutput& output)
 {
   // FIXME: Legion tracing currently does not support MUST_EPOCH
-  if (mappable.as_must_epoch() != NULL) {
-    output.memoize = false;
-    return;
-  }
+  //if (mappable.as_must_epoch() != NULL) {
+  //  output.memoize = false;
+  //  return;
+  //}
   // Memoize all other mapping decisions
   // FIXME: currently disabled memoize optimization
-  output.memoize = false;
+  output.memoize = true;
 }
 
 // Mapping control and stealing

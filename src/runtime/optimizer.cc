@@ -169,6 +169,7 @@ void SGDOptimizer::update(const Parameter* p)
     //must_epoch_launcher.add_index_task(launcher);
     FutureMap fm = runtime->execute_index_space(ctx, launcher);
     //runtime->execute_must_epoch(ctx, must_epoch_launcher);
+    runtime->issue_execution_fence(ctx);
   } else {
     assert(false);
   }
@@ -324,6 +325,7 @@ void AdamOptimizer::update(const Parameter* p)
     //must_epoch_launcher.add_index_task(launcher);
     FutureMap fm = runtime->execute_index_space(ctx, launcher);
     //runtime->execute_must_epoch(ctx, must_epoch_launcher);
+    runtime->issue_execution_fence(ctx);
   } else {
     assert(false);
   }
