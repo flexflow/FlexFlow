@@ -181,7 +181,7 @@ DataLoader::DataLoader(FFModel& ff,
   num_samples = 0;
   if (resnet.dataset_path == "") {
     log_app.print("Use random dataset...");
-    num_samples = 256 * 1 * ff.config.workersPerNode * ff.config.numNodes;
+    num_samples = 10 * ff.config.batchSize * ff.config.workersPerNode * ff.config.numNodes;
     log_app.print("Number of random samples = %d\n", num_samples);
   } else {
     log_app.print("Start loading dataset from %s", resnet.dataset_path.c_str());

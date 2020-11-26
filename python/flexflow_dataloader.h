@@ -23,6 +23,7 @@ struct NetConfig {
   std::string dataset_path;
 };
 
+//TODO: remove data loaders except single data loader
 class ImgDataLoader {
 public:
   ImgDataLoader();

@@ -196,8 +196,24 @@ void FFMapper::select_task_options(const MapperContext ctx,
     }
   }
 
+  if ((task.task_id == PY_DL_4D_FLOAT_LOAD_ENTIRE_CPU_TASK_ID)
+    || (task.task_id == PY_DL_2D_FLOAT_LOAD_ENTIRE_CPU_TASK_ID)
+    || (task.task_id == PY_DL_2D_INT_LOAD_ENTIRE_CPU_TASK_ID))
+  {
+    if (!task.is_index_space) {
+      output.initial_proc = local_cpus[0];
+      return;
+    }
+  }
+
   // Assert that all single tasks should be handled and returned before
   // So task must be an indextask
+  if (!task.is_index_space) {
+    fprintf(stderr, "The following task is currently not captured by the "
+            "FlexFlow Mapper: %s\n"
+            "Report the issue to the FlexFlow developers",
+            task.get_task_name());
+  }
   assert(task.is_index_space);
 }
 
@@ -913,7 +929,7 @@ void FFMapper::memoize_operation(const MapperContext  ctx,
   //}
   // Memoize all other mapping decisions
   // FIXME: currently disabled memoize optimization
-  output.memoize = true;
+  output.memoize = false;
 }
 
 // Mapping control and stealing

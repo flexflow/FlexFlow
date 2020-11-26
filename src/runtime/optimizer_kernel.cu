@@ -21,7 +21,7 @@
 LegionRuntime::Logger::Category log_optimizer("optimizer");
 
 __global__
-void sgd_update(int count, float lr, float weight_decay,
+void sgd_update(size_t count, float lr, float weight_decay,
                 float momentum, bool nesterov,
                 const float* WGrad, float* V, float* W)
 {
@@ -100,12 +100,12 @@ void SGDOptimizer::ps_update_task(const Task* task,
     apply_add_with_scale<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
         (float*) w_grad_ptr, src, size, 1.0f);
   }
-  checkCUDA(cudaDeviceSynchronize());
+  //checkCUDA(cudaDeviceSynchronize());
   // Step 2: SGD update
   sgd_update<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
       size, op->lr, op->weight_decay, op->momentum, op->nesterov,
       w_grad_ptr, v_ptr, w_ptr);
-  checkCUDA(cudaDeviceSynchronize());
+  //checkCUDA(cudaDeviceSynchronize());
 }
 
 __host__
@@ -173,7 +173,7 @@ void SGDOptimizer::nccl_update_task(
   sgd_update<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
       size, op->lr, op->weight_decay, op->momentum, op->nesterov,
       w_grad_ptr, v_ptr, w_ptr);
-  checkCUDA(cudaDeviceSynchronize());
+  //checkCUDA(cudaDeviceSynchronize());
 }
 
 // ==================================================================
@@ -274,7 +274,7 @@ void AdamOptimizer::ps_update_task(const Task* task,
     add_kernel<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
         size, 1.0f, src, (float*)w_grad_ptr);
   }
-  checkCUDA(cudaDeviceSynchronize());
+  //checkCUDA(cudaDeviceSynchronize());
   //fprintf(stderr, "alpha = %.8lf alpha_t = %.8lf decay = %.8lf\n",
   //        op->alpha, op->alpha_t, op->weight_decay);
   // Step 2: Adam update
@@ -282,7 +282,7 @@ void AdamOptimizer::ps_update_task(const Task* task,
       size, op->alpha_t, op->beta1, op->beta2,
       op->weight_decay, op->epsilon,
       w_grad_ptr, m_ptr, v_ptr, w_ptr);
-  checkCUDA(cudaDeviceSynchronize());
+  //checkCUDA(cudaDeviceSynchronize());
 }
 
 __host__
@@ -349,6 +349,6 @@ void AdamOptimizer::nccl_update_task(const Task* task,
       size, op->alpha_t, op->beta1, op->beta2,
       op->weight_decay, op->epsilon,
       w_grad_ptr, m_ptr, v_ptr, w_ptr);
-  checkCUDA(cudaDeviceSynchronize());
+  //checkCUDA(cudaDeviceSynchronize());
 }
 

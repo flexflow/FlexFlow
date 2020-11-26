@@ -126,13 +126,13 @@ __host__
 void print_tensor(const T* ptr, Rect<DIM> rect, const char* prefix)
 {
   // device synchronize to make sure the data are ready
-  checkCUDA(cudaDeviceSynchronize());
+  // checkCUDA(cudaDeviceSynchronize());
   T* host_ptr;
   checkCUDA(cudaHostAlloc(&host_ptr, sizeof(T) * rect.volume(),
                           cudaHostAllocPortable | cudaHostAllocMapped));
   checkCUDA(cudaMemcpy(host_ptr, ptr, sizeof(T) * rect.volume(),
                        cudaMemcpyDeviceToHost));
-  checkCUDA(cudaDeviceSynchronize());
+  // checkCUDA(cudaDeviceSynchronize());
   int idx = 0;
   printf("%s", prefix);
   for (PointInRectIterator<DIM> it(rect); it(); it++, idx++) {
