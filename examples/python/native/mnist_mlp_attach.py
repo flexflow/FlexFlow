@@ -92,10 +92,10 @@ def top_level_task():
   ffmodel.init_layers()
 
   epochs = ffconfig.get_epochs()
-  ct = 0
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
+    ct = 0
     ffmodel.reset_metrics()
     iterations = num_samples / ffconfig.get_batch_size()
     for iter in range(0, int(iterations)):
