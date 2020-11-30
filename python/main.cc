@@ -85,7 +85,8 @@ int main(int argc, char **argv)
   {
     TaskVariantRegistrar registrar(MAIN_TASK_ID, "flexflow_top_level_task");
     registrar.add_constraint(ProcessorConstraint(Processor::PY_PROC));
-    registrar.set_replicable();
+    //TODO: dataloader does not support CR
+    //registrar.set_replicable();
     preregister_python_task_variant(registrar, "flexflow.core", "flexflow_top_level_task");
   }
   
