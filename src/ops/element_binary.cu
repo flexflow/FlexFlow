@@ -320,10 +320,11 @@ void elewise_binary_forward_kernel(coord_t volume,
     }
 }
 
+/*static*/
 void ElementBinary::forward_kernel(const ElementBinaryMeta* m,
                                    const float* in1_ptr,
                                    const float* in2_ptr,
-                                   float* out_ptr) const
+                                   float* out_ptr)
 {
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 0.0f;
   switch (m->op_type) {
@@ -468,12 +469,13 @@ void elewise_binary_backward_kernel(coord_t volume,
   }
 }
 
+/*static*/
 void ElementBinary::backward_kernel(const ElementBinaryMeta* m,
                                     const float* out_grad_ptr,
                                     const float* in1_ptr,
                                     const float* in2_ptr,
                                     float* in1_grad_ptr, 
-                                    float* in2_grad_ptr) const
+                                    float* in2_grad_ptr)
 {
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f;
   switch (m->op_type) {

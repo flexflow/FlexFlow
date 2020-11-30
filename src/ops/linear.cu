@@ -342,8 +342,9 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
   printf("init linear (input): in_dim(%d) out_dim(%d) batch_size(%d)\n",
       in_dim, out_dim, batch_size);
   LinearMeta* m = new LinearMeta(handle, batch_size);
+  m->activation = linear->activation;
 
-  if (linear->activation != AC_MODE_NONE) {
+  if (m->activation != AC_MODE_NONE) {
     cudnnActivationMode_t mode;
     switch (linear->activation) {
       case AC_MODE_RELU:
@@ -423,12 +424,13 @@ void Linear::init_with_dim(const FFModel& ff)
   }
 }
 
+/*static*/
 void Linear::forward_kernel(const LinearMeta* m,
                             const float* input_ptr,
                             float* output_ptr,
                             const float* kernel_ptr,
                             const float* bias_ptr,
-                            int in_dim, int out_dim, int batch_size) const
+                            int in_dim, int out_dim, int batch_size)
 {
   float alpha = 1.0f, beta = 0.0f;
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
@@ -441,7 +443,7 @@ void Linear::forward_kernel(const LinearMeta* m,
                         &alpha, bias_ptr, 1,
                         m->one_ptr, 1, &alpha,
                         output_ptr, out_dim));
-  if (activation != AC_MODE_NONE) {
+  if (m->activation != AC_MODE_NONE) {
     checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
         &alpha, m->outputTensor, output_ptr,
         &beta, m->outputTensor, output_ptr));
@@ -586,6 +588,7 @@ void sigmoid_backward(float *grad_ptr, const float *output, int n)
   }
 }
 
+/*static*/
 void Linear::backward_kernel(const LinearMeta* m,
                              const float* input_ptr,
                              float* input_grad_ptr,
@@ -594,19 +597,19 @@ void Linear::backward_kernel(const LinearMeta* m,
                              const float* kernel_ptr,
                              float* kernel_grad_ptr,
                              float* bias_grad_ptr,
-                             int in_dim, int out_dim, int batch_size) const
+                             int in_dim, int out_dim, int batch_size)
 {
   float alpha = 1.0f;
   int output_size = out_dim * batch_size;
-  if (activation == AC_MODE_RELU) {
+  if (m->activation == AC_MODE_RELU) {
     reluBackward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS>>>(
         output_grad_ptr, output_ptr, output_size);
-  } else if (activation == AC_MODE_SIGMOID) {
+  } else if (m->activation == AC_MODE_SIGMOID) {
     sigmoid_backward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS>>>(
         output_grad_ptr, output_ptr, output_size);
   } else {
     // TODO: only support relu and sigmoid for now
-    assert(activation == AC_MODE_NONE);
+    assert(m->activation == AC_MODE_NONE);
   }
   // Compute weight gradiant
   // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
@@ -982,6 +985,7 @@ bool Linear::measure_compute_time(Simulator* sim,
   int output_c = sub_output.adim[0];
   int output_n = sub_output.get_volume() / output_c;
   LinearMeta* m = sim->linear_meta;
+  m->activation = activation;
   if (activation != AC_MODE_NONE) {
     cudnnActivationMode_t mode;
     switch (activation) {

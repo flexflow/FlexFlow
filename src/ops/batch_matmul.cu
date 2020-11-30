@@ -190,7 +190,7 @@ void BatchMatmul::forward_kernel(const BatchMatmulMeta* meta,
                                  const float* a_ptr,
                                  const float* b_ptr,
                                  const float* c_ptr,
-                                 int m, int n, int k, int batch) const
+                                 int m, int n, int k, int batch)
 {
   int a_stride = n * k;
   int b_stride = m * k;
@@ -340,7 +340,7 @@ void BatchMatmul::backward_kernel(const BatchMatmulMeta* meta,
                                   const float* b_ptr,
                                   float* b_grad_ptr,
                                   float* c_grad_ptr,
-                                  int m, int n, int k, int batch) const
+                                  int m, int n, int k, int batch)
 {
   int a_stride = n * k;
   int b_stride = m * k;

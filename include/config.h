@@ -25,8 +25,10 @@
 // Define Runtime Constants
 // ========================================================
 #define MAX_NUM_INPUTS 32
-#define MAX_NUM_WEIGHTS 4
-#define MAX_NUM_OUTPUTS 32
+#define MAX_NUM_WEIGHTS 64
+#define MAX_NUM_OUTPUTS 64
+#define MAX_NUM_FUSED_OPERATORS 64
+#define MAX_NUM_FUSED_TENSORS 64
 #define MAX_NUM_WORKERS 1024
 #define MAX_FILENAME 200
 #define MAX_OPNAME 64
@@ -44,6 +46,18 @@ struct ParallelConfig {
     GPU = 0,
     CPU = 1,
   };
+  bool operator==(const ParallelConfig &rhs) const
+  {
+    if (nDims != rhs.nDims) return false;
+    if (device_type != rhs.device_type) return false;
+    for (int i = 0; i < nDims; i++)
+      if (dim[i] != rhs.dim[i])
+        return false;
+    for (int i = 0; i < num_parts(); i++)
+      if (device_ids[i] != rhs.device_ids[i])
+        return false;
+    return true;
+  }
   int num_parts() const;
   bool is_data_parallel() const;
   DeviceType device_type;
@@ -104,7 +118,7 @@ public:
   Context lg_ctx;
   Runtime* lg_hlr;
   FieldSpace field_space;
-  bool syntheticInput, profiling;
+  bool syntheticInput, profiling, perform_fusion;
   size_t simulator_work_space_size;
   size_t search_budget;
   float search_alpha;

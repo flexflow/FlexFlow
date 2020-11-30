@@ -1113,6 +1113,69 @@ void FFModel::compile(Optimizer* _optimizer,
   compile(loss_type, metrics);
 }
 
+bool FFModel::apply_fusion(const std::vector<Op*>& layers,
+                           std::vector<Op*>& new_layers)
+{
+  //Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  for (size_t l = 1; l < layers.size() - 1; l++) {
+    for (size_t i = 0; i < l; i++) {
+      Domain d1 = runtime->get_index_space_domain(layers[l]->task_is);
+      Domain d2 = runtime->get_index_space_domain(layers[i]->task_is);
+      ParallelConfig pc1, pc2;
+      assert(config.find_parallel_config(d1.get_dim(), layers[l]->name, pc1));
+      assert(config.find_parallel_config(d2.get_dim(), layers[i]->name, pc2));
+      if (pc1 == pc2) {
+        FusedOp* fused_op;
+        //bool created = false;
+        if (layers[i]->op_type == OP_FUSED)
+          fused_op = (FusedOp*) layers[i];
+        else {
+          //created = true;
+          fused_op = new FusedOp(*this, layers[i]);
+        }
+        if (fused_op->add_operator(*this, layers[l])) {
+          // Construct new layers
+          new_layers.clear();
+          for (size_t j = 0; j < i; j++)
+            new_layers.push_back(layers[j]);
+          new_layers.push_back(fused_op);
+          for (size_t j = i+1; j < layers.size(); j++) {
+            if (j == l) continue; // l and i are fused
+            Op* op = layers[j];
+            // Update input tensors that belong to layer[l] or layer[i]
+            for (int idx = 0; idx < op->numInputs; idx++) {
+              if ((op->inputs[idx].owner_op == layers[l])
+              || (op->inputs[idx].owner_op == layers[i]))
+              {
+                int found = -1;
+                for (int k = 0; k < fused_op->numOutputs; k++)
+                  if (fused_op->outputs[k].region == op->inputs[idx].region) {
+                    assert(found == -1);
+                    found = k;
+                  }
+                assert(found >= 0);
+                op->inputs[idx] = fused_op->outputs[found];
+              }
+            }
+            // Insert op
+            new_layers.push_back(op);
+          }
+          // We are exact one layer fewer than the original
+          assert(new_layers.size() + 1 == layers.size());
+          return true;
+        } else {
+          //TODO: delete fused_op to avoid memory leakage
+          //if (created)
+            //delete fused_op;
+          continue;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 void FFModel::compile(LossType loss_type,
                       const std::vector<MetricsType>& metrics)
 {
@@ -1155,6 +1218,17 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i < op->numWeights; i++) {
       parameters.push_back(op->weights[i]);
     }
+  }
+
+  // Perform fusion optimizations
+  if (config.perform_fusion) {
+    fprintf(stderr, "Applying fusion optimizations during compilation...\n");
+    fprintf(stderr, "%zu layers before fusion...\n", layers.size());
+    std::vector<Op*> new_layers;
+    while (apply_fusion(layers, new_layers)) {
+      layers = new_layers;
+    }
+    fprintf(stderr, "%zu layers after fusion...\n", layers.size());
   }
   Op* final_layer = layers[layers.size()-1];
   // FIXME: currently assume the final layer has exactly one output
@@ -1420,6 +1494,7 @@ FFConfig::FFConfig()
   export_strategy_file = "";
   dataset_path = "";
   syntheticInput = false;
+  perform_fusion = false;
 }
 
 void FFConfig::parse_args(char **argv, int argc)
@@ -1488,6 +1563,10 @@ void FFConfig::parse_args(char **argv, int argc)
     if (!strcmp(argv[i], "--profiling"))
     {
       profiling = true;
+    }
+    if (!strcmp(argv[i], "--fusion"))
+    {
+      perform_fusion = true;
     }
   }
 }
@@ -1957,6 +2036,21 @@ void register_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<Transpose::backward_task>(
         registrar, "Transpose Backward Task");
+  }
+  // FusedOp Task
+  {
+    TaskVariantRegistrar registrar(FUSEDOP_FWD_TASK_ID, "FusedOp Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<FusedOp::forward_task>(
+        registrar, "FusedOp Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(FUSEDOP_BWD_TASK_ID, "FusedOp Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<FusedOp::backward_task>(
+        registrar, "FusedOp Backward Task");
   }
   // Optimizer
   {
