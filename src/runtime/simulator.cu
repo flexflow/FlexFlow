@@ -18,6 +18,11 @@
 #include "realm/runtime_impl.h"
 #include "realm/cuda/cuda_module.h"
 
+typedef long long int coord_t;
+
+typedef Realm::Point<1, coord_t> Point1;
+typedef Realm::Rect<1, coord_t> Rect1;
+
 Simulator::Simulator(const FFModel* model,
                      FFHandler handler,
                      void* _base_ptr, size_t _capacity)
@@ -83,11 +88,18 @@ void Simulator::strategy_search_task(const Task *task,
   const FFModel* model = *((FFModel**) task->args);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
          .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
-  Realm::MemoryImpl* memImpl =
-      Realm::get_runtime()->get_memory_impl(gpu_mem);
-  Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
-  off_t offset = memFBImpl->alloc_bytes_local(model->config.simulator_work_space_size);
-  void* base_ptr = memFBImpl->get_direct_ptr(offset, 0);
+  // Realm::MemoryImpl* memImpl =
+  //     Realm::get_runtime()->get_memory_impl(gpu_mem);
+  // Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
+  // off_t offset = memFBImpl->alloc_bytes_local(model->config.simulator_work_space_size);
+  // void* base_ptr = memFBImpl->get_direct_ptr(offset, 0);
+  Realm::RegionInstance inst;
+  Rect1 bounds(Point1(0), Point1(0));
+  std::vector<size_t> field_sizes;
+  field_sizes.push_back(model->config.simulator_work_space_size);
+  Realm::RegionInstance::create_instance(inst, gpu_mem, bounds, field_sizes,
+                                         0, Realm::ProfilingRequestSet()).wait();
+  void* base_ptr = inst.pointer_untyped(0, sizeof(char));
   // Assume this task is running on GPU0
   Simulator* simulator = new Simulator(model, model->handlers[0], base_ptr,
       model->config.simulator_work_space_size);
@@ -104,7 +116,8 @@ void Simulator::strategy_search_task(const Task *task,
     save_strategies_to_file(model->config.export_strategy_file, strategy_output);
   }
   // Start from data
-  memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);
+  // memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);
+  inst.destroy();
   delete(simulator);
 }
 
