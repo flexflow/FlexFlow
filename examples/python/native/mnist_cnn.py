@@ -51,20 +51,8 @@ def top_level_task():
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
 
-  dims_full_input = [num_samples, 1, 28, 28]
-  full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
-
-  dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor(dims_full_label, DataType.DT_INT32)
-
-  full_input.attach_numpy_array(ffconfig, x_train)
-  full_label.attach_numpy_array(ffconfig, y_train)
-
-  dataloader_input = SingleDataLoader(ffmodel, input_tensor, full_input, num_samples, DataType.DT_FLOAT)
-  dataloader_label = SingleDataLoader(ffmodel, label_tensor, full_label, num_samples, DataType.DT_INT32)
-
-  full_input.detach_numpy_array(ffconfig)
-  full_label.detach_numpy_array(ffconfig)
+  dataloader_input = ffmodel.create_data_loader(input_tensor, x_train)
+  dataloader_label = ffmodel.create_data_loader(label_tensor, y_train)
 
   ffmodel.init_layers()
 
@@ -72,7 +60,7 @@ def top_level_task():
 
   ts_start = ffconfig.get_current_time()
   
-  ffmodel.train((dataloader_input, dataloader_label), epochs)
+  ffmodel.fit(x=dataloader_input, y=dataloader_label, epochs=epochs)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);

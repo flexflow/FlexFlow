@@ -13,7 +13,7 @@ def top_level_task():
   ffmodel = FFModel(ffconfig)
   
   dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
-  input = ffmodel.create_tensor(dims_input, "", DataType.DT_FLOAT)
+  input = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
   onnx_model = ONNXModel("cifar10_cnn.onnx")
   t = onnx_model.apply(ffmodel, {"input.1": input})
@@ -36,10 +36,10 @@ def top_level_task():
   full_label_array = y_train
   
   dims_full_input = [num_samples, 3, 32, 32]
-  full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
+  full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
 
   dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor(dims_full_label, "", DataType.DT_INT32)
+  full_label = ffmodel.create_tensor(dims_full_label, DataType.DT_INT32)
   
   full_input.attach_numpy_array(ffconfig, full_input_array)
   full_label.attach_numpy_array(ffconfig, full_label_array)
@@ -58,7 +58,7 @@ def top_level_task():
 
   ts_start = ffconfig.get_current_time()
   
-  ffmodel.train((dataloader_input, dataloader_label), epochs)
+  ffmodel.fit(x=dataloader_input, y=dataloader_label, epochs=epochs)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);

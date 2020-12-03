@@ -126,7 +126,7 @@ else
 endif
 
 # Use reduction operators for complex types by default
-CC_FLAGS += -DLEGION_REDOP_COMPLEX
+#CC_FLAGS += -DLEGION_REDOP_COMPLEX
 
 NO_BUILD_ALL=1
 .PHONY: all

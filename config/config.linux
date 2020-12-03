@@ -4,8 +4,8 @@ echo " Defaults for Linux machine"
 
 # set the CC and CXX, usually it is not needed as cmake can detect it
 # set CC and CXX to mpicc and mpic++ when enable gasnet
-CC=mpicc
-CXX=mpic++
+# CC=mpicc
+# CXX=mpic++
 
 # add flags if needed
 #CC_FLAGS=${CC_FLAGS+=""}
@@ -16,7 +16,7 @@ CXX=mpic++
 #BUILD_TYPE=Debug
 
 # set CUDA Arch
-#CUDA_ARCH=60
+CUDA_ARCH=60
 
 # set CUDNN dir
 CUDNN_DIR=/scratch/shared/wwu12/cudnn
@@ -25,7 +25,10 @@ CUDNN_DIR=/scratch/shared/wwu12/cudnn
 USE_PYTHON=ON
 
 # enable GASNet
-USE_GASNET=ON
+# USE_GASNET=ON
+
+# set MAX_DIM
+MAX_DIM=4
 
 # set Legion dir, if not set, FlexFlow will use the default Legion in the repo
 LEGION_DIR=/home/wwu12/flexflow-tpl/build/legion/install
