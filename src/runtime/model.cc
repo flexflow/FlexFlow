@@ -1248,6 +1248,7 @@ void FFModel::compile(LossType loss_type,
     fprintf(stderr, "Applying fusion optimizations during compilation...\n");
     fprintf(stderr, "%zu layers before fusion...\n", layers.size());
     std::vector<Op*> new_layers;
+    std::vector<Op*> old_layers = layers;
     while (apply_fusion(layers, new_layers)) {
       for (size_t i = 0; i < new_layers.size(); i++)
         for (int idx = 0; idx < new_layers[i]->numInputs; idx++)
@@ -1255,6 +1256,47 @@ void FFModel::compile(LossType loss_type,
             if (new_layers[i]->inputs[idx].owner_op == new_layers[j])
               assert(false);
       layers = new_layers;
+    }
+    // Check integrity 
+    for (size_t l = 0; l < layers.size(); l++) {
+      if (layers[l]->op_type == OP_FUSED) {
+        FusedOp* fused = (FusedOp*) layers[l];
+        int ioff = 0, woff = 0, ooff = 0;
+        for (int op = 0; op < fused->numOperators; op++) {
+          Op* old_op = fused->operators[op];
+          for (int i = 0; i < fused->op_num_inputs[op]; i++) {
+            int my_off = fused->op_input_idx[i+ioff];
+            if (fused->op_input_source[i+ioff] == FusedOp::SOURCE_INPUT) {
+              assert(fused->inputs[my_off].region == old_op->inputs[i].region);
+            } else if (fused->op_input_source[i+ioff] == FusedOp::SOURCE_OUTPUT) {
+              assert(fused->outputs[my_off].region == old_op->inputs[i].region);
+            } else
+              assert(false);
+          }
+          for (int i = 0; i < fused->op_num_weights[op]; i++) {
+            int my_off = fused->op_weight_idx[i+woff];
+            assert(fused->op_weight_source[i+woff] == FusedOp::SOURCE_WEIGHT);
+            assert(fused->weights[my_off].region == old_op->weights[i].region);
+          }
+          for (int i = 0; i < fused->op_num_outputs[op]; i++) {
+            int my_off = fused->op_output_idx[i+ooff];
+            assert(fused->op_output_source[i+ooff] == FusedOp::SOURCE_OUTPUT);
+            assert(fused->outputs[my_off].region == old_op->outputs[i].region);
+          }
+          ioff += fused->op_num_inputs[op];
+          woff += fused->op_num_weights[op];
+          ooff += fused->op_num_outputs[op];
+        }
+      } else {
+        bool found = false;
+        for (size_t i = 0; i < old_layers.size(); i++) {
+          if (old_layers[i] == layers[l]) {
+            assert(!found);
+            found = true;
+          }
+        }
+        assert(found);
+      }
     }
     fprintf(stderr, "%zu layers after fusion...\n", layers.size());
   }
