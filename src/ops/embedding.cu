@@ -255,9 +255,9 @@ void Embedding::forward_task(const Task *task,
       accInput.ptr, accOutput.ptr, accWeight.ptr, out_dim, in_dim, batch_size, embed->aggr);
   checkCUDA(cudaDeviceSynchronize());
   if (embed->profiling) {
-    print_tensor<2, int64_t>(accInput.ptr, accInput.rect, "[Embedding:forward:input]");
-    print_tensor<2, float>(accWeight.ptr, accWeight.rect, "[Embedding:forward:weight]");
-    print_tensor<2, float>(accOutput.ptr, accOutput.rect, "[Embedding:forward:output]");
+    print_tensor<int64_t>(accInput.ptr, accInput.rect.volume(), "[Embedding:forward:input]");
+    print_tensor<float>(accWeight.ptr, accWeight.rect.volume(), "[Embedding:forward:weight]");
+    print_tensor<float>(accOutput.ptr, accOutput.rect.volume(), "[Embedding:forward:output]");
     checkCUDA(cudaDeviceSynchronize());
   }
 }
@@ -319,9 +319,9 @@ void Embedding::backward_task(const Task *task,
       accInput.ptr, accOutput.ptr, accWeightGrad.ptr, out_dim, in_dim, batch_size, embed->aggr);
   checkCUDA(cudaDeviceSynchronize());
   if (embed->profiling) {
-    print_tensor<2, float>(accOutput.ptr, accOutput.rect, "[Embedding:backward:output_grad]");
-    print_tensor<2, float>(accWeightGrad.ptr, accWeightGrad.rect, "[Embedding:backward:weight_grad]");
-    print_tensor<2, int64_t>(accInput.ptr, accInput.rect, "[Embedding:backward:input]");
+    print_tensor<float>(accOutput.ptr, accOutput.rect.volume(), "[Embedding:backward:output_grad]");
+    print_tensor<float>(accWeightGrad.ptr, accWeightGrad.rect.volume(), "[Embedding:backward:weight_grad]");
+    print_tensor<int64_t>(accInput.ptr, accInput.rect.volume(), "[Embedding:backward:input]");
     checkCUDA(cudaDeviceSynchronize());
   }
 }
