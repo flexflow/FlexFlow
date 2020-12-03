@@ -94,7 +94,7 @@ void Simulator::strategy_search_task(const Task *task,
   // off_t offset = memFBImpl->alloc_bytes_local(model->config.simulator_work_space_size);
   // void* base_ptr = memFBImpl->get_direct_ptr(offset, 0);
   Realm::RegionInstance inst;
-  Rect1 bounds(Point1(0), Point1(1));
+  Rect1 bounds(Point1(0), Point1(0));
   std::vector<size_t> field_sizes;
   field_sizes.push_back(model->config.simulator_work_space_size);
   Realm::RegionInstance::create_instance(inst, gpu_mem, bounds, field_sizes,
