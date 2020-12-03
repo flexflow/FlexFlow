@@ -1119,7 +1119,21 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
   //Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   for (size_t l = 1; l < layers.size() - 1; l++) {
-    for (size_t i = 0; i < l; i++) {
+    size_t start = 0;
+    {
+      Op* opl = layers[l];
+      for (int idx = 0; idx < opl->numInputs; idx++) {
+        bool found = false;
+        for (size_t i = 0; i < l; i++)
+          if (opl->inputs[idx].owner_op == layers[i]) {
+            assert(!found);
+            found = true;
+            if (i > start) start = i;
+          }
+        assert(found || (opl->inputs[idx].owner_op == NULL));
+      }
+    }
+    for (size_t i = start; i < l; i++) {
       Domain d1 = runtime->get_index_space_domain(layers[l]->task_is);
       Domain d2 = runtime->get_index_space_domain(layers[i]->task_is);
       ParallelConfig pc1, pc2;
@@ -1220,12 +1234,26 @@ void FFModel::compile(LossType loss_type,
     }
   }
 
+  // Check correctness
+  for (size_t l = 0; l < layers.size(); l++) {
+    Op* op = layers[l];
+    for (int i = 0; i < op->numOutputs; i++) {
+      assert(op->outputs[i].owner_op == op);
+      assert(op->outputs[i].owner_idx == i);
+    }
+  }
+
   // Perform fusion optimizations
   if (config.perform_fusion) {
     fprintf(stderr, "Applying fusion optimizations during compilation...\n");
     fprintf(stderr, "%zu layers before fusion...\n", layers.size());
     std::vector<Op*> new_layers;
     while (apply_fusion(layers, new_layers)) {
+      for (size_t i = 0; i < new_layers.size(); i++)
+        for (int idx = 0; idx < new_layers[i]->numInputs; idx++)
+          for (size_t j = i+1; j < new_layers.size(); j++)
+            if (new_layers[i]->inputs[idx].owner_op == new_layers[j])
+              assert(false);
       layers = new_layers;
     }
     fprintf(stderr, "%zu layers after fusion...\n", layers.size());
@@ -1234,6 +1262,22 @@ void FFModel::compile(LossType loss_type,
   // FIXME: currently assume the final layer has exactly one output
   assert(final_layer->numOutputs == 1);
 
+  for (size_t i = 0; i < layers.size(); i++) {
+      Op* op = layers[i];
+      printf("layer[%d]: type(%d)\n", i, layers[i]->op_type);
+      for (int j = 0; j < op->numInputs; j++) {
+        LogicalRegion handle = op->inputs[j].region;
+        printf("inputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
+                          handle.get_field_space().get_id(), 
+                          handle.get_tree_id());
+      }
+      for (int j = 0; j < op->numOutputs; j++) {
+        LogicalRegion handle = op->outputs[j].region;
+        printf("outputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
+                          handle.get_field_space().get_id(), 
+                          handle.get_tree_id());
+      }
+  }
   //assert(final_layer->outputs[0].numDim == 2);
   int dims[MAX_TENSOR_DIM], num_dims;
   num_dims = final_layer->outputs[0].numDim;

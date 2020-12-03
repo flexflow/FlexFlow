@@ -141,6 +141,16 @@ void Flat::init(const FFModel& ff)
   }
 }
 
+/*static*/
+void Flat::forward_kernel(const float* input_ptr,
+                          float* output_ptr,
+                          size_t num_elements)
+{
+  checkCUDA(cudaMemcpyAsync(output_ptr, input_ptr,
+                            num_elements * sizeof(float),
+                            cudaMemcpyDeviceToDevice));
+}
+
 /*
   regions[0](I): input
   regions[1](O): output
@@ -156,11 +166,8 @@ void Flat::forward_task(const Task *task,
   TensorAccessorW<float, 2> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
-
   assert(acc_input.rect.volume() == acc_output.rect.volume());
-  checkCUDA(cudaMemcpyAsync(acc_output.ptr, acc_input.ptr,
-                            acc_input.rect.volume() * sizeof(float),
-                            cudaMemcpyDeviceToDevice));
+  forward_kernel(acc_input.ptr, acc_output.ptr, acc_input.rect.volume());
   //checkCUDA(cudaDeviceSynchronize());
 }
 
@@ -190,6 +197,15 @@ void Flat::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Flat::backward_kernel(float* input_grad_ptr,
+                           const float* output_grad_ptr,
+                           size_t num_elements)
+{
+  float alpha = 1.0f;
+  apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
+      input_grad_ptr, output_grad_ptr, num_elements, alpha);
+}
+
 /*
   regions[0](I/O) : input_grad
   regions[1](I) : output_grad
@@ -198,7 +214,6 @@ void Flat::backward_task(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx, Runtime *runtime)
 {
-  float alpha = 1.0f;
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   TensorAccessorW<float, 4> acc_input_grad(
@@ -207,8 +222,7 @@ void Flat::backward_task(const Task *task,
   TensorAccessorR<float, 2> acc_output_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
-  apply_add_with_scale<<<GET_BLOCKS(acc_input_grad.rect.volume()), CUDA_NUM_THREADS>>>(
-      acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume(), alpha);
+  backward_kernel(acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
   //checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
   //                          acc_input_grad.rect.volume() * sizeof(float),
   //                          cudaMemcpyDeviceToDevice));

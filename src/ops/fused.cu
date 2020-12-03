@@ -121,7 +121,7 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
       inputs[numInputs] = op->inputs[i];
       input_lps[numInputs] = op->input_lps[i];
       input_grad_lps[numInputs] = op->input_grad_lps[i];
-      op_input_source[input_offset+i] = SOURCE_OUTPUT;
+      op_input_source[input_offset+i] = SOURCE_INPUT;
       op_input_idx[input_offset+i] = numInputs;
       numInputs += 1;
     }
@@ -139,7 +139,7 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
         break;
       }
     if (found) {
-      // DO nothing
+      // Do nothing
     } else {
       weights[numWeights] = op->weights[i];
       weights[numWeights].owner_op = this;
@@ -253,15 +253,22 @@ void FusedOp::forward_task(const Task* task,
       regions[i+roff], task->regions[i+roff], FID_DATA, ctx, runtime);
   }
   // Assert that all meta share the same dnn/blas handler
-  for (int op = 1; op < fused->numOperators; op++) {
-    assert(metas->meta[0]->handle.blas == metas->meta[op]->handle.blas);
-    assert(metas->meta[0]->handle.dnn == metas->meta[op]->handle.dnn);
-  }
+  int start = 0;
+  for (start = 0; start < fused->numOperators; start++)
+    if (metas->meta[start] != NULL)
+      break;
+  for (int op = start+1; op < fused->numOperators; op++)
+    if (metas->meta[op] != NULL) {
+      assert(metas->meta[start]->handle.blas == metas->meta[op]->handle.blas);
+      assert(metas->meta[start]->handle.dnn == metas->meta[op]->handle.dnn);
+    }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(metas->meta[0]->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(metas->meta[0]->handle.dnn, stream));
+  if (start < fused->numOperators) {
+    cudaStream_t stream;
+    checkCUDA(cudaStreamCreate(&stream));
+    checkCUDA(cublasSetStream(metas->meta[start]->handle.blas, stream));
+    checkCUDNN(cudnnSetStream(metas->meta[start]->handle.dnn, stream));
+  }
 #endif
   int ioff = 0, woff = 0, ooff = 0;
   for (int op = 0; op < fused->numOperators; op++) {
@@ -293,6 +300,16 @@ void FusedOp::forward_task(const Task* task,
       my_op[i] = output_ptr[fused->op_output_idx[i+ooff]];
     }
     switch(fused->op_op_type[op]) {
+      case OP_CONCAT:
+      {
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        ConcatMeta* m = (ConcatMeta*) metas->meta[op];
+        int num_inputs = fused->op_num_inputs[op];
+        Concat::forward_kernel(my_op[0], my_ip, num_inputs, m->axis,
+            my_od[0], my_id);
+        break;
+      }
       case OP_CONV2D:
       {
         assert(fused->op_num_inputs[op] == 1);
@@ -321,6 +338,34 @@ void FusedOp::forward_task(const Task* task,
             in_dim, out_dim, batch_size);
         break;
       }
+      case OP_BATCHMATMUL:
+      {
+        assert(fused->op_num_inputs[op] == 2);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        Domain out_domain = my_od[0];
+        Domain a_domain = my_id[0];
+        Domain b_domain = my_id[1];
+        int m = b_domain.hi()[0] - b_domain.lo()[0] + 1;
+        assert(m == out_domain.hi()[0] - out_domain.lo()[0] + 1);
+        int n = a_domain.hi()[1] - a_domain.lo()[1] + 1;
+        assert(n == out_domain.hi()[1] - out_domain.lo()[1] + 1);
+        int k = a_domain.hi()[0] - a_domain.lo()[0] + 1;
+        assert(k == b_domain.hi()[1] - b_domain.lo()[1] + 1);
+        assert(a_domain.get_dim() == b_domain.get_dim());
+        assert(a_domain.get_dim() == out_domain.get_dim());
+        int batch = 1;
+        for (int i = 2; i < a_domain.get_dim(); i++) {
+          int dim_size = a_domain.hi()[i] - a_domain.lo()[i] + 1;
+          assert(dim_size == b_domain.hi()[i] - b_domain.lo()[i] + 1);
+          assert(dim_size == out_domain.hi()[i] - out_domain.lo()[i] + 1);
+          batch *= dim_size;
+        }
+        BatchMatmulMeta* meta = (BatchMatmulMeta*) metas->meta[op];
+        BatchMatmul::forward_kernel(meta, my_op[0], my_ip[0], my_ip[1], NULL,
+          m, n, k, batch);
+        break;
+      }
       case OP_EW_ADD:
       case OP_EW_SUB:
       case OP_EW_MUL:
@@ -346,6 +391,44 @@ void FusedOp::forward_task(const Task* task,
         assert(my_id[0] == my_od[0]);
         ElementUnaryMeta* m = (ElementUnaryMeta*) metas->meta[op];
         ElementUnary::forward_kernel(m, my_ip[0], my_op[0], my_id[0].get_volume());
+        break;
+      }
+      case OP_POOL2D:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        //assert(my_id[0] == my_od[0]);
+        Pool2DMeta* m = (Pool2DMeta*) metas->meta[op];
+        Pool2D::forward_kernel(m, my_ip[0], my_op[0]);
+        break;
+      }
+      case OP_FLAT:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_id[0].get_volume() == my_od[0].get_volume());
+        Flat::forward_kernel(my_ip[0], my_op[0], my_id[0].get_volume());
+        break;
+      }
+      case OP_RESHAPE:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_id[0].get_volume() == my_od[0].get_volume());
+        Reshape::forward_kernel(my_ip[0], my_op[0], my_id[0].get_volume());
+        break;
+      }
+      case OP_TRANSPOSE:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_id[0].get_volume() == my_od[0].get_volume());
+        TransposeMeta* m = (TransposeMeta*) metas->meta[op];
+        Transpose::forward_kernel(m, my_ip[0], my_op[0], my_id[0], my_od[0]);
         break;
       }
       default:
@@ -489,26 +572,33 @@ void FusedOp::backward_task(const Task* task,
   }
   roff += fused->numOutputs;
   // Assert that all meta share the same dnn/blas handler
-  for (int op = 1; op < fused->numOperators; op++) {
-    assert(metas->meta[0]->handle.blas == metas->meta[op]->handle.blas);
-    assert(metas->meta[0]->handle.dnn == metas->meta[op]->handle.dnn);
-  }
+  int start = 0;
+  for (start = 0; start < fused->numOperators; start++)
+    if (metas->meta[start] != NULL)
+      break;
+  for (int op = start+1; op < fused->numOperators; op++)
+    if (metas->meta[op] != NULL) {
+      assert(metas->meta[start]->handle.blas == metas->meta[op]->handle.blas);
+      assert(metas->meta[start]->handle.dnn == metas->meta[op]->handle.dnn);
+    }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(metas->meta[0]->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(metas->meta[0]->handle.dnn, stream));
+  if (start < fused->numOperators) {
+    cudaStream_t stream;
+    checkCUDA(cudaStreamCreate(&stream));
+    checkCUDA(cublasSetStream(metas->meta[start]->handle.blas, stream));
+    checkCUDNN(cudnnSetStream(metas->meta[start]->handle.dnn, stream));
+  }
 #endif
   int ioff = 0, woff = 0, ooff = 0;
-    Domain my_id[MAX_NUM_INPUTS], my_grad_id[MAX_NUM_INPUTS];
-    Domain my_wd[MAX_NUM_WEIGHTS], my_grad_wd[MAX_NUM_WEIGHTS];
-    Domain my_od[MAX_NUM_OUTPUTS], my_grad_od[MAX_NUM_OUTPUTS];
-    const float* my_ip[MAX_NUM_INPUTS];
-    const float* my_wp[MAX_NUM_WEIGHTS];
-    const float* my_op[MAX_NUM_OUTPUTS];
-    float* my_grad_ip[MAX_NUM_INPUTS];
-    float* my_grad_wp[MAX_NUM_WEIGHTS];
-    float* my_grad_op[MAX_NUM_OUTPUTS];
+  Domain my_id[MAX_NUM_INPUTS], my_grad_id[MAX_NUM_INPUTS];
+  Domain my_wd[MAX_NUM_WEIGHTS], my_grad_wd[MAX_NUM_WEIGHTS];
+  Domain my_od[MAX_NUM_OUTPUTS], my_grad_od[MAX_NUM_OUTPUTS];
+  const float* my_ip[MAX_NUM_INPUTS];
+  const float* my_wp[MAX_NUM_WEIGHTS];
+  const float* my_op[MAX_NUM_OUTPUTS];
+  float* my_grad_ip[MAX_NUM_INPUTS];
+  float* my_grad_wp[MAX_NUM_WEIGHTS];
+  float* my_grad_op[MAX_NUM_OUTPUTS];
 
   for (int op = 0; op < fused->numOperators; op++) {
     for (int i = 0; i < fused->op_num_inputs[op]; i++) {
@@ -545,6 +635,16 @@ void FusedOp::backward_task(const Task* task,
       assert(my_grad_od[i] == my_od[i]);
     }
     switch (fused->op_op_type[op]) {
+      case OP_CONCAT:
+      {
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        ConcatMeta* m = (ConcatMeta*) metas->meta[op];
+        int num_inputs = fused->op_num_inputs[op];
+        Concat::backward_kernel(my_grad_op[0], my_grad_ip, num_inputs, m->axis,
+            my_grad_od[0], my_grad_id);
+        break;
+      }
       case OP_CONV2D:
       {
         assert(fused->op_num_inputs[op] == 1);
@@ -574,6 +674,35 @@ void FusedOp::backward_task(const Task* task,
             my_wp[0], my_grad_wp[0], my_grad_wp[1], in_dim, out_dim, batch_size);
         break;
       }
+      case OP_BATCHMATMUL:
+      {
+        assert(fused->op_num_inputs[op] == 2);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        Domain out_domain = my_od[0];
+        Domain a_domain = my_id[0];
+        Domain b_domain = my_id[1];
+        // check dims
+        int m = b_domain.hi()[0] - b_domain.lo()[0] + 1;
+        assert(m == out_domain.hi()[0] - out_domain.lo()[0] + 1);
+        int n = a_domain.hi()[1] - a_domain.lo()[1] + 1;
+        assert(n == out_domain.hi()[1] - out_domain.lo()[1] + 1);
+        int k = a_domain.hi()[0] - a_domain.lo()[0] + 1;
+        assert(k == b_domain.hi()[1] - b_domain.lo()[1] + 1);
+        assert(a_domain.get_dim() == b_domain.get_dim());
+        assert(a_domain.get_dim() == out_domain.get_dim());
+        int batch = 1;
+        for (int i = 2; i < a_domain.get_dim(); i++) {
+          int dim_size = a_domain.hi()[i] - a_domain.lo()[i] + 1;
+          assert(dim_size == b_domain.hi()[i] - b_domain.lo()[i] + 1);
+          assert(dim_size == out_domain.hi()[i] - out_domain.lo()[i] + 1);
+          batch *= dim_size;
+        }
+        BatchMatmulMeta* meta = (BatchMatmulMeta*) metas->meta[op];
+        BatchMatmul::backward_kernel(meta, my_op[0], my_grad_op[0], my_ip[0], my_grad_ip[0],
+            my_ip[1], my_grad_ip[1], NULL, m, n, k, batch);
+        break;
+      }
       case OP_EW_ADD:
       case OP_EW_SUB:
       case OP_EW_MUL:
@@ -601,6 +730,48 @@ void FusedOp::backward_task(const Task* task,
         ElementUnaryMeta* m = (ElementUnaryMeta*) metas->meta[op];
         ElementUnary::backward_kernel(m, my_ip[0], my_grad_ip[0],
             my_op[0], my_grad_op[0], my_id[0].get_volume());
+        break;
+      }
+      case OP_POOL2D:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        //assert(my_id[0] == my_od[0]);
+        Pool2DMeta* m = (Pool2DMeta*) metas->meta[op];
+        Pool2D::backward_kernel(m, my_ip[0], my_grad_ip[0],
+            my_op[0], my_grad_op[0]);
+        break;
+      }
+      case OP_FLAT:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_grad_id[0].get_volume() == my_grad_od[0].get_volume());
+        Flat::backward_kernel(my_grad_ip[0], my_grad_op[0],
+            my_grad_id[0].get_volume());
+        break;
+      }
+      case OP_RESHAPE:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_grad_id[0].get_volume() == my_grad_od[0].get_volume());
+        Reshape::backward_kernel(my_grad_ip[0], my_grad_op[0],
+            my_grad_id[0].get_volume());
+        break;
+      }
+      case OP_TRANSPOSE:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_weights[op] == 0);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_grad_id[0].get_volume() == my_grad_od[0].get_volume());
+        TransposeMeta* m = (TransposeMeta*) metas->meta[op];
+        Transpose::backward_kernel(m, my_grad_ip[0], my_grad_op[0],
+            my_grad_id[0], my_grad_od[0]);
         break;
       }
       default:

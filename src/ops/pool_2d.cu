@@ -251,18 +251,27 @@ void Pool2D::init(const FFModel& ff)
   }
 }
 
+/*static*/
+void Pool2D::forward_kernel(const Pool2DMeta* m,
+                            const float* input_ptr,
+                            float* output_ptr)
+{
+  float alpha = 1.0f, beta = 0.0f;
+  checkCUDNN(cudnnPoolingForward(m->handle.dnn, m->poolDesc,
+                                 &alpha, m->inputTensor, input_ptr,
+                                 &beta, m->outputTensor, output_ptr));
+}
+
 /*
   regions[0](I): input
   regions[1](O): output
 */
-
 void Pool2D::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  float alpha = 1.0f, beta = 0.0f;
   const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -274,9 +283,7 @@ void Pool2D::forward_task(const Task *task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  checkCUDNN(cudnnPoolingForward(m->handle.dnn, m->poolDesc,
-                                 &alpha, m->inputTensor, acc_input.ptr,
-                                 &beta, m->outputTensor, acc_output.ptr));
+  forward_kernel(m, acc_input.ptr, acc_output.ptr);
 }
 
 void Pool2D::forward(const FFModel& ff)
@@ -306,6 +313,21 @@ void Pool2D::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+/*static*/
+void Pool2D::backward_kernel(const Pool2DMeta* m,
+                             const float* input_ptr,
+                             float* input_grad_ptr,
+                             const float* output_ptr,
+                             const float* output_grad_ptr)
+{
+  float alpha = 1.0f;
+  checkCUDNN(cudnnPoolingBackward(m->handle.dnn, m->poolDesc,
+                                  &alpha, m->outputTensor, output_ptr,
+                                  m->outputTensor, output_grad_ptr,
+                                  m->inputTensor, input_ptr,
+                                  &alpha, m->inputTensor, input_grad_ptr));
+}
+
 /*
   regions[0](I): input
   regions[1](I/O): input_grad
@@ -318,7 +340,6 @@ void Pool2D::backward_task(const Task *task,
 {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  float alpha = 1.0f;
   const Pool2D* pool = (Pool2D*) task->args;
   const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
   TensorAccessorR<float, 4> acc_input(
@@ -342,11 +363,7 @@ void Pool2D::backward_task(const Task *task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  checkCUDNN(cudnnPoolingBackward(m->handle.dnn, m->poolDesc,
-                                  &alpha, m->outputTensor, acc_output.ptr,
-                                  m->outputTensor, acc_output_grad.ptr,
-                                  m->inputTensor, acc_input.ptr,
-                                  &alpha, m->inputTensor, acc_input_grad.ptr));
+  backward_kernel(m, acc_input.ptr, acc_input_grad.ptr, acc_output.ptr, acc_output_grad.ptr);
   if (pool->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));

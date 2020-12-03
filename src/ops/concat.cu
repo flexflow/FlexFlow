@@ -110,11 +110,13 @@ OpMeta* Concat::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-  //FFHandler handler = *((const FFHandler*) task->local_args);
-  //ConcatMeta* m = new ConcatMeta(handler);
-  //return m;
+  Concat* cc = (Concat*) task->args;
+  FFHandler handler = *((const FFHandler*) task->local_args);
+  ConcatMeta* m = new ConcatMeta(handler);
+  // Note that our internal axis index ordering is opposite to other frameworks
+  m->axis = cc->outputs[0].numDim - 1 - cc->axis;
+  return m;
   // Return null since Concat ops don't need ConcatMeta
-  return NULL;
 }
 
 void Concat::init(const FFModel& ff)
@@ -122,11 +124,31 @@ void Concat::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      ParallelConfig pc; \
+      std::string pcname = name; \
+      ff.config.find_parallel_config(DIM, pcname, pc); \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        FFHandler handle = ff.handlers[pc.device_ids[idx++]]; \
+        argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
   IndexLauncher launcher(CONCAT_INIT_TASK_ID, task_is,
     TaskArgument(this, sizeof(Concat)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
- 
   launcher.add_region_requirement(
     RegionRequirement(outputs[0].part, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0].region));
@@ -139,6 +161,22 @@ void Concat::init(const FFModel& ff)
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        meta[idx++] = fm.get_result<OpMeta*>(*it); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
 }
 
 template<int N>
@@ -157,6 +195,46 @@ void calc_blk_size(coord_t& num_blocks,
   }
 }
 
+/*static*/
+void Concat::forward_kernel(float* output,
+                            const float** inputs,
+                            int num_inputs,
+                            int axis,
+                            const Domain& out_domain,
+                            const Domain* in_domain)
+{
+  coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
+  assert(num_inputs <= MAX_NUM_INPUTS);
+  switch (out_domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = out_domain; \
+      calc_blk_size<DIM>(num_blocks, output_blk_size, rect, axis); \
+      for (int i = 0; i < num_inputs; i++) { \
+        rect = in_domain[i]; \
+        coord_t input_num_blocks = 1; \
+        calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], rect, axis); \
+        assert(input_num_blocks == num_blocks); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      fprintf(stderr, "Unsupported concat dimension number");
+      assert(false);
+  }
+
+  for (int i = 0; i < num_inputs; i++) {
+    copy_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS>>>(
+        output, inputs[i], num_blocks, output_blk_size, input_blk_sizes[i]);
+    //printf("output = %x num_blocks=%d output_blk_size=%d input_blk_size[%d]=%d\n",
+    //       output, num_blocks, output_blk_size, i, input_blk_sizes[i]);
+    output += input_blk_sizes[i];
+  }
+}
+
 /*
   regions[0](O): output
   regions[1..numInputs](I): inputs
@@ -170,45 +248,20 @@ void Concat::forward_task(const Task *task,
   int axis = cc->outputs[0].numDim - 1 - cc->axis;
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
-  float *output;
-  const float *inputs[MAX_NUM_INPUTS];
-  coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
-  assert(cc->numInputs <= MAX_NUM_INPUTS);
-  Domain domain = runtime->get_index_space_domain(
+  Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  assert(domain.get_dim() == cc->outputs[0].numDim);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      TensorAccessorW<float, DIM> accOutput( \
-          regions[0], task->regions[0], FID_DATA, ctx, runtime, \
-          false/*readOutput*/); \
-      output = accOutput.ptr; \
-      calc_blk_size<DIM>(num_blocks, output_blk_size, accOutput.rect, axis); \
-      for (int i = 0; i < cc->numInputs; i++) { \
-        TensorAccessorR<float, DIM> accInput( \
-            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime); \
-        inputs[i] = accInput.ptr; \
-        coord_t input_num_blocks = 1; \
-        calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], accInput.rect, axis); \
-        assert(input_num_blocks == num_blocks); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      fprintf(stderr, "Unsupported concat dimension number");
-      assert(false);
-  }
-  for (int i = 0; i < cc->numInputs; i++) {
-    copy_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS>>>(
-        output, inputs[i], num_blocks, output_blk_size, input_blk_sizes[i]);
-    //printf("output = %x num_blocks=%d output_blk_size=%d input_blk_size[%d]=%d\n",
-    //       output, num_blocks, output_blk_size, i, input_blk_sizes[i]);
-    output += input_blk_sizes[i];
-  }
+  assert(out_domain.get_dim() == cc->outputs[0].numDim);
+  Domain in_domain[MAX_NUM_INPUTS];
+  for (int i = 0; i < cc->numInputs; i++)
+    in_domain[i] = runtime->get_index_space_domain(
+        ctx, task->regions[i+1].region.get_index_space());
+  float *output = helperGetTensorPointerWO<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  const float *inputs[MAX_NUM_INPUTS];
+  for (int i = 0; i < cc->numInputs; i++)
+    inputs[i] = helperGetTensorPointerRO<float>(
+        regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
+  forward_kernel(output, inputs, cc->numInputs, axis, out_domain, in_domain);
   if (cc->profiling) {
     checkCUDA(cudaDeviceSynchronize());
     //print_tensor<4, float>(output - output_blk_size, output_rect, "[Concat:forward:output]");
@@ -216,27 +269,6 @@ void Concat::forward_task(const Task *task,
     //print_tensor<4, float>(inputs[0], input_rect[0], "[Concat:forward:input0]");
     //print_tensor<4, float>(inputs[1], input_rect[1], "[Concat:forward:input1]");
   }
-#ifdef DEADCODE
-  const AccessorWO<float, 3> acc_output(regions[0], FID_DATA);
-  Rect<3> rect_output;
-  rect_output =
-    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  assert(acc_output.accessor.is_dense_arbitrary(rect_output));
-  float *output_ptr = acc_output.ptr(rect_output.lo);
-  float *output_bound = output_ptr + rect_output.volume();
-  for (int i = 0; i < cc->numInputs; i++) {
-    const AccessorRO<float, 3> acc_input(regions[i+1], FID_DATA);
-    Rect<3> rect_input =
-      runtime->get_index_space_domain(ctx, task->regions[i+1].region.get_index_space());
-    assert(acc_input.accessor.is_dense_arbitrary(rect_input));
-    const float *input_ptr = acc_input.ptr(rect_input.lo);
-    checkCUDA(cudaMemcpyAsync(output_ptr, input_ptr,
-                              rect_input.volume() * sizeof(float),
-                              cudaMemcpyDeviceToDevice));
-    output_ptr += rect_input.volume();
-  }
-  assert(output_ptr == output_bound);
-#endif
 }
 
 void Concat::forward(const FFModel& ff)
@@ -244,14 +276,6 @@ void Concat::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-#ifdef DEADCODE
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
-  int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
-    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
-  }
-#endif
   IndexLauncher launcher(CONCAT_FWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Concat)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -269,6 +293,48 @@ void Concat::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Concat::backward_kernel(const float* output_grad,
+                             float** input_grads,
+                             int num_inputs,
+                             int axis,
+                             const Domain& out_grad_domain,
+                             const Domain* in_grad_domain)
+{
+  coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
+  assert(num_inputs <= MAX_NUM_INPUTS);
+  switch (out_grad_domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = out_grad_domain; \
+      calc_blk_size<DIM>(num_blocks, output_blk_size, rect, axis); \
+      for (int i = 0; i < num_inputs; i++) { \
+        rect = in_grad_domain[i]; \
+        coord_t input_num_blocks = 1; \
+        calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], rect, axis); \
+        assert(input_num_blocks == num_blocks); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      fprintf(stderr, "Unsupported concat dimension number");
+      assert(false);
+  }
+
+  for (int i = 0; i < num_inputs; i++) {
+    add_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS>>>(
+        input_grads[i], output_grad, num_blocks, input_blk_sizes[i], output_blk_size);
+    output_grad += input_blk_sizes[i];
+  }
+    
+  //Rect<2> output_rect(Point<2>(0, 0), Point<2>(output_blk_size-1, batch_size - 1));
+  //Rect<2> input_rect(Point<2>(0, 0), Point<2>(input_blk_sizes[0]-1, batch_size - 1));
+  //print_tensor<2, float>(output_grad - output_blk_size, output_rect, "[Concat:backward:output]");
+  //print_tensor<2, float>(input_grads[0], input_rect, "[Concat:backward:input0]");
+}
+
 /*
   regions[0](I): output_grad
   regions[1..numInputs](I/O): input_grad
@@ -282,72 +348,27 @@ void Concat::backward_task(const Task *task,
   int axis = cc->outputs[0].numDim - 1 - cc->axis;
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
-  const float *output_grad;
-  float *input_grads[MAX_NUM_INPUTS];
-  coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(cc->numInputs <= MAX_NUM_INPUTS);
-  Domain domain = runtime->get_index_space_domain(
+  Domain out_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  assert(domain.get_dim() == cc->outputs[0].numDim);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      TensorAccessorR<float, DIM> accOutputGrad( \
-          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
-      output_grad = accOutputGrad.ptr; \
-      calc_blk_size<DIM>(num_blocks, output_blk_size, accOutputGrad.rect, axis); \
-      for (int i = 0; i < cc->numInputs; i++) { \
-        TensorAccessorW<float, DIM> accInputGrad( \
-            regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime, \
-            true/*readOutput*/); \
-        input_grads[i] = accInputGrad.ptr; \
-        coord_t input_num_blocks = 1; \
-        calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], accInputGrad.rect, axis); \
-        assert(input_num_blocks == num_blocks); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      fprintf(stderr, "Unsupported concat dimension number");
-      assert(false);
-  }
-  for (int i = 0; i < cc->numInputs; i++) {
-    add_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS>>>(
-        input_grads[i], output_grad, num_blocks, input_blk_sizes[i], output_blk_size);
-    output_grad += input_blk_sizes[i];
-  }
+  assert(out_grad_domain.get_dim() == cc->outputs[0].numDim);
+  Domain in_grad_domains[MAX_NUM_INPUTS];
+  for (int i = 0; i < cc->numInputs; i++)
+    in_grad_domains[i] = runtime->get_index_space_domain(
+        ctx, task->regions[i+1].region.get_index_space());
+  const float *output_grad = helperGetTensorPointerRO<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float *input_grads[MAX_NUM_INPUTS];
+  for (int i = 0; i < cc->numInputs; i++)
+    input_grads[i] = helperGetTensorPointerRW<float>(
+        regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
+
+  backward_kernel(output_grad, input_grads, cc->numInputs, axis,
+      out_grad_domain, in_grad_domains);
+
   if (cc->profiling) {
     checkCUDA(cudaDeviceSynchronize());
-    int batch_size = domain.get_volume() / output_blk_size;
-    Rect<2> output_rect(Point<2>(0, 0), Point<2>(output_blk_size-1, batch_size - 1));
-    Rect<2> input_rect(Point<2>(0, 0), Point<2>(input_blk_sizes[0]-1, batch_size - 1));
-    //print_tensor<2, float>(output_grad - output_blk_size, output_rect, "[Concat:backward:output]");
-    //print_tensor<2, float>(input_grads[0], input_rect, "[Concat:backward:input0]");
   }
-#ifdef DEADCODE
-  const AccessorRO<float, 3> acc_output(regions[0], FID_DATA);
-  Rect<3> rect_output;
-  rect_output =
-    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  assert(acc_output.accessor.is_dense_arbitrary(rect_output));
-  float *output_ptr = (float*) acc_output.ptr(rect_output.lo);
-  float *output_bound = output_ptr + rect_output.volume();
-  for (int i = 0; i < cc->numInputs; i++) {
-    const AccessorWO<float, 3> acc_input(regions[i+1], FID_DATA);
-    Rect<3> rect_input =
-      runtime->get_index_space_domain(ctx, task->regions[i+1].region.get_index_space());
-    assert(acc_input.accessor.is_dense_arbitrary(rect_input));
-    float *input_ptr = acc_input.ptr(rect_input.lo);
-    checkCUDA(cudaMemcpyAsync(input_ptr, output_ptr,
-                              rect_input.volume() * sizeof(float),
-                              cudaMemcpyDeviceToDevice));
-    output_ptr += rect_input.volume();
-  }
-  assert(output_ptr == output_bound);
-#endif
 }
 
 void Concat::backward(const FFModel& ff)
