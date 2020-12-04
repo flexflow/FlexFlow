@@ -38,6 +38,7 @@ FF_NEW_OPAQUE_TYPE(flexflow_op_t);
 FF_NEW_OPAQUE_TYPE(flexflow_parameter_t);
 FF_NEW_OPAQUE_TYPE(flexflow_perf_metrics_t);
 FF_NEW_OPAQUE_TYPE(flexflow_net_config_t);
+FF_NEW_OPAQUE_TYPE(flexflow_dlrm_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dataloader_4d_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dataloader_2d_t);
 FF_NEW_OPAQUE_TYPE(flexflow_single_dataloader_t);
@@ -583,6 +584,57 @@ flexflow_net_config_destroy(
 const char*
 flexflow_net_config_get_dataset_path(
   flexflow_net_config_t handle);
+
+// -----------------------------------------------------------------------
+// DLRMConfig
+// -----------------------------------------------------------------------
+
+flexflow_dlrm_config_t
+flexflow_dlrm_config_create();
+
+void
+flexflow_dlrm_config_destroy(
+  flexflow_dlrm_config_t handle);
+
+const char*
+flexflow_dlrm_config_get_dataset_path(
+  flexflow_dlrm_config_t handle);
+
+const char*
+flexflow_dlrm_config_get_arch_interaction_op(
+  flexflow_dlrm_config_t handle);
+
+int
+flexflow_dlrm_config_get_sparse_feature_size(
+  flexflow_dlrm_config_t handle);
+
+int
+flexflow_dlrm_config_get_sigmoid_bot(
+  flexflow_dlrm_config_t handle);
+
+int
+flexflow_dlrm_config_get_sigmoid_top(
+  flexflow_dlrm_config_t handle);
+
+int
+flexflow_dlrm_config_get_embedding_bag_size(
+  flexflow_dlrm_config_t handle);
+
+float
+flexflow_dlrm_config_get_loss_threshold(
+  flexflow_dlrm_config_t handle);
+
+int*
+flexflow_dlrm_config_get_mlp_bot(
+  flexflow_dlrm_config_t handle);
+
+int*
+flexflow_dlrm_config_get_mlp_top(
+  flexflow_dlrm_config_t handle);
+
+int*
+flexflow_dlrm_config_get_embedding_size(
+  flexflow_dlrm_config_t handle);
 
 // -----------------------------------------------------------------------
 // DataLoader

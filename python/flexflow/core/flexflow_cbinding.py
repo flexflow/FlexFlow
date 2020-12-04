@@ -1013,6 +1013,42 @@ class NetConfig(object):
     self._handle = ffi.gc(self.handle, ffc.flexflow_net_config_destroy)
     cpath = ffc.flexflow_net_config_get_dataset_path(self.handle)
     self.dataset_path = ffi.string(cpath)
+    
+# -----------------------------------------------------------------------
+# DLRMConfig
+# -----------------------------------------------------------------------
+
+class DLRMConfig(object):
+  def __init__(self):
+    self.handle = ffc.flexflow_dlrm_config_create()
+    self._handle = ffi.gc(self.handle, ffc.flexflow_dlrm_config_destroy)
+    
+    cstr = ffc.flexflow_dlrm_config_get_dataset_path(self.handle)
+    self.dataset_path = ffi.string(cstr)
+    
+    cstr = ffc.flexflow_dlrm_config_get_arch_interaction_op(self.handle)
+    self.arch_interaction_op = ffi.string(cstr)
+    
+    self.sparse_feature_size = ffc.flexflow_dlrm_config_get_sparse_feature_size(self.handle)
+    self.sigmoid_bot = ffc.flexflow_dlrm_config_get_sigmoid_bot(self.handle)
+    self.sigmoid_top = ffc.flexflow_dlrm_config_get_sigmoid_top(self.handle)
+    self.embedding_bag_size = ffc.flexflow_dlrm_config_get_embedding_bag_size(self.handle)
+    self.loss_threshold = ffc.flexflow_dlrm_config_get_loss_threshold(self.handle)
+    
+    mlp_bot_c = ffc.flexflow_dlrm_config_get_mlp_bot(self.handle)
+    self.mlp_bot = []
+    for i in range(0, mlp_bot_c[0]):
+      self.mlp_bot.append(mlp_bot_c[i+1])
+      
+    mlp_top_c = ffc.flexflow_dlrm_config_get_mlp_top(self.handle)
+    self.mlp_top = []
+    for i in range(0, mlp_top_c[0]):
+      self.mlp_top.append(mlp_top_c[i+1])
+      
+    embedding_size_c = ffc.flexflow_dlrm_config_get_embedding_size(self.handle)
+    self.embedding_size = []
+    for i in range(0, embedding_size_c[0]):
+      self.embedding_size.append(embedding_size_c[i+1])
 
 # -----------------------------------------------------------------------
 # DataLoader
