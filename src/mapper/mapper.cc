@@ -196,9 +196,8 @@ void FFMapper::select_task_options(const MapperContext ctx,
     }
   }
 
-  if ((task.task_id == PY_DL_4D_FLOAT_LOAD_ENTIRE_CPU_TASK_ID)
-    || (task.task_id == PY_DL_2D_FLOAT_LOAD_ENTIRE_CPU_TASK_ID)
-    || (task.task_id == PY_DL_2D_INT_LOAD_ENTIRE_CPU_TASK_ID))
+  if ((task.task_id == PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID)
+    || (task.task_id == PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID))
   {
     if (!task.is_index_space) {
       output.initial_proc = local_cpus[0];
@@ -923,10 +922,10 @@ void FFMapper::memoize_operation(const MapperContext  ctx,
                                        MemoizeOutput& output)
 {
   // FIXME: Legion tracing currently does not support MUST_EPOCH
-  //if (mappable.as_must_epoch() != NULL) {
-  //  output.memoize = false;
-  //  return;
-  //}
+  if (mappable.as_must_epoch() != NULL) {
+    output.memoize = false;
+    return;
+  }
   // Memoize all other mapping decisions
   // FIXME: currently disabled memoize optimization
   output.memoize = false;
