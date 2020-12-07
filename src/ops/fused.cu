@@ -438,6 +438,8 @@ void FusedOp::forward_task(const Task* task,
     woff += fused->op_num_weights[op];
     ooff += fused->op_num_outputs[op];
   }
+  //for (int i = 0; i < fused->numOutputs; i++)
+  //  print_tensor<float>(output_ptr[i], output_domain[i].get_volume(), "[Fused:forward:output]");
 }
 
 void FusedOp::forward(const FFModel& ff)
@@ -599,8 +601,17 @@ void FusedOp::backward_task(const Task* task,
   float* my_grad_ip[MAX_NUM_INPUTS];
   float* my_grad_wp[MAX_NUM_WEIGHTS];
   float* my_grad_op[MAX_NUM_OUTPUTS];
-
+  // Do backpropagation in the reverse ordering
   for (int op = 0; op < fused->numOperators; op++) {
+    ioff += fused->op_num_inputs[op];
+    woff += fused->op_num_weights[op];
+    ooff += fused->op_num_outputs[op];
+  }
+
+  for (int op = fused->numOperators-1; op >= 0; op--) {
+    ioff -= fused->op_num_inputs[op];
+    woff -= fused->op_num_weights[op];
+    ooff -= fused->op_num_outputs[op];
     for (int i = 0; i < fused->op_num_inputs[op]; i++) {
       int my_off = fused->op_input_idx[i+ioff];
       if (fused->op_input_source[i+ioff] == SOURCE_INPUT) {
@@ -777,10 +788,16 @@ void FusedOp::backward_task(const Task* task,
       default:
         assert(false && "Fusion currently does not support type");
     }
-    ioff += fused->op_num_inputs[op];
-    woff += fused->op_num_weights[op];
-    ooff += fused->op_num_outputs[op];
   }
+  assert(ioff == 0);
+  assert(woff == 0);
+  assert(ooff == 0);
+  //for (int i = 0; i < fused->numWeights; i++)
+  //  print_tensor<float>(weight_grad_ptr[i], weight_grad_domain[i].get_volume(), "[Fused:backward:weight_grad]");
+  //for (int i = 0; i < fused->numInputs; i++)
+  //  print_tensor<float>(input_grad_ptr[i], input_grad_domain[i].get_volume(), "[Fused:backward:input_grad]");
+  //for (int i = 0; i < fused->numOutputs; i++)
+  //  print_tensor<float>(output_grad_ptr[i], output_grad_domain[i].get_volume(), "[Fused:backward:output_grad]");
 }
 
 void FusedOp::backward(const FFModel& ff)

@@ -526,7 +526,7 @@ void Linear::forward_task_with_dim(const Task *task,
     //print_tensor<2, float>(acc_input.ptr, acc_input.rect, "[Linear:forward:input]");
     //print_tensor<2, float>(acc_kernel.ptr, acc_kernel.rect, "[Linear:forward:kernel]");
     //print_tensor<1, float>(acc_bias.ptr, acc_bias.rect, "[Linear:forward:bias]");
-    //print_tensor<2, float>(acc_output.ptr, acc_output.rect, "[Linear:forward:output]");
+    //print_tensor<float>(acc_output.ptr, acc_output.rect.volume(), "[Linear:forward:output]");
   }
 }
 
@@ -734,10 +734,10 @@ void Linear::backward_task_with_dim(const Task *task,
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("Linear backward time = %.2lfms\n", elapsed);
-    //print_tensor<NDIM, float>(acc_output_grad.ptr, acc_output_grad.rect, "[Linear:backward:output_grad]");
-    //print_tensor<2, float>(acc_kernel_grad.ptr, acc_kernel_grad.rect, "[Linear:backward:kernel_grad]");
-    //print_tensor<1, float>(acc_bias_grad.ptr, acc_bias_grad.rect, "[Linear:backward:bias_grad]");
-    //print_tensor<2, float>(input_grad, acc_input.rect, "[Linear:backward:input_grad]");
+    //print_tensor<float>(acc_output_grad.ptr, acc_output_grad.rect.volume(), "[Linear:backward:output_grad]");
+    //print_tensor<float>(acc_kernel_grad.ptr, acc_kernel_grad.rect.volume(), "[Linear:backward:kernel_grad]");
+    //print_tensor<float>(acc_bias_grad.ptr, acc_bias_grad.rect.volume(), "[Linear:backward:bias_grad]");
+    //print_tensor<float>(input_grad, acc_input.rect.volume(), "[Linear:backward:input_grad]");
   }
 }
 

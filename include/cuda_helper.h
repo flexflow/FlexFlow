@@ -93,8 +93,8 @@ __host__
 void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
                int num_replica, float learning_rate);
 
-template<unsigned DIM, typename T>
-void print_tensor(const T* ptr, Rect<DIM> rect, const char* prefix);
+template<typename T>
+void print_tensor(const T* ptr, size_t num_elements, const char* prefix);
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Legion::Domain domain);
