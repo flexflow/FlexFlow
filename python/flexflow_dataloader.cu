@@ -94,7 +94,26 @@ void ImgDataLoader2D::load_input(const Task *task,
 }
 
 template<typename DT>
-void SingleDataLoader::load_input_2d(const Task *task,
+void SingleDataLoader::load_input(const Task *task,
+                                  const std::vector<PhysicalRegion> &regions,
+                                  Context ctx,
+                                  Runtime* runtime)
+{
+  Domain domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return load_input_with_dim<DT, DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+template<typename DT, int NDIM>
+void SingleDataLoader::load_input_with_dim(const Task *task,
                                      const std::vector<PhysicalRegion> &regions,
                                      Context ctx,
                                      Runtime* runtime)
@@ -102,53 +121,23 @@ void SingleDataLoader::load_input_2d(const Task *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs* meta = (SampleIdxs*) task->local_args;
-  TensorAccessorR<DT, 2> acc_full_input(
+  TensorAccessorR<DT, NDIM> acc_full_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<DT, 2> acc_batch_input(
+  TensorAccessorW<DT, NDIM> acc_batch_input(
       regions[1], task->regions[1], FID_DATA, ctx, runtime, false/*readOutput*/);
-  coord_t batch_size = acc_batch_input.rect.hi[1] - acc_batch_input.rect.lo[1] + 1;
-  coord_t width = acc_batch_input.rect.hi[0] - acc_batch_input.rect.lo[0] + 1;
+  coord_t batch_size = acc_batch_input.rect.hi[NDIM-1] - acc_batch_input.rect.lo[NDIM-1] + 1;
+  coord_t num_elements_per_batch = acc_batch_input.rect.volume() / batch_size;
   //FIXME: currently assume continous indices
   assert(batch_size == meta->num_samples);
   for (int i = 1; i < batch_size; i++)
     assert(meta->idxs[i] == meta->idxs[0] + i);
   coord_t start_idx = meta->idxs[0];
-  const DT* input_zc = acc_full_input.ptr + start_idx * width;
+  const DT* input_zc = acc_full_input.ptr + start_idx * num_elements_per_batch;
   //printf("load input %d %d %d %d\n", meta->idxs[0], channels, height, width);
   copy_kernel<DT><<<GET_BLOCKS(acc_batch_input.rect.volume()), CUDA_NUM_THREADS>>>(
       acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());
   checkCUDA(cudaDeviceSynchronize());
 }
 
-template<typename DT>
-void SingleDataLoader::load_input_4d(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
-                                     Context ctx,
-                                     Runtime* runtime)
-{
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  SampleIdxs* meta = (SampleIdxs*) task->local_args;
-  TensorAccessorR<DT, 4> acc_full_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<DT, 4> acc_batch_input(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime, false/*readOutput*/);
-  coord_t batch_size = acc_batch_input.rect.hi[3] - acc_batch_input.rect.lo[3] + 1;
-  coord_t channels = acc_batch_input.rect.hi[2] - acc_batch_input.rect.lo[2] + 1;
-  coord_t height = acc_batch_input.rect.hi[1] - acc_batch_input.rect.lo[1] + 1;
-  coord_t width = acc_batch_input.rect.hi[0] - acc_batch_input.rect.lo[0] + 1;
-  //FIXME: currently assume continous indices
-  assert(batch_size == meta->num_samples);
-  for (int i = 1; i < batch_size; i++)
-    assert(meta->idxs[i] == meta->idxs[0] + i);
-  coord_t start_idx = meta->idxs[0];
-  const DT* input_zc = acc_full_input.ptr + start_idx * channels * height * width;
-  //printf("load input %d %d %d %d\n", meta->idxs[0], channels, height, width);
-  copy_kernel<DT><<<GET_BLOCKS(acc_batch_input.rect.volume()), CUDA_NUM_THREADS>>>(
-      acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());
-  checkCUDA(cudaDeviceSynchronize());
-}
-
-template void SingleDataLoader::load_input_4d<float>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
-template void SingleDataLoader::load_input_2d<float>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
-template void SingleDataLoader::load_input_2d<int>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
+template void SingleDataLoader::load_input<float>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
+template void SingleDataLoader::load_input<int>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
