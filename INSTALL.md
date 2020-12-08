@@ -103,10 +103,11 @@ After the compilation is done, the flexflow python can be run using the followin
 cd python
 ./flexflow_python example/xxx.py -ll:py 1 -ll:gpu 1 -ll:fsize size of gpu buffer -ll:zsize size of zero buffer
 ``` 
+
 Make sure The FF_HOME environment variable is set before running FlexFlow. You can add the following line in ~/.bashrc.
-
+```
 export FF_HOME=/path/to/FlexFlow
-
+```
 
 * Install the FlexFlow
 
