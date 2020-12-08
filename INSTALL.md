@@ -21,7 +21,7 @@ Note: all Python dependencies will be automatically installed if install the Fle
 
 # Build the FlexFlow
 ## Makefile
-### Build FlexFlow Runtime
+### Build FlexFlow Runtime with C++ Interface
 
 * Build the Protocol Buffer library.
 Skip this step if the Protocol Buffer library is already installed.
@@ -49,7 +49,7 @@ Use the following command line to build a DNN model (e.g., InceptionV3). See the
 ./ffcompile.sh examples/InceptionV3
 ```
 
-### Build FlexFlow Python Interface
+### Build FlexFlow Runtime with Python Interface (C++ Interface is also enabled)
 
 * Set the following enviroment variables
 ```
