@@ -82,6 +82,7 @@ FlexFlow training flags:
 * `-b` or `--batch-size`: global batch size in each iteration (default: 64)
 * `-p` or `--print-freq`: print frequency (default: 10)
 * `-d` or `--dataset`: path to the training dataset. If not set, synthetic data is used to conduct training.
+
 Legion runtime flags:
 * `-ll:gpu`: number of GPU processors to use on each node (default: 0)
 * `-ll:fsize`: size of device memory on each GPU (in MB)
@@ -89,11 +90,13 @@ Legion runtime flags:
 * `-ll:cpu`: number of data loading workers (default: 4)
 * `-ll:util`: number of utility threads to create per process (default: 1)
 * `-ll:bgwork`: number of background worker threads to create per process (default: 1)
+
 Performance auto-tuning flags:
 * `--search-budget` or `--budget`: the number of iterations for the MCMC search (default: 0)
 * `--search-alpha` or `--alpha`: a hyper-parameter for the search procedure (default: 0.05)
 * `--export-strategy` or `--export`: path to export the best discovered strategy (default: None)
 * `--import-strategy` or `--import`: path to import a previous saved strategy (default: None)
+
 For performance tuning related flags: see [performance autotuning](SEARCH.md).
 
 ## Contributing
