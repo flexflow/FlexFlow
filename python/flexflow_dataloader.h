@@ -97,17 +97,22 @@ public:
   static void register_gpu_tasks(void);
     
   template<typename DT>
-  static void load_input_2d(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx,
-                            Runtime* runtime);
+  static void load_input(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx,
+                         Runtime* runtime);
+  template<typename DT, int NDIM>
+  static void load_input_with_dim(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx,
+                         Runtime* runtime);
   template<typename DT>
-  static void load_input_4d(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx,
-                            Runtime* runtime);
-  template<typename DT, int NDIM>                                
   static void load_entire_dataset_from_numpy(const Task *task,
+                                             const std::vector<PhysicalRegion> &regions,
+                                             Context ctx,
+                                             Runtime* runtime);
+  template<typename DT, int NDIM>
+  static void load_entire_dataset_from_numpy_with_dim(const Task *task,
                                              const std::vector<PhysicalRegion> &regions,
                                              Context ctx,
                                              Runtime* runtime);
