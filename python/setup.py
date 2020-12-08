@@ -8,7 +8,7 @@ setup(
   name='flexflow',
   version='1.0',
   description='FlexFlow Python package',
-  url='https://github.com/flexflow/FlexFlow/tree/master/python/flexflow',
+  url='https://github.com/flexflow/FlexFlow',
   license='Apache',
   packages=['flexflow'],
   package_data={'flexflow': files},
@@ -20,8 +20,10 @@ setup(
                     ],
 
   classifiers=[
-      'License :: Apache License',
-      'Operating System :: POSIX :: Linux',
       'Programming Language :: Python :: 3.6',
+      'License :: OSI Approved :: Apache Software License',
+      'Operating System :: POSIX :: Linux',
+      'Topic :: Software Development :: Libraries',
   ],
+  python_requires='>=3.6',
 )
