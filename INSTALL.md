@@ -13,6 +13,10 @@ git clone --recursive https://github.com/flexflow/flexflow-third-party.git
 git clone https://github.com/flexflow/FlexFlow.git
 ```
 
+# FlexFlow Python dependencies
+* The FlexFlow Python support requires several additional Python libraries, please check [this](https://github.com/flexflow/FlexFlow/blob/master/python/requirements.txt) for details. 
+We recommend to use `pip` or `conda` to install the dependencies. 
+
 # Build the FlexFlow
 ## Makefile
 ### Build FlexFlow Runtime
@@ -90,7 +94,8 @@ cd config
 ```
 
 The `config.linux` is an example of how to set the varibles required for CMake build. Please modify `CUDA_ARCH`, `CUDNN_DIR`, `LEGION_DIR` and `PROTOBUF_DIR` according to your environment.  `LEGION_DIR` and `PROTOBUF_DIR` are the installation directories of Legion and Protocol Buffer, not the source code directories.
-Then go to the home directory of FlexFlow, and run
+
+Once the variables in the `config.linux` is set correctly, go to the home directory of FlexFlow, and run
 ```
 mkdir build
 cd build
