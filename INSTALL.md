@@ -17,6 +17,8 @@ git clone https://github.com/flexflow/FlexFlow.git
 * The FlexFlow Python support requires several additional Python libraries, please check [this](https://github.com/flexflow/FlexFlow/blob/master/python/requirements.txt) for details. 
 We recommend to use `pip` or `conda` to install the dependencies. 
 
+Note: all Python dependencies will be automatically installed if install the FlexFlow Python Interface using the PyPi repository (see the Installation below).
+
 # Build the FlexFlow
 ## Makefile
 ### Build FlexFlow Runtime
@@ -69,14 +71,9 @@ cd python
 make 
 ```
 
-* To run a DNN model, use the following command line
-```
-./flexflow_python example/xxx.py -ll:py 1 -ll:gpu 1 -ll:fsize size of gpu buffer -ll:zsize size of zero buffer
-``` 
-
 ## CMake
 
-* Build the FlexFlow third party libraries.
+### Build the FlexFlow third party libraries.
 ```
 cd flexflow-third-party
 mkdir build
@@ -87,7 +84,7 @@ make install
 ```
 Note: CMake sometimes can not automatically detect the correct `CUDA_ARCH`, so please set `CUDA_ARCH` if CMake can not detect it. 
 
-* Build the FlexFlow
+### Build the FlexFlow
 ```
 cd FlexFlow
 cd config
@@ -103,27 +100,44 @@ cd build
 make
 ```
 
-After the compilation is done, the flexflow python can be run using the following command lines:
-```
-cd python
-./flexflow_python example/xxx.py -ll:py 1 -ll:gpu 1 -ll:fsize size of gpu buffer -ll:zsize size of zero buffer
-``` 
-
-Make sure The FF_HOME environment variable is set before running FlexFlow. You can add the following line in ~/.bashrc.
+## Test the FlexFlow
+* Set the `FF_HOME` environment variable before running the FlexFlow. You can add the following line in ~/.bashrc.
 ```
 export FF_HOME=/path/to/FlexFlow
 ```
 
-* Install the FlexFlow
+* Run FlexFlow Python examples
+```
+cd python
+./flexflow_python example/xxx.py -ll:py 1 -ll:gpu 1 -ll:fsize size of gpu buffer -ll:zsize size of zero buffer
+``` 
+The full set of Python examples are in `python/test.sh`
 
-Install the FlexFlow binary, header file and library. 
+* Run FlexFlow C++ examples
+
+The C++ examples are in the [examples/cpp](https://github.com/flexflow/FlexFlow/tree/master/examples/cpp). 
+For example, the AlexNet can be run as:
+```
+./alexnet -ll:gpu 1 -ll:fsize size of gpu buffer -ll:zsize size of zero buffer
+``` 
+
+## Install the FlexFlow
+
+* Install the FlexFlow binary, header file and library if using CMake. 
 ```
 cd build
 make install
 ```
 
-Install the FlexFlow python code using pip
+* Install the FlexFlow Python interface using pip
+If install from local:
 ```
 cd python
 pip install .
 ```
+
+If install from the PyPI repository
+```
+pip install flexflow
+```
+All Python depencies will be automatically installed. 
