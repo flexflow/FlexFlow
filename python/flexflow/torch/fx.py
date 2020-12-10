@@ -88,7 +88,7 @@ def parse_concat(op_str, node):
   return op_str
   
 def parse_flat(op_str, node):
-  assert len(node.inedges) == 1, "wrong number of inputs"
+  #assert len(node.inedges) == 1, "wrong number of inputs"
   op_str = op_str + str(enum_to_int(OpType, OpType.FLAT)) + "\n"
   return op_str
 
