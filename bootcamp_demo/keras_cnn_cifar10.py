@@ -35,10 +35,12 @@ def top_level_task():
   model.add(Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="valid", activation="relu"))
   model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"))
   model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="valid", activation="relu"))
-  model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="valid", activation="relu"))
+  model.add(Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="valid"))
+  model.add(Activation("relu"))
   model.add(MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid"))
   model.add(Flatten())
-  model.add(Dense(512, activation="relu"))
+  model.add(Dense(512))
+  model.add(Activation("relu"))
   model.add(Dropout(0.5))
   model.add(Dense(num_classes))
   model.add(Activation("softmax"))
@@ -47,7 +49,7 @@ def top_level_task():
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
 
-  model.fit(x_train, y_train, batch_size=64, epochs=1)
+  model.fit(x_train, y_train, batch_size=64, epochs=4)
 
 if __name__ == "__main__":
   print("Functional API, cifar10 cnn")
