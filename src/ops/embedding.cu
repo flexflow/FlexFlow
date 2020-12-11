@@ -129,9 +129,8 @@ void Embedding::create_output_and_partition(FFModel& model)
     input_lps[0] = inputs[0].part;
     input_grad_lps[0] = inputs[0].part_grad;
   } else {
-    // Currently assert input must have the same partition
-    // to avoid data movement
-    assert(false);
+    model.create_disjoint_partition<2>(
+      inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
   }
 }
 
@@ -167,6 +166,11 @@ void Embedding::init(const FFModel& ff)
     RegionRequirement(weights[0].part, 0/*projection*/,
       READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(1, FID_DATA);
+  // regions[3]: input_grad
+  launcher.add_region_requirement(
+    RegionRequirement(input_grad_lps[0], 0/*projection*/,
+      WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+  launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -360,5 +364,7 @@ bool Embedding::measure_compute_time(Simulator* sim,
                                      float& backward_time)
 {
   //TODO: implement measure_forward
-  return false;
+  forward_time = 1.0f;
+  backward_time = 1.0f;
+  return true;
 }

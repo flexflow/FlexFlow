@@ -1133,6 +1133,7 @@ void FFModel::optimize(Simulator* simulator,
         printf("%d", it->second.device_ids[i]);
     printf("]\n");
   }
+  printf("============= MCMC Search Finished ============\n\n");
 }
 
 void FFModel::zero_gradients(void)
