@@ -325,5 +325,8 @@ bool Dropout::measure_compute_time(Simulator* sim,
                                   float& forward_time,
                                   float& backward_time)
 {
+  //TODO: implement measurement function
+  forward_time = 0.0f;
+  backward_time = 0.0f;
   return false;
 }
