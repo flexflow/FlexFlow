@@ -14,11 +14,8 @@ def top_level_task():
   dims_input = [ffconfig.get_batch_size(), 3, 229, 229]
   input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
   
-  torch_model = PyTorchModel("alexnet.ff")
-  
+  torch_model = PyTorchModel("alexnet.ff")  
   output_tensors = torch_model.apply(ffmodel, [input_tensor])
-
-  t = ffmodel.softmax(output_tensors[0])
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)

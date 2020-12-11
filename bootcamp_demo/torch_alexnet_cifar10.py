@@ -1,5 +1,7 @@
 #./flexflow_python $FF_HOME/bootcamp_demo/torch_alexnet_cifar10.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
 
+# https://github.com/pytorch/vision/blob/master/torchvision/models/alexnet.py
+
 import torch.nn as nn
 import torch
 import flexflow.torch.fx as fx
