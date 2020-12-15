@@ -169,8 +169,8 @@ void NormInitializer::init_task(const Task* task,
   NormInitializer* initializer = (NormInitializer*) task->args;
   //fprintf(stderr, "seed = %d\n", initializer->seed);
   curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
-  fprintf(stderr, "domain.volume() = %zu mean(%.4lf) var(%.4lf)\n",
-      domain.get_volume(), initializer->mean, initializer->stddev);
+  //fprintf(stderr, "domain.volume() = %zu mean(%.4lf) var(%.4lf)\n",
+  //    domain.get_volume(), initializer->mean, initializer->stddev);
   // FIXME: it seems curand has an internal bug with volume < 4
   // double check this later
   if (domain.get_volume() < 4) {
