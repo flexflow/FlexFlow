@@ -675,14 +675,15 @@ void Linear::backward_task_with_dim(const Task *task,
   int batch_size = acc_output.rect.volume() / out_dim;
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  if (domain.get_dim() == 3) {
-    TensorAccessorW<float, 3> acc_replica_grad(
+  if (domain.get_dim() == NDIM+1) {
+    assert(false);
+    TensorAccessorW<float, NDIM+1> acc_replica_grad(
         regions[1], task->regions[1], FID_DATA, ctx, runtime,
         true/*readOutput*/);
     assert(acc_replica_grad.rect.volume() == in_dim * batch_size);
     input_grad = acc_replica_grad.ptr;
   } else {
-    TensorAccessorW<float, 2> acc_replica_grad(
+    TensorAccessorW<float, NDIM> acc_replica_grad(
         regions[1], task->regions[1], FID_DATA, ctx, runtime,
         true/*readOutput*/);
     assert(acc_replica_grad.rect.volume() == in_dim * batch_size);

@@ -446,7 +446,9 @@ Tensor FFModel::create_constant(const int dims[],
 {
   // constant created in this way is not part of any operator
   // so we assume it does not have gradients
-  Tensor tensor = create_tensor<NDIM>(dims, data_type, NULL/*owner_op*/, false/*create_grad*/);
+  // FIXME: currently create gradients for constants since the current auto grad algorithm
+  // computes gradients for all operators
+  Tensor tensor = create_tensor<NDIM>(dims, data_type, NULL/*owner_op*/, true/*create_grad*/);
   ConstantInitializer initializer(value);
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;

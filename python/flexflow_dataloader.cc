@@ -495,6 +495,8 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_
   datatype = datatype_;
   // Create full input
   assert(input.numDim == full_input_.numDim);
+  for (int i = 0; i < input.numDim-1; i++)
+    assert(full_input_.adim[i] == input.adim[i]);
   batch_input = input;
   int dims[MAX_TENSOR_DIM];
   dims[0] = num_samples;

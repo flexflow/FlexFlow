@@ -668,7 +668,7 @@ class FFModel(object):
     assert type(tensors) is list, "tensors should be a list"
     tensor_handle_list = []
     n = len(tensors)
-    assert n <= 32, "Please increase MAX_NUM_INPUTS"
+    assert n <= 256, "Please increase MAX_NUM_INPUTS"
     for tensor in tensors:
       tensor_handle_list.append(tensor.handle)
     c_tensor_handle_list = ffi.new("flexflow_tensor_t[]", tensor_handle_list)
@@ -683,9 +683,9 @@ class FFModel(object):
       assert input.dims[axis] % sizes == 0, "Split dimension is not divisible"
       split = [input.dims[axis] // sizes for i in range(sizes)]
     n = len(split)
-    assert n <= 32, "Please increase MAX_NUM_OUTPUTS"
+    assert n <= 256, "Please increase MAX_NUM_OUTPUTS"
     c_split = ffi.new("int[]", split)
-    c_outputs_handle_list = ffi.new("flexflow_tensor_t[32]")
+    c_outputs_handle_list = ffi.new("flexflow_tensor_t[256]")
     ffc.flexflow_model_add_split(self.handle, input.handle, n, c_outputs_handle_list, c_split, axis)
     output_tensor_list = []
     for i in range(n):

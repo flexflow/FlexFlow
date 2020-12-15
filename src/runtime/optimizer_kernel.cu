@@ -167,50 +167,31 @@ void AdamOptimizer::update_task(const Task* task,
   float *w_ptr = NULL, *v_ptr = NULL, *m_ptr = NULL;
   size_t size = 0, num_replicas = 0;
   switch(domain.get_dim()) {
-    case 1:
-    {
-      TensorAccessorR<float, 1> accWGrad(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      TensorAccessorW<float, 1> accW(
-          regions[1], task->regions[1], FID_DATA, ctx, runtime,
-          true/*readOutput*/);
-      TensorAccessorW<float, 1> accV(
-          regions[2], task->regions[2], FID_DATA, ctx, runtime,
-          true/*readOutput*/);
-      TensorAccessorW<float, 1> accM(
-          regions[3], task->regions[3], FID_DATA, ctx, runtime,
-          true/*readOutput*/);
-      size = accW.rect.volume();
-      assert(accWGrad.rect.volume() % accW.rect.volume() == 0);
-      num_replicas = accWGrad.rect.volume() / accW.rect.volume();
-      w_grad_ptr = accWGrad.ptr;
-      w_ptr = accW.ptr;
-      v_ptr = accV.ptr;
-      m_ptr = accM.ptr;
-      break;
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorR<float, DIM> accWGrad( \
+          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
+      TensorAccessorW<float, DIM> accW( \
+          regions[1], task->regions[1], FID_DATA, ctx, runtime, \
+          true/*readOutput*/); \
+      TensorAccessorW<float, DIM> accV( \
+          regions[2], task->regions[2], FID_DATA, ctx, runtime, \
+          true/*readOutput*/); \
+      TensorAccessorW<float, DIM> accM( \
+          regions[3], task->regions[3], FID_DATA, ctx, runtime, \
+          true/*readOutput*/); \
+      size = accW.rect.volume(); \
+      assert(accWGrad.rect.volume() % accW.rect.volume() == 0); \
+      num_replicas = accWGrad.rect.volume() / accW.rect.volume(); \
+      w_grad_ptr = accWGrad.ptr; \
+      w_ptr = accW.ptr; \
+      v_ptr = accV.ptr; \
+      m_ptr = accM.ptr; \
+      break; \
     }
-    case 2:
-    {
-      TensorAccessorR<float, 2> accWGrad(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      TensorAccessorW<float, 2> accW(
-          regions[1], task->regions[1], FID_DATA, ctx, runtime,
-          true/*readOutput*/);
-      TensorAccessorW<float, 2> accV(
-          regions[2], task->regions[2], FID_DATA, ctx, runtime,
-          true/*readOutput*/);
-      TensorAccessorW<float, 2> accM(
-          regions[3], task->regions[3], FID_DATA, ctx, runtime,
-          true/*readOutput*/);
-      size = accW.rect.volume();
-      assert(accWGrad.rect.volume() % accW.rect.volume() == 0);
-      num_replicas = accWGrad.rect.volume() / accW.rect.volume();
-      w_grad_ptr = accWGrad.ptr;
-      w_ptr = accW.ptr;
-      v_ptr = accV.ptr;
-      m_ptr = accM.ptr;
-      break;
-    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
     {
       // Unsupported dims
