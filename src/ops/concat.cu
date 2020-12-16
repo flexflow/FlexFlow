@@ -137,6 +137,12 @@ void Concat::init(const FFModel& ff)
         READ_ONLY, EXCLUSIVE, inputs[i].region));
     launcher.add_field(i + 1, FID_DATA);
   }
+  for (int i = 0; i < numInputs; i++) {
+    launcher.add_region_requirement(
+      RegionRequirement(input_grad_lps[i], 0/*projection id*/,
+        WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
+    launcher.add_field(i + numInputs + 1, FID_DATA);
+  }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
 }
@@ -391,5 +397,5 @@ bool Concat::measure_compute_time(Simulator* sim,
   //TODO: implement measure_forward
   forward_time = 0.0f;
   backward_time = 0.0f;
-  return false;
+  return true;
 }

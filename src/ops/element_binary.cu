@@ -182,8 +182,8 @@ OpMeta* ElementBinary::init_task(const Task* task,
                                  const std::vector<PhysicalRegion> &regions,
                                  Context ctx, Runtime* runtime)
 {
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
+  assert(regions.size() == 4 || regions.size() == 5);
+  assert(task->regions.size() == regions.size());
   ElementBinary* eb = (ElementBinary*) task->args;
   FFHandler handle = *((FFHandler*) task->local_args);
   ElementBinaryMeta* m = new ElementBinaryMeta(handle);
@@ -253,6 +253,17 @@ void ElementBinary::init(const FFModel& ff)
     RegionRequirement(outputs[0].part, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(2, FID_DATA);
+  launcher.add_region_requirement(
+    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+  launcher.add_field(3, FID_DATA);
+  if (inputs[0].region_grad != inputs[1].region_grad) {
+    // regions[4](I/O): input1_grad
+    launcher.add_region_requirement(
+      RegionRequirement(input_grad_lps[1], 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, inputs[1].region_grad));
+    launcher.add_field(4, FID_DATA);
+  }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   switch (domain.get_dim()) {

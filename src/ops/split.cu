@@ -279,5 +279,5 @@ bool Split::measure_compute_time(Simulator* sim,
   //TODO: implement measure_forward
   forward_time = 0.0f;
   backward_time = 0.0f;
-  return false;
+  return true;
 }

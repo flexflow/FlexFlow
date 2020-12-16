@@ -329,6 +329,8 @@ Domain Op::get_output_tensor_shape(const ParallelConfig& pc,
   assert(output_idx < numOutputs);
   Domain d;
   d.dim = outputs[output_idx].numDim;
+  // Assume pc dim matches output dim
+  assert(d.dim == pc.nDims);
   for (int i = 0; i < d.dim; i++) {
     // Assume an equal partitioning
     assert(outputs[output_idx].adim[i] % pc.dim[i] == 0);
@@ -337,6 +339,7 @@ Domain Op::get_output_tensor_shape(const ParallelConfig& pc,
     d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
     part_idx = part_idx / pc.dim[i];
   }
+  assert(part_idx == 0);
   return d;
 }
 
@@ -346,14 +349,33 @@ Domain Op::get_input_tensor_shape(const ParallelConfig& pc,
   assert(input_idx < numInputs);
   Domain d;
   d.dim = inputs[input_idx].numDim;
-  for (int i = 0; i < d.dim; i++) {
+  if (pc.nDims == d.dim) {
+    for (int i = 0; i < d.dim; i++) {
+      // Assume an equal partitioning
+      assert(inputs[input_idx].adim[i] % pc.dim[i] == 0);
+      int dim_size = inputs[input_idx].adim[i] / pc.dim[i];
+      d.rect_data[i] = (part_idx % pc.dim[i]) * dim_size;
+      d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
+      part_idx = part_idx / pc.dim[i];
+    }
+  } else {
+    // Require data parallel when dims mismatch
+    for (int i = 0; i < pc.nDims-1; i++)
+      assert(pc.dim[i] == 1);
+    for (int i = 0; i < d.dim-1; i++) {
+      int dim_size = inputs[input_idx].adim[i];
+      d.rect_data[i] = 0;
+      d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
+    }
     // Assume an equal partitioning
-    assert(inputs[input_idx].adim[i] % pc.dim[i] == 0);
-    int dim_size = inputs[input_idx].adim[i] / pc.dim[i];
-    d.rect_data[i] = (part_idx % pc.dim[i]) * dim_size;
-    d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
-    part_idx = part_idx / pc.dim[i];
+    assert(inputs[input_idx].adim[d.dim-1] % pc.dim[pc.nDims-1] == 0);
+    assert(part_idx < pc.dim[pc.nDims-1]);
+    int dim_size = inputs[input_idx].adim[d.dim-1] / pc.dim[pc.nDims-1];
+    d.rect_data[d.dim - 1] = part_idx * dim_size;
+    d.rect_data[2*d.dim - 1] = d.rect_data[d.dim-1] + dim_size - 1;
+    part_idx = part_idx / pc.dim[pc.nDims-1];
   }
+  assert(part_idx == 0);
   return d;
 }
 
