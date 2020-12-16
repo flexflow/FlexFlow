@@ -25,12 +25,8 @@ void UniformInitializer::init_task(const Task* task,
                                    const std::vector<PhysicalRegion>& regions,
                                    Context ctx, Runtime* runtime)
 {
-  assert(regions.size() == 1);
-  assert(task->regions.size() == 1);
-  TensorAccessorW<float, 2> accW(regions[0], task->regions[0],
-      FID_DATA, ctx, runtime, false/*readOutput*/);
-  int inputDim = accW.rect.hi[0] - accW.rect.lo[0] + 1;
-  int outputDim = accW.rect.hi[1] - accW.rect.lo[1] + 1;
+
+  assert(regions.size() == task->regions.size());
   UniformInitializer* initializer = (UniformInitializer*) task->args;
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
@@ -39,10 +35,51 @@ void UniformInitializer::init_task(const Task* task,
   curandSetStream(gen, stream);
   //fprintf(stderr, "seed = %d\n", initializer->seed);
 
-  curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
-  checkCUDA(curandGenerateUniform(gen, accW.ptr, accW.rect.volume()));
-  scale_kernel<<<GET_BLOCKS(accW.rect.volume()), CUDA_NUM_THREADS>>>(
-      accW.ptr, accW.rect.volume(), initializer->min_val, initializer->max_val);
+
+
+  for (size_t i = 0; i < regions.size(); i++) {
+    Domain domain = runtime->get_index_space_domain(
+        ctx, task->regions[i].region.get_index_space());
+    float* w;
+    switch (domain.get_dim()) {
+      case 0:
+      {
+        // Do not support 0-dim parameters
+        assert(false);
+        break;
+      }
+      case 1:
+      {
+        TensorAccessorW<float, 1> accW(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/);
+        w = accW.ptr;
+        break;
+      }
+      case 2:
+      {
+        TensorAccessorW<float, 2> accW(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/);
+        w = accW.ptr;
+        break;
+      }
+      case 3:
+      {
+        TensorAccessorW<float, 3> accW(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/);
+        w = accW.ptr;
+        break;
+      }
+      default:
+      {
+         assert(false);
+         break;
+      }
+    }
+    curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
+    checkCUDA(curandGenerateUniform(gen, w, domain.get_volume()));
+    scale_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
+        w, domain.get_volume(), initializer->min_val, initializer->max_val);
+  }
   checkCUDA(cudaDeviceSynchronize());
   curandDestroyGenerator(gen);
 }

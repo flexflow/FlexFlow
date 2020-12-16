@@ -21,6 +21,7 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/runtime/strategy.pb.cc\
 		${FF_HOME}/src/runtime/strategy.cc\
 		${FF_HOME}/src/runtime/simulator.cc\
+		${FF_HOME}/src/ops/tests/test_utils.cc\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cc
 
 GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
@@ -81,13 +82,12 @@ endif
 INC_FLAGS	+= -I${FF_HOME}/protobuf/src
 LD_FLAGS	+= -L${FF_HOME}/protobuf/src/.libs
 
-#ifndef HDF5
-#HDF5_inc	?= /usr/include/hdf5/serial
-#HDF5_lib	?= /usr/lib/x86_64-linux-gnu/hdf5/serial
-#INC_FLAGS	+= -I${HDF5}/
-#LD_FLAGS	+= -L${HDF5_lib} -lhdf5
-#endif
-
+ifndef HDF5
+HDF5_inc	?= /usr/include/hdf5/serial
+HDF5_lib	?= /usr/lib/x86_64-linux-gnu/hdf5/serial
+INC_FLAGS	+= -I${HDF5}/
+LD_FLAGS	+= -L${HDF5_lib} -lhdf5
+endif
 
 ###########################################################################
 #

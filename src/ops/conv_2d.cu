@@ -160,6 +160,7 @@ void Conv2D::create_weights(FFModel& model)
   {
     const int dims[4] = {out_channels, in_channels, kernel_h, kernel_w};
     weights[0] = model.create_conv_weight<4>(this, dims, (IndexSpaceT<4>)task_is, DT_FLOAT, kernel_initializer);
+    numWeights = 1;
   }
   // Create bias tensor
   if (use_bias) {
@@ -168,6 +169,7 @@ void Conv2D::create_weights(FFModel& model)
     assert(numWeights == 2);
   } else {
     assert(numWeights == 1);
+    numWeights = 2;
   }
 }
 

@@ -110,7 +110,6 @@ void Embedding::create_output_and_partition(FFModel& model)
   // Retrive the task indexspace for the op
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
@@ -139,6 +138,7 @@ OpMeta* Embedding::init_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, Runtime* runtime)
 {
+  // We don't need EmbedMeta for forward or backward
   return NULL;
 }
 

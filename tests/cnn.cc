@@ -65,7 +65,6 @@ void top_level_task(const Task *task,
     char **argv = command_args.argv;
     int argc = command_args.argc;
     parse_input_args(argv, argc, config);
-    
     log_ff.print("batchSize(%d) inputHeight(%d) inputWdith(%d)",
                  config.batchSize, config.inputHeight, config.inputWidth);
     log_ff.print("workersPerNode(%d) loadersPerNode(%d) numNodes(%d)",
@@ -235,7 +234,6 @@ void top_level_task(const Task *task,
   t = model.add_linear_layer(t, 1000, false/*relu*/);
   t = model.add_softmax_layer(t);
 #endif
-  
   // Construct model (Resnet101)
 #ifdef USE_RESNET
   Tensor t = model.add_conv_layer(model.input_image, 64, 7, 7, 2, 2, 3, 3);
@@ -581,4 +579,3 @@ void parse_input_args(char **argv, int argc, FFConfig& config)
     }
   }
 }
-

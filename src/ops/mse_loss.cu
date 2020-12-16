@@ -170,7 +170,7 @@ PerfMetrics MSELoss::backward_task(const Task *task,
   perf_zc.train_correct = perf_zc.train_all = 0;
   perf_zc.test_correct = perf_zc.test_all = 0;
   perf_zc.val_correct = perf_zc.val_all = 0;
-  
+
   checkCUDA(cudaMalloc(&perf, sizeof(PerfMetrics)));
   checkCUDA(cudaMemcpy(perf, &perf_zc, sizeof(PerfMetrics), cudaMemcpyHostToDevice));
   if (out_dim == 1) {

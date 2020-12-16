@@ -30,7 +30,7 @@ template<typename FT, int N, typename T = coord_t> using AccessorRO = FieldAcces
 template<typename FT, int N, typename T = coord_t> using AccessorRW = FieldAccessor<READ_WRITE,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
 template<typename FT, int N, typename T = coord_t> using AccessorWO = FieldAccessor<WRITE_ONLY,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
 
-#define MAX_NUM_INPUTS 6
+#define MAX_NUM_INPUTS 512
 #define MAX_NUM_LOCALS 3
 #define MAX_NUM_WORKERS 16
 #define MAX_DIM 4

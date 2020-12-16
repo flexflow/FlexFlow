@@ -1,3 +1,5 @@
+Copyright (c) Facebook, Inc. and its affiliates.
+
 # FlexFlow
 
 FlexFlow is a deep learning framework that accelerates distributed DNN training by automatically searching for efficient parallelization strategies. FlexFlow provides a drop-in replacement for TensorFlow Keras and PyTorch. Running existing Keras and PyTorch programs in FlexFlow only requires [a few lines of changes to the program](https://flexflow.ai/keras).
@@ -111,8 +113,17 @@ Please subscribe to the FlexFlow users mailing list for
 
 * Zhihao Jia, Sina Lin, Charles R. Qi, and Alex Aiken. [Exploring Hidden Dimensions in Parallelizing Convolutional Neural Networks](http://proceedings.mlr.press/v80/jia18a/jia18a.pdf). In Proceedings of the International Conference on Machine Learning (ICML), Stockholm, Sweden, July 2018.
 
+<<<<<<< HEAD
+License
+-----------
+Apache License Version 2.0, January 2004
+http://www.apache.org/licenses/
+See the LICENSE file for more details.
+
+=======
 ## The Team
 FlexFlow is developed and maintained by teams at CMU, Facebook, Los Alamos National Lab, MIT, and Stanford (alphabetically).
 
 ## License
 FlexFlow uses Apache License 2.0.
+>>>>>>> 8c98e13f86ba9452bb5bef6a434ac30ffaa5f23a

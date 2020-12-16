@@ -170,4 +170,3 @@ bool save_strategies_to_file(const std::string& filename,
   }
   return true;
 }
-

@@ -102,7 +102,6 @@ void Concat::create_output_and_partition(FFModel& model)
       assert(false);
     }
   }
-
 }
 
 __host__
@@ -110,10 +109,6 @@ OpMeta* Concat::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-  //FFHandler handler = *((const FFHandler*) task->local_args);
-  //ConcatMeta* m = new ConcatMeta(handler);
-  //return m;
-  // Return null since Concat ops don't need ConcatMeta
   return NULL;
 }
 
@@ -250,14 +245,6 @@ void Concat::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-#ifdef DEADCODE
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
-  int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
-    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
-  }
-#endif
   IndexLauncher launcher(CONCAT_FWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Concat)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -333,27 +320,6 @@ void Concat::backward_task(const Task *task,
     //print_tensor<2, float>(output_grad - output_blk_size, output_rect, "[Concat:backward:output]");
     //print_tensor<2, float>(input_grads[0], input_rect, "[Concat:backward:input0]");
   }
-#ifdef DEADCODE
-  const AccessorRO<float, 3> acc_output(regions[0], FID_DATA);
-  Rect<3> rect_output;
-  rect_output =
-    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  assert(acc_output.accessor.is_dense_arbitrary(rect_output));
-  float *output_ptr = (float*) acc_output.ptr(rect_output.lo);
-  float *output_bound = output_ptr + rect_output.volume();
-  for (int i = 0; i < cc->numInputs; i++) {
-    const AccessorWO<float, 3> acc_input(regions[i+1], FID_DATA);
-    Rect<3> rect_input =
-      runtime->get_index_space_domain(ctx, task->regions[i+1].region.get_index_space());
-    assert(acc_input.accessor.is_dense_arbitrary(rect_input));
-    float *input_ptr = acc_input.ptr(rect_input.lo);
-    checkCUDA(cudaMemcpyAsync(input_ptr, output_ptr,
-                              rect_input.volume() * sizeof(float),
-                              cudaMemcpyDeviceToDevice));
-    output_ptr += rect_input.volume();
-  }
-  assert(output_ptr == output_bound);
-#endif
 }
 
 void Concat::backward(const FFModel& ff)
@@ -361,14 +327,6 @@ void Concat::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-#ifdef DEADCODE
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
-  int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
-    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
-  }
-#endif
   IndexLauncher launcher(CONCAT_BWD_TASK_ID, task_is,
     TaskArgument(this, sizeof(Concat)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -399,3 +357,4 @@ bool Concat::measure_compute_time(Simulator* sim,
   backward_time = 0.0f;
   return true;
 }
+

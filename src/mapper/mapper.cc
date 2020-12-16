@@ -268,7 +268,6 @@ void update_mappers(Machine machine, Runtime *runtime,
       }
     }
   }
-
   for (std::map<Processor, Memory>::iterator it = proc_fbmems->begin();
        it != proc_fbmems->end(); it++) {
     gpus->push_back(it->first);
@@ -321,4 +320,3 @@ void update_mappers(Machine machine, Runtime *runtime,
     runtime->replace_default_mapper(mapper, *it);
   }
 }
-

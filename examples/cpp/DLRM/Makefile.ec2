@@ -13,17 +13,13 @@
 # limitations under the License.
 #
 
-ifndef LG_RT_DIR
-#$(error LG_RT_DIR variable is not defined, aborting build)
-LG_RT_DIR	?= ../../legion/runtime
-endif
 
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 1		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
-USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
+USE_GASNET      ?= 1		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 1		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 
@@ -38,14 +34,45 @@ GEN_GPU_SRC	?= ../../src/ops/conv_2d.cu ../../src/runtime/model.cu ../../src/ops
 		../../src/runtime/cuda_helper.cu $(app).cu# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -I../../include/ #-I/mnt/homedir/zhihao/tools/protobuf/src -I/mnt/homedir/zhihao/tools/hdf5-1.10.5-linux-centos7-x86_64-shared/include/
+INC_FLAGS	?= -I../../include/ -I${CUDNN}/include  #-I/mnt/homedir/zhihao/tools/protobuf/src -I/mnt/homedir/zhihao/tools/hdf5-1.10.5-linux-centos7-x86_64-shared/include/
 CC_FLAGS	?=
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lcuda -lcudart -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -lhdf5 #-L/mnt/homedir/zhihao/tools/protobuf/src/.libs -L/mnt/homedir/zhihao/tools/hdf5-1.10.5-linux-centos7-x86_64-shared/lib
-# For Point and Rect typedefs
+LD_FLAGS	?= -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -lhdf5  -L${CUDNN}/lib64  #-L/mnt/homedir/zhihao/tools/protobuf/src/.libs -L/mnt/homedir/zhihao/tools/hdf5-1.10.5-linux-centos7-x86_64-shared/lib
+ For Point and Rect typedefs
 CC_FLAGS	+= -std=c++11
 NVCC_FLAGS  	+= -std=c++11
+
+ifndef CUDA
+#$(error CUDA variable is not defined, aborting build)
+endif
+
+ifndef CUDNN
+#$(error CUDNN variable is not defined, aborting build)
+endif
+
+ifndef LG_RT_DIR
+#$(error LG_RT_DIR variable is not defined, aborting build)
+LG_RT_DIR	?= ../../legion/runtime
+endif
+
+ifndef GASNET
+GASNET	?= ../../GASNet-2019.9.0 
+endif
+
+ifndef PROTOBUF
+#$(error PROTOBUF variable is not defined, aborting build)
+endif
+PROTOBUF	?= ../../protobuf
+INC_FLAGS	+= -I${PROTOBUF}/src
+LD_FLAGS	+= -L${PROTOBUF}/src/.lib -lprotobuf
+
+ifndef HDF5
+HDF5_inc	?= /usr/include/hdf5/serial
+HDF5_lib	?= /usr/lib/x86_64-linux-gnu/hdf5/serial
+INC_FLAGS	+= -I${HDF5}/
+LD_FLAGS	+= -L${HDF5_lib} -lhdf5
+endif
 ###########################################################################
 #
 #   Don't change anything below here
