@@ -562,6 +562,7 @@ class Parameter(Tensor):
 # -----------------------------------------------------------------------
 
 class FFModel(object):
+  
   __slots__ = ['handle', '_handle', '_layers', '_nb_layers', '_ffconfig', '_tracing_id']
   def __init__(self, ffconfig):
     self.handle = ffc.flexflow_model_create(ffconfig.handle)
@@ -583,6 +584,28 @@ class FFModel(object):
     self._nb_layers += 1
 
   def create_tensor(self, dims, data_type, create_grad=True):
+    """This gets the foobar
+
+    * :attr:`stride` controls the stride for the cross-correlation, a single
+        number or a one-element tuple.
+    
+    * :attr:`padding` controls the amount of implicit zero-paddings on both sides
+      for :attr:`padding` number of points.
+
+    * :attr:`dilation` controls the spacing between the kernel points; also
+      known as the à trous algorithm. It is harder to describe, but this `link`_
+      has a nice visualization of what :attr:`dilation` does.
+
+    * :attr:`groups` controls the connections between inputs and outputs.
+      :attr:`in_channels` and :attr:`out_channels` must both be divisible by
+      :attr:`groups`. For example,
+
+        * At groups=1, all inputs are convolved to all outputs.
+        * At groups=2, the operation becomes equivalent to having two conv
+          layers side by side, each seeing half the input channels,
+          and producing half the output channels, and both subsequently
+          concatenated.
+    """
     c_dims = ffi.new("int[]", dims)
     c_data_type = enum_to_int(DataType, data_type)
     num_dims = len(dims)
@@ -621,7 +644,87 @@ class FFModel(object):
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
 
-  def conv2d(self, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, shared_op=None, kernel_initializer=None, bias_initializer=None, name=None):
+  def conv2d(self, input, out_channels, 
+             kernel_h, kernel_w, 
+             stride_h, stride_w, 
+             padding_h, padding_w, 
+             activation=ActiMode.AC_MODE_NONE, 
+             use_bias=True, shared_op=None, 
+             kernel_initializer=None, bias_initializer=None, name=None):
+    """This layer creates a 2D convolution kernel that is convolved with the layer :attr:`input` 
+    to produce a tensor of :attr:`output`.
+    
+    The size of input tensor is :math:`(N, C_{in}, H, W)` and the size of output tensor 
+    is :math:`(N, C_{out}, H_{out}, W_{out})`, which can be calculated by:
+    
+    .. math::
+      C_{out} = out\_channels
+    
+    .. math::
+      K_{H} = kernel\_h
+             
+    .. math::
+      K_{W} = kernel\_w
+             
+    .. math::
+      S_{H} = stride\_h
+             
+    .. math::
+      S_{W} = stride\_w
+             
+    .. math::
+      P_{H} = padding\_h
+             
+    .. math::
+      P_{S} = padding\_s
+                      
+    .. math::
+      H_{out} = (H - K_{H} + 2 * P_{H}) / S_{H} + 1 
+             
+    .. math::
+      W_{out} = (W - K_{W} + 2 * P_{W}) / S_{W} + 1      
+             
+    :param input: the dimensionality of the output space (i.e. the number of output filters in the convolution).
+    :type input: Tensor
+
+    :param kernel_h: the height of the 2D convolution window: :math:`K_{H}`.
+    :type kernel_h: int
+
+    :param kernel_w: the width of the 2D convolution window: :math:`K_{W}`.
+    :type kernel_w: int
+
+    :param stride_h: the stride of the convolution along the height: :math:`S_{H}`.
+    :type stride_h: int
+
+    :param stride_w: the stride of the convolution along the width: :math:`S_{W}`.
+    :type stride_w: int
+
+    :param padding_h: the amount of implicit zero-paddings along the height: :math:`P_{H}`.
+    :type padding_h: int
+
+    :param padding_w: the amount of implicit zero-paddings along the width: :math:`P_{W}`.
+    :type padding_w: int   
+
+    :param activation: Activation function to use. If you don't specify anything, no activation is applied.
+    :type activation: ActiMode   
+             
+    :param use_bias: whether the layer uses a bias vector. If you don't specify anything, a bias vector is used.
+    :type use_bias: bool  
+
+    :param shared_op: the layer whose parameters are shared with. If you don't specify anything, it is set to NULL.
+    :type shared_op: Op  
+             
+    :param kernel_initializer: Initializer for the kernel weights matrix. If you don't specify anything, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+
+    :param bias_initializer: Initializer for the bias vector. If you don't specify anything, the ZeroInitializer is applied.
+    :type bias_initializer: Initializer
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     shared_op_handle = self.__get_op_handle(shared_op)
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
@@ -638,7 +741,75 @@ class FFModel(object):
     self.add_layer(OpType.EMBEDDING, name)
     return Tensor(handle, owner_op_type=OpType.EMBEDDING)
 
-  def pool2d(self, input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE, name=None):
+  def pool2d(self, input, kernel_h, kernel_w, 
+             stride_h, stride_w, 
+             padding_h, padding_w, 
+             pool_type=PoolType.POOL_MAX, 
+             activation=ActiMode.AC_MODE_NONE, name=None):
+    """Pooling operation for 2D spatial data.
+    
+    The size of input tensor is :math:`(N, C_{in}, H, W)` and the size of output tensor 
+    is :math:`(N, C_{out}, H_{out}, W_{out})`, which can be calculated by:
+    
+    .. math::
+      C_{out} = out\_channels
+    
+    .. math::
+      K_{H} = kernel\_h
+             
+    .. math::
+      K_{W} = kernel\_w
+             
+    .. math::
+      S_{H} = stride\_h
+             
+    .. math::
+      S_{W} = stride\_w
+             
+    .. math::
+      P_{H} = padding\_h
+             
+    .. math::
+      P_{S} = padding\_s
+                      
+    .. math::
+      H_{out} = (H - K_{H} + 2 * P_{H}) / S_{H} + 1 
+             
+    .. math::
+      W_{out} = (W - K_{W} + 2 * P_{W}) / S_{W} + 1      
+             
+    :param input: the dimensionality of the output space (i.e. the number of output filters in the convolution).
+    :type input: Tensor
+
+    :param kernel_h: the height of the 2D pooling window: :math:`K_{H}`.
+    :type kernel_h: int
+
+    :param kernel_w: the width of the 2D pooling window: :math:`K_{W}`.
+    :type kernel_w: int
+
+    :param stride_h: the stride of the pooling along the height: :math:`S_{H}`.
+    :type stride_h: int
+
+    :param stride_w: the stride of the pooling along the width: :math:`S_{W}`.
+    :type stride_w: int
+
+    :param padding_h: the amount of implicit zero-paddings along the height: :math:`P_{H}`.
+    :type padding_h: int
+
+    :param padding_w: the amount of implicit zero-paddings along the width: :math:`P_{W}`.
+    :type padding_w: int
+
+    :param activation: Tyoe of pooling function to use. If you don't specify anything, PoolType.POOL_MAX is applied.
+    :type activation: PoolType
+
+    :param activation: Activation function to use. If you don't specify anything, no activation is applied.
+    :type activation: ActiMode
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     c_pool_type = enum_to_int(PoolType, pool_type)
     c_activation = enum_to_int(ActiMode, activation)
     handle = ffc.flexflow_model_add_pool2d(self.handle, input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
