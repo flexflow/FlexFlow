@@ -800,6 +800,22 @@ class FFModel(object):
 
   def embedding(self, input, num_entires, out_dim, 
                 aggr, shared_op=None, kernel_initializer=None, name=None):
+    """Layer that turns positive integers into dense vectors of fixed size
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param num_entires: size of the vocabulary, i.e. maximum integer index + 1
+    :type num_entires: int
+                
+    :param num_entires: dimension of the dense embedding.
+    :type num_entires: int
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     shared_op_handle = self.__get_op_handle(shared_op)
     c_aggr = enum_to_int(AggrMode, aggr)
     assert (type(kernel_initializer) is GlorotUniformInitializer) or (type(kernel_initializer) is ZeroInitializer) or (type(kernel_initializer) is UniformInitializer) or (type(kernel_initializer) is NormInitializer), "unknow initializer type"
@@ -891,7 +907,7 @@ class FFModel(object):
     :type input: Tensor
     
     :param relu: whether a ReLU function is applied. By default, it is set to True.
-    :type relu: int
+    :type relu: bool
              
     :param name: the name of the layer. If you don't specify anything, it is set to NULL.
     :type name: string
@@ -903,6 +919,19 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
 
   def batch_matmul(self, A, B, name=None):
+    """Layer that applied batched matrix multiplication onto two input Tensors, :attr:`output = x * y`.
+             
+    :param x: the first input Tensor.
+    :type x: Tensor
+    
+    :param y: the second input Tensor.
+    :type y: Tensor
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_batch_matmul(self.handle, A.handle, B.handle)
     self.add_layer(OpType.BATCH_MATMUL, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_MATMUL)
@@ -959,9 +988,9 @@ class FFModel(object):
     It takes as input a list of tensors, all of the same shape except for the concatenation axis, and returns a single tensor that is the concatenation of all inputs.
              
     :param input: the list of input Tensors.
-    :type input: Tensor
+    :type input: List of Tensors
     
-    :param axis: the concatenation axis.
+    :param axis: the dimension along which to concatenate.
     :type axis: int
              
     :param name: the name of the layer. If you don't specify anything, it is set to NULL.
@@ -981,6 +1010,22 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.CONCAT)
 
   def split(self, input, sizes, axis, name=None):
+    """Layer that splits a :attr:`input tensor into a list of tensors.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param sizes: either an int indicating the number of splits along axis or a Python list containing the sizes of each output tensor along axis. If a scalar, then it must evenly divide :attr:`input.dims[axis]`; otherwise the sum of sizes along the split axis must match that of the :attr:`input`. 
+    :type sizes: int or list of int
+    
+    :param axis: the dimension along which to split.
+    :type axis: int
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  list of Tensors -- the output tensors.
+    """
     if type(sizes) is list:
       split = sizes
     else:
@@ -1031,18 +1076,62 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.SOFTMAX)
 
   def reshape(self, input, shape, name=None):
+    """Layer that reshapes inputs into the given shape.
+    
+    Given a :attr:`input` tensor, this operation returns a output tensor that has the same values as tensor in the same order, 
+    except with a new shape given by :attr:`shape`.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param shape: A list defining the shape of the output tensor.
+    :type shape: list of int
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     c_shape = ffi.new("int[]", shape)
     handle = ffc.flexflow_model_add_reshape(self.handle, input.handle, len(shape), c_shape)
     self.add_layer(OpType.RESHAPE, name)
     return Tensor(handle, owner_op_type=OpType.RESHAPE)
 
   def transpose(self, input, perm, name=None):
+    """Transposes the :attr:`input` tensor. Permutes the dimensions according to perm
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param perm: A permutation of the dimensions of a.
+    :type perm: List of int
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     c_perm = ffi.new("int[]", perm)
     handle = ffc.flexflow_model_add_transpose(self.handle, input.handle, len(perm), c_perm)
     self.add_layer(OpType.TRANSPOSE, name)
     return Tensor(handle, owner_op_type=OpType.TRANSPOSE)
 
   def reverse(self, input, axis, name=None):
+    """Layer that reverses specific dimensions of a tensor.
+    
+    Given a :attr:`input` tensor, this operation reverses the dimension :attr:`axis`.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param axis: the dimension to reverse.
+    :type axis: int
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_reverse(self.handle, input.handle, axis)
     self.add_layer(OpType.REVERSE, name)
     return Tensor(handle, owner_op_type=OpType.REVERSE)
