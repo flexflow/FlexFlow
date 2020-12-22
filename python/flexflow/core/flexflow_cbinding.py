@@ -562,9 +562,17 @@ class Parameter(Tensor):
 # -----------------------------------------------------------------------
 
 class FFModel(object):
-  
+  """
+  """
   __slots__ = ['handle', '_handle', '_layers', '_nb_layers', '_ffconfig', '_tracing_id']
   def __init__(self, ffconfig):
+    """Constructor of FFModel.
+           
+    :param ffconfig: configurations of FlexFlow and the created model.
+    :type ffconfig: FFConfig
+
+    :returns:  FFModel -- the model.
+    """
     self.handle = ffc.flexflow_model_create(ffconfig.handle)
     self._handle = ffi.gc(self.handle, ffc.flexflow_model_destroy)
     self._layers = dict()
@@ -584,27 +592,20 @@ class FFModel(object):
     self._nb_layers += 1
 
   def create_tensor(self, dims, data_type, create_grad=True):
-    """This gets the foobar
-
-    * :attr:`stride` controls the stride for the cross-correlation, a single
-        number or a one-element tuple.
+    """Instantiate a FlexFlow tensor.
+             
+    :param x: a shape tuple/list (integers), including the batch size.
+    :type x: list of int
+             
+    :param data_type: the datatype of the created tensor. Options are
+      DT_FLOAT, DT_DOUBLE, DT_INT32, DT_INT64, DT_BOOLEAN.
+    :type data_type: DataType
     
-    * :attr:`padding` controls the amount of implicit zero-paddings on both sides
-      for :attr:`padding` number of points.
+    :param create_grad: weather the tensor creates a gradients vector. 
+      If you don't specify anything, a gradients vector is used.
+    :type create_grad: bool
 
-    * :attr:`dilation` controls the spacing between the kernel points; also
-      known as the à trous algorithm. It is harder to describe, but this `link`_
-      has a nice visualization of what :attr:`dilation` does.
-
-    * :attr:`groups` controls the connections between inputs and outputs.
-      :attr:`in_channels` and :attr:`out_channels` must both be divisible by
-      :attr:`groups`. For example,
-
-        * At groups=1, all inputs are convolved to all outputs.
-        * At groups=2, the operation becomes equivalent to having two conv
-          layers side by side, each seeing half the input channels,
-          and producing half the output channels, and both subsequently
-          concatenated.
+    :returns:  Tensor -- the output tensor.
     """
     c_dims = ffi.new("int[]", dims)
     c_data_type = enum_to_int(DataType, data_type)
@@ -620,7 +621,7 @@ class FFModel(object):
     return Tensor(handle)
 
   def exp(self, x, name=None):
-    """Exponential activation function..
+    """Exponential activation function.
              
     :param x: the input Tensor.
     :type x: Tensor
@@ -808,8 +809,17 @@ class FFModel(object):
     :param num_entires: size of the vocabulary, i.e. maximum integer index + 1
     :type num_entires: int
                 
-    :param num_entires: dimension of the dense embedding.
-    :type num_entires: int
+    :param out_dim: dimension of the dense embedding.
+    :type out_dim: int
+                
+    :param aggr: aggregation mode. Options are AGGR_MODE_NONE, AGGR_MODE_SUM and AGGR_MODE_AVG.
+    :type aggr: AggrMode
+                
+    :param shared_op: the layer whose parameters are shared with. If you don't specify anything, it is set to NULL.
+    :type shared_op: Op  
+             
+    :param kernel_initializer: Initializer for the kernel weights matrix. If you don't specify anything, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
              
     :param name: the name of the layer. If you don't specify anything, it is set to NULL.
     :type name: string
@@ -1010,7 +1020,7 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.CONCAT)
 
   def split(self, input, sizes, axis, name=None):
-    """Layer that splits a :attr:`input tensor into a list of tensors.
+    """Layer that splits a :attr:`input` tensor into a list of tensors.
              
     :param input: the input Tensor.
     :type input: Tensor
@@ -1222,27 +1232,72 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.DROPOUT)
 
   def reset_metrics(self):
+    """Reset performance metrics.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_reset_metrics(self.handle)
 
   def init_layers(self):
+    """Initialize layers.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_init_layers(self.handle)
 
   def prefetch(self):
     ffc.flexflow_model_prefetch(self.handle)
 
   def forward(self):
+    """Forward propagation of all layers.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_forward(self.handle)
 
+  #TODO: seperate compute_metrics from backward
   def backward(self):
+    """Backward propagation of all layers.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_backward(self.handle)
 
   def compute_metrics(self):
+    """Compute performance metrics.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_compute_metrics(self.handle)
 
   def update(self):
+    """Update weights and biases of all layers.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_update(self.handle)
 
   def compile(self, optimizer=None, loss_type=None, metrics=None):
+    """Configure the model for trainting. FlexFlow uses lazy initialization,
+    so the actual creating of all operations (including creating and partitioning
+    of weight, bias and output tensors) happen during compile. 
+             
+    :param optimizer: optimizer instance.
+    :type optimizer: Optimizer
+    
+    :param loss_type: Enum of LossType. 
+      Options are LOSS_CATEGORICAL_CROSSENTROPY, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, 
+      LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE and LOSS_MEAN_SQUARED_ERROR_SUM_REDUCE.
+    :type loss_type: LossType
+    
+    :param metrics: List of metrics to be evaluated by the model during training and testing. 
+      Each of this is a Enum of MetricsType. Options are METRICS_ACCURACY, 
+      METRICS_CATEGORICAL_CROSSENTROPY, METRICS_SPARSE_CATEGORICAL_CROSSENTROPY,
+      METRICS_MEAN_SQUARED_ERROR, METRICS_ROOT_MEAN_SQUARED_ERROR, METRICS_MEAN_ABSOLUTE_ERROR
+    :type metrics: MetricsType
+             
+    :returns:  None -- no returns.
+    """
     if isinstance(optimizer, SGDOptimizer) == True:
       self.set_sgd_optimizer(optimizer)
     elif isinstance(optimizer, AdamOptimizer) == True:
@@ -1260,6 +1315,25 @@ class FFModel(object):
     ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics))
     
   def fit(self, x=None, y=None, batch_size=None, epochs=1):
+    """Trains the model for a fixed number of epochs (iterations on a dataset).
+             
+    :param x: Input data. It can be a Dataloader instance or a list of Dataloader instances.
+    :type x: Dataloader
+    
+    :param y: Target data (label). It can be a Dataloader instance or a list of Dataloader instances.
+    :type y: Dataloader
+    
+    :param batch_size: Number of samples per gradient update. It must be identical with :attr:`-b`
+      or :attr:`--batch-size` from the command line.
+    :type batch_size: int
+    
+    :param epochs: Number of epochs to train the model. 
+      An epoch is an iteration over the entire :attr:`x` and :attr:`y` data provided.
+      The default value is 1.
+    :type epochs: int
+             
+    :returns:  None -- no returns.
+    """
     if (isinstance(x, list) == False):
       dataloaders = [x]
     else:
@@ -1286,6 +1360,25 @@ class FFModel(object):
           self._ffconfig.end_trace(self._tracing_id)
           
   def eval(self, x=None, y=None, batch_size=None):
+    """Returns the loss value & metrics values for the model in test mode. 
+             
+    :param x: Input data. It can be a Dataloader instance or a list of Dataloader instances.
+    :type x: Dataloader
+    
+    :param y: Target data (label). It can be a Dataloader instance or a list of Dataloader instances.
+    :type y: Dataloader
+    
+    :param batch_size: Number of samples per gradient update. It must be identical with :attr:`-b`
+      or :attr:`--batch-size` from the command line.
+    :type batch_size: int
+    
+    :param epochs: Number of epochs to train the model. 
+      An epoch is an iteration over the entire :attr:`x` and :attr:`y` data provided.
+      The default value is 1.
+    :type epochs: int
+             
+    :returns:  None -- no returns.
+    """
     if (isinstance(x, list) == False):
       dataloaders = [x]
     else:
@@ -1305,6 +1398,10 @@ class FFModel(object):
       self.compute_metrics()
       
   def zero_gradients(self):
+    """Empty the gradients of all layers.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_zero_gradients(self.handle)
 
   def set_sgd_optimizer(self, optimizer):
@@ -1340,6 +1437,16 @@ class FFModel(object):
     return PerfMetrics(handle)
     
   def create_data_loader(self, batch_tensor, full_array):
+    """Create a SingleDataloader instance. 
+             
+    :param batch_tensor: a batch-sized tensor. Usually it is a input tensor of the model.  
+    :type batch_tensor: Tensor
+    
+    :param full_array: the entire data.
+    :type full_array: Numpy Array
+             
+    :returns:  SingleDataloader -- returns a dataloader instance.
+    """
     full_array_shape = full_array.shape
     num_samples = full_array_shape[0]
     num_dim = len(full_array_shape)
@@ -1587,9 +1694,17 @@ class SingleDataLoader(object):
     return ffc.flexflow_single_dataloader_get_num_samples(self.handle)
 
   def next_batch(self, ffmodel):
+    """Ask the dataloder to load the next batch to the :attr:`batch_tensor`. 
+             
+    :returns:  None -- no returns.
+    """
     ffc.flowflow_single_dataloader_next_batch(self.handle, ffmodel.handle)
 
   def reset(self):
+    """Reset the current position of the dataloder to 0. 
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_single_dataloader_reset(self.handle)
 
 class RegionNdarray(object):

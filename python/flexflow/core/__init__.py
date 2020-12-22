@@ -19,4 +19,4 @@ from __future__ import absolute_import
 
 from flexflow.core.flexflow_cbinding import *
 #from flexflow.core.flexflow_logger import *
-from flexflow.core.flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context
+#from flexflow.core.flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context
