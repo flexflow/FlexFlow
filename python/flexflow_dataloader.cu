@@ -100,7 +100,6 @@ void SingleDataLoader::load_input(const Task *task,
                                   Context ctx,
                                   Runtime* runtime)
 {
-  assert(regions.size() == 2);
   Domain domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   switch (domain.get_dim()) {

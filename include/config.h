@@ -24,9 +24,9 @@
 // ========================================================
 // Define Runtime Constants
 // ========================================================
-#define MAX_NUM_INPUTS 32
+#define MAX_NUM_INPUTS 256
 #define MAX_NUM_WEIGHTS 64
-#define MAX_NUM_OUTPUTS 64
+#define MAX_NUM_OUTPUTS 256
 #define MAX_NUM_FUSED_OPERATORS 64
 #define MAX_NUM_FUSED_TENSORS 64
 #define MAX_NUM_WORKERS 1024

@@ -495,6 +495,8 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_
   datatype = datatype_;
   // Create full input
   assert(input.numDim == full_input_.numDim);
+  for (int i = 0; i < input.numDim-1; i++)
+    assert(full_input_.adim[i] == input.adim[i]);
   batch_input = input;
   int dims[MAX_TENSOR_DIM];
   dims[0] = num_samples;
@@ -564,7 +566,7 @@ void SingleDataLoader::next_batch(FFModel& ff)
 #undef DIMFUNC
     default:
       assert(false);
-  }   
+  }
 }
 
 template<int NDIM>
@@ -656,7 +658,7 @@ void SingleDataLoader::load_entire_dataset_from_numpy_with_dim(const Task *task,
 
 void SingleDataLoader::register_cpu_tasks(void)
 {
-  // 4D float Load entire dataset from numpy
+  // float Load entire dataset from numpy
   {
     TaskVariantRegistrar registrar(PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID, "Float Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
@@ -664,7 +666,7 @@ void SingleDataLoader::register_cpu_tasks(void)
     Runtime::preregister_task_variant<SingleDataLoader::load_entire_dataset_from_numpy<float>>(
         registrar, "Float Load Entire Dataset Task Numpy");
   }
-  // 2D int Load entire dataset from numpy
+  // int Load entire dataset from numpy
   {
     TaskVariantRegistrar registrar(PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID, "Int32 Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
@@ -678,7 +680,7 @@ void SingleDataLoader::register_gpu_tasks(void)
 {
   // float load input
   {
-    TaskVariantRegistrar registrar(PY_DL_FLOAT_LOAD_BATCH_GPU_TASK_ID, "4D Float Load Inputs");
+    TaskVariantRegistrar registrar(PY_DL_FLOAT_LOAD_BATCH_GPU_TASK_ID, "Float Load Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<SingleDataLoader::load_input<float>>(

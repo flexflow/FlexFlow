@@ -322,8 +322,8 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
                                    const std::vector<PhysicalRegion> &regions,
                                    Context ctx, Runtime *runtime)
 {
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
   const Linear* linear = (Linear*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   //TensorAccessorR<float, 2> acc_input(
@@ -339,8 +339,8 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
   int in_dim = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
   int batch_size = acc_output.rect.volume() / out_dim;
-  printf("init linear (input): in_dim(%d) out_dim(%d) batch_size(%d)\n",
-      in_dim, out_dim, batch_size);
+  //printf("init linear (input): in_dim(%d) out_dim(%d) batch_size(%d)\n",
+  //    in_dim, out_dim, batch_size);
   LinearMeta* m = new LinearMeta(handle, batch_size);
   m->activation = linear->activation;
 
@@ -416,6 +416,11 @@ void Linear::init_with_dim(const FFModel& ff)
       RegionRequirement(weights[1].part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, weights[1].region));
   launcher.add_field(2, FID_DATA);
+  // Add inputs[0].region_grad to avoid Legion warning
+  launcher.add_region_requirement(
+      RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+  launcher.add_field(3, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;
@@ -680,14 +685,15 @@ void Linear::backward_task_with_dim(const Task *task,
   int batch_size = acc_output.rect.volume() / out_dim;
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  if (domain.get_dim() == 3) {
-    TensorAccessorW<float, 3> acc_replica_grad(
+  if (domain.get_dim() == NDIM+1) {
+    assert(false);
+    TensorAccessorW<float, NDIM+1> acc_replica_grad(
         regions[1], task->regions[1], FID_DATA, ctx, runtime,
         true/*readOutput*/);
     assert(acc_replica_grad.rect.volume() == in_dim * batch_size);
     input_grad = acc_replica_grad.ptr;
   } else {
-    TensorAccessorW<float, 2> acc_replica_grad(
+    TensorAccessorW<float, NDIM> acc_replica_grad(
         regions[1], task->regions[1], FID_DATA, ctx, runtime,
         true/*readOutput*/);
     assert(acc_replica_grad.rect.volume() == in_dim * batch_size);

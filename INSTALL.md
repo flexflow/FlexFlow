@@ -1,19 +1,27 @@
 # FlexFlow Installation
 FlexFlow can be built from source code using the following instructions.
 
-## Build FlexFlow Runtime
+# Download the FlexFlow source code and its dependencies
+* FlexFlow requires Legion, Protocol Buffer, NCCL (optionally) and GASNet (optinally), which are in the FlexFlow third party libraries repo.
+To get started, clone them from the github.
+```
+git clone --recursive https://github.com/flexflow/flexflow-third-party.git
+```
 
-* To get started, clone the FlexFlow source code from github.
+* Clone the FlexFlow source code from the github.
 ```
-git clone --recursive https://github.com/flexflow/FlexFlow.git
-cd FlexFlow
-git submodule init
-git submodule update -r
+git clone https://github.com/flexflow/FlexFlow.git
 ```
-The `FF_HOME` environment variable is used for building and running FlexFlow. You can add the following line in `~/.bashrc`.
-```
-export FF_HOME=/path/to/FlexFlow
-```
+
+# FlexFlow Python dependencies
+* The FlexFlow Python support requires several additional Python libraries, please check [this](https://github.com/flexflow/FlexFlow/blob/master/python/requirements.txt) for details. 
+We recommend to use `pip` or `conda` to install the dependencies. 
+
+Note: all Python dependencies will be automatically installed if install the FlexFlow Python Interface using the PyPi repository (see the Installation below).
+
+# Build the FlexFlow
+## Makefile
+### Build FlexFlow Runtime with C++ Interface
 
 * Build the Protocol Buffer library.
 Skip this step if the Protocol Buffer library is already installed.
@@ -31,14 +39,17 @@ make -j src.build NVCC_GENCODE="-gencode=arch=compute_XX,code=sm_XX"
 Replace XX with the compatability of your GPU devices (e.g., 70 for Volta GPUs and 60 for Pascal GPUs).
 
 * Build a DNN model in FlexFlow
+
+The `FF_HOME` environment variable is used for building and running FlexFlow. You can add the following line in `~/.bashrc`.
+```
+export FF_HOME=/path/to/FlexFlow
+```
 Use the following command line to build a DNN model (e.g., InceptionV3). See the [examples](examples) folders for more existing FlexFlow applications.
 ```
 ./ffcompile.sh examples/InceptionV3
 ```
 
-## Build FlexFlow Python Interface
-
-* Get the FlexFlow source code using the same instruction as the C++ interface
+### Build FlexFlow Runtime with Python Interface (C++ Interface is also enabled)
 
 * Set the following enviroment variables
 ```
@@ -60,7 +71,73 @@ cd python
 make 
 ```
 
-* To run a DNN model, use the following command line
+## CMake
+
+### Build the FlexFlow third party libraries.
 ```
+cd flexflow-third-party
+mkdir build
+cd build
+cmake ../ -DCUDA_ARCH=x0 -DPYTHON_VERSION=3.x (replace the x with the corrected number)
+make
+make install
+```
+Note: CMake sometimes can not automatically detect the correct `CUDA_ARCH`, so please set `CUDA_ARCH` if CMake can not detect it. 
+
+### Build the FlexFlow
+```
+cd FlexFlow
+cd config
+```
+
+The `config.linux` is an example of how to set the varibles required for CMake build. Please modify `CUDA_ARCH`, `CUDNN_DIR`, `LEGION_DIR` and `PROTOBUF_DIR` according to your environment.  `LEGION_DIR` and `PROTOBUF_DIR` are the installation directories of Legion and Protocol Buffer, not the source code directories.
+
+Once the variables in the `config.linux` is set correctly, go to the home directory of FlexFlow, and run
+```
+mkdir build
+cd build
+../config/config.linux
+make
+```
+
+## Test the FlexFlow
+* Set the `FF_HOME` environment variable before running the FlexFlow. You can add the following line in ~/.bashrc.
+```
+export FF_HOME=/path/to/FlexFlow
+```
+
+* Run FlexFlow Python examples
+```
+cd python
 ./flexflow_python example/xxx.py -ll:py 1 -ll:gpu 1 -ll:fsize size of gpu buffer -ll:zsize size of zero buffer
 ``` 
+The full set of Python examples are in `python/test.sh`
+
+* Run FlexFlow C++ examples
+
+The C++ examples are in the [examples/cpp](https://github.com/flexflow/FlexFlow/tree/master/examples/cpp). 
+For example, the AlexNet can be run as:
+```
+./alexnet -ll:gpu 1 -ll:fsize size of gpu buffer -ll:zsize size of zero buffer
+``` 
+
+## Install the FlexFlow
+
+* Install the FlexFlow binary, header file and library if using CMake. 
+```
+cd build
+make install
+```
+
+* Install the FlexFlow Python interface using pip
+If install from local:
+```
+cd python
+pip install .
+```
+
+If install from the PyPI repository
+```
+pip install flexflow
+```
+All Python depencies will be automatically installed. 

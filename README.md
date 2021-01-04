@@ -77,18 +77,27 @@ For users that prefer to program in C/C++. FlexFlow supports a C++ program infer
 ## Command-Line Flags
 In addition to setting runtime configurations in a FlexFlow Python/C++ program, the FlexFlow runtime also accepts command-line arguments for various runtime parameters: 
 
-Training flags:
+FlexFlow training flags:
 * `-e` or `--epochs`: number of total epochs to run (default: 1)
 * `-b` or `--batch-size`: global batch size in each iteration (default: 64)
 * `-p` or `--print-freq`: print frequency (default: 10)
-* `-d` or `--dataset`: path to the training dataset. If not set, synthetic data is used to conduct training. 
+* `-d` or `--dataset`: path to the training dataset. If not set, synthetic data is used to conduct training.
+
+Legion runtime flags:
 * `-ll:gpu`: number of GPU processors to use on each node (default: 0)
 * `-ll:fsize`: size of device memory on each GPU (in MB)
 * `-ll:zsize`: size of zero-copy memory (pinned DRAM with direct GPU access) on each node (in MB). This is used for prefecthing training images from disk.
 * `-ll:cpu`: number of data loading workers (default: 4)
-* `--nodes`: number of compute nodes to use for training (default: 1)
+* `-ll:util`: number of utility threads to create per process (default: 1)
+* `-ll:bgwork`: number of background worker threads to create per process (default: 1)
 
-For auto-tuning related flags: see [performance autotuning](SEARCH.md).
+Performance auto-tuning flags:
+* `--search-budget` or `--budget`: the number of iterations for the MCMC search (default: 0)
+* `--search-alpha` or `--alpha`: a hyper-parameter for the search procedure (default: 0.05)
+* `--export-strategy` or `--export`: path to export the best discovered strategy (default: None)
+* `--import-strategy` or `--import`: path to import a previous saved strategy (default: None)
+
+For performance tuning related flags: see [performance autotuning](SEARCH.md).
 
 ## Contributing
 Please let us know if you encounter any bugs or have any suggestions by [submitting an issue](https://github.com/flexflow/flexflow/issues).

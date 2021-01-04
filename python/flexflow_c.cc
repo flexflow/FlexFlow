@@ -50,6 +50,7 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_parameter_t, Parameter *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_perf_metrics_t, PerfMetrics *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_net_config_t, NetConfig *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_dlrm_config_t, DLRMConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_4d_t, ImgDataLoader4D *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_2d_t, ImgDataLoader2D *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_single_dataloader_t, SingleDataLoader *);
@@ -1229,6 +1230,117 @@ flexflow_net_config_get_dataset_path(
 }
 
 // -----------------------------------------------------------------------
+// DLRMConfig
+// -----------------------------------------------------------------------
+flexflow_dlrm_config_t
+flexflow_dlrm_config_create()
+{
+  DLRMConfig *netconfig = new DLRMConfig();
+  return FFCObjectWrapper::wrap(netconfig);
+}
+
+void
+flexflow_dlrm_config_destroy(
+  flexflow_dlrm_config_t handle_)
+{
+  DLRMConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  delete handle;
+}
+
+const char*
+flexflow_dlrm_config_get_dataset_path(
+  flexflow_dlrm_config_t handle_)
+{
+  DLRMConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  const char *cstr = handle->dataset_path.c_str();
+  return cstr;
+}
+
+const char*
+flexflow_dlrm_config_get_arch_interaction_op(
+  flexflow_dlrm_config_t handle_)
+{
+  DLRMConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  const char *cstr = handle->arch_interaction_op.c_str();
+  return cstr;
+}
+
+int
+flexflow_dlrm_config_get_sparse_feature_size(
+  flexflow_dlrm_config_t handle_)
+{
+  DLRMConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  int result = handle->sparse_feature_size;
+  return result;
+}
+
+int
+flexflow_dlrm_config_get_sigmoid_bot(
+  flexflow_dlrm_config_t handle_)
+{
+  DLRMConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  int result = handle->sigmoid_bot;
+  return result;
+}
+
+int
+flexflow_dlrm_config_get_sigmoid_top(
+  flexflow_dlrm_config_t handle_)
+{
+  DLRMConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  int result = handle->sigmoid_top;
+  return result;
+}
+
+int
+flexflow_dlrm_config_get_embedding_bag_size(
+  flexflow_dlrm_config_t handle_)
+{
+  DLRMConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  int result = handle->embedding_bag_size;
+  return result;
+}
+
+float
+flexflow_dlrm_config_get_loss_threshold(
+  flexflow_dlrm_config_t handle_)
+{
+  DLRMConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  float result = handle->loss_threshold;
+  return result;
+}
+
+int*
+flexflow_dlrm_config_get_mlp_bot(
+  flexflow_dlrm_config_t handle_)
+{
+  DLRMConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->mlp_bot.insert(handle->mlp_bot.begin(), handle->mlp_bot.size());
+  int* result = handle->mlp_bot.data();
+  return result;
+}
+
+int*
+flexflow_dlrm_config_get_mlp_top(
+  flexflow_dlrm_config_t handle_)
+{
+  DLRMConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->mlp_top.insert(handle->mlp_top.begin(), handle->mlp_top.size());
+  int* result = handle->mlp_top.data();
+  return result;
+}
+
+int*
+flexflow_dlrm_config_get_embedding_size(
+  flexflow_dlrm_config_t handle_)
+{
+  DLRMConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->embedding_size.insert(handle->embedding_size.begin(), handle->embedding_size.size());
+  int* result = handle->embedding_size.data();
+  return result;
+}
+
+// -----------------------------------------------------------------------
 // DataLoader
 // -----------------------------------------------------------------------
 
@@ -1537,6 +1649,82 @@ NetConfig::NetConfig(void)
   char **argv = command_args.argv;
   int argc = command_args.argc;
   for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "--dataset")) {
+      dataset_path = std::string(argv[++i]);
+      continue;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
+// DLRMConfig implementation
+// -----------------------------------------------------------------------
+DLRMConfig::DLRMConfig(void)
+: sparse_feature_size(2), sigmoid_bot(-1), sigmoid_top(-1),
+  embedding_bag_size(1), loss_threshold(0.0f),
+  arch_interaction_op("cat"), dataset_path("") 
+{
+  embedding_size.push_back(4);
+  mlp_bot.push_back(4);
+  mlp_bot.push_back(2);
+  mlp_top.push_back(8);
+  mlp_top.push_back(2);
+  
+  const InputArgs &command_args = Runtime::get_input_args();
+  char **argv = command_args.argv;
+  int argc = command_args.argc;
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "--arch-sparse-feature-size")) {
+      sparse_feature_size = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--arch-embedding-size")) {
+      std::stringstream ss(std::string(argv[++i]));
+      std::string word;
+      embedding_size.clear();
+      while (std::getline(ss, word, '-')) {
+        embedding_size.push_back(std::stoi(word));
+      }
+      continue;
+    }
+    if (!strcmp(argv[i], "--embedding-bag-size")) {
+      embedding_bag_size = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--arch-mlp-bot")) {
+      std::stringstream ss(std::string(argv[++i]));
+      std::string word;
+      mlp_bot.clear();
+      while (std::getline(ss, word, '-')) {
+        mlp_bot.push_back(std::stoi(word));
+      }
+      continue;
+    }
+    if (!strcmp(argv[i], "--arch-mlp-top")) {
+      std::stringstream ss(std::string(argv[++i]));
+      std::string word;
+      mlp_top.clear();
+      while (std::getline(ss, word, '-')) {
+        mlp_top.push_back(std::stoi(word));
+      }
+      continue;
+    }
+    if (!strcmp(argv[i], "--loss-threshold")) {
+      loss_threshold = atof(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--sigmoid-top")) {
+      sigmoid_top = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--sigmoid-bot")) {
+      sigmoid_bot = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--arch-interaction-op")) {
+      arch_interaction_op = std::string(argv[++i]);
+      continue;
+    }
     if (!strcmp(argv[i], "--dataset")) {
       dataset_path = std::string(argv[++i]);
       continue;

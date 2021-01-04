@@ -329,6 +329,8 @@ Domain Op::get_output_tensor_shape(const ParallelConfig& pc,
   assert(output_idx < numOutputs);
   Domain d;
   d.dim = outputs[output_idx].numDim;
+  // Assume pc dim matches output dim
+  assert(d.dim == pc.nDims);
   for (int i = 0; i < d.dim; i++) {
     // Assume an equal partitioning
     assert(outputs[output_idx].adim[i] % pc.dim[i] == 0);
@@ -337,6 +339,7 @@ Domain Op::get_output_tensor_shape(const ParallelConfig& pc,
     d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
     part_idx = part_idx / pc.dim[i];
   }
+  assert(part_idx == 0);
   return d;
 }
 
@@ -346,14 +349,33 @@ Domain Op::get_input_tensor_shape(const ParallelConfig& pc,
   assert(input_idx < numInputs);
   Domain d;
   d.dim = inputs[input_idx].numDim;
-  for (int i = 0; i < d.dim; i++) {
+  if (pc.nDims == d.dim) {
+    for (int i = 0; i < d.dim; i++) {
+      // Assume an equal partitioning
+      assert(inputs[input_idx].adim[i] % pc.dim[i] == 0);
+      int dim_size = inputs[input_idx].adim[i] / pc.dim[i];
+      d.rect_data[i] = (part_idx % pc.dim[i]) * dim_size;
+      d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
+      part_idx = part_idx / pc.dim[i];
+    }
+  } else {
+    // Require data parallel when dims mismatch
+    for (int i = 0; i < pc.nDims-1; i++)
+      assert(pc.dim[i] == 1);
+    for (int i = 0; i < d.dim-1; i++) {
+      int dim_size = inputs[input_idx].adim[i];
+      d.rect_data[i] = 0;
+      d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
+    }
     // Assume an equal partitioning
-    assert(inputs[input_idx].adim[i] % pc.dim[i] == 0);
-    int dim_size = inputs[input_idx].adim[i] / pc.dim[i];
-    d.rect_data[i] = (part_idx % pc.dim[i]) * dim_size;
-    d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
-    part_idx = part_idx / pc.dim[i];
+    assert(inputs[input_idx].adim[d.dim-1] % pc.dim[pc.nDims-1] == 0);
+    assert(part_idx < pc.dim[pc.nDims-1]);
+    int dim_size = inputs[input_idx].adim[d.dim-1] / pc.dim[pc.nDims-1];
+    d.rect_data[d.dim - 1] = part_idx * dim_size;
+    d.rect_data[2*d.dim - 1] = d.rect_data[d.dim-1] + dim_size - 1;
+    part_idx = part_idx / pc.dim[pc.nDims-1];
   }
+  assert(part_idx == 0);
   return d;
 }
 
@@ -472,24 +494,13 @@ Tensor FFModel::create_constant(const int dims[],
                                 float value,
                                 DataType data_type)
 {
-  // constant created in this way is not part of any operator
-  // so we assume it does not have gradients
-  Tensor tensor = create_tensor<NDIM>(dims, data_type, NULL/*owner_op*/, false/*create_grad*/);
-  IndexSpaceT<NDIM> part_is = (IndexSpaceT<NDIM>) get_or_create_task_is(NDIM, "");
-  ConstantInitializer* init =  new ConstantInitializer(value);
+  // FIXME: currently create gradients for constants since the current auto grad algorithm
+  // computes gradients for all operators
+  Tensor tensor = create_tensor<NDIM>(dims, data_type, NULL/*owner_op*/, true/*create_grad*/);
+  ConstantInitializer initializer(value);
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
-  ArgumentMap argmap;
-  IndexLauncher launcher(CONSTANT_INIT_TASK_ID, part_is,
-      TaskArgument(init, sizeof(ConstantInitializer)), argmap,
-      Predicate::TRUE_PRED, false, 0,
-      FFConfig::get_hash_id(""));
-  launcher.add_region_requirement(
-      RegionRequirement(tensor.part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, tensor.region));
-  launcher.add_field(0, FID_DATA);
-  FutureMap fm = runtime->execute_index_space(ctx, launcher);
-  fm.wait_all_results();
+  initializer.init(ctx, runtime, &tensor);
   return tensor;
 }
 
@@ -1414,6 +1425,7 @@ void FFModel::optimize(Simulator* simulator,
         printf("%d", it->second.device_ids[i]);
     printf("]\n");
   }
+  printf("============= MCMC Search Finished ============\n\n");
 }
 
 void FFModel::zero_gradients(void)

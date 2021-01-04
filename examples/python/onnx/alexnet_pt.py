@@ -37,5 +37,5 @@ class AlexNet(nn.Module):
         return x
 
 input = torch.randn(64, 3, 224, 224)
-model = AlexNet()
+model = AlexNet(num_classes=10)
 torch.onnx.export(model, (input), "alexnet.onnx", export_params=False, training=TrainingMode.TRAINING)

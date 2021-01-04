@@ -562,8 +562,17 @@ class Parameter(Tensor):
 # -----------------------------------------------------------------------
 
 class FFModel(object):
+  """
+  """
   __slots__ = ['handle', '_handle', '_layers', '_nb_layers', '_ffconfig', '_tracing_id']
   def __init__(self, ffconfig):
+    """Constructor of FFModel.
+           
+    :param ffconfig: configurations of FlexFlow and the created model.
+    :type ffconfig: FFConfig
+
+    :returns:  FFModel -- the model.
+    """
     self.handle = ffc.flexflow_model_create(ffconfig.handle)
     self._handle = ffi.gc(self.handle, ffc.flexflow_model_destroy)
     self._layers = dict()
@@ -583,6 +592,21 @@ class FFModel(object):
     self._nb_layers += 1
 
   def create_tensor(self, dims, data_type, create_grad=True):
+    """Instantiate a FlexFlow tensor.
+             
+    :param x: a shape tuple/list (integers), including the batch size.
+    :type x: list of int
+             
+    :param data_type: the datatype of the created tensor. Options are
+      DT_FLOAT, DT_DOUBLE, DT_INT32, DT_INT64, DT_BOOLEAN.
+    :type data_type: DataType
+    
+    :param create_grad: weather the tensor creates a gradients vector. 
+      If you don't specify anything, a gradients vector is used.
+    :type create_grad: bool
+
+    :returns:  Tensor -- the output tensor.
+    """
     c_dims = ffi.new("int[]", dims)
     c_data_type = enum_to_int(DataType, data_type)
     num_dims = len(dims)
@@ -597,31 +621,176 @@ class FFModel(object):
     return Tensor(handle)
 
   def exp(self, x, name=None):
+    """Exponential activation function.
+             
+    :param x: the input Tensor.
+    :type x: Tensor
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_exp(self.handle, x.handle)
     self.add_layer(OpType.EXP, name)
     return Tensor(handle, owner_op_type=OpType.EXP)
 
   def add(self, x, y, name=None):
+    """Layer that adds two input Tensors, :attr:`output = x + y`.
+             
+    :param x: the first input Tensor.
+    :type x: Tensor
+    
+    :param y: the second input Tensor.
+    :type y: Tensor
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_add(self.handle, x.handle, y.handle)
     self.add_layer(OpType.ADD, name)
     return Tensor(handle, owner_op_type=OpType.ADD)
 
   def subtract(self, x, y, name=None):
+    """Layer that subtracts two input Tensors, :attr:`output = x * y`.
+             
+    :param x: the first input Tensor.
+    :type x: Tensor
+    
+    :param y: the second input Tensor.
+    :type y: Tensor
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_subtract(self.handle, x.handle, y.handle)
     self.add_layer(OpType.SUBTRACT, name)
     return Tensor(handle, owner_op_type=OpType.SUBTRACT)
 
   def multiply(self, x, y, name=None):
+    """Layer that multiplies (element-wise) two input Tensors, :attr:`output = x * y`.
+             
+    :param x: the first input Tensor.
+    :type x: Tensor
+    
+    :param y: the second input Tensor.
+    :type y: Tensor
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_multiply(self.handle, x.handle, y.handle)
     self.add_layer(OpType.MULTIPLY, name)
     return Tensor(handle, owner_op_type=OpType.MULTIPLY)
 
   def divide(self, x, y, name=None):
+    """Layer that divides (element-wise) two input Tensors, :attr:`output = x / y`.
+             
+    :param x: the first input Tensor.
+    :type x: Tensor
+    
+    :param y: the second input Tensor.
+    :type y: Tensor
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle)
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
 
-  def conv2d(self, input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation=ActiMode.AC_MODE_NONE, use_bias=True, shared_op=None, kernel_initializer=None, bias_initializer=None, name=None):
+  def conv2d(self, input, out_channels, 
+             kernel_h, kernel_w, 
+             stride_h, stride_w, 
+             padding_h, padding_w, 
+             activation=ActiMode.AC_MODE_NONE, 
+             use_bias=True, shared_op=None, 
+             kernel_initializer=None, bias_initializer=None, name=None):
+    """This layer creates a 2D convolution kernel that is convolved with the layer :attr:`input` 
+    to produce a tensor of :attr:`output`.
+    
+    The size of input tensor is :math:`(N, C_{in}, H, W)` and the size of output tensor 
+    is :math:`(N, C_{out}, H_{out}, W_{out})`, which can be calculated by:
+    
+    .. math::
+      C_{out} = out\_channels
+    
+    .. math::
+      K_{H} = kernel\_h
+             
+    .. math::
+      K_{W} = kernel\_w
+             
+    .. math::
+      S_{H} = stride\_h
+             
+    .. math::
+      S_{W} = stride\_w
+             
+    .. math::
+      P_{H} = padding\_h
+             
+    .. math::
+      P_{S} = padding\_s
+                      
+    .. math::
+      H_{out} = (H - K_{H} + 2 * P_{H}) / S_{H} + 1 
+             
+    .. math::
+      W_{out} = (W - K_{W} + 2 * P_{W}) / S_{W} + 1      
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+             
+    :param out\_channels: the dimensionality of the output space (i.e. the number of output filters in the convolution).
+    :type out\_channels: int
+
+    :param kernel_h: the height of the 2D convolution window: :math:`K_{H}`.
+    :type kernel_h: int
+
+    :param kernel_w: the width of the 2D convolution window: :math:`K_{W}`.
+    :type kernel_w: int
+
+    :param stride_h: the stride of the convolution along the height: :math:`S_{H}`.
+    :type stride_h: int
+
+    :param stride_w: the stride of the convolution along the width: :math:`S_{W}`.
+    :type stride_w: int
+
+    :param padding_h: the amount of implicit zero-paddings along the height: :math:`P_{H}`.
+    :type padding_h: int
+
+    :param padding_w: the amount of implicit zero-paddings along the width: :math:`P_{W}`.
+    :type padding_w: int   
+
+    :param activation: Activation function to use. If you don't specify anything, no activation is applied.
+    :type activation: ActiMode   
+             
+    :param use_bias: whether the layer uses a bias vector. If you don't specify anything, a bias vector is used.
+    :type use_bias: bool  
+
+    :param shared_op: the layer whose parameters are shared with. If you don't specify anything, it is set to NULL.
+    :type shared_op: Op  
+             
+    :param kernel_initializer: Initializer for the kernel weights matrix. If you don't specify anything, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+
+    :param bias_initializer: Initializer for the bias vector. If you don't specify anything, the ZeroInitializer is applied.
+    :type bias_initializer: Initializer
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     shared_op_handle = self.__get_op_handle(shared_op)
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
@@ -630,7 +799,33 @@ class FFModel(object):
     self.add_layer(OpType.CONV2D, name)
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 
-  def embedding(self, input, num_entires, out_dim, aggr, shared_op=None, kernel_initializer=None, name=None):
+  def embedding(self, input, num_entires, out_dim, 
+                aggr, shared_op=None, kernel_initializer=None, name=None):
+    """Layer that turns positive integers into dense vectors of fixed size
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param num_entires: size of the vocabulary, i.e. maximum integer index + 1
+    :type num_entires: int
+                
+    :param out_dim: dimension of the dense embedding.
+    :type out_dim: int
+                
+    :param aggr: aggregation mode. Options are AGGR_MODE_NONE, AGGR_MODE_SUM and AGGR_MODE_AVG.
+    :type aggr: AggrMode
+                
+    :param shared_op: the layer whose parameters are shared with. If you don't specify anything, it is set to NULL.
+    :type shared_op: Op  
+             
+    :param kernel_initializer: Initializer for the kernel weights matrix. If you don't specify anything, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     shared_op_handle = self.__get_op_handle(shared_op)
     c_aggr = enum_to_int(AggrMode, aggr)
     assert (type(kernel_initializer) is GlorotUniformInitializer) or (type(kernel_initializer) is ZeroInitializer) or (type(kernel_initializer) is UniformInitializer) or (type(kernel_initializer) is NormInitializer), "unknow initializer type"
@@ -638,7 +833,75 @@ class FFModel(object):
     self.add_layer(OpType.EMBEDDING, name)
     return Tensor(handle, owner_op_type=OpType.EMBEDDING)
 
-  def pool2d(self, input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type=PoolType.POOL_MAX, activation=ActiMode.AC_MODE_NONE, name=None):
+  def pool2d(self, input, kernel_h, kernel_w, 
+             stride_h, stride_w, 
+             padding_h, padding_w, 
+             pool_type=PoolType.POOL_MAX, 
+             activation=ActiMode.AC_MODE_NONE, name=None):
+    """Pooling operation for 2D spatial data.
+    
+    The size of input tensor is :math:`(N, C_{in}, H, W)` and the size of output tensor 
+    is :math:`(N, C_{out}, H_{out}, W_{out})`, which can be calculated by:
+    
+    .. math::
+      C_{out} = out\_channels
+    
+    .. math::
+      K_{H} = kernel\_h
+             
+    .. math::
+      K_{W} = kernel\_w
+             
+    .. math::
+      S_{H} = stride\_h
+             
+    .. math::
+      S_{W} = stride\_w
+             
+    .. math::
+      P_{H} = padding\_h
+             
+    .. math::
+      P_{S} = padding\_s
+                      
+    .. math::
+      H_{out} = (H - K_{H} + 2 * P_{H}) / S_{H} + 1 
+             
+    .. math::
+      W_{out} = (W - K_{W} + 2 * P_{W}) / S_{W} + 1      
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param kernel_h: the height of the 2D pooling window: :math:`K_{H}`.
+    :type kernel_h: int
+
+    :param kernel_w: the width of the 2D pooling window: :math:`K_{W}`.
+    :type kernel_w: int
+
+    :param stride_h: the stride of the pooling along the height: :math:`S_{H}`.
+    :type stride_h: int
+
+    :param stride_w: the stride of the pooling along the width: :math:`S_{W}`.
+    :type stride_w: int
+
+    :param padding_h: the amount of implicit zero-paddings along the height: :math:`P_{H}`.
+    :type padding_h: int
+
+    :param padding_w: the amount of implicit zero-paddings along the width: :math:`P_{W}`.
+    :type padding_w: int
+
+    :param activation: Tyoe of pooling function to use. If you don't specify anything, PoolType.POOL_MAX is applied.
+    :type activation: PoolType
+
+    :param activation: Activation function to use. If you don't specify anything, no activation is applied.
+    :type activation: ActiMode
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     c_pool_type = enum_to_int(PoolType, pool_type)
     c_activation = enum_to_int(ActiMode, activation)
     handle = ffc.flexflow_model_add_pool2d(self.handle, input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
@@ -646,16 +909,81 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.POOL2D)
 
   def batch_norm(self, input, relu=True, name=None):
+    """Layer that normalizes its inputs.
+
+    Batch normalization applies a transformation that maintains the mean output close to 0 and the output standard deviation close to 1.
+             
+    :param input: the list of input Tensors.
+    :type input: Tensor
+    
+    :param relu: whether a ReLU function is applied. By default, it is set to True.
+    :type relu: bool
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_batch_norm(self.handle, input.handle, relu)
     self.add_layer(OpType.BATCH_NORM, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
 
   def batch_matmul(self, A, B, name=None):
+    """Layer that applied batched matrix multiplication onto two input Tensors, :attr:`output = x * y`.
+             
+    :param x: the first input Tensor.
+    :type x: Tensor
+    
+    :param y: the second input Tensor.
+    :type y: Tensor
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_batch_matmul(self.handle, A.handle, B.handle)
     self.add_layer(OpType.BATCH_MATMUL, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_MATMUL)
 
-  def dense(self, input, out_dim, activation=ActiMode.AC_MODE_NONE, use_bias=True, shared_op=None, kernel_initializer=None, bias_initializer=None, name=None):
+  def dense(self, input, out_dim, 
+            activation=ActiMode.AC_MODE_NONE, 
+            use_bias=True, shared_op=None,
+            kernel_initializer=None, bias_initializer=None, name=None):
+    """Dense implements the operation: :attr:`output = activation(dot(input, kernel) + bias)` where 
+    :attr:`activation` is the element-wise activation function passed as the activation argument, 
+    :attr:`kernel` is a weights matrix created by the layer, and 
+    :attr:`bias` is a bias vector created by the layer (only applicable if :attr:`use_bias` is True).
+    
+    The size of input tensor is :math:`(N, C_{in})` and the size of output tensor 
+    is :math:`(N, C_{out})`, where :math:`C_{out} = out\_dim`   
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+            
+    :param out\_dim: dimensionality of the output space.
+    :type out\_dim: int
+
+    :param activation: Activation function to use. If you don't specify anything, no activation is applied.
+    :type activation: ActiMode   
+             
+    :param use_bias: whether the layer uses a bias vector. If you don't specify anything, a bias vector is used.
+    :type use_bias: bool  
+
+    :param shared_op: the layer whose parameters are shared with. If you don't specify anything, it is set to NULL.
+    :type shared_op: Op  
+             
+    :param kernel_initializer: Initializer for the kernel weights matrix. If you don't specify anything, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+
+    :param bias_initializer: Initializer for the bias vector. If you don't specify anything, the ZeroInitializer is applied.
+    :type bias_initializer: Initializer
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     shared_op_handle = self.__get_op_handle(shared_op)
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
@@ -665,10 +993,25 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.LINEAR)
 
   def concat(self, tensors, axis, name=None):
+    """Layer that concatenates a list of inputs.
+
+    It takes as input a list of tensors, all of the same shape except for the concatenation axis, and returns a single tensor that is the concatenation of all inputs.
+             
+    :param input: the list of input Tensors.
+    :type input: List of Tensors
+    
+    :param axis: the dimension along which to concatenate.
+    :type axis: int
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     assert type(tensors) is list, "tensors should be a list"
     tensor_handle_list = []
     n = len(tensors)
-    assert n <= 32, "Please increase MAX_NUM_INPUTS"
+    assert n <= 256, "Please increase MAX_NUM_INPUTS"
     for tensor in tensors:
       tensor_handle_list.append(tensor.handle)
     c_tensor_handle_list = ffi.new("flexflow_tensor_t[]", tensor_handle_list)
@@ -677,15 +1020,31 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.CONCAT)
 
   def split(self, input, sizes, axis, name=None):
+    """Layer that splits a :attr:`input` tensor into a list of tensors.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param sizes: either an int indicating the number of splits along axis or a Python list containing the sizes of each output tensor along axis. If a scalar, then it must evenly divide :attr:`input.dims[axis]`; otherwise the sum of sizes along the split axis must match that of the :attr:`input`. 
+    :type sizes: int or list of int
+    
+    :param axis: the dimension along which to split.
+    :type axis: int
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  list of Tensors -- the output tensors.
+    """
     if type(sizes) is list:
       split = sizes
     else:
       assert input.dims[axis] % sizes == 0, "Split dimension is not divisible"
       split = [input.dims[axis] // sizes for i in range(sizes)]
     n = len(split)
-    assert n <= 32, "Please increase MAX_NUM_OUTPUTS"
+    assert n <= 256, "Please increase MAX_NUM_OUTPUTS"
     c_split = ffi.new("int[]", split)
-    c_outputs_handle_list = ffi.new("flexflow_tensor_t[32]")
+    c_outputs_handle_list = ffi.new("flexflow_tensor_t[256]")
     ffc.flexflow_model_add_split(self.handle, input.handle, n, c_outputs_handle_list, c_split, axis)
     output_tensor_list = []
     for i in range(n):
@@ -697,79 +1056,248 @@ class FFModel(object):
     return output_tensor_list
 
   def flat(self, input, name=None):
+    """Flattens the input. Does not affect the batch size.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_flat(self.handle, input.handle)
     self.add_layer(OpType.FLAT, name)
     return Tensor(handle, owner_op_type=OpType.FLAT)
 
   def softmax(self, input, name=None):
+    """Softmax activation function.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_softmax(self.handle, input.handle)
     self.add_layer(OpType.SOFTMAX, name)
     return Tensor(handle, owner_op_type=OpType.SOFTMAX)
 
   def reshape(self, input, shape, name=None):
+    """Layer that reshapes inputs into the given shape.
+    
+    Given a :attr:`input` tensor, this operation returns a output tensor that has the same values as tensor in the same order, 
+    except with a new shape given by :attr:`shape`.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param shape: A list defining the shape of the output tensor.
+    :type shape: list of int
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     c_shape = ffi.new("int[]", shape)
     handle = ffc.flexflow_model_add_reshape(self.handle, input.handle, len(shape), c_shape)
     self.add_layer(OpType.RESHAPE, name)
     return Tensor(handle, owner_op_type=OpType.RESHAPE)
 
   def transpose(self, input, perm, name=None):
+    """Transposes the :attr:`input` tensor. Permutes the dimensions according to perm
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param perm: A permutation of the dimensions of a.
+    :type perm: List of int
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     c_perm = ffi.new("int[]", perm)
     handle = ffc.flexflow_model_add_transpose(self.handle, input.handle, len(perm), c_perm)
     self.add_layer(OpType.TRANSPOSE, name)
     return Tensor(handle, owner_op_type=OpType.TRANSPOSE)
 
   def reverse(self, input, axis, name=None):
+    """Layer that reverses specific dimensions of a tensor.
+    
+    Given a :attr:`input` tensor, this operation reverses the dimension :attr:`axis`.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param axis: the dimension to reverse.
+    :type axis: int
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_reverse(self.handle, input.handle, axis)
     self.add_layer(OpType.REVERSE, name)
     return Tensor(handle, owner_op_type=OpType.REVERSE)
 
   def relu(self, input, name=None):
+    """Rectified Linear Unit activation function.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_relu(self.handle, input.handle)
     self.add_layer(OpType.RELU, name)
     return Tensor(handle, owner_op_type=OpType.RELU)
 
   def sigmoid(self, input, name=None):
+    """Sigmoid activation function, :math:`sigmoid(x) = 1 / (1 + exp(-x))`.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_sigmoid(self.handle, input.handle)
     self.add_layer(OpType.SIGMOID, name)
     return Tensor(handle, owner_op_type=OpType.SIGMOID)
 
   def tanh(self, input, name=None):
+    """Hyperbolic tangent activation function.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_tanh(self.handle, input.handle)
     self.add_layer(OpType.TANH, name)
     return Tensor(handle, owner_op_type=OpType.TANH)
 
   def elu(self, input, name=None):
+    """Exponential Linear Unit. activation function.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_elu(self.handle, input.handle)
     self.add_layer(OpType.ELU, name)
     return Tensor(handle, owner_op_type=OpType.ELU)
 
   def dropout(self, input, rate, seed, name=None):
+    """The Dropout layer randomly sets input units to 0 with 
+    a frequency of :attr:`rate` at each step during training time, 
+    which helps prevent overfitting. 
+    Inputs not set to 0 are scaled up by 1/(1 - rate) such that the 
+    sum over all inputs is unchanged.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param rate: Fraction of the input units to drop.
+    :type rate: float(0-1)
+    
+    :param seed: random seed.
+    :type seed: int
+             
+    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
     handle = ffc.flexflow_model_add_dropout(self.handle, input.handle, rate, seed)
     self.add_layer(OpType.DROPOUT, name)
     return Tensor(handle, owner_op_type=OpType.DROPOUT)
 
   def reset_metrics(self):
+    """Reset performance metrics.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_reset_metrics(self.handle)
 
   def init_layers(self):
+    """Initialize layers.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_init_layers(self.handle)
 
   def prefetch(self):
     ffc.flexflow_model_prefetch(self.handle)
 
   def forward(self):
+    """Forward propagation of all layers.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_forward(self.handle)
 
+  #TODO: seperate compute_metrics from backward
   def backward(self):
+    """Backward propagation of all layers.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_backward(self.handle)
 
   def compute_metrics(self):
+    """Compute performance metrics.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_compute_metrics(self.handle)
 
   def update(self):
+    """Update weights and biases of all layers.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_update(self.handle)
 
   def compile(self, optimizer=None, loss_type=None, metrics=None):
+    """Configure the model for trainting. FlexFlow uses lazy initialization,
+    so the actual creating of all operations (including creating and partitioning
+    of weight, bias and output tensors) happen during compile. 
+             
+    :param optimizer: optimizer instance.
+    :type optimizer: Optimizer
+    
+    :param loss_type: Enum of LossType. 
+      Options are LOSS_CATEGORICAL_CROSSENTROPY, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, 
+      LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE and LOSS_MEAN_SQUARED_ERROR_SUM_REDUCE.
+    :type loss_type: LossType
+    
+    :param metrics: List of metrics to be evaluated by the model during training and testing. 
+      Each of this is a Enum of MetricsType. Options are METRICS_ACCURACY, 
+      METRICS_CATEGORICAL_CROSSENTROPY, METRICS_SPARSE_CATEGORICAL_CROSSENTROPY,
+      METRICS_MEAN_SQUARED_ERROR, METRICS_ROOT_MEAN_SQUARED_ERROR, METRICS_MEAN_ABSOLUTE_ERROR
+    :type metrics: MetricsType
+             
+    :returns:  None -- no returns.
+    """
     if isinstance(optimizer, SGDOptimizer) == True:
       self.set_sgd_optimizer(optimizer)
     elif isinstance(optimizer, AdamOptimizer) == True:
@@ -787,6 +1315,25 @@ class FFModel(object):
     ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics))
     
   def fit(self, x=None, y=None, batch_size=None, epochs=1):
+    """Trains the model for a fixed number of epochs (iterations on a dataset).
+             
+    :param x: Input data. It can be a Dataloader instance or a list of Dataloader instances.
+    :type x: Dataloader
+    
+    :param y: Target data (label). It can be a Dataloader instance or a list of Dataloader instances.
+    :type y: Dataloader
+    
+    :param batch_size: Number of samples per gradient update. It must be identical with :attr:`-b`
+      or :attr:`--batch-size` from the command line.
+    :type batch_size: int
+    
+    :param epochs: Number of epochs to train the model. 
+      An epoch is an iteration over the entire :attr:`x` and :attr:`y` data provided.
+      The default value is 1.
+    :type epochs: int
+             
+    :returns:  None -- no returns.
+    """
     if (isinstance(x, list) == False):
       dataloaders = [x]
     else:
@@ -812,6 +1359,25 @@ class FFModel(object):
         self._ffconfig.end_trace(self._tracing_id)
           
   def eval(self, x=None, y=None, batch_size=None):
+    """Returns the loss value & metrics values for the model in test mode. 
+             
+    :param x: Input data. It can be a Dataloader instance or a list of Dataloader instances.
+    :type x: Dataloader
+    
+    :param y: Target data (label). It can be a Dataloader instance or a list of Dataloader instances.
+    :type y: Dataloader
+    
+    :param batch_size: Number of samples per gradient update. It must be identical with :attr:`-b`
+      or :attr:`--batch-size` from the command line.
+    :type batch_size: int
+    
+    :param epochs: Number of epochs to train the model. 
+      An epoch is an iteration over the entire :attr:`x` and :attr:`y` data provided.
+      The default value is 1.
+    :type epochs: int
+             
+    :returns:  None -- no returns.
+    """
     if (isinstance(x, list) == False):
       dataloaders = [x]
     else:
@@ -831,6 +1397,10 @@ class FFModel(object):
       self.compute_metrics()
       
   def zero_gradients(self):
+    """Empty the gradients of all layers.
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_model_zero_gradients(self.handle)
 
   def set_sgd_optimizer(self, optimizer):
@@ -866,6 +1436,16 @@ class FFModel(object):
     return PerfMetrics(handle)
     
   def create_data_loader(self, batch_tensor, full_array):
+    """Create a SingleDataloader instance. 
+             
+    :param batch_tensor: a batch-sized tensor. Usually it is a input tensor of the model.  
+    :type batch_tensor: Tensor
+    
+    :param full_array: the entire data.
+    :type full_array: Numpy Array
+             
+    :returns:  SingleDataloader -- returns a dataloader instance.
+    """
     full_array_shape = full_array.shape
     num_samples = full_array_shape[0]
     num_dim = len(full_array_shape)
@@ -1012,6 +1592,42 @@ class NetConfig(object):
     self._handle = ffi.gc(self.handle, ffc.flexflow_net_config_destroy)
     cpath = ffc.flexflow_net_config_get_dataset_path(self.handle)
     self.dataset_path = ffi.string(cpath)
+    
+# -----------------------------------------------------------------------
+# DLRMConfig
+# -----------------------------------------------------------------------
+
+class DLRMConfig(object):
+  def __init__(self):
+    self.handle = ffc.flexflow_dlrm_config_create()
+    self._handle = ffi.gc(self.handle, ffc.flexflow_dlrm_config_destroy)
+    
+    cstr = ffc.flexflow_dlrm_config_get_dataset_path(self.handle)
+    self.dataset_path = ffi.string(cstr)
+    
+    cstr = ffc.flexflow_dlrm_config_get_arch_interaction_op(self.handle)
+    self.arch_interaction_op = ffi.string(cstr)
+    
+    self.sparse_feature_size = ffc.flexflow_dlrm_config_get_sparse_feature_size(self.handle)
+    self.sigmoid_bot = ffc.flexflow_dlrm_config_get_sigmoid_bot(self.handle)
+    self.sigmoid_top = ffc.flexflow_dlrm_config_get_sigmoid_top(self.handle)
+    self.embedding_bag_size = ffc.flexflow_dlrm_config_get_embedding_bag_size(self.handle)
+    self.loss_threshold = ffc.flexflow_dlrm_config_get_loss_threshold(self.handle)
+    
+    mlp_bot_c = ffc.flexflow_dlrm_config_get_mlp_bot(self.handle)
+    self.mlp_bot = []
+    for i in range(0, mlp_bot_c[0]):
+      self.mlp_bot.append(mlp_bot_c[i+1])
+      
+    mlp_top_c = ffc.flexflow_dlrm_config_get_mlp_top(self.handle)
+    self.mlp_top = []
+    for i in range(0, mlp_top_c[0]):
+      self.mlp_top.append(mlp_top_c[i+1])
+      
+    embedding_size_c = ffc.flexflow_dlrm_config_get_embedding_size(self.handle)
+    self.embedding_size = []
+    for i in range(0, embedding_size_c[0]):
+      self.embedding_size.append(embedding_size_c[i+1])
 
 # -----------------------------------------------------------------------
 # DataLoader
@@ -1077,9 +1693,17 @@ class SingleDataLoader(object):
     return ffc.flexflow_single_dataloader_get_num_samples(self.handle)
 
   def next_batch(self, ffmodel):
+    """Ask the dataloder to load the next batch to the :attr:`batch_tensor`. 
+             
+    :returns:  None -- no returns.
+    """
     ffc.flowflow_single_dataloader_next_batch(self.handle, ffmodel.handle)
 
   def reset(self):
+    """Reset the current position of the dataloder to 0. 
+             
+    :returns:  None -- no returns.
+    """
     ffc.flexflow_single_dataloader_reset(self.handle)
 
 class RegionNdarray(object):

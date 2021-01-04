@@ -5,6 +5,10 @@ GPUS=$1
 
 if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit; fi
 
+#torch
+python3 $FF_HOME/examples/python/pytorch/cifar10_cnn_torch.py
+./flexflow_python $FF_HOME/examples/python/pytorch/cifar10_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
+
 #Sequantial model tests
 ./flexflow_python $FF_HOME/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
 ./flexflow_python $FF_HOME/examples/python/keras/seq_mnist_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
