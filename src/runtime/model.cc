@@ -497,10 +497,21 @@ Tensor FFModel::create_constant(const int dims[],
   // FIXME: currently create gradients for constants since the current auto grad algorithm
   // computes gradients for all operators
   Tensor tensor = create_tensor<NDIM>(dims, data_type, NULL/*owner_op*/, true/*create_grad*/);
-  ConstantInitializer initializer(value);
+  IndexSpaceT<NDIM> part_is = (IndexSpaceT<NDIM>) get_or_create_task_is(NDIM, "");
+  ConstantInitializer* init =  new ConstantInitializer(value);
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
-  initializer.init(ctx, runtime, &tensor);
+  ArgumentMap argmap;
+  IndexLauncher launcher(CONSTANT_INIT_TASK_ID, part_is,
+      TaskArgument(init, sizeof(ConstantInitializer)), argmap,
+      Predicate::TRUE_PRED, false, 0,
+      FFConfig::get_hash_id(""));
+  launcher.add_region_requirement(
+      RegionRequirement(tensor.part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, tensor.region));
+  launcher.add_field(0, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
   return tensor;
 }
 
@@ -1317,7 +1328,7 @@ void FFModel::compile(LossType loss_type,
 
   for (size_t i = 0; i < layers.size(); i++) {
       Op* op = layers[i];
-      printf("layer[%d]: type(%d)\n", i, layers[i]->op_type);
+      printf("layer[%zu]: type(%d)\n", i, layers[i]->op_type);
       for (int j = 0; j < op->numInputs; j++) {
         LogicalRegion handle = op->inputs[j].region;
         printf("inputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
