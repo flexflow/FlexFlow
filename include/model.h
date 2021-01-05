@@ -27,7 +27,9 @@
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <unistd.h>
+#ifdef FF_ENABLE_NCCL
 #include <mpi.h>
+#endif
 
 using namespace Legion;
 
