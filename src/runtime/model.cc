@@ -444,6 +444,8 @@ FFModel::FFModel(FFConfig& _config)
   Rect<2> task_rect(Point<2>(0, 0),
                     Point<2>(0, config.workersPerNode * config.numNodes - 1));
   IndexSpaceT<2> task_is = runtime->create_index_space(ctx, task_rect);
+
+#ifdef FF_ENABLE_NCCL  
   // Init NCCL id
   int my_rank = -1, all_ranks = -1;
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
@@ -452,10 +454,13 @@ FFModel::FFModel(FFConfig& _config)
   ncclUniqueId id;
   if (my_rank == 0) ncclGetUniqueId(&id);
   MPI_Bcast((void *)&id, sizeof(id), MPI_BYTE, 0, MPI_COMM_WORLD);
+#endif
   int rank = 0;
   for (PointInRectIterator<2> it(task_rect); it(); it++) {
     FFInitInfo info;
+#ifdef FF_ENABLE_NCCL
     info.ncclId = id;
+#endif
     info.myRank = rank++;
     info.allRanks = config.workersPerNode * config.numNodes;
     info.workSpaceSize = config.workSpaceSize;
@@ -2162,14 +2167,7 @@ void register_internal_tasks()
         registrar, "FusedOp Backward Task");
   }
   // Optimizer
-  {
-    TaskVariantRegistrar registrar(SGD_UPD_PS_TASK_ID,
-                                   "SGD Parameter Server Update");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<SGDOptimizer::ps_update_task>(
-        registrar, "SGD Parameter Server Update Task");
-  }
+#ifdef FF_ENABLE_NCCL  
   {
     TaskVariantRegistrar registrar(SGD_UPD_NCCL_TASK_ID,
                                    "SGD NCCL Update");
@@ -2179,14 +2177,6 @@ void register_internal_tasks()
         registrar, "SGD NCCL Update Task");
   }
   {
-    TaskVariantRegistrar registrar(ADAM_UPD_PS_TASK_ID,
-                                   "Adam Parameter Server Update");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<AdamOptimizer::ps_update_task>(
-        registrar, "Adam Parameter Server Update Task");
-  }
-  {
     TaskVariantRegistrar registrar(ADAM_UPD_NCCL_TASK_ID,
                                    "Adam NCCL Update");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
@@ -2194,6 +2184,24 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<AdamOptimizer::nccl_update_task>(
         registrar, "Adam NCCL Update Task");
   }
+#else
+  {
+    TaskVariantRegistrar registrar(SGD_UPD_PS_TASK_ID,
+                                   "SGD Parameter Server Update");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<SGDOptimizer::ps_update_task>(
+        registrar, "SGD Parameter Server Update Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ADAM_UPD_PS_TASK_ID,
+                                   "Adam Parameter Server Update");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AdamOptimizer::ps_update_task>(
+        registrar, "Adam Parameter Server Update Task");
+  }
+#endif
   // Initializer
   {
     TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID,

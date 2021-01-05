@@ -19,7 +19,9 @@
 #include "legion.h"
 #include <cudnn.h>
 #include <cublas_v2.h>
+#ifdef FF_ENABLE_NCCL
 #include <nccl.h>
+#endif
 
 // ========================================================
 // Define Runtime Constants
@@ -68,13 +70,17 @@ struct ParallelConfig {
 struct FFHandler {
   cudnnHandle_t dnn;
   cublasHandle_t blas;
+#ifdef FF_ENABLE_NCCL
   ncclComm_t nccl;
+#endif
   void *workSpace;
   size_t workSpaceSize;
 };
 
 struct FFInitInfo {
+#ifdef FF_ENABLE_NCCL
   ncclUniqueId ncclId;
+#endif
   size_t workSpaceSize;
   int myRank, allRanks;
 };
