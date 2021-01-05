@@ -167,9 +167,9 @@ void SGDOptimizer::nccl_update_task(
   checkCUDA(cudaStreamCreate(&stream));
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*) w_grad_ptr, size, ncclFloat,
       ncclSum, handler.nccl, stream));
-#elif
+#else
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*) w_grad_ptr, size, ncclFloat,
-      ncclSum, handler.nccl));
+      ncclSum, handler.nccl, 0));
 #endif
 
   // Step 2: SGD update
@@ -344,9 +344,9 @@ void AdamOptimizer::nccl_update_task(const Task* task,
   checkCUDA(cudaStreamCreate(&stream));
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*)w_grad_ptr, size, ncclFloat,
       ncclSum, handler.nccl, stream));
-#elif
+#else
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*)w_grad_ptr, size, ncclFloat,
-      ncclSum, handler.nccl));
+      ncclSum, handler.nccl, 0));
 #endif
   //fprintf(stderr, "alpha = %.8lf alpha_t = %.8lf decay = %.8lf\n",
   //        op->alpha, op->alpha_t, op->weight_decay);
