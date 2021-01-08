@@ -984,9 +984,8 @@ bool Conv2D::measure_compute_time(Simulator* sim,
   checkCUDNN(cudnnSetConvolution2dDescriptor(m->convDesc, pad_h, pad_w,
       stride_h, stride_w, 1/*dilationH*/, 1/*dilationW*/,
       CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
-  if (groups != 1) {
-    checkCUDNN(cudnnSetConvolutionGroupCount(m->convDesc, groups));
-  }
+
+  checkCUDNN(cudnnSetConvolutionGroupCount(m->convDesc, groups));
   checkCUDNN(cudnnSetConvolutionMathType(m->convDesc, CUDNN_TENSOR_OP_MATH));
   int n, c, h, w;
   checkCUDNN(cudnnGetConvolution2dForwardOutputDim(m->convDesc,
@@ -1009,7 +1008,7 @@ bool Conv2D::measure_compute_time(Simulator* sim,
   assert(weight_ptr != NULL);
   float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
   assert(bias_ptr != NULL);
-  
+
   // select forward algorithm
   {
     const int reqAlgCnt = 8;
@@ -1053,10 +1052,12 @@ bool Conv2D::measure_compute_time(Simulator* sim,
     checkCUDNN(perfResults[0].status);
     backward_time += perfResults[0].time;
   }
-  printf("[Measure Conv2D] input(%d %d %d %d) weight(%d %d %d %d) output(%d %d %d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+  printf("[Measure Conv2D] input(%d %d %d %d) weight(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
          input_n, input_c, input_h, input_w,
          output_c, input_c / groups, kernel_h, kernel_w,
          output_n, output_c, output_h, output_w,
+         stride_h, stride_w,
+         padding_h, padding_w,
          forward_time, backward_time);
   return true;
 }
