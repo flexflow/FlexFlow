@@ -155,7 +155,7 @@ void Conv2D::create_weights(FFModel& model)
   // Retrive the task indexspace for the op
   task_is = (IndexSpaceT<4>)model.get_or_create_task_is(4, name);
 
-  // TODO: consider move it as static or global var
+  // TODO: temp work, will let users to pick either NCCL or PS
 #ifdef FF_ENABLE_NCCL
   Parameter::CommType comm_type = Parameter::NCCL;
 #else

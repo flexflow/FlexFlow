@@ -44,11 +44,10 @@ public:
   void next(void);
   void update(const Parameter* p);
   void set_weight_decay(double _weight_decay);
-#ifndef FF_ENABLE_NCCL
   static void ps_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);
-#else
+#ifdef FF_ENABLE_NCCL
   static void nccl_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);
@@ -71,11 +70,10 @@ public:
   void next(void);
   void update(const Parameter* p);
   void set_weight_decay(double _weight_decay);
-#ifndef FF_ENABLE_NCCL
   static void ps_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);
-#else
+#ifdef FF_ENABLE_NCCL
   static void nccl_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);

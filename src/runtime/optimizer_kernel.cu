@@ -40,7 +40,6 @@ void sgd_update(size_t count, float lr, float weight_decay,
   }
 }
 
-#ifndef FF_ENABLE_NCCL
 __host__
 void SGDOptimizer::ps_update_task(const Task* task,
                                   const std::vector<PhysicalRegion>& regions,
@@ -109,7 +108,7 @@ void SGDOptimizer::ps_update_task(const Task* task,
   //checkCUDA(cudaDeviceSynchronize());
 }
 
-#else
+#ifdef FF_ENABLE_NCCL
 __host__
 void SGDOptimizer::nccl_update_task(
     const Task* task,
@@ -226,7 +225,6 @@ void adam_update(int count, float alpha_t,
   }
 }
 
-#ifndef FF_ENABLE_NCCL
 __host__
 void AdamOptimizer::ps_update_task(const Task* task,
                                    const std::vector<PhysicalRegion>& regions,
@@ -290,7 +288,7 @@ void AdamOptimizer::ps_update_task(const Task* task,
   //checkCUDA(cudaDeviceSynchronize());
 }
 
-#else
+#ifdef FF_ENABLE_NCCL
 __host__
 void AdamOptimizer::nccl_update_task(const Task* task,
                                      const std::vector<PhysicalRegion>& regions,

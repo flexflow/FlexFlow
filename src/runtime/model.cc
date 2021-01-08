@@ -2167,6 +2167,22 @@ void register_internal_tasks()
         registrar, "FusedOp Backward Task");
   }
   // Optimizer
+  {
+    TaskVariantRegistrar registrar(SGD_UPD_PS_TASK_ID,
+                                   "SGD Parameter Server Update");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<SGDOptimizer::ps_update_task>(
+        registrar, "SGD Parameter Server Update Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ADAM_UPD_PS_TASK_ID,
+                                   "Adam Parameter Server Update");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AdamOptimizer::ps_update_task>(
+        registrar, "Adam Parameter Server Update Task");
+  }
 #ifdef FF_ENABLE_NCCL  
   {
     TaskVariantRegistrar registrar(SGD_UPD_NCCL_TASK_ID,
@@ -2183,23 +2199,6 @@ void register_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<AdamOptimizer::nccl_update_task>(
         registrar, "Adam NCCL Update Task");
-  }
-#else
-  {
-    TaskVariantRegistrar registrar(SGD_UPD_PS_TASK_ID,
-                                   "SGD Parameter Server Update");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<SGDOptimizer::ps_update_task>(
-        registrar, "SGD Parameter Server Update Task");
-  }
-  {
-    TaskVariantRegistrar registrar(ADAM_UPD_PS_TASK_ID,
-                                   "Adam Parameter Server Update");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<AdamOptimizer::ps_update_task>(
-        registrar, "Adam Parameter Server Update Task");
   }
 #endif
   // Initializer
