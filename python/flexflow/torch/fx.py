@@ -114,6 +114,7 @@ def parse_conv2d(op_str, node):
   op_str = op_str + str(node.module.padding[1]) + ", "
   op_str = op_str + str(node.module.padding[1]) + ", "
   op_str = op_str + str(enum_to_int(ActiMode, ActiMode.AC_MODE_NONE)) + ", "
+  op_str = op_str + str(node.module.groups) + ", "
   if node.module.bias != None:
     op_str = op_str + "1\n"
   else:

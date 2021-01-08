@@ -291,6 +291,7 @@ public:
                 int kernelH, int kernelW,
                 int strideH, int strideW,
                 int paddingH, int paddingW,
+                int groups = 1,
                 ActiMode activation = AC_MODE_NONE,
                 bool use_bias = true,
                 const Op* shared_op = NULL,
@@ -382,6 +383,7 @@ public:
                  int kernelH, int kernelW,
                  int strideH, int strideW,
                  int paddingH, int paddingW,
+                 int groups,
                  ActiMode activation = AC_MODE_NONE,
                  bool use_bias = true,
                  Initializer* krenel_initializer = NULL,
@@ -602,6 +604,7 @@ public:
          int kernelH, int kernelW,
          int strideH, int strideW,
          int paddingH, int paddingW,
+         int groups,
          ActiMode activation,
          bool use_bias,
          const Op* shared_op,
@@ -612,6 +615,7 @@ public:
          int kernelH, int kernelW,
          int strideH, int strideW,
          int paddingH, int paddingW,
+         int groups,
          ActiMode activation,
          bool use_bias,
          Initializer* kernel_initializer,
@@ -656,7 +660,7 @@ public:
                             float& backward_time);
 public:
   //IndexSpaceT<4> task_is;
-  int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
+  int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
   bool profiling, use_bias;
   ActiMode activation;
   Initializer *kernel_initializer;

@@ -712,7 +712,7 @@ class FFModel(object):
              stride_h, stride_w, 
              padding_h, padding_w, 
              activation=ActiMode.AC_MODE_NONE, 
-             use_bias=True, shared_op=None, 
+             groups=1, use_bias=True, shared_op=None, 
              kernel_initializer=None, bias_initializer=None, name=None):
     """This layer creates a 2D convolution kernel that is convolved with the layer :attr:`input` 
     to produce a tensor of :attr:`output`.
@@ -773,7 +773,10 @@ class FFModel(object):
 
     :param activation: Activation function to use. If you don't specify anything, no activation is applied.
     :type activation: ActiMode   
-             
+ 
+    :param groups: the number of groups in this convolution
+    :type groups: int   
+            
     :param use_bias: whether the layer uses a bias vector. If you don't specify anything, a bias vector is used.
     :type use_bias: bool  
 
@@ -795,7 +798,7 @@ class FFModel(object):
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle)
+    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle)
     self.add_layer(OpType.CONV2D, name)
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 

@@ -470,7 +470,7 @@ class BaseModel(object):
           t_ffhandle_list.append(t.ffhandle)
         out_t = self._ffmodel.concat(t_ffhandle_list, layer.axis)
       elif isinstance(layer, Conv2D) == True:
-        out_t = self._ffmodel.conv2d(layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias, None, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle)
+        out_t = self._ffmodel.conv2d(layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.groups, layer.use_bias, None, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle)
       elif isinstance(layer, Pooling2D) == True:
         out_t = self._ffmodel.pool2d(layer.input_tensors[0].ffhandle, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.pool_type)
       elif isinstance(layer, Flatten) == True:

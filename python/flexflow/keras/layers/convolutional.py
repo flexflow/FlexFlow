@@ -49,8 +49,8 @@ class Conv2D(Layer):
       assert 0, "data_format channels_last is not supported"
     if dilation_rate != (1,1):
       assert 0, "dilation_rate is not supported"
-    if groups != 1:
-      assert 0, "groups is not supported"
+    #if groups != 1:
+    #  assert 0, "groups is not supported"
     if kernel_regularizer != None:
       assert 0, "kernel_regularizer is not supported"
     if bias_regularizer != None:
