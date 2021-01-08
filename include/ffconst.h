@@ -111,6 +111,7 @@ enum OperatorType {
   OP_SLICE, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Slice
   OP_RESIZE, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Resize
   OP_PRELU, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#PRelu
+  OP_MULTIHEAD_ATTENTION,
 };
 
 #endif // _FLEXFLOW_CONST_H_

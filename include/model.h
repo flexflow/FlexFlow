@@ -92,6 +92,9 @@ enum TaskIDs {
   TRANSPOSE_INIT_TASK_ID,
   TRANSPOSE_FWD_TASK_ID,
   TRANSPOSE_BWD_TASK_ID,
+  ATTENTION_INIT_TASK_ID,
+  ATTENTION_FWD_TASK_ID,
+  ATTENTION_BWD_TASK_ID,
   MSELOSS_BWD_TASK_ID,
   //Metrics tasks
   METRICS_COMP_TASK_ID,
@@ -211,6 +214,7 @@ class Op {
 public:
   Op(FFModel& model, OperatorType type, const std::string& _name, const Tensor& input);
   Op(FFModel& model, OperatorType type, const std::string& _name, const Tensor& input1, const Tensor& input2);
+  Op(FFModel& model, OperatorType type, const std::string& _name, const Tensor& input1, const Tensor& input2, const Tensor& input3);
   Op(FFModel& model, OperatorType type, const std::string& _name, int num, const Tensor* inputs);
   Op(FFModel& model, OperatorType type, const std::string& _name, int num);
 
@@ -340,6 +344,18 @@ public:
                  const std::vector<int>& shape);
   Tensor reverse(const Tensor& input,
                  int axis);
+  Tensor multihead_attention(const Tensor& query,
+                             const Tensor& key,
+                             const Tensor& value,
+                             int embed_dim,
+                             int num_heads,
+                             int kdim = 0,
+                             int vdim = 0,
+                             float dropout = 0.0f,
+                             bool bias = true,
+                             bool add_bias_kv = false,
+                             bool add_zero_attn = false,
+                             Initializer* kernel_initializer = NULL);
   template<int NDIM>
   Tensor create_tensor(const int dims[],
                        DataType data_type,
@@ -1047,6 +1063,80 @@ public:
 class FlatMeta : public OpMeta {
 public:
   FlatMeta(FFHandler handle) : OpMeta(handle) {};
+};
+
+class MultiHeadAttentionMeta;
+class MultiHeadAttention : public Op {
+public:
+  MultiHeadAttention(FFModel& model,
+                     const Tensor& _query,
+                     const Tensor& _key,
+                     const Tensor& _value,
+                     int _embed_dim, int _num_heads,
+                     int _kdim, int _vdim,
+                     float _dropout, bool _bias,
+                     bool _add_bias_kv, bool _add_zero_attn,
+                     Initializer* _kernel_initializer);
+  Tensor init_inout(FFModel& model, const Tensor& input) { assert(0); return Tensor();}
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_compute_time(Simulator* sim,
+                            const ParallelConfig& pc,
+                            float& forward_time,
+                            float& backward_time);
+  void forward_kernel(const MultiHeadAttentionMeta* m,
+                      const float* query_ptr,
+                      const float* key_ptr,
+                      const float* value_ptr,
+                      const float* weight_ptr,
+                      float* output_ptr) const;
+  void backward_kernel(const MultiHeadAttentionMeta* m,
+                       const float* query_ptr,
+                       float* query_grad_ptr,
+                       const float* key_ptr,
+                       float* key_grad_ptr,
+                       const float* value_ptr,
+                       float* value_grad_ptr,
+                       const float* weight_ptr,
+                       float* weight_grad_ptr,
+                       const float* output_grad_ptr) const;
+public:
+  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+  int qoSeqLength, kvSeqLength;
+  Initializer* kernel_initializer;
+  float dropout;
+  bool profiling, bias, add_bias_kv, add_zero_attn;
+};
+
+class MultiHeadAttentionMeta : public OpMeta {
+public:
+  MultiHeadAttentionMeta(FFHandler handler,
+                         const MultiHeadAttention* attn,
+                         Memory gpu_mem,
+                         int num_samples,
+                         int num_heads);
+  ~MultiHeadAttentionMeta(void);
+public:
+  Realm::RegionInstance reserveInst;
+  size_t weightSize, reserveSpaceSize;
+  cudnnAttnDescriptor_t attnDesc;
+  cudnnSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
+  int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx;
+  void *reserveSpace;
 };
 
 class Softmax : public Op {
