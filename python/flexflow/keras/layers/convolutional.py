@@ -24,7 +24,7 @@ from flexflow.keras.initializers import Zeros, GlorotUniform, RandomUniform, Ran
 
 class Conv2D(Layer):
   __slots__ = ['in_channels', 'out_channels', 'kernel_size', 'stride', \
-               'padding', 'activation', 'use_bias', 'kernel_initializer', \
+               'padding', 'activation', 'groups', 'use_bias', 'kernel_initializer', \
                'bias_initializer']
   def __init__(self, 
                filters, 
@@ -99,6 +99,7 @@ class Conv2D(Layer):
       self.activation = ff.ActiMode.AC_MODE_RELU
     else:
       assert 0, "activation is not supported"
+    self.groups = groups
     if input_shape != None:
       if len(input_shape) == 4:
         self.in_channels = input_shape[1]
