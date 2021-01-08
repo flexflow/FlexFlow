@@ -47,9 +47,11 @@ public:
   static void ps_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);
+#ifdef FF_ENABLE_NCCL
   static void nccl_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);
+#endif
   double lr, momentum;
   bool nesterov;
   double weight_decay;
@@ -71,9 +73,11 @@ public:
   static void ps_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);
+#ifdef FF_ENABLE_NCCL
   static void nccl_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);
+#endif
   double alpha, beta1, beta2, weight_decay, epsilon;
   double alpha_t, beta1_t, beta2_t;
   std::map<LogicalRegion, Parameter> v_values, m_values;

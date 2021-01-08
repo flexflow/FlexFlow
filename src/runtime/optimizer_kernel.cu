@@ -108,6 +108,7 @@ void SGDOptimizer::ps_update_task(const Task* task,
   //checkCUDA(cudaDeviceSynchronize());
 }
 
+#ifdef FF_ENABLE_NCCL
 __host__
 void SGDOptimizer::nccl_update_task(
     const Task* task,
@@ -165,16 +166,18 @@ void SGDOptimizer::nccl_update_task(
   checkCUDA(cudaStreamCreate(&stream));
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*) w_grad_ptr, size, ncclFloat,
       ncclSum, handler.nccl, stream));
-#elif
+#else
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*) w_grad_ptr, size, ncclFloat,
-      ncclSum, handler.nccl));
+      ncclSum, handler.nccl, 0));
 #endif
+
   // Step 2: SGD update
   sgd_update<<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
       size, op->lr, op->weight_decay, op->momentum, op->nesterov,
       w_grad_ptr, v_ptr, w_ptr);
   //checkCUDA(cudaDeviceSynchronize());
 }
+#endif
 
 // ==================================================================
 //                        Adam Optimizer
@@ -285,6 +288,7 @@ void AdamOptimizer::ps_update_task(const Task* task,
   //checkCUDA(cudaDeviceSynchronize());
 }
 
+#ifdef FF_ENABLE_NCCL
 __host__
 void AdamOptimizer::nccl_update_task(const Task* task,
                                      const std::vector<PhysicalRegion>& regions,
@@ -338,9 +342,9 @@ void AdamOptimizer::nccl_update_task(const Task* task,
   checkCUDA(cudaStreamCreate(&stream));
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*)w_grad_ptr, size, ncclFloat,
       ncclSum, handler.nccl, stream));
-#elif
+#else
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*)w_grad_ptr, size, ncclFloat,
-      ncclSum, handler.nccl));
+      ncclSum, handler.nccl, 0));
 #endif
   //fprintf(stderr, "alpha = %.8lf alpha_t = %.8lf decay = %.8lf\n",
   //        op->alpha, op->alpha_t, op->weight_decay);
@@ -351,4 +355,4 @@ void AdamOptimizer::nccl_update_task(const Task* task,
       w_grad_ptr, m_ptr, v_ptr, w_ptr);
   //checkCUDA(cudaDeviceSynchronize());
 }
-
+#endif
