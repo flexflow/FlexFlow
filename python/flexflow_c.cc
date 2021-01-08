@@ -641,7 +641,6 @@ flexflow_model_add_reshape(
   return FFCObjectWrapper::wrap(tensor);
 }
 
-
 flexflow_tensor_t
 flexflow_model_add_reverse(
   flexflow_model_t handle_,
@@ -720,6 +719,33 @@ flexflow_model_add_dropout(
   Tensor *tensor = new Tensor();
   *tensor = handle->dropout(*input, rate, seed);
   DEBUG_PRINT("[Dropout] new Tensor %p", tensor);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t
+flexflow_model_add_multihead_attention(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t query_,
+  const flexflow_tensor_t key_,
+  const flexflow_tensor_t value_,
+  int embed_dim,
+  int num_heads,
+  int kdim,
+  int vdim,
+  float dropout,
+  bool bias,
+  bool add_bias_kv,
+  bool add_zero_attn,
+  flexflow_initializer_t kernel_initializer_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *query = FFCObjectWrapper::unwrap(query_);
+  Tensor *key = FFCObjectWrapper::unwrap(key_);
+  Tensor *value = FFCObjectWrapper::unwrap(value_);
+  Initializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->multihead_attention(*query, *key, *value, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_initializer);
+  DEBUG_PRINT("[MultiHeadAttention] new Tensor %p", tensor);
   return FFCObjectWrapper::wrap(tensor);
 }
 

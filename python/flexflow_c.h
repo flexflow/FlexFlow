@@ -330,6 +330,22 @@ flexflow_model_add_dropout(
   const flexflow_tensor_t input,
   float rate,
   unsigned long long seed);
+  
+flexflow_tensor_t
+flexflow_model_add_multihead_attention(
+  flexflow_model_t handle,
+  const flexflow_tensor_t query,
+  const flexflow_tensor_t key,
+  const flexflow_tensor_t value,
+  int embed_dim,
+  int num_heads,
+  int kdim,
+  int vdim,
+  float dropout,
+  bool bias,
+  bool add_bias_kv,
+  bool add_zero_attn,
+  flexflow_initializer_t kernel_initializer);
 
 // void
 // flexflow_model_add_mse_loss(
