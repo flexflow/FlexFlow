@@ -24,7 +24,7 @@ from flexflow.keras.initializers import Zeros, GlorotUniform, RandomUniform, Ran
 
 class Conv2D(Layer):
   __slots__ = ['in_channels', 'out_channels', 'kernel_size', 'stride', \
-               'padding', 'activation', 'use_bias', 'kernel_initializer', \
+               'padding', 'groups', 'activation', 'use_bias', 'kernel_initializer', \
                'bias_initializer']
   def __init__(self, 
                filters, 
@@ -49,8 +49,6 @@ class Conv2D(Layer):
       assert 0, "data_format channels_last is not supported"
     if dilation_rate != (1,1):
       assert 0, "dilation_rate is not supported"
-    if groups != 1:
-      assert 0, "groups is not supported"
     if kernel_regularizer != None:
       assert 0, "kernel_regularizer is not supported"
     if bias_regularizer != None:
@@ -93,6 +91,7 @@ class Conv2D(Layer):
       self.padding = tuple(padding)
     else:
       assert 0, "[Conv2D]: check padding"
+    self.groups = groups
     if (activation == None):
       self.activation = ff.ActiMode.AC_MODE_NONE
     elif(activation =="relu"):

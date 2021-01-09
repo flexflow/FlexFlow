@@ -24,11 +24,20 @@ typedef Realm::Point<1, coord_t> Point1;
 typedef Realm::Rect<1, coord_t> Rect1;
 
 Simulator::Simulator(const FFModel* model,
-                     FFHandler handler,
-                     void* _base_ptr, size_t _capacity)
-: base_ptr((char*)_base_ptr), capacity(_capacity), offset(0),
-warmup_times(5), repeat_times(10)
+                     FFHandler _handler,
+                     Memory _memory)
+: memory(_memory), handler(_handler),
+  offset(0), warmup_times(5), repeat_times(10)
 {
+  // Allocate simulator memory
+  Rect1 bounds(Point1(0), Point1(0));
+  std::vector<size_t> field_sizes;
+  field_sizes.push_back(model->config.simulator_work_space_size);
+  Realm::RegionInstance::create_instance(simulatorInst,
+      memory, bounds, field_sizes, 0, Realm::ProfilingRequestSet()).wait();
+  base_ptr = (char*)simulatorInst.pointer_untyped(0, sizeof(char));
+  capacity = model->config.simulator_work_space_size;
+
   float inter_gpu_bandwidth = 20 * 1024 * 1024.0f; /* B/ms*/
   float inter_node_bandwidth = 12 * 1024 * 1024.0f / model->config.numNodes; /* B/ms*/
   float gpu_dram_bandwidth = 16 * 1024 * 1024.0f; /* B/ms*/
@@ -80,6 +89,11 @@ warmup_times(5), repeat_times(10)
   task_manager = new TaskManager(max_num_tasks);
 }
 
+Simulator::~Simulator(void)
+{
+  simulatorInst.destroy();
+}
+
 __host__
 void Simulator::strategy_search_task(const Task *task,
                                      const std::vector<PhysicalRegion> &regions,
@@ -93,16 +107,8 @@ void Simulator::strategy_search_task(const Task *task,
   // Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
   // off_t offset = memFBImpl->alloc_bytes_local(model->config.simulator_work_space_size);
   // void* base_ptr = memFBImpl->get_direct_ptr(offset, 0);
-  Realm::RegionInstance inst;
-  Rect1 bounds(Point1(0), Point1(0));
-  std::vector<size_t> field_sizes;
-  field_sizes.push_back(model->config.simulator_work_space_size);
-  Realm::RegionInstance::create_instance(inst, gpu_mem, bounds, field_sizes,
-                                         0, Realm::ProfilingRequestSet()).wait();
-  void* base_ptr = inst.pointer_untyped(0, sizeof(char));
   // Assume this task is running on GPU0
-  Simulator* simulator = new Simulator(model, model->handlers[0], base_ptr,
-      model->config.simulator_work_space_size);
+  Simulator* simulator = new Simulator(model, model->handlers[0], gpu_mem);
   std::map<Op*, ParallelConfig> strategies;
   model->optimize(simulator, strategies, model->config.search_budget, model->config.search_alpha);
   if (model->config.export_strategy_file.length() > 0) {
@@ -117,7 +123,6 @@ void Simulator::strategy_search_task(const Task *task,
   }
   // Start from data
   // memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);
-  inst.destroy();
   delete(simulator);
 }
 

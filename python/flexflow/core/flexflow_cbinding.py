@@ -282,6 +282,13 @@ class Transpose(Op):
 class Reverse(Op):
   def __init__(self, handle, idx=None, name=None):
     super(Reverse, self).__init__(handle, idx, name)
+    
+# -----------------------------------------------------------------------
+# MultiHeadAttention
+# -----------------------------------------------------------------------
+class MultiHeadAttention(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(MultiHeadAttention, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # flexflow_op_t handle to Op
@@ -334,6 +341,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
   elif op_type == OpType.TRANSPOSE:
     return Transpose(handle, idx, name)
   elif op_type == OpType.REVERSE:
+    return Reverse(handle, idx, name)
+  elif op_type == OpType.MULTIHEAD_ATTENTION:
     return Reverse(handle, idx, name)
   else:
     assert 0, "unknow layer type {}".format(op_type)
@@ -712,7 +721,7 @@ class FFModel(object):
              stride_h, stride_w, 
              padding_h, padding_w, 
              activation=ActiMode.AC_MODE_NONE, 
-             use_bias=True, shared_op=None, 
+             groups=1, use_bias=True, shared_op=None, 
              kernel_initializer=None, bias_initializer=None, name=None):
     """This layer creates a 2D convolution kernel that is convolved with the layer :attr:`input` 
     to produce a tensor of :attr:`output`.
@@ -773,7 +782,10 @@ class FFModel(object):
 
     :param activation: Activation function to use. If you don't specify anything, no activation is applied.
     :type activation: ActiMode   
-             
+ 
+    :param groups: the number of groups in this convolution
+    :type groups: int   
+            
     :param use_bias: whether the layer uses a bias vector. If you don't specify anything, a bias vector is used.
     :type use_bias: bool  
 
@@ -795,7 +807,7 @@ class FFModel(object):
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle)
+    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle)
     self.add_layer(OpType.CONV2D, name)
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 
@@ -1230,6 +1242,17 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_dropout(self.handle, input.handle, rate, seed)
     self.add_layer(OpType.DROPOUT, name)
     return Tensor(handle, owner_op_type=OpType.DROPOUT)
+    
+  def multihead_attention(self, query, key, value, 
+                          embed_dim, num_heads, 
+                          kdim=0, vdim=0, dropout=0.0, 
+                          bias=True, add_bias_kv=False, add_zero_attn=False, 
+                          kernel_initializer=None, name=None):
+                          
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    handle = ffc.flexflow_model_add_multihead_attention(self.handle, query.handle, key.handle, value.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle)
+    self.add_layer(OpType.MULTIHEAD_ATTENTION, name)
+    return Tensor(handle, owner_op_type=OpType.MULTIHEAD_ATTENTION)
 
   def reset_metrics(self):
     """Reset performance metrics.

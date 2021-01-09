@@ -88,7 +88,10 @@ public:
 
 class Simulator {
 public:
-  Simulator(const FFModel* model, FFHandler handler, void* base_ptr, size_t capacity);
+  Simulator(const FFModel* model,
+            FFHandler handler,
+            Memory memory);
+  ~Simulator(void);
   void free_all();
   void* allocate(size_t num_elements, DataType type); 
   Device* get_compute_device_by_id(int device_id);
@@ -106,6 +109,9 @@ public:
                                    const std::vector<PhysicalRegion> &regions,
                                    Context ctx, Runtime *runtime);
 public:
+  Realm::RegionInstance simulatorInst;
+  Memory memory;
+  FFHandler handler;
   char* base_ptr;
   size_t capacity;
   off_t offset;

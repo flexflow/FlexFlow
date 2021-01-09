@@ -59,7 +59,7 @@ class PyTorchModel(object):
         self.tensor_dict[op_name] = ffmodel.dense(input=input_tensor, out_dim=od, activation=activ, use_bias=bias, name=op_name)
 
       elif op_type == OpType.CONV2D:
-        assert len(items) == 12, "wrong format"
+        assert len(items) == 13, "wrong format"
         assert len(prev_ops_list) == 1, "wrong format"
         input_tensor = self.tensor_dict[prev_ops_list[0]]
         oc = int(items[3])
@@ -70,8 +70,9 @@ class PyTorchModel(object):
         ph = int(items[8])
         pw = int(items[9])
         activ = int_to_enum(ActiMode, int(items[10]))
-        bias = bool(int(items[11]))
-        self.tensor_dict[op_name] = ffmodel.conv2d(input=input_tensor, out_channels=oc, kernel_h=kh, kernel_w=kw, stride_h=sh, stride_w=sw, padding_h=ph, padding_w=pw, activation=activ, use_bias=bias, name=op_name)
+        group = int(items[11])
+        bias = bool(int(items[12]))
+        self.tensor_dict[op_name] = ffmodel.conv2d(input=input_tensor, out_channels=oc, kernel_h=kh, kernel_w=kw, stride_h=sh, stride_w=sw, padding_h=ph, padding_w=pw, activation=activ, groups=group, use_bias=bias, name=op_name)
 
       elif op_type == OpType.POOL2D:
         assert len(items) == 8, "wrong format"

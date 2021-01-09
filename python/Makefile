@@ -99,6 +99,7 @@ FF_GPU_SRC ?= 	$(FF_HOME)/src/ops/conv_2d.cu $(FF_HOME)/src/runtime/model.cu\
 		${FF_HOME}/src/ops/transpose.cu\
 		${FF_HOME}/src/ops/reverse.cu\
 		${FF_HOME}/src/ops/reshape.cu\
+		${FF_HOME}/src/ops/attention.cu\
 		$(FF_HOME)/src/loss_functions/loss_functions.cu\
 		$(FF_HOME)/src/metrics_functions/metrics_functions.cu\
 		$(FF_HOME)/src/runtime/initializer_kernel.cu $(FF_HOME)/src/runtime/optimizer_kernel.cu\

@@ -334,6 +334,7 @@ flexflow_model_add_conv2d(
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
+  int groups,
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* True */,
   flexflow_op_t shared_op_,
@@ -346,7 +347,7 @@ flexflow_model_add_conv2d(
   Tensor *tensor = new Tensor();
   Initializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
   Initializer *bias_initializer = FFCObjectWrapper::unwrap(bias_initializer_);
-  *tensor = handle->conv2d(*input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation, use_bias, shared_op, kernel_initializer, bias_initializer);
+  *tensor = handle->conv2d(*input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups, activation, use_bias, shared_op, kernel_initializer, bias_initializer);
   DEBUG_PRINT("[Conv2d] new Tensor 4D %p (%d, %d, %d, %d), activation %d, use_bias %d, shared_op %p, kernel_init %p, bias_init %p",
     tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], activation, use_bias, shared_op, kernel_initializer, bias_initializer);
   return FFCObjectWrapper::wrap(tensor);
@@ -360,6 +361,7 @@ flexflow_model_add_conv2d_no_inout(
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
+  int groups,
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* True */,
   flexflow_initializer_t kernel_initializer_,
@@ -368,7 +370,7 @@ flexflow_model_add_conv2d_no_inout(
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Initializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
   Initializer *bias_initializer = FFCObjectWrapper::unwrap(bias_initializer_);
-  Conv2D *conv2d = handle->conv2d(in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation, use_bias, kernel_initializer, bias_initializer);
+  Conv2D *conv2d = handle->conv2d(in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups, activation, use_bias, kernel_initializer, bias_initializer);
   Op *op = (Op*)conv2d;
   DEBUG_PRINT("[Conv2d] no inout, layer %p, activation %d, use_bias %d, kernel_init %p, bias_init %p", conv2d, activation, use_bias, kernel_initializer, bias_initializer);
   return FFCObjectWrapper::wrap(op);
@@ -639,7 +641,6 @@ flexflow_model_add_reshape(
   return FFCObjectWrapper::wrap(tensor);
 }
 
-
 flexflow_tensor_t
 flexflow_model_add_reverse(
   flexflow_model_t handle_,
@@ -718,6 +719,33 @@ flexflow_model_add_dropout(
   Tensor *tensor = new Tensor();
   *tensor = handle->dropout(*input, rate, seed);
   DEBUG_PRINT("[Dropout] new Tensor %p", tensor);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t
+flexflow_model_add_multihead_attention(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t query_,
+  const flexflow_tensor_t key_,
+  const flexflow_tensor_t value_,
+  int embed_dim,
+  int num_heads,
+  int kdim,
+  int vdim,
+  float dropout,
+  bool bias,
+  bool add_bias_kv,
+  bool add_zero_attn,
+  flexflow_initializer_t kernel_initializer_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *query = FFCObjectWrapper::unwrap(query_);
+  Tensor *key = FFCObjectWrapper::unwrap(key_);
+  Tensor *value = FFCObjectWrapper::unwrap(value_);
+  Initializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->multihead_attention(*query, *key, *value, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_initializer);
+  DEBUG_PRINT("[MultiHeadAttention] new Tensor %p", tensor);
   return FFCObjectWrapper::wrap(tensor);
 }
 

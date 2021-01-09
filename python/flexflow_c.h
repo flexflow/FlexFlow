@@ -172,6 +172,7 @@ flexflow_model_add_conv2d(
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
+  int groups,
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* True */,
   flexflow_op_t shared_op,
@@ -186,6 +187,7 @@ flexflow_model_add_conv2d_no_inout(
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
+  int groups,
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* True */,
   flexflow_initializer_t kernel_initializer,
@@ -328,6 +330,22 @@ flexflow_model_add_dropout(
   const flexflow_tensor_t input,
   float rate,
   unsigned long long seed);
+  
+flexflow_tensor_t
+flexflow_model_add_multihead_attention(
+  flexflow_model_t handle,
+  const flexflow_tensor_t query,
+  const flexflow_tensor_t key,
+  const flexflow_tensor_t value,
+  int embed_dim,
+  int num_heads,
+  int kdim,
+  int vdim,
+  float dropout,
+  bool bias,
+  bool add_bias_kv,
+  bool add_zero_attn,
+  flexflow_initializer_t kernel_initializer);
 
 // void
 // flexflow_model_add_mse_loss(
