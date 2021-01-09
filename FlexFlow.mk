@@ -13,6 +13,36 @@
 # limitations under the License.
 #
 
+ifndef FF_HOME
+$(error FF_HOME variable is not defined, aborting build)
+endif
+
+ifndef LG_RT_DIR
+LG_RT_DIR	?= $(FF_HOME)/legion/runtime
+endif
+
+ifndef CUDA_HOME
+CUDA_HOME = $(patsubst %/bin/nvcc,%,$(shell which nvcc | head -1))
+endif
+
+ifndef CUDNN_HOME
+CUDNN_HOME = $(CUDA_HOME)
+endif
+
+ifndef GASNET
+GASNET		?= ${FF_HOME}/GASNet-2019.9.0 
+endif
+
+ifdef PROTOBUF_DIR
+PROTOBUF_EXE ?= $(PROTOBUF_DIR)/bin/protoc
+PROTOBUF_LIB ?= $(PROTOBUF_DIR)/lib
+PROTOBUF_INC ?= $(PROTOBUF_DIR)/include
+else
+PROTOBUF_EXE ?= $(FF_HOME)/protobuf/src/protoc
+PROTOBUF_LIB ?= $(FF_HOME)/protobuf/src/.libs
+PROTOBUF_INC ?= ${FF_HOME}/protobuf/src
+endif
+
 GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/mapper/mapper.cc\
 		${FF_HOME}/src/runtime/initializer.cc\
@@ -49,38 +79,14 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/runtime/simulator.cu\
 		${FF_HOME}/src/runtime/cuda_helper.cu# .cu files
 
-INC_FLAGS	+= -I${FF_HOME}/include/ -I${CUDNN}/include
-
-LD_FLAGS        += -lcudnn -lcublas -lcurand -lprotobuf -L/usr/local/lib -L${CUDNN}/lib64 #-mavx2 -mfma -mf16c
-CC_FLAGS	?= -DMAX_TENSOR_DIM=$(MAX_DIM) 
-NVCC_FLAGS	?= -DMAX_TENSOR_DIM=$(MAX_DIM) 
-GASNET_FLAGS	?=
+INC_FLAGS	    += -I${FF_HOME}/include/ -I$(PROTOBUF_INC) -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
+LD_FLAGS      += -lcudnn -lcublas -lcurand -lprotobuf -L$(PROTOBUF_LIB) -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64 #-mavx2 -mfma -mf16c
+CC_FLAGS	    += -DMAX_TENSOR_DIM=$(MAX_DIM)
+NVCC_FLAGS	  += -DMAX_TENSOR_DIM=$(MAX_DIM)
+GASNET_FLAGS	+=
 # For Point and Rect typedefs
-CC_FLAGS	+= -std=c++11 #-DMAX_RETURN_SIZE=16777216
+CC_FLAGS	    += -std=c++11 #-DMAX_RETURN_SIZE=16777216
 NVCC_FLAGS  	+= -std=c++11 #-DMAX_RETURN_SIZE=16777216
-
-ifndef CUDA
-#$(error CUDA variable is not defined, aborting build)
-endif
-
-ifndef CUDNN
-#$(error CUDNN variable is not defined, aborting build)
-endif
-
-ifndef LG_RT_DIR
-LG_RT_DIR	?= ${FF_HOME}/legion/runtime
-endif
-
-ifndef GASNET
-GASNET		?= ${FF_HOME}/GASNet-2019.9.0 
-endif
-
-ifndef PROTOBUF
-#$(error PROTOBUF variable is not defined, aborting build)
-endif
-
-INC_FLAGS	+= -I${FF_HOME}/protobuf/src
-LD_FLAGS	+= -L${FF_HOME}/protobuf/src/.libs
 
 #ifndef HDF5
 #HDF5_inc	?= /usr/include/hdf5/serial
@@ -97,4 +103,3 @@ LD_FLAGS	+= -L${FF_HOME}/protobuf/src/.libs
 ###########################################################################
 
 include $(LG_RT_DIR)/runtime.mk
-

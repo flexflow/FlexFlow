@@ -13,32 +13,6 @@
 # limitations under the License.
 #
 
-ifndef FF_HOME
-$(error FF_HOME variable is not defined, aborting build)
-endif
-
-#ifndef CUDA_HOME
-#$(error CUDA_HOME variable is not defined, aborting build)
-#endif
-
-#ifndef CUDNN_HOME
-#$(error CUDNN_HOME variable is not defined, aborting build)
-#endif
-
-ifndef LG_RT_DIR
-LG_RT_DIR	?= $(FF_HOME)/legion/runtime
-endif
-
-ifdef PROTOBUF_DIR
-PROTOBUF_EXE ?= $(PROTOBUF_DIR)/bin/protoc
-PROTOBUF_LIB ?= $(PROTOBUF_DIR)/lib
-PROTOBUF_INC ?= $(PROTOBUF_DIR)/include
-else
-PROTOBUF_EXE ?= $(FF_HOME)/protobuf/src/protoc
-PROTOBUF_LIB ?= $(FF_HOME)/protobuf/src/.libs
-PROTOBUF_INC ?= ${FF_HOME}/protobuf/src
-endif
-
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 0		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
@@ -82,38 +56,12 @@ ifndef PYTHON_LIB
 endif
 
 # Put the binary file name here
-OUTFILE		?= flexflow_python
+OUTFILE		  ?= flexflow_python
 
-# List all the application source files here
-FF_SRC ?=	$(FF_HOME)/src/mapper/mapper.cc $(FF_HOME)/src/runtime/strategy.cc $(FF_HOME)/src/metrics_functions/metrics_functions.cc \
-		$(FF_HOME)/src/runtime/model.cc $(FF_HOME)/src/runtime/optimizer.cc $(FF_HOME)/src/runtime/initializer.cc \
-		$(FF_HOME)/src/runtime/simulator.cc $(FF_HOME)/src/ops/embedding.cc 
-FF_GPU_SRC ?= 	$(FF_HOME)/src/ops/conv_2d.cu $(FF_HOME)/src/runtime/model.cu\
-		$(FF_HOME)/src/ops/pool_2d.cu $(FF_HOME)/src/ops/batch_norm.cu\
-		$(FF_HOME)/src/ops/linear.cu  $(FF_HOME)/src/ops/dropout.cu\
-		$(FF_HOME)/src/ops/softmax.cu $(FF_HOME)/src/ops/concat.cu\
-		$(FF_HOME)/src/ops/flat.cu $(FF_HOME)/src/ops/embedding.cu\
-		$(FF_HOME)/src/ops/element_binary.cu $(FF_HOME)/src/ops/element_unary.cu\
-    		${FF_HOME}/src/ops/batch_matmul.cu\
-		${FF_HOME}/src/ops/split.cu\
-		${FF_HOME}/src/ops/transpose.cu\
-		${FF_HOME}/src/ops/reverse.cu\
-		${FF_HOME}/src/ops/reshape.cu\
-		${FF_HOME}/src/ops/attention.cu\
-		$(FF_HOME)/src/loss_functions/loss_functions.cu\
-		$(FF_HOME)/src/metrics_functions/metrics_functions.cu\
-		$(FF_HOME)/src/runtime/initializer_kernel.cu $(FF_HOME)/src/runtime/optimizer_kernel.cu\
-		$(FF_HOME)/src/runtime/accessor_kernel.cu $(FF_HOME)/src/runtime/simulator.cu\
-		$(FF_HOME)/src/runtime/cuda_helper.cu flexflow_dataloader.cu
-GEN_SRC		?= main.cc flexflow_c.cc flexflow_dataloader.cc strategy.pb.cc $(FF_SRC) # .cc files
-GEN_GPU_SRC	?= $(FF_GPU_SRC) # .cu files
+GEN_SRC		  ?= main.cc flexflow_c.cc flexflow_dataloader.cc # .cc files
+GEN_GPU_SRC	?= flexflow_dataloader.cu # .cu files
 
-# You can modify these variables, some will be appended to by the runtime makefile
-INC_FLAGS	?= -I$(FF_HOME)/include -I$(PROTOBUF_INC) -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
-CC_FLAGS	?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON -DMAX_TENSOR_DIM=$(MAX_DIM) -std=c++11
-NVCC_FLAGS	?= -DMAX_TENSOR_DIM=$(MAX_DIM) -std=c++11
-GASNET_FLAGS	?=
-LD_FLAGS	?= -lprotobuf -lcudnn -lcublas -lcurand -L$(PROTOBUF_LIB) -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64
+CC_FLAGS	  ?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON 
 
 ifeq ($(strip $(FF_ENABLE_DEBUG)), 1)
 CC_FLAGS += -DFF_DEBUG
@@ -126,28 +74,19 @@ else
 	LD_FLAGS += -Wl,--whole-archive -llegion -Wl,--no-whole-archive
 endif
 
-# Use reduction operators for complex types by default
-#CC_FLAGS += -DLEGION_REDOP_COMPLEX
-
 NO_BUILD_ALL=1
 .PHONY: all
-all: strategy.pb.cc $(OUTFILE) flexflow/core/legion_cffi.py 
+all: $(FF_HOME)/src/runtime/strategy.pb.cc $(OUTFILE) flexflow/core/legion_cffi.py 
 
-###########################################################################
-#
-#   Don't change anything below here
-#   
-###########################################################################
-
-include $(LG_RT_DIR)/runtime.mk
+include $(FF_HOME)/FlexFlow.mk
 
 DEFINE_HEADERS_DIR ?= ./
 
 flexflow/core/legion_cffi.py: legion_cffi.py.in legion_cffi_build.py
 	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
 	
-strategy.pb.cc: $(FF_HOME)/src/runtime/strategy.proto
-	$(PROTOBUF_EXE) --proto_path=$(FF_HOME)/src/runtime strategy.proto --cpp_out=.
+$(FF_HOME)/src/runtime/strategy.pb.cc: $(FF_HOME)/src/runtime/strategy.proto
+	$(PROTOBUF_EXE) --proto_path=$(FF_HOME)/src/runtime strategy.proto --cpp_out=$(FF_HOME)/src/runtime
 
 clean::
 	$(RM) -f $(OUTFILE) $(SLIB_LEGION) $(SLIB_REALM) $(GEN_OBJS) $(GEN_GPU_OBJS) $(REALM_OBJS) $(LEGION_OBJS) $(GPU_RUNTIME_OBJS) $(MAPPER_OBJS) $(ASM_OBJS) legion_defines.h realm_defines.h flexflow/core/legion_cffi.py *.pyc
