@@ -82,6 +82,7 @@ int main(int argc, char **argv)
 
   Realm::Python::PythonModule::import_python_module("flexflow.core");
 
+#ifdef FF_ENABLE_NCCL
   // Init MPI for NCCL
 #if defined(GASNET_CONDUIT_MPI) || defined(REALM_USE_MPI)
   // The GASNet MPI conduit and/or the Realm MPI network layer
@@ -106,6 +107,8 @@ int main(int argc, char **argv)
   // This needs to be set, otherwise NCCL will try to use group kernel launches,
   // which are not compatible with the Realm CUDA hijack.
   setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
+#endif
+
   Runtime::set_top_level_task_id(PYTHON_TOP_LEVEL_TASK_ID);
   {
     TaskVariantRegistrar registrar(PYTHON_TOP_LEVEL_TASK_ID, "flexflow_top_level_task");

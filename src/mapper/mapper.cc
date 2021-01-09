@@ -185,6 +185,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
     // randomly select a local processor
     output.initial_proc = local_gpus[task_hash % local_gpus.size()];
     cache_update_tasks[task_hash] = output.initial_proc;
+    return;
   }
 
   if ((task.task_id >= CUSTOM_CPU_TASK_ID_FIRST)

@@ -47,6 +47,8 @@ USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 1		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
+FF_ENABLE_NCCL  ?= 1
+#USE_CUDART_HIJACK ?= 0
 
 USE_PYTHON := 1
 ifndef PYTHON_LIB
@@ -113,7 +115,15 @@ INC_FLAGS	?= -I$(FF_HOME)/include -I$(PROTOBUF_INC) -I$(CUDNN_HOME)/include -I$(
 CC_FLAGS	?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON -DMAX_TENSOR_DIM=$(MAX_DIM) -std=c++11
 NVCC_FLAGS	?= -DMAX_TENSOR_DIM=$(MAX_DIM) -std=c++11
 GASNET_FLAGS	?=
-LD_FLAGS	?= -lprotobuf -lcudnn -lcublas -lcurand -lnccl -L$(PROTOBUF_LIB) -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64 -L$(CUDA_HOME)/lib
+LD_FLAGS	?= -lprotobuf -lcudnn -lcublas -lcurand -L$(PROTOBUF_LIB) -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64
+#INC_FLAGS       += -DDISABLE_LEGION_CUDA_HIJACK 
+
+ifeq ($(strip $(FF_ENABLE_NCCL)), 1)
+INC_FLAGS += -I$(MPI_HOME)/include -I$(NCCL_HOME)/include
+CC_FLAGS += -DFF_ENABLE_NCCL
+NVCC_FLAGS += -DFF_ENABLE_NCCL
+LD_FLAGS += -L$(NCCL_HOME)/lib -lnccl
+endif
 
 ifeq ($(strip $(FF_ENABLE_DEBUG)), 1)
 CC_FLAGS += -DFF_DEBUG

@@ -35,6 +35,7 @@
     }                                                                  \
 } while(0)
 
+#ifdef FF_ENABLE_NCCL
 #define checkNCCL(cmd) do {                         \
   ncclResult_t r = cmd;                             \
   if (r!= ncclSuccess) {                            \
@@ -43,6 +44,7 @@
     exit(EXIT_FAILURE);                             \
   }                                                 \
 } while(0)
+#endif
 
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n) \
