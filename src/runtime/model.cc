@@ -2212,6 +2212,7 @@ void register_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<FusedOp::backward_task>(
         registrar, "FusedOp Backward Task");
+  }
   // Optimizer
   {
     TaskVariantRegistrar registrar(SGD_UPD_PS_TASK_ID,

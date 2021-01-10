@@ -87,9 +87,15 @@ void MultiHeadAttention::create_weights(FFModel& model)
   // Retrive the task indexspace for the op
   std::string pcname = name;
   task_is = model.get_or_create_task_is(3, pcname);
+#ifdef FF_ENABLE_NCCL
+  Parameter::CommType comm_type = Parameter::NCCL;  
+#else
+  Parameter::CommType comm_type = Parameter::PS;
+#endif
   {
     const int dims[2] = {weights[0].adim[1], weights[0].adim[0]};
-    weights[0] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
+    weights[0] = model.create_linear_weight<2, 3>(this, dims, DT_FLOAT,
+        kernel_initializer, true/*create_grad*/, comm_type);
   }
 }
 
