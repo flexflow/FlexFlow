@@ -29,6 +29,14 @@ ifndef CUDNN_HOME
 CUDNN_HOME = $(CUDA_HOME)
 endif
 
+ifndef NCCL_HOME
+NCCL_HOME = $(CUDA_HOME)
+endif
+
+ifndef MPI_HOME
+MPI_HOME = $(patsubst %/bin/mpicc,%,$(shell which mpicc | head -1))
+endif
+
 ifndef GASNET
 GASNET		?= ${FF_HOME}/GASNet-2019.9.0 
 endif
@@ -88,6 +96,13 @@ GASNET_FLAGS	+=
 # For Point and Rect typedefs
 CC_FLAGS	    += -std=c++11 #-DMAX_RETURN_SIZE=16777216
 NVCC_FLAGS  	+= -std=c++11 #-DMAX_RETURN_SIZE=16777216
+
+ifeq ($(strip $(FF_ENABLE_NCCL)), 1)
+INC_FLAGS  += -I$(MPI_HOME)/include -I$(NCCL_HOME)/include
+CC_FLAGS   += -DFF_ENABLE_NCCL
+NVCC_FLAGS += -DFF_ENABLE_NCCL
+LD_FLAGS   += -L$(NCCL_HOME)/lib -lnccl
+endif
 
 #ifndef HDF5
 #HDF5_inc	?= /usr/include/hdf5/serial
