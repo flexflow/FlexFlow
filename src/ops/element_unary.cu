@@ -16,80 +16,95 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::exp(const Tensor& x)
+Tensor FFModel::unary(OperatorType op,
+                      const Tensor& x,
+                      const char *name)
 {
-  ElementUnary *ele = new ElementUnary(*this, OP_EXP, x);
+  ElementUnary *ele;
+  if (name == NULL) {
+    ele = new ElementUnary(*this, op, x);
+  } else {
+    ele = new ElementUnary(*this, op, x, name);
+  }
   layers.push_back(ele);
   return ele->outputs[0];
 }
 
-ElementUnary* FFModel::exp()
+ElementUnary *FFModel::unary(OperatorType op,
+                             const char *name)
 {
-  ElementUnary* ele = new ElementUnary(*this, OP_EXP);
+  ElementUnary *ele;
+  if (name == NULL) {
+    ele = new ElementUnary(*this, op);
+  } else {
+    ele = new ElementUnary(*this, op, name);
+  }
   layers.push_back(ele);
   return ele;
 }
 
-Tensor FFModel::relu(const Tensor& x)
+Tensor FFModel::exp(const Tensor& x,
+                    const char *name)
 {
-  ElementUnary *ele = new ElementUnary(*this, OP_RELU, x);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  return this->unary(OP_EXP, x, name);
 }
 
-ElementUnary* FFModel::relu()
+ElementUnary* FFModel::exp(const char *name)
 {
-  ElementUnary* ele = new ElementUnary(*this, OP_RELU);
-  layers.push_back(ele);
-  return ele;
+  return this->unary(OP_EXP, name);
 }
 
-Tensor FFModel::sigmoid(const Tensor& x)
+Tensor FFModel::relu(const Tensor& x, const char *name)
 {
-  ElementUnary *ele = new ElementUnary(*this, OP_SIGMOID, x);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  return this->unary(OP_RELU, x, name);
 }
 
-ElementUnary* FFModel::sigmoid()
+ElementUnary* FFModel::relu(const char *name)
 {
-  ElementUnary* ele = new ElementUnary(*this, OP_SIGMOID);
-  layers.push_back(ele);
-  return ele;
+  return this->unary(OP_RELU, name);
 }
 
-Tensor FFModel::tanh(const Tensor& x)
+Tensor FFModel::sigmoid(const Tensor& x, const char *name)
 {
-  ElementUnary *ele = new ElementUnary(*this, OP_TANH, x);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  return this->unary(OP_SIGMOID, x, name);
 }
 
-ElementUnary* FFModel::tanh()
+ElementUnary* FFModel::sigmoid(const char *name)
 {
-  ElementUnary* ele = new ElementUnary(*this, OP_TANH);
-  layers.push_back(ele);
-  return ele;
+  return this->unary(OP_SIGMOID, name);
 }
 
-Tensor FFModel::elu(const Tensor& x)
+Tensor FFModel::tanh(const Tensor& x, const char *name)
 {
-  ElementUnary *ele = new ElementUnary(*this, OP_ELU, x);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  return this->unary(OP_TANH, x, name);
 }
 
-ElementUnary* FFModel::elu()
+ElementUnary* FFModel::tanh(const char *name)
 {
-  ElementUnary* ele = new ElementUnary(*this, OP_ELU);
-  layers.push_back(ele);
-  return ele;
+  return this->unary(OP_TANH, name);
+}
+
+Tensor FFModel::elu(const Tensor& x, const char *name)
+{
+  return this->unary(OP_ELU, x, name);
+}
+
+ElementUnary* FFModel::elu(const char *name)
+{
+  return this->unary(OP_ELU, name);
 }
 
 ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
                            const Tensor& x)
-: Op(model, _op_type, "ElementUnary_"+std::to_string(_op_type), x)
+: ElementUnary(model, _op_type, x, "ElementUnary_"+std::to_string(_op_type))
+{ }
+
+ElementUnary::ElementUnary(FFModel& model,
+                           OperatorType _op_type,
+                           const Tensor& x,
+                           const std::string &name)
+: Op(model, _op_type, name, x)
 {
   outputs[0].numDim = inputs[0].numDim;
   for (int i = 0; i < outputs[0].numDim; i++)
@@ -98,7 +113,13 @@ ElementUnary::ElementUnary(FFModel& model,
 
 ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type)
-: Op(model, _op_type, "ElementUnary_"+std::to_string(_op_type), 1)
+: ElementUnary(model, _op_type, "ElementUnary_"+std::to_string(_op_type))
+{ }
+
+ElementUnary::ElementUnary(FFModel& model,
+                           OperatorType _op_type,
+                           const std::string &name)
+: Op(model, _op_type, name, 1)
 {}
 
 Tensor ElementUnary::init_inout(FFModel& model,

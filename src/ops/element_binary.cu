@@ -17,70 +17,74 @@
 #include "cuda_helper.h"
 
 Tensor FFModel::add(const Tensor& in1,
-                    const Tensor& in2)
+                    const Tensor& in2,
+                    char const *name)
 {
-  ElementBinary *ele = new ElementBinary(*this, OP_EW_ADD, in1, in2);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  return this->binary(OP_EW_ADD, in1, in2, name);
 }
 
-ElementBinary* FFModel::add()
+ElementBinary* FFModel::add(char const *name)
 {
-  ElementBinary* ele = new ElementBinary(*this, OP_EW_ADD);
-  layers.push_back(ele);
-  return ele;
+  return this->binary(OP_EW_ADD, name);
 }
 
 Tensor FFModel::subtract(const Tensor& in1,
-                         const Tensor& in2)
+                         const Tensor& in2,
+                         char const *name)
 {
-  ElementBinary *ele = new ElementBinary(*this, OP_EW_SUB, in1, in2);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  return this->binary(OP_EW_SUB, in1, in2, name);
 }
 
-ElementBinary* FFModel::subtract()
+ElementBinary* FFModel::subtract(char const *name)
 {
-  ElementBinary* ele = new ElementBinary(*this, OP_EW_SUB);
-  layers.push_back(ele);
-  return ele;
+  return this->binary(OP_EW_SUB, name);
 }
 
 Tensor FFModel::multiply(const Tensor& in1,
-                         const Tensor& in2)
+                         const Tensor& in2,
+                         char const *name)
 {
-  ElementBinary *ele = new ElementBinary(*this, OP_EW_MUL, in1, in2);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  return this->binary(OP_EW_MUL, in1, in2, name);
 }
 
-ElementBinary* FFModel::multiply()
+ElementBinary* FFModel::multiply(char const *name)
 {
-  ElementBinary* ele = new ElementBinary(*this, OP_EW_MUL);
-  layers.push_back(ele);
-  return ele;
+  return this->binary(OP_EW_MUL, name);
 }
 
 Tensor FFModel::divide(const Tensor& in1,
-                       const Tensor& in2)
+                       const Tensor& in2,
+                       char const *name)
 {
-  ElementBinary *ele = new ElementBinary(*this, OP_EW_DIV, in1, in2);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  return this->binary(OP_EW_DIV, in1, in2, name);
 }
 
-ElementBinary* FFModel::divide()
+ElementBinary* FFModel::divide(char const *name)
 {
-  ElementBinary* ele = new ElementBinary(*this, OP_EW_DIV);
-  layers.push_back(ele);
-  return ele;
+  return this->binary(OP_EW_DIV, name);
 }
 
 ElementBinary::ElementBinary(FFModel& model,
                              OperatorType _op_type,
                              const Tensor& in1,
                              const Tensor& in2)
-: Op(model, _op_type, "ElementBinary_"+std::to_string(_op_type), in1, in2), op_type(_op_type)
+: ElementBinary(model, _op_type, in1, in2, "ElementBinary_"+std::to_string(_op_type))
+{ }
+
+ElementBinary::ElementBinary(FFModel& model,
+                             OperatorType _op_type,
+                             const Tensor& in1,
+                             const Tensor& in2,
+                             const std::string& name)
+: Op(
+    model,
+    _op_type,
+    name,
+    in1,
+    in2
+  ),
+  op_type(_op_type),
+  profiling(model.config.profiling)
 {
   //TODO: implement broadcast op
   numOutputs = 1;
@@ -96,7 +100,20 @@ ElementBinary::ElementBinary(FFModel& model,
 
 ElementBinary::ElementBinary(FFModel& model,
                              OperatorType _op_type)
-: Op(model, _op_type, "ElementBinary_"+std::to_string(_op_type), 2), op_type(_op_type)
+: ElementBinary(model, _op_type, "ElementBinary_"+std::to_string(_op_type))
+{ }
+
+ElementBinary::ElementBinary(FFModel& model,
+                             OperatorType _op_type,
+                             const std::string &name)
+: Op(
+    model,
+    _op_type,
+    name,
+    2
+  ),
+  op_type(_op_type),
+  profiling(model.config.profiling)
 {
 }
 
@@ -383,6 +400,14 @@ void ElementBinary::forward_task(const Task* task,
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
   float* out_ptr = helperGetTensorPointerWO<float>(
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
+
+  cudaEvent_t t_start, t_end;
+  if (ele->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start);
+  }
+
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
@@ -390,8 +415,33 @@ void ElementBinary::forward_task(const Task* task,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   ele->forward_kernel(m, in1_ptr, in2_ptr, out_ptr);
-  //elewise_binary_forward_kernel<<<GET_BLOCKS(out_domain.get_volume()), CUDA_NUM_THREADS>>>(
-  //  out_domain.get_volume(), alpha, beta, ele->op_type, in1_ptr, in2_ptr, out_ptr);
+
+  if (ele->profiling) {
+    cudaEventRecord(t_end);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    char const *opName;
+    switch (ele->op_type) {
+      case OP_EW_ADD:
+        opName = "Add";
+        break;
+      case OP_EW_SUB:
+        opName = "Sub";
+        break;
+      case OP_EW_MUL:
+        opName = "Mul";
+        break;
+      case OP_EW_DIV:
+        opName = "Div";
+        break;
+      default:
+        assert(false);
+    }
+    printf("%s [%s] forward time (CF) = %.2fms\n", ele->name, opName, elapsed);
+  }
 }
 
 void ElementBinary::forward(const FFModel& ff)
@@ -485,7 +535,7 @@ void ElementBinary::backward_kernel(const ElementBinaryMeta* m,
                                     const float* out_grad_ptr,
                                     const float* in1_ptr,
                                     const float* in2_ptr,
-                                    float* in1_grad_ptr, 
+                                    float* in1_grad_ptr,
                                     float* in2_grad_ptr)
 {
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f;

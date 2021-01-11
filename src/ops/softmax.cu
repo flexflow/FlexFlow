@@ -17,17 +17,28 @@
 #include "cuda_helper.h"
 
 
-Tensor FFModel::softmax(const Tensor& _input)
+Tensor FFModel::softmax(const Tensor& _input, const char *name)
 {
   assert(_input.numDim == 2);
-  Softmax *sm = new Softmax(*this, _input);
+  Softmax *sm;
+  if (name == NULL) {
+    sm = new Softmax(*this, _input);
+  } else {
+    sm = new Softmax(*this, _input, std::string(name));
+  }
   layers.push_back(sm);
   return sm->outputs[0];
 }
 
 Softmax::Softmax(FFModel& model,
                  const Tensor& _input)
-: Op(model, OP_SOFTMAX, "Softmax", _input), profiling(model.config.profiling)
+: Softmax(model, _input, "Softmax")
+{ }
+
+Softmax::Softmax(FFModel& model,
+                 const Tensor& _input,
+                 const std::string &name)
+: Op(model, OP_SOFTMAX, name, _input), profiling(model.config.profiling)
 {
   outputs[0].numDim = 2;
   outputs[0].adim[0] = _input.adim[0];
@@ -174,12 +185,13 @@ void Softmax::forward_task(const Task *task,
   if (softmax->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
+    //print_tensor<2, float>(acc_input.ptr, acc_input.rect, "[Softmax:forward:input]");
     //print_tensor<2, float>(acc_output.ptr, acc_output.rect, "[Softmax:forward:output]");
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("Softmax forward time = %.2fms\n", elapsed);
+    printf("%s [Softmax] forward time = %.2fms\n", softmax->name, elapsed);
   }
 }
 

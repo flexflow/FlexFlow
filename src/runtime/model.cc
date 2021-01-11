@@ -505,6 +505,34 @@ FFModel::FFModel(FFConfig& _config)
   }
 }
 
+Tensor FFModel::binary(OperatorType op,
+                       const Tensor& in1,
+                       const Tensor& in2,
+                       char const *name)
+{
+  ElementBinary *ele;
+  if (name == NULL) {
+    ele = new ElementBinary(*this, op, in1, in2);
+  } else {
+    ele = new ElementBinary(*this, op, in1, in2, std::string(name));
+  }
+  layers.push_back(ele);
+  return ele->outputs[0];
+}
+
+ElementBinary *FFModel::binary(OperatorType op,
+                               char const *name)
+{
+  ElementBinary *ele;
+  if (name == NULL) {
+    ele = new ElementBinary(*this, op);
+  } else {
+    ele = new ElementBinary(*this, op, std::string(name));
+  }
+  layers.push_back(ele);
+  return ele;
+}
+
 /*
 template<int NDIM>
 Tensor FFModel::create_tensor(const int dims[],

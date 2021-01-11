@@ -33,6 +33,12 @@ ffc = ffi.dlopen(None)
 
 ff_tracing_id = 200
 
+def get_c_name(name):
+  if name is None:
+    return ffi.NULL
+  else:
+    return ffi.new("char[]", name.encode('ascii'))
+
 def get_datatype_size(datatype):
   if (datatype == DataType.DT_FLOAT):
     return 4
@@ -640,7 +646,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_exp(self.handle, x.handle)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_exp(self.handle, x.handle, c_name)
     self.add_layer(OpType.EXP, name)
     return Tensor(handle, owner_op_type=OpType.EXP)
 
@@ -658,7 +665,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_add(self.handle, x.handle, y.handle)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_add(self.handle, x.handle, y.handle, c_name)
     self.add_layer(OpType.ADD, name)
     return Tensor(handle, owner_op_type=OpType.ADD)
 
@@ -676,7 +684,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_subtract(self.handle, x.handle, y.handle)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_subtract(self.handle, x.handle, y.handle, c_name)
     self.add_layer(OpType.SUBTRACT, name)
     return Tensor(handle, owner_op_type=OpType.SUBTRACT)
 
@@ -694,7 +703,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_multiply(self.handle, x.handle, y.handle)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_multiply(self.handle, x.handle, y.handle, c_name)
     self.add_layer(OpType.MULTIPLY, name)
     return Tensor(handle, owner_op_type=OpType.MULTIPLY)
 
@@ -712,7 +722,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle, c_name)
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
 
@@ -807,7 +818,8 @@ class FFModel(object):
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
     self.add_layer(OpType.CONV2D, name)
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 
@@ -914,9 +926,10 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
+    c_name = get_c_name(name)
     c_pool_type = enum_to_int(PoolType, pool_type)
     c_activation = enum_to_int(ActiMode, activation)
-    handle = ffc.flexflow_model_add_pool2d(self.handle, input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation)
+    handle = ffc.flexflow_model_add_pool2d(self.handle, input.handle, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_pool_type, c_activation, c_name)
     self.add_layer(OpType.POOL2D, name)
     return Tensor(handle, owner_op_type=OpType.POOL2D)
 
@@ -996,11 +1009,12 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
+    c_name = get_c_name(name)
     shared_op_handle = self.__get_op_handle(shared_op)
     c_activation = enum_to_int(ActiMode, activation)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_dense(self.handle,  input.handle, out_dim, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle)
+    handle = ffc.flexflow_model_add_dense(self.handle,  input.handle, out_dim, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
     self.add_layer(OpType.LINEAR, name)
     return Tensor(handle, owner_op_type=OpType.LINEAR)
 
@@ -1027,7 +1041,8 @@ class FFModel(object):
     for tensor in tensors:
       tensor_handle_list.append(tensor.handle)
     c_tensor_handle_list = ffi.new("flexflow_tensor_t[]", tensor_handle_list)
-    handle = ffc.flexflow_model_add_concat(self.handle, n, c_tensor_handle_list, axis)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_concat(self.handle, n, c_tensor_handle_list, axis, c_name)
     self.add_layer(OpType.CONCAT, name)
     return Tensor(handle, owner_op_type=OpType.CONCAT)
 
@@ -1093,7 +1108,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_softmax(self.handle, input.handle)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_softmax(self.handle, input.handle, c_name)
     self.add_layer(OpType.SOFTMAX, name)
     return Tensor(handle, owner_op_type=OpType.SOFTMAX)
 
@@ -1169,7 +1185,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_relu(self.handle, input.handle)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_relu(self.handle, input.handle, c_name)
     self.add_layer(OpType.RELU, name)
     return Tensor(handle, owner_op_type=OpType.RELU)
 
@@ -1184,7 +1201,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_sigmoid(self.handle, input.handle)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_sigmoid(self.handle, input.handle, c_name)
     self.add_layer(OpType.SIGMOID, name)
     return Tensor(handle, owner_op_type=OpType.SIGMOID)
 
@@ -1199,7 +1217,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_tanh(self.handle, input.handle)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_tanh(self.handle, input.handle, c_name)
     self.add_layer(OpType.TANH, name)
     return Tensor(handle, owner_op_type=OpType.TANH)
 
@@ -1214,7 +1233,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_elu(self.handle, input.handle)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_elu(self.handle, input.handle, c_name)
     self.add_layer(OpType.ELU, name)
     return Tensor(handle, owner_op_type=OpType.ELU)
 
@@ -1336,7 +1356,7 @@ class FFModel(object):
       metrics_int.append(enum_to_int(MetricsType, metric))
     c_metrics = ffi.new("int[]", metrics_int)
     ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics))
-    
+
   def fit(self, x=None, y=None, batch_size=None, epochs=1):
     """Trains the model for a fixed number of epochs (iterations on a dataset).
              
@@ -1362,7 +1382,7 @@ class FFModel(object):
     else:
       dataloaders = x
     dataloaders.append(y)
-          
+
     num_samples = y.get_num_samples()
     batch_size = self._ffconfig.get_batch_size()
     self._tracing_id += 1 # get a new tracing id
@@ -1406,7 +1426,7 @@ class FFModel(object):
     else:
       dataloaders = x
     dataloaders.append(y)
-    
+
     num_samples = y.get_num_samples()
     batch_size = self._ffconfig.get_batch_size()
     for d in dataloaders:
@@ -1418,7 +1438,7 @@ class FFModel(object):
         d.next_batch(self)
       self.forward()
       self.compute_metrics()
-      
+
   def zero_gradients(self):
     """Empty the gradients of all layers.
              
@@ -1457,7 +1477,7 @@ class FFModel(object):
   def get_perf_metrics(self):
     handle = ffc.flexflow_model_get_perf_metrics(self.handle)
     return PerfMetrics(handle)
-    
+
   def create_data_loader(self, batch_tensor, full_array):
     """Create a SingleDataloader instance. 
              
@@ -1615,7 +1635,7 @@ class NetConfig(object):
     self._handle = ffi.gc(self.handle, ffc.flexflow_net_config_destroy)
     cpath = ffc.flexflow_net_config_get_dataset_path(self.handle)
     self.dataset_path = ffi.string(cpath)
-    
+
 # -----------------------------------------------------------------------
 # DLRMConfig
 # -----------------------------------------------------------------------
@@ -1624,29 +1644,29 @@ class DLRMConfig(object):
   def __init__(self):
     self.handle = ffc.flexflow_dlrm_config_create()
     self._handle = ffi.gc(self.handle, ffc.flexflow_dlrm_config_destroy)
-    
+
     cstr = ffc.flexflow_dlrm_config_get_dataset_path(self.handle)
     self.dataset_path = ffi.string(cstr)
-    
+
     cstr = ffc.flexflow_dlrm_config_get_arch_interaction_op(self.handle)
     self.arch_interaction_op = ffi.string(cstr)
-    
+
     self.sparse_feature_size = ffc.flexflow_dlrm_config_get_sparse_feature_size(self.handle)
     self.sigmoid_bot = ffc.flexflow_dlrm_config_get_sigmoid_bot(self.handle)
     self.sigmoid_top = ffc.flexflow_dlrm_config_get_sigmoid_top(self.handle)
     self.embedding_bag_size = ffc.flexflow_dlrm_config_get_embedding_bag_size(self.handle)
     self.loss_threshold = ffc.flexflow_dlrm_config_get_loss_threshold(self.handle)
-    
+
     mlp_bot_c = ffc.flexflow_dlrm_config_get_mlp_bot(self.handle)
     self.mlp_bot = []
     for i in range(0, mlp_bot_c[0]):
       self.mlp_bot.append(mlp_bot_c[i+1])
-      
+
     mlp_top_c = ffc.flexflow_dlrm_config_get_mlp_top(self.handle)
     self.mlp_top = []
     for i in range(0, mlp_top_c[0]):
       self.mlp_top.append(mlp_top_c[i+1])
-      
+
     embedding_size_c = ffc.flexflow_dlrm_config_get_embedding_size(self.handle)
     self.embedding_size = []
     for i in range(0, embedding_size_c[0]):

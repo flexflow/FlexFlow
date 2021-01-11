@@ -16,18 +16,33 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::concat(int n, const Tensor* tensors,
-                       int axis)
+Tensor FFModel::concat(int n,
+                       const Tensor* tensors,
+                       int axis,
+                       const char *name)
 {
-  Concat *cat = new Concat(*this, n, tensors, axis);
+  Concat *cat;
+  if (name == NULL) {
+    cat = new Concat(*this, n, tensors, axis);
+  } else {
+    cat = new Concat(*this, n, tensors, axis, std::string(name));
+  }
   layers.push_back(cat);
   return cat->outputs[0];
 }
 
 Concat::Concat(FFModel& model,
-               int _n, const Tensor* _tensors,
+               int _n,
+               const Tensor* _tensors,
                int _axis)
-: Op(model, OP_CONCAT, "Concat_"+std::to_string(_axis), _n, _tensors), axis(_axis),
+: Concat(model, _n, _tensors, _axis, "Concat_"+std::to_string(_axis))
+{ }
+
+Concat::Concat(FFModel& model,
+               int _n, const Tensor* _tensors,
+               int _axis,
+               const std::string &name)
+: Op(model, OP_CONCAT, name, _n, _tensors), axis(_axis),
    profiling(model.config.profiling)
 {
   //TODO: swich to use the Legion dim ordering
@@ -117,6 +132,7 @@ OpMeta* Concat::init_task(const Task *task,
   m->axis = cc->outputs[0].numDim - 1 - cc->axis;
   return m;
   // Return null since Concat ops don't need ConcatMeta
+  return NULL;
 }
 
 void Concat::init(const FFModel& ff)
@@ -269,11 +285,18 @@ void Concat::forward_task(const Task *task,
         regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
   forward_kernel(output, inputs, cc->numInputs, axis, out_domain, in_domain);
   if (cc->profiling) {
+    cudaEventRecord(t_end);
     checkCUDA(cudaDeviceSynchronize());
+    checkCUDA(cudaEventSynchronize(t_end));
     //print_tensor<4, float>(output - output_blk_size, output_rect, "[Concat:forward:output]");
     //printf("output_blk_size=%zu\n", output_blk_size);
     //print_tensor<4, float>(inputs[0], input_rect[0], "[Concat:forward:input0]");
     //print_tensor<4, float>(inputs[1], input_rect[1], "[Concat:forward:input1]");
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("%s [Concat] forward time (CF) = %.2fms\n", cc->name, elapsed);
   }
 }
 

@@ -53,7 +53,7 @@ void apply_add(float *data_ptr, const float *replica_ptr, size_t size)
 {
   CUDA_KERNEL_LOOP(i, size)
   {
-    data_ptr[i] += replica_ptr[i];   
+    data_ptr[i] += replica_ptr[i];
   }
 }
 
