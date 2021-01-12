@@ -283,6 +283,12 @@ void Concat::forward_task(const Task *task,
   for (int i = 0; i < cc->numInputs; i++)
     inputs[i] = helperGetTensorPointerRO<float>(
         regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
+  cudaEvent_t t_start, t_end;
+  if (cc->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start);
+  }
   forward_kernel(output, inputs, cc->numInputs, axis, out_domain, in_domain);
   if (cc->profiling) {
     cudaEventRecord(t_end);
@@ -357,7 +363,7 @@ void Concat::backward_kernel(const float* output_grad,
         input_grads[i], output_grad, num_blocks, input_blk_sizes[i], output_blk_size);
     output_grad += input_blk_sizes[i];
   }
-    
+
   //Rect<2> output_rect(Point<2>(0, 0), Point<2>(output_blk_size-1, batch_size - 1));
   //Rect<2> input_rect(Point<2>(0, 0), Point<2>(input_blk_sizes[0]-1, batch_size - 1));
   //print_tensor<2, float>(output_grad - output_blk_size, output_rect, "[Concat:backward:output]");
