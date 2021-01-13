@@ -1618,6 +1618,14 @@ flexflow_end_trace(
 // Op
 // -----------------------------------------------------------------------
 
+int
+flexflow_op_get_num_parameters(
+  flexflow_op_t handle_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->numWeights;
+}
+
 flexflow_parameter_t
 flexflow_op_get_parameter_by_id(
   flexflow_op_t handle_,
@@ -1628,6 +1636,14 @@ flexflow_op_get_parameter_by_id(
   return FFCObjectWrapper::wrap(tensor);
 }
 
+int
+flexflow_op_get_num_inputs(
+  flexflow_op_t handle_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->numInputs;
+}
+
 flexflow_tensor_t
 flexflow_op_get_input_by_id(
   flexflow_op_t handle_,
@@ -1636,6 +1652,14 @@ flexflow_op_get_input_by_id(
   Op *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor *tensor = &(handle->inputs[id]);
   return FFCObjectWrapper::wrap(tensor);
+}
+
+int
+flexflow_op_get_num_outputs(
+  flexflow_op_t handle_)
+{
+  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->numOutputs;
 }
 
 flexflow_tensor_t
