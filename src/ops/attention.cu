@@ -251,6 +251,8 @@ void MultiHeadAttention::forward_task(
     const std::vector<PhysicalRegion> &regions,
     Context ctx, Runtime* runtime)
 {
+  assert(regions.size() == 5);
+  assert(task->regions.size() == regions.size());
   const MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
   const MultiHeadAttentionMeta* m = *((MultiHeadAttentionMeta**) task->local_args);
   TensorAccessorR<float, 3> acc_query(
@@ -285,6 +287,8 @@ void MultiHeadAttention::forward_task(
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("MultiHeadAttention forward time = %.2fms\n", elapsed);
+    //print_tensor<3, float>(acc_query.ptr, acc_query.rect, "[Attention:forward:query]");
+    //print_tensor<3, float>(acc_output.ptr, acc_output.rect, "[Attention:forward:output]");
   }
 }
 
@@ -395,13 +399,13 @@ void MultiHeadAttention::backward_task(
   assert(acc_weight_grad.rect == acc_weight.rect);
   if (regions.size() == 7) {
     // assert query == key and query == value
-    assert(regions[0] == regions[1]);
-    assert(regions[0] == regions[2]);
+    assert(regions[0].get_logical_region() == regions[1].get_logical_region());
+    assert(regions[0].get_logical_region() == regions[2].get_logical_region());
     key_grad_ptr = acc_query_grad.ptr;
     value_grad_ptr = acc_query_grad.ptr;
   } else if (regions.size() == 8) {
     // assert query == key
-    assert(regions[0] == regions[1]);
+    assert(regions[0].get_logical_region() == regions[2].get_logical_region());
     key_grad_ptr = acc_query_grad.ptr;
     TensorAccessorW<float, 3> acc_value_grad(
         regions[7], task->regions[7], FID_DATA, ctx, runtime,
@@ -460,7 +464,7 @@ void MultiHeadAttention::backward(const FFModel& ff)
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(ATTENTION_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(ATTENTION_BWD_TASK_ID, task_is,
       TaskArgument(this, sizeof(MultiHeadAttention)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
