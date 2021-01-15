@@ -787,15 +787,27 @@ flexflow_end_trace(
 // Op
 // -----------------------------------------------------------------------
 
+int
+flexflow_op_get_num_parameters(
+  flexflow_op_t handle);
+
 flexflow_parameter_t
 flexflow_op_get_parameter_by_id(
   flexflow_op_t handle,
   int id);
 
+int
+flexflow_op_get_num_inputs(
+  flexflow_op_t handle);
+
 flexflow_tensor_t
 flexflow_op_get_input_by_id(
   flexflow_op_t handle,
   int id);
+
+int
+flexflow_op_get_num_outputs(
+  flexflow_op_t handle);
 
 flexflow_tensor_t
 flexflow_op_get_output_by_id(
