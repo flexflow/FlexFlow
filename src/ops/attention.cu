@@ -61,7 +61,8 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
   qSize(_query.adim[0]), kSize(_key.adim[0]), vSize(_value.adim[0]),
   qProjSize(_kdim), kProjSize(_kdim), vProjSize(_vdim), oProjSize(_embed_dim),
   qoSeqLength(_query.adim[1]), kvSeqLength(_key.adim[1]),
-  kernel_initializer(_kernel_initializer)
+  kernel_initializer(_kernel_initializer),
+  profiling(model.config.profiling)
   //bias_initializer(_bias_initializer)
 {
   // assert key and value have the same sequence length
@@ -289,7 +290,7 @@ void MultiHeadAttention::forward_task(
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("MultiHeadAttention forward time (CF) = %.2fms\n", elapsed);
+    printf("MultiHeadAttention forward time = %.2fms\n", elapsed);
   }
 }
 
