@@ -145,3 +145,9 @@ Dropout
 .. autoclass:: FFModel()
    :noindex:
    :members: dropout
+   
+MultiheadAttention
+==================
+.. autoclass:: FFModel()
+   :noindex:
+   :members: multihead_attention

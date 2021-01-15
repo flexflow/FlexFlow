@@ -27,6 +27,12 @@ Welcome to FlexFlow's documentation!
    keras
    pytorch
    onnx
+   
+.. toctree::
+   :maxdepth: 2
+   :caption: Tutorial
+
+   tutorial
 
 .. Indices and tables
 .. ==================
