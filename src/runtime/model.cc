@@ -1048,7 +1048,8 @@ void FFModel::compile(LossType loss_type,
   Runtime* runtime = config.lg_hlr;
   if (config.import_strategy_file.length() > 0) {
     load_strategies_from_file(config.import_strategy_file, config.strategies);
-  } else if (config.search_budget > 0) {
+  }
+  if (config.search_budget > 0) {
     // Launch the search task
     FFModel* model = this;
     TaskLauncher launcher(STRATEGY_SEARCH_TASK_ID,
@@ -1135,13 +1136,9 @@ void FFModel::optimize(Simulator* simulator,
                        std::map<Op*, ParallelConfig>& best,
                        size_t budget, float alpha) const
 {
-  // Start from data parallel
   std::map<Op*, ParallelConfig> current, next;
-  for (size_t l = 0; l < layers.size(); l++) {
-    current[layers[l]] = layers[l]->get_data_parallel_config(*this);
-  }
-  float best_runtime = simulator->simulate_runtime(this, current);
-  best = current;
+  float best_runtime = simulator->simulate_runtime(this, best);
+  current = best;
   float current_runtime = best_runtime;
   for (size_t iter = 0; iter < budget; iter++) {
     rewrite(current, next);
