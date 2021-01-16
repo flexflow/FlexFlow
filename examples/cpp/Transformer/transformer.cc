@@ -103,7 +103,7 @@ void top_level_task(const Task* task,
   //Tensor t = create_emb(&ff, input, tfConfig.embedding_size, tfConfig.hidden_size);
   Tensor t = input;
   for (int i = 0; i < tfConfig.num_layers; i++) {
-    t = create_attention(&ff, t, tfConfig.hidden_size, tfConfig.num_heads, tfConfig.hidden_size, tfConfig.hidden_size);
+    t = create_attention(&ff, t, tfConfig.hidden_size, tfConfig.num_heads, tfConfig.hidden_size / tfConfig.num_heads, tfConfig.hidden_size / tfConfig.num_heads);
   }
   t = ff.dense(t, 1);
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.01f);
