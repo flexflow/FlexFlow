@@ -108,7 +108,7 @@ void top_level_task(const Task* task,
   t = ff.dense(t, 1);
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.01f);
   std::vector<MetricsType> metrics;
-  metrics.push_back(METRICS_ACCURACY);
+  //metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
   ff.compile(optimizer, LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics);
   // Data Loader
