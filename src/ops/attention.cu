@@ -528,6 +528,11 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
                                                int num_heads)
 : OpMeta(handler)
 {
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDNN(cudnnSetStream(handler.dnn, stream));
+#endif
   checkCUDNN(cudnnCreateAttnDescriptor(&attnDesc));
   checkCUDNN(cudnnCreateSeqDataDescriptor(&qDesc));
   checkCUDNN(cudnnCreateSeqDataDescriptor(&kDesc));
@@ -538,6 +543,10 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
   cudnnAttnQueryMap_t attnMode = CUDNN_ATTN_QUERYMAP_ALL_TO_ONE;
   // Assume no beam search for now
   int maxBeamSize = 1;
+  //printf("batchSize(%d) qSize(%d) kSize(%d) vSize(%d) qProjSize(%d) kProjSize(%d)\n",
+  //    num_samples, attn->qSize, attn->kSize, attn->vSize, attn->qProjSize, attn->kProjSize);
+  //printf("vProjSize(%d) oProjSize(%d) qoSeqLength(%d) kvSeqLength(%d)\n",
+  //    attn->vProjSize, attn->oProjSize, attn->qoSeqLength, attn->kvSeqLength);
   checkCUDNN(cudnnSetAttnDescriptor(attnDesc, attnMode, num_heads,
       1.0f/*smScalar*/, CUDNN_DATA_FLOAT, CUDNN_DATA_FLOAT, CUDNN_DEFAULT_MATH,
       NULL/*attnDropoutDesc*/, NULL/*postDropoutDesc*/,
@@ -548,6 +557,7 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
   checkCUDNN(cudnnGetMultiHeadAttnBuffers(handler.dnn, attnDesc, &weightSize,
       &workSpaceSize, &reserveSpaceSize));
   assert(workSpaceSize <= handler.workSpaceSize);
+  //printf("weightSize(%zu) workSpaceSize(%zu) reserveSpaceSize(%zu)\n", weightSize, workSpaceSize, reserveSpaceSize);
   int dimA[CUDNN_SEQDATA_DIM_COUNT];
   cudnnSeqDataAxis_t axes[CUDNN_SEQDATA_DIM_COUNT];
   assert(CUDNN_SEQDATA_DIM_COUNT == 4);
@@ -604,7 +614,7 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
   // allocate memory for the seqArray and reserve space
   {
     size_t totalSize = reserveSpaceSize + sizeof(int) * num_samples * 2;
-    Realm::Rect<1> bounds(Realm::Point<1>(0), Realm::Point<1>(totalSize-1));
+    Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0), Realm::Point<1, coord_t>(totalSize-1));
     std::vector<size_t> field_sizes;
     field_sizes.push_back(sizeof(char));
     Realm::RegionInstance::create_instance(reserveInst, gpu_mem, bounds,
