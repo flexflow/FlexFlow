@@ -14,12 +14,45 @@
  */
 
 #include "model.h"
+#include "cuda_helper.h"
 #include "mapper.h"
 #include "dirent.h"
 
 using namespace std;
 
 LegionRuntime::Logger::Category log_model("ff");
+
+Tensor::Tensor(void)
+{
+  numDim = 0;
+  for (int i = 0; i < MAX_TENSOR_DIM; i++) {
+    adim[i] = 0;
+    //pdim[i] = 0;
+  }
+  region = LogicalRegion::NO_REGION;
+  region_grad = LogicalRegion::NO_REGION;
+  part = LogicalPartition::NO_PART;
+  part_grad = LogicalPartition::NO_PART;
+  owner_op = NULL;
+  owner_idx = 0;
+  //physical_region.impl = NULL;
+}
+
+Tensor& Tensor::operator=(const Tensor& rhs)
+{
+  numDim = rhs.numDim;
+  for (int i = 0; i < numDim; i++)
+    adim[i] = rhs.adim[i];
+  data_type = rhs.data_type;
+  owner_op = rhs.owner_op;
+  owner_idx = rhs.owner_idx;
+  region = rhs.region;
+  region_grad = rhs.region_grad;
+  part = rhs.part;
+  part_grad = rhs.part_grad;
+  physical_region = rhs.physical_region;
+  return *this;
+}
 
 void Tensor::inline_map(FFConfig &config)
 {
@@ -152,6 +185,9 @@ Op::Op(FFModel& model,
     outputs[i].owner_idx = i;
     outputs[i].data_type = inputs[0].data_type;
   }
+#ifdef FF_ENABLE_NCCL
+  get_nccl_unique_id();
+#endif
 }
 
 Op::Op(FFModel& model,
@@ -179,6 +215,9 @@ Op::Op(FFModel& model,
     outputs[i].owner_idx = i;
     outputs[i].data_type = inputs[0].data_type;
   }
+#ifdef FF_ENABLE_NCCL
+  get_nccl_unique_id();
+#endif
 }
 
 Op::Op(FFModel& model,
@@ -202,6 +241,9 @@ Op::Op(FFModel& model,
     outputs[i].owner_idx = i;
     outputs[i].data_type = inputs[0].data_type;
   }
+#ifdef FF_ENABLE_NCCL
+  get_nccl_unique_id();
+#endif
 }
 
 Op::Op(FFModel& model,
@@ -227,6 +269,9 @@ Op::Op(FFModel& model,
     outputs[i].owner_idx = i;
     outputs[i].data_type = inputs[0].data_type;
   }
+#ifdef FF_ENABLE_NCCL
+  get_nccl_unique_id();
+#endif
 }
 
 Op::Op(FFModel& model,
@@ -250,6 +295,9 @@ Op::Op(FFModel& model,
     outputs[i].owner_idx = i;
     outputs[i].data_type = inputs[0].data_type;
   }
+#ifdef FF_ENABLE_NCCL
+  get_nccl_unique_id();
+#endif
 }
 
 Op::Op(FFModel& model,
@@ -270,6 +318,9 @@ Op::Op(FFModel& model,
     outputs[i].owner_idx = i;
     outputs[i].data_type = inputs[0].data_type;
   }
+#ifdef FF_ENABLE_NCCL
+  get_nccl_unique_id();
+#endif
 }
 
 Parameter* Op::get_parameter(int index)
@@ -418,6 +469,42 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
   return d;
 }
 
+#ifdef FF_ENABLE_NCCL  
+void Op::get_nccl_unique_id()
+{
+  // Init NCCL id
+  int my_rank = -1, all_ranks = -1;
+  MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &all_ranks);
+  if (my_rank == 0) ncclGetUniqueId(&ncclId);
+  MPI_Bcast((void *)&ncclId, sizeof(ncclId), MPI_BYTE, 0, MPI_COMM_WORLD);
+  //fprintf(stderr, "In Op(%p): MPImyrank(%d) MPIallranks(%d) ncclID(%p)\n",
+  //    this, my_rank, all_ranks, ncclId);
+}
+#endif
+
+OpMeta::OpMeta(FFHandler _handle)
+: handle(_handle)
+{}
+
+#ifdef FF_ENABLE_NCCL
+void OpMeta::init_nccl_communicator(const Task* task,
+                                    ncclUniqueId ncclId)
+{
+  // Must be an index space launch
+  assert(task->is_index_space);
+  int allRanks = task->index_domain.get_volume();
+  assert(task->index_domain.contains(task->index_point));
+  int myRank = 0;
+  for (Domain::DomainPointIterator it(task->index_domain); it; it++, myRank++) {
+    if (it.p == task->index_point) break;
+  }
+  checkNCCL(ncclCommInitRank(&ncclComm, allRanks, ncclId, myRank));
+  //fprintf(stderr, "ncclComm(%p) allRanks(%d) myRank(%d) ncclId(%p)\n",
+  //    ncclComm, allRanks, myRank, ncclId);
+}
+#endif
+
 FFModel::FFModel(FFConfig& _config)
 : op_global_guid(100), config(_config),
   optimizer(NULL), loss_op(NULL), metrics_op(NULL)
@@ -470,24 +557,11 @@ FFModel::FFModel(FFConfig& _config)
                     Point<2>(0, config.workersPerNode * config.numNodes - 1));
   IndexSpaceT<2> task_is = runtime->create_index_space(ctx, task_rect);
 
-#ifdef FF_ENABLE_NCCL  
-  // Init NCCL id
-  int my_rank = -1, all_ranks = -1;
-  MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &all_ranks);
-  fprintf(stderr, "MPI: myrank(%d) allranks(%d)\n", my_rank, all_ranks);
-  ncclUniqueId id;
-  if (my_rank == 0) ncclGetUniqueId(&id);
-  MPI_Bcast((void *)&id, sizeof(id), MPI_BYTE, 0, MPI_COMM_WORLD);
-#endif
-  int rank = 0;
+  //int rank = 0;
   for (PointInRectIterator<2> it(task_rect); it(); it++) {
     FFInitInfo info;
-#ifdef FF_ENABLE_NCCL
-    info.ncclId = id;
-#endif
-    info.myRank = rank++;
-    info.allRanks = config.workersPerNode * config.numNodes;
+    //info.myRank = rank++;
+    //info.allRanks = config.workersPerNode * config.numNodes;
     info.workSpaceSize = config.workSpaceSize;
     argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
   }
@@ -774,10 +848,12 @@ Parameter FFModel::create_linear_weight(Op* op,
     weight.part = runtime->get_logical_partition(
         ctx, weight.region, ip);
   } else if (weight.type == Parameter::NCCL) {
-    // Currently only support data parallel for operators with NCCL
-    ParallelConfig pconfig;
-    config.find_parallel_config(TDIM, pcname, pconfig);
-    assert(pconfig.is_data_parallel());
+    // Currently only support the sample dimension for operators with NCCL
+    //ParallelConfig pconfig;
+    //config.find_parallel_config(TDIM, pcname, pconfig);
+    //assert(pconfig.is_data_parallel());
+    for (int i = 0; i < TDIM-1; i++)
+      assert(num_parts[i] == 1);
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
       hi[i] = dims[NDIM-1-i]-1;
@@ -902,6 +978,7 @@ Parameter FFModel::create_conv_weight(Op* op,
     weight.part = runtime->get_logical_partition(
         ctx, weight.region, ip);
   } else if (weight.type == Parameter::NCCL) {
+    // Currently only support sample and attribute parallelism for NCCL communication
     assert(num_par_c == 1);
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)

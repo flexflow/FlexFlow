@@ -32,10 +32,10 @@ FFHandler UtilityTasks::init_cuda_task(
   handle.workSpaceSize = info->workSpaceSize;
   checkCUDA(cublasCreate(&handle.blas));
   checkCUDNN(cudnnCreate(&handle.dnn));
-#ifdef FF_ENABLE_NCCL
-  checkNCCL(ncclCommInitRank(&handle.nccl, info->allRanks, info->ncclId, info->myRank));
-  fprintf(stderr, "handle.nccl(%p)\n", handle.nccl);
-#endif
+//#ifdef FF_ENABLE_NCCL
+//  checkNCCL(ncclCommInitRank(&handle.nccl, info->allRanks, info->ncclId, info->myRank));
+//  fprintf(stderr, "handle.nccl(%p)\n", handle.nccl);
+//#endif
   //std::set<Memory> memFB;
   //assert(memFB.size() == 1);
   //assert(memFB.begin()->kind() == Memory::GPU_FB_MEM);

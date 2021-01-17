@@ -25,19 +25,8 @@ class Op;
 class FFModel;
 
 struct Tensor {
-  Tensor(void) {
-    numDim = 0;
-    for (int i = 0; i < MAX_TENSOR_DIM; i++) {
-      adim[i] = 0;
-      //pdim[i] = 0;
-    }
-    region = LogicalRegion::NO_REGION;
-    region_grad = LogicalRegion::NO_REGION;
-    part = LogicalPartition::NO_PART;
-    part_grad = LogicalPartition::NO_PART;
-    owner_op = NULL;
-    owner_idx = 0;
-  }
+  Tensor(void);
+  Tensor& operator=(const Tensor& rhs);
   void inline_map(FFConfig &config);
   void inline_unmap(FFConfig &config);
   template<typename T>

@@ -165,9 +165,15 @@ class DataLoader;
 
 class OpMeta {
 public:
-  OpMeta(FFHandler _handle) : handle(_handle) {};
+  OpMeta(FFHandler _handle);
+#ifdef FF_ENABLE_NCCL
+  void init_nccl_communicator(const Task* task, ncclUniqueId ncclId);
+#endif
 public:
   FFHandler handle;
+#ifdef FF_ENABLE_NCCL
+  ncclComm_t ncclComm;
+#endif
 };
 
 class Op {
@@ -199,6 +205,9 @@ public:
   void prefetch(const FFModel&);
   void zero_grad(const FFModel&);
   Parameter* get_parameter(int index);
+#ifdef FF_ENABLE_NCCL
+  void get_nccl_unique_id();
+#endif
 public:
   OperatorType op_type;
   char name[MAX_OPNAME];
@@ -212,6 +221,9 @@ public:
   //Tensor locals[MAX_NUM_LOCALS];
   OpMeta* meta[MAX_NUM_WORKERS];
   int numInputs, numWeights, numOutputs;
+#ifdef FF_ENABLE_NCCL
+  ncclUniqueId ncclId;
+#endif
 };
 
 class ElementBinary;

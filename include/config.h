@@ -70,19 +70,13 @@ struct ParallelConfig {
 struct FFHandler {
   cudnnHandle_t dnn;
   cublasHandle_t blas;
-#ifdef FF_ENABLE_NCCL
-  ncclComm_t nccl;
-#endif
   void *workSpace;
   size_t workSpaceSize;
 };
 
 struct FFInitInfo {
-#ifdef FF_ENABLE_NCCL
-  ncclUniqueId ncclId;
-#endif
   size_t workSpaceSize;
-  int myRank, allRanks;
+  //int myRank, allRanks;
 };
 
 bool load_strategies_from_file(const std::string& filename,

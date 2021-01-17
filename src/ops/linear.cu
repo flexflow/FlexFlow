@@ -370,6 +370,9 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
                                           CUDNN_DATA_FLOAT,
                                           batch_size, out_dim, 1, 1));
   }
+#ifdef FF_ENABLE_NCCL
+  m->init_nccl_communicator(task, linear->ncclId);
+#endif
   return m;
 }
 
