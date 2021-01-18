@@ -367,6 +367,9 @@ OpMeta* Conv2D::init_task(const Task *task,
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
                                             CUDNN_PROPAGATE_NAN, 0.0));
   }
+#ifdef FF_ENABLE_NCCL
+  m->init_nccl_communicator(task, conv->ncclId);
+#endif
   return m;
 }
 
