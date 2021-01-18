@@ -26,9 +26,11 @@ FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor local,
   std::vector<Machine::ProcessorMemoryAffinity> proc_mem_affinities;
   machine.get_proc_mem_affinity(proc_mem_affinities);
   Machine::ProcessorQuery proc_query(machine);
+  std::set<AddressSpace> address_space_set;
   for (Machine::ProcessorQuery::iterator it = proc_query.begin();
       it != proc_query.end(); it++)
   {
+    address_space_set.insert(it->address_space());
     if (it->kind() == Processor::TOC_PROC) {
       all_gpus.push_back(*it);
       if (it->address_space() == node_id)
@@ -63,6 +65,7 @@ FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor local,
       proc_zcmems[*it] = *(zc_query.begin());
     }
   }
+  total_nodes = address_space_set.size();
   if (strategyFile == "") {
     // No strategy file provided, use data parallelism
     log_ff_mapper.print("No strategy file provided. Use default data parallelism.");
@@ -153,6 +156,8 @@ void FFMapper::select_task_options(const MapperContext ctx,
   }
   if (task.task_id == TOP_LEVEL_TASK_ID) {
     output.initial_proc = local_cpus[0];
+    // control replicate top level task
+    output.replicate = true;
     return;
   }
   if (task.task_id == PYTHON_TOP_LEVEL_TASK_ID) {
@@ -434,7 +439,39 @@ void FFMapper::map_replicate_task(const MapperContext      ctx,
                                   const MapTaskOutput&     default_output,
                                   MapReplicateTaskOutput&  output)
 {
-  assert(false);
+  // Should only be replicated for the top-level task
+  assert((task.get_depth() == 0) && (task.regions.size() == 0));
+  const Processor::Kind target_kind = task.target_proc.kind();
+  VariantID chosen_variant;
+  {
+    std::vector<VariantID> variant_ids;
+    runtime->find_valid_variants(ctx, task.task_id, variant_ids, task.target_proc.kind());
+    // Currently assume there is exactly one variant
+    assert(variant_ids.size() == 1);
+    chosen_variant = variant_ids[0];
+  }
+  const std::vector<Processor> &all_procs = all_procs_by_kind(target_kind);
+  // Place on replicate on each node by default
+  output.task_mappings.resize(total_nodes, default_output);
+  // Assume default_output does not include any target_procs
+  assert(default_output.target_procs.size() == 0);
+  for (std::vector<Processor>::const_iterator it = all_procs.begin();
+      it != all_procs.end(); it++)
+  {
+    AddressSpace space = it->address_space();
+    assert(space < output.task_mappings.size());
+    // Add *it as a target_proc if we haven't found one
+    if (output.task_mappings[space].target_procs.size() == 0) {
+      output.task_mappings[space].target_procs.push_back(*it);
+    }
+  }
+  output.control_replication_map.resize(total_nodes);
+  for (unsigned idx = 0; idx < total_nodes; idx++)
+  {
+    output.task_mappings[idx].chosen_variant = chosen_variant;
+    output.control_replication_map[idx] =
+        output.task_mappings[idx].target_procs[0];
+  }
 }
 
 void FFMapper::select_task_variant(const MapperContext          ctx,
@@ -1020,6 +1057,22 @@ Memory FFMapper::default_policy_select_target_memory(MapperContext ctx,
   }
 }
 #endif
+
+const std::vector<Processor>& FFMapper::all_procs_by_kind(Processor::Kind kind)
+{
+  switch (kind)
+  {
+    case Processor::LOC_PROC:
+      return all_cpus;
+    case Processor::TOC_PROC:
+      return all_gpus;
+    case Processor::PY_PROC:
+      return all_pys;
+    default:
+      assert(0);
+  }
+  return all_cpus;
+}
 
 Memory FFMapper::default_select_target_memory(
     MapperContext ctx,

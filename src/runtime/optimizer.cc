@@ -133,8 +133,8 @@ void SGDOptimizer::update(const Parameter* p)
         model->config.find_parallel_config(DIM, p->owner_op->name, pc); \
         int idx = 0; \
         for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-          FFHandler handle = model->handlers[pc.device_ids[idx++]]; \
-          argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
+          OpMeta* mp = p->owner_op->meta[idx++]; \
+          argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
         } \
         break; \
       }
@@ -287,8 +287,8 @@ void AdamOptimizer::update(const Parameter* p)
         model->config.find_parallel_config(DIM, p->owner_op->name, pc); \
         int idx = 0; \
         for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-          FFHandler handle = model->handlers[pc.device_ids[idx++]]; \
-          argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
+          OpMeta* mp = p->owner_op->meta[idx++]; \
+          argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
         } \
         break; \
       }

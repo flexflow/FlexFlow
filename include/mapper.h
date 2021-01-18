@@ -281,8 +281,10 @@ private:
   unsigned long long compute_task_hash(const Task& task);
   bool is_parameter_server_update_task(TaskID tid);
   bool is_initializer_task(TaskID tid);
+  const std::vector<Processor>& all_procs_by_kind(Processor::Kind kind);
 protected:
   const AddressSpace node_id;
+  size_t total_nodes;
   const char* mapper_name;
   std::vector<Processor> all_gpus, all_cpus, all_pys, local_gpus, local_cpus, local_pys;
   std::map<Processor, Memory> proc_fbmems, proc_zcmems;
