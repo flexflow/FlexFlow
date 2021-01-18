@@ -338,7 +338,7 @@ void ElementUnary::forward_kernel(const ElementUnaryMeta* m,
   } else {
     elewise_unary_forward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
         num_elements, alpha, beta, m->op_type, input_ptr, output_ptr);
-  } 
+  }
 }
 
 /*
@@ -445,7 +445,7 @@ void ElementUnary::backward_kernel(const ElementUnaryMeta* m,
 {
   float alpha = 1.0f;
   if (use_cudnn(m->op_type)) {
-    checkCUDNN(cudnnActivationBackward(m->handle.dnn, m->actiDesc, 
+    checkCUDNN(cudnnActivationBackward(m->handle.dnn, m->actiDesc,
         &alpha, m->outputTensor, output_ptr, m->outputTensor, output_grad_ptr,
         m->inputTensor, input_ptr, &alpha, m->inputTensor, input_grad_ptr));
   } else {
@@ -613,35 +613,17 @@ bool ElementUnary::measure_compute_time(Simulator* sim,
   float* output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_grad_ptr != NULL);
 
-  // measure forward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
+  auto forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, sub_output.get_volume());
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  float milliseconds;
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  forward_time = milliseconds / sim->repeat_times;
-
-  // measure backward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
+  };
+  auto backward = [&] {
     backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr,
         sub_output.get_volume());
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  backward_time = milliseconds / sim->repeat_times;
+  };
 
-  printf("[Measure Elewise Unary] num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
-         sub_output.get_volume(), forward_time, backward_time);
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Measure Elewise Unary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
+         name, sub_output.get_volume(), forward_time, backward_time);
   return true;
 }

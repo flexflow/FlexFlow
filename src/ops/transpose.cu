@@ -104,6 +104,17 @@ void Transpose::create_output_and_partition_with_dim(FFModel& model)
   }
 }
 
+void Transpose::init_meta(TransposeMeta *m, Domain const &in_domain, Domain const &out_domain) const
+{
+  for (int i = 0; i < out_domain.get_dim(); i++) {
+    assert(out_domain.hi()[i] == in_domain.hi()[this->perm[i]]);
+    assert(out_domain.lo()[i] == in_domain.lo()[this->perm[i]]);
+  }
+  m->num_dim = out_domain.get_dim();
+  for (int i = 0; i < m->num_dim; i++)
+    m->perm[i] = this->perm[i];
+}
+
 OpMeta* Transpose::init_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, Runtime *runtime)
@@ -116,14 +127,9 @@ OpMeta* Transpose::init_task(const Task *task,
     ctx, task->regions[0].region.get_index_space());
   Domain out_domain = runtime->get_index_space_domain(
     ctx, task->regions[1].region.get_index_space());
-  for (int i = 0; i < out_domain.get_dim(); i++) {
-    assert(out_domain.hi()[i] == in_domain.hi()[transpose->perm[i]]);
-    assert(out_domain.lo()[i] == in_domain.lo()[transpose->perm[i]]);
-  }
+
   TransposeMeta* m = new TransposeMeta(handle);
-  m->num_dim = out_domain.get_dim();
-  for (int i = 0; i < m->num_dim; i++)
-    m->perm[i] = transpose->perm[i];
+  transpose->init_meta(m, in_domain, out_domain);
   return m;
 }
 
@@ -385,8 +391,40 @@ bool Transpose::measure_compute_time(Simulator* sim,
                                      float& forward_time,
                                      float& backward_time)
 {
-  //TODO: implement measure_forward
-  forward_time = 0.0f;
-  backward_time = 0.0f;
+  Tensor sub_input, sub_output;
+  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+    return false;
+  }
+  if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type)) {
+    return false;
+  }
+
+  TransposeMeta *m = sim->transpose_meta;
+  this->init_meta(m, sub_input.get_domain(), sub_output.get_domain());
+
+  sim->free_all();
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert (input_ptr != NULL);
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_ptr != NULL);
+  float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert (input_grad_ptr != NULL);
+  float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_grad_ptr != NULL);
+
+  auto forward = [&] {
+    forward_kernel(m, input_ptr, output_ptr, sub_input.get_domain(), sub_output.get_domain());
+  };
+  auto backward = [&] {
+    backward_kernel(m, input_grad_ptr, output_grad_ptr, sub_input.get_domain(), sub_output.get_domain());
+  };
+
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Measure Transpose] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      forward_time,
+      backward_time);
+
   return true;
 }

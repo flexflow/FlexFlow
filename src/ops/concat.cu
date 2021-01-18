@@ -120,6 +120,11 @@ void Concat::create_output_and_partition(FFModel& model)
 
 }
 
+void Concat::init_meta(ConcatMeta *m) const
+{
+  m->axis = this->outputs[0].numDim - 1 - this->axis;
+}
+
 __host__
 OpMeta* Concat::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
@@ -129,10 +134,8 @@ OpMeta* Concat::init_task(const Task *task,
   FFHandler handler = *((const FFHandler*) task->local_args);
   ConcatMeta* m = new ConcatMeta(handler);
   // Note that our internal axis index ordering is opposite to other frameworks
-  m->axis = cc->outputs[0].numDim - 1 - cc->axis;
+  cc->init_meta(m);
   return m;
-  // Return null since Concat ops don't need ConcatMeta
-  return NULL;
 }
 
 void Concat::init(const FFModel& ff)
@@ -219,7 +222,7 @@ void calc_blk_size(coord_t& num_blocks,
 
 /*static*/
 void Concat::forward_kernel(float* output,
-                            const float** inputs,
+                            float const * const *inputs,
                             int num_inputs,
                             int axis,
                             const Domain& out_domain,
@@ -403,6 +406,11 @@ void Concat::backward_task(const Task *task,
 
   if (cc->profiling) {
     checkCUDA(cudaDeviceSynchronize());
+    //int batch_size = domain.get_volume() / output_blk_size;
+    //Rect<2> output_rect(Point<2>(0, 0), Point<2>(output_blk_size-1, batch_size - 1));
+    //Rect<2> input_rect(Point<2>(0, 0), Point<2>(input_blk_sizes[0]-1, batch_size - 1));
+    //print_tensor<2, float>(output_grad - output_blk_size, output_rect, "[Concat:backward:output]");
+    //print_tensor<2, float>(input_grads[0], input_rect, "[Concat:backward:input0]");
   }
 }
 
@@ -444,8 +452,55 @@ bool Concat::measure_compute_time(Simulator* sim,
                                   float& forward_time,
                                   float& backward_time)
 {
-  //TODO: implement measure_forward
-  forward_time = 0.0f;
-  backward_time = 0.0f;
+  assert (numInputs <= MAX_NUM_INPUTS);
+  Tensor sub_inputs[MAX_NUM_INPUTS], sub_output;
+  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+    return false;
+  }
+  for (int i = 0; i < numInputs; i++) {
+    if (!inputs[i].get_input_sub_tensor(pc, sub_inputs[i], op_type)) {
+      return false;
+    }
+  }
+
+  ConcatMeta *m = sim->concat_meta;
+  this->init_meta(m);
+
+  sim->free_all();
+  float *input_ptrs[MAX_NUM_INPUTS];
+  float *input_grad_ptrs[MAX_NUM_INPUTS];
+  for (int i = 0; i < numInputs; i++) {
+    input_ptrs[i] = (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
+    assert (input_ptrs[i] != NULL);
+    input_grad_ptrs[i] = (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
+    assert (input_grad_ptrs[i] != NULL);
+  }
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_ptr != NULL);
+  float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_grad_ptr != NULL);
+
+  int axis = outputs[0].numDim - 1 - this->axis;
+
+  Domain out_domain = sub_output.get_domain();
+  Domain in_domains[MAX_NUM_INPUTS];
+  for (int i = 0; i < numInputs; i++) {
+    in_domains[i] = sub_inputs[i].get_domain();
+  }
+
+  auto forward = [&] {
+    forward_kernel(output_ptr, input_ptrs, numInputs, axis, out_domain, in_domains);
+  };
+  auto backward = [&] {
+    backward_kernel(output_grad_ptr, input_grad_ptrs, numInputs, axis, out_domain, in_domains);
+  };
+
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Measure Concat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      forward_time,
+      backward_time);
+
   return true;
 }

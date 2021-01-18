@@ -556,41 +556,22 @@ bool Pool2D::measure_compute_time(Simulator* sim,
   float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_grad_ptr != NULL);
 
-  float alpha = 1.0f, beta = 0.0f;
-  // measure forward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
-    checkCUDNN(cudnnPoolingForward(m->handle.dnn, m->poolDesc,
-                                   &alpha, m->inputTensor, input_ptr,
-                                   &beta, m->outputTensor, output_ptr));
+  auto forward = [&] {
+    forward_kernel(m, input_ptr, output_ptr);
+  };
+  auto backward = [&] {
+    backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr);
+  };
 
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  float milliseconds;
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  forward_time = milliseconds / sim->repeat_times;
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
 
-  // measure backward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
-    checkCUDNN(cudnnPoolingBackward(m->handle.dnn, m->poolDesc,
-                                    &alpha, m->outputTensor, output_ptr,
-                                    m->outputTensor, output_grad_ptr,
-                                    m->inputTensor, input_ptr,
-                                    &alpha, m->inputTensor, input_grad_ptr));
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  backward_time = milliseconds / sim->repeat_times;
+  printf("[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      input_n, input_c, input_h, input_w,
+      output_n, output_c, output_h, output_w,
+      stride_h, stride_w,
+      padding_h, padding_w,
+      forward_time, backward_time);
 
-  return false;
+  return true;
 }
-

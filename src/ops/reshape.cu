@@ -302,9 +302,40 @@ bool Reshape::measure_compute_time(Simulator* sim,
                                    float& forward_time,
                                    float& backward_time)
 {
-  //TODO: implement measure_forward
-  forward_time = 0.0f;
-  backward_time = 0.0f;
+  Tensor sub_input, sub_output;
+  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+    return false;
+  }
+  if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type)) {
+    return false;
+  }
+
+  sim->free_all();
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert(input_ptr != NULL);
+  float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert(input_grad_ptr != NULL);
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_ptr != NULL);
+  float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_grad_ptr != NULL);
+  assert (sub_output.get_volume() == sub_input.get_volume());
+  size_t num_elements = sub_input.get_volume();
+
+  auto forward = [&] {
+    forward_kernel(input_ptr, output_ptr, num_elements);
+  };
+  auto backward = [&] {
+    backward_kernel(input_grad_ptr, output_grad_ptr, num_elements);
+  };
+
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Meausre Reshape] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      forward_time,
+      backward_time);
+
   return true;
 }
 

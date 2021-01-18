@@ -730,17 +730,8 @@ bool ElementBinary::measure_compute_time(Simulator* sim,
   }
   checkCUDNN(cudnnSetOpTensorDescriptor(m->opDesc, mode,
       CUDNN_DATA_FLOAT, CUDNN_PROPAGATE_NAN));
-  Domain input_domain, output_domain;
-  input_domain.dim = sub_input0.numDim;
-  for (int i = 0; i < sub_input0.numDim; i++) {
-    input_domain.rect_data[i] = 0;
-    input_domain.rect_data[i+Domain::MAX_RECT_DIM] = sub_input0.adim[i]-1;
-  }
-  output_domain.dim = sub_output.numDim;
-  for (int i = 0; i < sub_output.numDim; i++) {
-    output_domain.rect_data[i] = 0;
-    output_domain.rect_data[i+Domain::MAX_RECT_DIM] = sub_output.adim[i]-1;
-  }
+  Domain input_domain = sub_input0.get_domain();
+  Domain output_domain = sub_output.get_domain();
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
   sim->free_all();
@@ -754,40 +745,18 @@ bool ElementBinary::measure_compute_time(Simulator* sim,
   assert(input1_grad_ptr != NULL);
   float* output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
-  // measure forward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
+
+  auto forward = [&] {
     forward_kernel(m, input0_ptr, input1_ptr, output_ptr);
-    //elewise_binary_forward_kernel<<<GET_BLOCKS(sub_output.get_volume()), CUDA_NUM_THREADS>>>(
-    //    sub_output.get_volume(), alpha, beta, op_type,
-    //    input0_ptr, input1_ptr, output_ptr);
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  float milliseconds;
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  forward_time = milliseconds / sim->repeat_times;
-
-  // measure backward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
+  };
+  auto backward = [&] {
     backward_kernel(m, output_ptr, input0_ptr, input1_ptr, input0_grad_ptr, input1_grad_ptr);
-    //elewise_binary_backward_kernel<<<GET_BLOCKS(sub_output.get_volume()), CUDA_NUM_THREADS>>>(
-    //    sub_output.get_volume(), alpha, alpha, op_type,
-    //    output_ptr, input0_ptr, input1_ptr, input0_grad_ptr, input1_grad_ptr);
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  backward_time = milliseconds / sim->repeat_times;
+  };
 
-  printf("[Measure Elewise Binary] num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
-         sub_output.get_volume(), forward_time, backward_time);
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Measure Elewise Binary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
+         name, sub_output.get_volume(), forward_time, backward_time);
+
   return true;
 }

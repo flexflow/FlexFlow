@@ -30,6 +30,14 @@ Tensor FFModel::softmax(const Tensor& _input, const char *name)
   return sm->outputs[0];
 }
 
+SoftmaxMeta::SoftmaxMeta(FFHandler handler)
+: OpMeta(handler)
+{
+#ifndef DISABLE_COMPUTATION
+  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
+#endif
+}
+
 Softmax::Softmax(FFModel& model,
                  const Tensor& _input)
 : Softmax(model, _input, "Softmax")
@@ -81,6 +89,20 @@ void Softmax::create_output_and_partition(FFModel& model)
   }
 }
 
+void Softmax::init_meta(SoftmaxMeta *m,
+                        Rect<2> const &input,
+                        Rect<2> const &output) const
+{
+  checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
+  assert(input == output);
+  int input_c = input.hi[0] - input.lo[0] + 1;
+  int input_n = input.hi[1] - input.lo[1] + 1;
+  checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
+                                        CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT,
+                                        input_n, input_c, 1, 1));
+}
+
 /*
   regions[0]: input
   regions[1]: output
@@ -91,7 +113,7 @@ OpMeta* Softmax::init_task(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  //const Softmax* softmax = (Softmax*) task->args;
+  const Softmax* softmax = (Softmax*) task->args;
   TensorAccessorR<float, 2> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 2> acc_output(
@@ -99,15 +121,8 @@ OpMeta* Softmax::init_task(const Task *task,
       false/*readutput*/);
   FFHandler handle = *((const FFHandler*) task->local_args);
   SoftmaxMeta* m = new SoftmaxMeta(handle);
-  checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
   //checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
-  assert(acc_input.rect == acc_output.rect);
-  int input_c = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
-  int input_n = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
-  checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        input_n, input_c, 1, 1));
+  softmax->init_meta(m, acc_input.rect, acc_output.rect);
   return m;
 }
 
@@ -146,6 +161,20 @@ void Softmax::init(const FFModel& ff)
   }
 }
 
+/* static */
+void Softmax::forward_kernel(SoftmaxMeta const *m,
+                             float const *input_ptr,
+                             float *output_ptr)
+{
+  float alpha = 1.0f, beta = 0.0f;
+  checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
+                                 CUDNN_SOFTMAX_ACCURATE,
+                                 CUDNN_SOFTMAX_MODE_CHANNEL,
+                                 &alpha, m->inputTensor, input_ptr,
+                                 &beta, m->inputTensor, output_ptr));
+}
+
+
 /*
   regions[0](I): input
   regions[1](O): output
@@ -157,7 +186,6 @@ void Softmax::forward_task(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  float alpha = 1.0f, beta = 0.0f;
   const Softmax* softmax = (Softmax*) task->args;
   const SoftmaxMeta* m = *((SoftmaxMeta**) task->local_args);
   TensorAccessorR<float, 2> acc_input(
@@ -177,11 +205,7 @@ void Softmax::forward_task(const Task *task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
-                                 CUDNN_SOFTMAX_ACCURATE,
-                                 CUDNN_SOFTMAX_MODE_CHANNEL,
-                                 &alpha, m->inputTensor, acc_input.ptr,
-                                 &beta, m->inputTensor, acc_output.ptr));
+  forward_kernel(m, acc_input.ptr, acc_output.ptr);
   if (softmax->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -223,6 +247,15 @@ void Softmax::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+/* static */
+void Softmax::backward_kernel(float *input_grad_ptr,
+                              float const *output_grad_ptr,
+                              size_t num_elements)
+{
+  checkCUDA(cudaMemcpyAsync(input_grad_ptr, output_grad_ptr,
+                            num_elements * sizeof(float),
+                            cudaMemcpyDeviceToDevice));
+}
 
 /*
   regions[0](I/O): input_grad
@@ -260,9 +293,7 @@ void Softmax::backward_task(const Task *task,
   //checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
-                            acc_input_grad.rect.volume() * sizeof(float),
-                            cudaMemcpyDeviceToDevice));
+  backward_kernel(acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
   if (softmax->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -308,6 +339,37 @@ bool Softmax::measure_compute_time(Simulator* sim,
                                    float& forward_time,
                                    float& backward_time)
 {
-  //TODO: implement measure_forward
-  return false;
+  Tensor sub_output, sub_input;
+  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+    return false;
+  }
+  if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type)) {
+    return false;
+  }
+
+  SoftmaxMeta *m = sim->softmax_meta;
+  this->init_meta(m, sub_input.get_domain(), sub_output.get_domain());
+
+  sim->free_all();
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert (input_ptr != NULL);
+  float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert(input_grad_ptr != NULL);
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_ptr != NULL);
+  float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_ptr != NULL);
+
+  auto forward = [&] {
+    forward_kernel(m, input_ptr, output_ptr);
+  };
+  auto backward = [&] {
+    backward_kernel(input_grad_ptr, output_grad_ptr, sub_output.get_volume());
+  };
+
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Measure Softmax] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name, sub_output.get_volume(), forward_time, backward_time);
+  return true;
 }

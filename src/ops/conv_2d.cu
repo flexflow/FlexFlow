@@ -1132,7 +1132,8 @@ bool Conv2D::measure_compute_time(Simulator* sim,
     checkCUDNN(perfResults[0].status);
     backward_time += perfResults[0].time;
   }
-  printf("[Measure Conv2D] input(%d %d %d %d) weight(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+  printf("[Measure Conv2D] name(%s) input(%d %d %d %d) weight(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+         name,
          input_n, input_c, input_h, input_w,
          output_c, input_c / groups, kernel_h, kernel_w,
          output_n, output_c, output_h, output_w,

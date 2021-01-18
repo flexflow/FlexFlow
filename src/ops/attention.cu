@@ -88,7 +88,7 @@ void MultiHeadAttention::create_weights(FFModel& model)
   std::string pcname = name;
   task_is = model.get_or_create_task_is(3, pcname);
 #ifdef FF_ENABLE_NCCL
-  Parameter::CommType comm_type = Parameter::NCCL;  
+  Parameter::CommType comm_type = Parameter::NCCL;
 #else
   Parameter::CommType comm_type = Parameter::PS;
 #endif
@@ -682,33 +682,15 @@ bool MultiHeadAttention::measure_compute_time(Simulator* sim,
       (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_grad_ptr != NULL);
 
-  // measure forward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
+  auto forward = [&] {
     forward_kernel(m, query_ptr, key_ptr, value_ptr, weight_ptr, output_ptr);
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  float milliseconds;
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  forward_time = milliseconds / sim->repeat_times;
-
-  // measure backward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
+  };
+  auto backward = [&] {
     backward_kernel(m, query_ptr, query_grad_ptr, key_ptr, key_grad_ptr,
         value_ptr, value_grad_ptr, weight_ptr, weight_grad_ptr, output_grad_ptr);
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  backward_time = milliseconds / sim->repeat_times;
+  };
+
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
 
   printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) value(%d %d %d) output(%d %d %d)"
          "forward_time(%.4lf) backward_time(%.4lf)\n",

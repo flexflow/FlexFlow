@@ -204,7 +204,7 @@ void Linear::create_weights_with_dim(FFModel& model)
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
 
 #ifdef FF_ENABLE_NCCL
-  Parameter::CommType comm_type = Parameter::NCCL;  
+  Parameter::CommType comm_type = Parameter::NCCL;
 #else
   Parameter::CommType comm_type = Parameter::PS;
 #endif
@@ -1079,37 +1079,19 @@ bool Linear::measure_compute_time(Simulator* sim,
   float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
   assert(bias_ptr != NULL);
 
-  // measure forward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
+  auto forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, kernel_ptr, bias_ptr,
         input_c, output_c, input_n);
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  float milliseconds;
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  forward_time = milliseconds / sim->repeat_times;
-
-  // measure backward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
+  };
+  auto backward = [&] {
     backward_kernel(m, input_ptr, input_ptr, output_ptr, output_ptr,
         kernel_ptr, kernel_ptr, bias_ptr, input_c, output_c, input_n);
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  backward_time = milliseconds / sim->repeat_times;
+  };
 
-  printf("[Measure Linear] in(%d %d) out(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
-         input_n, input_c, output_n, output_c, forward_time, backward_time);
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Measure Linear] name(%s) in(%d %d) out(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+         name, input_n, input_c, output_n, output_c, forward_time, backward_time);
   return true;
 }
 

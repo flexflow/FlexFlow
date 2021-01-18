@@ -97,15 +97,41 @@ bool Tensor::get_input_sub_tensor(const ParallelConfig& pc,
                                   OperatorType type)
 {
   //TODO: consider reduction dim for conv2d and linear
-  if (pc.nDims != numDim)
-    return false;
-  for (int i = 0; i < numDim; i++)
-    if (adim[i] % pc.dim[i] != 0)
-      return false;
-  tensor.numDim = numDim;
-  for (int i = 0; i < numDim; i++)
-    tensor.adim[i] = adim[i] / pc.dim[i];
-  tensor.data_type = data_type;
+  switch (type) {
+    case OP_FLAT:
+      {
+        assert (pc.nDims == 2 && "Invalid dimension for parallel config of OP_FLAT");
+        int nonBatchDim = pc.dim[0];
+        tensor.numDim = numDim;
+        assert (nonBatchDim == 1 && "I'm not sure this is correct otherwise");
+        if (adim[numDim - 1] % nonBatchDim != 0) {
+          printf("Could not get input subtensor because the dimension is not divisiable: %d %% %d != 0\n", adim[numDim - 1], nonBatchDim);
+        }
+        for (int i = numDim - 2; i >= 0; i--) {
+          tensor.adim[i] = adim[i];
+        }
+      }
+      break;
+    default:
+      {
+        if (pc.nDims != numDim) {
+          printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, numDim);
+          return false;
+        }
+        for (int i = 0; i < numDim; i++) {
+          if (adim[i] % pc.dim[i] != 0) {
+            printf("Could not get input subtensor because the given dimension is not divisible: %d %% %d != 0\n", adim[i], pc.dim[i]);
+            return false;
+          }
+        }
+        tensor.numDim = numDim;
+        for (int i = 0; i < numDim; i++) {
+          tensor.adim[i] = adim[i] / pc.dim[i];
+        }
+        tensor.data_type = data_type;
+      }
+      break;
+  }
   return true;
 }
 
@@ -113,11 +139,16 @@ bool Tensor::get_output_sub_tensor(const ParallelConfig& pc,
                                    Tensor& tensor,
                                    OperatorType type)
 {
-  if (pc.nDims != numDim)
+  if (pc.nDims != numDim) {
+    printf("Could not get output subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, numDim);
     return false;
-  for (int i = 0; i < numDim; i++)
-    if (adim[i] % pc.dim[i] != 0)
+  }
+  for (int i = 0; i < numDim; i++) {
+    if (adim[i] % pc.dim[i] != 0) {
+      printf("Could not get output subtensor because the given dimension is not divisible: %d %% %d != 0\n", adim[i], pc.dim[i]);
       return false;
+    }
+  }
   tensor.numDim = numDim;
   for (int i = 0; i < numDim; i++)
     tensor.adim[i] = adim[i] / pc.dim[i];
@@ -125,12 +156,23 @@ bool Tensor::get_output_sub_tensor(const ParallelConfig& pc,
   return true;
 }
 
-size_t Tensor::get_volume()
+size_t Tensor::get_volume() const
 {
   size_t volume = 1;
   for (int i = 0; i < numDim; i++)
     volume *= adim[i];
   return volume;
+}
+
+Domain Tensor::get_domain() const
+{
+  Domain d;
+  d.dim = this->numDim;
+  for (int i = 0; i < this->numDim; i++) {
+    d.rect_data[i] = 0;
+    d.rect_data[i+Domain::MAX_RECT_DIM] = this->adim[i] - 1;
+  }
+  return d;
 }
 
 Op::Op(FFModel& model,
@@ -470,7 +512,7 @@ FFModel::FFModel(FFConfig& _config)
                     Point<2>(0, config.workersPerNode * config.numNodes - 1));
   IndexSpaceT<2> task_is = runtime->create_index_space(ctx, task_rect);
 
-#ifdef FF_ENABLE_NCCL  
+#ifdef FF_ENABLE_NCCL
   // Init NCCL id
   int my_rank = -1, all_ranks = -1;
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
@@ -953,7 +995,7 @@ Parameter FFModel::create_conv_weight(Op* op,
     assert(runtime->is_index_partition_complete(ctx, ip));
     assert(runtime->is_index_partition_disjoint(ctx, ip));
     weight.part = runtime->get_logical_partition(
-        ctx, weight.region, ip); 
+        ctx, weight.region, ip);
   } else {
     // Unsupported Parameter type
     assert(false);
@@ -1337,7 +1379,7 @@ void FFModel::compile(LossType loss_type,
               assert(false);
       layers = new_layers;
     }
-    // Check integrity 
+    // Check integrity
     for (size_t l = 0; l < layers.size(); l++) {
       if (layers[l]->op_type == OP_FUSED) {
         FusedOp* fused = (FusedOp*) layers[l];
@@ -1390,13 +1432,13 @@ void FFModel::compile(LossType loss_type,
       for (int j = 0; j < op->numInputs; j++) {
         LogicalRegion handle = op->inputs[j].region;
         printf("inputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
-                          handle.get_field_space().get_id(), 
+                          handle.get_field_space().get_id(),
                           handle.get_tree_id());
       }
       for (int j = 0; j < op->numOutputs; j++) {
         LogicalRegion handle = op->outputs[j].region;
         printf("outputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
-                          handle.get_field_space().get_id(), 
+                          handle.get_field_space().get_id(),
                           handle.get_tree_id());
       }
   }
@@ -2258,7 +2300,7 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<AdamOptimizer::ps_update_task>(
         registrar, "Adam Parameter Server Update Task");
   }
-#ifdef FF_ENABLE_NCCL  
+#ifdef FF_ENABLE_NCCL
   {
     TaskVariantRegistrar registrar(SGD_UPD_NCCL_TASK_ID,
                                    "SGD NCCL Update");
@@ -2380,7 +2422,7 @@ int main(int argc, char** argv)
   int provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
   // If you fail this assertion, then your version of MPI
-  // does not support calls from multiple threads and you 
+  // does not support calls from multiple threads and you
   // cannot use the GASNet MPI conduit
   if (provided < MPI_THREAD_MULTIPLE)
     printf("ERROR: Your implementation of MPI does not support "

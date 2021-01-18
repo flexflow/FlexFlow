@@ -100,6 +100,23 @@ void Dropout::create_output_and_partition_with_dim(FFModel& model)
   }
 }
 
+void Dropout::init_meta(DropoutMeta *m, Domain const &input_domain, Domain const &output_domain) const {
+  assert(input_domain == output_domain);
+  checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
+  checkCUDNN(cudnnCreateDropoutDescriptor(&m->dropoutDesc));
+
+  checkCUDNN(cudnnDropoutGetStatesSize(m->handle.dnn, &(m->dropoutStateSize)));
+  checkCUDA(cudaMalloc(&m->dropoutStates, m->dropoutStateSize));
+  checkCUDNN(cudnnSetDropoutDescriptor(
+    m->dropoutDesc, m->handle.dnn, this->rate, m->dropoutStates, m->dropoutStateSize, this->seed
+  ));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
+  checkCUDNN(cudnnDropoutGetReserveSpaceSize(m->outputTensor, &(m->reserveSpaceSize)));
+  checkCUDA(cudaMalloc(&m->reserveSpace, m->reserveSpaceSize));
+}
+
 OpMeta* Dropout::init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime)
@@ -113,19 +130,9 @@ OpMeta* Dropout::init_task(const Task *task,
     ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
     ctx, task->regions[1].region.get_index_space());
-  assert(input_domain == output_domain);
-  checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
-  checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
-  checkCUDNN(cudnnCreateDropoutDescriptor(&m->dropoutDesc));
-  
-  checkCUDNN(cudnnDropoutGetStatesSize(handle.dnn, &(m->dropoutStateSize)));
-  checkCUDA(cudaMalloc(&m->dropoutStates, m->dropoutStateSize));
-  checkCUDNN(cudnnSetDropoutDescriptor(m->dropoutDesc, handle.dnn,
-      dropout->rate, m->dropoutStates, m->dropoutStateSize, dropout->seed));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
-  checkCUDNN(cudnnDropoutGetReserveSpaceSize(m->outputTensor, &(m->reserveSpaceSize)));
-  checkCUDA(cudaMalloc(&m->reserveSpace, m->reserveSpaceSize));
+
+  dropout->init_meta(m, input_domain, output_domain);
+
   return m;
 }
 
@@ -187,6 +194,15 @@ void Dropout::init(const FFModel& ff)
   }
 }
 
+void Dropout::forward_kernel(DropoutMeta *m,
+                             float const *input_ptr,
+                             float *output_ptr)
+{
+  checkCUDNN(cudnnDropoutForward(m->handle.dnn, m->dropoutDesc,
+      m->inputTensor, input_ptr, m->outputTensor, output_ptr,
+      m->reserveSpace, m->reserveSpaceSize));
+}
+
 __host__
 void Dropout::forward_task(const Task* task,
                            const std::vector<PhysicalRegion> &regions,
@@ -196,7 +212,7 @@ void Dropout::forward_task(const Task* task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   //const Dropout* dropout = (const Dropout*) task->args;
-  const DropoutMeta* m = *((DropoutMeta**) task->local_args);
+  DropoutMeta* m = *((DropoutMeta**) task->local_args);
   const float* input_ptr = helperGetTensorPointerRO<float>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float* output_ptr = helperGetTensorPointerWO<float>(
@@ -206,9 +222,7 @@ void Dropout::forward_task(const Task* task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  checkCUDNN(cudnnDropoutForward(m->handle.dnn, m->dropoutDesc,
-      m->inputTensor, input_ptr, m->outputTensor, output_ptr,
-      m->reserveSpace, m->reserveSpaceSize));
+  forward_kernel(m, input_ptr, output_ptr);
 }
 
 void Dropout::forward(const FFModel& ff)
@@ -249,6 +263,15 @@ void Dropout::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Dropout::backward_kernel(DropoutMeta *m,
+                              float const *output_grad_ptr,
+                              float *input_grad_ptr)
+{
+  checkCUDNN(cudnnDropoutBackward(m->handle.dnn, m->dropoutDesc,
+      m->outputTensor, output_grad_ptr, m->inputTensor, input_grad_ptr,
+      m->reserveSpace, m->reserveSpaceSize));
+}
+
 /*
   regions[0](I/O): input_grad
   regions[1](I): output_grad
@@ -262,7 +285,7 @@ void Dropout::backward_task(const Task* task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   //const Dropout* dropout = (const Dropout*) task->args;
-  const DropoutMeta* m = *((DropoutMeta**) task->local_args);
+  DropoutMeta* m = *((DropoutMeta**) task->local_args);
   float* input_grad_ptr = helperGetTensorPointerRW<float>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   const float* output_grad_ptr = helperGetTensorPointerRO<float>(
@@ -273,9 +296,7 @@ void Dropout::backward_task(const Task* task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  checkCUDNN(cudnnDropoutBackward(m->handle.dnn, m->dropoutDesc,
-      m->outputTensor, output_grad_ptr, m->inputTensor, input_grad_ptr,
-      m->reserveSpace, m->reserveSpaceSize));
+  backward_kernel(m, output_grad_ptr, input_grad_ptr);
 }
 
 void Dropout::backward(const FFModel& ff)
@@ -325,8 +346,40 @@ bool Dropout::measure_compute_time(Simulator* sim,
                                   float& forward_time,
                                   float& backward_time)
 {
-  //TODO: implement measurement function
-  forward_time = 0.0f;
-  backward_time = 0.0f;
+  Tensor sub_input, sub_output;
+  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+    return false;
+  }
+  if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type)) {
+    return false;
+  }
+
+  DropoutMeta *m = sim->dropout_meta;
+  this->init_meta(m, sub_input.get_domain(), sub_output.get_domain());
+
+  sim->free_all();
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert (input_ptr != NULL);
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_ptr != NULL);
+  float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert (input_grad_ptr != NULL);
+  float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_grad_ptr != NULL);
+
+  auto forward = [&] {
+    forward_kernel(m, input_ptr, output_ptr);
+  };
+  auto backward = [&] {
+    backward_kernel(m, output_grad_ptr, input_grad_ptr);
+  };
+
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Meausre Dropout] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      forward_time,
+      backward_time);
+
   return true;
 }

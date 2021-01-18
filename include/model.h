@@ -27,6 +27,7 @@
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <unistd.h>
+#include <functional>
 #ifdef FF_ENABLE_NCCL
 #include <mpi.h>
 #endif
@@ -171,6 +172,12 @@ public:
 };
 
 class Op {
+protected:
+  void inner_measure_compute_time(Simulator *sim,
+                                  std::function<void()> const &forward,
+                                  std::function<void()> const &backward,
+                                  float &forward_time,
+                                  float &backward_time);
 public:
   Op(FFModel& model, OperatorType type, const std::string& _name, const Tensor& input);
   Op(FFModel& model, OperatorType type, const std::string& _name, const Tensor& input1, const Tensor& input2);
@@ -739,12 +746,21 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+  void init_meta(DropoutMeta *m,
+                 Domain const &input_domain,
+                 Domain const &output_domain) const;
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+  static void forward_kernel(DropoutMeta *m,
+                             float const *input_ptr,
+                             float *output_ptr);
+  static void backward_kernel(DropoutMeta *m,
+                              float const *output_grad_ptr,
+                              float *input_grad_ptr);
   bool measure_compute_time(Simulator* sim,
                             const ParallelConfig& pc,
                             float& forward_time,
@@ -852,6 +868,11 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+  void init_meta(BatchNormMeta *meta,
+                 Rect<4> const &input,
+                 Rect<4> const &output,
+                 Rect<1> const &scale,
+                 Rect<1> const &bias) const;
   static void init_para_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, Runtime *runtime);
@@ -1099,6 +1120,22 @@ public:
   static void backward_task_cpu(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
                                 Context ctx, Runtime *runtime);
+  static void forward_kernel(int64_t const *input_ptr,
+                             float *output_ptr,
+                             float const *weight_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int batch_size,
+                             AggrMode aggr,
+                             int outputSize);
+  static void backward_kernel(int64_t const *input_ptr,
+                              float const *output_ptr,
+                              float *weight_grad_ptr,
+                              int in_dim,
+                              int out_dim,
+                              int batch_size,
+                              AggrMode aggr,
+                              int outputSize);
   bool measure_compute_time(Simulator* sim,
                             const ParallelConfig& pc,
                             float& forward_time,
@@ -1232,6 +1269,14 @@ public:
   void *reserveSpace;
 };
 
+class SoftmaxMeta : public OpMeta {
+public:
+  SoftmaxMeta(FFHandler handle);
+#ifndef DISABLE_COMPUTATION
+  cudnnTensorDescriptor_t inputTensor;
+#endif
+};
+
 class Softmax : public Op {
 public:
   Softmax(FFModel& model,
@@ -1259,21 +1304,23 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+  void init_meta(SoftmaxMeta *m,
+                 Rect<2> const &input,
+                 Rect<2> const &output) const;
   bool measure_compute_time(Simulator* sim,
                             const ParallelConfig& pc,
                             float& forward_time,
                             float& backward_time);
+  static void forward_kernel(SoftmaxMeta const *m,
+                             float const *input_ptr,
+                             float *output_ptr);
+  static void backward_kernel(float *input_grad_ptr,
+                              float const *output_grad_ptr,
+                              size_t num_elements);
+
 public:
   //IndexSpaceT<2> task_is;
   bool profiling;
-};
-
-class SoftmaxMeta : public OpMeta {
-public:
-  SoftmaxMeta(FFHandler handle) : OpMeta(handle) {};
-#ifndef DISABLE_COMPUTATION
-  cudnnTensorDescriptor_t inputTensor;
-#endif
 };
 
 class TransposeMeta : public OpMeta {
@@ -1299,6 +1346,9 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+  void init_meta(TransposeMeta *m,
+                 Domain const &in_domain,
+                 Domain const &out_domain) const;
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -1348,6 +1398,18 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+  static void forward_kernel(float const *in_ptr,
+                             float *out_ptr,
+                             coord_t num_out_blks,
+                             coord_t reverse_dim_size,
+                             coord_t in_blk_size,
+                             coord_t output_size);
+  static void backward_kernel(float const *out_grad_ptr,
+                              float *in_grad_ptr,
+                              coord_t num_out_blks,
+                              coord_t reverse_dim_size,
+                              coord_t in_blk_size,
+                              coord_t input_size);
   bool measure_compute_time(Simulator* sim,
                             const ParallelConfig& pc,
                             float& forward_time,
@@ -1427,6 +1489,7 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+  void init_meta(ConcatMeta *meta) const;
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -1434,7 +1497,7 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
   static void forward_kernel(float* output,
-                             const float** inputs,
+                             float const * const *inputs,
                              int num_inputs,
                              int axis,
                              const Domain& out_domain,
@@ -1481,6 +1544,12 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+  static void forward_kernel(float **out_ptrs,
+                             float const *in_ptr,
+                             coord_t const *out_blk_sizes,
+                             coord_t in_blk_size,
+                             coord_t num_blks,
+                             int numOutputs);
   bool measure_compute_time(Simulator* sim,
                             const ParallelConfig& pc,
                             float& forward_time,

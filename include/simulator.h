@@ -23,6 +23,12 @@ class LinearMeta;
 class Pool2DMeta;
 class ElementUnaryMeta;
 class ElementBinaryMeta;
+class SoftmaxMeta;
+class BatchMatmulMeta;
+class BatchNormMeta;
+class ConcatMeta;
+class DropoutMeta;
+class TransposeMeta;
 class Op;
 class FFModel;
 
@@ -93,7 +99,7 @@ public:
             Memory memory);
   ~Simulator(void);
   void free_all();
-  void* allocate(size_t num_elements, DataType type); 
+  void* allocate(size_t num_elements, DataType type);
   Device* get_compute_device_by_id(int device_id);
   Device* get_inter_gpu_comm_device_by_ids(int src_id, int dst_id);
   Device* get_inter_node_comm_device_by_ids(int src_id, int dst_id);
@@ -132,5 +138,11 @@ public:
   Pool2DMeta* pool2d_meta;
   ElementUnaryMeta* ele_unary_meta;
   ElementBinaryMeta* ele_binary_meta;
+  SoftmaxMeta *softmax_meta;
+  BatchMatmulMeta *batch_matmul_meta;
+  BatchNormMeta *batch_norm_meta;
+  ConcatMeta *concat_meta;
+  DropoutMeta *dropout_meta;
+  TransposeMeta *transpose_meta;
 };
 #endif

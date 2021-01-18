@@ -352,6 +352,7 @@ void BatchMatmul::backward_kernel(const BatchMatmulMeta* meta,
   checkCUDA(cublasSgemmStridedBatched(meta->handle.blas, CUBLAS_OP_N, CUBLAS_OP_T,
       m, k, n, &alpha, o_grad_ptr, m, o_stride, a_ptr, k, a_stride,
       &alpha, b_grad_ptr, m, b_stride, batch));
+  assert (c_grad_ptr == NULL);
 }
 
 
@@ -538,7 +539,74 @@ bool BatchMatmul::measure_compute_time(Simulator* sim,
                                        float& forward_time,
                                        float& backward_time)
 {
-  // To be implemented
-  assert(false);
-  return false;
+  Tensor sub_output, sub_input0, sub_input1;
+  if (! outputs[0].get_output_sub_tensor(pc, sub_output, OP_BATCHMATMUL)) {
+    return false;
+  }
+  if (! inputs[0].get_input_sub_tensor(pc, sub_input0, OP_BATCHMATMUL)) {
+    return false;
+  }
+  if (! inputs[1].get_input_sub_tensor(pc, sub_input1, OP_BATCHMATMUL)) {
+    return false;
+  }
+
+  int input0_r = sub_input0.adim[0];
+  int input0_c = sub_input0.adim[1];
+  int input1_r = sub_input1.adim[0];
+  int input1_c = sub_input1.adim[1];
+  int output_r = sub_output.adim[0];
+  int output_c = sub_output.adim[1];
+
+  assert (input0_c == input1_r);
+  assert (input0_r == output_r);
+  assert (input1_c == output_c);
+
+  assert (sub_input0.adim[2] == sub_input1.adim[2]);
+  assert (sub_input1.adim[2] == sub_output.adim[2]);
+
+  int batch = sub_input0.adim[2];
+
+
+  BatchMatmulMeta *meta = sim->batch_matmul_meta;
+
+  // allocate tensors in simulator
+  sim->free_all();
+  float *a_ptr = (float *)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
+  assert (a_ptr != NULL);
+  float *a_grad_ptr = (float *)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
+  assert (a_grad_ptr != NULL);
+  float *b_ptr = (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
+  assert (b_ptr != NULL);
+  float *b_grad_ptr = (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
+  assert (b_grad_ptr != NULL);
+  float *c_ptr = NULL;
+  float *c_grad_ptr = NULL;
+  float *out_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (out_ptr != NULL);
+  float *out_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (out_grad_ptr != NULL);
+
+  int m = input0_r;
+  int n = input1_c;
+  int k = input0_c;
+
+  auto forward = [&] {
+    forward_kernel(meta, out_ptr, a_ptr, b_ptr, c_ptr, m, n, k, batch);
+  };
+  auto backward = [&] {
+    backward_kernel(meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr, b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch);
+  };
+
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Measure BatchMatmul] name(%s) adim(%d %d %d) bdim(%d %d %d) odim(%d %d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      batch, input0_r, input0_c,
+      batch, input1_r, input1_c,
+      batch, output_r, output_c,
+      forward_time,
+      backward_time
+  );
+
+  return true;
 }
