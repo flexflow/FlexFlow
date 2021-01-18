@@ -262,11 +262,9 @@ bool Flat::measure_compute_time(Simulator* sim,
 {
   Tensor sub_input, sub_output;
   if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
-    std::cout << "Failed to get output sub tensor for op " << name << " and ParallelConfig " << pc << std::endl;
     return false;
   }
   if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type)) {
-    std::cout << "Failed to get input sub tensor for op " << name << " and ParallelConfig " << pc << std::endl;
     return false;
   }
 
