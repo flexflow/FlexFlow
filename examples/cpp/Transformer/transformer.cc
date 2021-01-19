@@ -27,7 +27,7 @@ Tensor create_emb(FFModel* model, const Tensor& input,
   return model->embedding(input, input_dim, output_dim, AGGR_MODE_SUM, NULL, embed_init);
 }
 
-Tensor create_attention(FFModel* model, const Tensor& input,
+Tensor create_attention_encoder(FFModel* model, const Tensor& input,
                         int hidden_dim, int num_heads,
                         int kdim, int vdim)
 {
@@ -35,6 +35,25 @@ Tensor create_attention(FFModel* model, const Tensor& input,
       hidden_dim, num_heads, kdim, vdim), input);
   return model->dense(model->dense(t, hidden_dim, AC_MODE_RELU), hidden_dim);
 }
+
+void create_attention_encoder_decoder(
+    FFModel* model, const Tensor& input1, const Tensor& input2,
+    Tensor& output1, Tensor& output2,
+    int hidden_dim, int num_heads,
+    int kdim, int vdim)
+{
+  Tensor t1 = model->add(model->multihead_attention(input1, input1, input1,
+      hidden_dim, num_heads, kdim, vdim), input1);
+  t1 = model->dense(model->dense(t1, hidden_dim, AC_MODE_RELU), hidden_dim);
+  Tensor t2 = model->add(model->multihead_attention(input2, input2, input2,
+      hidden_dim, num_heads, kdim, vdim), input2);
+  t2 = model->add(model->multihead_attention(t2, t1, t1,
+      hidden_dim, num_heads, kdim, vdim), t2);
+  t2 = model->dense(model->dense(t2, hidden_dim, AC_MODE_RELU), hidden_dim);
+  output1 = t1;
+  output2 = t2;
+}
+
 
 TransformerConfig::TransformerConfig(void)
 {
@@ -101,11 +120,18 @@ void top_level_task(const Task* task,
     input = ff.create_tensor<3>(dims, DT_FLOAT);
   }
   //Tensor t = create_emb(&ff, input, tfConfig.embedding_size, tfConfig.hidden_size);
-  Tensor t = input;
+  Tensor input1 = input, input2 = input;
+  Tensor t1, t2;
   for (int i = 0; i < tfConfig.num_layers; i++) {
-    t = create_attention(&ff, t, tfConfig.hidden_size, tfConfig.num_heads, tfConfig.hidden_size, tfConfig.hidden_size);
+    //t = create_attention_encoder(&ff, t, tfConfig.hidden_size, tfConfig.num_heads, tfConfig.hidden_size, tfConfig.hidden_size);
+    create_attention_encoder_decoder(&ff, input1, input2, t1, t2,
+        tfConfig.hidden_size, tfConfig.num_heads,
+        tfConfig.hidden_size / tfConfig.num_heads,
+        tfConfig.hidden_size / tfConfig.num_heads);
+    input1 = t1;
+    input2 = t2;
   }
-  t = ff.dense(t, 1);
+  t2 = ff.dense(t2, 1);
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.01f);
   std::vector<MetricsType> metrics;
   //metrics.push_back(METRICS_ACCURACY);
