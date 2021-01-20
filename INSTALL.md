@@ -1,7 +1,7 @@
 # FlexFlow Installation
 FlexFlow can be built from source code using the following instructions.
 
-# Download the FlexFlow source code and its dependencies
+# 1. Download the source code
 * FlexFlow requires Legion, Protocol Buffer, NCCL (optionally) and GASNet (optinally), which are in the FlexFlow third party libraries repo.
 To get started, clone them from the github.
 ```
@@ -13,16 +13,15 @@ git clone --recursive https://github.com/flexflow/flexflow-third-party.git
 git clone https://github.com/flexflow/FlexFlow.git
 ```
 
-# FlexFlow Python dependencies
+## FlexFlow Python dependencies
 * The FlexFlow Python support requires several additional Python libraries, please check [this](https://github.com/flexflow/FlexFlow/blob/master/python/requirements.txt) for details. 
 We recommend to use `pip` or `conda` to install the dependencies. 
 
 Note: all Python dependencies will be automatically installed if install the FlexFlow Python Interface using the PyPi repository (see the Installation below).
 
-# Build the FlexFlow
-## Makefile
-### Build FlexFlow Runtime with C++ Interface
-
+# 2. Build the FlexFlow
+## 2.1 Makefile
+### Build dependent libraries
 * Build the Protocol Buffer library.
 Skip this step if the Protocol Buffer library is already installed.
 ```
@@ -31,6 +30,7 @@ cd protobuf
 ./configure
 make
 ```
+
 * Build the NCCL library. (If using NCCL for parameter synchornization.)
 ```
 cd nccl
@@ -38,8 +38,7 @@ make -j src.build NVCC_GENCODE="-gencode=arch=compute_XX,code=sm_XX"
 ```
 Replace XX with the compatability of your GPU devices (e.g., 70 for Volta GPUs and 60 for Pascal GPUs).
 
-* Build a DNN model in FlexFlow
-
+### Build FlexFlow runtime with C++ interface
 The `FF_HOME` environment variable is used for building and running FlexFlow. You can add the following line in `~/.bashrc`.
 ```
 export FF_HOME=/path/to/FlexFlow
@@ -49,7 +48,7 @@ Use the following command line to build a DNN model (e.g., InceptionV3). See the
 ./ffcompile.sh examples/InceptionV3
 ```
 
-### Build FlexFlow Runtime with Python Interface (C++ Interface is also enabled)
+### Build FlexFlow Runtime with Python Interface (C++ interface is also enabled)
 
 * Set the following enviroment variables
 ```
@@ -71,14 +70,14 @@ cd python
 make 
 ```
 
-## CMake
+## 2.2 CMake
 
-### Build the FlexFlow third party libraries.
+### Build dependent libraries
 ```
 cd flexflow-third-party
 mkdir build
 cd build
-cmake ../ -DCUDA_ARCH=x0 -DPYTHON_VERSION=3.x (replace the x with the corrected number)
+cmake ../ -DCUDA_ARCH=xx -DPYTHON_VERSION=3.x (replace the xx with the corrected number)
 make
 make install
 ```
@@ -100,18 +99,20 @@ cd build
 make
 ```
 
-## Test the FlexFlow
+# 3. Test the FlexFlow
 * Set the `FF_HOME` environment variable before running the FlexFlow. You can add the following line in ~/.bashrc.
 ```
 export FF_HOME=/path/to/FlexFlow
 ```
 
 * Run FlexFlow Python examples
+The C++ examples are in the [examples/python](https://github.com/flexflow/FlexFlow/tree/master/examples/python). 
+For example, the AlexNet can be run as:
 ```
 cd python
-./flexflow_python example/xxx.py -ll:py 1 -ll:gpu 1 -ll:fsize size of gpu buffer -ll:zsize size of zero buffer
+./flexflow_python example/python/native/alexnet.py -ll:py 1 -ll:gpu 1 -ll:fsize size of gpu buffer -ll:zsize size of zero buffer
 ``` 
-The full set of Python examples are in `python/test.sh`
+The script of running all the Python examples is `python/test.sh`
 
 * Run FlexFlow C++ examples
 
@@ -121,7 +122,7 @@ For example, the AlexNet can be run as:
 ./alexnet -ll:gpu 1 -ll:fsize size of gpu buffer -ll:zsize size of zero buffer
 ``` 
 
-## Install the FlexFlow
+# 4. Install the FlexFlow
 
 * Install the FlexFlow binary, header file and library if using CMake. 
 ```

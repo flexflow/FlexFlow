@@ -33,6 +33,7 @@ Welcome to FlexFlow's documentation!
    :caption: Tutorial
 
    tutorial
+   cmd
 
 .. Indices and tables
 .. ==================
