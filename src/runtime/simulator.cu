@@ -110,6 +110,26 @@ void Simulator::strategy_search_task(const Task *task,
   // Assume this task is running on GPU0
   Simulator* simulator = new Simulator(model, model->handlers[0], gpu_mem);
   std::map<Op*, ParallelConfig> strategies;
+  if (model->config.import_strategy_file.length() > 0) {
+    // Load the strategy from config.strategies
+    for (size_t l = 0; l < model->layers.size(); l++) {
+      MappingTagID key = FFConfig::get_hash_id(std::string(model->layers[l]->name));
+      std::map<MappingTagID, ParallelConfig>::const_iterator iter;
+      iter = model->config.strategies.find(key);
+      if (iter == model->config.strategies.end()) {
+        fprintf(stderr, "ERROR: Cannot find strategy for operator %s in "
+                "strategy file %s\n", model->layers[l]->name,
+                model->config.import_strategy_file.c_str());
+      }
+      strategies[model->layers[l]] = iter->second;
+    }
+  } else {
+    // Start from data parallel
+    for (size_t l = 0; l < model->layers.size(); l++) {
+      strategies[model->layers[l]] = model->layers[l]->get_data_parallel_config(*model);
+    }
+  }
+
   model->optimize(simulator, strategies, model->config.search_budget, model->config.search_alpha);
   if (model->config.export_strategy_file.length() > 0) {
     fprintf(stderr, "Exporting the best discovered strategy to %s\n",
