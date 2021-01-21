@@ -19,7 +19,10 @@ from __future__ import absolute_import
 
 from flexflow.core.flexflow_cbinding import *
 #from flexflow.core.flexflow_logger import *
-build_docs = int(os.environ['FF_BUILD_DOCS'])
+if 'FF_BUILD_DOCS' not in os.environ:
+  build_docs = 0
+else:
+  build_docs = int(os.environ['FF_BUILD_DOCS'])
 if build_docs == 1:
   pass
 else:
