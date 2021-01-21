@@ -102,14 +102,12 @@ def top_level_task():
       next_batch(ct, x_train, input_tensor, ffconfig, ffmodel)
       next_batch_label(ct, y_train, label_tensor, ffconfig, ffmodel)
       ct += 1
-      if (epoch > 0):
-        ffconfig.begin_trace(111)
+      ffconfig.begin_trace(111)
       ffmodel.forward()
       ffmodel.zero_gradients()
       ffmodel.backward()
       ffmodel.update()
-      if (epoch > 0):
-        ffconfig.end_trace(111)
+      ffconfig.end_trace(111)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);

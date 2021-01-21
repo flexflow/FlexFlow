@@ -1,4 +1,4 @@
-# Copyright 2020 Stanford University
+# Copyright 2021 Stanford, LANL, Facebook
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,11 @@ DEBUG           ?= 0		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
-USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
+USE_GASNET      ?= 1		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
+FF_ENABLE_NCCL  ?= 1
+#USE_CUDART_HIJACK ?= 0
 
 USE_PYTHON := 1
 ifndef PYTHON_LIB
@@ -59,7 +61,7 @@ endif
 OUTFILE		  ?= flexflow_python
 
 GEN_SRC		  ?= main.cc flexflow_c.cc flexflow_dataloader.cc # .cc files
-GEN_GPU_SRC	?= flexflow_dataloader.cu # .cu files
+GEN_GPU_SRC	  ?= flexflow_dataloader.cu # .cu files
 
 CC_FLAGS	  ?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON 
 

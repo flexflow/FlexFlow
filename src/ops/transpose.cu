@@ -68,7 +68,7 @@ void Transpose::create_output_and_partition(FFModel& model)
 #undef DIMFUNC
     default:
     {
-      // Unsupported dim for ElementWiseUnary operator
+      // Unsupported dim for Transpose operator
       assert(false);
     }
   }
@@ -104,11 +104,33 @@ void Transpose::create_output_and_partition_with_dim(FFModel& model)
   }
 }
 
+void Transpose::init_meta(TransposeMeta *m, Domain const &in_domain, Domain const &out_domain) const
+{
+  for (int i = 0; i < out_domain.get_dim(); i++) {
+    assert(out_domain.hi()[i] == in_domain.hi()[this->perm[i]]);
+    assert(out_domain.lo()[i] == in_domain.lo()[this->perm[i]]);
+  }
+  m->num_dim = out_domain.get_dim();
+  for (int i = 0; i < m->num_dim; i++)
+    m->perm[i] = this->perm[i];
+}
+
 OpMeta* Transpose::init_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, Runtime *runtime)
 {
-  return NULL;
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  const Transpose* transpose = (const Transpose*) task->args;
+  FFHandler handle = *((const FFHandler*) task->local_args);
+  Domain in_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain out_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+
+  TransposeMeta* m = new TransposeMeta(handle);
+  transpose->init_meta(m, in_domain, out_domain);
+  return m;
 }
 
 void Transpose::init(const FFModel& ff)
@@ -116,8 +138,29 @@ void Transpose::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      ParallelConfig pc; \
+      std::string pcname = name; \
+      ff.config.find_parallel_config(DIM, pcname, pc); \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        FFHandler handle = ff.handlers[pc.device_ids[idx++]]; \
+        argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
   IndexLauncher launcher(TRANSPOSE_INIT_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(ElementBinary)), argmap,
+                         TaskArgument(this, sizeof(Transpose)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -128,7 +171,24 @@ void Transpose::init(const FFModel& ff)
     RegionRequirement(outputs[0].part, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(1, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        meta[idx++] = fm.get_result<OpMeta*>(*it); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
 }
 
 struct TransposeStrides
@@ -157,6 +217,27 @@ void transpose_simple_kernel(coord_t volume,
   }
 }
 
+/*static*/
+void Transpose::forward_kernel(const TransposeMeta* m,
+                               const float* input_ptr,
+                               float* output_ptr,
+                               Domain in_domain,
+                               Domain out_domain)
+{
+  TransposeStrides info;
+  info.num_dim = out_domain.get_dim();
+  assert(info.num_dim == m->num_dim);
+  for (int i = 0; i < info.num_dim; i++) {
+    int in_dim_size = (in_domain.hi()[i] - in_domain.lo()[i] + 1);
+    int out_dim_size = (out_domain.hi()[i] - out_domain.lo()[i] + 1);
+    info.in_strides[i] = (i == 0) ? 1 : info.in_strides[i-1] * in_dim_size;
+    info.out_strides[i] = (i == 0) ? 1 : info.out_strides[i-1] * out_dim_size;
+    info.perm[i] = m->perm[i];
+  }
+  transpose_simple_kernel<<<GET_BLOCKS(out_domain.get_volume()), CUDA_NUM_THREADS>>>(
+      out_domain.get_volume(), input_ptr, output_ptr, info, 0.0f/*beta*/);
+}
+
 __host__
 void Transpose::forward_task(const Task* task,
                              const std::vector<PhysicalRegion> &regions,
@@ -165,6 +246,7 @@ void Transpose::forward_task(const Task* task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   const Transpose* transpose = (const Transpose*) task->args;
+  const TransposeMeta* m = *((TransposeMeta**) task->local_args);
   Domain in_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain out_domain = runtime->get_index_space_domain(
@@ -177,17 +259,7 @@ void Transpose::forward_task(const Task* task,
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float* out_ptr = helperGetTensorPointerWO<float>(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TransposeStrides info;
-  info.num_dim = out_domain.get_dim();
-  for (int i = 0; i < info.num_dim; i++) {
-    int in_dim_size = (in_domain.hi()[i] - in_domain.lo()[i] + 1);
-    int out_dim_size = (out_domain.hi()[i] - out_domain.lo()[i] + 1);
-    info.in_strides[i] = (i == 0) ? 1 : info.in_strides[i-1] * in_dim_size;
-    info.out_strides[i] = (i == 0) ? 1 : info.out_strides[i-1] * out_dim_size;
-    info.perm[i] = transpose->perm[i];
-  }
-  transpose_simple_kernel<<<GET_BLOCKS(out_domain.get_volume()), CUDA_NUM_THREADS>>>(
-      out_domain.get_volume(), in_ptr, out_ptr, info, 0.0f/*beta*/);
+  forward_kernel(m, in_ptr, out_ptr, in_domain, out_domain);
 }
 
 void Transpose::forward(const FFModel& ff)
@@ -195,6 +267,24 @@ void Transpose::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
   IndexLauncher launcher(TRANSPOSE_FWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Transpose)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -210,6 +300,27 @@ void Transpose::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+/*static*/
+void Transpose::backward_kernel(const TransposeMeta* m,
+                                float* input_grad_ptr,
+                                const float* output_grad_ptr,
+                                Domain in_grad_domain,
+                                Domain out_grad_domain)
+{
+  TransposeStrides info;
+  info.num_dim = in_grad_domain.get_dim();
+  assert(info.num_dim == m->num_dim);
+  for (int i = 0; i < info.num_dim; i++) {
+    int in_dim_size = (out_grad_domain.hi()[i] - out_grad_domain.lo()[i] + 1);
+    int out_dim_size = (in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1);
+    info.in_strides[i] = (i == 0) ? 1 : info.in_strides[i-1] * in_dim_size;
+    info.out_strides[i] = (i == 0) ? 1 : info.out_strides[i-1] * out_dim_size;
+    info.perm[m->perm[i]] = i;
+  }
+  transpose_simple_kernel<<<GET_BLOCKS(in_grad_domain.get_volume()), CUDA_NUM_THREADS>>>(
+      in_grad_domain.get_volume(), output_grad_ptr, input_grad_ptr, info, 1.0f/*beta*/);
+}
+
 __host__
 void Transpose::backward_task(const Task* task,
                               const std::vector<PhysicalRegion> &regions,
@@ -218,6 +329,7 @@ void Transpose::backward_task(const Task* task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   const Transpose* transpose = (const Transpose*) task->args;
+  const TransposeMeta* m = *((TransposeMeta**) task->local_args);
   Domain out_grad_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain in_grad_domain = runtime->get_index_space_domain(
@@ -230,17 +342,7 @@ void Transpose::backward_task(const Task* task,
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float* in_grad_ptr = helperGetTensorPointerRW<float>(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TransposeStrides info;
-  info.num_dim = in_grad_domain.get_dim();
-  for (int i = 0; i < info.num_dim; i++) {
-    int in_dim_size = (out_grad_domain.hi()[i] - out_grad_domain.lo()[i] + 1);
-    int out_dim_size = (in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1);
-    info.in_strides[i] = (i == 0) ? 1 : info.in_strides[i-1] * in_dim_size;
-    info.out_strides[i] = (i == 0) ? 1 : info.out_strides[i-1] * out_dim_size;
-    info.perm[transpose->perm[i]] = i;
-  }
-  transpose_simple_kernel<<<GET_BLOCKS(in_grad_domain.get_volume()), CUDA_NUM_THREADS>>>(
-      in_grad_domain.get_volume(), out_grad_ptr, in_grad_ptr, info, 1.0f/*beta*/);
+  backward_kernel(m, in_grad_ptr, out_grad_ptr, in_grad_domain, out_grad_domain);
 }
 
 void Transpose::backward(const FFModel& ff)
@@ -248,6 +350,25 @@ void Transpose::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+
   IndexLauncher launcher(TRANSPOSE_BWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Transpose)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -270,8 +391,40 @@ bool Transpose::measure_compute_time(Simulator* sim,
                                      float& forward_time,
                                      float& backward_time)
 {
-  //TODO: implement measure_forward
-  forward_time = 0.0f;
-  backward_time = 0.0f;
+  Tensor sub_input, sub_output;
+  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+    return false;
+  }
+  if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type)) {
+    return false;
+  }
+
+  TransposeMeta *m = sim->transpose_meta;
+  this->init_meta(m, sub_input.get_domain(), sub_output.get_domain());
+
+  sim->free_all();
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert (input_ptr != NULL);
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_ptr != NULL);
+  float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert (input_grad_ptr != NULL);
+  float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_grad_ptr != NULL);
+
+  auto forward = [&] {
+    forward_kernel(m, input_ptr, output_ptr, sub_input.get_domain(), sub_output.get_domain());
+  };
+  auto backward = [&] {
+    backward_kernel(m, input_grad_ptr, output_grad_ptr, sub_input.get_domain(), sub_output.get_domain());
+  };
+
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Measure Transpose] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      forward_time,
+      backward_time);
+
   return true;
 }

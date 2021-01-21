@@ -22,13 +22,14 @@ using namespace Legion;
 
 class FFModel;
 class Tensor;
+class Parameter;
 
 class Initializer
 {
 public:
   Initializer(void);
   virtual ~Initializer(void);
-  virtual void init(Context ctx, Runtime* runtime, const Tensor* tensor) = 0;
+  virtual void init(const FFModel* ff, const Parameter* p) = 0;
 };
 
 class GlorotUniform : public Initializer
@@ -36,7 +37,7 @@ class GlorotUniform : public Initializer
 public:
   GlorotUniform(int _seed);
   ~GlorotUniform(void);
-  void init(Context ctx, Runtime* runtime, const Tensor* tensor);
+  void init(const FFModel* ff, const Parameter* p);
   static void init_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime *runtime);
@@ -48,7 +49,7 @@ class ZeroInitializer : public Initializer
 public:
   ZeroInitializer(void);
   ~ZeroInitializer(void);
-  void init(Context ctx, Runtime* runtime, const Tensor* tensor);
+  void init(const FFModel* ff, const Parameter* p);
   static void init_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime *runtime);
@@ -62,7 +63,7 @@ class UniformInitializer : public Initializer
 public:
   UniformInitializer(int _seed, float _min, float _max);
   ~UniformInitializer(void);
-  void init(Context ctx, Runtime* runtime, const Tensor* tensor);
+  void init(const FFModel* ff, const Parameter* p);
   static void init_task(const Task *task,
                         const std::vector<PhysicalRegion>& regions,
                         Context ctx, Runtime *runtime);
@@ -75,7 +76,7 @@ class NormInitializer : public Initializer
 public:
   NormInitializer(int _seed, float _mean, float _stddev);
   ~NormInitializer(void);
-  void init(Context ctx, Runtime* runtime, const Tensor* tensor);
+  void init(const FFModel* ff, const Parameter* p);
   static void init_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime *runtime);
@@ -88,7 +89,7 @@ class ConstantInitializer : public Initializer
 public:
   ConstantInitializer(float _value);
   ~ConstantInitializer(void);
-  void init(Context ctx, Runtime* runtime, const Tensor* tensor);
+  void init(const FFModel* ff, const Parameter* p);
   static void init_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime);

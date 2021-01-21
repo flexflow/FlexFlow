@@ -36,28 +36,28 @@ bool FFConfig::find_parallel_config(int ndims,
     switch (ndims) {
       case 1:
       {
-        iter = strategies.find(DataParallelism_1D);
+        iter = strategies.find(DataParallelism_GPU_1D);
         assert(iter != strategies.end());
         config = iter->second;
         break;
       }
       case 2:
       {
-        iter = strategies.find(DataParallelism_2D);
+        iter = strategies.find(DataParallelism_GPU_2D);
         assert(iter != strategies.end());
         config = iter->second;
         break;
       }
       case 3:
       {
-        iter = strategies.find(DataParallelism_3D);
+        iter = strategies.find(DataParallelism_GPU_3D);
         assert(iter != strategies.end());
         config = iter->second;
         break;
       }
       case 4:
       {
-        iter = strategies.find(DataParallelism_4D);
+        iter = strategies.find(DataParallelism_GPU_4D);
         assert(iter != strategies.end());
         config = iter->second;
         break;
@@ -65,7 +65,7 @@ bool FFConfig::find_parallel_config(int ndims,
 #if MAX_TENSOR_DIM >= 5
       case 5:
       {
-        iter = strategies.find(DataParallelism_5D);
+        iter = strategies.find(DataParallelism_GPU_5D);
         assert(iter != strategies.end());
         config = iter->second;
         break;
@@ -73,8 +73,8 @@ bool FFConfig::find_parallel_config(int ndims,
 #endif
       //case 6:
       //{
-      //  assert(strategies.find(DataParallelism_6D) != strategies.end());
-      //  config = strategies[DataParallelism_6D];
+      //  assert(strategies.find(DataParallelism_GPU_6D) != strategies.end());
+      //  config = strategies[DataParallelism_GPU_6D];
       //  break;
       //}
       default:

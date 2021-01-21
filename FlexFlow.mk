@@ -29,6 +29,14 @@ ifndef CUDNN_HOME
 CUDNN_HOME = $(CUDA_HOME)
 endif
 
+ifndef NCCL_HOME
+NCCL_HOME = $(CUDA_HOME)
+endif
+
+ifndef MPI_HOME
+MPI_HOME = $(patsubst %/bin/mpicc,%,$(shell which mpicc | head -1))
+endif
+
 ifndef GASNET
 GASNET		?= ${FF_HOME}/GASNet-2019.9.0 
 endif
@@ -71,6 +79,7 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/reverse.cu\
 		${FF_HOME}/src/ops/transpose.cu\
 		${FF_HOME}/src/ops/attention.cu\
+		${FF_HOME}/src/ops/fused.cu\
 		${FF_HOME}/src/loss_functions/loss_functions.cu\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cu\
 		${FF_HOME}/src/runtime/initializer_kernel.cu\
@@ -79,14 +88,21 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/runtime/simulator.cu\
 		${FF_HOME}/src/runtime/cuda_helper.cu# .cu files
 
-INC_FLAGS	    += -I${FF_HOME}/include/ -I$(PROTOBUF_INC) -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
-LD_FLAGS      += -lcudnn -lcublas -lcurand -lprotobuf -L$(PROTOBUF_LIB) -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64 #-mavx2 -mfma -mf16c
-CC_FLAGS	    += -DMAX_TENSOR_DIM=$(MAX_DIM)
-NVCC_FLAGS	  += -DMAX_TENSOR_DIM=$(MAX_DIM)
+INC_FLAGS	+= -I${FF_HOME}/include/ -I$(PROTOBUF_INC) -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
+LD_FLAGS	+= -lcudnn -lcublas -lcurand -lprotobuf -L$(PROTOBUF_LIB) -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64 #-mavx2 -mfma -mf16c
+CC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM)
+NVCC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM)
 GASNET_FLAGS	+=
 # For Point and Rect typedefs
 CC_FLAGS	    += -std=c++11 #-DMAX_RETURN_SIZE=16777216
 NVCC_FLAGS  	+= -std=c++11 #-DMAX_RETURN_SIZE=16777216
+
+ifeq ($(strip $(FF_ENABLE_NCCL)), 1)
+INC_FLAGS  += -I$(MPI_HOME)/include -I$(NCCL_HOME)/include
+CC_FLAGS   += -DFF_ENABLE_NCCL
+NVCC_FLAGS += -DFF_ENABLE_NCCL
+LD_FLAGS   += -L$(NCCL_HOME)/lib -lnccl
+endif
 
 #ifndef HDF5
 #HDF5_inc	?= /usr/include/hdf5/serial

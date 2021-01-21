@@ -25,7 +25,7 @@ void parse_input_args(char **argv, int argc, AlexNetConfig& config)
 {
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--dataset")) {
-      config.dataset_path = std::string(argv[++i]);
+      std::strcpy(config.dataset_path, argv[++i]);
       continue;
     }
   }
@@ -84,7 +84,7 @@ void top_level_task(const Task* task,
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
   // Data Loader
-  DataLoader data_loader(ff, alexnetConfig, input, ff.label_tensor);
+  DataLoader data_loader(ff, &alexnetConfig, input, ff.label_tensor);
   ff.init_layers();
   //Start timer
   {
@@ -100,20 +100,20 @@ void top_level_task(const Task* task,
     int iterations = data_loader.num_samples / ffConfig.batchSize;
 
     for (int iter = 0; iter < iterations; iter++) {
-      if (alexnetConfig.dataset_path.length() == 0) {
+      if (std::strlen(alexnetConfig.dataset_path) == 0) {
         // Only load data once for random input
         if (iter == 0 && epoch == 0)
           data_loader.next_batch(ff);
       } else {
         data_loader.next_batch(ff);
       }
-      if (epoch > 0)
+      if (iter > 0 || epoch > 0)
         runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      if (epoch > 0)
+      if (iter > 0 || epoch > 0)
         runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
@@ -143,19 +143,19 @@ size_t get_file_size(const std::string& filename)
 }
 
 DataLoader::DataLoader(FFModel& ff,
-                       const AlexNetConfig& alexnet,
+                       const AlexNetConfig* alexnet,
                        Tensor input, Tensor label)
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   num_samples = 0;
-  if (alexnet.dataset_path == "") {
+  if (std::strlen(alexnet->dataset_path) == 0) {
     log_app.print("Use random dataset...");
     num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
     log_app.print("Number of random samples = %d\n", num_samples);
   } else {
-    log_app.print("Start loading dataset from %s", alexnet.dataset_path.c_str());
-    size_t filesize = get_file_size(alexnet.dataset_path);
+    log_app.print("Start loading dataset from %s", alexnet->dataset_path);
+    size_t filesize = get_file_size(alexnet->dataset_path);
     assert(filesize % 3073 == 0);
     num_samples = filesize / 3073;
   }
@@ -173,9 +173,8 @@ DataLoader::DataLoader(FFModel& ff,
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
-  const AlexNetConfig* ptr = &alexnet;
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
-      TaskArgument(&ptr, sizeof(AlexNetConfig*)));
+      TaskArgument(alexnet, sizeof(AlexNetConfig)));
   // regions[0]: full_input
   launcher.add_region_requirement(
       RegionRequirement(full_input.region, WRITE_ONLY,
@@ -222,7 +221,7 @@ void DataLoader::load_entire_dataset(const Task *task,
   const std::vector<PhysicalRegion> &regions,
   Context ctx, Runtime* runtime)
 {
-  const AlexNetConfig* alexnet = *((AlexNetConfig**)task->args);
+  const AlexNetConfig* alexnet = (AlexNetConfig*)task->args;
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
   const AccessorWO<float, 4> acc_input(regions[0], FID_DATA);
@@ -237,21 +236,21 @@ void DataLoader::load_entire_dataset(const Task *task,
   int* label_ptr = acc_label.ptr(rect_label.lo);
   int num_samples = rect_label.hi[1] - rect_label.lo[1] + 1;
   assert(rect_input.hi[3] - rect_input.lo[3] + 1 == num_samples);
-  if (alexnet->dataset_path.length() == 0) {
+  if (std::strlen(alexnet->dataset_path) == 0) {
     log_app.print("Start generating random input samples");
     for (size_t i = 0; i < rect_label.volume(); i++)
       label_ptr[i] = std::rand() % 10;
     return;
   }
   log_app.print("Start loading %d samples from %s\n",
-      num_samples, alexnet->dataset_path.c_str());
+      num_samples, alexnet->dataset_path);
   int height = rect_input.hi[1] - rect_input.lo[1] + 1;
   int width = rect_input.hi[0] - rect_input.lo[0] + 1;
   int origHeight = 32;
   int origWidth = 32;
   float heightScale = static_cast<float>(origHeight) / height;
   float widthScale = static_cast<float>(origWidth) / width;
-  FILE* file = fopen(alexnet->dataset_path.c_str(), "rb");
+  FILE* file = fopen(alexnet->dataset_path, "rb");
   unsigned char* buffer = (unsigned char*) malloc(3073);
   unsigned char* image = (unsigned char*) malloc(3 * height * width);
   for (off_t i = 0; i < num_samples; i++) {
@@ -268,7 +267,7 @@ void DataLoader::load_entire_dataset(const Task *task,
         input_ptr[input_offset++] = static_cast<float>(image[image_offset++]) / 255;
   }
   log_app.print("Finish loading %d samples from %s\n",
-      num_samples, alexnet->dataset_path.c_str());
+      num_samples, alexnet->dataset_path);
   fclose(file);
 }
 

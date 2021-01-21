@@ -376,6 +376,7 @@ class BaseModel(object):
     ts_start = self._ffconfig.get_current_time()
     epoch = 0
     epoch_flag = True
+    self.__tracing_id += 1
     while (epoch < epochs) and (epoch_flag == True):
       if callbacks != None:
         for callback in callbacks:
@@ -395,8 +396,8 @@ class BaseModel(object):
         for dataloader in self._input_dataloaders:
           dataloader.next_batch(self._ffmodel)
         self._label_dataloader.next_batch(self._ffmodel)
-        if (epoch > 0):
-          self._ffconfig.begin_trace(self.__tracing_id)
+
+        self._ffconfig.begin_trace(self.__tracing_id)
         self._ffmodel.forward()
         # for layer in self._layers:
         #   layer.ffhandle.forward(self._ffmodel)
@@ -406,8 +407,7 @@ class BaseModel(object):
           self._ffmodel.update()
         else:
           self._ffmodel.compute_metrics()
-        if (epoch > 0):
-          self._ffconfig.end_trace(self.__tracing_id)
+        self._ffconfig.end_trace(self.__tracing_id)
 
         if callbacks != None:
           for callback in callbacks:

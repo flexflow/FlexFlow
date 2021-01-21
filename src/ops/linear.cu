@@ -17,12 +17,13 @@
 #include "cuda_helper.h"
 
 Tensor FFModel::dense(const Tensor& input,
-                      int outDim, 
+                      int outDim,
                       ActiMode activation,
                       bool use_bias,
                       const Op* shared_op,
                       Initializer* kernel_initializer,
-                      Initializer* bias_initializer)
+                      Initializer* bias_initializer,
+                      const char *name)
 {
   if (kernel_initializer == NULL) {
     int seed = std::rand();
@@ -31,17 +32,24 @@ Tensor FFModel::dense(const Tensor& input,
   if (bias_initializer == NULL) {
     bias_initializer = new ZeroInitializer();
   }
-  Linear *li = new Linear(*this, input, outDim, activation, use_bias,
-                          shared_op, kernel_initializer, bias_initializer);
+  Linear *li;
+  if (name == NULL) {
+    li = new Linear(*this, input, outDim, activation, use_bias,
+                    shared_op, kernel_initializer, bias_initializer);
+  } else {
+    li = new Linear(*this, input, outDim, activation, use_bias,
+                    shared_op, kernel_initializer, bias_initializer, std::string(name));
+  }
   layers.push_back(li);
   return li->outputs[0];
 }
 
-Linear* FFModel::dense(int inDim, int outDim, 
+Linear* FFModel::dense(int inDim, int outDim,
                        ActiMode activation,
                        bool use_bias,
                        Initializer* kernel_initializer,
-                       Initializer* bias_initializer)
+                       Initializer* bias_initializer,
+                       const char *name)
 {
   if (kernel_initializer == NULL) {
     int seed = std::rand();
@@ -50,8 +58,14 @@ Linear* FFModel::dense(int inDim, int outDim,
   if (bias_initializer == NULL) {
     bias_initializer = new ZeroInitializer();
   }
-  Linear *li = new Linear(*this, inDim, outDim, activation, use_bias,
-                          kernel_initializer, bias_initializer);
+  Linear *li;
+  if (name == NULL) {
+    li = new Linear(*this, inDim, outDim, activation, use_bias,
+                    kernel_initializer, bias_initializer);
+  } else {
+    li = new Linear(*this, inDim, outDim, activation, use_bias,
+                    kernel_initializer, bias_initializer, std::string(name));
+  }
   layers.push_back(li);
   return li;
 }
@@ -64,7 +78,28 @@ Linear::Linear(FFModel& model,
                const Op* shared_op,
                Initializer* _kernel_initializer,
                Initializer* _bias_initializer)
-: Op(model, OP_LINEAR, shared_op, "Dense_"+std::to_string(out_dim), _input), 
+: Linear(
+    model,
+    _input,
+    out_dim,
+    _activation,
+    _use_bias,
+    shared_op,
+    _kernel_initializer,
+    _bias_initializer,
+    "Dense_"+std::to_string(out_dim)
+) { }
+
+Linear::Linear(FFModel& model,
+               const Tensor& _input,
+               int out_dim,
+               ActiMode _activation,
+               bool _use_bias,
+               const Op* shared_op,
+               Initializer* _kernel_initializer,
+               Initializer* _bias_initializer,
+               const std::string &name)
+: Op(model, OP_LINEAR, shared_op, name, _input),
   in_channels(_input.adim[0]), out_channels(out_dim),
   activation(_activation), use_bias(_use_bias),
   kernel_initializer(_kernel_initializer),
@@ -94,7 +129,24 @@ Linear::Linear(FFModel& model,
                bool _use_bias,
                Initializer* _kernel_initializer,
                Initializer* _bias_initializer)
-: Op(model, OP_LINEAR, "Dense_"+std::to_string(out_dim), 1), 
+: Linear(
+    model,
+    in_dim, out_dim,
+    _activation,
+    _use_bias,
+    _kernel_initializer,
+    _bias_initializer,
+    "Dense_"+std::to_string(out_dim)
+) { }
+
+Linear::Linear(FFModel& model,
+               int in_dim, int out_dim,
+               ActiMode _activation,
+               bool _use_bias,
+               Initializer* _kernel_initializer,
+               Initializer* _bias_initializer,
+               const std::string &name)
+: Op(model, OP_LINEAR, name, 1),
   in_channels(in_dim), out_channels(out_dim),
   activation(_activation), use_bias(_use_bias),
   kernel_initializer(_kernel_initializer),
@@ -151,15 +203,23 @@ void Linear::create_weights_with_dim(FFModel& model)
   std::string pcname = name;
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
 
+#ifdef FF_ENABLE_NCCL
+  Parameter::CommType comm_type = Parameter::NCCL;
+#else
+  Parameter::CommType comm_type = Parameter::PS;
+#endif
+
   // Create kernel tensor
   {
     const int dims[2] = {out_channels, in_channels};
-    weights[0] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT, kernel_initializer);
+    weights[0] = model.create_linear_weight<2, NDIM>(this, dims, DT_FLOAT,
+        kernel_initializer, true/*create_grad*/, comm_type);
   }
   // Create bias tensor
   if (use_bias) {
     const int dims[1] = {out_channels};
-    weights[1] = model.create_linear_weight<1>(this, dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT, bias_initializer);
+    weights[1] = model.create_linear_weight<1, NDIM>(this, dims, DT_FLOAT,
+        bias_initializer, true/*create_grad*/, comm_type);
     assert(numWeights == 2);
   } else {
     assert(numWeights == 1);
@@ -340,8 +400,9 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
   //printf("init linear (input): in_dim(%d) out_dim(%d) batch_size(%d)\n",
   //    in_dim, out_dim, batch_size);
   LinearMeta* m = new LinearMeta(handle, batch_size);
+  m->activation = linear->activation;
 
-  if (linear->activation != AC_MODE_NONE) {
+  if (m->activation != AC_MODE_NONE) {
     cudnnActivationMode_t mode;
     switch (linear->activation) {
       case AC_MODE_RELU:
@@ -361,6 +422,9 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
                                           CUDNN_DATA_FLOAT,
                                           batch_size, out_dim, 1, 1));
   }
+#ifdef FF_ENABLE_NCCL
+  m->init_nccl_communicator(task, linear->ncclId);
+#endif
   return m;
 }
 
@@ -426,12 +490,13 @@ void Linear::init_with_dim(const FFModel& ff)
   }
 }
 
+/*static*/
 void Linear::forward_kernel(const LinearMeta* m,
                             const float* input_ptr,
                             float* output_ptr,
                             const float* kernel_ptr,
                             const float* bias_ptr,
-                            int in_dim, int out_dim, int batch_size) const
+                            int in_dim, int out_dim, int batch_size)
 {
   float alpha = 1.0f, beta = 0.0f;
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
@@ -444,7 +509,7 @@ void Linear::forward_kernel(const LinearMeta* m,
                         &alpha, bias_ptr, 1,
                         m->one_ptr, 1, &alpha,
                         output_ptr, out_dim));
-  if (activation != AC_MODE_NONE) {
+  if (m->activation != AC_MODE_NONE) {
     checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
         &alpha, m->outputTensor, output_ptr,
         &beta, m->outputTensor, output_ptr));
@@ -523,11 +588,11 @@ void Linear::forward_task_with_dim(const Task *task,
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("Linear forward time = %.2lfms\n", elapsed);
-    //print_tensor<2, float>(acc_input.ptr, acc_input.rect, "[Linear:forward:input]");
+    printf("%s [Linear] forward time = %.2lfms\n", linear->name, elapsed);
+    //print_tensor<NDIM, float>(acc_input.ptr, acc_input.rect, "[Linear:forward:input]");
     //print_tensor<2, float>(acc_kernel.ptr, acc_kernel.rect, "[Linear:forward:kernel]");
     //print_tensor<1, float>(acc_bias.ptr, acc_bias.rect, "[Linear:forward:bias]");
-    //print_tensor<2, float>(acc_output.ptr, acc_output.rect, "[Linear:forward:output]");
+    //print_tensor<NDIM, float>(acc_output.ptr, acc_output.rect, "[Linear:forward:output]");
   }
 }
 
@@ -589,6 +654,7 @@ void sigmoid_backward(float *grad_ptr, const float *output, int n)
   }
 }
 
+/*static*/
 void Linear::backward_kernel(const LinearMeta* m,
                              const float* input_ptr,
                              float* input_grad_ptr,
@@ -597,19 +663,19 @@ void Linear::backward_kernel(const LinearMeta* m,
                              const float* kernel_ptr,
                              float* kernel_grad_ptr,
                              float* bias_grad_ptr,
-                             int in_dim, int out_dim, int batch_size) const
+                             int in_dim, int out_dim, int batch_size)
 {
   float alpha = 1.0f;
   int output_size = out_dim * batch_size;
-  if (activation == AC_MODE_RELU) {
+  if (m->activation == AC_MODE_RELU) {
     reluBackward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS>>>(
         output_grad_ptr, output_ptr, output_size);
-  } else if (activation == AC_MODE_SIGMOID) {
+  } else if (m->activation == AC_MODE_SIGMOID) {
     sigmoid_backward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS>>>(
         output_grad_ptr, output_ptr, output_size);
   } else {
     // TODO: only support relu and sigmoid for now
-    assert(activation == AC_MODE_NONE);
+    assert(m->activation == AC_MODE_NONE);
   }
   // Compute weight gradiant
   // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
@@ -830,7 +896,7 @@ void Linear::backward_with_dim(const FFModel& ff)
         RegionRequirement(input_lps[0], 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, inputs[0].region));
     launcher.add_field(0, FID_DATA);
-    // regions[1](I/O): replica_grad 
+    // regions[1](I/O): replica_grad
     if (replica.region_grad != LogicalRegion::NO_REGION) {
       launcher.add_region_requirement(
           RegionRequirement(replica.part_grad, 0/*projection id*/,
@@ -910,7 +976,7 @@ Parameter* Linear::get_parameter(int index)
 __host__
 void Linear::print_layer(const FFModel& ff)
 {
-  printf("linear layer\n");  
+  printf("linear layer\n");
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
 
@@ -919,36 +985,36 @@ void Linear::print_layer(const FFModel& ff)
   InlineLauncher kernel_launcher(kernel_req);
   PhysicalRegion kernel_region = runtime->map_region(ctx, kernel_launcher);
   kernel_region.wait_until_valid();
-  
+
   RegionRequirement bias_req(weights[1].region, READ_WRITE, EXCLUSIVE, weights[1].region);
   bias_req.add_field(FID_DATA);
   InlineLauncher bias_launcher(bias_req);
   PhysicalRegion bias_region = runtime->map_region(ctx, bias_launcher);
   bias_region.wait_until_valid();
-  
+
   TensorAccessorW<float, 2> acc_kernel(kernel_region, kernel_req, FID_DATA, ctx, runtime, true);
   TensorAccessorW<float, 1> acc_bias(bias_region, bias_req, FID_DATA, ctx, runtime, true);
-  
+
   const float *kernel_ptr = acc_kernel.ptr;
   const float *bias_ptr = acc_bias.ptr;
-  
+
   size_t kernel_size = acc_kernel.rect.volume();
   int kernel_dim1 = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
   int kernel_dim2 = acc_kernel.rect.hi[1] - acc_kernel.rect.lo[1] + 1;
   size_t bias_size = acc_bias.rect.volume();
   printf("kernel, %p, %d, [%d, %d]\n", kernel_ptr, kernel_size, kernel_dim1, kernel_dim2);
   printf("bias, %p, %d\n", bias_ptr, bias_size);
-  
+
   for (int i = 0; i < bias_size; i++) {
     printf("%f ", bias_ptr[i]);
   }
   printf("\n");
-  
+
   for (int i = 0; i < kernel_size; i++) {
     printf("%f ", kernel_ptr[i]);
   }
   printf("\n");
-  
+
   runtime->unmap_region(ctx, kernel_region);
   runtime->unmap_region(ctx, bias_region);
 
@@ -986,6 +1052,7 @@ bool Linear::measure_compute_time(Simulator* sim,
   int output_c = sub_output.adim[0];
   int output_n = sub_output.get_volume() / output_c;
   LinearMeta* m = sim->linear_meta;
+  m->activation = activation;
   if (activation != AC_MODE_NONE) {
     cudnnActivationMode_t mode;
     switch (activation) {
@@ -1015,37 +1082,19 @@ bool Linear::measure_compute_time(Simulator* sim,
   float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
   assert(bias_ptr != NULL);
 
-  // measure forward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
+  auto forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, kernel_ptr, bias_ptr,
         input_c, output_c, input_n);
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  float milliseconds;
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  forward_time = milliseconds / sim->repeat_times;
-
-  // measure backward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
+  };
+  auto backward = [&] {
     backward_kernel(m, input_ptr, input_ptr, output_ptr, output_ptr,
         kernel_ptr, kernel_ptr, bias_ptr, input_c, output_c, input_n);
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  backward_time = milliseconds / sim->repeat_times;
+  };
 
-  printf("[Measure Linear] in(%d %d) out(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
-         input_n, input_c, output_n, output_c, forward_time, backward_time);
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Measure Linear] name(%s) in(%d %d) out(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+         name, input_n, input_c, output_n, output_c, forward_time, backward_time);
   return true;
 }
 

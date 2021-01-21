@@ -149,6 +149,20 @@ void calc_block_size(coord_t& num_blks,
   }
 }
 
+void Split::forward_kernel(float **out_ptrs,
+                           float const *in_ptr,
+                           coord_t const *out_blk_sizes,
+                           coord_t in_blk_size,
+                           coord_t num_blks,
+                           int numOutputs)
+{
+  for (int i = 0; i < numOutputs; i++) {
+    copy_with_stride<<<GET_BLOCKS(out_blk_sizes[i]*num_blks), CUDA_NUM_THREADS>>>(
+        out_ptrs[i], in_ptr, num_blks, out_blk_sizes[i], in_blk_size);
+    in_ptr += out_blk_sizes[i];
+  }
+}
+
 void Split::forward_task(const Task *task,
                          const std::vector<PhysicalRegion>& regions,
                          Context ctx, Runtime *runtime)
@@ -180,12 +194,7 @@ void Split::forward_task(const Task *task,
     total_volume += out_domain.get_volume();
   }
   assert(total_volume == in_domain.get_volume());
-  for (int i = 0; i < split->numOutputs; i++) {
-    copy_with_stride<<<GET_BLOCKS(out_blk_size[i]*num_blks), CUDA_NUM_THREADS>>>(
-        out_ptr[i], in_ptr, num_blks, out_blk_size[i], in_blk_size);
-    in_ptr += out_blk_size[i];
-  }
-  //checkCUDA(cudaDeviceSynchronize());
+  forward_kernel(out_ptr, in_ptr, out_blk_size, in_blk_size, num_blks, split->numOutputs);
 }
 
 void Split::forward(const FFModel& ff)
@@ -279,5 +288,5 @@ bool Split::measure_compute_time(Simulator* sim,
   //TODO: implement measure_forward
   forward_time = 0.0f;
   backward_time = 0.0f;
-  return true;
+  return false;
 }
