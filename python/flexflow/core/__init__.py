@@ -19,4 +19,8 @@ from __future__ import absolute_import
 
 from flexflow.core.flexflow_cbinding import *
 #from flexflow.core.flexflow_logger import *
-from flexflow.core.flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context
+build_docs = int(os.environ['FF_BUILD_DOCS'])
+if build_docs == 1:
+  pass
+else:
+  from flexflow.core.flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context

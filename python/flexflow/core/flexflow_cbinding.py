@@ -644,7 +644,7 @@ class FFModel(object):
     :param x: the input Tensor.
     :type x: Tensor
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -662,7 +662,7 @@ class FFModel(object):
     :param y: the second input Tensor.
     :type y: Tensor
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -680,7 +680,7 @@ class FFModel(object):
     :param y: the second input Tensor.
     :type y: Tensor
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -698,7 +698,7 @@ class FFModel(object):
     :param y: the second input Tensor.
     :type y: Tensor
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -716,7 +716,7 @@ class FFModel(object):
     :param y: the second input Tensor.
     :type y: Tensor
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -789,25 +789,25 @@ class FFModel(object):
     :param padding_w: the amount of implicit zero-paddings along the width: :math:`P_{W}`.
     :type padding_w: int   
 
-    :param activation: Activation function to use. If you don't specify anything, no activation is applied.
+    :param activation: Activation function to use. Default is ActiMode.AC_MODE_NONE.
     :type activation: ActiMode   
  
     :param groups: the number of groups in this convolution
     :type groups: int   
             
-    :param use_bias: whether the layer uses a bias vector. If you don't specify anything, a bias vector is used.
+    :param use_bias: whether the layer uses a bias vector. Default is True.
     :type use_bias: bool  
 
-    :param shared_op: the layer whose parameters are shared with. If you don't specify anything, it is set to NULL.
+    :param shared_op: the layer whose parameters are shared with. Default is None.
     :type shared_op: Op  
              
-    :param kernel_initializer: Initializer for the kernel weights matrix. If you don't specify anything, the GlorotUniformInitializer is applied.
+    :param kernel_initializer: Initializer for the kernel weights matrix. If it is set to None, the GlorotUniformInitializer is applied.
     :type kernel_initializer: Initializer
 
-    :param bias_initializer: Initializer for the bias vector. If you don't specify anything, the ZeroInitializer is applied.
+    :param bias_initializer: Initializer for the bias vector. If it is set to None, the ZeroInitializer is applied.
     :type bias_initializer: Initializer
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -836,13 +836,13 @@ class FFModel(object):
     :param aggr: aggregation mode. Options are AGGR_MODE_NONE, AGGR_MODE_SUM and AGGR_MODE_AVG.
     :type aggr: AggrMode
                 
-    :param shared_op: the layer whose parameters are shared with. If you don't specify anything, it is set to NULL.
+    :param shared_op: the layer whose parameters are shared with. Default is None.
     :type shared_op: Op  
              
-    :param kernel_initializer: Initializer for the kernel weights matrix. If you don't specify anything, the GlorotUniformInitializer is applied.
+    :param kernel_initializer: Initializer for the kernel weights matrix. If it is set to None, the GlorotUniformInitializer is applied.
     :type kernel_initializer: Initializer
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -915,10 +915,10 @@ class FFModel(object):
     :param activation: Tyoe of pooling function to use. If you don't specify anything, PoolType.POOL_MAX is applied.
     :type activation: PoolType
 
-    :param activation: Activation function to use. If you don't specify anything, no activation is applied.
+    :param activation: Activation function to use. Default is ActiMode.AC_MODE_NONE.
     :type activation: ActiMode
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -937,10 +937,10 @@ class FFModel(object):
     :param input: the list of input Tensors.
     :type input: Tensor
     
-    :param relu: whether a ReLU function is applied. By default, it is set to True.
+    :param relu: whether a ReLU function is applied. Default is True.
     :type relu: bool
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -952,13 +952,13 @@ class FFModel(object):
   def batch_matmul(self, A, B, name=None):
     """Layer that applied batched matrix multiplication onto two input Tensors, :attr:`output = x * y`.
              
-    :param x: the first input Tensor.
-    :type x: Tensor
+    :param A: the first input Tensor.
+    :type A: Tensor
     
-    :param y: the second input Tensor.
-    :type y: Tensor
+    :param B: the second input Tensor.
+    :type B: Tensor
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -985,22 +985,22 @@ class FFModel(object):
     :param out\_dim: dimensionality of the output space.
     :type out\_dim: int
 
-    :param activation: Activation function to use. If you don't specify anything, no activation is applied.
+    :param activation: Activation function to use. Default is ActiMode.AC_MODE_NONE.
     :type activation: ActiMode   
              
-    :param use_bias: whether the layer uses a bias vector. If you don't specify anything, a bias vector is used.
+    :param use_bias: whether the layer uses a bias vector. Default is True.
     :type use_bias: bool  
 
-    :param shared_op: the layer whose parameters are shared with. If you don't specify anything, it is set to NULL.
+    :param shared_op: the layer whose parameters are shared with. Default is None.
     :type shared_op: Op  
              
-    :param kernel_initializer: Initializer for the kernel weights matrix. If you don't specify anything, the GlorotUniformInitializer is applied.
+    :param kernel_initializer: Initializer for the kernel weights matrix. If it is set to None, the GlorotUniformInitializer is applied.
     :type kernel_initializer: Initializer
 
-    :param bias_initializer: Initializer for the bias vector. If you don't specify anything, the ZeroInitializer is applied.
+    :param bias_initializer: Initializer for the bias vector. If it is set to None, the ZeroInitializer is applied.
     :type bias_initializer: Initializer
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -1024,7 +1024,7 @@ class FFModel(object):
     :param axis: the dimension along which to concatenate.
     :type axis: int
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -1052,7 +1052,7 @@ class FFModel(object):
     :param axis: the dimension along which to split.
     :type axis: int
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  list of Tensors -- the output tensors.
@@ -1082,7 +1082,7 @@ class FFModel(object):
     :param input: the input Tensor.
     :type input: Tensor
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -1097,7 +1097,7 @@ class FFModel(object):
     :param input: the input Tensor.
     :type input: Tensor
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -1118,7 +1118,7 @@ class FFModel(object):
     :param shape: A list defining the shape of the output tensor.
     :type shape: list of int
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -1137,7 +1137,7 @@ class FFModel(object):
     :param perm: A permutation of the dimensions of a.
     :type perm: List of int
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -1158,7 +1158,7 @@ class FFModel(object):
     :param axis: the dimension to reverse.
     :type axis: int
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -1173,7 +1173,7 @@ class FFModel(object):
     :param input: the input Tensor.
     :type input: Tensor
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -1188,7 +1188,7 @@ class FFModel(object):
     :param input: the input Tensor.
     :type input: Tensor
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -1203,7 +1203,7 @@ class FFModel(object):
     :param input: the input Tensor.
     :type input: Tensor
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -1218,7 +1218,7 @@ class FFModel(object):
     :param input: the input Tensor.
     :type input: Tensor
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -1243,7 +1243,7 @@ class FFModel(object):
     :param seed: random seed.
     :type seed: int
              
-    :param name: the name of the layer. If you don't specify anything, it is set to NULL.
+    :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
@@ -1257,7 +1257,51 @@ class FFModel(object):
                           kdim=0, vdim=0, dropout=0.0, 
                           bias=True, add_bias_kv=False, add_zero_attn=False, 
                           kernel_initializer=None, name=None):
+    """Defines the MultiHead Attention operation as described in Attention Is All You Need 
+    which takes in the tensors :attr:`query`, :attr:`key`, and :attr:`value`, 
+    and returns the dot-product attention between them:.
+             
+    :param query: the query Tensor.
+    :type query: Tensor
+    
+    :param key: the key Tensor.
+    :type key: Tensor
                           
+    :param value: the value Tensor.
+    :type value: Tensor
+
+    :param embed_dim: total dimension of the model
+    :type embed_dim: int
+                          
+    :param num_heads: Number of attention heads.
+    :type num_heads: int
+                          
+    :param kdim: total number of features in key. Default is 0
+    :type kdim: int
+                          
+    :param vdim: total number of features in value. Default is 0
+    :type vdim: int
+                          
+    :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
+    :type dropout: float(0-1)
+                          
+    :param bias: Whether the dense layers use bias vectors. Default is True.
+    :type bias: bool
+                          
+    :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
+    :type add_bias_kv: bool
+                          
+    :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
+    :type add_zero_attn: bool
+    
+    :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """                      
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     handle = ffc.flexflow_model_add_multihead_attention(self.handle, query.handle, key.handle, value.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle)
     self.add_layer(OpType.MULTIHEAD_ATTENTION, name)
