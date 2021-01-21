@@ -502,7 +502,7 @@ void MultiHeadAttention::backward(const FFModel& ff)
       RegionRequirement(input_grad_lps[0], 0/*projection id*/,
           READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(6, FID_DATA);
-  int num_regions = 6;
+  int num_regions = 7;
   if (inputs[1].region != inputs[0].region) {
     // when key != query
     launcher.add_region_requirement(
