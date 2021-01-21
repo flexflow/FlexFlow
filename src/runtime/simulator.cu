@@ -17,6 +17,7 @@
 #include "model.h"
 #include "realm/runtime_impl.h"
 #include "realm/cuda/cuda_module.h"
+#include "cuda_helper.h"
 
 typedef long long int coord_t;
 
@@ -109,6 +110,13 @@ void Simulator::strategy_search_task(const Task *task,
   // void* base_ptr = memFBImpl->get_direct_ptr(offset, 0);
   // Assume this task is running on GPU0
   Simulator* simulator = new Simulator(model, model->handlers[0], gpu_mem);
+  // Set cublas/cudnn streams to allow Realm catch the events
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(simulator->handler.blas, stream));
+  checkCUDNN(cudnnSetStream(simulator->handler.dnn, stream));
+#endif
   std::map<Op*, ParallelConfig> strategies;
   if (model->config.import_strategy_file.length() > 0) {
     // Load the strategy from config.strategies
