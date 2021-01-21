@@ -1324,6 +1324,9 @@ struct DefaultConfig {
   const static size_t simulatorWorkSpaceSize = (size_t)2 * 1024 * 1024 * 1024; //2GB
   constexpr static float searchAlpha = 1.0f;
   const static bool searchOverlapBackwardUpdate = false;
+  const static bool enableSampleParallel = true;
+  const static bool enableParameterParallel = false;
+  const static bool enableAttributeParallel = false;
 };
 
 FFConfig::FFConfig()
@@ -1342,6 +1345,10 @@ FFConfig::FFConfig()
   search_budget = DefaultConfig::searchBudget;
   search_alpha = DefaultConfig::searchAlpha;
   search_overlap_backward_update = DefaultConfig::searchOverlapBackwardUpdate;
+  enable_sample_parallel = DefaultConfig::enableSampleParallel;
+  enable_parameter_parallel = DefaultConfig::enableParameterParallel;
+  enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
+
   import_strategy_file = "";
   export_strategy_file = "";
   dataset_path = "";
@@ -1394,6 +1401,14 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if ((!strcmp(argv[i], "--export")) || (!strcmp(argv[i], "--export-strategy"))) {
       export_strategy_file = std::string(argv[++i]);
+      continue;
+    }
+    if ((!strcmp(argv[i], "--enable-parameter-parallel"))) {
+      enable_parameter_parallel = true;
+      continue;
+    }
+    if ((!strcmp(argv[i], "--enable-attribute-parallel"))) {
+      enable_parameter_parallel = true;
       continue;
     }
     if (!strcmp(argv[i], "-ll:gpu"))

@@ -95,6 +95,10 @@ public:
   size_t search_budget;
   float search_alpha;
   bool search_overlap_backward_update;
+  //Control parallelizable dimensions
+  bool enable_sample_parallel;
+  bool enable_parameter_parallel;
+  bool enable_attribute_parallel;
   std::string dataset_path;
   std::string import_strategy_file;
   std::string export_strategy_file;

@@ -473,7 +473,7 @@ public:
   Metrics* metrics_op;
   Tensor label_tensor;
   //std::vector<Tensor> input_tensors;
-
+  
   std::vector<Op*> layers;
   std::vector<Parameter> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
@@ -884,6 +884,7 @@ public:
                             const ParallelConfig& pc,
                             float& forward_time,
                             float& backward_time);
+  ParallelConfig get_random_parallel_config(const FFModel& ff) const;
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);

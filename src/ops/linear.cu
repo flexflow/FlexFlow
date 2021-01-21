@@ -1049,4 +1049,37 @@ bool Linear::measure_compute_time(Simulator* sim,
   return true;
 }
 
+ParallelConfig Linear::get_random_parallel_config(const FFModel& ff) const
+{
+  if (!ff.config.enable_parameter_parallel)
+    return Op::get_random_parallel_config(ff);
+  std::vector<int> batch_candidates;
+  std::vector<int> channel_candidates;
+  int batch = outputs[0].adim[outputs[0].numDim-1];
+  int channel = outputs[0].adim[0];
+  int total_devices = ff.config.workersPerNode * ff.config.numNodes;
+  for (int i = 1; i <= ff.config.workersPerNode; i++)
+    if (channel % i == 0)
+      for (int j = 1; i * j <= total_devices; j++)
+        if (batch % j == 0) {
+          batch_candidates.push_back(j);
+          channel_candidates.push_back(i);
+        }
+  assert(batch_candidates.size() > 0);
+  int idx = std::rand() % batch_candidates.size();
+  int num_par_c = channel_candidates[idx];
+  int num_par_b = batch_candidates[idx];
+  ParallelConfig pc;
+  pc.device_type = ParallelConfig::GPU;
+  pc.nDims = outputs[0].numDim;
+  pc.dim[0] = num_par_c;
+  pc.dim[pc.nDims-1] = num_par_b;
+  for (int i = 1; i < pc.nDims - 1; i++)
+    pc.dim[i] = 1;
+  int start_idx = std::rand() % (total_devices - num_par_c * num_par_b + 1);
+  start_idx = start_idx - start_idx % num_par_c;
+  for (int i = 0; i < num_par_c * num_par_b; i++)
+    pc.device_ids[i] = start_idx + i;
+  return pc;
+}
 
