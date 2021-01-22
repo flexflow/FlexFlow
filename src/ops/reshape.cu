@@ -18,17 +18,19 @@
 
 
 Tensor FFModel::reshape(const Tensor& input,
-                        const std::vector<int>& shape)
+                        const std::vector<int>& shape,
+                        const char* name)
 {
-  Reshape* reshape = new Reshape(*this, input, shape);
+  Reshape* reshape = new Reshape(*this, input, shape, name);
   layers.push_back(reshape);
   return reshape->outputs[0];
 }
 
 Reshape::Reshape(FFModel& model,
                  const Tensor& input,
-                 const std::vector<int>& shape)
-: Op(model, OP_RESHAPE, "Reshape_", input)
+                 const std::vector<int>& shape,
+                 const char* name)
+: Op(model, OP_RESHAPE, name, input)
 {
   numOutputs = 1;
   numWeights = 0;

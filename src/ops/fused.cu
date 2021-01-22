@@ -17,7 +17,7 @@
 #include "cuda_helper.h"
 
 FusedOp::FusedOp(FFModel& model, Op* op)
-: Op(model, OP_FUSED, std::string(op->name), 0)
+: Op(model, OP_FUSED, op->name, 0)
 {
   numInputs = op->numInputs;
   for (int i = 0; i < numInputs; i++) {

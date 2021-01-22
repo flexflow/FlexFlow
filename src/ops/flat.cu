@@ -16,28 +16,30 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::flat(const Tensor& input)
+Tensor FFModel::flat(const Tensor& input,
+                     const char* name)
 {
   assert(input.numDim == 4);
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
-  Flat *flat = new Flat(*this, input);
+  Flat *flat = new Flat(*this, input, name);
   layers.push_back(flat);
   return flat->outputs[0];
 }
 
-Flat* FFModel::flat()
+Flat* FFModel::flat(const char* name)
 {
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
-  Flat *flat = new Flat(*this);
+  Flat *flat = new Flat(*this, name);
   layers.push_back(flat);
   return flat;
 }
 
 Flat::Flat(FFModel& model,
-           const Tensor& _input)
-: Op(model, OP_FLAT, "Flat", _input)
+           const Tensor& _input,
+           const char* name)
+: Op(model, OP_FLAT, name, _input)
 {
   assert(_input.numDim == 4);
   int out_dim = _input.adim[0] * _input.adim[1] * _input.adim[2];
@@ -47,8 +49,9 @@ Flat::Flat(FFModel& model,
   outputs[0].adim[1] = batch_size;
 }
 
-Flat::Flat(FFModel& model)
-: Op(model, OP_FLAT, "Flat", 1)
+Flat::Flat(FFModel& model,
+           const char* name)
+: Op(model, OP_FLAT, name, 1)
 {
 }
 

@@ -17,17 +17,19 @@
 #include "cuda_helper.h"
 
 Tensor FFModel::transpose(const Tensor& input,
-                          const std::vector<int>& perm)
+                          const std::vector<int>& perm,
+                          const char* name)
 {
-  Transpose* transpose = new Transpose(*this, input, perm);
+  Transpose* transpose = new Transpose(*this, input, perm, name);
   layers.push_back(transpose);
   return transpose->outputs[0];
 }
 
 Transpose::Transpose(FFModel& model,
                      const Tensor& input,
-                     const std::vector<int>& _perm)
-: Op(model, OP_TRANSPOSE, "Transpose_", input)
+                     const std::vector<int>& _perm,
+                     const char* name)
+: Op(model, OP_TRANSPOSE, name, input)
 {
   assert(_perm.size() == input.numDim);
   // Use Legion indexing to store perm

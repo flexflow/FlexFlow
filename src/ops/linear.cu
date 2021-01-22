@@ -32,14 +32,8 @@ Tensor FFModel::dense(const Tensor& input,
   if (bias_initializer == NULL) {
     bias_initializer = new ZeroInitializer();
   }
-  Linear *li;
-  if (name == NULL) {
-    li = new Linear(*this, input, outDim, activation, use_bias,
-                    shared_op, kernel_initializer, bias_initializer);
-  } else {
-    li = new Linear(*this, input, outDim, activation, use_bias,
-                    shared_op, kernel_initializer, bias_initializer, std::string(name));
-  }
+  Linear *li = new Linear(*this, input, outDim, activation, use_bias,
+                          shared_op, kernel_initializer, bias_initializer, name);
   layers.push_back(li);
   return li->outputs[0];
 }
@@ -58,14 +52,8 @@ Linear* FFModel::dense(int inDim, int outDim,
   if (bias_initializer == NULL) {
     bias_initializer = new ZeroInitializer();
   }
-  Linear *li;
-  if (name == NULL) {
-    li = new Linear(*this, inDim, outDim, activation, use_bias,
-                    kernel_initializer, bias_initializer);
-  } else {
-    li = new Linear(*this, inDim, outDim, activation, use_bias,
-                    kernel_initializer, bias_initializer, std::string(name));
-  }
+  Linear *li = new Linear(*this, inDim, outDim, activation, use_bias,
+                          kernel_initializer, bias_initializer, name);
   layers.push_back(li);
   return li;
 }
@@ -77,28 +65,8 @@ Linear::Linear(FFModel& model,
                bool _use_bias,
                const Op* shared_op,
                Initializer* _kernel_initializer,
-               Initializer* _bias_initializer)
-: Linear(
-    model,
-    _input,
-    out_dim,
-    _activation,
-    _use_bias,
-    shared_op,
-    _kernel_initializer,
-    _bias_initializer,
-    "Dense_"+std::to_string(out_dim)
-) { }
-
-Linear::Linear(FFModel& model,
-               const Tensor& _input,
-               int out_dim,
-               ActiMode _activation,
-               bool _use_bias,
-               const Op* shared_op,
-               Initializer* _kernel_initializer,
                Initializer* _bias_initializer,
-               const std::string &name)
+               const char* name)
 : Op(model, OP_LINEAR, shared_op, name, _input),
   in_channels(_input.adim[0]), out_channels(out_dim),
   activation(_activation), use_bias(_use_bias),
@@ -128,24 +96,8 @@ Linear::Linear(FFModel& model,
                ActiMode _activation,
                bool _use_bias,
                Initializer* _kernel_initializer,
-               Initializer* _bias_initializer)
-: Linear(
-    model,
-    in_dim, out_dim,
-    _activation,
-    _use_bias,
-    _kernel_initializer,
-    _bias_initializer,
-    "Dense_"+std::to_string(out_dim)
-) { }
-
-Linear::Linear(FFModel& model,
-               int in_dim, int out_dim,
-               ActiMode _activation,
-               bool _use_bias,
-               Initializer* _kernel_initializer,
                Initializer* _bias_initializer,
-               const std::string &name)
+               const char* name)
 : Op(model, OP_LINEAR, name, 1),
   in_channels(in_dim), out_channels(out_dim),
   activation(_activation), use_bias(_use_bias),

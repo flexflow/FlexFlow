@@ -18,13 +18,14 @@
 
 Tensor FFModel::dropout(const Tensor& input,
                         float rate,
-                        unsigned long long seed)
+                        unsigned long long seed,
+                        const char* name)
 {
   // see = 0 is preserved as None, so we use a random seed
   if (seed == 0) {
     seed = std::rand();
   }
-  Dropout *dropout = new Dropout(*this, input, rate, seed);
+  Dropout *dropout = new Dropout(*this, input, rate, seed, name);
   layers.push_back(dropout);
   return dropout->outputs[0];
 }
@@ -32,8 +33,9 @@ Tensor FFModel::dropout(const Tensor& input,
 Dropout::Dropout(FFModel& model,
                  const Tensor& _input,
                  float _rate,
-                 unsigned long long _seed)
-: Op(model, OP_DROPOUT, "Dropout", _input), rate(_rate), seed(_seed)
+                 unsigned long long _seed,
+                 const char* name)
+: Op(model, OP_DROPOUT, name, _input), rate(_rate), seed(_seed)
 {
   // Set output shape
   outputs[0].numDim = inputs[0].numDim;
