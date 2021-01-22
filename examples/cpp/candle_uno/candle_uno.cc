@@ -50,7 +50,7 @@ Tensor build_feature_model(FFModel* model, const Tensor& input,
 {
   Tensor t = input;
   for (size_t i = 0; i < dense_layers.size(); i++) {
-    t = model->dense(t, dense_layers[i], AC_MODE_RELU, Parameter::PS);
+    t = model->dense(t, dense_layers[i], AC_MODE_RELU, true, NULL, NULL, NULL, Parameter::PS);
   }
   return t;
 }
