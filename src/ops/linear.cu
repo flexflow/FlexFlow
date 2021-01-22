@@ -22,7 +22,8 @@ Tensor FFModel::dense(const Tensor& input,
                       bool use_bias,
                       const Op* shared_op,
                       Initializer* kernel_initializer,
-                      Initializer* bias_initializer)
+                      Initializer* bias_initializer,
+                      Parameter::CommType comm_type)
 {
   if (kernel_initializer == NULL) {
     int seed = std::rand();
@@ -32,7 +33,7 @@ Tensor FFModel::dense(const Tensor& input,
     bias_initializer = new ZeroInitializer();
   }
   Linear *li = new Linear(*this, input, outDim, activation, use_bias,
-                          shared_op, kernel_initializer, bias_initializer);
+                          shared_op, kernel_initializer, bias_initializer, comm_type);
   layers.push_back(li);
   return li->outputs[0];
 }
@@ -63,12 +64,14 @@ Linear::Linear(FFModel& model,
                bool _use_bias,
                const Op* shared_op,
                Initializer* _kernel_initializer,
-               Initializer* _bias_initializer)
+               Initializer* _bias_initializer,
+               Parameter::CommType _comm_type)
 : Op(model, OP_LINEAR, shared_op, "Dense_"+std::to_string(out_dim), _input), 
   in_channels(_input.adim[0]), out_channels(out_dim),
   activation(_activation), use_bias(_use_bias),
   kernel_initializer(_kernel_initializer),
   bias_initializer(_bias_initializer),
+  comm_type(_comm_type),
   profiling(model.config.profiling)
 {
   numInputs = 1;
@@ -151,11 +154,11 @@ void Linear::create_weights_with_dim(FFModel& model)
   std::string pcname = name;
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
 
-#ifdef FF_ENABLE_NCCL
-  Parameter::CommType comm_type = Parameter::NCCL;  
-#else
-  Parameter::CommType comm_type = Parameter::PS;
-#endif
+//#ifdef FF_ENABLE_NCCL
+//  Parameter::CommType comm_type = Parameter::NCCL;  
+//#else
+//  Parameter::CommType comm_type = Parameter::PS;
+//#endif
 
   // Create kernel tensor
   {

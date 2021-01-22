@@ -299,7 +299,8 @@ public:
                bool use_bias = true,
                const Op* shared_op = NULL,
                Initializer* kernel_initializer = NULL,
-               Initializer* bias_initializer = NULL);
+               Initializer* bias_initializer = NULL,
+               Parameter::CommType comm_type = Parameter::NCCL);
   // Add a concat layer
   Tensor concat(int n, const Tensor* tensors,
                 int axis);
@@ -828,7 +829,8 @@ public:
          bool use_bias,
          const Op* shared_op,
          Initializer* kernel_initializer,
-         Initializer* bias_initializer);
+         Initializer* bias_initializer,
+         Parameter::CommType comm_type);
   Linear(FFModel& model,
          int inChannels,
          int outChannels,
@@ -913,6 +915,7 @@ public:
   ActiMode activation;
   Initializer *kernel_initializer;
   Initializer *bias_initializer;
+  Parameter::CommType comm_type;
 };
 
 class BatchMatmulMeta : public OpMeta {
