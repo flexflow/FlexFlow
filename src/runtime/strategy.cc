@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "strategy.pb.h"
 #include "config.h"
 #include "simulator.h"
 #include <fstream>
@@ -96,40 +95,54 @@ bool FFConfig::find_parallel_config(int ndims,
 bool load_strategies_from_file(const std::string& filename,
                                std::map<MappingTagID, ParallelConfig>& strategies)
 {
-  FFProtoBuf::Strategy strategyPb;
   std::fstream input(filename, std::ios::in);
-  if (!strategyPb.ParseFromIstream(&input)) {
-    std::cerr << "Failed to parse strategy file" << std::endl;
+  if (!input) {
+    std::cerr << "Failed to open strategy file for reading" << std::endl;
     return false;
   }
 
-  for (int i = 0; i < strategyPb.ops_size(); i++) {
-    const FFProtoBuf::Op& op = strategyPb.ops(i);
+  int ops_size = 0;
+  input >> ops_size; 
+  for (int i = 0; i < ops_size; i++) {
     ParallelConfig config;
-    switch (op.device_type()) {
-      case FFProtoBuf::Op_DeviceType_GPU:
-        config.device_type = ParallelConfig::GPU;
-        break;
-      case FFProtoBuf::Op_DeviceType_CPU:
-        config.device_type = ParallelConfig::CPU;
+    char op_name[MAX_OPNAME];
+    int device_type_;
+    input >> op_name;
+    input >> device_type_;
+    //printf("%s, %d\n", op_name, device_type_);
+    ParallelConfig::DeviceType device_type = static_cast<ParallelConfig::DeviceType>(device_type_);
+    switch (device_type) {
+      case ParallelConfig::GPU:
+      case ParallelConfig::CPU:
+        config.device_type = device_type;
         break;
       default:
         fprintf(stderr, "Unsupported Device Type\n");
         assert(false);
     }
-    config.nDims = op.dims_size();
+    input >> config.nDims;
+    //printf("ndims %d\n", config.nDims);
     int n = 1;
     for (int j = 0; j < config.nDims; j++) {
-      config.dim[j] = op.dims(j);
+      input >> config.dim[j];
       n = n * config.dim[j];
+      //printf("%d\t", config.dim[j]);
     }
-    assert(n == op.device_ids_size() || op.device_ids_size() == 0);
-    for (int j = 0; j < op.device_ids_size(); j++)
-      config.device_ids[j] = op.device_ids(j);
-    MappingTagID hash = FFConfig::get_hash_id(op.name());
+    //printf("\n");
+    int device_ids_size = 0;
+    input >> device_ids_size;
+    //printf("device size %d\n", device_ids_size);
+    assert(n == device_ids_size || device_ids_size == 0);
+    for (int j = 0; j < device_ids_size; j++) {
+      input >> config.device_ids[j];
+      //printf("%d\t", config.device_ids[j]);
+    }
+    //printf("\n");
+    MappingTagID hash = FFConfig::get_hash_id(op_name);
     assert(strategies.find(hash) == strategies.end());
     strategies[hash] = config;
   }
+  input.close();
   printf("strategies.size() = %zu\n", strategies.size());
   return true;
 }
@@ -137,37 +150,40 @@ bool load_strategies_from_file(const std::string& filename,
 bool save_strategies_to_file(const std::string& filename,
                              const std::map<std::string, ParallelConfig>& strategies)
 {
-  FFProtoBuf::Strategy strategyPb;
+  std::fstream output(filename, std::ios::out | std::ios::trunc);
+  if (!output) {
+    std::cerr << "Failed to open strategy file for writing!" << std::endl;
+    return false;
+  }
+  
+  output << strategies.size() << std::endl;   
   std::map<std::string, ParallelConfig>::const_iterator it;
   for (it = strategies.begin(); it != strategies.end(); it++) {
-    FFProtoBuf::Op* op = strategyPb.add_ops();
+    output << it->first << std::endl;
     ParallelConfig config = it->second;
     switch (config.device_type) {
       case ParallelConfig::GPU:
-        op->set_device_type(FFProtoBuf::Op_DeviceType_GPU);
-        break;
       case ParallelConfig::CPU:
-        op->set_device_type(FFProtoBuf::Op_DeviceType_CPU);
+        output << config.device_type << std::endl;
         break;
       default:
         fprintf(stderr, "Unsupported Device Type\n");
         assert(false);
     }
-    op->set_name(it->first);
     int n = 1;
+    output << config.nDims << std::endl;
     for (int j = 0; j < config.nDims; j++) {
       n = n * config.dim[j];
-      op->add_dims(config.dim[j]);
+      output << config.dim[j] << '\t';
     }
+    output << std::endl;
+    output << n << std::endl;
     for (int j = 0; j < n; j++) {
-      op->add_device_ids(config.device_ids[j]);
+      output << config.device_ids[j] << '\t';
     }
+    output << std::endl;
   }
-  std::fstream output(filename, std::ios::out | std::ios::trunc);
-  if (!strategyPb.SerializeToOstream(&output)) {
-    std::cerr << "Failed to save to strategy file" << std::endl;
-    return false;
-  }
+  
+  output.close();
   return true;
 }
-
