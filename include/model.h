@@ -406,7 +406,7 @@ public:
                 Initializer* kernel_initializer = NULL,
                 Initializer* bias_initializer = NULL,
                 const char *name = NULL);
-  Flat* flat(const char* name);
+  Flat* flat(const char* name = NULL);
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
