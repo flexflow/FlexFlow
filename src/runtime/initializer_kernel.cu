@@ -48,27 +48,16 @@ void UniformInitializer::init_task(const Task* task,
         assert(false);
         break;
       }
-      case 1:
-      {
-        TensorAccessorW<float, 1> accW(
-            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/);
-        w = accW.ptr;
-        break;
+#define DIMFUNC(DIM) \
+      case DIM: \
+      { \
+        TensorAccessorW<float, DIM> accW( \
+            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/); \
+        w = accW.ptr; \
+        break; \
       }
-      case 2:
-      {
-        TensorAccessorW<float, 2> accW(
-            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/);
-        w = accW.ptr;
-        break;
-      }
-      case 3:
-      {
-        TensorAccessorW<float, 3> accW(
-            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/);
-        w = accW.ptr;
-        break;
-      }
+      LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
       default:
       {
          assert(false);
@@ -172,27 +161,16 @@ void NormInitializer::init_task(const Task* task,
       ctx, task->regions[0].region.get_index_space());
   float* w;
   switch (domain.get_dim()) {
-    case 1:
-    {
-      TensorAccessorW<float, 1> accW(regions[0], task->regions[0],
-          FID_DATA, ctx, runtime, false/*readOutput*/);
-      w = accW.ptr;
-      break;
-    }
-    case 2:
-    {
-      TensorAccessorW<float, 2> accW(regions[0], task->regions[0],
-          FID_DATA, ctx, runtime, false/*readOutput*/);
-      w = accW.ptr;
-      break;
-    }
-    case 3:
-    {
-      TensorAccessorW<float, 3> accW(regions[0], task->regions[0],
-          FID_DATA, ctx, runtime, false/*readOutput*/);
-      w = accW.ptr;
-      break;
-    }
+#define DIMFUNC(DIM) \
+      case DIM: \
+      { \
+        TensorAccessorW<float, DIM> accW( \
+            regions[0], task->regions[0], FID_DATA, ctx, runtime, false/*readOutput*/); \
+        w = accW.ptr; \
+        break; \
+      }
+      LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
     default:
       assert(false);
   }
