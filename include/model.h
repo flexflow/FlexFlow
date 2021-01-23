@@ -36,12 +36,6 @@ using namespace Legion;
 #include "ffconst.h"
 
 enum TaskIDs {
-  /*
-  ATTENTION: DO NOT ADD MORE TASK ENUMS HERE!!
-  ADD NEW TASK ENUMS TO TaskIDs2!!
-  TODO: figure out which task IDs are reserved,
-  so far we know that we can't set TOP_LEVEL_TASK_ID to arbitrary integer
-  */
   TOP_LEVEL_TASK_ID,
   FF_INIT_TASK_ID,
   IMAGE_INIT_TASK_ID,
@@ -164,28 +158,6 @@ enum ShardingID {
 
 enum FieldIDs {
   FID_DATA,
-};
-
-enum TaskIDs2 {
-  FIRST_TASK_ID = 99999,
-  // FIRST_TASK_ID,
-  RESHAPE_2_TO_3_INIT_TASK_ID,
-  RESHAPE_2_TO_3_FWD_TASK_ID,
-  RESHAPE_3_TO_2_FWD_TASK_ID,
-  RESHAPE_3_TO_2_BWD_TASK_ID,
-  RESHAPE_3_TO_2_INIT_TASK_ID,
-  RESHAPE_2_TO_3_BWD_TASK_ID,
-  TANH_1D_INIT_TASK_ID,
-  TANH_2D_INIT_TASK_ID,
-  TANH_3D_INIT_TASK_ID,
-  TANH_1D_FWD_TASK_ID,
-  TANH_2D_FWD_TASK_ID,
-  TANH_3D_FWD_TASK_ID,
-  TANH_1D_BWD_TASK_ID,
-  TANH_2D_BWD_TASK_ID,
-  TANH_3D_BWD_TASK_ID,
-  First = FIRST_TASK_ID
-  // Last = RESHAPE_2_TO_3_BWD_TASK_ID
 };
 
 class OpMeta {
@@ -1635,120 +1607,6 @@ void data_load_task(const Task* task,
                     Context ctx, Runtime* runtime);
 
 void register_custom_tasks();
-
-class BatchMatmul : public Op {
-public:
-  BatchMatmul(FFModel& model,
-              const Tensor& input1,
-              const Tensor& input2,
-              const bool trans1=true, // default matmul is C=A^T*B , where assume input layout are (d,k,m) , (d,k,n) and (d,m,n)
-              const bool trans2=false);
-  Tensor init_inout(FFModel& model, const Tensor& input);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model);
-  void create_weights(FFModel& model);
-  void create_output_and_partition(FFModel& model);
-
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
-public:
-  cublasOperation_t transpose_1, transpose_2;
-  bool transpose_1_flag, transpose_2_flag;
-  bool profiling;
-};
-
-class BatchMatmulMeta : public OpMeta {
-public:
-  BatchMatmulMeta(FFHandler handle) : OpMeta(handle) {};
-  cudnnTensorDescriptor_t outputTensor;
-  cudnnActivationDescriptor_t actiDesc;
-  const float *one_ptr;
-};
-
-
-class Transpose : public Op {
-public:
-  Transpose(FFModel& model,
-            const Tensor& _input);
-  Tensor init_inout(FFModel& model, const Tensor& input);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model);
-  void create_weights(FFModel& model);
-  void create_output_and_partition(FFModel& model);
-
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
-public:
-  bool profiling;
-};
-
-class TransposeMeta : public OpMeta {
-public:
-  TransposeMeta(FFHandler handle) : OpMeta(handle) {};
-};
-
-template <int IDIM, int ODIM>
-class Reshape : public Op {
-public:
-  Reshape(FFModel& model,
-          const Tensor& _input,
-          const int output_shape[]);
-  Tensor init_inout(FFModel& model, const Tensor& input);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model);
-  void create_weights(FFModel& model);
-  void create_output_and_partition(FFModel& model);
-
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
-public:
-  bool profiling;
-};
-
-
-class ReshapeMeta : public OpMeta {
-public:
-  ReshapeMeta(FFHandler handle) : OpMeta(handle) {};
-};
 
 void register_c_custom_tasks();
 #endif//_FLEXFLOW_MODEL_H_

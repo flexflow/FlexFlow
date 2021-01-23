@@ -186,7 +186,6 @@ void Conv2D::create_weights(FFModel& model)
     assert(numWeights == 2);
   } else {
     assert(numWeights == 1);
-    numWeights = 2;
   }
 }
 

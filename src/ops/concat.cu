@@ -117,16 +117,12 @@ OpMeta* Concat::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-<<<<<<< HEAD
-  return NULL;
-=======
   Concat* cc = (Concat*) task->args;
   FFHandler handler = *((const FFHandler*) task->local_args);
   ConcatMeta* m = new ConcatMeta(handler);
   // Note that our internal axis index ordering is opposite to other frameworks
   cc->init_meta(m);
   return m;
->>>>>>> 85b885829d14a5bf927c498ad98500086a9e9b19
 }
 
 void Concat::init(const FFModel& ff)
@@ -492,4 +488,3 @@ bool Concat::measure_compute_time(Simulator* sim,
 
   return true;
 }
-
