@@ -36,9 +36,6 @@ include(zlib)
 # CUDA and CUDNN
 include(cudacudnn)
 
-# Google Protobuf 
-include(protobuf)
-
 # Legion
 include(legion)
 
@@ -79,12 +76,8 @@ if(ENABLE_PYTHON)
   add_subdirectory(python)
 endif()
 
-protobuf_generate_cpp(FLEXFLOW_PB_SRC FLEXFLOW_PB_HDR ${FLEXFLOW_ROOT}/src/runtime/strategy.proto)
-get_filename_component(FLEXFLOW_PB_INC_DIR ${FLEXFLOW_PB_HDR} DIRECTORY)
-
 set(FLEXFLOW_INCLUDE_DIRS
   ${FLEXFLOW_ROOT}/include
-  ${FLEXFLOW_PB_INC_DIR}
   ${FLEXFLOW_ROOT}/
   ${CUDA_INCLUDE_DIRS}
   ${CUDNN_INCLUDE_DIRS})
@@ -103,7 +96,6 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/simulator.h)  
 
 set(FLEXFLOW_SRC
-  ${FLEXFLOW_PB_SRC}
   ${FLEXFLOW_ROOT}/src/mapper/mapper.cc
   ${FLEXFLOW_ROOT}/src/ops/embedding.cc
   ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cc
@@ -177,11 +169,11 @@ endif()
 if(BUILD_DLRM OR BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/DLRM)
 
-  add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc ${FLEXFLOW_PB_SRC})
+  add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)
   target_include_directories(generate_dlrm_hetero_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
   target_link_libraries(generate_dlrm_hetero_strategy ${Protobuf_LIBRARIES})
 
-  add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc ${FLEXFLOW_PB_SRC})
+  add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
   target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
   target_link_libraries(generate_dlrm_strategy ${Protobuf_LIBRARIES})
 endif()
