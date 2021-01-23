@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2021 Facebook, Stanford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,38 +14,34 @@
  */
 
 #include "model.h"
-#define MAX_NUM_SAMPLES 4196
+#define MAX_NUM_SAMPLES 65536
 
 using namespace Legion;
-using namespace std;
 
-struct CandleConfig {
-  CandleConfig(void);
-  vector<int> dense_layers, dense_feature_layers;
-  map<string, int> feature_shapes;
-  map<string, string> input_features;
-  std::string dataset_path;
+struct TransformerConfig {
+  TransformerConfig(void);
+  int hidden_size, embedding_size, num_heads, num_layers, sequence_length;
 };
 
 class DataLoader {
 public:
-  DataLoader(FFModel& ff, const CandleConfig& candle,
-             const std::vector<Tensor>& _all_inputs,
-             Tensor _label);
-  static void load_input(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
-                         Context ctx,
-                         Runtime* runtime);
+  DataLoader(FFModel& ff, const TransformerConfig& tf,
+             const Tensor& _input,
+             const Tensor& _label);
+  void next_batch(FFModel& ff);
+  void reset();
   static void load_entire_dataset(const Task *task,
                                   const std::vector<PhysicalRegion> &regions,
                                   Context ctx,
                                   Runtime* runtime);
-  void next_batch(FFModel&);
-  void reset(void);
+  static void load_input(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx,
+                         Runtime* runtime);
 public:
   int num_samples, next_index;
-  std::vector<Tensor> full_inputs, batch_inputs;
-  Tensor full_label, batch_label;
+private:
+  Tensor full_input, batch_input, full_label, batch_label;
 };
 
 struct SampleIdxs {

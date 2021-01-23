@@ -655,9 +655,10 @@ void SingleDataLoader::load_entire_dataset_from_numpy_with_dim(const Task *task,
   std::cout<<std::endl;
 }
 
+
 void SingleDataLoader::register_cpu_tasks(void)
 {
-  // 4D float Load entire dataset from numpy
+  // float Load entire dataset from numpy
   {
     TaskVariantRegistrar registrar(PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID, "Float Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
@@ -665,8 +666,7 @@ void SingleDataLoader::register_cpu_tasks(void)
     Runtime::preregister_task_variant<SingleDataLoader::load_entire_dataset_from_numpy<float>>(
         registrar, "Float Load Entire Dataset Task Numpy");
   }
-
-  // 2D int Load entire dataset from numpy
+  // int Load entire dataset from numpy
   {
     TaskVariantRegistrar registrar(PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID, "Int32 Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
@@ -692,7 +692,7 @@ void SingleDataLoader::register_gpu_tasks(void)
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<SingleDataLoader::load_input<int>>(
-        registrar, "Int Load Input Task");
+        registrar, "Int32 Load Input Task");
   }
 }
 

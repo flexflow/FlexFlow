@@ -93,6 +93,7 @@ void ImgDataLoader2D::load_input(const Task *task,
   checkCUDA(cudaDeviceSynchronize());
 }
 
+
 template<typename DT>
 void SingleDataLoader::load_input(const Task *task,
                                   const std::vector<PhysicalRegion> &regions,

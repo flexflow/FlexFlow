@@ -20,12 +20,13 @@ Tensor FFModel::pool2d(const Tensor& input,
                        int kernelH, int kernelW,
                        int strideH, int strideW,
                        int paddingH, int paddingW,
-                       PoolType type, ActiMode activation)
+                       PoolType type, ActiMode activation,
+                       char const *name)
 {
   assert(input.numDim == 4); /*NCHW*/
-  Pool2D *pool = new Pool2D(*this, input,kernelH, kernelW,
-                            strideH, strideW, paddingH, paddingW,
-                            type, activation);
+  Pool2D *pool = new Pool2D(*this, input, kernelH, kernelW,
+                      strideH, strideW, paddingH, paddingW,
+                      type, activation, name);
   layers.push_back(pool);
   return pool->outputs[0];
 }
@@ -33,11 +34,12 @@ Tensor FFModel::pool2d(const Tensor& input,
 Pool2D* FFModel::pool2d(int kernelH, int kernelW,
                         int strideH, int strideW,
                         int paddingH, int paddingW,
-                        PoolType type, ActiMode activation)
+                        PoolType type, ActiMode activation,
+                        char const *name)
 {
   Pool2D *pool = new Pool2D(*this, kernelH, kernelW,
-                            strideH, strideW, paddingH, paddingW,
-                            type, activation);
+                      strideH, strideW, paddingH, paddingW,
+                      type, activation, name);
   layers.push_back(pool);
   return pool;
 }
@@ -47,8 +49,9 @@ Pool2D::Pool2D(FFModel& model,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
-               PoolType _type, ActiMode _activation)
-: Op(model, OP_POOL2D, "Pool2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w), _input),
+               PoolType _type, ActiMode _activation,
+               const char* name)
+: Op(model, OP_POOL2D, name, _input),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),
   padding_h(_padding_h), padding_w(_padding_w),
@@ -72,8 +75,9 @@ Pool2D::Pool2D(FFModel& model,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
-               PoolType _type, ActiMode _activation)
-: Op(model, OP_POOL2D, "Pool2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w), 1),
+               PoolType _type, ActiMode _activation,
+               const char* name)
+: Op(model, OP_POOL2D, name, 1),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),
   padding_h(_padding_h), padding_w(_padding_w),
@@ -181,7 +185,7 @@ OpMeta* Pool2D::init_task(const Task *task,
     printf("Warning: changing pool_padding_h to satisfy output_h size\n");
   if (pad_w != pool->padding_w)
     printf("Warning: changing pool_padding_w to satisfy output_w size\n");
-  
+
   cudnnPoolingMode_t mode;
   if (pool->pool_type == POOL_MAX)
     mode = CUDNN_POOLING_MAX;
@@ -248,32 +252,57 @@ void Pool2D::init(const FFModel& ff)
   }
 }
 
+/*static*/
+void Pool2D::forward_kernel(const Pool2DMeta* m,
+                            const float* input_ptr,
+                            float* output_ptr)
+{
+  float alpha = 1.0f, beta = 0.0f;
+  checkCUDNN(cudnnPoolingForward(m->handle.dnn, m->poolDesc,
+                                 &alpha, m->inputTensor, input_ptr,
+                                 &beta, m->outputTensor, output_ptr));
+}
+
 /*
   regions[0](I): input
   regions[1](O): output
 */
-
 void Pool2D::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  float alpha = 1.0f, beta = 0.0f;
+  const Pool2D* pool = (Pool2D*) task->args;
   const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
+  cudaEvent_t t_start, t_end;
+  if (pool->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start);
+  }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  checkCUDNN(cudnnPoolingForward(m->handle.dnn, m->poolDesc,
-                                 &alpha, m->inputTensor, acc_input.ptr,
-                                 &beta, m->outputTensor, acc_output.ptr));
+  forward_kernel(m, acc_input.ptr, acc_output.ptr);
+  if (pool->profiling) {
+    cudaEventRecord(t_end);
+    checkCUDA(cudaEventSynchronize(t_end));
+    //print_tensor<4, float>(acc_input.ptr, acc_input.rect, "[Pool2D:forward:input]");
+    //print_tensor<4, float>(acc_output.ptr, acc_output.rect, "[Pool2D:forward:output]");
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("%s [Pool2D] forward time = %.2fms\n", pool->name, elapsed);
+  }
 }
 
 void Pool2D::forward(const FFModel& ff)
@@ -303,6 +332,21 @@ void Pool2D::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+/*static*/
+void Pool2D::backward_kernel(const Pool2DMeta* m,
+                             const float* input_ptr,
+                             float* input_grad_ptr,
+                             const float* output_ptr,
+                             const float* output_grad_ptr)
+{
+  float alpha = 1.0f;
+  checkCUDNN(cudnnPoolingBackward(m->handle.dnn, m->poolDesc,
+                                  &alpha, m->outputTensor, output_ptr,
+                                  m->outputTensor, output_grad_ptr,
+                                  m->inputTensor, input_ptr,
+                                  &alpha, m->inputTensor, input_grad_ptr));
+}
+
 /*
   regions[0](I): input
   regions[1](I/O): input_grad
@@ -315,7 +359,6 @@ void Pool2D::backward_task(const Task *task,
 {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  float alpha = 1.0f;
   const Pool2D* pool = (Pool2D*) task->args;
   const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
   TensorAccessorR<float, 4> acc_input(
@@ -339,11 +382,7 @@ void Pool2D::backward_task(const Task *task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  checkCUDNN(cudnnPoolingBackward(m->handle.dnn, m->poolDesc,
-                                  &alpha, m->outputTensor, acc_output.ptr,
-                                  m->outputTensor, acc_output_grad.ptr,
-                                  m->inputTensor, acc_input.ptr,
-                                  &alpha, m->inputTensor, acc_input_grad.ptr));
+  backward_kernel(m, acc_input.ptr, acc_input_grad.ptr, acc_output.ptr, acc_output_grad.ptr);
   if (pool->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -470,41 +509,22 @@ bool Pool2D::measure_compute_time(Simulator* sim,
   float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_grad_ptr != NULL);
 
-  float alpha = 1.0f, beta = 0.0f;
-  // measure forward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
-    checkCUDNN(cudnnPoolingForward(m->handle.dnn, m->poolDesc,
-                                   &alpha, m->inputTensor, input_ptr,
-                                   &beta, m->outputTensor, output_ptr));
+  auto forward = [&] {
+    forward_kernel(m, input_ptr, output_ptr);
+  };
+  auto backward = [&] {
+    backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr);
+  };
 
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  float milliseconds;
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  forward_time = milliseconds / sim->repeat_times;
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
 
-  // measure backward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
-    checkCUDNN(cudnnPoolingBackward(m->handle.dnn, m->poolDesc,
-                                    &alpha, m->outputTensor, output_ptr,
-                                    m->outputTensor, output_grad_ptr,
-                                    m->inputTensor, input_ptr,
-                                    &alpha, m->inputTensor, input_grad_ptr));
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  backward_time = milliseconds / sim->repeat_times;
+  printf("[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      input_n, input_c, input_h, input_w,
+      output_n, output_c, output_h, output_w,
+      stride_h, stride_w,
+      padding_h, padding_w,
+      forward_time, backward_time);
 
-  return false;
+  return true;
 }
-

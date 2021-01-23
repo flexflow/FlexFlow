@@ -17,6 +17,7 @@
 #include "model.h"
 #include "realm/runtime_impl.h"
 #include "realm/cuda/cuda_module.h"
+#include "cuda_helper.h"
 
 typedef long long int coord_t;
 
@@ -24,11 +25,20 @@ typedef Realm::Point<1, coord_t> Point1;
 typedef Realm::Rect<1, coord_t> Rect1;
 
 Simulator::Simulator(const FFModel* model,
-                     FFHandler handler,
-                     void* _base_ptr, size_t _capacity)
-: base_ptr((char*)_base_ptr), capacity(_capacity), offset(0),
-warmup_times(5), repeat_times(10)
+                     FFHandler _handler,
+                     Memory _memory)
+: memory(_memory), handler(_handler),
+  offset(0), warmup_times(5), repeat_times(10)
 {
+  // Allocate simulator memory
+  Rect1 bounds(Point1(0), Point1(0));
+  std::vector<size_t> field_sizes;
+  field_sizes.push_back(model->config.simulator_work_space_size);
+  Realm::RegionInstance::create_instance(simulatorInst,
+      memory, bounds, field_sizes, 0, Realm::ProfilingRequestSet()).wait();
+  base_ptr = (char*)simulatorInst.pointer_untyped(0, sizeof(char));
+  capacity = model->config.simulator_work_space_size;
+
   float inter_gpu_bandwidth = 20 * 1024 * 1024.0f; /* B/ms*/
   float inter_node_bandwidth = 12 * 1024 * 1024.0f / model->config.numNodes; /* B/ms*/
   float gpu_dram_bandwidth = 16 * 1024 * 1024.0f; /* B/ms*/
@@ -41,11 +51,17 @@ warmup_times(5), repeat_times(10)
   pool2d_meta = new Pool2DMeta(handler);
   ele_unary_meta = new ElementUnaryMeta(handler);
   ele_binary_meta = new ElementBinaryMeta(handler);
+  softmax_meta = new SoftmaxMeta(handler);
+  batch_matmul_meta = new BatchMatmulMeta(handler);
+  batch_norm_meta = new BatchNormMeta(handler);
+  concat_meta = new ConcatMeta(handler);
+  dropout_meta = new DropoutMeta(handler);
+  transpose_meta = new TransposeMeta(handler);
   int num_nodes = model->config.numNodes;
   int gpus_per_node = model->config.workersPerNode;
   total_num_devices = num_nodes * gpus_per_node;
   // Create GPU compute device
-  for (int i = 0; i < num_nodes; i++) 
+  for (int i = 0; i < num_nodes; i++)
     for (int j = 0; j < gpus_per_node; j++) {
       id_to_compute_device[i*gpus_per_node+j] = new Device(Device::DEVICE_GPU,
           i, i*gpus_per_node+j);
@@ -80,6 +96,11 @@ warmup_times(5), repeat_times(10)
   task_manager = new TaskManager(max_num_tasks);
 }
 
+Simulator::~Simulator(void)
+{
+  simulatorInst.destroy();
+}
+
 __host__
 void Simulator::strategy_search_task(const Task *task,
                                      const std::vector<PhysicalRegion> &regions,
@@ -93,17 +114,36 @@ void Simulator::strategy_search_task(const Task *task,
   // Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
   // off_t offset = memFBImpl->alloc_bytes_local(model->config.simulator_work_space_size);
   // void* base_ptr = memFBImpl->get_direct_ptr(offset, 0);
-  Realm::RegionInstance inst;
-  Rect1 bounds(Point1(0), Point1(0));
-  std::vector<size_t> field_sizes;
-  field_sizes.push_back(model->config.simulator_work_space_size);
-  Realm::RegionInstance::create_instance(inst, gpu_mem, bounds, field_sizes,
-                                         0, Realm::ProfilingRequestSet()).wait();
-  void* base_ptr = inst.pointer_untyped(0, sizeof(char));
   // Assume this task is running on GPU0
-  Simulator* simulator = new Simulator(model, model->handlers[0], base_ptr,
-      model->config.simulator_work_space_size);
+  Simulator* simulator = new Simulator(model, model->handlers[0], gpu_mem);
+  // Set cublas/cudnn streams to allow Realm catch the events
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(simulator->handler.blas, stream));
+  checkCUDNN(cudnnSetStream(simulator->handler.dnn, stream));
+#endif
   std::map<Op*, ParallelConfig> strategies;
+  if (model->config.import_strategy_file.length() > 0) {
+    // Load the strategy from config.strategies
+    for (size_t l = 0; l < model->layers.size(); l++) {
+      MappingTagID key = FFConfig::get_hash_id(std::string(model->layers[l]->name));
+      std::map<MappingTagID, ParallelConfig>::const_iterator iter;
+      iter = model->config.strategies.find(key);
+      if (iter == model->config.strategies.end()) {
+        fprintf(stderr, "ERROR: Cannot find strategy for operator %s in "
+                "strategy file %s\n", model->layers[l]->name,
+                model->config.import_strategy_file.c_str());
+      }
+      strategies[model->layers[l]] = iter->second;
+    }
+  } else {
+    // Start from data parallel
+    for (size_t l = 0; l < model->layers.size(); l++) {
+      strategies[model->layers[l]] = model->layers[l]->get_data_parallel_config(*model);
+    }
+  }
+
   model->optimize(simulator, strategies, model->config.search_budget, model->config.search_alpha);
   if (model->config.export_strategy_file.length() > 0) {
     fprintf(stderr, "Exporting the best discovered strategy to %s\n",
@@ -117,7 +157,6 @@ void Simulator::strategy_search_task(const Task *task,
   }
   // Start from data
   // memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);
-  inst.destroy();
   delete(simulator);
 }
 

@@ -1,4 +1,4 @@
-# Copyright 2020 Stanford University
+# Copyright 2021 Facebook, Stanford, LANL
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,19 +14,19 @@
 #
 
 # Flags for directing the runtime makefile what to include
-DEBUG           ?= 0		# Include debugging symbols
+DEBUG           ?= 1		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 1		# Include GASNet support (requires GASNet)
-USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
+USE_HDF         ?= 1		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 
 # Put the binary file name here
-OUTFILE		?= resnet
+OUTFILE		?= transformer
 # List all the application source files here
-GEN_SRC		= resnet.cc
-GEN_GPU_SRC	= resnet.cu
+GEN_SRC		= transformer.cc
+GEN_GPU_SRC	= transformer.cu
 
 ifndef FF_HOME
 $(error FF_HOME variable is not defined, aborting build)

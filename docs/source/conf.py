@@ -31,6 +31,7 @@ author = 'Stanford, LANL, CMU, Facebook'
 extensions = [
     'sphinx_rtd_theme',
     'sphinx.ext.autodoc',
+    'm2r2',
 ]
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -54,6 +55,8 @@ language = 'Python, C++'
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
+
+source_suffix = ['.rst', '.md']
 
 
 # -- Options for HTML output -------------------------------------------------

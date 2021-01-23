@@ -28,18 +28,39 @@ GlorotUniform::GlorotUniform(int _seed)
 GlorotUniform::~GlorotUniform(void)
 {}
 
-void GlorotUniform::init(Context ctx,
-                         Runtime* runtime,
-                         const Tensor* p)
+void GlorotUniform::init(const FFModel* ff,
+                         const Parameter* p)
 {
-  assert(p->numDim >= 2);
-  TaskLauncher launcher(GLOROT_INIT_TASK_ID,
-                        TaskArgument(this, sizeof(GlorotUniform)));
-  // regions[0]: p->region
-  launcher.add_region_requirement(
-      RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
-  launcher.add_field(0, FID_DATA);
-  runtime->execute_task(ctx, launcher);
+  Context ctx = ff->config.lg_ctx;
+  Runtime* runtime = ff->config.lg_hlr;
+  if (p->type == Parameter::PS) {
+    assert(p->numDim >= 2);
+    TaskLauncher launcher(GLOROT_INIT_TASK_ID,
+                          TaskArgument(this, sizeof(GlorotUniform)));
+    // regions[0]: p->region
+    launcher.add_region_requirement(
+        RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_task(ctx, launcher);
+  } else if (p->type == Parameter::NCCL) {
+    assert(p->owner_op != NULL);
+    IndexSpace task_is = p->owner_op->task_is;
+    assert(task_is != IndexSpace::NO_SPACE);
+    Domain domain = runtime->get_index_space_domain(ctx, task_is);
+    assert(domain.get_dim() >= 2);
+    ArgumentMap argmap;
+    IndexLauncher launcher(GLOROT_INIT_TASK_ID, task_is,
+        TaskArgument(this, sizeof(GlorotUniform)), argmap,
+        Predicate::TRUE_PRED, false, 0,
+        FFConfig::get_hash_id(p->owner_op->name));
+    launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection id*/,
+            WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  } else {
+    assert(false);
+  }
 }
 
 ZeroInitializer::ZeroInitializer(void)
@@ -49,16 +70,35 @@ ZeroInitializer::ZeroInitializer(void)
 ZeroInitializer::~ZeroInitializer(void)
 {}
 
-void ZeroInitializer::init(Context ctx,
-                           Runtime* runtime,
-                           const Tensor* p)
+void ZeroInitializer::init(const FFModel* ff,
+                           const Parameter* p)
 {
-  TaskLauncher launcher(ZERO_INIT_TASK_ID, TaskArgument(NULL, 0));
-  // regions[0]: p->region
-  launcher.add_region_requirement(
-      RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
-  launcher.add_field(0, FID_DATA);
-  runtime->execute_task(ctx, launcher);
+  Context ctx = ff->config.lg_ctx;
+  Runtime* runtime = ff->config.lg_hlr;
+  if (p->type == Parameter::PS) {
+    TaskLauncher launcher(ZERO_INIT_TASK_ID, TaskArgument(NULL, 0));
+    // regions[0]: p->region
+    launcher.add_region_requirement(
+        RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_task(ctx, launcher);
+  } else if (p->type == Parameter::NCCL) {
+    assert(p->owner_op != NULL);
+    IndexSpace task_is = p->owner_op->task_is;
+    assert(task_is != IndexSpace::NO_SPACE);
+    ArgumentMap argmap;
+    IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
+       TaskArgument(NULL, 0), argmap,
+       Predicate::TRUE_PRED, false, 0,
+       FFConfig::get_hash_id(p->owner_op->name));
+    launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection id*/,
+            WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  } else {
+    assert(false);
+  }
 }
 
 void ZeroInitializer::init_task_cpu(const Task* task,
@@ -122,17 +162,36 @@ UniformInitializer::UniformInitializer(int _seed, float _min, float _max)
 UniformInitializer::~UniformInitializer(void)
 {}
 
-void UniformInitializer::init(Context ctx,
-                              Runtime* runtime,
-                              const Tensor* p)
+void UniformInitializer::init(const FFModel* ff,
+                              const Parameter* p)
 {
-  TaskLauncher launcher(UNIFORM_INIT_TASK_ID,
-                        TaskArgument(this, sizeof(UniformInitializer)));
-  // regions[0]: p->region
-  launcher.add_region_requirement(
-      RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
-  launcher.add_field(0, FID_DATA);
-  runtime->execute_task(ctx, launcher);
+  Context ctx = ff->config.lg_ctx;
+  Runtime* runtime = ff->config.lg_hlr;
+  if (p->type == Parameter::PS) {
+    TaskLauncher launcher(UNIFORM_INIT_TASK_ID,
+                          TaskArgument(this, sizeof(UniformInitializer)));
+    // regions[0]: p->region
+    launcher.add_region_requirement(
+        RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_task(ctx, launcher);
+  } else if (p->type == Parameter::NCCL) {
+    assert(p->owner_op != NULL);
+    IndexSpace task_is = p->owner_op->task_is;
+    assert(task_is != IndexSpace::NO_SPACE);
+    ArgumentMap argmap;
+    IndexLauncher launcher(UNIFORM_INIT_TASK_ID, task_is,
+        TaskArgument(this, sizeof(UniformInitializer)), argmap,
+        Predicate::TRUE_PRED, false, 0,
+        FFConfig::get_hash_id(p->owner_op->name));
+    launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection id*/,
+            WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  } else {
+    assert(false);
+  }
 }
 
 NormInitializer::NormInitializer(int _seed, float _mean, float _stddev)
@@ -141,17 +200,36 @@ NormInitializer::NormInitializer(int _seed, float _mean, float _stddev)
 NormInitializer::~NormInitializer(void)
 {}
 
-void NormInitializer::init(Context ctx,
-                           Runtime* runtime,
-                           const Tensor* p)
+void NormInitializer::init(const FFModel* ff,
+                           const Parameter* p)
 {
-  TaskLauncher launcher(NORMAL_INIT_TASK_ID,
-                        TaskArgument(this, sizeof(NormInitializer)));
-  // regions[0]: p->region
-  launcher.add_region_requirement(
-      RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
-  launcher.add_field(0, FID_DATA);
-  runtime->execute_task(ctx, launcher);
+  Context ctx = ff->config.lg_ctx;
+  Runtime* runtime = ff->config.lg_hlr;
+  if (p->type == Parameter::PS) {
+    TaskLauncher launcher(NORMAL_INIT_TASK_ID,
+                          TaskArgument(this, sizeof(NormInitializer)));
+    // regions[0]: p->region
+    launcher.add_region_requirement(
+        RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_task(ctx, launcher);
+  } else if (p->type == Parameter::NCCL) {
+    assert(p->owner_op != NULL);
+    IndexSpace task_is = p->owner_op->task_is;
+    assert(task_is != IndexSpace::NO_SPACE);
+    ArgumentMap argmap;
+    IndexLauncher launcher(NORMAL_INIT_TASK_ID, task_is,
+        TaskArgument(this, sizeof(NormInitializer)), argmap,
+        Predicate::TRUE_PRED, false, 0,
+        FFConfig::get_hash_id(p->owner_op->name));
+    launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection id*/,
+            WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  } else {
+    assert(false);
+  }
 }
 
 
@@ -163,17 +241,36 @@ ConstantInitializer::ConstantInitializer(float _value)
 ConstantInitializer::~ConstantInitializer(void)
 {}
 
-void ConstantInitializer::init(Context ctx,
-                               Runtime* runtime,
-                               const Tensor* p)
+void ConstantInitializer::init(const FFModel* ff,
+                               const Parameter* p)
 {
-  TaskLauncher launcher(CONSTANT_INIT_TASK_ID,
-                        TaskArgument(this, sizeof(ConstantInitializer)));
-  // regions[0]: p->region
-  launcher.add_region_requirement(
-      RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
-  launcher.add_field(0, FID_DATA);
-  runtime->execute_task(ctx, launcher);
+  Context ctx = ff->config.lg_ctx;
+  Runtime* runtime = ff->config.lg_hlr;
+  if (p->type == Parameter::PS) {
+    TaskLauncher launcher(CONSTANT_INIT_TASK_ID,
+                          TaskArgument(this, sizeof(ConstantInitializer)));
+    // regions[0]: p->region
+    launcher.add_region_requirement(
+        RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_task(ctx, launcher);
+  } else if(p->type == Parameter::NCCL) {
+    assert(p->owner_op != NULL);
+    IndexSpace task_is = p->owner_op->task_is;
+    assert(task_is != IndexSpace::NO_SPACE);
+    ArgumentMap argmap;
+    IndexLauncher launcher(CONSTANT_INIT_TASK_ID, task_is,
+        TaskArgument(this, sizeof(ConstantInitializer)), argmap,
+        Predicate::TRUE_PRED, false, 0,
+        FFConfig::get_hash_id(p->owner_op->name));
+    launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection id*/,
+            WRITE_ONLY, EXCLUSIVE, p->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  } else {
+    assert(false);
+  }
 }
 
 void ConstantInitializer::init_task_cpu(const Task* task,

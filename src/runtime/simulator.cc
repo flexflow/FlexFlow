@@ -25,6 +25,20 @@ int ParallelConfig::num_parts() const
   return nparts;
 }
 
+bool ParallelConfig::is_data_parallel() const
+{
+  int nparts = 1;
+  for (int i = 0; i < nDims; i++) {
+    nparts *= dim[i];
+    if ((i < nDims-1) && (dim[i] > 1))
+      return false;
+  }
+  for (int i = 0; i < nparts; i++)
+    if (device_ids[i] != i)
+      return false;
+  return true;
+}
+
 Device::Device(Device::DeviceType _type, int _node_id, int _gpu_id)
 : node_id(_node_id), gpu_id(_gpu_id), bandwidth(0.0f), type(_type)
 {
@@ -92,7 +106,7 @@ SimTask* TaskManager::new_comm_task()
 {
   SimTask* task = new_task();
   task->type = SimTask::TASK_COMM;
-  return task; 
+  return task;
 }
 
 SimTask* TaskManager::new_forward_task(Op* op, int idx)
@@ -232,6 +246,15 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
   }
 }
 
+[[noreturn]] void handle_measure_compute_time_unimplemented(Op const *op) {
+    std::cerr << "measure_compute_time not implemented for op "
+              << op->name
+              << " (type " << op->op_type << ")"
+              << ". Please report this issue to the FlexFlow developers."
+              << std::endl;
+    std::abort();
+}
+
 float Simulator::measure_op_forward_time(Op* op, const ParallelConfig& config)
 {
   size_t hash = 17 * 31 + (size_t)(op);
@@ -241,7 +264,10 @@ float Simulator::measure_op_forward_time(Op* op, const ParallelConfig& config)
     hash = hash * 31 + std::hash<int>()(config.dim[i]);
   if (hash_to_op_forward_time.find(hash) == hash_to_op_forward_time.end()) {
     float forward_time, backward_time;
-    op->measure_compute_time(this, config, forward_time, backward_time);
+    bool is_implemented = op->measure_compute_time(this, config, forward_time, backward_time);
+    if (! is_implemented) {
+      handle_measure_compute_time_unimplemented(op);
+    }
     hash_to_op_forward_time[hash] = forward_time;
     // Check consistency betwek forward and backward
     assert(hash_to_op_backward_time.find(hash) == hash_to_op_backward_time.end());
@@ -261,8 +287,10 @@ float Simulator::measure_op_backward_time(Op* op, const ParallelConfig& config)
     hash = hash * 31 + std::hash<int>()(config.dim[i]);
   if (hash_to_op_backward_time.find(hash) == hash_to_op_backward_time.end()) {
     float forward_time, backward_time;
-    op->measure_compute_time(this, config, forward_time, backward_time);
-    // Check consistency betwek forward and backward
+    bool is_implemented = op->measure_compute_time(this, config, forward_time, backward_time);
+    if (! is_implemented) {
+      handle_measure_compute_time_unimplemented(op);
+    }
     assert(hash_to_op_forward_time.find(hash) == hash_to_op_forward_time.end());
     hash_to_op_forward_time[hash] = forward_time;
     hash_to_op_backward_time[hash] = backward_time;
@@ -347,7 +375,7 @@ float Simulator::simulate_runtime(const FFModel* model,
                 assert(firstR == nextR);
                 assert(synched.find(nextId) == synched.end());
                 synched.insert(nextId);
-                // Add comm. tasks from nextId to 
+                // Add comm. tasks from nextId to
                 SimTask* workerT = task_manager->get_backward_task(op, nextId);
                 add_task_dependencies_with_xfer(workerT, updateT, 2*firstR.get_volume());
               }
