@@ -185,21 +185,6 @@ flexflow_model_add_conv2d(
   flexflow_initializer_t bias_initializer,
   char const *name);
 
-flexflow_op_t
-flexflow_model_add_conv2d_no_inout(
-  flexflow_model_t handle,
-  int in_channels,
-  int out_channels,
-  int kernel_h, int kernel_w,
-  int stride_h, int stride_w,
-  int padding_h, int padding_w,
-  int groups,
-  enum ActiMode activation /* AC_MODE_NONE */,
-  bool use_bias /* True */,
-  flexflow_initializer_t kernel_initializer,
-  flexflow_initializer_t bias_initializer,
-  char const *name);
-
 flexflow_tensor_t
 flexflow_model_add_embedding(
   flexflow_model_t handle,
@@ -213,16 +198,6 @@ flexflow_tensor_t
 flexflow_model_add_pool2d(
   flexflow_model_t handle,
   flexflow_tensor_t input,
-  int kernel_h, int kernel_w,
-  int stride_h, int stride_w,
-  int padding_h, int padding_w,
-  enum PoolType type /* POOL_MAX */,
-  enum ActiMode activation /* AC_MODE_NONE */,
-  char const *name);
-
-flexflow_op_t
-flexflow_model_add_pool2d_no_inout(
-  flexflow_model_t handle,
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
@@ -254,17 +229,6 @@ flexflow_model_add_dense(
   flexflow_initializer_t bias_initializer,
   const char *name);
 
-flexflow_op_t
-flexflow_model_add_dense_no_inout(
-  flexflow_model_t handle,
-  int in_dim,
-  int out_dim,
-  enum ActiMode activation /* AC_MODE_NONE */,
-  bool use_bias /* true */,
-  flexflow_initializer_t kernel_initializer,
-  flexflow_initializer_t bias_initializer,
-  const char *name);
-
 flexflow_tensor_t
 flexflow_model_add_concat(
   flexflow_model_t handle,
@@ -286,10 +250,6 @@ flexflow_tensor_t
 flexflow_model_add_flat(
   flexflow_model_t handle,
   flexflow_tensor_t input);
-
-flexflow_op_t
-flexflow_model_add_flat_no_inout(
-  flexflow_model_t handle);
 
 flexflow_tensor_t
 flexflow_model_add_softmax(

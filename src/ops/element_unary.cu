@@ -25,23 +25,10 @@ Tensor FFModel::unary(OperatorType op,
   return ele->outputs[0];
 }
 
-ElementUnary *FFModel::unary(OperatorType op,
-                             const char *name)
-{
-  ElementUnary *ele = new ElementUnary(*this, op, name);
-  layers.push_back(ele);
-  return ele;
-}
-
 Tensor FFModel::exp(const Tensor& x,
                     const char *name)
 {
   return this->unary(OP_EXP, x, name);
-}
-
-ElementUnary* FFModel::exp(const char *name)
-{
-  return this->unary(OP_EXP, name);
 }
 
 Tensor FFModel::relu(const Tensor& x, const char *name)
@@ -49,19 +36,9 @@ Tensor FFModel::relu(const Tensor& x, const char *name)
   return this->unary(OP_RELU, x, name);
 }
 
-ElementUnary* FFModel::relu(const char *name)
-{
-  return this->unary(OP_RELU, name);
-}
-
 Tensor FFModel::sigmoid(const Tensor& x, const char *name)
 {
   return this->unary(OP_SIGMOID, x, name);
-}
-
-ElementUnary* FFModel::sigmoid(const char *name)
-{
-  return this->unary(OP_SIGMOID, name);
 }
 
 Tensor FFModel::tanh(const Tensor& x, const char *name)
@@ -69,19 +46,9 @@ Tensor FFModel::tanh(const Tensor& x, const char *name)
   return this->unary(OP_TANH, x, name);
 }
 
-ElementUnary* FFModel::tanh(const char *name)
-{
-  return this->unary(OP_TANH, name);
-}
-
 Tensor FFModel::elu(const Tensor& x, const char *name)
 {
   return this->unary(OP_ELU, x, name);
-}
-
-ElementUnary* FFModel::elu(const char *name)
-{
-  return this->unary(OP_ELU, name);
 }
 
 ElementUnary::ElementUnary(FFModel& model,
@@ -93,20 +60,6 @@ ElementUnary::ElementUnary(FFModel& model,
   outputs[0].numDim = inputs[0].numDim;
   for (int i = 0; i < outputs[0].numDim; i++)
     outputs[0].adim[i] = inputs[0].adim[i];
-}
-
-ElementUnary::ElementUnary(FFModel& model,
-                           OperatorType _op_type,
-                           const char* name)
-: Op(model, _op_type, name, 1)
-{}
-
-Tensor ElementUnary::init_inout(FFModel& model,
-                                const Tensor& input)
-{
-  inputs[0] = input;
-  create_output_and_partition(model);
-  return outputs[0];
 }
 
 bool ElementUnary::use_cudnn(OperatorType type)
@@ -121,13 +74,6 @@ bool ElementUnary::use_cudnn(OperatorType type)
     return true;
   return false;
 }
-
-/*
-void ElementUnary::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
-}
-*/
 
 void ElementUnary::create_weights(FFModel& model)
 {

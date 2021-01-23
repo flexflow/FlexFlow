@@ -31,19 +31,6 @@ Tensor FFModel::pool2d(const Tensor& input,
   return pool->outputs[0];
 }
 
-Pool2D* FFModel::pool2d(int kernelH, int kernelW,
-                        int strideH, int strideW,
-                        int paddingH, int paddingW,
-                        PoolType type, ActiMode activation,
-                        char const *name)
-{
-  Pool2D *pool = new Pool2D(*this, kernelH, kernelW,
-                      strideH, strideW, paddingH, paddingW,
-                      type, activation, name);
-  layers.push_back(pool);
-  return pool;
-}
-
 Pool2D::Pool2D(FFModel& model,
                const Tensor& _input,
                int _kernel_h, int _kernel_w,
@@ -71,40 +58,10 @@ Pool2D::Pool2D(FFModel& model,
   outputs[0].adim[3] = output_n;
 }
 
-Pool2D::Pool2D(FFModel& model,
-               int _kernel_h, int _kernel_w,
-               int _stride_h, int _stride_w,
-               int _padding_h, int _padding_w,
-               PoolType _type, ActiMode _activation,
-               const char* name)
-: Op(model, OP_POOL2D, name, 1),
-  kernel_h(_kernel_h), kernel_w(_kernel_w),
-  stride_h(_stride_h), stride_w(_stride_w),
-  padding_h(_padding_h), padding_w(_padding_w),
-  pool_type(_type), activation(_activation),
-  profiling(model.config.profiling)
-{
-}
-
-Tensor Pool2D::init_inout(FFModel& model, const Tensor& _input)
-{
-  inputs[0] = _input;
-  create_output_and_partition(model);
-  return outputs[0];
-}
-
-
 void Pool2D::create_weights(FFModel& model)
 {
   // Do nothing since we don't have any weight
 }
-
-/*
-void Pool2D::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
-}
-*/
 
 void Pool2D::create_output_and_partition(FFModel& model)
 {

@@ -2,9 +2,6 @@
 	path = legion
 	url = https://gitlab.com/StanfordLegion/legion.git
 
-[submodule "protobuf"]
-	path = protobuf
-	url = https://github.com/protocolbuffers/protobuf.git
 [submodule "nccl"]
 	path = nccl
 	url = https://github.com/NVIDIA/nccl.git

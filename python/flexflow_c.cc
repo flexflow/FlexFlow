@@ -359,30 +359,6 @@ flexflow_model_add_conv2d(
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_op_t
-flexflow_model_add_conv2d_no_inout(
-  flexflow_model_t handle_,
-  int in_channels,
-  int out_channels,
-  int kernel_h, int kernel_w,
-  int stride_h, int stride_w,
-  int padding_h, int padding_w,
-  int groups,
-  enum ActiMode activation /* AC_MODE_NONE */,
-  bool use_bias /* True */,
-  flexflow_initializer_t kernel_initializer_,
-  flexflow_initializer_t bias_initializer_,
-  const char *name)
-{
-  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Initializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
-  Initializer *bias_initializer = FFCObjectWrapper::unwrap(bias_initializer_);
-  Conv2D *conv2d = handle->conv2d(in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups, activation, use_bias, kernel_initializer, bias_initializer, name);
-  Op *op = (Op*)conv2d;
-  DEBUG_PRINT("[Conv2d] no inout, layer %p, activation %d, use_bias %d, kernel_init %p, bias_init %p", conv2d, activation, use_bias, kernel_initializer, bias_initializer);
-  return FFCObjectWrapper::wrap(op);
-}
-
 flexflow_tensor_t
 flexflow_model_add_embedding(
   flexflow_model_t handle_,
@@ -419,23 +395,6 @@ flexflow_model_add_pool2d(
   *tensor = handle->pool2d(*input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, type, activation, name);
   DEBUG_PRINT("[Pool2d] new Tensor 4D %p (%d, %d, %d, %d), pool %d, activation %d", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], type, activation);
   return FFCObjectWrapper::wrap(tensor);
-}
-
-flexflow_op_t
-flexflow_model_add_pool2d_no_inout(
-  flexflow_model_t handle_,
-  int kernel_h, int kernel_w,
-  int stride_h, int stride_w,
-  int padding_h, int padding_w,
-  enum PoolType type /* POOL_MAX */,
-  enum ActiMode activation /* AC_MODE_NONE */,
-  const char *name)
-{
-  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Pool2D *pool2d = handle->pool2d(kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, type, activation, name);
-  Op *op = (Op*)pool2d;
-  printf("[Pool2d] no inout, layer %p, pool %d, activation %d", pool2d, type, activation);
-  return FFCObjectWrapper::wrap(op);
 }
 
 flexflow_tensor_t
@@ -489,25 +448,6 @@ flexflow_model_add_dense(
   DEBUG_PRINT("[Dense] new Tensor 2D %p (%d, %d, %d, %d), activation %d, use_bias %d, shared_op %p, kernel_init %p, bias_init %p",
     tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], activation, use_bias, shared_op, kernel_initializer, bias_initializer);
   return FFCObjectWrapper::wrap(tensor);
-}
-
-flexflow_op_t
-flexflow_model_add_dense_no_inout(
-  flexflow_model_t handle_,
-  int in_dim,
-  int out_dim,
-  enum ActiMode activation /* AC_MODE_NONE */,
-  bool use_bias /* true */,
-  flexflow_initializer_t kernel_initializer_,
-  flexflow_initializer_t bias_initializer_,
-  const char *name)
-{
-  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Initializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
-  Initializer *bias_initializer = FFCObjectWrapper::unwrap(bias_initializer_);
-  Linear *linear = handle->dense(in_dim, out_dim, activation, use_bias, kernel_initializer, bias_initializer, name);
-  DEBUG_PRINT("[Dense] no inout, layer %p, activation %d, use_bias %d, kernel_init %p, bias_init %p", linear, activation, use_bias, kernel_initializer, bias_initializer);
-  return FFCObjectWrapper::wrap(linear);
 }
 
 flexflow_tensor_t
@@ -589,17 +529,6 @@ flexflow_model_add_flat(
   *tensor = handle->flat(*input);
   DEBUG_PRINT("[Flat] new Tensor 4D %p", tensor);
   return FFCObjectWrapper::wrap(tensor);
-}
-
-flexflow_op_t
-flexflow_model_add_flat_no_inout(
-  flexflow_model_t handle_)
-{
-  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Flat *flat = handle->flat();
-  Op *op = (Op*)flat;
-  DEBUG_PRINT("[Flat] no inout, layer %p", flat);
-  return FFCObjectWrapper::wrap(op);
 }
 
 flexflow_tensor_t

@@ -50,13 +50,6 @@ BatchMatmul::BatchMatmul(FFModel& model,
   numWeights = 0;
 }
 
-Tensor BatchMatmul::init_inout(FFModel& model, const Tensor& _input)
-{
-  // Deprecated APIs --- remove soon
-  assert(false);
-  return outputs[0];
-}
-
 void BatchMatmul::create_weights(FFModel& model)
 {
   // Do nothing since we don't have any weights

@@ -38,13 +38,6 @@ Reverse::Reverse(FFModel& model,
   numWeights = 0;
 }
 
-Tensor Reverse::init_inout(FFModel& model, const Tensor& _input)
-{
-  // Deprecated APIs --- remove soon
-  assert(false);
-  return outputs[0];
-}
-
 void Reverse::create_weights(FFModel& model)
 {
   // Do nothing since no weights

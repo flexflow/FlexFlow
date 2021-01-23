@@ -26,25 +26,11 @@ Tensor FFModel::binary(OperatorType op,
   return ele->outputs[0];
 }
 
-ElementBinary *FFModel::binary(OperatorType op,
-                               char const *name)
-{
-  ElementBinary *ele = new ElementBinary(*this, op, name);
-  layers.push_back(ele);
-  return ele;
-}
-
-
 Tensor FFModel::add(const Tensor& in1,
                     const Tensor& in2,
                     char const *name)
 {
   return this->binary(OP_EW_ADD, in1, in2, name);
-}
-
-ElementBinary* FFModel::add(char const *name)
-{
-  return this->binary(OP_EW_ADD, name);
 }
 
 Tensor FFModel::subtract(const Tensor& in1,
@@ -54,11 +40,6 @@ Tensor FFModel::subtract(const Tensor& in1,
   return this->binary(OP_EW_SUB, in1, in2, name);
 }
 
-ElementBinary* FFModel::subtract(char const *name)
-{
-  return this->binary(OP_EW_SUB, name);
-}
-
 Tensor FFModel::multiply(const Tensor& in1,
                          const Tensor& in2,
                          char const *name)
@@ -66,21 +47,11 @@ Tensor FFModel::multiply(const Tensor& in1,
   return this->binary(OP_EW_MUL, in1, in2, name);
 }
 
-ElementBinary* FFModel::multiply(char const *name)
-{
-  return this->binary(OP_EW_MUL, name);
-}
-
 Tensor FFModel::divide(const Tensor& in1,
                        const Tensor& in2,
                        char const *name)
 {
   return this->binary(OP_EW_DIV, in1, in2, name);
-}
-
-ElementBinary* FFModel::divide(char const *name)
-{
-  return this->binary(OP_EW_DIV, name);
 }
 
 ElementBinary::ElementBinary(FFModel& model,
@@ -109,40 +80,6 @@ ElementBinary::ElementBinary(FFModel& model,
     outputs[0].adim[i] = in1.adim[i];
   }
 }
-
-ElementBinary::ElementBinary(FFModel& model,
-                             OperatorType _op_type,
-                             const char* name)
-: Op(
-    model,
-    _op_type,
-    name,
-    2
-  ),
-  op_type(_op_type),
-  profiling(model.config.profiling)
-{
-}
-
-Tensor ElementBinary::init_inout(FFModel& model,
-                           const Tensor& input)
-{
-  // TODO: currently disable this functional API since
-  // FlexFlow assumes a single tensor as input
-  assert(false);
-  Tensor in1 = input, in2 = input;
-  inputs[0] = in1;
-  inputs[1] = in2;
-  create_output_and_partition(model);
-  return outputs[0];
-}
-
-/*
-void ElementBinary::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
-}
-*/
 
 void ElementBinary::create_weights(FFModel& model)
 {
