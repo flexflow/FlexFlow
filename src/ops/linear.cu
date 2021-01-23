@@ -521,10 +521,6 @@ void Linear::forward_task_with_dim(const Task *task,
 
   cudaEvent_t t_start, t_end;
   if (linear->profiling) {
-    printf("output volume %d kernel volume %d in %d out %d batch %d\n", 
-      acc_output.rect.volume(), 
-      acc_kernel.rect.volume(), 
-      in_dim, out_dim, batch_size);
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -959,8 +955,8 @@ void Linear::print_layer(const FFModel& ff)
   int kernel_dim1 = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
   int kernel_dim2 = acc_kernel.rect.hi[1] - acc_kernel.rect.lo[1] + 1;
   size_t bias_size = acc_bias.rect.volume();
-  printf("kernel, %p, %d, [%d, %d]\n", kernel_ptr, kernel_size, kernel_dim1, kernel_dim2);
-  printf("bias, %p, %d\n", bias_ptr, bias_size);
+  printf("kernel, %p, %zu, [%d, %d]\n", kernel_ptr, kernel_size, kernel_dim1, kernel_dim2);
+  printf("bias, %p, %zu\n", bias_ptr, bias_size);
 
   for (int i = 0; i < bias_size; i++) {
     printf("%f ", bias_ptr[i]);

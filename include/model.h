@@ -160,6 +160,10 @@ enum FieldIDs {
   FID_DATA,
 };
 
+class FFModel;
+class Op;
+class DataLoader;
+
 class OpMeta {
 public:
   OpMeta(FFHandler _handle);

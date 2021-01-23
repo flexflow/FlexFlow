@@ -742,7 +742,6 @@ Tensor FFModel::create_tensor(const int dims[],
   }
 
   // Step 2: create partitions
-  // WARNING: default strategy only supports tensor dimension == 2
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
 
   Transform<NDIM, NDIM> transform;
@@ -2480,7 +2479,16 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<AdamOptimizer::nccl_update_task>(
         registrar, "Adam NCCL Update Task");
   }
-  // Initializer  
+#endif
+  // Initializer
+  {
+    TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID,
+                                   "Zero Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ZeroInitializer::init_task_cpu>(
+        registrar, "Zero Init Task");
+  }
   {
     TaskVariantRegistrar registrar(ZERO_INIT_TASK_ID,
                                    "Zero Init");
@@ -2488,6 +2496,14 @@ void register_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<ZeroInitializer::init_task>(
         registrar, "Zero Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CONSTANT_INIT_TASK_ID,
+                                   "Constant Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ConstantInitializer::init_task_cpu>(
+        registrar, "Constant Init Task");
   }
   {
     TaskVariantRegistrar registrar(CONSTANT_INIT_TASK_ID,

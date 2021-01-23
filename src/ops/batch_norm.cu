@@ -630,7 +630,7 @@ bool BatchNorm::measure_compute_time(Simulator* sim,
 
   inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
 
-  printf("[Measure BatchNorm] name(%s) size(%d) forward_time(%.4lf) backward_time(%.4lf)\n",
+  printf("[Measure BatchNorm] name(%s) size(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
       name,
       sub_input.get_volume(),
       forward_time,

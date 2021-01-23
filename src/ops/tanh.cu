@@ -14,7 +14,7 @@ Tensor FFModel::tanh(std::string name, const Tensor& input, const int output_sha
 template <int DIM>
 Tanh<DIM>::Tanh(FFModel& model,
   const std::string& pcname,
-  const Tensor& _input, 
+  const Tensor& _input,
   const int output_shape[])
   : Op(pcname, _input)
 {
@@ -66,7 +66,7 @@ OpMeta* Tanh<DIM>::init_task(const Task *task,
     CUDNN_ACTIVATION_TANH,
     CUDNN_NOT_PROPAGATE_NAN,
     0.0
-  ));   
+  ));
   if (DIM == 1) {
     int batch_size = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
     checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
@@ -104,9 +104,9 @@ OpMeta* Tanh<DIM>::init_task(const Task *task,
                                           DIM,
                                           dims,
                                           stride));
-                                                 
+
   }
-                              
+
 #endif
   return m;
 }
@@ -162,7 +162,7 @@ void Tanh<DIM>::init(const FFModel& ff)
 /*
   regions[0](I): input
   regions[1](O): output
-*/  
+*/
 template <int DIM>
 void Tanh<DIM>::forward_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,
@@ -218,7 +218,7 @@ void Tanh<DIM>::forward(const FFModel& ff)
     TaskArgument(NULL, 0), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
-  
+
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
         READ_ONLY, EXCLUSIVE, inputs[0].region));
@@ -265,7 +265,7 @@ void Tanh<DIM>::backward_task(const Task *task,
   checkCUDA(cudnnActivationBackward(
     m->handle.dnn,
     m->activation,
-    &alpha, 
+    &alpha,
     m->inputTensor, acc_output.ptr,
     m->inputTensor, acc_output_grad.ptr,
     m->inputTensor, acc_input.ptr,
@@ -299,7 +299,7 @@ void Tanh<DIM>::backward(const FFModel& ff)
     TaskArgument(NULL, 0), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
-  
+
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
         READ_ONLY, EXCLUSIVE, inputs[0].region));
@@ -334,7 +334,7 @@ template Tanh<3>::Tanh(FFModel& model,
   const int output_shape[]);
 template OpMeta* Tanh<1>::init_task(const Task *task,
   const std::vector<PhysicalRegion> &regions,
-  Context ctx, Runtime *runtime);  
+  Context ctx, Runtime *runtime);
 template OpMeta* Tanh<2>::init_task(const Task *task,
   const std::vector<PhysicalRegion> &regions,
   Context ctx, Runtime *runtime);
