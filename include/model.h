@@ -27,6 +27,7 @@
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <unistd.h>
+#include <functional>
 #ifdef FF_ENABLE_NCCL
 #include <mpi.h>
 #endif
@@ -177,14 +178,19 @@ public:
 };
 
 class Op {
+protected:
+  void inner_measure_compute_time(Simulator *sim,
+                                  std::function<void()> const &forward,
+                                  std::function<void()> const &backward,
+                                  float &forward_time,
+                                  float &backward_time);
 public:
-  Op(FFModel& model, OperatorType type, const std::string& _name, const Tensor& input);
-  Op(FFModel& model, OperatorType type, const std::string& _name, const Tensor& input1, const Tensor& input2);
-  Op(FFModel& model, OperatorType type, const std::string& _name, const Tensor& input1, const Tensor& input2, const Tensor& input3);
-  Op(FFModel& model, OperatorType type, const std::string& _name, int num, const Tensor* inputs);
-  Op(FFModel& model, OperatorType type, const std::string& _name, int num);
-
-  Op(FFModel& model, OperatorType type, const Op* shared_op, const std::string& _name, const Tensor& input);
+  Op(FFModel& model, OperatorType type, const char* _name, const Tensor& input);
+  Op(FFModel& model, OperatorType type, const char* _name, const Tensor& input1, const Tensor& input2);
+  Op(FFModel& model, OperatorType type, const char* _name, const Tensor& input1, const Tensor& input2, const Tensor& input3);
+  Op(FFModel& model, OperatorType type, const char* _name, int num, const Tensor* inputs);
+  Op(FFModel& model, OperatorType type, const char* _name, int num);
+  Op(FFModel& model, OperatorType type, const Op* shared_op, const char* _name, const Tensor& input);
   // Pure virtual functions that must be implemented
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
@@ -239,24 +245,33 @@ public:
   FFModel(FFConfig &config);
   // C++ APIs for constructing models
   // Add an exp layer
-  Tensor exp(const Tensor& x);
+  Tensor exp(const Tensor& x,
+             const char *name = NULL);
   // Add an add layer
   Tensor add(const Tensor& x,
-             const Tensor& y);
+             const Tensor& y,
+             char const *name = NULL);
   // Add a subtract layer
   Tensor subtract(const Tensor& x,
-                  const Tensor& y);
+                  const Tensor& y,
+                  char const *name = NULL);
   // Add a multiply layer
   Tensor multiply(const Tensor& x,
-                  const Tensor& y);
+                  const Tensor& y,
+                  char const *name = NULL);
   // Add a divide layer
   Tensor divide(const Tensor& x,
-                const Tensor& y);
+                const Tensor& y,
+                char const *name = NULL);
   // Add an activation layer
-  Tensor relu(const Tensor& x);
-  Tensor sigmoid(const Tensor& x);
-  Tensor tanh(const Tensor& x);
-  Tensor elu(const Tensor& x);
+  Tensor relu(const Tensor& x,
+              const char *name = NULL);
+  Tensor sigmoid(const Tensor& x,
+                 const char *name = NULL);
+  Tensor tanh(const Tensor& x,
+              const char *name = NULL);
+  Tensor elu(const Tensor& x,
+             const char *name = NULL);
   // Add a 2D convolutional layer
   Tensor conv2d(const Tensor& input,
                 int outChannels,
@@ -268,27 +283,32 @@ public:
                 bool use_bias = true,
                 const Op* shared_op = NULL,
                 Initializer* krenel_initializer = NULL,
-                Initializer* bias_initializer = NULL);
+                Initializer* bias_initializer = NULL,
+                const char* name = NULL);
   // Add a dropout layer
   Tensor dropout(const Tensor& input,
                  float rate,
-                 unsigned long long seed = 0);
+                 unsigned long long seed = 0,
+                 const char* name = NULL);
   // Add an embedding layer
   Tensor embedding(const Tensor& input,
                    int num_entires, int outDim,
                    AggrMode aggr,
                    const Op* shared_op = NULL,
-                   Initializer* kernel_initializer = NULL);
+                   Initializer* kernel_initializer = NULL,
+                   const char* name = NULL);
   // Add a 2D pooling layer
   Tensor pool2d(const Tensor& input,
                 int kernelH, int kernelW,
                 int strideH, int strideW,
                 int paddingH, int paddingW,
                 PoolType type = POOL_MAX,
-                ActiMode activation = AC_MODE_NONE);
+                ActiMode activation = AC_MODE_NONE,
+                const char* name = NULL);
   // Add a batch_norm layer
   Tensor batch_norm(const Tensor& input,
-                    bool relu = true);
+                    bool relu = true,
+                    const char* name = NULL);
   // Add a batch_matmul layer
   Tensor batch_matmul(const Tensor& A,
                       const Tensor& B);
@@ -299,24 +319,32 @@ public:
                bool use_bias = true,
                const Op* shared_op = NULL,
                Initializer* kernel_initializer = NULL,
-               Initializer* bias_initializer = NULL);
+               Initializer* bias_initializer = NULL,
+               const char *name = NULL);
   // Add a concat layer
-  Tensor concat(int n, const Tensor* tensors,
-                int axis);
+  Tensor concat(int n,
+                const Tensor* tensors,
+                int axis,
+                const char *name = NULL);
   // Add a split layer
   void split(const Tensor& input, Tensor* outputs,
-             const std::vector<int>& split, int axis);
+             const std::vector<int>& split, int axis,
+             const char *name = NULL);
   // Add a flat layer
-  Tensor flat(const Tensor& input);
+  Tensor flat(const Tensor& input, const char *name = NULL);
   // Add a softmax layer
-  Tensor softmax(const Tensor& input);
+  Tensor softmax(const Tensor& input,
+                 const char *name = NULL);
   // Create input tensors and constants
   Tensor transpose(const Tensor& input,
-                   const std::vector<int>& perm);
+                   const std::vector<int>& perm,
+                   const char *name = NULL);
   Tensor reshape(const Tensor& input,
-                 const std::vector<int>& shape);
+                 const std::vector<int>& shape,
+                 const char *name = NULL);
   Tensor reverse(const Tensor& input,
-                 int axis);
+                 int axis,
+                 const char *name = NULL);
   Tensor multihead_attention(const Tensor& query,
                              const Tensor& key,
                              const Tensor& value,
@@ -328,7 +356,8 @@ public:
                              bool bias = true,
                              bool add_bias_kv = false,
                              bool add_zero_attn = false,
-                             Initializer* kernel_initializer = NULL);
+                             Initializer* kernel_initializer = NULL,
+                             const char *name = NULL);
   template<int NDIM>
   Tensor create_tensor(const int dims[],
                        DataType data_type,
@@ -341,15 +370,15 @@ public:
   // ========================================
   // Functional APIs for constructing models
   // ========================================
-  ElementUnary* exp();
-  ElementBinary* add();
-  ElementBinary* subtract();
-  ElementBinary* multiply();
-  ElementBinary* divide();
-  ElementUnary* relu();
-  ElementUnary* sigmoid();
-  ElementUnary* tanh();
-  ElementUnary* elu();
+  ElementUnary* exp(char const *name = NULL);
+  ElementBinary* add(char const *name = NULL);
+  ElementBinary* subtract(char const *name = NULL);
+  ElementBinary* multiply(char const *name = NULL);
+  ElementBinary* divide(char const *name = NULL);
+  ElementUnary* relu(char const *name = NULL);
+  ElementUnary* sigmoid(char const *name = NULL);
+  ElementUnary* tanh(char const *name = NULL);
+  ElementUnary* elu(char const *name = NULL);
   Conv2D* conv2d(int inChannels,
                  int outChannels,
                  int kernelH, int kernelW,
@@ -359,21 +388,25 @@ public:
                  ActiMode activation = AC_MODE_NONE,
                  bool use_bias = true,
                  Initializer* krenel_initializer = NULL,
-                 Initializer* bias_initializer = NULL);
+                 Initializer* bias_initializer = NULL,
+                 char const *name = NULL);
   Embedding* embedding(int num_entires, int outDim,
                        AggrMode aggr,
-                       Initializer* kernel_initializer);
+                       Initializer* kernel_initializer,
+                       const char* name);
   Pool2D* pool2d(int kernelH, int kernelW,
                  int strideH, int strideW,
                  int paddingH, int paddingW,
                  PoolType type = POOL_MAX,
-                 ActiMode activation = AC_MODE_NONE);
+                 ActiMode activation = AC_MODE_NONE,
+                 char const *name = NULL);
   Linear* dense(int inDim, int outDim,
                 ActiMode activation = AC_MODE_NONE,
                 bool use_bias = true,
                 Initializer* kernel_initializer = NULL,
-                Initializer* bias_initializer = NULL);
-  Flat* flat();
+                Initializer* bias_initializer = NULL,
+                const char *name = NULL);
+  Flat* flat(const char* name = NULL);
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
@@ -432,6 +465,7 @@ public:
                std::map<Op*, ParallelConfig>& next) const;
   void zero_gradients();
   void print_layers(int id);
+  std::string get_operator_type_name(OperatorType type) const;
   // Internal funcitons
   Tensor get_tensor_from_guid(int guid);
   IndexSpace get_or_create_task_is(ParallelConfig pc);
@@ -456,6 +490,18 @@ public:
   //DataLoader *dataLoader;
 private:
   std::map<ParallelConfig, IndexSpace, ParaConfigCompare> taskIs;
+
+  Tensor binary(OperatorType op,
+                Tensor const &x,
+                Tensor const &y,
+                char const *name = NULL);
+  ElementBinary * binary(OperatorType op,
+                         char const *name = NULL);
+  Tensor unary(OperatorType op,
+               Tensor const &x,
+               char const *name = NULL);
+  ElementUnary * unary(OperatorType op,
+                       char const *name = NULL);
 };
 
 class ElementBinaryMeta : public OpMeta {
@@ -471,9 +517,11 @@ public:
   ElementBinary(FFModel& model,
                 OperatorType type,
                 const Tensor& x,
-                const Tensor& y);
+                const Tensor& y,
+                const char* name);
   ElementBinary(FFModel& model,
-                OperatorType type);
+                OperatorType type,
+                const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input);
   //void add_to_model(FFModel& model);
   void init(const FFModel&);
@@ -513,6 +561,7 @@ private:
 public:
   //IndexSpace task_is;
   OperatorType op_type;
+  bool profiling;
 };
 
 class ElementUnaryMeta : public OpMeta {
@@ -527,9 +576,11 @@ class ElementUnary : public Op {
 public:
   ElementUnary(FFModel& model,
                OperatorType type,
-               const Tensor& x);
+               const Tensor& x,
+               const char* name);
   ElementUnary(FFModel& model,
-               OperatorType type);
+               OperatorType type,
+               const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input);
   //void add_to_model(FFModel& model);
   void init(const FFModel&);
@@ -594,7 +645,8 @@ public:
          bool use_bias,
          const Op* shared_op,
          Initializer* kernel_initializer,
-         Initializer* bias_initializer);
+         Initializer* bias_initializer,
+         const char* name);
   Conv2D(FFModel& model,
          int in_dim, int out_dim,
          int kernelH, int kernelW,
@@ -604,7 +656,8 @@ public:
          ActiMode activation,
          bool use_bias,
          Initializer* kernel_initializer,
-         Initializer* bias_initializer);
+         Initializer* bias_initializer,
+         const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input);
   //void add_to_model(FFModel& model);
   void init(const FFModel&);
@@ -615,7 +668,6 @@ public:
   //Parameter* get_parameter(int index);
   void create_weights(FFModel& model);
   void create_output_and_partition(FFModel& model);
-
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -666,7 +718,8 @@ public:
   Dropout(FFModel& model,
           const Tensor& input,
           float rate,
-          unsigned long long seed);
+          unsigned long long seed,
+          const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input);
   //void add_to_model(FFModel& model);
   void init(const FFModel&);
@@ -680,12 +733,21 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+  void init_meta(DropoutMeta *m,
+                 Domain const &input_domain,
+                 Domain const &output_domain) const;
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+  static void forward_kernel(DropoutMeta *m,
+                             float const *input_ptr,
+                             float *output_ptr);
+  static void backward_kernel(DropoutMeta *m,
+                              float const *output_grad_ptr,
+                              float *input_grad_ptr);
   bool measure_compute_time(Simulator* sim,
                             const ParallelConfig& pc,
                             float& forward_time,
@@ -707,12 +769,14 @@ public:
          int kernelH, int kernelW,
          int strideH, int strideW,
          int paddingH, int paddingW,
-         PoolType type, ActiMode _activation);
+         PoolType type, ActiMode _activation,
+         const char* name);
   Pool2D(FFModel& model,
          int kernelH, int kernelW,
          int strideH, int strideW,
          int paddingH, int paddingW,
-         PoolType type, ActiMode _activation);
+         PoolType type, ActiMode _activation,
+         const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input);
   //void add_to_model(FFModel& model);
   void init(const FFModel&);
@@ -764,8 +828,10 @@ public:
 
 class BatchNorm : public Op {
 public:
-  BatchNorm(FFModel& model, const Tensor& input, bool relu);
-
+  BatchNorm(FFModel& model,
+            const Tensor& input,
+            bool relu,
+            const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input) { assert(0); return Tensor();}
   //void add_to_model(FFModel& model) {assert(0);}
   void init(const FFModel&);
@@ -780,6 +846,11 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+  void init_meta(BatchNormMeta *meta,
+                 Rect<4> const &input,
+                 Rect<4> const &output,
+                 Rect<1> const &scale,
+                 Rect<1> const &bias) const;
   static void init_para_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, Runtime *runtime);
@@ -828,14 +899,16 @@ public:
          bool use_bias,
          const Op* shared_op,
          Initializer* kernel_initializer,
-         Initializer* bias_initializer);
+         Initializer* bias_initializer,
+         const char* name);
   Linear(FFModel& model,
          int inChannels,
          int outChannels,
          ActiMode activation,
          bool use_bias,
          Initializer* kernel_initializer,
-         Initializer* bias_initializer);
+         Initializer* bias_initializer,
+         const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input);
   //void add_to_model(FFModel& model);
   void init(const FFModel&);
@@ -980,11 +1053,13 @@ public:
             int num_entries, int outDim,
             AggrMode _aggr,
             const Op* shared_op,
-            Initializer* kernel_initializer);
+            Initializer* kernel_initializer,
+            const char* name);
   Embedding(FFModel& model,
             int num_entries, int outDim,
             AggrMode _aggr,
-            Initializer* kernel_initializer);
+            Initializer* kernel_initializer,
+            const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input);
   //void add_to_model(FFModel& model);
   void init(const FFModel&);
@@ -1011,6 +1086,22 @@ public:
   static void backward_task_cpu(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
                                 Context ctx, Runtime *runtime);
+  static void forward_kernel(int64_t const *input_ptr,
+                             float *output_ptr,
+                             float const *weight_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int batch_size,
+                             AggrMode aggr,
+                             int outputSize);
+  static void backward_kernel(int64_t const *input_ptr,
+                              float const *output_ptr,
+                              float *weight_grad_ptr,
+                              int in_dim,
+                              int out_dim,
+                              int batch_size,
+                              AggrMode aggr,
+                              int outputSize);
   bool measure_compute_time(Simulator* sim,
                             const ParallelConfig& pc,
                             float& forward_time,
@@ -1027,8 +1118,10 @@ public:
 class Flat : public Op {
 public:
   Flat(FFModel& model,
-       const Tensor& input);
-  Flat(FFModel& model);
+       const Tensor& input,
+       const char* name);
+  Flat(FFModel& model,
+       const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input);
   //void add_to_model(FFModel& model);
   void init(const FFModel&);
@@ -1081,7 +1174,8 @@ public:
                      int _kdim, int _vdim,
                      float _dropout, bool _bias,
                      bool _add_bias_kv, bool _add_zero_attn,
-                     Initializer* _kernel_initializer);
+                     Initializer* _kernel_initializer,
+                     const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input) { assert(0); return Tensor();}
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -1144,10 +1238,19 @@ public:
   void *reserveSpace;
 };
 
+class SoftmaxMeta : public OpMeta {
+public:
+  SoftmaxMeta(FFHandler handle);
+#ifndef DISABLE_COMPUTATION
+  cudnnTensorDescriptor_t inputTensor;
+#endif
+};
+
 class Softmax : public Op {
 public:
   Softmax(FFModel& model,
-          const Tensor& logit);
+          const Tensor& logit,
+          const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
   //void add_to_model(FFModel& model) {assert(0);}
   void init(const FFModel&);
@@ -1168,21 +1271,23 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+  void init_meta(SoftmaxMeta *m,
+                 Rect<2> const &input,
+                 Rect<2> const &output) const;
   bool measure_compute_time(Simulator* sim,
                             const ParallelConfig& pc,
                             float& forward_time,
                             float& backward_time);
+  static void forward_kernel(SoftmaxMeta const *m,
+                             float const *input_ptr,
+                             float *output_ptr);
+  static void backward_kernel(float *input_grad_ptr,
+                              float const *output_grad_ptr,
+                              size_t num_elements);
+
 public:
   //IndexSpaceT<2> task_is;
   bool profiling;
-};
-
-class SoftmaxMeta : public OpMeta {
-public:
-  SoftmaxMeta(FFHandler handle) : OpMeta(handle) {};
-#ifndef DISABLE_COMPUTATION
-  cudnnTensorDescriptor_t inputTensor;
-#endif
 };
 
 class TransposeMeta : public OpMeta {
@@ -1196,7 +1301,8 @@ class Transpose : public Op {
 public:
   Transpose(FFModel& model,
             const Tensor& input,
-            const std::vector<int>& perm);
+            const std::vector<int>& perm,
+            const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -1208,6 +1314,9 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+  void init_meta(TransposeMeta *m,
+                 Domain const &in_domain,
+                 Domain const &out_domain) const;
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -1239,7 +1348,8 @@ class Reverse : public Op {
 public:
   Reverse(FFModel& model,
           const Tensor& input,
-          int axis);
+          int axis,
+          const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -1257,6 +1367,18 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+  static void forward_kernel(float const *in_ptr,
+                             float *out_ptr,
+                             coord_t num_out_blks,
+                             coord_t reverse_dim_size,
+                             coord_t in_blk_size,
+                             coord_t output_size);
+  static void backward_kernel(float const *out_grad_ptr,
+                              float *in_grad_ptr,
+                              coord_t num_out_blks,
+                              coord_t reverse_dim_size,
+                              coord_t in_blk_size,
+                              coord_t input_size);
   bool measure_compute_time(Simulator* sim,
                             const ParallelConfig& pc,
                             float& forward_time,
@@ -1271,8 +1393,9 @@ public:
 class Reshape : public Op {
 public:
   Reshape(FFModel& model,
-            const Tensor& input,
-            const std::vector<int>& shape);
+          const Tensor& input,
+          const std::vector<int>& shape,
+          const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input){assert(0); return Tensor();}
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -1314,7 +1437,10 @@ public:
 class Concat : public Op {
 public:
   Concat(FFModel& model,
-         int n, const Tensor* inputs, int axis);
+         int n,
+         const Tensor* inputs,
+         int axis,
+         const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
   //void add_to_model(FFModel& model) {assert(0);}
   void init(const FFModel&);
@@ -1329,6 +1455,7 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+  void init_meta(ConcatMeta *meta) const;
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -1336,7 +1463,7 @@ public:
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
   static void forward_kernel(float* output,
-                             const float** inputs,
+                             float const * const *inputs,
                              int num_inputs,
                              int axis,
                              const Domain& out_domain,
@@ -1362,7 +1489,8 @@ public:
   Split(FFModel& model,
         const Tensor& input,
         const std::vector<int>& split,
-        int axis);
+        int axis,
+        const char* name);
   Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
   //void add_to_model(FFModel& model) {assert(0);}
   void init(const FFModel&);
@@ -1383,6 +1511,12 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
+  static void forward_kernel(float **out_ptrs,
+                             float const *in_ptr,
+                             coord_t const *out_blk_sizes,
+                             coord_t in_blk_size,
+                             coord_t num_blks,
+                             int numOutputs);
   bool measure_compute_time(Simulator* sim,
                             const ParallelConfig& pc,
                             float& forward_time,

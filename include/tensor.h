@@ -39,7 +39,8 @@ struct Tensor {
   bool get_output_sub_tensor(const ParallelConfig& pc,
                              Tensor& tensor,
                              OperatorType type);
-  size_t get_volume();
+  size_t get_volume() const;
+  Domain get_domain() const;
   int numDim, adim[MAX_TENSOR_DIM];
   DataType data_type;
   // Describes the ownership of this tensor

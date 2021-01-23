@@ -17,6 +17,41 @@
 //#include "realm/runtime_impl.h"
 //#include "realm/cuda/cuda_module.h"
 
+void Op::inner_measure_compute_time(Simulator *sim,
+                                    std::function<void()> const &forward,
+                                    std::function<void()> const &backward,
+                                    float &forward_time,
+                                    float &backward_time)
+{
+  // measure forward time
+  checkCUDA(cudaDeviceSynchronize());
+  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
+    if (i == sim->warmup_times) {
+      checkCUDA(cudaEventRecord(sim->start_event));
+    }
+    forward();
+  }
+  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventSynchronize(sim->end_event));
+  float milliseconds;
+  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  forward_time = milliseconds / sim->repeat_times;
+
+  // measure backward time
+  checkCUDA(cudaDeviceSynchronize());
+  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
+    if (i == sim->warmup_times) {
+      checkCUDA(cudaEventRecord(sim->start_event));
+    }
+    backward();
+  }
+  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventSynchronize(sim->end_event));
+  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  backward_time = milliseconds / sim->repeat_times;
+}
+
+
 FFHandler UtilityTasks::init_cuda_task(
               const Task *task,
               const std::vector<PhysicalRegion> &regions,

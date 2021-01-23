@@ -130,15 +130,41 @@ bool Tensor::get_input_sub_tensor(const ParallelConfig& pc,
                                   OperatorType type)
 {
   //TODO: consider reduction dim for conv2d and linear
-  if (pc.nDims != numDim)
-    return false;
-  for (int i = 0; i < numDim; i++)
-    if (adim[i] % pc.dim[i] != 0)
-      return false;
-  tensor.numDim = numDim;
-  for (int i = 0; i < numDim; i++)
-    tensor.adim[i] = adim[i] / pc.dim[i];
-  tensor.data_type = data_type;
+  switch (type) {
+    case OP_FLAT:
+      {
+        assert (pc.nDims == 2 && "Invalid dimension for parallel config of OP_FLAT");
+        int nonBatchDim = pc.dim[0];
+        tensor.numDim = numDim;
+        assert (nonBatchDim == 1 && "I'm not sure this is correct otherwise");
+        if (adim[numDim - 1] % nonBatchDim != 0) {
+          printf("Could not get input subtensor because the dimension is not divisiable: %d %% %d != 0\n", adim[numDim - 1], nonBatchDim);
+        }
+        for (int i = numDim - 2; i >= 0; i--) {
+          tensor.adim[i] = adim[i];
+        }
+      }
+      break;
+    default:
+      {
+        if (pc.nDims != numDim) {
+          printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, numDim);
+          return false;
+        }
+        for (int i = 0; i < numDim; i++) {
+          if (adim[i] % pc.dim[i] != 0) {
+            printf("Could not get input subtensor because the given dimension is not divisible: %d %% %d != 0\n", adim[i], pc.dim[i]);
+            return false;
+          }
+        }
+        tensor.numDim = numDim;
+        for (int i = 0; i < numDim; i++) {
+          tensor.adim[i] = adim[i] / pc.dim[i];
+        }
+        tensor.data_type = data_type;
+      }
+      break;
+  }
   return true;
 }
 
@@ -146,11 +172,16 @@ bool Tensor::get_output_sub_tensor(const ParallelConfig& pc,
                                    Tensor& tensor,
                                    OperatorType type)
 {
-  if (pc.nDims != numDim)
+  if (pc.nDims != numDim) {
+    printf("Could not get output subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, numDim);
     return false;
-  for (int i = 0; i < numDim; i++)
-    if (adim[i] % pc.dim[i] != 0)
+  }
+  for (int i = 0; i < numDim; i++) {
+    if (adim[i] % pc.dim[i] != 0) {
+      printf("Could not get output subtensor because the given dimension is not divisible: %d %% %d != 0\n", adim[i], pc.dim[i]);
       return false;
+    }
+  }
   tensor.numDim = numDim;
   for (int i = 0; i < numDim; i++)
     tensor.adim[i] = adim[i] / pc.dim[i];
@@ -158,7 +189,7 @@ bool Tensor::get_output_sub_tensor(const ParallelConfig& pc,
   return true;
 }
 
-size_t Tensor::get_volume()
+size_t Tensor::get_volume() const
 {
   size_t volume = 1;
   for (int i = 0; i < numDim; i++)
@@ -166,13 +197,30 @@ size_t Tensor::get_volume()
   return volume;
 }
 
+Domain Tensor::get_domain() const
+{
+  Domain d;
+  d.dim = this->numDim;
+  for (int i = 0; i < this->numDim; i++) {
+    d.rect_data[i] = 0;
+    d.rect_data[i+Domain::MAX_RECT_DIM] = this->adim[i] - 1;
+  }
+  return d;
+}
+
 Op::Op(FFModel& model,
        OperatorType _op_type,
-       const std::string& _name,
+       const char* _name,
        const Tensor& _input)
 : op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1)
 {
-  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  std::string pcname;
+  if (_name == NULL) {
+    pcname = model.get_operator_type_name(op_type);
+  } else {
+    pcname = std::string(_name);
+  }
+  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input;
@@ -193,13 +241,18 @@ Op::Op(FFModel& model,
 Op::Op(FFModel& model,
        OperatorType _op_type,
        const Op* shared_op,
-       const std::string& _name,
+       const char* _name,
        const Tensor& _input)
 : op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1)
 {
   std::string pcname;
+  if (_name == NULL) {
+    pcname = model.get_operator_type_name(op_type);
+  } else {
+    pcname = std::string(_name);
+  }
   if (shared_op == NULL) {
-    pcname = _name + "_" + std::to_string(model.op_global_guid++);
+    pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   } else {
     pcname = std::string(shared_op->name);
   }
@@ -222,12 +275,18 @@ Op::Op(FFModel& model,
 
 Op::Op(FFModel& model,
        OperatorType _op_type,
-       const std::string& _name,
+       const char* _name,
        const Tensor& _input1,
        const Tensor& _input2)
 : op_type(_op_type), numInputs(2), numWeights(0), numOutputs(1)
 {
-  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  std::string pcname;
+  if (_name == NULL) {
+    pcname = model.get_operator_type_name(op_type);
+  } else {
+    pcname = std::string(_name);
+  }
+  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input1;
@@ -248,13 +307,19 @@ Op::Op(FFModel& model,
 
 Op::Op(FFModel& model,
        OperatorType _op_type,
-       const std::string& _name,
+       const char* _name,
        const Tensor& _input1,
        const Tensor& _input2,
        const Tensor& _input3)
 : op_type(_op_type), numInputs(3), numWeights(0), numOutputs(1)
 {
-  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  std::string pcname;
+  if (_name == NULL) {
+    pcname = model.get_operator_type_name(op_type);
+  } else {
+    pcname = std::string(_name);
+  }
+  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input1;
@@ -276,11 +341,17 @@ Op::Op(FFModel& model,
 
 Op::Op(FFModel& model,
        OperatorType _op_type,
-       const std::string& _name,
+       const char* _name,
        int n, const Tensor* _inputs)
 : op_type(_op_type), numInputs(n), numWeights(0), numOutputs(1)
 {
-  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  std::string pcname;
+  if (_name == NULL) {
+    pcname = model.get_operator_type_name(op_type);
+  } else {
+    pcname = std::string(_name);
+  }
+  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   assert(n <= MAX_NUM_INPUTS);
   std::strcpy(name, pcname.c_str());
@@ -302,11 +373,17 @@ Op::Op(FFModel& model,
 
 Op::Op(FFModel& model,
        OperatorType _op_type,
-       const std::string& _name,
+       const char* _name,
        int _numInputs)
 : op_type(_op_type), numInputs(_numInputs), numWeights(0), numOutputs(1)
 {
-  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  std::string pcname;
+  if (_name == NULL) {
+    pcname = model.get_operator_type_name(op_type);
+  } else {
+    pcname = std::string(_name);
+  }
+  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   //for (int i = 0; i < numInputs; i++) {
@@ -1002,7 +1079,7 @@ Parameter FFModel::create_conv_weight(Op* op,
     assert(runtime->is_index_partition_complete(ctx, ip));
     assert(runtime->is_index_partition_disjoint(ctx, ip));
     weight.part = runtime->get_logical_partition(
-        ctx, weight.region, ip); 
+        ctx, weight.region, ip);
   } else {
     // Unsupported Parameter type
     assert(false);
@@ -1387,7 +1464,7 @@ void FFModel::compile(LossType loss_type,
               assert(false);
       layers = new_layers;
     }
-    // Check integrity 
+    // Check integrity
     for (size_t l = 0; l < layers.size(); l++) {
       if (layers[l]->op_type == OP_FUSED) {
         FusedOp* fused = (FusedOp*) layers[l];
@@ -1440,13 +1517,13 @@ void FFModel::compile(LossType loss_type,
       for (int j = 0; j < op->numInputs; j++) {
         LogicalRegion handle = op->inputs[j].region;
         printf("inputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
-                          handle.get_field_space().get_id(), 
+                          handle.get_field_space().get_id(),
                           handle.get_tree_id());
       }
       for (int j = 0; j < op->numOutputs; j++) {
         LogicalRegion handle = op->outputs[j].region;
         printf("outputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
-                          handle.get_field_space().get_id(), 
+                          handle.get_field_space().get_id(),
                           handle.get_tree_id());
       }
   }
@@ -1497,6 +1574,7 @@ void FFModel::optimize(Simulator* simulator,
                        std::map<Op*, ParallelConfig>& best,
                        size_t budget, float alpha) const
 {
+  // Start from data parallel
   std::map<Op*, ParallelConfig> current, next;
   float best_runtime = simulator->simulate_runtime(this, best);
   current = best;
@@ -1576,6 +1654,70 @@ void FFModel::print_layers(int id)
     }
   } else {
     layers[id]->print_layer(*this);
+  }
+}
+
+std::string FFModel::get_operator_type_name(OperatorType type) const
+{
+  switch(type) {
+    case OP_CONV2D: return "Conv2D";
+    case OP_DROPOUT: return "Dropout";
+    case OP_LINEAR: return "Dense";
+    case OP_BATCHMATMUL: return "BatchMatMul";
+    case OP_POOL2D: return "Pool2D";
+    case OP_RELU: return "ReLU";
+    case OP_SIGMOID: return "Sigmoid";
+    case OP_TANH: return "Tanh";
+    case OP_ELU: return "Elu";
+    case OP_FLAT: return "Flat";
+    case OP_SOFTMAX: return "Softmax";
+    case OP_BATCHNORM: return "BatchNorm";
+    case OP_CONCAT: return "Concat";
+    case OP_SPLIT: return "Split";
+    case OP_EMBEDDING: return "Embedding";
+    case OP_RESHAPE: return "Reshape";
+    case OP_REVERSE: return "Reverse";
+    case OP_TRANSPOSE: return "Transpose";
+    case OP_EW_ADD: return "Add";
+    case OP_EW_MUL: return "Mul";
+    case OP_MATMUL: return "Matmul";
+    case OP_MUL: return "Mul";
+    case OP_ENLARGE: return "Enlarge";
+    case OP_SQUEEZE: return "Squeeze";
+    case OP_UNSQUEEZE: return "Unsqueeze";
+    case OP_EW_SUB: return "Sub";
+    case OP_EW_DIV: return "Div";
+    case OP_EW_EQUAL: return "Equal";
+    case OP_EW_GREATER: return "Greater";
+    case OP_EW_LESS: return "Less";
+    case OP_EW_MAX: return "Max";
+    case OP_EW_MIN: return "Min";
+    case OP_REDUCE_ARGMAX: return "ReduceArgMax";
+    case OP_REDUCE_ARGMIN: return "ReduceArgMin";
+    case OP_REDUCE_MAX: return "ReduceMax";
+    case OP_REDUCE_MEAN: return "ReduceMean";
+    case OP_REDUCE_MIN: return "ReduceMin";
+    case OP_REDUCE_PROD: return "ReduceProd";
+    case OP_REDUCE_SUM: return "ReduceSum";
+    case OP_PAD: return "Pad";
+    case OP_SHAPE: return "Shape";
+    case OP_SIZE: return "Size";
+    case OP_TOPK: return "TopK";
+    case OP_WHERE: return "Where";
+    case OP_CEIL: return "Ceil";
+    case OP_CAST: return "Cast";
+    case OP_EXP: return "Exp";
+    case OP_ROUND: return "Round";
+    case OP_LOG: return "Log";
+    case OP_LOGICAL_NOT: return "LogicalNot";
+    case OP_SQRT: return "Sqrt";
+    case OP_LEAKYRELU: return "LeakyReLU";
+    case OP_SLICE: return "Slice";
+    case OP_RESIZE: return "Resize";
+    case OP_PRELU: return "PReLU";
+    case OP_MULTIHEAD_ATTENTION: return "MultiHeadAttention";
+    case OP_FUSED: return "FusedOp";
+    default: assert(false && "Not supported Operator type"); return "Unsupported";
   }
 }
 
@@ -2319,7 +2461,7 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<AdamOptimizer::ps_update_task>(
         registrar, "Adam Parameter Server Update Task");
   }
-#ifdef FF_ENABLE_NCCL  
+#ifdef FF_ENABLE_NCCL
   {
     TaskVariantRegistrar registrar(SGD_UPD_NCCL_TASK_ID,
                                    "SGD NCCL Update");
@@ -2441,7 +2583,7 @@ int main(int argc, char** argv)
   int provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
   // If you fail this assertion, then your version of MPI
-  // does not support calls from multiple threads and you 
+  // does not support calls from multiple threads and you
   // cannot use the GASNet MPI conduit
   if (provided < MPI_THREAD_MULTIPLE)
     printf("ERROR: Your implementation of MPI does not support "

@@ -16,18 +16,21 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::concat(int n, const Tensor* tensors,
-                       int axis)
+Tensor FFModel::concat(int n,
+                       const Tensor* tensors,
+                       int axis,
+                       const char *name)
 {
-  Concat *cat = new Concat(*this, n, tensors, axis);
+  Concat *cat = new Concat(*this, n, tensors, axis, name);
   layers.push_back(cat);
   return cat->outputs[0];
 }
 
 Concat::Concat(FFModel& model,
                int _n, const Tensor* _tensors,
-               int _axis)
-: Op(model, OP_CONCAT, "Concat_"+std::to_string(_axis), _n, _tensors), axis(_axis),
+               int _axis,
+               const char* name)
+: Op(model, OP_CONCAT, name, _n, _tensors), axis(_axis),
    profiling(model.config.profiling)
 {
   //TODO: swich to use the Legion dim ordering
@@ -105,6 +108,11 @@ void Concat::create_output_and_partition(FFModel& model)
 
 }
 
+void Concat::init_meta(ConcatMeta *m) const
+{
+  m->axis = this->outputs[0].numDim - 1 - this->axis;
+}
+
 __host__
 OpMeta* Concat::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
@@ -114,9 +122,8 @@ OpMeta* Concat::init_task(const Task *task,
   FFHandler handler = *((const FFHandler*) task->local_args);
   ConcatMeta* m = new ConcatMeta(handler);
   // Note that our internal axis index ordering is opposite to other frameworks
-  m->axis = cc->outputs[0].numDim - 1 - cc->axis;
+  cc->init_meta(m);
   return m;
-  // Return null since Concat ops don't need ConcatMeta
 }
 
 void Concat::init(const FFModel& ff)
@@ -203,7 +210,7 @@ void calc_blk_size(coord_t& num_blocks,
 
 /*static*/
 void Concat::forward_kernel(float* output,
-                            const float** inputs,
+                            float const * const *inputs,
                             int num_inputs,
                             int axis,
                             const Domain& out_domain,
@@ -267,13 +274,25 @@ void Concat::forward_task(const Task *task,
   for (int i = 0; i < cc->numInputs; i++)
     inputs[i] = helperGetTensorPointerRO<float>(
         regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
+  cudaEvent_t t_start, t_end;
+  if (cc->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start);
+  }
   forward_kernel(output, inputs, cc->numInputs, axis, out_domain, in_domain);
   if (cc->profiling) {
-    checkCUDA(cudaDeviceSynchronize());
+    cudaEventRecord(t_end);
+    checkCUDA(cudaEventSynchronize(t_end));
     //print_tensor<4, float>(output - output_blk_size, output_rect, "[Concat:forward:output]");
     //printf("output_blk_size=%zu\n", output_blk_size);
     //print_tensor<4, float>(inputs[0], input_rect[0], "[Concat:forward:input0]");
     //print_tensor<4, float>(inputs[1], input_rect[1], "[Concat:forward:input1]");
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    printf("[%s] forward time = %.4f ms\n", cc->name, elapsed);
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
   }
 }
 
@@ -334,7 +353,7 @@ void Concat::backward_kernel(const float* output_grad,
         input_grads[i], output_grad, num_blocks, input_blk_sizes[i], output_blk_size);
     output_grad += input_blk_sizes[i];
   }
-    
+
   //Rect<2> output_rect(Point<2>(0, 0), Point<2>(output_blk_size-1, batch_size - 1));
   //Rect<2> input_rect(Point<2>(0, 0), Point<2>(input_blk_sizes[0]-1, batch_size - 1));
   //print_tensor<2, float>(output_grad - output_blk_size, output_rect, "[Concat:backward:output]");
@@ -369,11 +388,23 @@ void Concat::backward_task(const Task *task,
     input_grads[i] = helperGetTensorPointerRW<float>(
         regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
 
+  cudaEvent_t t_start, t_end;
+  if (cc->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start);
+  }
   backward_kernel(output_grad, input_grads, cc->numInputs, axis,
       out_grad_domain, in_grad_domains);
 
   if (cc->profiling) {
-    checkCUDA(cudaDeviceSynchronize());
+    cudaEventRecord(t_end);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    printf("[%s] forward time = %.4f ms\n", cc->name, elapsed);
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
   }
 }
 
@@ -415,8 +446,55 @@ bool Concat::measure_compute_time(Simulator* sim,
                                   float& forward_time,
                                   float& backward_time)
 {
-  //TODO: implement measure_forward
-  forward_time = 0.0f;
-  backward_time = 0.0f;
+  assert (numInputs <= MAX_NUM_INPUTS);
+  Tensor sub_inputs[MAX_NUM_INPUTS], sub_output;
+  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+    return false;
+  }
+  for (int i = 0; i < numInputs; i++) {
+    if (!inputs[i].get_input_sub_tensor(pc, sub_inputs[i], op_type)) {
+      return false;
+    }
+  }
+
+  ConcatMeta *m = sim->concat_meta;
+  this->init_meta(m);
+
+  sim->free_all();
+  float *input_ptrs[MAX_NUM_INPUTS];
+  float *input_grad_ptrs[MAX_NUM_INPUTS];
+  for (int i = 0; i < numInputs; i++) {
+    input_ptrs[i] = (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
+    assert (input_ptrs[i] != NULL);
+    input_grad_ptrs[i] = (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
+    assert (input_grad_ptrs[i] != NULL);
+  }
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_ptr != NULL);
+  float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_grad_ptr != NULL);
+
+  int axis = outputs[0].numDim - 1 - this->axis;
+
+  Domain out_domain = sub_output.get_domain();
+  Domain in_domains[MAX_NUM_INPUTS];
+  for (int i = 0; i < numInputs; i++) {
+    in_domains[i] = sub_inputs[i].get_domain();
+  }
+
+  auto forward = [&] {
+    forward_kernel(output_ptr, input_ptrs, numInputs, axis, out_domain, in_domains);
+  };
+  auto backward = [&] {
+    backward_kernel(output_grad_ptr, input_grad_ptrs, numInputs, axis, out_domain, in_domains);
+  };
+
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Measure Concat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      forward_time,
+      backward_time);
+
   return true;
 }

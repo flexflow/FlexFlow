@@ -16,80 +16,79 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::exp(const Tensor& x)
+Tensor FFModel::unary(OperatorType op,
+                      const Tensor& x,
+                      const char *name)
 {
-  ElementUnary *ele = new ElementUnary(*this, OP_EXP, x);
+  ElementUnary *ele = new ElementUnary(*this, op, x, name);
   layers.push_back(ele);
   return ele->outputs[0];
 }
 
-ElementUnary* FFModel::exp()
+ElementUnary *FFModel::unary(OperatorType op,
+                             const char *name)
 {
-  ElementUnary* ele = new ElementUnary(*this, OP_EXP);
+  ElementUnary *ele = new ElementUnary(*this, op, name);
   layers.push_back(ele);
   return ele;
 }
 
-Tensor FFModel::relu(const Tensor& x)
+Tensor FFModel::exp(const Tensor& x,
+                    const char *name)
 {
-  ElementUnary *ele = new ElementUnary(*this, OP_RELU, x);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  return this->unary(OP_EXP, x, name);
 }
 
-ElementUnary* FFModel::relu()
+ElementUnary* FFModel::exp(const char *name)
 {
-  ElementUnary* ele = new ElementUnary(*this, OP_RELU);
-  layers.push_back(ele);
-  return ele;
+  return this->unary(OP_EXP, name);
 }
 
-Tensor FFModel::sigmoid(const Tensor& x)
+Tensor FFModel::relu(const Tensor& x, const char *name)
 {
-  ElementUnary *ele = new ElementUnary(*this, OP_SIGMOID, x);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  return this->unary(OP_RELU, x, name);
 }
 
-ElementUnary* FFModel::sigmoid()
+ElementUnary* FFModel::relu(const char *name)
 {
-  ElementUnary* ele = new ElementUnary(*this, OP_SIGMOID);
-  layers.push_back(ele);
-  return ele;
+  return this->unary(OP_RELU, name);
 }
 
-Tensor FFModel::tanh(const Tensor& x)
+Tensor FFModel::sigmoid(const Tensor& x, const char *name)
 {
-  ElementUnary *ele = new ElementUnary(*this, OP_TANH, x);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  return this->unary(OP_SIGMOID, x, name);
 }
 
-ElementUnary* FFModel::tanh()
+ElementUnary* FFModel::sigmoid(const char *name)
 {
-  ElementUnary* ele = new ElementUnary(*this, OP_TANH);
-  layers.push_back(ele);
-  return ele;
+  return this->unary(OP_SIGMOID, name);
 }
 
-Tensor FFModel::elu(const Tensor& x)
+Tensor FFModel::tanh(const Tensor& x, const char *name)
 {
-  ElementUnary *ele = new ElementUnary(*this, OP_ELU, x);
-  layers.push_back(ele);
-  return ele->outputs[0];
+  return this->unary(OP_TANH, x, name);
 }
 
-ElementUnary* FFModel::elu()
+ElementUnary* FFModel::tanh(const char *name)
 {
-  ElementUnary* ele = new ElementUnary(*this, OP_ELU);
-  layers.push_back(ele);
-  return ele;
+  return this->unary(OP_TANH, name);
+}
+
+Tensor FFModel::elu(const Tensor& x, const char *name)
+{
+  return this->unary(OP_ELU, x, name);
+}
+
+ElementUnary* FFModel::elu(const char *name)
+{
+  return this->unary(OP_ELU, name);
 }
 
 ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
-                           const Tensor& x)
-: Op(model, _op_type, "ElementUnary_"+std::to_string(_op_type), x)
+                           const Tensor& x,
+                           const char* name)
+: Op(model, _op_type, name, x)
 {
   outputs[0].numDim = inputs[0].numDim;
   for (int i = 0; i < outputs[0].numDim; i++)
@@ -97,8 +96,9 @@ ElementUnary::ElementUnary(FFModel& model,
 }
 
 ElementUnary::ElementUnary(FFModel& model,
-                           OperatorType _op_type)
-: Op(model, _op_type, "ElementUnary_"+std::to_string(_op_type), 1)
+                           OperatorType _op_type,
+                           const char* name)
+: Op(model, _op_type, name, 1)
 {}
 
 Tensor ElementUnary::init_inout(FFModel& model,
@@ -317,7 +317,7 @@ void ElementUnary::forward_kernel(const ElementUnaryMeta* m,
   } else {
     elewise_unary_forward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
         num_elements, alpha, beta, m->op_type, input_ptr, output_ptr);
-  } 
+  }
 }
 
 /*
@@ -424,7 +424,7 @@ void ElementUnary::backward_kernel(const ElementUnaryMeta* m,
 {
   float alpha = 1.0f;
   if (use_cudnn(m->op_type)) {
-    checkCUDNN(cudnnActivationBackward(m->handle.dnn, m->actiDesc, 
+    checkCUDNN(cudnnActivationBackward(m->handle.dnn, m->actiDesc,
         &alpha, m->outputTensor, output_ptr, m->outputTensor, output_grad_ptr,
         m->inputTensor, input_ptr, &alpha, m->inputTensor, input_grad_ptr));
   } else {
@@ -592,35 +592,17 @@ bool ElementUnary::measure_compute_time(Simulator* sim,
   float* output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_grad_ptr != NULL);
 
-  // measure forward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
+  auto forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, sub_output.get_volume());
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  float milliseconds;
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  forward_time = milliseconds / sim->repeat_times;
-
-  // measure backward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
-    }
+  };
+  auto backward = [&] {
     backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr,
         sub_output.get_volume());
-  }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  backward_time = milliseconds / sim->repeat_times;
+  };
 
-  printf("[Measure Elewise Unary] num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
-         sub_output.get_volume(), forward_time, backward_time);
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Measure Elewise Unary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
+         name, sub_output.get_volume(), forward_time, backward_time);
   return true;
 }

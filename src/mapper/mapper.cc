@@ -285,7 +285,7 @@ void FFMapper::slice_task(const MapperContext ctx,
 }
 
 void FFMapper::premap_task(const MapperContext      ctx,
-                           const Task&              task, 
+                           const Task&              task,
                            const PremapTaskInput&   input,
                            PremapTaskOutput&        output)
 {
@@ -391,9 +391,9 @@ void FFMapper::map_task(const MapperContext ctx,
       // Report failed to creation
       log_ff_mapper.error("FlexFlow failed allocation of size %zd bytes for "
           "region requirement %d of task %s (UID %lld) in memory "
-          IDFMT " for processor " IDFMT ".", footprint, idx,
+          IDFMT " with kind %d for processor " IDFMT ".", footprint, idx,
           task.get_task_name(), task.get_unique_id(),
-          target_mem.id, task.target_proc.id);
+          target_mem.id, target_mem.kind(), task.target_proc.id);
       assert(false);
     } else {
       output.chosen_instances[idx].push_back(result);
@@ -975,7 +975,7 @@ void FFMapper::select_tasks_to_map(const MapperContext          ctx,
                                          SelectMappingOutput&   output)
 {
   // Just map all the ready tasks
-  for (std::list<const Task*>::const_iterator it = 
+  for (std::list<const Task*>::const_iterator it =
         input.ready_tasks.begin(); it != input.ready_tasks.end(); it++)
     output.map_tasks.insert(*it);
 }

@@ -51,11 +51,17 @@ Simulator::Simulator(const FFModel* model,
   pool2d_meta = new Pool2DMeta(handler);
   ele_unary_meta = new ElementUnaryMeta(handler);
   ele_binary_meta = new ElementBinaryMeta(handler);
+  softmax_meta = new SoftmaxMeta(handler);
+  batch_matmul_meta = new BatchMatmulMeta(handler);
+  batch_norm_meta = new BatchNormMeta(handler);
+  concat_meta = new ConcatMeta(handler);
+  dropout_meta = new DropoutMeta(handler);
+  transpose_meta = new TransposeMeta(handler);
   int num_nodes = model->config.numNodes;
   int gpus_per_node = model->config.workersPerNode;
   total_num_devices = num_nodes * gpus_per_node;
   // Create GPU compute device
-  for (int i = 0; i < num_nodes; i++) 
+  for (int i = 0; i < num_nodes; i++)
     for (int j = 0; j < gpus_per_node; j++) {
       id_to_compute_device[i*gpus_per_node+j] = new Device(Device::DEVICE_GPU,
           i, i*gpus_per_node+j);
