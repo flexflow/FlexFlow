@@ -40,14 +40,6 @@ Transpose::Transpose(FFModel& model,
   numWeights = 0;
 }
 
-Tensor Transpose::init_inout(FFModel& model,
-                             const Tensor& input)
-{
-  inputs[0] = input;
-  create_output_and_partition(model);
-  return outputs[0];
-}
-
 void Transpose::create_weights(FFModel& model)
 {
   // Do nothing

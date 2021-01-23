@@ -23,25 +23,11 @@ Tensor FFModel::exp(const Tensor& x)
   return ele->outputs[0];
 }
 
-ElementUnary* FFModel::exp()
-{
-  ElementUnary* ele = new ElementUnary(*this, OP_EXP);
-  layers.push_back(ele);
-  return ele;
-}
-
 Tensor FFModel::relu(const Tensor& x)
 {
   ElementUnary *ele = new ElementUnary(*this, OP_RELU, x);
   layers.push_back(ele);
   return ele->outputs[0];
-}
-
-ElementUnary* FFModel::relu()
-{
-  ElementUnary* ele = new ElementUnary(*this, OP_RELU);
-  layers.push_back(ele);
-  return ele;
 }
 
 Tensor FFModel::sigmoid(const Tensor& x)
@@ -51,13 +37,6 @@ Tensor FFModel::sigmoid(const Tensor& x)
   return ele->outputs[0];
 }
 
-ElementUnary* FFModel::sigmoid()
-{
-  ElementUnary* ele = new ElementUnary(*this, OP_SIGMOID);
-  layers.push_back(ele);
-  return ele;
-}
-
 Tensor FFModel::tanh(const Tensor& x)
 {
   ElementUnary *ele = new ElementUnary(*this, OP_TANH, x);
@@ -65,25 +44,11 @@ Tensor FFModel::tanh(const Tensor& x)
   return ele->outputs[0];
 }
 
-ElementUnary* FFModel::tanh()
-{
-  ElementUnary* ele = new ElementUnary(*this, OP_TANH);
-  layers.push_back(ele);
-  return ele;
-}
-
 Tensor FFModel::elu(const Tensor& x)
 {
   ElementUnary *ele = new ElementUnary(*this, OP_ELU, x);
   layers.push_back(ele);
   return ele->outputs[0];
-}
-
-ElementUnary* FFModel::elu()
-{
-  ElementUnary* ele = new ElementUnary(*this, OP_ELU);
-  layers.push_back(ele);
-  return ele;
 }
 
 ElementUnary::ElementUnary(FFModel& model,
@@ -94,19 +59,6 @@ ElementUnary::ElementUnary(FFModel& model,
   outputs[0].numDim = inputs[0].numDim;
   for (int i = 0; i < outputs[0].numDim; i++)
     outputs[0].adim[i] = inputs[0].adim[i];
-}
-
-ElementUnary::ElementUnary(FFModel& model,
-                           OperatorType _op_type)
-: Op(model, _op_type, "ElementUnary_"+std::to_string(_op_type), 1)
-{}
-
-Tensor ElementUnary::init_inout(FFModel& model,
-                                const Tensor& input)
-{
-  inputs[0] = input;
-  create_output_and_partition(model);
-  return outputs[0];
 }
 
 bool ElementUnary::use_cudnn() const

@@ -44,32 +44,6 @@ Tensor FFModel::conv2d(const Tensor& input,
   return conv->outputs[0];
 }
 
-Conv2D* FFModel::conv2d(int inChannels,
-                        int outChannels,
-                        int kernelH, int kernelW,
-                        int strideH, int strideW,
-                        int paddingH, int paddingW,
-                        int groups,
-                        ActiMode activation,
-                        bool use_bias,
-                        Initializer* kernel_initializer,
-                        Initializer* bias_initializer)
-{
-  if (kernel_initializer == NULL) {
-    int seed = std::rand();
-    kernel_initializer = new GlorotUniform(seed);
-  }
-  if (bias_initializer == NULL) {
-    bias_initializer = new ZeroInitializer();
-  }
-
-  Conv2D *conv = new Conv2D(*this, inChannels, outChannels, kernelH, kernelW,
-                            strideH, strideW, paddingH, paddingW, groups, activation,
-                            use_bias, kernel_initializer, bias_initializer);
-  layers.push_back(conv);
-  return conv;
-}
-
 /*
 locals[0] = kernel
 locals[1] = bias
@@ -123,37 +97,6 @@ Conv2D::Conv2D(FFModel& model,
     weights[1].adim[0] = out_channels;
     numWeights = 2;
   }
-}
-
-Conv2D::Conv2D(FFModel& model,
-               int in_dim, int out_dim,
-               int _kernel_h, int _kernel_w,
-               int _stride_h, int _stride_w,
-               int _padding_h, int _padding_w,
-               int _groups,
-               ActiMode _activation,
-               bool _use_bias,
-               Initializer* _kernel_initializer,
-               Initializer* _bias_initializer)
-: Op(model, OP_CONV2D, "Conv2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w), 1),
-  in_channels(in_dim), out_channels(out_dim),
-  kernel_h(_kernel_h), kernel_w(_kernel_w),
-  stride_h(_stride_h), stride_w(_stride_w),
-  padding_h(_padding_h), padding_w(_padding_w),
-  groups(_groups), activation(_activation), use_bias(_use_bias),
-  kernel_initializer(_kernel_initializer),
-  bias_initializer(_bias_initializer),
-  profiling(model.config.profiling)
-{
-}
-
-Tensor Conv2D::init_inout(FFModel& model, const Tensor& _input)
-{
-  assert(_input.numDim == 4);
-  assert(_input.adim[2] == in_channels);
-  inputs[0] = _input;
-  create_output_and_partition(model);
-  return outputs[0];
 }
 
 void Conv2D::create_weights(FFModel& model)

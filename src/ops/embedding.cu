@@ -32,20 +32,6 @@ Tensor FFModel::embedding(const Tensor& input,
   return embed->outputs[0];
 }
 
-Embedding* FFModel::embedding(int num_entries,
-                              int out_dim,
-                              AggrMode aggr,
-                              Initializer* kernel_initializer)
-{
-  //assert(config.strategies.find(name) != config.strategies.end());
-  //ParallelConfig pc = config.strategies[name];
-  //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
-  Embedding* embed = new Embedding(*this, num_entries,
-                                   out_dim, aggr, kernel_initializer);
-  layers.push_back(embed);
-  return embed;
-}
-
 Embedding::Embedding(FFModel& model,
                      const Tensor& _input,
                      //std::stirng name,
@@ -66,31 +52,6 @@ Embedding::Embedding(FFModel& model,
   weights[0].adim[1] = out_channels;
   numWeights = 1;
 }
-
-Embedding::Embedding(FFModel& model,
-                     int _num_entries, int outDim,
-                     AggrMode _aggr,
-                     Initializer* kernel_initializer)
-: Op(model, OP_EMBEDDING, "Embed_"+std::to_string(_num_entries)+"x"+std::to_string(outDim), 1),
-  num_entries(_num_entries), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
-{
-}
-
-Tensor Embedding::init_inout(FFModel& model, const Tensor& _input)
-{
-  assert(_input.numDim == 2);
-  inputs[0] = _input;
-  create_output_and_partition(model);
-  return outputs[0];
-}
-
-/*
-void Embedding::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
-  model.parameters.push_back(weights[0]);
-}
-*/
 
 void Embedding::create_weights(FFModel& model)
 {

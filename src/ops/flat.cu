@@ -26,15 +26,6 @@ Tensor FFModel::flat(const Tensor& input)
   return flat->outputs[0];
 }
 
-Flat* FFModel::flat()
-{
-  //assert(strategies.find(name) != strategies.end());
-  //ParallelConfig pc = strategies[name];
-  Flat *flat = new Flat(*this);
-  layers.push_back(flat);
-  return flat;
-}
-
 Flat::Flat(FFModel& model,
            const Tensor& _input)
 : Op(model, OP_FLAT, "Flat", _input)
@@ -46,25 +37,6 @@ Flat::Flat(FFModel& model,
   outputs[0].adim[0] = out_dim;
   outputs[0].adim[1] = batch_size;
 }
-
-Flat::Flat(FFModel& model)
-: Op(model, OP_FLAT, "Flat", 1)
-{
-}
-
-Tensor Flat::init_inout(FFModel& model, const Tensor& _input)
-{
-  inputs[0] = _input;
-  create_output_and_partition(model);
-  return outputs[0];
-}
-
-/*
-void Flat::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
-}
-*/
 
 void Flat::create_weights(FFModel& model)
 {

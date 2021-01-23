@@ -41,14 +41,6 @@ Dropout::Dropout(FFModel& model,
     outputs[0].adim[i] = inputs[0].adim[i];
 }
 
-Tensor Dropout::init_inout(FFModel& model,
-                           const Tensor& input)
-{
-  inputs[0] = input;
-  create_output_and_partition(model);
-  return outputs[0];
-}
-
 void Dropout::create_weights(FFModel& model)
 {
   // Do nothing

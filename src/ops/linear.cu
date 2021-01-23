@@ -37,25 +37,6 @@ Tensor FFModel::dense(const Tensor& input,
   return li->outputs[0];
 }
 
-Linear* FFModel::dense(int inDim, int outDim, 
-                       ActiMode activation,
-                       bool use_bias,
-                       Initializer* kernel_initializer,
-                       Initializer* bias_initializer)
-{
-  if (kernel_initializer == NULL) {
-    int seed = std::rand();
-    kernel_initializer = new GlorotUniform(seed);
-  }
-  if (bias_initializer == NULL) {
-    bias_initializer = new ZeroInitializer();
-  }
-  Linear *li = new Linear(*this, inDim, outDim, activation, use_bias,
-                          kernel_initializer, bias_initializer);
-  layers.push_back(li);
-  return li;
-}
-
 Linear::Linear(FFModel& model,
                const Tensor& _input,
                int out_dim,
@@ -87,42 +68,6 @@ Linear::Linear(FFModel& model,
     numWeights = 2;
   }
 }
-
-Linear::Linear(FFModel& model,
-               int in_dim, int out_dim,
-               ActiMode _activation,
-               bool _use_bias,
-               Initializer* _kernel_initializer,
-               Initializer* _bias_initializer)
-: Op(model, OP_LINEAR, "Dense_"+std::to_string(out_dim), 1), 
-  in_channels(in_dim), out_channels(out_dim),
-  activation(_activation), use_bias(_use_bias),
-  kernel_initializer(_kernel_initializer),
-  bias_initializer(_bias_initializer),
-  profiling(model.config.profiling)
-{
-}
-
-Tensor Linear::init_inout(FFModel& model, const Tensor& _input)
-{
-  assert(_input.adim[0] == in_channels);
-  inputs[0] = _input;
-  create_output_and_partition(model);
-  return outputs[0];
-}
-
-/*
-void Linear::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
-  model.parameters.push_back(weights[0]);
-  if (numWeights > 1) { // bias is used
-    assert(numWeights == 2);
-    model.parameters.push_back(weights[1]);
-  }
-}
-*/
-
 
 void Linear::create_weights(FFModel& model)
 {
