@@ -61,13 +61,6 @@ void Pool2D::create_weights(FFModel& model)
   // Do nothing since we don't have any weight
 }
 
-/*
-void Pool2D::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
-}
-*/
-
 void Pool2D::create_output_and_partition(FFModel& model)
 {
   Context ctx = model.config.lg_ctx;

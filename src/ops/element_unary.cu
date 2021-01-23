@@ -74,13 +74,6 @@ bool ElementUnary::use_cudnn() const
   return false;
 }
 
-/*
-void ElementUnary::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
-}
-*/
-
 void ElementUnary::create_weights(FFModel& model)
 {
   // Do nothing
