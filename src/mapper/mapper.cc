@@ -1047,6 +1047,8 @@ Memory FFMapper::default_policy_select_target_memory(MapperContext ctx,
       //           ctx, target_proc, req, mc);
       assert(proc_fbmems.find(target_proc) != proc_fbmems.end());
       return proc_fbmems[target_proc];
+      //assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
+      //return proc_zcmems[target_proc];
     }
   } else if (target_proc.kind() == Processor::LOC_PROC) {
     assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
@@ -1085,8 +1087,10 @@ Memory FFMapper::default_select_target_memory(
       return proc_zcmems[target_proc];
     } else {
       assert(req.tag == 0);
-      assert(proc_fbmems.find(target_proc) != proc_fbmems.end());
-      return proc_fbmems[target_proc];
+      //assert(proc_fbmems.find(target_proc) != proc_fbmems.end());
+      //return proc_fbmems[target_proc];
+      assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
+      return proc_zcmems[target_proc];
     }
   } else if (target_proc.kind() == Processor::LOC_PROC) {
     assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
