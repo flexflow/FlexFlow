@@ -17,17 +17,19 @@
 #include "cuda_helper.h"
 
 Tensor FFModel::reverse(const Tensor& input,
-                        int axis)
+                        int axis,
+                        const char* name)
 {
-  Reverse* reverse = new Reverse(*this, input, axis);
+  Reverse* reverse = new Reverse(*this, input, axis, name);
   layers.push_back(reverse);
   return reverse->outputs[0];
 }
 
 Reverse::Reverse(FFModel& model,
                  const Tensor& input,
-                 int _axis)
-: Op(model, OP_REVERSE, "Reverse_"+std::to_string(axis)+"_", input), axis(_axis)
+                 int _axis,
+                 const char* name)
+: Op(model, OP_REVERSE, name, input), axis(_axis)
 {
   outputs[0].numDim = input.numDim;
   for (int i = 0; i < input.numDim; i++)

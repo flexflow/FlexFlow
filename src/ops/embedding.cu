@@ -21,13 +21,14 @@ Tensor FFModel::embedding(const Tensor& input,
                           int out_dim,
                           AggrMode aggr,
                           const Op* shared_op,
-                          Initializer* kernel_initializer)
+                          Initializer* kernel_initializer,
+                          const char* name)
 {
   //assert(config.strategies.find(name) != config.strategies.end());
   //ParallelConfig pc = config.strategies[name];
   //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
   Embedding* embed = new Embedding(*this, input, num_entries,
-                                   out_dim, aggr, shared_op, kernel_initializer);
+      out_dim, aggr, shared_op, kernel_initializer, name);
   layers.push_back(embed);
   return embed->outputs[0];
 }
@@ -35,13 +36,14 @@ Tensor FFModel::embedding(const Tensor& input,
 Embedding* FFModel::embedding(int num_entries,
                               int out_dim,
                               AggrMode aggr,
-                              Initializer* kernel_initializer)
+                              Initializer* kernel_initializer,
+                              const char* name)
 {
   //assert(config.strategies.find(name) != config.strategies.end());
   //ParallelConfig pc = config.strategies[name];
   //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
   Embedding* embed = new Embedding(*this, num_entries,
-                                   out_dim, aggr, kernel_initializer);
+      out_dim, aggr, kernel_initializer, name);
   layers.push_back(embed);
   return embed;
 }
@@ -52,8 +54,9 @@ Embedding::Embedding(FFModel& model,
                      int _num_entries, int outDim,
                      AggrMode _aggr,
                      const Op* shared_op,
-                     Initializer* _kernel_initializer)
-: Op(model, OP_EMBEDDING, shared_op, "Embed_"+std::to_string(_num_entries)+"x"+std::to_string(outDim), _input),
+                     Initializer* _kernel_initializer,
+                     const char* name)
+: Op(model, OP_EMBEDDING, shared_op, name, _input),
   num_entries(_num_entries), out_channels(outDim), aggr(_aggr),
   kernel_initializer(_kernel_initializer), profiling(model.config.profiling)
 {
@@ -70,8 +73,9 @@ Embedding::Embedding(FFModel& model,
 Embedding::Embedding(FFModel& model,
                      int _num_entries, int outDim,
                      AggrMode _aggr,
-                     Initializer* kernel_initializer)
-: Op(model, OP_EMBEDDING, "Embed_"+std::to_string(_num_entries)+"x"+std::to_string(outDim), 1),
+                     Initializer* kernel_initializer,
+                     const char* name)
+: Op(model, OP_EMBEDDING, name, 1),
   num_entries(_num_entries), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
 {
 }

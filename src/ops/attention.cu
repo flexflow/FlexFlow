@@ -27,7 +27,8 @@ Tensor FFModel::multihead_attention(const Tensor& query,
                                     bool bias,
                                     bool add_bias_kv,
                                     bool add_zero_attn,
-                                    Initializer* kernel_initializer)
+                                    Initializer* kernel_initializer,
+                                    const char* name)
 {
   if (kernel_initializer == NULL) {
     int seed = std::rand();
@@ -38,7 +39,7 @@ Tensor FFModel::multihead_attention(const Tensor& query,
   //}
   MultiHeadAttention* attn = new MultiHeadAttention(*this, query, key, value,
       embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn,
-      kernel_initializer/*, bias_initializer*/);
+      kernel_initializer/*, bias_initializer*/, name);
   layers.push_back(attn);
   return attn->outputs[0];
 }
@@ -51,10 +52,12 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
                                        int _kdim, int _vdim,
                                        float _dropout, bool _bias,
                                        bool _add_bias_kv, bool _add_zero_attn,
-                                       Initializer* _kernel_initializer)
+                                       Initializer* _kernel_initializer,
+                                       const char* name)
 //                                       Initializer* _bias_initializer)
-: Op(model, OP_MULTIHEAD_ATTENTION,
-     "Attention_"+std::to_string(_embed_dim)+std::to_string(_num_heads),
+: Op(model,
+     OP_MULTIHEAD_ATTENTION,
+     name,
      _query, _key, _value),
   dropout(_dropout), bias(_bias),
   add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
@@ -502,7 +505,7 @@ void MultiHeadAttention::backward(const FFModel& ff)
       RegionRequirement(input_grad_lps[0], 0/*projection id*/,
           READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(6, FID_DATA);
-  int num_regions = 6;
+  int num_regions = 7;
   if (inputs[1].region != inputs[0].region) {
     // when key != query
     launcher.add_region_requirement(

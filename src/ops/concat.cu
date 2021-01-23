@@ -21,27 +21,15 @@ Tensor FFModel::concat(int n,
                        int axis,
                        const char *name)
 {
-  Concat *cat;
-  if (name == NULL) {
-    cat = new Concat(*this, n, tensors, axis);
-  } else {
-    cat = new Concat(*this, n, tensors, axis, std::string(name));
-  }
+  Concat *cat = new Concat(*this, n, tensors, axis, name);
   layers.push_back(cat);
   return cat->outputs[0];
 }
 
 Concat::Concat(FFModel& model,
-               int _n,
-               const Tensor* _tensors,
-               int _axis)
-: Concat(model, _n, _tensors, _axis, "Concat_"+std::to_string(_axis))
-{ }
-
-Concat::Concat(FFModel& model,
                int _n, const Tensor* _tensors,
                int _axis,
-               const std::string &name)
+               const char* name)
 : Op(model, OP_CONCAT, name, _n, _tensors), axis(_axis),
    profiling(model.config.profiling)
 {
@@ -295,7 +283,6 @@ void Concat::forward_task(const Task *task,
   forward_kernel(output, inputs, cc->numInputs, axis, out_domain, in_domain);
   if (cc->profiling) {
     cudaEventRecord(t_end);
-    checkCUDA(cudaDeviceSynchronize());
     checkCUDA(cudaEventSynchronize(t_end));
     //print_tensor<4, float>(output - output_blk_size, output_rect, "[Concat:forward:output]");
     //printf("output_blk_size=%zu\n", output_blk_size);
@@ -303,9 +290,9 @@ void Concat::forward_task(const Task *task,
     //print_tensor<4, float>(inputs[1], input_rect[1], "[Concat:forward:input1]");
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    printf("[%s] forward time = %.4f ms\n", cc->name, elapsed);
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("%s [Concat] forward time (CF) = %.2fms\n", cc->name, elapsed);
   }
 }
 
@@ -401,16 +388,23 @@ void Concat::backward_task(const Task *task,
     input_grads[i] = helperGetTensorPointerRW<float>(
         regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
 
+  cudaEvent_t t_start, t_end;
+  if (cc->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start);
+  }
   backward_kernel(output_grad, input_grads, cc->numInputs, axis,
       out_grad_domain, in_grad_domains);
 
   if (cc->profiling) {
-    checkCUDA(cudaDeviceSynchronize());
-    //int batch_size = domain.get_volume() / output_blk_size;
-    //Rect<2> output_rect(Point<2>(0, 0), Point<2>(output_blk_size-1, batch_size - 1));
-    //Rect<2> input_rect(Point<2>(0, 0), Point<2>(input_blk_sizes[0]-1, batch_size - 1));
-    //print_tensor<2, float>(output_grad - output_blk_size, output_rect, "[Concat:backward:output]");
-    //print_tensor<2, float>(input_grads[0], input_rect, "[Concat:backward:input0]");
+    cudaEventRecord(t_end);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    printf("[%s] forward time = %.4f ms\n", cc->name, elapsed);
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
   }
 }
 

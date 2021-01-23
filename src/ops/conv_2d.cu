@@ -38,16 +38,9 @@ Tensor FFModel::conv2d(const Tensor& input,
   }
 
   assert(input.numDim == 4); /*NCHW*/
-  Conv2D *conv;
-  if (name == NULL) {
-    conv = new Conv2D(*this, input, outChannels, kernelH, kernelW,
-                      strideH, strideW, paddingH, paddingW, groups, activation,
-                      use_bias, shared_op, kernel_initializer, bias_initializer);
-  } else {
-    conv = new Conv2D(*this, input, outChannels, kernelH, kernelW,
-                      strideH, strideW, paddingH, paddingW, groups, activation,
-                      use_bias, shared_op, kernel_initializer, bias_initializer, std::string(name));
-  }
+  Conv2D *conv = new Conv2D(*this, input, outChannels, kernelH, kernelW,
+      strideH, strideW, paddingH, paddingW, groups, activation,
+      use_bias, shared_op, kernel_initializer, bias_initializer, name);
   layers.push_back(conv);
   return conv->outputs[0];
 }
@@ -72,16 +65,9 @@ Conv2D* FFModel::conv2d(int inChannels,
     bias_initializer = new ZeroInitializer();
   }
 
-  Conv2D *conv;
-  if (name == NULL) {
-    conv = new Conv2D(*this, inChannels, outChannels, kernelH, kernelW,
-                      strideH, strideW, paddingH, paddingW, groups, activation,
-                      use_bias, kernel_initializer, bias_initializer);
-  } else {
-    conv = new Conv2D(*this, inChannels, outChannels, kernelH, kernelW,
-                      strideH, strideW, paddingH, paddingW, groups, activation,
-                      use_bias, kernel_initializer, bias_initializer, std::string(name));
-  }
+  Conv2D *conv = new Conv2D(*this, inChannels, outChannels, kernelH, kernelW,
+                            strideH, strideW, paddingH, paddingW, groups, activation,
+                            use_bias, kernel_initializer, bias_initializer, name);
   layers.push_back(conv);
   return conv;
 }
@@ -102,7 +88,7 @@ Conv2D::Conv2D(FFModel& model,
                const Op* shared_op,
                Initializer* _kernel_initializer,
                Initializer* _bias_initializer,
-               std::string const &name)
+               const char* name)
 : Op(model, OP_CONV2D, shared_op, name, _input),
   in_channels(_input.adim[2]), out_channels(out_dim),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
@@ -143,34 +129,6 @@ Conv2D::Conv2D(FFModel& model,
 }
 
 Conv2D::Conv2D(FFModel& model,
-               const Tensor& _input,
-               int out_dim,
-               int _kernel_h, int _kernel_w,
-               int _stride_h, int _stride_w,
-               int _padding_h, int _padding_w,
-               int _groups,
-               ActiMode _activation,
-               bool _use_bias,
-               const Op* shared_op,
-               Initializer* _kernel_initializer,
-               Initializer* _bias_initializer)
-: Conv2D(
-    model,
-    _input,
-    out_dim,
-    _kernel_h, _kernel_w,
-    _stride_h, _stride_w,
-    _padding_h, _padding_w,
-    _groups,
-    _activation,
-    _use_bias,
-    shared_op,
-    _kernel_initializer,
-    _bias_initializer,
-    "Conv2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w)
-) { }
-
-Conv2D::Conv2D(FFModel& model,
                int in_dim, int out_dim,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
@@ -180,7 +138,7 @@ Conv2D::Conv2D(FFModel& model,
                bool _use_bias,
                Initializer* _kernel_initializer,
                Initializer* _bias_initializer,
-               std::string const &name)
+               const char* name)
 : Op(model, OP_CONV2D, name, 1),
   in_channels(in_dim), out_channels(out_dim),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
@@ -192,30 +150,6 @@ Conv2D::Conv2D(FFModel& model,
   profiling(model.config.profiling)
 {
 }
-
-Conv2D::Conv2D(FFModel& model,
-               int in_dim, int out_dim,
-               int _kernel_h, int _kernel_w,
-               int _stride_h, int _stride_w,
-               int _padding_h, int _padding_w,
-               int _groups,
-               ActiMode _activation,
-               bool _use_bias,
-               Initializer* _kernel_initializer,
-               Initializer* _bias_initializer)
-: Conv2D(
-    model,
-    in_dim, out_dim,
-    _kernel_h, _kernel_w,
-    _stride_h, _stride_w,
-    _padding_h, _padding_w,
-    _groups,
-    _activation,
-    _use_bias,
-    _kernel_initializer,
-    _bias_initializer,
-    "Conv2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w)
-) { }
 
 Tensor Conv2D::init_inout(FFModel& model, const Tensor& _input)
 {
@@ -437,6 +371,9 @@ OpMeta* Conv2D::init_task(const Task *task,
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
                                             CUDNN_PROPAGATE_NAN, 0.0));
   }
+#ifdef FF_ENABLE_NCCL
+  m->init_nccl_communicator(task, conv->ncclId);
+#endif
   return m;
 }
 

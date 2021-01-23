@@ -17,10 +17,11 @@
 #include "cuda_helper.h"
 
 Tensor FFModel::batch_norm(const Tensor& input,
-                           bool relu)
+                           bool relu,
+                           const char* name)
 {
   assert(input.numDim == 4); //Only support 4D BN for now
-  BatchNorm *bn = new BatchNorm(*this, input, relu);
+  BatchNorm *bn = new BatchNorm(*this, input, relu, name);
   layers.push_back(bn);
   return bn->outputs[0];
 }
@@ -31,8 +32,9 @@ Tensor FFModel::batch_norm(const Tensor& input,
 */
 BatchNorm::BatchNorm(FFModel& model,
                      const Tensor& _input,
-                     bool _relu)
-: Op(model, OP_BATCHNORM, "BatchNorm", _input), relu(_relu), profiling(model.config.profiling)
+                     bool _relu,
+                     const char* name)
+: Op(model, OP_BATCHNORM, name, _input), relu(_relu), profiling(model.config.profiling)
 {
   assert(_input.numDim == 4);
   numOutputs = 1;

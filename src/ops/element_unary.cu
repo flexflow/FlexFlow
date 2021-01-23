@@ -20,12 +20,7 @@ Tensor FFModel::unary(OperatorType op,
                       const Tensor& x,
                       const char *name)
 {
-  ElementUnary *ele;
-  if (name == NULL) {
-    ele = new ElementUnary(*this, op, x);
-  } else {
-    ele = new ElementUnary(*this, op, x, name);
-  }
+  ElementUnary *ele = new ElementUnary(*this, op, x, name);
   layers.push_back(ele);
   return ele->outputs[0];
 }
@@ -33,12 +28,7 @@ Tensor FFModel::unary(OperatorType op,
 ElementUnary *FFModel::unary(OperatorType op,
                              const char *name)
 {
-  ElementUnary *ele;
-  if (name == NULL) {
-    ele = new ElementUnary(*this, op);
-  } else {
-    ele = new ElementUnary(*this, op, name);
-  }
+  ElementUnary *ele = new ElementUnary(*this, op, name);
   layers.push_back(ele);
   return ele;
 }
@@ -96,14 +86,8 @@ ElementUnary* FFModel::elu(const char *name)
 
 ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
-                           const Tensor& x)
-: ElementUnary(model, _op_type, x, "ElementUnary_"+std::to_string(_op_type))
-{ }
-
-ElementUnary::ElementUnary(FFModel& model,
-                           OperatorType _op_type,
                            const Tensor& x,
-                           const std::string &name)
+                           const char* name)
 : Op(model, _op_type, name, x)
 {
   outputs[0].numDim = inputs[0].numDim;
@@ -112,13 +96,8 @@ ElementUnary::ElementUnary(FFModel& model,
 }
 
 ElementUnary::ElementUnary(FFModel& model,
-                           OperatorType _op_type)
-: ElementUnary(model, _op_type, "ElementUnary_"+std::to_string(_op_type))
-{ }
-
-ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
-                           const std::string &name)
+                           const char* name)
 : Op(model, _op_type, name, 1)
 {}
 

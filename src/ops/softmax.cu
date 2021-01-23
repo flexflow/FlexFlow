@@ -20,12 +20,7 @@
 Tensor FFModel::softmax(const Tensor& _input, const char *name)
 {
   assert(_input.numDim == 2);
-  Softmax *sm;
-  if (name == NULL) {
-    sm = new Softmax(*this, _input);
-  } else {
-    sm = new Softmax(*this, _input, std::string(name));
-  }
+  Softmax *sm = new Softmax(*this, _input, name);
   layers.push_back(sm);
   return sm->outputs[0];
 }
@@ -33,19 +28,12 @@ Tensor FFModel::softmax(const Tensor& _input, const char *name)
 SoftmaxMeta::SoftmaxMeta(FFHandler handler)
 : OpMeta(handler)
 {
-#ifndef DISABLE_COMPUTATION
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
-#endif
 }
 
 Softmax::Softmax(FFModel& model,
-                 const Tensor& _input)
-: Softmax(model, _input, "Softmax")
-{ }
-
-Softmax::Softmax(FFModel& model,
                  const Tensor& _input,
-                 const std::string &name)
+                 const char* name)
 : Op(model, OP_SOFTMAX, name, _input), profiling(model.config.profiling)
 {
   outputs[0].numDim = 2;

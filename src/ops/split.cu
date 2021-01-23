@@ -19,9 +19,10 @@
 void FFModel::split(const Tensor& input,
                     Tensor* outputs,
                     const std::vector<int>& splits,
-                    int axis)
+                    int axis,
+                    const char* name)
 {
-  Split* split = new Split(*this, input, splits, axis);
+  Split* split = new Split(*this, input, splits, axis, name);
   layers.push_back(split);
   for (size_t i = 0; i < splits.size(); i++)
     outputs[i] = split->outputs[i];
@@ -30,8 +31,9 @@ void FFModel::split(const Tensor& input,
 Split::Split(FFModel& model,
              const Tensor& input,
              const std::vector<int>& splits,
-             int _axis)
-: Op(model, OP_SPLIT, "Split_"+std::to_string(_axis), input)
+             int _axis,
+             const char* name)
+: Op(model, OP_SPLIT, name, input)
 {
   numOutputs = splits.size();
   // Use the Legion dim ordering

@@ -16,6 +16,25 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+Tensor FFModel::binary(OperatorType op,
+                       const Tensor& in1,
+                       const Tensor& in2,
+                       char const *name)
+{
+  ElementBinary *ele = new ElementBinary(*this, op, in1, in2, name);
+  layers.push_back(ele);
+  return ele->outputs[0];
+}
+
+ElementBinary *FFModel::binary(OperatorType op,
+                               char const *name)
+{
+  ElementBinary *ele = new ElementBinary(*this, op, name);
+  layers.push_back(ele);
+  return ele;
+}
+
+
 Tensor FFModel::add(const Tensor& in1,
                     const Tensor& in2,
                     char const *name)
@@ -67,15 +86,8 @@ ElementBinary* FFModel::divide(char const *name)
 ElementBinary::ElementBinary(FFModel& model,
                              OperatorType _op_type,
                              const Tensor& in1,
-                             const Tensor& in2)
-: ElementBinary(model, _op_type, in1, in2, "ElementBinary_"+std::to_string(_op_type))
-{ }
-
-ElementBinary::ElementBinary(FFModel& model,
-                             OperatorType _op_type,
-                             const Tensor& in1,
                              const Tensor& in2,
-                             const std::string& name)
+                             const char* name)
 : Op(
     model,
     _op_type,
@@ -99,13 +111,8 @@ ElementBinary::ElementBinary(FFModel& model,
 }
 
 ElementBinary::ElementBinary(FFModel& model,
-                             OperatorType _op_type)
-: ElementBinary(model, _op_type, "ElementBinary_"+std::to_string(_op_type))
-{ }
-
-ElementBinary::ElementBinary(FFModel& model,
                              OperatorType _op_type,
-                             const std::string &name)
+                             const char* name)
 : Op(
     model,
     _op_type,

@@ -24,16 +24,9 @@ Tensor FFModel::pool2d(const Tensor& input,
                        char const *name)
 {
   assert(input.numDim == 4); /*NCHW*/
-  Pool2D *pool;
-  if (name == NULL) {
-    pool = new Pool2D(*this, input,kernelH, kernelW,
+  Pool2D *pool = new Pool2D(*this, input, kernelH, kernelW,
                       strideH, strideW, paddingH, paddingW,
-                      type, activation);
-  } else {
-    pool = new Pool2D(*this, input, kernelH, kernelW,
-                      strideH, strideW, paddingH, paddingW,
-                      type, activation, std::string(name));
-  }
+                      type, activation, name);
   layers.push_back(pool);
   return pool->outputs[0];
 }
@@ -44,16 +37,9 @@ Pool2D* FFModel::pool2d(int kernelH, int kernelW,
                         PoolType type, ActiMode activation,
                         char const *name)
 {
-  Pool2D *pool;
-  if (name == NULL) {
-    pool = new Pool2D(*this, kernelH, kernelW,
+  Pool2D *pool = new Pool2D(*this, kernelH, kernelW,
                       strideH, strideW, paddingH, paddingW,
-                      type, activation);
-  } else {
-    pool = new Pool2D(*this, kernelH, kernelW,
-                      strideH, strideW, paddingH, paddingW,
-                      type, activation, std::string(name));
-  }
+                      type, activation, name);
   layers.push_back(pool);
   return pool;
 }
@@ -63,24 +49,8 @@ Pool2D::Pool2D(FFModel& model,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
-               PoolType _type, ActiMode _activation)
-: Pool2D(
-    model,
-    _input,
-    _kernel_h, _kernel_w,
-    _stride_h, _stride_w,
-    _padding_h, _padding_w,
-    _type, _activation,
-    "Pool2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w)
-) { }
-
-Pool2D::Pool2D(FFModel& model,
-               const Tensor& _input,
-               int _kernel_h, int _kernel_w,
-               int _stride_h, int _stride_w,
-               int _padding_h, int _padding_w,
                PoolType _type, ActiMode _activation,
-               std::string const &name)
+               const char* name)
 : Op(model, OP_POOL2D, name, _input),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),
@@ -105,22 +75,8 @@ Pool2D::Pool2D(FFModel& model,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
-               PoolType _type, ActiMode _activation)
-: Pool2D(
-    model,
-    _kernel_h, _kernel_w,
-    _stride_h, _stride_w,
-    _padding_h, _padding_w,
-    _type, _activation,
-    "Pool2D_"+std::to_string(_kernel_h)+std::to_string(_kernel_w)
-) { }
-
-Pool2D::Pool2D(FFModel& model,
-               int _kernel_h, int _kernel_w,
-               int _stride_h, int _stride_w,
-               int _padding_h, int _padding_w,
                PoolType _type, ActiMode _activation,
-               std::string const &name)
+               const char* name)
 : Op(model, OP_POOL2D, name, 1),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),

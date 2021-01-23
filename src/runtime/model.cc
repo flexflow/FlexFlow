@@ -210,11 +210,17 @@ Domain Tensor::get_domain() const
 
 Op::Op(FFModel& model,
        OperatorType _op_type,
-       const std::string& _name,
+       const char* _name,
        const Tensor& _input)
 : op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1)
 {
-  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  std::string pcname;
+  if (_name == NULL) {
+    pcname = model.get_operator_type_name(op_type);
+  } else {
+    pcname = std::string(_name);
+  }
+  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input;
@@ -235,13 +241,18 @@ Op::Op(FFModel& model,
 Op::Op(FFModel& model,
        OperatorType _op_type,
        const Op* shared_op,
-       const std::string& _name,
+       const char* _name,
        const Tensor& _input)
 : op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1)
 {
   std::string pcname;
+  if (_name == NULL) {
+    pcname = model.get_operator_type_name(op_type);
+  } else {
+    pcname = std::string(_name);
+  }
   if (shared_op == NULL) {
-    pcname = _name + "_" + std::to_string(model.op_global_guid++);
+    pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   } else {
     pcname = std::string(shared_op->name);
   }
@@ -264,12 +275,18 @@ Op::Op(FFModel& model,
 
 Op::Op(FFModel& model,
        OperatorType _op_type,
-       const std::string& _name,
+       const char* _name,
        const Tensor& _input1,
        const Tensor& _input2)
 : op_type(_op_type), numInputs(2), numWeights(0), numOutputs(1)
 {
-  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  std::string pcname;
+  if (_name == NULL) {
+    pcname = model.get_operator_type_name(op_type);
+  } else {
+    pcname = std::string(_name);
+  }
+  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input1;
@@ -290,13 +307,19 @@ Op::Op(FFModel& model,
 
 Op::Op(FFModel& model,
        OperatorType _op_type,
-       const std::string& _name,
+       const char* _name,
        const Tensor& _input1,
        const Tensor& _input2,
        const Tensor& _input3)
 : op_type(_op_type), numInputs(3), numWeights(0), numOutputs(1)
 {
-  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  std::string pcname;
+  if (_name == NULL) {
+    pcname = model.get_operator_type_name(op_type);
+  } else {
+    pcname = std::string(_name);
+  }
+  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input1;
@@ -318,11 +341,17 @@ Op::Op(FFModel& model,
 
 Op::Op(FFModel& model,
        OperatorType _op_type,
-       const std::string& _name,
+       const char* _name,
        int n, const Tensor* _inputs)
 : op_type(_op_type), numInputs(n), numWeights(0), numOutputs(1)
 {
-  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  std::string pcname;
+  if (_name == NULL) {
+    pcname = model.get_operator_type_name(op_type);
+  } else {
+    pcname = std::string(_name);
+  }
+  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   assert(n <= MAX_NUM_INPUTS);
   std::strcpy(name, pcname.c_str());
@@ -344,11 +373,17 @@ Op::Op(FFModel& model,
 
 Op::Op(FFModel& model,
        OperatorType _op_type,
-       const std::string& _name,
+       const char* _name,
        int _numInputs)
 : op_type(_op_type), numInputs(_numInputs), numWeights(0), numOutputs(1)
 {
-  std::string pcname = _name + "_" + std::to_string(model.op_global_guid++);
+  std::string pcname;
+  if (_name == NULL) {
+    pcname = model.get_operator_type_name(op_type);
+  } else {
+    pcname = std::string(_name);
+  }
+  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   //for (int i = 0; i < numInputs; i++) {
@@ -619,34 +654,6 @@ FFModel::FFModel(FFConfig& _config)
   for (PointInRectIterator<2> it(task_rect); it(); it++) {
     handlers[idx++] = fm.get_result<FFHandler>(*it);
   }
-}
-
-Tensor FFModel::binary(OperatorType op,
-                       const Tensor& in1,
-                       const Tensor& in2,
-                       char const *name)
-{
-  ElementBinary *ele;
-  if (name == NULL) {
-    ele = new ElementBinary(*this, op, in1, in2);
-  } else {
-    ele = new ElementBinary(*this, op, in1, in2, std::string(name));
-  }
-  layers.push_back(ele);
-  return ele->outputs[0];
-}
-
-ElementBinary *FFModel::binary(OperatorType op,
-                               char const *name)
-{
-  ElementBinary *ele;
-  if (name == NULL) {
-    ele = new ElementBinary(*this, op);
-  } else {
-    ele = new ElementBinary(*this, op, std::string(name));
-  }
-  layers.push_back(ele);
-  return ele;
 }
 
 /*
@@ -1650,6 +1657,70 @@ void FFModel::print_layers(int id)
   }
 }
 
+std::string FFModel::get_operator_type_name(OperatorType type) const
+{
+  switch(type) {
+    case OP_CONV2D: return "Conv2D";
+    case OP_DROPOUT: return "Dropout";
+    case OP_LINEAR: return "Dense";
+    case OP_BATCHMATMUL: return "BatchMatMul";
+    case OP_POOL2D: return "Pool2D";
+    case OP_RELU: return "ReLU";
+    case OP_SIGMOID: return "Sigmoid";
+    case OP_TANH: return "Tanh";
+    case OP_ELU: return "Elu";
+    case OP_FLAT: return "Flat";
+    case OP_SOFTMAX: return "Softmax";
+    case OP_BATCHNORM: return "BatchNorm";
+    case OP_CONCAT: return "Concat";
+    case OP_SPLIT: return "Split";
+    case OP_EMBEDDING: return "Embedding";
+    case OP_RESHAPE: return "Reshape";
+    case OP_REVERSE: return "Reverse";
+    case OP_TRANSPOSE: return "Transpose";
+    case OP_EW_ADD: return "Add";
+    case OP_EW_MUL: return "Mul";
+    case OP_MATMUL: return "Matmul";
+    case OP_MUL: return "Mul";
+    case OP_ENLARGE: return "Enlarge";
+    case OP_SQUEEZE: return "Squeeze";
+    case OP_UNSQUEEZE: return "Unsqueeze";
+    case OP_EW_SUB: return "Sub";
+    case OP_EW_DIV: return "Div";
+    case OP_EW_EQUAL: return "Equal";
+    case OP_EW_GREATER: return "Greater";
+    case OP_EW_LESS: return "Less";
+    case OP_EW_MAX: return "Max";
+    case OP_EW_MIN: return "Min";
+    case OP_REDUCE_ARGMAX: return "ReduceArgMax";
+    case OP_REDUCE_ARGMIN: return "ReduceArgMin";
+    case OP_REDUCE_MAX: return "ReduceMax";
+    case OP_REDUCE_MEAN: return "ReduceMean";
+    case OP_REDUCE_MIN: return "ReduceMin";
+    case OP_REDUCE_PROD: return "ReduceProd";
+    case OP_REDUCE_SUM: return "ReduceSum";
+    case OP_PAD: return "Pad";
+    case OP_SHAPE: return "Shape";
+    case OP_SIZE: return "Size";
+    case OP_TOPK: return "TopK";
+    case OP_WHERE: return "Where";
+    case OP_CEIL: return "Ceil";
+    case OP_CAST: return "Cast";
+    case OP_EXP: return "Exp";
+    case OP_ROUND: return "Round";
+    case OP_LOG: return "Log";
+    case OP_LOGICAL_NOT: return "LogicalNot";
+    case OP_SQRT: return "Sqrt";
+    case OP_LEAKYRELU: return "LeakyReLU";
+    case OP_SLICE: return "Slice";
+    case OP_RESIZE: return "Resize";
+    case OP_PRELU: return "PReLU";
+    case OP_MULTIHEAD_ATTENTION: return "MultiHeadAttention";
+    case OP_FUSED: return "FusedOp";
+    default: assert(false && "Not supported Operator type"); return "Unsupported";
+  }
+}
+
 PerfMetrics FFModel::update_metrics_task(const Task *task,
                                          const std::vector<PhysicalRegion>& regions,
                                          Context ctx, Runtime* runtime)
@@ -1756,6 +1827,9 @@ struct DefaultConfig {
   const static size_t simulatorWorkSpaceSize = (size_t)2 * 1024 * 1024 * 1024; //2GB
   constexpr static float searchAlpha = 1.0f;
   const static bool searchOverlapBackwardUpdate = false;
+  const static bool enableSampleParallel = true;
+  const static bool enableParameterParallel = false;
+  const static bool enableAttributeParallel = false;
 };
 
 FFConfig::FFConfig()
@@ -1774,6 +1848,10 @@ FFConfig::FFConfig()
   search_budget = DefaultConfig::searchBudget;
   search_alpha = DefaultConfig::searchAlpha;
   search_overlap_backward_update = DefaultConfig::searchOverlapBackwardUpdate;
+  enable_sample_parallel = DefaultConfig::enableSampleParallel;
+  enable_parameter_parallel = DefaultConfig::enableParameterParallel;
+  enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
+
   import_strategy_file = "";
   export_strategy_file = "";
   dataset_path = "";
@@ -1827,6 +1905,14 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if ((!strcmp(argv[i], "--export")) || (!strcmp(argv[i], "--export-strategy"))) {
       export_strategy_file = std::string(argv[++i]);
+      continue;
+    }
+    if ((!strcmp(argv[i], "--enable-parameter-parallel"))) {
+      enable_parameter_parallel = true;
+      continue;
+    }
+    if ((!strcmp(argv[i], "--enable-attribute-parallel"))) {
+      enable_parameter_parallel = true;
       continue;
     }
     if (!strcmp(argv[i], "-ll:gpu"))
