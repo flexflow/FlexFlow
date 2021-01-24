@@ -2591,7 +2591,7 @@ int main(int argc, char** argv)
            "GASNet MPI conduit or the Realm MPI network layer "
            "with the Legion-MPI Interop!\n");
   assert(provided == MPI_THREAD_MULTIPLE);
-#else
+#elif defined(FF_ENABLE_NCCL)
   // Perform MPI start-up like normal for most GASNet conduits
   MPI_Init(&argc, &argv);
 #endif
