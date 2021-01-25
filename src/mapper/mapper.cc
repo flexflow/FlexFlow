@@ -495,12 +495,20 @@ void FFMapper::select_task_sources(const MapperContext        ctx,
                                    const SelectTaskSrcInput&  input,
                                          SelectTaskSrcOutput& output)
 {
+  default_policy_select_sources(ctx, input.target, input.source_instances,
+                                output.chosen_ranking);
+}
+
+void FFMapper::default_policy_select_sources(MapperContext ctx,
+                                             const PhysicalInstance &target,
+                                             const std::vector<PhysicalInstance> &sources,
+                                             std::deque<PhysicalInstance> &ranking)
+{
   // We rank source instances by the bandwidth of the memory
   // they are in to the destination
   std::map<Memory, unsigned> source_memories;
-  Memory destination_memory = input.target.get_location();
+  Memory destination_memory = target.get_location();
   std::vector<MemoryMemoryAffinity> affinity(1);
-  const std::vector<PhysicalInstance>& sources = input.source_instances;
   std::vector<std::pair<PhysicalInstance, unsigned> > band_ranking(sources.size());
   for (unsigned idx = 0; idx < sources.size(); idx++) {
     const PhysicalInstance &instance = sources[idx];
@@ -529,7 +537,7 @@ void FFMapper::select_task_sources(const MapperContext        ctx,
   for (std::vector<std::pair<PhysicalInstance,unsigned> >::
         const_reverse_iterator it = band_ranking.rbegin();
         it != band_ranking.rend(); it++)
-    output.chosen_ranking.push_back(it->first);
+    ranking.push_back(it->first);
 }
 
 void FFMapper::create_task_temporary_instance(
@@ -662,7 +670,9 @@ void FFMapper::select_inline_sources(const MapperContext        ctx,
                                      const SelectInlineSrcInput&  input,
                                            SelectInlineSrcOutput& output)
 {
-  assert(false);
+  //assert(false);
+  default_policy_select_sources(ctx, input.target, input.source_instances,
+                                output.chosen_ranking);
 }
 
 void FFMapper::create_inline_temporary_instance(
