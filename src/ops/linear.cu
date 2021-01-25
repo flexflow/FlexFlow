@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford, NVIDIA
+/* Copyright 2020 Stanford, NVIDIA, Facebook
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -217,7 +217,8 @@ void Linear::create_output_and_partition_with_dim(FFModel& model)
       replica.part = runtime->get_logical_partition(
           ctx, replica.region_grad, ip);
     }
-  } else {
+  } 
+  else {
     if (input_rect == part_rect) {
       input_lps[0] = inputs[0].part;
       input_grad_lps[0] = inputs[0].part_grad;
@@ -897,8 +898,8 @@ void Linear::print_layer(const FFModel& ff)
   int kernel_dim1 = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
   int kernel_dim2 = acc_kernel.rect.hi[1] - acc_kernel.rect.lo[1] + 1;
   size_t bias_size = acc_bias.rect.volume();
-  printf("kernel, %p, %d, [%d, %d]\n", kernel_ptr, kernel_size, kernel_dim1, kernel_dim2);
-  printf("bias, %p, %d\n", bias_ptr, bias_size);
+  printf("kernel, %p, %zu, [%d, %d]\n", kernel_ptr, kernel_size, kernel_dim1, kernel_dim2);
+  printf("bias, %p, %zu\n", bias_ptr, bias_size);
 
   for (int i = 0; i < bias_size; i++) {
     printf("%f ", bias_ptr[i]);

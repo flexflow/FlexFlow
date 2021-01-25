@@ -49,7 +49,6 @@ void Flat::create_output_and_partition(FFModel& model)
 {
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
@@ -94,7 +93,6 @@ void Flat::init(const FFModel& ff)
     FFHandler handle = ff.handlers[pc.device_ids[idx++]];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
-
   IndexLauncher launcher(FLAT_INIT_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Flat)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -157,12 +155,12 @@ void Flat::forward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(FLAT_FWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+    TaskArgument(NULL, 0), argmap,
+    Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+    FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+    RegionRequirement(input_lps[0], 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(outputs[0].part, 0/*projection id*/,
@@ -191,10 +189,10 @@ void Flat::backward_task(const Task *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   TensorAccessorW<float, 4> acc_input_grad(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime,
-      true/*readOutput*/);
+    regions[0], task->regions[0], FID_DATA, ctx, runtime,
+    true/*readOutput*/);
   TensorAccessorR<float, 2> acc_output_grad(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
   backward_kernel(acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
   //checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
@@ -215,9 +213,9 @@ void Flat::backward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(FLAT_BWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+    TaskArgument(NULL, 0), argmap,
+    Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+    FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[0], 0/*projection id*/,
                         READ_WRITE, EXCLUSIVE, inputs[0].region_grad));

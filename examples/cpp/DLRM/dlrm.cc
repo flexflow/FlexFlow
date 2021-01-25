@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2020 Stanford, Facebook
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -171,16 +171,18 @@ void top_level_task(const Task* task,
       if (dlrmConfig.dataset_path.length() == 0) {
         // Only load data once for random input
         //if (iter == 0 && epoch == 0)
-          //data_loader.next_batch(ff);
+          //  data_loader.next_batch(ff);
       } else {
         data_loader.next_batch(ff);
       }
-      runtime->begin_trace(ctx, 111/*trace_id*/);
+      if (epoch > 0)
+        runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      runtime->end_trace(ctx, 111/*trace_id*/);
+      if (epoch > 0)
+        runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
   // End timer
@@ -254,6 +256,10 @@ void parse_input_args(char **argv, int argc, DLRMConfig& config)
       config.dataset_path = std::string(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--data-size")) {
+      config.data_size = atoi(argv[++i]);
+      continue;
+    }
   }
 }
 
@@ -267,7 +273,12 @@ DataLoader::DataLoader(FFModel& ff,
   num_samples = 0;
   if (dlrm.dataset_path == "") {
     log_app.print("Use random dataset...");
-    num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
+    if (dlrm.data_size > 0) {
+      num_samples = dlrm.data_size;	    //num_samples = 256 * 2 * 8 * 16;
+    } else {	
+      num_samples = 256 * 4 * ff.config.workersPerNode * ff.config.numNodes;	
+    }
+    //num_samples = 256 * 2 * 8 * 16;
     log_app.print("Number of random samples = %d\n", num_samples);
   } else {
     log_app.print("Start loading dataset from %s", dlrm.dataset_path.c_str());
@@ -336,13 +347,24 @@ DataLoader::DataLoader(FFModel& ff,
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
+
+  // passing DLRM Config through plain struct. ->
+  ArgsConfig dlrm_args;
+  assert(dlrm.embedding_size.size() <= MAX_NUM_EMB);
+  assert(dlrm.dataset_path.length() <= MAX_DATASET_PATH_LEN);
+  auto prev_s = dlrm.embedding_size[0];
+  for (auto s : dlrm.embedding_size)
+    assert (s == prev_s);
+  dlrm_args.embedding_size = prev_s;
+  strcpy(dlrm_args.dataset_path, dlrm.dataset_path.c_str());
+  // <-
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
-      TaskArgument(dlrm.dataset_path.c_str(), dlrm.dataset_path.length()+10));
+      TaskArgument(&dlrm_args, sizeof(dlrm_args)));
   // regions[0]: full_sparse_input
   launcher.add_region_requirement(
       RegionRequirement(full_sparse_input.region,
                         WRITE_ONLY, EXCLUSIVE, full_sparse_input.region,
-                        MAP_TO_FB_MEMORY));
+                        MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_dense_input
   launcher.add_region_requirement(
@@ -389,11 +411,13 @@ void DataLoader::load_entire_dataset(const Task *task,
   int num_dense_dims = rect_dense_input.hi[0] - rect_dense_input.lo[0] + 1;
   assert(num_samples == rect_label_input.hi[1] - rect_label_input.lo[1] + 1);
   assert(rect_label_input.hi[0] == rect_label_input.lo[0]);
-  std::string file_name((const char*)task->args);
+  const ArgsConfig dlrm = *((const ArgsConfig *)task->args);
+  const int emb_size = dlrm.embedding_size;
+  std::string file_name((const char*)dlrm.dataset_path);
   if (file_name.length() == 0) {
     log_app.print("Start generating random input samples");
     for (size_t i = 0; i < rect_sparse_input.volume(); i++)
-      sparse_input_ptr[i] = std::rand() % 1000000;
+      sparse_input_ptr[i] = std::rand() % emb_size;
     for (size_t i = 0; i < rect_dense_input.volume(); i++)
       dense_input_ptr[i] = ((float)std::rand()) / RAND_MAX;
     for (size_t i = 0; i < rect_label_input.volume(); i++)
@@ -465,7 +489,7 @@ void DataLoader::next_batch(FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   // Load Sparse Inputs
   for (size_t i = 0; i < batch_sparse_inputs.size(); i++) {
-    int hash = batch_sparse_inputs.size() * 1000 + i;
+    int hash = batch_sparse_inputs.size() * MAX_NUM_EMB + i;
     std::string pc_name = "embedding"+std::to_string(i);
     IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, pc_name));
     Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
@@ -485,21 +509,18 @@ void DataLoader::next_batch(FFModel& ff)
                            TaskArgument(&hash, sizeof(int)), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(pc_name));
-//#if 1
+
     // Full dataset in ZCM
     launcher.add_region_requirement(
         RegionRequirement(full_sparse_input.region, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, full_sparse_input.region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-//#endif
     launcher.add_region_requirement(
         RegionRequirement(batch_sparse_inputs[i].part, 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, batch_sparse_inputs[i].region));
     launcher.add_field(1, FID_DATA);
-    //std::cout << "CUSTOM_CPU_TASK_ID_2" << std::endl;
     runtime->execute_index_space(ctx, launcher);
-    //std::cout << "Done CUSTOM_CPU_TASK_ID_2" << std::endl;
   }
   // Load Dense Input
   {

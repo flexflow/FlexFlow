@@ -83,10 +83,7 @@ void Pool2D::create_output_and_partition(FFModel& model)
     outputs[0].owner_op = this;
     outputs[0].owner_idx = 0;
   }
-  //int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
-  //int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
-  //int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
   Rect<4> input_rect = runtime->get_index_partition_color_space(
       ctx, inputs[0].part.get_index_partition());
   //TODO: currently do not support splitting over the channel dimension
@@ -95,8 +92,8 @@ void Pool2D::create_output_and_partition(FFModel& model)
     input_lps[0] = inputs[0].part;
     input_grad_lps[0] = inputs[0].part_grad;
   } else {
-    model.create_disjoint_partition(
-        inputs[0], (IndexSpaceT<4>)task_is, input_lps[0], input_grad_lps[0]);
+    model.create_disjoint_partition<4>(
+      inputs[0], (IndexSpaceT<4>)task_is, input_lps[0], input_grad_lps[0]);
   }
 }
 

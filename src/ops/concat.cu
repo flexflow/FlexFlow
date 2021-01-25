@@ -105,7 +105,6 @@ void Concat::create_output_and_partition(FFModel& model)
       assert(false);
     }
   }
-
 }
 
 void Concat::init_meta(ConcatMeta *m) const
@@ -396,7 +395,6 @@ void Concat::backward_task(const Task *task,
   }
   backward_kernel(output_grad, input_grads, cc->numInputs, axis,
       out_grad_domain, in_grad_domains);
-
   if (cc->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -413,14 +411,6 @@ void Concat::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-#ifdef DEADCODE
-  Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
-  int idx = 0;
-  for (PointInRectIterator<3> it(rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
-    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
-  }
-#endif
   IndexLauncher launcher(CONCAT_BWD_TASK_ID, task_is,
     TaskArgument(this, sizeof(Concat)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,

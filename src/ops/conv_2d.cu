@@ -800,9 +800,9 @@ void Conv2D::print_layer(const FFModel& ff)
   //size_t kernel_grad_size = rect_kernel_grad.volume();
   size_t bias_size = acc_bias.rect.volume();
   //size_t bias_grad_size = rect_bias_grad.volume();
-  printf("kernel, %p, %d, [%d, %d, %d, %d]\n", kernel_ptr, kernel_size, kernel_dim1, kernel_dim2, kernel_dim3, kernel_dim4);
+  printf("kernel, %p, %zu, [%d, %d, %d, %d]\n", kernel_ptr, kernel_size, kernel_dim1, kernel_dim2, kernel_dim3, kernel_dim4);
   //printf("kernel_grad, %d\n", kernel_grad_size);
-  printf("bias, %p, %d\n", bias_ptr, bias_size);
+  printf("bias, %p, %zu\n", bias_ptr, bias_size);
   //printf("bias_grad, %d\n", bias_grad_size);
 
 

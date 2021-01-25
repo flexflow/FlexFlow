@@ -72,7 +72,7 @@ void Softmax::create_output_and_partition(FFModel& model)
     input_lps[0] = inputs[0].part;
     input_grad_lps[0] = inputs[0].part_grad;
   } else {
-    model.create_disjoint_partition(
+    model.create_disjoint_partition<2>(
         inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
   }
 }

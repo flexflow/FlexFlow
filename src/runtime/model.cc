@@ -12,10 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "model.h"
 #include "cuda_helper.h"
 #include "mapper.h"
+#include "test_utils.h"
 #include "dirent.h"
 
 using namespace std;
@@ -666,7 +666,7 @@ Tensor FFModel::create_tensor(const int dims[],
   ParallelConfig pc;
   assert(config.find_parallel_config(NDIM, pc_name, pc));
   IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(get_or_create_task_is(pc));
-  return create_tensor(dims, task_is, data_type, create_grad);
+  return create_tensor<NDIM>(dims, task_is, data_type, create_grad);
 }
 */
 
@@ -740,8 +740,10 @@ Tensor FFModel::create_tensor(const int dims[],
   if (create_grad) {
     tensor.region_grad = runtime->create_logical_region(ctx, is, fs);
   }
+
   // Step 2: create partitions
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
+
   Transform<NDIM, NDIM> transform;
   Point<NDIM> ext_hi;
   for (int i = 0; i < NDIM; i++) {
@@ -797,11 +799,16 @@ void FFModel::create_disjoint_partition(const Tensor& tensor,
                                         LogicalPartition& part_fwd,
                                         LogicalPartition& part_bwd)
 {
-  assert(tensor.numDim == NDIM);
-  // Current assume forward and grad share the same index space
-  assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
+  // Check that dimension sizes match
+  {
+    assert(tensor.numDim == NDIM);
+    Domain domain = runtime->get_index_space_domain(ctx, part_is);
+    assert(domain.get_dim() == NDIM);
+  }
+  // Current assume forward and grad share the same index space
+  assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
   Rect<NDIM> rect = runtime->get_index_space_domain(ctx, tensor.region.get_index_space());
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
   Transform<NDIM, NDIM> transform;
@@ -1817,6 +1824,7 @@ struct DefaultConfig {
   const static int iterations = 1;
   const static int batchSize = 64;
   const static bool profiling = false;
+  const static bool debug = false;
   constexpr static float learningRate = 0.01f;
   constexpr static float weightDecay = 0.0001f;
   const static size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
@@ -2031,13 +2039,6 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<OpMeta*, Conv2D::init_task>(
         registrar, "Conv2D Init Task");
   }
-  //{
-  //  TaskVariantRegistrar registrar(CONV2D_INIT_PARA_TASK_ID, "Conv2D Init Para");
-  //  registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-  //  registrar.set_leaf();
-  //  Runtime::preregister_task_variant<Conv2D::init_para_task>(
-  //      registrar, "Conv2D Init Para Task");
-  //}
   {
     TaskVariantRegistrar registrar(CONV2D_FWD_TASK_ID, "Conv2D Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
@@ -2104,7 +2105,7 @@ void register_internal_tasks()
         registrar, "Embedding Backward Task");
   }
   // Embedding task CPU
-  {
+  /* {
     TaskVariantRegistrar registrar(EMBED_FWD_TASK_ID, "Embedding Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
@@ -2117,7 +2118,7 @@ void register_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<Embedding::backward_task_cpu>(
         registrar, "Embedding Backward Task");
-  }
+  }*/
   // Pool2D task
   {
     TaskVariantRegistrar registrar(POOL2D_INIT_TASK_ID, "pool2d_init_task");

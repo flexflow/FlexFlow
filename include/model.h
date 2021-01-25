@@ -12,7 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef _FLEXFLOW_MODEL_H_
 #define _FLEXFLOW_MODEL_H_
 #include "legion.h"
@@ -137,6 +136,7 @@ enum TaskIDs {
   CUSTOM_GPU_TASK_ID_5,
   CUSTOM_GPU_TASK_ID_6,
   CUSTOM_GPU_TASK_ID_7,
+  CUSTOM_GPU_TASK_ID_8,
   CUSTOM_GPU_TASK_ID_LAST,
   CUSTOM_CPU_TASK_ID_FIRST,
   CUSTOM_CPU_TASK_ID_1,
@@ -448,6 +448,7 @@ public:
   Future current_metrics;
   //DataLoader *dataLoader;
 private:
+  bool debug;
   std::map<ParallelConfig, IndexSpace, ParaConfigCompare> taskIs;
 
   Tensor binary(OperatorType op,
@@ -736,7 +737,6 @@ public:
                             float& forward_time,
                             float& backward_time);
 public:
-  //IndexSpaceT<4> task_is;
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
   ActiMode activation;
@@ -789,7 +789,6 @@ public:
                             float& forward_time,
                             float& backward_time);
 public:
-  //IndexSpaceT<4> task_is;
   bool relu, profiling;
   int num_replica;
   //Tensor locals[MAX_NUM_LOCALS];
@@ -1057,7 +1056,6 @@ public:
 
   Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx);
 public:
-  //IndexSpaceT<2> task_is;
 };
 
 class FlatMeta : public OpMeta {
@@ -1185,7 +1183,6 @@ public:
                               size_t num_elements);
 
 public:
-  //IndexSpaceT<2> task_is;
   bool profiling;
 };
 
@@ -1374,7 +1371,6 @@ public:
                             float& backward_time);
 public:
   int axis;
-  //IndexSpace task_is;
   bool profiling;
 };
 
@@ -1507,5 +1503,6 @@ void data_load_task(const Task* task,
                     Context ctx, Runtime* runtime);
 
 void register_custom_tasks();
+
 void register_c_custom_tasks();
 #endif//_FLEXFLOW_MODEL_H_
