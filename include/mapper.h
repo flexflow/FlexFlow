@@ -277,6 +277,10 @@ private: // Default helper functions
                                   LayoutConstraintSet &constraints,
                                   Memory target_memory,
                                   const RegionRequirement &req);
+  void default_policy_select_sources(MapperContext ctx,
+                                     const PhysicalInstance &target,
+                                     const std::vector<PhysicalInstance> &sources,
+                                     std::deque<PhysicalInstance> &ranking);
 private:
   unsigned long long compute_task_hash(const Task& task);
   bool is_parameter_server_update_task(TaskID tid);
