@@ -400,11 +400,14 @@ void Linear::forward_kernel(const LinearMeta* m,
                         &alpha, kernel_ptr, in_dim,
                         input_ptr, in_dim, &beta,
                         output_ptr, out_dim));
-  checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
-                        out_dim, batch_size, 1,
-                        &alpha, bias_ptr, 1,
-                        m->one_ptr, 1, &alpha,
-                        output_ptr, out_dim));
+  // use_bias = True 
+  if (bias_ptr != NULL) { 
+    checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
+                          out_dim, batch_size, 1,
+                          &alpha, bias_ptr, 1,
+                          m->one_ptr, 1, &alpha,
+                          output_ptr, out_dim));
+  }
   if (m->activation != AC_MODE_NONE) {
     checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
         &alpha, m->outputTensor, output_ptr,
@@ -589,11 +592,14 @@ void Linear::backward_kernel(const LinearMeta* m,
                         &alpha, kernel_grad_ptr, in_dim));
   // Compute bias gradiant
   // NOTE: we use alpha=1 for bias_grad to accumulate gradients
-  checkCUDA(cublasSgemv(m->handle.blas, CUBLAS_OP_N,
-                        out_dim, batch_size,
-                        &alpha, output_grad_ptr, out_dim,
-                        m->one_ptr, 1,
-                        &alpha, bias_grad_ptr, 1));
+  // use_bias = True
+  if (bias_grad_ptr != NULL) {
+    checkCUDA(cublasSgemv(m->handle.blas, CUBLAS_OP_N,
+                          out_dim, batch_size,
+                          &alpha, output_grad_ptr, out_dim,
+                          m->one_ptr, 1,
+                          &alpha, bias_grad_ptr, 1));
+  }
   // Compute data gradiant
   // NOTE: we use alpha=1 for input_grad to accumulate gradients
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_N,
