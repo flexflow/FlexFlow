@@ -560,9 +560,9 @@ float Simulator::simulate_runtime(const FFModel* model,
               } else {
                 Device* commDevice = get_inter_node_comm_device_by_ids(
                     firstDevice->node_id, nextDevice->node_id);
-                bandwidth = commDeivce->bandwidth;
+                bandwidth = commDevice->bandwidth;
               }
-              ncclTime = max(ncclTime, (float)firstR.get_volume() * sizeof(float) / bandwidth);
+              nccl_time = std::max(nccl_time, (float)firstR.get_volume() * sizeof(float) / bandwidth);
             }
           }
           // Add ncclTime to sim_time given nccl calls are blocking
