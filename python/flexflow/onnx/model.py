@@ -170,7 +170,7 @@ class ONNXModelKeras(ONNXModel):
         input0 = self.symbol_table[node.input[0]]
         input1 = self._get_input_tensor(node.input[1])
         output = ffmodel.add(input0, input1)
-        self.symbol_table[node.output[0]] = output1
+        self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.add({})".format(node.input[0]))
         
     def handleConv(self, ffmodel, node):
@@ -195,7 +195,7 @@ class ONNXModelKeras(ONNXModel):
         print("########################################I am in Keras MatMul")
         input = self.symbol_table[node.input[0]]
         dim = self.inputs[node.input[1]].dims[1]
-        output = ffmodel.dense(input, dim, use_bias=True)
+        output = ffmodel.dense(input, dim, use_bias=False)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.dense({}, {})".format(node.input[0], dim))
         
