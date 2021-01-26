@@ -52,16 +52,33 @@ class ONNXModel(object):
             self.outputs[output.name] = output
         self.model = model
         self.symbol_table = {}
-        
-        for input in self.inputs:
-            print(input, self.inputs[input].dims)
 
     def handleAdd(self, ffmodel, node):
         input0 = self.symbol_table[node.input[0]]
         input1 = self.symbol_table[node.input[1]]
-        output = ffmodel.add(input0, input1)
+        output = ffmodel.add(input0, input1, name=node.name)
         self.symbol_table[node.output[0]] = output
-        logging.debug("ffmodel.add({}, {})".format(node.input[0], node.input[1]))
+        logging.debug("ffmodel.add({}, {}, name={})".format(node.input[0], node.input[1], node.name))
+
+    def handleConcat(self, ffmodel, node):
+        inputs = [self.symbol_table[i] for i in node.input]
+        attribute = {x.name: x for x in node.attribute}
+        output = ffmodel.concat(tensors=inputs, axis=attribute['axis'].i, name=node.name)
+        self.symbol_table[node.output[0]] = output
+        logging.debug("ffmodel.concat([{}], {}, name={})".format(', '.join(node.input), attribute['axis'].i, node.name))
+
+    def handleSplit(self, ffmodel, node):
+        input = self.symbol_table[node.input[0]]
+        attribute = {x.name: x for x in node.attribute}
+        split = list(attribute['split'].ints)
+        if 'axis' in attribute:
+            axis = attribute['axis'].i
+        else:
+            axis = 0
+        outputs = ffmodel.split(input=input, sizes=split, axis=axis)
+        for i, output in enumerate(outputs):
+            self.symbol_table[node.output[i]] = output
+        logging.debug("ffmodel.split({}, {}, {})".format(node.input[0], split, axis))
 
     def handleAveragePool(self, ffmodel, node):
         input = self.symbol_table[node.input[0]]
@@ -69,9 +86,9 @@ class ONNXModel(object):
         kernel = attribute["kernel_shape"].ints
         padding = attribute["pads"].ints
         stride = attribute["strides"].ints
-        output = ffmodel.pool2d(input, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], PoolType.POOL_AVG)
+        output = ffmodel.pool2d(input, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], PoolType.POOL_AVG, name=node.name)
         self.symbol_table[node.output[0]] = output
-        logging.debug("ffmodel.pool2d({}, {}, {}, {}, {}, {}, {}, PoolType.POOL_AVG)".format(node.input[0], kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1]))
+        logging.debug("ffmodel.pool2d({}, {}, {}, {}, {}, {}, {}, PoolType.POOL_AVG, name={})".format(node.input[0], kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], node.name))
 
     def handleBatchNormalization(self, ffmodel, node):
         input = self.symbol_table[node.input[0]]
@@ -86,10 +103,10 @@ class ONNXModel(object):
         padding = attribute["pads"].ints
         stride = attribute["strides"].ints
         group = attribute["group"].i
-        out_channels = self.inputs[node.input[1]].dims[0]
-        output = ffmodel.conv2d(input, out_channels, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], ActiMode.AC_MODE_NONE, group)
+        out_channels = self.inputs[node.input[1]].type.tensor_type.shape.dim[0].dim_value
+        output = ffmodel.conv2d(input, out_channels, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], ActiMode.AC_MODE_NONE, group, name=node.name)
         self.symbol_table[node.output[0]] = output
-        logging.debug("ffmodel.conv2d({}, {}, {}, {}, {}, {}, {}, {})".format(node.input[0], out_channels, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1]))
+        logging.debug("ffmodel.conv2d({}, {}, {}, {}, {}, {}, {}, {}, name={})".format(node.input[0], out_channels, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], node.name))
 
     def handleDropout(self, ffmodel, node):
         input = self.symbol_table[node.input[0]]
@@ -102,16 +119,16 @@ class ONNXModel(object):
 
     def handleFlatten(self, ffmodel, node):
         input = self.symbol_table[node.input[0]]
-        output = ffmodel.flat(input)
+        output = ffmodel.flat(input, name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.flat({})".format(node.input[0]))
 
     def handleGemm(self, ffmodel, node):
         input = self.symbol_table[node.input[0]]
-        dim = self.inputs[node.input[1]].dims[0]
-        output = ffmodel.dense(input, dim)
+        dim = self.inputs[node.input[1]].type.tensor_type.shape.dim[0].dim_value
+        output = ffmodel.dense(input, dim, name=node.name)
         self.symbol_table[node.output[0]] = output
-        logging.debug("ffmodel.dense({}, {})".format(node.input[0], dim))
+        logging.debug("ffmodel.dense({}, {}, name={})".format(node.input[0], dim, node.name))
 
     def handleMaxPool(self, ffmodel, node):
         input = self.symbol_table[node.input[0]]
@@ -119,13 +136,13 @@ class ONNXModel(object):
         kernel = attribute["kernel_shape"].ints
         padding = attribute["pads"].ints
         stride = attribute["strides"].ints
-        output = ffmodel.pool2d(input, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1])
+        output = ffmodel.pool2d(input, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], name=node.name)
         self.symbol_table[node.output[0]] = output
-        logging.debug("ffmodel.pool2d({}, {}, {}, {}, {}, {}, {}, PoolType.POOL_MAX)".format(node.input[0], kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1]))
+        logging.debug("ffmodel.pool2d({}, {}, {}, {}, {}, {}, {}, PoolType.POOL_MAX, name={})".format(node.input[0], kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], node.name))
 
     def handleRelu(self, ffmodel, node):
         input = self.symbol_table[node.input[0]]
-        output = ffmodel.relu(input)
+        output = ffmodel.relu(input, name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.relu({})".format(node.input[0]))
 
@@ -137,12 +154,22 @@ class ONNXModel(object):
 
     def handleSoftmax(self, ffmodel, node):
         input = self.symbol_table[node.input[0]]
-        output = ffmodel.softmax(input)
+        output = ffmodel.softmax(input, name=node.name)
         self.symbol_table[node.output[0]] = output
-        logging.debug("ffmodel.softmax({})".format(node.input[0]))
+        logging.debug("ffmodel.softmax({}, name={})".format(node.input[0], node.name))
+
+    def handleReshape(self, ffmodel, node):
+        input = self.symbol_table[node.input[0]]
+        shape = self.symbol_table[node.input[1]]
+        output = ffmodel.reshape(input, list(shape.int64_data), name=node.name)
+        self.symbol_table[node.output[0]] = output
+        logging.debug("ffmodel.reshape({}, {}, name={})".format(node.input[0], list(shape.int64_data), node.name))
 
     def apply(self, ffmodel, input_dict):
-        self.symbol_table = input_dict.copy()
+        self.symbol_table.update(input_dict)
+        # self.symbol_table = input_dict.copy()
+        # for initializer in self.model.graph.initializer:
+        #     self.symbol_table[initializer.name] = initializer
         for node in self.model.graph.node:
             handler_name = 'handle' + node.op_type
             if hasattr(self, handler_name):
@@ -156,11 +183,9 @@ class ONNXModel(object):
 class ONNXModelKeras(ONNXModel):
     def __init__(self, filename, ffconfig=None, ffmodel=None):
         super(ONNXModelKeras, self).__init__(filename)
-        self.initializers = {}
         for initializer in self.model.graph.initializer:
             if '/bias' in initializer.name and 'dense' in initializer.name:
-                #pass
-                self.initializers[initializer.name] = self._create_initializer_tensor(ffconfig, ffmodel, initializer)
+                self.symbol_table[initializer.name] = self._create_initializer_tensor(ffconfig, ffmodel, initializer)
             else:
                 tensor = ONNXTensor(initializer.name, initializer.dims, 2)
                 self.inputs[initializer.name] = tensor
@@ -168,8 +193,8 @@ class ONNXModelKeras(ONNXModel):
     def handleAdd(self, ffmodel, node):
         print("########################################I am in Keras Add")
         input0 = self.symbol_table[node.input[0]]
-        input1 = self._get_input_tensor(node.input[1])
-        output = ffmodel.add(input0, input1)
+        input1 = self.symbol_table[node.input[1]]
+        output = ffmodel.add(input0, input1, name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.add({})".format(node.input[0]))
         
@@ -187,7 +212,7 @@ class ONNXModelKeras(ONNXModel):
         stride = attribute["strides"].ints
         group = attribute["group"].i
         out_channels = self.inputs[node.input[1]].dims[0]
-        output = ffmodel.conv2d(input, out_channels, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], ActiMode.AC_MODE_NONE, group)
+        output = ffmodel.conv2d(input, out_channels, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], ActiMode.AC_MODE_NONE, group, name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.conv2d({}, {}, {}, {}, {}, {}, {}, {})".format(node.input[0], out_channels, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1]))
         
@@ -195,7 +220,7 @@ class ONNXModelKeras(ONNXModel):
         print("########################################I am in Keras MatMul")
         input = self.symbol_table[node.input[0]]
         dim = self.inputs[node.input[1]].dims[1]
-        output = ffmodel.dense(input, dim, use_bias=False)
+        output = ffmodel.dense(input, dim, use_bias=False, name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.dense({}, {})".format(node.input[0], dim))
         
@@ -210,7 +235,7 @@ class ONNXModelKeras(ONNXModel):
         else:
             assert 0
         stride = attribute["strides"].ints
-        output = ffmodel.pool2d(input, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1])
+        output = ffmodel.pool2d(input, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.pool2d({}, {}, {}, {}, {}, {}, {}, PoolType.POOL_MAX)".format(node.input[0], kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1]))
         
@@ -226,13 +251,5 @@ class ONNXModelKeras(ONNXModel):
         else:
             assert 0
         tensor = ffmodel.create_constant(dims, 0.0, DataType.DT_FLOAT)
+        print("create constant", input.name)
         return tensor
-        
-    def _get_input_tensor(self, input):
-        if input in self.symbol_table:
-            input_tensor = self.symbol_table[input]
-        elif input in self.initializers:
-            input_tensor = self.initializers[input]
-        else:
-            assert 0
-        return input_tensor
