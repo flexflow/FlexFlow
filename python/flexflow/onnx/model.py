@@ -189,14 +189,6 @@ class ONNXModelKeras(ONNXModel):
             else:
                 tensor = ONNXTensor(initializer.name, initializer.dims, 2)
                 self.inputs[initializer.name] = tensor
-    
-    def handleAdd(self, ffmodel, node):
-        print("########################################I am in Keras Add")
-        input0 = self.symbol_table[node.input[0]]
-        input1 = self.symbol_table[node.input[1]]
-        output = ffmodel.add(input0, input1, name=node.name)
-        self.symbol_table[node.output[0]] = output
-        logging.debug("ffmodel.add({})".format(node.input[0]))
         
     def handleConv(self, ffmodel, node):
         print("########################################I am in Keras Conv")
