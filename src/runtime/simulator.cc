@@ -60,6 +60,23 @@ void SimTask::add_next_task(SimTask* task)
   task->counter ++;
 }
 
+std::string SimTask::get_type_str() const {
+  switch (type) {
+    case TASK_FORWARD:
+      return "Forward";
+    case TASK_BACKWARD:
+      return "Backward";
+    case TASK_COMM:
+      return "Comm";
+    case TASK_UPDATE:
+      return "Update";
+    case TASK_BARRIER:
+      return "Barrier";
+    default:
+      assert(false && "Unknown task type");
+  }
+}
+
 TaskManager::TaskManager(size_t _max_num_tasks)
 : max_num_tasks(_max_num_tasks)
 {
@@ -85,6 +102,7 @@ SimTask* TaskManager::new_task()
   task->next_tasks.clear();
   task->counter = 0;
   task->device = NULL;
+  task->op_name = NULL;
   return task;
 }
 
@@ -116,6 +134,7 @@ SimTask* TaskManager::new_forward_task(Op* op, int idx)
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
   hash_to_forward_task[hash] = task;
+  task->op_name = op->name;
   return task;
 }
 
@@ -126,6 +145,7 @@ SimTask* TaskManager::new_backward_task(Op* op, int idx)
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
   hash_to_backward_task[hash] = task;
+  task->op_name = op->name;
   return task;
 }
 
@@ -303,6 +323,13 @@ float Simulator::measure_op_backward_time(Op* op, const ParallelConfig& config)
 float Simulator::simulate_runtime(const FFModel* model,
                                   const std::map<Op*, ParallelConfig>& global)
 {
+  return this->simulate_runtime(model, global, "");
+}
+
+float Simulator::simulate_runtime(const FFModel* model,
+                                  const std::map<Op*, ParallelConfig>& global,
+                                  std::string const &export_file_name)
+{
   task_manager->reset();
   // Step 1: register forward and backward tasks
   for (size_t l = 0; l < model->layers.size(); l++) {
@@ -444,6 +471,11 @@ float Simulator::simulate_runtime(const FFModel* model,
   float sim_time = 0.0f;
   std::map<Device*, float> device_times;
   size_t idx = 0;
+  DotFile<SimTask *> taskGraph;
+  bool export_taskgraph = (export_file_name != "");
+  if (export_taskgraph) {
+    taskGraph.set_filename(export_file_name);
+  }
   while (!ready_queue.empty()) {
     // Find the task with the earliest start time
     SimTask* t = ready_queue.top();
@@ -455,12 +487,29 @@ float Simulator::simulate_runtime(const FFModel* model,
     float start_time = std::max(ready_time, t->ready_time);
     float end_time = start_time + t->run_time;
     device_times[t->device] = end_time;
-    //printf("task[%d] type(%d) run_time(%.4lf) ready_time(%.4lf) start_time(%.4lf) device(%d)\n",
-    //    idx, t->type, t->run_time, ready_time, start_time, t->device->gpu_id);
+    if (export_taskgraph) {
+      std::map<std::string, std::string> nodeAttrs;
+      std::ostringstream label;
+      label << "\"{ ";
+      if (t->op_name != NULL) {
+        label << t->op_name << " | ";
+      }
+      label << t->get_type_str() << " | ";
+      label << "{ " << start_time << " | " << end_time << " }";
+      label << " }\"";
+      nodeAttrs["label"] = label.str();
+      nodeAttrs["shape"] = "record";
+      taskGraph.add_node(t, nodeAttrs);
+    }
+    /* printf("task[%d] type(%d) run_time(%.4lf) ready_time(%.4lf) start_time(%.4lf) device(%d)\n", */
+    /*     idx, t->type, t->run_time, ready_time, start_time, t->device->gpu_id); */
     if (end_time > sim_time)
       sim_time = end_time;
     for (size_t i = 0; i < t->next_tasks.size(); i++) {
       SimTask* next = t->next_tasks[i];
+      if (export_taskgraph) {
+        taskGraph.add_edge(t, next);
+      }
       next->ready_time = std::max(next->ready_time, end_time);
       next->counter --;
       if (next->counter == 0) {
@@ -468,6 +517,9 @@ float Simulator::simulate_runtime(const FFModel* model,
       }
     }
     idx++;
+  }
+  if (export_taskgraph) {
+    taskGraph.close();
   }
   // Assert all tasks were processed
   assert(idx == task_manager->global_task_id);
