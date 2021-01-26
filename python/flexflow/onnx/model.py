@@ -103,7 +103,7 @@ class ONNXModel(object):
         padding = attribute["pads"].ints
         stride = attribute["strides"].ints
         group = attribute["group"].i
-        out_channels = self.inputs[node.input[1]].type.tensor_type.shape.dim[0].dim_value
+        out_channels = self.inputs[node.input[1]].dims[0]
         output = ffmodel.conv2d(input, out_channels, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], ActiMode.AC_MODE_NONE, group, name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.conv2d({}, {}, {}, {}, {}, {}, {}, {}, name={})".format(node.input[0], out_channels, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], node.name))
@@ -125,7 +125,7 @@ class ONNXModel(object):
 
     def handleGemm(self, ffmodel, node):
         input = self.symbol_table[node.input[0]]
-        dim = self.inputs[node.input[1]].type.tensor_type.shape.dim[0].dim_value
+        dim = self.inputs[node.input[1]].dims[0]
         output = ffmodel.dense(input, dim, name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.dense({}, {}, name={})".format(node.input[0], dim, node.name))
