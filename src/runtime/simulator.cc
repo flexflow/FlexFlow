@@ -206,7 +206,7 @@ Device* Simulator::get_compute_device_by_id(int device_id)
 Device* Simulator::get_inter_gpu_comm_device_by_ids(int src_id,
                                                     int dst_id)
 {
-  int hash = src_id * total_num_devices + dst_id;
+  int hash = src_id * total_num_gpus + dst_id;
   assert(ids_to_inter_gpu_comm_device.find(hash) != ids_to_inter_gpu_comm_device.end());
   return ids_to_inter_gpu_comm_device[hash];
 }
@@ -226,7 +226,7 @@ Device* Simulator::get_dram_to_gpu_comm_device_by_id(int gpu_id)
 Device* Simulator::get_inter_node_comm_device_by_ids(int src_id,
                                                      int dst_id)
 {
-  int hash = src_id * total_num_devices + dst_id;
+  int hash = src_id * total_num_gpus + dst_id;
   assert(ids_to_inter_node_comm_device.find(hash) != ids_to_inter_node_comm_device.end());
   return ids_to_inter_node_comm_device[hash];
 }
@@ -379,6 +379,9 @@ float Simulator::simulate_runtime(const FFModel* model,
       }
     }
   }
+#ifdef FF_ENABLE_NCCL
+  // Do nothing since we will calculate NCCL cost at the end
+#else
   if (model->config.search_overlap_backward_update) {
     // Step 3a: consider backpropagation and weight update are overlapped
     for (int l = model->layers.size()-1; l >= 0; l--) {
@@ -393,6 +396,7 @@ float Simulator::simulate_runtime(const FFModel* model,
             // Add a compute task for parameter update
             SimTask* updateT = task_manager->new_update_task();
             updateT->device = get_compute_device_by_id(pc.device_ids[firstId]);
+            // TODO add parameter synchronization time
             updateT->run_time = 0.0f; // Assume update task takes no time
             for (int nextId = firstId+1; nextId < pc.num_parts(); nextId++) {
               Domain nextR = op->get_weight_tensor_shape(pc, j, nextId);
@@ -414,7 +418,7 @@ float Simulator::simulate_runtime(const FFModel* model,
     // Step 3b: Bulk Synchronous Model
     // Add a per-device barrier before weight update
     std::vector<SimTask*> barriers;
-    for (int d = 0; d < total_num_devices; d++) {
+    for (int d = 0; d < total_num_gpus; d++) {
       SimTask* t = task_manager->new_barrier_task();
       t->device = get_compute_device_by_id(d);
       t->run_time = 0;
@@ -461,6 +465,7 @@ float Simulator::simulate_runtime(const FFModel* model,
       }
     }
   }
+#endif
 
   // Step 4: add ready tasks into ready_queue
   std::priority_queue<SimTask*, std::vector<SimTask*>, SimTaskCompare> ready_queue;
@@ -523,6 +528,48 @@ float Simulator::simulate_runtime(const FFModel* model,
   }
   // Assert all tasks were processed
   assert(idx == task_manager->global_task_id);
-  // TODO add parameter synchronization time
+#ifdef FF_ENABLE_NCCL
+  for (size_t l = 0; l < model->layers.size(); l++) {
+    Op* op = model->layers[l];
+    ParallelConfig pc = global.find(op)->second;
+    // Since all NCCL calls are blocking, we can add the NCCL cost
+    // sequentially 
+    for (int j = 0; j < op->numWeights; j++) {
+      std::set<int> synched;
+      for (int firstId = 0; firstId < pc.num_parts(); firstId++)
+        if (synched.find(firstId) == synched.end()) {
+          synched.insert(firstId);
+          Domain firstR = op->get_weight_tensor_shape(pc, j, firstId);
+          Device* firstDevice = get_compute_device_by_id(pc.device_ids[firstId]);
+          float nccl_time = 0.0f;
+          for (int nextId = firstId+1; nextId < pc.num_parts(); nextId++) {
+            Domain nextR = op->get_weight_tensor_shape(pc, j, nextId);
+            if (firstR.intersection(nextR).get_volume() > 0) {
+              // Assert all or nothing:
+              // The two weights must be fully overlapped or not at all
+              assert(firstR == nextR);
+              assert(synched.find(nextId) == synched.end());
+              synched.insert(nextId);
+              Device* nextDevice = get_compute_device_by_id(pc.device_ids[nextId]);
+              // Compute the bandwidth between firstDevice/nextDevice
+              float bandwidth = 0.0f;
+              if (firstDevice->node_id == nextDevice->node_id) {
+                Device* commDevice = get_inter_gpu_comm_device_by_ids(
+                    firstDevice->gpu_id, nextDevice->gpu_id);
+                bandwidth = commDevice->bandwidth;
+              } else {
+                Device* commDevice = get_inter_node_comm_device_by_ids(
+                    firstDevice->node_id, nextDevice->node_id);
+                bandwidth = commDeivce->bandwidth;
+              }
+              ncclTime = max(ncclTime, (float)firstR.get_volume() * sizeof(float) / bandwidth);
+            }
+          }
+          // Add ncclTime to sim_time given nccl calls are blocking
+          sim_time += nccl_time;
+        }
+    }
+  }
+#endif
   return sim_time;
 }

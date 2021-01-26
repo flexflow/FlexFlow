@@ -182,7 +182,7 @@ public:
   size_t capacity;
   off_t offset;
   int warmup_times, repeat_times;
-  int total_num_devices;
+  int num_nodes, gpus_per_node, total_num_gpus;
   TaskManager* task_manager;
   cudaEvent_t start_event, end_event;
   std::map<int, Device*> id_to_compute_device;
