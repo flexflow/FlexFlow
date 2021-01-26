@@ -1,7 +1,7 @@
 from flexflow.core import *
 import numpy as np
 from flexflow.keras.datasets import mnist
-from flexflow.onnx.model import ONNXModel
+from flexflow.onnx.model import ONNXModel, ONNXModelKeras
 
 from accuracy import ModelAccuracy
 
@@ -16,8 +16,11 @@ def top_level_task():
   
   num_samples = 60000
   
-  onnx_model = ONNXModel("mnist_mlp.onnx")
-  t = onnx_model.apply(ffmodel, {"input.1": input1})
+  #onnx_model = ONNXModel("mnist_mlp.onnx")
+  #t = onnx_model.apply(ffmodel, {"input.1": input1})
+  
+  onnx_model = ONNXModelKeras("mnist_mlp.onnx", ffconfig, ffmodel)
+  t = onnx_model.apply(ffmodel, {"input_1": input1})
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)

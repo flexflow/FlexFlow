@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import onnx
 
 class MLP(nn.Module):
   def __init__(self):
@@ -23,3 +24,7 @@ input = torch.randn(100, 784)
 model = MLP()
 
 torch.onnx.export(model, (input), "mnist_mlp.onnx", export_params=False)
+
+onnx_model = onnx.load("mnist_mlp.onnx")
+for input in onnx_model.graph.input:
+  print(input)
