@@ -123,6 +123,7 @@ public:
   size_t search_budget;
   float search_alpha;
   bool search_overlap_backward_update;
+  std::string export_strategy_task_graph_file;
   //Control parallelizable dimensions
   bool enable_sample_parallel;
   bool enable_parameter_parallel;
