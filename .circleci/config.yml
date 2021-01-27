@@ -1,0 +1,21 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@0.2.1
+
+jobs:
+  build-and-test:
+    gpu: &gpu
+    environment:
+      CUDA_VERSION: "10.1"
+    machine:
+      image: ubuntu-1604-cuda-10.1:201909-23
+    resource_class: gpu.large
+    steps:
+      - checkout
+      - run: nvidia-smi
+
+workflows:
+  nvidia:  
+    jobs:
+      - build-and-test
