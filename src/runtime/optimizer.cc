@@ -123,7 +123,8 @@ void SGDOptimizer::update(const Parameter* p)
     // Directly send the parameters back to all worker devices after SGD
     ArgumentMap argmap;
     IndexLauncher index_launcher(DUMMY_TASK_ID, p->owner_op->task_is,
-        TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED, 0/*mapper_id*/,
+        TaskArgument(NULL, 0), argmap,
+        Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
         FFConfig::get_hash_id(std::string(p->owner_op->name)));
     // regions[0]: region
     index_launcher.add_region_requirement(
@@ -289,7 +290,8 @@ void AdamOptimizer::update(const Parameter* p)
     // Directly send the parameters back to all worker devices after SGD
     ArgumentMap argmap;
     IndexLauncher index_launcher(DUMMY_TASK_ID, p->owner_op->task_is,
-        TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED, 0/*mapper_id*/,
+        TaskArgument(NULL, 0), argmap,
+        Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
         FFConfig::get_hash_id(std::string(p->owner_op->name)));
     // regions[0]: region
     index_launcher.add_region_requirement(
