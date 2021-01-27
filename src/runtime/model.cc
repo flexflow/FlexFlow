@@ -2561,10 +2561,10 @@ void register_internal_tasks()
   }
   // DUMMY task
   {
-    TaskVariantRegistrar registrar(DUMMY_TASK_ID, "dummy_task");
+    TaskVariantRegistrar registrar(DUMMY_TASK_ID, "Weights Prefetch");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "dummy_task");
+    Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "Weights Prefetch Task");
   }
 }
 

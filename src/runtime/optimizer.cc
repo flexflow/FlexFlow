@@ -119,6 +119,18 @@ void SGDOptimizer::update(const Parameter* p)
       launcher.add_field(2, FID_DATA);
     }
     runtime->execute_task(ctx, launcher);
+    // Parameter prefetching optimizations to reduce comm. overhead
+    // Directly send the parameters back to all worker devices after SGD
+    ArgumentMap argmap;
+    IndexLauncher index_launcher(DUMMY_TASK_ID, p->owner_op->task_is,
+        TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED, 0/*mapper_id*/,
+        FFConfig::get_hash_id(std::string(p->owner_op->name)));
+    // regions[0]: region
+    index_launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection*/,
+                          READ_ONLY, EXCLUSIVE, p->region));
+    index_launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, index_launcher);
   } else if (p->type == Parameter::NCCL) {
     IndexSpace task_is = p->owner_op->task_is;
     assert(task_is != IndexSpace::NO_SPACE);
@@ -273,6 +285,18 @@ void AdamOptimizer::update(const Parameter* p)
                           READ_WRITE, EXCLUSIVE, m_values[p->region].region));
     launcher.add_field(3, FID_DATA);
     runtime->execute_task(ctx, launcher);
+    // Parameter prefetching optimizations to reduce comm. overhead
+    // Directly send the parameters back to all worker devices after SGD
+    ArgumentMap argmap;
+    IndexLauncher index_launcher(DUMMY_TASK_ID, p->owner_op->task_is,
+        TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED, 0/*mapper_id*/,
+        FFConfig::get_hash_id(std::string(p->owner_op->name)));
+    // regions[0]: region
+    index_launcher.add_region_requirement(
+        RegionRequirement(p->part, 0/*projection*/,
+                          READ_ONLY, EXCLUSIVE, p->region));
+    index_launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, index_launcher);
   } else if (p->type == Parameter::NCCL) {
     IndexSpace task_is = p->owner_op->task_is;
     assert(task_is != IndexSpace::NO_SPACE);
