@@ -33,18 +33,18 @@ model = Model(inputs=input_tensor, outputs=output)
 # model = Sequential(layers)
 
 onnx_model = keras2onnx.convert_keras(model, "mlp")
-onnx.save(onnx_model, "mnist_mlp.onnx")
+onnx.save(onnx_model, "mnist_mlp_keras.onnx")
 
-for node in onnx_model.graph.node:
-  print(node)
-
-for input in onnx_model.graph.initializer:
-  print(input.name, input.dims, len(input.dims))
-  if '/bias' in input.name:
-    print(input.name, type(input))
-    
-for input in onnx_model.graph.input:
-  print(input)
-  
-for output in onnx_model.graph.output:
-  print(output, type(output))
+# for node in onnx_model.graph.node:
+#   print(node)
+#
+# for input in onnx_model.graph.initializer:
+#   print(input.name, input.dims, len(input.dims))
+#   if '/bias' in input.name:
+#     print(input.name, type(input))
+#
+# for input in onnx_model.graph.input:
+#   print(input)
+#
+# for output in onnx_model.graph.output:
+#   print(output, type(output))

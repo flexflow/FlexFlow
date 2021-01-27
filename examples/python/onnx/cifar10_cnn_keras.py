@@ -24,18 +24,16 @@ output_tensor = Activation("softmax")(output_tensor)
 model = Model(input_tensor1, output_tensor)
 
 onnx_model = keras2onnx.convert_keras(model, "mlp")
-onnx.save(onnx_model, "cifar10_cnn.onnx")
+onnx.save(onnx_model, "cifar10_cnn_keras.onnx")
 
-for node in onnx_model.graph.node:
-  print(node)
-
-for input in onnx_model.graph.initializer:
-  print(input.name, input.dims, len(input.dims))
-  # if '/bias' in input.name:
-  #   print(input.name, type(input))
- 
-for input in onnx_model.graph.input:
-  print(input)
-      
-for output in onnx_model.graph.output:
-  print(output, type(output))
+# for node in onnx_model.graph.node:
+#   print(node)
+#
+# for input in onnx_model.graph.initializer:
+#   print(input.name, input.dims, len(input.dims))
+#
+# for input in onnx_model.graph.input:
+#   print(input)
+#
+# for output in onnx_model.graph.output:
+#   print(output, type(output))

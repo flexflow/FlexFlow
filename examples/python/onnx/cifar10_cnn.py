@@ -1,10 +1,11 @@
 from flexflow.core import *
 from flexflow.keras.datasets import cifar10
 from flexflow.onnx.model import ONNXModel, ONNXModelKeras
+import sys, getopt
 
 from accuracy import ModelAccuracy
 
-def top_level_task():
+def top_level_task(test_type=1):
   ffconfig = FFConfig()
   alexnetconfig = NetConfig()
   print(alexnetconfig.dataset_path)
@@ -15,11 +16,12 @@ def top_level_task():
   dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
   input = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
-  # onnx_model = ONNXModel("cifar10_cnn.onnx")
-  # t = onnx_model.apply(ffmodel, {"input.1": input})
-  
-  onnx_model = ONNXModelKeras("cifar10_cnn.onnx", ffconfig, ffmodel)
-  t = onnx_model.apply(ffmodel, {"input_1": input})
+  if test_type == 1:
+    onnx_model = ONNXModel("cifar10_cnn_pt.onnx")
+    t = onnx_model.apply(ffmodel, {"input.1": input})
+  else:
+    onnx_model = ONNXModelKeras("cifar10_cnn_keras.onnx", ffconfig, ffmodel)
+    t = onnx_model.apply(ffmodel, {"input_1": input})
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
@@ -74,4 +76,12 @@ def top_level_task():
 
 if __name__ == "__main__":
   print("cifar10 cnn onnx")
-  top_level_task()
+  try:
+    opts, args = getopt.getopt(sys.argv[2:],"t:",["test_type"])
+  except getopt.GetoptError:
+    assert 0
+  test_type = 1
+  for opt, arg in opts:
+    if opt in ("-t", "--test_type"):
+       test_type = arg
+  top_level_task(test_type)
