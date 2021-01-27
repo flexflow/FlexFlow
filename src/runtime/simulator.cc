@@ -382,6 +382,16 @@ float Simulator::simulate_runtime(const FFModel* model,
 #ifdef FF_ENABLE_NCCL
   // Do nothing since we will calculate NCCL cost at the end
 #else
+  // Step 2.5: add finals tasks for each compute device to capture the returning comm tasks
+  // from parameter servers
+  std::vector<SimTask*> finals;
+  for (int d = 0; d < total_num_gpus; d++) {
+    SimTask* t = task_manager->new_barrier_task();
+    t->device = get_compute_device_by_id(d);
+    t->run_time = 0;
+    finals.push_back(t);
+  }
+
   if (model->config.search_overlap_backward_update) {
     // Step 3a: consider backpropagation and weight update are overlapped
     for (int l = model->layers.size()-1; l >= 0; l--) {
@@ -406,9 +416,12 @@ float Simulator::simulate_runtime(const FFModel* model,
                 assert(firstR == nextR);
                 assert(synched.find(nextId) == synched.end());
                 synched.insert(nextId);
-                // Add comm. tasks from nextId to
-                SimTask* workerT = task_manager->get_backward_task(op, nextId);
-                add_task_dependencies_with_xfer(workerT, updateT, 2*firstR.get_volume());
+                // Add comm. tasks from backT to updateT
+                SimTask* backT = task_manager->get_backward_task(op, nextId);
+                add_task_dependencies_with_xfer(backT, updateT, firstR.get_volume());
+                // Add comm. tasks from updateT to finalT
+                SimTask* finalT = finals[backT->device->gpu_id];
+                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume());
               }
             }
           }
@@ -458,7 +471,10 @@ float Simulator::simulate_runtime(const FFModel* model,
                 assert(backT->device->gpu_id == pc.device_ids[nextId]);
                 SimTask* barrierT = barriers[backT->device->gpu_id];
                 // Add comm. tasks from barrierT to updateT
-                add_task_dependencies_with_xfer(barrierT, updateT, 2*firstR.get_volume());
+                add_task_dependencies_with_xfer(barrierT, updateT, firstR.get_volume());
+                // Add comm. tasks from updateT to finalT
+                SimTask* finalT = finals[backT->device->gpu_id];
+                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume());
               }
             }
           }
@@ -466,7 +482,6 @@ float Simulator::simulate_runtime(const FFModel* model,
     }
   }
 #endif
-
   // Step 4: add ready tasks into ready_queue
   std::priority_queue<SimTask*, std::vector<SimTask*>, SimTaskCompare> ready_queue;
   for (size_t i = 0; i < task_manager->global_task_id; i++)
