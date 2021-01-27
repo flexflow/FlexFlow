@@ -978,8 +978,7 @@ void FFMapper::memoize_operation(const MapperContext  ctx,
     return;
   }
   // Memoize all other mapping decisions
-  // FIXME: currently disabled memoize optimization
-  output.memoize = false;
+  output.memoize = true;
 }
 
 // Mapping control and stealing
