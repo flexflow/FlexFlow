@@ -57,9 +57,9 @@ Simulator::Simulator(const FFModel* model,
   concat_meta = new ConcatMeta(handler);
   dropout_meta = new DropoutMeta(handler);
   transpose_meta = new TransposeMeta(handler);
-  int num_nodes = model->config.numNodes;
-  int gpus_per_node = model->config.workersPerNode;
-  total_num_devices = num_nodes * gpus_per_node;
+  num_nodes = model->config.numNodes;
+  gpus_per_node = model->config.workersPerNode;
+  total_num_gpus = num_nodes * gpus_per_node;
   // Create GPU compute device
   for (int i = 0; i < num_nodes; i++)
     for (int j = 0; j < gpus_per_node; j++) {
@@ -67,18 +67,18 @@ Simulator::Simulator(const FFModel* model,
           i, i*gpus_per_node+j);
     }
   // Create inter GPU comm devices:
-  for (int i = 0; i < total_num_devices; i++)
-    for (int j = 0; j < total_num_devices; j++) {
+  for (int i = 0; i < total_num_gpus; i++)
+    for (int j = 0; j < total_num_gpus; j++) {
       Device* src = id_to_compute_device[i];
       Device* dst = id_to_compute_device[j];
       if (src->node_id == dst->node_id && src != dst) {
-        int hash = i * total_num_devices + j;
+        int hash = i * total_num_gpus + j;
         ids_to_inter_gpu_comm_device[hash] = new Device(Device::DEVICE_COMM,
             inter_gpu_bandwidth);
       }
     }
   // Create gpu<->dram comm devices
-  for (int i = 0; i < total_num_devices; i++) {
+  for (int i = 0; i < total_num_gpus; i++) {
     id_to_gputodram_comm_device[i] = new Device(Device::DEVICE_COMM,
         gpu_dram_bandwidth);
     id_to_dramtogpu_comm_device[i] = new Device(Device::DEVICE_COMM,
@@ -88,7 +88,7 @@ Simulator::Simulator(const FFModel* model,
   for (int i = 0; i < num_nodes; i++)
     for (int j = 0; j < num_nodes; j++)
       if (i != j) {
-        int hash = i * total_num_devices + j;
+        int hash = i * total_num_gpus + j;
         ids_to_inter_node_comm_device[hash] = new Device(Device::DEVICE_COMM,
             inter_node_bandwidth);
       }

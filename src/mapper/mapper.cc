@@ -180,6 +180,9 @@ void FFMapper::select_task_options(const MapperContext ctx,
         // Current assert this sould be a local proc
         assert(output.initial_proc.address_space() == node_id);
         return;
+      } else {
+        output.initial_proc = all_gpus[config.device_ids[0]];
+        return;
       }
     }
     if (cache_update_tasks.find(task_hash) != cache_update_tasks.end()) {

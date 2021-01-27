@@ -1609,6 +1609,7 @@ void FFModel::optimize(Simulator* simulator,
     }
   }
   printf("=========== Best Discovered Strategy ==========\n");
+  simulator->simulate_runtime(this, best, this->config.export_strategy_task_graph_file);
   std::map<Op*, ParallelConfig>::const_iterator it;
   for (it = best.begin(); it != best.end(); it++) {
     printf("[%s] num_dims(%d) dims[", it->first->name, it->second.nDims);
@@ -1862,6 +1863,7 @@ FFConfig::FFConfig()
 
   import_strategy_file = "";
   export_strategy_file = "";
+  export_strategy_task_graph_file = "";
   dataset_path = "";
   syntheticInput = false;
   perform_fusion = false;
@@ -1941,10 +1943,21 @@ void FFConfig::parse_args(char **argv, int argc)
     if (!strcmp(argv[i], "--profiling"))
     {
       profiling = true;
+      continue;
     }
     if (!strcmp(argv[i], "--fusion"))
     {
       perform_fusion = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--overlap"))
+    {
+      search_overlap_backward_update = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--taskgraph")) {
+      export_strategy_task_graph_file = std::string(argv[++i]);
+      continue;
     }
   }
 }
@@ -2548,10 +2561,10 @@ void register_internal_tasks()
   }
   // DUMMY task
   {
-    TaskVariantRegistrar registrar(DUMMY_TASK_ID, "dummy_task");
+    TaskVariantRegistrar registrar(DUMMY_TASK_ID, "Weights Prefetch");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "dummy_task");
+    Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "Weights Prefetch Task");
   }
 }
 
