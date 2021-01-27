@@ -83,12 +83,16 @@ def parse_add(op_str, node):
   
 def parse_concat(op_str, node):
   #FIXME assume it is a merge
+  assert len(node.inedges[0]) >= 2, "wrong number of inputs"
   op_str = op_str + str(enum_to_int(OpType, OpType.CONCAT)) + ", "
   op_str = op_str + str(node.inedges[1]) + "\n"
   return op_str
   
 def parse_flat(op_str, node):
-  #assert len(node.inedges) == 1, "wrong number of inputs"
+  if type(node) == FunctionNode:
+    assert len(node.inedges) == 2, "wrong number of inputs"
+  elif type(node) == ModuleNode:
+    assert len(node.inedges) == 1, "wrong number of inputs"
   op_str = op_str + str(enum_to_int(OpType, OpType.FLAT)) + "\n"
   return op_str
 
@@ -168,6 +172,16 @@ def parse_softmax(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
   op_str = op_str + str(enum_to_int(OpType, OpType.SOFTMAX)) + "\n"
   return op_str
+  
+def parse_inedge(op_str, inedges):
+  if inedges == None:
+    pass
+  else:
+    print(inedges)
+    for inedge in inedges:
+        op_str = op_str + inedge.name + ":"
+  op_str = op_str + ", "
+  return op_str
 
 def torch_to_flexflow(model, filename):
   graph = __symbolic_trace(model)
@@ -176,46 +190,36 @@ def torch_to_flexflow(model, filename):
   for node in graph:
     # op name
     op_str = node.name + ", "
-    
-    # op inedges
-    #input
-    if node.inedges == None:
-      pass
-    #others
-    else:
-      inedges = node.inedges[0]
-      # print(inedges, type(inedges))
-      if type(inedges) == list:
-        pass
-      elif type(inedges) == tuple:
-        pass
-      elif type(inedges) == torch.fx.immutable_collections.immutable_list:
-        pass
-      else:
-        inedges = [inedges]
-      for inedge in inedges:
-          op_str = op_str + inedge.name + ":"
-    op_str = op_str + ", "
+    print(node.name, type(node))
     
     #op type
     if type(node) == InputNode:
+      op_str = parse_inedge(op_str, node.inedges)
       op_str = parse_input(op_str, node)
       
     if type(node) == OutputNode:
+      if type(node.inedges[0]) == tuple:
+        op_str = parse_inedge(op_str, node.inedges[0])
+      else:
+        op_str = parse_inedge(op_str, node.inedges)
       op_str = parse_output(op_str, node)
     
     if type(node) == FunctionNode:
       function_name = str(node.function)
       if function_name.find('add') >= 0:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_add(op_str, node)
         
       elif function_name.find('cat') >= 0:
+        op_str = parse_inedge(op_str, node.inedges[0])
         op_str = parse_concat(op_str, node)
       
       elif function_name.find('flatten') >= 0:
+        op_str = parse_inedge(op_str, (node.inedges[0],))
         op_str = parse_flat(op_str, node)
         
       elif function_name.find('relu') >= 0:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_relu(op_str, node)
       
       else:
@@ -226,39 +230,51 @@ def torch_to_flexflow(model, filename):
       assert len(node.inedges) == 1, "wrong format"
       
       if type(node.module) == torch.nn.modules.linear.Linear:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_linear(op_str, node)
       
       elif type(node.module) == torch.nn.modules.conv.Conv2d:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_conv2d(op_str, node)
           
       elif type(node.module) == torch.nn.modules.pooling.MaxPool2d:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_pool2d(op_str, node, PoolType.POOL_MAX)
         
       elif type(node.module) == torch.nn.modules.pooling.AvgPool2d:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_pool2d(op_str, node, PoolType.POOL_AVG)
         
       elif type(node.module) == torch.nn.modules.batchnorm.BatchNorm2d:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_batchnorm2d(op_str, node)
 
       elif type(node.module) == torch.nn.modules.dropout.Dropout:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_dropout(op_str, node)
         
       elif type(node.module) == torch.nn.modules.flatten.Flatten:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_flat(op_str, node)
           
       elif type(node.module) == torch.nn.modules.activation.ReLU:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_relu(op_str, node)
         
       elif type(node.module) == torch.nn.modules.activation.Sigmoid:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_sigmoid(op_str, node)
         
       elif type(node.module) == torch.nn.modules.activation.Tanh:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_tanh(op_str, node)
         
       elif type(node.module) == torch.nn.modules.activation.ELU:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_elu(op_str, node)
         
       elif type(node.module) == torch.nn.modules.activation.Softmax:
+        op_str = parse_inedge(op_str, node.inedges)
         op_str = parse_softmax(op_str, node)
       
       else:

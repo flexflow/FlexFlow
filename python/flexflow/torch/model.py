@@ -136,6 +136,19 @@ class PyTorchModel(object):
           input_tensors.append(self.tensor_dict[i])
         ax = int(items[3])
         self.tensor_dict[op_name] = ffmodel.concat(tensors=input_tensors, axis=ax, name=op_name)
+        
+      elif op_type == OpType.BATCH_NORM:
+        assert len(items) == 3, "wrong format"
+        assert len(prev_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[prev_ops_list[0]]
+        self.tensor_dict[op_name] = ffmodel.batch_norm(input=input_tensor, name=op_name)
+        
+      elif op_type == OpType.ADD:
+        assert len(items) == 3, "wrong format"
+        assert len(prev_ops_list) == 2, "wrong format"
+        input_tensor1 = self.tensor_dict[prev_ops_list[0]]
+        input_tensor2 = self.tensor_dict[prev_ops_list[1]]
+        self.tensor_dict[op_name] = ffmodel.add(x=input_tensor1, y=input_tensor2, name=op_name)
 
       elif op_type == OpType.OUTPUT:
         self.tensor_dict[op_name] = []
@@ -145,6 +158,7 @@ class PyTorchModel(object):
         #print(output_tensors[1].handle.impl)
 
       else:
+        print(op_type)
         assert 0, "unknown op"
         
     in_file.close()
