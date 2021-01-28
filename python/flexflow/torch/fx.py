@@ -16,30 +16,33 @@
 import torch.fx
 import torch
 from flexflow.core.flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, MetricsType, OpType, enum_to_int
+import onnx
+#from onnx import helper
 
 class Node(object):
-  def __init__(self, name, inedges):
+  def __init__(self, name, inedges, outedges):
     self.name = name
     self.inedges = inedges
+    self.outedges = outedges
     pass
 
 class ModuleNode(Node):
-  def __init__(self, name, inedges, module):
-    super(ModuleNode, self).__init__(name, inedges)
+  def __init__(self, name, inedges, outedges, module):
+    super(ModuleNode, self).__init__(name, inedges, outedges)
     self.module = module
 
 class FunctionNode(Node):
-  def __init__(self, name, inedges, function):
-    super(FunctionNode, self).__init__(name, inedges)
+  def __init__(self, name, inedges, outedges, function):
+    super(FunctionNode, self).__init__(name, inedges, outedges)
     self.function = function
 
 class OutputNode(Node):
   def __init__(self, name, inedges):
-    super(OutputNode, self).__init__(name, inedges)
+    super(OutputNode, self).__init__(name, inedges, None)
     
 class InputNode(Node):
-  def __init__(self, name):
-    super(InputNode, self).__init__(name, None)
+  def __init__(self, name, outedges):
+    super(InputNode, self).__init__(name, None, outedges)
 
 def __symbolic_trace(model):
   assert isinstance(model, torch.nn.Module), "model must be a torch.nn.Module"
@@ -50,15 +53,16 @@ def __symbolic_trace(model):
     
   graph = list()
   for node in traced.graph.nodes:
+    #print(vars(node))
     if node.op == "call_module":
       assert node.target in modules_by_name, "cannot find module %s in model".format(node.target)
-      graph.append(ModuleNode(node.name, node.args, modules_by_name[node.target]))
+      graph.append(ModuleNode(node.name, node.args, node.users, modules_by_name[node.target]))
     elif node.op == "placeholder":
-      graph.append(InputNode(node.name))
+      graph.append(InputNode(node.name, node.users))
     elif node.op == "get_attr":
       pass
     elif node.op == "call_function" or node.op == "call_method":
-      graph.append(FunctionNode(node.name, node.args, node.target))
+      graph.append(FunctionNode(node.name, node.args, node.users, node.target))
     elif node.op == "output":
       graph.append(OutputNode(node.name, node.args))
     else:
@@ -173,15 +177,33 @@ def parse_softmax(op_str, node):
   op_str = op_str + str(enum_to_int(OpType, OpType.SOFTMAX)) + "\n"
   return op_str
   
-def parse_inedge(op_str, inedges):
+def parse_inoutedge(op_str, inedges, outedges):
   if inedges == None:
     pass
   else:
-    print(inedges)
     for inedge in inedges:
-        op_str = op_str + inedge.name + ":"
+      op_str = op_str + inedge.name + ":"
+  op_str = op_str + ", "
+  
+  if outedges == None:
+    pass
+  else:
+    for outedge in outedges:
+      op_str = op_str + outedge.name + ":"
   op_str = op_str + ", "
   return op_str
+  
+# def parse_linear_onnx(node):
+#   assert len(node.inedges) == 1, "wrong number of inputs"
+#   node_def = helper.make_node(
+#       node.name,
+#       ['X', 'pads', 'value'],
+#       [node.name],
+#       out_features=node.module.out_features,
+#   )
+#   print(node_def)
+#   print(node)
+#   return node_def
 
 def torch_to_flexflow(model, filename):
   graph = __symbolic_trace(model)
@@ -194,32 +216,32 @@ def torch_to_flexflow(model, filename):
     
     #op type
     if type(node) == InputNode:
-      op_str = parse_inedge(op_str, node.inedges)
+      op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
       op_str = parse_input(op_str, node)
       
     if type(node) == OutputNode:
       if type(node.inedges[0]) == tuple:
-        op_str = parse_inedge(op_str, node.inedges[0])
+        op_str = parse_inoutedge(op_str, node.inedges[0], node.outedges)
       else:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
       op_str = parse_output(op_str, node)
     
     if type(node) == FunctionNode:
       function_name = str(node.function)
       if function_name.find('add') >= 0:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_add(op_str, node)
         
       elif function_name.find('cat') >= 0:
-        op_str = parse_inedge(op_str, node.inedges[0])
+        op_str = parse_inoutedge(op_str, node.inedges[0], node.outedges)
         op_str = parse_concat(op_str, node)
       
       elif function_name.find('flatten') >= 0:
-        op_str = parse_inedge(op_str, (node.inedges[0],))
+        op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
         op_str = parse_flat(op_str, node)
         
       elif function_name.find('relu') >= 0:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_relu(op_str, node)
       
       else:
@@ -230,51 +252,52 @@ def torch_to_flexflow(model, filename):
       assert len(node.inedges) == 1, "wrong format"
       
       if type(node.module) == torch.nn.modules.linear.Linear:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_linear(op_str, node)
+        #parse_linear_onnx(node)
       
       elif type(node.module) == torch.nn.modules.conv.Conv2d:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_conv2d(op_str, node)
           
       elif type(node.module) == torch.nn.modules.pooling.MaxPool2d:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_pool2d(op_str, node, PoolType.POOL_MAX)
         
       elif type(node.module) == torch.nn.modules.pooling.AvgPool2d:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_pool2d(op_str, node, PoolType.POOL_AVG)
         
       elif type(node.module) == torch.nn.modules.batchnorm.BatchNorm2d:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_batchnorm2d(op_str, node)
 
       elif type(node.module) == torch.nn.modules.dropout.Dropout:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_dropout(op_str, node)
         
       elif type(node.module) == torch.nn.modules.flatten.Flatten:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_flat(op_str, node)
           
       elif type(node.module) == torch.nn.modules.activation.ReLU:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_relu(op_str, node)
         
       elif type(node.module) == torch.nn.modules.activation.Sigmoid:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_sigmoid(op_str, node)
         
       elif type(node.module) == torch.nn.modules.activation.Tanh:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_tanh(op_str, node)
         
       elif type(node.module) == torch.nn.modules.activation.ELU:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_elu(op_str, node)
         
       elif type(node.module) == torch.nn.modules.activation.Softmax:
-        op_str = parse_inedge(op_str, node.inedges)
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_softmax(op_str, node)
       
       else:

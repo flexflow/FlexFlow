@@ -23,6 +23,10 @@ output_tensor = Activation("softmax")(output_tensor)
 
 model = Model(input_tensor1, output_tensor)
 
+print(model.summary())
+print(model.get_layer(index=1).output.name)
+print(model.get_layer(index=1).input.name)
+
 onnx_model = keras2onnx.convert_keras(model, "mlp")
 onnx.save(onnx_model, "cifar10_cnn_keras.onnx")
 
