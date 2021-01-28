@@ -75,7 +75,7 @@ class ONNXModel(object):
             axis = attribute['axis'].i
         else:
             axis = 0
-        outputs = ffmodel.split(input=input, sizes=split, axis=axis)
+        outputs = ffmodel.split(input=input, sizes=split, axis=axis, name=node.name)
         for i, output in enumerate(outputs):
             self.symbol_table[node.output[i]] = output
         logging.debug("ffmodel.split({}, {}, {})".format(node.input[0], split, axis))

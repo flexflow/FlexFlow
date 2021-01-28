@@ -162,6 +162,26 @@ class PyTorchModel(object):
         output = ffmodel.concat(tensors=input_tensors, axis=ax, name=op_name)
         output = FXTensor(output)
         
+      elif op_type == OpType.SPLIT:
+        assert len(items) == 5, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        size = len(self.output_ops_list)
+        assert size >= 2, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        ax = int(items[4])
+        output = ffmodel.split(input=input_tensor, sizes=size, axis=ax, name=op_name)
+        assert type(output) == list
+        output = FXTensor(output)
+        
+      elif op_type == OpType.GETITEM:
+        assert len(items) == 5, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        assert type(input_tensor) == list
+        idx = int(items[4])
+        output = input_tensor[idx]
+        output = FXTensor(output)
+        
       elif op_type == OpType.BATCH_NORM:
         assert len(items) == 4, "wrong format"
         assert len(self.input_ops_list) == 1, "wrong format"

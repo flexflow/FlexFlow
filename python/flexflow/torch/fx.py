@@ -22,8 +22,8 @@ import onnx
 class Node(object):
   def __init__(self, name, inedges, outedges):
     self.name = name
-    self.inedges = inedges
-    self.outedges = outedges
+    self.inedges = inedges #args
+    self.outedges = outedges #users
     pass
 
 class ModuleNode(Node):
@@ -53,7 +53,7 @@ def __symbolic_trace(model):
     
   graph = list()
   for node in traced.graph.nodes:
-    #print(vars(node))
+    print(vars(node))
     if node.op == "call_module":
       assert node.target in modules_by_name, "cannot find module %s in model".format(node.target)
       graph.append(ModuleNode(node.name, node.args, node.users, modules_by_name[node.target]))
@@ -89,6 +89,19 @@ def parse_concat(op_str, node):
   #FIXME assume it is a merge
   assert len(node.inedges[0]) >= 2, "wrong number of inputs"
   op_str = op_str + str(enum_to_int(OpType, OpType.CONCAT)) + ", "
+  op_str = op_str + str(node.inedges[1]) + "\n"
+  return op_str
+  
+def parse_split(op_str, node):
+  #FIXME may be 3
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + str(enum_to_int(OpType, OpType.SPLIT)) + ", "
+  op_str = op_str + str(node.inedges[1]) + "\n"
+  return op_str
+  
+def parse_getitem(op_str, node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + str(enum_to_int(OpType, OpType.GETITEM)) + ", "
   op_str = op_str + str(node.inedges[1]) + "\n"
   return op_str
   
@@ -235,6 +248,10 @@ def torch_to_flexflow(model, filename):
       elif function_name.find('cat') >= 0:
         op_str = parse_inoutedge(op_str, node.inedges[0], node.outedges)
         op_str = parse_concat(op_str, node)
+        
+      elif function_name.find('split') >= 0:
+        op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+        op_str = parse_split(op_str, node)
       
       elif function_name.find('flatten') >= 0:
         op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
@@ -243,6 +260,10 @@ def torch_to_flexflow(model, filename):
       elif function_name.find('relu') >= 0:
         op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_relu(op_str, node)
+        
+      elif function_name.find('getitem') >= 0:
+        op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+        op_str = parse_getitem(op_str, node)
       
       else:
         # Unrecogonized type
