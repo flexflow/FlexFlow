@@ -105,7 +105,8 @@ enum TaskIDs {
   //Metrics tasks
   METRICS_COMP_TASK_ID,
   UPDATE_METRICS_TASK_ID,
-  DUMMY_TASK_ID,
+  // Parameter server prefetch task
+  PS_PREFETCH_TASK_ID,
   // Loss
   LOSS_BWD_TASK_ID,
   // Optimizer with PS

@@ -498,14 +498,35 @@ void FFMapper::select_task_sources(const MapperContext        ctx,
                                    const SelectTaskSrcInput&  input,
                                          SelectTaskSrcOutput& output)
 {
+  if (task.task_id == PS_PREFETCH_TASK_ID) {
+    // Dummy task refers to prefetching weights tasks
+    MappingTagID hash = task.tag;
+    assert(hash != 0);
+    ParallelConfig config;
+    if (strategies.find(hash) == strategies.end()) {
+      // No strategy found, use default data parallelism
+      assert(strategies.find(FFConfig::DataParallelism_GPU_2D) != strategies.end());
+      config = strategies[FFConfig::DataParallelism_GPU_2D];
+    } else {
+      // Found a strategy
+      config = strategies[hash];
+    }
+    Processor parameter_server = all_gpus[config.device_ids[0]];
+    // Prefer instances located on the parameter server
+    Memory ps_memory = proc_fbmems[parameter_server];
+    default_policy_select_sources(ctx, input.target, input.source_instances,
+        output.chosen_ranking, ps_memory);
+    return;
+  }
   default_policy_select_sources(ctx, input.target, input.source_instances,
-                                output.chosen_ranking);
+      output.chosen_ranking);
 }
 
 void FFMapper::default_policy_select_sources(MapperContext ctx,
                                              const PhysicalInstance &target,
                                              const std::vector<PhysicalInstance> &sources,
-                                             std::deque<PhysicalInstance> &ranking)
+                                             std::deque<PhysicalInstance> &ranking,
+                                             Memory preferred_memory)
 {
   // We rank source instances by the bandwidth of the memory
   // they are in to the destination
@@ -525,6 +546,9 @@ void FFMapper::default_policy_select_sources(MapperContext ctx,
       if (!affinity.empty()) {
         assert(affinity.size() == 1);
         memory_bandwidth = affinity[0].bandwidth;
+        // Add 10 points to the bandwidth to prioritize preferred_memory
+        if (preferred_memory == location)
+          memory_bandwidth += 10;
       }
       source_memories[location] = memory_bandwidth;
       band_ranking[idx] =

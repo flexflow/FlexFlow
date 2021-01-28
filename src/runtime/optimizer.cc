@@ -122,7 +122,7 @@ void SGDOptimizer::update(const Parameter* p)
     // Parameter prefetching optimizations to reduce comm. overhead
     // Directly send the parameters back to all worker devices after SGD
     ArgumentMap argmap;
-    IndexLauncher index_launcher(DUMMY_TASK_ID, p->owner_op->task_is,
+    IndexLauncher index_launcher(PS_PREFETCH_TASK_ID, p->owner_op->task_is,
         TaskArgument(NULL, 0), argmap,
         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
         FFConfig::get_hash_id(std::string(p->owner_op->name)));
@@ -289,7 +289,7 @@ void AdamOptimizer::update(const Parameter* p)
     // Parameter prefetching optimizations to reduce comm. overhead
     // Directly send the parameters back to all worker devices after SGD
     ArgumentMap argmap;
-    IndexLauncher index_launcher(DUMMY_TASK_ID, p->owner_op->task_is,
+    IndexLauncher index_launcher(PS_PREFETCH_TASK_ID, p->owner_op->task_is,
         TaskArgument(NULL, 0), argmap,
         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
         FFConfig::get_hash_id(std::string(p->owner_op->name)));

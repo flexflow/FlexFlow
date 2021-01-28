@@ -2559,9 +2559,9 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<Simulator::strategy_search_task>(
         registrar, "Stretegy Search Task");
   }
-  // DUMMY task
+  // Parameter Server Prefetch task
   {
-    TaskVariantRegistrar registrar(DUMMY_TASK_ID, "Weights Prefetch");
+    TaskVariantRegistrar registrar(PS_PREFETCH_TASK_ID, "Weights Prefetch");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "Weights Prefetch Task");

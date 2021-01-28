@@ -280,7 +280,8 @@ private: // Default helper functions
   void default_policy_select_sources(MapperContext ctx,
                                      const PhysicalInstance &target,
                                      const std::vector<PhysicalInstance> &sources,
-                                     std::deque<PhysicalInstance> &ranking);
+                                     std::deque<PhysicalInstance> &ranking,
+                                     Memory preferred_memory = Memory::NO_MEMORY);
 private:
   unsigned long long compute_task_hash(const Task& task);
   bool is_parameter_server_update_task(TaskID tid);
