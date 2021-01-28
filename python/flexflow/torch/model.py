@@ -215,14 +215,17 @@ class PyTorchModel(object):
         pass
       else:
         assert 0
+      #self.tensor_dict[self._get_output_key(op_name, 0)] = output
         
     in_file.close()
     return output_tensors
     
   def _get_input_key(self, op_name, index):
     return self.input_ops_list[index] + ":" + op_name
+    #return self.input_ops_list[index]
   
   def _get_output_key(self, op_name, index):
+    #return op_name
     if len(self.output_ops_list) == 0:
       return op_name
     else:
