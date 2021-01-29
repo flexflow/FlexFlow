@@ -84,8 +84,19 @@ class ONNXModel(object):
         input = self.symbol_table[node.input[0]]
         attribute = {x.name: x for x in node.attribute}
         kernel = attribute["kernel_shape"].ints
-        padding = attribute["pads"].ints
         stride = attribute["strides"].ints
+        if "pads" in attribute:
+            padding = attribute["pads"].ints
+        elif "auto_pad" in attribute:
+            if attribute["auto_pad"].s == b'VALID':
+                padding = [0, 0]
+            elif attribute["auto_pad"].s == b'SAME':
+                # TODO
+                assert 0
+            else:
+                assert 0, "Unknown auto_pad"
+        else:
+            assert 0, "padding is missing"
         output = ffmodel.pool2d(input, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], PoolType.POOL_AVG, name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.pool2d({}, {}, {}, {}, {}, {}, {}, PoolType.POOL_AVG, name={})".format(node.input[0], kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], node.name))
@@ -100,8 +111,19 @@ class ONNXModel(object):
         input = self.symbol_table[node.input[0]]
         attribute = {x.name: x for x in node.attribute}
         kernel = attribute["kernel_shape"].ints
-        padding = attribute["pads"].ints
         stride = attribute["strides"].ints
+        if "pads" in attribute:
+            padding = attribute["pads"].ints
+        elif "auto_pad" in attribute:
+            if attribute["auto_pad"].s == b'VALID':
+                padding = [0, 0]
+            elif attribute["auto_pad"].s == b'SAME':
+                # TODO
+                assert 0
+            else:
+                assert 0, "Unknown auto_pad"
+        else:
+            assert 0, "padding is missing"
         group = attribute["group"].i
         out_channels = self.inputs[node.input[1]].dims[0]
         output = ffmodel.conv2d(input, out_channels, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], ActiMode.AC_MODE_NONE, group, name=node.name)
@@ -134,8 +156,19 @@ class ONNXModel(object):
         input = self.symbol_table[node.input[0]]
         attribute = {x.name: x for x in node.attribute}
         kernel = attribute["kernel_shape"].ints
-        padding = attribute["pads"].ints
         stride = attribute["strides"].ints
+        if "pads" in attribute:
+            padding = attribute["pads"].ints
+        elif "auto_pad" in attribute:
+            if attribute["auto_pad"].s == b'VALID':
+                padding = [0, 0]
+            elif attribute["auto_pad"].s == b'SAME':
+                # TODO
+                assert 0
+            else:
+                assert 0, "Unknown auto_pad"
+        else:
+            assert 0, "padding is missing"
         output = ffmodel.pool2d(input, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.pool2d({}, {}, {}, {}, {}, {}, {}, PoolType.POOL_MAX, name={})".format(node.input[0], kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], node.name))
@@ -190,24 +223,6 @@ class ONNXModelKeras(ONNXModel):
                 tensor = ONNXTensor(initializer.name, initializer.dims, 2)
                 self.inputs[initializer.name] = tensor
         
-    def handleConv(self, ffmodel, node):
-        print("########################################I am in Keras Conv")
-        input = self.symbol_table[node.input[0]]
-        attribute = {x.name: x for x in node.attribute}
-        kernel = attribute["kernel_shape"].ints
-        padding = attribute["auto_pad"].s
-        if padding == b'VALID':
-            padding = [1, 1]
-        else:
-            print(padding)
-            assert 0
-        stride = attribute["strides"].ints
-        group = attribute["group"].i
-        out_channels = self.inputs[node.input[1]].dims[0]
-        output = ffmodel.conv2d(input, out_channels, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], ActiMode.AC_MODE_NONE, group, name=node.name)
-        self.symbol_table[node.output[0]] = output
-        logging.debug("ffmodel.conv2d({}, {}, {}, {}, {}, {}, {}, {})".format(node.input[0], out_channels, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1]))
-        
     def handleMatMul(self, ffmodel, node):
         print("########################################I am in Keras MatMul")
         input = self.symbol_table[node.input[0]]
@@ -215,21 +230,6 @@ class ONNXModelKeras(ONNXModel):
         output = ffmodel.dense(input, dim, use_bias=False, name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.dense({}, {})".format(node.input[0], dim))
-        
-    def handleMaxPool(self, ffmodel, node):
-        print("########################################I am in Keras MaxPool")
-        input = self.symbol_table[node.input[0]]
-        attribute = {x.name: x for x in node.attribute}
-        kernel = attribute["kernel_shape"].ints
-        padding = attribute["auto_pad"].s
-        if padding == b'VALID':
-            padding = [1, 1]
-        else:
-            assert 0
-        stride = attribute["strides"].ints
-        output = ffmodel.pool2d(input, kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], name=node.name)
-        self.symbol_table[node.output[0]] = output
-        logging.debug("ffmodel.pool2d({}, {}, {}, {}, {}, {}, {}, PoolType.POOL_MAX)".format(node.input[0], kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1]))
         
     def handleTranspose(self, ffmodel, node):
         input = self.symbol_table[node.input[0]]

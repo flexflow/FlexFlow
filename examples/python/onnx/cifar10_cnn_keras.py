@@ -30,8 +30,8 @@ print(model.get_layer(index=1).input.name)
 onnx_model = keras2onnx.convert_keras(model, "mlp")
 onnx.save(onnx_model, "cifar10_cnn_keras.onnx")
 
-# for node in onnx_model.graph.node:
-#   print(node)
+for node in onnx_model.graph.node:
+  print(node)
 #
 # for input in onnx_model.graph.initializer:
 #   print(input.name, input.dims, len(input.dims))

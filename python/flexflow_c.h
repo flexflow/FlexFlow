@@ -333,13 +333,6 @@ flexflow_model_add_multihead_attention(
   flexflow_initializer_t kernel_initializer, 
   const char *name);
 
-// void
-// flexflow_model_add_mse_loss(
-//   flexflow_model_t handle,
-//   const flexflow_tensor_t logits,
-//   const flexflow_tensor_t labels,
-//   const char* reduction);
-
 void
 flexflow_model_set_sgd_optimizer(
   flexflow_model_t handle,
