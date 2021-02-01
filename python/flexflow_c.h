@@ -146,28 +146,28 @@ flexflow_model_add_add(
   flexflow_model_t handle,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y,
-  char const *name);
+  const char *name);
 
 flexflow_tensor_t
 flexflow_model_add_subtract(
   flexflow_model_t handle,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y,
-  char const *name);
+  const char *name);
 
 flexflow_tensor_t
 flexflow_model_add_multiply(
   flexflow_model_t handle,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y,
-  char const *name);
+  const char *name);
 
 flexflow_tensor_t
 flexflow_model_add_divide(
   flexflow_model_t handle,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y,
-  char const *name);
+  const char *name);
 
 flexflow_tensor_t
 flexflow_model_add_conv2d(
@@ -183,7 +183,7 @@ flexflow_model_add_conv2d(
   flexflow_op_t shared_op,
   flexflow_initializer_t kernel_initializer,
   flexflow_initializer_t bias_initializer,
-  char const *name);
+  const char *name);
 
 flexflow_tensor_t
 flexflow_model_add_embedding(
@@ -192,7 +192,8 @@ flexflow_model_add_embedding(
   int num_entires, int out_dim,
   enum AggrMode aggr,
   flexflow_op_t shared_op,
-  flexflow_initializer_t kernel_initializer);
+  flexflow_initializer_t kernel_initializer,
+  const char *name);
 
 flexflow_tensor_t
 flexflow_model_add_pool2d(
@@ -203,13 +204,14 @@ flexflow_model_add_pool2d(
   int padding_h, int padding_w,
   enum PoolType type /* POOL_MAX */,
   enum ActiMode activation /* AC_MODE_NONE */,
-  char const *name);
+  const char *name);
 
 flexflow_tensor_t
 flexflow_model_add_batch_norm(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
-  bool relu);
+  bool relu,
+  const char *name);
 
 flexflow_tensor_t
 flexflow_model_add_batch_matmul(
@@ -235,7 +237,7 @@ flexflow_model_add_concat(
   int n,
   flexflow_tensor_t* input,
   int axis,
-  char const *name);
+  const char *name);
 
 void
 flexflow_model_add_split(
@@ -244,12 +246,14 @@ flexflow_model_add_split(
   int n,
   flexflow_tensor_t* outputs,
   int* split,
-  int axis);
+  int axis, 
+  const char *name);
 
 flexflow_tensor_t
 flexflow_model_add_flat(
   flexflow_model_t handle,
-  flexflow_tensor_t input);
+  flexflow_tensor_t input, 
+  const char *name);
 
 flexflow_tensor_t
 flexflow_model_add_softmax(
@@ -262,20 +266,23 @@ flexflow_model_add_transpose(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
   int n,
-  int* perm);
+  int* perm, 
+  const char *name);
 
 flexflow_tensor_t
 flexflow_model_add_reshape(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
   int n,
-  int* shape);
+  int* shape, 
+  const char *name);
 
 flexflow_tensor_t
 flexflow_model_add_reverse(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
-  int axis);
+  int axis, 
+  const char *name);
 
 flexflow_tensor_t
 flexflow_model_add_relu(
@@ -306,7 +313,8 @@ flexflow_model_add_dropout(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
   float rate,
-  unsigned long long seed);
+  unsigned long long seed, 
+  const char *name);
   
 flexflow_tensor_t
 flexflow_model_add_multihead_attention(
@@ -322,14 +330,8 @@ flexflow_model_add_multihead_attention(
   bool bias,
   bool add_bias_kv,
   bool add_zero_attn,
-  flexflow_initializer_t kernel_initializer);
-
-// void
-// flexflow_model_add_mse_loss(
-//   flexflow_model_t handle,
-//   const flexflow_tensor_t logits,
-//   const flexflow_tensor_t labels,
-//   const char* reduction);
+  flexflow_initializer_t kernel_initializer, 
+  const char *name);
 
 void
 flexflow_model_set_sgd_optimizer(

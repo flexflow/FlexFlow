@@ -1,11 +1,11 @@
 from flexflow.core import *
 from flexflow.keras.datasets import cifar10
-from flexflow.onnx.model import ONNXModel, ONNXModelKeras
-import sys, getopt
+from flexflow.torch.model import PyTorchModel
 
-from accuracy import ModelAccuracy
+#from accuracy import ModelAccuracy
+from PIL import Image
 
-def top_level_task(test_type=1):
+def top_level_task():
   ffconfig = FFConfig()
   alexnetconfig = NetConfig()
   print(alexnetconfig.dataset_path)
@@ -13,15 +13,12 @@ def top_level_task(test_type=1):
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
   ffmodel = FFModel(ffconfig)
   
-  dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
+  dims_input = [ffconfig.get_batch_size(), 3, 229, 229]
   input = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
-  if test_type == 1:
-    onnx_model = ONNXModel("cifar10_cnn_pt.onnx")
-    t = onnx_model.apply(ffmodel, {"input.1": input})
-  else:
-    onnx_model = ONNXModelKeras("cifar10_cnn_keras.onnx", ffconfig, ffmodel)
-    t = onnx_model.apply(ffmodel, {"input_1": input})
+  torch_model = PyTorchModel("resnet.ff")
+  output_tensors = torch_model.apply(ffmodel, [input])
+  t = ffmodel.softmax(output_tensors[0])
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
@@ -31,23 +28,31 @@ def top_level_task(test_type=1):
   num_samples = 10000
   
   (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
+
+  full_input_np = np.zeros((num_samples, 3, 229, 229), dtype=np.float32)
   
-  x_train = x_train.astype('float32')
-  x_train /= 255
-  full_input_array = x_train
-  print(full_input_array.__array_interface__["strides"])
+  for i in range(0, num_samples):
+    image = x_train[i, :, :, :]
+    image = image.transpose(1, 2, 0)
+    pil_image = Image.fromarray(image)
+    pil_image = pil_image.resize((229,229), Image.NEAREST)
+    image = np.array(pil_image, dtype=np.float32)
+    image = image.transpose(2, 0, 1)
+    full_input_np[i, :, :, :] = image
+
+  full_input_np /= 255
   
   y_train = y_train.astype('int32')
-  full_label_array = y_train
+  full_label_np = y_train
   
-  dims_full_input = [num_samples, 3, 32, 32]
+  dims_full_input = [num_samples, 3, 229, 229]
   full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
 
   dims_full_label = [num_samples, 1]
   full_label = ffmodel.create_tensor(dims_full_label, DataType.DT_INT32)
-  
-  full_input.attach_numpy_array(ffconfig, full_input_array)
-  full_label.attach_numpy_array(ffconfig, full_label_array)
+
+  full_input.attach_numpy_array(ffconfig, full_input_np)
+  full_label.attach_numpy_array(ffconfig, full_label_np)
   
   dataloader_input = SingleDataLoader(ffmodel, input, full_input, num_samples, DataType.DT_FLOAT)
   dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
@@ -56,32 +61,24 @@ def top_level_task(test_type=1):
   full_label.detach_numpy_array(ffconfig)
   
   num_samples = dataloader_input.get_num_samples()
+  assert dataloader_input.get_num_samples() == dataloader_label.get_num_samples()
 
   ffmodel.init_layers()
 
   epochs = ffconfig.get_epochs()
 
   ts_start = ffconfig.get_current_time()
-  
+
   ffmodel.fit(x=dataloader_input, y=dataloader_label, epochs=epochs)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, num_samples * epochs / run_time));
-  
-  perf_metrics = ffmodel.get_perf_metrics()
-  accuracy = perf_metrics.get_accuracy()
-  if accuracy < ModelAccuracy.CIFAR10_CNN.value:
-    assert 0, 'Check Accuracy'
+  # perf_metrics = ffmodel.get_perf_metrics()
+  # accuracy = perf_metrics.get_accuracy()
+  # if accuracy < ModelAccuracy.CIFAR10_ALEXNET.value:
+  #   assert 0, 'Check Accuracy'
 
 if __name__ == "__main__":
-  print("cifar10 cnn onnx")
-  try:
-    opts, args = getopt.getopt(sys.argv[2:],"t:",["test_type"])
-  except getopt.GetoptError:
-    assert 0
-  test_type = 1
-  for opt, arg in opts:
-    if opt in ("-t", "--test_type"):
-       test_type = arg
-  top_level_task(test_type)
+  print("resnet torch")
+  top_level_task()

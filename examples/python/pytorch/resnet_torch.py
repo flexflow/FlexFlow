@@ -2,8 +2,8 @@ import torch
 from torch import Tensor
 import torch.nn as nn
 from typing import Type, Any, Callable, Union, List, Optional
-from torch.onnx import TrainingMode
-import onnx
+import flexflow.torch.fx as fx
+
 
 def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
     """3x3 convolution with padding"""
@@ -367,14 +367,5 @@ def wide_resnet101_2(pretrained: bool = False, progress: bool = True, **kwargs: 
                    pretrained, progress, **kwargs)
 
 
-input = torch.randn(64, 3, 224, 224)
 model = resnet18()
-torch.onnx.export(model, (input), "resnet18.onnx", export_params=False, training=TrainingMode.TRAINING)
-
-onnx_model = onnx.load("resnet18.onnx")
-
-for node in onnx_model.graph.node:
-  print(node)
-
-for input in onnx_model.graph.input:
-  print(input)
+fx.torch_to_flexflow(model, "resnet.ff")
