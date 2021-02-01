@@ -19,8 +19,10 @@ LegionRuntime::Logger::Category log_ff_mapper("Mapper");
 
 FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor local,
                    const char *_mapper_name,
-                   const std::string& strategyFile)
+                   const std::string& strategyFile,
+                   bool _enable_control_replication)
   : NullMapper(rt, machine), node_id(local.address_space()),
+    enable_control_replication(_enable_control_replication),
     mapper_name(_mapper_name)
 {
   std::vector<Machine::ProcessorMemoryAffinity> proc_mem_affinities;
@@ -157,11 +159,17 @@ void FFMapper::select_task_options(const MapperContext ctx,
   if (task.task_id == TOP_LEVEL_TASK_ID) {
     output.initial_proc = local_cpus[0];
     // control replicate top level task
-    output.replicate = true;
+    if (enable_control_replication) {
+      output.replicate = true;
+    }
     return;
   }
   if (task.task_id == PYTHON_TOP_LEVEL_TASK_ID) {
     output.initial_proc = local_pys[0];
+    // control replicate python top level task
+    if (enable_control_replication) {
+      output.replicate = true;
+    }
     return;
   }
 
@@ -271,7 +279,7 @@ void FFMapper::slice_task(const MapperContext ctx,
       for (PointInRectIterator<DIM> pir(rect); pir(); pir++) { \
         int idx = 0; \
         for (int i = input.domain.get_dim()-1; i >= 0; i--) \
-          idx = idx*(input.domain.hi()[i]-input.domain.lo()[i]+1)+pir[i]; \
+          idx = idx*(task.index_domain.hi()[i]-task.index_domain.lo()[i]+1)+pir[i]-task.index_domain.lo()[i]; \
         assert(config.num_parts() > idx); \
         Rect<DIM> slice(*pir, *pir); \
         output.slices[cnt++] = TaskSlice(slice, \
@@ -284,6 +292,15 @@ void FFMapper::slice_task(const MapperContext ctx,
 #undef DIMFUNC
     default:
       assert(false);
+  }
+  // In control replication, each mapper should only receive task slices
+  // that should be assigned to local proccessors
+  // Violation of this assertion may result in severe runtime overheads
+  // to Legion
+  if (enable_control_replication) {
+    for (size_t i = 0; i < output.slices.size(); i++) {
+      assert(output.slices[i].proc.address_space() == node_id);
+    }
   }
 }
 
@@ -333,6 +350,14 @@ void FFMapper::map_task(const MapperContext ctx,
   } else {
     // Unsupported proc kind
     assert(false);
+  }
+  // In control replication, each mapper should only map tasks
+  // assigned to local proccessors
+  // Violation of this assertion may result in severe runtime
+  // overheads to Legion
+  if (use_control_replication) {
+    for (int i = 0; i < output.target_procs.size(); i++)
+      assert(output.target_procs[i].address_space() == node_id);
   }
   // Find instances that still need to be mapped
   std::vector<std::set<FieldID> > missing_fields(task.regions.size());
@@ -1286,9 +1311,14 @@ void update_mappers(Machine machine, Runtime *runtime,
   const InputArgs &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
+  bool enable_control_replication = false;
   for (int i = 1; i < argc; i++) {
     if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i], "--import-strategy"))) {
       strategyFile = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--control-replication")) {
+      enable_control_replication = true;
       continue;
     }
   }
@@ -1298,7 +1328,7 @@ void update_mappers(Machine machine, Runtime *runtime,
   {
     FFMapper* mapper = new FFMapper(runtime->get_mapper_runtime(),
                                     machine, *it, "FlexFlow Mapper",
-                                    strategyFile);
+                                    strategyFile, enable_control_replication);
     runtime->replace_default_mapper(mapper, *it);
   }
 }

@@ -27,7 +27,8 @@ using namespace Legion::Mapping;
 class FFMapper : public NullMapper {
 public:
   FFMapper(MapperRuntime *rt, Machine machine, Processor local,
-            const char *mapper_name, const std::string& strategyFile);
+           const char *mapper_name, const std::string& strategyFile,
+           bool _enable_control_replication);
   virtual const char* get_mapper_name(void) const;
   virtual MapperSyncModel get_mapper_sync_model(void) const;
 public:
@@ -291,6 +292,7 @@ protected:
   const AddressSpace node_id;
   size_t total_nodes;
   const char* mapper_name;
+  bool enable_control_replication;
   std::vector<Processor> all_gpus, all_cpus, all_pys, local_gpus, local_cpus, local_pys;
   std::map<Processor, Memory> proc_fbmems, proc_zcmems;
   std::map<unsigned long long, Processor> cache_update_tasks;

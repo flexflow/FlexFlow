@@ -233,6 +233,8 @@ Op::Op(FFModel& model,
     outputs[i].owner_idx = i;
     outputs[i].data_type = inputs[0].data_type;
   }
+  for (int i = 0; i < MAX_NUM_WORKERS; i++)
+    meta[i] = NULL;
 #ifdef FF_ENABLE_NCCL
   get_nccl_unique_id();
 #endif
@@ -268,6 +270,8 @@ Op::Op(FFModel& model,
     outputs[i].owner_idx = i;
     outputs[i].data_type = inputs[0].data_type;
   }
+  for (int i = 0; i < MAX_NUM_WORKERS; i++)
+    meta[i] = NULL;
 #ifdef FF_ENABLE_NCCL
   get_nccl_unique_id();
 #endif
@@ -300,6 +304,8 @@ Op::Op(FFModel& model,
     outputs[i].owner_idx = i;
     outputs[i].data_type = inputs[0].data_type;
   }
+  for (int i = 0; i < MAX_NUM_WORKERS; i++)
+    meta[i] = NULL;
 #ifdef FF_ENABLE_NCCL
   get_nccl_unique_id();
 #endif
@@ -334,6 +340,8 @@ Op::Op(FFModel& model,
     outputs[i].owner_idx = i;
     outputs[i].data_type = inputs[0].data_type;
   }
+  for (int i = 0; i < MAX_NUM_WORKERS; i++)
+    meta[i] = NULL;
 #ifdef FF_ENABLE_NCCL
   get_nccl_unique_id();
 #endif
@@ -366,6 +374,8 @@ Op::Op(FFModel& model,
     outputs[i].owner_idx = i;
     outputs[i].data_type = inputs[0].data_type;
   }
+  for (int i = 0; i < MAX_NUM_WORKERS; i++)
+    meta[i] = NULL;
 #ifdef FF_ENABLE_NCCL
   get_nccl_unique_id();
 #endif
@@ -395,6 +405,8 @@ Op::Op(FFModel& model,
     outputs[i].owner_idx = i;
     outputs[i].data_type = inputs[0].data_type;
   }
+  for (int i = 0; i < MAX_NUM_WORKERS; i++)
+    meta[i] = NULL;
 #ifdef FF_ENABLE_NCCL
   get_nccl_unique_id();
 #endif
@@ -1987,7 +1999,8 @@ ShardID DataParallelShardingFunctor::shard(const DomainPoint &point,
   int idx = full_space.get_dim() - 1;
   int samples = full_space.hi()[idx] - full_space.lo()[idx] + 1;
   int samples_per_shard = (samples + total_shards - 1) / total_shards;
-  return (point[idx] - full_space.lo()[idx]) / samples_per_shard;
+  ShardID shard_id = (point[idx] - full_space.lo()[idx]) / samples_per_shard;
+  return shard_id;
 }
 
 void register_internal_tasks()

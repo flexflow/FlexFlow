@@ -232,6 +232,7 @@ void FusedOp::forward_task(const Task* task,
   const float* input_ptr[MAX_NUM_INPUTS];
   const float* weight_ptr[MAX_NUM_WEIGHTS];
   float* output_ptr[MAX_NUM_OUTPUTS];
+  assert(fused->numInputs <= MAX_NUM_INPUTS);
   for (int i = 0; i < fused->numInputs; i++) {
     input_domain[i] = runtime->get_index_space_domain(
       ctx, task->regions[i].region.get_index_space());
@@ -239,6 +240,7 @@ void FusedOp::forward_task(const Task* task,
       regions[i], task->regions[i], FID_DATA, ctx, runtime);
   }
   int roff = fused->numInputs;
+  assert(fused->numWeights <= MAX_NUM_WEIGHTS);
   for (int i = 0; i < fused->numWeights; i++) {
     weight_domain[i] = runtime->get_index_space_domain(
       ctx, task->regions[i+roff].region.get_index_space());
@@ -246,6 +248,7 @@ void FusedOp::forward_task(const Task* task,
       regions[i+roff], task->regions[i+roff], FID_DATA, ctx, runtime);
   }
   roff += fused->numWeights;
+  assert(fused->numOutputs <= MAX_NUM_OUTPUTS);
   for (int i = 0; i < fused->numOutputs; i++) {
     output_domain[i] = runtime->get_index_space_domain(
       ctx, task->regions[i+roff].region.get_index_space());
@@ -528,6 +531,7 @@ void FusedOp::backward_task(const Task* task,
   const float* output_ptr[MAX_NUM_OUTPUTS];
   float* output_grad_ptr[MAX_NUM_OUTPUTS];
   int roff = 0;
+  assert(fused->numInputs <= MAX_NUM_INPUTS);
   for (int i = 0; i < fused->numInputs; i++) {
     input_domain[i] = runtime->get_index_space_domain(
       ctx, task->regions[i].region.get_index_space());
@@ -535,6 +539,7 @@ void FusedOp::backward_task(const Task* task,
       regions[i], task->regions[i], FID_DATA, ctx, runtime);
   }
   roff += fused->numInputs;
+  assert(fused->numWeights <= MAX_NUM_WEIGHTS);
   for (int i = 0; i < fused->numWeights; i++) {
     weight_domain[i] = runtime->get_index_space_domain(
       ctx, task->regions[i+roff].region.get_index_space());
@@ -542,6 +547,7 @@ void FusedOp::backward_task(const Task* task,
       regions[i+roff], task->regions[i+roff], FID_DATA, ctx, runtime);
   }
   roff += fused->numWeights;
+  assert(fused->numOutputs <= MAX_NUM_OUTPUTS);
   for (int i = 0; i < fused->numOutputs; i++) {
     output_domain[i] = runtime->get_index_space_domain(
       ctx, task->regions[i+roff].region.get_index_space());
@@ -562,7 +568,7 @@ void FusedOp::backward_task(const Task* task,
       ctx, task->regions[i+roff].region.get_index_space());
     weight_grad_ptr[i] = helperGetTensorPointerRW<float>(
       regions[i+roff], task->regions[i+roff], FID_DATA, ctx, runtime);
-    assert(weight_grad_domain[i] == weight_domain[i]);
+    assert(weight_grad_domain[i].get_volume() == weight_domain[i].get_volume());
   }
   roff += fused->numWeights;
   for (int i = 0; i < fused->numOutputs; i++) {
@@ -635,7 +641,7 @@ void FusedOp::backward_task(const Task* task,
       my_wp[i] = weight_ptr[fused->op_weight_idx[i+woff]];
       my_grad_wd[i] = weight_grad_domain[fused->op_weight_idx[i+woff]];
       my_grad_wp[i] = weight_grad_ptr[fused->op_weight_idx[i+woff]];
-      assert(my_grad_wd[i] == my_wd[i]);
+      assert(my_grad_wd[i].get_volume() == my_wd[i].get_volume());
     }
     for (int i = 0; i < fused->op_num_outputs[op]; i++) {
       assert(fused->op_output_source[i+ooff] == SOURCE_OUTPUT);
