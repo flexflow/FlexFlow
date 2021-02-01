@@ -1,11 +1,12 @@
 from flexflow.core import *
 import numpy as np
 from flexflow.keras.datasets import mnist
-from flexflow.onnx.model import ONNXModel
+from flexflow.onnx.model import ONNXModel, ONNXModelKeras
+import sys, getopt
 
 from accuracy import ModelAccuracy
 
-def top_level_task():
+def top_level_task(test_type=1):
   ffconfig = FFConfig()
   ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
@@ -16,8 +17,12 @@ def top_level_task():
   
   num_samples = 60000
   
-  onnx_model = ONNXModel("mnist_mlp.onnx")
-  t = onnx_model.apply(ffmodel, {"input.1": input1})
+  if test_type == 1:
+    onnx_model = ONNXModel("mnist_mlp_pt.onnx")
+    t = onnx_model.apply(ffmodel, {"input.1": input1})
+  else:
+    onnx_model = ONNXModelKeras("mnist_mlp_keras.onnx", ffconfig, ffmodel)
+    t = onnx_model.apply(ffmodel, {"input_1": input1})
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
@@ -66,4 +71,12 @@ def top_level_task():
   
 if __name__ == "__main__":
   print("mnist mlp onnx")
-  top_level_task()
+  try:
+    opts, args = getopt.getopt(sys.argv[2:],"t:",["test_type"])
+  except getopt.GetoptError:
+    assert 0
+  test_type = 1
+  for opt, arg in opts:
+    if opt in ("-t", "--test_type"):
+       test_type = arg
+  top_level_task(test_type)

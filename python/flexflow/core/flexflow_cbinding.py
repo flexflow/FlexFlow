@@ -859,10 +859,11 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
+    c_name = get_c_name(name)
     shared_op_handle = self.__get_op_handle(shared_op)
     c_aggr = enum_to_int(AggrMode, aggr)
     assert (type(kernel_initializer) is GlorotUniformInitializer) or (type(kernel_initializer) is ZeroInitializer) or (type(kernel_initializer) is UniformInitializer) or (type(kernel_initializer) is NormInitializer), "unknow initializer type"
-    handle = ffc.flexflow_model_add_embedding(self.handle,  input.handle, num_entires, out_dim, c_aggr, shared_op_handle, kernel_initializer.handle)
+    handle = ffc.flexflow_model_add_embedding(self.handle,  input.handle, num_entires, out_dim, c_aggr, shared_op_handle, kernel_initializer.handle, c_name)
     self.add_layer(OpType.EMBEDDING, name)
     return Tensor(handle, owner_op_type=OpType.EMBEDDING)
 
@@ -958,7 +959,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_batch_norm(self.handle, input.handle, relu)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_batch_norm(self.handle, input.handle, relu, c_name)
     self.add_layer(OpType.BATCH_NORM, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
 
@@ -1081,7 +1083,8 @@ class FFModel(object):
     assert n <= 256, "Please increase MAX_NUM_OUTPUTS"
     c_split = ffi.new("int[]", split)
     c_outputs_handle_list = ffi.new("flexflow_tensor_t[256]")
-    ffc.flexflow_model_add_split(self.handle, input.handle, n, c_outputs_handle_list, c_split, axis)
+    c_name = get_c_name(name)
+    ffc.flexflow_model_add_split(self.handle, input.handle, n, c_outputs_handle_list, c_split, axis, c_name)
     output_tensor_list = []
     for i in range(n):
       tensor_p_handle = ffi.new("flexflow_tensor_t*")
@@ -1102,7 +1105,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_flat(self.handle, input.handle)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_flat(self.handle, input.handle, c_name)
     self.add_layer(OpType.FLAT, name)
     return Tensor(handle, owner_op_type=OpType.FLAT)
 
@@ -1139,8 +1143,9 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
+    c_name = get_c_name(name)
     c_shape = ffi.new("int[]", shape)
-    handle = ffc.flexflow_model_add_reshape(self.handle, input.handle, len(shape), c_shape)
+    handle = ffc.flexflow_model_add_reshape(self.handle, input.handle, len(shape), c_shape, c_name)
     self.add_layer(OpType.RESHAPE, name)
     return Tensor(handle, owner_op_type=OpType.RESHAPE)
 
@@ -1158,8 +1163,9 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
+    c_name = get_c_name(name)
     c_perm = ffi.new("int[]", perm)
-    handle = ffc.flexflow_model_add_transpose(self.handle, input.handle, len(perm), c_perm)
+    handle = ffc.flexflow_model_add_transpose(self.handle, input.handle, len(perm), c_perm, c_name)
     self.add_layer(OpType.TRANSPOSE, name)
     return Tensor(handle, owner_op_type=OpType.TRANSPOSE)
 
@@ -1179,7 +1185,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_reverse(self.handle, input.handle, axis)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_reverse(self.handle, input.handle, axis, c_name)
     self.add_layer(OpType.REVERSE, name)
     return Tensor(handle, owner_op_type=OpType.REVERSE)
 
@@ -1268,7 +1275,8 @@ class FFModel(object):
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_dropout(self.handle, input.handle, rate, seed)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_dropout(self.handle, input.handle, rate, seed, c_name)
     self.add_layer(OpType.DROPOUT, name)
     return Tensor(handle, owner_op_type=OpType.DROPOUT)
     
@@ -1321,9 +1329,10 @@ class FFModel(object):
     :type name: string
 
     :returns:  Tensor -- the output tensor.
-    """                      
+    """     
+    c_name = get_c_name(name)                 
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
-    handle = ffc.flexflow_model_add_multihead_attention(self.handle, query.handle, key.handle, value.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle)
+    handle = ffc.flexflow_model_add_multihead_attention(self.handle, query.handle, key.handle, value.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, c_name)
     self.add_layer(OpType.MULTIHEAD_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.MULTIHEAD_ATTENTION)
 

@@ -204,8 +204,8 @@ OpMeta* Conv2D::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-  assert(regions.size() == 6);
-  assert(task->regions.size() == 6);
+  assert(regions.size() == 5);
+  assert(task->regions.size() == 5);
   const Conv2D* conv = (Conv2D*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   TensorAccessorR<float, 4> acc_input(
@@ -215,13 +215,13 @@ OpMeta* Conv2D::init_task(const Task *task,
       false/*readOutput*/);
   TensorAccessorR<float, 4> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 1> acc_bias(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  // TensorAccessorR<float, 1> acc_bias(
+  //     regions[3], task->regions[3], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_kernel_grad(
-      regions[4], task->regions[4], FID_DATA, ctx, runtime,
+      regions[3], task->regions[3], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   TensorAccessorW<float, 4> acc_input_grad(
-      regions[5], task->regions[5], FID_DATA, ctx, runtime,
+      regions[4], task->regions[4], FID_DATA, ctx, runtime,
       false/*readOutput*/);
 
   Conv2DMeta* m = new Conv2DMeta(handle);
@@ -348,18 +348,18 @@ void Conv2D::init(const FFModel& ff)
       RegionRequirement(weights[0].part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(2, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(weights[1].part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, weights[1].region));
-  launcher.add_field(3, FID_DATA);
+  // launcher.add_region_requirement(
+  //     RegionRequirement(weights[1].part, 0/*projection id*/,
+  //                       READ_ONLY, EXCLUSIVE, weights[1].region));
+  // launcher.add_field(3, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(weights[0].part_grad, 0/*projection id*/,
                         WRITE_ONLY, EXCLUSIVE, weights[0].region_grad));
-  launcher.add_field(4, FID_DATA);
+  launcher.add_field(3, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[0], 0/*projection id*/,
                         WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
-  launcher.add_field(5, FID_DATA);
+  launcher.add_field(4, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;
@@ -383,8 +383,11 @@ void Conv2D::forward_kernel(const Conv2DMeta* m,
                                      m->handle.workSpace, m->handle.workSpaceSize,
                                      &beta, m->outputTensor, output_ptr));
 
-  checkCUDNN(cudnnAddTensor(m->handle.dnn, &alpha, m->biasTensor,
-                            bias_ptr, &alpha, m->outputTensor, output_ptr));
+  // use_bias == True
+  if (bias_ptr != NULL) {
+    checkCUDNN(cudnnAddTensor(m->handle.dnn, &alpha, m->biasTensor,
+                              bias_ptr, &alpha, m->outputTensor, output_ptr));
+  }
   if (m->relu) {
     checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
                                       &alpha, m->outputTensor, output_ptr,
@@ -403,10 +406,10 @@ void Conv2D::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-  assert(regions.size() == 4);
-  assert(task->regions.size() == 4);
   Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
+  assert(regions.size() == (3 + int(conv->use_bias)));
+  assert(task->regions.size() == (3 + int(conv->use_bias)));
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_output(
@@ -414,8 +417,12 @@ void Conv2D::forward_task(const Task *task,
       false/*readOutput*/);
   TensorAccessorR<float, 4> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 1> acc_bias(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  const float* acc_bias_ptr = NULL;
+  if (conv->use_bias) { 
+    TensorAccessorR<float, 1> acc_bias(
+        regions[3], task->regions[3], FID_DATA, ctx, runtime);
+    acc_bias_ptr = acc_bias.ptr;
+  }
 
   //printf("fwdAlgo(%d), bwdFilterALgo(%d), bwdDataAlgo(%d)\n", (int)m->fwdAlgo,(int) m->bwdFilterAlgo,(int) m->bwdDataAlgo);
   cudaEvent_t t_start, t_end;
@@ -430,7 +437,7 @@ void Conv2D::forward_task(const Task *task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  conv->forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias.ptr);
+  conv->forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias_ptr);
   if (conv->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -474,10 +481,12 @@ void Conv2D::forward(const FFModel& ff)
       RegionRequirement(weights[0].part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(2, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(weights[1].region, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, weights[1].region));
-  launcher.add_field(3, FID_DATA);
+  if (use_bias) {
+    launcher.add_region_requirement(
+        RegionRequirement(weights[1].region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, weights[1].region));
+    launcher.add_field(3, FID_DATA);
+  }
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -510,9 +519,11 @@ void Conv2D::backward_kernel(const Conv2DMeta* m,
                                             &alpha, m->filterDesc, kernel_grad_ptr));
   // Compute bias gradiant
   // NOTE: we use alpha for bias_grad to accumulate gradients
-  checkCUDNN(cudnnConvolutionBackwardBias(m->handle.dnn, &alpha,
-                                          m->outputTensor, output_grad_ptr,
-                                          &alpha, m->biasTensor, bias_grad_ptr));
+  if (bias_grad_ptr != NULL) {
+    checkCUDNN(cudnnConvolutionBackwardBias(m->handle.dnn, &alpha,
+                                            m->outputTensor, output_grad_ptr,
+                                            &alpha, m->biasTensor, bias_grad_ptr));
+                                          }
   // Compute data gradiant
   // NOTE: we use alpha for input_grad to accumulate gradients
   checkCUDNN(cudnnConvolutionBackwardData(m->handle.dnn, &alpha,
@@ -537,10 +548,10 @@ void Conv2D::backward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime)
 {
-  assert(regions.size() == 7);
-  assert(task->regions.size() == 7);
   Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
+  assert(regions.size() == (6 + int(conv->use_bias)));
+  assert(task->regions.size() == (6 + int(conv->use_bias)));
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_input_grad(
@@ -556,9 +567,14 @@ void Conv2D::backward_task(const Task *task,
   TensorAccessorW<float, 4> acc_kernel_grad(
       regions[5], task->regions[5], FID_DATA, ctx, runtime,
       true/*readOutput*/);
-  TensorAccessorW<float, 1> acc_bias_grad(
-      regions[6], task->regions[6], FID_DATA, ctx, runtime,
-      true/*readOutput*/);
+  float* acc_bias_grad_ptr = NULL;
+  if (conv->use_bias) {  
+    TensorAccessorW<float, 1> acc_bias_grad(
+        regions[6], task->regions[6], FID_DATA, ctx, runtime,
+        true/*readOutput*/);
+    acc_bias_grad_ptr = static_cast<float*>(acc_bias_grad.ptr);
+  }
+  
 
   cudaEvent_t t_start, t_end;
   if (conv->profiling) {
@@ -575,7 +591,7 @@ void Conv2D::backward_task(const Task *task,
   conv->backward_kernel(m, acc_input.ptr, acc_input_grad.ptr,
                         acc_output.ptr, acc_output_grad.ptr,
                         acc_kernel.ptr, acc_kernel_grad.ptr,
-                        acc_bias_grad.ptr);
+                        acc_bias_grad_ptr);
   if (conv->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -638,11 +654,13 @@ void Conv2D::backward(const FFModel& ff)
       RegionRequirement(weights[0].part_grad, 0/*projection id*/,
                         READ_WRITE, EXCLUSIVE, weights[0].region_grad));
   launcher.add_field(5, FID_DATA);
-  // regions[6](I/O): bias_grad
-  launcher.add_region_requirement(
-      RegionRequirement(weights[1].part_grad, 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, weights[1].region_grad));
-  launcher.add_field(6, FID_DATA);
+  if (use_bias) {
+    // regions[6](I/O): bias_grad
+    launcher.add_region_requirement(
+        RegionRequirement(weights[1].part_grad, 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, weights[1].region_grad));
+    launcher.add_field(6, FID_DATA);
+  }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   // TODO: remove this line
   //if (first_layer)
@@ -1020,4 +1038,3 @@ bool Conv2D::measure_compute_time(Simulator* sim,
          forward_time, backward_time);
   return true;
 }
-
