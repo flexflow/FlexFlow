@@ -355,7 +355,7 @@ void FFMapper::map_task(const MapperContext ctx,
   // assigned to local proccessors
   // Violation of this assertion may result in severe runtime
   // overheads to Legion
-  if (use_control_replication) {
+  if (enable_control_replication) {
     for (int i = 0; i < output.target_procs.size(); i++)
       assert(output.target_procs[i].address_space() == node_id);
   }
