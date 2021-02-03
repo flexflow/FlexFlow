@@ -573,9 +573,9 @@ void FFMapper::default_policy_select_sources(MapperContext ctx,
       if (!affinity.empty()) {
         assert(affinity.size() == 1);
         memory_bandwidth = affinity[0].bandwidth;
-        // Add 10 points to the bandwidth to prioritize preferred_memory
+        // Add 1000 points to the bandwidth to prioritize preferred_memory
         if (preferred_memory == location)
-          memory_bandwidth += 10;
+          memory_bandwidth += 1000;
       }
       source_memories[location] = memory_bandwidth;
       band_ranking[idx] =
