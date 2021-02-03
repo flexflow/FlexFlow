@@ -63,6 +63,8 @@ class OpType(Enum):
   DIVIDE = 2044
   INPUT = 2050
   OUTPUT = 2051
+  MULTIHEAD_ATTENTION = 2060
+  GETITEM = 2070
 
 def enum_to_int(enum, enum_item):
   for item in enum:

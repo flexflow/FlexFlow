@@ -23,6 +23,15 @@ struct NetConfig {
   std::string dataset_path;
 };
 
+struct DLRMConfig {
+  DLRMConfig(void);
+  int sparse_feature_size, sigmoid_bot, sigmoid_top, embedding_bag_size;
+  float loss_threshold;
+  std::vector<int> embedding_size, mlp_bot, mlp_top;
+  std::string arch_interaction_op, dataset_path;
+};
+
+//TODO: remove data loaders except single data loader
 class ImgDataLoader {
 public:
   ImgDataLoader();
@@ -88,17 +97,22 @@ public:
   static void register_gpu_tasks(void);
     
   template<typename DT>
-  static void load_input_2d(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx,
-                            Runtime* runtime);
+  static void load_input(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx,
+                         Runtime* runtime);
+  template<typename DT, int NDIM>
+  static void load_input_with_dim(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx,
+                         Runtime* runtime);
   template<typename DT>
-  static void load_input_4d(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx,
-                            Runtime* runtime);
-  template<typename DT, int NDIM>                                
   static void load_entire_dataset_from_numpy(const Task *task,
+                                             const std::vector<PhysicalRegion> &regions,
+                                             Context ctx,
+                                             Runtime* runtime);
+  template<typename DT, int NDIM>
+  static void load_entire_dataset_from_numpy_with_dim(const Task *task,
                                              const std::vector<PhysicalRegion> &regions,
                                              Context ctx,
                                              Runtime* runtime);

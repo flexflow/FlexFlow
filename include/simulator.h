@@ -17,12 +17,20 @@
 
 #include "ffconst.h"
 #include "config.h"
+#include <memory>
+#include <fstream>
 
 class Conv2DMeta;
 class LinearMeta;
 class Pool2DMeta;
 class ElementUnaryMeta;
 class ElementBinaryMeta;
+class SoftmaxMeta;
+class BatchMatmulMeta;
+class BatchNormMeta;
+class ConcatMeta;
+class DropoutMeta;
+class TransposeMeta;
 class Op;
 class FFModel;
 
@@ -58,6 +66,61 @@ public:
   Device* device;
   int counter;
   std::vector<SimTask*> next_tasks;
+  char *op_name;
+  std::string get_type_str() const;
+};
+
+template <typename T>
+class DotFile {
+private:
+  size_t node_id;
+  std::map<T,size_t> node_ids;
+  std::unique_ptr<std::ostream> out;
+  std::string get_node_name(size_t node_id) const {
+    std::ostringstream s;
+    s << "node" << node_id;
+    return s.str();
+  }
+public:
+  DotFile() : node_id(0) {}
+  DotFile(std::string const &filename) : DotFile(std::unique_ptr<std::ostream>(new std::ofstream(filename))) {}
+  DotFile(std::unique_ptr<std::ostream> s)
+    : node_id(0), out(std::move(s))
+  {
+    *out << "digraph taskgraph {";
+  }
+
+  void set_filename(std::string filename) {
+    this->out = std::unique_ptr<std::ostream>(new std::ofstream(filename));
+    *out << "digraph taskgraph {";
+  }
+  void reserve_node(T const &t) {
+    if (this->node_ids.find(t) == this->node_ids.end()) {
+      this->node_ids[t] = this->node_id++;
+    }
+  }
+  void add_node(T const &t, std::map<std::string, std::string> const &params) {
+    this->reserve_node(t);
+    *out << "  " << this->get_node_name(this->node_ids.at(t)) << " [";
+    for (auto it = params.begin(); it != params.end(); ++it)  {
+      *out << it->first << "=" << it->second;
+      if (std::next(it) != params.end()) {
+        *out << ",";
+      }
+    }
+    *out << "];" << std::endl;
+  }
+  void add_edge(T const &src, T const &dst) {
+    this->reserve_node(src);
+    this->reserve_node(dst);
+    auto src_name = this->get_node_name(this->node_ids.at(src));
+    auto dst_name = this->get_node_name(this->node_ids.at(dst));
+    *out << "  " << src_name << " -> " << dst_name << ";" << std::endl;
+  }
+  void close() {
+    *out << "}";
+    out->flush();
+  }
 };
 
 class SimTaskCompare {
@@ -88,9 +151,12 @@ public:
 
 class Simulator {
 public:
-  Simulator(const FFModel* model, FFHandler handler, void* base_ptr, size_t capacity);
+  Simulator(const FFModel* model,
+            FFHandler handler,
+            Memory memory);
+  ~Simulator(void);
   void free_all();
-  void* allocate(size_t num_elements, DataType type); 
+  void* allocate(size_t num_elements, DataType type);
   Device* get_compute_device_by_id(int device_id);
   Device* get_inter_gpu_comm_device_by_ids(int src_id, int dst_id);
   Device* get_inter_node_comm_device_by_ids(int src_id, int dst_id);
@@ -102,15 +168,21 @@ public:
   float measure_op_backward_time(Op* op, const ParallelConfig& config);
   float simulate_runtime(const FFModel* model,
       const std::map<Op*, ParallelConfig>& global);
+  float simulate_runtime(const FFModel* model,
+      const std::map<Op*, ParallelConfig>& global,
+      std::string const &export_file_name);
   static void strategy_search_task(const Task *task,
                                    const std::vector<PhysicalRegion> &regions,
                                    Context ctx, Runtime *runtime);
 public:
+  Realm::RegionInstance simulatorInst;
+  Memory memory;
+  FFHandler handler;
   char* base_ptr;
   size_t capacity;
   off_t offset;
   int warmup_times, repeat_times;
-  int total_num_devices;
+  int num_nodes, gpus_per_node, total_num_gpus;
   TaskManager* task_manager;
   cudaEvent_t start_event, end_event;
   std::map<int, Device*> id_to_compute_device;
@@ -126,5 +198,11 @@ public:
   Pool2DMeta* pool2d_meta;
   ElementUnaryMeta* ele_unary_meta;
   ElementBinaryMeta* ele_binary_meta;
+  SoftmaxMeta *softmax_meta;
+  BatchMatmulMeta *batch_matmul_meta;
+  BatchNormMeta *batch_norm_meta;
+  ConcatMeta *concat_meta;
+  DropoutMeta *dropout_meta;
+  TransposeMeta *transpose_meta;
 };
 #endif

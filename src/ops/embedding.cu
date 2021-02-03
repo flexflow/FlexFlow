@@ -21,29 +21,16 @@ Tensor FFModel::embedding(const Tensor& input,
                           int out_dim,
                           AggrMode aggr,
                           const Op* shared_op,
-                          Initializer* kernel_initializer)
+                          Initializer* kernel_initializer,
+                          const char* name)
 {
   //assert(config.strategies.find(name) != config.strategies.end());
   //ParallelConfig pc = config.strategies[name];
   //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
   Embedding* embed = new Embedding(*this, input, num_entries,
-                                   out_dim, aggr, shared_op, kernel_initializer);
+      out_dim, aggr, shared_op, kernel_initializer, name);
   layers.push_back(embed);
   return embed->outputs[0];
-}
-
-Embedding* FFModel::embedding(int num_entries,
-                              int out_dim,
-                              AggrMode aggr,
-                              Initializer* kernel_initializer)
-{
-  //assert(config.strategies.find(name) != config.strategies.end());
-  //ParallelConfig pc = config.strategies[name];
-  //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
-  Embedding* embed = new Embedding(*this, num_entries,
-                                   out_dim, aggr, kernel_initializer);
-  layers.push_back(embed);
-  return embed;
 }
 
 Embedding::Embedding(FFModel& model,
@@ -52,8 +39,9 @@ Embedding::Embedding(FFModel& model,
                      int _num_entries, int outDim,
                      AggrMode _aggr,
                      const Op* shared_op,
-                     Initializer* _kernel_initializer)
-: Op(model, OP_EMBEDDING, shared_op, "Embed_"+std::to_string(_num_entries)+"x"+std::to_string(outDim), _input),
+                     Initializer* _kernel_initializer,
+                     const char* name)
+: Op(model, OP_EMBEDDING, shared_op, name, _input),
   num_entries(_num_entries), out_channels(outDim), aggr(_aggr),
   kernel_initializer(_kernel_initializer), profiling(model.config.profiling)
 {
@@ -67,40 +55,20 @@ Embedding::Embedding(FFModel& model,
   numWeights = 1;
 }
 
-Embedding::Embedding(FFModel& model,
-                     int _num_entries, int outDim,
-                     AggrMode _aggr,
-                     Initializer* kernel_initializer)
-: Op(model, OP_EMBEDDING, "Embed_"+std::to_string(_num_entries)+"x"+std::to_string(outDim), 1),
-  num_entries(_num_entries), out_channels(outDim), aggr(_aggr), profiling(model.config.profiling)
-{
-}
-
-Tensor Embedding::init_inout(FFModel& model, const Tensor& _input)
-{
-  assert(_input.numDim == 2);
-  inputs[0] = _input;
-  create_output_and_partition(model);
-  return outputs[0];
-}
-
-/*
-void Embedding::add_to_model(FFModel& model)
-{
-  model.layers.push_back(this);
-  model.parameters.push_back(weights[0]);
-}
-*/
-
 void Embedding::create_weights(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+#ifdef FF_ENABLE_NCCL
+  Parameter::CommType comm_type = Parameter::NCCL;  
+#else
+  Parameter::CommType comm_type = Parameter::PS;
+#endif
   {
     const int dims[2] = {out_channels, num_entries};
     // Embeddding weights and linear weights can be partitioned in the same way
-    weights[0] = model.create_linear_weight<2>(this, dims, (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
+    weights[0] = model.create_linear_weight<2, 2>(this, dims, DT_FLOAT, kernel_initializer, true/*create_grad*/, comm_type);
     assert(numWeights == 1);
   }
 }
@@ -110,7 +78,6 @@ void Embedding::create_output_and_partition(FFModel& model)
   // Retrive the task indexspace for the op
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
@@ -129,9 +96,8 @@ void Embedding::create_output_and_partition(FFModel& model)
     input_lps[0] = inputs[0].part;
     input_grad_lps[0] = inputs[0].part_grad;
   } else {
-    // Currently assert input must have the same partition
-    // to avoid data movement
-    assert(false);
+    model.create_disjoint_partition<2>(
+      inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
   }
 }
 
@@ -140,7 +106,13 @@ OpMeta* Embedding::init_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, Runtime* runtime)
 {
-  return NULL;
+  const Embedding* linear = (Embedding*) task->args;
+  FFHandler handle = *((const FFHandler*) task->local_args);
+  OpMeta* m = new OpMeta(handle);
+#ifdef FF_ENABLE_NCCL
+  m->init_nccl_communicator(task, linear->ncclId);
+#endif
+  return m;
 }
 
 void Embedding::init(const FFModel& ff)
@@ -148,6 +120,15 @@ void Embedding::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  ParallelConfig pc;
+  std::string pcname = name;
+  ff.config.find_parallel_config(2, pcname, pc);
+  int idx = 0;
+  for (PointInRectIterator<2> it(rect); it(); it++) {
+    FFHandler handle = ff.handlers[pc.device_ids[idx++]];
+    argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
+  }
   IndexLauncher launcher(EMBED_INIT_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Embedding)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -167,7 +148,17 @@ void Embedding::init(const FFModel& ff)
     RegionRequirement(weights[0].part, 0/*projection*/,
       READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(1, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  // regions[3]: input_grad
+  launcher.add_region_requirement(
+    RegionRequirement(input_grad_lps[0], 0/*projection*/,
+      WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+  launcher.add_field(2, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  idx = 0;
+  for (PointInRectIterator<2> it(rect); it(); it++) {
+    meta[idx++] = fm.get_result<OpMeta*>(*it);
+  }
 }
 
 __global__
@@ -223,6 +214,19 @@ void embed_backward(const int64_t* input,
   }
 }
 
+void Embedding::forward_kernel(int64_t const *input_ptr,
+                               float *output_ptr,
+                               float const *weight_ptr,
+                               int in_dim,
+                               int out_dim,
+                               int batch_size,
+                               AggrMode aggr,
+                               int outputSize)
+{
+  embed_forward<<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS>>>(
+      input_ptr, output_ptr, weight_ptr, out_dim, in_dim, batch_size, aggr);
+}
+
 /*
   regions[0](I): input
   regions[1](O): output
@@ -246,19 +250,17 @@ void Embedding::forward_task(const Task *task,
   assert(accInput.rect.hi[1] == accOutput.rect.hi[1]);
   assert(accInput.rect.lo[1] == accOutput.rect.lo[1]);
   // Weight matches Output
-  assert(accWeight.rect.hi[1] == accOutput.rect.hi[0]);
-  assert(accWeight.rect.lo[1] == accOutput.rect.lo[0]);
+  assert(accWeight.rect.hi[1] - accWeight.rect.lo[1]
+      == accOutput.rect.hi[0] - accOutput.rect.lo[0]);
   int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
   int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
-  embed_forward<<<GET_BLOCKS(accOutput.rect.volume()), CUDA_NUM_THREADS>>>(
-      accInput.ptr, accOutput.ptr, accWeight.ptr, out_dim, in_dim, batch_size, embed->aggr);
-  checkCUDA(cudaDeviceSynchronize());
+  forward_kernel(accInput.ptr, accOutput.ptr, accWeight.ptr, in_dim, out_dim, batch_size, embed->aggr, accOutput.rect.volume());
   if (embed->profiling) {
-    print_tensor<2, int64_t>(accInput.ptr, accInput.rect, "[Embedding:forward:input]");
-    print_tensor<2, float>(accWeight.ptr, accWeight.rect, "[Embedding:forward:weight]");
-    print_tensor<2, float>(accOutput.ptr, accOutput.rect, "[Embedding:forward:output]");
     checkCUDA(cudaDeviceSynchronize());
+    print_tensor<int64_t>(accInput.ptr, accInput.rect.volume(), "[Embedding:forward:input]");
+    print_tensor<float>(accWeight.ptr, accWeight.rect.volume(), "[Embedding:forward:weight]");
+    print_tensor<float>(accOutput.ptr, accOutput.rect.volume(), "[Embedding:forward:output]");
   }
 }
 
@@ -290,6 +292,19 @@ void Embedding::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Embedding::backward_kernel(int64_t const *input_ptr,
+                                float const *output_ptr,
+                                float *weight_grad_ptr,
+                                int in_dim,
+                                int out_dim,
+                                int batch_size,
+                                AggrMode aggr,
+                                int outputSize)
+{
+  embed_backward<<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS>>>(
+      input_ptr, output_ptr, weight_grad_ptr, out_dim, in_dim, batch_size, aggr);
+}
+
 void Embedding::backward_task(const Task *task,
                               const std::vector<PhysicalRegion> &regions,
                               Context ctx, Runtime *runtime)
@@ -311,18 +326,14 @@ void Embedding::backward_task(const Task *task,
   int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
   int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
-  // Explicitly initialize accWegihtGrad to zero to aviod calling zero_gradients() before backward()
-  // as an optimization for DLRM
-  //assign_kernel<<<GET_BLOCKS(accWeightGrad.rect.volume()), CUDA_NUM_THREADS>>>(
-  //      accWeightGrad.ptr, accWeightGrad.rect.volume(), 0.0f);
+  backward_kernel(accInput.ptr, accOutput.ptr, accWeightGrad.ptr, in_dim, out_dim, batch_size, embed->aggr, accOutput.rect.volume());
   embed_backward<<<GET_BLOCKS(accOutput.rect.volume()), CUDA_NUM_THREADS>>>(
       accInput.ptr, accOutput.ptr, accWeightGrad.ptr, out_dim, in_dim, batch_size, embed->aggr);
-  checkCUDA(cudaDeviceSynchronize());
   if (embed->profiling) {
-    print_tensor<2, float>(accOutput.ptr, accOutput.rect, "[Embedding:backward:output_grad]");
-    print_tensor<2, float>(accWeightGrad.ptr, accWeightGrad.rect, "[Embedding:backward:weight_grad]");
-    print_tensor<2, int64_t>(accInput.ptr, accInput.rect, "[Embedding:backward:input]");
     checkCUDA(cudaDeviceSynchronize());
+    print_tensor<float>(accOutput.ptr, accOutput.rect.volume(), "[Embedding:backward:output_grad]");
+    print_tensor<float>(accWeightGrad.ptr, accWeightGrad.rect.volume(), "[Embedding:backward:weight_grad]");
+    print_tensor<int64_t>(accInput.ptr, accInput.rect.volume(), "[Embedding:backward:input]");
   }
 }
 
@@ -359,6 +370,41 @@ bool Embedding::measure_compute_time(Simulator* sim,
                                      float& forward_time,
                                      float& backward_time)
 {
-  //TODO: implement measure_forward
-  return false;
+  Tensor sub_input, sub_output;
+  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+    return false;
+  }
+  if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type)) {
+    return false;
+  }
+
+  sim->free_all();
+  int64_t *input_ptr = (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
+  assert (input_ptr != NULL);
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_ptr != NULL);
+  float *weight_ptr = (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
+  assert (weight_ptr != NULL);
+  float *weight_grad_ptr = (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
+  assert (weight_grad_ptr != NULL);
+  int in_dim = sub_input.adim[0];
+  int out_dim = sub_input.adim[0];
+  assert (sub_input.adim[1] == sub_output.adim[2]);
+  int batch_size = sub_input.adim[1];
+
+  auto forward = [&] {
+    forward_kernel(input_ptr, output_ptr, weight_ptr, in_dim, out_dim, batch_size, this->aggr, sub_output.get_volume());
+  };
+  auto backward = [&] {
+    backward_kernel(input_ptr, output_ptr, weight_grad_ptr, in_dim, out_dim, batch_size, this->aggr, sub_output.get_volume());
+  };
+
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Measure Embedding] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      forward_time,
+      backward_time);
+
+  return true;
 }

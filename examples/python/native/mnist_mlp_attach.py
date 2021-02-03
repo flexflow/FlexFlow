@@ -18,31 +18,39 @@ import numpy as np
 from flexflow.keras.datasets import mnist
 from accuracy import ModelAccuracy
 
-def next_batch(idx, x_train, input1, ffconfig):
+def next_batch(idx, x_train, input1, ffconfig, ffmodel):
   start = idx*ffconfig.get_batch_size()
   x_train_batch = x_train[start:start+ffconfig.get_batch_size(), :]
-  print(x_train_batch.shape)
 
-  input1.inline_map(ffconfig)
-  input_array = input1.get_array(ffconfig, DataType.DT_FLOAT)
-  print(input_array.shape)
-  for i in range(0, ffconfig.get_batch_size()):
-    for j in range(0, 784):
-      input_array[i][j] = x_train_batch[i][j]
-  input1.inline_unmap(ffconfig)
+  # input1.inline_map(ffconfig)
+  # input_array = input1.get_array(ffconfig, DataType.DT_FLOAT)
+  # print(input_array.shape)
+  # for i in range(0, ffconfig.get_batch_size()):
+  #   for j in range(0, 784):
+  #     input_array[i][j] = x_train_batch[i][j]
+  # input1.inline_unmap(ffconfig)
+  #TODO: test set tensor
+  p_handle = ffi.new('flexflow_parameter_t *')
+  p_handle.impl = input1.handle.impl
+  input1_par = Parameter(p_handle[0])
+  input1_par.set_weights(ffmodel, x_train_batch)
 
-def next_batch_label(idx, x_train, input1, ffconfig):
+def next_batch_label(idx, x_train, input1, ffconfig, ffmodel):
   start = idx*ffconfig.get_batch_size()
   x_train_batch = x_train[start:start+ffconfig.get_batch_size(), :]
-  print(x_train_batch.shape)
 
-  input1.inline_map(ffconfig)
-  input_array = input1.get_array(ffconfig, DataType.DT_INT32)
-  print(input_array.shape)
-  for i in range(0, ffconfig.get_batch_size()):
-    for j in range(0, 1):
-      input_array[i][j] = x_train_batch[i][j]
-  input1.inline_unmap(ffconfig)
+  # input1.inline_map(ffconfig)
+  # input_array = input1.get_array(ffconfig, DataType.DT_INT32)
+  # print(input_array.shape)
+  # for i in range(0, ffconfig.get_batch_size()):
+  #   for j in range(0, 1):
+  #     input_array[i][j] = x_train_batch[i][j]
+  # input1.inline_unmap(ffconfig)
+  #
+  p_handle = ffi.new('flexflow_parameter_t *')
+  p_handle.impl = input1.handle.impl
+  input1_par = Parameter(p_handle[0])
+  input1_par.set_weights(ffmodel, x_train_batch)
 
 
 def top_level_task():
@@ -78,30 +86,28 @@ def top_level_task():
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
   label_tensor = ffmodel.get_label_tensor()
 
-  next_batch(0, x_train, input_tensor, ffconfig)
-  next_batch_label(0, y_train, label_tensor, ffconfig)
+  next_batch(0, x_train, input_tensor, ffconfig, ffmodel)
+  next_batch_label(0, y_train, label_tensor, ffconfig, ffmodel)
 
   ffmodel.init_layers()
 
   epochs = ffconfig.get_epochs()
-  ct = 0
 
   ts_start = ffconfig.get_current_time()
   for epoch in range(0,epochs):
+    ct = 0
     ffmodel.reset_metrics()
     iterations = num_samples / ffconfig.get_batch_size()
-    for iter in range(0, 100):
-      next_batch(ct, x_train, input1, ffconfig)
-      next_batch_label(ct, y_train, label, ffconfig)
+    for iter in range(0, int(iterations)):
+      next_batch(ct, x_train, input_tensor, ffconfig, ffmodel)
+      next_batch_label(ct, y_train, label_tensor, ffconfig, ffmodel)
       ct += 1
-      if (epoch > 0):
-        ffconfig.begin_trace(111)
+      ffconfig.begin_trace(111)
       ffmodel.forward()
       ffmodel.zero_gradients()
       ffmodel.backward()
       ffmodel.update()
-      if (epoch > 0):
-        ffconfig.end_trace(111)
+      ffconfig.end_trace(111)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
@@ -114,7 +120,7 @@ def top_level_task():
 
   dense1 = ffmodel.get_layer_by_id(0)
 
-  dbias_tensor = label#dense1.get_bias_tensor()
+  dbias_tensor = label_tensor#dense1.get_bias_tensor()
   dbias_tensor.inline_map(ffconfig)
   dbias = dbias_tensor.get_array(ffconfig, DataType.DT_INT32)
   print(dbias.shape)

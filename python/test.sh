@@ -5,6 +5,22 @@ GPUS=$1
 
 if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit; fi
 
+#torch
+./flexflow_python $FF_HOME/examples/python/pytorch/cifar10_cnn_torch.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
+./flexflow_python $FF_HOME/examples/python/pytorch/cifar10_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
+./flexflow_python $FF_HOME/examples/python/pytorch/mnist_mlp_torch.py -ll:py 1 -ll:gpu 1 -ll:fsize 2048 -ll:zsize 12192
+./flexflow_python $FF_HOME/examples/python/pytorch/mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
+
+#ONNX
+python3 $FF_HOME/examples/python/onnx/mnist_mlp_pt.py
+./flexflow_python $FF_HOME/examples/python/onnx/mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5 --test_type 1
+python3 $FF_HOME/examples/python/onnx/mnist_mlp_keras.py
+./flexflow_python $FF_HOME/examples/python/onnx/mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5 --test_type 0 
+python3 $FF_HOME/examples/python/onnx/cifar10_cnn_pt.py
+./flexflow_python $FF_HOME/examples/python/onnx/cifar10_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 40 --test_type 1
+python3 $FF_HOME/examples/python/onnx/cifar10_cnn_keras.py
+./flexflow_python $FF_HOME/examples/python/onnx/cifar10_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 40 --test_type 0
+ 
 #Sequantial model tests
 ./flexflow_python $FF_HOME/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
 ./flexflow_python $FF_HOME/examples/python/keras/seq_mnist_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
@@ -35,7 +51,8 @@ if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests
 ./flexflow_python $FF_HOME/examples/python/native/print_layers.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5
 ./flexflow_python $FF_HOME/examples/python/native/split.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
 ./flexflow_python $FF_HOME/examples/python/native/alexnet.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 40
-./flexflow_python $FF_HOME/examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5
+./flexflow_python $FF_HOME/examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5 --search-budget 10000 --export-strategy strategy.txt
+./flexflow_python $FF_HOME/examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5 --import-strategy strategy.txt
 ./flexflow_python $FF_HOME/examples/python/native/mnist_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5
 ./flexflow_python $FF_HOME/examples/python/native/cifar10_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 40
 ./flexflow_python $FF_HOME/examples/python/native/cifar10_cnn_attach.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5

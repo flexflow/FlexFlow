@@ -17,20 +17,25 @@ from flexflow.core import *
 from flexflow.keras.datasets import cifar10
 from accuracy import ModelAccuracy
 
-def next_batch(idx, x_train, input1, ffconfig):
+def next_batch(idx, x_train, input1, ffconfig, ffmodel):
   start = idx*ffconfig.get_batch_size()
   x_train_batch = x_train[start:start+ffconfig.get_batch_size(), :, :, :]
   print(x_train_batch.shape)
 
-  input1.inline_map(ffconfig)
-  input_array = input1.get_array(ffconfig, DataType.DT_FLOAT)
-  print(input_array.shape)
-  for i in range(0, ffconfig.get_batch_size()):
-    for j in range(0, 3):
-      for k in range(0, 32):
-        for l in range(0, 32):
-          input_array[i][j][k][l] = x_train_batch[i][j][k][l]
-  input1.inline_unmap(ffconfig)
+  # input1.inline_map(ffconfig)
+  # input_array = input1.get_array(ffconfig, DataType.DT_FLOAT)
+  # print(input_array.shape)
+  # for i in range(0, ffconfig.get_batch_size()):
+  #   for j in range(0, 3):
+  #     for k in range(0, 32):
+  #       for l in range(0, 32):
+  #         input_array[i][j][k][l] = x_train_batch[i][j][k][l]
+  # input1.inline_unmap(ffconfig)
+  
+  p_handle = ffi.new('flexflow_parameter_t *')
+  p_handle.impl = input1.handle.impl
+  input1_par = Parameter(p_handle[0])
+  input1_par.set_weights(ffmodel, x_train_batch)
 
 def next_batch_label(idx, x_train, input1, ffconfig):
   start = idx*ffconfig.get_batch_size()
@@ -91,7 +96,7 @@ def top_level_task():
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
   label_tensor = ffmodel.get_label_tensor()
 
-  next_batch(0, x_train, input_tensor, ffconfig)
+  next_batch(0, x_train, input_tensor, ffconfig, ffmodel)
   next_batch_label(0, y_train, label_tensor, ffconfig)
 
   ffmodel.init_layers()
@@ -105,17 +110,15 @@ def top_level_task():
     print(iterations, num_samples)
     ct = 0
     for iter in range(0, int(iterations)):
-      next_batch(ct, x_train, input, ffconfig)
-      next_batch_label(ct, y_train, label, ffconfig)
+      next_batch(ct, x_train, input_tensor, ffconfig, ffmodel)
+      next_batch_label(ct, y_train, label_tensor, ffconfig)
       ct += 1
-      if (epoch > 0):
-        ffconfig.begin_trace(111)
+      ffconfig.begin_trace(111)
       ffmodel.forward()
       ffmodel.zero_gradients()
       ffmodel.backward()
       ffmodel.update()
-      if (epoch > 0):
-        ffconfig.end_trace(111)
+      ffconfig.end_trace(111)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
@@ -135,12 +138,12 @@ def top_level_task():
   print(cbias)
   cbias_tensor.inline_unmap(ffconfig)
 
-  label.inline_map(ffconfig)
-  label_array = label.get_flat_array(ffconfig, DataType.DT_INT32)
+  label_tensor.inline_map(ffconfig)
+  label_array = label_tensor.get_flat_array(ffconfig, DataType.DT_INT32)
   print(label_array.shape)
   # print(cbias)
   print(label_array)
-  label.inline_unmap(ffconfig)
+  label_tensor.inline_unmap(ffconfig)
 
 
 if __name__ == "__main__":

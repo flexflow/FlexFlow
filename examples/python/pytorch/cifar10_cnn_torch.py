@@ -22,6 +22,8 @@ class CNN(nn.Module):
     y2 = self.conv1(input2)
     y2 = self.relu(y2)
     y = torch.cat((y1, y2), 1)
+    (y1, y2) = torch.split(y, 1) 
+    y = torch.cat((y1, y2), 1)
     y = self.conv2(y)
     y = self.relu(y)
     y = self.pool1(y)

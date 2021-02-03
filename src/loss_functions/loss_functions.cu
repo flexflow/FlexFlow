@@ -78,23 +78,44 @@ void Loss::backward_task(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx, Runtime *runtime)
 {
+  Domain domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+template<int NDIM>
+__host__
+void Loss::backward_task_with_dim(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx, Runtime *runtime)
+{
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   const Loss* loss = (Loss*) task->args;
   if (loss->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     //sparse_categorical_crossentropy has label of dim: (batch_size, 1)
-    TensorAccessorW<float, 2> acc_logit_grad(
+    TensorAccessorW<float, NDIM> acc_logit_grad(
         regions[0], task->regions[0], FID_DATA, ctx, runtime,
         true/*readOutput*/);
-    TensorAccessorR<float, 2> acc_logit(
+    TensorAccessorR<float, NDIM> acc_logit(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    TensorAccessorR<int, 2> acc_label(
+    TensorAccessorR<int, NDIM> acc_label(
         regions[2], task->regions[2], FID_DATA, ctx, runtime);
-    int num_samples = acc_logit.rect.hi[1] - acc_logit.rect.lo[1] + 1;
-    int num_classes = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;
+    int num_samples = acc_logit.rect.hi[NDIM-1] - acc_logit.rect.lo[NDIM-1] + 1;
+    int num_classes = acc_logit.rect.volume() / num_samples;
     assert(acc_logit_grad.rect == acc_logit.rect);
-    assert(acc_label.rect.hi[1] == acc_logit.rect.hi[1]);
-    assert(acc_label.rect.lo[1] == acc_logit.rect.lo[1]);
+    for (int i = 1; i < NDIM; i++) {
+      assert(acc_label.rect.hi[i] == acc_logit.rect.hi[i]);
+      assert(acc_label.rect.lo[i] == acc_logit.rect.lo[i]);
+    }
     assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
     checkCUDA(cudaMemcpy(acc_logit_grad.ptr, acc_logit.ptr,
                          acc_logit.rect.volume() * sizeof(float),
@@ -105,18 +126,18 @@ void Loss::backward_task(const Task *task,
     scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
         acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor);
   } else {
-    TensorAccessorW<float, 2> acc_logit_grad(
+    TensorAccessorW<float, NDIM> acc_logit_grad(
         regions[0], task->regions[0], FID_DATA, ctx, runtime,
         true/*readOutput*/);
-    TensorAccessorR<float, 2> acc_logit(
+    TensorAccessorR<float, NDIM> acc_logit(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    TensorAccessorR<float, 2> acc_label(
+    TensorAccessorR<float, NDIM> acc_label(
         regions[2], task->regions[2], FID_DATA, ctx, runtime);
     // other loss require label and logit have identical shape
     assert(acc_logit.rect == acc_label.rect);
     assert(acc_logit_grad.rect == acc_logit.rect);
-    int num_samples = acc_logit.rect.hi[1] - acc_logit.rect.lo[1] + 1;
-    int num_channels = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;
+    int num_samples = acc_logit.rect.hi[NDIM-1] - acc_logit.rect.lo[NDIM-1] + 1;
+    int num_channels = acc_logit.rect.volume() / num_samples;
     if (loss->loss_type == LOSS_CATEGORICAL_CROSSENTROPY) {
       categorical_crossentropy_loss_backward<<<GET_BLOCKS(acc_logit.rect.volume()), CUDA_NUM_THREADS>>>(
           acc_logit_grad.ptr, acc_logit.ptr, acc_label.ptr,
@@ -142,18 +163,42 @@ void Loss::backward(FFModel* model,
                     const Tensor* logit,
                     const Tensor* label)
 {
+  assert(logit->numDim == label->numDim);
+  int dim = logit->numDim;
+  switch (dim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      backward_with_dim<DIM>(model, logit, label); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      assert(false);
+    }
+  }
+}
+
+template<int NDIM>
+void Loss::backward_with_dim(FFModel* model,
+                             const Tensor* logit,
+                             const Tensor* label)
+{
   // Compute scale factor for loss backpropagation
   scale_factor = 1.0f/ logit->adim[logit->numDim-1];
   //scale_factor = 1.0f;
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
-  IndexSpaceT<2> task_is = IndexSpaceT<2>(model->get_or_create_task_is(2, pcname));
+  IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(
+    model->get_or_create_task_is(NDIM, pcname));
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  Rect<2> logit_rect = runtime->get_index_partition_color_space(
+  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> logit_rect = runtime->get_index_partition_color_space(
       ctx, logit->part.get_index_partition());
-  Rect<2> label_rect = runtime->get_index_partition_color_space(
+  Rect<NDIM> label_rect = runtime->get_index_partition_color_space(
       ctx, label->part.get_index_partition());
   if((logit_rect != part_rect) || (label_rect != part_rect)) {
     fprintf(stderr, "Encounter inconsistency in parallelizing loss computation");

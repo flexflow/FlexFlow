@@ -376,6 +376,7 @@ class BaseModel(object):
     ts_start = self._ffconfig.get_current_time()
     epoch = 0
     epoch_flag = True
+    self.__tracing_id += 1
     while (epoch < epochs) and (epoch_flag == True):
       if callbacks != None:
         for callback in callbacks:
@@ -395,8 +396,8 @@ class BaseModel(object):
         for dataloader in self._input_dataloaders:
           dataloader.next_batch(self._ffmodel)
         self._label_dataloader.next_batch(self._ffmodel)
-        if (epoch > 0):
-          self._ffconfig.begin_trace(self.__tracing_id)
+
+        self._ffconfig.begin_trace(self.__tracing_id)
         self._ffmodel.forward()
         # for layer in self._layers:
         #   layer.ffhandle.forward(self._ffmodel)
@@ -406,8 +407,7 @@ class BaseModel(object):
           self._ffmodel.update()
         else:
           self._ffmodel.compute_metrics()
-        if (epoch > 0):
-          self._ffconfig.end_trace(self.__tracing_id)
+        self._ffconfig.end_trace(self.__tracing_id)
 
         if callbacks != None:
           for callback in callbacks:
@@ -470,7 +470,7 @@ class BaseModel(object):
           t_ffhandle_list.append(t.ffhandle)
         out_t = self._ffmodel.concat(t_ffhandle_list, layer.axis)
       elif isinstance(layer, Conv2D) == True:
-        out_t = self._ffmodel.conv2d(layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.use_bias, None, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle)
+        out_t = self._ffmodel.conv2d(layer.input_tensors[0].ffhandle, layer.out_channels, layer.kernel_size[0], layer.kernel_size[1], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.activation, layer.groups, layer.use_bias, None, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle)
       elif isinstance(layer, Pooling2D) == True:
         out_t = self._ffmodel.pool2d(layer.input_tensors[0].ffhandle, layer.kernel_size[1], layer.kernel_size[0], layer.stride[0], layer.stride[1], layer.padding[0], layer.padding[1], layer.pool_type)
       elif isinstance(layer, Flatten) == True:

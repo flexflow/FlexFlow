@@ -19,7 +19,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 # build shared or static flexflow lib
-option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" OFF)
+option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 
 # option for using Python
 option(ENABLE_PYTHON "Enable Python" ON)  
@@ -36,21 +36,12 @@ include(zlib)
 # CUDA and CUDNN
 include(cudacudnn)
 
-# Google Protobuf 
-include(protobuf)
-
 # Legion
 include(legion)
 
 # GASNet
 if(ENABLE_GASNET) 
   include(gasnet)
-endif()
-
-# Python
-if(ENABLE_PYTHON)
-  add_compile_options(-DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON)
-  add_subdirectory(python)
 endif()
 
 # Start build FlexFlow
@@ -61,11 +52,13 @@ set(NVCC_FLAGS $ENV{NVCC_FLAGS})
 set(LD_FLAGS $ENV{LD_FLAGS})
 
 list(APPEND CC_FLAGS
-  -std=c++11)
+  -std=c++11
+  -DMAX_TENSOR_DIM=${MAX_DIM})
   
 list(APPEND NVCC_FLAGS
   -Wno-deprecated-gpu-targets
-  -std=c++11)
+  -std=c++11
+  -DMAX_TENSOR_DIM=${MAX_DIM})
   
 list(APPEND LD_FLAGS
   -lrt
@@ -77,18 +70,32 @@ add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
 link_libraries(${LD_FLAGS})
 
-protobuf_generate_cpp(FLEXFLOW_PB_SRC FLEXFLOW_PB_HDR ${FLEXFLOW_ROOT}/src/runtime/strategy.proto)
-get_filename_component(FLEXFLOW_PB_INC_DIR ${FLEXFLOW_PB_HDR} DIRECTORY)
+# Python
+if(ENABLE_PYTHON)
+  add_compile_options(-DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON)
+  add_subdirectory(python)
+endif()
 
 set(FLEXFLOW_INCLUDE_DIRS
   ${FLEXFLOW_ROOT}/include
-  ${FLEXFLOW_PB_INC_DIR}
   ${FLEXFLOW_ROOT}/
   ${CUDA_INCLUDE_DIRS}
   ${CUDNN_INCLUDE_DIRS})
 
+set(FLEXFLOW_HDR
+  ${FLEXFLOW_ROOT}/include/accessor.h
+  ${FLEXFLOW_ROOT}/include/config.h
+  ${FLEXFLOW_ROOT}/include/cuda_helper.h
+  ${FLEXFLOW_ROOT}/include/ffconst.h
+  ${FLEXFLOW_ROOT}/include/initializer.h
+  ${FLEXFLOW_ROOT}/include/loss_functions.h
+  ${FLEXFLOW_ROOT}/include/mapper.h
+  ${FLEXFLOW_ROOT}/include/metrics_functions.h
+  ${FLEXFLOW_ROOT}/include/model.h
+  ${FLEXFLOW_ROOT}/include/optimizer.h
+  ${FLEXFLOW_ROOT}/include/simulator.h)  
+
 set(FLEXFLOW_SRC
-  ${FLEXFLOW_PB_SRC}
   ${FLEXFLOW_ROOT}/src/mapper/mapper.cc
   ${FLEXFLOW_ROOT}/src/ops/embedding.cc
   ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cc
@@ -114,6 +121,7 @@ set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/ops/batch_matmul.cu
   ${FLEXFLOW_ROOT}/src/ops/reverse.cu
   ${FLEXFLOW_ROOT}/src/ops/transpose.cu
+  ${FLEXFLOW_ROOT}/src/ops/reshape.cu
   ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cu
   ${FLEXFLOW_ROOT}/src/loss_functions/loss_functions.cu
   ${FLEXFLOW_ROOT}/src/runtime/accessor_kernel.cu
@@ -161,11 +169,17 @@ endif()
 if(BUILD_DLRM OR BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/DLRM)
 
-  add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc ${FLEXFLOW_PB_SRC})
+  add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)
   target_include_directories(generate_dlrm_hetero_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
   target_link_libraries(generate_dlrm_hetero_strategy ${Protobuf_LIBRARIES})
 
-  add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc ${FLEXFLOW_PB_SRC})
+  add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
   target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
   target_link_libraries(generate_dlrm_strategy ${Protobuf_LIBRARIES})
 endif()
+
+# installation
+set(INCLUDE_DEST "include")
+set(LIB_DEST "lib")
+install(FILES ${FLEXFLOW_HDR} DESTINATION ${INCLUDE_DEST})
+install(TARGETS flexflow DESTINATION ${LIB_DEST})

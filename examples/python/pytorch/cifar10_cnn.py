@@ -22,7 +22,7 @@ def top_level_task():
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
-  label = ffmodel.get_label_tensor()
+  label_tensor = ffmodel.get_label_tensor()
 
   num_samples = 10000
 
@@ -35,20 +35,8 @@ def top_level_task():
   y_train = y_train.astype('int32')
   full_label_array = y_train
 
-  dims_full_input = [num_samples, 3, 32, 32]
-  full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
-
-  dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor(dims_full_label, DataType.DT_INT32)
-
-  full_input.attach_numpy_array(ffconfig, full_input_array)
-  full_label.attach_numpy_array(ffconfig, full_label_array)
-
-  dataloader_input = SingleDataLoader(ffmodel, input_tensor, full_input, num_samples, DataType.DT_FLOAT)
-  dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
-
-  full_input.detach_numpy_array(ffconfig)
-  full_label.detach_numpy_array(ffconfig)
+  dataloader_input = ffmodel.create_data_loader(input_tensor, full_input_array)
+  dataloader_label = ffmodel.create_data_loader(label_tensor, full_label_array)
 
   num_samples = dataloader_input.get_num_samples()
 
@@ -65,7 +53,7 @@ def top_level_task():
 
   ts_start = ffconfig.get_current_time()
   
-  ffmodel.train((dataloader_input, dataloader_label), epochs)
+  ffmodel.fit(x=dataloader_input, y=dataloader_label, epochs=epochs)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);

@@ -46,7 +46,13 @@ public:
   static PerfMetrics compute_task(const Task *task,
                                   const std::vector<PhysicalRegion> &regions,
                                   Context ctx, Runtime *runtime);
+  template<int NDIM>
+  static PerfMetrics compute_task_with_dim(const Task *task,
+                                  const std::vector<PhysicalRegion> &regions,
+                                  Context ctx, Runtime *runtime);
   void compute(FFModel* model, const Tensor* logit, const Tensor* label);
+  template<int NDIM>
+  void compute_with_dim(FFModel* model, const Tensor* logit, const Tensor* label);
 public:
   LossType loss_type;
   bool measure_accuracy;

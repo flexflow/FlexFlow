@@ -178,6 +178,27 @@ PerfMetrics Metrics::compute_task(const Task *task,
                                   const std::vector<PhysicalRegion> &regions,
                                   Context ctx, Runtime *runtime)
 {
+  Domain domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return compute_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+  PerfMetrics invalid;
+  return invalid;
+}
+
+template<int NDIM>
+__host__
+PerfMetrics Metrics::compute_task_with_dim(const Task *task,
+                                  const std::vector<PhysicalRegion> &regions,
+                                  Context ctx, Runtime *runtime)
+{
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   const Metrics* me = (Metrics*) task->args;
@@ -187,14 +208,16 @@ PerfMetrics Metrics::compute_task(const Task *task,
   checkCUDA(cudaMemcpy(perf, &perf_zc, sizeof(PerfMetrics), cudaMemcpyHostToDevice));
 
   if (me->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
-    TensorAccessorR<float, 2> acc_logit(
+    TensorAccessorR<float, NDIM> acc_logit(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
-    TensorAccessorR<int, 2> acc_label(
+    TensorAccessorR<int, NDIM> acc_label(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    int num_samples = acc_logit.rect.hi[1] - acc_logit.rect.lo[1] + 1;
-    int num_classes = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;
-    assert(acc_label.rect.hi[1] == acc_logit.rect.hi[1]);
-    assert(acc_label.rect.lo[1] == acc_logit.rect.lo[1]);
+    int num_samples = acc_logit.rect.hi[NDIM-1] - acc_logit.rect.lo[NDIM-1] + 1;
+    int num_classes = acc_logit.rect.volume() / num_samples;
+    for (int i = 1; i < NDIM; i++) {
+      assert(acc_label.rect.hi[i] == acc_logit.rect.hi[i]);
+      assert(acc_label.rect.lo[i] == acc_logit.rect.lo[i]);
+    }
     assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
     // Cannot measure categorical_crossentropy w/ sparse labels
     // Use measure_sparse_categorical_crossentropy instead
@@ -202,18 +225,18 @@ PerfMetrics Metrics::compute_task(const Task *task,
     update_metrics_sparse_label_kernel<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS>>>(
         acc_logit.ptr, acc_label.ptr, perf, *me, num_samples, num_classes);
   } else {
-    TensorAccessorR<float, 2> acc_logit(
+    TensorAccessorR<float, NDIM> acc_logit(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
-    TensorAccessorR<float, 2> acc_label(
+    TensorAccessorR<float, NDIM> acc_label(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     // other loss require label and logit have identical shape
     assert(acc_logit.rect == acc_label.rect);
-    int num_samples = acc_logit.rect.hi[1] - acc_logit.rect.lo[1] + 1;
-    int num_classes = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;
+    int num_samples = acc_logit.rect.hi[NDIM-1] - acc_logit.rect.lo[NDIM-1] + 1;
+    int num_classes = acc_logit.rect.volume() / num_samples;
     // Use CUDA_NUM_THREADS may result in out of resources so we set #threads=256
     update_metrics_label_kernel<<<GET_BLOCKS(num_samples), 256>>>(
       acc_logit.ptr, acc_label.ptr, perf, *me, num_samples, num_classes);
-    }
+  }
   checkCUDA(cudaMemcpy(&perf_zc, perf, sizeof(PerfMetrics), cudaMemcpyDeviceToHost));
   checkCUDA(cudaFree(perf));
   return perf_zc;
@@ -222,17 +245,40 @@ PerfMetrics Metrics::compute_task(const Task *task,
 void Metrics::compute(FFModel* model,
                       const Tensor* logit,
                       const Tensor* label)
+{
+  assert(logit->numDim == label->numDim);
+  int dim = logit->numDim;
+  switch (dim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      compute_with_dim<DIM>(model, logit, label); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      assert(false);
+    }
+  }
+}
 
+template<int NDIM>
+void Metrics::compute_with_dim(FFModel* model,
+                               const Tensor* logit,
+                               const Tensor* label)
 {
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
-  IndexSpaceT<2> task_is = IndexSpaceT<2>(model->get_or_create_task_is(2, pcname));
+  IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(
+      model->get_or_create_task_is(NDIM, pcname));
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  Rect<2> logit_rect = runtime->get_index_partition_color_space(
+  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> logit_rect = runtime->get_index_partition_color_space(
       ctx, logit->part.get_index_partition());
-  Rect<2> label_rect = runtime->get_index_partition_color_space(
+  Rect<NDIM> label_rect = runtime->get_index_partition_color_space(
       ctx, label->part.get_index_partition());
   if((logit_rect != part_rect) || (label_rect != part_rect)) {
     fprintf(stderr, "Encounter inconsistency in parallelizing loss computation\n");
@@ -255,7 +301,7 @@ void Metrics::compute(FFModel* model,
   // Update metrics
   TaskLauncher metrics_task(UPDATE_METRICS_TASK_ID, TaskArgument(this, sizeof(Metrics)));
   metrics_task.add_future(model->current_metrics);
-  for (PointInRectIterator<2> it(part_rect); it(); it++) {
+  for (PointInRectIterator<NDIM> it(part_rect); it(); it++) {
     metrics_task.add_future(new_metrics[*it]);
   }
   model->current_metrics = runtime->execute_task(ctx, metrics_task);

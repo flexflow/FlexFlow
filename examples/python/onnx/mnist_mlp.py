@@ -1,23 +1,28 @@
 from flexflow.core import *
 import numpy as np
 from flexflow.keras.datasets import mnist
-from flexflow.onnx.model import ONNXModel
+from flexflow.onnx.model import ONNXModel, ONNXModelKeras
+import sys, getopt
 
 from accuracy import ModelAccuracy
 
-def top_level_task():
+def top_level_task(test_type=1):
   ffconfig = FFConfig()
   ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
   ffmodel = FFModel(ffconfig)
   
   dims1 = [ffconfig.get_batch_size(), 784]
-  input1 = ffmodel.create_tensor(dims1, "", DataType.DT_FLOAT);
+  input1 = ffmodel.create_tensor(dims1, DataType.DT_FLOAT);
   
   num_samples = 60000
   
-  onnx_model = ONNXModel("mnist_mlp.onnx")
-  t = onnx_model.apply(ffmodel, {"input.1": input1})
+  if test_type == 1:
+    onnx_model = ONNXModel("mnist_mlp_pt.onnx")
+    t = onnx_model.apply(ffmodel, {"input.1": input1})
+  else:
+    onnx_model = ONNXModelKeras("mnist_mlp_keras.onnx", ffconfig, ffmodel)
+    t = onnx_model.apply(ffmodel, {"input_1": input1})
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.set_sgd_optimizer(ffoptimizer)
@@ -26,26 +31,21 @@ def top_level_task():
   
   (x_train, y_train), (x_test, y_test) = mnist.load_data()
   
-  print(x_train.shape)
   x_train = x_train.reshape(60000, 784)
   x_train = x_train.astype('float32')
   x_train /= 255
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
-  print(x_train.shape[0], 'train samples')
-  print(y_train.shape)
   
   dims_full_input = [num_samples, 784]
-  full_input = ffmodel.create_tensor(dims_full_input, "", DataType.DT_FLOAT)
+  full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
 
   dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor(dims_full_label, "", DataType.DT_INT32)
+  full_label = ffmodel.create_tensor(dims_full_label, DataType.DT_INT32)
 
   full_input.attach_numpy_array(ffconfig, x_train)
   full_label.attach_numpy_array(ffconfig, y_train)
-  print(y_train)
 
-  #dataloader = DataLoader2D(ffmodel, input1, label, full_input, full_label, num_samples)
   dataloader_input = SingleDataLoader(ffmodel, input1, full_input, num_samples, DataType.DT_FLOAT)
   dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
 
@@ -57,24 +57,8 @@ def top_level_task():
   epochs = ffconfig.get_epochs()
 
   ts_start = ffconfig.get_current_time()
-  for epoch in range(0,epochs):
-    dataloader_input.reset()
-    dataloader_label.reset()
-    # dataloader.reset()
-    ffmodel.reset_metrics()
-    iterations = num_samples / ffconfig.get_batch_size()
-    for iter in range(0, int(iterations)):
-      dataloader_input.next_batch(ffmodel)
-      dataloader_label.next_batch(ffmodel)
-      #dataloader.next_batch(ffmodel)
-      if (epoch > 0):
-        ffconfig.begin_trace(111)
-      ffmodel.forward()
-      ffmodel.zero_gradients()
-      ffmodel.backward()
-      ffmodel.update()
-      if (epoch > 0):
-        ffconfig.end_trace(111)
+  
+  ffmodel.fit(x=dataloader_input, y=dataloader_label, epochs=epochs)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
@@ -84,8 +68,15 @@ def top_level_task():
   accuracy = perf_metrics.get_accuracy()
   if accuracy < ModelAccuracy.MNIST_MLP.value:
     assert 0, 'Check Accuracy'
-
   
 if __name__ == "__main__":
-  print("mnist mlp")
-  top_level_task()
+  print("mnist mlp onnx")
+  try:
+    opts, args = getopt.getopt(sys.argv[2:],"t:",["test_type"])
+  except getopt.GetoptError:
+    assert 0
+  test_type = 1
+  for opt, arg in opts:
+    if opt in ("-t", "--test_type"):
+       test_type = arg
+  top_level_task(test_type)

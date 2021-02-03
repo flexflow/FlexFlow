@@ -17,7 +17,7 @@ def top_level_task():
 
   kernel_init = GlorotUniformInitializer(123)
   bias_init = ZeroInitializer()
-  t = ffmodel.conv2d(input_tensor, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_RELU, True, None, kernel_init, bias_init)
+  t = ffmodel.conv2d(input_tensor, 64, 11, 11, 4, 4, 2, 2, ActiMode.AC_MODE_RELU, 1, True, None, kernel_init, bias_init)
   t = ffmodel.pool2d(t, 3, 3, 2, 2, 0, 0)
   t = ffmodel.conv2d(t, 192, 5, 5, 1, 1, 2, 2, ActiMode.AC_MODE_RELU)
   t = ffmodel.pool2d(t, 3, 3, 2, 2, 0, 0)
@@ -84,8 +84,8 @@ def top_level_task():
   epochs = ffconfig.get_epochs()
 
   ts_start = ffconfig.get_current_time()
-  
-  ffmodel.train((dataloader_input, dataloader_label), epochs)
+
+  ffmodel.fit(x=dataloader_input, y=dataloader_label, epochs=epochs)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);

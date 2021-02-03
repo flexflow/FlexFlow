@@ -17,30 +17,25 @@
 #include "cuda_helper.h"
 
 Tensor FFModel::reverse(const Tensor& input,
-                        int axis)
+                        int axis,
+                        const char* name)
 {
-  Reverse* reverse = new Reverse(*this, input, axis);
+  Reverse* reverse = new Reverse(*this, input, axis, name);
   layers.push_back(reverse);
   return reverse->outputs[0];
 }
 
 Reverse::Reverse(FFModel& model,
                  const Tensor& input,
-                 int _axis)
-: Op(model, OP_REVERSE, "Reverse_"+std::to_string(axis)+"_", input), axis(_axis)
+                 int _axis,
+                 const char* name)
+: Op(model, OP_REVERSE, name, input), axis(_axis)
 {
   outputs[0].numDim = input.numDim;
   for (int i = 0; i < input.numDim; i++)
     outputs[0].adim[i] = input.adim[i];
   numInputs = 1;
   numWeights = 0;
-}
-
-Tensor Reverse::init_inout(FFModel& model, const Tensor& _input)
-{
-  // Deprecated APIs --- remove soon
-  assert(false);
-  return outputs[0];
 }
 
 void Reverse::create_weights(FFModel& model)
@@ -142,6 +137,18 @@ void reverse_forward_kernel(const float* in_ptr,
   }
 }
 
+void Reverse::forward_kernel(float const *in_ptr,
+                             float *out_ptr,
+                             coord_t num_out_blks,
+                             coord_t reverse_dim_size,
+                             coord_t in_blk_size,
+                             coord_t output_size)
+{
+  reverse_forward_kernel<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS>>>(
+      in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size);
+}
+
+
 __host__
 void Reverse::forward_task(const Task* task,
                            const std::vector<PhysicalRegion> &regions,
@@ -169,8 +176,8 @@ void Reverse::forward_task(const Task* task,
     else
       num_out_blks *= out_domain.hi()[i] - out_domain.lo()[i] + 1;
   }
-  reverse_forward_kernel<<<GET_BLOCKS(out_domain.get_volume()), CUDA_NUM_THREADS>>>(
-      in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size);
+  int output_size = out_domain.get_volume();
+  forward_kernel(in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size, output_size);
 }
 
 void Reverse::forward(const FFModel& ff)
@@ -191,6 +198,17 @@ void Reverse::forward(const FFModel& ff)
       WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+void Reverse::backward_kernel(float const *out_grad_ptr,
+                              float *in_grad_ptr,
+                              coord_t num_out_blks,
+                              coord_t reverse_dim_size,
+                              coord_t in_blk_size,
+                              coord_t input_size)
+{
+  reverse_forward_kernel<<<GET_BLOCKS(input_size), CUDA_NUM_THREADS>>>(
+      out_grad_ptr, in_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size);
 }
 
 __host__
@@ -221,8 +239,7 @@ void Reverse::backward_task(const Task* task,
     else
       num_out_blks *= in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
   }
-  reverse_forward_kernel<<<GET_BLOCKS(in_grad_domain.get_volume()), CUDA_NUM_THREADS>>>(
-      out_grad_ptr, in_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size);
+  backward_kernel(out_grad_ptr, in_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, in_grad_domain.get_volume());
 }
 
 void Reverse::backward(const FFModel& ff)
@@ -252,6 +269,48 @@ bool Reverse::measure_compute_time(Simulator* sim,
                                    float& forward_time,
                                    float& backward_time)
 {
-  //TODO: implement measure_forward
-  return false;
+  Tensor sub_input, sub_output;
+  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+    return false;
+  }
+  if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type)) {
+    return false;
+  }
+
+  sim->free_all();
+  float *input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert (input_ptr != NULL);
+  float *input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert (input_grad_ptr != NULL);
+  float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_ptr != NULL);
+  float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_grad_ptr != NULL);
+
+  coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
+  for (int i = 0; i < sub_output.numDim; i++) {
+    if (i < axis) {
+      in_blk_size *= sub_output.adim[i];
+    } else if (i == axis) {
+      reverse_dim_size = sub_output.adim[i];
+    } else {
+      num_out_blks *= sub_output.adim[i];
+    }
+  }
+
+  auto forward = [&] {
+     forward_kernel(input_ptr, output_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_output.get_volume());
+  };
+  auto backward = [&] {
+    backward_kernel(output_grad_ptr, input_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_input.get_volume());
+  };
+
+  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+
+  printf("[Measure Reverse] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      forward_time,
+      backward_time);
+
+  return true;
 }
