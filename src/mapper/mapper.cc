@@ -22,8 +22,8 @@ FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor local,
                    const std::string& strategyFile,
                    bool _enable_control_replication)
   : NullMapper(rt, machine), node_id(local.address_space()),
-    enable_control_replication(_enable_control_replication),
-    mapper_name(_mapper_name)
+    mapper_name(_mapper_name),
+    enable_control_replication(_enable_control_replication)
 {
   std::vector<Machine::ProcessorMemoryAffinity> proc_mem_affinities;
   machine.get_proc_mem_affinity(proc_mem_affinities);
@@ -68,6 +68,8 @@ FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor local,
     }
   }
   total_nodes = address_space_set.size();
+  if (enable_control_replication)
+    log_ff_mapper.print("Enabled Control Replication Optimizations.");
   if (strategyFile == "") {
     // No strategy file provided, use data parallelism
     log_ff_mapper.print("No strategy file provided. Use default data parallelism.");
@@ -356,7 +358,7 @@ void FFMapper::map_task(const MapperContext ctx,
   // Violation of this assertion may result in severe runtime
   // overheads to Legion
   if (enable_control_replication) {
-    for (int i = 0; i < output.target_procs.size(); i++)
+    for (size_t i = 0; i < output.target_procs.size(); i++)
       assert(output.target_procs[i].address_space() == node_id);
   }
   // Find instances that still need to be mapped
@@ -571,9 +573,9 @@ void FFMapper::default_policy_select_sources(MapperContext ctx,
       if (!affinity.empty()) {
         assert(affinity.size() == 1);
         memory_bandwidth = affinity[0].bandwidth;
-        // Add 10 points to the bandwidth to prioritize preferred_memory
+        // Add 1000 points to the bandwidth to prioritize preferred_memory
         if (preferred_memory == location)
-          memory_bandwidth += 10;
+          memory_bandwidth += 1000;
       }
       source_memories[location] = memory_bandwidth;
       band_ranking[idx] =
@@ -588,8 +590,10 @@ void FFMapper::default_policy_select_sources(MapperContext ctx,
   // Iterate from largest bandwidth to smallest
   for (std::vector<std::pair<PhysicalInstance,unsigned> >::
         const_reverse_iterator it = band_ranking.rbegin();
-        it != band_ranking.rend(); it++)
+        it != band_ranking.rend(); it++) {
     ranking.push_back(it->first);
+    break;
+  }
 }
 
 void FFMapper::create_task_temporary_instance(
