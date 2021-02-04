@@ -154,6 +154,10 @@ void Simulator::strategy_search_task(const Task *task,
       strategy_output[iter->first->name] = iter->second;
     }
     save_strategies_to_file(model->config.export_strategy_file, strategy_output);
+    fprintf(stderr, "To use the best discovered strategy, please restart"
+        "FlexFlow and import the strategy from %s\n",
+        model->config.export_strategy_file.c_str());
+    exit(0);
   }
   // Start from data
   // memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);
