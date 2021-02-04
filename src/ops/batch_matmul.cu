@@ -550,9 +550,9 @@ bool BatchMatmul::measure_compute_time(Simulator* sim,
   int output_r = sub_output.adim[0];
   int output_c = sub_output.adim[1];
 
-  assert (input0_c == input1_r);
-  assert (input0_r == output_r);
-  assert (input1_c == output_c);
+  assert (input0_r == input1_c);
+  assert (input0_c == output_c);
+  assert (input1_r == output_r);
 
   assert (sub_input0.adim[2] == sub_input1.adim[2]);
   assert (sub_input1.adim[2] == sub_output.adim[2]);
