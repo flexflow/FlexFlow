@@ -216,7 +216,9 @@ void FFMapper::select_task_options(const MapperContext ctx,
   }
 
   if ((task.task_id == PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID)
-    || (task.task_id == PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID))
+    || (task.task_id == PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID)
+    || (task.task_id == PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)
+    || (task.task_id == PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID))
   {
     if (!task.is_index_space) {
       output.initial_proc = local_cpus[0];
