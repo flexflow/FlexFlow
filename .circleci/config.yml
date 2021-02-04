@@ -77,3 +77,4 @@ workflows:
     jobs:
       - test_nvidia_smi
       - flexflow_build_test
+
