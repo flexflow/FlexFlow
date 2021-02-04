@@ -134,7 +134,7 @@ void SingleDataLoader::load_input_with_dim(const Task *task,
     assert(meta->idxs[i] == meta->idxs[0] + i);
   coord_t start_idx = meta->idxs[0];
   const DT* input_zc = acc_full_input.ptr + start_idx * num_elements_per_batch;
-  //printf("load input %d %d %d %d\n", meta->idxs[0], channels, height, width);
+  printf("load input %d volume %d, %d %d\n", start_idx * num_elements_per_batch, acc_batch_input.rect.volume(), num_elements_per_batch, batch_size);
   copy_kernel<DT><<<GET_BLOCKS(acc_batch_input.rect.volume()), CUDA_NUM_THREADS>>>(
       acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());
   checkCUDA(cudaDeviceSynchronize());

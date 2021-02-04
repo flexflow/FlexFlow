@@ -591,11 +591,11 @@ void SingleDataLoader::index_loader_xd_launcher(FFModel& ff, int task_id, void *
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
 
-#if 0  
+#if 1  
   IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(ff.get_or_create_task_is(NDIM, ""));
   Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
   ArgumentMap argmap;
-  int total_shards = 1;
+  int total_shards = rect.volume();
   int idx = 0;
   for (PointInRectIterator<NDIM> it(rect); it(); it++) {
     IndexLoadArg meta;
@@ -612,8 +612,8 @@ void SingleDataLoader::index_loader_xd_launcher(FFModel& ff, int task_id, void *
       TaskArgument(NULL, 0), argmap);
   // regions[0]: full_input
   launcher.add_region_requirement(
-      RegionRequirement(full_input.region, WRITE_ONLY,
-                        EXCLUSIVE, full_input.region,
+      RegionRequirement(full_input.part, 0, 
+                        WRITE_ONLY, EXCLUSIVE, full_input.region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   FutureMap fu = runtime->execute_index_space(ctx, launcher);
@@ -781,7 +781,7 @@ void SingleDataLoader::index_load_entire_dataset_from_numpy_with_dim(const Task 
 {
   assert(regions.size() == 1);
   assert(task->regions.size() == regions.size());
-  IndexLoadArg* meta = (IndexLoadArg*) task->args; 
+  IndexLoadArg* meta = (IndexLoadArg*) task->local_args; 
   const AccessorWO<DT, NDIM> acc_input(regions[0], FID_DATA);
   Rect<NDIM> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -789,11 +789,12 @@ void SingleDataLoader::index_load_entire_dataset_from_numpy_with_dim(const Task 
 
   DT* input_ptr = acc_input.ptr(rect_input.lo);
   size_t volume = meta->size_per_sample * meta->num_samples;
-  DT* input_ptr_ = static_cast<DT*>(meta->ptr) + volume * meta->idx;
+  DT* input_ptr_head_ = static_cast<DT*>(meta->ptr);
+  DT* input_ptr_ =  input_ptr_head_ + volume * meta->idx;
   
-  printf("Check ptr input_ %p %lu %lu, input %p %lu %lu\n", input_ptr_, (uintptr_t)input_ptr_, volume, input_ptr, (uintptr_t)input_ptr, rect_input.volume());
+  printf("Check ptr input_head_ %p, input_ %p %lu %lu, input %p %lu %lu\n", input_ptr_head_, input_ptr_, (uintptr_t)input_ptr_, volume, input_ptr, (uintptr_t)input_ptr, rect_input.volume());
   assert(rect_input.volume() == volume);
-  memcpy(input_ptr, input_ptr_, sizeof(DT)*rect_input.volume());
+  memcpy(input_ptr, input_ptr_, sizeof(DT)*volume);
   for (int i = 0; i < 32; i++) {
     std::cout<<input_ptr[i]<<" ";
   }
