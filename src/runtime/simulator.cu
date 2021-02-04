@@ -152,6 +152,10 @@ void Simulator::strategy_search_task(const Task *task,
         "FlexFlow and import the strategy from %s\n",
         model->config.export_strategy_file.c_str());
     exit(0);
+  }  else {
+    fprintf(stderr, "The discovered strategy is discarded. Please set a path"
+        " to export the strategy using --export or --export-strategy.\n");
+    exit(0);
   }
   // Start from data
   // memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);
