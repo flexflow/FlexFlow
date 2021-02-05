@@ -543,6 +543,104 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_
   next_batch(ff);
 }
 
+SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, void *full_input_ptr, int num_samples_, DataType datatype_)
+{
+  num_samples = num_samples_;
+  datatype = datatype_;
+  // Create full input
+  batch_input = input;
+  int dims[MAX_TENSOR_DIM];
+  dims[0] = num_samples;
+  for (int i = 1; i < input.numDim; i++)
+    dims[i] = input.adim[input.numDim-1-i];
+  
+  int task_id = -1;
+  if (datatype == DT_FLOAT) {
+    task_id = PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID;
+  } else if (datatype == DT_INT32) {
+    task_id = PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID;
+  } else {
+    assert(0);
+  }
+
+  size_t size_per_sample = 1;
+  for (int i = 1; i < input.numDim; i++) {
+    assert (dims[i] != 0);
+    size_per_sample *= dims[i];
+  }
+  switch (input.numDim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      full_input = ff.create_tensor<DIM>(dims, datatype); \
+      index_loader_xd_launcher<DIM>(ff, task_id, full_input_ptr, size_per_sample); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+  reset();
+  next_batch(ff);
+}
+
+template<int NDIM>
+void SingleDataLoader::index_loader_xd_launcher(FFModel& ff, int task_id, void *full_input_ptr, size_t size_per_sample)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+
+#if FF_PYTHON_USE_INDEX_LOADER  
+  IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(ff.get_or_create_task_is(NDIM, ""));
+  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
+  ArgumentMap argmap;
+  int total_shards = rect.volume();
+  int idx = 0;
+  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
+    IndexLoadArg meta;
+    assert(num_samples % total_shards == 0);
+    meta.num_samples = num_samples / total_shards;
+    meta.size_per_sample = size_per_sample;
+    meta.ptr = full_input_ptr;
+    meta.idx = idx;
+    argmap.set_point(*it, TaskArgument(&meta, sizeof(IndexLoadArg)));
+    idx ++;
+  }
+  // Load entire dataset
+  IndexLauncher launcher(task_id, task_is,
+      TaskArgument(NULL, 0), argmap);
+  // regions[0]: full_input
+  launcher.add_region_requirement(
+      RegionRequirement(full_input.part, 0, 
+                        WRITE_ONLY, EXCLUSIVE, full_input.region,
+                        MAP_TO_ZC_MEMORY));
+  launcher.add_field(0, FID_DATA);
+  FutureMap fu = runtime->execute_index_space(ctx, launcher);
+  fu.wait_all_results();
+#else
+  IndexLoadArg meta;
+  int total_shards = 1;
+  assert(num_samples % total_shards == 0);
+  meta.num_samples = num_samples / total_shards;
+  meta.size_per_sample = size_per_sample;
+  meta.ptr = full_input_ptr;
+  meta.idx = 0;
+  // Load entire dataset
+  TaskLauncher launcher(task_id,
+      TaskArgument(&meta, sizeof(IndexLoadArg)));
+  // regions[0]: full_input
+  launcher.add_region_requirement(
+      RegionRequirement(full_input.region, WRITE_ONLY,
+                        EXCLUSIVE, full_input.region,
+                        MAP_TO_ZC_MEMORY));
+  launcher.add_field(0, FID_DATA);
+  Future fu = runtime->execute_task(ctx, launcher);
+  fu.wait();
+#endif
+  
+}
+
 void SingleDataLoader::reset()
 {
   next_index = 0;
@@ -575,7 +673,8 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel& ff, int task_id)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   // Load input
-  {
+#if 1
+  {  
     IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(ff.get_or_create_task_is(NDIM, ""));
     Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
@@ -596,7 +695,7 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel& ff, int task_id)
         RegionRequirement(full_input.region, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, full_input.region,
                           MAP_TO_ZC_MEMORY));
-    launcher.add_field(0, FID_DATA);
+    launcher.add_field(0, FID_DATA);                    
     launcher.add_region_requirement(
         RegionRequirement(batch_input.part, 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, batch_input.region));
@@ -604,6 +703,37 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel& ff, int task_id)
     runtime->execute_index_space(ctx, launcher);
   }
   next_index += ff.config.batchSize;
+#else
+  {  
+    IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(ff.get_or_create_task_is(NDIM, ""));
+    Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    for (PointInRectIterator<NDIM> it(rect); it(); it++) {
+      int idx = next_index;
+      SampleIdxs meta;
+      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[NDIM-1] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[NDIM-1] - rect.lo[NDIM-1] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
+    IndexLauncher launcher(task_id, task_is,
+                           TaskArgument(NULL,0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(""));
+    launcher.add_region_requirement(
+        RegionRequirement(full_input.part, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input.region,
+                          MAP_TO_ZC_MEMORY));
+    launcher.add_field(0, FID_DATA);                    
+    launcher.add_region_requirement(
+        RegionRequirement(batch_input.part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input.region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+    next_index += ff.config.batchSize / (rect.hi[NDIM-1] - rect.lo[NDIM-1] + 1);
+  }
+#endif
 }
 
 // Task body
@@ -655,6 +785,53 @@ void SingleDataLoader::load_entire_dataset_from_numpy_with_dim(const Task *task,
   std::cout<<std::endl;
 }
 
+// Task body
+template<typename DT>
+void SingleDataLoader::index_load_entire_dataset_from_numpy(const Task *task,
+                                                      const std::vector<PhysicalRegion> &regions,
+                                                      Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == 1);
+  assert(task->regions.size() == regions.size());
+  Domain domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return index_load_entire_dataset_from_numpy_with_dim<DT, DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+template<typename DT, int NDIM>
+void SingleDataLoader::index_load_entire_dataset_from_numpy_with_dim(const Task *task,
+                                                      const std::vector<PhysicalRegion> &regions,
+                                                      Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == 1);
+  assert(task->regions.size() == regions.size());
+  IndexLoadArg* meta = (IndexLoadArg*) task->local_args; 
+  const AccessorWO<DT, NDIM> acc_input(regions[0], FID_DATA);
+  Rect<NDIM> rect_input = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  assert(acc_input.accessor.is_dense_arbitrary(rect_input));
+
+  DT* input_ptr = acc_input.ptr(rect_input.lo);
+  size_t volume = meta->size_per_sample * meta->num_samples;
+  DT* input_ptr_head_ = static_cast<DT*>(meta->ptr);
+  DT* input_ptr_ =  input_ptr_head_ + volume * meta->idx;
+  
+  printf("Check ptr input_head_ %p, input_ %p %lu %lu, input %p %lu %lu\n", input_ptr_head_, input_ptr_, (uintptr_t)input_ptr_, volume, input_ptr, (uintptr_t)input_ptr, rect_input.volume());
+  assert(rect_input.volume() == volume);
+  memcpy(input_ptr, input_ptr_, sizeof(DT)*volume);
+  for (int i = 0; i < 32; i++) {
+    std::cout<<input_ptr[i]<<" ";
+  }
+  std::cout<<std::endl;
+}
 
 void SingleDataLoader::register_cpu_tasks(void)
 {
@@ -673,6 +850,22 @@ void SingleDataLoader::register_cpu_tasks(void)
     registrar.set_leaf();
     Runtime::preregister_task_variant<SingleDataLoader::load_entire_dataset_from_numpy<int>>(
         registrar, "Int32 Load Entire Dataset Task Numpy");
+  }
+  // float Index load entire dataset from numpy
+  {
+    TaskVariantRegistrar registrar(PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID, "Float Index Load Entire Dataset Numpy");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<SingleDataLoader::index_load_entire_dataset_from_numpy<float>>(
+        registrar, "Float Index Load Entire Dataset Task Numpy");
+  }
+  // int Index load entire dataset from numpy
+  {
+    TaskVariantRegistrar registrar(PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID, "Int32 Index Load Entire Dataset Numpy");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<SingleDataLoader::index_load_entire_dataset_from_numpy<int>>(
+        registrar, "Int32 Index Load Entire Dataset Task Numpy");
   }
 }
 
@@ -698,5 +891,9 @@ void SingleDataLoader::register_gpu_tasks(void)
 
 template void SingleDataLoader::next_batch_xd_launcher<2>(FFModel& ff, int task_id);
 template void SingleDataLoader::next_batch_xd_launcher<4>(FFModel& ff, int task_id);
+template void SingleDataLoader::index_loader_xd_launcher<2>(FFModel& ff, int task_id, void *full_input_ptr, size_t size_per_sample);
+template void SingleDataLoader::index_loader_xd_launcher<4>(FFModel& ff, int task_id, void *full_input_ptr, size_t size_per_sample);
 template void SingleDataLoader::load_entire_dataset_from_numpy<float>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
 template void SingleDataLoader::load_entire_dataset_from_numpy<int>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
+template void SingleDataLoader::index_load_entire_dataset_from_numpy<float>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
+template void SingleDataLoader::index_load_entire_dataset_from_numpy<int>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);

@@ -88,6 +88,8 @@ class SingleDataLoader {
 public:
   SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_, int num_samples_, DataType datatype_);
   
+  SingleDataLoader(FFModel& ff, Tensor input, void *full_input_ptr, int num_samples_, DataType datatype_);
+  
   void next_batch(FFModel&);
   
   void reset(void); 
@@ -116,9 +118,22 @@ public:
                                              const std::vector<PhysicalRegion> &regions,
                                              Context ctx,
                                              Runtime* runtime);
+  template<typename DT>
+  static void index_load_entire_dataset_from_numpy(const Task *task,
+                                                   const std::vector<PhysicalRegion> &regions,
+                                                   Context ctx,
+                                                   Runtime* runtime);
+  template<typename DT, int NDIM>
+  static void index_load_entire_dataset_from_numpy_with_dim(const Task *task,
+                                                            const std::vector<PhysicalRegion> &regions,
+                                                            Context ctx,
+                                                            Runtime* runtime);
 private:
   template<int NDIM>
-  void next_batch_xd_launcher(FFModel&, int task_id);
+  void next_batch_xd_launcher(FFModel& ff, int task_id);
+  
+  template<int NDIM>
+  void index_loader_xd_launcher(FFModel& ff, int task_id, void *full_input_ptr, size_t size_per_sample);
 public:
   int num_samples, next_index;
   DataType datatype;
@@ -129,6 +144,13 @@ public:
 struct SampleIdxs {
   int num_samples;
   int idxs[MAX_NUM_SAMPLES];
+};
+
+struct IndexLoadArg {
+  int num_samples;
+  size_t size_per_sample;
+  int idx;
+  void* ptr;
 };
 
 #endif // __FLEXFLOW_DATALOADER_H__

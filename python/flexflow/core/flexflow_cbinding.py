@@ -1573,6 +1573,32 @@ class FFModel(object):
     full_tensor.detach_numpy_array(self._ffconfig)
 
     return dataloader
+    
+  def create_data_loader2(self, batch_tensor, full_array):
+    """Create a SingleDataloader instance. 
+             
+    :param batch_tensor: a batch-sized tensor. Usually it is a input tensor of the model.  
+    :type batch_tensor: Tensor
+    
+    :param full_array: the entire data.
+    :type full_array: Numpy Array
+             
+    :returns:  SingleDataloader -- returns a dataloader instance.
+    """
+    full_array_shape = full_array.shape
+    num_samples = full_array_shape[0]
+    if (full_array.dtype == "float32"):
+      datatype = DataType.DT_FLOAT
+    elif (full_array.dtype == "int32"):
+      datatype = DataType.DT_INT32
+    else:
+      assert 0, "unsupported datatype"
+    np_raw_ptr = full_array.__array_interface__['data']
+    raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+    print("numpy array: %s, %s, %s" %( str(np_raw_ptr), str(raw_ptr), hex(np_raw_ptr[0])))
+    dataloader = SingleDataLoader(self, batch_tensor, raw_ptr, num_samples, datatype)
+
+    return dataloader
 
   def __get_initializer_handle(self, initializer):
     if (initializer == None):
@@ -1786,10 +1812,21 @@ class SingleDataLoader(object):
   def __init__(self, ffmodel, input, full_input, num_samples, data_type):
     assert type(ffmodel) is FFModel, "SingleDataLoader ffmodel is wrong"
     assert type(input) is Tensor, "SingleDataLoader input is wrong"
+    if type(full_input) is Tensor:
+      self.init_from_tensor(ffmodel, input, full_input, num_samples, data_type)
+    else:
+      self.init_from_ptr(ffmodel, input, full_input, num_samples, data_type)
+    self._handle = ffi.gc(self.handle, ffc.flexflow_single_dataloader_destroy)
+    
+  def init_from_tensor(self, ffmodel, input, full_input, num_samples, data_type):
     assert type(full_input) is Tensor, "SingleDataLoader full_input is wrong"
     c_data_type = enum_to_int(DataType, data_type)
     self.handle = ffc.flexflow_single_dataloader_create(ffmodel.handle, input.handle, full_input.handle, num_samples, c_data_type)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_single_dataloader_destroy)
+    
+  def init_from_ptr(self, ffmodel, input, full_input, num_samples, data_type):
+    # assert type(full_input) is Tensor, "SingleDataLoader full_input is wrong"
+    c_data_type = enum_to_int(DataType, data_type)
+    self.handle = ffc.flexflow_single_dataloader_create2(ffmodel.handle, input.handle, full_input, num_samples, c_data_type)
 
   def set_num_samples(self, samples):
     ffc.flexflow_single_dataloader_set_num_samples(self.handle, samples)

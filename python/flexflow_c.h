@@ -717,6 +717,14 @@ flexflow_single_dataloader_create(
   flexflow_tensor_t full_input,
   int num_samples,
   enum DataType data_type);
+  
+flexflow_single_dataloader_t
+flexflow_single_dataloader_create2(
+  flexflow_model_t ffmodel,
+  flexflow_tensor_t input,
+  void *full_input_ptr,
+  int num_samples,
+  enum DataType data_type);
 
 void
 flexflow_single_dataloader_destroy(
