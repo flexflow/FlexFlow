@@ -76,6 +76,7 @@ jobs:
             make -j
             pip install -e .
             python -c 'import flexflow.core'
+<<<<<<< HEAD
       - run:
           name: Run pytest
           command: |
@@ -95,6 +96,8 @@ jobs:
             python examples/python/onnx/mnist_mlp_pt.py
             pytest tests/onnx
           
+=======
+>>>>>>> e774759371f7b9d5cffa64959112d63370c0c175
       
 workflows:
   nvidia:  
