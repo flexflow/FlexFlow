@@ -1484,6 +1484,20 @@ flexflow_single_dataloader_create(
   return FFCObjectWrapper::wrap(dataloader);
 }
 
+flexflow_single_dataloader_t
+flexflow_single_dataloader_create2(
+  flexflow_model_t ffmodel_,
+  flexflow_tensor_t input_,
+  void* full_input_ptr,
+  int num_samples,
+  enum DataType data_type)
+{
+  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  SingleDataLoader *dataloader = new SingleDataLoader(*ffmodel, *input, full_input_ptr, num_samples, data_type);
+  return FFCObjectWrapper::wrap(dataloader);
+}
+
 void
 flexflow_single_dataloader_destroy(
   flexflow_single_dataloader_t handle_)
