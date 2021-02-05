@@ -216,7 +216,9 @@ void FFMapper::select_task_options(const MapperContext ctx,
   }
 
   if ((task.task_id == PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID)
-    || (task.task_id == PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID))
+    || (task.task_id == PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID)
+    || (task.task_id == PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)
+    || (task.task_id == PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID))
   {
     if (!task.is_index_space) {
       output.initial_proc = local_cpus[0];
@@ -249,6 +251,15 @@ void FFMapper::slice_task(const MapperContext ctx,
     int ndim = input.domain.get_dim();
     assert(strategies.find(FFConfig::DataParallelism_CPU_1D-1+ndim) != strategies.end());
     config = strategies[FFConfig::DataParallelism_CPU_1D-1+ndim];
+    printf("num_parts %d", config.num_parts());
+    devices = &all_cpus;
+  } else if ((task.task_id == PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)
+  || (task.task_id == PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)) {
+    // FIXME: even though it is a CPU task, we use data parallelism
+    assert(enable_control_replication);
+    int ndim = input.domain.get_dim();
+    assert(strategies.find(FFConfig::DataParallelism_GPU_1D-1+ndim) != strategies.end());
+    config = strategies[FFConfig::DataParallelism_GPU_1D-1+ndim];
     devices = &all_cpus;
   } else {
     MappingTagID hash = task.tag;
@@ -394,8 +405,14 @@ void FFMapper::map_task(const MapperContext ctx,
              it = input.valid_instances[idx].begin(),
              ie = input.valid_instances[idx].end(); it != ie; ++it)
       {
-        if (it->get_location() == target_mem)
-          valid_instances.push_back(*it);
+        if (it->get_location() == target_mem) {
+          // Only select instances with exact same index domain
+          Domain instance_domain = it->get_instance_domain();
+          Domain region_domain = runtime->get_index_space_domain(
+              ctx, task.regions[idx].region.get_index_space());
+          if (instance_domain.get_volume() == region_domain.get_volume()) 
+            valid_instances.push_back(*it);
+        }
       }
 
       std::set<FieldID> valid_missing_fields;

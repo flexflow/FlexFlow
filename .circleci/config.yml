@@ -19,25 +19,43 @@ jobs:
     steps:
       - checkout
       - run:
-          name: "Set Python Version"
+          name: "Set python environment"
           command: |
             wget -c https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
             mv Miniconda3-latest-Linux-x86_64.sh ~/Miniconda3-latest-Linux-x86_64.sh
             chmod +x ~/Miniconda3-latest-Linux-x86_64.sh
             sudo ~/Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda
             rm ~/Miniconda3-latest-Linux-x86_64.sh
+            sudo /opt/conda/bin/conda init
+            source ~/.bashrc
             sudo /opt/conda/bin/conda upgrade --all
             sudo /opt/conda/bin/conda install -y conda-build conda-verify
             sudo /opt/conda/bin/conda clean -ya
             sudo /opt/conda/bin/conda install -y cmake make pillow
-            sudo /opt/conda/bin/conda install -y -c conda-forge protobuf=3.9 numpy keras-preprocessing
+            sudo /opt/conda/bin/conda install -y protobuf
+            sudo /opt/conda/bin/conda install -y -c conda-forge onnx pytest
+            python -c 'import onnx'
+            sudo /opt/conda/bin/conda install -y -c pytorch pytorch torchvision
       - run: 
-          name: Install dependencies
+          name: Install FlexFlow dependencies
           command: |
             cd nccl
             git submodule update --init --recursive
             make -j src.build NVCC_GENCODE="-gencode=arch=compute_60,code=sm_60"
             cd ..
+            sudo add-apt-repository ppa:deadsnakes/ppa
+            sudo apt-get update
+            sudo apt-get install mpich
+            cd ..
+            git clone https://github.com/StanfordLegion/gasnet.git
+            cd gasnet
+            export CONDUIT=mpi
+            make -j
+            cd ..
+            wget -c http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-10.1-linux-x64-v8.0.5.39.tgz
+            sudo tar -xzf cudnn-10.1-linux-x64-v8.0.5.39.tgz -C /usr/local
+            rm cudnn-10.1-linux-x64-v8.0.5.39.tgz
+            sudo ldconfig
       - run: 
           name: Build FlexFlow
           command: |
@@ -49,28 +67,33 @@ jobs:
             export CUDA_HOME=/usr/local/cuda-10.1
             export NCCL_HOME=$FF_HOME/nccl/build
             export PATH=/opt/conda/bin:$PATH
-            sudo add-apt-repository ppa:deadsnakes/ppa
-            sudo apt-get update
             export PYTHON_ROOT=/opt/conda/bin/python3
             export PYTHON_EXE=python3
             export PYTHON_VERSION_MAJOR=3
-            cd ..
-            git clone https://github.com/StanfordLegion/gasnet.git
-            cd gasnet
-            sudo apt-get install mpich
-            export MPI_HOME=/usr/
-            export GASNET=$PWD/release
-            export CONDUIT=mpi
-            make
-            cd ..
-            wget -c http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-10.1-linux-x64-v8.0.5.39.tgz
-            sudo tar -xzf cudnn-10.1-linux-x64-v8.0.5.39.tgz -C /usr/local
-            rm cudnn-10.1-linux-x64-v8.0.5.39.tgz
-            sudo ldconfig
+            export GASNET=$FF_HOME/../gasnet/release
             export CPLUS_INCLUDE_PATH=/usr/include/mpi:$CPLUS_INCLUDE_PATH 
-            cd project/python
-            make -j 8
-          
+            cd python
+            make -j
+            pip install -e .
+            python -c 'import flexflow.core'
+      - run:
+          name: Run pytest
+          command: |
+            export FF_HOME=$PWD
+            export CUDNN_HOME=$CUDNN_ROOT_DIR
+            export LG_RT_DIR=$PWD/legion/runtime
+            export CUDA_ARCH="60,70"
+            export GPU_ARCH="60,70"
+            export CUDA_HOME=/usr/local/cuda-10.1
+            export NCCL_HOME=$FF_HOME/nccl/build
+            export PATH=/opt/conda/bin:$PATH
+            export PYTHON_ROOT=/opt/conda/bin/python3
+            export PYTHON_EXE=python3
+            export PYTHON_VERSION_MAJOR=3
+            export GASNET=$FF_HOME/../gasnet/release
+            export CPLUS_INCLUDE_PATH=/usr/include/mpi:$CPLUS_INCLUDE_PATH
+            python examples/python/onnx/mnist_mlp_pt.py
+            pytest tests/onnx
       
 workflows:
   nvidia:  

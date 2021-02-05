@@ -107,14 +107,12 @@ void top_level_task(const Task* task,
       } else {
         data_loader.next_batch(ff);
       }
-      if (iter > 0 || epoch > 0)
-        runtime->begin_trace(ctx, 111/*trace_id*/);
+      runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      if (iter > 0 || epoch > 0)
-        runtime->end_trace(ctx, 111/*trace_id*/);
+      runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
   // End timer
