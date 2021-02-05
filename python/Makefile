@@ -70,6 +70,11 @@ CC_FLAGS += -DFF_DEBUG
 NVCC_FLAGS += -DFF_DEBUG
 endif
 
+ifeq ($(strip $(FF_PYTHON_USE_INDEX_LOADER)), 1)
+CC_FLAGS += -DFF_PYTHON_USE_INDEX_LOADER
+NVCC_FLAGS += -DFF_PYTHON_USE_INDEX_LOADER
+endif
+
 ifeq ($(shell uname), Darwin)
 	LD_FLAGS += -Wl,-force_load,liblegion.a
 else

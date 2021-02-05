@@ -255,7 +255,8 @@ void FFMapper::slice_task(const MapperContext ctx,
     devices = &all_cpus;
   } else if ((task.task_id == PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)
   || (task.task_id == PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)) {
-    // even though it is a CPU task, we use data parallelism
+    // FIXME: even though it is a CPU task, we use data parallelism
+    assert(enable_control_replication);
     int ndim = input.domain.get_dim();
     assert(strategies.find(FFConfig::DataParallelism_GPU_1D-1+ndim) != strategies.end());
     config = strategies[FFConfig::DataParallelism_GPU_1D-1+ndim];
