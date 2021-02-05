@@ -146,7 +146,7 @@ void Simulator::strategy_search_task(const Task *task,
 
   model->optimize(simulator, strategies, model->config.search_budget, model->config.search_alpha);
   if (model->config.export_strategy_file.length() > 0) {
-    fprintf(stderr, "Exporting the best discovered strategy to %s\n",
+    fprintf(stderr, "Exporting the best discovered strategy to %s.\n",
         model->config.export_strategy_file.c_str());
     std::map<Op*, ParallelConfig>::const_iterator iter;
     std::map<std::string, ParallelConfig> strategy_output;
@@ -154,6 +154,14 @@ void Simulator::strategy_search_task(const Task *task,
       strategy_output[iter->first->name] = iter->second;
     }
     save_strategies_to_file(model->config.export_strategy_file, strategy_output);
+    fprintf(stderr, "To use the strategy for distributed training, restart"
+        " FlexFlow and import the strategy (i.e., --import %s)\n",
+        model->config.export_strategy_file.c_str());
+    exit(0);
+  }  else {
+    fprintf(stderr, "The best discovered strategy is not exported.\n"
+        "Please set a path to export the strategy using --export or --export-strategy.\n");
+    exit(0);
   }
   // Start from data
   // memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);

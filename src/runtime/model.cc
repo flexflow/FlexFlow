@@ -135,16 +135,33 @@ bool Tensor::get_input_sub_tensor(const ParallelConfig& pc,
       {
         assert (pc.nDims == 2 && "Invalid dimension for parallel config of OP_FLAT");
         int nonBatchDim = pc.dim[0];
+        int batchDim = pc.dim[1];
         tensor.numDim = numDim;
         assert (nonBatchDim == 1 && "I'm not sure this is correct otherwise");
-        if (adim[numDim - 1] % nonBatchDim != 0) {
-          printf("Could not get input subtensor because the dimension is not divisiable: %d %% %d != 0\n", adim[numDim - 1], nonBatchDim);
+        if (adim[numDim - 1] % batchDim != 0) {
+          printf("Could not get input subtensor because the dimension is not divisiable: %d %% %d != 0\n", adim[numDim - 1], batchDim);
         }
         for (int i = numDim - 2; i >= 0; i--) {
           tensor.adim[i] = adim[i];
         }
+        tensor.adim[numDim-1] = adim[numDim-1] / batchDim;
+        break;
       }
-      break;
+    case OP_RESHAPE:
+      {
+        for (int i = 0; i < pc.nDims - 1; i ++)
+          assert(pc.dim[i] == 1 && "Assuming data parallel for RESHAPE");
+        int batchDim = pc.dim[pc.nDims-1];
+        if (adim[numDim - 1] % batchDim != 0) {
+          printf("Could not get input subtensor because the dimension is not divisiable: %d %% %d != 0\n", adim[numDim - 1], batchDim);
+        }
+        tensor.numDim = numDim;
+        for (int i = numDim-2; i >= 0; i--) {
+          tensor.adim[i] = adim[i];
+        }
+        tensor.adim[numDim-1] = adim[numDim-1] / batchDim;
+        break;
+      }
     default:
       {
         if (pc.nDims != numDim) {
@@ -203,7 +220,7 @@ Domain Tensor::get_domain() const
   d.dim = this->numDim;
   for (int i = 0; i < this->numDim; i++) {
     d.rect_data[i] = 0;
-    d.rect_data[i+Domain::MAX_RECT_DIM] = this->adim[i] - 1;
+    d.rect_data[i+d.dim] = this->adim[i] - 1;
   }
   return d;
 }

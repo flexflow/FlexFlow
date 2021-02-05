@@ -518,12 +518,12 @@ bool ElementUnary::measure_compute_time(Simulator* sim,
     input_domain.dim = sub_input.numDim;
     for (int i = 0; i < sub_input.numDim; i++) {
       input_domain.rect_data[i] = 0;
-      input_domain.rect_data[i+Domain::MAX_RECT_DIM] = sub_input.adim[i]-1;
+      input_domain.rect_data[i+input_domain.dim] = sub_input.adim[i]-1;
     }
     output_domain.dim = sub_output.numDim;
     for (int i = 0; i < sub_output.numDim; i++) {
       output_domain.rect_data[i] = 0;
-      output_domain.rect_data[i+Domain::MAX_RECT_DIM] = sub_output.adim[i]-1;
+      output_domain.rect_data[i+input_domain.dim] = sub_output.adim[i]-1;
     }
     checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
     checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));

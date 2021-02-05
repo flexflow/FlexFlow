@@ -76,7 +76,6 @@ jobs:
             make -j
             pip install -e .
             python -c 'import flexflow.core'
-          
       
 workflows:
   nvidia:  
