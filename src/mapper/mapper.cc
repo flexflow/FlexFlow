@@ -394,8 +394,14 @@ void FFMapper::map_task(const MapperContext ctx,
              it = input.valid_instances[idx].begin(),
              ie = input.valid_instances[idx].end(); it != ie; ++it)
       {
-        if (it->get_location() == target_mem)
-          valid_instances.push_back(*it);
+        if (it->get_location() == target_mem) {
+          // Only select instances with exact same index domain
+          Domain instance_domain = it->get_instance_domain();
+          Domain region_domain = runtime->get_index_space_domain(
+              ctx, task.regions[idx].region.get_index_space());
+          if (instance_domain.get_volume() == region_domain.get_volume()) 
+            valid_instances.push_back(*it);
+        }
       }
 
       std::set<FieldID> valid_missing_fields;
