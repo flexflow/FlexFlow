@@ -67,7 +67,7 @@ FFHandler UtilityTasks::init_cuda_task(
   handle.workSpaceSize = info->workSpaceSize;
   checkCUDA(cublasCreate(&handle.blas));
   checkCUDNN(cudnnCreate(&handle.dnn));
-//#ifdef FF_ENABLE_NCCL
+//#ifdef FF_USE_NCCL
 //  checkNCCL(ncclCommInitRank(&handle.nccl, info->allRanks, info->ncclId, info->myRank));
 //  fprintf(stderr, "handle.nccl(%p)\n", handle.nccl);
 //#endif

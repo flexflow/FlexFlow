@@ -108,7 +108,7 @@ void SGDOptimizer::ps_update_task(const Task* task,
   //checkCUDA(cudaDeviceSynchronize());
 }
 
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
 __host__
 void SGDOptimizer::nccl_update_task(
     const Task* task,
@@ -291,7 +291,7 @@ void AdamOptimizer::ps_update_task(const Task* task,
   //checkCUDA(cudaDeviceSynchronize());
 }
 
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
 __host__
 void AdamOptimizer::nccl_update_task(const Task* task,
                                      const std::vector<PhysicalRegion>& regions,

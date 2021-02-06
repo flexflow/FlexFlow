@@ -106,9 +106,9 @@ void Embedding::forward_task_cpu(const Task *task,
   coord_t out_dim = rect_output.hi[0] - rect_output.lo[0] + 1;
   // Weight and output have same out dim
   assert(out_dim == rect_weight.hi[1] - rect_weight.lo[1] + 1);
-  const int64_t* input = acc_input.ptr(rect_input);
-  float* output = acc_output.ptr(rect_output);
-  const float* weight = acc_weight.ptr(rect_weight);
+  //const int64_t* input = acc_input.ptr(rect_input);
+  //float* output = acc_output.ptr(rect_output);
+  //const float* weight = acc_weight.ptr(rect_weight);
   int block_size = out_dim;
   int output_size = batch_size;
   int data_size = 1000000; //FIXME
@@ -143,13 +143,13 @@ void Embedding::backward_task_cpu(const Task *task,
   coord_t batch_size = rect_input.hi[1] - rect_input.lo[1] + 1;
   // Input and output have same batch size
   assert(batch_size == rect_output.hi[1] - rect_output.lo[1] + 1);
-  coord_t in_dim = rect_input.hi[0] - rect_input.lo[0] + 1;
+  //coord_t in_dim = rect_input.hi[0] - rect_input.lo[0] + 1;
   coord_t out_dim = rect_output.hi[0] - rect_output.lo[0] + 1;
   // Weight and output have same out dim
   assert(out_dim == rect_weight.hi[1] - rect_weight.lo[1] + 1);
-  const int64_t* input = acc_input.ptr(rect_input);
-  const float* output = acc_output.ptr(rect_output);
-  float* weight = acc_weight.ptr(rect_weight);
+  //const int64_t* input = acc_input.ptr(rect_input);
+  //const float* output = acc_output.ptr(rect_output);
+  //float* weight = acc_weight.ptr(rect_weight);
   int block_size = out_dim;
   int output_size = batch_size;
   int index_size = rect_input.hi[1] - rect_input.lo[0] + 1;

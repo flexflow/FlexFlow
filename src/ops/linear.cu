@@ -98,7 +98,7 @@ void Linear::create_weights_with_dim(FFModel& model)
   std::string pcname = name;
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
 
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   Parameter::CommType comm_type = Parameter::NCCL;
 #else
   Parameter::CommType comm_type = Parameter::PS;
@@ -332,7 +332,7 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
                                           CUDNN_DATA_FLOAT,
                                           batch_size, out_dim, 1, 1));
   }
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   m->init_nccl_communicator(task, linear->ncclId);
 #endif
   return m;

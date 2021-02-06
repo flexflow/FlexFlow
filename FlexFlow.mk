@@ -38,7 +38,7 @@ MPI_HOME = $(patsubst %/bin/mpicc,%,$(shell which mpicc | head -1))
 endif
 
 ifndef GASNET
-GASNET		?= ${FF_HOME}/GASNet-2019.9.0 
+$(error GASNET variable is not defined, aborting build)
 endif
 
 GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
@@ -86,10 +86,10 @@ GASNET_FLAGS	+=
 CC_FLAGS	+= -std=c++11 #-DMAX_RETURN_SIZE=16777216
 NVCC_FLAGS	+= -std=c++11 #-DMAX_RETURN_SIZE=16777216
 
-ifeq ($(strip $(FF_ENABLE_NCCL)), 1)
+ifeq ($(strip $(FF_USE_NCCL)), 1)
 INC_FLAGS	+= -I$(MPI_HOME)/include -I$(NCCL_HOME)/include
-CC_FLAGS	+= -DFF_ENABLE_NCCL
-NVCC_FLAGS	+= -DFF_ENABLE_NCCL
+CC_FLAGS	+= -DFF_USE_NCCL
+NVCC_FLAGS	+= -DFF_USE_NCCL
 LD_FLAGS	+= -L$(NCCL_HOME)/lib -lnccl
 endif
 

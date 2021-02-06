@@ -82,7 +82,7 @@ int main(int argc, char **argv)
 
   Realm::Python::PythonModule::import_python_module("flexflow.core");
 
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   // Init MPI for NCCL
 #if defined(GASNET_CONDUIT_MPI) || defined(REALM_USE_MPI)
   // The GASNet MPI conduit and/or the Realm MPI network layer

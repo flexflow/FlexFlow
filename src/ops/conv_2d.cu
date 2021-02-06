@@ -107,7 +107,7 @@ void Conv2D::create_weights(FFModel& model)
   task_is = (IndexSpaceT<4>)model.get_or_create_task_is(4, name);
 
   // TODO: temp work, will let users to pick either NCCL or PS
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   Parameter::CommType comm_type = Parameter::NCCL;
 #else
   Parameter::CommType comm_type = Parameter::PS;
@@ -312,7 +312,7 @@ OpMeta* Conv2D::init_task(const Task *task,
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
                                             CUDNN_PROPAGATE_NAN, 0.0));
   }
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   m->init_nccl_communicator(task, conv->ncclId);
 #endif
   return m;

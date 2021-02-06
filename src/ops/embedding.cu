@@ -60,7 +60,7 @@ void Embedding::create_weights(FFModel& model)
   // Retrive the task indexspace for the op
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   Parameter::CommType comm_type = Parameter::NCCL;  
 #else
   Parameter::CommType comm_type = Parameter::PS;
@@ -109,7 +109,7 @@ OpMeta* Embedding::init_task(const Task *task,
   const Embedding* linear = (Embedding*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   OpMeta* m = new OpMeta(handle);
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   m->init_nccl_communicator(task, linear->ncclId);
 #endif
   return m;

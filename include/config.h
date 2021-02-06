@@ -19,7 +19,7 @@
 #include "legion.h"
 #include <cudnn.h>
 #include <cublas_v2.h>
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
 #include <nccl.h>
 #endif
 

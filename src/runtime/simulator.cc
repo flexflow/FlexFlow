@@ -379,7 +379,7 @@ float Simulator::simulate_runtime(const FFModel* model,
       }
     }
   }
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   // Do nothing since we will calculate NCCL cost at the end
 #else
   // Step 2.5: add finals tasks for each compute device to capture the returning comm tasks
@@ -543,7 +543,7 @@ float Simulator::simulate_runtime(const FFModel* model,
   }
   // Assert all tasks were processed
   assert(idx == task_manager->global_task_id);
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   for (size_t l = 0; l < model->layers.size(); l++) {
     Op* op = model->layers[l];
     ParallelConfig pc = global.find(op)->second;

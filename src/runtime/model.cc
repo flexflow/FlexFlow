@@ -252,7 +252,7 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   get_nccl_unique_id();
 #endif
 }
@@ -289,7 +289,7 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   get_nccl_unique_id();
 #endif
 }
@@ -323,7 +323,7 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   get_nccl_unique_id();
 #endif
 }
@@ -359,7 +359,7 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   get_nccl_unique_id();
 #endif
 }
@@ -393,7 +393,7 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   get_nccl_unique_id();
 #endif
 }
@@ -424,7 +424,7 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   get_nccl_unique_id();
 #endif
 }
@@ -575,7 +575,7 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
   return d;
 }
 
-#ifdef FF_ENABLE_NCCL  
+#ifdef FF_USE_NCCL  
 void Op::get_nccl_unique_id()
 {
   // Init NCCL id
@@ -593,7 +593,7 @@ OpMeta::OpMeta(FFHandler _handle)
 : handle(_handle)
 {}
 
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
 void OpMeta::init_nccl_communicator(const Task* task,
                                     ncclUniqueId ncclId)
 {
@@ -2505,7 +2505,7 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<AdamOptimizer::ps_update_task>(
         registrar, "Adam Parameter Server Update Task");
   }
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   {
     TaskVariantRegistrar registrar(SGD_UPD_NCCL_TASK_ID,
                                    "SGD NCCL Update");
@@ -2635,7 +2635,7 @@ int main(int argc, char** argv)
            "GASNet MPI conduit or the Realm MPI network layer "
            "with the Legion-MPI Interop!\n");
   assert(provided == MPI_THREAD_MULTIPLE);
-#elif defined(FF_ENABLE_NCCL)
+#elif defined(FF_USE_NCCL)
   // Perform MPI start-up like normal for most GASNet conduits
   MPI_Init(&argc, &argv);
 #endif

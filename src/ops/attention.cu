@@ -91,7 +91,7 @@ void MultiHeadAttention::create_weights(FFModel& model)
   // Retrive the task indexspace for the op
   std::string pcname = name;
   task_is = model.get_or_create_task_is(3, pcname);
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   Parameter::CommType comm_type = Parameter::NCCL;
 #else
   Parameter::CommType comm_type = Parameter::PS;
