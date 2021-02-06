@@ -591,7 +591,7 @@ void SingleDataLoader::index_loader_xd_launcher(FFModel& ff, int task_id, void *
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
 
-#if FF_PYTHON_USE_INDEX_LOADER  
+#ifdef FF_PYTHON_USE_INDEX_LOADER  
   IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(ff.get_or_create_task_is(NDIM, ""));
   Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
   ArgumentMap argmap;
@@ -813,7 +813,11 @@ void SingleDataLoader::index_load_entire_dataset_from_numpy_with_dim(const Task 
 {
   assert(regions.size() == 1);
   assert(task->regions.size() == regions.size());
+#ifdef FF_PYTHON_USE_INDEX_LOADER  
   IndexLoadArg* meta = (IndexLoadArg*) task->local_args; 
+#else
+  IndexLoadArg* meta = (IndexLoadArg*) task->args;
+#endif 
   const AccessorWO<DT, NDIM> acc_input(regions[0], FID_DATA);
   Rect<NDIM> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
