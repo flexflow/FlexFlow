@@ -17,6 +17,41 @@
 
 LegionRuntime::Logger::Category log_ff_mapper("Mapper");
 
+FFShardingFunctor::FFShardingFunctor(int _gpus_per_node,
+                                     int _cpus_per_node,
+                                     int _num_nodes,
+                                     ParallelConfig _config)
+: gpus_per_node(_gpus_per_node),
+  cpus_per_node(_cpus_per_node),
+  num_nodes(_num_nodes),
+  config(_config)
+{}
+
+FFShardingFunctor::~FFShardingFunctor(void)
+{}
+
+ShardID FFShardingFunctor::shard(const DomainPoint &point,
+                                 const Domain &full_space,
+                                 const size_t total_shards)
+{
+  assert(point.get_dim() == full_space.get_dim());
+  int idx = 0;
+  for (int i = point.get_dim()-1; i>=0; i--) {
+    int dim_width = full_space.hi()[i] - full_space.lo()[i] + 1;
+    idx = idx * dim_width + point[i] - full_space.lo()[i];
+  }
+  assert(idx < config.num_parts());
+  ShardID shard_id;
+  if (config.device_type == ParallelConfig::GPU) {
+    shard_id = config.device_ids[idx] / gpus_per_node;
+  } else if (config.device_type == ParallelConfig::CPU) {
+    shard_id = config.device_ids[idx] / cpus_per_node;
+  } else {
+    assert(false && "Unsupported device type");
+  }
+  return shard_id;
+}
+
 FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor local,
                    const char *_mapper_name,
                    const std::string& strategyFile,
@@ -106,6 +141,71 @@ FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor local,
   }
 }
 
+void FFMapper::register_sharding_functor(int argc, char** argv)
+{
+  std::string strategyFile = "";
+  std::map<MappingTagID, ParallelConfig> all_strategies;
+  int gpus_per_node = 0, cpus_per_node = 1, num_nodes = 1;
+  for (int i = 1; i < argc; i++) {
+    if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i], "--import-strategy"))) {
+      strategyFile = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-ll:gpu"))
+    {
+      gpus_per_node = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-ll:cpu"))
+    {
+      cpus_per_node = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--nodes"))
+    {
+      num_nodes = atoi(argv[++i]);
+      continue;
+    }
+  }
+  if (strategyFile != "") {
+    load_strategies_from_file(strategyFile, all_strategies);
+  }
+  int start_dim = 1, end_dim = 4;
+#if MAX_TENSOR_DIM >= 5
+  end_dim = 5;
+#endif
+  for (int i = start_dim; i <= end_dim; i++) {
+    ParallelConfig pc;
+    pc.device_type = ParallelConfig::GPU;
+    pc.nDims = i;
+    for (int j = 0; j < pc.nDims; j++)
+      pc.dim[j] = 1;
+    pc.dim[pc.nDims-1] = num_nodes * gpus_per_node;
+    for (int j = 0; j < num_nodes * gpus_per_node; j++)
+      pc.device_ids[j] = j;
+    all_strategies[FFConfig::DataParallelism_GPU_1D+i-1] = pc;
+  }
+  for (int i = start_dim; i <= end_dim; i++) {
+    ParallelConfig pc;
+    pc.device_type = ParallelConfig::CPU;
+    pc.nDims = i;
+    for (int j = 0; j < pc.nDims; j++)
+      pc.dim[j] = 1;
+    pc.dim[pc.nDims-1] = num_nodes * cpus_per_node;
+    for (int j = 0; j < num_nodes * cpus_per_node; j++)
+      pc.device_ids[j] = j;
+    all_strategies[FFConfig::DataParallelism_CPU_1D+i-1] = pc;
+  }
+  assert(gpus_per_node > 0);
+  assert(cpus_per_node > 0);
+  std::map<MappingTagID, ParallelConfig>::const_iterator it;
+  for (it = all_strategies.begin(); it != all_strategies.end(); it++) {
+    FFShardingFunctor* functor = new FFShardingFunctor(
+        gpus_per_node, cpus_per_node, num_nodes, it->second);
+    Runtime::preregister_sharding_functor(it->first, functor);
+  }
+}
+
 bool FFMapper::is_parameter_server_update_task(TaskID tid)
 {
   switch (tid) {
@@ -151,15 +251,19 @@ void FFMapper::select_task_options(const MapperContext ctx,
   output.map_locally = true;
 
   if (task.task_id == STRATEGY_SEARCH_TASK_ID) {
-    output.initial_proc = local_gpus[0];
+    output.initial_proc = all_gpus[0];
+    return;
+  }
+  if (task.task_id == NCCL_GETUNIQUEID_TASK_ID) {
+    output.initial_proc = all_gpus[0];
     return;
   }
   if (task.task_id == UPDATE_METRICS_TASK_ID) {
-    output.initial_proc = local_cpus[0];
+    output.initial_proc = all_cpus[0];
     return;
   }
   if (task.task_id == TOP_LEVEL_TASK_ID) {
-    output.initial_proc = local_cpus[0];
+    output.initial_proc = all_cpus[0];
     // control replicate top level task
     if (enable_control_replication) {
       output.replicate = true;
@@ -210,7 +314,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
      && (task.task_id <= CUSTOM_CPU_TASK_ID_LAST))
   {
     if (!task.is_index_space) {
-      output.initial_proc = local_cpus[0];
+      output.initial_proc = all_cpus[0];
       return;
     }
   }
@@ -221,7 +325,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
     || (task.task_id == PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID))
   {
     if (!task.is_index_space) {
-      output.initial_proc = local_cpus[0];
+      output.initial_proc = all_cpus[0];
       return;
     }
   }
@@ -642,7 +746,28 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
                                        SelectShardingFunctorOutput& output)
 {
   // Current all shardings uses data parallelism across machines
-  output.chosen_functor = DataParallelShardingID;
+  if ((task.task_id == TOP_LEVEL_TASK_ID)
+  || ((task.task_id >= CUSTOM_CPU_TASK_ID_FIRST)
+     && (task.task_id <= CUSTOM_CPU_TASK_ID_LAST)))
+  {
+    output.chosen_functor = FFConfig::DataParallelism_CPU_1D;
+    return;
+  }
+  if ((task.task_id == PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)
+  || (task.task_id == PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)) {
+    // FIXME: even though it is a CPU task, we use data parallelism
+    assert(enable_control_replication);
+    output.chosen_functor = FFConfig::DataParallelism_GPU_1D;
+    return;
+  }
+  MappingTagID hash = task.tag;
+  if (strategies.find(hash) == strategies.end()) {
+    output.chosen_functor = FFConfig::DataParallelism_GPU_1D;
+    return;
+  } else {
+    output.chosen_functor = hash;
+    return;
+  }
 }
 
 void FFMapper::map_inline(const MapperContext        ctx,
@@ -810,7 +935,7 @@ void FFMapper::select_sharding_functor(
                                    SelectShardingFunctorOutput& output)
 {
   // Current all shardings uses data parallelism across machines
-  output.chosen_functor = DataParallelShardingID;
+  assert(false);
 }
 
 void FFMapper::map_close(const MapperContext       ctx,
@@ -852,7 +977,7 @@ void FFMapper::select_sharding_functor(
                                    SelectShardingFunctorOutput& output)
 {
   // Current all shardings uses data parallelism across machines
-  output.chosen_functor = DataParallelShardingID;
+  assert(false);
 }
 
 void FFMapper::map_acquire(const MapperContext         ctx,
@@ -884,7 +1009,7 @@ void FFMapper::select_sharding_functor(
                                    SelectShardingFunctorOutput& output)
 {
   // Current all shardings uses data parallelism across machines
-  output.chosen_functor = DataParallelShardingID;
+  assert(false);
 }
 
 void FFMapper::map_release(const MapperContext         ctx,

@@ -253,7 +253,7 @@ Op::Op(FFModel& model,
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
 #ifdef FF_USE_NCCL
-  get_nccl_unique_id();
+  get_nccl_unique_id(model);
 #endif
 }
 
@@ -290,7 +290,7 @@ Op::Op(FFModel& model,
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
 #ifdef FF_USE_NCCL
-  get_nccl_unique_id();
+  get_nccl_unique_id(model);
 #endif
 }
 
@@ -324,7 +324,7 @@ Op::Op(FFModel& model,
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
 #ifdef FF_USE_NCCL
-  get_nccl_unique_id();
+  get_nccl_unique_id(model);
 #endif
 }
 
@@ -360,7 +360,7 @@ Op::Op(FFModel& model,
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
 #ifdef FF_USE_NCCL
-  get_nccl_unique_id();
+  get_nccl_unique_id(model);
 #endif
 }
 
@@ -394,7 +394,7 @@ Op::Op(FFModel& model,
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
 #ifdef FF_USE_NCCL
-  get_nccl_unique_id();
+  get_nccl_unique_id(model);
 #endif
 }
 
@@ -425,7 +425,7 @@ Op::Op(FFModel& model,
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
 #ifdef FF_USE_NCCL
-  get_nccl_unique_id();
+  get_nccl_unique_id(model);
 #endif
 }
 
@@ -576,16 +576,30 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
 }
 
 #ifdef FF_USE_NCCL  
-void Op::get_nccl_unique_id()
+void Op::get_nccl_unique_id(const FFModel& ff)
 {
   // Init NCCL id
-  int my_rank = -1, all_ranks = -1;
-  MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &all_ranks);
-  if (my_rank == 0) ncclGetUniqueId(&ncclId);
-  MPI_Bcast((void *)&ncclId, sizeof(ncclId), MPI_BYTE, 0, MPI_COMM_WORLD);
+  //int my_rank = -1, all_ranks = -1;
+  //MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+  //MPI_Comm_size(MPI_COMM_WORLD, &all_ranks);
+  //if (my_rank == 0) ncclGetUniqueId(&ncclId);
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));
+  Future future = runtime->execute_task(ctx, launcher);
+  ncclId = future.get_result<ncclUniqueId>();
+  //MPI_Bcast((void *)&ncclId, sizeof(ncclId), MPI_BYTE, 0, MPI_COMM_WORLD);
   //fprintf(stderr, "In Op(%p): MPImyrank(%d) MPIallranks(%d) ncclID(%p)\n",
   //    this, my_rank, all_ranks, ncclId);
+}
+
+ncclUniqueId Op::get_nccl_unique_id_task(const Task *task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime *runtime)
+{
+  ncclUniqueId ncclId;
+  checkNCCL(ncclGetUniqueId(&ncclId));
+  return ncclId;
 }
 #endif
 
@@ -1991,35 +2005,6 @@ void FFConfig::parse_args(char **argv, int argc)
   }
 }
 
-// Perform data parallelsim across machines
-class DataParallelShardingFunctor : public ShardingFunctor {
-public:
-  DataParallelShardingFunctor(void);
-  ~DataParallelShardingFunctor(void);
-public:
-  ShardID shard(const DomainPoint &point,
-                const Domain &full_space,
-                const size_t total_shards);
-};
-
-DataParallelShardingFunctor::DataParallelShardingFunctor(void)
-: ShardingFunctor() {}
-
-DataParallelShardingFunctor::~DataParallelShardingFunctor(void)
-{}
-
-ShardID DataParallelShardingFunctor::shard(const DomainPoint &point,
-                                           const Domain &full_space,
-                                           const size_t total_shards)
-{
-  assert(point.get_dim() == full_space.get_dim());
-  int idx = full_space.get_dim() - 1;
-  int samples = full_space.hi()[idx] - full_space.lo()[idx] + 1;
-  int samples_per_shard = (samples + total_shards - 1) / total_shards;
-  ShardID shard_id = (point[idx] - full_space.lo()[idx]) / samples_per_shard;
-  return shard_id;
-}
-
 void register_internal_tasks()
 {
   // CNN_INIT_TASK
@@ -2580,6 +2565,17 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<NormInitializer::init_task>(
         registrar, "Normalize Init Task");
   }
+#ifdef FF_USE_NCCL
+  // NCCL
+  {
+    TaskVariantRegistrar registrar(NCCL_GETUNIQUEID_TASK_ID,
+                                   "NCCL GetUniqueId");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ncclUniqueId, Op::get_nccl_unique_id_task>(
+        registrar, "NCCL GetUniqueId Task");
+  }
+#endif
   // Search
   {
     TaskVariantRegistrar registrar(STRATEGY_SEARCH_TASK_ID,
@@ -2607,6 +2603,7 @@ int main(int argc, char** argv)
   // This needs to be set, otherwise NCCL will try to use group kernel launches,
   // which are not compatible with the Realm CUDA hijack.
   setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
+
   Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
   {
     TaskVariantRegistrar registrar(TOP_LEVEL_TASK_ID, "top_level");
@@ -2620,28 +2617,7 @@ int main(int argc, char** argv)
   // Register custom tasks
   register_custom_tasks();
 
-  // Init MPI
-#if defined(GASNET_CONDUIT_MPI) || defined(REALM_USE_MPI)
-  // The GASNet MPI conduit and/or the Realm MPI network layer
-  // require that MPI be initialized for multiple threads
-  int provided;
-  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
-  // If you fail this assertion, then your version of MPI
-  // does not support calls from multiple threads and you
-  // cannot use the GASNet MPI conduit
-  if (provided < MPI_THREAD_MULTIPLE)
-    printf("ERROR: Your implementation of MPI does not support "
-           "MPI_THREAD_MULTIPLE which is required for use of the "
-           "GASNet MPI conduit or the Realm MPI network layer "
-           "with the Legion-MPI Interop!\n");
-  assert(provided == MPI_THREAD_MULTIPLE);
-#elif defined(FF_USE_NCCL)
-  // Perform MPI start-up like normal for most GASNet conduits
-  MPI_Init(&argc, &argv);
-#endif
-
-  DataParallelShardingFunctor* sharding_functor = new DataParallelShardingFunctor();
-  Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);
+  FFMapper::register_sharding_functor(argc, argv);
 
   Runtime::add_registration_callback(update_mappers);
   return Runtime::start(argc, argv);

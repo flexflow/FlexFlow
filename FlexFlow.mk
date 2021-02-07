@@ -1,4 +1,4 @@
-# Copyright 2020 Stanford University
+# Copyright 2021 Stanford, Facebook, LANL
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,9 +33,9 @@ ifndef NCCL_HOME
 NCCL_HOME = $(CUDA_HOME)
 endif
 
-ifndef MPI_HOME
-MPI_HOME = $(patsubst %/bin/mpicc,%,$(shell which mpicc | head -1))
-endif
+#ifndef MPI_HOME
+#MPI_HOME = $(patsubst %/bin/mpicc,%,$(shell which mpicc | head -1))
+#endif
 
 ifndef GASNET
 $(error GASNET variable is not defined, aborting build)
@@ -75,16 +75,16 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/runtime/optimizer_kernel.cu\
 		${FF_HOME}/src/runtime/accessor_kernel.cu\
 		${FF_HOME}/src/runtime/simulator.cu\
-		${FF_HOME}/src/runtime/cuda_helper.cu# .cu files
+		${FF_HOME}/src/runtime/cuda_helper.cu
 
 INC_FLAGS	+= -I${FF_HOME}/include/ -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
-LD_FLAGS	+= -lcudnn -lcublas -lcurand -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64 #-mavx2 -mfma -mf16c
+LD_FLAGS	+= -lcudnn -lcublas -lcurand -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64
 CC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM)
 NVCC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM)
 GASNET_FLAGS	+=
 # For Point and Rect typedefs
-CC_FLAGS	+= -std=c++11 #-DMAX_RETURN_SIZE=16777216
-NVCC_FLAGS	+= -std=c++11 #-DMAX_RETURN_SIZE=16777216
+CC_FLAGS	+= -std=c++11
+NVCC_FLAGS	+= -std=c++11
 
 ifeq ($(strip $(FF_USE_NCCL)), 1)
 INC_FLAGS	+= -I$(MPI_HOME)/include -I$(NCCL_HOME)/include
