@@ -42,7 +42,7 @@ VariantID preregister_python_task_variant(
     registrar.task_variant_name);
 }
 
-void register_flexflow_tasks();
+void register_flexflow_tasks(int argc, char **argv);
 
 int main(int argc, char **argv)
 {
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
     preregister_python_task_variant(registrar, "flexflow.core", "flexflow_top_level_task");
   }
   
-  register_flexflow_tasks();
+  register_flexflow_tasks(argc, argv);
 
   Runtime::add_registration_callback(update_mappers);
   return Runtime::start(argc, argv);

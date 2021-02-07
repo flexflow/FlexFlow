@@ -2624,14 +2624,13 @@ int main(int argc, char** argv)
 }
 
 #else
-void register_flexflow_tasks()
+void register_flexflow_tasks(int argc, char **argv)
 {
   register_internal_tasks();
 
   register_c_custom_tasks();
 
-  DataParallelShardingFunctor* sharding_functor = new DataParallelShardingFunctor();
-  Runtime::preregister_sharding_functor(DataParallelShardingID, sharding_functor);
+  FFMapper::register_sharding_functor(argc, argv);
 }
 
 #endif // FF_USE_PYTHON

@@ -181,6 +181,9 @@ OpMeta* MultiHeadAttention::init_task(
   MultiHeadAttentionMeta* m = new MultiHeadAttentionMeta(handle,
       attn, gpu_mem, num_samples, num_heads);
   assert(acc_weight.rect.volume() * sizeof(float) == m->weightSize);
+#ifdef FF_USE_NCCL
+  m->init_nccl_communicator(task, attn->ncclId);
+#endif
   return m;
 }
 
@@ -405,7 +408,7 @@ void MultiHeadAttention::backward_task(
       true/*readOutput*/);
   float *key_grad_ptr, *value_grad_ptr;
   assert(acc_query_grad.rect == acc_query.rect);
-  assert(acc_weight_grad.rect == acc_weight.rect);
+  assert(acc_weight_grad.rect.volume() == acc_weight.rect.volume());
   if (regions.size() == 7) {
     // assert query == key and query == value
     assert(regions[0].get_logical_region() == regions[1].get_logical_region());
@@ -414,8 +417,7 @@ void MultiHeadAttention::backward_task(
     value_grad_ptr = acc_query_grad.ptr;
   } else if (regions.size() == 8) {
     // assert query == key
-    assert(regions[0].get_logical_region() == regions[2].get_logical_region());
-    key_grad_ptr = acc_query_grad.ptr;
+    assert(regions[0].get_logical_region() == regions[1].get_logical_region());
     TensorAccessorW<float, 3> acc_value_grad(
         regions[7], task->regions[7], FID_DATA, ctx, runtime,
         true/*readOutput*/);

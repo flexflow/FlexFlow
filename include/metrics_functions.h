@@ -37,6 +37,7 @@ public:
   float mse_loss; // measure_mean_squared_error
   float rmse_loss; // measure_root_mean_squared_error
   float mae_loss; // measure_mean_absolute_error
+  double start_time;
 };
 
 class Metrics
