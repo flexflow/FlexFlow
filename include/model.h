@@ -27,9 +27,6 @@
 #include <curand.h>
 #include <unistd.h>
 #include <functional>
-#ifdef FF_USE_NCCL
-#include <mpi.h>
-#endif
 
 using namespace Legion;
 
