@@ -149,7 +149,7 @@ DataLoader::DataLoader(FFModel& ff,
   num_samples = 0;
   if (std::strlen(alexnet->dataset_path) == 0) {
     log_app.print("Use random dataset...");
-    num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
+    num_samples = 1024 * ff.config.workersPerNode * ff.config.numNodes;
     log_app.print("Number of random samples = %d\n", num_samples);
   } else {
     log_app.print("Start loading dataset from %s", alexnet->dataset_path);

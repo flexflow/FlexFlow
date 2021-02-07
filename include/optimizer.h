@@ -47,7 +47,7 @@ public:
   static void ps_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   static void nccl_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);
@@ -73,7 +73,7 @@ public:
   static void ps_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   static void nccl_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
                           Context ctx, Runtime* runtime);

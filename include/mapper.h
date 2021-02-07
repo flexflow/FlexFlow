@@ -24,6 +24,22 @@
 using namespace Legion;
 using namespace Legion::Mapping;
 
+class FFShardingFunctor : public ShardingFunctor {
+public:
+  FFShardingFunctor(int gpus_per_node,
+                    int cpus_per_node,
+                    int num_nodes,
+                    ParallelConfig _pc);
+  ~FFShardingFunctor(void);
+public:
+  ShardID shard(const DomainPoint &point,
+                const Domain &full_space,
+                const size_t total_shards);
+private:
+  int gpus_per_node, cpus_per_node, num_nodes;
+  ParallelConfig config;
+};
+
 class FFMapper : public NullMapper {
 public:
   FFMapper(MapperRuntime *rt, Machine machine, Processor local,
@@ -32,6 +48,7 @@ public:
   virtual const char* get_mapper_name(void) const;
   virtual MapperSyncModel get_mapper_sync_model(void) const;
 public:
+  static void register_sharding_functor(int argv, char** argc);
   virtual void select_task_options(const MapperContext    ctx,
                                    const Task&            task,
                                          TaskOptions&     output);

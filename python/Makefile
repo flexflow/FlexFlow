@@ -21,7 +21,7 @@ USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
-#FF_ENABLE_NCCL  ?= 1
+#FF_USE_NCCL  ?= 1
 #USE_CUDART_HIJACK ?= 0
 
 USE_PYTHON := 1

@@ -27,7 +27,7 @@
 #include <curand.h>
 #include <unistd.h>
 #include <functional>
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
 #include <mpi.h>
 #endif
 
@@ -121,6 +121,8 @@ enum TaskIDs {
   CONSTANT_INIT_TASK_ID,
   UNIFORM_INIT_TASK_ID,
   NORMAL_INIT_TASK_ID,
+  // NCCL tasks
+  NCCL_GETUNIQUEID_TASK_ID,
   // Search
   STRATEGY_SEARCH_TASK_ID,
   // Python data loader
@@ -170,12 +172,12 @@ class DataLoader;
 class OpMeta {
 public:
   OpMeta(FFHandler _handle);
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   void init_nccl_communicator(const Task* task, ncclUniqueId ncclId);
 #endif
 public:
   FFHandler handle;
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   ncclComm_t ncclComm;
 #endif
 };
@@ -213,8 +215,11 @@ public:
   void prefetch(const FFModel&);
   void zero_grad(const FFModel&);
   Parameter* get_parameter(int index);
-#ifdef FF_ENABLE_NCCL
-  void get_nccl_unique_id();
+#ifdef FF_USE_NCCL
+  void get_nccl_unique_id(const FFModel& model);
+  static ncclUniqueId get_nccl_unique_id_task(const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
 #endif
 public:
   OperatorType op_type;
@@ -229,7 +234,7 @@ public:
   //Tensor locals[MAX_NUM_LOCALS];
   OpMeta* meta[MAX_NUM_WORKERS];
   int numInputs, numWeights, numOutputs;
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
   ncclUniqueId ncclId;
 #endif
 };

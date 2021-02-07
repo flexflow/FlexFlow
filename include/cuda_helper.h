@@ -35,7 +35,7 @@
     }                                                                  \
 } while(0)
 
-#ifdef FF_ENABLE_NCCL
+#ifdef FF_USE_NCCL
 #define checkNCCL(cmd) do {                         \
   ncclResult_t r = cmd;                             \
   if (r!= ncclSuccess) {                            \

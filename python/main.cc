@@ -82,27 +82,7 @@ int main(int argc, char **argv)
 
   Realm::Python::PythonModule::import_python_module("flexflow.core");
 
-#ifdef FF_ENABLE_NCCL
-  // Init MPI for NCCL
-#if defined(GASNET_CONDUIT_MPI) || defined(REALM_USE_MPI)
-  // The GASNet MPI conduit and/or the Realm MPI network layer
-  // require that MPI be initialized for multiple threads
-  int provided;
-  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
-  // If you fail this assertion, then your version of MPI
-  // does not support calls from multiple threads and you 
-  // cannot use the GASNet MPI conduit
-  if (provided < MPI_THREAD_MULTIPLE)
-    printf("ERROR: Your implementation of MPI does not support "
-           "MPI_THREAD_MULTIPLE which is required for use of the "
-           "GASNet MPI conduit or the Realm MPI network layer "
-           "with the Legion-MPI Interop!\n");
-  assert(provided == MPI_THREAD_MULTIPLE);
-#else
-  // Perform MPI start-up like normal for most GASNet conduits
-  MPI_Init(&argc, &argv);
-#endif
-
+#ifdef FF_USE_NCCL
   // Set NCCL environment
   // This needs to be set, otherwise NCCL will try to use group kernel launches,
   // which are not compatible with the Realm CUDA hijack.
