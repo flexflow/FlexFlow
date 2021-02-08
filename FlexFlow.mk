@@ -37,8 +37,10 @@ endif
 #MPI_HOME = $(patsubst %/bin/mpicc,%,$(shell which mpicc | head -1))
 #endif
 
-ifndef GASNET
-$(error GASNET variable is not defined, aborting build)
+ifeq ($(strip $(USE_GASNET)),1)
+  ifndef GASNET
+  $(error GASNET variable is not defined, aborting build)
+  endif
 endif
 
 GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
