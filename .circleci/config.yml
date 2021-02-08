@@ -67,9 +67,10 @@ jobs:
             export CUDA_HOME=/usr/local/cuda-10.1
             export NCCL_HOME=$FF_HOME/nccl/build
             export PATH=/opt/conda/bin:$PATH
-            export PYTHON_ROOT=/opt/conda/bin/python3
-            export PYTHON_EXE=python3
-            export PYTHON_VERSION_MAJOR=3
+            which python3
+            #export PYTHON_ROOT=/opt/conda/bin/python3
+            #export PYTHON_EXE=python3
+            #export PYTHON_VERSION_MAJOR=3
             export GASNET=$FF_HOME/../gasnet/release
             export CPLUS_INCLUDE_PATH=/usr/include/mpi:$CPLUS_INCLUDE_PATH 
             cd python
