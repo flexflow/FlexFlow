@@ -15,10 +15,23 @@
 
 import logging
 import onnx
+import struct
 from flexflow.core import ActiMode
 from flexflow.core import PoolType, DataType
 
 # logging.basicConfig(level=logging.DEBUG)
+
+def onnx_to_ff_dt(datatype):
+    if datatype == onnx.TensorProto.FLOAT:
+        return DataType.DT_FLOAT
+    elif datatype == onnx.TensorProto.DOUBLE:
+        return DataType.DT_DOUBLE
+    elif datatype == onnx.TensorProto.INT32:
+        return DataTyoe.DT_INT32
+    elif datatype == onnx.TensorProto.INT64:
+        return DataTyoe.DT_INT64
+    else:
+        assert 0, "Unsupported datatype"
 
 class ONNXTensor(object):
     def __init__(self, name, dims, flag):
@@ -43,6 +56,8 @@ class ONNXTensor(object):
 class ONNXModel(object):
     def __init__(self, filename):
         model = onnx.load(filename)
+        # for node in model.graph.node:
+        #     print(node)
         self.inputs = {}
         for input in model.graph.input:
             tensor = ONNXTensor(input.name, input.type.tensor_type.shape.dim, 1)
@@ -59,6 +74,21 @@ class ONNXModel(object):
         output = ffmodel.add(input0, input1, name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.add({}, {}, name={})".format(node.input[0], node.input[1], node.name))
+        
+    def handleSub(self, ffmodel, node):
+        print(node)
+        input0 = self.symbol_table[node.input[0]]
+        input1 = self.symbol_table[node.input[1]]
+        output = ffmodel.subtract(input0, input1, name=node.name)
+        self.symbol_table[node.output[0]] = output
+        logging.debug("ffmodel.subtract({}, {}, name={})".format(node.input[0], node.input[1], node.name))
+        
+    def handleMul(self, ffmodel, node):
+        input0 = self.symbol_table[node.input[0]]
+        input1 = self.symbol_table[node.input[1]]
+        output = ffmodel.multiply(input0, input1, name=node.name)
+        self.symbol_table[node.output[0]] = output
+        logging.debug("ffmodel.multiply({}, {}, name={})".format(node.input[0], node.input[1], node.name))
 
     def handleConcat(self, ffmodel, node):
         inputs = [self.symbol_table[i] for i in node.input]
@@ -197,6 +227,45 @@ class ONNXModel(object):
         output = ffmodel.reshape(input, list(shape.int64_data), name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.reshape({}, {}, name={})".format(node.input[0], list(shape.int64_data), node.name))
+    
+    def handleCast(self, ffmodel, node):
+        # TODO: add cast
+        input = self.symbol_table[node.input[0]]
+        self.symbol_table[node.output[0]] = input
+        logging.warning("Not implemented handle: {}".format(node.op_type))
+        
+    def handleUnsqueeze(self, ffmodel, node):
+        # TODO: add unsqueeze
+        input = self.symbol_table[node.input[0]]
+        attribute = {x.name: x for x in node.attribute}
+        axes = attribute["axes"].ints
+        self.symbol_table[node.output[0]] = input
+        logging.warning("Not implemented handle: {}".format(node.op_type))
+        
+    def handleConstant(self, ffmodel, node):
+        attribute = {x.name: x for x in node.attribute}
+        tensor = attribute["value"].t
+        data_type = onnx_to_ff_dt(tensor.data_type)
+        raw_data = tensor.raw_data
+        if data_type == DataType.DT_FLOAT:
+            value = struct.unpack('f', raw_data)
+        else:
+            assert 0, "not implemented"
+        if len(tensor.dims) != 0:
+            #TODO: this path has not tested
+            output = ffmodel.create_constant(tensor,dims, value[0], data_type)
+            logging.warning("ffmodel.create_constant: {}, {}, {}".format(dims, value[0], data_type))
+        else:
+            output = value[0]
+        self.symbol_table[node.output[0]] = output
+        
+    def handleRange(self, ffmodel, node):
+        # TODO: add range
+        start = self.symbol_table[node.input[0]]
+        limit = self.symbol_table[node.input[1]]
+        delta = self.symbol_table[node.input[2]]
+        self.symbol_table[node.output[0]] = start
+        logging.warning("Not implemented handle: {}".format(node.op_type))
 
     def apply(self, ffmodel, input_dict):
         self.symbol_table.update(input_dict)
@@ -210,7 +279,7 @@ class ONNXModel(object):
                 handler(ffmodel, node)
             else:
                 logging.warning("Can't handle: {}".format(node.op_type))
-                assert 0
+                #assert 0
         return self.symbol_table[self.model.graph.output[0].name]
         
 class ONNXModelKeras(ONNXModel):

@@ -2,7 +2,7 @@ from flexflow.core import *
 import numpy as np
 from flexflow.keras.datasets import mnist
 from flexflow.onnx.model import ONNXModel, ONNXModelKeras
-import sys, getopt
+import argparse
 
 from accuracy import ModelAccuracy
 
@@ -71,12 +71,8 @@ def top_level_task(test_type=1):
   
 if __name__ == "__main__":
   print("mnist mlp onnx")
-  try:
-    opts, args = getopt.getopt(sys.argv[2:],"t:",["test_type"])
-  except getopt.GetoptError:
-    assert 0
-  test_type = 1
-  for opt, arg in opts:
-    if opt in ("-t", "--test_type"):
-       test_type = arg
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--test_type')
+  args, unknown = parser.parse_known_args()
+  test_type = args.test_type
   top_level_task(test_type)
