@@ -85,8 +85,6 @@ NO_BUILD_ALL=1
 .PHONY: all
 all: $(OUTFILE) flexflow/core/legion_cffi.py 
 
-include $(FF_HOME)/FlexFlow.mk
-
 DEFINE_HEADERS_DIR ?= ./
 
 flexflow/core/legion_cffi.py: legion_cffi.py.in legion_cffi_build.py
@@ -95,3 +93,5 @@ flexflow/core/legion_cffi.py: legion_cffi.py.in legion_cffi_build.py
 clean::
 	$(RM) -f $(OUTFILE) $(SLIB_LEGION) $(SLIB_REALM) $(GEN_OBJS) $(GEN_GPU_OBJS) $(REALM_OBJS) $(LEGION_OBJS) $(GPU_RUNTIME_OBJS) $(MAPPER_OBJS) $(ASM_OBJS) legion_defines.h realm_defines.h flexflow/core/legion_cffi.py *.pyc
 	$(RM) -rf build dist *.egg-info
+
+include $(FF_HOME)/FlexFlow.mk

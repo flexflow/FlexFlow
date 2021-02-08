@@ -39,7 +39,7 @@ endif
 
 ifeq ($(strip $(USE_GASNET)),1)
   ifndef GASNET
-  $(error GASNET variable is not defined, aborting build)
+  $(error USE_GASNET is enabled, but GASNET variable is not defined, aborting build)
   endif
 endif
 
