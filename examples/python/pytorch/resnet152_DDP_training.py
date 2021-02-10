@@ -12,7 +12,11 @@ import time
 
 
 def setup(rank, world_size):
-    os.environ['MASTER_ADDR'] = 'localhost'
+    try:
+        root_node = os.environ['SLURM_NODELIST'].split(' ')[0]
+    except Exception as e:
+        root_node = 'localhost'
+    os.environ['MASTER_ADDR'] = root_node
     os.environ['MASTER_PORT'] = '12355'
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
