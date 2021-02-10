@@ -19,8 +19,8 @@ def setup(rank, world_size):
 def cleanup():
     dist.destroy_process_group()
 
-def train(gpu, args):
-    rank = args.nr * args.gpus + gpu	
+def train(local_rank, args):
+    rank = args.nr * args.gpus + local_rank	
     setup(rank, args.world_size)
     transform = transforms.Compose([
                 torchvision.transforms.Resize(224),
@@ -34,10 +34,10 @@ def train(gpu, args):
     trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=2,sampler=sampler)
 
     model = resnet152()
-    torch.cuda.set_device(gpu)
+    torch.cuda.set_device(local_rank)
     model.cuda()
 
-    model = nn.parallel.DistributedDataParallel(model,device_ids=[gpu])
+    model = nn.parallel.DistributedDataParallel(model,device_ids=[local_rank])
     print("Setting optimizer")
 
     criterion = nn.CrossEntropyLoss().cuda()
@@ -62,7 +62,7 @@ def train(gpu, args):
             end = time.time()
 
             # print statistics
-            if gpu==0:
+            if rank==0:
                 print("[Epoch %d] Batch: %d Loss: %.3f Time per Image: %.2f ms"%
                 (epoch,i,loss.item(),1000*(end - start)/(batch_size*args.gpus)))
 
