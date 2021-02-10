@@ -1,4 +1,4 @@
-# Copyright 2020 Stanford University
+# Copyright 2021 Stanford, LANL, Facebook
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
+#FF_USE_NCCL  ?= 1
+#USE_CUDART_HIJACK ?= 0
 
 USE_PYTHON := 1
 ifndef PYTHON_LIB
@@ -59,13 +61,18 @@ endif
 OUTFILE		  ?= flexflow_python
 
 GEN_SRC		  ?= main.cc flexflow_c.cc flexflow_dataloader.cc # .cc files
-GEN_GPU_SRC	?= flexflow_dataloader.cu # .cu files
+GEN_GPU_SRC	  ?= flexflow_dataloader.cu # .cu files
 
 CC_FLAGS	  ?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON 
 
 ifeq ($(strip $(FF_ENABLE_DEBUG)), 1)
 CC_FLAGS += -DFF_DEBUG
 NVCC_FLAGS += -DFF_DEBUG
+endif
+
+ifeq ($(strip $(FF_PYTHON_USE_INDEX_LOADER)), 1)
+CC_FLAGS += -DFF_PYTHON_USE_INDEX_LOADER
+NVCC_FLAGS += -DFF_PYTHON_USE_INDEX_LOADER
 endif
 
 ifeq ($(shell uname), Darwin)
@@ -78,8 +85,6 @@ NO_BUILD_ALL=1
 .PHONY: all
 all: $(OUTFILE) flexflow/core/legion_cffi.py 
 
-include $(FF_HOME)/FlexFlow.mk
-
 DEFINE_HEADERS_DIR ?= ./
 
 flexflow/core/legion_cffi.py: legion_cffi.py.in legion_cffi_build.py
@@ -88,3 +93,5 @@ flexflow/core/legion_cffi.py: legion_cffi.py.in legion_cffi_build.py
 clean::
 	$(RM) -f $(OUTFILE) $(SLIB_LEGION) $(SLIB_REALM) $(GEN_OBJS) $(GEN_GPU_OBJS) $(REALM_OBJS) $(LEGION_OBJS) $(GPU_RUNTIME_OBJS) $(MAPPER_OBJS) $(ASM_OBJS) legion_defines.h realm_defines.h flexflow/core/legion_cffi.py *.pyc
 	$(RM) -rf build dist *.egg-info
+
+include $(FF_HOME)/FlexFlow.mk

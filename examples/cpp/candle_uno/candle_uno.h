@@ -20,23 +20,7 @@ using namespace Legion;
 using namespace std;
 
 struct CandleConfig {
-  CandleConfig(void) {
-    // Set default configurations here
-    for (int i = 0; i < 3; i++)
-      dense_layers.push_back(1000);
-    for (int i = 0; i < 3; i++)
-      dense_feature_layers.push_back(1000);
-    feature_shapes["dose"] = 1;
-    feature_shapes["cell.rnaseq"] = 942;
-    feature_shapes["drug.descriptors"] = 5270;
-    feature_shapes["drug.fingerprints"] = 2048;
-    input_features["dose1"] = "dose";
-    input_features["cell.rnaseq"] = "cell.rnaseq";
-    input_features["drug1.descriptors"] = "drug.descriptors";
-    input_features["drug1.fingerprints"] = "drug.fingerprints";
-    input_features["drug2.descriptors"] = "drug.descriptors";
-    input_features["drug2.fingerprints"] = "drug.fingerprints";
-  }
+  CandleConfig(void);
   vector<int> dense_layers, dense_feature_layers;
   map<string, int> feature_shapes;
   map<string, string> input_features;

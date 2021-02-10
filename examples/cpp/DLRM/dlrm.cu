@@ -120,4 +120,3 @@ void DataLoader::load_label(const Task *task,
                        cudaMemcpyHostToDevice));
   checkCUDA(cudaFreeHost(label_zc));
 }
-

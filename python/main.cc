@@ -23,9 +23,9 @@ using namespace Legion;
 
 #include "mapper.h"
 
-enum MainTaskIDs {
-  MAIN_TASK_ID = 111,
-};
+//enum MainTaskIDs {
+//  PYTHON_TOP_LEVEL_TASK_ID = 11111,
+//};
 
 VariantID preregister_python_task_variant(
   const TaskVariantRegistrar &registrar,
@@ -42,7 +42,7 @@ VariantID preregister_python_task_variant(
     registrar.task_variant_name);
 }
 
-void register_flexflow_tasks();
+void register_flexflow_tasks(int argc, char **argv);
 
 int main(int argc, char **argv)
 {
@@ -82,20 +82,24 @@ int main(int argc, char **argv)
 
   Realm::Python::PythonModule::import_python_module("flexflow.core");
 
+#ifdef FF_USE_NCCL
+  // Set NCCL environment
+  // This needs to be set, otherwise NCCL will try to use group kernel launches,
+  // which are not compatible with the Realm CUDA hijack.
+  setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
+#endif
+
+  Runtime::set_top_level_task_id(PYTHON_TOP_LEVEL_TASK_ID);
   {
-    TaskVariantRegistrar registrar(MAIN_TASK_ID, "flexflow_top_level_task");
+    TaskVariantRegistrar registrar(PYTHON_TOP_LEVEL_TASK_ID, "flexflow_top_level_task");
     registrar.add_constraint(ProcessorConstraint(Processor::PY_PROC));
     //TODO: dataloader does not support CR
-    //registrar.set_replicable();
+    registrar.set_replicable();
     preregister_python_task_variant(registrar, "flexflow.core", "flexflow_top_level_task");
   }
   
-  register_flexflow_tasks();
-  
+  register_flexflow_tasks(argc, argv);
 
-  Runtime::set_top_level_task_id(MAIN_TASK_ID);
-  
   Runtime::add_registration_callback(update_mappers);
-  
   return Runtime::start(argc, argv);
 }

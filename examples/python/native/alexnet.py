@@ -84,7 +84,7 @@ def top_level_task():
   epochs = ffconfig.get_epochs()
 
   ts_start = ffconfig.get_current_time()
-  
+
   ffmodel.fit(x=dataloader_input, y=dataloader_label, epochs=epochs)
 
   ts_end = ffconfig.get_current_time()

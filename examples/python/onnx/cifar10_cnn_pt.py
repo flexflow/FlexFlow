@@ -34,4 +34,12 @@ class CNN(nn.Module):
 
 input = torch.randn(64, 3, 32, 32)
 model = CNN()
-torch.onnx.export(model, (input), "cifar10_cnn.onnx", export_params=False, training=TrainingMode.TRAINING)
+torch.onnx.export(model, (input), "cifar10_cnn_pt.onnx", export_params=False, training=TrainingMode.TRAINING)
+  
+onnx_model = onnx.load("cifar10_cnn_pt.onnx")
+
+for node in onnx_model.graph.node:
+  print(node)
+#
+# for input in onnx_model.graph.input:
+#   print(input)

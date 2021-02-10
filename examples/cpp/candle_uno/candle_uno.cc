@@ -21,7 +21,7 @@
 using namespace Legion;
 using namespace std;
 
-LegionRuntime::Logger::Category log_app("DLRM");
+LegionRuntime::Logger::Category log_app("Candle_Uno");
 
 void parse_input_args(char **argv, int argc, CandleConfig& apConfig);
 
@@ -50,7 +50,7 @@ Tensor build_feature_model(FFModel* model, const Tensor& input,
 {
   Tensor t = input;
   for (size_t i = 0; i < dense_layers.size(); i++) {
-    t = model->dense("dense", t, dense_layers[i], AC_MODE_RELU);
+    t = model->dense(t, dense_layers[i], AC_MODE_RELU);
   }
   return t;
 }
@@ -118,24 +118,33 @@ void top_level_task(const Task* task,
       encoded_inputs[n++] = input;
     }
   }
-  Tensor output = ff.concat("concat", n, encoded_inputs, 1/*axis*/);
+  Tensor output = ff.concat(n, encoded_inputs, 1/*axis*/);
   for (size_t i = 0; i < candle_config.dense_layers.size(); i++) {
     int out_dim = candle_config.dense_layers[i];
-    output = ff.dense("dense", output, out_dim, AC_MODE_RELU);
+    output = ff.dense(output, out_dim, AC_MODE_RELU);
   }
-  output = ff.dense("dense", output, 1);
+  output = ff.dense(output, 1);
   Tensor label;
   {
     const int dims[] = {ff_config.batchSize, 1};
     label = ff.create_tensor<2>(dims, DT_FLOAT);
   }
-  ff.mse_loss("mse_loss", output, label, "average"/*reduction*/);
+  //ff.mse_loss("mse_loss", output, label, "average"/*reduction*/);
   // Use SGD Optimizer
-  ff.optimizer = new SGDOptimizer(&ff, 0.001f);
+  Optimizer* optimizer = new SGDOptimizer(&ff, 0.01f);
+  std::vector<MetricsType> metrics;
+  //metrics.push_back(METRICS_ACCURACY);
+  metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
+  ff.compile(optimizer, LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics);
   // Data Loader
-  DataLoader data_loader(ff, candle_config, all_inputs, label);
+  DataLoader data_loader(ff, candle_config, all_inputs, ff.label_tensor);
+  data_loader.next_batch(ff);
+  data_loader.reset();
   ff.init_layers();
 
+  log_app.print("Warmup finished...Start timer...");
+  log_app.print("Num. epochs = %d", ff_config.epochs);
+  log_app.print("Num. iterations/epoch = %d", data_loader.num_samples / ff_config.batchSize);
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ff_config.epochs; epoch++) {
     data_loader.reset();
@@ -149,12 +158,12 @@ void top_level_task(const Task* task,
       } else {
         data_loader.next_batch(ff);
       }
-      //runtime->begin_trace(ctx, 111/*trace_id*/);
+      runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      //runtime->end_trace(ctx, 111/*trace_id*/);
+      runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
   runtime->issue_execution_fence(ctx);
@@ -334,7 +343,7 @@ void DataLoader::next_batch(FFModel& ff)
   assert(full_inputs.size() == batch_inputs.size());
   // Load inputs
   for (size_t i = 0; i < batch_inputs.size(); i++) {
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(""));
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
     Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
     int idx = next_index;
@@ -364,7 +373,7 @@ void DataLoader::next_batch(FFModel& ff)
   // Load label
   {
     std::string pc_name = "";
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(pc_name));
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, pc_name));
     Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
     int idx = next_index;
