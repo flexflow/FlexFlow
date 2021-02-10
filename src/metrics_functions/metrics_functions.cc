@@ -14,12 +14,15 @@
  */
 
 #include "metrics_functions.h"
+#include "legion.h"
 
 
 PerfMetrics::PerfMetrics(void)
 : train_all(0), train_correct(0), cce_loss(0.0f), sparse_cce_loss(0.0f),
   mse_loss(0.0f), rmse_loss(0.0f), mae_loss(0.0f)
-{}
+{
+  start_time = Realm::Clock::current_time_in_microseconds();
+}
 
 void PerfMetrics::update(const PerfMetrics& one)
 {
@@ -44,6 +47,12 @@ void PerfMetrics::apply_scale(float scale)
 void PerfMetrics::print(const Metrics* m)
 {
   std::string output = "[Metrics]";
+  if (train_all == 0) {
+    double current_time = Realm::Clock::current_time_in_microseconds();
+    assert(current_time > start_time);
+    double throughput = (double)train_all / ((current_time - start_time) * 1e-6);
+    output = output + " throughput: " + std::to_string(throughput) + "samples/s";
+  }
   if (m->measure_accuracy) {
     float accuracy = train_correct * 100.0f / train_all;
     output = output + " accuracy: " + std::to_string(accuracy) + "% ("

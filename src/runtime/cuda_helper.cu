@@ -53,7 +53,7 @@ void apply_add(float *data_ptr, const float *replica_ptr, size_t size)
 {
   CUDA_KERNEL_LOOP(i, size)
   {
-    data_ptr[i] += replica_ptr[i];   
+    data_ptr[i] += replica_ptr[i];
   }
 }
 
@@ -121,21 +121,45 @@ void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
       para_ptr, grad_ptr, replica_size, scale_factor);
 }
 
+#ifdef DEADCODE
 template<unsigned DIM, typename T>
 __host__
 void print_tensor(const T* ptr, Rect<DIM> rect, const char* prefix)
 {
   // device synchronize to make sure the data are ready
-  checkCUDA(cudaDeviceSynchronize());
+  // checkCUDA(cudaDeviceSynchronize());
   T* host_ptr;
   checkCUDA(cudaHostAlloc(&host_ptr, sizeof(T) * rect.volume(),
                           cudaHostAllocPortable | cudaHostAllocMapped));
   checkCUDA(cudaMemcpy(host_ptr, ptr, sizeof(T) * rect.volume(),
                        cudaMemcpyDeviceToHost));
-  checkCUDA(cudaDeviceSynchronize());
+  // checkCUDA(cudaDeviceSynchronize());
   int idx = 0;
   printf("%s", prefix);
   for (PointInRectIterator<DIM> it(rect); it(); it++, idx++) {
+    printf(" %.4lf", (float)host_ptr[idx]);
+    if (idx >= 16) break;
+  }
+  printf("\n");
+  checkCUDA(cudaFreeHost(host_ptr));
+}
+#endif
+
+template<typename T>
+__host__
+void print_tensor(const T* ptr, size_t num_elements, const char* prefix)
+{
+  // device synchronize to make sure the data are ready
+  // checkCUDA(cudaDeviceSynchronize());
+  T* host_ptr;
+  checkCUDA(cudaHostAlloc(&host_ptr, sizeof(T) * num_elements,
+                          cudaHostAllocPortable | cudaHostAllocMapped));
+  checkCUDA(cudaMemcpy(host_ptr, ptr, sizeof(T) * num_elements,
+                       cudaMemcpyDeviceToHost));
+  // checkCUDA(cudaDeviceSynchronize());
+  int idx = 0;
+  printf("%s", prefix);
+  for (idx=0; idx < num_elements; idx++) {
     printf(" %.4lf", (float)host_ptr[idx]);
     if (idx >= 16) break;
   }
@@ -190,8 +214,5 @@ template __global__ void assign_kernel<int64_t>(int64_t* ptr, coord_t size, int6
 template __global__ void copy_kernel<float>(float* dst, const float* src, coord_t size);
 template __global__ void copy_kernel<int>(int* dst, const int* src, coord_t size);
 
-template __host__ void print_tensor<1, float>(const float* ptr, Rect<1> rect, const char* prefix);
-template __host__ void print_tensor<2, float>(const float* ptr, Rect<2> rect, const char* prefix);
-template __host__ void print_tensor<3, float>(const float* ptr, Rect<3> rect, const char* prefix);
-template __host__ void print_tensor<4, float>(const float* ptr, Rect<4> rect, const char* prefix);
-template __host__ void print_tensor<2, long>(const long* ptr, Rect<2> rect, const char* prefix);
+template __host__ void print_tensor<float>(const float* ptr, size_t rect, const char* prefix);
+template __host__ void print_tensor<long>(const long* ptr, size_t rect, const char* prefix);

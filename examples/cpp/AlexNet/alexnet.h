@@ -22,13 +22,14 @@ using namespace std;
 struct AlexNetConfig {
   AlexNetConfig(void) {
     // Set default configurations here
+    std::memset(dataset_path, 0, MAX_FILE_LENGTH);
   }
-  std::string dataset_path;
+  char dataset_path[MAX_FILE_LENGTH];
 };
 
 class DataLoader {
 public:
-  DataLoader(FFModel& ff, const AlexNetConfig& alexnet,
+  DataLoader(FFModel& ff, const AlexNetConfig* alexnet,
              Tensor _input, Tensor _label);
   static void load_input(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
