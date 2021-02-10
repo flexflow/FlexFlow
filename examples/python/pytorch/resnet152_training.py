@@ -1,4 +1,4 @@
-from resnet import resnet152
+from resnet_torch import resnet152
 import torch,torchvision
 import torchvision.transforms as transforms
 import torch.optim as optim
