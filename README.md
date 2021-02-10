@@ -32,7 +32,7 @@ if __name__ == "__main__":
   top_level_task()
 ```
 
-During model compilation (i.e., `model.compile` in Keras), FlexFlow can [autotune](SEARCH.md) the parallelization performance by searching for efficient strategies on the given parallel machine. Next, `model.fit` performs DNN training on all available GPUs (potentially across multiple nodes) using the best discovered strategy. As a result, users don't need to manually design and optimize the device assignments.
+During model compilation (i.e., `model.compile` in Keras), FlexFlow can [autotune](https://flexflow.ai/search) the parallelization performance by searching for efficient strategies on the given parallel machine. Next, `model.fit` performs DNN training on all available GPUs (potentially across multiple nodes) using the best discovered strategy. As a result, users don't need to manually design and optimize the device assignments.
 
 **More FlexFlow Keras examples**: see the [keras examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/keras).
 
