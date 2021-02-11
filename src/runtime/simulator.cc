@@ -39,29 +39,841 @@ bool ParallelConfig::is_data_parallel() const
   return true;
 }
 
-Device::Device(Device::DeviceType _type,
-               int _node_id,
-               int _gpu_id,
-               size_t _capacity)
-: node_id(_node_id),
-  gpu_id(_gpu_id),
-  bandwidth(0.0f),
-  capacity(_capacity),
-  type(_type)
+// class Device
+Device::Device(std::string name, DeviceType type, int node_id, int socket_id, int device_id)
+: name(name), type(type), node_id(node_id), socket_id(socket_id), device_id(device_id)
+{}
+
+// class Comp_device
+Comp_device::Comp_device(std::string name, CompDevType comp_type, int node_id, int socket_id, int device_id)
+: Device(name, Device::DEVICE_COMP, node_id, socket_id, device_id), comp_type(comp_type)
+{}
+
+// class Mem_device
+Mem_device::Mem_device(std::string name, MemDevType mem_type, int node_id, int socket_id, int device_id, size_t capacity)
+: Device(name, Device::DEVICE_MEM, node_id, socket_id, device_id), mem_type(mem_type), capacity(capacity)
+{}
+
+// class Comm_device
+Comm_device::Comm_device(std::string name, CommDevType comm_type, int node_id, int socket_id, int device_id, float latency, float bandwidth)
+: Device(name, Device::DEVICE_COMM, node_id, socket_id, device_id), comm_type(comm_type), latency(latency), bandwidth(bandwidth)
+{}
+
+// class MachineModel_old
+MachineModel_old::MachineModel_old(int num_nodes, int num_gpus_per_node, size_t capacity)
 {
-  printf("Device: node_id(%d) gpu_id(%d) capacity(%zu)\n", node_id, gpu_id, capacity);
-  assert(type == DEVICE_GPU);
+  version = 0;
+  this->num_nodes = num_nodes;
+  this->num_gpus_per_node = num_gpus_per_node;
+  printf("num_nodes = %d num_gpus_per_node = %d\n", num_nodes, num_gpus_per_node);
+  num_gpus = num_nodes * num_gpus_per_node;
+  inter_gpu_bandwidth = 20 * 1024 * 1024.0f; /* B/ms*/
+  inter_node_bandwidth = 12 * 1024 * 1024.0f / num_nodes; /* B/ms*/
+  gpu_dram_bandwidth = 16 * 1024 * 1024.0f; /* B/ms*/
+
+  // Create GPU compute device
+  for (int i = 0; i < num_nodes; i++) {
+    for (int j = 0; j < num_gpus_per_node; j++) {
+      int device_id = i * num_gpus_per_node + j;
+      std::string gpu_name = "GPU " + std::to_string(device_id);
+      id_to_gpu[device_id] = new Comp_device(gpu_name, Comp_device::TOC_PROC, i, i, device_id);
+      std::string gpu_mem_name = "GPU_FB_MEM " + std::to_string(device_id);
+      id_to_gpu_fb_mem[device_id] = new Mem_device(gpu_mem_name, Mem_device::GPU_FB_MEM, i, i, device_id, capacity);
+    }
+  }
+
+  // Create inter GPU comm devices (NVLinks)
+  for (int i = 0; i < num_gpus; i++) {
+    for (int j = 0; j < num_gpus; j++) {
+      Device* src = id_to_gpu[i];
+      Device* dst = id_to_gpu[j];
+      if (src->node_id == dst->node_id && src != dst) {
+        int device_id = i * num_gpus + j;
+        std::string nvlink_name = "NVLINK " + std::to_string(device_id);
+        ids_to_inter_gpu_comm_device[device_id] = new Comm_device(nvlink_name, Comm_device::NVLINK_COMM, src->node_id, src->node_id, device_id, 0, inter_gpu_bandwidth);
+      }
+    }
+  }
+
+  // Create gpu<->dram comm devices
+  for (int i = 0; i < num_gpus; i++) {
+    int node_id = num_gpus / num_gpus_per_node;
+    std::string pci_to_host_name = "PCI_TO_HOST " + std::to_string(i);
+    id_to_gputodram_comm_device[i] = new Comm_device(pci_to_host_name, Comm_device::PCI_TO_HOST_COMM, node_id, node_id, i, 0, gpu_dram_bandwidth);
+    std::string pci_to_dev_name = "PCI_TO_DEV " + std::to_string(i);
+    id_to_dramtogpu_comm_device[i] = new Comm_device(pci_to_dev_name, Comm_device::PCI_TO_DEV_COMM, node_id, node_id, i, 0, gpu_dram_bandwidth);
+  }
+
+  // Create inter node comm devices
+  for (int i = 0; i < num_nodes; i++) {
+    for (int j = 0; j < num_nodes; j++) {
+      if (i != j) {
+        int device_id = i * num_nodes + j;
+        std::string nic_name = "NIC " + std::to_string(device_id);
+        ids_to_inter_node_comm_device[device_id] = new Comm_device(nic_name, Comm_device::NIC_OUT_COMM, -1, -1, device_id, 0, inter_node_bandwidth);
+      }
+    }
+  }
 }
 
-Device::Device(Device::DeviceType _type,
-               float _bandwidth)
-: node_id(-1),
-  gpu_id(-1),
-  bandwidth(_bandwidth),
-  capacity(0),
-  type(_type)
+int MachineModel_old::get_version()
 {
-  assert(type == DEVICE_COMM);
+  return version;
+}
+
+Comp_device *MachineModel_old::get_gpu(int device_id) 
+{
+  assert(id_to_gpu.find(device_id) != id_to_gpu.end());
+  return id_to_gpu[device_id];
+}
+
+Mem_device *MachineModel_old::get_gpu_fb_mem(int device_id) 
+{
+  assert(id_to_gpu_fb_mem.find(device_id) != id_to_gpu_fb_mem.end());
+  return id_to_gpu_fb_mem[device_id];
+}
+
+int MachineModel_old::get_num_gpus()
+{
+  return num_gpus;
+}
+
+float MachineModel_old::get_intra_node_gpu_bandwidth()
+{
+  return inter_gpu_bandwidth;
+}
+
+float MachineModel_old::get_inter_node_gpu_bandwidth()
+{
+  return inter_node_bandwidth;
+}
+
+
+std::vector<Comm_device *> MachineModel_old::get_comm_path(Mem_device *src_mem, Mem_device *tar_mem)
+{
+    std::vector<Comm_device *> ret;
+    // on the same memory
+    if (src_mem->mem_type == tar_mem->mem_type and src_mem->device_id == tar_mem->device_id) {
+        return ret;
+    }
+    if (src_mem->mem_type == Mem_device::SYSTEM_MEM and tar_mem->mem_type == Mem_device::SYSTEM_MEM) {
+        if (src_mem->node_id == tar_mem->node_id) {
+            return ret;
+        }
+        else {
+            int device_id = src_mem->node_id * num_nodes + tar_mem->node_id;
+            ret.emplace_back(ids_to_inter_node_comm_device[device_id]);
+        }
+    }
+    else if (src_mem->mem_type == Mem_device::GPU_FB_MEM and tar_mem->mem_type == Mem_device::GPU_FB_MEM) {
+        if (src_mem->node_id == tar_mem->node_id) {
+            int device_id = src_mem->device_id * num_gpus + tar_mem->device_id;
+            ret.emplace_back(ids_to_inter_gpu_comm_device[device_id]);
+        }
+        else {
+            ret.emplace_back(id_to_gputodram_comm_device[src_mem->device_id]);
+            int device_id = src_mem->node_id * num_nodes + tar_mem->node_id;
+            ret.emplace_back(ids_to_inter_node_comm_device[device_id]);
+            ret.emplace_back(id_to_dramtogpu_comm_device[tar_mem->device_id]);
+        }
+    }
+    else if (src_mem->mem_type == Mem_device::SYSTEM_MEM and tar_mem->mem_type == Mem_device::GPU_FB_MEM) {
+        if (src_mem->node_id == tar_mem->node_id) {
+            ret.emplace_back(id_to_dramtogpu_comm_device[tar_mem->device_id]);
+        }
+        else {
+            int device_id = src_mem->node_id * num_nodes + tar_mem->node_id;
+            ret.emplace_back(ids_to_inter_node_comm_device[device_id]);
+            ret.emplace_back(id_to_dramtogpu_comm_device[tar_mem->device_id]);
+        }
+    }
+    else if (src_mem->mem_type == Mem_device::GPU_FB_MEM and tar_mem->mem_type == Mem_device::SYSTEM_MEM) {
+        if (src_mem->node_id == tar_mem->node_id) {
+            ret.emplace_back(id_to_gputodram_comm_device[src_mem->device_id]);
+        }
+        else {
+            ret.emplace_back(id_to_gputodram_comm_device[src_mem->device_id]);
+            int device_id = src_mem->node_id * num_nodes + tar_mem->node_id;
+            ret.emplace_back(ids_to_inter_node_comm_device[device_id]);
+        }
+    }
+    else {
+        printf("No path found between %s and %s\n", src_mem->name.c_str(), tar_mem->name.c_str());
+    }
+
+    return ret;
+}
+
+std::string MachineModel_old::to_string()
+{
+  std::string s;
+  for (int i = 0; i < num_nodes; i++) {
+    int node_id = i;
+    s += "==========================================\n";
+    s += "Node " + std::to_string(node_id) + '\n';
+    s += "COMP: \n";
+    for (int j = 0; j < num_gpus_per_node; j++) {
+      int device_id = i * num_gpus_per_node + j;
+      s += id_to_gpu[device_id]->name + '\n';
+    }
+    s += '\n';
+    s += "MEM: \n";
+    for (int j = 0; j < num_gpus_per_node; j++) {
+      int device_id = i * num_gpus_per_node + j;
+      s += id_to_gpu_fb_mem[device_id]->name + '\n';
+    }
+  }
+  return s;
+}
+
+MachineModel_new::MachineModel_new(std::string file, size_t gpu_fb_mem_capacity)
+{
+  version = 1;
+  this->gpu_fb_mem_capacity = gpu_fb_mem_capacity;
+  std::ifstream machine_config(file);
+  std::string line;
+  while (std::getline(machine_config, line))
+  {
+    if (line[0] != '#') {
+      // split a line into words
+      std::istringstream iss(line);
+      std::vector<std::string> words{std::istream_iterator<std::string>{iss}, std::istream_iterator<std::string>{}};
+      if (words.size() >= 3) {
+        if (words[0] == "num_nodes") {
+          num_nodes = stoi(words[2]);
+          printf("num_nodes = %d\n", num_nodes);
+        }
+        else if (words[0] == "num_sockets_per_node") {
+          num_sockets_per_node = stoi(words[2]);
+          printf("num_sockets_per_node = %d\n", num_sockets_per_node);
+        }
+        else if (words[0] == "num_cpus_per_socket") {
+          num_cpus_per_socket = stoi(words[2]);
+          printf("num_cpus_per_socket = %d\n", num_cpus_per_socket);
+        }
+        else if (words[0] == "num_gpus_per_socket") {
+          num_gpus_per_socket = stoi(words[2]);
+          printf("num_gpus_per_socket = %d\n", num_gpus_per_socket);
+        }
+        else if (words[0] == "membus_latency") {
+          membus_latency = stof(words[2]);
+          printf("membus_latency = %f\n", membus_latency);
+        }
+        else if (words[0] == "membus_bandwidth") {
+          membus_bandwidth = stof(words[2]);
+          printf("membus_bandwidth = %f\n", membus_bandwidth);
+        }
+        else if (words[0] == "upi_latency") {
+          upi_latency = stof(words[2]);
+          printf("upi_latency = %f\n", upi_latency);
+        }
+        else if (words[0] == "upi_bandwidth") {
+          upi_bandwidth = stof(words[2]);
+          printf("upi_bandwidth = %f\n", upi_bandwidth);
+        }
+        else if (words[0] == "nic_latency") {
+          nic_latency = stof(words[2]);
+          printf("nic_latency = %f\n", nic_latency);
+        }
+        else if (words[0] == "nic_bandwidth") {
+          nic_bandwidth = stof(words[2]);
+          printf("nic_bandwidth = %f\n", nic_bandwidth);
+        }
+        else if (words[0] == "nic_distribution") {
+          nic_distribution = static_cast<NicDistribution>(stoi(words[2]));
+          printf("nic_distribution = %d\n", nic_distribution);
+        }
+        else if (words[0] == "pci_latency") {
+          pci_latency = stof(words[2]);
+          printf("pci_latency = %f\n", pci_latency);
+        }
+        else if (words[0] == "pci_bandwidth") {
+          pci_bandwidth = stof(words[2]);
+          printf("pci_bandwidth = %f\n", pci_bandwidth);
+        }
+        else if (words[0] == "nvlink_latency") {
+          nvlink_latency = stof(words[2]);
+          printf("nvlink_latency = %f\n", nvlink_latency);
+        }
+        else if (words[0] == "nvlink_bandwidth") {
+          nvlink_bandwidth = stof(words[2]);
+          printf("nvlink_bandwidth = %f\n", nvlink_bandwidth);
+        }
+        else if (words[0] == "intra_socket_sys_mem_to_sys_mem") {
+          printf("intra_socket_sys_mem_to_sys_mem = ");
+          for (size_t i = 2; i < words.size(); i++) {
+            set_comm_path(intra_socket_sys_mem_to_sys_mem, words[i]);
+            printf("%s ", words[i].c_str());
+          }
+          printf("\n");
+        }
+        else if (words[0] == "inter_socket_sys_mem_to_sys_mem") {
+          printf("inter_socket_sys_mem_to_sys_mem = ");
+          for (size_t i = 2; i < words.size(); i++) {
+            set_comm_path(inter_socket_sys_mem_to_sys_mem, words[i]);
+            printf("%s ", words[i].c_str());
+          }
+          printf("\n");
+        }
+        else if (words[0] == "inter_node_sys_mem_to_sys_mem") {
+          printf("inter_node_sys_mem_to_sys_mem = ");
+          for (size_t i = 2; i < words.size(); i++) {
+            set_comm_path(inter_node_sys_mem_to_sys_mem, words[i]);
+            printf("%s ", words[i].c_str());
+          }
+          printf("\n");
+        }
+        else if (words[0] == "intra_socket_gpu_fb_mem_to_gpu_fb_mem") {
+          printf("intra_socket_gpu_fb_mem_to_gpu_fb_mem = ");
+          for (size_t i = 2; i < words.size(); i++) {
+            set_comm_path(intra_socket_gpu_fb_mem_to_gpu_fb_mem, words[i]);
+            printf("%s ", words[i].c_str());
+          }
+          printf("\n");
+        }
+        else if (words[0] == "inter_socket_gpu_fb_mem_to_gpu_fb_mem") {
+          printf("inter_socket_gpu_fb_mem_to_gpu_fb_mem = ");
+          for (size_t i = 2; i < words.size(); i++) {
+            set_comm_path(inter_socket_gpu_fb_mem_to_gpu_fb_mem, words[i]);
+            printf("%s ", words[i].c_str());
+          }
+          printf("\n");
+        }
+        else if (words[0] == "inter_node_gpu_fb_mem_to_gpu_fb_mem") {
+          printf("inter_node_gpu_fb_mem_to_gpu_fb_mem = ");
+          for (size_t i = 2; i < words.size(); i++) {
+            set_comm_path(inter_node_gpu_fb_mem_to_gpu_fb_mem, words[i]);
+            printf("%s ", words[i].c_str());
+          }
+          printf("\n");
+        }
+        else if (words[0] == "intra_socket_sys_mem_to_gpu_fb_mem") {
+          printf("intra_socket_sys_mem_to_gpu_fb_mem = ");
+          for (size_t i = 2; i < words.size(); i++) {
+            set_comm_path(intra_socket_sys_mem_to_gpu_fb_mem, words[i]);
+            printf("%s ", words[i].c_str());
+          }
+          printf("\n");
+        }
+        else if (words[0] == "inter_socket_sys_mem_to_gpu_fb_mem") {
+          printf("inter_socket_sys_mem_to_gpu_fb_mem = ");
+          for (size_t i = 2; i < words.size(); i++) {
+            set_comm_path(inter_socket_sys_mem_to_gpu_fb_mem, words[i]);
+            printf("%s ", words[i].c_str());
+          }
+          printf("\n");
+        }
+        else if (words[0] == "inter_node_sys_mem_to_gpu_fb_mem") {
+          printf("inter_node_sys_mem_to_gpu_fb_mem = ");
+          for (size_t i = 2; i < words.size(); i++) {
+            set_comm_path(inter_node_sys_mem_to_gpu_fb_mem, words[i]);
+            printf("%s ", words[i].c_str());
+          }
+          printf("\n");
+        }
+        else if (words[0] == "intra_socket_gpu_fb_mem_to_sys_mem") {
+          printf("intra_socket_gpu_fb_mem_to_sys_mem = ");
+          for (size_t i = 2; i < words.size(); i++) {
+            set_comm_path(intra_socket_gpu_fb_mem_to_sys_mem, words[i]);
+            printf("%s ", words[i].c_str());
+          }
+          printf("\n");
+        }
+        else if (words[0] == "inter_socket_gpu_fb_mem_to_sys_mem") {
+          printf("inter_socket_gpu_fb_mem_to_sys_mem = ");
+          for (size_t i = 2; i < words.size(); i++) {
+            set_comm_path(inter_socket_gpu_fb_mem_to_sys_mem, words[i]);
+            printf("%s ", words[i].c_str());
+          }
+          printf("\n");
+        }
+        else if (words[0] == "inter_node_gpu_fb_mem_to_sys_mem") {
+          printf("inter_node_gpu_fb_mem_to_sys_mem = ");
+          for (size_t i = 2; i < words.size(); i++) {
+            set_comm_path(inter_node_gpu_fb_mem_to_sys_mem, words[i]);
+            printf("%s ", words[i].c_str());
+          }
+          printf("\n");
+        }
+      }
+    }
+  }
+  
+  num_sockets = num_nodes * num_sockets_per_node;
+  num_cpus = num_sockets * num_cpus_per_socket;
+  num_gpus = num_sockets * num_gpus_per_socket;
+  num_nvlinks_per_node = 0;
+  mem_to_nvlink.clear();
+  add_cpus();
+  add_gpus();
+  add_membuses(membus_latency, membus_bandwidth * 1024 * 1024);
+  add_upis(upi_latency / 2, upi_bandwidth * 2 * 1024 * 1024);
+  add_nics(nic_latency / 2, nic_bandwidth * 2 * 1024 * 1024, nic_distribution);
+  add_pcis(pci_latency, pci_bandwidth * 1024 * 1024);
+  add_nvlinks(nvlink_latency, nvlink_bandwidth * 1024 * 1024);
+}
+
+int MachineModel_new::get_version()
+{
+  return version;
+}
+
+void MachineModel_new::set_comm_path(std::vector<Comm_device::CommDevType> &comm_path, std::string device_str)
+{
+  if (device_str == "membus") {
+    comm_path.emplace_back(Comm_device::MEMBUS_COMM);
+  }
+  else if (device_str == "upi") {
+    comm_path.emplace_back(Comm_device::UPI_OUT_COMM);
+    comm_path.emplace_back(Comm_device::UPI_IN_COMM);
+  }
+  else if (device_str == "nic") {
+    comm_path.emplace_back(Comm_device::NIC_OUT_COMM);
+    comm_path.emplace_back(Comm_device::NIC_IN_COMM);
+  }
+  else if (device_str == "pci_to_host") {
+    comm_path.emplace_back(Comm_device::PCI_TO_HOST_COMM);
+  }
+  else if (device_str == "pci_to_dev") {
+    comm_path.emplace_back(Comm_device::PCI_TO_DEV_COMM);
+  }
+  else if (device_str == "nvlink") {
+    comm_path.emplace_back(Comm_device::NVLINK_COMM);
+  }
+}
+
+void MachineModel_new::add_cpus()
+{
+  for (int i = 0; i < num_nodes; i++) {
+    int node_id = i;
+    for (int j = 0; j < num_sockets_per_node; j++) {
+      int socket_id = i * num_sockets_per_node + j;
+      int device_id = socket_id;
+      // add system memory
+      std::string sys_mem_name = "SYSTEM_MEM " + std::to_string(device_id);
+      Mem_device *sys_mem = new Mem_device(sys_mem_name, Mem_device::SYSTEM_MEM, node_id, socket_id, device_id, -1);
+      sys_mems.emplace_back(sys_mem);
+      // add cpus
+      cpus.push_back({});
+      for (int k = 0; k < num_cpus_per_socket; k++) {
+        device_id = socket_id * num_cpus_per_socket + k;
+        std::string cpu_name = "CPU " + std::to_string(device_id);
+        cpus[socket_id].emplace_back(new Comp_device(cpu_name, Comp_device::LOC_PROC, node_id, socket_id, device_id));
+      }
+    }
+  }
+}
+
+void MachineModel_new::add_gpus()
+{
+  for (int i = 0; i < num_nodes; i++) {
+    int node_id = i;
+    for (int j = 0; j < num_sockets_per_node; j++) {
+      int socket_id = i * num_sockets_per_node + j;
+      int device_id = socket_id;
+      // add zero copy memory
+      std::string z_copy_mem_name = "Z_COPY_MEM " + std::to_string(device_id);
+      Mem_device *z_copy_mem = new Mem_device(z_copy_mem_name, Mem_device::Z_COPY_MEM, node_id, socket_id, device_id, -1);
+      z_copy_mems.push_back(z_copy_mem);
+      // add gpus and gpu framebuffer memories
+      gpus.push_back({});
+      gpu_fb_mems.push_back({});
+      for (int k = 0; k < num_gpus_per_socket; k++) {
+          device_id = socket_id * num_gpus_per_socket + k;
+          std::string gpu_name = "GPU " + std::to_string(device_id);
+          gpus[socket_id].push_back(new Comp_device(gpu_name, Comp_device::TOC_PROC, node_id, socket_id, device_id));
+          std::string gpu_mem_name = "GPU_FB_MEM " + std::to_string(device_id);
+          Mem_device *gpu_mem = new Mem_device(gpu_mem_name, Mem_device::GPU_FB_MEM, node_id, socket_id, device_id, gpu_fb_mem_capacity);
+          gpu_fb_mems[socket_id].push_back({gpu_mem});
+      }
+    }
+  }
+}
+
+void MachineModel_new::add_membuses(float latency, float bandwidth)
+{
+  for (int i = 0; i < num_nodes; i++) {
+    int node_id = i;
+    for (int j = 0; j < num_sockets_per_node; j++) {
+      int socket_id = i * num_sockets_per_node + j;
+      int device_id = socket_id;
+      std::string membus_name = "MEMBUS " + std::to_string(device_id);
+      Comm_device *membus = new Comm_device(membus_name, Comm_device::MEMBUS_COMM, node_id, socket_id, device_id, latency, bandwidth);
+      membuses.push_back(membus);
+    }
+  }
+}
+
+void MachineModel_new::add_upis(float latency, float bandwidth)
+{
+  for (int i = 0; i < num_nodes; i++) {
+    int node_id = i;
+    for (int j = 0; j < num_sockets_per_node; j++) {
+      int socket_id = i * num_sockets_per_node + j;
+      int device_id = socket_id;
+      std::string upi_in_name = "UPI_IN " + std::to_string(device_id);
+      Comm_device *upi_in = new Comm_device(upi_in_name, Comm_device::UPI_IN_COMM, node_id, socket_id, device_id, latency, bandwidth);
+      upi_ins.push_back(upi_in);
+      std::string upi_out_name = "UPI_OUT " + std::to_string(device_id);
+      Comm_device *upi_out = new Comm_device(upi_out_name, Comm_device::UPI_OUT_COMM, node_id, socket_id, device_id, latency, bandwidth);
+      upi_outs.push_back(upi_out);
+    }
+  }
+}
+
+void MachineModel_new::add_nics(float latency, float bandwidth, NicDistribution nic_distribution)
+{
+  if (nic_distribution == PER_NODE) {
+    for (int i = 0; i < num_nodes; i++) {
+      int node_id = i;
+      for (int j = 0; j < num_sockets_per_node; j++) {
+        int socket_id = i * num_sockets_per_node + j;
+        int device_id = socket_id;
+        Comm_device *nic_in;
+        Comm_device *nic_out;
+        if (j == 0) {
+          std::string nic_in_name = "NIC_IN " + std::to_string(device_id);
+          nic_in = new Comm_device(nic_in_name, Comm_device::NIC_IN_COMM, node_id, socket_id, device_id, latency, bandwidth);
+          nic_ins.push_back(nic_in);
+          std::string nic_out_name = "NIC_OUT " + std::to_string(device_id);
+          nic_out = new Comm_device(nic_out_name, Comm_device::NIC_OUT_COMM, node_id, socket_id, device_id, latency, bandwidth);
+          nic_outs.push_back(nic_out);
+        }
+        else {
+          nic_ins.push_back(nic_in);
+          nic_outs.push_back(nic_out);
+        }
+      }
+    }
+  }
+  else if (nic_distribution == PER_SOCKET) {
+    for (int i = 0; i < num_nodes; i++) {
+      int node_id = i;
+      for (int j = 0; j < num_sockets_per_node; j++) {
+        int socket_id = i * num_sockets_per_node + j;
+        int device_id = socket_id;
+        std::string nic_in_name = "NIC_IN " + std::to_string(device_id);
+        Comm_device *nic_in = new Comm_device(nic_in_name, Comm_device::NIC_IN_COMM, node_id, socket_id, device_id, latency, bandwidth);
+        nic_ins.push_back(nic_in);
+        std::string nic_out_name = "NIC_OUT " + std::to_string(device_id);
+        Comm_device *nic_out = new Comm_device(nic_out_name, Comm_device::NIC_OUT_COMM, node_id, socket_id, device_id, latency, bandwidth);
+        nic_outs.push_back(nic_out);
+      }
+    }
+  }
+  else {
+    assert(false && "Unknown nic distribution type");
+  }
+}
+
+void MachineModel_new::add_pcis(float latency, float bandwidth)
+{
+  for (int i = 0; i < num_nodes; i++) {
+    int node_id = i;
+    for (int j = 0; j < num_sockets_per_node; j++) {
+      int socket_id = i * num_sockets_per_node + j;
+      int device_id = socket_id;
+      std::string pci_to_host_name = "PCI_TO_HOST " + std::to_string(device_id);    // pcie to memory
+      Comm_device *pci_to_host = new Comm_device(pci_to_host_name, Comm_device::PCI_TO_HOST_COMM, node_id, socket_id, socket_id, latency, bandwidth);
+      pcis_to_host.push_back(pci_to_host);
+      std::string pci_to_dev_name = "PCI_TO_DEV " + std::to_string(device_id);  // memory to pcie
+      Comm_device *pci_to_dev = new Comm_device(pci_to_dev_name, Comm_device::PCI_TO_DEV_COMM, node_id, socket_id, socket_id, latency, bandwidth);
+      pcis_to_device.push_back(pci_to_dev);
+    }
+  }    
+}
+
+// assume each GPU has nvlinks to the other GPUs on the same node and the nvlinks have the same latency and bandwidth
+void MachineModel_new::add_nvlinks(float latency, float bandwidth)
+{
+  int num_gpus_per_node = num_gpus_per_socket * num_sockets_per_node;
+  num_nvlinks_per_node = num_gpus_per_node * (num_gpus_per_node - 1) / 2;
+  for (int i = 0; i < num_nodes; i++) {
+    int node_id = i;
+    int socket_id = i * num_sockets_per_node;
+    nvlinks.push_back({});
+    for (int j = 0; j < num_nvlinks_per_node * 2; j++) {
+      int nvlink_id = node_id * num_nvlinks_per_node * 2 + j;
+      std::string nvlink_name = "NVLINK " + std::to_string(nvlink_id);
+      nvlinks[i].push_back(new Comm_device(nvlink_name, Comm_device::NVLINK_COMM, node_id, socket_id, nvlink_id, latency, bandwidth));
+    }
+
+    for (int j = 0; j < num_sockets_per_node; j++) {
+      int src_socket_id = i * num_sockets_per_node + j;
+      for (int k = 0; k < num_gpus_per_socket; k++) {
+        Mem_device *src_gpu_fb_mem = gpu_fb_mems[src_socket_id][k];
+        int src_local_id = j * num_gpus_per_socket + k;
+        for (int l = 0; l < num_sockets_per_node; l++) {
+          int tar_socket_id = i * num_sockets_per_node + l;
+          for (int m = 0; m < num_gpus_per_socket; m++) {
+            Mem_device *tar_gpu_fb_mem = gpu_fb_mems[tar_socket_id][m];
+            int tar_local_id = l * num_gpus_per_socket + m;
+            if (src_local_id != tar_local_id) {
+              int local_nvlink_id = src_local_id * (num_gpus_per_node - 1) + tar_local_id;
+              if (tar_local_id > src_local_id) {
+                local_nvlink_id--;
+              }
+              attach_nvlink(src_gpu_fb_mem, tar_gpu_fb_mem, nvlinks[i][local_nvlink_id]);
+              printf("add nvlink: gdb_fb_mem %d , gou_fb_mem %d, nvlink %d %d\n", src_gpu_fb_mem->device_id, tar_gpu_fb_mem->device_id, node_id, local_nvlink_id);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void MachineModel_new::attach_nvlink(Mem_device *src_mem, Mem_device *tar_mem, Comm_device *comm) 
+{
+  assert(comm->comm_type == Comm_device::NVLINK_COMM);
+  int hash = src_mem->device_id * num_gpus + tar_mem->device_id;
+  if (mem_to_nvlink.find(hash) == mem_to_nvlink.end()) {
+    mem_to_nvlink[hash] = comm;
+  }
+}
+
+Comp_device *MachineModel_new::get_cpu(int device_id)
+{
+  return get_cpu(device_id / num_cpus_per_socket, device_id % num_cpus_per_socket);
+}
+
+Comp_device *MachineModel_new::get_cpu(int socket_id, int local_id)
+{
+  if (socket_id < num_sockets and local_id < num_cpus_per_socket) {
+    return cpus[socket_id][local_id];
+  }
+  else {
+    printf("MachineModel: get_cpu - cannot find cpu (%d %d)\n", socket_id, local_id);
+    assert(false);
+  }
+} 
+
+Comp_device *MachineModel_new::get_gpu(int device_id)
+{
+  return get_gpu(device_id / num_gpus_per_socket, device_id % num_gpus_per_socket);
+}
+
+Comp_device *MachineModel_new::get_gpu(int socket_id, int local_id)
+{
+  if (socket_id < num_sockets and local_id < num_cpus_per_socket) {
+    return gpus[socket_id][local_id];
+  }
+  else {
+    printf("MachineModel: get_gpu - cannot find gpu (%d %d)\n", socket_id, local_id);
+    assert(false);
+  }
+}
+
+Mem_device *MachineModel_new::get_sys_mem(int socket_id)
+{
+  return sys_mems[socket_id];
+}
+
+Mem_device *MachineModel_new::get_z_copy_mem(int socket_id)
+{
+  return z_copy_mems[socket_id];
+}
+
+Mem_device *MachineModel_new::get_gpu_fb_mem(int device_id)
+{
+  return get_gpu_fb_mem(device_id / num_gpus_per_socket, device_id % num_gpus_per_socket);
+}
+
+Mem_device *MachineModel_new::get_gpu_fb_mem(int socket_id, int local_id)
+{
+  if (socket_id < num_sockets and local_id < num_cpus_per_socket) {
+    return gpu_fb_mems[socket_id][local_id];
+  }
+  else {
+    printf("MachineModel: get_gpu_fb_mem - cannot find gpu_fb_mem (%d %d)\n", socket_id, local_id);
+    assert(false);
+  }
+}
+
+Comm_device *MachineModel_new::get_nvlink(Mem_device *src_mem, Mem_device *tar_mem)
+{
+  int hash = src_mem->device_id * num_gpus + tar_mem->device_id;
+  if (mem_to_nvlink.find(hash) != mem_to_nvlink.end()) {
+    return mem_to_nvlink[hash];
+  }
+  else {
+    printf("MachineModel: get_nvlink - cannot get nvlink between %s and %s\n", src_mem->name.c_str(), tar_mem->name.c_str());
+    assert(false);
+  }
+}
+
+int MachineModel_new::get_num_gpus()
+{
+  return num_gpus;
+}
+
+void MachineModel_new::add_comm_path(std::vector<Comm_device::CommDevType> comm_device_list, Mem_device *src_mem, 
+                   Mem_device *tar_mem, std::vector<Comm_device *> &ret) 
+{
+  Mem_device *cur_mem = src_mem;
+  for (size_t i = 0; i < comm_device_list.size(); i++) {
+    switch (comm_device_list[i])
+    {
+    case Comm_device::MEMBUS_COMM:
+      ret.emplace_back(membuses[cur_mem->socket_id]);
+      break;
+    case Comm_device::UPI_IN_COMM:
+      cur_mem = tar_mem;
+      ret.emplace_back(upi_ins[cur_mem->socket_id]);
+      break;
+    case Comm_device::UPI_OUT_COMM:
+      ret.emplace_back(upi_outs[cur_mem->socket_id]);
+      break;
+    case Comm_device::NIC_IN_COMM:
+      cur_mem = tar_mem;
+      ret.emplace_back(nic_ins[cur_mem->socket_id]);
+      break;
+    case Comm_device::NIC_OUT_COMM:
+      ret.emplace_back(nic_outs[cur_mem->socket_id]);
+      break;
+    case Comm_device::PCI_TO_HOST_COMM:
+      ret.emplace_back(pcis_to_host[cur_mem->socket_id]);
+      break;
+    case Comm_device::PCI_TO_DEV_COMM:
+      ret.emplace_back(pcis_to_device[cur_mem->socket_id]);
+      break;
+    case Comm_device::NVLINK_COMM:
+      ret.emplace_back(get_nvlink(src_mem, tar_mem));
+      break;
+    default:
+      break;
+    }
+  }
+}
+
+std::vector<Comm_device *> MachineModel_new::get_comm_path(Mem_device *src_mem, Mem_device *tar_mem)
+{
+  std::vector<Comm_device *> ret;
+  if (src_mem->device_id == tar_mem->device_id) {
+      return ret;
+  }
+  if (src_mem->mem_type == Mem_device::SYSTEM_MEM and tar_mem->mem_type == Mem_device::SYSTEM_MEM) {
+    if (src_mem->socket_id == tar_mem->socket_id) {
+      add_comm_path(intra_socket_sys_mem_to_sys_mem, src_mem, tar_mem, ret);
+    }
+    else if (src_mem->node_id == tar_mem->node_id) {
+      add_comm_path(inter_socket_sys_mem_to_sys_mem, src_mem, tar_mem, ret);
+    }
+    else {
+      add_comm_path(inter_node_sys_mem_to_sys_mem, src_mem, tar_mem, ret);
+    }
+  }
+  else if (src_mem->mem_type == Mem_device::SYSTEM_MEM and tar_mem->mem_type == Mem_device::GPU_FB_MEM) {
+    if (src_mem->socket_id == tar_mem->socket_id) {
+      add_comm_path(intra_socket_sys_mem_to_gpu_fb_mem, src_mem, tar_mem, ret);
+    }
+    else if (src_mem->node_id == tar_mem->node_id) {
+      add_comm_path(inter_socket_sys_mem_to_gpu_fb_mem, src_mem, tar_mem, ret);
+    }
+    else {
+      add_comm_path(inter_node_sys_mem_to_gpu_fb_mem, src_mem, tar_mem, ret);
+    }
+  }
+  else if (src_mem->mem_type == Mem_device::GPU_FB_MEM and tar_mem->mem_type == Mem_device::SYSTEM_MEM) {
+    if (src_mem->socket_id == tar_mem->socket_id) {
+      add_comm_path(intra_socket_gpu_fb_mem_to_sys_mem, src_mem, tar_mem, ret);
+    }
+    else if (src_mem->node_id == tar_mem->node_id) {
+      add_comm_path(inter_socket_gpu_fb_mem_to_sys_mem, src_mem, tar_mem, ret);
+    }
+    else {
+      add_comm_path(inter_node_gpu_fb_mem_to_sys_mem, src_mem, tar_mem, ret);
+    }
+  }
+  else if (src_mem->mem_type == Mem_device::GPU_FB_MEM and tar_mem->mem_type == Mem_device::GPU_FB_MEM) {
+    if (src_mem->socket_id == tar_mem->socket_id) {
+      add_comm_path(intra_socket_gpu_fb_mem_to_gpu_fb_mem, src_mem, tar_mem, ret);
+    }
+    else if (src_mem->node_id == tar_mem->node_id) {
+      add_comm_path(inter_socket_gpu_fb_mem_to_gpu_fb_mem, src_mem, tar_mem, ret);
+    }
+    else {
+      add_comm_path(inter_node_gpu_fb_mem_to_gpu_fb_mem, src_mem, tar_mem, ret);
+    }
+  }
+  else {
+    printf("MachineModel: get_comm_path - no path found between %s and %s\n", src_mem->name.c_str(), tar_mem->name.c_str());
+    assert(false);
+  }
+  return ret;
+}
+
+float MachineModel_new::get_intra_node_gpu_bandwidth()
+{
+  return nvlink_bandwidth;
+}
+
+// Use inter-node cpu bandwidth for now 
+float MachineModel_new::get_inter_node_gpu_bandwidth()
+{
+  return nic_bandwidth;
+    // SimTask *src_task = new SimTask();
+    // src_task->ready_time = 0.0f;
+    // src_task->run_time = 0.0f;
+    // src_task->next_tasks.clear();
+    // src_task->counter = 0;
+    // src_task->device = get_gpu(0, 0);   // the first gpu on the first socket of the first node
+    // src_task->mem = get_gpu_fb_mem(0, 0);
+    // src_task->name = "test_inter_node_gpu_bw_src";
+
+    // SimTask *dst_task = new SimTask();
+    // dst_task->ready_time = 0.0f;
+    // dst_task->run_time = 0.0f;
+    // dst_task->next_tasks.clear();
+    // dst_task->counter = 0;
+    // dst_task->device = get_gpu(num_sockets_per_node, 0);  // the first gpu on the first socket of the second node
+    // dst_task->mem = get_gpu_fb_mem(num_socket_per_node, 0);
+    // dst_task->name = "test_inter_node_gpu_bw_dst";
+
+    // add_task_dependencies_with_xfer(src_task, dst_task, 64 << 20);
+}
+
+std::string MachineModel_new::to_string()
+{
+  std::string s;
+  for (int i = 0; i < num_nodes; i++) {
+    int node_id = i;
+    s += "==========================================\n";
+    s += "Node " + std::to_string(node_id) + '\n';
+    for (int j = 0; j < num_sockets_per_node; j++) {
+      s += "------------------------------------------\n";
+      int socket_id = i * num_sockets_per_node + j;
+      s += "Socket " + std::to_string(socket_id) + '\n';
+      s += "COMP: \n";
+      for (int k = 0; k < num_cpus_per_socket; k++) {
+        s += cpus[socket_id][k]->name + '\n';
+      }
+      for (int k = 0; k < num_gpus_per_socket; k++) {
+        s += gpus[socket_id][k]->name + '\n';
+      }
+      s += '\n';
+      s += "MEM: \n";
+      s += sys_mems[socket_id]->name + '\n';
+      s += z_copy_mems[socket_id]->name + '\n';
+      for (int k = 0; k < num_gpus_per_socket; k++) {
+        s += gpu_fb_mems[socket_id][k]->name + '\n';
+      }
+      s += '\n';
+      s += "COMM: \n";
+      s += membuses[socket_id]->name + '\n';
+      s += upi_ins[socket_id]->name + '\n';
+      s += upi_outs[socket_id]->name + '\n';
+      s += nic_ins[socket_id]->name + '\n';
+      s += nic_outs[socket_id]->name + '\n';
+      s += pcis_to_host[socket_id]->name + '\n';
+      s += pcis_to_device[socket_id]->name + '\n';
+    }
+    s += "------------------------------------------\n";
+    for (int j = 0; j < num_nvlinks_per_node * 2; j++) {
+      s += nvlinks[node_id][j]->name + '\n';
+    }
+  }
+  return s;
 }
 
 SimTask::SimTask()
@@ -115,7 +927,8 @@ SimTask* TaskManager::new_task()
   task->next_tasks.clear();
   task->counter = 0;
   task->device = NULL;
-  task->op_name = NULL;
+  task->mem = NULL;
+  (task->name).clear();
   return task;
 }
 
@@ -140,6 +953,16 @@ SimTask* TaskManager::new_comm_task()
   return task;
 }
 
+SimTask* TaskManager::new_comm_task(std::string name, Comm_device *comm_device, size_t message_size)
+{
+  SimTask* task = new_task();
+  task->type = SimTask::TASK_COMM;
+  task->name = name;
+  task->device = comm_device;
+  task->run_time = comm_device->latency + message_size / comm_device->bandwidth;
+  return task;
+}
+
 SimTask* TaskManager::new_forward_task(Op* op, int idx)
 {
   SimTask* task = new_task();
@@ -147,7 +970,7 @@ SimTask* TaskManager::new_forward_task(Op* op, int idx)
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
   hash_to_forward_task[hash] = task;
-  task->op_name = op->name;
+  task->name = op->name;
   return task;
 }
 
@@ -158,7 +981,7 @@ SimTask* TaskManager::new_backward_task(Op* op, int idx)
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
   hash_to_backward_task[hash] = task;
-  task->op_name = op->name;
+  task->name = op->name;
   return task;
 }
 
@@ -215,72 +1038,75 @@ void* Simulator::allocate(size_t num_elements, DataType type)
   return ret_ptr;
 }
 
-Device* Simulator::get_compute_device_by_id(int device_id)
-{
-  assert(id_to_compute_device.find(device_id) != id_to_compute_device.end());
-  return id_to_compute_device[device_id];
-}
-
-Device* Simulator::get_inter_gpu_comm_device_by_ids(int src_id,
-                                                    int dst_id)
-{
-  int hash = src_id * total_num_gpus + dst_id;
-  assert(ids_to_inter_gpu_comm_device.find(hash) != ids_to_inter_gpu_comm_device.end());
-  return ids_to_inter_gpu_comm_device[hash];
-}
-
-Device* Simulator::get_gpu_to_dram_comm_device_by_id(int gpu_id)
-{
-  assert(id_to_gputodram_comm_device.find(gpu_id) != id_to_gputodram_comm_device.end());
-  return id_to_gputodram_comm_device[gpu_id];
-}
-
-Device* Simulator::get_dram_to_gpu_comm_device_by_id(int gpu_id)
-{
-  assert(id_to_dramtogpu_comm_device.find(gpu_id) != id_to_dramtogpu_comm_device.end());
-  return id_to_dramtogpu_comm_device[gpu_id];
-}
-
-Device* Simulator::get_inter_node_comm_device_by_ids(int src_id,
-                                                     int dst_id)
-{
-  int hash = src_id * total_num_gpus + dst_id;
-  assert(ids_to_inter_node_comm_device.find(hash) != ids_to_inter_node_comm_device.end());
-  return ids_to_inter_node_comm_device[hash];
-}
-
 void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
                                                 SimTask* dst_task,
-                                                size_t intersect)
+                                                size_t message_size)
 {
-  if (src_task->device == dst_task->device) {
+  std::vector<Comm_device *> path = machine->get_comm_path(src_task->mem, dst_task->mem);
+  // print the communication path
+  // printf("Path from %s to %s is: ", src_task->mem->name.c_str(), dst_task->mem->name.c_str());
+  // for (size_t i = 0; i < path.size(); i++) {
+  //   printf("%s ", path[i]->name.c_str());
+  // }
+  // printf("\n");
+
+  if (path.empty()) {
     src_task->add_next_task(dst_task);
-  } else if (src_task->device->node_id == dst_task->device->node_id) {
-    // Intra-node communication
-    SimTask* task = task_manager->new_comm_task();
-    task->device = get_inter_gpu_comm_device_by_ids(src_task->device->gpu_id,
-                                                    dst_task->device->gpu_id);
-    task->run_time = (float)intersect * sizeof(float) / task->device->bandwidth;
-    //printf("Comm task: run_time(%.4lf) size(%zu) bandwidth(%.4lf)\n",
-    //       task->run_time, intersect * sizeof(float), task->device->bandwidth);
-    src_task->add_next_task(task);
-    task->add_next_task(dst_task);
-  } else {
-    // Inter-node communication
-    SimTask* gpu_to_dram = task_manager->new_comm_task();
-    gpu_to_dram->device = get_gpu_to_dram_comm_device_by_id(src_task->device->gpu_id);
-    gpu_to_dram->run_time = (float)intersect * sizeof(float) / gpu_to_dram->device->bandwidth;
-    SimTask* dram_to_dram = task_manager->new_comm_task();
-    dram_to_dram->device = get_inter_node_comm_device_by_ids(src_task->device->node_id,
-                                                             dst_task->device->node_id);
-    dram_to_dram->run_time = (float)intersect * sizeof(float) / dram_to_dram->device->bandwidth;
-    SimTask* dram_to_gpu = task_manager->new_comm_task();
-    dram_to_gpu->device = get_dram_to_gpu_comm_device_by_id(dst_task->device->gpu_id);
-    dram_to_gpu->run_time = (float)intersect * sizeof(float) / dram_to_gpu->device->bandwidth;
-    src_task->add_next_task(gpu_to_dram);
-    gpu_to_dram->add_next_task(dram_to_dram);
-    dram_to_dram->add_next_task(dram_to_gpu);
-    dram_to_gpu->add_next_task(dst_task);
+    return;
+  }
+  assert(message_size > 0);
+  std::vector<std::vector<SimTask *>> all_tasks;
+  // Limit the max number of segments per message
+  int seg_size = segment_size;
+  int num_segment = message_size / seg_size;
+  if (message_size % seg_size != 0) {
+    num_segment += 1;
+  }
+  if (num_segment > max_num_segments) {
+    num_segment = max_num_segments;
+    seg_size = message_size / num_segment;
+  }
+  // Create all the comm tasks
+  // Divide messages into segments
+  for (size_t i = 0; i < path.size(); i++) {
+    all_tasks.push_back({});
+    for (int j = 0; j < num_segment; j++) {
+      int cur_seg_size = seg_size;
+      if (j == num_segment - 1) {
+        cur_seg_size = message_size - (num_segment - 1) * seg_size;
+      }
+      std::string name = "seg " + std::to_string(j) + " from " + src_task->name + " to " + dst_task->name;
+      SimTask *cur_task = task_manager->new_comm_task(name, path[i], cur_seg_size);
+      all_tasks[i].push_back(cur_task);
+    }
+  }
+
+  // Add dependencies among the comm tasks
+  for (size_t i = 0; i < path.size(); i++) {
+    for (int j = 0; j < num_segment; j++) {
+      if (i == 0) {
+        src_task->add_next_task(all_tasks[i][j]);
+      }
+      if (i == path.size() - 1) {
+        all_tasks[i][j]->add_next_task(dst_task);
+      }
+      if (i > 0) {
+        all_tasks[i-1][j]->add_next_task(all_tasks[i][j]);
+      }
+    }
+  }
+
+  // Add special dependencies for upi_ins, upi_outs, nic_ins, and nic_outs to prevent communication
+  // overlap between upi_ins and upi_outs, and between nic_ins and nic_outs.
+  if (num_segment > 1 and path.size() >= 2) {
+    for (size_t i = 0; i < path.size(); i++) {
+      for (int j = 1; j < num_segment; j++) {
+        if (((Comm_device *)all_tasks[i][j]->device)->comm_type == Comm_device::NIC_OUT_COMM or
+            ((Comm_device *)all_tasks[i][j]->device)->comm_type == Comm_device::UPI_OUT_COMM) {
+          all_tasks[i+1][j-1]->add_next_task(all_tasks[i][j]);
+        }
+      }
+    }
   }
 }
 
@@ -327,6 +1153,7 @@ float Simulator::simulate_runtime(const FFModel* model,
                                   CompMode comp_mode,
                                   std::string const &export_file_name)
 {
+  // printf("%s\n", machine->to_string().c_str());
   task_manager->reset();
   // Step 1: register forward and backward tasks
   for (size_t l = 0; l < model->layers.size(); l++) {
@@ -337,11 +1164,13 @@ float Simulator::simulate_runtime(const FFModel* model,
     float backward_time = cost_metrics.backward_time;
     for (int j = 0; j < config.num_parts(); j++) {
       SimTask* task1 = task_manager->new_forward_task(op, j);
-      task1->device = get_compute_device_by_id(config.device_ids[j]);
+      task1->device = machine->get_gpu(config.device_ids[j]);
+      task1->mem = machine->get_gpu_fb_mem(config.device_ids[j]);
       task1->run_time = forward_time;
       if (comp_mode == COMP_MODE_TRAINING) {
         SimTask* task2 = task_manager->new_backward_task(op, j);
-        task2->device = get_compute_device_by_id(config.device_ids[j]);
+        task2->device = machine->get_gpu(config.device_ids[j]);
+        task2->mem = machine->get_gpu_fb_mem(config.device_ids[j]);
         task2->run_time = backward_time;
         task1->add_next_task(task2);
       }
@@ -385,9 +1214,10 @@ float Simulator::simulate_runtime(const FFModel* model,
   // Step 2.5: add finals tasks for each compute device to capture the returning comm tasks
   // from parameter servers
   std::vector<SimTask*> finals;
-  for (int d = 0; d < total_num_gpus; d++) {
+  for (int d = 0; d < machine->get_num_gpus(); d++) {
     SimTask* t = task_manager->new_barrier_task();
-    t->device = get_compute_device_by_id(d);
+    t->device = machine->get_gpu(d);
+    t->mem = machine->get_gpu_fb_mem(d);
     t->run_time = 0;
     finals.push_back(t);
   }
@@ -405,7 +1235,8 @@ float Simulator::simulate_runtime(const FFModel* model,
             Domain firstR = op->get_weight_tensor_shape(pc, j, firstId);
             // Add a compute task for parameter update
             SimTask* updateT = task_manager->new_update_task();
-            updateT->device = get_compute_device_by_id(pc.device_ids[firstId]);
+            updateT->device = machine->get_gpu(pc.device_ids[firstId]);
+            updateT->mem = machine->get_gpu_fb_mem(pc.device_ids[firstId]);
             // TODO add parameter synchronization time
             updateT->run_time = 0.0f; // Assume update task takes no time
             for (int nextId = firstId+1; nextId < pc.num_parts(); nextId++) {
@@ -420,7 +1251,7 @@ float Simulator::simulate_runtime(const FFModel* model,
                 SimTask* backT = task_manager->get_backward_task(op, nextId);
                 add_task_dependencies_with_xfer(backT, updateT, firstR.get_volume());
                 // Add comm. tasks from updateT to finalT
-                SimTask* finalT = finals[backT->device->gpu_id];
+                SimTask* finalT = finals[backT->device->device_id];
                 add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume());
               }
             }
@@ -431,9 +1262,10 @@ float Simulator::simulate_runtime(const FFModel* model,
     // Step 3b: Bulk Synchronous Model
     // Add a per-device barrier before weight update
     std::vector<SimTask*> barriers;
-    for (int d = 0; d < total_num_gpus; d++) {
+    for (int d = 0; d < machine->get_num_gpus(); d++) {
       SimTask* t = task_manager->new_barrier_task();
-      t->device = get_compute_device_by_id(d);
+      t->device = machine->get_gpu(d);
+      t->mem = machine->get_gpu_fb_mem(d);
       t->run_time = 0;
       barriers.push_back(t);
     }
@@ -442,7 +1274,7 @@ float Simulator::simulate_runtime(const FFModel* model,
       ParallelConfig pc = global.find(op)->second;
       for (int j = 0; j < pc.num_parts(); j++) {
         SimTask* backT = task_manager->get_backward_task(op, j);
-        backT->add_next_task(barriers[backT->device->gpu_id]);
+        backT->add_next_task(barriers[backT->device->device_id]);
       }
     }
     for (size_t l = 0; l < model->layers.size(); l++) {
@@ -456,9 +1288,10 @@ float Simulator::simulate_runtime(const FFModel* model,
             Domain firstR = op->get_weight_tensor_shape(pc, j, firstId);
             // Add a compute task for parameter update
             SimTask* updateT = task_manager->new_update_task();
-            updateT->device = get_compute_device_by_id(pc.device_ids[firstId]);
+            updateT->device = machine->get_gpu(pc.device_ids[firstId]);
+            updateT->mem = machine->get_gpu_fb_mem(pc.device_ids[firstId]);
             updateT->run_time = 0.0f; // Assume update task takes no time
-            barriers[updateT->device->gpu_id]->add_next_task(updateT);
+            barriers[updateT->device->device_id]->add_next_task(updateT);
             for (int nextId = firstId+1; nextId < pc.num_parts(); nextId++) {
               Domain nextR = op->get_weight_tensor_shape(pc, j, nextId);
               if (firstR.intersection(nextR).get_volume() > 0) {
@@ -468,12 +1301,12 @@ float Simulator::simulate_runtime(const FFModel* model,
                 assert(synched.find(nextId) == synched.end());
                 synched.insert(nextId);
                 SimTask* backT = task_manager->get_backward_task(op, nextId);
-                assert(backT->device->gpu_id == pc.device_ids[nextId]);
-                SimTask* barrierT = barriers[backT->device->gpu_id];
+                assert(backT->device->device_id == pc.device_ids[nextId]);
+                SimTask* barrierT = barriers[backT->device->device_id];
                 // Add comm. tasks from barrierT to updateT
                 add_task_dependencies_with_xfer(barrierT, updateT, firstR.get_volume());
                 // Add comm. tasks from updateT to finalT
-                SimTask* finalT = finals[backT->device->gpu_id];
+                SimTask* finalT = finals[backT->device->device_id];
                 add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume());
               }
             }
@@ -500,37 +1333,37 @@ float Simulator::simulate_runtime(const FFModel* model,
   }
   while (!ready_queue.empty()) {
     // Find the task with the earliest start time
-    SimTask* t = ready_queue.top();
+    SimTask* cur_task = ready_queue.top();
     ready_queue.pop();
     float ready_time = 0;
-    if (device_times.find(t->device) != device_times.end()) {
-      ready_time = device_times[t->device];
+    if (device_times.find(cur_task->device) != device_times.end()) {
+      ready_time = device_times[cur_task->device];
     }
-    float start_time = std::max(ready_time, t->ready_time);
-    float end_time = start_time + t->run_time;
-    device_times[t->device] = end_time;
+    float start_time = std::max(ready_time, cur_task->ready_time);
+    float end_time = start_time + cur_task->run_time;
+    device_times[cur_task->device] = end_time;
     if (export_taskgraph) {
       std::map<std::string, std::string> nodeAttrs;
       std::ostringstream label;
       label << "\"{ ";
-      if (t->op_name != NULL) {
-        label << t->op_name << " | ";
+      if (!(cur_task->name).empty()) {
+        label << cur_task->name << " | ";
       }
-      label << t->get_type_str() << " | ";
+      label << cur_task->get_type_str() << " | ";
       label << "{ " << start_time << " | " << end_time << " }";
       label << " }\"";
       nodeAttrs["label"] = label.str();
       nodeAttrs["shape"] = "record";
-      taskGraph.add_node(t, nodeAttrs);
+      taskGraph.add_node(cur_task, nodeAttrs);
     }
-    /* printf("task[%d] type(%d) run_time(%.4lf) ready_time(%.4lf) start_time(%.4lf) device(%d)\n", */
-    /*     idx, t->type, t->run_time, ready_time, start_time, t->device->gpu_id); */
+    // printf("task[%lu] type(%d) run_time(%.4lf) ready_time(%.4lf) start_time(%.4lf) device(%s)\n",
+    //       idx, cur_task->type, cur_task->run_time, ready_time, start_time, (cur_task->device->name).c_str());
     if (end_time > sim_time)
       sim_time = end_time;
-    for (size_t i = 0; i < t->next_tasks.size(); i++) {
-      SimTask* next = t->next_tasks[i];
+    for (size_t i = 0; i < cur_task->next_tasks.size(); i++) {
+      SimTask* next = cur_task->next_tasks[i];
       if (export_taskgraph) {
-        taskGraph.add_edge(t, next);
+        taskGraph.add_edge(cur_task, next);
       }
       next->ready_time = std::max(next->ready_time, end_time);
       next->counter --;
@@ -558,7 +1391,7 @@ float Simulator::simulate_runtime(const FFModel* model,
           if (synched.find(firstId) == synched.end()) {
             synched.insert(firstId);
             Domain firstR = op->get_weight_tensor_shape(pc, j, firstId);
-            Device* firstDevice = get_compute_device_by_id(pc.device_ids[firstId]);
+            Device* firstDevice = machine->get_gpu(pc.device_ids[firstId]);
             float nccl_time = 0.0f;
             for (int nextId = firstId+1; nextId < pc.num_parts(); nextId++) {
               Domain nextR = op->get_weight_tensor_shape(pc, j, nextId);
@@ -568,17 +1401,13 @@ float Simulator::simulate_runtime(const FFModel* model,
                 assert(firstR == nextR);
                 assert(synched.find(nextId) == synched.end());
                 synched.insert(nextId);
-                Device* nextDevice = get_compute_device_by_id(pc.device_ids[nextId]);
+                Device* nextDevice = machine->get_gpu(pc.device_ids[nextId]);
                 // Compute the bandwidth between firstDevice/nextDevice
                 float bandwidth = 0.0f;
                 if (firstDevice->node_id == nextDevice->node_id) {
-                  Device* commDevice = get_inter_gpu_comm_device_by_ids(
-                      firstDevice->gpu_id, nextDevice->gpu_id);
-                  bandwidth = commDevice->bandwidth;
+                  bandwidth = machine->get_intra_node_gpu_bandwidth();
                 } else {
-                  Device* commDevice = get_inter_node_comm_device_by_ids(
-                      firstDevice->node_id, nextDevice->node_id);
-                  bandwidth = commDevice->bandwidth;
+                  bandwidth = machine->get_inter_node_gpu_bandwidth();
                 }
                 nccl_time = std::max(nccl_time, (float)firstR.get_volume() * sizeof(float) / bandwidth);
               }
@@ -593,7 +1422,7 @@ float Simulator::simulate_runtime(const FFModel* model,
   }
 #endif
   // Step 6: add penalty to strategies that exceed the memory limits on devices
-  std::vector<size_t> gpu_mem_usage(total_num_gpus, 0);
+  std::vector<size_t> gpu_mem_usage(machine->get_num_gpus(), 0);
   float memory_penalty = 0.0f;
   for (size_t l = 0; l < model->layers.size(); l++) {
     Op* op = model->layers[l];
@@ -610,10 +1439,10 @@ float Simulator::simulate_runtime(const FFModel* model,
     }
   }
   // Penalize the total runtiem by 1ms if we exceed the memory budget by 1MB
-  for (int i = 0; i < total_num_gpus; i++) {
-    Device* gpu = get_compute_device_by_id(i);
-    if (gpu_mem_usage[i] > gpu->capacity)
-      memory_penalty += (gpu_mem_usage[i] - gpu->capacity) * 1e-6;
+  for (int i = 0; i < machine->get_num_gpus(); i++) {
+    Mem_device* gpu_fb_mem = machine->get_gpu_fb_mem(i);
+    if (gpu_mem_usage[i] > gpu_fb_mem->capacity and gpu_fb_mem->capacity >= 0)
+      memory_penalty += (gpu_mem_usage[i] - gpu_fb_mem->capacity) * 1e-6;
   }
   //if (memory_penalty > 0.0f)
   //  printf("Memory penalty = %.4lf ms\n", memory_penalty);
