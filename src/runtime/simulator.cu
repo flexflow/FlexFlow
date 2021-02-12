@@ -64,7 +64,7 @@ Simulator::Simulator(const FFModel* model,
   for (int i = 0; i < num_nodes; i++)
     for (int j = 0; j < gpus_per_node; j++) {
       id_to_compute_device[i*gpus_per_node+j] = new Device(Device::DEVICE_GPU,
-          i, i*gpus_per_node+j);
+          i, i*gpus_per_node+j, memory.capacity());
     }
   // Create inter GPU comm devices:
   for (int i = 0; i < total_num_gpus; i++)

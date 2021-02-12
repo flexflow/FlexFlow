@@ -646,10 +646,9 @@ ElementBinaryMeta::ElementBinaryMeta(FFHandler handler)
   op_type = OP_ANY;
 }
 
-bool ElementBinary::measure_compute_time(Simulator* sim,
-                                         const ParallelConfig& pc,
-                                         float& forward_time,
-                                         float& backward_time)
+bool ElementBinary::measure_operator_cost(Simulator* sim,
+                                          const ParallelConfig& pc,
+                                          CostMetrics& cost_metrics)
 {
   Tensor sub_output, sub_input1, sub_input0;
   if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type))
@@ -697,10 +696,12 @@ bool ElementBinary::measure_compute_time(Simulator* sim,
     backward_kernel(m, output_ptr, input0_ptr, input1_ptr, input0_grad_ptr, input1_grad_ptr);
   };
 
-  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   printf("[Measure Elewise Binary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
-         name, sub_output.get_volume(), forward_time, backward_time);
+      name, sub_output.get_volume(),
+      cost_metrics.forward_time,
+      cost_metrics.backward_time);
 
   return true;
 }

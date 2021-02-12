@@ -431,10 +431,9 @@ void Concat::backward(const FFModel& ff)
 }
 
 
-bool Concat::measure_compute_time(Simulator* sim,
-                                  const ParallelConfig& pc,
-                                  float& forward_time,
-                                  float& backward_time)
+bool Concat::measure_operator_cost(Simulator* sim,
+                                   const ParallelConfig& pc,
+                                   CostMetrics& cost_metrics)
 {
   assert (numInputs <= MAX_NUM_INPUTS);
   Tensor sub_inputs[MAX_NUM_INPUTS], sub_output;
@@ -479,12 +478,12 @@ bool Concat::measure_compute_time(Simulator* sim,
     backward_kernel(output_grad_ptr, input_grad_ptrs, numInputs, axis, out_domain, in_domains);
   };
 
-  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   printf("[Measure Concat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
       name,
-      forward_time,
-      backward_time);
+      cost_metrics.forward_time,
+      cost_metrics.backward_time);
 
   return true;
 }

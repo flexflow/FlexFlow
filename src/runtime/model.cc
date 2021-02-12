@@ -975,19 +975,16 @@ Parameter FFModel::create_linear_weight(Op* op,
     weight.part = runtime->get_logical_partition(
         ctx, weight.region, ip);
   } else if (weight.type == Parameter::NCCL) {
-    // Currently only support the sample dimension for operators with NCCL
-    //ParallelConfig pconfig;
-    //config.find_parallel_config(TDIM, pcname, pconfig);
-    //assert(pconfig.is_data_parallel());
-    for (int i = 0; i < TDIM-1; i++)
-      assert(num_parts[i] == 1);
+    // FIXME: Currently only support the sample dimension for operators with NCCL
+    //for (int i = 0; i < TDIM-1; i++)
+    //  assert(num_parts[i] == 1);
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
       hi[i] = dims[NDIM-1-i]-1;
     int num_batches = 1;
     for (int i = 1; i < TDIM; i++)
       num_batches *= num_parts[i];
-    hi[NDIM-1] = num_batches * dims[0] -1;
+    hi[NDIM-1] = num_batches * (dims[0] / num_parts[0]) - 1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight.region = runtime->create_logical_region(ctx, is, fs);
@@ -1209,14 +1206,15 @@ Tensor FFModel::create_linear_replica(const int dims[],
   replica.region_grad = runtime->create_logical_region(ctx, is, fs);
   assert(dims[0] == num_parts[0]);
   //assert(dims[1] % num_parts[1] == 0);
-  hi[NDIM-1] = dims[0] / num_parts[0] - 1;
-  //hi[NDIM-2] = dims[1] / num_parts[1] - 1;
+  hi[NDIM-1] = dims[0] / num_parts[0] - 1; // replication dim
+  hi[NDIM-2] = dims[1] / num_parts[TDIM-1] - 1; // sample dim
   Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
   Transform<NDIM, TDIM> transform;
   for (int i = 0; i < NDIM; i++)
     for (int j = 0; j < TDIM; j++)
       transform[i][j] = 0;
-  transform[NDIM-1][0] = 1;
+  transform[NDIM-1][0] = hi[NDIM-1] + 1;
+  transform[NDIM-2][TDIM-1] = hi[NDIM-2] + 1;
   //transform[NDIM-2][1] = dims[1] / num_parts[1];
   IndexPartition ip = runtime->create_partition_by_restriction(
       ctx, is, task_is, transform, extent);

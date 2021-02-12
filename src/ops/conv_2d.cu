@@ -926,10 +926,9 @@ Conv2DMeta::Conv2DMeta(FFHandler handler)
   checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
 }
 
-bool Conv2D::measure_compute_time(Simulator* sim,
-                                  const ParallelConfig& pc,
-                                  float& forward_time,
-                                  float& backward_time)
+bool Conv2D::measure_operator_cost(Simulator* sim,
+                                   const ParallelConfig& pc,
+                                   CostMetrics& cost_metrics)
 {
   Tensor sub_output, sub_input;
   if(!outputs[0].get_output_sub_tensor(pc, sub_output, OP_CONV2D))
@@ -985,6 +984,13 @@ bool Conv2D::measure_compute_time(Simulator* sim,
   float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
   assert(bias_ptr != NULL);
 
+  // compute memory usage
+  // Assume:
+  //   1. all memory allocations use Simulator::allocate
+  //   2. we call Simulator::free_all before measure an operator
+  // Therefore, the memory usage of an operator is sim->offset
+  cost_metrics.memory_requirement = (size_t)sim->offset;
+
   // select forward algorithm
   {
     const int reqAlgCnt = 8;
@@ -997,7 +1003,7 @@ bool Conv2D::measure_compute_time(Simulator* sim,
         m->handle.workSpace, m->handle.workSpaceSize));
     assert(cnt > 0);
     checkCUDNN(perfResults[0].status);
-    forward_time = perfResults[0].time;
+    cost_metrics.forward_time = perfResults[0].time;
     //for (int i = 0; i < cnt; i++)
     //  printf("conv forward: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time);
   }
@@ -1013,7 +1019,7 @@ bool Conv2D::measure_compute_time(Simulator* sim,
         m->handle.workSpace, m->handle.workSpaceSize));
     assert(cnt > 0);
     checkCUDNN(perfResults[0].status);
-    backward_time = perfResults[0].time;
+    cost_metrics.backward_time = perfResults[0].time;
   }
   {
     const int reqAlgCnt = 8;
@@ -1026,7 +1032,7 @@ bool Conv2D::measure_compute_time(Simulator* sim,
         m->handle.workSpace, m->handle.workSpaceSize));
     assert(cnt > 0);
     checkCUDNN(perfResults[0].status);
-    backward_time += perfResults[0].time;
+    cost_metrics.backward_time += perfResults[0].time;
   }
   printf("[Measure Conv2D] name(%s) input(%d %d %d %d) weight(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
          name,
@@ -1035,6 +1041,6 @@ bool Conv2D::measure_compute_time(Simulator* sim,
          output_n, output_c, output_h, output_w,
          stride_h, stride_w,
          padding_h, padding_w,
-         forward_time, backward_time);
+         cost_metrics.forward_time, cost_metrics.backward_time);
   return true;
 }

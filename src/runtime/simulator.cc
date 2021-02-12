@@ -39,14 +39,27 @@ bool ParallelConfig::is_data_parallel() const
   return true;
 }
 
-Device::Device(Device::DeviceType _type, int _node_id, int _gpu_id)
-: node_id(_node_id), gpu_id(_gpu_id), bandwidth(0.0f), type(_type)
+Device::Device(Device::DeviceType _type,
+               int _node_id,
+               int _gpu_id,
+               size_t _capacity)
+: node_id(_node_id),
+  gpu_id(_gpu_id),
+  bandwidth(0.0f),
+  capacity(_capacity),
+  type(_type)
 {
+  printf("Device: node_id(%d) gpu_id(%d) capacity(%zu)\n", node_id, gpu_id, capacity);
   assert(type == DEVICE_GPU);
 }
 
-Device::Device(Device::DeviceType _type, float _bandwidth)
-: node_id(-1), gpu_id(-1), bandwidth(_bandwidth), type(_type)
+Device::Device(Device::DeviceType _type,
+               float _bandwidth)
+: node_id(-1),
+  gpu_id(-1),
+  bandwidth(_bandwidth),
+  capacity(0),
+  type(_type)
 {
   assert(type == DEVICE_COMM);
 }
@@ -266,8 +279,8 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
   }
 }
 
-[[noreturn]] void handle_measure_compute_time_unimplemented(Op const *op) {
-    std::cerr << "measure_compute_time not implemented for op "
+[[noreturn]] void handle_measure_operator_cost_unimplemented(Op const *op) {
+    std::cerr << "measure_operator_cost not implemented for op "
               << op->name
               << " (type " << op->op_type << ")"
               << ". Please report this issue to the FlexFlow developers."
@@ -275,48 +288,25 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
     std::abort();
 }
 
-float Simulator::measure_op_forward_time(Op* op, const ParallelConfig& config)
+CostMetrics Simulator::measure_operator_cost(Op* op, const ParallelConfig& config)
 {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(config.device_type);
   hash = hash * 31 + std::hash<int>()(config.nDims);
   for (int i = 0; i < config.nDims; i++)
     hash = hash * 31 + std::hash<int>()(config.dim[i]);
-  if (hash_to_op_forward_time.find(hash) == hash_to_op_forward_time.end()) {
-    float forward_time, backward_time;
-    bool is_implemented = op->measure_compute_time(this, config, forward_time, backward_time);
+  std::map<size_t, CostMetrics>::const_iterator iter =
+    hash_to_operator_cost.find(hash);
+  if (iter == hash_to_operator_cost.end()) {
+    CostMetrics cost_metrics;
+    bool is_implemented = op->measure_operator_cost(this, config, cost_metrics);
     if (! is_implemented) {
-      handle_measure_compute_time_unimplemented(op);
+      handle_measure_operator_cost_unimplemented(op);
     }
-    hash_to_op_forward_time[hash] = forward_time;
-    // Check consistency betwek forward and backward
-    assert(hash_to_op_backward_time.find(hash) == hash_to_op_backward_time.end());
-    hash_to_op_backward_time[hash] = backward_time;
-    return forward_time;
+    hash_to_operator_cost[hash] = cost_metrics;
+    return cost_metrics;
   } else {
-    return hash_to_op_forward_time[hash];
-  }
-}
-
-float Simulator::measure_op_backward_time(Op* op, const ParallelConfig& config)
-{
-  size_t hash = 17 * 31 + (size_t)(op);
-  hash = hash * 31 + std::hash<int>()(config.device_type);
-  hash = hash * 31 + std::hash<int>()(config.nDims);
-  for (int i = 0; i < config.nDims; i++)
-    hash = hash * 31 + std::hash<int>()(config.dim[i]);
-  if (hash_to_op_backward_time.find(hash) == hash_to_op_backward_time.end()) {
-    float forward_time, backward_time;
-    bool is_implemented = op->measure_compute_time(this, config, forward_time, backward_time);
-    if (! is_implemented) {
-      handle_measure_compute_time_unimplemented(op);
-    }
-    assert(hash_to_op_forward_time.find(hash) == hash_to_op_forward_time.end());
-    hash_to_op_forward_time[hash] = forward_time;
-    hash_to_op_backward_time[hash] = backward_time;
-    return backward_time;
-  } else {
-    return hash_to_op_backward_time[hash];
+    return iter->second;
   }
 }
 
@@ -335,8 +325,9 @@ float Simulator::simulate_runtime(const FFModel* model,
   for (size_t l = 0; l < model->layers.size(); l++) {
     Op* op = model->layers[l];
     ParallelConfig config = global.find(op)->second;
-    float forward_time = measure_op_forward_time(op, config);
-    float backward_time = measure_op_backward_time(op, config);
+    CostMetrics cost_metrics = measure_operator_cost(op, config);
+    float forward_time = cost_metrics.forward_time;
+    float backward_time = cost_metrics.backward_time;
     for (int j = 0; j < config.num_parts(); j++) {
       SimTask* task1 = task_manager->new_forward_task(op, j);
       task1->device = get_compute_device_by_id(config.device_ids[j]);
@@ -586,5 +577,25 @@ float Simulator::simulate_runtime(const FFModel* model,
     }
   }
 #endif
-  return sim_time;
+  // Step 6: add penalty to strategies that exceed the memory limits on devices
+  std::vector<size_t> gpu_mem_usage(total_num_gpus, 0);
+  float memory_penalty = 0.0f;
+  for (size_t l = 0; l < model->layers.size(); l++) {
+    Op* op = model->layers[l];
+    ParallelConfig config = global.find(op)->second;
+    CostMetrics cost_metrics = measure_operator_cost(op, config);
+    size_t memory_requirement = cost_metrics.memory_requirement;
+    for (int j = 0; j < config.num_parts(); j++) {
+      gpu_mem_usage[config.device_ids[j]] += memory_requirement;
+    }
+  }
+  // Penalize the total runtiem by 1ms if we exceed the memory budget by 1MB
+  for (int i = 0; i < total_num_gpus; i++) {
+    Device* gpu = get_compute_device_by_id(i);
+    if (gpu_mem_usage[i] > gpu->capacity)
+      memory_penalty += (gpu_mem_usage[i] - gpu->capacity) * 1e-6;
+  }
+  //if (memory_penalty > 0.0f)
+  //  printf("Memory penalty = %.4lf ms\n", memory_penalty);
+  return sim_time + memory_penalty;
 }

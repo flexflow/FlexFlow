@@ -398,10 +398,9 @@ Pool2DMeta::Pool2DMeta(FFHandler handler)
   checkCUDNN(cudnnCreatePoolingDescriptor(&poolDesc));
 }
 
-bool Pool2D::measure_compute_time(Simulator* sim,
-                                  const ParallelConfig& pc,
-                                  float& forward_time,
-                                  float& backward_time)
+bool Pool2D::measure_operator_cost(Simulator* sim,
+                                   const ParallelConfig& pc,
+                                   CostMetrics& cost_metrics)
 {
   Tensor sub_output, sub_input;
   if(!outputs[0].get_output_sub_tensor(pc, sub_output, OP_CONV2D))
@@ -473,7 +472,7 @@ bool Pool2D::measure_compute_time(Simulator* sim,
     backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr);
   };
 
-  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   printf("[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
       name,
@@ -481,7 +480,7 @@ bool Pool2D::measure_compute_time(Simulator* sim,
       output_n, output_c, output_h, output_w,
       stride_h, stride_w,
       padding_h, padding_w,
-      forward_time, backward_time);
+      cost_metrics.forward_time, cost_metrics.backward_time);
 
   return true;
 }

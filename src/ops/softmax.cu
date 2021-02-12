@@ -322,10 +322,9 @@ void Softmax::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-bool Softmax::measure_compute_time(Simulator* sim,
-                                   const ParallelConfig& pc,
-                                   float& forward_time,
-                                   float& backward_time)
+bool Softmax::measure_operator_cost(Simulator* sim,
+                                    const ParallelConfig& pc,
+                                    CostMetrics& cost_metrics)
 {
   Tensor sub_output, sub_input;
   if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
@@ -355,9 +354,11 @@ bool Softmax::measure_compute_time(Simulator* sim,
     backward_kernel(input_grad_ptr, output_grad_ptr, sub_output.get_volume());
   };
 
-  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   printf("[Measure Softmax] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
-      name, sub_output.get_volume(), forward_time, backward_time);
+      name, sub_output.get_volume(),
+      cost_metrics.forward_time,
+      cost_metrics.backward_time);
   return true;
 }

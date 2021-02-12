@@ -363,10 +363,9 @@ void Embedding::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-bool Embedding::measure_compute_time(Simulator* sim,
-                                     const ParallelConfig& pc,
-                                     float& forward_time,
-                                     float& backward_time)
+bool Embedding::measure_operator_cost(Simulator* sim,
+                                      const ParallelConfig& pc,
+                                      CostMetrics& cost_metrics)
 {
   Tensor sub_input, sub_output;
   if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
@@ -397,12 +396,12 @@ bool Embedding::measure_compute_time(Simulator* sim,
     backward_kernel(input_ptr, output_ptr, weight_grad_ptr, in_dim, out_dim, batch_size, this->aggr, sub_output.get_volume());
   };
 
-  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   printf("[Measure Embedding] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
       name,
-      forward_time,
-      backward_time);
+      cost_metrics.forward_time,
+      cost_metrics.backward_time);
 
   return true;
 }
