@@ -869,8 +869,6 @@ void FFModel::create_disjoint_partition(const Tensor& tensor,
     Domain domain = runtime->get_index_space_domain(ctx, part_is);
     assert(domain.get_dim() == NDIM);
   }
-  // Current assume forward and grad share the same index space
-  assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
   Rect<NDIM> rect = runtime->get_index_space_domain(ctx, tensor.region.get_index_space());
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
   Transform<NDIM, NDIM> transform;
@@ -891,7 +889,13 @@ void FFModel::create_disjoint_partition(const Tensor& tensor,
   assert(runtime->is_index_partition_disjoint(ctx, ip));
   assert(runtime->is_index_partition_complete(ctx, ip));
   part_fwd = runtime->get_logical_partition(ctx, tensor.region, ip);
-  part_bwd = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
+  if (tensor.region_grad != LogicalRegion::NO_REGION) {
+    // Current assume forward and grad share the same index space
+    assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
+    part_bwd = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
+  } else {
+    part_bwd = LogicalPartition::NO_PART;
+  }
 }
 
 template<int NDIM, int TDIM>
@@ -1342,7 +1346,7 @@ void FFModel::compute_metrics()
 {
   Op* final_layer = layers[layers.size()-1];
   assert(final_layer->numOutputs == 1);
-  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor);
+  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
 }
 
 void FFModel::backward()
@@ -1350,9 +1354,9 @@ void FFModel::backward()
   // Compute metrics
   Op* final_layer = layers[layers.size()-1];
   assert(final_layer->numOutputs == 1);
-  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor);
+  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
   // Compute the gradients of the final layer wrt loss
-  loss_op->backward(this, &(final_layer->outputs[0]), &label_tensor);
+  loss_op->backward(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
   // Perform backpropagation
   // std::set<LogicalRegion> resetedInputGrads;
   for (int l = layers.size() - 1; l >= 0; l--) {
@@ -1615,6 +1619,12 @@ void FFModel::compile(LossType loss_type,
     case DIM: \
     { \
       label_tensor = create_tensor<DIM>(dims, label_type); \
+      label_tensor_with_final_part = label_tensor; \
+      IndexSpaceT<DIM> task_is = IndexSpaceT<DIM>(\
+          get_or_create_task_is(DIM, final_layer->name));\
+      create_disjoint_partition<DIM>(label_tensor_with_final_part,\
+          task_is, label_tensor_with_final_part.part,\
+          label_tensor_with_final_part.part_grad);\
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)

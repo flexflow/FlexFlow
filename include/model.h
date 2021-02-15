@@ -460,6 +460,7 @@ public:
   //DataLoader *dataLoader;
 private:
   bool debug;
+  Tensor label_tensor_with_final_part;//FIXME: to be removed
   std::map<ParallelConfig, IndexSpace, ParaConfigCompare> taskIs;
 
   Tensor binary(OperatorType op,

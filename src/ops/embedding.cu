@@ -106,10 +106,10 @@ OpMeta* Embedding::init_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, Runtime* runtime)
 {
-  const Embedding* linear = (Embedding*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   OpMeta* m = new OpMeta(handle);
 #ifdef FF_USE_NCCL
+  const Embedding* linear = (Embedding*) task->args;
   m->init_nccl_communicator(task, linear->ncclId);
 #endif
   return m;
