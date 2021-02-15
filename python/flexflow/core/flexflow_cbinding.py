@@ -20,7 +20,7 @@ import os
 import subprocess
 import numpy as np
 from .flexflow_logger import fflogger
-from .flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, MetricsType, OpType, enum_to_int, int_to_enum
+from .flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, enum_to_int, int_to_enum
 
 assert 'FF_HOME' in os.environ
 _flexflow_cxxheader_dir= os.path.join(os.environ['FF_HOME'], 'include')
@@ -1382,7 +1382,7 @@ class FFModel(object):
     """
     ffc.flexflow_model_update(self.handle)
 
-  def compile(self, optimizer=None, loss_type=None, metrics=None):
+  def compile(self, optimizer=None, loss_type=None, metrics=None, comp_mode=None):
     """Configure the model for trainting. FlexFlow uses lazy initialization,
     so the actual creating of all operations (including creating and partitioning
     of weight, bias and output tensors) happen during compile. 
@@ -1400,7 +1400,11 @@ class FFModel(object):
       METRICS_CATEGORICAL_CROSSENTROPY, METRICS_SPARSE_CATEGORICAL_CROSSENTROPY,
       METRICS_MEAN_SQUARED_ERROR, METRICS_ROOT_MEAN_SQUARED_ERROR, METRICS_MEAN_ABSOLUTE_ERROR
     :type metrics: MetricsType
-             
+
+    :param comp_mode: Enum of CompMode.
+      Options are COMP_MODE_TRAINING, COMP_MODE_INFERENCE
+    :type comp_mode: CompMode
+
     :returns:  None -- no returns.
     """
     if isinstance(optimizer, SGDOptimizer) == True:
@@ -1417,7 +1421,10 @@ class FFModel(object):
     for metric in metrics:
       metrics_int.append(enum_to_int(MetricsType, metric))
     c_metrics = ffi.new("int[]", metrics_int)
-    ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics))
+    if comp_mode == None:
+      comp_mode = CompMode.TRAINING
+    c_comp_mode = enum_to_int(CompMode, comp_mode)
+    ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics), c_comp_mode)
 
   def fit(self, x=None, y=None, batch_size=None, epochs=1):
     """Trains the model for a fixed number of epochs (iterations on a dataset).

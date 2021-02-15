@@ -37,7 +37,7 @@ def attention():
   output = ffmodel.dense(output, args.hidden_size)
   ffoptimizer = SGDOptimizer(ffmodel)
   ffmodel.set_sgd_optimizer(ffoptimizer)
-  ffmodel.compile(loss_type=LossType.LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics=[MetricsType.METRICS_MEAN_SQUARED_ERROR])
+  ffmodel.compile(loss_type=LossType.LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics=[MetricsType.METRICS_MEAN_SQUARED_ERROR], comp_mode=CompMode.INFERENCE)
   label_tensor = ffmodel.get_label_tensor()
 
   # Full inputs/label

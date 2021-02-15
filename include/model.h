@@ -420,11 +420,17 @@ public:
   void backward();
   void update();
   bool apply_fusion(const std::vector<Op*>& layers, std::vector<Op*>& new_layers);
-  void compile(LossType loss_type, const std::vector<MetricsType>& metrics);
-  void compile(Optimizer* optimizer, LossType loss_type, const std::vector<MetricsType>& metrics);
+  void compile(LossType loss_type,
+               const std::vector<MetricsType>& metrics,
+               CompMode comp_mode = COMP_MODE_TRAINING);
+  void compile(Optimizer* optimizer,
+               LossType loss_type,
+               const std::vector<MetricsType>& metrics,
+               CompMode comp_mode = COMP_MODE_TRAINING);
   void optimize(Simulator* simulator,
                 std::map<Op*, ParallelConfig>& best,
-                size_t budget, float alpha) const;
+                size_t budget, float alpha,
+                CompMode comp_mode) const;
   void rewrite(const std::map<Op*, ParallelConfig>& current,
                std::map<Op*, ParallelConfig>& next) const;
   void zero_gradients();

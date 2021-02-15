@@ -17,6 +17,7 @@
 #define _FLEXFLOW_CONFIG_H_
 #include <cstring>
 #include "legion.h"
+#include "ffconst.h"
 #include <cudnn.h>
 #include <cublas_v2.h>
 #ifdef FF_USE_NCCL
@@ -123,6 +124,7 @@ public:
   size_t search_budget;
   float search_alpha;
   bool search_overlap_backward_update;
+  CompMode computationMode;
   std::string export_strategy_task_graph_file;
   //Control parallelizable dimensions
   bool enable_sample_parallel;

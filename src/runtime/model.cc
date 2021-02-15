@@ -162,6 +162,25 @@ bool Tensor::get_input_sub_tensor(const ParallelConfig& pc,
         tensor.adim[numDim-1] = adim[numDim-1] / batchDim;
         break;
       }
+    case OP_LINEAR:
+    case OP_CONV2D:
+      {
+        if (pc.nDims != numDim) {
+          printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, numDim);
+          return false;
+        }
+        tensor.numDim = numDim;
+        for (int i = 1; i < numDim; i++) {
+          if (adim[i] % pc.dim[i] != 0) {
+            printf("Could not get input subtensor because the given dimension is not divisible: %d %% %d != 0\n", adim[i], pc.dim[i]);
+            return false;
+          }
+          tensor.adim[i] = adim[i] / pc.dim[i];
+        }
+        tensor.adim[0] = adim[0];
+        tensor.data_type = data_type;
+	break;
+      }
     default:
       {
         if (pc.nDims != numDim) {
@@ -1361,10 +1380,11 @@ void FFModel::update()
 
 void FFModel::compile(Optimizer* _optimizer,
                       LossType loss_type,
-                      const std::vector<MetricsType>& metrics)
+                      const std::vector<MetricsType>& metrics,
+		      CompMode comp_mode)
 {
   optimizer = _optimizer;
-  compile(loss_type, metrics);
+  compile(loss_type, metrics, comp_mode);
 }
 
 bool FFModel::apply_fusion(const std::vector<Op*>& layers,
@@ -1445,10 +1465,12 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
 }
 
 void FFModel::compile(LossType loss_type,
-                      const std::vector<MetricsType>& metrics)
+                      const std::vector<MetricsType>& metrics,
+                      CompMode comp_mode)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
+  config.computationMode = comp_mode;
   if (config.import_strategy_file.length() > 0) {
     load_strategies_from_file(config.import_strategy_file, config.strategies);
   }
@@ -1620,19 +1642,31 @@ void FFModel::rewrite(const std::map<Op*, ParallelConfig>& current,
 
 void FFModel::optimize(Simulator* simulator,
                        std::map<Op*, ParallelConfig>& best,
-                       size_t budget, float alpha) const
+                       size_t budget, float alpha,
+                       CompMode comp_mode) const
 {
   // Start from data parallel
   std::map<Op*, ParallelConfig> current, next;
-  float best_runtime = simulator->simulate_runtime(this, best);
+  float best_runtime = simulator->simulate_runtime(this, best, comp_mode);
   current = best;
   float current_runtime = best_runtime;
-  for (size_t iter = 0; iter < budget; iter++) {
+  size_t reset_span = budget / 100, last_reset_iter = 0;
+  if (reset_span == 0)
+    reset_span = 1;
+  if (reset_span > 1000)
+    reset_span = 1000;
+  for (size_t iter = 0; iter <= budget; iter++) {
+    // Reset the current strategy to be the best strategy
+    if (iter - last_reset_iter >= reset_span) {
+      current = best;
+      current_runtime = best_runtime;
+      last_reset_iter = iter;
+    }
     rewrite(current, next);
-    float next_runtime = simulator->simulate_runtime(this, next);
-    if (iter % 100 == 0) {
-      printf("iter(%zu) cur(%.2lf) next(%.2lf) best(%.2lf)\n", iter,
-             current_runtime, next_runtime, best_runtime);
+    float next_runtime = simulator->simulate_runtime(this, next, comp_mode);
+    if (iter % 1000 == 0) {
+      printf("iteration(%zu) current_strategy(%.4lf) best_strategy(%.4lf)\n", iter,
+             current_runtime, best_runtime);
     }
     float rn = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
     //float ratio = (next_runtime - current_runtime) / current_runtime;
@@ -1650,7 +1684,7 @@ void FFModel::optimize(Simulator* simulator,
     }
   }
   printf("=========== Best Discovered Strategy ==========\n");
-  simulator->simulate_runtime(this, best, this->config.export_strategy_task_graph_file);
+  simulator->simulate_runtime(this, best, comp_mode, this->config.export_strategy_task_graph_file);
   std::map<Op*, ParallelConfig>::const_iterator it;
   for (it = best.begin(); it != best.end(); it++) {
     printf("[%s] num_dims(%d) dims[", it->first->name, it->second.nDims);

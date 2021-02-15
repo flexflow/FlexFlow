@@ -172,9 +172,11 @@ public:
       SimTask* src_task, SimTask* dst_task, size_t intersect);
   CostMetrics measure_operator_cost(Op* op, const ParallelConfig& config);
   float simulate_runtime(const FFModel* model,
-      const std::map<Op*, ParallelConfig>& global);
+      const std::map<Op*, ParallelConfig>& global,
+      CompMode comp_mode);
   float simulate_runtime(const FFModel* model,
       const std::map<Op*, ParallelConfig>& global,
+      CompMode comp_mode,
       std::string const &export_file_name);
   static void strategy_search_task(const Task *task,
                                    const std::vector<PhysicalRegion> &regions,
