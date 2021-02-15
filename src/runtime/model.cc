@@ -1007,7 +1007,7 @@ Parameter FFModel::create_linear_weight(Op* op,
     int num_batches = 1;
     for (int i = 1; i < TDIM; i++)
       num_batches *= num_parts[i];
-    hi[NDIM-1] = num_batches * (dims[0] / num_parts[0]) - 1;
+    hi[NDIM-1] = num_batches * dims[0] - 1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight.region = runtime->create_logical_region(ctx, is, fs);
