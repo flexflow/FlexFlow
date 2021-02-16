@@ -55,7 +55,10 @@ class ONNXTensor(object):
 
 class ONNXModel(object):
     def __init__(self, filename):
-        model = onnx.load(filename)
+        if type(filename) == str:
+            model = onnx.load(filename)
+        else:
+            model = filename
         # for node in model.graph.node:
         #     print(node)
         self.inputs = {}
@@ -286,7 +289,7 @@ class ONNXModelKeras(ONNXModel):
     def __init__(self, filename, ffconfig=None, ffmodel=None):
         super(ONNXModelKeras, self).__init__(filename)
         for initializer in self.model.graph.initializer:
-            if '/bias' in initializer.name and 'dense' in initializer.name:
+            if ('/bias' in initializer.name or '/BiasAdd/ReadVariableOp' in initializer.name )and 'dense' in initializer.name:
                 self.symbol_table[initializer.name] = self._create_initializer_tensor(ffconfig, ffmodel, initializer)
             else:
                 tensor = ONNXTensor(initializer.name, initializer.dims, 2)
@@ -304,6 +307,10 @@ class ONNXModelKeras(ONNXModel):
         input = self.symbol_table[node.input[0]]
         self.symbol_table[node.output[0]] = input
         logging.debug("ffmodel.tranpose({})".format(node.input[0]))
+        
+    def handleReshape(self, ffmodel, node):
+        print("########################################I am in Keras Reshape")
+        self.handleFlatten(ffmodel, node)
     
     def _create_initializer_tensor(self, ffconfig, ffmodel, input):
         if len(input.dims) == 1:
