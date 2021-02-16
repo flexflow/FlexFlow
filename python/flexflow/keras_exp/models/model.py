@@ -81,6 +81,7 @@ class BaseModel(object):
               loss_weights=None,
               weighted_metrics=None,
               run_eagerly=None,
+              comp_mode=None,
               **kwargs):
     if loss_weights != None:
       assert 0, "loss_weights is not supported"
@@ -147,7 +148,7 @@ class BaseModel(object):
     metrics_type = []
     for metric in self._metrics:
       metrics_type.append(metric.type)
-    self._ffmodel.compile(optimizer=self._ffoptimizer.ffhandle, loss_type=self._loss.type, metrics=metrics_type)
+    self._ffmodel.compile(optimizer=self._ffoptimizer.ffhandle, loss_type=self._loss.type, metrics=metrics_type, comp_mode=comp_mode)
     self._create_label_tensor()
     
   #TODO: finish API
