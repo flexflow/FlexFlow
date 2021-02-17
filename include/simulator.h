@@ -34,6 +34,11 @@ class TransposeMeta;
 class Op;
 class FFModel;
 
+struct CostMetrics {
+  float forward_time, backward_time;
+  size_t memory_requirement;
+};
+
 class Device {
 public:
   enum DeviceType {
@@ -41,11 +46,12 @@ public:
     DEVICE_CPU,
     DEVICE_COMM,
   };
-  Device(DeviceType type, int node_id, int gpu_id);
+  Device(DeviceType type, int node_id, int gpu_id, size_t capacity);
   Device(DeviceType type, float bandwidth);
 public:
   int node_id, gpu_id;
   float bandwidth;
+  size_t capacity;
   DeviceType type;
 };
 
@@ -164,12 +170,13 @@ public:
   Device* get_dram_to_gpu_comm_device_by_id(int gpu_id);
   void add_task_dependencies_with_xfer(
       SimTask* src_task, SimTask* dst_task, size_t intersect);
-  float measure_op_forward_time(Op* op, const ParallelConfig& config);
-  float measure_op_backward_time(Op* op, const ParallelConfig& config);
-  float simulate_runtime(const FFModel* model,
-      const std::map<Op*, ParallelConfig>& global);
+  CostMetrics measure_operator_cost(Op* op, const ParallelConfig& config);
   float simulate_runtime(const FFModel* model,
       const std::map<Op*, ParallelConfig>& global,
+      CompMode comp_mode);
+  float simulate_runtime(const FFModel* model,
+      const std::map<Op*, ParallelConfig>& global,
+      CompMode comp_mode,
       std::string const &export_file_name);
   static void strategy_search_task(const Task *task,
                                    const std::vector<PhysicalRegion> &regions,
@@ -190,8 +197,7 @@ public:
   std::map<int, Device*> id_to_dramtogpu_comm_device;
   std::map<size_t, Device*> ids_to_inter_gpu_comm_device;
   std::map<size_t, Device*> ids_to_inter_node_comm_device;
-  std::map<size_t, float> hash_to_op_forward_time;
-  std::map<size_t, float> hash_to_op_backward_time;
+  std::map<size_t, CostMetrics> hash_to_operator_cost;
 public:
   Conv2DMeta* conv2d_meta;
   LinearMeta* linear_meta;

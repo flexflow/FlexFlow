@@ -527,10 +527,9 @@ BatchMatmulMeta::BatchMatmulMeta(FFHandler handler)
 : OpMeta(handler)
 {}
 
-bool BatchMatmul::measure_compute_time(Simulator* sim,
-                                       const ParallelConfig& pc,
-                                       float& forward_time,
-                                       float& backward_time)
+bool BatchMatmul::measure_operator_cost(Simulator* sim,
+                                        const ParallelConfig& pc,
+                                        CostMetrics& cost_metrics)
 {
   Tensor sub_output, sub_input0, sub_input1;
   if (! outputs[0].get_output_sub_tensor(pc, sub_output, OP_BATCHMATMUL)) {
@@ -590,15 +589,15 @@ bool BatchMatmul::measure_compute_time(Simulator* sim,
     backward_kernel(meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr, b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch);
   };
 
-  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   printf("[Measure BatchMatmul] name(%s) adim(%d %d %d) bdim(%d %d %d) odim(%d %d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
       name,
       batch, input0_r, input0_c,
       batch, input1_r, input1_c,
       batch, output_r, output_c,
-      forward_time,
-      backward_time
+      cost_metrics.forward_time,
+      cost_metrics.backward_time
   );
 
   return true;

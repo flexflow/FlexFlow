@@ -17,11 +17,10 @@
 //#include "realm/runtime_impl.h"
 //#include "realm/cuda/cuda_module.h"
 
-void Op::inner_measure_compute_time(Simulator *sim,
-                                    std::function<void()> const &forward,
-                                    std::function<void()> const &backward,
-                                    float &forward_time,
-                                    float &backward_time)
+void Op::inner_measure_operator_cost(Simulator *sim,
+                                     std::function<void()> const &forward,
+                                     std::function<void()> const &backward,
+                                     CostMetrics& cost_metrics)
 {
   // measure forward time
   checkCUDA(cudaDeviceSynchronize());
@@ -35,7 +34,7 @@ void Op::inner_measure_compute_time(Simulator *sim,
   checkCUDA(cudaEventSynchronize(sim->end_event));
   float milliseconds;
   cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  forward_time = milliseconds / sim->repeat_times;
+  cost_metrics.forward_time = milliseconds / sim->repeat_times;
 
   // measure backward time
   checkCUDA(cudaDeviceSynchronize());
@@ -48,7 +47,14 @@ void Op::inner_measure_compute_time(Simulator *sim,
   checkCUDA(cudaEventRecord(sim->end_event));
   checkCUDA(cudaEventSynchronize(sim->end_event));
   cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  backward_time = milliseconds / sim->repeat_times;
+  cost_metrics.backward_time = milliseconds / sim->repeat_times;
+
+  // compute memory usage
+  // Assume:
+  //   1. all memory allocations use Simulator::allocate
+  //   2. we call Simulator::free_all before measure an operator
+  // Therefore, the memory usage of an operator is sim->offset
+  cost_metrics.memory_requirement = (size_t)sim->offset;
 }
 
 
@@ -62,7 +68,7 @@ FFHandler UtilityTasks::init_cuda_task(
   const FFInitInfo* info = (FFInitInfo*) task->local_args;
   //assert(task->arglen == sizeof(size_t));
   //size_t workSpaceSize = *(const size_t*) task->args;
-  printf("workSpaceSize (%d MB)\n", info->workSpaceSize / 1024 / 1024);
+  printf("workSpaceSize (%zu MB)\n", info->workSpaceSize / 1024 / 1024);
   FFHandler handle;
   handle.workSpaceSize = info->workSpaceSize;
   checkCUDA(cublasCreate(&handle.blas));

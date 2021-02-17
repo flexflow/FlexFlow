@@ -966,10 +966,9 @@ LinearMeta::LinearMeta(FFHandler handler, int batch_size)
     checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
 }
 
-bool Linear::measure_compute_time(Simulator* sim,
-                                  const ParallelConfig& pc,
-                                  float& forward_time,
-                                  float& backward_time)
+bool Linear::measure_operator_cost(Simulator* sim,
+                                   const ParallelConfig& pc,
+                                   CostMetrics& cost_metrics)
 {
   Tensor sub_output, sub_input;
   if (!outputs[0].get_output_sub_tensor(pc, sub_output, OP_LINEAR))
@@ -1020,10 +1019,11 @@ bool Linear::measure_compute_time(Simulator* sim,
         kernel_ptr, kernel_ptr, bias_ptr, input_c, output_c, input_n);
   };
 
-  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   printf("[Measure Linear] name(%s) in(%d %d) out(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
-         name, input_n, input_c, output_n, output_c, forward_time, backward_time);
+         name, input_n, input_c, output_n, output_c,
+         cost_metrics.forward_time, cost_metrics.backward_time);
   return true;
 }
 

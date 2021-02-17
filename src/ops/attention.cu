@@ -655,10 +655,9 @@ MultiHeadAttentionMeta::~MultiHeadAttentionMeta(void)
   checkCUDNN(cudnnDestroySeqDataDescriptor(oDesc));
 }
 
-bool MultiHeadAttention::measure_compute_time(Simulator* sim,
+bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
     const ParallelConfig& pc,
-    float& forward_time,
-    float& backward_time)
+    CostMetrics& cost_metrics)
 {
   Tensor sub_output, sub_query, sub_key, sub_value;
   if (!inputs[0].get_input_sub_tensor(pc, sub_query, OP_MULTIHEAD_ATTENTION))
@@ -710,7 +709,7 @@ bool MultiHeadAttention::measure_compute_time(Simulator* sim,
         value_ptr, value_grad_ptr, weight_ptr, weight_grad_ptr, output_grad_ptr);
   };
 
-  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) value(%d %d %d) output(%d %d %d)"
          "forward_time(%.4lf) backward_time(%.4lf)\n",
@@ -718,7 +717,7 @@ bool MultiHeadAttention::measure_compute_time(Simulator* sim,
          sub_key.adim[2], sub_key.adim[1], sub_key.adim[0],
          sub_value.adim[2], sub_value.adim[1], sub_value.adim[0],
          sub_output.adim[2], sub_output.adim[1], sub_output.adim[0],
-         forward_time, backward_time);
+         cost_metrics.forward_time, cost_metrics.backward_time);
   // Free multiheadattentionmeta
   delete m;
   return true;

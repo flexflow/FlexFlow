@@ -64,7 +64,7 @@ Simulator::Simulator(const FFModel* model,
   for (int i = 0; i < num_nodes; i++)
     for (int j = 0; j < gpus_per_node; j++) {
       id_to_compute_device[i*gpus_per_node+j] = new Device(Device::DEVICE_GPU,
-          i, i*gpus_per_node+j);
+          i, i*gpus_per_node+j, memory.capacity());
     }
   // Create inter GPU comm devices:
   for (int i = 0; i < total_num_gpus; i++)
@@ -143,8 +143,15 @@ void Simulator::strategy_search_task(const Task *task,
       strategies[model->layers[l]] = model->layers[l]->get_data_parallel_config(*model);
     }
   }
-
-  model->optimize(simulator, strategies, model->config.search_budget, model->config.search_alpha);
+  if (model->config.computationMode == COMP_MODE_TRAINING) {
+    fprintf(stderr, "MCMC search configuration: budget(%zu) alpha(%.8lf) mode(TRAINING)\n",
+        model->config.search_budget, model->config.search_alpha);
+  } else {
+    fprintf(stderr, "MCMC search configuration: budget(%zu) alpha(%.8lf) mode(INFERENCE)\n",
+        model->config.search_budget, model->config.search_alpha);
+  }
+  model->optimize(simulator, strategies, model->config.search_budget,
+      model->config.search_alpha, model->config.computationMode);
   if (model->config.export_strategy_file.length() > 0) {
     fprintf(stderr, "Exporting the best discovered strategy to %s.\n",
         model->config.export_strategy_file.c_str());

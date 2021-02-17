@@ -125,7 +125,8 @@ flexflow_model_compile(
   flexflow_model_t handle,
   enum LossType loss_type,
   int *metrics,
-  int nb_metrics);
+  int nb_metrics,
+  enum CompMode comp_mode);
 
 flexflow_tensor_t
 flexflow_model_get_label_tensor(

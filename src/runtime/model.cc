@@ -162,6 +162,25 @@ bool Tensor::get_input_sub_tensor(const ParallelConfig& pc,
         tensor.adim[numDim-1] = adim[numDim-1] / batchDim;
         break;
       }
+    case OP_LINEAR:
+    case OP_CONV2D:
+      {
+        if (pc.nDims != numDim) {
+          printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, numDim);
+          return false;
+        }
+        tensor.numDim = numDim;
+        for (int i = 1; i < numDim; i++) {
+          if (adim[i] % pc.dim[i] != 0) {
+            printf("Could not get input subtensor because the given dimension is not divisible: %d %% %d != 0\n", adim[i], pc.dim[i]);
+            return false;
+          }
+          tensor.adim[i] = adim[i] / pc.dim[i];
+        }
+        tensor.adim[0] = adim[0];
+        tensor.data_type = data_type;
+	break;
+      }
     default:
       {
         if (pc.nDims != numDim) {
@@ -850,8 +869,6 @@ void FFModel::create_disjoint_partition(const Tensor& tensor,
     Domain domain = runtime->get_index_space_domain(ctx, part_is);
     assert(domain.get_dim() == NDIM);
   }
-  // Current assume forward and grad share the same index space
-  assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
   Rect<NDIM> rect = runtime->get_index_space_domain(ctx, tensor.region.get_index_space());
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
   Transform<NDIM, NDIM> transform;
@@ -872,7 +889,13 @@ void FFModel::create_disjoint_partition(const Tensor& tensor,
   assert(runtime->is_index_partition_disjoint(ctx, ip));
   assert(runtime->is_index_partition_complete(ctx, ip));
   part_fwd = runtime->get_logical_partition(ctx, tensor.region, ip);
-  part_bwd = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
+  if (tensor.region_grad != LogicalRegion::NO_REGION) {
+    // Current assume forward and grad share the same index space
+    assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
+    part_bwd = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
+  } else {
+    part_bwd = LogicalPartition::NO_PART;
+  }
 }
 
 template<int NDIM, int TDIM>
@@ -975,19 +998,16 @@ Parameter FFModel::create_linear_weight(Op* op,
     weight.part = runtime->get_logical_partition(
         ctx, weight.region, ip);
   } else if (weight.type == Parameter::NCCL) {
-    // Currently only support the sample dimension for operators with NCCL
-    //ParallelConfig pconfig;
-    //config.find_parallel_config(TDIM, pcname, pconfig);
-    //assert(pconfig.is_data_parallel());
-    for (int i = 0; i < TDIM-1; i++)
-      assert(num_parts[i] == 1);
+    // FIXME: Currently only support the sample dimension for operators with NCCL
+    //for (int i = 0; i < TDIM-1; i++)
+    //  assert(num_parts[i] == 1);
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
       hi[i] = dims[NDIM-1-i]-1;
     int num_batches = 1;
     for (int i = 1; i < TDIM; i++)
       num_batches *= num_parts[i];
-    hi[NDIM-1] = num_batches * dims[0] -1;
+    hi[NDIM-1] = num_batches * dims[0] - 1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight.region = runtime->create_logical_region(ctx, is, fs);
@@ -1209,14 +1229,15 @@ Tensor FFModel::create_linear_replica(const int dims[],
   replica.region_grad = runtime->create_logical_region(ctx, is, fs);
   assert(dims[0] == num_parts[0]);
   //assert(dims[1] % num_parts[1] == 0);
-  hi[NDIM-1] = dims[0] / num_parts[0] - 1;
-  //hi[NDIM-2] = dims[1] / num_parts[1] - 1;
+  hi[NDIM-1] = dims[0] / num_parts[0] - 1; // replication dim
+  hi[NDIM-2] = dims[1] / num_parts[TDIM-1] - 1; // sample dim
   Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
   Transform<NDIM, TDIM> transform;
   for (int i = 0; i < NDIM; i++)
     for (int j = 0; j < TDIM; j++)
       transform[i][j] = 0;
-  transform[NDIM-1][0] = 1;
+  transform[NDIM-1][0] = hi[NDIM-1] + 1;
+  transform[NDIM-2][TDIM-1] = hi[NDIM-2] + 1;
   //transform[NDIM-2][1] = dims[1] / num_parts[1];
   IndexPartition ip = runtime->create_partition_by_restriction(
       ctx, is, task_is, transform, extent);
@@ -1325,7 +1346,7 @@ void FFModel::compute_metrics()
 {
   Op* final_layer = layers[layers.size()-1];
   assert(final_layer->numOutputs == 1);
-  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor);
+  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
 }
 
 void FFModel::backward()
@@ -1333,9 +1354,9 @@ void FFModel::backward()
   // Compute metrics
   Op* final_layer = layers[layers.size()-1];
   assert(final_layer->numOutputs == 1);
-  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor);
+  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
   // Compute the gradients of the final layer wrt loss
-  loss_op->backward(this, &(final_layer->outputs[0]), &label_tensor);
+  loss_op->backward(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
   // Perform backpropagation
   // std::set<LogicalRegion> resetedInputGrads;
   for (int l = layers.size() - 1; l >= 0; l--) {
@@ -1363,10 +1384,11 @@ void FFModel::update()
 
 void FFModel::compile(Optimizer* _optimizer,
                       LossType loss_type,
-                      const std::vector<MetricsType>& metrics)
+                      const std::vector<MetricsType>& metrics,
+		      CompMode comp_mode)
 {
   optimizer = _optimizer;
-  compile(loss_type, metrics);
+  compile(loss_type, metrics, comp_mode);
 }
 
 bool FFModel::apply_fusion(const std::vector<Op*>& layers,
@@ -1447,10 +1469,12 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
 }
 
 void FFModel::compile(LossType loss_type,
-                      const std::vector<MetricsType>& metrics)
+                      const std::vector<MetricsType>& metrics,
+                      CompMode comp_mode)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
+  config.computationMode = comp_mode;
   if (config.import_strategy_file.length() > 0) {
     load_strategies_from_file(config.import_strategy_file, config.strategies);
   }
@@ -1595,6 +1619,12 @@ void FFModel::compile(LossType loss_type,
     case DIM: \
     { \
       label_tensor = create_tensor<DIM>(dims, label_type); \
+      label_tensor_with_final_part = label_tensor; \
+      IndexSpaceT<DIM> task_is = IndexSpaceT<DIM>(\
+          get_or_create_task_is(DIM, final_layer->name));\
+      create_disjoint_partition<DIM>(label_tensor_with_final_part,\
+          task_is, label_tensor_with_final_part.part,\
+          label_tensor_with_final_part.part_grad);\
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -1622,19 +1652,31 @@ void FFModel::rewrite(const std::map<Op*, ParallelConfig>& current,
 
 void FFModel::optimize(Simulator* simulator,
                        std::map<Op*, ParallelConfig>& best,
-                       size_t budget, float alpha) const
+                       size_t budget, float alpha,
+                       CompMode comp_mode) const
 {
   // Start from data parallel
   std::map<Op*, ParallelConfig> current, next;
-  float best_runtime = simulator->simulate_runtime(this, best);
+  float best_runtime = simulator->simulate_runtime(this, best, comp_mode);
   current = best;
   float current_runtime = best_runtime;
-  for (size_t iter = 0; iter < budget; iter++) {
+  size_t reset_span = budget / 100, last_reset_iter = 0;
+  if (reset_span == 0)
+    reset_span = 1;
+  if (reset_span > 1000)
+    reset_span = 1000;
+  for (size_t iter = 0; iter <= budget; iter++) {
+    // Reset the current strategy to be the best strategy
+    if (iter - last_reset_iter >= reset_span) {
+      current = best;
+      current_runtime = best_runtime;
+      last_reset_iter = iter;
+    }
     rewrite(current, next);
-    float next_runtime = simulator->simulate_runtime(this, next);
-    if (iter % 100 == 0) {
-      printf("iter(%zu) cur(%.2lf) next(%.2lf) best(%.2lf)\n", iter,
-             current_runtime, next_runtime, best_runtime);
+    float next_runtime = simulator->simulate_runtime(this, next, comp_mode);
+    if (iter % 1000 == 0) {
+      printf("iteration(%zu) current_strategy(%.4lf) best_strategy(%.4lf)\n", iter,
+             current_runtime, best_runtime);
     }
     float rn = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
     //float ratio = (next_runtime - current_runtime) / current_runtime;
@@ -1652,7 +1694,7 @@ void FFModel::optimize(Simulator* simulator,
     }
   }
   printf("=========== Best Discovered Strategy ==========\n");
-  simulator->simulate_runtime(this, best, this->config.export_strategy_task_graph_file);
+  simulator->simulate_runtime(this, best, comp_mode, this->config.export_strategy_task_graph_file);
   std::map<Op*, ParallelConfig>::const_iterator it;
   for (it = best.begin(); it != best.end(); it++) {
     printf("[%s] num_dims(%d) dims[", it->first->name, it->second.nDims);

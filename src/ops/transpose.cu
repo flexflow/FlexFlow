@@ -380,10 +380,9 @@ void Transpose::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-bool Transpose::measure_compute_time(Simulator* sim,
-                                     const ParallelConfig& pc,
-                                     float& forward_time,
-                                     float& backward_time)
+bool Transpose::measure_operator_cost(Simulator* sim,
+                                      const ParallelConfig& pc,
+                                      CostMetrics& cost_metrics)
 {
   Tensor sub_input, sub_output;
   if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
@@ -413,12 +412,12 @@ bool Transpose::measure_compute_time(Simulator* sim,
     backward_kernel(m, input_grad_ptr, output_grad_ptr, sub_input.get_domain(), sub_output.get_domain());
   };
 
-  inner_measure_compute_time(sim, forward, backward, forward_time, backward_time);
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   printf("[Measure Transpose] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
       name,
-      forward_time,
-      backward_time);
+      cost_metrics.forward_time,
+      cost_metrics.backward_time);
 
   return true;
 }

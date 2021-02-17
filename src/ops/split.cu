@@ -282,13 +282,13 @@ void Split::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-bool Split::measure_compute_time(Simulator* sim,
-                                 const ParallelConfig& pc,
-                                 float& forward_time,
-                                 float& backward_time)
+bool Split::measure_operator_cost(Simulator* sim,
+                                  const ParallelConfig& pc,
+                                  CostMetrics& cost_metrics)
 {
   //TODO: implement measure_forward
-  forward_time = 0.0f;
-  backward_time = 0.0f;
+  cost_metrics.forward_time = 0.0f;
+  cost_metrics.backward_time = 0.0f;
+  cost_metrics.memory_requirement = 0;
   return false;
 }

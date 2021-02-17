@@ -872,10 +872,9 @@ void FusedOp::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-bool FusedOp::measure_compute_time(Simulator* sim,
-                                   const ParallelConfig& pc,
-                                   float& forward_time,
-                                   float& backward_time)
+bool FusedOp::measure_operator_cost(Simulator* sim,
+                                    const ParallelConfig& pc,
+                                    CostMetrics& cost_metrics)
 {
   // The search should happen before fusion
   assert(false);

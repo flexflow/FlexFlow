@@ -181,11 +181,10 @@ public:
 
 class Op {
 protected:
-  void inner_measure_compute_time(Simulator *sim,
-                                  std::function<void()> const &forward,
-                                  std::function<void()> const &backward,
-                                  float &forward_time,
-                                  float &backward_time);
+  void inner_measure_operator_cost(Simulator *sim,
+                                   std::function<void()> const &forward,
+                                   std::function<void()> const &backward,
+                                   CostMetrics& cost_metrics);
 public:
   Op(FFModel& model, OperatorType type, const char* _name, const Tensor& input);
   Op(FFModel& model, OperatorType type, const char* _name, const Tensor& input1, const Tensor& input2);
@@ -200,8 +199,9 @@ public:
   virtual void create_weights(FFModel& model) = 0;
   virtual void create_output_and_partition(FFModel& model) = 0;
   virtual void print_layer(const FFModel& model) = 0;
-  virtual bool measure_compute_time(Simulator* sim,
-      const ParallelConfig& pc, float& forward, float& backward) = 0;
+  virtual bool measure_operator_cost(Simulator* sim,
+      const ParallelConfig& pc,
+      CostMetrics& cost_metrics) = 0;
   // Other virtual functions that can be optionally overwritten
   virtual ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   virtual ParallelConfig get_data_parallel_config(const FFModel& ff) const;
@@ -420,11 +420,17 @@ public:
   void backward();
   void update();
   bool apply_fusion(const std::vector<Op*>& layers, std::vector<Op*>& new_layers);
-  void compile(LossType loss_type, const std::vector<MetricsType>& metrics);
-  void compile(Optimizer* optimizer, LossType loss_type, const std::vector<MetricsType>& metrics);
+  void compile(LossType loss_type,
+               const std::vector<MetricsType>& metrics,
+               CompMode comp_mode = COMP_MODE_TRAINING);
+  void compile(Optimizer* optimizer,
+               LossType loss_type,
+               const std::vector<MetricsType>& metrics,
+               CompMode comp_mode = COMP_MODE_TRAINING);
   void optimize(Simulator* simulator,
                 std::map<Op*, ParallelConfig>& best,
-                size_t budget, float alpha) const;
+                size_t budget, float alpha,
+                CompMode comp_mode) const;
   void rewrite(const std::map<Op*, ParallelConfig>& current,
                std::map<Op*, ParallelConfig>& next) const;
   void zero_gradients();
@@ -454,6 +460,7 @@ public:
   //DataLoader *dataLoader;
 private:
   bool debug;
+  Tensor label_tensor_with_final_part;//FIXME: to be removed
   std::map<ParallelConfig, IndexSpace, ParaConfigCompare> taskIs;
 
   Tensor binary(OperatorType op,
@@ -501,10 +508,9 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, HighLevelRuntime *runtime);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
   static void forward_kernel(const ElementBinaryMeta* m,
                       const float* in1_ptr,
                       const float* in2_ptr,
@@ -564,10 +570,9 @@ public:
                        const float* out_ptr,
                        const float* out_grad_ptr,
                        size_t num_elements);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
   static bool use_cudnn(OperatorType type);
 private:
   template<int NDIM>
@@ -633,10 +638,9 @@ public:
                        const float* kernel_ptr,
                        float* kernel_grad_ptr,
                        float* bias_ptr);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
 public:
   //IndexSpaceT<4> task_is;
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
@@ -688,10 +692,9 @@ public:
   static void backward_kernel(DropoutMeta *m,
                               float const *output_grad_ptr,
                               float *input_grad_ptr);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
@@ -737,10 +740,9 @@ public:
                               float* input_grad_ptr,
                               const float* output_ptr,
                               const float* output_grad_ptr);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
 public:
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
@@ -789,10 +791,9 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
 public:
   bool relu, profiling;
   int num_replica;
@@ -865,10 +866,9 @@ public:
                        float* kernel_grad_ptr,
                        float* bias_ptr,
                        int in_dim, int out_dim, int batch_size);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
   ParallelConfig get_random_parallel_config(const FFModel& ff) const;
 private:
   template<int NDIM>
@@ -946,10 +946,9 @@ public:
                        float* b_grad_ptr,
                        float* c_grad_ptr,
                        int m, int n, int k, int batch);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
@@ -1012,10 +1011,9 @@ public:
                               int batch_size,
                               AggrMode aggr,
                               int outputSize);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
 public:
   //IndexSpaceT<2> task_is;
   int num_entries, out_channels;
@@ -1054,11 +1052,9 @@ public:
   static void backward_kernel(float* input_grad_ptr,
                               const float* output_grad_ptr,
                               size_t num_elements);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
-
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
   Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx);
 public:
 };
@@ -1097,10 +1093,9 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
   void forward_kernel(const MultiHeadAttentionMeta* m,
                       const float* query_ptr,
                       const float* key_ptr,
@@ -1176,10 +1171,9 @@ public:
   void init_meta(SoftmaxMeta *m,
                  Rect<2> const &input,
                  Rect<2> const &output) const;
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
   static void forward_kernel(SoftmaxMeta const *m,
                              float const *input_ptr,
                              float *output_ptr);
@@ -1233,10 +1227,9 @@ public:
                               const float* output_grad_ptr,
                               Domain in_grad_domain,
                               Domain out_grad_domain);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
@@ -1278,10 +1271,9 @@ public:
                               coord_t reverse_dim_size,
                               coord_t in_blk_size,
                               coord_t input_size);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
@@ -1317,10 +1309,9 @@ public:
   static void backward_kernel(float* input_grad_ptr,
                               const float* output_grad_ptr,
                               size_t num_elements);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
 private:
   template<int IDIM, int ODIM>
   void create_output_and_partition_with_dim(FFModel& model);
@@ -1370,10 +1361,9 @@ public:
                               int axis,
                               const Domain& out_grad_domain,
                               const Domain* in_grad_domain);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
 public:
   int axis;
   bool profiling;
@@ -1410,10 +1400,9 @@ public:
                              coord_t in_blk_size,
                              coord_t num_blks,
                              int numOutputs);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
@@ -1457,10 +1446,9 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
-  bool measure_compute_time(Simulator* sim,
-                            const ParallelConfig& pc,
-                            float& forward_time,
-                            float& backward_time);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
 public:
   int op_num_inputs[MAX_NUM_FUSED_OPERATORS];
   int op_num_weights[MAX_NUM_FUSED_OPERATORS];

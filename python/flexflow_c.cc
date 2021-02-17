@@ -226,14 +226,15 @@ flexflow_model_compile(
   flexflow_model_t handle_,
   enum LossType loss_type,
   int *metrics,
-  int nb_metrics)
+  int nb_metrics,
+  enum CompMode comp_mode)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   std::vector<MetricsType> metrics_vec;
   for (int i = 0; i < nb_metrics; i++) {
     metrics_vec.push_back(static_cast<MetricsType>(metrics[i]));
   }
-  handle->compile(loss_type, metrics_vec);
+  handle->compile(loss_type, metrics_vec, comp_mode);
 }
 
 flexflow_tensor_t

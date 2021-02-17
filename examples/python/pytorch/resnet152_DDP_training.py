@@ -20,8 +20,8 @@ def setup(rank, world_size):
 def cleanup():
     dist.destroy_process_group()
 
-def train(gpu, args):
-    rank = args.nr * args.gpus + gpu	
+def train(local_rank, args):
+    rank = args.nr * args.gpus + local_rank	
     setup(rank, args.world_size)
     transform = transforms.Compose([
                 torchvision.transforms.Resize(224),
@@ -33,12 +33,11 @@ def train(gpu, args):
     train_dataset = torchvision.datasets.CIFAR10('./datasets/',transform=transform,download=True)
     sampler = torch.utils.data.distributed.DistributedSampler(train_dataset,num_replicas=args.world_size,rank=rank)
     trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=2,sampler=sampler)
-
-    model = models.resnet152()
-    torch.cuda.set_device(gpu)
+    model = resnet152()
+    torch.cuda.set_device(local_rank)
     model.cuda()
 
-    model = nn.parallel.DistributedDataParallel(model,device_ids=[gpu])
+    model = nn.parallel.DistributedDataParallel(model,device_ids=[local_rank])
     print("Setting optimizer")
 
     criterion = nn.CrossEntropyLoss().cuda()
@@ -64,7 +63,7 @@ def train(gpu, args):
             end = time.time()
 
             # print statistics
-            if gpu==0:
+            if rank==0:
                 training_run_data=training_run_data.append(
                     {'epoch':epoch, 'batch':i,'loss':loss.item(),'batch_size':batch_size,'gpu_number':args.gpus*args.nodes,'time (ms)':1000*(end - start)/(batch_size*args.gpus)},
                     ignore_index=True)
@@ -87,12 +86,12 @@ def main():
                         type=int, metavar='N')
     parser.add_argument('-g', '--gpus', default=1, type=int,
                         help='number of gpus per node')
+    parser.add_argument('-nr', '--nr', default=0, type=int,
+                        help='ranking within the nodes')
     parser.add_argument('--epochs', default=2, type=int, 
                         metavar='N',
                         help='number of epochs')
-    args = parser.parse_args()     
-    args.nr=0
-
+    args = parser.parse_args()            
     args.world_size = args.gpus * args.nodes          
     mp.spawn(train, nprocs=args.gpus, args=(args,))
 
