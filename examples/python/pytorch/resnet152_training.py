@@ -1,6 +1,7 @@
 from resnet_torch import resnet152
 import torch,torchvision
 import torchvision.transforms as transforms
+import torchvision.models as models
 import torch.optim as optim
 import torch.nn as nn
 import time
@@ -20,7 +21,7 @@ train_dataset = torchvision.datasets.CIFAR10('./datasets/',transform=transform,d
 trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,shuffle=True, num_workers=2)
 
 
-model = resnet152()
+model = models.resnet152()
 torch.cuda.set_device(device)
 model.cuda()
 print("Setting optimizer")
