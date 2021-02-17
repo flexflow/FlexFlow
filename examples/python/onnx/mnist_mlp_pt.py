@@ -25,6 +25,8 @@ model = MLP()
 
 torch.onnx.export(model, (input), "mnist_mlp_pt.onnx", export_params=False)
 
-# onnx_model = onnx.load("mnist_mlp.onnx")
+onnx_model = onnx.load("mnist_mlp_pt.onnx")
 # for input in onnx_model.graph.input:
 #   print(input)
+for node in onnx_model.graph.node:
+  print(node)

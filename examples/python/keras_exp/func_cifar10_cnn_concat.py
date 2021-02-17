@@ -15,20 +15,18 @@
 
 from tensorflow.keras import backend
 
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Input
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Activation, Input, Concatenate
+from tensorflow.keras import optimizers
 
 from flexflow.keras_exp.models import Model
-import flexflow.keras.optimizers
 from flexflow.keras.datasets import cifar10
-from flexflow.keras import losses
-from flexflow.keras import metrics
-from flexflow.keras.callbacks import Callback, VerifyMetrics, EpochVerifyMetrics
 
 import flexflow.core as ff
 import numpy as np
 import argparse
 import gc
-  
+
+    
 def top_level_task():
   backend.set_image_data_format('channels_first')
   num_classes = 10
@@ -44,8 +42,10 @@ def top_level_task():
   
   input_tensor1 = Input(shape=(3, 32, 32), dtype="float32")
   
-  output_tensor = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding="valid", activation="relu")(input_tensor1)
-  output_tensor = Conv2D(filters=32, kernel_size=(3,3), strides=(1,1), padding="valid", activation="relu")(output_tensor)
+  o1 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding="valid", activation="relu")(input_tensor1)
+  o2 = Conv2D(filters=32, input_shape=(3,32,32), kernel_size=(3,3), strides=(1,1), padding="valid", activation="relu")(input_tensor1)
+  output_tensor = Concatenate(axis=1)([o1, o2])
+  output_tensor = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="valid", activation="relu")(output_tensor)
   output_tensor = MaxPooling2D(pool_size=(2,2), strides=(2,2), padding="valid")(output_tensor)
   output_tensor = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="valid", activation="relu")(output_tensor)
   output_tensor = Conv2D(filters=64, kernel_size=(3,3), strides=(1,1), padding="valid", activation="relu")(output_tensor)
@@ -55,9 +55,9 @@ def top_level_task():
   output_tensor = Dense(num_classes)(output_tensor)
   output_tensor = Activation("softmax")(output_tensor)
 
-  model = Model(input_tensor1, output_tensor)
+  model = Model({1: input_tensor1}, output_tensor)
   
-  opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
+  opt = optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
 

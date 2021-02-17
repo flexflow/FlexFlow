@@ -28,15 +28,15 @@ def top_level_task(test_type=1):
   ffmodel.set_sgd_optimizer(ffoptimizer)
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
   label = ffmodel.get_label_tensor()
-  
+
   (x_train, y_train), (x_test, y_test) = mnist.load_data()
-  
+
   x_train = x_train.reshape(60000, 784)
   x_train = x_train.astype('float32')
   x_train /= 255
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
-  
+
   dims_full_input = [num_samples, 784]
   full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
 
@@ -57,13 +57,13 @@ def top_level_task(test_type=1):
   epochs = ffconfig.get_epochs()
 
   ts_start = ffconfig.get_current_time()
-  
+
   ffmodel.fit(x=dataloader_input, y=dataloader_label, epochs=epochs)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
   print("epochs %d, ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n" %(epochs, run_time, num_samples * epochs / run_time));
-  
+
   perf_metrics = ffmodel.get_perf_metrics()
   accuracy = perf_metrics.get_accuracy()
   if accuracy < ModelAccuracy.MNIST_MLP.value:

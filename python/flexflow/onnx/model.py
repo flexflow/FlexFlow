@@ -178,9 +178,17 @@ class ONNXModel(object):
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.flat({})".format(node.input[0]))
 
-    def handleGemm(self, ffmodel, node):
+    # def handleGemm(self, ffmodel, node):
+    #     input = self.symbol_table[node.input[0]]
+    #     dim = self.inputs[node.input[1]].dims[0]
+    #     output = ffmodel.dense(input, dim, name=node.name)
+    #     self.symbol_table[node.output[0]] = output
+    #     logging.debug("ffmodel.dense({}, {}, name={})".format(node.input[0], dim, node.name))
+        
+    def handleDense(self, ffmodel, node):
         input = self.symbol_table[node.input[0]]
-        dim = self.inputs[node.input[1]].dims[0]
+        attribute = {x.name: x for x in node.attribute}
+        dim = attribute["out_dim"].i
         output = ffmodel.dense(input, dim, name=node.name)
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.dense({}, {}, name={})".format(node.input[0], dim, node.name))
@@ -271,6 +279,7 @@ class ONNXModel(object):
         logging.warning("Not implemented handle: {}".format(node.op_type))
 
     def apply(self, ffmodel, input_dict):
+        self._fusion()
         self.symbol_table.update(input_dict)
         # self.symbol_table = input_dict.copy()
         # for initializer in self.model.graph.initializer:
@@ -285,23 +294,60 @@ class ONNXModel(object):
                 #assert 0
         return self.symbol_table[self.model.graph.output[0].name]
         
+    def _fusion(self):
+        flag = True
+        while flag == True:
+            idx = 0
+            flag_found = False
+            for node in self.model.graph.node:
+                if node.op_type == 'MatMul':
+                    output = node.output[0]
+                    for add_node in self.model.graph.node:
+                        if add_node.op_type == 'Add' and (add_node.input[0] == output or add_node.input[1] == output):
+                            #print(node, add_node)
+                            flag_found = True
+                            dim = self.inputs[node.input[1]].dims[1]
+                            dense_node = onnx.helper.make_node('Dense', inputs=[node.input[0]], outputs=[add_node.output[0]], out_dim=dim)
+                            #print(dense_node)
+                            break
+                    if flag_found:
+                        self.model.graph.node.insert(idx, dense_node)
+                        self.model.graph.node.remove(add_node)
+                        self.model.graph.node.remove(node)
+                        break
+                
+                elif node.op_type == 'Gemm':
+                    flag_found = True
+                    dim = self.inputs[node.input[1]].dims[0]
+                    dense_node = onnx.helper.make_node('Dense', inputs=[node.input[0]], outputs=[node.output[0]], out_dim=dim)
+                    self.model.graph.node.insert(idx, dense_node)
+                    self.model.graph.node.remove(node)
+                    break
+                    
+                idx += 1
+            flag = flag_found
+        
+        for node in self.model.graph.node:
+            print(node)
+        
 class ONNXModelKeras(ONNXModel):
     def __init__(self, filename, ffconfig=None, ffmodel=None):
         super(ONNXModelKeras, self).__init__(filename)
         for initializer in self.model.graph.initializer:
             if ('/bias' in initializer.name or '/BiasAdd/ReadVariableOp' in initializer.name )and 'dense' in initializer.name:
-                self.symbol_table[initializer.name] = self._create_initializer_tensor(ffconfig, ffmodel, initializer)
+                # self.symbol_table[initializer.name] = self._create_initializer_tensor(ffconfig, ffmodel, initializer)
+                pass
             else:
                 tensor = ONNXTensor(initializer.name, initializer.dims, 2)
                 self.inputs[initializer.name] = tensor
         
-    def handleMatMul(self, ffmodel, node):
-        print("########################################I am in Keras MatMul")
-        input = self.symbol_table[node.input[0]]
-        dim = self.inputs[node.input[1]].dims[1]
-        output = ffmodel.dense(input, dim, use_bias=False, name=node.name)
-        self.symbol_table[node.output[0]] = output
-        logging.debug("ffmodel.dense({}, {})".format(node.input[0], dim))
+    # def handleMatMul(self, ffmodel, node):
+    #     print("########################################I am in Keras MatMul")
+    #     input = self.symbol_table[node.input[0]]
+    #     dim = self.inputs[node.input[1]].dims[1]
+    #     output = ffmodel.dense(input, dim, use_bias=False, name=node.name)
+    #     self.symbol_table[node.output[0]] = output
+    #     logging.debug("ffmodel.dense({}, {})".format(node.input[0], dim))
         
     def handleTranspose(self, ffmodel, node):
         input = self.symbol_table[node.input[0]]
