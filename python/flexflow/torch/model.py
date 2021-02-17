@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 
-from flexflow.core.flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, MetricsType, OpType, enum_to_int, int_to_enum
+from flexflow.core.flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, MetricsType, OpType, str_to_enum, int_to_enum
 
 class FXTensor(object):
   def __init__(self, fftensor):
@@ -55,7 +55,7 @@ class PyTorchModel(object):
           self.output_ops_list.remove(i)
 
       #get op type
-      op_type = int_to_enum(OpType, int(items[3]))
+      op_type = str_to_enum(OpType, items[3])
           
       if op_type == OpType.INPUT:
         assert len(self.input_ops_list) == 0, "wrong format"
@@ -106,7 +106,7 @@ class PyTorchModel(object):
         assert len(items) == 5, "wrong format"
         assert len(self.input_ops_list) == 1, "wrong format"
         input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
-        r = int(item[4])
+        r = float(items[4])
         output = ffmodel.dropout(input=input_tensor, rate=r, seed=0, name=op_name)
         output = FXTensor(output)
 

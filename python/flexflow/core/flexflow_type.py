@@ -86,3 +86,14 @@ def int_to_enum(enum, value):
       return item
 
   assert 0, "unknow enum value " + str(value) + " " + str(enum)
+  
+def enum_to_str(enum, enum_item):
+  name = enum(enum_item).name
+  return name
+  
+def str_to_enum(enum, value):
+  for item in enum:
+    if (item.name == value):
+      return item
+
+  assert 0, "unknow enum value " + value + " " + str(enum)

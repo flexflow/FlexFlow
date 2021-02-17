@@ -15,8 +15,8 @@
 
 import torch.fx
 import torch
-from flexflow.core.flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, MetricsType, OpType, enum_to_int
-import onnx
+from flexflow.core.flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, MetricsType, OpType, enum_to_int, enum_to_str
+#import onnx
 #from onnx import helper
 
 class Node(object):
@@ -71,37 +71,41 @@ def __symbolic_trace(model):
   
 def parse_input(op_str, node):
   assert node.inedges == None, "wrong format"
-  op_str = op_str + str(enum_to_int(OpType, OpType.INPUT)) + "\n"
+  op_str = op_str + enum_to_str(OpType, OpType.INPUT) + "\n"
   return op_str
   
 def parse_output(op_str, node):
   #FIXME assume there is 1 output
   assert len(node.inedges) == 1, "wrong format"
-  op_str = op_str + str(enum_to_int(OpType, OpType.OUTPUT)) + "\n"
+  op_str = op_str + enum_to_str(OpType, OpType.OUTPUT) + "\n"
   return op_str
   
 def parse_add(op_str, node):
   assert len(node.inedges) == 2, "wrong number of inputs"
-  op_str = op_str + str(enum_to_int(OpType, OpType.ADD)) + "\n"
+  op_str = op_str + enum_to_str(OpType, OpType.ADD) + "\n"
   return op_str
   
 def parse_concat(op_str, node):
   #FIXME assume it is a merge
+  print(node.inedges)
   assert len(node.inedges[0]) >= 2, "wrong number of inputs"
-  op_str = op_str + str(enum_to_int(OpType, OpType.CONCAT)) + ", "
-  op_str = op_str + str(node.inedges[1]) + "\n"
+  op_str = op_str + enum_to_str(OpType, OpType.CONCAT) + ", "
+  if len(node.inedges) == 1:
+    op_str = op_str + str(1) + "\n"
+  else:
+    op_str = op_str + str(node.inedges[1]) + "\n"
   return op_str
   
 def parse_split(op_str, node):
   #FIXME may be 3
   assert len(node.inedges) == 2, "wrong number of inputs"
-  op_str = op_str + str(enum_to_int(OpType, OpType.SPLIT)) + ", "
+  op_str = op_str + enum_to_str(OpType, OpType.SPLIT) + ", "
   op_str = op_str + str(node.inedges[1]) + "\n"
   return op_str
   
 def parse_getitem(op_str, node):
   assert len(node.inedges) == 2, "wrong number of inputs"
-  op_str = op_str + str(enum_to_int(OpType, OpType.GETITEM)) + ", "
+  op_str = op_str + enum_to_str(OpType, OpType.GETITEM) + ", "
   op_str = op_str + str(node.inedges[1]) + "\n"
   return op_str
   
@@ -110,12 +114,12 @@ def parse_flat(op_str, node):
     assert len(node.inedges) == 2, "wrong number of inputs"
   elif type(node) == ModuleNode:
     assert len(node.inedges) == 1, "wrong number of inputs"
-  op_str = op_str + str(enum_to_int(OpType, OpType.FLAT)) + "\n"
+  op_str = op_str + enum_to_str(OpType, OpType.FLAT) + "\n"
   return op_str
 
 def parse_linear(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
-  op_str = op_str + str(enum_to_int(OpType, OpType.LINEAR)) + ", "
+  op_str = op_str + enum_to_str(OpType, OpType.LINEAR) + ", "
   op_str = op_str + str(node.module.out_features) + ", "
   op_str = op_str + str(enum_to_int(ActiMode, ActiMode.AC_MODE_NONE)) + ", "
   if node.module.bias != None:
@@ -126,7 +130,7 @@ def parse_linear(op_str, node):
   
 def parse_conv2d(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
-  op_str = op_str + str(enum_to_int(OpType, OpType.CONV2D)) + ", "
+  op_str = op_str + enum_to_str(OpType, OpType.CONV2D) + ", "
   op_str = op_str + str(node.module.out_channels) + ", "
   op_str = op_str + str(node.module.kernel_size[0]) + ", "
   op_str = op_str + str(node.module.kernel_size[1]) + ", "
@@ -145,7 +149,7 @@ def parse_conv2d(op_str, node):
 def parse_pool2d(op_str, node, pool_type):
   assert len(node.inedges) == 1, "wrong number of inputs"
   #FIXME MaxPool2d supports ceil_mode
-  op_str = op_str + str(enum_to_int(OpType, OpType.POOL2D)) + ", "
+  op_str = op_str + enum_to_str(OpType, OpType.POOL2D) + ", "
   op_str = op_str + str(node.module.kernel_size) + ", "
   op_str = op_str + str(node.module.stride) + ", "
   op_str = op_str + str(node.module.padding) + ", "
@@ -153,41 +157,52 @@ def parse_pool2d(op_str, node, pool_type):
   op_str = op_str + str(enum_to_int(ActiMode, ActiMode.AC_MODE_NONE)) + "\n"
   return op_str
   
+def parse_adaptivepool2d(op_str, node, pool_type):
+  assert len(node.inedges) == 1, "wrong number of inputs"
+  #FIXME fix kernel, stride and padding
+  op_str = op_str + enum_to_str(OpType, OpType.POOL2D) + ", "
+  op_str = op_str + str(3) + ", "
+  op_str = op_str + str(1) + ", "
+  op_str = op_str + str(0) + ", "
+  op_str = op_str + str(enum_to_int(PoolType, pool_type)) + ", "
+  op_str = op_str + str(enum_to_int(ActiMode, ActiMode.AC_MODE_NONE)) + "\n"
+  return op_str
+  
 def parse_batchnorm2d(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
   # FIXME BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True) args are not in FF 
-  op_str = op_str + str(enum_to_int(OpType, OpType.BATCH_NORM)) + "\n"
+  op_str = op_str + enum_to_str(OpType, OpType.BATCH_NORM) + "\n"
   return op_str
   
 def parse_dropout(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
-  op_str = op_str + str(enum_to_int(OpType, OpType.DROPOUT)) + ", "
+  op_str = op_str + enum_to_str(OpType, OpType.DROPOUT) + ", "
   op_str = op_str + str(node.module.p) + "\n"
   return op_str
   
 def parse_relu(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
-  op_str = op_str + str(enum_to_int(OpType, OpType.RELU)) + "\n"
+  op_str = op_str + enum_to_str(OpType, OpType.RELU) + "\n"
   return op_str
   
 def parse_sigmoid(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
-  op_str = op_str + str(enum_to_int(OpType, OpType.SIGMOID)) + "\n"
+  op_str = op_str + enum_to_str(OpType, OpType.SIGMOID) + "\n"
   return op_str
   
 def parse_tanh(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
-  op_str = op_str + str(enum_to_int(OpType, OpType.TANH)) + "\n"
+  op_str = op_str + enum_to_str(OpType, OpType.TANH) + "\n"
   return op_str
   
 def parse_elu(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
-  op_str = op_str + str(enum_to_int(OpType, OpType.ELU)) + "\n"
+  op_str = op_str + enum_to_str(OpType, OpType.ELU) + "\n"
   return op_str
   
 def parse_softmax(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
-  op_str = op_str + str(enum_to_int(OpType, OpType.SOFTMAX)) + "\n"
+  op_str = op_str + enum_to_str(OpType, OpType.SOFTMAX) + "\n"
   return op_str
   
 def parse_inoutedge(op_str, inedges, outedges):
@@ -288,6 +303,10 @@ def torch_to_flexflow(model, filename):
       elif type(node.module) == torch.nn.modules.pooling.AvgPool2d:
         op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_pool2d(op_str, node, PoolType.POOL_AVG)
+        
+      elif type(node.module) == torch.nn.modules.pooling.AdaptiveAvgPool2d:
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
+        op_str = parse_adaptivepool2d(op_str, node, PoolType.POOL_AVG)
         
       elif type(node.module) == torch.nn.modules.batchnorm.BatchNorm2d:
         op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
