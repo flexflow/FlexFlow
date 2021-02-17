@@ -51,28 +51,34 @@ Simulator::Simulator(const FFModel* model,
   pool2d_meta = new Pool2DMeta(handler);
   ele_unary_meta = new ElementUnaryMeta(handler);
   ele_binary_meta = new ElementBinaryMeta(handler);
-  int num_nodes = model->config.numNodes;
-  int gpus_per_node = model->config.workersPerNode;
-  total_num_devices = num_nodes * gpus_per_node;
+  softmax_meta = new SoftmaxMeta(handler);
+  batch_matmul_meta = new BatchMatmulMeta(handler);
+  batch_norm_meta = new BatchNormMeta(handler);
+  concat_meta = new ConcatMeta(handler);
+  dropout_meta = new DropoutMeta(handler);
+  transpose_meta = new TransposeMeta(handler);
+  num_nodes = model->config.numNodes;
+  gpus_per_node = model->config.workersPerNode;
+  total_num_gpus = num_nodes * gpus_per_node;
   // Create GPU compute device
-  for (int i = 0; i < num_nodes; i++) 
+  for (int i = 0; i < num_nodes; i++)
     for (int j = 0; j < gpus_per_node; j++) {
       id_to_compute_device[i*gpus_per_node+j] = new Device(Device::DEVICE_GPU,
-          i, i*gpus_per_node+j);
+          i, i*gpus_per_node+j, memory.capacity());
     }
   // Create inter GPU comm devices:
-  for (int i = 0; i < total_num_devices; i++)
-    for (int j = 0; j < total_num_devices; j++) {
+  for (int i = 0; i < total_num_gpus; i++)
+    for (int j = 0; j < total_num_gpus; j++) {
       Device* src = id_to_compute_device[i];
       Device* dst = id_to_compute_device[j];
       if (src->node_id == dst->node_id && src != dst) {
-        int hash = i * total_num_devices + j;
+        int hash = i * total_num_gpus + j;
         ids_to_inter_gpu_comm_device[hash] = new Device(Device::DEVICE_COMM,
             inter_gpu_bandwidth);
       }
     }
   // Create gpu<->dram comm devices
-  for (int i = 0; i < total_num_devices; i++) {
+  for (int i = 0; i < total_num_gpus; i++) {
     id_to_gputodram_comm_device[i] = new Device(Device::DEVICE_COMM,
         gpu_dram_bandwidth);
     id_to_dramtogpu_comm_device[i] = new Device(Device::DEVICE_COMM,
@@ -82,7 +88,7 @@ Simulator::Simulator(const FFModel* model,
   for (int i = 0; i < num_nodes; i++)
     for (int j = 0; j < num_nodes; j++)
       if (i != j) {
-        int hash = i * total_num_devices + j;
+        int hash = i * total_num_gpus + j;
         ids_to_inter_node_comm_device[hash] = new Device(Device::DEVICE_COMM,
             inter_node_bandwidth);
       }
@@ -137,10 +143,17 @@ void Simulator::strategy_search_task(const Task *task,
       strategies[model->layers[l]] = model->layers[l]->get_data_parallel_config(*model);
     }
   }
-
-  model->optimize(simulator, strategies, model->config.search_budget, model->config.search_alpha);
+  if (model->config.computationMode == COMP_MODE_TRAINING) {
+    fprintf(stderr, "MCMC search configuration: budget(%zu) alpha(%.8lf) mode(TRAINING)\n",
+        model->config.search_budget, model->config.search_alpha);
+  } else {
+    fprintf(stderr, "MCMC search configuration: budget(%zu) alpha(%.8lf) mode(INFERENCE)\n",
+        model->config.search_budget, model->config.search_alpha);
+  }
+  model->optimize(simulator, strategies, model->config.search_budget,
+      model->config.search_alpha, model->config.computationMode);
   if (model->config.export_strategy_file.length() > 0) {
-    fprintf(stderr, "Exporting the best discovered strategy to %s\n",
+    fprintf(stderr, "Exporting the best discovered strategy to %s.\n",
         model->config.export_strategy_file.c_str());
     std::map<Op*, ParallelConfig>::const_iterator iter;
     std::map<std::string, ParallelConfig> strategy_output;
@@ -148,13 +161,13 @@ void Simulator::strategy_search_task(const Task *task,
       strategy_output[iter->first->name] = iter->second;
     }
     save_strategies_to_file(model->config.export_strategy_file, strategy_output);
-    fprintf(stderr, "To use the best discovered strategy, please restart"
-        "FlexFlow and import the strategy from %s\n",
+    fprintf(stderr, "To use the strategy for distributed training, restart"
+        " FlexFlow and import the strategy (i.e., --import %s)\n",
         model->config.export_strategy_file.c_str());
     exit(0);
   }  else {
-    fprintf(stderr, "The discovered strategy is discarded. Please set a path"
-        " to export the strategy using --export or --export-strategy.\n");
+    fprintf(stderr, "The best discovered strategy is not exported.\n"
+        "Please set a path to export the strategy using --export or --export-strategy.\n");
     exit(0);
   }
   // Start from data

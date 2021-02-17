@@ -19,9 +19,10 @@
 void FFModel::split(const Tensor& input,
                     Tensor* outputs,
                     const std::vector<int>& splits,
-                    int axis)
+                    int axis,
+                    const char* name)
 {
-  Split* split = new Split(*this, input, splits, axis);
+  Split* split = new Split(*this, input, splits, axis, name);
   layers.push_back(split);
   for (size_t i = 0; i < splits.size(); i++)
     outputs[i] = split->outputs[i];
@@ -30,8 +31,9 @@ void FFModel::split(const Tensor& input,
 Split::Split(FFModel& model,
              const Tensor& input,
              const std::vector<int>& splits,
-             int _axis)
-: Op(model, OP_SPLIT, "Split_"+std::to_string(_axis), input)
+             int _axis,
+             const char* name)
+: Op(model, OP_SPLIT, name, input)
 {
   numOutputs = splits.size();
   // Use the Legion dim ordering
@@ -149,6 +151,20 @@ void calc_block_size(coord_t& num_blks,
   }
 }
 
+void Split::forward_kernel(float **out_ptrs,
+                           float const *in_ptr,
+                           coord_t const *out_blk_sizes,
+                           coord_t in_blk_size,
+                           coord_t num_blks,
+                           int numOutputs)
+{
+  for (int i = 0; i < numOutputs; i++) {
+    copy_with_stride<<<GET_BLOCKS(out_blk_sizes[i]*num_blks), CUDA_NUM_THREADS>>>(
+        out_ptrs[i], in_ptr, num_blks, out_blk_sizes[i], in_blk_size);
+    in_ptr += out_blk_sizes[i];
+  }
+}
+
 void Split::forward_task(const Task *task,
                          const std::vector<PhysicalRegion>& regions,
                          Context ctx, Runtime *runtime)
@@ -180,12 +196,7 @@ void Split::forward_task(const Task *task,
     total_volume += out_domain.get_volume();
   }
   assert(total_volume == in_domain.get_volume());
-  for (int i = 0; i < split->numOutputs; i++) {
-    copy_with_stride<<<GET_BLOCKS(out_blk_size[i]*num_blks), CUDA_NUM_THREADS>>>(
-        out_ptr[i], in_ptr, num_blks, out_blk_size[i], in_blk_size);
-    in_ptr += out_blk_size[i];
-  }
-  //checkCUDA(cudaDeviceSynchronize());
+  forward_kernel(out_ptr, in_ptr, out_blk_size, in_blk_size, num_blks, split->numOutputs);
 }
 
 void Split::forward(const FFModel& ff)
@@ -271,13 +282,13 @@ void Split::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-bool Split::measure_compute_time(Simulator* sim,
-                                 const ParallelConfig& pc,
-                                 float& forward_time,
-                                 float& backward_time)
+bool Split::measure_operator_cost(Simulator* sim,
+                                  const ParallelConfig& pc,
+                                  CostMetrics& cost_metrics)
 {
   //TODO: implement measure_forward
-  forward_time = 0.0f;
-  backward_time = 0.0f;
-  return true;
+  cost_metrics.forward_time = 0.0f;
+  cost_metrics.backward_time = 0.0f;
+  cost_metrics.memory_requirement = 0;
+  return false;
 }

@@ -48,8 +48,8 @@ def top_level_task():
   #print(full_label_array[0, 0:64])
   print(full_label_array.__array_interface__["strides"])
 
-  dataloader_input = ffmodel.create_data_loader(input_tensor, full_input_array)
-  dataloader_label = ffmodel.create_data_loader(label_tensor, full_label_array)
+  dataloader_input = ffmodel.create_data_loader2(input_tensor, full_input_array)
+  dataloader_label = ffmodel.create_data_loader2(label_tensor, full_label_array)
 
   num_samples = dataloader_input.get_num_samples()
 

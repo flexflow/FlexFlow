@@ -36,8 +36,8 @@ def top_level_task():
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
 
-  dataloader_input = ffmodel.create_data_loader(input_tensor, x_train)
-  dataloader_label = ffmodel.create_data_loader(label_tensor, y_train)
+  dataloader_input = ffmodel.create_data_loader2(input_tensor, x_train)
+  dataloader_label = ffmodel.create_data_loader2(label_tensor, y_train)
 
   ffmodel.init_layers()
 

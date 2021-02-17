@@ -28,6 +28,10 @@ class LossType(Enum):
   LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE = 52
   LOSS_MEAN_SQUARED_ERROR_SUM_REDUCE = 53
 
+class CompMode(Enum):
+  TRAINING = 70
+  INFERENCE = 71
+
 class MetricsType(Enum):
   METRICS_ACCURACY = 1001
   METRICS_CATEGORICAL_CROSSENTROPY = 1002
@@ -64,6 +68,7 @@ class OpType(Enum):
   INPUT = 2050
   OUTPUT = 2051
   MULTIHEAD_ATTENTION = 2060
+  GETITEM = 2070
 
 def enum_to_int(enum, enum_item):
   for item in enum:

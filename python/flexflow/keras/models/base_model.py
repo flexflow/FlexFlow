@@ -133,6 +133,7 @@ class BaseModel(object):
               loss_weights=None,
               weighted_metrics=None,
               run_eagerly=None,
+              comp_mode=None,
               **kwargs):
     if loss_weights != None:
       assert 0, "loss_weights is not supported"
@@ -186,7 +187,7 @@ class BaseModel(object):
     metrics_type = []
     for metric in self._metrics:
       metrics_type.append(metric.type)
-    self._ffmodel.compile(optimizer=self._ffoptimizer.ffhandle, loss_type=self._loss.type, metrics=metrics_type)
+    self._ffmodel.compile(optimizer=self._ffoptimizer.ffhandle, loss_type=self._loss.type, metrics=metrics_type, comp_mode=comp_mode)
     self._create_label_tensor()
     fflogger.debug("%s, %s, %s, %s" %( str(self._input_tensors[0]), str(self._output_tensor), str(self._input_tensors[0].ffhandle), str(self._output_tensor.ffhandle)))
 
@@ -376,6 +377,7 @@ class BaseModel(object):
     ts_start = self._ffconfig.get_current_time()
     epoch = 0
     epoch_flag = True
+    self.__tracing_id += 1
     while (epoch < epochs) and (epoch_flag == True):
       if callbacks != None:
         for callback in callbacks:
@@ -395,8 +397,8 @@ class BaseModel(object):
         for dataloader in self._input_dataloaders:
           dataloader.next_batch(self._ffmodel)
         self._label_dataloader.next_batch(self._ffmodel)
-        if (epoch > 0):
-          self._ffconfig.begin_trace(self.__tracing_id)
+
+        self._ffconfig.begin_trace(self.__tracing_id)
         self._ffmodel.forward()
         # for layer in self._layers:
         #   layer.ffhandle.forward(self._ffmodel)
@@ -406,8 +408,7 @@ class BaseModel(object):
           self._ffmodel.update()
         else:
           self._ffmodel.compute_metrics()
-        if (epoch > 0):
-          self._ffconfig.end_trace(self.__tracing_id)
+        self._ffconfig.end_trace(self.__tracing_id)
 
         if callbacks != None:
           for callback in callbacks:

@@ -34,6 +34,11 @@ enum LossType {
   LOSS_MEAN_SQUARED_ERROR_SUM_REDUCE = 53,
 };
 
+enum CompMode {
+  COMP_MODE_TRAINING = 70,
+  COMP_MODE_INFERENCE = 71,
+};
+
 enum MetricsType {
   METRICS_ACCURACY = 1001,
   METRICS_CATEGORICAL_CROSSENTROPY = 1002,
@@ -112,6 +117,7 @@ enum OperatorType {
   OP_RESIZE, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Resize
   OP_PRELU, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#PRelu
   OP_MULTIHEAD_ATTENTION,
+  OP_FUSED, // Fused operator type for internal fusion optimizations
 };
 
 #endif // _FLEXFLOW_CONST_H_

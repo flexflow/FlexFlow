@@ -17,19 +17,66 @@
 //#include "realm/runtime_impl.h"
 //#include "realm/cuda/cuda_module.h"
 
+void Op::inner_measure_operator_cost(Simulator *sim,
+                                     std::function<void()> const &forward,
+                                     std::function<void()> const &backward,
+                                     CostMetrics& cost_metrics)
+{
+  // measure forward time
+  checkCUDA(cudaDeviceSynchronize());
+  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
+    if (i == sim->warmup_times) {
+      checkCUDA(cudaEventRecord(sim->start_event));
+    }
+    forward();
+  }
+  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventSynchronize(sim->end_event));
+  float milliseconds;
+  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  cost_metrics.forward_time = milliseconds / sim->repeat_times;
+
+  // measure backward time
+  checkCUDA(cudaDeviceSynchronize());
+  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
+    if (i == sim->warmup_times) {
+      checkCUDA(cudaEventRecord(sim->start_event));
+    }
+    backward();
+  }
+  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventSynchronize(sim->end_event));
+  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+  cost_metrics.backward_time = milliseconds / sim->repeat_times;
+
+  // compute memory usage
+  // Assume:
+  //   1. all memory allocations use Simulator::allocate
+  //   2. we call Simulator::free_all before measure an operator
+  // Therefore, the memory usage of an operator is sim->offset
+  cost_metrics.memory_requirement = (size_t)sim->offset;
+}
+
+
 FFHandler UtilityTasks::init_cuda_task(
               const Task *task,
               const std::vector<PhysicalRegion> &regions,
               Context ctx, HighLevelRuntime *runtime)
 {
   assert(regions.size() == 0);
-  assert(task->arglen == sizeof(size_t));
-  size_t workSpaceSize = *(const size_t*) task->args;
-  printf("workSpaceSize (%d MB)\n", workSpaceSize / 1024 / 1024);
+  assert(task->local_arglen == sizeof(FFInitInfo));
+  const FFInitInfo* info = (FFInitInfo*) task->local_args;
+  //assert(task->arglen == sizeof(size_t));
+  //size_t workSpaceSize = *(const size_t*) task->args;
+  printf("workSpaceSize (%zu MB)\n", info->workSpaceSize / 1024 / 1024);
   FFHandler handle;
-  handle.workSpaceSize = workSpaceSize;
+  handle.workSpaceSize = info->workSpaceSize;
   checkCUDA(cublasCreate(&handle.blas));
   checkCUDNN(cudnnCreate(&handle.dnn));
+//#ifdef FF_USE_NCCL
+//  checkNCCL(ncclCommInitRank(&handle.nccl, info->allRanks, info->ncclId, info->myRank));
+//  fprintf(stderr, "handle.nccl(%p)\n", handle.nccl);
+//#endif
   //std::set<Memory> memFB;
   //assert(memFB.size() == 1);
   //assert(memFB.begin()->kind() == Memory::GPU_FB_MEM);
@@ -38,7 +85,7 @@ FFHandler UtilityTasks::init_cuda_task(
   //Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
   //off_t offset = memFBImpl->alloc_bytes(workSpaceSize);
   //handle.workSpace = memFBImpl->get_direct_ptr(offset, 0);
-  checkCUDA(cudaMalloc(&handle.workSpace, workSpaceSize));
+  checkCUDA(cudaMalloc(&handle.workSpace, handle.workSpaceSize));
   return handle;
 }
 
@@ -258,12 +305,23 @@ void FFModel::prefetch()
 
 
 template <typename T>
-bool Parameter::set_weights(const FFModel& ff,
+bool Parameter::set_weights(const FFModel* ff,
                             const std::vector<int>& dims,
                             const T* data)
 {
+  Context ctx = ff->config.lg_ctx;
+  Runtime* runtime = ff->config.lg_hlr;
   //TODO: check data type matches
-  size_t volume = 1;
+  //TODO: Currently we use a task launch, change to index launch for NCCL parameter
+  size_t volume = 1, num_replicas = 0;
+  if (type == Parameter::NCCL) {
+    Domain domain = runtime->get_index_space_domain(ctx, owner_op->task_is);
+    num_replicas = domain.get_volume();
+  } else if (type == Parameter::PS) {
+    num_replicas = 1;
+  } else {
+    assert(false);
+  }
   // Check dimensions
   if (numDim != (int)dims.size())
     return false;
@@ -272,20 +330,22 @@ bool Parameter::set_weights(const FFModel& ff,
       return false;
     volume = volume * dims[i];
   }
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
   RegionRequirement req(region, READ_WRITE, EXCLUSIVE, region);
   req.add_field(FID_DATA);
   InlineLauncher launcher(req);
-  PhysicalRegion region = runtime->map_region(ctx, launcher);
-  region.wait_until_valid();
+  PhysicalRegion pr = runtime->map_region(ctx, launcher);
+  pr.wait_until_valid();
   switch (numDim) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      TensorAccessorW<T, DIM> acc(region, req, FID_DATA, ctx, runtime, true); \
-      assert(acc.rect.volume() == volume); \
-      memcpy(acc.ptr, data, volume * sizeof(T)); \
+      TensorAccessorW<T, DIM> acc(pr, req, FID_DATA, ctx, runtime, true); \
+      assert(acc.rect.volume() == volume * num_replicas); \
+      T* ptr = acc.ptr; \
+      for (size_t i = 0; i < num_replicas; i++) { \
+        memcpy(ptr, data, volume * sizeof(T)); \
+        ptr += volume; \
+      } \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -294,31 +354,50 @@ bool Parameter::set_weights(const FFModel& ff,
       // Unsupported dim
       assert(false);
   }
-  runtime->unmap_region(ctx, region);
+  runtime->unmap_region(ctx, pr);
   return true;
 }
 
 template <typename T>
-bool Parameter::get_weights(const FFModel& ff,
+bool Parameter::get_weights(const FFModel* ff,
                             T* data)
 {
+  Context ctx = ff->config.lg_ctx;
+  Runtime* runtime = ff->config.lg_hlr;
+  LogicalRegion weight_lr = LogicalRegion::NO_REGION;
+  if (type == CommType::PS) {
+    weight_lr = region;
+  } else {
+    assert(owner_op != NULL);
+    Domain domain = runtime->get_index_space_domain(ctx, owner_op->task_is);
+    switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+      case DIM: \
+      { \
+        DomainPoint point = Point<DIM>::ZEROES(); \
+        weight_lr = runtime->get_logical_subregion_by_color( \
+            ctx, part, point); \
+        break; \
+      }
+      LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    }
+  }
   //TODO: check data type matches
   size_t volume = 1;
   for (int i = 0; i < numDim; i++) {
     volume = volume * adim[i];
   }
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  RegionRequirement req(region, READ_ONLY, EXCLUSIVE, region);
+  RegionRequirement req(weight_lr, READ_ONLY, EXCLUSIVE, region);
   req.add_field(FID_DATA);
   InlineLauncher launcher(req);
-  PhysicalRegion region = runtime->map_region(ctx, launcher);
-  region.wait_until_valid();
+  PhysicalRegion pr = runtime->map_region(ctx, launcher);
+  pr.wait_until_valid();
   switch (numDim) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      TensorAccessorR<T, DIM> acc(region, req, FID_DATA, ctx, runtime); \
+      TensorAccessorR<T, DIM> acc(pr, req, FID_DATA, ctx, runtime); \
       assert(acc.rect.volume() == volume); \
       memcpy(data, acc.ptr, volume * sizeof(T)); \
       break; \
@@ -329,9 +408,9 @@ bool Parameter::get_weights(const FFModel& ff,
       // Unsupported dim
       assert(false);
   }
-  runtime->unmap_region(ctx, region);
+  runtime->unmap_region(ctx, pr);
   return true;
 }
 
-template bool Parameter::set_weights<float>(const FFModel& ff, const std::vector<int>& dims, const float* data);
-template bool Parameter::get_weights<float>(const FFModel& ff, float* data);
+template bool Parameter::set_weights<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
+template bool Parameter::get_weights<float>(const FFModel* ff, float* data);
