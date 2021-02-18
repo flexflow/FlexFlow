@@ -234,8 +234,15 @@ def parse_inoutedge(op_str, inedges, outedges):
 #   return node_def
 
 def torch_to_flexflow(model, filename):
-  graph = __symbolic_trace(model)
   out_file = open(filename, "w")
+  lines = torch_to_flexflow_str(model)
+  for line in lines:
+    out_file.write(line)
+  out_file.close()
+  
+def torch_to_flexflow_str(model):
+  graph = __symbolic_trace(model)
+  lines = []
   
   for node in graph:
     # op name
@@ -345,7 +352,6 @@ def torch_to_flexflow(model, filename):
         assert 0, "unknown op"
       
     print(op_str)
-    out_file.write(op_str)
-  
-  out_file.close()
-  
+    lines.append(op_str)
+    
+  return lines

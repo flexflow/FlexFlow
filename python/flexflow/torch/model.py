@@ -14,24 +14,28 @@
 #
 
 from flexflow.core.flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, MetricsType, OpType, str_to_enum, int_to_enum
+import flexflow.torch.fx as fx
 
 class FXTensor(object):
   def __init__(self, fftensor):
     self.fftensor = fftensor;
 
 class PyTorchModel(object):
-  def __init__(self, filename):
+  def __init__(self, filename=None, model=None):
     self.tensor_dict = {}
-    self.filename = filename
+    self.lines = None
     self.input_ops_list = None
     self.output_ops_list = None
     
+    if filename != None:
+      self._init_from_file(filename)
+    elif model != None:
+      self._init_from_model(model)
+    
   def apply(self, ffmodel, input_tensors):
-    in_file = open(self.filename, "r")
     output_tensors = []
-    lines = in_file.readlines()
     input_idx = 0
-    for line in lines:
+    for line in self.lines:
       items = line.strip().split(",")
       assert len(items) >= 3, "wrong format"
       items = [i.strip() for i in items]
@@ -216,8 +220,7 @@ class PyTorchModel(object):
       else:
         assert 0
       #self.tensor_dict[self._get_output_key(op_name, 0)] = output
-        
-    in_file.close()
+
     return output_tensors
     
   def _get_input_key(self, op_name, index):
@@ -231,3 +234,10 @@ class PyTorchModel(object):
     else:
       return op_name + ":" + self.output_ops_list[index]
       
+  def _init_from_file(self, filename):
+    in_file = open(filename, "r")
+    self.lines = in_file.readlines()
+    in_file.close()
+      
+  def _init_from_model(self, model):
+    self.lines = fx.torch_to_flexflow_str(model)
