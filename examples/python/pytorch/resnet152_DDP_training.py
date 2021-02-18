@@ -6,17 +6,14 @@ import torch.nn as nn
 import torch.optim as optim
 import argparse
 import torch.multiprocessing as mp
-from resnet_torch import resnet152
 import torchvision.transforms as transforms
+import torchvision.models as models
 import time
+import pandas as pd
 
 
 def setup(rank, world_size):
-    try:
-        root_node = os.environ['SLURM_NODELIST'].split(' ')[0]
-    except Exception as e:
-        root_node = 'localhost'
-    os.environ['MASTER_ADDR'] = root_node
+    os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
@@ -32,11 +29,10 @@ def train(local_rank, args):
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
             ])
-    batch_size = 10
+    batch_size = 77
     train_dataset = torchvision.datasets.CIFAR10('./datasets/',transform=transform,download=True)
     sampler = torch.utils.data.distributed.DistributedSampler(train_dataset,num_replicas=args.world_size,rank=rank)
     trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=2,sampler=sampler)
-
     model = resnet152()
     torch.cuda.set_device(local_rank)
     model.cuda()
@@ -48,6 +44,7 @@ def train(local_rank, args):
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     print("Starting training")
+    training_run_data = pd.DataFrame(columns=['epoch','batch','batch_size','gpu_number','time'])
     for epoch in range(args.epochs):  # loop over the dataset multiple times
         running_loss = 0.0
         print("Epoch %d"%epoch)
@@ -67,6 +64,10 @@ def train(local_rank, args):
 
             # print statistics
             if rank==0:
+                training_run_data=training_run_data.append(
+                    {'epoch':epoch, 'batch':i,'loss':loss.item(),'batch_size':batch_size,'gpu_number':args.gpus*args.nodes,'time (ms)':1000*(end - start)/(batch_size*args.gpus)},
+                    ignore_index=True)
+                training_run_data.to_csv("training_stats_GPU_%.0f_batchsize_%.0f.csv"%(args.gpus*args.nodes,batch_size),index=False)
                 print("[Epoch %d] Batch: %d Loss: %.3f Time per Image: %.2f ms"%
                 (epoch,i,loss.item(),1000*(end - start)/(batch_size*args.gpus)))
 
