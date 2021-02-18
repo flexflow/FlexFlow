@@ -103,7 +103,7 @@ jobs:
             export PATH=/opt/conda/bin:$PATH
             export GASNET=$FF_HOME/../gasnet/release
             export CPLUS_INCLUDE_PATH=/usr/include/mpi:$CPLUS_INCLUDE_PATH
-            bash tests/multi_gpu_tests.sh
+            bash tests/multi_gpu_tests.sh 4
 
 workflows:
   nvidia:  
