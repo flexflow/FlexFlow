@@ -91,7 +91,7 @@ jobs:
             export CPLUS_INCLUDE_PATH=/usr/include/mpi:$CPLUS_INCLUDE_PATH
             python examples/python/onnx/mnist_mlp_pt.py
             pytest tests/onnx
-       - run:
+      - run:
           name: Run multi-GPU tests
           command: |
             export FF_HOME=$PWD
