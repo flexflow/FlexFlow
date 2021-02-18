@@ -15,8 +15,8 @@
 
 #include "simulator.h"
 #include "model.h"
-#include "realm/runtime_impl.h"
-#include "realm/cuda/cuda_module.h"
+//#include "realm/runtime_impl.h"
+//#include "realm/cuda/cuda_module.h"
 #include "cuda_helper.h"
 
 typedef long long int coord_t;

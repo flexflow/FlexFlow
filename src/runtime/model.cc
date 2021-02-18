@@ -2456,6 +2456,28 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<Reverse::backward_task>(
         registrar, "Reverse Backward Task");
   }
+  // Reverse task
+  {
+    TaskVariantRegistrar registrar(TOPK_INIT_TASK_ID, "TopK Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, TopK::init_task>(
+        registrar, "TopK Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(TOPK_FWD_TASK_ID, "TopK Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<TopK::forward_task>(
+        registrar, "TopK Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(TOPK_BWD_TASK_ID, "TopK Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<TopK::backward_task>(
+        registrar, "TopK Backward Task");
+  }
   // Transpose task
   {
     TaskVariantRegistrar registrar(TRANSPOSE_INIT_TASK_ID, "Transpose Init");

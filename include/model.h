@@ -90,6 +90,9 @@ enum TaskIDs {
   REVERSE_INIT_TASK_ID,
   REVERSE_FWD_TASK_ID,
   REVERSE_BWD_TASK_ID,
+  TOPK_INIT_TASK_ID,
+  TOPK_FWD_TASK_ID,
+  TOPK_BWD_TASK_ID,
   TRANSPOSE_INIT_TASK_ID,
   TRANSPOSE_FWD_TASK_ID,
   TRANSPOSE_BWD_TASK_ID,
@@ -349,6 +352,9 @@ public:
   Tensor reverse(const Tensor& input,
                  int axis,
                  const char *name = NULL);
+  void top_k(const Tensor& input,
+             Tensor* outputs, int k, bool sorted,
+             const char *name = NULL);
   Tensor multihead_attention(const Tensor& query,
                              const Tensor& key,
                              const Tensor& value,
@@ -1315,6 +1321,56 @@ public:
 private:
   template<int IDIM, int ODIM>
   void create_output_and_partition_with_dim(FFModel& model);
+};
+
+class TopKMeta : public OpMeta {
+public:
+  TopKMeta(FFHandler handle);
+};
+
+class TopK : public Op {
+public:
+  TopK(FFModel& model,
+       const Tensor& input,
+       int k, bool sorted,
+       const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  //Parameter* get_parameter(int index) {assert(0); return NULL;}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, HighLevelRuntime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+  static void forward_kernel(const TopKMeta* m,
+                      const float* input_ptr,
+                      float* output_ptr,
+                      int* indices_ptr,
+                      size_t batch_size, int length, int k,
+                      bool sorted);
+  static void backward_kernel(const TopKMeta* m,
+                       const float* out_grad_ptr,
+                       const int* indices_ptr,
+                       float* in_grad_ptr,
+                       size_t batch_size, int length, int k);
+private:
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
+public:
+  bool k, sorted;
+  bool profiling;
 };
 
 class ConcatMeta : public OpMeta {
