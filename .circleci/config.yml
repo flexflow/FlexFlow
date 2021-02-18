@@ -91,7 +91,6 @@ jobs:
             export CPLUS_INCLUDE_PATH=/usr/include/mpi:$CPLUS_INCLUDE_PATH
             python examples/python/onnx/mnist_mlp_pt.py
             pytest tests/onnx
- 
        - run:
           name: Run multi-GPU tests
           command: |
@@ -105,7 +104,7 @@ jobs:
             export GASNET=$FF_HOME/../gasnet/release
             export CPLUS_INCLUDE_PATH=/usr/include/mpi:$CPLUS_INCLUDE_PATH
             bash tests/multi_gpu_tests.sh
-    
+
 workflows:
   nvidia:  
     jobs:
