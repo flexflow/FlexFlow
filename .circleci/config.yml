@@ -62,8 +62,8 @@ jobs:
             export FF_HOME=$PWD
             export CUDNN_HOME=$CUDNN_ROOT_DIR
             export LG_RT_DIR=$PWD/legion/runtime
-            export CUDA_ARCH="60,70"
-            export GPU_ARCH="60,70"
+            export CUDA_ARCH="52,60,70"
+            export GPU_ARCH="52,60,70"
             export CUDA_HOME=/usr/local/cuda-10.1
             export NCCL_HOME=$FF_HOME/nccl/build
             export PATH=/opt/conda/bin:$PATH
@@ -82,8 +82,6 @@ jobs:
           command: |
             export FF_HOME=$PWD
             export CUDNN_HOME=$CUDNN_ROOT_DIR
-            export CUDA_ARCH="60,70"
-            export GPU_ARCH="60,70"
             export CUDA_HOME=/usr/local/cuda-10.1
             export NCCL_HOME=$FF_HOME/nccl/build
             export PATH=/opt/conda/bin:$PATH
@@ -96,8 +94,6 @@ jobs:
           command: |
             export FF_HOME=$PWD
             export CUDNN_HOME=$CUDNN_ROOT_DIR
-            export CUDA_ARCH="60,70"
-            export GPU_ARCH="60,70"
             export CUDA_HOME=/usr/local/cuda-10.1
             export NCCL_HOME=$FF_HOME/nccl/build
             export PATH=/opt/conda/bin:$PATH
