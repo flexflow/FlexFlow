@@ -52,7 +52,7 @@ def top_level_task():
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
   print(model.summary())
 
-  model.fit(x_train, y_train, epochs=30, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN), EpochVerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
+  model.fit(x_train, y_train, epochs=80, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN), EpochVerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
 
 if __name__ == "__main__":
   print("Sequantial model, cifar10 cnn")

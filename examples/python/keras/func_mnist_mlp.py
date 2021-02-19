@@ -52,7 +52,7 @@ def top_level_task():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', metrics.SparseCategoricalCrossentropy()])
 
-  model.fit(x_train, y_train, batch_size=64, epochs=5, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP), EpochVerifyMetrics(ModelAccuracy.MNIST_MLP)])
+  model.fit(x_train, y_train, epochs=10, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP), EpochVerifyMetrics(ModelAccuracy.MNIST_MLP)])
 
 if __name__ == "__main__":
   print("Functional API, mnist mlp")
