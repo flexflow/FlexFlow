@@ -41,7 +41,7 @@ jobs:
           command: |
             cd nccl
             git submodule update --init --recursive
-            make -j src.build NVCC_GENCODE="-gencode=arch=compute_60,code=sm_60"
+            make -j src.build NVCC_GENCODE="-gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_70,code=sm_70"
             cd ..
             sudo add-apt-repository ppa:deadsnakes/ppa
             sudo apt-get update
@@ -98,6 +98,7 @@ jobs:
             export NCCL_HOME=$FF_HOME/nccl/build
             export PATH=/opt/conda/bin:$PATH
             export GASNET=$FF_HOME/../gasnet/release
+            export LD_LIBRARY_PATH=$NCCL_HOME/lib:$LD_LIBRARY_PATH
             export CPLUS_INCLUDE_PATH=/usr/include/mpi:$CPLUS_INCLUDE_PATH
             bash tests/multi_gpu_tests.sh 4
 
