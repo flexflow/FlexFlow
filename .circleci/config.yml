@@ -105,7 +105,7 @@ workflows:
   nvidia:  
     jobs:
       - test_nvidia_smi
-      - flexflow_build_test
+      - flexflow_build_test:
           context: FLEXFLOW_PARAMETER_SERVER
-      - flexflow_build_test
+      - flexflow_build_test:
           context: FLEXFLOW_NCCL
