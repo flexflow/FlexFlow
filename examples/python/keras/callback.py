@@ -64,7 +64,7 @@ def top_level_task():
   
   mylr_scheduler = LearningRateScheduler(lr_scheduler)
 
-  model.fit(x_train, y_train, epochs=40, callbacks=[mylr_scheduler, VerifyMetrics(ModelAccuracy.CIFAR10_CNN), EpochVerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
+  model.fit(x_train, y_train, epochs=80, callbacks=[mylr_scheduler, VerifyMetrics(ModelAccuracy.CIFAR10_CNN), EpochVerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
 
 if __name__ == "__main__":
   print("Functional API, cifar10 cnn callback")
