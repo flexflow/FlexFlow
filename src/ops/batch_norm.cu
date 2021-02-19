@@ -584,6 +584,15 @@ void BatchNorm::init_meta(BatchNormMeta *m,
   }
 }
 
+BatchNormMeta::BatchNormMeta(FFHandler handler)
+: OpMeta(handler)
+{
+  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&biasTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
+}
+
 bool BatchNorm::measure_operator_cost(Simulator* sim,
                                       const ParallelConfig& pc,
                                       CostMetrics& cost_metrics)

@@ -808,7 +808,7 @@ public:
 
 class BatchNormMeta : public OpMeta {
 public:
-  BatchNormMeta(FFHandler handle) : OpMeta(handle) {};
+  BatchNormMeta(FFHandler handle);
   cudnnTensorDescriptor_t inputTensor, outputTensor, biasTensor;
   cudnnActivationDescriptor_t actiDesc;
   cudnnBatchNormMode_t mode;
