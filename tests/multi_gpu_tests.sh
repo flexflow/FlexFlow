@@ -35,10 +35,10 @@ $EXE $FF_HOME/examples/python/keras/func_cifar10_cnn_net2net.py -ll:py 1 -ll:gpu
 #Python
 $EXE $FF_HOME/examples/python/native/print_layers.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5
 $EXE $FF_HOME/examples/python/native/split.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
-$EXE $FF_HOME/examples/python/native/alexnet.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 40
+$EXE $FF_HOME/examples/python/native/alexnet.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 10
 $EXE $FF_HOME/examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5
 $EXE $FF_HOME/examples/python/native/mnist_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5
-$EXE $FF_HOME/examples/python/native/cifar10_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 40
+$EXE $FF_HOME/examples/python/native/cifar10_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 10
 #$EXE $FF_HOME/examples/python/native/cifar10_cnn_attach.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5
 #$EXE $FF_HOME/examples/python/native/mnist_mlp_attach.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5
 
@@ -46,5 +46,5 @@ $EXE $FF_HOME/examples/python/native/cifar10_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:f
 $EXE $FF_HOME/examples/python/keras/func_cifar10_cnn_concat.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
 $EXE $FF_HOME/examples/python/keras/func_cifar10_cnn_concat_model.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
 $EXE $FF_HOME/examples/python/keras/func_cifar10_cnn_concat_seq_model.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
-$EXE $FF_HOME/examples/python/native/cifar10_cnn_concat.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 40
+$EXE $FF_HOME/examples/python/native/cifar10_cnn_concat.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 10
 
