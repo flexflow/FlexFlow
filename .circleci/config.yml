@@ -89,7 +89,7 @@ jobs:
             python examples/python/onnx/mnist_mlp_pt.py
             pytest tests/onnx
 
-  flexflow_multigpu_test_parameter_server:
+  flexflow_multigpu_test:
     <<: *gpu
     steps:
       - checkout
