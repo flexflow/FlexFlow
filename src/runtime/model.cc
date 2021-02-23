@@ -799,7 +799,7 @@ Tensor FFModel::create_tensor(const int dims[],
   Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
   IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
   tensor.region = runtime->create_logical_region(ctx, is, fs);
-  if (create_grad) {
+  if (create_grad && config.computationMode == COMP_MODE_TRAINING) {
     tensor.region_grad = runtime->create_logical_region(ctx, is, fs);
   }
 
@@ -824,7 +824,7 @@ Tensor FFModel::create_tensor(const int dims[],
   assert(runtime->is_index_partition_disjoint(ctx, ip));
   assert(runtime->is_index_partition_complete(ctx, ip));
   tensor.part = runtime->get_logical_partition(ctx, tensor.region, ip);
-  if (create_grad) {
+  if (create_grad && config.computationMode == COMP_MODE_TRAINING) {
     tensor.part_grad = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
   }
   tensor.numDim = NDIM;
@@ -905,8 +905,10 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor& tensor
                                                             LogicalPartition& part_bwd)
 {
   assert(tensor.numDim == NDIM);
-  // Current assume forward and grad share the same index space
-  assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
+  if (config.computationMode == COMP_MODE_TRAINING) {
+    // Current assume forward and grad share the same index space
+    assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
+  }
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   Rect<NDIM> rect = runtime->get_index_space_domain(ctx, tensor.region.get_index_space());
@@ -932,7 +934,11 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor& tensor
   assert(runtime->is_index_partition_disjoint(ctx, ip));
   assert(runtime->is_index_partition_complete(ctx, ip));
   part_fwd = runtime->get_logical_partition(ctx, tensor.region, ip);
-  part_bwd = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
+  if (config.computationMode == COMP_MODE_TRAINING) {
+    part_bwd = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
+  } else {
+    part_bwd = LogicalPartition::NO_PART;
+  }
 }
 
 // This function assumes:
@@ -1036,7 +1042,7 @@ Parameter FFModel::create_linear_weight(Op* op,
     initializer->init(this, &weight);
   }
   // Step 3: backward region
-  if (create_grad) {
+  if (create_grad && config.computationMode == COMP_MODE_TRAINING) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
       hi[i] = dims[NDIM-1-i]-1;
@@ -1160,8 +1166,8 @@ Parameter FFModel::create_conv_weight(Op* op,
   } else {
     initializer->init(this, &weight);
   }
-  // Step 3: backwar regin and partition
-  if (create_grad) {
+  // Step 3: backward regin and partition
+  if (create_grad && config.computationMode == COMP_MODE_TRAINING) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
       hi[i] = dims[NDIM-1-i]-1;
@@ -1194,6 +1200,8 @@ Tensor FFModel::create_linear_replica(const int dims[],
                                       const IndexSpaceT<TDIM>& task_is,
                                       DataType data_type)
 {
+  // No need to create replica for INFERENCE
+  assert(config.computationMode == COMP_MODE_TRAINING);
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   assert(NDIM >= 2);
@@ -1351,6 +1359,7 @@ void FFModel::compute_metrics()
 
 void FFModel::backward()
 {
+  assert(config.computationMode == COMP_MODE_TRAINING);
   // Compute metrics
   Op* final_layer = layers[layers.size()-1];
   assert(final_layer->numOutputs == 1);
