@@ -181,6 +181,7 @@ workflows:
               only:
                 - master
     jobs:
+      - test_nvidia_smi
       - flexflow_multigpu_test:
           context: FLEXFLOW_PARAMETER_SERVER
   nightly-nccl:
@@ -192,6 +193,7 @@ workflows:
               only:
                 - master
     jobs:
+      - test_nvidia_smi
       - flexflow_multigpu_test:
           context: FLEXFLOW_NCCL
 
