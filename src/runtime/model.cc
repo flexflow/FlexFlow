@@ -1951,6 +1951,7 @@ FFConfig::FFConfig()
   search_budget = DefaultConfig::searchBudget;
   search_alpha = DefaultConfig::searchAlpha;
   search_overlap_backward_update = DefaultConfig::searchOverlapBackwardUpdate;
+  computationMode = COMP_MODE_TRAINING;
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
