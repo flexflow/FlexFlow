@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import absolute_import
 
 from flexflow.core.flexflow_cbinding import *
+from flexflow.core.flexflow_type import *
 #from flexflow.core.flexflow_logger import *
 if 'FF_BUILD_DOCS' not in os.environ:
   build_docs = 0

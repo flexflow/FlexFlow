@@ -58,7 +58,7 @@ def top_level_task():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   teacher_model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
 
-  teacher_model.fit(x_train, y_train, epochs=10)
+  teacher_model.fit(x_train, y_train, epochs=2)
   
   d1_kernel, d1_bias = d1.get_weights(teacher_model.ffmodel)
   d2_kernel, d2_bias = d2.get_weights(teacher_model.ffmodel)
@@ -80,13 +80,13 @@ def top_level_task():
   student_model = Model(input_tensor2, output)
 
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
-  student_model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
+  student_model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'], comp_mode=ff.CompMode.INFERENCE)
   
   sd1_1.set_weights(student_model.ffmodel, d1_kernel, d1_bias)
   sd2.set_weights(student_model.ffmodel, d2_kernel, d2_bias)
   sd3.set_weights(student_model.ffmodel, d3_kernel, d3_bias)
 
-  student_model.fit(x_train, y_train, epochs=160, callbacks=[VerifyMetrics(ModelAccuracy.MNIST_MLP), EpochVerifyMetrics(ModelAccuracy.MNIST_MLP)])
+  student_model.evaluate(x_train, y_train)
 
 if __name__ == "__main__":
   print("Functional API, mnist mlp teach student")

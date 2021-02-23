@@ -58,6 +58,7 @@ class BaseModel(object):
     self._loss = None
     self._metrics = []
     self._label_type = ff.DataType.DT_FLOAT
+    self._layer_inited = False
 
     global tracing_id
     self.__tracing_id = tracing_id
@@ -249,7 +250,9 @@ class BaseModel(object):
     label_tensor = y
     self._verify_tensors(input_tensors, label_tensor)
     self._create_data_loaders(input_tensors, label_tensor)
-    self._ffmodel.init_layers()
+    if self._layer_inited == False:
+      self._ffmodel.init_layers()
+      self._layer_inited = True
     self._train(epochs, callbacks, eval=False)
 
   def evaluate(self,
@@ -274,6 +277,9 @@ class BaseModel(object):
     label_tensor = y
     self._verify_tensors(input_tensors, label_tensor)
     self._create_data_loaders(input_tensors, label_tensor)
+    if self._layer_inited == False:
+      self._ffmodel.init_layers()
+      self._layer_inited = True
     self._train(1, callbacks, eval=True)
 
   def _create_input_tensor(self, idx):
