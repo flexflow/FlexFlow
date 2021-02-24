@@ -599,6 +599,11 @@ float Simulator::simulate_runtime(const FFModel* model,
       gpu_mem_usage[config.device_ids[j]] += memory_requirement;
     }
   }
+  if (export_file_name != "") {  
+    for (int i = 0; i < total_num_gpus; i++) {
+        printf("Before penalty, dev id %d, usage %zu \n", i, gpu_mem_usage[i]); 
+    }
+  }
   // Penalize the total runtiem by 1ms if we exceed the memory budget by 1MB
   for (int i = 0; i < total_num_gpus; i++) {
     Device* gpu = get_compute_device_by_id(i);

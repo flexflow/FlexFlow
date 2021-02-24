@@ -542,22 +542,26 @@ bool BatchMatmul::measure_operator_cost(Simulator* sim,
     return false;
   }
 
-  int input0_r = sub_input0.adim[0];
-  int input0_c = sub_input0.adim[1];
-  int input1_r = sub_input1.adim[0];
-  int input1_c = sub_input1.adim[1];
-  int output_r = sub_output.adim[0];
-  int output_c = sub_output.adim[1];
+  int input0_c = sub_input0.adim[0];
+  int input0_r = sub_input0.adim[1];
+  int input1_c = sub_input1.adim[0];
+  int input1_r = sub_input1.adim[1];
+  int output_c = sub_output.adim[0];
+  int output_r = sub_output.adim[1];
 
-  assert (input0_r == input1_c);
-  assert (input0_c == output_c);
-  assert (input1_r == output_r);
+  assert (input0_c == input1_r);
+  assert (input0_r == output_r);
+  assert (input1_c == output_c);
 
   assert (sub_input0.adim[2] == sub_input1.adim[2]);
   assert (sub_input1.adim[2] == sub_output.adim[2]);
-
-  int batch = sub_input0.adim[2];
-
+  int batch = 1;
+  assert(sub_input0.numDim == sub_input1.numDim);
+  for (int i = 2; i < sub_input0.numDim; i++) {
+    assert(sub_input0.adim[i] == sub_input1.adim[i]);
+    assert(sub_input0.adim[i] == sub_output.adim[i]);
+    batch *= sub_input0.adim[i];
+  }
 
   BatchMatmulMeta *meta = sim->batch_matmul_meta;
 
@@ -571,8 +575,8 @@ bool BatchMatmul::measure_operator_cost(Simulator* sim,
   float *out_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert (out_ptr != NULL);
 
-  int m = input0_r;
-  int n = input1_c;
+  int m = input1_c;
+  int n = input0_r;
   int k = input0_c;
 
   std::function<void()> forward, backward;
