@@ -537,9 +537,10 @@ void FFMapper::map_task(const MapperContext ctx,
         runtime->find_layout_constraints(ctx, layout_id);
     size_t footprint;
     PhysicalInstance result;
+    bool created;
     if (!default_make_instance(ctx, target_mem, constraint_set,
         result, true/*meet_constraints*/,
-        task.regions[idx], &footprint))
+        task.regions[idx], created, &footprint))
     {
       if (log_instance_creation) {
         for (size_t idx = 0; idx < created_instances.size(); idx++) {
@@ -561,7 +562,7 @@ void FFMapper::map_task(const MapperContext ctx,
     } else {
       output.chosen_instances[idx].push_back(result);
     }
-    if (log_instance_creation) {
+    if (log_instance_creation && created) {
       //Log instance creation
       InstanceCreationLog clog;
       clog.task_name = task.get_task_name();
@@ -868,8 +869,10 @@ void FFMapper::map_inline(const MapperContext        ctx,
   }
   PhysicalInstance result;
   size_t footprint;
+  bool created;
   if (!default_make_instance(ctx, target_memory, creation_constraints,
-      result, true/*meets_constraints*/, inline_op.requirement, &footprint))
+      result, true/*meets_constraints*/, inline_op.requirement,
+      created, &footprint))
   {
     log_ff_mapper.error("FlexFlow Mapper failed allocation of size %zd bytes"
         " for region requirement of inline ammping in task %s (UID %lld)"
@@ -1335,11 +1338,12 @@ bool FFMapper::default_make_instance(
          PhysicalInstance &result,
          bool meets_constraints,
          const RegionRequirement &req,
+         bool &created,
          size_t *footprint)
 {
   LogicalRegion target_region = req.region;
   bool tight_region_bounds = false;
-  bool created = true;
+  created = true;
   std::vector<LogicalRegion> target_regions(1, target_region);
   if (!runtime->find_or_create_physical_instance(ctx, target_mem, constraints,
       target_regions, result, created, true/*acquire*/, 0/*priority*/,
@@ -1504,4 +1508,8 @@ void update_mappers(Machine machine, Runtime *runtime,
                                     log_instance_creation);
     runtime->replace_default_mapper(mapper, *it);
   }
+}
+
+FFMapper::~FFMapper(void)
+{
 }
