@@ -170,6 +170,8 @@ workflows:
           context: FLEXFLOW_PARAMETER_SERVER
       - flexflow_build_test:
           context: FLEXFLOW_NCCL
+      - flexflow_multigpu_test:
+          context: FLEXFLOW_NCCL
   nightly-parameter-server:
     triggers:
       - schedule:
