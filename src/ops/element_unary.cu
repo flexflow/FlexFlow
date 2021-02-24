@@ -530,26 +530,35 @@ bool ElementUnary::measure_operator_cost(Simulator* sim,
   sim->free_all();
   float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert(input_ptr != NULL);
-  float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert(input_grad_ptr != NULL);
   float* output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
-  float* output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert(output_grad_ptr != NULL);
 
-  auto forward = [&] {
+  std::function<void()> forward, backward;
+  forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, sub_output.get_volume());
   };
-  auto backward = [&] {
-    backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr,
-        sub_output.get_volume());
-  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    assert(input_grad_ptr != NULL);
+    float* output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert(output_grad_ptr != NULL);
+    backward = [&] {
+      backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr,
+          sub_output.get_volume());
+    };
+  }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
-  printf("[Measure Elewise Unary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
-      name, sub_output.get_volume(),
-      cost_metrics.forward_time,
-      cost_metrics.backward_time);
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure Elewise Unary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name, sub_output.get_volume(),
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  } else {
+    printf("[Measure Elewise Unary] name(%s) num_elements(%zu) forward_time(%.4lf)\n",
+        name, sub_output.get_volume(),
+        cost_metrics.forward_time);
+  }
   return true;
 }

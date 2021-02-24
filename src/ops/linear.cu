@@ -1015,21 +1015,34 @@ bool Linear::measure_operator_cost(Simulator* sim,
   assert(kernel_ptr != NULL);
   float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
   assert(bias_ptr != NULL);
-
-  auto forward = [&] {
+  std::function<void()> forward, backward;
+  forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, kernel_ptr, bias_ptr,
         input_c, output_c, input_n);
   };
-  auto backward = [&] {
-    backward_kernel(m, input_ptr, input_ptr, output_ptr, output_ptr,
-        kernel_ptr, kernel_ptr, bias_ptr, input_c, output_c, input_n);
-  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    float* kernel_grad_ptr = (float*)sim->allocate((size_t)output_c * input_c, DT_FLOAT);
+    float* bias_grad_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
+    assert(bias_grad_ptr != NULL);
+    backward = [&] {
+      backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr,
+          kernel_ptr, kernel_grad_ptr, bias_grad_ptr, input_c, output_c, input_n);
+    };
+  }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
-  printf("[Measure Linear] name(%s) in(%d %d) out(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
-         name, input_n, input_c, output_n, output_c,
-         cost_metrics.forward_time, cost_metrics.backward_time);
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure Linear] name(%s) in(%d %d) out(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+           name, input_n, input_c, output_n, output_c,
+           cost_metrics.forward_time, cost_metrics.backward_time);
+  } else {
+    printf("[Measure Linear] name(%s) in(%d %d) out(%d %d) forward_time(%.4lf)\n",
+           name, input_n, input_c, output_n, output_c,
+           cost_metrics.forward_time);
+  }
   return true;
 }
 

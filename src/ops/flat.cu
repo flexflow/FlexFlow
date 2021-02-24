@@ -242,27 +242,36 @@ bool Flat::measure_operator_cost(Simulator* sim,
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert (input_ptr != NULL);
-  float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert (input_grad_ptr != NULL);
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert (output_ptr != NULL);
-  float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert (output_grad_ptr != NULL);
   size_t num_elements = sub_output.get_volume();
 
-  auto forward = [&] {
+  std::function<void()> forward, backward;
+  forward = [&] {
     forward_kernel(input_ptr, output_ptr, num_elements);
   };
-  auto backward = [&] {
-    backward_kernel(input_grad_ptr, output_grad_ptr, num_elements);
-  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert (output_grad_ptr != NULL);
+    assert (input_grad_ptr != NULL);
+    backward = [&] {
+      backward_kernel(input_grad_ptr, output_grad_ptr, num_elements);
+    };
+  }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
-  printf("[Measure Flat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-      name,
-      cost_metrics.forward_time,
-      cost_metrics.backward_time);
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure Flat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  } else {
+    printf("[Measure Flat] name(%s) forward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time);
+  }
 
   return true;
 }

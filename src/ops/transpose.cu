@@ -400,24 +400,33 @@ bool Transpose::measure_operator_cost(Simulator* sim,
   assert (input_ptr != NULL);
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert (output_ptr != NULL);
-  float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert (input_grad_ptr != NULL);
-  float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert (output_grad_ptr != NULL);
 
-  auto forward = [&] {
+  std::function<void()> forward, backward;
+  forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, sub_input.get_domain(), sub_output.get_domain());
   };
-  auto backward = [&] {
-    backward_kernel(m, input_grad_ptr, output_grad_ptr, sub_input.get_domain(), sub_output.get_domain());
-  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    assert (input_grad_ptr != NULL);
+    float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert (output_grad_ptr != NULL);
+    backward = [&] {
+      backward_kernel(m, input_grad_ptr, output_grad_ptr, sub_input.get_domain(), sub_output.get_domain());
+    };
+  }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
-  printf("[Measure Transpose] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-      name,
-      cost_metrics.forward_time,
-      cost_metrics.backward_time);
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure Transpose] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  } else {
+    printf("[Measure Transpose] name(%s) forward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time);
+  }
 
   return true;
 }

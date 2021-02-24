@@ -191,6 +191,7 @@ public:
   int warmup_times, repeat_times;
   int num_nodes, gpus_per_node, total_num_gpus;
   TaskManager* task_manager;
+  CompMode computationMode;
   cudaEvent_t start_event, end_event;
   std::map<int, Device*> id_to_compute_device;
   std::map<int, Device*> id_to_gputodram_comm_device;

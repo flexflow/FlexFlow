@@ -458,29 +458,42 @@ bool Pool2D::measure_operator_cost(Simulator* sim,
   sim->free_all();
   float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert(input_ptr != NULL);
-  float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert(input_grad_ptr != NULL);
   float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
-  float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert(output_grad_ptr != NULL);
 
-  auto forward = [&] {
+  std::function<void()> forward, backward;
+  forward = [&] {
     forward_kernel(m, input_ptr, output_ptr);
   };
-  auto backward = [&] {
-    backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr);
-  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    assert(input_grad_ptr != NULL);
+    float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert(output_grad_ptr != NULL);
+    backward = [&] {
+      backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr);
+    };
+  }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
-  printf("[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
-      name,
-      input_n, input_c, input_h, input_w,
-      output_n, output_c, output_h, output_w,
-      stride_h, stride_w,
-      padding_h, padding_w,
-      cost_metrics.forward_time, cost_metrics.backward_time);
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name,
+        input_n, input_c, input_h, input_w,
+        output_n, output_c, output_h, output_w,
+        stride_h, stride_w,
+        padding_h, padding_w,
+        cost_metrics.forward_time, cost_metrics.backward_time);
+  } else {
+    printf("[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf)\n",
+        name,
+        input_n, input_c, input_h, input_w,
+        output_n, output_c, output_h, output_w,
+        stride_h, stride_w,
+        padding_h, padding_w,
+        cost_metrics.forward_time);
+  }
 
   return true;
 }

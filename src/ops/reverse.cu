@@ -279,12 +279,8 @@ bool Reverse::measure_operator_cost(Simulator* sim,
   sim->free_all();
   float *input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert (input_ptr != NULL);
-  float *input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert (input_grad_ptr != NULL);
   float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert (output_ptr != NULL);
-  float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert (output_grad_ptr != NULL);
 
   coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < sub_output.numDim; i++) {
@@ -297,19 +293,32 @@ bool Reverse::measure_operator_cost(Simulator* sim,
     }
   }
 
-  auto forward = [&] {
+  std::function<void()> forward, backward;
+  forward = [&] {
      forward_kernel(input_ptr, output_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_output.get_volume());
   };
-  auto backward = [&] {
-    backward_kernel(output_grad_ptr, input_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_input.get_volume());
-  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float *input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    assert (input_grad_ptr != NULL);
+    float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert (output_grad_ptr != NULL);
+    backward = [&] {
+      backward_kernel(output_grad_ptr, input_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_input.get_volume());
+    };
+  }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
-  printf("[Measure Reverse] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-      name,
-      cost_metrics.forward_time,
-      cost_metrics.backward_time);
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure Reverse] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  } else {
+    printf("[Measure Reverse] name(%s) forward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time);
+  }
 
   return true;
 }

@@ -620,28 +620,37 @@ bool BatchNorm::measure_operator_cost(Simulator* sim,
   assert (bias_ptr != NULL);
   float *scale_ptr = (float *)sim->allocate(numChannels, DT_FLOAT);
   assert (scale_ptr != NULL);
-  float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert (input_grad_ptr != NULL);
-  float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert (output_grad_ptr != NULL);
-  float *scale_grad_ptr = (float *)sim->allocate(numChannels, DT_FLOAT);
-  assert (scale_grad_ptr != NULL);
-  float *bias_grad_ptr = (float *)sim->allocate(numChannels, DT_FLOAT);
-  assert (bias_grad_ptr != NULL);
-
-  auto forward = [&] {
+  std::function<void()> forward, backward;
+  forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, scale_ptr, bias_ptr, numChannels);
   };
-  auto backward = [&] {
-    backward_kernel(m, input_ptr, output_grad_ptr, output_ptr, input_grad_ptr, scale_ptr, scale_grad_ptr, bias_grad_ptr, sub_output.get_volume());
-  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    assert (input_grad_ptr != NULL);
+    float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert (output_grad_ptr != NULL);
+    float *scale_grad_ptr = (float *)sim->allocate(numChannels, DT_FLOAT);
+    assert (scale_grad_ptr != NULL);
+    float *bias_grad_ptr = (float *)sim->allocate(numChannels, DT_FLOAT);
+    assert (bias_grad_ptr != NULL);
+
+    backward = [&] {
+      backward_kernel(m, input_ptr, output_grad_ptr, output_ptr, input_grad_ptr,
+          scale_ptr, scale_grad_ptr, bias_grad_ptr, sub_output.get_volume());
+    };
+  }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
-  printf("[Measure BatchNorm] name(%s) size(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
-      name,
-      sub_input.get_volume(),
-      cost_metrics.forward_time,
-      cost_metrics.backward_time);
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure BatchNorm] name(%s) size(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name, sub_input.get_volume(),
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  } else {
+    printf("[Measure BatchNorm] name(%s) size(%zu) forward_time(%.4lf)\n",
+        name, sub_input.get_volume(),
+        cost_metrics.forward_time);
+  }
   return true;
 }

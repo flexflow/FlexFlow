@@ -681,43 +681,58 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
   sim->free_all();
   const float* query_ptr =
       (const float*)sim->allocate(sub_query.get_volume(), DT_FLOAT);
-  float* query_grad_ptr =
-      (float*)sim->allocate(sub_query.get_volume(), DT_FLOAT);
   const float* key_ptr =
       (const float*)sim->allocate(sub_key.get_volume(), DT_FLOAT);
-  float* key_grad_ptr =
-      (float*)sim->allocate(sub_key.get_volume(), DT_FLOAT);
   const float* value_ptr =
       (const float*)sim->allocate(sub_value.get_volume(), DT_FLOAT);
-  float* value_grad_ptr =
-      (float*)sim->allocate(sub_value.get_volume(), DT_FLOAT);
   const float* weight_ptr =
       (const float*)sim->allocate(sub_weight.get_volume(), DT_FLOAT);
-  float* weight_grad_ptr =
-      (float*)sim->allocate(sub_weight.get_volume(), DT_FLOAT);
   float* output_ptr =
       (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  float* output_grad_ptr =
-      (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert(output_grad_ptr != NULL);
+  assert(output_ptr != NULL);
 
-  auto forward = [&] {
+  std::function<void()> forward, backward;
+  forward = [&] {
     forward_kernel(m, query_ptr, key_ptr, value_ptr, weight_ptr, output_ptr);
   };
-  auto backward = [&] {
-    backward_kernel(m, query_ptr, query_grad_ptr, key_ptr, key_grad_ptr,
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float* query_grad_ptr =
+        (float*)sim->allocate(sub_query.get_volume(), DT_FLOAT);
+    float* key_grad_ptr =
+        (float*)sim->allocate(sub_key.get_volume(), DT_FLOAT);
+    float* value_grad_ptr =
+        (float*)sim->allocate(sub_value.get_volume(), DT_FLOAT);
+    float* weight_grad_ptr =
+        (float*)sim->allocate(sub_weight.get_volume(), DT_FLOAT);
+    float* output_grad_ptr =
+        (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert(output_grad_ptr != NULL);
+
+    backward = [&] {
+      backward_kernel(m, query_ptr, query_grad_ptr, key_ptr, key_grad_ptr,
         value_ptr, value_grad_ptr, weight_ptr, weight_grad_ptr, output_grad_ptr);
-  };
+    };
+  }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
-  printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) value(%d %d %d) output(%d %d %d)"
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) value(%d %d %d) output(%d %d %d)"
          "forward_time(%.4lf) backward_time(%.4lf)\n",
          sub_query.adim[2], sub_query.adim[1], sub_query.adim[0],
          sub_key.adim[2], sub_key.adim[1], sub_key.adim[0],
          sub_value.adim[2], sub_value.adim[1], sub_value.adim[0],
          sub_output.adim[2], sub_output.adim[1], sub_output.adim[0],
          cost_metrics.forward_time, cost_metrics.backward_time);
+  } else {
+    printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) value(%d %d %d) output(%d %d %d)"
+         "forward_time(%.4lf)\n",
+         sub_query.adim[2], sub_query.adim[1], sub_query.adim[0],
+         sub_key.adim[2], sub_key.adim[1], sub_key.adim[0],
+         sub_value.adim[2], sub_value.adim[1], sub_value.adim[0],
+         sub_output.adim[2], sub_output.adim[1], sub_output.adim[0],
+         cost_metrics.forward_time);
+  }
   // Free multiheadattentionmeta
   delete m;
   return true;

@@ -565,40 +565,51 @@ bool BatchMatmul::measure_operator_cost(Simulator* sim,
   sim->free_all();
   float *a_ptr = (float *)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
   assert (a_ptr != NULL);
-  float *a_grad_ptr = (float *)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
-  assert (a_grad_ptr != NULL);
   float *b_ptr = (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
   assert (b_ptr != NULL);
-  float *b_grad_ptr = (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
-  assert (b_grad_ptr != NULL);
   float *c_ptr = NULL;
-  float *c_grad_ptr = NULL;
   float *out_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert (out_ptr != NULL);
-  float *out_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert (out_grad_ptr != NULL);
 
   int m = input0_r;
   int n = input1_c;
   int k = input0_c;
 
-  auto forward = [&] {
+  std::function<void()> forward, backward;
+  forward = [&] {
     forward_kernel(meta, out_ptr, a_ptr, b_ptr, c_ptr, m, n, k, batch);
   };
-  auto backward = [&] {
-    backward_kernel(meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr, b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch);
-  };
+
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float *a_grad_ptr = (float *)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
+    float *b_grad_ptr = (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
+    float *c_grad_ptr = NULL;
+    float *out_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert (out_grad_ptr != NULL);
+
+    backward = [&] {
+      backward_kernel(meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr, b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch);
+    };
+  }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
-  printf("[Measure BatchMatmul] name(%s) adim(%d %d %d) bdim(%d %d %d) odim(%d %d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
-      name,
-      batch, input0_r, input0_c,
-      batch, input1_r, input1_c,
-      batch, output_r, output_c,
-      cost_metrics.forward_time,
-      cost_metrics.backward_time
-  );
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure BatchMatmul] name(%s) adim(%d %d %d) bdim(%d %d %d) odim(%d %d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name,
+        batch, input0_r, input0_c,
+        batch, input1_r, input1_c,
+        batch, output_r, output_c,
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  } else {
+    printf("[Measure BatchMatmul] name(%s) adim(%d %d %d) bdim(%d %d %d) odim(%d %d %d) forward_time(%.4lf)\n",
+        name,
+        batch, input0_r, input0_c,
+        batch, input1_r, input1_c,
+        batch, output_r, output_c,
+        cost_metrics.forward_time);
+  }
 
   return true;
 }

@@ -28,7 +28,8 @@ Simulator::Simulator(const FFModel* model,
                      FFHandler _handler,
                      Memory _memory)
 : memory(_memory), handler(_handler),
-  offset(0), warmup_times(5), repeat_times(10)
+  offset(0), warmup_times(5), repeat_times(10),
+  computationMode(model->config.computationMode)
 {
   // Allocate simulator memory
   Rect1 bounds(Point1(0), Point1(0));

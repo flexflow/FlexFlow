@@ -680,28 +680,39 @@ bool ElementBinary::measure_operator_cost(Simulator* sim,
   sim->free_all();
   float* input0_ptr = (float*)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
   assert(input0_ptr != NULL);
-  float* input0_grad_ptr = (float*)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
-  assert(input0_grad_ptr != NULL);
   float* input1_ptr = (float*)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
   assert(input1_ptr != NULL);
-  float* input1_grad_ptr = (float*)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
-  assert(input1_grad_ptr != NULL);
   float* output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
 
-  auto forward = [&] {
+  std::function<void()> forward, backward;
+  forward = [&] {
     forward_kernel(m, input0_ptr, input1_ptr, output_ptr);
   };
-  auto backward = [&] {
-    backward_kernel(m, output_ptr, input0_ptr, input1_ptr, input0_grad_ptr, input1_grad_ptr);
-  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float* input0_grad_ptr = (float*)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
+    assert(input0_grad_ptr != NULL);
+    float* input1_grad_ptr = (float*)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
+    assert(input1_grad_ptr != NULL);
+    float* output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert(output_grad_ptr != NULL);
+    backward = [&] {
+      backward_kernel(m, output_grad_ptr, input0_ptr, input1_ptr, input0_grad_ptr, input1_grad_ptr);
+    };
+  }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
-  printf("[Measure Elewise Binary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
-      name, sub_output.get_volume(),
-      cost_metrics.forward_time,
-      cost_metrics.backward_time);
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure Elewise Binary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name, sub_output.get_volume(),
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  } else {
+    printf("[Measure Elewise Binary] name(%s) num_elements(%zu) forward_time(%.4lf)\n",
+        name, sub_output.get_volume(),
+        cost_metrics.forward_time);
+  }
 
   return true;
 }

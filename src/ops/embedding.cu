@@ -382,26 +382,42 @@ bool Embedding::measure_operator_cost(Simulator* sim,
   assert (output_ptr != NULL);
   float *weight_ptr = (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
   assert (weight_ptr != NULL);
-  float *weight_grad_ptr = (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
-  assert (weight_grad_ptr != NULL);
   int in_dim = sub_input.adim[0];
   int out_dim = sub_input.adim[0];
   assert (sub_input.adim[1] == sub_output.adim[2]);
   int batch_size = sub_input.adim[1];
 
-  auto forward = [&] {
+  std::function<void()> forward, backward;
+  forward = [&] {
     forward_kernel(input_ptr, output_ptr, weight_ptr, in_dim, out_dim, batch_size, this->aggr, sub_output.get_volume());
   };
-  auto backward = [&] {
-    backward_kernel(input_ptr, output_ptr, weight_grad_ptr, in_dim, out_dim, batch_size, this->aggr, sub_output.get_volume());
-  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float *weight_grad_ptr = (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
+    assert (weight_grad_ptr != NULL);
+    float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert (output_grad_ptr != NULL);
+    int64_t *input_grad_ptr = (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
+    assert (input_grad_ptr != NULL);
+
+    backward = [&] {
+      backward_kernel(input_grad_ptr, output_grad_ptr, weight_grad_ptr, in_dim, out_dim, batch_size,
+        this->aggr, sub_output.get_volume());
+    };
+  }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
-  printf("[Measure Embedding] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-      name,
-      cost_metrics.forward_time,
-      cost_metrics.backward_time);
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure Embedding] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  } else {
+    printf("[Measure Embedding] name(%s) forward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  }
 
   return true;
 }
