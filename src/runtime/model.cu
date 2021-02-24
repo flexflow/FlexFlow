@@ -37,17 +37,21 @@ void Op::inner_measure_operator_cost(Simulator *sim,
   cost_metrics.forward_time = milliseconds / sim->repeat_times;
 
   // measure backward time
-  checkCUDA(cudaDeviceSynchronize());
-  for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
-    if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    checkCUDA(cudaDeviceSynchronize());
+    for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
+      if (i == sim->warmup_times) {
+        checkCUDA(cudaEventRecord(sim->start_event));
+      }
+      backward();
     }
-    backward();
+    checkCUDA(cudaEventRecord(sim->end_event));
+    checkCUDA(cudaEventSynchronize(sim->end_event));
+    cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
+    cost_metrics.backward_time = milliseconds / sim->repeat_times;
+  } else {
+    cost_metrics.backward_time = 0.0f;
   }
-  checkCUDA(cudaEventRecord(sim->end_event));
-  checkCUDA(cudaEventSynchronize(sim->end_event));
-  cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
-  cost_metrics.backward_time = milliseconds / sim->repeat_times;
 
   // compute memory usage
   // Assume:
