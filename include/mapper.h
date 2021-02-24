@@ -40,11 +40,19 @@ private:
   ParallelConfig config;
 };
 
+struct InstanceCreationLog {
+  std::string task_name;
+  size_t size;
+  Memory memory;
+  Processor processor;
+};
+
 class FFMapper : public NullMapper {
 public:
   FFMapper(MapperRuntime *rt, Machine machine, Processor local,
            const char *mapper_name, const std::string& strategyFile,
-           bool _enable_control_replication);
+           bool _enable_control_replication,
+           bool _log_instance_creation);
   virtual const char* get_mapper_name(void) const;
   virtual MapperSyncModel get_mapper_sync_model(void) const;
 public:
@@ -306,16 +314,19 @@ private:
   bool is_initializer_task(TaskID tid);
   const std::vector<Processor>& all_procs_by_kind(Processor::Kind kind);
 protected:
+  const Processor local_processor;
   const AddressSpace node_id;
   size_t total_nodes;
   const char* mapper_name;
   bool enable_control_replication;
+  bool log_instance_creation;
   std::vector<Processor> all_gpus, all_cpus, all_pys, local_gpus, local_cpus, local_pys;
   std::map<Processor, Memory> proc_fbmems, proc_zcmems;
   std::map<unsigned long long, Processor> cache_update_tasks;
   // We use MappingTagID has the key since we will pass the tag to the mapper
   std::map<MappingTagID, ParallelConfig> strategies;
   std::map<std::pair<Memory::Kind,FieldSpace>, LayoutConstraintID> layout_constraint_cache;
+  std::vector<InstanceCreationLog> created_instances;
 };
 
 #ifdef DEADCODE
