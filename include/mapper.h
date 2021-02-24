@@ -53,6 +53,7 @@ public:
            const char *mapper_name, const std::string& strategyFile,
            bool _enable_control_replication,
            bool _log_instance_creation);
+  ~FFMapper();
   virtual const char* get_mapper_name(void) const;
   virtual MapperSyncModel get_mapper_sync_model(void) const;
 public:
@@ -294,6 +295,7 @@ private: // Default helper functions
                              PhysicalInstance &result,
                              bool meets_constraints,
                              const RegionRequirement &req,
+                             bool &created,
                              size_t *footprint);
   LayoutConstraintID  default_select_layout_constraints(MapperContext ctx,
                                          Memory target_memory,
