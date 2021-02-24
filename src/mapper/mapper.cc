@@ -1147,7 +1147,9 @@ void FFMapper::configure_context(const MapperContext         ctx,
                                  const Task&                 task,
                                        ContextConfigOutput&  output)
 {
-  // Use the default values and do nothing
+  // Increase max_window_size to allow Legion tracing to capture larger traces
+  output.max_window_size = 16 * 1024;
+  // Use the default values and do nothing else
 }
 
 void FFMapper::select_tunable_value(const MapperContext         ctx,
