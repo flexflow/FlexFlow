@@ -296,8 +296,8 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
                                    const std::vector<PhysicalRegion> &regions,
                                    Context ctx, Runtime *runtime)
 {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
+  assert(regions.size() == task->regions.size());
+  assert(regions.size() == 2 || regions.size() == 3);
   const Linear* linear = (Linear*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   //TensorAccessorR<float, 2> acc_input(
@@ -339,7 +339,17 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
                                           batch_size, out_dim, 1, 1));
   }
 #ifdef FF_USE_NCCL
-  m->init_nccl_communicator(task, linear->ncclId);
+  CompMode comp_mode;
+  if (regions.size() == 2) {
+    comp_mode = COMP_MODE_INFERENCE;
+  } else if (regions.size() == 3) {
+    comp_mode = COMP_MODE_TRAINING;
+  } else {
+    assert(false);
+  }
+  if (comp_mode == COMP_MODE_TRAINING) {
+    m->init_nccl_communicator(task, linear->ncclId);
+  }
 #endif
   return m;
 }
@@ -393,11 +403,13 @@ void Linear::init_with_dim(const FFModel& ff)
   //     RegionRequirement(weights[1].part, 0/*projection id*/,
   //                       READ_ONLY, EXCLUSIVE, weights[1].region));
   // launcher.add_field(3, FID_DATA);
-  // Add inputs[0].region_grad to avoid Legion warning
-  //launcher.add_region_requirement(
-  //    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-  //                      WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
-  //launcher.add_field(2, FID_DATA);
+  if (ff.config.computationMode == COMP_MODE_TRAINING) {
+    // Add inputs[0].region_grad to avoid Legion warning
+    launcher.add_region_requirement(
+        RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+            WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+    launcher.add_field(2, FID_DATA);
+  }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;
