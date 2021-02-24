@@ -52,13 +52,15 @@ ShardID FFShardingFunctor::shard(const DomainPoint &point,
   return shard_id;
 }
 
-FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor local,
+FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor _local,
                    const char *_mapper_name,
                    const std::string& strategyFile,
-                   bool _enable_control_replication)
-  : NullMapper(rt, machine), node_id(local.address_space()),
-    mapper_name(_mapper_name),
-    enable_control_replication(_enable_control_replication)
+                   bool _enable_control_replication,
+                   bool _log_instance_creation)
+  : NullMapper(rt, machine), local_processor(_local),
+    node_id(_local.address_space()), mapper_name(_mapper_name),
+    enable_control_replication(_enable_control_replication),
+    log_instance_creation(_log_instance_creation)
 {
   std::vector<Machine::ProcessorMemoryAffinity> proc_mem_affinities;
   machine.get_proc_mem_affinity(proc_mem_affinities);
@@ -539,6 +541,16 @@ void FFMapper::map_task(const MapperContext ctx,
         result, true/*meet_constraints*/,
         task.regions[idx], &footprint))
     {
+      if (log_instance_creation) {
+        for (size_t idx = 0; idx < created_instances.size(); idx++) {
+          log_ff_mapper.print("Instance[%zu]: memory:" IDFMT
+              "	proc:" IDFMT "	size:%zu	task:%s", idx,
+              created_instances[idx].memory.id,
+              created_instances[idx].processor.id,
+              created_instances[idx].size,
+              created_instances[idx].task_name.c_str());
+        }
+      }
       // Report failed to creation
       log_ff_mapper.error("FlexFlow failed allocation of size %zd bytes for "
           "region requirement %d of task %s (UID %lld) in memory "
@@ -548,6 +560,15 @@ void FFMapper::map_task(const MapperContext ctx,
       assert(false);
     } else {
       output.chosen_instances[idx].push_back(result);
+    }
+    if (log_instance_creation) {
+      //Log instance creation
+      InstanceCreationLog clog;
+      clog.task_name = task.get_task_name();
+      clog.size = footprint;
+      clog.memory = target_mem;
+      clog.processor = task.target_proc;
+      created_instances.push_back(clog);
     }
   } //for idx
 #ifdef DEADCODE
@@ -1458,6 +1479,7 @@ void update_mappers(Machine machine, Runtime *runtime,
   char **argv = command_args.argv;
   int argc = command_args.argc;
   bool enable_control_replication = false;
+  bool log_instance_creation = false;
   for (int i = 1; i < argc; i++) {
     if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i], "--import-strategy"))) {
       strategyFile = std::string(argv[++i]);
@@ -1467,6 +1489,10 @@ void update_mappers(Machine machine, Runtime *runtime,
       enable_control_replication = true;
       continue;
     }
+    if (!strcmp(argv[i], "--log-instance-creation")) {
+      log_instance_creation = true;
+      continue;
+    }
   }
 
   for (std::set<Processor>::const_iterator it = local_procs.begin();
@@ -1474,7 +1500,8 @@ void update_mappers(Machine machine, Runtime *runtime,
   {
     FFMapper* mapper = new FFMapper(runtime->get_mapper_runtime(),
                                     machine, *it, "FlexFlow Mapper",
-                                    strategyFile, enable_control_replication);
+                                    strategyFile, enable_control_replication,
+                                    log_instance_creation);
     runtime->replace_default_mapper(mapper, *it);
   }
 }

@@ -415,8 +415,7 @@ bool Embedding::measure_operator_cost(Simulator* sim,
   } else {
     printf("[Measure Embedding] name(%s) forward_time(%.4lf)\n",
         name,
-        cost_metrics.forward_time,
-        cost_metrics.backward_time);
+        cost_metrics.forward_time);
   }
 
   return true;
