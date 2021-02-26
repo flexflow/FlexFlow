@@ -94,7 +94,7 @@ jobs:
             export CPLUS_INCLUDE_PATH=/usr/include/mpi:$CPLUS_INCLUDE_PATH
             python examples/python/onnx/mnist_mlp_pt.py
             pytest tests/onnx
-            ./test_python_native.sh
+            $FF_HOME/tests/accuracy_tests.sh 1
 
 workflows:
   nvidia:
