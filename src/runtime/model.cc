@@ -2004,6 +2004,11 @@ void FFConfig::parse_args(char **argv, int argc)
       search_alpha = atof(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--simulator-workspace-size"))
+    {
+      simulator_work_space_size = atoll(argv[++i]);
+      continue;
+    }
     if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i], "--import-strategy"))) {
       import_strategy_file = std::string(argv[++i]);
       continue;
