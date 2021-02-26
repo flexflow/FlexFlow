@@ -5,6 +5,7 @@ class ActiMode(Enum):
   AC_MODE_RELU = 11
   AC_MODE_SIGMOID = 12
   AC_MODE_TANH = 13
+  AC_MODE_GELU = 14
 
 class AggrMode(Enum):
   AGGR_MODE_NONE = 20

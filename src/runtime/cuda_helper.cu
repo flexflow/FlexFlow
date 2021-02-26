@@ -49,6 +49,17 @@ void reluBackward(float *grad_ptr, const float *output, int n)
 }
 
 __global__
+void gelu_forward_kernel(size_t size, const float B, const float C, float* input)
+{
+  CUDA_KERNEL_LOOP(i, size)
+  {
+    const float in = input[i];
+    const float cdf = 0.5f + 0.5f * tanh(in * (C * in * in + B));
+    input[i] = in * cdf;
+  }
+}
+
+__global__
 void apply_add(float *data_ptr, const float *replica_ptr, size_t size)
 {
   CUDA_KERNEL_LOOP(i, size)

@@ -903,6 +903,7 @@ private:
   static void backward2_task_with_dim(const Task *task,
                                       const std::vector<PhysicalRegion> &regions,
                                       Context ctx, Runtime *runtime);
+  static bool use_cudnn_activation(ActiMode mode);
 public:
   int in_channels, out_channels;
   Tensor replica;

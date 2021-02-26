@@ -6,6 +6,7 @@ enum ActiMode {
   AC_MODE_RELU = 11,
   AC_MODE_SIGMOID = 12,
   AC_MODE_TANH = 13,
+  AC_MODE_GELU = 14,
 };
 
 enum AggrMode {
@@ -116,6 +117,7 @@ enum OperatorType {
   OP_SLICE, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Slice
   OP_RESIZE, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Resize
   OP_PRELU, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#PRelu
+  OP_GELU,
   OP_MULTIHEAD_ATTENTION,
   OP_FUSED, // Fused operator type for internal fusion optimizations
 };

@@ -83,6 +83,9 @@ __global__
 void apply_add_with_scale(float *data_ptr, const float *grad_ptr,
                           size_t size, float scale);
 
+__global__
+void gelu_forward_kernel(size_t size, float B, float C, float *input);
+
 // Use by concat and split
 __global__
 void add_with_stride(float* output, const float* input,

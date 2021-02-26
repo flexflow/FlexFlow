@@ -291,6 +291,17 @@ OpMeta* Linear::init_task(const Task *task,
   return NULL;
 }
 
+bool Linear::use_cudnn_activation(ActiMode mode)
+{
+  switch (mode) {
+    case AC_MODE_RELU:
+    case AC_MODE_SIGMOID:
+    case AC_MODE_TANH:
+      return true;
+  }
+  return false;
+}
+
 template<int NDIM>
 OpMeta* Linear::init_task_with_dim(const Task *task,
                                    const std::vector<PhysicalRegion> &regions,
@@ -318,7 +329,7 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
   LinearMeta* m = new LinearMeta(handle, batch_size);
   m->activation = linear->activation;
 
-  if (m->activation != AC_MODE_NONE) {
+  if (use_cudnn_activation(m->activation)) {
     cudnnActivationMode_t mode;
     switch (linear->activation) {
       case AC_MODE_RELU:
@@ -440,10 +451,18 @@ void Linear::forward_kernel(const LinearMeta* m,
                           m->one_ptr, 1, &alpha,
                           output_ptr, out_dim));
   }
-  if (m->activation != AC_MODE_NONE) {
+  if (use_cudnn_activation(m->activation)) {
     checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
         &alpha, m->outputTensor, output_ptr,
         &beta, m->outputTensor, output_ptr));
+  } else if (m->activation == AC_MODE_GELU) {
+    size_t elements = (size_t)out_dim * (size_t) batch_size;
+    constexpr float B = 0.7978845608028654f;   // sqrt(2.0/M_PI)
+    constexpr float C = 0.035677408136300125f; // 0.044715 * sqrt(2.0/M_PI)
+    gelu_forward_kernel<<<GET_BLOCKS(elements), CUDA_NUM_THREADS>>>(
+        elements, B, C, output_ptr);
+  } else {
+    assert(false && "Unsupported activation for Linear");
   }
 }
 
@@ -999,7 +1018,7 @@ bool Linear::measure_operator_cost(Simulator* sim,
   int output_n = sub_output.get_volume() / output_c;
   LinearMeta* m = sim->linear_meta;
   m->activation = activation;
-  if (activation != AC_MODE_NONE) {
+  if (use_cudnn_activation(m->activation)) {
     cudnnActivationMode_t mode;
     switch (activation) {
       case AC_MODE_RELU:
