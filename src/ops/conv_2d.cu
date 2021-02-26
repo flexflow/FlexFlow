@@ -275,8 +275,14 @@ OpMeta* Conv2D::init_task(const Task *task,
   if (conv->groups != 1) {
     checkCUDNN(cudnnSetConvolutionGroupCount(m->convDesc, conv->groups));
   }
+
   // enable tensor core when possible
-  checkCUDNN(cudnnSetConvolutionMathType(m->convDesc, CUDNN_TENSOR_OP_MATH));
+  if (m->handle.allowTensorOpMathConversion) {
+    checkCUDNN(cudnnSetConvolutionMathType(m->convDesc, CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION));
+  } else {
+    checkCUDNN(cudnnSetConvolutionMathType(m->convDesc, CUDNN_TENSOR_OP_MATH));
+  }
+
   int n, c, h, w;
   checkCUDNN(cudnnGetConvolution2dForwardOutputDim(m->convDesc,
                                                    m->inputTensor,
@@ -961,7 +967,11 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
       CUDNN_CROSS_CORRELATION, CUDNN_DATA_FLOAT));
 
   checkCUDNN(cudnnSetConvolutionGroupCount(m->convDesc, groups));
-  checkCUDNN(cudnnSetConvolutionMathType(m->convDesc, CUDNN_TENSOR_OP_MATH));
+  if (m->handle.allowTensorOpMathConversion) {
+    checkCUDNN(cudnnSetConvolutionMathType(m->convDesc, CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION));
+  } else {
+    checkCUDNN(cudnnSetConvolutionMathType(m->convDesc, CUDNN_TENSOR_OP_MATH));
+  }
   int n, c, h, w;
   checkCUDNN(cudnnGetConvolution2dForwardOutputDim(m->convDesc,
       m->inputTensor, m->filterDesc, &n, &c, &h, &w));

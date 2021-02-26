@@ -552,8 +552,14 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
   //    num_samples, attn->qSize, attn->kSize, attn->vSize, attn->qProjSize, attn->kProjSize);
   //printf("vProjSize(%d) oProjSize(%d) qoSeqLength(%d) kvSeqLength(%d)\n",
   //    attn->vProjSize, attn->oProjSize, attn->qoSeqLength, attn->kvSeqLength);
+  cudnnMathType_t math_type;
+  if (handle.allowTensorOpMathConversion) {
+    math_type = CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION;
+  } else {
+    math_type = CUDNN_TENSOR_OP_MATH;
+  }
   checkCUDNN(cudnnSetAttnDescriptor(attnDesc, attnMode, num_heads,
-      1.0f/*smScalar*/, CUDNN_DATA_FLOAT, CUDNN_DATA_FLOAT, CUDNN_DEFAULT_MATH,
+      1.0f/*smScalar*/, CUDNN_DATA_FLOAT, CUDNN_DATA_FLOAT, math_type,
       NULL/*attnDropoutDesc*/, NULL/*postDropoutDesc*/,
       attn->qSize, attn->kSize, attn->vSize, attn->qProjSize, attn->kProjSize,
       attn->vProjSize, attn->oProjSize, attn->qoSeqLength, attn->kvSeqLength,
