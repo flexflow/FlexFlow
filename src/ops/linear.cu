@@ -461,6 +461,8 @@ void Linear::forward_kernel(const LinearMeta* m,
     constexpr float C = 0.035677408136300125f; // 0.044715 * sqrt(2.0/M_PI)
     gelu_forward_kernel<<<GET_BLOCKS(elements), CUDA_NUM_THREADS>>>(
         elements, B, C, output_ptr);
+  } else if (m->activation == AC_MODE_NONE) {
+    // Do nothing
   } else {
     assert(false && "Unsupported activation for Linear");
   }
