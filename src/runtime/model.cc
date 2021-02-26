@@ -702,6 +702,7 @@ FFModel::FFModel(FFConfig& _config)
     //info.myRank = rank++;
     //info.allRanks = config.workersPerNode * config.numNodes;
     info.workSpaceSize = config.workSpaceSize;
+    info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion;
     argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
   }
 
@@ -1933,6 +1934,7 @@ struct DefaultConfig {
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
+  const static bool allowTensorOpMathConversion = false;
 };
 
 FFConfig::FFConfig()
@@ -1955,6 +1957,7 @@ FFConfig::FFConfig()
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
+  allow_tensor_op_math_conversion = DefaultConfig::allowTensorOpMathConversion;
 
   import_strategy_file = "";
   export_strategy_file = "";
@@ -2004,6 +2007,11 @@ void FFConfig::parse_args(char **argv, int argc)
       search_alpha = atof(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--simulator-workspace-size"))
+    {
+      simulator_work_space_size = atoll(argv[++i]);
+      continue;
+    }
     if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i], "--import-strategy"))) {
       import_strategy_file = std::string(argv[++i]);
       continue;
@@ -2038,6 +2046,11 @@ void FFConfig::parse_args(char **argv, int argc)
     if (!strcmp(argv[i], "--profiling"))
     {
       profiling = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--allow-tensor-op-math-conversion"))
+    {
+      allow_tensor_op_math_conversion = true;
       continue;
     }
     if (!strcmp(argv[i], "--fusion"))

@@ -75,7 +75,11 @@ FFHandler UtilityTasks::init_cuda_task(
   printf("workSpaceSize (%zu MB)\n", info->workSpaceSize / 1024 / 1024);
   FFHandler handle;
   handle.workSpaceSize = info->workSpaceSize;
+  handle.allowTensorOpMathConversion = info->allowTensorOpMathConversion;
   checkCUDA(cublasCreate(&handle.blas));
+  if (handle.allowTensorOpMathConversion) {
+    checkCUDA(cublasSetMathMode(handle.blas, CUBLAS_TENSOR_OP_MATH));
+  }
   checkCUDNN(cudnnCreate(&handle.dnn));
 //#ifdef FF_USE_NCCL
 //  checkNCCL(ncclCommInitRank(&handle.nccl, info->allRanks, info->ncclId, info->myRank));
