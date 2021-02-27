@@ -99,9 +99,9 @@ void Linear::create_weights_with_dim(FFModel& model)
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
 
 #ifdef FF_USE_NCCL
-  CommType comm_type = CommType::NCCL;
+  ParameterSyncType comm_type = ParameterSyncType::NCCL;
 #else
-  CommType comm_type = CommType::PS;
+  ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
 
   // Create kernel tensor

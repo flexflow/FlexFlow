@@ -32,7 +32,7 @@ def next_batch(idx, x_train, input1, ffconfig, ffmodel):
   #         input_array[i][j][k][l] = x_train_batch[i][j][k][l]
   # input1.inline_unmap(ffconfig)
   
-  input1.set_tensor(ffmodel, x_train_batch, CommType.PS)
+  input1.set_tensor(ffmodel, x_train_batch, ParameterSyncType.PS)
 
 def next_batch_label(idx, x_train, input1, ffconfig, ffmodel):
   start = idx*ffconfig.get_batch_size()
@@ -46,7 +46,7 @@ def next_batch_label(idx, x_train, input1, ffconfig, ffmodel):
   #   for j in range(0, 1):
   #     input_array[i][j] = x_train_batch[i][j]
   # input1.inline_unmap(ffconfig)
-  input1.set_tensor(ffmodel, x_train_batch, CommType.PS)
+  input1.set_tensor(ffmodel, x_train_batch, ParameterSyncType.PS)
 
 def top_level_task():
   ffconfig = FFConfig()

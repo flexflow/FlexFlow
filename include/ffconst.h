@@ -40,7 +40,7 @@ enum CompMode {
   COMP_MODE_INFERENCE = 71,
 };
 
-enum CommType {
+enum ParameterSyncType {
   NONE = 80,
   PS = 81,
   NCCL = 82,

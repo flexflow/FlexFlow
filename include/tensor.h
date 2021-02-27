@@ -45,12 +45,11 @@ struct Tensor {
   bool set_tensor(const FFModel* model,
                    const std::vector<int>& dims,
                    const T* data,
-                   CommType comm_type);
+                   ParameterSyncType comm_type);
   template <typename T>
   bool get_tensor(const FFModel* model,
                   T* data,
-                  CommType comm_type);
-  std::vector<int> get_dims();
+                  ParameterSyncType comm_type);
   int numDim, adim[MAX_TENSOR_DIM];
   DataType data_type;
   // Describes the ownership of this tensor
@@ -64,7 +63,7 @@ struct Tensor {
 
 struct Parameter : Tensor {
   Parameter() {
-    type = CommType::NONE;
+    type = ParameterSyncType::NONE;
   }
   template <typename T>
   bool set_weights(const FFModel* model,
@@ -73,7 +72,7 @@ struct Parameter : Tensor {
   template <typename T>
   bool get_weights(const FFModel* model,
                    T* data);
-  CommType type;
+  ParameterSyncType type;
   // std::string pcname; // indicating how the parameter is parallelized
   // Op* op; // Pointer to the operator that owns this parameter
 };

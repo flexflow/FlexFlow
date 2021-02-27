@@ -965,7 +965,7 @@ flexflow_tensor_set_tensor_float(
   int num_dim,
   int *dims,
   const float *data,
-  enum CommType comm_type)
+  enum ParameterSyncType comm_type)
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
@@ -981,7 +981,7 @@ flexflow_tensor_get_tensor_float(
   flexflow_tensor_t handle_,
   flexflow_model_t model_,
   float *data,
-  enum CommType comm_type)
+  enum ParameterSyncType comm_type)
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
@@ -995,7 +995,7 @@ flexflow_tensor_set_tensor_int(
   int num_dim,
   int *dims,
   const int *data,
-  enum CommType comm_type)
+  enum ParameterSyncType comm_type)
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
@@ -1011,7 +1011,7 @@ flexflow_tensor_get_tensor_int(
   flexflow_tensor_t handle_,
   flexflow_model_t model_,
   int *data,
-  enum CommType comm_type)
+  enum ParameterSyncType comm_type)
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);

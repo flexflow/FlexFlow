@@ -33,7 +33,7 @@ class CompMode(Enum):
   TRAINING = 70
   INFERENCE = 71
   
-class CommType(Enum):
+class ParameterSyncType(Enum):
   NONE = 80
   PS = 81
   NCCL = 82

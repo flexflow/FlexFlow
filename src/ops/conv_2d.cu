@@ -108,9 +108,9 @@ void Conv2D::create_weights(FFModel& model)
 
   // TODO: temp work, will let users to pick either NCCL or PS
 #ifdef FF_USE_NCCL
-  CommType comm_type = CommType::NCCL;
+  ParameterSyncType comm_type = ParameterSyncType::NCCL;
 #else
-  CommType comm_type = CommType::PS;
+  ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
 
   // Create kernel
