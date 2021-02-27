@@ -55,7 +55,7 @@ public:
   double lr, momentum;
   bool nesterov;
   double weight_decay;
-  Parameter::CommType comm_type;
+  CommType comm_type;
   std::map<LogicalRegion, Parameter> v_values;
 };
 

@@ -92,9 +92,9 @@ void MultiHeadAttention::create_weights(FFModel& model)
   std::string pcname = name;
   task_is = model.get_or_create_task_is(3, pcname);
 #ifdef FF_USE_NCCL
-  Parameter::CommType comm_type = Parameter::NCCL;
+  CommType comm_type = CommType::NCCL;
 #else
-  Parameter::CommType comm_type = Parameter::PS;
+  CommType comm_type = CommType::PS;
 #endif
   {
     const int dims[2] = {weights[0].adim[1], weights[0].adim[0]};

@@ -311,21 +311,21 @@ void FFModel::prefetch()
 //    layers[i]->update(*this);
 //}
 
-
 template <typename T>
-bool Parameter::set_weights(const FFModel* ff,
-                            const std::vector<int>& dims,
-                            const T* data)
+bool Tensor::set_tensor(const FFModel* ff,
+                        const std::vector<int>& dims,
+                        const T* data,
+                        CommType comm_type)
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
   //TODO: check data type matches
   //TODO: Currently we use a task launch, change to index launch for NCCL parameter
   size_t volume = 1, num_replicas = 0;
-  if (type == Parameter::NCCL) {
+  if (comm_type == CommType::NCCL) {
     Domain domain = runtime->get_index_space_domain(ctx, owner_op->task_is);
     num_replicas = domain.get_volume();
-  } else if (type == Parameter::PS) {
+  } else if (comm_type == CommType::PS) {
     num_replicas = 1;
   } else {
     assert(false);
@@ -367,13 +367,14 @@ bool Parameter::set_weights(const FFModel* ff,
 }
 
 template <typename T>
-bool Parameter::get_weights(const FFModel* ff,
-                            T* data)
+bool Tensor::get_tensor(const FFModel* ff,
+                        T* data,
+                        CommType comm_type)
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
   LogicalRegion weight_lr = LogicalRegion::NO_REGION;
-  if (type == CommType::PS) {
+  if (comm_type == CommType::PS) {
     weight_lr = region;
   } else {
     assert(owner_op != NULL);
@@ -420,5 +421,24 @@ bool Parameter::get_weights(const FFModel* ff,
   return true;
 }
 
+template <typename T>
+bool Parameter::set_weights(const FFModel* ff,
+                            const std::vector<int>& dims,
+                            const T* data)
+{
+  return set_tensor<T>(ff, dims, data, type);
+}
+
+template <typename T>
+bool Parameter::get_weights(const FFModel* ff,
+                            T* data)
+{
+  return get_tensor<T>(ff, data, type);
+}
+
+template bool Tensor::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data, CommType comm_type);
+template bool Tensor::get_tensor<float>(const FFModel* ff, float* data, CommType comm_type);
+template bool Tensor::set_tensor<int>(const FFModel* ff, const std::vector<int>& dims, const int* data, CommType comm_type);
+template bool Tensor::get_tensor<int>(const FFModel* ff, int* data, CommType comm_type);
 template bool Parameter::set_weights<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
 template bool Parameter::get_weights<float>(const FFModel* ff, float* data);
