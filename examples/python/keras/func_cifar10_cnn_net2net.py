@@ -66,7 +66,7 @@ def top_level_task():
   opt = flexflow.keras.optimizers.SGD(learning_rate=0.01)
   teacher_model.compile(optimizer=opt, loss='sparse_categorical_crossentropy', metrics=['accuracy', 'sparse_categorical_crossentropy'])
 
-  teacher_model.fit(x_train, y_train, epochs=1)
+  teacher_model.fit(x_train, y_train, epochs=10)
 
   c1_kernel, c1_bias = c1.get_weights(teacher_model.ffmodel)
   c2_kernel, c2_bias = c2.get_weights(teacher_model.ffmodel)
@@ -116,7 +116,7 @@ def top_level_task():
   sd1.set_weights(student_model.ffmodel, d1_kernel, d1_bias)
   sd2.set_weights(student_model.ffmodel, d2_kernel, d2_bias)
 
-  student_model.fit(x_train, y_train, epochs=1, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN), EpochVerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
+  student_model.fit(x_train, y_train, epochs=160, callbacks=[VerifyMetrics(ModelAccuracy.CIFAR10_CNN), EpochVerifyMetrics(ModelAccuracy.CIFAR10_CNN)])
 
 if __name__ == "__main__":
   print("Functional API, cifarf10 cnn teach student")
