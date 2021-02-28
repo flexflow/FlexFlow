@@ -17,7 +17,7 @@ from enum import Enum
 
 class ModelAccuracy(Enum):
   MNIST_MLP = 90
-  MNIST_CNN = 90
+  MNIST_CNN = 80
   REUTERS_MLP = 90
   CIFAR10_CNN = 90
   CIFAR10_ALEXNET = 90
