@@ -403,14 +403,14 @@ public:
       DataType data_type,
       Initializer* initializer,
       bool create_grad = true,
-      Parameter::CommType comm_type = Parameter::PS);
+      ParameterSyncType comm_type = ParameterSyncType::PS);
   template<int NDIM, int TDIM>
   Parameter create_linear_weight(Op* op,
       const int* dims,
       DataType data_type,
       Initializer* initializer,
       bool create_grad = true,
-      Parameter::CommType comm_type = Parameter::PS);
+      ParameterSyncType comm_type = ParameterSyncType::PS);
   template<int NDIM, int TDIM>
   Tensor create_linear_replica(const int* dims,
                                const IndexSpaceT<TDIM>& part_is,

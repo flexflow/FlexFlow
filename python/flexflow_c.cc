@@ -958,6 +958,66 @@ flexflow_tensor_is_mapped(
   return handle->physical_region.is_mapped();
 }
 
+bool
+flexflow_tensor_set_tensor_float(
+  flexflow_tensor_t handle_,
+  flexflow_model_t model_,
+  int num_dim,
+  int *dims,
+  const float *data,
+  enum ParameterSyncType comm_type)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
+  std::vector<int> dims_vec;
+  for (int i = 0; i < num_dim; i++ ) {
+    dims_vec.push_back(dims[i]);
+  }
+  return handle->set_tensor<float>(model, dims_vec, data, comm_type);
+}
+
+bool
+flexflow_tensor_get_tensor_float(
+  flexflow_tensor_t handle_,
+  flexflow_model_t model_,
+  float *data,
+  enum ParameterSyncType comm_type)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
+  return handle->get_tensor<float>(model, data, comm_type);
+}
+  
+bool
+flexflow_tensor_set_tensor_int(
+  flexflow_tensor_t handle_,
+  flexflow_model_t model_,
+  int num_dim,
+  int *dims,
+  const int *data,
+  enum ParameterSyncType comm_type)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
+  std::vector<int> dims_vec;
+  for (int i = 0; i < num_dim; i++ ) {
+    dims_vec.push_back(dims[i]);
+  }
+  return handle->set_tensor<int>(model, dims_vec, data, comm_type);
+}
+
+bool
+flexflow_tensor_get_tensor_int(
+  flexflow_tensor_t handle_,
+  flexflow_model_t model_,
+  int *data,
+  enum ParameterSyncType comm_type)
+{
+  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
+  const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
+  return handle->get_tensor<int>(model, data, comm_type);
+}
+
 // -----------------------------------------------------------------------
 // Parameter
 // -----------------------------------------------------------------------

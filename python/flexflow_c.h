@@ -439,6 +439,38 @@ bool
 flexflow_tensor_is_mapped(
   flexflow_tensor_t handle);
 
+bool
+flexflow_tensor_set_tensor_float(
+  flexflow_tensor_t handle,
+  flexflow_model_t model,
+  int num_dim,
+  int *dims,
+  const float *data,
+  enum ParameterSyncType comm_type);
+
+bool
+flexflow_tensor_get_tensor_float(
+  flexflow_tensor_t handle,
+  flexflow_model_t model,
+  float *data,
+  enum ParameterSyncType comm_type);
+  
+bool
+flexflow_tensor_set_tensor_int(
+  flexflow_tensor_t handle,
+  flexflow_model_t model,
+  int num_dim,
+  int *dims,
+  const int *data,
+  enum ParameterSyncType comm_type);
+
+bool
+flexflow_tensor_get_tensor_int(
+  flexflow_tensor_t handle,
+  flexflow_model_t model,
+  int *data,
+  enum ParameterSyncType comm_type);
+
 // -----------------------------------------------------------------------
 // Parameter
 // -----------------------------------------------------------------------

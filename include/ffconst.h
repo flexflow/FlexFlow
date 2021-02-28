@@ -40,6 +40,12 @@ enum CompMode {
   COMP_MODE_INFERENCE = 71,
 };
 
+enum ParameterSyncType {
+  NONE = 80,
+  PS = 81,
+  NCCL = 82,
+};
+
 enum MetricsType {
   METRICS_ACCURACY = 1001,
   METRICS_CATEGORICAL_CROSSENTROPY = 1002,
@@ -48,7 +54,6 @@ enum MetricsType {
   METRICS_ROOT_MEAN_SQUARED_ERROR = 1016,
   METRICS_MEAN_ABSOLUTE_ERROR = 1032,
 };
-
 
 // This is consistent with TASO's OpType
 // https://github.com/jiazhihao/TASO/blob/master/include/taso/ops.h#L75-L138

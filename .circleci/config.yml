@@ -4,7 +4,7 @@ gpu: &gpu
   environment:
     CUDA_VERSION: "10.1"
   machine:
-    image: ubuntu-1604-cuda-10.1:201909-23 
+    image: ubuntu-1604-cuda-10.1:201909-23
   resource_class: gpu.large
 
 
@@ -35,7 +35,7 @@ jobs:
             sudo /opt/conda/bin/conda install -y -c conda-forge onnx pytest
             python -c 'import onnx'
             sudo /opt/conda/bin/conda install -y -c pytorch pytorch torchvision
-      - run: 
+      - run:
           name: Install FlexFlow dependencies
           command: |
             cd nccl
@@ -55,7 +55,7 @@ jobs:
             sudo tar -xzf cudnn-10.1-linux-x64-v8.0.5.39.tgz -C /usr/local
             rm cudnn-10.1-linux-x64-v8.0.5.39.tgz
             sudo ldconfig
-      - run: 
+      - run:
           name: Build FlexFlow
           command: |
             export FF_HOME=$PWD
@@ -161,6 +161,7 @@ jobs:
             export LD_LIBRARY_PATH=$NCCL_HOME/lib:$LD_LIBRARY_PATH
             export CPLUS_INCLUDE_PATH=/usr/include/mpi:$CPLUS_INCLUDE_PATH
             bash tests/multi_gpu_tests.sh 4
+            bash tests/accuracy_tests.sh 4
 
 workflows:
   commit:  
