@@ -204,11 +204,11 @@ void ElementBinary::init(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+      READ_WRITE, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
     RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[1].region));
+      READ_WRITE, EXCLUSIVE, inputs[1].region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
     RegionRequirement(outputs[0].part, 0/*projection id*/,

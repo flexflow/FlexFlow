@@ -1344,7 +1344,7 @@ bool FFMapper::default_make_instance(
          size_t *footprint)
 {
   LogicalRegion target_region = req.region;
-  bool tight_region_bounds = false;
+  bool tight_region_bounds = true;
   created = true;
   std::vector<LogicalRegion> target_regions(1, target_region);
   if (!runtime->find_or_create_physical_instance(ctx, target_mem, constraints,
