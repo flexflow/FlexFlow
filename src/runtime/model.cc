@@ -951,7 +951,7 @@ Parameter FFModel::create_linear_weight(Op* op,
                                         DataType data_type,
                                         Initializer* initializer,
                                         bool create_grad,
-                                        Parameter::CommType comm_type)
+                                        ParameterSyncType comm_type)
 {
   std::string pcname = op->name;
   IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>)get_or_create_task_is(TDIM, pcname);
@@ -984,7 +984,7 @@ Parameter FFModel::create_linear_weight(Op* op,
       assert(false);
   }
   // Step 1: forward region and partition
-  if (weight.type == Parameter::PS) {
+  if (weight.type == ParameterSyncType::PS) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
       hi[i] = dims[NDIM-1-i]-1;
@@ -1004,7 +1004,7 @@ Parameter FFModel::create_linear_weight(Op* op,
     assert(runtime->is_index_partition_complete(ctx, ip));
     weight.part = runtime->get_logical_partition(
         ctx, weight.region, ip);
-  } else if (weight.type == Parameter::NCCL) {
+  } else if (weight.type == ParameterSyncType::NCCL) {
     // FIXME: Currently only support the sample dimension for operators with NCCL
     //for (int i = 0; i < TDIM-1; i++)
     //  assert(num_parts[i] == 1);
@@ -1079,7 +1079,7 @@ Parameter FFModel::create_conv_weight(Op* op,
                                       DataType data_type,
                                       Initializer* initializer,
                                       bool create_grad,
-                                      Parameter::CommType comm_type)
+                                      ParameterSyncType comm_type)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -1115,7 +1115,7 @@ Parameter FFModel::create_conv_weight(Op* op,
       assert(false);
   }
   // Step 1: forward region and partition
-  if (weight.type == Parameter::PS) {
+  if (weight.type == ParameterSyncType::PS) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
       hi[i] = dims[NDIM-1-i]-1;
@@ -1131,7 +1131,7 @@ Parameter FFModel::create_conv_weight(Op* op,
     assert(runtime->is_index_partition_complete(ctx, ip));
     weight.part = runtime->get_logical_partition(
         ctx, weight.region, ip);
-  } else if (weight.type == Parameter::NCCL) {
+  } else if (weight.type == ParameterSyncType::NCCL) {
     // Currently only support sample and attribute parallelism for NCCL communication
     assert(num_par_c == 1);
     Point<NDIM> hi;
@@ -2735,11 +2735,11 @@ void register_flexflow_tasks(int argc, char **argv)
   LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 
-template Parameter FFModel::create_conv_weight<4>(Op* op, const int* dims, DataType data_type, Initializer* initializer, bool create_grad, Parameter::CommType comm_type);
-template Parameter FFModel::create_conv_weight<1>(Op* op, const int* dims, DataType data_type, Initializer* initializer, bool create_grad, Parameter::CommType comm_type);
+template Parameter FFModel::create_conv_weight<4>(Op* op, const int* dims, DataType data_type, Initializer* initializer, bool create_grad, ParameterSyncType comm_type);
+template Parameter FFModel::create_conv_weight<1>(Op* op, const int* dims, DataType data_type, Initializer* initializer, bool create_grad, ParameterSyncType comm_type);
 
 #define DIMFUNC(D1,D2) \
-  template Parameter FFModel::create_linear_weight<D1, D2>(Op* op, const int* dims, DataType data_type, Initializer* initializer, bool create_grad, Parameter::CommType comm_type);
+  template Parameter FFModel::create_linear_weight<D1, D2>(Op* op, const int* dims, DataType data_type, Initializer* initializer, bool create_grad, ParameterSyncType comm_type);
   LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 

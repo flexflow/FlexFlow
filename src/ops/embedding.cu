@@ -61,9 +61,9 @@ void Embedding::create_weights(FFModel& model)
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
 #ifdef FF_USE_NCCL
-  Parameter::CommType comm_type = Parameter::NCCL;  
+  ParameterSyncType comm_type = ParameterSyncType::NCCL;  
 #else
-  Parameter::CommType comm_type = Parameter::PS;
+  ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
   {
     const int dims[2] = {out_channels, num_entries};

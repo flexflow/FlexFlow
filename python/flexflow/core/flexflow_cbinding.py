@@ -20,7 +20,7 @@ import os
 import subprocess
 import numpy as np
 from .flexflow_logger import fflogger
-from .flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, enum_to_int, int_to_enum
+from .flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
 
 assert 'FF_HOME' in os.environ
 _flexflow_cxxheader_dir= os.path.join(os.environ['FF_HOME'], 'include')
@@ -487,6 +487,49 @@ class Tensor(object):
 
   def is_mapped(self):
     return ffc.flexflow_tensor_is_mapped(self.handle)
+    
+  def set_tensor(self, ffmodel, np_array, comm_type):
+    assert np_array.__array_interface__['strides'] == None, "Parameter set_weights, numpy array strides is not None"
+    np_shape = np_array.shape
+    num_dims = len(np_shape)
+    assert num_dims == self.num_dims, "please check dims (%d == %d)" %(num_dims, self.num_dims)
+    for i in range(0, num_dims):
+      assert np_shape[i] == self.dims[i], "please check shape dim %d (%d == %d)" %(i, np_shape[i], self.dims[i])
+    c_dims = ffi.new("int[]", self.dims)
+    np_raw_ptr = np_array.__array_interface__['data']
+    c_comm_type = enum_to_int(ParameterSyncType, comm_type)
+    if np_array.dtype == np.float32:
+      assert self.data_type == DataType.DT_FLOAT, "Wrong datatype"
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_set_tensor_float(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr, c_comm_type)
+    elif np_array.dtype == np.int32:
+      assert self.data_type == DataType.DT_INT32, "Wrong datatype"
+      raw_ptr = ffi.cast("int*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_set_tensor_int(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr, c_comm_type)
+    else:
+      assert 0, "Unsupported datatype"
+    fflogger.debug("set tensor raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(np_shape)))
+    assert ret_val == True, ret_val
+    
+  def get_tensor(self, ffmodel, comm_type):
+    shape = self.dims
+    if self.data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    else:
+      assert 0, "Unsupported datatype"
+    np_raw_ptr = np_array.__array_interface__['data']
+    c_comm_type = enum_to_int(ParameterSyncType, comm_type)
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, c_comm_type)
+    elif np_array.dtype == np.int32:
+      raw_ptr = ffi.cast("int*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, c_comm_type)
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array
 
   def __get_raw_ptr(self, ffconfig, data_type):
     assert data_type == self.data_type, "Tensor check data type"

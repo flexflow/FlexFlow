@@ -32,23 +32,21 @@ def next_batch(idx, x_train, input1, ffconfig, ffmodel):
   #         input_array[i][j][k][l] = x_train_batch[i][j][k][l]
   # input1.inline_unmap(ffconfig)
   
-  p_handle = ffi.new('flexflow_parameter_t *')
-  p_handle.impl = input1.handle.impl
-  input1_par = Parameter(p_handle[0])
-  input1_par.set_weights(ffmodel, x_train_batch)
+  input1.set_tensor(ffmodel, x_train_batch, ParameterSyncType.PS)
 
-def next_batch_label(idx, x_train, input1, ffconfig):
+def next_batch_label(idx, x_train, input1, ffconfig, ffmodel):
   start = idx*ffconfig.get_batch_size()
   x_train_batch = x_train[start:start+ffconfig.get_batch_size(), :]
   print(x_train_batch.shape)
 
-  input1.inline_map(ffconfig)
-  input_array = input1.get_array(ffconfig, DataType.DT_INT32)
-  print(input_array.shape)
-  for i in range(0, ffconfig.get_batch_size()):
-    for j in range(0, 1):
-      input_array[i][j] = x_train_batch[i][j]
-  input1.inline_unmap(ffconfig)
+  # input1.inline_map(ffconfig)
+  # input_array = input1.get_array(ffconfig, DataType.DT_INT32)
+  # print(input_array.shape)
+  # for i in range(0, ffconfig.get_batch_size()):
+  #   for j in range(0, 1):
+  #     input_array[i][j] = x_train_batch[i][j]
+  # input1.inline_unmap(ffconfig)
+  input1.set_tensor(ffmodel, x_train_batch, ParameterSyncType.PS)
 
 def top_level_task():
   ffconfig = FFConfig()
@@ -97,7 +95,7 @@ def top_level_task():
   label_tensor = ffmodel.get_label_tensor()
 
   next_batch(0, x_train, input_tensor, ffconfig, ffmodel)
-  next_batch_label(0, y_train, label_tensor, ffconfig)
+  next_batch_label(0, y_train, label_tensor, ffconfig, ffmodel)
 
   ffmodel.init_layers()
 
@@ -111,7 +109,7 @@ def top_level_task():
     ct = 0
     for iter in range(0, int(iterations)):
       next_batch(ct, x_train, input_tensor, ffconfig, ffmodel)
-      next_batch_label(ct, y_train, label_tensor, ffconfig)
+      next_batch_label(ct, y_train, label_tensor, ffconfig, ffmodel)
       ct += 1
       ffconfig.begin_trace(111)
       ffmodel.forward()

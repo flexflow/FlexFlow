@@ -30,10 +30,7 @@ def next_batch(idx, x_train, input1, ffconfig, ffmodel):
   #     input_array[i][j] = x_train_batch[i][j]
   # input1.inline_unmap(ffconfig)
   #TODO: test set tensor
-  p_handle = ffi.new('flexflow_parameter_t *')
-  p_handle.impl = input1.handle.impl
-  input1_par = Parameter(p_handle[0])
-  input1_par.set_weights(ffmodel, x_train_batch)
+  input1.set_tensor(ffmodel, x_train_batch, ParameterSyncType.PS)
 
 def next_batch_label(idx, x_train, input1, ffconfig, ffmodel):
   start = idx*ffconfig.get_batch_size()
@@ -47,10 +44,11 @@ def next_batch_label(idx, x_train, input1, ffconfig, ffmodel):
   #     input_array[i][j] = x_train_batch[i][j]
   # input1.inline_unmap(ffconfig)
   #
-  p_handle = ffi.new('flexflow_parameter_t *')
-  p_handle.impl = input1.handle.impl
-  input1_par = Parameter(p_handle[0])
-  input1_par.set_weights(ffmodel, x_train_batch)
+  input1.set_tensor(ffmodel, x_train_batch, ParameterSyncType.PS)
+  # x_batch = input1.get_tensor(ffmodel, CommType.PS)
+  # print(x_batch)
+  # print(x_train_batch)
+  # assert 0
 
 
 def top_level_task():

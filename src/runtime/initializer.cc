@@ -33,7 +33,7 @@ void GlorotUniform::init(const FFModel* ff,
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
-  if (p->type == Parameter::PS) {
+  if (p->type == ParameterSyncType::PS) {
     assert(p->numDim >= 2);
     TaskLauncher launcher(GLOROT_INIT_TASK_ID,
                           TaskArgument(this, sizeof(GlorotUniform)));
@@ -42,7 +42,7 @@ void GlorotUniform::init(const FFModel* ff,
         RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
-  } else if (p->type == Parameter::NCCL) {
+  } else if (p->type == ParameterSyncType::NCCL) {
     assert(p->owner_op != NULL);
     IndexSpace task_is = p->owner_op->task_is;
     assert(task_is != IndexSpace::NO_SPACE);
@@ -75,14 +75,14 @@ void ZeroInitializer::init(const FFModel* ff,
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
-  if (p->type == Parameter::PS) {
+  if (p->type == ParameterSyncType::PS) {
     TaskLauncher launcher(ZERO_INIT_TASK_ID, TaskArgument(NULL, 0));
     // regions[0]: p->region
     launcher.add_region_requirement(
         RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
-  } else if (p->type == Parameter::NCCL) {
+  } else if (p->type == ParameterSyncType::NCCL) {
     assert(p->owner_op != NULL);
     IndexSpace task_is = p->owner_op->task_is;
     assert(task_is != IndexSpace::NO_SPACE);
@@ -167,7 +167,7 @@ void UniformInitializer::init(const FFModel* ff,
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
-  if (p->type == Parameter::PS) {
+  if (p->type == ParameterSyncType::PS) {
     TaskLauncher launcher(UNIFORM_INIT_TASK_ID,
                           TaskArgument(this, sizeof(UniformInitializer)));
     // regions[0]: p->region
@@ -175,7 +175,7 @@ void UniformInitializer::init(const FFModel* ff,
         RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
-  } else if (p->type == Parameter::NCCL) {
+  } else if (p->type == ParameterSyncType::NCCL) {
     assert(p->owner_op != NULL);
     IndexSpace task_is = p->owner_op->task_is;
     assert(task_is != IndexSpace::NO_SPACE);
@@ -205,7 +205,7 @@ void NormInitializer::init(const FFModel* ff,
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
-  if (p->type == Parameter::PS) {
+  if (p->type == ParameterSyncType::PS) {
     TaskLauncher launcher(NORMAL_INIT_TASK_ID,
                           TaskArgument(this, sizeof(NormInitializer)));
     // regions[0]: p->region
@@ -213,7 +213,7 @@ void NormInitializer::init(const FFModel* ff,
         RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
-  } else if (p->type == Parameter::NCCL) {
+  } else if (p->type == ParameterSyncType::NCCL) {
     assert(p->owner_op != NULL);
     IndexSpace task_is = p->owner_op->task_is;
     assert(task_is != IndexSpace::NO_SPACE);
@@ -246,7 +246,7 @@ void ConstantInitializer::init(const FFModel* ff,
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
-  if (p->type == Parameter::PS) {
+  if (p->type == ParameterSyncType::PS) {
     TaskLauncher launcher(CONSTANT_INIT_TASK_ID,
                           TaskArgument(this, sizeof(ConstantInitializer)));
     // regions[0]: p->region
@@ -254,7 +254,7 @@ void ConstantInitializer::init(const FFModel* ff,
         RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
-  } else if(p->type == Parameter::NCCL) {
+  } else if(p->type == ParameterSyncType::NCCL) {
     assert(p->owner_op != NULL);
     IndexSpace task_is = p->owner_op->task_is;
     assert(task_is != IndexSpace::NO_SPACE);

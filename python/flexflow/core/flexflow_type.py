@@ -32,7 +32,12 @@ class LossType(Enum):
 class CompMode(Enum):
   TRAINING = 70
   INFERENCE = 71
-
+  
+class ParameterSyncType(Enum):
+  NONE = 80
+  PS = 81
+  NCCL = 82
+  
 class MetricsType(Enum):
   METRICS_ACCURACY = 1001
   METRICS_CATEGORICAL_CROSSENTROPY = 1002
