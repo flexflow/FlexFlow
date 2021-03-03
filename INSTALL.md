@@ -36,10 +36,10 @@ Use the following command line to build a DNN model (e.g., InceptionV3). See the
 
 ### Build FlexFlow Runtime with Python Interface (C++ interface is also enabled)
 
-* Set the following enviroment variables. For `CUDNN_DIR`, you should be able to find `cudnn.h` under `CUDNN_DIR/include` and `libcudnn.so` under `CUDNN_DIR/lib` or `CUDNN_DIR/lib64`.
+* Set the following enviroment variables. For `CUDNN_HOME`, you should be able to find `cudnn.h` under `CUDNN_HOME/include` and `libcudnn.so` under `CUDNN_HOME/lib` or `CUDNN_HOME/lib64`.
 ```
 export FF_HOME=/path/to/FlexFlow
-export CUDNN_DIR=/path/to/cudnn
+export CUDNN_HOME=/path/to/cudnn
 ```
 To expedite the compilation, you can also set the `GPU_ARCH` enviroment variable to be the compatability of your GPU devices (e.g., 70 for Volta GPUs and 60 for Pascal GPUs).
 ```
