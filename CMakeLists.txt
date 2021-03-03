@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(FlexFlow)
 
+enable_language(CUDA)
+
 include(ExternalProject) 
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
@@ -33,11 +35,19 @@ set(CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
 # ZLIB
 include(zlib)
 
+set(MAX_DIM 4)
+
 # CUDA and CUDNN
 include(cudacudnn)
+list(JOIN CUDA_GENCODE " " CUDA_GENCODE_FLAG)
+set(CMAKE_CUDA_FLAGS ${CUDA_GENCODE_FLAG})
 
 # Legion
-include(legion)
+set(Legion_MAX_DIM ${MAX_DIM} CACHE STRING "Maximum number of dimensions")
+set(Legion_USE_CUDA ON CACHE BOOL "enable Legion_USE_CUDA")
+add_subdirectory(legion)
+include_directories(legion/runtime legion/runtime/mappers legion/runtime/realm/transfer)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/legion/runtime)
 
 # GASNet
 if(ENABLE_GASNET) 
@@ -106,24 +116,27 @@ set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/runtime/simulator.cc)
 
 set(FLEXFLOW_GPU_SRC
+  ${FLEXFLOW_ROOT}/src/loss_functions/loss_functions.cu
+  ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cu
+  ${FLEXFLOW_ROOT}/src/ops/attention.cu
+  ${FLEXFLOW_ROOT}/src/ops/batch_matmul.cu
   ${FLEXFLOW_ROOT}/src/ops/batch_norm.cu
   ${FLEXFLOW_ROOT}/src/ops/concat.cu
-  ${FLEXFLOW_ROOT}/src/ops/split.cu
   ${FLEXFLOW_ROOT}/src/ops/conv_2d.cu
+  ${FLEXFLOW_ROOT}/src/ops/dropout.cu
   ${FLEXFLOW_ROOT}/src/ops/element_binary.cu
   ${FLEXFLOW_ROOT}/src/ops/element_unary.cu
   ${FLEXFLOW_ROOT}/src/ops/embedding.cu
   ${FLEXFLOW_ROOT}/src/ops/flat.cu
+  ${FLEXFLOW_ROOT}/src/ops/fused.cu
   ${FLEXFLOW_ROOT}/src/ops/linear.cu
   ${FLEXFLOW_ROOT}/src/ops/pool_2d.cu
-  ${FLEXFLOW_ROOT}/src/ops/softmax.cu
-  ${FLEXFLOW_ROOT}/src/ops/dropout.cu
-  ${FLEXFLOW_ROOT}/src/ops/batch_matmul.cu
-  ${FLEXFLOW_ROOT}/src/ops/reverse.cu
-  ${FLEXFLOW_ROOT}/src/ops/transpose.cu
   ${FLEXFLOW_ROOT}/src/ops/reshape.cu
-  ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cu
-  ${FLEXFLOW_ROOT}/src/loss_functions/loss_functions.cu
+  ${FLEXFLOW_ROOT}/src/ops/reverse.cu
+  ${FLEXFLOW_ROOT}/src/ops/softmax.cu
+  ${FLEXFLOW_ROOT}/src/ops/split.cu
+  ${FLEXFLOW_ROOT}/src/ops/topk.cu
+  ${FLEXFLOW_ROOT}/src/ops/transpose.cu
   ${FLEXFLOW_ROOT}/src/runtime/accessor_kernel.cu
   ${FLEXFLOW_ROOT}/src/runtime/cuda_helper.cu
   ${FLEXFLOW_ROOT}/src/runtime/initializer_kernel.cu
@@ -133,10 +146,13 @@ set(FLEXFLOW_GPU_SRC
 
 # compile flexflow lib
 if(BUILD_SHARED_LIBS)
-  cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
+  add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
 else()
-  cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
+  add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
 endif()
+
+target_link_libraries(flexflow PUBLIC Legion)
+
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
 if(ENABLE_GASNET)
   target_link_libraries(flexflow PRIVATE GASNet::GASNet)
@@ -153,11 +169,11 @@ if(BUILD_RESNET OR BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/ResNet)
 endif()
 
-if(BUILD_ALEXNET} OR BUILD_ALL_EXAMPLES)
+if(BUILD_ALEXNET OR BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/AlexNet)
 endif()
 
-if(BUILD_INCEPTION} OR BUILD_ALL_EXAMPLES)
+if(BUILD_INCEPTION OR BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/InceptionV3)
 endif()
 
