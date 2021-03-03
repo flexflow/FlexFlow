@@ -2,15 +2,9 @@
 FlexFlow can be built from source code using the following instructions.
 
 # 1. Download the source code
-* FlexFlow requires Legion, Protocol Buffer, NCCL (optionally) and GASNet (optinally), which are in the FlexFlow third party libraries repo.
-To get started, clone them from the github.
-```
-git clone --recursive https://github.com/flexflow/flexflow-third-party.git
-```
-
 * Clone the FlexFlow source code from the github.
 ```
-git clone https://github.com/flexflow/FlexFlow.git
+git clone --recursive https://github.com/flexflow/FlexFlow.git
 ```
 
 ## FlexFlow Python dependencies
@@ -22,14 +16,6 @@ Note: all Python dependencies will be automatically installed if install the Fle
 # 2. Build the FlexFlow
 ## 2.1 Makefile
 ### Build dependent libraries
-* Build the Protocol Buffer library.
-Skip this step if the Protocol Buffer library is already installed.
-```
-cd protobuf
-./autogen.sh
-./configure
-make
-```
 
 * Build the NCCL library. (If using NCCL for parameter synchornization.)
 ```
@@ -55,10 +41,8 @@ Use the following command line to build a DNN model (e.g., InceptionV3). See the
 export FF_HOME=/path/to/FlexFlow
 export CUDNN_DIR=/path/to/cudnn
 export CUDA_DIR=/path/to/cuda
-export PROTOBUF_DIR=/path/to/protobuf
-export LG_RT_DIR=/path/to/Legion
 ```
-To expedite the compilation, you can also set the `GPU_ARCH` enviroment variable
+To expedite the compilation, you can also set the `GPU_ARCH` enviroment variable to be the compatability of your GPU devices (e.g., 70 for Volta GPUs and 60 for Pascal GPUs).
 ```
 export GPU_ARCH=your_gpu_arch
 ``` 
