@@ -22,7 +22,7 @@ Note: all Python dependencies will be automatically installed if install the Fle
 cd nccl
 make -j src.build NVCC_GENCODE="-gencode=arch=compute_XX,code=sm_XX"
 ```
-Replace XX with the compatability of your GPU devices (e.g., 70 for Volta GPUs and 60 for Pascal GPUs).
+Replace XX with the compatibility of your GPU devices (e.g., 70 for Volta GPUs and 60 for Pascal GPUs).
 
 But you could also install it via `apt` if your system supports it:
 ```
@@ -48,7 +48,7 @@ Use the following command line to build a DNN model (e.g., InceptionV3). See the
 export FF_HOME=/path/to/FlexFlow
 export CUDNN_HOME=/path/to/cudnn
 ```
-To expedite the compilation, you can also set the `GPU_ARCH` enviroment variable to be the compatability of your GPU devices (e.g., 70 for Volta GPUs and 60 for Pascal GPUs).
+To expedite the compilation, you can also set the `GPU_ARCH` enviroment variable to be the compatibility of your GPU devices (e.g., 70 for Volta GPUs and 60 for Pascal GPUs).
 ```
 export GPU_ARCH=your_gpu_arch
 ```
