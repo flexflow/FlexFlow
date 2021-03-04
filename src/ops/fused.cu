@@ -324,6 +324,18 @@ void FusedOp::forward_task(const Task* task,
         Conv2D::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1]);
         break;
       }
+      case OP_BATCHNORM:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_id[0].get_dim() == 4);
+        assert(my_od[0].get_dim() == 4);
+        assert(my_wd[0].get_dim() == 1);
+        assert(my_wd[1].get_dim() == 1);
+        BatchNormMeta* m = (BatchNormMeta*) metas->meta[op];
+        BatchNorm::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1]);
+        break;
+      }
       case OP_LINEAR:
       {
         assert(fused->op_num_inputs[op] == 1);
@@ -435,7 +447,10 @@ void FusedOp::forward_task(const Task* task,
         break;
       }
       default:
+      {
+        fprintf(stderr, "Fusion currently does not support type = %d\n", fused->op_op_type[op]);
         assert(false && "Fusion currently does not support type");
+      }
     }
     ioff += fused->op_num_inputs[op];
     woff += fused->op_num_weights[op];
@@ -672,6 +687,20 @@ void FusedOp::backward_task(const Task* task,
         Conv2DMeta* m = (Conv2DMeta*) metas->meta[op];
         Conv2D::backward_kernel(m, my_ip[0], my_grad_ip[0], my_op[0], my_grad_op[0],
             my_wp[0], my_grad_wp[0], my_grad_wp[1]);
+        break;
+      }
+      case OP_BATCHNORM:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_id[0].get_dim() == 4);
+        assert(my_wd[0].get_dim() == 1);
+        assert(my_wd[1].get_dim() == 1);
+        assert(my_od[0].get_dim() == 4);
+        BatchNormMeta* m = (BatchNormMeta*) metas->meta[op];
+        BatchNorm::backward_kernel(m, my_ip[0], my_grad_op[0], my_op[0],
+            my_grad_ip[0], my_wp[0], my_grad_wp[0], my_grad_wp[1],
+            my_od[0].get_volume());
         break;
       }
       case OP_LINEAR:

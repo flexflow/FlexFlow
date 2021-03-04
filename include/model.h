@@ -797,6 +797,20 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
+  static void forward_kernel(BatchNormMeta *m,
+                             float const *input_ptr,
+                             float *output_ptr,
+                             float const *scale_ptr,
+                             float const *bias_ptr);
+  static void backward_kernel(BatchNormMeta *m,
+                              float const *input_ptr,
+                              float *output_grad_ptr,
+                              float const *output_ptr,
+                              float *input_grad_ptr,
+                              float const *scale_ptr,
+                              float *scale_grad_ptr,
+                              float *bias_grad_ptr,
+                              size_t numElements);
 public:
   bool relu, profiling;
   int num_replica;
@@ -811,6 +825,7 @@ public:
   cudnnBatchNormMode_t mode;
   float *runningMean, *runningVar, *saveMean, *saveVar;
   bool relu;
+  coord_t numChannels;
 };
 
 class LinearMeta : public OpMeta {

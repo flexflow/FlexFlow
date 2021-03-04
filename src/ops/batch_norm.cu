@@ -208,7 +208,7 @@ OpMeta* BatchNorm::init_task(const Task *task,
   BatchNormMeta* m = new BatchNormMeta(handle);
 
   bm->init_meta(m, acc_input.rect, acc_output.rect, acc_scale.rect, acc_bias.rect);
-
+  m->numChannels = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
   return m;
 }
 
@@ -298,13 +298,15 @@ void BatchNorm::init(const FFModel& ff)
   }
 }
 
-void forward_kernel(BatchNormMeta *m,
-                    float const *input_ptr,
-                    float *output_ptr,
-                    float const *scale_ptr,
-                    float const *bias_ptr,
-                    coord_t numChannels) {
+/*static*/
+void BatchNorm::forward_kernel(BatchNormMeta *m,
+                               float const *input_ptr,
+                               float *output_ptr,
+                               float const *scale_ptr,
+                               float const *bias_ptr)
+{
   float alpha = 1.0f, beta = 0.0f;
+  coord_t numChannels = m->numChannels;
   assign_kernel<<<GET_BLOCKS(numChannels), CUDA_NUM_THREADS>>>(m->runningMean, numChannels, 0.0f);
   assign_kernel<<<GET_BLOCKS(numChannels), CUDA_NUM_THREADS>>>(m->runningVar, numChannels, 0.0f);
   checkCUDNN(cudnnBatchNormalizationForwardTraining(
@@ -337,7 +339,6 @@ void BatchNorm::forward_task(const Task *task,
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   TensorAccessorR<float, 1> acc_bias(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  coord_t numChannels = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
 
   cudaEvent_t t_start, t_end;
   if (bm->profiling) {
@@ -350,7 +351,7 @@ void BatchNorm::forward_task(const Task *task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_scale.ptr, acc_bias.ptr, numChannels);
+  forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_scale.ptr, acc_bias.ptr);
   if (bm->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -398,15 +399,16 @@ void BatchNorm::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void backward_kernel(BatchNormMeta *m,
-                     float const *input_ptr,
-                     float *output_grad_ptr,
-                     float const *output_ptr,
-                     float *input_grad_ptr,
-                     float const *scale_ptr,
-                     float *scale_grad_ptr,
-                     float *bias_grad_ptr,
-                     int numElements)
+/*static*/
+void BatchNorm::backward_kernel(BatchNormMeta *m,
+                                float const *input_ptr,
+                                float *output_grad_ptr,
+                                float const *output_ptr,
+                                float *input_grad_ptr,
+                                float const *scale_ptr,
+                                float *scale_grad_ptr,
+                                float *bias_grad_ptr,
+                                size_t numElements)
 {
   float alpha = 1.0f;
   if (m->relu) {
@@ -606,8 +608,8 @@ bool BatchNorm::measure_operator_cost(Simulator* sim,
   }
 
   BatchNormMeta *m = sim->batch_norm_meta;
-  int numChannels = sub_output.adim[2];
-  Rect<1> scale_rect(Point<1>(0), Point<1>(numChannels-1));
+  m->numChannels = sub_output.adim[2];
+  Rect<1> scale_rect(Point<1>(0), Point<1>(m->numChannels-1));
   // scale and bias have same dimensions
   this->init_meta(m, sub_input.get_domain(), sub_output.get_domain(), scale_rect, scale_rect);
 
@@ -616,22 +618,22 @@ bool BatchNorm::measure_operator_cost(Simulator* sim,
   assert (input_ptr != NULL);
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert (output_ptr != NULL);
-  float *bias_ptr = (float *)sim->allocate(numChannels, DT_FLOAT);
+  float *bias_ptr = (float *)sim->allocate(m->numChannels, DT_FLOAT);
   assert (bias_ptr != NULL);
-  float *scale_ptr = (float *)sim->allocate(numChannels, DT_FLOAT);
+  float *scale_ptr = (float *)sim->allocate(m->numChannels, DT_FLOAT);
   assert (scale_ptr != NULL);
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(m, input_ptr, output_ptr, scale_ptr, bias_ptr, numChannels);
+    forward_kernel(m, input_ptr, output_ptr, scale_ptr, bias_ptr);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
     assert (input_grad_ptr != NULL);
     float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert (output_grad_ptr != NULL);
-    float *scale_grad_ptr = (float *)sim->allocate(numChannels, DT_FLOAT);
+    float *scale_grad_ptr = (float *)sim->allocate(m->numChannels, DT_FLOAT);
     assert (scale_grad_ptr != NULL);
-    float *bias_grad_ptr = (float *)sim->allocate(numChannels, DT_FLOAT);
+    float *bias_grad_ptr = (float *)sim->allocate(m->numChannels, DT_FLOAT);
     assert (bias_grad_ptr != NULL);
 
     backward = [&] {
