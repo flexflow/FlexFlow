@@ -19,7 +19,7 @@ target_link_libraries(${project_target} -Wl,--whole-archive flexflow ${Legion_LI
 # create legion_cffi.py
 add_custom_command(TARGET ${project_target} 
   PRE_BUILD	
-  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/legion_cffi_build.py --runtime-dir ${LEGION_ROOT}/include  --output-dir ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/legion_cffi_build.py --runtime-dir ${LEGION_ROOT}/runtime  --output-dir ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMENT "Creating legion_cffi.py..."
 )
