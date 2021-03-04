@@ -7,6 +7,7 @@ include(ExternalProject)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
+set(LEGION_ROOT ${CMAKE_CURRENT_LIST_DIR}/legion)
 
 # Set a default build type if none was specified
 set(default_build_type "Debug")
@@ -43,6 +44,9 @@ list(JOIN CUDA_GENCODE " " CUDA_GENCODE_FLAG)
 set(CMAKE_CUDA_FLAGS ${CUDA_GENCODE_FLAG})
 
 # Legion
+if(ENABLE_PYTHON)
+  set(Legion_USE_Python ON CACHE BOOL "enable Legion_USE_Python")
+endif()
 set(Legion_MAX_DIM ${MAX_DIM} CACHE STRING "Maximum number of dimensions")
 set(Legion_USE_CUDA ON CACHE BOOL "enable Legion_USE_CUDA")
 add_subdirectory(legion)
