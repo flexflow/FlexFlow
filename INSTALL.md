@@ -17,18 +17,25 @@ Note: all Python dependencies will be automatically installed if install the Fle
 ## 2.1 Makefile
 ### Build dependent libraries
 
-* Build the NCCL library. (If using NCCL for parameter synchornization.)
+* Build the NCCL library. (If using NCCL for parameter synchronization. )
 ```
 cd nccl
 make -j src.build NVCC_GENCODE="-gencode=arch=compute_XX,code=sm_XX"
 ```
 Replace XX with the compatability of your GPU devices (e.g., 70 for Volta GPUs and 60 for Pascal GPUs).
 
+But you could also install it via `apt` if your system supports it:
+```
+sudo apt install libnccl-dev
+```
+
 ### Build FlexFlow runtime with C++ interface
 The `FF_HOME` environment variable is used for building and running FlexFlow. You can add the following line in `~/.bashrc`.
 ```
 export FF_HOME=/path/to/FlexFlow
 ```
+The path should point to where you cloned this repository.
+
 Use the following command line to build a DNN model (e.g., InceptionV3). See the [examples](examples) folders for more existing FlexFlow applications.
 ```
 ./ffcompile.sh examples/InceptionV3
@@ -44,7 +51,13 @@ export CUDNN_HOME=/path/to/cudnn
 To expedite the compilation, you can also set the `GPU_ARCH` enviroment variable to be the compatability of your GPU devices (e.g., 70 for Volta GPUs and 60 for Pascal GPUs).
 ```
 export GPU_ARCH=your_gpu_arch
-``` 
+```
+If you have different cards, pass them all via comma, e.g.:
+
+```
+export GPU_ARCH=70,86
+```
+
 If Legion can not automatically detect your Python installation, you need to tell Legion manually by setting the `PYTHON_EXE`, `PYTHON_LIB` and `PYTHON_VERSION_MAJOR`, please refer to the `python/Makefile` for details
 
 * Build the flexflow python executable using the following command line
@@ -62,7 +75,7 @@ mkdir build
 cd build
 cmake ../ -DCUDA_ARCH=xx -DPYTHON_VERSION=3.x (replace the xx with the corrected number)
 make
-make install
+sudo make install
 ```
 Note: CMake sometimes can not automatically detect the correct `CUDA_ARCH`, so please set `CUDA_ARCH` if CMake can not detect it. 
 
@@ -110,7 +123,7 @@ For example, the AlexNet can be run as:
 * Install the FlexFlow binary, header file and library if using CMake. 
 ```
 cd build
-make install
+sudo make install
 ```
 
 * Install the FlexFlow Python interface using pip
