@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(FlexFlow)
 
-enable_language(CUDA)
+#enable_language(CUDA)
 
 include(ExternalProject) 
 
@@ -24,7 +24,7 @@ endif()
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 
 # option for using Python
-option(ENABLE_PYTHON "Enable Python" ON)  
+option(FF_USE_PYTHON "Enable Python" ON)  
 
 # option for using Python
 option(ENABLE_GASNET "Run FlexFlow with GASNet" OFF)  
@@ -32,22 +32,23 @@ option(ENABLE_GASNET "Run FlexFlow with GASNet" OFF)
 # option for cuda arch
 set(CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
 
+set(FLEXFLOW_EXT_LIBRARIES "")
+
 # ZLIB
 include(zlib)
 
 set(MAX_DIM 4)
 
-# CUDA and CUDNN
-include(cudacudnn)
+# CUDA
+include(cuda)
 list(JOIN CUDA_GENCODE " " CUDA_GENCODE_FLAG)
 set(CMAKE_CUDA_FLAGS ${CUDA_GENCODE_FLAG})
 
+#CUDNN
+include(cudnn)
+
 # Legion
-set(Legion_MAX_DIM ${MAX_DIM} CACHE STRING "Maximum number of dimensions")
-set(Legion_USE_CUDA ON CACHE BOOL "enable Legion_USE_CUDA")
-add_subdirectory(legion)
-include_directories(legion/runtime legion/runtime/mappers legion/runtime/realm/transfer)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/legion/runtime)
+include(legion)
 
 # GASNet
 if(ENABLE_GASNET) 
@@ -81,7 +82,7 @@ set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
 link_libraries(${LD_FLAGS})
 
 # Python
-if(ENABLE_PYTHON)
+if(FF_USE_PYTHON)
   add_compile_options(-DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON)
   add_subdirectory(python)
 endif()
@@ -146,10 +147,10 @@ set(FLEXFLOW_GPU_SRC
 
 # compile flexflow lib
 if(BUILD_SHARED_LIBS)
-  add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
-else()
-  add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
-endif()
+   cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
+ else()
+   cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
+ endif()
 
 target_link_libraries(flexflow PUBLIC Legion)
 

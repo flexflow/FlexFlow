@@ -844,6 +844,9 @@ flexflow_op_forward(
   flexflow_op_t handle,
   flexflow_model_t model);
 
+void
+register_c_custom_tasks();
+
 #ifdef __cplusplus
 }
 #endif

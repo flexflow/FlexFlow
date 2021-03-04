@@ -1552,7 +1552,7 @@ void data_load_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime);
 
-void register_custom_tasks();
+void register_flexflow_internal_tasks();
 
-void register_c_custom_tasks();
+void register_custom_tasks();
 #endif//_FLEXFLOW_MODEL_H_
