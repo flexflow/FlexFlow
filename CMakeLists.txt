@@ -7,6 +7,7 @@ include(ExternalProject)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
+set(LEGION_ROOT ${CMAKE_CURRENT_LIST_DIR}/legion)
 
 # Set a default build type if none was specified
 set(default_build_type "Debug")
