@@ -25,10 +25,10 @@ endif()
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 
 # option for using Python
-option(FF_USE_PYTHON "Enable Python" ON)  
+option(FF_USE_PYTHON "Enable Python" OFF)  
 
 # option for using Python
-option(ENABLE_GASNET "Run FlexFlow with GASNet" OFF)  
+option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)  
 
 # option for cuda arch
 set(CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
@@ -48,13 +48,13 @@ set(CMAKE_CUDA_FLAGS ${CUDA_GENCODE_FLAG})
 #CUDNN
 include(cudnn)
 
+# GASNet
+# if(FF_USE_GASNET) 
+#   include(gasnet)
+# endif()
+
 # Legion
 include(legion)
-
-# GASNet
-if(ENABLE_GASNET) 
-  include(gasnet)
-endif()
 
 # Start build FlexFlow
 
@@ -146,6 +146,9 @@ set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/runtime/optimizer_kernel.cu
   ${FLEXFLOW_ROOT}/src/runtime/simulator.cu)
 
+set(FLEXFLOW_CPP_DRV_SRC
+  ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)  
+
 # compile flexflow lib
 if(BUILD_SHARED_LIBS)
    cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
@@ -153,47 +156,47 @@ if(BUILD_SHARED_LIBS)
    cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
  endif()
 
-target_link_libraries(flexflow PUBLIC Legion)
+target_link_libraries(flexflow Legion)
 
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-if(ENABLE_GASNET)
-  target_link_libraries(flexflow PRIVATE GASNet::GASNet)
-endif()
 
-option(BUILD_RESNET "build resnet example" OFF)
-option(BUILD_ALEXNET "build alexnet example" OFF)
-option(BUILD_DLRM "build DLRM example" OFF)
-option(BUILD_INCEPTION "build inception example" OFF)
-option(BUILD_CANDLE_UNO "build candle uno example" OFF)
-option(BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
+option(FF_BUILD_RESNET "build resnet example" OFF)
+option(FF_BUILD_ALEXNET "build alexnet example" OFF)
+option(FF_BUILD_DLRM "build DLRM example" OFF)
+option(FF_BUILD_INCEPTION "build inception example" OFF)
+option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
+option(FF_BUILD_TRANSFORMER "build transformer example" ON)
+option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
 
-if(BUILD_RESNET OR BUILD_ALL_EXAMPLES)
+if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/ResNet)
 endif()
 
-if(BUILD_ALEXNET OR BUILD_ALL_EXAMPLES)
+if(FF_BUILD_ALEXNET OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/AlexNet)
 endif()
 
-if(BUILD_INCEPTION OR BUILD_ALL_EXAMPLES)
+if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/InceptionV3)
 endif()
 
 #TODO: Once functional add to BUILD_ALL_EXAMPLES
-if(BUILD_CANDLE_UNO)
+if(FF_BUILD_CANDLE_UNO)
   add_subdirectory(examples/cpp/candle_uno)
 endif()
 
-if(BUILD_DLRM OR BUILD_ALL_EXAMPLES)
+if(FF_BUILD_DLRM OR BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/DLRM)
 
   add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)
   target_include_directories(generate_dlrm_hetero_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-  target_link_libraries(generate_dlrm_hetero_strategy ${Protobuf_LIBRARIES})
 
   add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
   target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-  target_link_libraries(generate_dlrm_strategy ${Protobuf_LIBRARIES})
+endif()
+
+if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/Transformer)
 endif()
 
 # installation

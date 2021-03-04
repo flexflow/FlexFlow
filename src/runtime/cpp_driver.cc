@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#include "model.h"
+#include "mapper.h"
+#include "dirent.h"
 // ========================================================
 // Task and mapper registrations
 // ========================================================
