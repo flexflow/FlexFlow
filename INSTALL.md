@@ -123,7 +123,7 @@ For example, the AlexNet can be run as:
 * Install the FlexFlow binary, header file and library if using CMake. 
 ```
 cd build
-sudo make install
+make install
 ```
 
 * Install the FlexFlow Python interface using pip
