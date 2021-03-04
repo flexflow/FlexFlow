@@ -167,10 +167,10 @@ void SGDOptimizer::nccl_update_task(
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*) w_grad_ptr, size, ncclFloat,
-      ncclSum, meta->ncclComm, stream));
+      ncclSum, meta->handle.ncclComm, stream));
 #else
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*) w_grad_ptr, size, ncclFloat,
-      ncclSum, meta->ncclComm, 0));
+      ncclSum, meta->handle.ncclComm, 0));
 #endif
   //fprintf(stderr, "weight(%p) After ncclAllReduce...\n", w_grad_ptr);
 
@@ -345,10 +345,10 @@ void AdamOptimizer::nccl_update_task(const Task* task,
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*)w_grad_ptr, size, ncclFloat,
-      ncclSum, meta->ncclComm, stream));
+      ncclSum, meta->handle.ncclComm, stream));
 #else
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*)w_grad_ptr, size, ncclFloat,
-      ncclSum, meta->ncclComm, 0));
+      ncclSum, meta->handle.ncclComm, 0));
 #endif
   //fprintf(stderr, "alpha = %.8lf alpha_t = %.8lf decay = %.8lf\n",
   //        op->alpha, op->alpha_t, op->weight_decay);

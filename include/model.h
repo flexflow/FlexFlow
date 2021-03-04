@@ -123,6 +123,7 @@ enum TaskIDs {
   NORMAL_INIT_TASK_ID,
   // NCCL tasks
   NCCL_GETUNIQUEID_TASK_ID,
+  NCCL_INIT_COMMS_TASK_ID,
   // Search
   STRATEGY_SEARCH_TASK_ID,
   // Python data loader
@@ -172,14 +173,8 @@ class DataLoader;
 class OpMeta {
 public:
   OpMeta(FFHandler _handle);
-#ifdef FF_USE_NCCL
-  void init_nccl_communicator(const Task* task, ncclUniqueId ncclId);
-#endif
 public:
   FFHandler handle;
-#ifdef FF_USE_NCCL
-  ncclComm_t ncclComm;
-#endif
 };
 
 class Op {
@@ -216,8 +211,10 @@ public:
   void zero_grad(const FFModel&);
   Parameter* get_parameter(int index);
 #ifdef FF_USE_NCCL
-  void get_nccl_unique_id(const FFModel& model);
   static ncclUniqueId get_nccl_unique_id_task(const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
+  static ncclComm_t init_nccl_comms_task(const Task *task,
       const std::vector<PhysicalRegion> &regions,
       Context ctx, Runtime *runtime);
 #endif

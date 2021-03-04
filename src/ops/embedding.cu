@@ -108,10 +108,6 @@ OpMeta* Embedding::init_task(const Task *task,
 {
   FFHandler handle = *((const FFHandler*) task->local_args);
   OpMeta* m = new OpMeta(handle);
-#ifdef FF_USE_NCCL
-  const Embedding* linear = (Embedding*) task->args;
-  m->init_nccl_communicator(task, linear->ncclId);
-#endif
   return m;
 }
 
@@ -127,6 +123,9 @@ void Embedding::init(const FFModel& ff)
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[pc.device_ids[idx++]];
+#ifdef FF_USE_NCCL
+    handle.ncclComm = pc.nccl_comms[idx-1];
+#endif
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
   IndexLauncher launcher(EMBED_INIT_TASK_ID, task_is,

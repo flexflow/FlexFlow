@@ -66,6 +66,9 @@ struct ParallelConfig {
   DeviceType device_type;
   int nDims, dim[MAX_TENSOR_DIM];
   int device_ids[MAX_NUM_WORKERS];
+#ifdef FF_USE_NCCL
+  ncclComm_t nccl_comms[MAX_NUM_WORKERS];
+#endif
 };
 
 struct FFHandler {
@@ -74,6 +77,9 @@ struct FFHandler {
   void *workSpace;
   size_t workSpaceSize;
   bool allowTensorOpMathConversion;
+#ifdef FF_USE_NCCL
+  ncclComm_t ncclComm;
+#endif
 };
 
 struct FFInitInfo {
