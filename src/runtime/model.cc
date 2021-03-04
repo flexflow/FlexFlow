@@ -615,7 +615,7 @@ ncclComm_t Op::init_nccl_comms_task(const Task* task,
 {
   // Must be an index space launch
   assert(task->is_index_space);
-  ncclUniqueId ncclId = *((const ncclUniqueId*) task->local_args);
+  ncclUniqueId ncclId = *((const ncclUniqueId*) task->args);
   int allRanks = task->index_domain.get_volume();
   assert(task->index_domain.contains(task->index_point));
   int myRank = 0;
@@ -1642,6 +1642,8 @@ void FFModel::compile(LossType loss_type,
     // init all nccl communicators
     std::map<MappingTagID, ParallelConfig>::iterator iter;
     for (iter = config.strategies.begin(); iter != config.strategies.end(); iter++) {
+      // only init nccl for GPU parallel configurations
+      if (iter->second.device_type != ParallelConfig::GPU) continue;
       std::map<MappingTagID, ParallelConfig>::const_iterator it2;
       bool found = false;
       // Reuse nccl comms for same parallel config
@@ -1657,7 +1659,7 @@ void FFModel::compile(LossType loss_type,
         TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));
         Future future = runtime->execute_task(ctx, launcher);
         ncclUniqueId ncclId = future.get_result<ncclUniqueId>();
-        IndexSpace task_is = get_task_is(iter->second);
+        IndexSpace task_is = get_or_create_task_is(iter->second);
         ArgumentMap argmap;
         IndexLauncher index_launcher(NCCL_INIT_COMMS_TASK_ID, task_is,
             TaskArgument(&ncclId, sizeof(ncclUniqueId)), argmap,
