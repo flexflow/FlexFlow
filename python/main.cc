@@ -80,8 +80,6 @@ int main(int argc, char **argv)
   }
 #endif
 
-  Realm::Python::PythonModule::import_python_module("flexflow.core");
-
 #ifdef FF_USE_NCCL
   // Set NCCL environment
   // This needs to be set, otherwise NCCL will try to use group kernel launches,
