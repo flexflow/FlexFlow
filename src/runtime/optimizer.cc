@@ -25,13 +25,13 @@ Parameter create_replica_parameter(const FFModel* model,
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
   Parameter v;
-  v.type = p.type;
+  v.sync_type = p.sync_type;
   v.owner_op = p.owner_op;
   v.region = runtime->create_logical_region(
       ctx, p.region.get_index_space(), p.region.get_field_space());
-  if (v.type == ParameterSyncType::PS) {
+  if (v.sync_type == ParameterSyncType::PS) {
     // Do nothing
-  } else if (v.type == ParameterSyncType::NCCL) {
+  } else if (v.sync_type == ParameterSyncType::NCCL) {
     v.part = runtime->get_logical_partition(
         ctx, v.region, p.part.get_index_partition());
   } else {
@@ -95,7 +95,7 @@ void SGDOptimizer::update(const Parameter* p)
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
   assert(p->owner_op != NULL);
-  if (p->type == ParameterSyncType::PS) {
+  if (p->sync_type == ParameterSyncType::PS) {
     TaskLauncher launcher(SGD_UPD_PS_TASK_ID,
         TaskArgument(this, sizeof(SGDOptimizer)),
         Predicate::TRUE_PRED, 0/*mapper_id*/,
@@ -132,7 +132,7 @@ void SGDOptimizer::update(const Parameter* p)
                           READ_ONLY, EXCLUSIVE, p->region));
     index_launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, index_launcher);
-  } else if (p->type == ParameterSyncType::NCCL) {
+  } else if (p->sync_type == ParameterSyncType::NCCL) {
     IndexSpace task_is = p->owner_op->task_is;
     assert(task_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
@@ -260,7 +260,7 @@ void AdamOptimizer::update(const Parameter* p)
   assert(v_values.find(p->region) != v_values.end());
   assert(m_values.find(p->region) != m_values.end());
   assert(p->owner_op != NULL);
-  if (p->type == ParameterSyncType::PS) {
+  if (p->sync_type == ParameterSyncType::PS) {
     TaskLauncher launcher(ADAM_UPD_PS_TASK_ID,
         TaskArgument(this, sizeof(AdamOptimizer)),
         Predicate::TRUE_PRED, 0/*mapper_id*/,
@@ -299,7 +299,7 @@ void AdamOptimizer::update(const Parameter* p)
                           READ_ONLY, EXCLUSIVE, p->region));
     index_launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, index_launcher);
-  } else if (p->type == ParameterSyncType::NCCL) {
+  } else if (p->sync_type == ParameterSyncType::NCCL) {
     IndexSpace task_is = p->owner_op->task_is;
     assert(task_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;

@@ -94,6 +94,9 @@ FFHandler UtilityTasks::init_cuda_task(
   //off_t offset = memFBImpl->alloc_bytes(workSpaceSize);
   //handle.workSpace = memFBImpl->get_direct_ptr(offset, 0);
   checkCUDA(cudaMalloc(&handle.workSpace, handle.workSpaceSize));
+#ifdef FF_USE_NCCL
+  handle.ncclComm = NULL;
+#endif
   return handle;
 }
 
@@ -426,14 +429,14 @@ bool Parameter::set_weights(const FFModel* ff,
                             const std::vector<int>& dims,
                             const T* data)
 {
-  return set_tensor<T>(ff, dims, data, type);
+  return set_tensor<T>(ff, dims, data, sync_type);
 }
 
 template <typename T>
 bool Parameter::get_weights(const FFModel* ff,
                             T* data)
 {
-  return get_tensor<T>(ff, data, type);
+  return get_tensor<T>(ff, data, sync_type);
 }
 
 template bool Tensor::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data, ParameterSyncType comm_type);

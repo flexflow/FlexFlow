@@ -349,19 +349,6 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
                                           CUDNN_DATA_FLOAT,
                                           batch_size, out_dim, 1, 1));
   }
-#ifdef FF_USE_NCCL
-  CompMode comp_mode;
-  if (regions.size() == 2) {
-    comp_mode = COMP_MODE_INFERENCE;
-  } else if (regions.size() == 3) {
-    comp_mode = COMP_MODE_TRAINING;
-  } else {
-    assert(false);
-  }
-  if (comp_mode == COMP_MODE_TRAINING) {
-    m->init_nccl_communicator(task, linear->ncclId);
-  }
-#endif
   return m;
 }
 
@@ -392,6 +379,9 @@ void Linear::init_with_dim(const FFModel& ff)
   int idx = 0;
   for (PointInRectIterator<NDIM> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[pc.device_ids[idx++]];
+#ifdef FF_USE_NCCL
+    handle.ncclComm = pc.nccl_comms[idx-1];
+#endif
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
   IndexLauncher launcher(LINEAR_INIT_TASK_ID, task_is,

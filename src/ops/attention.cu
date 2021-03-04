@@ -181,9 +181,6 @@ OpMeta* MultiHeadAttention::init_task(
   MultiHeadAttentionMeta* m = new MultiHeadAttentionMeta(handle,
       attn, gpu_mem, num_samples, num_heads);
   assert(acc_weight.rect.volume() * sizeof(float) == m->weightSize);
-#ifdef FF_USE_NCCL
-  m->init_nccl_communicator(task, attn->ncclId);
-#endif
   return m;
 }
 
@@ -199,6 +196,9 @@ void MultiHeadAttention::init(const FFModel& ff)
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[pc.device_ids[idx++]];
+#ifdef FF_USE_NCCL
+    handle.ncclComm = pc.nccl_comms[idx-1];
+#endif
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
   IndexLauncher launcher(ATTENTION_INIT_TASK_ID, task_is,

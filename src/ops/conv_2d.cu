@@ -318,9 +318,6 @@ OpMeta* Conv2D::init_task(const Task *task,
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
                                             CUDNN_PROPAGATE_NAN, 0.0));
   }
-#ifdef FF_USE_NCCL
-  m->init_nccl_communicator(task, conv->ncclId);
-#endif
   return m;
 }
 
@@ -336,6 +333,9 @@ void Conv2D::init(const FFModel& ff)
   int idx = 0;
   for (PointInRectIterator<4> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[pc.device_ids[idx++]];
+#ifdef FF_USE_NCCL
+    handle.ncclComm = pc.nccl_comms[idx-1];
+#endif
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
   IndexLauncher launcher(CONV2D_INIT_TASK_ID, task_is,
