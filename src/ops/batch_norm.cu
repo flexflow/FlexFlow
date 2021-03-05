@@ -34,7 +34,7 @@ BatchNorm::BatchNorm(FFModel& model,
                      const Tensor& _input,
                      bool _relu,
                      const char* name)
-: Op(model, OP_BATCHNORM, name, _input), relu(_relu), profiling(model.config.profiling)
+: Op(model, OP_BATCHNORM, name, _input), relu(_relu)
 {
   assert(_input.numDim == 4);
   numOutputs = 1;
@@ -209,6 +209,7 @@ OpMeta* BatchNorm::init_task(const Task *task,
 
   bm->init_meta(m, acc_input.rect, acc_output.rect, acc_scale.rect, acc_bias.rect);
   m->numChannels = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
+  m->profiling = bm->profiling;
   return m;
 }
 
@@ -329,7 +330,7 @@ void BatchNorm::forward_task(const Task *task,
 {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  const BatchNorm* bm = (BatchNorm*) task->args;
+  //const BatchNorm* bm = (BatchNorm*) task->args;
   BatchNormMeta* m = *((BatchNormMeta**) task->local_args);
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -341,7 +342,7 @@ void BatchNorm::forward_task(const Task *task,
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
   cudaEvent_t t_start, t_end;
-  if (bm->profiling) {
+  if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -352,7 +353,7 @@ void BatchNorm::forward_task(const Task *task,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_scale.ptr, acc_bias.ptr);
-  if (bm->profiling) {
+  if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -376,7 +377,7 @@ void BatchNorm::forward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(BATCHNORM_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(BatchNorm)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -439,7 +440,7 @@ void BatchNorm::backward_task(const Task *task,
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   //float beta = 0.0f;
-  const BatchNorm* bm = (BatchNorm*) task->args;
+  //const BatchNorm* bm = (BatchNorm*) task->args;
   BatchNormMeta* m = *((BatchNormMeta**) task->local_args);
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -461,7 +462,7 @@ void BatchNorm::backward_task(const Task *task,
       true/*readOutput*/);
 
   cudaEvent_t t_start, t_end;
-  if (bm->profiling) {
+  if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -472,7 +473,7 @@ void BatchNorm::backward_task(const Task *task,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   backward_kernel(m, acc_input.ptr, acc_output_grad.ptr, acc_output.ptr, acc_input_grad.ptr, acc_scale.ptr, acc_scale_grad.ptr, acc_bias_grad.ptr, acc_output.rect.volume());
-  if (bm->profiling) {
+  if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -497,7 +498,7 @@ void BatchNorm::backward(const FFModel& ff)
   }
 
   IndexLauncher launcher(BATCHNORM_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(BatchNorm)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): input

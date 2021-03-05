@@ -37,8 +37,7 @@ TopK::TopK(FFModel& model,
            int _k, bool _sorted,
            const char* name)
 : Op(model, OP_TOPK, name, _input),
-  k(_k), sorted(_sorted),
-  profiling(model.config.profiling)
+  k(_k), sorted(_sorted)
 {
   numOutputs = 2;
   outputs[0].numDim = inputs[0].numDim;
@@ -109,9 +108,11 @@ OpMeta* TopK::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
 {
-  //TopK* topk = (TopK*) task->args;
+  TopK* topk = (TopK*) task->args;
   FFHandler handle = *((FFHandler*)task->local_args);
   TopKMeta* m = new TopKMeta(handle);
+  m->profiling = topk->profiling;
+  m->sorted = topk->sorted;
   return m;
 }
 
@@ -519,7 +520,7 @@ void TopK::forward_task(const Task* task,
 {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const TopK* topk = (const TopK*) task->args;
+  //const TopK* topk = (const TopK*) task->args;
   const TopKMeta* m = *((TopKMeta**)task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
@@ -539,7 +540,7 @@ void TopK::forward_task(const Task* task,
   int* index_ptr = helperGetTensorPointerWO<int>(
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
   cudaEvent_t t_start, t_end;
-  if (topk->profiling) {
+  if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -553,9 +554,9 @@ void TopK::forward_task(const Task* task,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  topk->forward_kernel(m, in_ptr, value_ptr, index_ptr,
-      batch_size, length, k, topk->sorted);
-  if (topk->profiling) {
+  forward_kernel(m, in_ptr, value_ptr, index_ptr,
+      batch_size, length, k, m->sorted);
+  if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -589,7 +590,7 @@ void TopK::forward(const FFModel& ff)
       assert(false);
   }
   IndexLauncher launcher(TOPK_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(TopK)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -645,7 +646,7 @@ void TopK::backward_task(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx, Runtime* runtime)
 {
-  const TopK* topk = (const TopK*) task->args;
+  //const TopK* topk = (const TopK*) task->args;
   const TopKMeta* m = *((TopKMeta**) task->local_args);
   assert(regions.size() == 3);
   Domain out1_domain = runtime->get_index_space_domain(
@@ -666,7 +667,7 @@ void TopK::backward_task(const Task *task,
   float* in_grad_ptr = helperGetTensorPointerRW<float>(
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
   cudaEvent_t t_start, t_end;
-  if (topk->profiling) {
+  if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -680,7 +681,7 @@ void TopK::backward_task(const Task *task,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  topk->backward_kernel(m, value_grad_ptr, indices_ptr, in_grad_ptr,
+  backward_kernel(m, value_grad_ptr, indices_ptr, in_grad_ptr,
       batch_size, length, k);
 }
 
@@ -709,7 +710,7 @@ void TopK::backward(const FFModel& ff)
   }
 
   IndexLauncher launcher(TOPK_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(TopK)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): value_grad

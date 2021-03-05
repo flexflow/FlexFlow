@@ -252,7 +252,8 @@ Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,
        const Tensor& _input)
-: op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1),
+  profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -282,7 +283,8 @@ Op::Op(FFModel& model,
        const Op* shared_op,
        const char* _name,
        const Tensor& _input)
-: op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1),
+  profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -316,7 +318,8 @@ Op::Op(FFModel& model,
        const char* _name,
        const Tensor& _input1,
        const Tensor& _input2)
-: op_type(_op_type), numInputs(2), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(2), numWeights(0), numOutputs(1),
+  profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -348,7 +351,8 @@ Op::Op(FFModel& model,
        const Tensor& _input1,
        const Tensor& _input2,
        const Tensor& _input3)
-: op_type(_op_type), numInputs(3), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(3), numWeights(0), numOutputs(1),
+  profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -379,7 +383,8 @@ Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,
        int n, const Tensor* _inputs)
-: op_type(_op_type), numInputs(n), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(n), numWeights(0), numOutputs(1),
+  profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -410,7 +415,8 @@ Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,
        int _numInputs)
-: op_type(_op_type), numInputs(_numInputs), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(_numInputs), numWeights(0), numOutputs(1),
+  profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -2575,6 +2581,14 @@ void register_internal_tasks()
         registrar, "MultiHeadAttention Backward Task");
   }
   // FusedOp Task
+  {
+    TaskVariantRegistrar registrar(FUSEDOP_INIT_TASK_ID, "FusedOp Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, FusedOp::init_task>(
+        registrar, "FusedOp Init Task");
+  }
+
   {
     TaskVariantRegistrar registrar(FUSEDOP_FWD_TASK_ID, "FusedOp Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
