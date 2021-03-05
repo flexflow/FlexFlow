@@ -7,7 +7,7 @@ include(ExternalProject)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
-set(LEGION_ROOT ${CMAKE_CURRENT_LIST_DIR}/legion)
+set(LEGION_ROOT ${CMAKE_CURRENT_LIST_DIR}/deps/legion)
 
 # Set a default build type if none was specified
 set(default_build_type "Debug")
@@ -25,7 +25,7 @@ endif()
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 
 # option for using Python
-option(FF_USE_PYTHON "Enable Python" OFF)  
+option(FF_USE_PYTHON "Enable Python" ON)  
 
 # option for using Python
 option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)  

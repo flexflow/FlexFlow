@@ -1,7 +1,6 @@
-[submodule "legion"]
-	path = legion
+[submodule "deps/legion"]
+	path = deps/legion
 	url = https://gitlab.com/StanfordLegion/legion.git
-
-[submodule "nccl"]
-	path = nccl
+[submodule "deps/nccl"]
+	path = deps/nccl
 	url = https://github.com/NVIDIA/nccl.git

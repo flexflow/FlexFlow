@@ -1,0 +1,8 @@
+if(FF_USE_PYTHON)
+  set(Legion_USE_Python ON CACHE BOOL "enable Legion_USE_Python")
+endif()
+set(Legion_MAX_DIM ${MAX_DIM} CACHE STRING "Maximum number of dimensions")
+set(Legion_USE_CUDA ON CACHE BOOL "enable Legion_USE_CUDA")
+add_subdirectory(deps/legion)
+include_directories(deps/legion/runtime deps/legion/runtime/mappers deps/legion/runtime/realm/transfer)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/deps/legion/runtime)
