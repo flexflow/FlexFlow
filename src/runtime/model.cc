@@ -1949,7 +1949,6 @@ struct DefaultConfig {
   const static int iterations = 1;
   const static int batchSize = 64;
   const static bool profiling = false;
-  const static bool debug = false;
   constexpr static float learningRate = 0.01f;
   constexpr static float weightDecay = 0.0001f;
   const static size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
@@ -1994,6 +1993,19 @@ FFConfig::FFConfig()
   dataset_path = "";
   syntheticInput = false;
   perform_fusion = false;
+
+  // Parse input arguments
+  {
+    const InputArgs &command_args = HighLevelRuntime::get_input_args();
+    char **argv = command_args.argv;
+    int argc = command_args.argc;
+    parse_args(argv, argc);
+  }
+
+  Runtime *runtime = Runtime::get_runtime();
+  lg_hlr = runtime;
+  lg_ctx = Runtime::get_context();
+  field_space = runtime->create_field_space(lg_ctx);
 }
 
 void FFConfig::parse_args(char **argv, int argc)

@@ -75,7 +75,6 @@ void top_level_task(const Task* task,
     const InputArgs &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
-    ff_config.parse_args(argv, argc);
     parse_input_args(argv, argc, candle_config);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
         ff_config.batchSize, ff_config.workersPerNode, ff_config.numNodes);
@@ -83,9 +82,6 @@ void top_level_task(const Task* task,
     print_vector("Dense Feature Layers", candle_config.dense_feature_layers);
   }
 
-  ff_config.lg_ctx = ctx;
-  ff_config.lg_hlr = runtime;
-  ff_config.field_space = runtime->create_field_space(ctx);
   FFModel ff(ff_config);
   set<string> input_models;
   map<string, string> input_features = candle_config.input_features;

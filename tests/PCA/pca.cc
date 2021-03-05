@@ -25,17 +25,8 @@ void top_level_task(const Task* task,
 {
   int npcs = 5, nn_shl[6] = {10, 10, 10, 10, 10, 1};
   FFConfig ffConfig;
-  {
-    const InputArgs &command_args = HighLevelRuntime::get_input_args();
-    char **argv = command_args.argv;
-    int argc = command_args.argc;
-    ffConfig.parse_args(argv, argc);
-    log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-        ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
-  }
-  ffConfig.lg_ctx = ctx;
-  ffConfig.lg_hlr = runtime;
-  ffConfig.field_space = runtime->create_field_space(ctx);
+  log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
+      ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
   FFModel ff(ffConfig);
   Tensor pcvec_n, pcvec, pcmax, pcmin;
   {

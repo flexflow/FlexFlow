@@ -72,10 +72,6 @@ flexflow_config_t
 flexflow_config_create(void)
 {
   FFConfig *config = new FFConfig();
-  Runtime *runtime = Runtime::get_runtime();
-  config->lg_hlr = runtime;
-  config->lg_ctx = Runtime::get_context();
-  config->field_space = runtime->create_field_space(config->lg_ctx);
   DEBUG_PRINT("[FFConfig] new %p", config);
   return FFCObjectWrapper::wrap(config);
 }
