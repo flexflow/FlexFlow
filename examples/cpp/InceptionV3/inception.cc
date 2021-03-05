@@ -127,14 +127,10 @@ void top_level_task(const Task* task,
     const InputArgs &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
-    ffConfig.parse_args(argv, argc);
     parse_input_args(argv, argc, inceptionConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
         ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
   }
-  ffConfig.lg_ctx = ctx;
-  ffConfig.lg_hlr = runtime;
-  ffConfig.field_space = runtime->create_field_space(ctx);
   FFModel ff(ffConfig);
 
   Tensor input;
