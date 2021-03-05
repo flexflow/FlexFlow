@@ -97,8 +97,8 @@ Performance auto-tuning flags:
 * `--export-strategy` or `--export`: path to export the best discovered strategy (default: None)
 * `--import-strategy` or `--import`: path to import a previous saved strategy (default: None)
 * `--enable-parameter-parallel`: allow FlexFlow to explore parameter parallelism for performance auto-tuning. (By default FlexFlow only considers data and model parallelism.)
-* `--enable-parameter-parallel`: allow FlexFlow to explore attribute parallelism for performance auto-tuning. (By default FlexFlow only considers data and model parallelism.)
-For performance tuning related flags: see [performance autotuning](SEARCH.md).
+* `--enable-attribute-parallel`: allow FlexFlow to explore attribute parallelism for performance auto-tuning. (By default FlexFlow only considers data and model parallelism.)
+For performance tuning related flags: see [performance autotuning](https://flexflow.ai/search).
 
 ## Contributing
 Please let us know if you encounter any bugs or have any suggestions by [submitting an issue](https://github.com/flexflow/flexflow/issues).
