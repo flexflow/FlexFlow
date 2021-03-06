@@ -18,6 +18,8 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import cffi
 import os
 import subprocess
+import logging
+import warnings
 import numpy as np
 from .flexflow_logger import fflogger
 from .flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
@@ -32,6 +34,8 @@ ffi.cdef(_flexflow_cheader)
 ffc = ffi.dlopen(None)
 
 ff_tracing_id = 200
+
+warnings.simplefilter('always', DeprecationWarning)
 
 def get_c_name(name):
   if name is None:
@@ -376,16 +380,36 @@ class FFConfig(object):
   def parse_args(self):
     ffc.flexflow_config_parse_args_default(self.handle)
 
+  @property
+  def batch_size(self):
+    return ffc.flexflow_config_get_batch_size(self.handle)
+
+  @property
+  def workers_per_node(self):
+    return ffc.flexflow_config_get_workers_per_node(self.handle)
+
+  @property
+  def num_nodes(self):
+    return ffc.flexflow_config_get_num_nodes(self.handle)
+
+  @property
+  def epochs(self):
+    return ffc.flexflow_config_get_epochs(self.handle)
+
   def get_batch_size(self):
+    warnings.warn("FFConfig getters are deprecated. Use properties instead.", DeprecationWarning)
     return ffc.flexflow_config_get_batch_size(self.handle)
 
   def get_workers_per_node(self):
+    warnings.warn("FFConfig getters are deprecated. Use properties instead.", DeprecationWarning)
     return ffc.flexflow_config_get_workers_per_node(self.handle)
 
   def get_num_nodes(self):
+    warnings.warn("FFConfig getters are deprecated. Use properties instead.", DeprecationWarning)
     return ffc.flexflow_config_get_num_nodes(self.handle)
 
   def get_epochs(self):
+    warnings.warn("FFConfig getters are deprecated. Use properties instead.", DeprecationWarning)
     return ffc.flexflow_config_get_epochs(self.handle)
 
   def get_current_time(self):
@@ -1496,7 +1520,7 @@ class FFModel(object):
     dataloaders.append(y)
 
     num_samples = y.get_num_samples()
-    batch_size = self._ffconfig.get_batch_size()
+    batch_size = self._ffconfig.batch_size
     self._tracing_id += 1 # get a new tracing id
     for epoch in range(0,epochs):
       for d in dataloaders:
@@ -1540,7 +1564,7 @@ class FFModel(object):
     dataloaders.append(y)
 
     num_samples = y.get_num_samples()
-    batch_size = self._ffconfig.get_batch_size()
+    batch_size = self._ffconfig.batch_size
     for d in dataloaders:
       d.reset()
     self.reset_metrics()

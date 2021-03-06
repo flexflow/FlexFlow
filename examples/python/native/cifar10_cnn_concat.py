@@ -8,10 +8,10 @@ def top_level_task():
   alexnetconfig = NetConfig()
   print(alexnetconfig.dataset_path)
   ffconfig.parse_args()
-  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
+  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
 
-  dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
+  dims_input = [ffconfig.batch_size, 3, 32, 32]
   input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
   t1 = ffmodel.conv2d(input_tensor, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
@@ -68,7 +68,7 @@ def top_level_task():
 
   ffmodel.init_layers()
 
-  epochs = ffconfig.get_epochs()
+  epochs = ffconfig.epochs
 
   ts_start = ffconfig.get_current_time()
 
