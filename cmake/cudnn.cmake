@@ -22,9 +22,13 @@ endif()
 if(CUDNN_FOUND)
   list(APPEND FLEXFLOW_EXT_LIBRARIES
     ${CUDNN_LIBRARIES})
+
+  list(APPEND FLEXFLOW_INCLUDE_DIRS
+    ${CUDNN_INCLUDE_DIR})
 endif()
 
 if(CUDNN_FOUND)
+message( STATUS "CUDNN inlcude : ${CUDNN_INCLUDE_DIR}" )
   message( STATUS "CUDNN libraries : ${CUDNN_LIBRARIES}" )
 else()
   message( FATAL_ERROR "CUDNN package not found -> specify search path via CUDNN_ROOT variable")

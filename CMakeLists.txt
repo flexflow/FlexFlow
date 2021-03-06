@@ -7,7 +7,6 @@ include(ExternalProject)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
-set(LEGION_ROOT ${CMAKE_CURRENT_LIST_DIR}/deps/legion)
 
 # Set a default build type if none was specified
 set(default_build_type "Debug")
@@ -31,38 +30,57 @@ option(FF_USE_PYTHON "Enable Python" ON)
 option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)  
 
 # option for cuda arch
-set(CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
+set(FF_CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
+
+# option for nccl
+option(FF_USE_NCCL "Run FlexFlow with NCCL" ON)
 
 set(FLEXFLOW_EXT_LIBRARIES "")
-
-# ZLIB
-include(zlib)
-
-set(MAX_DIM 4)
-
-# CUDA
-include(cuda)
-list(JOIN CUDA_GENCODE " " CUDA_GENCODE_FLAG)
-set(CMAKE_CUDA_FLAGS ${CUDA_GENCODE_FLAG})
-
-#CUDNN
-include(cudnn)
-
-# GASNet
-# if(FF_USE_GASNET) 
-#   include(gasnet)
-# endif()
-
-# Legion
-include(legion)
-
-# Start build FlexFlow
+set(FLEXFLOW_INCLUDE_DIRS "")
 
 # get FLAGS from ENV
 set(CC_FLAGS $ENV{CC_FLAGS})
 set(NVCC_FLAGS $ENV{NVCC_FLAGS})
 set(LD_FLAGS $ENV{LD_FLAGS})
 
+set(MAX_DIM 4)
+
+ # ZLIB
+ include(zlib)
+
+ # CUDA
+ include(cuda)
+#  list(JOIN CUDA_GENCODE " " CUDA_GENCODE_FLAG)
+#  set(CMAKE_CUDA_FLAGS ${CUDA_GENCODE_FLAG})
+ 
+ # CUDNN
+ include(cudnn)
+
+ # NCCL
+if(FF_USE_NCCL)
+  include(nccl)
+  list(APPEND CC_FLAGS
+    -DFF_USE_NCCL)
+  list(APPEND NVCC_FLAGS
+    -DFF_USE_NCCL)
+endif()
+
+# GASNet
+if(FF_USE_GASNET)  
+  include(gasnet)
+endif()
+
+# Legion
+include(legion)
+
+if(FF_USE_PYTHON)
+  list(APPEND CC_FLAGS
+    -DBINDINGS_AUGMENT_PYTHONPATH)
+  list(APPEND NVCC_FLAGS
+    -DBINDINGS_AUGMENT_PYTHONPATH)
+endif()
+
+# Start build FlexFlow
 list(APPEND CC_FLAGS
   -std=c++11
   -DMAX_TENSOR_DIM=${MAX_DIM})
@@ -82,17 +100,9 @@ add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
 link_libraries(${LD_FLAGS})
 
-# Python
-if(FF_USE_PYTHON)
-  add_compile_options(-DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON)
-  add_subdirectory(python)
-endif()
-
-set(FLEXFLOW_INCLUDE_DIRS
+list(APPEND FLEXFLOW_INCLUDE_DIRS
   ${FLEXFLOW_ROOT}/include
-  ${FLEXFLOW_ROOT}/
-  ${CUDA_INCLUDE_DIRS}
-  ${CUDNN_INCLUDE_DIRS})
+  ${FLEXFLOW_ROOT})
 
 set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/accessor.h
@@ -149,6 +159,9 @@ set(FLEXFLOW_GPU_SRC
 set(FLEXFLOW_CPP_DRV_SRC
   ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)  
 
+
+message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
+
 # compile flexflow lib
 if(BUILD_SHARED_LIBS)
    cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
@@ -156,17 +169,26 @@ if(BUILD_SHARED_LIBS)
    cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
  endif()
 
-target_link_libraries(flexflow Legion)
-
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
 
+# nccl
+if(FF_USE_NCCL)
+  add_dependencies(flexflow ${NCCL_NAME})
+endif()
+
+# build binary
 option(FF_BUILD_RESNET "build resnet example" OFF)
 option(FF_BUILD_ALEXNET "build alexnet example" OFF)
 option(FF_BUILD_DLRM "build DLRM example" OFF)
 option(FF_BUILD_INCEPTION "build inception example" OFF)
 option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
-option(FF_BUILD_TRANSFORMER "build transformer example" ON)
+option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
 option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
+
+# Python
+if(FF_USE_PYTHON)
+  add_subdirectory(python)
+endif()
 
 if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/ResNet)
