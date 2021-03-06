@@ -30,7 +30,7 @@ public:
   Optimizer(const FFModel* _model);
   virtual void init(void) = 0;
   virtual void next(void) = 0;
-  virtual void update(const Parameter* p) = 0;
+  virtual void update(const Tensor* p) = 0;
   const FFModel* model;
 };
 
@@ -42,7 +42,7 @@ public:
                bool nesterov = false, double weight_decay = 0.0f);
   void init(void);
   void next(void);
-  void update(const Parameter* p);
+  void update(const Tensor* p);
   void set_weight_decay(double _weight_decay);
   static void ps_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
@@ -56,7 +56,7 @@ public:
   bool nesterov;
   double weight_decay;
   ParameterSyncType comm_type;
-  std::map<LogicalRegion, Parameter> v_values;
+  std::map<LogicalRegion, Tensor> v_values;
 };
 
 class AdamOptimizer : public Optimizer
@@ -68,7 +68,7 @@ public:
                 double _epsilon = 1e-8);
   void init(void);
   void next(void);
-  void update(const Parameter* p);
+  void update(const Tensor* p);
   void set_weight_decay(double _weight_decay);
   static void ps_update_task(const Task* task,
                           const std::vector<PhysicalRegion>& regions,
@@ -80,6 +80,6 @@ public:
 #endif
   double alpha, beta1, beta2, weight_decay, epsilon;
   double alpha_t, beta1_t, beta2_t;
-  std::map<LogicalRegion, Parameter> v_values, m_values;
+  std::map<LogicalRegion, Tensor> v_values, m_values;
 };
 #endif

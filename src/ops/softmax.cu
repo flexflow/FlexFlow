@@ -47,7 +47,7 @@ void Softmax::create_weights(FFModel& model)
   // Do nothing since we don't ahve weights
 }
 
-void Softmax::create_output_and_partition(FFModel& model)
+void Softmax::map_output_tensors(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;

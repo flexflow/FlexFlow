@@ -24,37 +24,42 @@ Tensor FFModel::embedding(const Tensor& input,
                           Initializer* kernel_initializer,
                           const char* name)
 {
-  //assert(config.strategies.find(name) != config.strategies.end());
-  //ParallelConfig pc = config.strategies[name];
-  //IndexSpaceT<2> task_is = IndexSpaceT<2>(get_or_create_task_is(pc));
-  Embedding* embed = new Embedding(*this, input, num_entries,
-      out_dim, aggr, shared_op, kernel_initializer, name);
+  if (kernel_initializer == NULL) {
+    int seed = std::rand();
+    kernel_initializer = new GlorotUniform(seed);
+  }
+#ifdef FF_USE_NCCL
+  ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+  ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+  Tensor weight;
+  {
+    const int dims[2] = {num_entries, out_dim};
+    weight = create_weight<2>(dims, DT_FLOAT, NULL/*owner_op*/,
+        true/*create_grad*/, kernel_initializer, comm_type);
+  }
+  Embedding* embed = new Embedding(*this, input, weight, aggr, name);
   layers.push_back(embed);
   return embed->outputs[0];
 }
 
 Embedding::Embedding(FFModel& model,
                      const Tensor& _input,
-                     //std::stirng name,
-                     int _num_entries, int outDim,
+                     const Tensor& _weight,
                      AggrMode _aggr,
-                     const Op* shared_op,
-                     Initializer* _kernel_initializer,
                      const char* name)
-: Op(model, OP_EMBEDDING, shared_op, name, _input),
-  num_entries(_num_entries), out_channels(outDim), aggr(_aggr),
-  kernel_initializer(_kernel_initializer)
+: Op(model, OP_EMBEDDING, name, _input, _weight),
+  num_entries(_weight.adim[1]), out_channels(_weight.adim[0]), aggr(_aggr)
 {
   assert(_input.numDim == 2);
+  numOutputs = 1;
   outputs[0].numDim = 2;
   outputs[0].adim[0] = out_channels;
   outputs[0].adim[1] = inputs[0].adim[1];
-  weights[0].numDim = 2;
-  weights[0].adim[0] = num_entries;
-  weights[0].adim[1] = out_channels;
-  numWeights = 1;
 }
 
+#ifdef DEADCODE
 void Embedding::create_weights(FFModel& model)
 {
   // Retrive the task indexspace for the op
@@ -72,8 +77,9 @@ void Embedding::create_weights(FFModel& model)
     assert(numWeights == 1);
   }
 }
+#endif
 
-void Embedding::create_output_and_partition(FFModel& model)
+void Embedding::map_output_tensors(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;
@@ -253,7 +259,7 @@ void Embedding::forward_task(const Task *task,
   assert(accInput.rect.hi[1] == accOutput.rect.hi[1]);
   assert(accInput.rect.lo[1] == accOutput.rect.lo[1]);
   // Weight matches Output
-  assert(accWeight.rect.hi[1] - accWeight.rect.lo[1]
+  assert(accWeight.rect.hi[0] - accWeight.rect.lo[0]
       == accOutput.rect.hi[0] - accOutput.rect.lo[0]);
   int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
@@ -332,7 +338,7 @@ void Embedding::backward_task(const Task *task,
   assert(accInput.rect.hi[1] == accOutput.rect.hi[1]);
   assert(accInput.rect.lo[1] == accOutput.rect.lo[1]);
   // WeightGrad matches Output
-  assert(accWeightGrad.rect.hi[1] - accWeightGrad.rect.lo[1] == accOutput.rect.hi[0] - accOutput.rect.lo[0]);
+  assert(accWeightGrad.rect.hi[0] - accWeightGrad.rect.lo[0] == accOutput.rect.hi[0] - accOutput.rect.lo[0]);
   int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
   int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;

@@ -57,7 +57,7 @@ void Split::create_weights(FFModel& model)
   // Do nothing
 }
 
-void Split::create_output_and_partition(FFModel& model)
+void Split::map_output_tensors(FFModel& model)
 {
   // Retrive the task indexspace
   int dim = inputs[0].numDim;
@@ -66,7 +66,7 @@ void Split::create_output_and_partition(FFModel& model)
     case DIM: \
     { \
       task_is = model.get_or_create_task_is(DIM, name); \
-      create_output_and_partition_with_dim<DIM>(model); \
+      map_output_tensors_with_dim<DIM>(model); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -80,7 +80,7 @@ void Split::create_output_and_partition(FFModel& model)
 }
 
 template<int NDIM>
-void Split::create_output_and_partition_with_dim(FFModel& model)
+void Split::map_output_tensors_with_dim(FFModel& model)
 {
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;

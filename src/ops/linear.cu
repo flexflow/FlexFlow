@@ -32,44 +32,54 @@ Tensor FFModel::dense(const Tensor& input,
   if (bias_initializer == NULL) {
     bias_initializer = new ZeroInitializer();
   }
-  Linear *li = new Linear(*this, input, outDim, activation, use_bias,
-                          shared_op, kernel_initializer, bias_initializer, name);
+#ifdef FF_USE_NCCL
+  ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+  ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+  Tensor kernel, bias;
+  {
+    const int dims[2] = {outDim, input.adim[0]};
+    kernel = create_weight<2>(dims, DT_FLOAT, NULL/*owner_op*/,
+        true/*create_grad*/, kernel_initializer, comm_type);
+  }
+  if (use_bias) {
+    const int dims[1] = {outDim};
+    bias = create_weight<1>(dims, DT_FLOAT, NULL/*owner_op*/,
+        true/*create_grad*/, bias_initializer, comm_type);
+  } else {
+    bias = Tensor::NO_TENSOR;
+  }
+  Linear *li = new Linear(*this, input, kernel, bias, activation, name);
   layers.push_back(li);
   return li->outputs[0];
 }
 
 Linear::Linear(FFModel& model,
                const Tensor& _input,
-               int out_dim,
+               const Tensor& _kernel,
+               const Tensor& _bias,
                ActiMode _activation,
-               bool _use_bias,
-               const Op* shared_op,
-               Initializer* _kernel_initializer,
-               Initializer* _bias_initializer,
                const char* name)
-: Op(model, OP_LINEAR, shared_op, name, _input),
-  in_channels(_input.adim[0]), out_channels(out_dim),
-  activation(_activation), use_bias(_use_bias),
-  kernel_initializer(_kernel_initializer),
-  bias_initializer(_bias_initializer)
+: Op(model, OP_LINEAR, name, _input, _kernel, _bias),
+  in_channels(_input.adim[0]), out_channels(_kernel.adim[1]),
+  activation(_activation)
 {
-  numInputs = 1;
+  if (_bias == Tensor::NO_TENSOR) {
+    numInputs = 2;
+    use_bias = false;
+  } else {
+    assert(numInputs == 3);
+    use_bias = true;
+  }
   numOutputs = 1;
   outputs[0].numDim = _input.numDim;
   for (int i = 1; i < outputs[0].numDim; i++)
     outputs[0].adim[i] = _input.adim[i];
-  outputs[0].adim[0] = out_dim;
-  weights[0].numDim = 2;
-  weights[0].adim[0] = in_channels;
-  weights[0].adim[1] = out_channels;
-  numWeights = 1;
-  if (use_bias) {
-    weights[1].numDim = 1;
-    weights[1].adim[0] = out_channels;
-    numWeights = 2;
-  }
+  outputs[0].adim[0] = _kernel.adim[2];
 }
 
+#ifdef DEADCODE
 void Linear::create_weights(FFModel& model)
 {
   int dim = inputs[0].numDim;
@@ -119,15 +129,16 @@ void Linear::create_weights_with_dim(FFModel& model)
     assert(numWeights == 1);
   }
 }
+#endif
 
-void Linear::create_output_and_partition(FFModel& model)
+void Linear::map_output_tensors(FFModel& model)
 {
   int dim = inputs[0].numDim;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      create_output_and_partition_with_dim<DIM>(model); \
+      map_output_tensors_with_dim<DIM>(model); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -141,7 +152,7 @@ void Linear::create_output_and_partition(FFModel& model)
 }
 
 template<int NDIM>
-void Linear::create_output_and_partition_with_dim(FFModel& model)
+void Linear::map_output_tensors_with_dim(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;

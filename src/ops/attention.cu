@@ -102,7 +102,7 @@ void MultiHeadAttention::create_weights(FFModel& model)
   }
 }
 
-void MultiHeadAttention::create_output_and_partition(FFModel& model)
+void MultiHeadAttention::map_output_tensors(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;

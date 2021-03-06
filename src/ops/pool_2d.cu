@@ -62,7 +62,7 @@ void Pool2D::create_weights(FFModel& model)
   // Do nothing since we don't have any weight
 }
 
-void Pool2D::create_output_and_partition(FFModel& model)
+void Pool2D::map_output_tensors(FFModel& model)
 {
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;

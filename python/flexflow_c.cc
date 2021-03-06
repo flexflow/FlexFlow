@@ -920,7 +920,7 @@ flexflow_tensor_get_owner_op(
   flexflow_tensor_t handle_)
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
-  return FFCObjectWrapper::wrap(handle->owner_op);
+  return FFCObjectWrapper::wrap_const(handle->owner_op);
 }
 
 void

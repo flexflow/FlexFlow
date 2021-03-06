@@ -48,22 +48,22 @@ void Reshape::create_weights(FFModel& model)
   // Do nothing
 }
 
-void Reshape::create_output_and_partition(FFModel& model)
+void Reshape::map_output_tensors(FFModel& model)
 {
   switch(inputs[0].numDim) {
     case 1:
     {
       if (outputs[0].numDim == 1) {
-        create_output_and_partition_with_dim<1, 1>(model);
+        map_output_tensors_with_dim<1, 1>(model);
       } else if (outputs[0].numDim == 2) {
-        create_output_and_partition_with_dim<1, 2>(model);
+        map_output_tensors_with_dim<1, 2>(model);
       } else if (outputs[0].numDim == 3) {
-        create_output_and_partition_with_dim<1, 3>(model);
+        map_output_tensors_with_dim<1, 3>(model);
       } else if (outputs[0].numDim == 4) {
-        create_output_and_partition_with_dim<1, 4>(model);
+        map_output_tensors_with_dim<1, 4>(model);
 #if MAX_TENSOR_DIM >= 5
       } else if (outputs[0].numDim == 5) {
-        create_output_and_partition_with_dim<1, 5>(model);
+        map_output_tensors_with_dim<1, 5>(model);
 #endif
       } else {
         assert(false);
@@ -73,16 +73,16 @@ void Reshape::create_output_and_partition(FFModel& model)
     case 2:
     {
       if (outputs[0].numDim == 1) {
-        create_output_and_partition_with_dim<2, 1>(model);
+        map_output_tensors_with_dim<2, 1>(model);
       } else if (outputs[0].numDim == 2) {
-        create_output_and_partition_with_dim<2, 2>(model);
+        map_output_tensors_with_dim<2, 2>(model);
       } else if (outputs[0].numDim == 3) {
-        create_output_and_partition_with_dim<2, 3>(model);
+        map_output_tensors_with_dim<2, 3>(model);
       } else if (outputs[0].numDim == 4) {
-        create_output_and_partition_with_dim<2, 4>(model);
+        map_output_tensors_with_dim<2, 4>(model);
 #if MAX_TENSOR_DIM >= 5
       } else if (outputs[0].numDim == 5) {
-        create_output_and_partition_with_dim<2, 5>(model);
+        map_output_tensors_with_dim<2, 5>(model);
 #endif
       } else {
         assert(false);
@@ -92,16 +92,16 @@ void Reshape::create_output_and_partition(FFModel& model)
     case 3:
     {
       if (outputs[0].numDim == 1) {
-        create_output_and_partition_with_dim<3, 1>(model);
+        map_output_tensors_with_dim<3, 1>(model);
       } else if (outputs[0].numDim == 2) {
-        create_output_and_partition_with_dim<3, 2>(model);
+        map_output_tensors_with_dim<3, 2>(model);
       } else if (outputs[0].numDim == 3) {
-        create_output_and_partition_with_dim<3, 3>(model);
+        map_output_tensors_with_dim<3, 3>(model);
       } else if (outputs[0].numDim == 4) {
-        create_output_and_partition_with_dim<3, 4>(model);
+        map_output_tensors_with_dim<3, 4>(model);
 #if MAX_TENSOR_DIM >= 5
       } else if (outputs[0].numDim == 5) {
-        create_output_and_partition_with_dim<3, 5>(model);
+        map_output_tensors_with_dim<3, 5>(model);
 #endif
       } else {
         assert(false);
@@ -111,16 +111,16 @@ void Reshape::create_output_and_partition(FFModel& model)
     case 4:
     {
       if (outputs[0].numDim == 1) {
-        create_output_and_partition_with_dim<4, 1>(model);
+        map_output_tensors_with_dim<4, 1>(model);
       } else if (outputs[0].numDim == 2) {
-        create_output_and_partition_with_dim<4, 2>(model);
+        map_output_tensors_with_dim<4, 2>(model);
       } else if (outputs[0].numDim == 3) {
-        create_output_and_partition_with_dim<4, 3>(model);
+        map_output_tensors_with_dim<4, 3>(model);
       } else if (outputs[0].numDim == 4) {
-        create_output_and_partition_with_dim<4, 4>(model);
+        map_output_tensors_with_dim<4, 4>(model);
 #if MAX_TENSOR_DIM >= 5
       } else if (outputs[0].numDim == 5) {
-        create_output_and_partition_with_dim<4, 5>(model);
+        map_output_tensors_with_dim<4, 5>(model);
 #endif
       } else {
         assert(false);
@@ -131,15 +131,15 @@ void Reshape::create_output_and_partition(FFModel& model)
     case 5:
     {
       if (outputs[0].numDim == 1) {
-        create_output_and_partition_with_dim<5, 1>(model);
+        map_output_tensors_with_dim<5, 1>(model);
       } else if (outputs[0].numDim == 2) {
-        create_output_and_partition_with_dim<5, 2>(model);
+        map_output_tensors_with_dim<5, 2>(model);
       } else if (outputs[0].numDim == 3) {
-        create_output_and_partition_with_dim<5, 3>(model);
+        map_output_tensors_with_dim<5, 3>(model);
       } else if (outputs[0].numDim == 4) {
-        create_output_and_partition_with_dim<5, 4>(model);
+        map_output_tensors_with_dim<5, 4>(model);
       } else if (outputs[0].numDim == 5) {
-        create_output_and_partition_with_dim<5, 5>(model);
+        map_output_tensors_with_dim<5, 5>(model);
       } else {
         assert(false);
       }
@@ -152,7 +152,7 @@ void Reshape::create_output_and_partition(FFModel& model)
 }
 
 template<int IDIM, int ODIM>
-void Reshape::create_output_and_partition_with_dim(FFModel& model)
+void Reshape::map_output_tensors_with_dim(FFModel& model)
 {
   task_is = IndexSpaceT<ODIM>(model.get_or_create_task_is(ODIM, name));
   Context ctx = model.config.lg_ctx;
