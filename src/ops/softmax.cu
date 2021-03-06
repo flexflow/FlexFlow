@@ -34,7 +34,7 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler)
 Softmax::Softmax(FFModel& model,
                  const Tensor& _input,
                  const char* name)
-: Op(model, OP_SOFTMAX, name, _input), profiling(model.config.profiling)
+: Op(model, OP_SOFTMAX, name, _input)
 {
   outputs[0].numDim = 2;
   outputs[0].adim[0] = _input.adim[0];
@@ -111,6 +111,8 @@ OpMeta* Softmax::init_task(const Task *task,
   SoftmaxMeta* m = new SoftmaxMeta(handle);
   //checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
   softmax->init_meta(m, acc_input.rect, acc_output.rect);
+  m->profiling = softmax->profiling;
+  std::strcpy(m->op_name, softmax->name);
   return m;
 }
 
@@ -174,7 +176,7 @@ void Softmax::forward_task(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const Softmax* softmax = (Softmax*) task->args;
+  //const Softmax* softmax = (Softmax*) task->args;
   const SoftmaxMeta* m = *((SoftmaxMeta**) task->local_args);
   TensorAccessorR<float, 2> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -183,7 +185,7 @@ void Softmax::forward_task(const Task *task,
       false/*readOutput*/);
 
   cudaEvent_t t_start, t_end;
-  if (softmax->profiling) {
+  if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -194,7 +196,7 @@ void Softmax::forward_task(const Task *task,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   forward_kernel(m, acc_input.ptr, acc_output.ptr);
-  if (softmax->profiling) {
+  if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     //print_tensor<2, float>(acc_input.ptr, acc_input.rect, "[Softmax:forward:input]");
@@ -203,7 +205,7 @@ void Softmax::forward_task(const Task *task,
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("%s [Softmax] forward time = %.2fms\n", softmax->name, elapsed);
+    printf("%s [Softmax] forward time = %.2fms\n", m->op_name, elapsed);
   }
 }
 
@@ -220,7 +222,7 @@ void Softmax::forward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(SOFTMAX_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Softmax)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -259,7 +261,7 @@ void Softmax::backward_task(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const Softmax* softmax = (Softmax*) task->args;
+  //const Softmax* softmax = (Softmax*) task->args;
   const SoftmaxMeta* m = *((SoftmaxMeta**) task->local_args);
   TensorAccessorW<float, 2> acc_input_grad(
       regions[0], task->regions[0], FID_DATA, ctx, runtime,
@@ -270,7 +272,7 @@ void Softmax::backward_task(const Task *task,
   assert(acc_input_grad.rect == acc_output_grad.rect);
 
   cudaEvent_t t_start, t_end;
-  if (softmax->profiling) {
+  if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -282,7 +284,7 @@ void Softmax::backward_task(const Task *task,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   backward_kernel(acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
-  if (softmax->profiling) {
+  if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     //print_tensor<2, float>(acc_output_grad.ptr, acc_output_grad.rect, "[Softmax:backward:output_grad]");
@@ -308,7 +310,7 @@ void Softmax::backward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(SOFTMAX_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Softmax)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(

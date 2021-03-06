@@ -31,18 +31,6 @@ void top_level_task(const Task* task,
   std::cout<< "test framework launched" << std::endl;
   auto test_meta = get_test_meta("test_meta.txt");
   FFConfig ffConfig;
-  // Parse input arguments
-  {
-    const InputArgs &command_args = HighLevelRuntime::get_input_args();
-    char **argv = command_args.argv;
-    int argc = command_args.argc;
-    ffConfig.parse_args(argv, argc);
-  }
-  ffConfig.lg_ctx = ctx;
-  ffConfig.lg_hlr = runtime;
-  ffConfig.profiling = false;
-  ffConfig.debug = true;
-  ffConfig.field_space = runtime->create_field_space(ctx);
   // create ff model object
   FFModel ff(ffConfig);
   IndexSpace task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));

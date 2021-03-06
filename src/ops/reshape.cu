@@ -233,7 +233,7 @@ void Reshape::forward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   IndexLauncher launcher(RESHAPE_FWD_TASK_ID, task_is,
-      TaskArgument(this, sizeof(Reshape)), argmap,
+      TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -283,7 +283,7 @@ void Reshape::backward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   IndexLauncher launcher(RESHAPE_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Reshape)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): output_grad

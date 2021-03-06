@@ -114,6 +114,7 @@ OpMeta* BatchMatmul::init_task(const Task* task,
 {
   FFHandler handle = *((const FFHandler*) task->local_args);
   BatchMatmulMeta* m = new BatchMatmulMeta(handle);
+  m->profiling = false;
   return m;
 }
 
@@ -210,7 +211,7 @@ void BatchMatmul::forward_task(const Task* task,
 {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const BatchMatmul* bmm = (const BatchMatmul*) task->args;
+  //const BatchMatmul* bmm = (const BatchMatmul*) task->args;
   const BatchMatmulMeta* meta = *((BatchMatmulMeta**) task->local_args);
   Domain out_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
@@ -248,7 +249,7 @@ void BatchMatmul::forward_task(const Task* task,
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
   }
   cudaEvent_t t_start, t_end;
-  if (bmm->profiling) {
+  if (meta->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -259,9 +260,9 @@ void BatchMatmul::forward_task(const Task* task,
   checkCUDA(cublasSetStream(meta->handle.blas, stream));
   checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
 #endif
-  bmm->forward_kernel(meta, out_ptr, a_ptr, b_ptr, c_ptr,
+  forward_kernel(meta, out_ptr, a_ptr, b_ptr, c_ptr,
     m, n, k, batch);
-  if (bmm->profiling) {
+  if (meta->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -302,7 +303,7 @@ void BatchMatmul::forward_with_dim(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(BATCHMATMUL_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(BatchMatmul)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -366,7 +367,7 @@ void BatchMatmul::backward_task(const Task *task,
   // Currently assume C is NULL
   assert(regions.size() == 6);
   assert(task->regions.size() == 6);
-  BatchMatmul* bmm = (BatchMatmul*) task->args;
+  //BatchMatmul* bmm = (BatchMatmul*) task->args;
   const BatchMatmulMeta* meta = *((BatchMatmulMeta**) task->local_args);
   // output domains
   Domain out_domain = runtime->get_index_space_domain(
@@ -418,7 +419,7 @@ void BatchMatmul::backward_task(const Task *task,
 
   float* c_grad_ptr = NULL;
   cudaEvent_t t_start, t_end;
-  if (bmm->profiling) {
+  if (meta->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -429,16 +430,16 @@ void BatchMatmul::backward_task(const Task *task,
   checkCUDA(cublasSetStream(meta->handle.blas, stream));
   checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
 #endif
-  bmm->backward_kernel(meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr,
+  backward_kernel(meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr,
     b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch);
-  if (bmm->profiling) {
+  if (meta->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("BatchMatmul forward time = %.2lfms\n", elapsed);
+    printf("BatchMatmul backward time = %.2lfms\n", elapsed);
   }
 }
 
@@ -481,7 +482,7 @@ void BatchMatmul::backward_with_dim(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(BATCHMATMUL_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(BatchMatmul)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): output

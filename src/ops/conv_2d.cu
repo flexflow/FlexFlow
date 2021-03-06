@@ -33,7 +33,7 @@ Tensor FFModel::conv2d(const Tensor& input,
     int seed = std::rand();
     kernel_initializer = new GlorotUniform(seed);
   }
-  if (bias_initializer == NULL) {
+  if (bias_initializer == NULL && use_bias) {
     bias_initializer = new ZeroInitializer();
   }
 
@@ -69,8 +69,7 @@ Conv2D::Conv2D(FFModel& model,
   padding_h(_padding_h), padding_w(_padding_w),
   groups(_groups), activation(_activation), use_bias(_use_bias),
   kernel_initializer(_kernel_initializer),
-  bias_initializer(_bias_initializer),
-  profiling(model.config.profiling)
+  bias_initializer(_bias_initializer)
 {
   assert(_input.numDim == 4);
   // Set output shape
@@ -226,6 +225,9 @@ OpMeta* Conv2D::init_task(const Task *task,
 
   Conv2DMeta* m = new Conv2DMeta(handle);
   m->relu = conv->activation == AC_MODE_RELU;
+  m->use_bias = conv->use_bias;
+  m->profiling = conv->profiling;
+  std::strcpy(m->op_name, conv->name);
 
   int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int input_h = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
@@ -412,10 +414,10 @@ void Conv2D::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-  Conv2D* conv = (Conv2D*) task->args;
+  //Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
-  assert(regions.size() == (3 + int(conv->use_bias)));
-  assert(task->regions.size() == (3 + int(conv->use_bias)));
+  assert(regions.size() == (3 + int(m->use_bias)));
+  assert(task->regions.size() == (3 + int(m->use_bias)));
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_output(
@@ -424,7 +426,7 @@ void Conv2D::forward_task(const Task *task,
   TensorAccessorR<float, 4> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   const float* acc_bias_ptr = NULL;
-  if (conv->use_bias) { 
+  if (m->use_bias) { 
     TensorAccessorR<float, 1> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
     acc_bias_ptr = acc_bias.ptr;
@@ -432,7 +434,7 @@ void Conv2D::forward_task(const Task *task,
 
   //printf("fwdAlgo(%d), bwdFilterALgo(%d), bwdDataAlgo(%d)\n", (int)m->fwdAlgo,(int) m->bwdFilterAlgo,(int) m->bwdDataAlgo);
   cudaEvent_t t_start, t_end;
-  if (conv->profiling) {
+  if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -443,8 +445,8 @@ void Conv2D::forward_task(const Task *task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  conv->forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias_ptr);
-  if (conv->profiling) {
+  Conv2D::forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias_ptr);
+  if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     //print_tensor<4, float>(acc_input.ptr, acc_input.rect, "[Conv2D:forward:input]");
@@ -455,7 +457,7 @@ void Conv2D::forward_task(const Task *task,
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("%s [Conv2D] forward time (CF) = %.2fms\n", conv->name, elapsed);
+    printf("%s [Conv2D] forward time (CF) = %.2fms\n", m->op_name, elapsed);
   }
 }
 
@@ -472,7 +474,7 @@ void Conv2D::forward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(CONV2D_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Conv2D)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -554,10 +556,10 @@ void Conv2D::backward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime)
 {
-  Conv2D* conv = (Conv2D*) task->args;
+  //Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
-  assert(regions.size() == (6 + int(conv->use_bias)));
-  assert(task->regions.size() == (6 + int(conv->use_bias)));
+  assert(regions.size() == (6 + int(m->use_bias)));
+  assert(task->regions.size() == (6 + int(m->use_bias)));
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_input_grad(
@@ -574,7 +576,7 @@ void Conv2D::backward_task(const Task *task,
       regions[5], task->regions[5], FID_DATA, ctx, runtime,
       true/*readOutput*/);
   float* acc_bias_grad_ptr = NULL;
-  if (conv->use_bias) {  
+  if (m->use_bias) { 
     TensorAccessorW<float, 1> acc_bias_grad(
         regions[6], task->regions[6], FID_DATA, ctx, runtime,
         true/*readOutput*/);
@@ -583,7 +585,7 @@ void Conv2D::backward_task(const Task *task,
   
 
   cudaEvent_t t_start, t_end;
-  if (conv->profiling) {
+  if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -594,18 +596,18 @@ void Conv2D::backward_task(const Task *task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  conv->backward_kernel(m, acc_input.ptr, acc_input_grad.ptr,
-                        acc_output.ptr, acc_output_grad.ptr,
-                        acc_kernel.ptr, acc_kernel_grad.ptr,
-                        acc_bias_grad_ptr);
-  if (conv->profiling) {
+  Conv2D::backward_kernel(m, acc_input.ptr, acc_input_grad.ptr,
+                          acc_output.ptr, acc_output_grad.ptr,
+                          acc_kernel.ptr, acc_kernel_grad.ptr,
+                          acc_bias_grad_ptr);
+  if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("%s [Conv2D] backward time = %.2fms\n", conv->name, elapsed);
+    printf("%s [Conv2D] backward time = %.2fms\n", m->op_name, elapsed);
     //print_tensor<4, float>(acc_output_grad.ptr, acc_output_grad.rect, "[Conv2D:backward:output_grad]");
     //print_tensor<4, float>(acc_kernel_grad.ptr, acc_kernel_grad.rect, "[Conv2D:backward:kernel_grad]");
     //print_tensor<1, float>(acc_bias_grad.ptr, acc_bias_grad.rect, "[Conv2D:backward:bias_grad]");
@@ -627,7 +629,7 @@ void Conv2D::backward(const FFModel& ff)
   }
 
   IndexLauncher launcher(CONV2D_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Conv2D)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): input
