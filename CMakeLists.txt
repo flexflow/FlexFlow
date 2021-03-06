@@ -27,7 +27,10 @@ option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 option(FF_USE_PYTHON "Enable Python" ON)  
 
 # option for using Python
-option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)  
+option(FF_USE_GASNET "Run FlexFlow with GASNet" ON)
+set(FF_GASNET_CONDUITS udp mpi ibv)
+set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select Gasnet conduit ${FF_GASNET_CONDUITS}")
+set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})  
 
 # option for cuda arch
 set(FF_CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
@@ -45,18 +48,18 @@ set(LD_FLAGS $ENV{LD_FLAGS})
 
 set(MAX_DIM 4)
 
- # ZLIB
- include(zlib)
+# ZLIB
+include(zlib)
 
- # CUDA
- include(cuda)
+# CUDA
+include(cuda)
 #  list(JOIN CUDA_GENCODE " " CUDA_GENCODE_FLAG)
 #  set(CMAKE_CUDA_FLAGS ${CUDA_GENCODE_FLAG})
  
- # CUDNN
- include(cudnn)
+# CUDNN
+include(cudnn)
 
- # NCCL
+# NCCL
 if(FF_USE_NCCL)
   include(nccl)
   list(APPEND CC_FLAGS
@@ -158,7 +161,6 @@ set(FLEXFLOW_GPU_SRC
 
 set(FLEXFLOW_CPP_DRV_SRC
   ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)  
-
 
 message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
 
