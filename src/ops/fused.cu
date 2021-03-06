@@ -336,6 +336,14 @@ void FusedOp::forward_task(const Task* task,
         BatchNorm::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1]);
         break;
       }
+      case OP_DROPOUT:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        DropoutMeta* m = (DropoutMeta*) metas->meta[op];
+        Dropout::forward_kernel(m, my_ip[0], my_op[0]);
+        break;
+      }
       case OP_LINEAR:
       {
         assert(fused->op_num_inputs[op] == 1);
@@ -701,6 +709,14 @@ void FusedOp::backward_task(const Task* task,
         BatchNorm::backward_kernel(m, my_ip[0], my_grad_op[0], my_op[0],
             my_grad_ip[0], my_wp[0], my_grad_wp[0], my_grad_wp[1],
             my_od[0].get_volume());
+        break;
+      }
+      case OP_DROPOUT:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        DropoutMeta* m = (DropoutMeta*) metas->meta[op];
+        Dropout::backward_kernel(m, my_grad_op[0], my_grad_ip[0]);
         break;
       }
       case OP_LINEAR:
