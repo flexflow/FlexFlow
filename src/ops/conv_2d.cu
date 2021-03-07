@@ -44,14 +44,14 @@ Tensor FFModel::conv2d(const Tensor& input,
 #endif
   Tensor kernel, bias;
   {
-    const int dims[4] = {outChannels, input.adim[0] / groups, kernelH, kernelW};
+    const int dims[4] = {outChannels, input.adim[2] / groups, kernelH, kernelW};
     kernel = create_weight<4>(dims, DT_FLOAT, NULL/*owner_op*/,
         true/*create_grad*/, kernel_initializer, comm_type);
   }
   if (use_bias) {
     const int dims[1] = {outChannels};
     bias = create_weight<1>(dims, DT_FLOAT, NULL/*owner_op*/,
-        true/*create_grad*/, kernel_initializer, comm_type);
+        true/*create_grad*/, bias_initializer, comm_type);
   } else {
     bias = Tensor::NO_TENSOR;
   }

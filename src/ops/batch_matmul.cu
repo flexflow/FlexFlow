@@ -52,29 +52,6 @@ BatchMatmul::BatchMatmul(FFModel& model,
   numWeights = 0;
 }
 
-void BatchMatmul::map_output_tensors(FFModel& model)
-{
-  // Retrive the task indexspace
-  int dim = inputs[0].numDim;
-  assert(dim == inputs[1].numDim);
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      task_is = model.get_or_create_task_is(DIM, name); \
-      map_output_tensors_with_dim<DIM>(model); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      // Unsupported dim for BatchMatmul operator
-      assert(false);
-    }
-  }
-}
-
 void BatchMatmul::create_input_partition(FFModel& model)
 {
   Context ctx = model.config.lg_ctx;

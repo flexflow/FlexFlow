@@ -25,8 +25,7 @@ class Op;
 class FFModel;
 class Initializer;
 
-struct Tensor {
-  static const Tensor NO_TENSOR;
+struct TensorBase {
   Tensor(void);
   Tensor& operator=(const Tensor& rhs);
   bool operator==(const Tensor& rhs) const;
@@ -66,6 +65,8 @@ struct Tensor {
   LogicalPartition part, part_grad;
   PhysicalRegion physical_region;
 };
+
+typedef TensorBase* Tensor;
 
 struct Parameter : Tensor {
   template <typename T>

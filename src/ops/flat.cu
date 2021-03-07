@@ -37,7 +37,7 @@ Flat::Flat(FFModel& model,
   int batch_size = _input.adim[3];
   numOutputs = 1;
   const int dims[2] = {batch_size, out_dim};
-  outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
+  outputs[0] = model.create_tensor<2>(dims, _input.data_type, this);
 }
 
 void Flat::create_input_partition(FFModel& model)

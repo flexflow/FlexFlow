@@ -186,12 +186,22 @@ protected:
                                    std::function<void()> const &backward,
                                    CostMetrics& cost_metrics);
 public:
-  Op(FFModel& model, OperatorType type, const char* _name, const Tensor& input);
-  Op(FFModel& model, OperatorType type, const char* _name, const Tensor& input1, const Tensor& input2);
-  Op(FFModel& model, OperatorType type, const char* _name, const Tensor& input1, const Tensor& input2, const Tensor& input3);
-  Op(FFModel& model, OperatorType type, const char* _name, const Tensor& input1, const Tensor& input2, const Tensor& input3, const Tensor& input4);
-  Op(FFModel& model, OperatorType type, const char* _name, int num, const Tensor* inputs);
-  Op(FFModel& model, OperatorType type, const char* _name, int num);
+  Op(FFModel& model,
+     OperatorType type,
+     const char* _name,
+     const Tensor& input1 = Tensor::NO_TENSOR,
+     const Tensor& input2 = Tensor::NO_TENSOR,
+     const Tensor& input3 = Tensor::NO_TENSOR,
+     const Tensor& input4 = Tensor::NO_TENSOR);
+  Op(FFModel& model,
+     OperatorType type,
+     const char* _name,
+     int num,
+     const Tensor* inputs);
+  Op(FFModel& model,
+     OperatorType type,
+     const char* _name,
+     int num);
   // Pure virtual functions that must be implemented
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
@@ -212,7 +222,7 @@ public:
   // Helper functions
   void prefetch(const FFModel&);
   void zero_grad(const FFModel&);
-  Parameter* get_parameter(int index);
+  Tensor* get_parameter(int index);
 #ifdef FF_USE_NCCL
   static ncclUniqueId get_nccl_unique_id_task(const Task *task,
       const std::vector<PhysicalRegion> &regions,
@@ -230,7 +240,7 @@ public:
   IndexSpace task_is;
   Tensor outputs[MAX_NUM_OUTPUTS];
   Tensor inputs[MAX_NUM_INPUTS];
-  Parameter weights[MAX_NUM_WEIGHTS];
+  Tensor weights[MAX_NUM_WEIGHTS];
   //bool trainableInputs[MAX_NUM_INPUTS];
   //bool resetInputGrads[MAX_NUM_INPUTS];
   LogicalPartition input_lps[MAX_NUM_INPUTS], input_grad_lps[MAX_NUM_INPUTS];
@@ -376,11 +386,13 @@ public:
                        const int dims[],
                        DataType data_type,
                        const Op* owner_op = NULL,
+                       int owner_idx = 0,
                        bool create_grad = true);
   template<int NDIM>
   Tensor create_tensor(const int dims[],
                        DataType data_type,
                        const Op* owner_op = NULL,
+                       int owner_idx = 0,
                        bool create_grad = true);
   void map_tensor(Tensor& tensor, const Op* parallel_op);
   void map_weight(Tensor& tensor, const Op* parallel_op);

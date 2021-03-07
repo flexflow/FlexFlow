@@ -265,109 +265,18 @@ Domain Tensor::get_domain() const
 Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,
-       const Tensor& _input)
-: op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1),
-  profiling(model.config.profiling)
-{
-  std::string pcname;
-  if (_name == NULL) {
-    pcname = model.get_operator_type_name(op_type);
-  } else {
-    pcname = std::string(_name);
-  }
-  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
-  assert(pcname.length() < MAX_OPNAME);
-  std::strcpy(name, pcname.c_str());
-  inputs[0] = _input;
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
-  for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    outputs[i].owner_op = this;
-    outputs[i].owner_idx = i;
-    outputs[i].data_type = inputs[0].data_type;
-  }
-  for (int i = 0; i < MAX_NUM_WORKERS; i++)
-    meta[i] = NULL;
-}
-
-Op::Op(FFModel& model,
-       OperatorType _op_type,
-       const char* _name,
-       const Tensor& _input1,
-       const Tensor& _input2)
-: op_type(_op_type), numInputs(2), numWeights(0), numOutputs(1),
-  profiling(model.config.profiling)
-{
-  std::string pcname;
-  if (_name == NULL) {
-    pcname = model.get_operator_type_name(op_type);
-  } else {
-    pcname = std::string(_name);
-  }
-  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
-  assert(pcname.length() < MAX_OPNAME);
-  std::strcpy(name, pcname.c_str());
-  inputs[0] = _input1;
-  inputs[1] = _input2;
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
-  for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    outputs[i].owner_op = this;
-    outputs[i].owner_idx = i;
-    outputs[i].data_type = inputs[0].data_type;
-  }
-  for (int i = 0; i < MAX_NUM_WORKERS; i++)
-    meta[i] = NULL;
-}
-
-Op::Op(FFModel& model,
-       OperatorType _op_type,
-       const char* _name,
-       const Tensor& _input1,
-       const Tensor& _input2,
-       const Tensor& _input3)
-: op_type(_op_type), numInputs(3), numWeights(0), numOutputs(1),
-  profiling(model.config.profiling)
-{
-  std::string pcname;
-  if (_name == NULL) {
-    pcname = model.get_operator_type_name(op_type);
-  } else {
-    pcname = std::string(_name);
-  }
-  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
-  assert(pcname.length() < MAX_OPNAME);
-  std::strcpy(name, pcname.c_str());
-  inputs[0] = _input1;
-  inputs[1] = _input2;
-  inputs[2] = _input3;
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
-  for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    outputs[i].owner_op = this;
-    outputs[i].owner_idx = i;
-    outputs[i].data_type = inputs[0].data_type;
-  }
-  for (int i = 0; i < MAX_NUM_WORKERS; i++)
-    meta[i] = NULL;
-}
-
-Op::Op(FFModel& model,
-       OperatorType _op_type,
-       const char* _name,
        const Tensor& _input1,
        const Tensor& _input2,
        const Tensor& _input3,
        const Tensor& _input4)
-: op_type(_op_type), numInputs(4), numWeights(0), numOutputs(1),
+: op_type(_op_type), numInputs(0), numWeights(0), numOutputs(1),
   profiling(model.config.profiling)
 {
+  std::vector<Tensor> tensors;
+  tensors.push_back(_input1);
+  tensors.push_back(_input2);
+  tensors.push_back(_input3);
+  tensors.push_back(_input4);
   std::string pcname;
   if (_name == NULL) {
     pcname = model.get_operator_type_name(op_type);
@@ -377,10 +286,15 @@ Op::Op(FFModel& model,
   pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
-  inputs[0] = _input1;
-  inputs[1] = _input2;
-  inputs[2] = _input3;
-  inputs[3] = _input4;
+  for (size_t i = 0; i < tensors.size(); i++) {
+    if (tensors[i].sync_type == ParameterSyncType::NONE) {
+      // Activation
+      inputs[numInputs++] = tensors[i];
+    } else {
+      // Weight
+      weights[numWeights++] = tensors[i];
+    }
+  }
   //for (int i = 0; i < numInputs; i++) {
   //  trainableInputs[i] = true;
   //  resetInputGrads[i] = true;
@@ -398,7 +312,7 @@ Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,
        int n, const Tensor* _inputs)
-: op_type(_op_type), numInputs(n), numWeights(0), numOutputs(1),
+: op_type(_op_type), numInputs(0), numWeights(0), numOutputs(1),
   profiling(model.config.profiling)
 {
   std::string pcname;
@@ -411,8 +325,15 @@ Op::Op(FFModel& model,
   assert(pcname.length() < MAX_OPNAME);
   assert(n <= MAX_NUM_INPUTS);
   std::strcpy(name, pcname.c_str());
-  for (int i = 0; i < n; i++)
-    inputs[i] = _inputs[i];
+  for (int i = 0; i < n; i++) {
+    if (_inputs[i].sync_type == ParameterSyncType::NONE) {
+      // Activation
+      inputs[numInputs++] = _inputs[i];
+    } else {
+      // Weight
+      weights[numWeights++] = _inputs[i];
+    }
+  }
   //for (int i = 0; i < numInputs; i++) {
   //  trainableInputs[i] = true;
   //  resetInputGrads[i] = true;
@@ -442,10 +363,6 @@ Op::Op(FFModel& model,
   pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -455,7 +372,7 @@ Op::Op(FFModel& model,
     meta[i] = NULL;
 }
 
-Parameter* Op::get_parameter(int index)
+Tensor* Op::get_parameter(int index)
 {
   assert(index < numWeights);
   return &weights[index];
@@ -509,7 +426,7 @@ void Op::create_input_partition(FFModel& model)
     { \
       create_input_partition_with_dim<DIM>(model); \
       break; \
-    } \
+    }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -537,13 +454,16 @@ void Op::create_input_partition_with_dim(FFModel& model)
       IndexSpaceT<NDIM> input_task_is;
       input_task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(
           NDIM, input_pcname));
-      assert(input_part_rect == runtime->get_index_space_domain(
-          ctx, input_task_is));
+      Rect<NDIM> input_part_rect2 = runtime->get_index_space_domain(
+          ctx, input_task_is);
+      assert(input_part_rect == input_part_rect2);
     }
     if (my_part_rect == input_part_rect) {
       input_lps[i] = inputs[i].part;
       input_grad_lps[i] = inputs[i].part_grad;
     } else {
+      // Assert that this input must be activations 
+      assert(inputs[i].sync_type == ParameterSyncType::NONE);
       model.create_disjoint_partition(
           inputs[i], (IndexSpaceT<NDIM>)task_is,
           input_lps[i], input_grad_lps[i]);
@@ -821,11 +741,31 @@ Tensor FFModel::create_constant(const int dims[],
   return tensor;
 }
 
+Tensor FFModel::create_tensor(
+    int numdim,
+    const int dims[],
+    DataType data_type,
+    const Op* op,
+    int idx,
+    bool create_grad)
+{
+  switch (numdim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return create_tensor<DIM>(dims, data_type, op, idx, create_grad);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false && "Unsupported dim!");
+  }
+}
+
 template<int NDIM>
 Tensor FFModel::create_tensor(
     const int dims[],
     DataType data_type,
     const Op* owner_op,
+    int owner_idx,
     bool create_grad)
 {
   Tensor tensor;
@@ -914,7 +854,7 @@ void FFModel::map_tensor_with_dim(Tensor& tensor, const Op* parallel_op)
   }
   Point<NDIM> hi;
   for (int i = 0; i < NDIM; i++)
-    hi[i] = tensor.adim[i];
+    hi[i] = tensor.adim[i] - 1;
   Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
   IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
   tensor.region = runtime->create_logical_region(ctx, is, fs);
@@ -978,13 +918,13 @@ void FFModel::map_weight_with_dim(Tensor& weight, const Op* parallel_op)
     case OP_MULTIHEAD_ATTENTION:
     {
       switch (tdim) {
-#define DIMFUNC(DIM) \
-        case DIM: \
+#define DIMFUNC(TDIM) \
+        case TDIM: \
         { \
-          map_linear_weight<NDIM, tdim>(weight, parallel_op); \
+          map_linear_weight<NDIM, TDIM>(weight, parallel_op); \
           break; \
-        } \
-        LEGION_FOREACH_N(DIMFUNC)
+        }
+      LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
         default:
         {
@@ -1021,6 +961,10 @@ void FFModel::create_disjoint_partition(const Tensor& tensor,
   {
     assert(tensor.numDim == NDIM);
     Domain domain = runtime->get_index_space_domain(ctx, part_is);
+    assert(domain.get_dim() == NDIM);
+  }
+  {
+    Domain domain = runtime->get_index_space_domain(ctx, tensor.region.get_index_space());
     assert(domain.get_dim() == NDIM);
   }
   Rect<NDIM> rect = runtime->get_index_space_domain(ctx, tensor.region.get_index_space());
@@ -1645,20 +1589,19 @@ void FFModel::compile(LossType loss_type,
     Op* op = layers[l];
     for (int i = 0; i < op->numInputs; i++) {
       if (op->inputs[i].owner_op == NULL) {
-        // User created tensor
-        // op->inputs[i] = op->inputs[i];
-        if (op->inputs[i].sync_type == ParameterSyncType::NONE) {
-          // Input tensor
-          map_tensor(op->inputs[i], op);
-        } else {
-          // Weight tensor
-          map_weight(op->inputs[i], op);
-        }
+        // Input tensor
+        assert(op->inputs[i].sync_type == ParameterSyncType::NONE);
+        map_tensor(op->inputs[i], op);
       } else {
         // Refresh op's input tensor
         int tsIdx = op->inputs[i].owner_idx;
         op->inputs[i] = op->inputs[i].owner_op->outputs[tsIdx];
       }
+    }
+    for (int i = 0; i < op->numWeights; i++) {
+      // Weight tensor
+      assert(op->inputs[i].owner_op == NULL);
+      map_weight(op->weights[i], op);
     }
     op->create_input_partition(*this);
     for (int i = 0; i < op->numOutputs; i++) {
@@ -1773,12 +1716,8 @@ void FFModel::compile(LossType loss_type,
     case DIM: \
     { \
       label_tensor = create_tensor<DIM>(dims, label_type); \
+      map_tensor(label_tensor, final_layer); \
       label_tensor_with_final_part = label_tensor; \
-      IndexSpaceT<DIM> task_is = IndexSpaceT<DIM>(\
-          get_or_create_task_is(DIM, final_layer->name));\
-      create_disjoint_partition<DIM>(label_tensor_with_final_part,\
-          task_is, label_tensor_with_final_part.part,\
-          label_tensor_with_final_part.part_grad);\
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -2935,7 +2874,7 @@ void register_flexflow_tasks(int argc, char **argv)
 
 // template instantiations
 #define DIMFUNC(DIM) \
-  template Tensor FFModel::create_tensor<DIM>(const int* dims, DataType data_type, const Op* owner_op, bool create_grad); \
+  template Tensor FFModel::create_tensor<DIM>(const int* dims, DataType data_type, const Op* owner_op, int owner_idx, bool create_grad); \
   template Parameter FFModel::create_weight<DIM>(const int dims[], DataType data_type, const Op* owner_op, bool create_grad,\
     Initializer* initializer, ParameterSyncType sync_type);\
   template void FFModel::map_tensor_with_dim<DIM>(Tensor& tensor, const Op* parallel_op); \
