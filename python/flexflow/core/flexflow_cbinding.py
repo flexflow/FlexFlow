@@ -410,10 +410,10 @@ class Tensor(object):
     elif handle != None and ffi.typeof(handle) == ffi.typeof('flexflow_tensor_t'):
       self.p_handle = 0
       self.handle = handle
-    elif handle != None and ffi.typeof(handle) == ffi.typeof('flexflow_parameter_t'):
-      self.p_handle = ffi.new('flexflow_tensor_t *')
-      self.p_handle.impl = handle.impl
-      self.handle = self.p_handle[0]
+    #elif handle != None and ffi.typeof(handle) == ffi.typeof('flexflow_tensor_t'):
+    #  self.p_handle = ffi.new('flexflow_tensor_t *')
+    #  self.p_handle.impl = handle.impl
+    #  self.handle = self.p_handle[0]
     else:
       assert 0, "Tensor handle is wrong"
     self.num_dims = 0
@@ -596,7 +596,7 @@ class Tensor(object):
 class Parameter(Tensor):
   __slots__ = ['parameter_handle']
   def __init__(self, handle):
-    assert ffi.typeof(handle) == ffi.typeof('flexflow_parameter_t'), "Parameter handle is wrong"
+    assert ffi.typeof(handle) == ffi.typeof('flexflow_tensor_t'), "Parameter handle is wrong"
     self.parameter_handle = handle
     super(Parameter, self).__init__(self.parameter_handle, deallocate=False)
 
@@ -611,7 +611,7 @@ class Parameter(Tensor):
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
     fflogger.debug("set weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(np_shape)))
-    ret_val = ffc.flexflow_parameter_set_weights_float(self.parameter_handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
+    ret_val = ffc.flexflow_tensor_set_tensor_float(self.parameter_handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
     assert ret_val == True, ret_val
 
   def get_weights(self, ffmodel):
@@ -620,7 +620,7 @@ class Parameter(Tensor):
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
-    ret_val = ffc.flexflow_parameter_get_weights_float(self.parameter_handle, ffmodel.handle, raw_ptr)
+    ret_val = ffc.flexflow_tensor_get_tensor_float(self.parameter_handle, ffmodel.handle, raw_ptr)
     assert ret_val == True
     return np_array
 

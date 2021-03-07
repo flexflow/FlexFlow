@@ -40,11 +40,12 @@ Concat::Concat(FFModel& model,
     dims[i] = inputs[0]->adim[num_dim-1-i];
   for (int i = 1; i < numInputs; i++) {
     assert(inputs[i]->data_type == inputs[0]->data_type);
+    assert(inputs[i]->numDim == inputs[0]->numDim);
     for (int j = 0; j < num_dim; j++) {
       if (j != axis)
         assert(inputs[i]->adim[j] == inputs[0]->adim[j]);
       else
-        dims[axis] += inputs[i]->adim[num_dim-1-axis];
+        dims[num_dim-1-j] += inputs[i]->adim[j];
     }
   }
   numOutputs = 1;

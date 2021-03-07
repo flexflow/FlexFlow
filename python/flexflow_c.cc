@@ -950,8 +950,7 @@ flexflow_tensor_set_tensor_float(
   flexflow_model_t model_,
   int num_dim,
   int *dims,
-  const float *data,
-  enum ParameterSyncType comm_type)
+  const float *data)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
@@ -959,19 +958,18 @@ flexflow_tensor_set_tensor_float(
   for (int i = 0; i < num_dim; i++ ) {
     dims_vec.push_back(dims[i]);
   }
-  return handle->set_tensor<float>(model, dims_vec, data, comm_type);
+  return handle->set_tensor<float>(model, dims_vec, data);
 }
 
 bool
 flexflow_tensor_get_tensor_float(
   flexflow_tensor_t handle_,
   flexflow_model_t model_,
-  float *data,
-  enum ParameterSyncType comm_type)
+  float *data)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
-  return handle->get_tensor<float>(model, data, comm_type);
+  return handle->get_tensor<float>(model, data);
 }
   
 bool
@@ -980,8 +978,7 @@ flexflow_tensor_set_tensor_int(
   flexflow_model_t model_,
   int num_dim,
   int *dims,
-  const int *data,
-  enum ParameterSyncType comm_type)
+  const int *data)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
@@ -989,19 +986,18 @@ flexflow_tensor_set_tensor_int(
   for (int i = 0; i < num_dim; i++ ) {
     dims_vec.push_back(dims[i]);
   }
-  return handle->set_tensor<int>(model, dims_vec, data, comm_type);
+  return handle->set_tensor<int>(model, dims_vec, data);
 }
 
 bool
 flexflow_tensor_get_tensor_int(
   flexflow_tensor_t handle_,
   flexflow_model_t model_,
-  int *data,
-  enum ParameterSyncType comm_type)
+  int *data)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
-  return handle->get_tensor<int>(model, data, comm_type);
+  return handle->get_tensor<int>(model, data);
 }
 
 // -----------------------------------------------------------------------

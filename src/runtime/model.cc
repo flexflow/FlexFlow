@@ -274,6 +274,8 @@ Op::Op(FFModel& model,
 : op_type(_op_type), numInputs(0), numWeights(0), numOutputs(1),
   profiling(model.config.profiling)
 {
+  for (int i = 0; i < MAX_NUM_INPUTS; i++)
+    inputs[i] = NULL;
   std::vector<Tensor> tensors;
   tensors.push_back(_input1);
   tensors.push_back(_input2);
@@ -1612,6 +1614,7 @@ void FFModel::compile(LossType loss_type,
       // Weight tensor
       assert(op->weights[i]->owner_op == NULL);
       map_weight(op->weights[i], op);
+      parameters.push_back(op->weights[i]);
     }
     op->create_input_partition(*this);
     for (int i = 0; i < op->numOutputs; i++) {

@@ -451,15 +451,13 @@ flexflow_tensor_set_tensor_float(
   flexflow_model_t model,
   int num_dim,
   int *dims,
-  const float *data,
-  enum ParameterSyncType comm_type);
+  const float *data);
 
 bool
 flexflow_tensor_get_tensor_float(
   flexflow_tensor_t handle,
   flexflow_model_t model,
-  float *data,
-  enum ParameterSyncType comm_type);
+  float *data);
   
 bool
 flexflow_tensor_set_tensor_int(
@@ -467,15 +465,13 @@ flexflow_tensor_set_tensor_int(
   flexflow_model_t model,
   int num_dim,
   int *dims,
-  const int *data,
-  enum ParameterSyncType comm_type);
+  const int *data);
 
 bool
 flexflow_tensor_get_tensor_int(
   flexflow_tensor_t handle,
   flexflow_model_t model,
-  int *data,
-  enum ParameterSyncType comm_type);
+  int *data);
 
 // -----------------------------------------------------------------------
 // Parameter

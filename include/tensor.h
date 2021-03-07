@@ -46,12 +46,10 @@ struct TensorBase {
   template <typename T>
   bool set_tensor(const FFModel* model,
                    const std::vector<int>& dims,
-                   const T* data,
-                   ParameterSyncType comm_type);
+                   const T* data);
   template <typename T>
   bool get_tensor(const FFModel* model,
-                  T* data,
-                  ParameterSyncType comm_type);
+                  T* data);
   int guid, numDim, adim[MAX_TENSOR_DIM];
   DataType data_type;
   ParameterSyncType sync_type;
