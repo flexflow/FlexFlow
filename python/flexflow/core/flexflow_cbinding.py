@@ -680,6 +680,10 @@ class FFModel(object):
     handle = ffc.flexflow_tensor_create(self.handle, num_dims, c_dims, c_data_type, create_grad);
     return Tensor(handle)
 
+  def map_tensor(self, tensor, parallel_op = None):
+    op_handle = self.__get_op_handle(parallel_op)
+    ffc.flexflow_tensor_map(self.handle, tensor.handle, op_handle)
+
   def create_constant(self, dims, value, data_type):
     c_dims = ffi.new("int[]", dims)
     c_data_type = enum_to_int(DataType, data_type)
@@ -1613,8 +1617,10 @@ class FFModel(object):
 
     if (num_dim == 2):
       full_tensor = self.create_tensor([num_samples, full_array_shape[1]], datatype)
+      self.map_tensor(full_tensor)
     elif (num_dim == 4):
       full_tensor = self.create_tensor([num_samples, full_array_shape[1], full_array_shape[2], full_array_shape[3]], datatype)
+      self.map_tensor(full_tensor)
     else:
       assert 0, "unsupported dims"
 

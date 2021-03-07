@@ -82,10 +82,12 @@ Conv2D::Conv2D(FFModel& model,
 {
   assert(_input->numDim == 4);
   if (_bias == NULL) {
-    numInputs = 2;
+    assert(numInputs == 1);
+    assert(numWeights == 1);
     use_bias = false;
   } else {
-    assert(numInputs == 3);
+    assert(numInputs == 1);
+    assert(numWeights == 2);
     use_bias = true;
   }
   // Set output shape

@@ -38,12 +38,14 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff, Tensor input, Tensor label,
     batch_input = input;
     const int dims[] = {num_samples, input->adim[2], input->adim[1], input->adim[0]};
     full_input = ff.create_tensor<4>(dims, DT_FLOAT);
+    ff.map_tensor(full_input, NULL/*parallel_op*/);
   }
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {num_samples, label.adim[0]};
+    const int dims[] = {num_samples, label->adim[0]};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
+    ff.map_tensor(full_label, NULL/*parallel_op*/);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
@@ -51,25 +53,25 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff, Tensor input, Tensor label,
       TaskArgument(NULL, 0));
   // regions[0]: full_input
   launcher.add_region_requirement(
-      RegionRequirement(full_input.region, WRITE_ONLY,
-                        EXCLUSIVE, full_input.region,
+      RegionRequirement(full_input->region, WRITE_ONLY,
+                        EXCLUSIVE, full_input->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_label
   launcher.add_region_requirement(
-      RegionRequirement(full_label.region, WRITE_ONLY,
-                        EXCLUSIVE, full_label.region,
+      RegionRequirement(full_label->region, WRITE_ONLY,
+                        EXCLUSIVE, full_label->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   // regions[2]: full_input_
   launcher.add_region_requirement(
-      RegionRequirement(full_input_.region, READ_ONLY,
-                        EXCLUSIVE, full_input_.region));
+      RegionRequirement(full_input_->region, READ_ONLY,
+                        EXCLUSIVE, full_input_->region));
   launcher.add_field(2, FID_DATA);
   // regions[3]: full_label_
   launcher.add_region_requirement(
-      RegionRequirement(full_label_.region, READ_ONLY,
-                        EXCLUSIVE, full_label_.region));
+      RegionRequirement(full_label_->region, READ_ONLY,
+                        EXCLUSIVE, full_label_->region));
   launcher.add_field(3, FID_DATA);
   Future fu = runtime->execute_task(ctx, launcher);
   fu.wait();
@@ -97,14 +99,16 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {num_samples, input.adim[2], input.adim[1], input.adim[0]};
+    const int dims[] = {num_samples, input->adim[2], input->adim[1], input->adim[0]};
     full_input = ff.create_tensor<4>(dims, DT_FLOAT);
+    ff.map_tensor(full_input, NULL/*parallel_op*/);
   }
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {num_samples, label.adim[0]};
+    const int dims[] = {num_samples, label->adim[0]};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
+    ff.map_tensor(full_label, NULL/*parallel_op*/);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
@@ -113,14 +117,14 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff,
       TaskArgument(&ptr, sizeof(NetConfig*)));
   // regions[0]: full_input
   launcher.add_region_requirement(
-      RegionRequirement(full_input.region, WRITE_ONLY,
-                        EXCLUSIVE, full_input.region,
+      RegionRequirement(full_input->region, WRITE_ONLY,
+                        EXCLUSIVE, full_input->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_label
   launcher.add_region_requirement(
-      RegionRequirement(full_label.region, WRITE_ONLY,
-                        EXCLUSIVE, full_label.region,
+      RegionRequirement(full_label->region, WRITE_ONLY,
+                        EXCLUSIVE, full_label->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   runtime->execute_task(ctx, launcher);
@@ -279,13 +283,13 @@ void ImgDataLoader4D::next_batch(FFModel& ff)
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(""));
     launcher.add_region_requirement(
-        RegionRequirement(full_input.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_input.region,
+        RegionRequirement(full_input->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_input.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_input.region));
+        RegionRequirement(batch_input->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -308,13 +312,13 @@ void ImgDataLoader4D::next_batch(FFModel& ff)
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(""));
     launcher.add_region_requirement(
-        RegionRequirement(full_label.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_label.region,
+        RegionRequirement(full_label->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_label->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_label.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_label.region));
+        RegionRequirement(batch_label->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_label->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -343,14 +347,16 @@ ImgDataLoader2D::ImgDataLoader2D(FFModel& ff, Tensor input, Tensor label,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {num_samples, input.adim[0]};
+    const int dims[] = {num_samples, input->adim[0]};
     full_input = ff.create_tensor<2>(dims, DT_FLOAT);
+    ff.map_tensor(full_input, NULL);
   }
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {num_samples, label.adim[0]};
+    const int dims[] = {num_samples, label->adim[0]};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
+    ff.map_tensor(full_label, NULL);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
@@ -358,25 +364,25 @@ ImgDataLoader2D::ImgDataLoader2D(FFModel& ff, Tensor input, Tensor label,
       TaskArgument(NULL, 0));
   // regions[0]: full_input
   launcher.add_region_requirement(
-      RegionRequirement(full_input.region, WRITE_ONLY,
-                        EXCLUSIVE, full_input.region,
+      RegionRequirement(full_input->region, WRITE_ONLY,
+                        EXCLUSIVE, full_input->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_label
   launcher.add_region_requirement(
-      RegionRequirement(full_label.region, WRITE_ONLY,
-                        EXCLUSIVE, full_label.region,
+      RegionRequirement(full_label->region, WRITE_ONLY,
+                        EXCLUSIVE, full_label->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   // regions[2]: full_input_
   launcher.add_region_requirement(
-      RegionRequirement(full_input_.region, READ_ONLY,
-                        EXCLUSIVE, full_input_.region));
+      RegionRequirement(full_input_->region, READ_ONLY,
+                        EXCLUSIVE, full_input_->region));
   launcher.add_field(2, FID_DATA);
   // regions[3]: full_label_
   launcher.add_region_requirement(
-      RegionRequirement(full_label_.region, READ_ONLY,
-                        EXCLUSIVE, full_label_.region));
+      RegionRequirement(full_label_->region, READ_ONLY,
+                        EXCLUSIVE, full_label_->region));
   launcher.add_field(3, FID_DATA);
   Future fu = runtime->execute_task(ctx, launcher);
   fu.wait();
@@ -445,13 +451,13 @@ void ImgDataLoader2D::next_batch(FFModel& ff)
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(""));
     launcher.add_region_requirement(
-        RegionRequirement(full_input.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_input.region,
+        RegionRequirement(full_input->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_input.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_input.region));
+        RegionRequirement(batch_input->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -474,13 +480,13 @@ void ImgDataLoader2D::next_batch(FFModel& ff)
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(""));
     launcher.add_region_requirement(
-        RegionRequirement(full_label.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_label.region,
+        RegionRequirement(full_label->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_label->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_label.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_label.region));
+        RegionRequirement(batch_label->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_label->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -494,19 +500,20 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_
   num_samples = num_samples_;
   datatype = datatype_;
   // Create full input
-  assert(input.numDim == full_input_.numDim);
-  for (int i = 0; i < input.numDim-1; i++)
-    assert(full_input_.adim[i] == input.adim[i]);
+  assert(input->numDim == full_input_->numDim);
+  for (int i = 0; i < input->numDim-1; i++)
+    assert(full_input_->adim[i] == input->adim[i]);
   batch_input = input;
   int dims[MAX_TENSOR_DIM];
   dims[0] = num_samples;
-  for (int i = 1; i < input.numDim; i++)
-    dims[i] = input.adim[input.numDim-1-i];
-  switch (input.numDim) {
+  for (int i = 1; i < input->numDim; i++)
+    dims[i] = input->adim[input->numDim-1-i];
+  switch (input->numDim) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
       full_input = ff.create_tensor<DIM>(dims, datatype); \
+      ff.map_tensor(full_input, NULL); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -528,14 +535,14 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_
       TaskArgument(NULL, 0));
   // regions[0]: full_input
   launcher.add_region_requirement(
-      RegionRequirement(full_input.region, WRITE_ONLY,
-                        EXCLUSIVE, full_input.region,
+      RegionRequirement(full_input->region, WRITE_ONLY,
+                        EXCLUSIVE, full_input->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[2]: full_input_
   launcher.add_region_requirement(
-      RegionRequirement(full_input_.region, READ_ONLY,
-                        EXCLUSIVE, full_input_.region));
+      RegionRequirement(full_input_->region, READ_ONLY,
+                        EXCLUSIVE, full_input_->region));
   launcher.add_field(1, FID_DATA);
   Future fu = runtime->execute_task(ctx, launcher);
   fu.wait();
@@ -551,8 +558,8 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, void *full_input_p
   batch_input = input;
   int dims[MAX_TENSOR_DIM];
   dims[0] = num_samples;
-  for (int i = 1; i < input.numDim; i++)
-    dims[i] = input.adim[input.numDim-1-i];
+  for (int i = 1; i < input->numDim; i++)
+    dims[i] = input->adim[input->numDim-1-i];
   
   int task_id = -1;
   if (datatype == DT_FLOAT) {
@@ -564,15 +571,16 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, void *full_input_p
   }
 
   size_t size_per_sample = 1;
-  for (int i = 1; i < input.numDim; i++) {
+  for (int i = 1; i < input->numDim; i++) {
     assert (dims[i] != 0);
     size_per_sample *= dims[i];
   }
-  switch (input.numDim) {
+  switch (input->numDim) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
       full_input = ff.create_tensor<DIM>(dims, datatype); \
+      ff.map_tensor(full_input, NULL); \
       index_loader_xd_launcher<DIM>(ff, task_id, full_input_ptr, size_per_sample); \
       break; \
     }
@@ -612,8 +620,8 @@ void SingleDataLoader::index_loader_xd_launcher(FFModel& ff, int task_id, void *
       TaskArgument(NULL, 0), argmap);
   // regions[0]: full_input
   launcher.add_region_requirement(
-      RegionRequirement(full_input.part, 0, 
-                        WRITE_ONLY, EXCLUSIVE, full_input.region,
+      RegionRequirement(full_input->part, 0, 
+                        WRITE_ONLY, EXCLUSIVE, full_input->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   FutureMap fu = runtime->execute_index_space(ctx, launcher);
@@ -631,8 +639,8 @@ void SingleDataLoader::index_loader_xd_launcher(FFModel& ff, int task_id, void *
       TaskArgument(&meta, sizeof(IndexLoadArg)));
   // regions[0]: full_input
   launcher.add_region_requirement(
-      RegionRequirement(full_input.region, WRITE_ONLY,
-                        EXCLUSIVE, full_input.region,
+      RegionRequirement(full_input->region, WRITE_ONLY,
+                        EXCLUSIVE, full_input->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   Future fu = runtime->execute_task(ctx, launcher);
@@ -655,7 +663,7 @@ void SingleDataLoader::next_batch(FFModel& ff)
     task_id = PY_DL_INT_LOAD_BATCH_GPU_TASK_ID;
   else
     assert(0);
-  switch (full_input.numDim) {
+  switch (full_input->numDim) {
 #define DIMFUNC(DIM) \
     case DIM: \
       next_batch_xd_launcher<DIM>(ff, task_id); \
@@ -692,13 +700,13 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel& ff, int task_id)
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(""));
     launcher.add_region_requirement(
-        RegionRequirement(full_input.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_input.region,
+        RegionRequirement(full_input->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);                    
     launcher.add_region_requirement(
-        RegionRequirement(batch_input.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_input.region));
+        RegionRequirement(batch_input->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -722,13 +730,13 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel& ff, int task_id)
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(""));
     launcher.add_region_requirement(
-        RegionRequirement(full_input.part, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_input.region,
+        RegionRequirement(full_input->part, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);                    
     launcher.add_region_requirement(
-        RegionRequirement(batch_input.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_input.region));
+        RegionRequirement(batch_input->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
     next_index += ff.config.batchSize / (rect.hi[NDIM-1] - rect.lo[NDIM-1] + 1);

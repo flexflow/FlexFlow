@@ -79,6 +79,7 @@ Linear::Linear(FFModel& model,
     dims[i] = _input->adim[numdim-1-i];
   dims[numdim-1] = _kernel->adim[1];
   outputs[0] = model.create_tensor(numdim, dims, DT_FLOAT, this);
+  replica = new TensorBase();
 }
 
 #ifdef DEADCODE

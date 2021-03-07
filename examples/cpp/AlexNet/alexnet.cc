@@ -158,12 +158,14 @@ DataLoader::DataLoader(FFModel& ff,
     batch_input = input;
     const int dims[] = {num_samples, input->adim[2], input->adim[1], input->adim[0]};
     full_input = ff.create_tensor<4>(dims, DT_FLOAT);
+    ff.map_tensor(full_input, NULL);
   }
   // Create full label
   {
     batch_label = label;
     const int dims[] = {num_samples, label->adim[0]};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
+    ff.map_tensor(full_label, NULL);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
@@ -271,7 +273,8 @@ void DataLoader::next_batch(FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   // Load input
   {
-    IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, ""));
+    std::string pcname = batch_input->owner_op->name;
+    IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, pcname));
     Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
     int idx = next_index;
@@ -286,7 +289,7 @@ void DataLoader::next_batch(FFModel& ff)
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
                            TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(""));
+                           FFConfig::get_hash_id(pcname));
     launcher.add_region_requirement(
         RegionRequirement(full_input->region, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, full_input->region,
@@ -300,7 +303,8 @@ void DataLoader::next_batch(FFModel& ff)
   }
   // Load label
   {
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
+    std::string pcname = batch_label->owner_op->name;
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, pcname));
     Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
     int idx = next_index;
@@ -315,7 +319,7 @@ void DataLoader::next_batch(FFModel& ff)
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
                            TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(""));
+                           FFConfig::get_hash_id(pcname));
     launcher.add_region_requirement(
         RegionRequirement(full_label->region, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, full_label->region,

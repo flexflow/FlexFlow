@@ -289,6 +289,7 @@ Op::Op(FFModel& model,
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   for (size_t i = 0; i < tensors.size(); i++) {
+    if (tensors[i] == NULL) continue;
     if (tensors[i]->sync_type == ParameterSyncType::NONE) {
       // Activation
       inputs[numInputs++] = tensors[i];
@@ -822,12 +823,17 @@ void FFModel::map_tensor(Tensor tensor, const Op* op)
 template<int NDIM>
 void FFModel::map_tensor_with_dim(Tensor tensor, const Op* parallel_op)
 {
+  // Step 0: check we are the owner or the owner is NULL
+  // in which case set the owner to us
+  if (tensor->owner_op == NULL) {
+    tensor->owner_op = parallel_op;
+    tensor->owner_idx = -1; // meaning tensor is not an output of op
+  } else {
+    assert(tensor->owner_op == parallel_op);
+  }
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
 
-  assert(parallel_op != NULL);
-  std::string name = std::string(parallel_op->name);
-  IndexSpaceT<NDIM> part_is = (IndexSpaceT<NDIM>) get_or_create_task_is(NDIM, name);
   // Step 1: create regions
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator= runtime->create_field_allocator(ctx, fs);
@@ -858,29 +864,32 @@ void FFModel::map_tensor_with_dim(Tensor tensor, const Op* parallel_op)
     tensor->region_grad = runtime->create_logical_region(ctx, is, fs);
   }
 
-  // Step 2: create partitions
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
-
-  Transform<NDIM, NDIM> transform;
-  Point<NDIM> ext_hi;
-  for (int i = 0; i < NDIM; i++) {
-    int nparts = part_rect.hi[i] - part_rect.lo[i] + 1;
-    ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
-  }
-  Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
-  for (int i = 0; i < NDIM; i++)
-    for (int j = 0; j < NDIM; j++)
-      if (i == j)
-        transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
-      else
-        transform[i][j] = 0;
-  IndexPartition ip = runtime->create_partition_by_restriction(
-      ctx, is, part_is, transform, extent);
-  assert(runtime->is_index_partition_disjoint(ctx, ip));
-  assert(runtime->is_index_partition_complete(ctx, ip));
-  tensor->part = runtime->get_logical_partition(ctx, tensor->region, ip);
-  if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
-    tensor->part_grad = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
+  // Step 2: create partitions if parallel_op != NULL
+  if (parallel_op != NULL) {
+    std::string name = std::string(parallel_op->name);
+    IndexSpaceT<NDIM> part_is = (IndexSpaceT<NDIM>) get_or_create_task_is(NDIM, name);
+    Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
+    Transform<NDIM, NDIM> transform;
+    Point<NDIM> ext_hi;
+    for (int i = 0; i < NDIM; i++) {
+      int nparts = part_rect.hi[i] - part_rect.lo[i] + 1;
+      ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
+    }
+    Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
+    for (int i = 0; i < NDIM; i++)
+      for (int j = 0; j < NDIM; j++)
+        if (i == j)
+          transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
+        else
+          transform[i][j] = 0;
+    IndexPartition ip = runtime->create_partition_by_restriction(
+        ctx, is, part_is, transform, extent);
+    assert(runtime->is_index_partition_disjoint(ctx, ip));
+    assert(runtime->is_index_partition_complete(ctx, ip));
+    tensor->part = runtime->get_logical_partition(ctx, tensor->region, ip);
+    if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
+      tensor->part_grad = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
+    }
   }
 }
 
@@ -906,6 +915,14 @@ void FFModel::map_weight(Tensor weight, const Op* op)
 template<int NDIM>
 void FFModel::map_weight_with_dim(Tensor weight, const Op* parallel_op)
 {
+  // Step 0: check we are the owner or the owner is NULL
+  // in which case set the owner to us
+  if (weight->owner_op == NULL) {
+    weight->owner_op = parallel_op;
+    weight->owner_idx = -1; // meaning tensor is not an output of op
+  } else {
+    assert(weight->owner_op == parallel_op);
+  }
   assert(parallel_op != NULL);
   int tdim = parallel_op->outputs[0]->numDim;
   switch (parallel_op->op_type) {
@@ -1593,7 +1610,7 @@ void FFModel::compile(LossType loss_type,
     }
     for (int i = 0; i < op->numWeights; i++) {
       // Weight tensor
-      assert(op->inputs[i]->owner_op == NULL);
+      assert(op->weights[i]->owner_op == NULL);
       map_weight(op->weights[i], op);
     }
     op->create_input_partition(*this);

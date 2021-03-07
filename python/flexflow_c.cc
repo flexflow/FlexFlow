@@ -47,7 +47,7 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_uniform_initializer_t, UniformInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_norm_initializer_t, NormInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_op_t, Op *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_parameter_t, Parameter *);
+  //FF_NEW_OPAQUE_WRAPPER(flexflow_parameter_t, Parameter *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_perf_metrics_t, PerfMetrics *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_net_config_t, NetConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_dlrm_config_t, DLRMConfig *);
@@ -786,6 +786,18 @@ flexflow_tensor_create(
   return FFCObjectWrapper::wrap(tensor);
 }
 
+void
+flexflow_tensor_map(
+  flexflow_model_t model_,
+  flexflow_tensor_t tensor_,
+  flexflow_op_t op_)
+{
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  Tensor tensor = FFCObjectWrapper::unwrap(tensor_);
+  Op* op = FFCObjectWrapper::unwrap(op_);
+  model->map_tensor(tensor, op);
+}
+
 flexflow_tensor_t
 flexflow_constant_create(
   flexflow_model_t model_,
@@ -996,6 +1008,7 @@ flexflow_tensor_get_tensor_int(
 // Parameter
 // -----------------------------------------------------------------------
 
+/*
 bool
 flexflow_parameter_set_weights_float(
   flexflow_parameter_t handle_,
@@ -1023,6 +1036,7 @@ flexflow_parameter_get_weights_float(
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
   return handle->get_weights<float>(model, data);
 }
+*/
 
 // -----------------------------------------------------------------------
 // SGDOptimizer
@@ -1370,9 +1384,9 @@ flexflow_dataloader_4d_create(
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
   NetConfig *netconfig = FFCObjectWrapper::unwrap(netconfig_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *label = FFCObjectWrapper::unwrap(label_);
-  ImgDataLoader4D *dataloader = new ImgDataLoader4D(*ffmodel, *netconfig, *input, *label);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor label = FFCObjectWrapper::unwrap(label_);
+  ImgDataLoader4D *dataloader = new ImgDataLoader4D(*ffmodel, *netconfig, input, label);
   return FFCObjectWrapper::wrap(dataloader);
 }
 
@@ -1386,11 +1400,11 @@ flexflow_dataloader_4d_create_v2(
   int num_samples)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *label = FFCObjectWrapper::unwrap(label_);
-  Tensor *full_input = FFCObjectWrapper::unwrap(full_input_);
-  Tensor *full_label = FFCObjectWrapper::unwrap(full_label_);
-  ImgDataLoader4D *dataloader = new ImgDataLoader4D(*ffmodel, *input, *label, *full_input, *full_label, num_samples);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor label = FFCObjectWrapper::unwrap(label_);
+  Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
+  Tensor full_label = FFCObjectWrapper::unwrap(full_label_);
+  ImgDataLoader4D *dataloader = new ImgDataLoader4D(*ffmodel, input, label, full_input, full_label, num_samples);
   return FFCObjectWrapper::wrap(dataloader);
 }
 
@@ -1448,11 +1462,11 @@ flexflow_dataloader_2d_create_v2(
   int num_samples)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *label = FFCObjectWrapper::unwrap(label_);
-  Tensor *full_input = FFCObjectWrapper::unwrap(full_input_);
-  Tensor *full_label = FFCObjectWrapper::unwrap(full_label_);
-  ImgDataLoader2D *dataloader = new ImgDataLoader2D(*ffmodel, *input, *label, *full_input, *full_label, num_samples);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor label = FFCObjectWrapper::unwrap(label_);
+  Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
+  Tensor full_label = FFCObjectWrapper::unwrap(full_label_);
+  ImgDataLoader2D *dataloader = new ImgDataLoader2D(*ffmodel, input, label, full_input, full_label, num_samples);
   return FFCObjectWrapper::wrap(dataloader);
 }
 
@@ -1513,9 +1527,9 @@ flexflow_single_dataloader_create(
   enum DataType data_type)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *full_input = FFCObjectWrapper::unwrap(full_input_);
-  SingleDataLoader *dataloader = new SingleDataLoader(*ffmodel, *input, *full_input, num_samples, data_type);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
+  SingleDataLoader *dataloader = new SingleDataLoader(*ffmodel, input, full_input, num_samples, data_type);
   return FFCObjectWrapper::wrap(dataloader);
 }
 
@@ -1528,8 +1542,8 @@ flexflow_single_dataloader_create2(
   enum DataType data_type)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  SingleDataLoader *dataloader = new SingleDataLoader(*ffmodel, *input, full_input_ptr, num_samples, data_type);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  SingleDataLoader *dataloader = new SingleDataLoader(*ffmodel, input, full_input_ptr, num_samples, data_type);
   return FFCObjectWrapper::wrap(dataloader);
 }
 
@@ -1629,7 +1643,7 @@ flexflow_op_get_num_parameters(
   return handle->numWeights;
 }
 
-flexflow_parameter_t
+flexflow_tensor_t
 flexflow_op_get_parameter_by_id(
   flexflow_op_t handle_,
   int id)

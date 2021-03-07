@@ -340,8 +340,10 @@ class BaseModel(object):
 
     if (num_dim == 2):
       full_tensor = Tensor(self._ffmodel, batch_shape=[self._num_samples, array_shape[1]], name="", dtype=datatype)
+      self._ffmodel.map_tensor(full_tensor.ffhandle)
     elif (num_dim == 4):
       full_tensor = Tensor(self._ffmodel, batch_shape=[self._num_samples, array_shape[1], array_shape[2], array_shape[3]], name="", dtype=datatype)
+      self._ffmodel.map_tensor(full_tensor.ffhandle)
     else:
       assert 0, "unsupported dims"
 
