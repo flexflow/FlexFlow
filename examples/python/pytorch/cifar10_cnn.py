@@ -7,10 +7,10 @@ from flexflow.torch.model import PyTorchModel
 def top_level_task():
   ffconfig = FFConfig()
   ffconfig.parse_args()
-  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
+  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
 
-  dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
+  dims_input = [ffconfig.batch_size, 3, 32, 32]
   input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
   
   torch_model = PyTorchModel("cnn.ff")
@@ -49,7 +49,7 @@ def top_level_task():
   layer = ffmodel.get_layer_by_name("relu_1")
   print(layer)
 
-  epochs = ffconfig.get_epochs()
+  epochs = ffconfig.epochs
 
   ts_start = ffconfig.get_current_time()
   
