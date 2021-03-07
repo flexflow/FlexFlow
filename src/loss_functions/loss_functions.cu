@@ -160,8 +160,8 @@ void Loss::backward_task_with_dim(const Task *task,
 }
 
 void Loss::backward(FFModel* model,
-                    const Tensor* logit,
-                    const Tensor* label)
+                    const Tensor logit,
+                    const Tensor label)
 {
   assert(logit->numDim == label->numDim);
   int dim = logit->numDim;
@@ -183,8 +183,8 @@ void Loss::backward(FFModel* model,
 
 template<int NDIM>
 void Loss::backward_with_dim(FFModel* model,
-                             const Tensor* logit,
-                             const Tensor* label)
+                             const Tensor logit,
+                             const Tensor label)
 {
   // Compute scale factor for loss backpropagation
   scale_factor = 1.0f/ logit->adim[logit->numDim-1];

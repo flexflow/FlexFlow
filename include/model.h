@@ -189,10 +189,10 @@ public:
   Op(FFModel& model,
      OperatorType type,
      const char* _name,
-     const Tensor& input1 = Tensor::NO_TENSOR,
-     const Tensor& input2 = Tensor::NO_TENSOR,
-     const Tensor& input3 = Tensor::NO_TENSOR,
-     const Tensor& input4 = Tensor::NO_TENSOR);
+     const Tensor input1 = NULL,
+     const Tensor input2 = NULL,
+     const Tensor input3 = NULL,
+     const Tensor input4 = NULL);
   Op(FFModel& model,
      OperatorType type,
      const char* _name,
@@ -222,7 +222,7 @@ public:
   // Helper functions
   void prefetch(const FFModel&);
   void zero_grad(const FFModel&);
-  Tensor* get_parameter(int index);
+  Tensor get_parameter(int index);
 #ifdef FF_USE_NCCL
   static ncclUniqueId get_nccl_unique_id_task(const Task *task,
       const std::vector<PhysicalRegion> &regions,
@@ -266,35 +266,35 @@ public:
   FFModel(FFConfig &config);
   // C++ APIs for constructing models
   // Add an exp layer
-  Tensor exp(const Tensor& x,
+  Tensor exp(const Tensor x,
              const char *name = NULL);
   // Add an add layer
-  Tensor add(const Tensor& x,
-             const Tensor& y,
+  Tensor add(const Tensor x,
+             const Tensor y,
              char const *name = NULL);
   // Add a subtract layer
-  Tensor subtract(const Tensor& x,
-                  const Tensor& y,
+  Tensor subtract(const Tensor x,
+                  const Tensor y,
                   char const *name = NULL);
   // Add a multiply layer
-  Tensor multiply(const Tensor& x,
-                  const Tensor& y,
+  Tensor multiply(const Tensor x,
+                  const Tensor y,
                   char const *name = NULL);
   // Add a divide layer
-  Tensor divide(const Tensor& x,
-                const Tensor& y,
+  Tensor divide(const Tensor x,
+                const Tensor y,
                 char const *name = NULL);
   // Add an activation layer
-  Tensor relu(const Tensor& x,
+  Tensor relu(const Tensor x,
               const char *name = NULL);
-  Tensor sigmoid(const Tensor& x,
+  Tensor sigmoid(const Tensor x,
                  const char *name = NULL);
-  Tensor tanh(const Tensor& x,
+  Tensor tanh(const Tensor x,
               const char *name = NULL);
-  Tensor elu(const Tensor& x,
+  Tensor elu(const Tensor x,
              const char *name = NULL);
   // Add a 2D convolutional layer
-  Tensor conv2d(const Tensor& input,
+  Tensor conv2d(const Tensor input,
                 int outChannels,
                 int kernelH, int kernelW,
                 int strideH, int strideW,
@@ -307,19 +307,19 @@ public:
                 Initializer* bias_initializer = NULL,
                 const char* name = NULL);
   // Add a dropout layer
-  Tensor dropout(const Tensor& input,
+  Tensor dropout(const Tensor input,
                  float rate,
                  unsigned long long seed = 0,
                  const char* name = NULL);
   // Add an embedding layer
-  Tensor embedding(const Tensor& input,
+  Tensor embedding(const Tensor input,
                    int num_entires, int outDim,
                    AggrMode aggr,
                    const Op* shared_op = NULL,
                    Initializer* kernel_initializer = NULL,
                    const char* name = NULL);
   // Add a 2D pooling layer
-  Tensor pool2d(const Tensor& input,
+  Tensor pool2d(const Tensor input,
                 int kernelH, int kernelW,
                 int strideH, int strideW,
                 int paddingH, int paddingW,
@@ -327,14 +327,14 @@ public:
                 ActiMode activation = AC_MODE_NONE,
                 const char* name = NULL);
   // Add a batch_norm layer
-  Tensor batch_norm(const Tensor& input,
+  Tensor batch_norm(const Tensor input,
                     bool relu = true,
                     const char* name = NULL);
   // Add a batch_matmul layer
-  Tensor batch_matmul(const Tensor& A,
-                      const Tensor& B);
+  Tensor batch_matmul(const Tensor A,
+                      const Tensor B);
   // Add a dense layer
-  Tensor dense(const Tensor& input,
+  Tensor dense(const Tensor input,
                int outDim,
                ActiMode activation = AC_MODE_NONE,
                bool use_bias = true,
@@ -348,30 +348,30 @@ public:
                 int axis,
                 const char *name = NULL);
   // Add a split layer
-  void split(const Tensor& input, Tensor* outputs,
+  void split(const Tensor input, Tensor* outputs,
              const std::vector<int>& split, int axis,
              const char *name = NULL);
   // Add a flat layer
-  Tensor flat(const Tensor& input, const char *name = NULL);
+  Tensor flat(const Tensor input, const char *name = NULL);
   // Add a softmax layer
-  Tensor softmax(const Tensor& input,
+  Tensor softmax(const Tensor input,
                  const char *name = NULL);
   // Create input tensors and constants
-  Tensor transpose(const Tensor& input,
+  Tensor transpose(const Tensor input,
                    const std::vector<int>& perm,
                    const char *name = NULL);
-  Tensor reshape(const Tensor& input,
+  Tensor reshape(const Tensor input,
                  const std::vector<int>& shape,
                  const char *name = NULL);
-  Tensor reverse(const Tensor& input,
+  Tensor reverse(const Tensor input,
                  int axis,
                  const char *name = NULL);
-  void top_k(const Tensor& input,
+  void top_k(const Tensor input,
              Tensor* outputs, int k, bool sorted,
              const char *name = NULL);
-  Tensor multihead_attention(const Tensor& query,
-                             const Tensor& key,
-                             const Tensor& value,
+  Tensor multihead_attention(const Tensor query,
+                             const Tensor key,
+                             const Tensor value,
                              int embed_dim,
                              int num_heads,
                              int kdim = 0,
@@ -394,8 +394,8 @@ public:
                        const Op* owner_op = NULL,
                        int owner_idx = 0,
                        bool create_grad = true);
-  void map_tensor(Tensor& tensor, const Op* parallel_op);
-  void map_weight(Tensor& tensor, const Op* parallel_op);
+  void map_tensor(Tensor tensor, const Op* parallel_op);
+  void map_weight(Tensor tensor, const Op* parallel_op);
   template<int NDIM>
   Parameter create_weight(const int dims[],
       DataType data_type,
@@ -403,7 +403,7 @@ public:
       bool create_grad = true,
       Initializer* initializer = NULL,
       ParameterSyncType sync_type = ParameterSyncType::NONE);
-  void map_weight(Parameter& tensor);
+  //void map_weight(Parameter tensor);
 
   template<int NDIM>
   Tensor create_constant(const int dims[],
@@ -413,16 +413,18 @@ public:
   // Internal APIs that should not be invoked from applications
   // ========================================
   template<int NDIM>
-  void create_disjoint_partition(const Tensor& tensor,
-                                 const IndexSpaceT<NDIM>& part_is,
-                                 LogicalPartition& part_fwd,
-                                 LogicalPartition& part_bwd);
+  void create_disjoint_partition(
+      const Tensor tensor,
+      const IndexSpaceT<NDIM>& part_is,
+      LogicalPartition& part_fwd,
+      LogicalPartition& part_bwd);
 
   template<int NDIM, int TDIM>
-  void create_data_parallel_partition_with_diff_dims(const Tensor& tensor,
-                                                     const IndexSpaceT<TDIM>& task_is,
-                                                     LogicalPartition& part_fwd,
-                                                     LogicalPartition& part_bwd);
+  void create_data_parallel_partition_with_diff_dims(
+      const Tensor tensor,
+      const IndexSpaceT<TDIM>& task_is,
+      LogicalPartition& part_fwd,
+      LogicalPartition& part_bwd);
   // Deprecated API --- to be removed
   //template<int NDIM>
   //Tensor create_tensor(const int* dims,
@@ -430,9 +432,9 @@ public:
   //                     DataType data_type,
   //                     bool create_grad = true);
   template<int NDIM>
-  void map_conv_weight(Tensor& p, const Op* parallel_op);
+  void map_conv_weight(Tensor p, const Op* parallel_op);
   template<int NDIM, int TDIM>
-  void map_linear_weight(Tensor& p, const Op* parallel_op);
+  void map_linear_weight(Tensor p, const Op* parallel_op);
   template<int NDIM, int TDIM>
   Tensor create_linear_replica(const int* dims,
                                const IndexSpaceT<TDIM>& part_is,
@@ -465,7 +467,6 @@ public:
   void print_layers(int id);
   std::string get_operator_type_name(OperatorType type) const;
   // Internal funcitons
-  Tensor get_tensor_from_guid(int guid);
   IndexSpace get_or_create_task_is(ParallelConfig pc);
   IndexSpace get_or_create_task_is(const Domain& domain);
   IndexSpace get_or_create_task_is(int ndims, const std::string& pcname);
@@ -492,18 +493,18 @@ private:
   std::map<ParallelConfig, IndexSpace, ParaConfigCompare> taskIs;
 
   template<int NDIM>
-  void map_tensor_with_dim(Tensor& tensor, const Op* parallel_op);
+  void map_tensor_with_dim(Tensor tensor, const Op* parallel_op);
   template<int NDIM>
-  void map_weight_with_dim(Tensor& weight, const Op* parallel_op);
+  void map_weight_with_dim(Tensor weight, const Op* parallel_op);
 
   Tensor binary(OperatorType op,
-                Tensor const &x,
-                Tensor const &y,
+                Tensor const x,
+                Tensor const y,
                 char const *name = NULL);
   ElementBinary * binary(OperatorType op,
                          char const *name = NULL);
   Tensor unary(OperatorType op,
-               Tensor const &x,
+               Tensor const x,
                char const *name = NULL);
   ElementUnary * unary(OperatorType op,
                        char const *name = NULL);
@@ -521,8 +522,8 @@ class ElementBinary : public Op {
 public:
   ElementBinary(FFModel& model,
                 OperatorType type,
-                const Tensor& x,
-                const Tensor& y,
+                const Tensor x,
+                const Tensor y,
                 const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -575,7 +576,7 @@ class ElementUnary : public Op {
 public:
   ElementUnary(FFModel& model,
                OperatorType type,
-               const Tensor& x,
+               const Tensor x,
                const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -629,9 +630,9 @@ public:
 class Conv2D : public Op {
 public:
   Conv2D(FFModel& model,
-         const Tensor& input,
-         const Tensor& kernel,
-         const Tensor& bias,
+         const Tensor input,
+         const Tensor kernel,
+         const Tensor bias,
          int strideH, int strideW,
          int paddingH, int paddingW,
          ActiMode activation,
@@ -689,7 +690,7 @@ public:
 class Dropout : public Op {
 public:
   Dropout(FFModel& model,
-          const Tensor& input,
+          const Tensor input,
           float rate,
           unsigned long long seed,
           const char* name);
@@ -734,7 +735,7 @@ public:
 class Pool2D : public Op {
 public:
   Pool2D(FFModel& model,
-         const Tensor& input,
+         const Tensor input,
          int kernelH, int kernelW,
          int strideH, int strideW,
          int paddingH, int paddingW,
@@ -788,9 +789,9 @@ public:
 class BatchNorm : public Op {
 public:
   BatchNorm(FFModel& model,
-            const Tensor& input,
-            const Tensor& scale,
-            const Tensor& bias,
+            const Tensor input,
+            const Tensor scale,
+            const Tensor bias,
             bool relu,
             const char* name);
   void init(const FFModel&);
@@ -868,9 +869,9 @@ public:
 class Linear : public Op {
 public:
   Linear(FFModel& model,
-         const Tensor& input,
-         const Tensor& kernel,
-         const Tensor& bias,
+         const Tensor input,
+         const Tensor kernel,
+         const Tensor bias,
          ActiMode activation,
          const char* name);
   void init(const FFModel&);
@@ -956,8 +957,8 @@ public:
 class BatchMatmul : public Op {
 public:
   BatchMatmul(FFModel& model,
-              const Tensor& A,
-              const Tensor& B);
+              const Tensor A,
+              const Tensor B);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -1008,8 +1009,8 @@ public:
 class Embedding : public Op {
 public:
   Embedding(FFModel& model,
-            const Tensor& input,
-            const Tensor& weight,
+            const Tensor input,
+            const Tensor weight,
             AggrMode _aggr,
             const char* name);
   void init(const FFModel&);
@@ -1069,7 +1070,7 @@ public:
 class Flat : public Op {
 public:
   Flat(FFModel& model,
-       const Tensor& input,
+       const Tensor input,
        const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -1112,10 +1113,10 @@ class MultiHeadAttentionMeta;
 class MultiHeadAttention : public Op {
 public:
   MultiHeadAttention(FFModel& model,
-                     const Tensor& _query,
-                     const Tensor& _key,
-                     const Tensor& _value,
-                     const Tensor& _weight,
+                     const Tensor _query,
+                     const Tensor _key,
+                     const Tensor _value,
+                     const Tensor _weight,
                      int _embed_dim, int _num_heads,
                      int _kdim, int _vdim,
                      float _dropout, bool _bias,
@@ -1191,7 +1192,7 @@ public:
 class Softmax : public Op {
 public:
   Softmax(FFModel& model,
-          const Tensor& logit,
+          const Tensor logit,
           const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -1237,7 +1238,7 @@ public:
 class Transpose : public Op {
 public:
   Transpose(FFModel& model,
-            const Tensor& input,
+            const Tensor input,
             const std::vector<int>& perm,
             const char* name);
   void init(const FFModel&);
@@ -1282,7 +1283,7 @@ public:
 class Reverse : public Op {
 public:
   Reverse(FFModel& model,
-          const Tensor& input,
+          const Tensor input,
           int axis,
           const char* name);
   void init(const FFModel&);
@@ -1326,7 +1327,7 @@ public:
 class Reshape : public Op {
 public:
   Reshape(FFModel& model,
-          const Tensor& input,
+          const Tensor input,
           const std::vector<int>& shape,
           const char* name);
   void init(const FFModel&);
@@ -1368,7 +1369,7 @@ public:
 class TopK : public Op {
 public:
   TopK(FFModel& model,
-       const Tensor& input,
+       const Tensor input,
        int k, bool sorted,
        const char* name);
   void init(const FFModel&);
@@ -1466,7 +1467,7 @@ public:
 class Split : public Op {
 public:
   Split(FFModel& model,
-        const Tensor& input,
+        const Tensor input,
         const std::vector<int>& split,
         int axis,
         const char* name);
@@ -1526,7 +1527,7 @@ public:
   FusedOp(FFModel& model,
           Op* op);
   bool add_operator(FFModel& model, Op* op);
-  Tensor init_inout(FFModel& model, const Tensor& input) {assert(0); return Tensor();}
+  Tensor init_inout(FFModel& model, const Tensor input) {assert(0); return Tensor();}
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);

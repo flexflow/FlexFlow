@@ -16,9 +16,9 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::multihead_attention(const Tensor& query,
-                                    const Tensor& key,
-                                    const Tensor& value,
+Tensor FFModel::multihead_attention(const Tensor query,
+                                    const Tensor key,
+                                    const Tensor value,
                                     int embed_dim,
                                     int num_heads,
                                     int kdim,
@@ -45,9 +45,9 @@ Tensor FFModel::multihead_attention(const Tensor& query,
   Tensor kernel;
   {
     // Compute weight size
-    int qSize = query.adim[0];
-    int kSize = key.adim[0];
-    int vSize = value.adim[0];
+    int qSize = query->adim[0];
+    int kSize = key->adim[0];
+    int vSize = value->adim[0];
     int qProjSize = kdim;
     int kProjSize = kdim;
     int vProjSize = vdim;
@@ -69,10 +69,10 @@ Tensor FFModel::multihead_attention(const Tensor& query,
 
 MultiHeadAttention::MultiHeadAttention(
     FFModel& model,
-    const Tensor& _query,
-    const Tensor& _key,
-    const Tensor& _value,
-    const Tensor& _weight,
+    const Tensor _query,
+    const Tensor _key,
+    const Tensor _value,
+    const Tensor _weight,
     int _embed_dim, int _num_heads,
     int _kdim, int _vdim,
     float _dropout, bool _bias,
@@ -85,19 +85,19 @@ MultiHeadAttention::MultiHeadAttention(
      _query, _key, _value, _weight),
   dropout(_dropout), bias(_bias),
   add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
-  qSize(_query.adim[0]), kSize(_key.adim[0]), vSize(_value.adim[0]),
+  qSize(_query->adim[0]), kSize(_key->adim[0]), vSize(_value->adim[0]),
   qProjSize(_kdim), kProjSize(_kdim), vProjSize(_vdim), oProjSize(_embed_dim),
-  qoSeqLength(_query.adim[1]), kvSeqLength(_key.adim[1])
+  qoSeqLength(_query->adim[1]), kvSeqLength(_key->adim[1])
   //bias_initializer(_bias_initializer)
 {
   // assert key and value have the same sequence length
-  assert(_key.adim[1] == _value.adim[1]);
+  assert(_key->adim[1] == _value->adim[1]);
   numOutputs = 1;
   int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < _query.numDim; i++)
-    dims[i] = _query.adim[_query.numDim-1-i];
-  dims[_query.numDim-1] = _embed_dim;
-  outputs[0] = model.create_tensor(_query.numDim, dims, DT_FLOAT, this);
+  for (int i = 0; i < _query->numDim; i++)
+    dims[i] = _query->adim[_query->numDim-1-i];
+  dims[_query->numDim-1] = _embed_dim;
+  outputs[0] = model.create_tensor(_query->numDim, dims, DT_FLOAT, this);
 }
 
 #ifdef DEADCODE
@@ -143,10 +143,10 @@ void MultiHeadAttention::create_input_partition(FFModel& model)
   //}
   //for (int i = 0; i < 3; i++) {
   //  Rect<3> input_rect = runtime->get_index_partition_color_space(
-  //      ctx, inputs[i].part.get_index_partition());
+  //      ctx, inputs[i]->part.get_index_partition());
   //  if (input_rect == part_rect) {
-  //    input_lps[i] = inputs[i].part;
-  //    input_grad_lps[i] = inputs[i].part_grad;
+  //    input_lps[i] = inputs[i]->part;
+  //    input_grad_lps[i] = inputs[i]->part_grad;
   //  } else {
   //    model.create_disjoint_partition(
   //        inputs[i], (IndexSpaceT<3>)task_is, input_lps[i], input_grad_lps[i]);
@@ -225,23 +225,23 @@ void MultiHeadAttention::init(const FFModel& ff)
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
-          READ_ONLY, EXCLUSIVE, inputs[0].region));
+          READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[1], 0/*projection id*/,
-          READ_ONLY, EXCLUSIVE, inputs[1].region));
+          READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[2], 0/*projection id*/,
-          READ_ONLY, EXCLUSIVE, inputs[2].region));
+          READ_ONLY, EXCLUSIVE, inputs[2]->region));
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(weights[0].part, 0/*projection id*/,
-          READ_ONLY, EXCLUSIVE, weights[0].region));
+      RegionRequirement(weights[0]->part, 0/*projection id*/,
+          READ_ONLY, EXCLUSIVE, weights[0]->region));
   launcher.add_field(3, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part, 0/*projection id*/,
-          WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+          WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(4, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -341,23 +341,23 @@ void MultiHeadAttention::forward(const FFModel& ff)
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
-          READ_ONLY, EXCLUSIVE, inputs[0].region));
+          READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[1], 0/*projection id*/,
-          READ_ONLY, EXCLUSIVE, inputs[1].region));
+          READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[2], 0/*projection id*/,
-          READ_ONLY, EXCLUSIVE, inputs[2].region));
+          READ_ONLY, EXCLUSIVE, inputs[2]->region));
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(weights[0].part, 0/*projection id*/,
-          READ_ONLY, EXCLUSIVE, weights[0].region));
+      RegionRequirement(weights[0]->part, 0/*projection id*/,
+          READ_ONLY, EXCLUSIVE, weights[0]->region));
   launcher.add_field(3, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part, 0/*projection id*/,
-          WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+          WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(4, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -503,46 +503,46 @@ void MultiHeadAttention::backward(const FFModel& ff)
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
-          READ_ONLY, EXCLUSIVE, inputs[0].region));
+          READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[1], 0/*projection id*/,
-          READ_ONLY, EXCLUSIVE, inputs[1].region));
+          READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(input_lps[2], 0/*projection id*/,
-          READ_ONLY, EXCLUSIVE, inputs[2].region));
+          READ_ONLY, EXCLUSIVE, inputs[2]->region));
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(weights[0].part, 0/*projection id*/,
-          READ_ONLY, EXCLUSIVE, weights[0].region));
+      RegionRequirement(weights[0]->part, 0/*projection id*/,
+          READ_ONLY, EXCLUSIVE, weights[0]->region));
   launcher.add_field(3, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-          READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
+      RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
+          READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(4, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(weights[0].part_grad, 0/*projection id*/,
-          READ_WRITE, EXCLUSIVE, weights[0].region_grad));
+      RegionRequirement(weights[0]->part_grad, 0/*projection id*/,
+          READ_WRITE, EXCLUSIVE, weights[0]->region_grad));
   launcher.add_field(5, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-          READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+          READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(6, FID_DATA);
   int num_regions = 7;
-  if (inputs[1].region != inputs[0].region) {
+  if (inputs[1]->region != inputs[0]->region) {
     // when key != query
     launcher.add_region_requirement(
         RegionRequirement(input_grad_lps[1], 0/*projection id*/,
-            READ_WRITE, EXCLUSIVE, inputs[1].region_grad));
+            READ_WRITE, EXCLUSIVE, inputs[1]->region_grad));
     launcher.add_field(num_regions++, FID_DATA);
   }
-  if ((inputs[2].region != inputs[0].region)
-  && (inputs[2].region != inputs[1].region)) {
+  if ((inputs[2]->region != inputs[0]->region)
+  && (inputs[2]->region != inputs[1]->region)) {
     // when value != key and value != query
     launcher.add_region_requirement(
         RegionRequirement(input_grad_lps[2], 0/*projection id*/,
-            READ_WRITE, EXCLUSIVE, inputs[2].region_grad));
+            READ_WRITE, EXCLUSIVE, inputs[2]->region_grad));
     launcher.add_field(num_regions++, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -687,19 +687,19 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
     const ParallelConfig& pc,
     CostMetrics& cost_metrics)
 {
-  Tensor sub_output, sub_query, sub_key, sub_value;
-  if (!inputs[0].get_input_sub_tensor(pc, sub_query, OP_MULTIHEAD_ATTENTION))
+  TensorBase sub_output, sub_query, sub_key, sub_value;
+  if (!inputs[0]->get_input_sub_tensor(pc, sub_query, OP_MULTIHEAD_ATTENTION))
     return false;
-  if (!inputs[1].get_input_sub_tensor(pc, sub_key, OP_MULTIHEAD_ATTENTION))
+  if (!inputs[1]->get_input_sub_tensor(pc, sub_key, OP_MULTIHEAD_ATTENTION))
     return false;
-  if (!inputs[2].get_input_sub_tensor(pc, sub_value, OP_MULTIHEAD_ATTENTION))
+  if (!inputs[2]->get_input_sub_tensor(pc, sub_value, OP_MULTIHEAD_ATTENTION))
     return false;
-  if (!outputs[0].get_input_sub_tensor(pc, sub_output, OP_MULTIHEAD_ATTENTION))
+  if (!outputs[0]->get_input_sub_tensor(pc, sub_output, OP_MULTIHEAD_ATTENTION))
     return false;
   // Currently assume only data parallel
   Tensor sub_weight = weights[0];
-  assert(sub_weight.numDim == 2);
-  int num_heads = sub_weight.adim[1];
+  assert(sub_weight->numDim == 2);
+  int num_heads = sub_weight->adim[1];
   assert(sub_query.numDim == 3);
   int num_samples = sub_query.adim[2];
   MultiHeadAttentionMeta* m = new MultiHeadAttentionMeta(sim->handler,
@@ -714,7 +714,7 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
   const float* value_ptr =
       (const float*)sim->allocate(sub_value.get_volume(), DT_FLOAT);
   const float* weight_ptr =
-      (const float*)sim->allocate(sub_weight.get_volume(), DT_FLOAT);
+      (const float*)sim->allocate(sub_weight->get_volume(), DT_FLOAT);
   float* output_ptr =
       (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
@@ -731,7 +731,7 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
     float* value_grad_ptr =
         (float*)sim->allocate(sub_value.get_volume(), DT_FLOAT);
     float* weight_grad_ptr =
-        (float*)sim->allocate(sub_weight.get_volume(), DT_FLOAT);
+        (float*)sim->allocate(sub_weight->get_volume(), DT_FLOAT);
     float* output_grad_ptr =
         (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert(output_grad_ptr != NULL);

@@ -16,7 +16,7 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::transpose(const Tensor& input,
+Tensor FFModel::transpose(const Tensor input,
                           const std::vector<int>& perm,
                           const char* name)
 {
@@ -26,25 +26,25 @@ Tensor FFModel::transpose(const Tensor& input,
 }
 
 Transpose::Transpose(FFModel& model,
-                     const Tensor& input,
+                     const Tensor input,
                      const std::vector<int>& _perm,
                      const char* name)
 : Op(model, OP_TRANSPOSE, name, input)
 {
-  assert(_perm.size() == input.numDim);
+  assert(_perm.size() == input->numDim);
   // Use Legion indexing to store perm
-  for (int i = 0; i < input.numDim; i++)
-    perm[i] = input.numDim - 1 - _perm[input.numDim - 1 - i];
+  for (int i = 0; i < input->numDim; i++)
+    perm[i] = input->numDim - 1 - _perm[input->numDim - 1 - i];
   int dims[MAX_TENSOR_DIM];
-  int numdim = input.numDim;
+  int numdim = input->numDim;
   for (int i = 0; i < numdim; i++)
-    dims[numdim-1-i] = input.adim[perm[i]];
-  outputs[0] = model.create_tensor(numdim, dims, input.data_type, this);
+    dims[numdim-1-i] = input->adim[perm[i]];
+  outputs[0] = model.create_tensor(numdim, dims, input->data_type, this);
 }
 
 void Transpose::create_input_partition(FFModel& model)
 {
-  int dim = inputs[0].numDim;
+  int dim = inputs[0]->numDim;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -85,10 +85,10 @@ void Transpose::create_input_partition_with_dim(FFModel& model)
   outputs[0].owner_idx = 0;
   Rect<NDIM> input_rect;
   input_rect = runtime->get_index_partition_color_space(
-        ctx, inputs[0].part.get_index_partition());
+        ctx, inputs[0]->part.get_index_partition());
   if (input_rect == part_rect) {
-    input_lps[0] = inputs[0].part;
-    input_grad_lps[0] = inputs[0].part_grad;
+    input_lps[0] = inputs[0]->part;
+    input_grad_lps[0] = inputs[0]->part_grad;
   } else {
     model.create_disjoint_partition<NDIM>(
         inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
@@ -158,11 +158,11 @@ void Transpose::init(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -284,11 +284,11 @@ void Transpose::forward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -368,13 +368,13 @@ void Transpose::backward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): output_grad
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
+    RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
+                      READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[1](I/O): input_grad
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                      READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+                      READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -383,11 +383,11 @@ bool Transpose::measure_operator_cost(Simulator* sim,
                                       const ParallelConfig& pc,
                                       CostMetrics& cost_metrics)
 {
-  Tensor sub_input, sub_output;
-  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+  TensorBase sub_input, sub_output;
+  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
     return false;
   }
-  if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type)) {
+  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type)) {
     return false;
   }
 

@@ -26,9 +26,9 @@ class FFModel;
 class Initializer;
 
 struct TensorBase {
-  Tensor(void);
-  Tensor& operator=(const Tensor& rhs);
-  bool operator==(const Tensor& rhs) const;
+  TensorBase(void);
+  //Tensor& operator=(const Tensor& rhs);
+  //bool operator==(const Tensor& rhs) const;
   void inline_map(FFConfig &config);
   void inline_unmap(FFConfig &config);
   template<typename T>
@@ -36,10 +36,10 @@ struct TensorBase {
   void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major);
   void detach_raw_ptr(FFConfig &config);
   bool get_input_sub_tensor(const ParallelConfig& pc,
-                            Tensor& tensor,
+                            TensorBase& tensor,
                             OperatorType type);
   bool get_output_sub_tensor(const ParallelConfig& pc,
-                             Tensor& tensor,
+                             TensorBase& tensor,
                              OperatorType type);
   size_t get_volume() const;
   Domain get_domain() const;
@@ -67,8 +67,10 @@ struct TensorBase {
 };
 
 typedef TensorBase* Tensor;
+typedef TensorBase* Parameter;
 
-struct Parameter : Tensor {
+/*
+struct Parameter : TensorBase {
   template <typename T>
   bool set_weights(const FFModel* model,
                    const std::vector<int>& dims,
@@ -77,5 +79,6 @@ struct Parameter : Tensor {
   bool get_weights(const FFModel* model,
                    T* data);
 };
+*/
 
 #endif

@@ -17,8 +17,8 @@
 #include "cuda_helper.h"
 
 Tensor FFModel::binary(OperatorType op,
-                       const Tensor& in1,
-                       const Tensor& in2,
+                       const Tensor in1,
+                       const Tensor in2,
                        char const *name)
 {
   ElementBinary *ele = new ElementBinary(*this, op, in1, in2, name);
@@ -26,29 +26,29 @@ Tensor FFModel::binary(OperatorType op,
   return ele->outputs[0];
 }
 
-Tensor FFModel::add(const Tensor& in1,
-                    const Tensor& in2,
+Tensor FFModel::add(const Tensor in1,
+                    const Tensor in2,
                     char const *name)
 {
   return this->binary(OP_EW_ADD, in1, in2, name);
 }
 
-Tensor FFModel::subtract(const Tensor& in1,
-                         const Tensor& in2,
+Tensor FFModel::subtract(const Tensor in1,
+                         const Tensor in2,
                          char const *name)
 {
   return this->binary(OP_EW_SUB, in1, in2, name);
 }
 
-Tensor FFModel::multiply(const Tensor& in1,
-                         const Tensor& in2,
+Tensor FFModel::multiply(const Tensor in1,
+                         const Tensor in2,
                          char const *name)
 {
   return this->binary(OP_EW_MUL, in1, in2, name);
 }
 
-Tensor FFModel::divide(const Tensor& in1,
-                       const Tensor& in2,
+Tensor FFModel::divide(const Tensor in1,
+                       const Tensor in2,
                        char const *name)
 {
   return this->binary(OP_EW_DIV, in1, in2, name);
@@ -56,8 +56,8 @@ Tensor FFModel::divide(const Tensor& in1,
 
 ElementBinary::ElementBinary(FFModel& model,
                              OperatorType _op_type,
-                             const Tensor& in1,
-                             const Tensor& in2,
+                             const Tensor in1,
+                             const Tensor in2,
                              const char* name)
 : Op(
     model,
@@ -71,15 +71,15 @@ ElementBinary::ElementBinary(FFModel& model,
   //TODO: implement broadcast op
   numOutputs = 1;
   numWeights = 0;
-  assert(in1.numDim == in2.numDim);
-  assert(in1.data_type == in2.data_type);
-  int numdim = in1.numDim;
+  assert(in1->numDim == in2->numDim);
+  assert(in1->data_type == in2->data_type);
+  int numdim = in1->numDim;
   int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
-    assert(in1.adim[i] == in2.adim[i]);
-    dims[numdim-1-i] = in1.adim[i];
+    assert(in1->adim[i] == in2->adim[i]);
+    dims[numdim-1-i] = in1->adim[i];
   }
-  outputs[0] = model.create_tensor(numdim, dims, in1.data_type, this);
+  outputs[0] = model.create_tensor(numdim, dims, in1->data_type, this);
 }
 
 #ifdef DEADCODE
@@ -124,10 +124,10 @@ void ElementBinary::map_output_tensors_with_dim(FFModel& model)
   Rect<NDIM> input_rect;
   for (int i = 0; i < 2; i++) {
     input_rect = runtime->get_index_partition_color_space(
-        ctx, inputs[i].part.get_index_partition());
+        ctx, inputs[i]->part.get_index_partition());
     if (input_rect == part_rect) {
-      input_lps[i] = inputs[i].part;
-      input_grad_lps[i] = inputs[i].part_grad;
+      input_lps[i] = inputs[i]->part;
+      input_grad_lps[i] = inputs[i]->part_grad;
     } else {
       model.create_disjoint_partition<NDIM>(
           inputs[i], IndexSpaceT<NDIM>(task_is), input_lps[i], input_grad_lps[i]);
@@ -203,25 +203,25 @@ void ElementBinary::init(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region));
+      READ_WRITE, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
     RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[1].region));
+      READ_WRITE, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(2, FID_DATA);
   //launcher.add_region_requirement(
   //  RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-  //    WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+  //    WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
   //launcher.add_field(3, FID_DATA);
-  //if (inputs[0].region_grad != inputs[1].region_grad) {
+  //if (inputs[0]->region_grad != inputs[1]->region_grad) {
     // regions[4](I/O): input1_grad
   //  launcher.add_region_requirement(
   //    RegionRequirement(input_grad_lps[1], 0/*projection id*/,
-  //                      WRITE_ONLY, EXCLUSIVE, inputs[1].region_grad));
+  //                      WRITE_ONLY, EXCLUSIVE, inputs[1]->region_grad));
   //  launcher.add_field(4, FID_DATA);
   //}
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
@@ -416,15 +416,15 @@ void ElementBinary::forward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
     RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[1].region));
+      READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -608,29 +608,29 @@ void ElementBinary::backward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): output_grad
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
+    RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
+                      READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[1](I): input0
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, inputs[0].region));
+                      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(1, FID_DATA);
   // regions[2](I): input1
   launcher.add_region_requirement(
     RegionRequirement(input_lps[1], 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, inputs[1].region));
+                      READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(2, FID_DATA);
   // regions[3](I/O): input0_grad
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                      READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+                      READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(3, FID_DATA);
-  if (inputs[0].region_grad != inputs[1].region_grad) {
+  if (inputs[0]->region_grad != inputs[1]->region_grad) {
     // regions[4](I/O): input1_grad
     launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[1], 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[1].region_grad));
+                        READ_WRITE, EXCLUSIVE, inputs[1]->region_grad));
     launcher.add_field(4, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -649,12 +649,12 @@ bool ElementBinary::measure_operator_cost(Simulator* sim,
                                           const ParallelConfig& pc,
                                           CostMetrics& cost_metrics)
 {
-  Tensor sub_output, sub_input1, sub_input0;
-  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type))
+  TensorBase sub_output, sub_input1, sub_input0;
+  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type))
     return false;
-  if (!inputs[0].get_input_sub_tensor(pc, sub_input0, op_type))
+  if (!inputs[0]->get_input_sub_tensor(pc, sub_input0, op_type))
     return false;
-  if (!inputs[1].get_input_sub_tensor(pc, sub_input1, op_type))
+  if (!inputs[1]->get_input_sub_tensor(pc, sub_input1, op_type))
     return false;
   ElementBinaryMeta* m = sim->ele_binary_meta;
   m->op_type = op_type;

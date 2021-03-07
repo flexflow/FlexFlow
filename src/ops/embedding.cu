@@ -16,7 +16,7 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::embedding(const Tensor& input,
+Tensor FFModel::embedding(const Tensor input,
                           int num_entries,
                           int out_dim,
                           AggrMode aggr,
@@ -45,16 +45,16 @@ Tensor FFModel::embedding(const Tensor& input,
 }
 
 Embedding::Embedding(FFModel& model,
-                     const Tensor& _input,
-                     const Tensor& _weight,
+                     const Tensor _input,
+                     const Tensor _weight,
                      AggrMode _aggr,
                      const char* name)
 : Op(model, OP_EMBEDDING, name, _input, _weight),
-  num_entries(_weight.adim[1]), out_channels(_weight.adim[0]), aggr(_aggr)
+  num_entries(_weight->adim[1]), out_channels(_weight->adim[0]), aggr(_aggr)
 {
-  assert(_input.numDim == 2);
+  assert(_input->numDim == 2);
   numOutputs = 1;
-  const int dims[2] = {inputs[0].adim[1], out_channels};
+  const int dims[2] = {inputs[0]->adim[1], out_channels};
   outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
 }
 
@@ -98,10 +98,10 @@ void Embedding::create_input_partition(FFModel& model)
   }
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0].part.get_index_partition());
+      ctx, inputs[0]->part.get_index_partition());
   if (input_rect == part_rect) {
-    input_lps[0] = inputs[0].part;
-    input_grad_lps[0] = inputs[0].part_grad;
+    input_lps[0] = inputs[0]->part;
+    input_grad_lps[0] = inputs[0]->part_grad;
   } else {
     model.create_disjoint_partition<2>(
       inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
@@ -146,22 +146,22 @@ void Embedding::init(const FFModel& ff)
   // regions[0]: input
   //launcher.add_region_requirement(
   //  RegionRequirement(input_lps[0], 0/*projection*/,
-  //    READ_ONLY, EXCLUSIVE, inputs[0].region));
+  //    READ_ONLY, EXCLUSIVE, inputs[0]->region));
   //launcher.add_field(0, FID_DATA);
   // regions[1]: output
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // regions[2]: weight
   launcher.add_region_requirement(
-    RegionRequirement(weights[0].part, 0/*projection*/,
-      READ_ONLY, EXCLUSIVE, weights[0].region));
+    RegionRequirement(weights[0]->part, 0/*projection*/,
+      READ_ONLY, EXCLUSIVE, weights[0]->region));
   launcher.add_field(1, FID_DATA);
   // regions[3]: input_grad
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[0], 0/*projection*/,
-      WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+      WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -293,18 +293,18 @@ void Embedding::forward(const FFModel& ff)
   // regions[0]: input
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // regions[1]: output
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part, 0/*projection*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0].region,
+      RegionRequirement(outputs[0]->part, 0/*projection*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   // regions[2]: weight
   launcher.add_region_requirement(
-      RegionRequirement(weights[0].part, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, weights[0].region));
+      RegionRequirement(weights[0]->part, 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, weights[0]->region));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -371,18 +371,18 @@ void Embedding::backward(const FFModel& ff)
   // regions[0]: input
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // regions[1]: output_grad
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part_grad, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, outputs[0].region_grad,
+      RegionRequirement(outputs[0]->part_grad, 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0]->region_grad,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   // regions[2]: weight_grad
   launcher.add_region_requirement(
-      RegionRequirement(weights[0].part_grad, 0/*projection*/,
-                        READ_WRITE, EXCLUSIVE, weights[0].region_grad));
+      RegionRequirement(weights[0]->part_grad, 0/*projection*/,
+                        READ_WRITE, EXCLUSIVE, weights[0]->region_grad));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -391,11 +391,11 @@ bool Embedding::measure_operator_cost(Simulator* sim,
                                       const ParallelConfig& pc,
                                       CostMetrics& cost_metrics)
 {
-  Tensor sub_input, sub_output;
-  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+  TensorBase sub_input, sub_output;
+  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
     return false;
   }
-  if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type)) {
+  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type)) {
     return false;
   }
 

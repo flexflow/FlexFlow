@@ -36,7 +36,7 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff, Tensor input, Tensor label,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {num_samples, input.adim[2], input.adim[1], input.adim[0]};
+    const int dims[] = {num_samples, input->adim[2], input->adim[1], input->adim[0]};
     full_input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
   // Create full label

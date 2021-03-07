@@ -353,14 +353,14 @@ float Simulator::simulate_runtime(const FFModel* model,
     ParallelConfig config = global.find(op)->second;
     for (int j = 0; j < op->numInputs; j++) {
       Tensor t = op->inputs[j];
-      const Op* pre_op = t.owner_op;
+      const Op* pre_op = t->owner_op;
       if (pre_op == NULL)
         continue;
       ParallelConfig pre_config = global.find(pre_op)->second;
       for (int dstId = 0; dstId < config.num_parts(); dstId ++) {
         Domain dstR = op->get_input_tensor_shape(config, j, dstId);
         for (int srcId = 0; srcId < pre_config.num_parts(); srcId ++) {
-          Domain srcR = pre_op->get_output_tensor_shape(pre_config, t.owner_idx, srcId);
+          Domain srcR = pre_op->get_output_tensor_shape(pre_config, t->owner_idx, srcId);
           if (dstR.intersection(srcR).get_volume() > 0) {
             // Forward dependency
             {

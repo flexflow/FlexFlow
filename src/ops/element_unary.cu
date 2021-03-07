@@ -17,7 +17,7 @@
 #include "cuda_helper.h"
 
 Tensor FFModel::unary(OperatorType op,
-                      const Tensor& x,
+                      const Tensor x,
                       const char *name)
 {
   ElementUnary *ele = new ElementUnary(*this, op, x, name);
@@ -25,45 +25,45 @@ Tensor FFModel::unary(OperatorType op,
   return ele->outputs[0];
 }
 
-Tensor FFModel::exp(const Tensor& x,
+Tensor FFModel::exp(const Tensor x,
                     const char *name)
 {
   return this->unary(OP_EXP, x, name);
 }
 
-Tensor FFModel::relu(const Tensor& x, const char *name)
+Tensor FFModel::relu(const Tensor x, const char *name)
 {
   return this->unary(OP_RELU, x, name);
 }
 
-Tensor FFModel::sigmoid(const Tensor& x, const char *name)
+Tensor FFModel::sigmoid(const Tensor x, const char *name)
 {
   return this->unary(OP_SIGMOID, x, name);
 }
 
-Tensor FFModel::tanh(const Tensor& x, const char *name)
+Tensor FFModel::tanh(const Tensor x, const char *name)
 {
   return this->unary(OP_TANH, x, name);
 }
 
-Tensor FFModel::elu(const Tensor& x, const char *name)
+Tensor FFModel::elu(const Tensor x, const char *name)
 {
   return this->unary(OP_ELU, x, name);
 }
 
 ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
-                           const Tensor& x,
+                           const Tensor x,
                            const char* name)
 : Op(model, _op_type, name, x)
 {
   numOutputs = 1;
-  int numdim = x.numDim;
+  int numdim = x->numDim;
   int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
-    dims[numdim-1-i] = x.adim[i];
+    dims[numdim-1-i] = x->adim[i];
   }
-  outputs[0] = model.create_tensor(numdim, dims, x.data_type, this);
+  outputs[0] = model.create_tensor(numdim, dims, x->data_type, this);
 }
 
 bool ElementUnary::use_cudnn(OperatorType type)
@@ -117,10 +117,10 @@ void ElementUnary::map_output_tensors_with_dim(FFModel& model)
   outputs[0].owner_idx = 0;
   Rect<NDIM> input_rect;
   input_rect = runtime->get_index_partition_color_space(
-        ctx, inputs[0].part.get_index_partition());
+        ctx, inputs[0]->part.get_index_partition());
   if (input_rect == part_rect) {
-    input_lps[0] = inputs[0].part;
-    input_grad_lps[0] = inputs[0].part_grad;
+    input_lps[0] = inputs[0]->part;
+    input_grad_lps[0] = inputs[0]->part_grad;
   } else {
     model.create_disjoint_partition<NDIM>(
         inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
@@ -203,11 +203,11 @@ void ElementUnary::init(const FFModel& ff)
                               FFConfig::get_hash_id(std::string(name)));
   init_launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
   init_launcher.add_field(0, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   init_launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
@@ -329,11 +329,11 @@ void ElementUnary::forward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -455,22 +455,22 @@ void ElementUnary::backward(const FFModel& ff)
   // regions[0](I): input
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, inputs[0].region));
+                      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // regions[1](I/O): input_grad
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                      READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+                      READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2](I): output_grad
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+                      READ_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(2, FID_DATA);
   // regions[3](I): output_grad
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
+    RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
+                      READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(3, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -487,10 +487,10 @@ bool ElementUnary::measure_operator_cost(Simulator* sim,
                                          const ParallelConfig& pc,
                                          CostMetrics& cost_metrics)
 {
-  Tensor sub_output, sub_input;
-  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type))
+  TensorBase sub_output, sub_input;
+  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type))
     return false;
-  if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type))
+  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type))
     return false;
   ElementUnaryMeta* m = sim->ele_unary_meta;
   m->op_type = op_type;

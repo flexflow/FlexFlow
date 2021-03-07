@@ -16,7 +16,7 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-void FFModel::split(const Tensor& input,
+void FFModel::split(const Tensor input,
                     Tensor* outputs,
                     const std::vector<int>& splits,
                     int axis,
@@ -29,36 +29,37 @@ void FFModel::split(const Tensor& input,
 }
 
 Split::Split(FFModel& model,
-             const Tensor& input,
+             const Tensor input,
              const std::vector<int>& splits,
              int _axis,
              const char* name)
-: Op(model, OP_SPLIT, name, input)
+: Op(model, OP_SPLIT, name, input),
+  axis(input->numDim-1-_axis)
 {
   numOutputs = splits.size();
-  // Use the Legion dim ordering
-  axis = input.numDim - 1 - _axis;
+  // Note that we use the Legion dim ordering
+  // axis = input->numDim-1-_axis
   assert(axis >= 0);
   numWeights = 0;
   int split_size = 0;
   for (int i = 0; i < numOutputs; i++) {
     split_size += splits[i];
-    int numdim = input.numDim;
+    int numdim = input->numDim;
     int dims[MAX_TENSOR_DIM];
     for (int j = 0; j < numdim; j++)
-      dims[j] = input.adim[numdim-1-j];
+      dims[j] = input->adim[numdim-1-j];
     dims[_axis] = splits[i];
-    outputs[i] = model.create_tensor(numdim, dims, input.data_type,
+    outputs[i] = model.create_tensor(numdim, dims, input->data_type,
         this/*owner_op*/, i/*owner_idx*/);
   }
   // Check split sizes
-  assert(split_size == input.adim[axis]);
+  assert(split_size == input->adim[axis]);
 }
 
 void Split::create_input_partition(FFModel& model)
 {
   // Retrive the task indexspace
-  int dim = inputs[0].numDim;
+  int dim = inputs[0]->numDim;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -96,10 +97,10 @@ void Split::create_input_partition_with_dim(FFModel& model)
     outputs[i].owner_idx = i;
   }
   Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0].part.get_index_partition());
+      ctx, inputs[0]->part.get_index_partition());
   if (input_rect == part_rect) {
-    input_lps[0] = inputs[0].part;
-    input_grad_lps[0] = inputs[0].part_grad;
+    input_lps[0] = inputs[0]->part;
+    input_grad_lps[0] = inputs[0]->part_grad;
   } else {
     model.create_disjoint_partition<NDIM>(
         inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
@@ -126,12 +127,12 @@ void Split::init(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numOutputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(outputs[i].part, 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, outputs[i].region));
+      RegionRequirement(outputs[i]->part, 0/*projection id*/,
+        WRITE_ONLY, EXCLUSIVE, outputs[i]->region));
     launcher.add_field(i+1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -211,12 +212,12 @@ void Split::forward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numOutputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(outputs[i].part, 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, outputs[i].region));
+      RegionRequirement(outputs[i]->part, 0/*projection id*/,
+        WRITE_ONLY, EXCLUSIVE, outputs[i]->region));
     launcher.add_field(i+1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -272,12 +273,12 @@ void Split::backward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+      READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numOutputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(outputs[i].part_grad, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, outputs[i].region_grad));
+      RegionRequirement(outputs[i]->part_grad, 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, outputs[i]->region_grad));
     launcher.add_field(i+1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);

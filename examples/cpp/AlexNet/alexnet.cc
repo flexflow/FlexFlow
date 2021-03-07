@@ -156,13 +156,13 @@ DataLoader::DataLoader(FFModel& ff,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {num_samples, input.adim[2], input.adim[1], input.adim[0]};
+    const int dims[] = {num_samples, input->adim[2], input->adim[1], input->adim[0]};
     full_input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {num_samples, label.adim[0]};
+    const int dims[] = {num_samples, label->adim[0]};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
   }
   // Load entire dataset
@@ -171,14 +171,14 @@ DataLoader::DataLoader(FFModel& ff,
       TaskArgument(alexnet, sizeof(AlexNetConfig)));
   // regions[0]: full_input
   launcher.add_region_requirement(
-      RegionRequirement(full_input.region, WRITE_ONLY,
-                        EXCLUSIVE, full_input.region,
+      RegionRequirement(full_input->region, WRITE_ONLY,
+                        EXCLUSIVE, full_input->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_label
   launcher.add_region_requirement(
-      RegionRequirement(full_label.region, WRITE_ONLY,
-                        EXCLUSIVE, full_label.region,
+      RegionRequirement(full_label->region, WRITE_ONLY,
+                        EXCLUSIVE, full_label->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   runtime->execute_task(ctx, launcher);
@@ -288,13 +288,13 @@ void DataLoader::next_batch(FFModel& ff)
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(""));
     launcher.add_region_requirement(
-        RegionRequirement(full_input.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_input.region,
+        RegionRequirement(full_input->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_input.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_input.region));
+        RegionRequirement(batch_input->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -317,13 +317,13 @@ void DataLoader::next_batch(FFModel& ff)
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(""));
     launcher.add_region_requirement(
-        RegionRequirement(full_label.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_label.region,
+        RegionRequirement(full_label->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_label->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_label.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_label.region));
+        RegionRequirement(batch_label->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_label->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }

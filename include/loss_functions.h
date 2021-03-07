@@ -18,10 +18,10 @@
 
 #include "legion.h"
 #include "ffconst.h"
+#include "tensor.h"
 
 using namespace Legion;
 
-class Tensor;
 class FFModel;
 
 class Loss
@@ -36,9 +36,9 @@ public:
   static void backward_task_with_dim(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
-  void backward(FFModel* model, const Tensor* logit, const Tensor* label);
+  void backward(FFModel* model, const Tensor logit, const Tensor label);
   template<int NDIM>
-  void backward_with_dim(FFModel* model, const Tensor* logit, const Tensor* label);
+  void backward_with_dim(FFModel* model, const Tensor logit, const Tensor label);
 public:
   FFModel* model;
   LossType loss_type;

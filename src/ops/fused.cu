@@ -28,14 +28,14 @@ FusedOp::FusedOp(FFModel& model, Op* op)
   numWeights = op->numWeights;
   for (int i = 0; i < numWeights; i++) {
     weights[i] = op->weights[i];
-    weights[i].owner_op = this;
-    weights[i].owner_idx = i;
+    weights[i]->owner_op = this;
+    weights[i]->owner_idx = i;
   }
   numOutputs = op->numOutputs;
   for (int i = 0; i < numOutputs; i++) {
     outputs[i] = op->outputs[i];
-    outputs[i].owner_op = this;
-    outputs[i].owner_idx = i;
+    outputs[i]->owner_op = this;
+    outputs[i]->owner_idx = i;
   }
   numOperators = 1;
   op_num_inputs[0] = numInputs;
@@ -96,20 +96,20 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
   for (int i = 0; i < op->numInputs; i++) {
     bool found = false;
     for (int j = 0; j < input_offset; j++)
-      if (inputs[j].region == op->inputs[i].region) {
+      if (inputs[j]->region == op->inputs[i]->region) {
         // This input is one of my inputs
         assert(!found);
-        assert(inputs[j].region != LogicalRegion::NO_REGION);
+        assert(inputs[j]->region != LogicalRegion::NO_REGION);
         op_input_source[input_offset + i] = SOURCE_INPUT;
         op_input_idx[input_offset + i] = j;
         found = true;
         break;
       }
     for (int j = 0; j < output_offset; j++)
-      if (outputs[j].region == op->inputs[i].region) {
+      if (outputs[j]->region == op->inputs[i]->region) {
         // This input is one of my outputs
         assert(!found);
-        assert(outputs[j].region != LogicalRegion::NO_REGION);
+        assert(outputs[j]->region != LogicalRegion::NO_REGION);
         op_input_source[input_offset + i] = SOURCE_OUTPUT;
         op_input_idx[input_offset + i] = j;
         found = true;
@@ -130,9 +130,9 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
   for (int i = 0; i < op->numWeights; i++) {
     bool found = false;
     for (int j = 0; j < numWeights; j++)
-      if (weights[j].region == op->weights[i].region) {
+      if (weights[j]->region == op->weights[i]->region) {
         assert(!found);
-        assert(weights[j].region != LogicalRegion::NO_REGION);
+        assert(weights[j]->region != LogicalRegion::NO_REGION);
         op_weight_source[weight_offset + i] = SOURCE_WEIGHT;
         op_weight_idx[weight_offset + i] = j;
         found = true;
@@ -142,8 +142,8 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
       // Do nothing
     } else {
       weights[numWeights] = op->weights[i];
-      weights[numWeights].owner_op = this;
-      weights[numWeights].owner_idx = numWeights;
+      weights[numWeights]->owner_op = this;
+      weights[numWeights]->owner_idx = numWeights;
       op_weight_source[weight_offset+i] = SOURCE_WEIGHT;
       op_weight_idx[weight_offset+i] = numWeights;
       numWeights += 1;
@@ -152,8 +152,8 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
   // Set outputs
   for (int i = 0; i < op->numOutputs; i++) {
     outputs[numOutputs] = op->outputs[i];
-    outputs[numOutputs].owner_op = this;
-    outputs[numOutputs].owner_idx = numOutputs;
+    outputs[numOutputs]->owner_op = this;
+    outputs[numOutputs]->owner_idx = numOutputs;
     op_output_source[output_offset+i] = SOURCE_OUTPUT;
     op_output_idx[output_offset+i] = numOutputs;
     numOutputs += 1;
@@ -552,26 +552,26 @@ void FusedOp::forward(const FFModel& ff)
   int offset = 0;
   for (int i = 0; i < numInputs; i++) {
     assert(input_lps[i] != LogicalPartition::NO_PART);
-    assert(inputs[i].region != LogicalRegion::NO_REGION);
+    assert(inputs[i]->region != LogicalRegion::NO_REGION);
     launcher.add_region_requirement(
       RegionRequirement(input_lps[i], 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i].region));
+        READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(offset+i, FID_DATA);
   }
   offset += numInputs;
   for (int i = 0; i < numWeights; i++) {
-    assert(weights[i].region != LogicalRegion::NO_REGION);
+    assert(weights[i]->region != LogicalRegion::NO_REGION);
     launcher.add_region_requirement(
-      RegionRequirement(weights[i].part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, weights[i].region));
+      RegionRequirement(weights[i]->part, 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, weights[i]->region));
     launcher.add_field(offset+i, FID_DATA);
   }
   offset += numWeights;
   for (int i = 0; i < numOutputs; i++) {
-    assert(outputs[i].region != LogicalRegion::NO_REGION);
+    assert(outputs[i]->region != LogicalRegion::NO_REGION);
     launcher.add_region_requirement(
-      RegionRequirement(outputs[i].part, 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, outputs[i].region));
+      RegionRequirement(outputs[i]->part, 0/*projection id*/,
+        WRITE_ONLY, EXCLUSIVE, outputs[i]->region));
     launcher.add_field(offset+i, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -939,37 +939,37 @@ void FusedOp::backward(const FFModel& ff)
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_lps[i], 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i].region));
+        READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(idx++, FID_DATA);
   }
   for (int i = 0; i < numWeights; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(weights[i].part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, weights[i].region));
+      RegionRequirement(weights[i]->part, 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, weights[i]->region));
     launcher.add_field(idx++, FID_DATA);
   }
   for (int i = 0; i < numOutputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(outputs[i].part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, outputs[i].region));
+      RegionRequirement(outputs[i]->part, 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, outputs[i]->region));
     launcher.add_field(idx++, FID_DATA);
   }
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[i], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i].region_grad));
+        READ_WRITE, EXCLUSIVE, inputs[i]->region_grad));
     launcher.add_field(idx++, FID_DATA);
   }
   for (int i = 0; i < numWeights; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(weights[i].part_grad, 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, weights[i].region_grad));
+      RegionRequirement(weights[i]->part_grad, 0/*projection id*/,
+        READ_WRITE, EXCLUSIVE, weights[i]->region_grad));
     launcher.add_field(idx++, FID_DATA);
   }
   for (int i = 0; i < numOutputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(outputs[i].part_grad, 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, outputs[i].region_grad));
+      RegionRequirement(outputs[i]->part_grad, 0/*projection id*/,
+        READ_WRITE, EXCLUSIVE, outputs[i]->region_grad));
     launcher.add_field(idx++, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);

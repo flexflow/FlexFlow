@@ -20,20 +20,20 @@ Optimizer::Optimizer(const FFModel* _model)
 : model(_model) {}
 
 Tensor create_replica_parameter(const FFModel* model,
-                                const Tensor& p)
+                                const Tensor p)
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  Tensor v;
-  v.sync_type = p.sync_type;
-  v.owner_op = p.owner_op;
-  v.region = runtime->create_logical_region(
-      ctx, p.region.get_index_space(), p.region.get_field_space());
-  if (v.sync_type == ParameterSyncType::PS) {
+  Tensor v = new TensorBase();
+  v->sync_type = p->sync_type;
+  v->owner_op = p->owner_op;
+  v->region = runtime->create_logical_region(
+      ctx, p->region.get_index_space(), p->region.get_field_space());
+  if (v->sync_type == ParameterSyncType::PS) {
     // Do nothing
-  } else if (v.sync_type == ParameterSyncType::NCCL) {
-    v.part = runtime->get_logical_partition(
-        ctx, v.region, p.part.get_index_partition());
+  } else if (v->sync_type == ParameterSyncType::NCCL) {
+    v->part = runtime->get_logical_partition(
+        ctx, v->region, p->part.get_index_partition());
   } else {
     assert(false);
   }
@@ -55,7 +55,7 @@ void SGDOptimizer::init(void)
   for (size_t i = 0; i < model->parameters.size(); i++) {
     Tensor p = model->parameters[i];
     Domain domain = runtime->get_index_space_domain(
-        ctx, p.region.get_index_space());
+        ctx, p->region.get_index_space());
     switch (domain.get_dim()) {
       case 0:
       {
@@ -70,8 +70,8 @@ void SGDOptimizer::init(void)
       case 5:
       {
         if (momentum > 0.0f) {
-          v_values[p.region] = create_replica_parameter(model, p);
-          initializer->init(model, &v_values[p.region]);
+          v_values[p->region] = create_replica_parameter(model, p);
+          initializer->init(model, v_values[p->region]);
         }
         break;
       }
@@ -90,7 +90,7 @@ void SGDOptimizer::next(void)
 {
 }
 
-void SGDOptimizer::update(const Tensor* p)
+void SGDOptimizer::update(const Tensor p)
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
@@ -114,8 +114,8 @@ void SGDOptimizer::update(const Tensor* p)
       // regions[2]: v_region
       assert(v_values.find(p->region) != v_values.end());
       launcher.add_region_requirement(
-          RegionRequirement(v_values[p->region].region,
-                            READ_WRITE, EXCLUSIVE, v_values[p->region].region));
+          RegionRequirement(v_values[p->region]->region,
+                            READ_WRITE, EXCLUSIVE, v_values[p->region]->region));
       launcher.add_field(2, FID_DATA);
     }
     runtime->execute_task(ctx, launcher);
@@ -174,8 +174,8 @@ void SGDOptimizer::update(const Tensor* p)
       // regions[2]: v_value
       assert(v_values.find(p->region) != v_values.end());
       launcher.add_region_requirement(
-          RegionRequirement(v_values[p->region].part, 0/*projection id*/,
-                            READ_WRITE, EXCLUSIVE, v_values[p->region].region));
+          RegionRequirement(v_values[p->region]->part, 0/*projection id*/,
+                            READ_WRITE, EXCLUSIVE, v_values[p->region]->region));
       launcher.add_field(2, FID_DATA);
     }
     //MustEpochLauncher must_epoch_launcher;
@@ -209,7 +209,7 @@ void AdamOptimizer::init(void)
   for (size_t i = 0; i < model->parameters.size(); i++) {
     Tensor p = model->parameters[i];
     Domain domain = runtime->get_index_space_domain(
-        ctx, p.region.get_index_space());
+        ctx, p->region.get_index_space());
     switch (domain.get_dim()) {
       case 0:
       {
@@ -223,10 +223,10 @@ void AdamOptimizer::init(void)
       case 4:
       case 5:
       {
-        v_values[p.region] = create_replica_parameter(model, p);
-        m_values[p.region] = create_replica_parameter(model, p);
-        initializer->init(model, &v_values[p.region]);
-        initializer->init(model, &m_values[p.region]);
+        v_values[p->region] = create_replica_parameter(model, p);
+        m_values[p->region] = create_replica_parameter(model, p);
+        initializer->init(model, v_values[p->region]);
+        initializer->init(model, m_values[p->region]);
         break;
       }
       default:
@@ -253,7 +253,7 @@ void AdamOptimizer::next(void)
   //fprintf(stderr, "lr = %.4lf alpha_t = %.4lf\n", alpha, alpha_t);
 }
 
-void AdamOptimizer::update(const Tensor* p)
+void AdamOptimizer::update(const Tensor p)
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
@@ -277,13 +277,13 @@ void AdamOptimizer::update(const Tensor* p)
     launcher.add_field(1, FID_DATA);
     // regions[2]: w_region
     launcher.add_region_requirement(
-        RegionRequirement(v_values[p->region].region,
-                          READ_WRITE, EXCLUSIVE, v_values[p->region].region));
+        RegionRequirement(v_values[p->region]->region,
+                          READ_WRITE, EXCLUSIVE, v_values[p->region]->region));
     launcher.add_field(2, FID_DATA);
     // regions[3]: m_region
     launcher.add_region_requirement(
-        RegionRequirement(m_values[p->region].region,
-                          READ_WRITE, EXCLUSIVE, m_values[p->region].region));
+        RegionRequirement(m_values[p->region]->region,
+                          READ_WRITE, EXCLUSIVE, m_values[p->region]->region));
     launcher.add_field(3, FID_DATA);
     runtime->execute_task(ctx, launcher);
     // Parameter prefetching optimizations to reduce comm. overhead
@@ -339,13 +339,13 @@ void AdamOptimizer::update(const Tensor* p)
     launcher.add_field(1, FID_DATA);
     // regions[2]: w_region
     launcher.add_region_requirement(
-        RegionRequirement(v_values[p->region].part, 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, v_values[p->region].region));
+        RegionRequirement(v_values[p->region]->part, 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, v_values[p->region]->region));
     launcher.add_field(2, FID_DATA);
     // regions[3]: m_region
     launcher.add_region_requirement(
-        RegionRequirement(m_values[p->region].part, 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, m_values[p->region].region));
+        RegionRequirement(m_values[p->region]->part, 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, m_values[p->region]->region));
     launcher.add_field(3, FID_DATA);
     //MustEpochLauncher must_epoch_launcher;
     //must_epoch_launcher.add_index_task(launcher);

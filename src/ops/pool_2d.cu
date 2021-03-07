@@ -16,14 +16,14 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::pool2d(const Tensor& input,
+Tensor FFModel::pool2d(const Tensor input,
                        int kernelH, int kernelW,
                        int strideH, int strideW,
                        int paddingH, int paddingW,
                        PoolType type, ActiMode activation,
                        char const *name)
 {
-  assert(input.numDim == 4); /*NCHW*/
+  assert(input->numDim == 4); /*NCHW*/
   Pool2D *pool = new Pool2D(*this, input, kernelH, kernelW,
                       strideH, strideW, paddingH, paddingW,
                       type, activation, name);
@@ -32,7 +32,7 @@ Tensor FFModel::pool2d(const Tensor& input,
 }
 
 Pool2D::Pool2D(FFModel& model,
-               const Tensor& _input,
+               const Tensor _input,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
@@ -44,12 +44,12 @@ Pool2D::Pool2D(FFModel& model,
   padding_h(_padding_h), padding_w(_padding_w),
   pool_type(_type), activation(_activation)
 {
-  int input_w = inputs[0].adim[0];
-  int input_h = inputs[0].adim[1];
+  int input_w = inputs[0]->adim[0];
+  int input_h = inputs[0]->adim[1];
   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  int output_c = inputs[0].adim[2];
-  int output_n = inputs[0].adim[3];
+  int output_c = inputs[0]->adim[2];
+  int output_n = inputs[0]->adim[3];
   const int dims[4] = {output_n, output_c, output_h, output_w};
   outputs[0] = model.create_tensor<4>(dims, DT_FLOAT, this);
 }
@@ -79,10 +79,10 @@ void Pool2D::create_input_partition(FFModel& model)
     outputs[0].owner_idx = 0;
   }
   Rect<4> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0].part.get_index_partition());
+      ctx, inputs[0]->part.get_index_partition());
   if (input_rect == part_rect) {
-    input_lps[0] = inputs[0].part;
-    input_grad_lps[0] = inputs[0].part_grad;
+    input_lps[0] = inputs[0]->part;
+    input_grad_lps[0] = inputs[0]->part_grad;
   } else {
     model.create_disjoint_partition<4>(
       inputs[0], (IndexSpaceT<4>)task_is, input_lps[0], input_grad_lps[0]);
@@ -190,11 +190,11 @@ void Pool2D::init(const FFModel& ff)
                               FFConfig::get_hash_id(std::string(name)));
   init_launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
   init_launcher.add_field(0, FID_DATA);
   init_launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, outputs[0].region));
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, outputs[0]->region));
   init_launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
@@ -274,11 +274,11 @@ void Pool2D::forward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part, 0/*projection id*/,
-                        WRITE_DISCARD, EXCLUSIVE, outputs[0].region));
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
@@ -363,23 +363,23 @@ void Pool2D::backward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): input
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0].part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+      RegionRequirement(inputs[0]->part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // regions[1](I/O): input_grad
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0].part_grad, 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+      RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
+                        READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2](I): output
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, outputs[0].region));
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(2, FID_DATA);
   // regions[3](I): output_grad
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
+      RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(3, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
@@ -397,10 +397,10 @@ bool Pool2D::measure_operator_cost(Simulator* sim,
                                    const ParallelConfig& pc,
                                    CostMetrics& cost_metrics)
 {
-  Tensor sub_output, sub_input;
-  if(!outputs[0].get_output_sub_tensor(pc, sub_output, OP_CONV2D))
+  TensorBase sub_output, sub_input;
+  if(!outputs[0]->get_output_sub_tensor(pc, sub_output, OP_CONV2D))
     return false;
-  if(!inputs[0].get_input_sub_tensor(pc, sub_input, OP_CONV2D))
+  if(!inputs[0]->get_input_sub_tensor(pc, sub_input, OP_CONV2D))
     return false;
   int input_w = sub_input.adim[0];
   int input_h = sub_input.adim[1];
