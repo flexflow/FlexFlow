@@ -57,9 +57,13 @@ ElementUnary::ElementUnary(FFModel& model,
                            const char* name)
 : Op(model, _op_type, name, x)
 {
-  outputs[0].numDim = inputs[0].numDim;
-  for (int i = 0; i < outputs[0].numDim; i++)
-    outputs[0].adim[i] = inputs[0].adim[i];
+  numOutputs = 1;
+  int numdim = x.numDim;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++) {
+    dims[numdim-1-i] = x.adim[i];
+  }
+  outputs[0] = model.create_tensor(numdim, dims, x.data_type, this);
 }
 
 bool ElementUnary::use_cudnn(OperatorType type)
@@ -75,11 +79,7 @@ bool ElementUnary::use_cudnn(OperatorType type)
   return false;
 }
 
-void ElementUnary::create_weights(FFModel& model)
-{
-  // Do nothing
-}
-
+#ifdef DEADCODE
 void ElementUnary::map_output_tensors(FFModel& model)
 {
   int dim = inputs[0].numDim;
@@ -126,6 +126,7 @@ void ElementUnary::map_output_tensors_with_dim(FFModel& model)
         inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
   }
 }
+#endif
 
 OpMeta* ElementUnary::init_task(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,

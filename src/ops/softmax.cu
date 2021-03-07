@@ -36,18 +36,11 @@ Softmax::Softmax(FFModel& model,
                  const char* name)
 : Op(model, OP_SOFTMAX, name, _input)
 {
-  outputs[0].numDim = 2;
-  outputs[0].adim[0] = _input.adim[0];
-  outputs[0].adim[1] = _input.adim[1];
+  const int dims[2] = {_input.adim[1], _input.adim[0]};
+  outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
 }
 
-
-void Softmax::create_weights(FFModel& model)
-{
-  // Do nothing since we don't ahve weights
-}
-
-void Softmax::map_output_tensors(FFModel& model)
+void Softmax::create_input_partition(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;
@@ -59,6 +52,8 @@ void Softmax::map_output_tensors(FFModel& model)
   int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
   // Current require data parallelism for Softmax
   assert(num_par_c == 1);
+  return Op::create_input_partition(model);
+#ifdef DEADCODE
   {
     const int dims[2] = {inputs[0].adim[1], inputs[0].adim[0]};
     outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
@@ -75,6 +70,7 @@ void Softmax::map_output_tensors(FFModel& model)
     model.create_disjoint_partition<2>(
         inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
   }
+#endif
 }
 
 void Softmax::init_meta(SoftmaxMeta *m,

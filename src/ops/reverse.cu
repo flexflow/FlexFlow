@@ -31,19 +31,15 @@ Reverse::Reverse(FFModel& model,
                  const char* name)
 : Op(model, OP_REVERSE, name, input), axis(_axis)
 {
-  outputs[0].numDim = input.numDim;
-  for (int i = 0; i < input.numDim; i++)
-    outputs[0].adim[i] = input.adim[i];
-  numInputs = 1;
-  numWeights = 0;
+  numOutputs = 1;
+  int numdim = input.numDim;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++)
+    dims[i] = input.adim[numdim-1-i];
+  outputs[0] = model.create_tensor(numdim, dims, input.data_type, this);
 }
 
-void Reverse::create_weights(FFModel& model)
-{
-  // Do nothing since no weights
-}
-
-void Reverse::map_output_tensors(FFModel& model)
+void Reverse::create_input_partition(FFModel& model)
 {
   // Retrive the task indexspace
   int dim = inputs[0].numDim;
@@ -52,7 +48,7 @@ void Reverse::map_output_tensors(FFModel& model)
     case DIM: \
     { \
       task_is = model.get_or_create_task_is(DIM, name); \
-      map_output_tensors_with_dim<DIM>(model); \
+      create_input_partition_with_dim<DIM>(model); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -66,13 +62,15 @@ void Reverse::map_output_tensors(FFModel& model)
 }
 
 template<int NDIM>
-void Reverse::map_output_tensors_with_dim(FFModel& model)
+void Reverse::create_input_partition_with_dim(FFModel& model)
 {
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
   // the degree of parallelism along the reversed dimension must be 1
   assert(part_rect.hi[NDIM-1-axis] == part_rect.lo[NDIM-1-axis]);
+  return Op::create_input_partition(model);
+#ifdef DEADCODE
   int dims[NDIM];
   for (int i = 0; i < NDIM; i++)
     dims[i] = outputs[0].adim[NDIM-1-i];
@@ -88,6 +86,7 @@ void Reverse::map_output_tensors_with_dim(FFModel& model)
     model.create_disjoint_partition<NDIM>(
         inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
   }
+#endif
 }
 
 __host__

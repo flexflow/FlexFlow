@@ -37,54 +37,70 @@ Tensor FFModel::multihead_attention(const Tensor& query,
   //if (bias_initializer == NULL) {
   //  bias_initializer = new ZeroInitializer();
   //}
+#ifdef FF_USE_NCCL
+  ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+  ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+  Tensor kernel;
+  {
+    // Compute weight size
+    int qSize = query.adim[0];
+    int kSize = key.adim[0];
+    int vSize = value.adim[0];
+    int qProjSize = kdim;
+    int kProjSize = kdim;
+    int vProjSize = vdim;
+    int oProjSize = embed_dim;
+    int qParas = qProjSize * qSize;
+    int kParas = kProjSize * kSize;
+    int vParas = vProjSize * vSize;
+    int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
+    const int dims[2] = {num_heads, qParas + kParas + vParas + oParas};
+    kernel = create_weight<2>(dims, DT_FLOAT, NULL/*owner_op*/,
+        true/*create_grad*/, kernel_initializer, comm_type);
+  }
   MultiHeadAttention* attn = new MultiHeadAttention(*this, query, key, value,
-      embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn,
-      kernel_initializer/*, bias_initializer*/, name);
+      kernel, embed_dim, num_heads, kdim, vdim, dropout, bias,
+      add_bias_kv, add_zero_attn, name);
   layers.push_back(attn);
   return attn->outputs[0];
 }
 
-MultiHeadAttention::MultiHeadAttention(FFModel& model,
-                                       const Tensor& _query,
-                                       const Tensor& _key,
-                                       const Tensor& _value,
-                                       int _embed_dim, int _num_heads,
-                                       int _kdim, int _vdim,
-                                       float _dropout, bool _bias,
-                                       bool _add_bias_kv, bool _add_zero_attn,
-                                       Initializer* _kernel_initializer,
-                                       const char* name)
-//                                       Initializer* _bias_initializer)
+MultiHeadAttention::MultiHeadAttention(
+    FFModel& model,
+    const Tensor& _query,
+    const Tensor& _key,
+    const Tensor& _value,
+    const Tensor& _weight,
+    int _embed_dim, int _num_heads,
+    int _kdim, int _vdim,
+    float _dropout, bool _bias,
+    bool _add_bias_kv, bool _add_zero_attn,
+    const char* name)
+//    Initializer* _bias_initializer)
 : Op(model,
      OP_MULTIHEAD_ATTENTION,
      name,
-     _query, _key, _value),
+     _query, _key, _value, _weight),
   dropout(_dropout), bias(_bias),
   add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
   qSize(_query.adim[0]), kSize(_key.adim[0]), vSize(_value.adim[0]),
   qProjSize(_kdim), kProjSize(_kdim), vProjSize(_vdim), oProjSize(_embed_dim),
-  qoSeqLength(_query.adim[1]), kvSeqLength(_key.adim[1]),
-  kernel_initializer(_kernel_initializer)
+  qoSeqLength(_query.adim[1]), kvSeqLength(_key.adim[1])
   //bias_initializer(_bias_initializer)
 {
   // assert key and value have the same sequence length
   assert(_key.adim[1] == _value.adim[1]);
   numOutputs = 1;
-  outputs[0].numDim = _query.numDim;
-  for (int i = 1; i < _query.numDim; i++)
-    outputs[0].adim[i] = _query.adim[i];
-  outputs[0].adim[0] = _embed_dim;
-  numWeights = 1;
-  weights[0].numDim = 2;
-  // Compute weight size
-  int qParas = qProjSize * qSize;
-  int kParas = kProjSize * kSize;
-  int vParas = vProjSize * vSize;
-  int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-  weights[0].adim[0] = qParas + kParas + vParas + oParas;
-  weights[0].adim[1] = _num_heads;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < _query.numDim; i++)
+    dims[i] = _query.adim[_query.numDim-1-i];
+  dims[_query.numDim-1] = _embed_dim;
+  outputs[0] = model.create_tensor(_query.numDim, dims, DT_FLOAT, this);
 }
 
+#ifdef DEADCODE
 void MultiHeadAttention::create_weights(FFModel& model)
 {
   // Retrive the task indexspace for the op
@@ -101,8 +117,9 @@ void MultiHeadAttention::create_weights(FFModel& model)
         kernel_initializer, true/*create_grad*/, comm_type);
   }
 }
+#endif
 
-void MultiHeadAttention::map_output_tensors(FFModel& model)
+void MultiHeadAttention::create_input_partition(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;
@@ -117,23 +134,24 @@ void MultiHeadAttention::map_output_tensors(FFModel& model)
   // Currently assume only partition over the batch dim
   assert(num_part_v == 1);
   assert(num_part_c == 1);
-  {
-    const int dims[3] = {outputs[0].adim[2], outputs[0].adim[1], outputs[0].adim[0]};
-    outputs[0] = model.create_tensor<3>(dims, DT_FLOAT, this);
-    outputs[0].owner_op = this;
-    outputs[0].owner_idx = 0;
-  }
-  for (int i = 0; i < 3; i++) {
-    Rect<3> input_rect = runtime->get_index_partition_color_space(
-        ctx, inputs[i].part.get_index_partition());
-    if (input_rect == part_rect) {
-      input_lps[i] = inputs[i].part;
-      input_grad_lps[i] = inputs[i].part_grad;
-    } else {
-      model.create_disjoint_partition(
-          inputs[i], (IndexSpaceT<3>)task_is, input_lps[i], input_grad_lps[i]);
-    }
-  }
+  return Op::create_input_partition(model);
+  //{
+  //  const int dims[3] = {outputs[0].adim[2], outputs[0].adim[1], outputs[0].adim[0]};
+  //  outputs[0] = model.create_tensor<3>(dims, DT_FLOAT, this);
+  //  outputs[0].owner_op = this;
+  //  outputs[0].owner_idx = 0;
+  //}
+  //for (int i = 0; i < 3; i++) {
+  //  Rect<3> input_rect = runtime->get_index_partition_color_space(
+  //      ctx, inputs[i].part.get_index_partition());
+  //  if (input_rect == part_rect) {
+  //    input_lps[i] = inputs[i].part;
+  //    input_grad_lps[i] = inputs[i].part_grad;
+  //  } else {
+  //    model.create_disjoint_partition(
+  //        inputs[i], (IndexSpaceT<3>)task_is, input_lps[i], input_grad_lps[i]);
+  //  }
+  //}
 }
 
 /*

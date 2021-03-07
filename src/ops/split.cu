@@ -43,21 +43,19 @@ Split::Split(FFModel& model,
   int split_size = 0;
   for (int i = 0; i < numOutputs; i++) {
     split_size += splits[i];
-    outputs[i].numDim = input.numDim;
-    for (int j = 0; j < input.numDim; j++)
-      outputs[i].adim[j] = input.adim[j];
-    outputs[i].adim[axis] = splits[i];
+    int numdim = input.numDim;
+    int dims[MAX_TENSOR_DIM];
+    for (int j = 0; j < numdim; j++)
+      dims[j] = input.adim[numdim-1-j];
+    dims[_axis] = splits[i];
+    outputs[i] = model.create_tensor(numdim, dims, input.data_type,
+        this/*owner_op*/, i/*owner_idx*/);
   }
   // Check split sizes
   assert(split_size == input.adim[axis]);
 }
 
-void Split::create_weights(FFModel& model)
-{
-  // Do nothing
-}
-
-void Split::map_output_tensors(FFModel& model)
+void Split::create_input_partition(FFModel& model)
 {
   // Retrive the task indexspace
   int dim = inputs[0].numDim;
@@ -66,7 +64,7 @@ void Split::map_output_tensors(FFModel& model)
     case DIM: \
     { \
       task_is = model.get_or_create_task_is(DIM, name); \
-      map_output_tensors_with_dim<DIM>(model); \
+      create_input_partition_with_dim<DIM>(model); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -80,13 +78,15 @@ void Split::map_output_tensors(FFModel& model)
 }
 
 template<int NDIM>
-void Split::map_output_tensors_with_dim(FFModel& model)
+void Split::create_input_partition_with_dim(FFModel& model)
 {
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
   // cannot parallelize along the axis dim
   assert(part_rect.hi[axis] == part_rect.lo[axis]);
+  return Op::create_input_partition(model);
+#ifdef DEADCODE
   for (int i = 0; i < numOutputs; i++) {
     int dims[NDIM];
     for (int j = 0; j < NDIM; j++)
@@ -104,6 +104,7 @@ void Split::map_output_tensors_with_dim(FFModel& model)
     model.create_disjoint_partition<NDIM>(
         inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
   }
+#endif
 }
 
 __host__

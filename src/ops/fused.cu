@@ -185,6 +185,7 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
   return true;
 }
 
+#ifdef DEADCODE
 void FusedOp::create_weights(FFModel& model)
 {
   assert(false && "Weights should be created before fusion optimizations");
@@ -194,6 +195,7 @@ void FusedOp::map_output_tensors(FFModel& model)
 {
   assert(false && "Outputs should be created before fusion optimizations");
 }
+#endif
 
 OpMeta* FusedOp::init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,

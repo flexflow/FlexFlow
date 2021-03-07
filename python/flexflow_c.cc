@@ -753,13 +753,13 @@ flexflow_model_get_layer_by_id(
   return FFCObjectWrapper::wrap(layer);
 }
 
-flexflow_parameter_t
+flexflow_tensor_t
 flexflow_model_get_parameter_by_id(
   flexflow_model_t handle_,
   int layer_id)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Parameter *tensor = &(handle->parameters[layer_id]);
+  Tensor *tensor = &(handle->parameters[layer_id]);
   return FFCObjectWrapper::wrap(tensor);
 }
 

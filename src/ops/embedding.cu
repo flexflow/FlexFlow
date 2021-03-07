@@ -54,9 +54,8 @@ Embedding::Embedding(FFModel& model,
 {
   assert(_input.numDim == 2);
   numOutputs = 1;
-  outputs[0].numDim = 2;
-  outputs[0].adim[0] = out_channels;
-  outputs[0].adim[1] = inputs[0].adim[1];
+  const int dims[2] = {inputs[0].adim[1], out_channels};
+  outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
 }
 
 #ifdef DEADCODE
@@ -79,7 +78,7 @@ void Embedding::create_weights(FFModel& model)
 }
 #endif
 
-void Embedding::map_output_tensors(FFModel& model)
+void Embedding::create_input_partition(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;
@@ -89,6 +88,8 @@ void Embedding::map_output_tensors(FFModel& model)
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
   // Currently assume we can only partition over the sample dim
   assert(part_rect.hi[0] == part_rect.lo[0]);
+  return Op::create_input_partition(model);
+#ifdef DEADCODE
   {
     const int dims[2] = {inputs[0].adim[1], out_channels};
     outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
@@ -105,6 +106,7 @@ void Embedding::map_output_tensors(FFModel& model)
     model.create_disjoint_partition<2>(
       inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
   }
+#endif
 }
 
 __host__

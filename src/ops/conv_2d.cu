@@ -96,11 +96,10 @@ Conv2D::Conv2D(FFModel& model,
   int output_c = out_channels;
   int output_n = inputs[0].adim[3];
   numOutputs = 1;
-  outputs[0].numDim = 4;
-  outputs[0].adim[0] = output_w;
-  outputs[0].adim[1] = output_h;
-  outputs[0].adim[2] = output_c;
-  outputs[0].adim[3] = output_n;
+  {
+    const int dims[4] = {output_n, output_c, output_h, output_w};
+    outputs[0] = model.create_tensor<4>(dims, DT_FLOAT, this);
+  }
   // Require input channels is divisible by groups
   assert(in_channels % groups == 0);
 }
@@ -134,7 +133,6 @@ void Conv2D::create_weights(FFModel& model)
     assert(numWeights == 1);
   }
 }
-#endif
 
 void Conv2D::map_output_tensors(FFModel& model)
 {
@@ -175,6 +173,7 @@ void Conv2D::map_output_tensors(FFModel& model)
         inputs[0], (IndexSpaceT<4>)task_is, input_lps[0], input_grad_lps[0]);
   }
 }
+#endif
 
 cudnnConvolutionFwdAlgo_t
 selectConvolutionForwardAlgorithm(cudnnHandle_t handle,

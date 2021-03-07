@@ -73,10 +73,12 @@ Linear::Linear(FFModel& model,
     use_bias = true;
   }
   numOutputs = 1;
-  outputs[0].numDim = _input.numDim;
-  for (int i = 1; i < outputs[0].numDim; i++)
-    outputs[0].adim[i] = _input.adim[i];
-  outputs[0].adim[0] = _kernel.adim[2];
+  int numdim = _input.numDim;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++)
+    dims[i] = _input.adim[numdim-1-i];
+  dims[numdim-1] = _kernel.adim[1];
+  outputs[0] = model.create_tensor(numdim, dims, DT_FLOAT, this);
 }
 
 #ifdef DEADCODE
@@ -131,28 +133,28 @@ void Linear::create_weights_with_dim(FFModel& model)
 }
 #endif
 
-void Linear::map_output_tensors(FFModel& model)
+void Linear::create_input_partition(FFModel& model)
 {
   int dim = inputs[0].numDim;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      map_output_tensors_with_dim<DIM>(model); \
+      create_input_partition_with_dim<DIM>(model); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
     {
-      // Unsupported dim for ElementWiseBinary operator
+      // Unsupported dim for Linear operator
       assert(false);
     }
   }
 }
 
 template<int NDIM>
-void Linear::map_output_tensors_with_dim(FFModel& model)
+void Linear::create_input_partition_with_dim(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;
@@ -166,14 +168,14 @@ void Linear::map_output_tensors_with_dim(FFModel& model)
   int in_dim = inputs[0].adim[0];
   assert(in_dim == in_channels);
   int batch_size = inputs[0].adim[NDIM-1];
-  {
-    int dims[NDIM];
-    for (int i = 0; i < NDIM; i++)
-      dims[i] = outputs[0].adim[NDIM-1-i];
-    outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
-    outputs[0].owner_op = this;
-    outputs[0].owner_idx = 0;
-  }
+  //{
+  //  int dims[NDIM];
+  //  for (int i = 0; i < NDIM; i++)
+  //    dims[i] = outputs[0].adim[NDIM-1-i];
+  //  outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
+  //  outputs[0].owner_op = this;
+  //  outputs[0].owner_idx = 0;
+  //}
   // Compute partition bound for input
   Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
       ctx, inputs[0].part.get_index_partition());

@@ -34,10 +34,12 @@ BatchMatmul::BatchMatmul(FFModel& model,
   for (int i = A.numDim-1; i >= 2; i--)
     assert(A.adim[i] == B.adim[i]);
   assert(A.adim[0] == B.adim[1]);
-  outputs[0].numDim = A.numDim;
+  int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < A.numDim; i++)
-    outputs[0].adim[i] = A.adim[i];
-  outputs[0].adim[0] = B.adim[0];
+    dims[i] = A.adim[A.numDim-1-i];
+  dims[A.numDim-1] = B.adim[0];
+  numOutputs = 1;
+  outputs[0] = model.create_tensor(A.numDim, dims, DT_FLOAT, this);
   // C is not none
   //if (C != Tensor::NO_TENSOR) {
   //  numInputs = 3;
@@ -48,11 +50,6 @@ BatchMatmul::BatchMatmul(FFModel& model,
     numInputs = 2;
   //}
   numWeights = 0;
-}
-
-void BatchMatmul::create_weights(FFModel& model)
-{
-  // Do nothing since we don't have any weights
 }
 
 void BatchMatmul::map_output_tensors(FFModel& model)
@@ -78,16 +75,17 @@ void BatchMatmul::map_output_tensors(FFModel& model)
   }
 }
 
-template<int NDIM>
-void BatchMatmul::map_output_tensors_with_dim(FFModel& model)
+void BatchMatmul::create_input_partition(FFModel& model)
 {
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  Domain part_rect = runtime->get_index_space_domain(ctx, task_is);
   // currently only support data parallel for batch matmul
   // the parallel degree of the inner most two dims must be 1
-  assert(part_rect.hi[0] == part_rect.lo[0]);
-  assert(part_rect.hi[1] == part_rect.lo[1]);
+  assert(part_rect.hi()[0] == part_rect.lo()[0]);
+  assert(part_rect.hi()[1] == part_rect.lo()[1]);
+  return Op::create_input_partition(model);
+#ifdef DEADCODE
   int dims[NDIM];
   for (int i = 0; i < NDIM; i++)
     dims[i] = outputs[0].adim[NDIM-1-i];
@@ -105,6 +103,7 @@ void BatchMatmul::map_output_tensors_with_dim(FFModel& model)
           inputs[i], IndexSpaceT<NDIM>(task_is), input_lps[i], input_grad_lps[i]);
     }
   }
+#endif
 }
 
 __host__

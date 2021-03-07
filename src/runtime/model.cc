@@ -361,6 +361,42 @@ Op::Op(FFModel& model,
 Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,
+       const Tensor& _input1,
+       const Tensor& _input2,
+       const Tensor& _input3,
+       const Tensor& _input4)
+: op_type(_op_type), numInputs(4), numWeights(0), numOutputs(1),
+  profiling(model.config.profiling)
+{
+  std::string pcname;
+  if (_name == NULL) {
+    pcname = model.get_operator_type_name(op_type);
+  } else {
+    pcname = std::string(_name);
+  }
+  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
+  assert(pcname.length() < MAX_OPNAME);
+  std::strcpy(name, pcname.c_str());
+  inputs[0] = _input1;
+  inputs[1] = _input2;
+  inputs[2] = _input3;
+  inputs[3] = _input4;
+  //for (int i = 0; i < numInputs; i++) {
+  //  trainableInputs[i] = true;
+  //  resetInputGrads[i] = true;
+  //}
+  for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
+    outputs[i].owner_op = this;
+    outputs[i].owner_idx = i;
+    outputs[i].data_type = inputs[0].data_type;
+  }
+  for (int i = 0; i < MAX_NUM_WORKERS; i++)
+    meta[i] = NULL;
+}
+
+Op::Op(FFModel& model,
+       OperatorType _op_type,
+       const char* _name,
        int n, const Tensor* _inputs)
 : op_type(_op_type), numInputs(n), numWeights(0), numOutputs(1),
   profiling(model.config.profiling)
@@ -462,6 +498,57 @@ ParallelConfig Op::get_data_parallel_config(const FFModel& ff) const
   for (int i = 0; i < num_parts; i++)
     pc.device_ids[i] = i;
   return pc;
+}
+
+void Op::create_input_partition(FFModel& model)
+{
+  int dim = outputs[0].numDim;
+  switch (dim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      create_input_partition_with_dim<DIM>(model); \
+      break; \
+    } \
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      assert(false && "Unsupported dim");
+    }
+  }
+}
+
+template<int NDIM>
+void Op::create_input_partition_with_dim(FFModel& model)
+{
+  std::string pcname = name;
+  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  Rect<NDIM> my_part_rect = runtime->get_index_space_domain(ctx, task_is);
+  for (int i = 0; i < numInputs; i++) {
+    Rect<NDIM> input_part_rect = runtime->get_index_partition_color_space(
+        ctx, inputs[i].part.get_index_partition());
+    // sanity check
+    // inputs and outputs should have the same ndim in the default case
+    if (inputs[i].owner_op != NULL) {
+      std::string input_pcname = inputs[i].owner_op->name;
+      IndexSpaceT<NDIM> input_task_is;
+      input_task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(
+          NDIM, input_pcname));
+      assert(input_part_rect == runtime->get_index_space_domain(
+          ctx, input_task_is));
+    }
+    if (my_part_rect == input_part_rect) {
+      input_lps[i] = inputs[i].part;
+      input_grad_lps[i] = inputs[i].part_grad;
+    } else {
+      model.create_disjoint_partition(
+          inputs[i], (IndexSpaceT<NDIM>)task_is,
+          input_lps[i], input_grad_lps[i]);
+    }
+  }
 }
 
 ParallelConfig Op::get_random_parallel_config(const FFModel& ff) const
@@ -861,10 +948,65 @@ void FFModel::map_tensor_with_dim(Tensor& tensor, const Op* parallel_op)
   }
 }
 
+void FFModel::map_weight(Tensor& weight, const Op* op)
+{
+  switch (weight.numDim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      map_weight_with_dim<DIM>(weight, op); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dim
+      assert(false);
+    }
+  }
+}
+
 template<int NDIM>
 void FFModel::map_weight_with_dim(Tensor& weight, const Op* parallel_op)
 {
-  assert(false);
+  assert(parallel_op != NULL);
+  int tdim = parallel_op->outputs[0].numDim;
+  switch (parallel_op->op_type) {
+    case OP_LINEAR:
+    case OP_EMBEDDING:
+    case OP_MULTIHEAD_ATTENTION:
+    {
+      switch (tdim) {
+#define DIMFUNC(DIM) \
+        case DIM: \
+        { \
+          map_linear_weight<NDIM, tdim>(weight, parallel_op); \
+          break; \
+        } \
+        LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+        default:
+        {
+          assert(false);
+        }
+      }
+      break;
+    }
+    case OP_CONV2D:
+    case OP_BATCHNORM:
+    {
+      map_conv_weight<NDIM>(weight, parallel_op);
+      break;
+    }
+    default:
+    {
+      fprintf(stderr, "FlexFlow currently does not support this weight"
+          "type (%d). Report the error to the FlexFlow team.\n",
+          parallel_op->op_type);
+      assert(false && "Unsupported type for mapping weight");
+    }
+  }
 }
 
 template<int NDIM>
@@ -956,14 +1098,13 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor& tensor
 // This function assumes:
 // 1. the outer most dim of weight is channel out
 // 2. partition is 2D (sample, channel_out)
+
 template<int NDIM, int TDIM>
-Parameter FFModel::create_linear_weight(Op* op,
-                                        const int dims[],
-                                        DataType data_type,
-                                        Initializer* initializer,
-                                        bool create_grad,
-                                        ParameterSyncType comm_type)
+void FFModel::map_linear_weight(
+    Tensor& weight,
+    const Op* op)
 {
+  assert(op->op_type == OP_LINEAR);
   std::string pcname = op->name;
   IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>)get_or_create_task_is(TDIM, pcname);
   Context ctx = config.lg_ctx;
@@ -972,16 +1113,9 @@ Parameter FFModel::create_linear_weight(Op* op,
   int num_parts[TDIM];
   for (int i = 0; i < TDIM; i++)
     num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
-  Parameter weight;
-  weight.sync_type = comm_type;
-  weight.owner_op = op;
-  weight.numDim = NDIM;
-  weight.data_type = data_type;
-  for (int i = 0; i < NDIM; i++)
-    weight.adim[i] = dims[NDIM-1-i];
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator= runtime->create_field_allocator(ctx, fs);
-  switch (data_type) {
+  switch (weight.data_type) {
     case DT_FLOAT:
       allocator.allocate_field(sizeof(float), FID_DATA);
       break;
@@ -994,22 +1128,23 @@ Parameter FFModel::create_linear_weight(Op* op,
     default:
       assert(false);
   }
+  int out_channels = weight.adim[weight.numDim-1];
   // Step 1: forward region and partition
   if (weight.sync_type == ParameterSyncType::PS) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
-      hi[i] = dims[NDIM-1-i]-1;
+      hi[i] = weight.adim[i]-1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight.region = runtime->create_logical_region(ctx, is, fs);
-    assert(dims[0] % num_parts[0] == 0);
-    hi[NDIM-1] = dims[0] / num_parts[0] - 1;
+    assert(out_channels % num_parts[0] == 0);
+    hi[NDIM-1] = out_channels / num_parts[0] - 1;
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
     Transform<NDIM, TDIM> transform;
     for (int i = 0; i < NDIM; i++)
       for (int j = 0; j < TDIM; j++)
         transform[i][j] = 0;
-    transform[NDIM-1][0] = dims[0] / num_parts[0];
+    transform[NDIM-1][0] = out_channels / num_parts[0];
     IndexPartition ip = runtime->create_partition_by_restriction(
         ctx, is, part_is, transform, extent);
     assert(runtime->is_index_partition_complete(ctx, ip));
@@ -1021,21 +1156,21 @@ Parameter FFModel::create_linear_weight(Op* op,
     //  assert(num_parts[i] == 1);
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
-      hi[i] = dims[NDIM-1-i]-1;
+      hi[i] = weight.adim[i]-1;
     int num_batches = 1;
     for (int i = 1; i < TDIM; i++)
       num_batches *= num_parts[i];
-    hi[NDIM-1] = num_batches * dims[0] - 1;
+    hi[NDIM-1] = num_batches * out_channels - 1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight.region = runtime->create_logical_region(ctx, is, fs);
-    hi[NDIM-1] = dims[0] / num_parts[0] - 1;
+    hi[NDIM-1] = out_channels / num_parts[0] - 1;
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
     Transform<NDIM, TDIM> transform;
     for (int i = 0; i < NDIM; i++)
       for (int j = 0; j < TDIM; j++)
         transform[i][j] = 0;
-    transform[NDIM-1][0] = dims[0] / num_parts[0];
+    transform[NDIM-1][0] = out_channels / num_parts[0];
     for (int i = 1; i < TDIM; i++)
       transform[NDIM-1][i] = transform[NDIM-1][i-1] * num_parts[i-1];
     IndexPartition ip = runtime->create_partition_by_restriction(
@@ -1048,30 +1183,30 @@ Parameter FFModel::create_linear_weight(Op* op,
     assert(false);
   }
   // Step 2: initialize region
-  if (initializer == NULL) {
+  if (weight.initializer == NULL) {
     assert(false); // add weight initializer should be set before
   } else {
-    initializer->init(this, &weight);
+    weight.initializer->init(this, &weight);
   }
   // Step 3: backward region
-  if (create_grad && config.computationMode == COMP_MODE_TRAINING) {
+  if (weight.create_gradients && config.computationMode == COMP_MODE_TRAINING) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
-      hi[i] = dims[NDIM-1-i]-1;
+      hi[i] = weight.adim[i]-1;
     int num_batches = 1;
     for (int i = 1; i < TDIM; i++)
       num_batches *= num_parts[i];
-    hi[NDIM-1] = num_batches * dims[0] -1;
+    hi[NDIM-1] = num_batches * out_channels -1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight.region_grad = runtime->create_logical_region(ctx, is, fs);
-    hi[NDIM-1] = dims[0] / num_parts[0] - 1;
+    hi[NDIM-1] = out_channels / num_parts[0] - 1;
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
     Transform<NDIM, TDIM> transform;
     for (int i = 0; i < NDIM; i++)
       for (int j = 0; j < TDIM; j++)
         transform[i][j] = 0;
-    transform[NDIM-1][0] = dims[0] / num_parts[0];
+    transform[NDIM-1][0] = out_channels / num_parts[0];
     for (int i = 1; i < TDIM; i++)
       transform[NDIM-1][i] = transform[NDIM-1][i-1] * num_parts[i-1];
     IndexPartition ip = runtime->create_partition_by_restriction(
@@ -1081,20 +1216,16 @@ Parameter FFModel::create_linear_weight(Op* op,
     weight.part_grad = runtime->get_logical_partition(
         ctx, weight.region_grad, ip);
   }
-  return weight;
 }
 
 template<int NDIM>
-Parameter FFModel::create_conv_weight(Op* op,
-                                      const int dims[],
-                                      DataType data_type,
-                                      Initializer* initializer,
-                                      bool create_grad,
-                                      ParameterSyncType comm_type)
+void FFModel::map_conv_weight(
+    Tensor& weight,
+    const Op* parallel_op)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
-  std::string pcname = op->name;
+  std::string pcname = parallel_op->name;
   IndexSpaceT<4> part_is = (IndexSpaceT<4>) get_or_create_task_is(4, pcname);
   Rect<4> part_rect = runtime->get_index_space_domain(ctx, part_is);
   int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
@@ -1103,16 +1234,9 @@ Parameter FFModel::create_conv_weight(Op* op,
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   // Currently assume we do not split over the channel dimension
   assert(num_par_c == 1);
-  Parameter weight;
-  weight.sync_type = comm_type;
-  weight.owner_op = op;
-  weight.numDim = NDIM;
-  weight.data_type = data_type;
-  for (int i = 0; i < NDIM; i++)
-    weight.adim[i] = dims[NDIM-1-i];
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator= runtime->create_field_allocator(ctx, fs);
-  switch (data_type) {
+  switch (weight.data_type) {
     case DT_FLOAT:
       allocator.allocate_field(sizeof(float), FID_DATA);
       break;
@@ -1126,10 +1250,11 @@ Parameter FFModel::create_conv_weight(Op* op,
       assert(false);
   }
   // Step 1: forward region and partition
+  int out_channels = weight.adim[weight.numDim-1];
   if (weight.sync_type == ParameterSyncType::PS) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
-      hi[i] = dims[NDIM-1-i]-1;
+      hi[i] = weight.adim[i]-1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight.region = runtime->create_logical_region(ctx, is, fs);
@@ -1147,21 +1272,21 @@ Parameter FFModel::create_conv_weight(Op* op,
     assert(num_par_c == 1);
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
-      hi[i] = dims[NDIM-1-i]-1;
-    hi[NDIM-1] = num_par_n * num_par_h * num_par_w * dims[0] - 1;
+      hi[i] = weight.adim[i]-1;
+    hi[NDIM-1] = num_par_n * num_par_h * num_par_w * out_channels - 1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight.region = runtime->create_logical_region(ctx, is, fs);
-    hi[NDIM-1] = dims[0]-1;
+    hi[NDIM-1] = out_channels-1;
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
     Transform<NDIM, 4> transform;
     for (int i = 0; i < NDIM; i++)
       for (int j = 0; j < 4; j++)
         transform[i][j] = 0;
-    transform[NDIM-1][0] = dims[0];
-    transform[NDIM-1][1] = dims[0] * num_par_w;
-    transform[NDIM-1][2] = dims[0] * num_par_w * num_par_h;
-    transform[NDIM-1][3] = dims[0] * num_par_w * num_par_h * num_par_c;
+    transform[NDIM-1][0] = out_channels;
+    transform[NDIM-1][1] = out_channels * num_par_w;
+    transform[NDIM-1][2] = out_channels * num_par_w * num_par_h;
+    transform[NDIM-1][3] = out_channels * num_par_w * num_par_h * num_par_c;
     IndexPartition ip = runtime->create_partition_by_restriction(
         ctx, is, part_is, transform, extent);
     assert(runtime->is_index_partition_complete(ctx, ip));
@@ -1173,30 +1298,30 @@ Parameter FFModel::create_conv_weight(Op* op,
     assert(false);
   }
   // Step 2: initialize region
-  if (initializer == NULL) {
+  if (weight.initializer == NULL) {
     assert(false); // add weight initializer should be set before
   } else {
-    initializer->init(this, &weight);
+    weight.initializer->init(this, &weight);
   }
   // Step 3: backward regin and partition
-  if (create_grad && config.computationMode == COMP_MODE_TRAINING) {
+  if (weight.create_gradients && config.computationMode == COMP_MODE_TRAINING) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
-      hi[i] = dims[NDIM-1-i]-1;
-    hi[NDIM-1] = num_par_n * num_par_h * num_par_w * dims[0] - 1;
+      hi[i] = weight.adim[i]-1;
+    hi[NDIM-1] = num_par_n * num_par_h * num_par_w * out_channels - 1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight.region_grad = runtime->create_logical_region(ctx, is, fs);
-    hi[NDIM-1] = dims[0]-1;
+    hi[NDIM-1] = out_channels-1;
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
     Transform<NDIM, 4> transform;
     for (int i = 0; i < NDIM; i++)
       for (int j = 0; j < 4; j++)
         transform[i][j] = 0;
-    transform[NDIM-1][0] = dims[0];
-    transform[NDIM-1][1] = dims[0] * num_par_w;
-    transform[NDIM-1][2] = dims[0] * num_par_w * num_par_h;
-    transform[NDIM-1][3] = dims[0] * num_par_w * num_par_h * num_par_c;
+    transform[NDIM-1][0] = out_channels;
+    transform[NDIM-1][1] = out_channels * num_par_w;
+    transform[NDIM-1][2] = out_channels * num_par_w * num_par_h;
+    transform[NDIM-1][3] = out_channels * num_par_w * num_par_h * num_par_c;
     IndexPartition ip = runtime->create_partition_by_restriction(
         ctx, is, part_is, transform, extent);
     assert(runtime->is_index_partition_complete(ctx, ip));
@@ -1204,7 +1329,6 @@ Parameter FFModel::create_conv_weight(Op* op,
     weight.part_grad = runtime->get_logical_partition(
         ctx, weight.region_grad, ip);
   }
-  return weight;
 }
 
 template<int NDIM, int TDIM>
@@ -1536,7 +1660,12 @@ void FFModel::compile(LossType loss_type,
         op->inputs[i] = op->inputs[i].owner_op->outputs[tsIdx];
       }
     }
-    op->map_output_tensors(*this);
+    op->create_input_partition(*this);
+    for (int i = 0; i < op->numOutputs; i++) {
+      // Output tensor
+      map_tensor(op->outputs[i], op);
+    }
+    // op->map_output_tensors(*this);
   }
 
   // Check correctness
@@ -2807,6 +2936,8 @@ void register_flexflow_tasks(int argc, char **argv)
 // template instantiations
 #define DIMFUNC(DIM) \
   template Tensor FFModel::create_tensor<DIM>(const int* dims, DataType data_type, const Op* owner_op, bool create_grad); \
+  template Parameter FFModel::create_weight<DIM>(const int dims[], DataType data_type, const Op* owner_op, bool create_grad,\
+    Initializer* initializer, ParameterSyncType sync_type);\
   template void FFModel::map_tensor_with_dim<DIM>(Tensor& tensor, const Op* parallel_op); \
   template void FFModel::map_weight_with_dim<DIM>(Tensor& weight, const Op* parallel_op); \
   template Tensor FFModel::create_constant<DIM>(const int* dims, float value, DataType data_type); \
@@ -2819,11 +2950,11 @@ void register_flexflow_tasks(int argc, char **argv)
   LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 
-template Parameter FFModel::create_conv_weight<4>(Op* op, const int* dims, DataType data_type, Initializer* initializer, bool create_grad, ParameterSyncType comm_type);
-template Parameter FFModel::create_conv_weight<1>(Op* op, const int* dims, DataType data_type, Initializer* initializer, bool create_grad, ParameterSyncType comm_type);
+template void FFModel::map_conv_weight<4>(Tensor& weight, const Op* parallel_op);
+template void FFModel::map_conv_weight<1>(Tensor& weight, const Op* parallel_op);
 
 #define DIMFUNC(D1,D2) \
-  template Parameter FFModel::create_linear_weight<D1, D2>(Op* op, const int* dims, DataType data_type, Initializer* initializer, bool create_grad, ParameterSyncType comm_type);
+  template void FFModel::map_linear_weight<D1, D2>(Tensor& p, const Op* op);
   LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 

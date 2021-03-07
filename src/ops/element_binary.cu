@@ -72,19 +72,17 @@ ElementBinary::ElementBinary(FFModel& model,
   numOutputs = 1;
   numWeights = 0;
   assert(in1.numDim == in2.numDim);
-  int dim = in1.numDim;
-  outputs[0].numDim = in1.numDim;
-  for (int i = 0; i < dim; i++) {
+  assert(in1.data_type == in2.data_type);
+  int numdim = in1.numDim;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++) {
     assert(in1.adim[i] == in2.adim[i]);
-    outputs[0].adim[i] = in1.adim[i];
+    dims[numdim-1-i] = in1.adim[i];
   }
+  outputs[0] = model.create_tensor(numdim, dims, in1.data_type, this);
 }
 
-void ElementBinary::create_weights(FFModel& model)
-{
-  // Do nothing
-}
-
+#ifdef DEADCODE
 void ElementBinary::map_output_tensors(FFModel& model)
 {
   //TODO: implement broadcast op
@@ -136,6 +134,7 @@ void ElementBinary::map_output_tensors_with_dim(FFModel& model)
     }
   }
 }
+#endif
 
 __host__
 OpMeta* ElementBinary::init_task(const Task* task,

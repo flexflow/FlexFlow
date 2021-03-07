@@ -21,7 +21,25 @@ Tensor FFModel::batch_norm(const Tensor& input,
                            const char* name)
 {
   assert(input.numDim == 4); //Only support 4D BN for now
-  BatchNorm *bn = new BatchNorm(*this, input, relu, name);
+  Initializer* scale_initializer = new ConstantInitializer(1.0f);
+  Initializer* bias_initializer = new ConstantInitializer(0.0f);
+#ifdef FF_USE_NCCL
+  ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+  ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+  Tensor scale, bias;
+  {
+    const int dims[1] = {input.adim[2]};
+    scale = create_weight<1>(dims, DT_FLOAT, NULL/*owner_op*/,
+        true/*create_grad*/, scale_initializer, comm_type);
+  }
+  {
+    const int dims[1] = {input.adim[2]};
+    bias = create_weight<1>(dims, DT_FLOAT, NULL/*owner_op*/,
+        true/*create_grad*/, bias_initializer, comm_type);
+  }
+  BatchNorm *bn = new BatchNorm(*this, input, scale, bias, relu, name);
   layers.push_back(bn);
   return bn->outputs[0];
 }
@@ -32,102 +50,22 @@ Tensor FFModel::batch_norm(const Tensor& input,
 */
 BatchNorm::BatchNorm(FFModel& model,
                      const Tensor& _input,
+                     const Tensor& _scale,
+                     const Tensor& _bias,
                      bool _relu,
                      const char* name)
-: Op(model, OP_BATCHNORM, name, _input), relu(_relu)
+: Op(model, OP_BATCHNORM, name, _input, _scale, _bias), relu(_relu)
 {
   assert(_input.numDim == 4);
   numOutputs = 1;
-  outputs[0].numDim = _input.numDim;
-  for (int i = 0; i < outputs[0].numDim; i++)
-    outputs[0].adim[i] = _input.adim[i];
-  numWeights = 2;
-  weights[0].numDim = 1;
-  weights[0].adim[0] = _input.adim[2];
-  weights[1].numDim = 1;
-  weights[1].adim[0] = _input.adim[2];
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < _input.numDim; i++)
+    dims[i] = _input.adim[_input.numDim-1-i];
+  outputs[0] = model.create_tensor(_input.numDim, dims, DT_FLOAT, this);
   return;
-#ifdef DEADCODE
-  // Create output tensor
-  int output_w = _input.adim[0];
-  int output_h = _input.adim[1];
-  int output_c = _input.adim[2];
-  int output_n = _input.adim[3];
-
-  FieldSpace fs = model.config.field_space;
-  Rect<4> output_rect(Point<4>(0, 0, 0, 0),
-      Point<4>(output_w-1, output_h-1, output_c-1, output_n-1));
-  IndexSpaceT<4> output_is = runtime->create_index_space(ctx, output_rect);
-  LogicalRegion output_lr = runtime->create_logical_region(ctx, output_is, fs);
-  LogicalRegion output_grad_lr = runtime->create_logical_region(ctx, output_is, fs);
-  int extent_w = (output_w + num_par_w - 1) / num_par_w;
-  int extent_h = (output_h + num_par_h - 1) / num_par_h;
-  int extent_c = output_c / num_par_c;
-  int extent_n = output_n / num_par_n;
-  assert(output_c % num_par_c == 0);
-  assert(output_n % num_par_n == 0);
-  Rect<4> ext(Point<4>(0, 0, 0, 0),
-      Point<4>(extent_w-1, extent_h-1, extent_c-1, extent_n-1));
-  Transform<4, 4, coord_t> trans;
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++)
-      trans[i][j] = 0;
-  trans[0][0] = extent_w;
-  trans[1][1] = extent_h;
-  trans[2][2] = extent_c;
-  trans[3][3] = extent_n;
-  IndexPartition output_ip =
-    runtime->create_partition_by_restriction(ctx, output_is, task_is, trans, ext);
-  assert(runtime->is_index_partition_disjoint(ctx, output_ip));
-  assert(runtime->is_index_partition_complete(ctx, output_ip));
-  LogicalPartition output_lp = runtime->get_logical_partition(ctx, output_lr, output_ip);
-  LogicalPartition output_grad_lp =
-    runtime->get_logical_partition(ctx, output_grad_lr, output_ip);
-
-  int bias_nc = num_replica * _input.adim[2]; /*input_channels*/
-  Rect<1, coord_t> bias_grad_rect(0, bias_nc - 1);
-  Rect<1, coord_t> bias_rect(0, _input.adim[2] - 1);
-  IndexSpaceT<1> bias_is = runtime->create_index_space(ctx, bias_rect);
-  IndexSpaceT<1> bias_grad_is = runtime->create_index_space(ctx, bias_grad_rect);
-  LogicalRegion bias_lr = runtime->create_logical_region(ctx, bias_is, fs);
-  LogicalRegion scale_lr = runtime->create_logical_region(ctx, bias_is, fs);
-  LogicalRegion bias_grad_lr =
-    runtime->create_logical_region(ctx, bias_grad_is, fs);
-  LogicalRegion scale_grad_lr =
-    runtime->create_logical_region(ctx, bias_grad_is, fs);
-  IndexPartition bias_grad_ip =
-    runtime->create_equal_partition(ctx, bias_grad_is, task_is);
-  LogicalPartition bias_grad_lp =
-    runtime->get_logical_partition(ctx, bias_grad_lr, bias_grad_ip);
-  LogicalPartition scale_grad_lp =
-    runtime->get_logical_partition(ctx, scale_grad_lr, bias_grad_ip);
-
-  Parameter scale_tensor, bias_tensor;
-  scale_tensor.region = scale_lr;
-  scale_tensor.region_grad = scale_grad_lr;
-  scale_tensor.part = LogicalPartition::NO_PART;
-  scale_tensor.part_grad = scale_grad_lp;
-  weights[0] = scale_tensor;
-  bias_tensor.region = bias_lr;
-  bias_tensor.region_grad = bias_grad_lr;
-  bias_tensor.part = LogicalPartition::NO_PART;
-  bias_tensor.part_grad = bias_grad_lp;
-  weights[1] = bias_tensor;
-  numWeights = 2;
-
-  outputs[0] = _input;
-  outputs[0].region = output_lr;
-  outputs[0].part = output_lp;
-  outputs[0].region_grad = output_grad_lr;
-  outputs[0].part_grad = output_grad_lp;
-  printf("Create bn layer: output(%d %d %d %d)\n",
-          outputs[0].adim[3], outputs[0].adim[2], outputs[0].adim[1], outputs[0].adim[0]);
-
-  input_lps[0] = _input.part;
-#endif
 }
 
-
+#ifdef DEADCODE
 void BatchNorm::create_weights(FFModel& model)
 {
   // Retrive the task indexspace for the op
@@ -140,8 +78,9 @@ void BatchNorm::create_weights(FFModel& model)
   weights[0] = model.create_conv_weight<1>(this, dims, DT_FLOAT, scale_initializer);
   weights[1] = model.create_conv_weight<1>(this, dims, DT_FLOAT, bias_initializer);
 }
+#endif
 
-void BatchNorm::map_output_tensors(FFModel& model)
+void BatchNorm::create_input_partition(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;
@@ -150,25 +89,27 @@ void BatchNorm::map_output_tensors(FFModel& model)
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
+  int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
+  int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
+  int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
+  // Currently assume data parallelism for batch norm
+  assert(num_par_w == 1);
+  assert(num_par_h == 1);
+  assert(num_par_c == 1);
+  return Op::create_input_partition(model);
+#ifdef DEADCODE
   // Create output tensor
   int output_w = outputs[0].adim[0];
   int output_h = outputs[0].adim[1];
   int output_c = outputs[0].adim[2];
   int output_n = outputs[0].adim[3];
-  int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
-  int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
-  int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
-  int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
   {
     const int dims[4] = {output_n, output_c, output_h, output_w};
     outputs[0] = model.create_tensor<4>(dims, DT_FLOAT, this);
     outputs[0].owner_op = this;
     outputs[0].owner_idx = 0;
   }
-  // Currently assume data parallelism for batch norm
-  assert(num_par_w == 1);
-  assert(num_par_h == 1);
-  assert(num_par_c == 1);
   // Compute partition bound for input
   Rect<4> input_rect = runtime->get_index_partition_color_space(
       ctx, inputs[0].part.get_index_partition());
@@ -179,6 +120,7 @@ void BatchNorm::map_output_tensors(FFModel& model)
     model.create_disjoint_partition(
         inputs[0], (IndexSpaceT<4>)task_is, input_lps[0], input_grad_lps[0]);
   }
+#endif
 }
 
 /*

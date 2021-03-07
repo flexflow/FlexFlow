@@ -38,16 +38,14 @@ Dropout::Dropout(FFModel& model,
 : Op(model, OP_DROPOUT, name, _input), rate(_rate), seed(_seed)
 {
   // Set output shape
-  outputs[0].numDim = inputs[0].numDim;
-  for (int i = 0; i < outputs[0].numDim; i++)
-    outputs[0].adim[i] = inputs[0].adim[i];
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < _input.numDim; i++)
+    dims[i] = _input.adim[_input.numDim-1-i];
+  numOutputs = 1;
+  outputs[0] = model.create_tensor(_input.numDim, dims, DT_FLOAT, this);
 }
 
-void Dropout::create_weights(FFModel& model)
-{
-  // Do nothing
-}
-
+#ifdef DEADCODE
 void Dropout::map_output_tensors(FFModel& model)
 {
   int dim = inputs[0].numDim;
@@ -93,6 +91,7 @@ void Dropout::map_output_tensors_with_dim(FFModel& model)
         inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
   }
 }
+#endif
 
 void Dropout::init_meta(DropoutMeta *m, Domain const &input_domain, Domain const &output_domain) const {
   assert(input_domain == output_domain);

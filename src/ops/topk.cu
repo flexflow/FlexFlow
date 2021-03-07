@@ -39,30 +39,26 @@ TopK::TopK(FFModel& model,
 : Op(model, OP_TOPK, name, _input),
   k(_k), sorted(_sorted)
 {
-  numOutputs = 2;
-  outputs[0].numDim = inputs[0].numDim;
-  outputs[1].numDim = inputs[0].numDim;
-  outputs[0].adim[0] = k;
-  outputs[1].adim[0] = k;
-  for (int i = 1; i < inputs[0].numDim; i++) {
-    outputs[0].adim[i] = outputs[1].adim[i] = inputs[0].adim[i];
-  }
-  numWeights = 0;
+  int numdim = inputs[0].numDim;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++)
+    dims[i] = inputs[0].adim[numdim-1-i];
+  dims[numdim-1] = k;
+  outputs[0] = model.create_tensor(numdim, dims, _input.data_type,
+      this, 0/*owner_idx*/);
+  outputs[1] = model.create_tensor(numdim, dims, DT_INT32,
+      this, 1/*owner_idx*/);
 }
 
-void TopK::create_weights(FFModel& model)
-{
-  // Do nothing
-}
-
-void TopK::map_output_tensors(FFModel& model)
+#ifdef DEADCODE
+void TopK::create_input_partition(FFModel& model)
 {
   int dim = inputs[0].numDim;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      map_output_tensors_with_dim<DIM>(model); \
+      create_input_partition_with_dim<DIM>(model); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -76,7 +72,7 @@ void TopK::map_output_tensors(FFModel& model)
 }
 
 template<int NDIM>
-void TopK::map_output_tensors_with_dim(FFModel& model)
+void TopK::create_input_partition_with_dim(FFModel& model)
 {
   // Retrive the task indexspace for the op
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
@@ -103,6 +99,7 @@ void TopK::map_output_tensors_with_dim(FFModel& model)
         inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
   }
 }
+#endif
 
 OpMeta* TopK::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,

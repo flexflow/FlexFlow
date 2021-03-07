@@ -35,19 +35,14 @@ Transpose::Transpose(FFModel& model,
   // Use Legion indexing to store perm
   for (int i = 0; i < input.numDim; i++)
     perm[i] = input.numDim - 1 - _perm[input.numDim - 1 - i];
-  outputs[0].numDim = input.numDim;
-  for (int i = 0; i < outputs[0].numDim; i++)
-    outputs[0].adim[i] = input.adim[perm[i]];
-  numOutputs = 1;
-  numWeights = 0;
+  int dims[MAX_TENSOR_DIM];
+  int numdim = input.numDim;
+  for (int i = 0; i < numdim; i++)
+    dims[numdim-1-i] = input.adim[perm[i]];
+  outputs[0] = model.create_tensor(numdim, dims, input.data_type, this);
 }
 
-void Transpose::create_weights(FFModel& model)
-{
-  // Do nothing
-}
-
-void Transpose::map_output_tensors(FFModel& model)
+void Transpose::create_input_partition(FFModel& model)
 {
   int dim = inputs[0].numDim;
   switch (dim) {
@@ -55,7 +50,7 @@ void Transpose::map_output_tensors(FFModel& model)
     case DIM: \
     { \
       task_is = model.get_or_create_task_is(DIM, name); \
-      map_output_tensors_with_dim<DIM>(model); \
+      create_input_partition_with_dim<DIM>(model); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -69,7 +64,7 @@ void Transpose::map_output_tensors(FFModel& model)
 }
 
 template<int NDIM>
-void Transpose::map_output_tensors_with_dim(FFModel& model)
+void Transpose::create_input_partition_with_dim(FFModel& model)
 {
   // Retrive the task indexspace for the op
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
@@ -80,6 +75,8 @@ void Transpose::map_output_tensors_with_dim(FFModel& model)
   for (int i = 0; i < NDIM; i++)
     if (i != perm[i])
       assert(part_rect.hi[i] == part_rect.lo[i]);
+  return Op::create_input_partition(model);
+#ifdef DEADCODE
   int dims[NDIM];
   for (int i = 0; i < NDIM; i++)
     dims[i] = outputs[0].adim[NDIM-1-i];
@@ -96,6 +93,7 @@ void Transpose::map_output_tensors_with_dim(FFModel& model)
     model.create_disjoint_partition<NDIM>(
         inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
   }
+#endif
 }
 
 void Transpose::init_meta(TransposeMeta *m, Domain const &in_domain, Domain const &out_domain) const

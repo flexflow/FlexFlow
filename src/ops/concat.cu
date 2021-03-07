@@ -34,25 +34,23 @@ Concat::Concat(FFModel& model,
 {
   //TODO: swich to use the Legion dim ordering
   int num_dim = inputs[0].numDim;
-  outputs[0].numDim = num_dim;
+  int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < num_dim; i++)
-    outputs[0].adim[i] = inputs[0].adim[i];
-  for (int i = 1; i < numInputs; i++)
+    dims[i] = inputs[0].adim[num_dim-1-i];
+  for (int i = 1; i < numInputs; i++) {
+    assert(inputs[i].data_type == inputs[0].data_type);
     for (int j = 0; j < num_dim; j++) {
       if (j != num_dim - 1 - axis)
         assert(inputs[i].adim[j] == outputs[0].adim[j]);
       else
-        outputs[0].adim[j] += inputs[i].adim[j];
+        dims[axis] += inputs[i].adim[j];
     }
+  }
   numOutputs = 1;
-  numWeights = 0;
+  outputs[0] = model.create_tensor(num_dim, dims, inputs[0].data_type, this);
 }
 
-void Concat::create_weights(FFModel& model)
-{
-  // DO nothing
-}
-
+#ifdef DEADCODE
 void Concat::map_output_tensors(FFModel& model)
 {
   // Retrive the task indexspace for the op
@@ -105,6 +103,7 @@ void Concat::map_output_tensors(FFModel& model)
     }
   }
 }
+#endif
 
 void Concat::init_meta(ConcatMeta *m) const
 {
