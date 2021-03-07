@@ -68,10 +68,10 @@ def InceptionE(ffmodel, input):
 def inception():
   ffconfig = FFConfig()
   ffconfig.parse_args()
-  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
+  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
 
-  dims_input = [ffconfig.get_batch_size(), 3, 299, 299]
+  dims_input = [ffconfig.batch_size, 3, 299, 299]
   #print(dims)
   input = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
@@ -147,7 +147,7 @@ def inception():
 
   ffmodel.init_layers()
 
-  epochs = ffconfig.get_epochs()
+  epochs = ffconfig.epochs
 
   ts_start = ffconfig.get_current_time()
   

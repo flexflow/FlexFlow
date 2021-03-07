@@ -37,7 +37,7 @@ class Tensor(object):
     if batch_shape != None:
       self.batch_shape = batch_shape
     else:
-      self.batch_shape = (ffconfig.get_batch_size(),) + tuple(shape[1:])
+      self.batch_shape = (ffconfig.batch_size,) + tuple(shape[1:])
     #print(self.batch_shape)
     self.num_dims = len(self.batch_shape)
     self.key = key

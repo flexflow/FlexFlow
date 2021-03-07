@@ -37,7 +37,7 @@ class BaseModel(object):
   def __init__(self, name):
     self._ffconfig = ff.FFConfig()
     self._ffconfig.parse_args()
-    print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.get_batch_size(), self._ffconfig.get_workers_per_node(), self._ffconfig.get_num_nodes()))
+    print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.batch_size, self._ffconfig.get_workers_per_node(), self._ffconfig.get_num_nodes()))
     self._ffmodel = None
 
     self._name = name
@@ -214,7 +214,7 @@ class BaseModel(object):
           workers=1,
           use_multiprocessing=False):
     if batch_size != None:
-      assert self._ffconfig.get_batch_size() == batch_size, "batch size is not correct use -b to set it"
+      assert self._ffconfig.batch_size == batch_size, "batch size is not correct use -b to set it"
     if validation_split != 0.0:
       assert 0, "validation_split is not supported"
     if validation_data != None:
@@ -268,7 +268,7 @@ class BaseModel(object):
                use_multiprocessing=False,
                return_dict=False):
     if batch_size != None:
-      assert self._ffconfig.get_batch_size() == batch_size, "batch size is not correct use -b to set it"
+      assert self._ffconfig.batch_size == batch_size, "batch size is not correct use -b to set it"
     assert self._output_tensor.ffhandle != None, "tensor is not init"
     if (isinstance(x, list) == False):
       input_tensors = [x]
@@ -288,12 +288,12 @@ class BaseModel(object):
 
   def _create_label_tensor(self):
     label_ffhandle = self._ffmodel.get_label_tensor()
-    self._label_tensor = Tensor(ffmodel=self._ffmodel, batch_shape=(self._ffconfig.get_batch_size(), 1), name="", dtype=self._label_type, ffhandle=label_ffhandle)
+    self._label_tensor = Tensor(ffmodel=self._ffmodel, batch_shape=(self._ffconfig.batch_size, 1), name="", dtype=self._label_type, ffhandle=label_ffhandle)
 
   def _create_input_tensors(self):
     idx = 0
     for input_tensor in self._input_tensors:
-      input_tensor.set_batch_size(self._ffconfig.get_batch_size())
+      input_tensor.set_batch_size(self._ffconfig.batch_size)
       self._create_input_tensor(idx)
       idx += 1
 
@@ -395,7 +395,7 @@ class BaseModel(object):
         dataloader.reset()
       self._label_dataloader.reset()
       self._ffmodel.reset_metrics()
-      iterations = self._num_samples / self._ffconfig.get_batch_size()
+      iterations = self._num_samples / self._ffconfig.batch_size
 
       for iter in range(0, int(iterations)):
         if callbacks != None:
@@ -456,10 +456,10 @@ class BaseModel(object):
     out_t = 0
 
     for layer in self._input_layers:
-      layer.set_batch_size(self._ffconfig.get_batch_size())
+      layer.set_batch_size(self._ffconfig.batch_size)
 
     for layer in self._layers:
-      layer.set_batch_size(self._ffconfig.get_batch_size())
+      layer.set_batch_size(self._ffconfig.batch_size)
 
       if isinstance(layer, Activation) == True:
         if layer.activation == 'softmax':
