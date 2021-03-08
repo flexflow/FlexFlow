@@ -213,7 +213,7 @@ class BaseModel(object):
     self._train(epochs, callbacks, eval=False)
 
   def _create_label_tensor(self):
-    label_ffhandle = self._ffmodel.get_label_tensor()
+    label_ffhandle = self._ffmodel.label_tensor
     self._label_tensor = Tensor(ffconfig=self._ffconfig, batch_shape=(self._ffconfig.batch_size, 1), dtype=self._label_type)
     self._label_tensor.ffhandle = label_ffhandle
 
