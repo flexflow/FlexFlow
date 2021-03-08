@@ -7,7 +7,6 @@ from flexflow.torch.model import PyTorchModel
 
 def top_level_task():
   ffconfig = FFConfig()
-  ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
 
@@ -21,9 +20,9 @@ def top_level_task():
   output_tensors = torch_model.apply(ffmodel, [input_tensor])
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
-  ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.optimizer = ffoptimizer
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
-  label_tensor = ffmodel.get_label_tensor()
+  label_tensor = ffmodel.label_tensor
 
   (x_train, y_train), (x_test, y_test) = mnist.load_data()
 

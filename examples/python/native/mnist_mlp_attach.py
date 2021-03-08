@@ -54,7 +54,6 @@ def next_batch_label(idx, x_train, input1, ffconfig, ffmodel):
 def top_level_task():
   alexnetconfig = NetConfig()
   ffconfig = FFConfig()
-  ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
 
@@ -80,9 +79,9 @@ def top_level_task():
   t5 = ffmodel.softmax(t4)
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
-  ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.optimizer = ffoptimizer
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
-  label_tensor = ffmodel.get_label_tensor()
+  label_tensor = ffmodel.label_tensor
 
   next_batch(0, x_train, input_tensor, ffconfig, ffmodel)
   next_batch_label(0, y_train, label_tensor, ffconfig, ffmodel)
