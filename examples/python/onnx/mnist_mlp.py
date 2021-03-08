@@ -8,7 +8,6 @@ from accuracy import ModelAccuracy
 
 def top_level_task(test_type=1):
   ffconfig = FFConfig()
-  ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
   
