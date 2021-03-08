@@ -56,9 +56,9 @@ def top_level_task():
   t = ffmodel.softmax(t)
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.001)
-  ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.optimizer = ffoptimizer
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
-  label = ffmodel.get_label_tensor()
+  label = ffmodel.label_tensor
 
   # load data
   num_samples = 10000

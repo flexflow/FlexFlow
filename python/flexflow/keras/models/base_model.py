@@ -287,7 +287,7 @@ class BaseModel(object):
     self._input_tensors[idx].create_ff_tensor(self._ffmodel)
 
   def _create_label_tensor(self):
-    label_ffhandle = self._ffmodel.get_label_tensor()
+    label_ffhandle = self._ffmodel.label_tensor
     self._label_tensor = Tensor(ffmodel=self._ffmodel, batch_shape=(self._ffconfig.batch_size, 1), name="", dtype=self._label_type, ffhandle=label_ffhandle)
 
   def _create_input_tensors(self):

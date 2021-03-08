@@ -1474,14 +1474,7 @@ class FFModel(object):
 
     :returns:  None -- no returns.
     """
-    if isinstance(optimizer, SGDOptimizer) == True:
-      self.set_sgd_optimizer(optimizer)
-    elif isinstance(optimizer, AdamOptimizer) == True:
-      self.set_adam_optimizer(optimizer)
-    elif optimizer == None:
-      pass
-    else:
-      assert 0, "[Model]: unknown optimizer"
+    self.optimizer = optimizer
 
     c_loss_type = enum_to_int(LossType, loss_type)
     metrics_int = []
@@ -1582,10 +1575,24 @@ class FFModel(object):
     """
     ffc.flexflow_model_zero_gradients(self.handle)
 
+  def set_optimizer(self, optimizer):
+    if isinstance(optimizer, SGDOptimizer) == True:
+      ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
+    elif isinstance(optimizer, AdamOptimizer) == True:
+      ffc.flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
+    elif optimizer == None:
+      pass
+    else:
+      assert 0, "[Model]: unknown optimizer"
+
+  optimizer = property(fset=set_optimizer)
+
   def set_sgd_optimizer(self, optimizer):
+    warnings.warn("optimizer setters are deprecated. Use properties instead.", DeprecationWarning)
     ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
 
   def set_adam_optimizer(self, optimizer):
+    warnings.warn("optimizer setters are deprecated. Use properties instead.", DeprecationWarning)
     ffc.flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
 
   def print_layers(self, id=-1):
@@ -1606,7 +1613,13 @@ class FFModel(object):
     handle = ffc.flexflow_model_get_parameter_by_id(self.handle, id)
     return Parameter(handle)
 
+  @property
+  def label_tensor(self):
+    handle = ffc.flexflow_model_get_label_tensor(self.handle)
+    return Tensor(handle, deallocate=False)
+
   def get_label_tensor(self):
+    warnings.warn("FFModel label_tensor getter is deprecated. Use property instead.", DeprecationWarning)
     handle = ffc.flexflow_model_get_label_tensor(self.handle)
     return Tensor(handle, deallocate=False)
 
