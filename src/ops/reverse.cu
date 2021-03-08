@@ -39,16 +39,7 @@ Reverse::Reverse(FFModel& model,
   outputs[0] = model.create_tensor(numdim, dims, input->data_type, this);
 }
 
-<<<<<<< HEAD
 void Reverse::create_input_partition(FFModel& model)
-=======
-void Reverse::create_weights(FFModel& model)
-{
-  // Do nothing since no weights
-}
-
-void Reverse::create_output_and_partition(FFModel& model)
->>>>>>> 6b7b74fd0552cdd17d4ff8bbc8a503b6b5119e92
 {
   // Retrive the task indexspace
   int dim = inputs[0]->numDim;
@@ -57,11 +48,7 @@ void Reverse::create_output_and_partition(FFModel& model)
     case DIM: \
     { \
       task_is = model.get_or_create_task_is(DIM, name); \
-<<<<<<< HEAD
       create_input_partition_with_dim<DIM>(model); \
-=======
-      create_output_and_partition_with_dim<DIM>(model); \
->>>>>>> 6b7b74fd0552cdd17d4ff8bbc8a503b6b5119e92
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -75,11 +62,7 @@ void Reverse::create_output_and_partition(FFModel& model)
 }
 
 template<int NDIM>
-<<<<<<< HEAD
 void Reverse::create_input_partition_with_dim(FFModel& model)
-=======
-void Reverse::create_output_and_partition_with_dim(FFModel& model)
->>>>>>> 6b7b74fd0552cdd17d4ff8bbc8a503b6b5119e92
 {
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;

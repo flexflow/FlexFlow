@@ -474,7 +474,7 @@ public:
   IndexSpace get_task_is(ParallelConfig pc) const;
   IndexSpace get_task_is(int ndims, const std::string& pcname) const;
 public:
-  int op_global_guid;
+  int op_global_guid, ts_global_guid;
   FFConfig config;
   Optimizer* optimizer;
   Loss* loss_op;

@@ -24,16 +24,10 @@ using namespace Legion;
 class Op;
 class FFModel;
 
-<<<<<<< HEAD
 struct TensorBase {
   TensorBase(void);
   //Tensor& operator=(const Tensor& rhs);
   //bool operator==(const Tensor& rhs) const;
-=======
-struct Tensor {
-  Tensor(void);
-  Tensor& operator=(const Tensor& rhs);
->>>>>>> 6b7b74fd0552cdd17d4ff8bbc8a503b6b5119e92
   void inline_map(FFConfig &config);
   void inline_unmap(FFConfig &config);
   template<typename T>
@@ -54,14 +48,8 @@ struct Tensor {
                    const T* data);
   template <typename T>
   bool get_tensor(const FFModel* model,
-<<<<<<< HEAD
                   T* data);
   int guid, numDim, adim[MAX_TENSOR_DIM];
-=======
-                  T* data,
-                  ParameterSyncType comm_type);
-  int numDim, adim[MAX_TENSOR_DIM];
->>>>>>> 6b7b74fd0552cdd17d4ff8bbc8a503b6b5119e92
   DataType data_type;
   ParameterSyncType sync_type;
   // Describes the ownership of this tensor
