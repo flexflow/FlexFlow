@@ -18,7 +18,7 @@ $(error FF_HOME variable is not defined, aborting build)
 endif
 
 ifndef LG_RT_DIR
-LG_RT_DIR	?= $(FF_HOME)/legion/runtime
+LG_RT_DIR	?= $(FF_HOME)/deps/legion/runtime
 endif
 
 ifndef CUDA_HOME
