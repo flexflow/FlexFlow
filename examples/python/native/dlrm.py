@@ -3,7 +3,6 @@ from flexflow.core import *
 def top_level_task():
   ffconfig = FFConfig()
   dlrmconfig = DLRMConfig()
-  ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   print(dlrmconfig.dataset_path, dlrmconfig.arch_interaction_op)
   print(dlrmconfig.sparse_feature_size, dlrmconfig.sigmoid_bot, dlrmconfig.sigmoid_top, dlrmconfig.embedding_bag_size, dlrmconfig.loss_threshold)

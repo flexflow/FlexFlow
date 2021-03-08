@@ -100,7 +100,6 @@ def top_level_task():
   params = initialize_parameters()
   args = Struct(**params)
   ffconfig = FFConfig()
-  ffconfig.parse_args()
   ffmodel = FFModel(ffconfig)
   loader = CombinedDataLoader(seed=args.rng_seed)
   print(loader)

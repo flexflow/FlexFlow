@@ -10,7 +10,6 @@ def top_level_task():
     ffconfig = FFConfig()
     alexnetconfig = NetConfig()
     print(alexnetconfig.dataset_path)
-    ffconfig.parse_args()
     print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" % (
         ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
     ffmodel = FFModel(ffconfig)
