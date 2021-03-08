@@ -171,6 +171,10 @@ if(BUILD_SHARED_LIBS)
 
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
 
+if(FF_USE_NCCL)
+   add_dependencies(flexflow ${NCCL_NAME})
+ endif()
+
 # build binary
 option(FF_BUILD_RESNET "build resnet example" OFF)
 option(FF_BUILD_ALEXNET "build alexnet example" OFF)
