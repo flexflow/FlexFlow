@@ -37,7 +37,7 @@ class BaseModel(object):
   def __init__(self, name):
     self._ffconfig = ff.FFConfig()
     self._ffconfig.parse_args()
-    print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.batch_size, self._ffconfig.get_workers_per_node(), self._ffconfig.get_num_nodes()))
+    print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.batch_size, self._ffconfig.workers_per_node, self._ffconfig.num_nodes))
     self._ffmodel = None
 
     self._name = name
