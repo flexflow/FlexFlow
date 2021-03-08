@@ -200,6 +200,14 @@ class PyTorchModel(object):
         input_tensor2 = self.tensor_dict[self._get_input_key(op_name, 1)].fftensor
         output = ffmodel.add(x=input_tensor1, y=input_tensor2, name=op_name)
         output = FXTensor(output)
+     
+      elif op_type == OpType.MULTIPLY:
+        assert len(items) == 4, "wrong format"
+        assert len(self.input_ops_list) == 2, "wrong format"
+        input_tensor1 = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        input_tensor2 = self.tensor_dict[self._get_input_key(op_name, 1)].fftensor
+        output = ffmodel.multiply(x=input_tensor1, y=input_tensor2, name=op_name)
+        output = FXTensor(output)
 
       elif op_type == OpType.OUTPUT:
         assert len(self.input_ops_list) >= 1, "wrong format"

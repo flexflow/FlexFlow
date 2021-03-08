@@ -30,8 +30,7 @@ Concat::Concat(FFModel& model,
                int _n, const Tensor* _tensors,
                int _axis,
                const char* name)
-: Op(model, OP_CONCAT, name, _n, _tensors), axis(_axis),
-   profiling(model.config.profiling)
+: Op(model, OP_CONCAT, name, _n, _tensors), axis(_axis)
 {
   //TODO: swich to use the Legion dim ordering
   int num_dim = inputs[0].numDim;
@@ -54,7 +53,7 @@ void Concat::create_weights(FFModel& model)
   // DO nothing
 }
 
-void Concat::create_output_and_partition(FFModel& model)
+void Concat::map_output_tensors(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;
@@ -122,6 +121,7 @@ OpMeta* Concat::init_task(const Task *task,
   ConcatMeta* m = new ConcatMeta(handler);
   // Note that our internal axis index ordering is opposite to other frameworks
   cc->init_meta(m);
+  m->profiling = cc->profiling;
   return m;
 }
 

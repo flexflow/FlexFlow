@@ -67,13 +67,12 @@ def top_level_task():
     ffconfig = FFConfig()
     netconfig = NetConfig()
 
-    ffconfig.parse_args()
     print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)"
-          %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
+          %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
 
     ffmodel = FFModel(ffconfig)
 
-    batch_size = ffconfig.get_batch_size()
+    batch_size = ffconfig.batch_size
     seq_length = args.seq_length
     hidden_size = args.hidden_size
     num_heads = args.num_heads

@@ -128,8 +128,8 @@ def run_cmd(cmd, run_name=None):
 # cleaning up after itself and removes the module before execution
 # has completed.
 def run_path(filename, run_name=None):
-    import imp
-    module = imp.new_module(run_name)
+    import types
+    module = types.ModuleType(run_name)
     setattr(module, '__name__', run_name)
     setattr(module, '__file__', filename)
     setattr(module, '__loader__', None)

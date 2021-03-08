@@ -80,7 +80,7 @@ void ElementUnary::create_weights(FFModel& model)
   // Do nothing
 }
 
-void ElementUnary::create_output_and_partition(FFModel& model)
+void ElementUnary::map_output_tensors(FFModel& model)
 {
   int dim = inputs[0].numDim;
   switch (dim) {
@@ -88,7 +88,7 @@ void ElementUnary::create_output_and_partition(FFModel& model)
     case DIM: \
     { \
       task_is = model.get_or_create_task_is(DIM, name); \
-      create_output_and_partition_with_dim<DIM>(model); \
+      map_output_tensors_with_dim<DIM>(model); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -102,7 +102,7 @@ void ElementUnary::create_output_and_partition(FFModel& model)
 }
 
 template<int NDIM>
-void ElementUnary::create_output_and_partition_with_dim(FFModel& model)
+void ElementUnary::map_output_tensors_with_dim(FFModel& model)
 {
   // Retrive the task indexspace for the op
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
@@ -137,6 +137,7 @@ OpMeta* ElementUnary::init_task(const Task *task,
   FFHandler handle = *((FFHandler*) task->local_args);
   ElementUnaryMeta* m = new ElementUnaryMeta(handle);
   m->op_type = eu->op_type;
+  m->profiling = eu->profiling;
   if (use_cudnn(m->op_type))
   {
     cudnnActivationMode_t mode;
@@ -322,7 +323,7 @@ void ElementUnary::forward(const FFModel& ff)
       assert(false);
   }
   IndexLauncher launcher(ELEMENTUNARY_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(ElementUnary)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -447,7 +448,7 @@ void ElementUnary::backward(const FFModel& ff)
   }
 
   IndexLauncher launcher(ELEMENTUNARY_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(ElementUnary)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): input

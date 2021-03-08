@@ -18,6 +18,8 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import cffi
 import os
 import subprocess
+import logging
+import warnings
 import numpy as np
 from .flexflow_logger import fflogger
 from .flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
@@ -32,6 +34,8 @@ ffi.cdef(_flexflow_cheader)
 ffc = ffi.dlopen(None)
 
 ff_tracing_id = 200
+
+warnings.simplefilter('always', DeprecationWarning)
 
 def get_c_name(name):
   if name is None:
@@ -376,16 +380,20 @@ class FFConfig(object):
   def parse_args(self):
     ffc.flexflow_config_parse_args_default(self.handle)
 
-  def get_batch_size(self):
+  @property
+  def batch_size(self):
     return ffc.flexflow_config_get_batch_size(self.handle)
 
-  def get_workers_per_node(self):
+  @property
+  def workers_per_node(self):
     return ffc.flexflow_config_get_workers_per_node(self.handle)
 
-  def get_num_nodes(self):
+  @property
+  def num_nodes(self):
     return ffc.flexflow_config_get_num_nodes(self.handle)
 
-  def get_epochs(self):
+  @property
+  def epochs(self):
     return ffc.flexflow_config_get_epochs(self.handle)
 
   def get_current_time(self):
@@ -871,7 +879,7 @@ class FFModel(object):
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
+    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, groups, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
     self.add_layer(OpType.CONV2D, name)
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 
@@ -1450,14 +1458,7 @@ class FFModel(object):
 
     :returns:  None -- no returns.
     """
-    if isinstance(optimizer, SGDOptimizer) == True:
-      self.set_sgd_optimizer(optimizer)
-    elif isinstance(optimizer, AdamOptimizer) == True:
-      self.set_adam_optimizer(optimizer)
-    elif optimizer == None:
-      pass
-    else:
-      assert 0, "[Model]: unknown optimizer"
+    self.optimizer = optimizer
 
     c_loss_type = enum_to_int(LossType, loss_type)
     metrics_int = []
@@ -1496,7 +1497,7 @@ class FFModel(object):
     dataloaders.append(y)
 
     num_samples = y.get_num_samples()
-    batch_size = self._ffconfig.get_batch_size()
+    batch_size = self._ffconfig.batch_size
     self._tracing_id += 1 # get a new tracing id
     for epoch in range(0,epochs):
       for d in dataloaders:
@@ -1540,7 +1541,7 @@ class FFModel(object):
     dataloaders.append(y)
 
     num_samples = y.get_num_samples()
-    batch_size = self._ffconfig.get_batch_size()
+    batch_size = self._ffconfig.batch_size
     for d in dataloaders:
       d.reset()
     self.reset_metrics()
@@ -1558,11 +1559,17 @@ class FFModel(object):
     """
     ffc.flexflow_model_zero_gradients(self.handle)
 
-  def set_sgd_optimizer(self, optimizer):
-    ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
+  def set_optimizer(self, optimizer):
+    if isinstance(optimizer, SGDOptimizer) == True:
+      ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
+    elif isinstance(optimizer, AdamOptimizer) == True:
+      ffc.flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
+    elif optimizer == None:
+      pass
+    else:
+      assert 0, "[Model]: unknown optimizer"
 
-  def set_adam_optimizer(self, optimizer):
-    ffc.flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
+  optimizer = property(fset=set_optimizer)
 
   def print_layers(self, id=-1):
     ffc.flexflow_model_print_layers(self.handle, id)
@@ -1582,7 +1589,8 @@ class FFModel(object):
     handle = ffc.flexflow_model_get_parameter_by_id(self.handle, id)
     return Parameter(handle)
 
-  def get_label_tensor(self):
+  @property
+  def label_tensor(self):
     handle = ffc.flexflow_model_get_label_tensor(self.handle)
     return Tensor(handle, deallocate=False)
 

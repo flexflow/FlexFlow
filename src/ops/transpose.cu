@@ -47,7 +47,7 @@ void Transpose::create_weights(FFModel& model)
   // Do nothing
 }
 
-void Transpose::create_output_and_partition(FFModel& model)
+void Transpose::map_output_tensors(FFModel& model)
 {
   int dim = inputs[0].numDim;
   switch (dim) {
@@ -55,7 +55,7 @@ void Transpose::create_output_and_partition(FFModel& model)
     case DIM: \
     { \
       task_is = model.get_or_create_task_is(DIM, name); \
-      create_output_and_partition_with_dim<DIM>(model); \
+      map_output_tensors_with_dim<DIM>(model); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -69,7 +69,7 @@ void Transpose::create_output_and_partition(FFModel& model)
 }
 
 template<int NDIM>
-void Transpose::create_output_and_partition_with_dim(FFModel& model)
+void Transpose::map_output_tensors_with_dim(FFModel& model)
 {
   // Retrive the task indexspace for the op
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
@@ -124,6 +124,7 @@ OpMeta* Transpose::init_task(const Task *task,
 
   TransposeMeta* m = new TransposeMeta(handle);
   transpose->init_meta(m, in_domain, out_domain);
+  m->profiling = transpose->profiling;
   return m;
 }
 
@@ -239,15 +240,15 @@ void Transpose::forward_task(const Task* task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const Transpose* transpose = (const Transpose*) task->args;
+  //const Transpose* transpose = (const Transpose*) task->args;
   const TransposeMeta* m = *((TransposeMeta**) task->local_args);
   Domain in_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain out_domain = runtime->get_index_space_domain(
     ctx, task->regions[1].region.get_index_space());
   for (int i = 0; i < out_domain.get_dim(); i++) {
-    assert(out_domain.hi()[i] == in_domain.hi()[transpose->perm[i]]);
-    assert(out_domain.lo()[i] == in_domain.lo()[transpose->perm[i]]);
+    assert(out_domain.hi()[i] == in_domain.hi()[m->perm[i]]);
+    assert(out_domain.lo()[i] == in_domain.lo()[m->perm[i]]);
   }
   const float* in_ptr = helperGetTensorPointerRO<float>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -280,7 +281,7 @@ void Transpose::forward(const FFModel& ff)
       assert(false);
   }
   IndexLauncher launcher(TRANSPOSE_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Transpose)), argmap,
+                         TaskArgument(NULL, false), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -322,15 +323,15 @@ void Transpose::backward_task(const Task* task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const Transpose* transpose = (const Transpose*) task->args;
+  //const Transpose* transpose = (const Transpose*) task->args;
   const TransposeMeta* m = *((TransposeMeta**) task->local_args);
   Domain out_grad_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain in_grad_domain = runtime->get_index_space_domain(
     ctx, task->regions[1].region.get_index_space());
   for (int i = 0; i < out_grad_domain.get_dim(); i++) {
-    assert(out_grad_domain.hi()[i] == in_grad_domain.hi()[transpose->perm[i]]);
-    assert(out_grad_domain.lo()[i] == in_grad_domain.lo()[transpose->perm[i]]);
+    assert(out_grad_domain.hi()[i] == in_grad_domain.hi()[m->perm[i]]);
+    assert(out_grad_domain.lo()[i] == in_grad_domain.lo()[m->perm[i]]);
   }
   const float* out_grad_ptr = helperGetTensorPointerRO<float>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -364,7 +365,7 @@ void Transpose::backward(const FFModel& ff)
   }
 
   IndexLauncher launcher(TRANSPOSE_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Transpose)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): output_grad

@@ -48,7 +48,7 @@ void Dropout::create_weights(FFModel& model)
   // Do nothing
 }
 
-void Dropout::create_output_and_partition(FFModel& model)
+void Dropout::map_output_tensors(FFModel& model)
 {
   int dim = inputs[0].numDim;
   switch (dim) {
@@ -56,7 +56,7 @@ void Dropout::create_output_and_partition(FFModel& model)
     case DIM: \
     { \
       task_is = model.get_or_create_task_is(DIM, name); \
-      create_output_and_partition_with_dim<DIM>(model); \
+      map_output_tensors_with_dim<DIM>(model); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -69,7 +69,7 @@ void Dropout::create_output_and_partition(FFModel& model)
 }
 
 template<int NDIM>
-void Dropout::create_output_and_partition_with_dim(FFModel& model)
+void Dropout::map_output_tensors_with_dim(FFModel& model)
 {
   // Retrive the task indexspace for the op
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
@@ -126,7 +126,7 @@ OpMeta* Dropout::init_task(const Task *task,
     ctx, task->regions[1].region.get_index_space());
 
   dropout->init_meta(m, input_domain, output_domain);
-
+  m->profiling = dropout->profiling;
   return m;
 }
 
@@ -243,7 +243,7 @@ void Dropout::forward(const FFModel& ff)
       assert(false);
   }
   IndexLauncher launcher(DROPOUT_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(ElementUnary)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -317,7 +317,7 @@ void Dropout::backward(const FFModel& ff)
       assert(false);
   }
   IndexLauncher launcher(DROPOUT_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(ElementUnary)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(

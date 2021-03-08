@@ -134,6 +134,12 @@ class ONNXModel(object):
         self.symbol_table[node.output[0]] = output
         logging.debug("ffmodel.pool2d({}, {}, {}, {}, {}, {}, {}, PoolType.POOL_AVG, name={})".format(node.input[0], kernel[0], kernel[1], stride[0], stride[1], padding[0], padding[1], node.name))
 
+    def handleGlobalAveragePool(self,ffmodel,node):
+        input = self.symbol_table[node.input[0]]
+        output = ffmodel.pool2d(input, input.dims[2], input.dims[3], 1, 1, 0, 0, PoolType.POOL_AVG, name=node.name)
+        self.symbol_table[node.output[0]] = output
+        logging.debug("ffmodel.pool2d({}, {}, {}, {}, {}, {}, {}, PoolType.POOL_AVG, name={})".format(node.input[0], input.dims[2], input.dims[3], 1, 1, 0, 0, node.name))
+
     def handleBatchNormalization(self, ffmodel, node):
         input = self.symbol_table[node.input[0]]
         output = ffmodel.batch_norm(input)
@@ -360,7 +366,7 @@ class ONNXModelKeras(ONNXModel):
     
     def _create_initializer_tensor(self, ffconfig, ffmodel, input):
         if len(input.dims) == 1:
-            dims = [ffconfig.get_batch_size(), input.dims[0]]
+            dims = [ffconfig.batch_size, input.dims[0]]
             print("dims", dims)
         else:
             assert 0
