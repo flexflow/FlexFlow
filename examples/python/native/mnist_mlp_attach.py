@@ -54,7 +54,6 @@ def next_batch_label(idx, x_train, input1, ffconfig, ffmodel):
 def top_level_task():
   alexnetconfig = NetConfig()
   ffconfig = FFConfig()
-  ffconfig.parse_args()
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
 

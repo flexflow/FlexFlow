@@ -12,7 +12,6 @@ def parse_args():
 def attention():
   args = parse_args()
   ffconfig = FFConfig()
-  ffconfig.parse_args()
   print("Python API: batch_size(%d) GPUs/node(%d) nodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
   batch_size = ffconfig.batch_size
