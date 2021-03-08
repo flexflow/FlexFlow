@@ -45,7 +45,7 @@ void Flat::create_weights(FFModel& model)
   // Do nothing
 }
 
-void Flat::map_output_tensors(FFModel& model)
+void Flat::create_output_and_partition(FFModel& model)
 {
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
@@ -277,7 +277,7 @@ bool Flat::measure_operator_cost(Simulator* sim,
 }
 
 Domain Flat::get_input_tensor_shape(const ParallelConfig& pc,
-    int input_idx, int part_idx) const
+                                  int input_idx, int part_idx)
 {
   assert(input_idx < numInputs);
   assert(pc.nDims == 2);

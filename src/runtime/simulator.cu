@@ -124,7 +124,7 @@ void Simulator::strategy_search_task(const Task *task,
   checkCUDA(cublasSetStream(simulator->handler.blas, stream));
   checkCUDNN(cudnnSetStream(simulator->handler.dnn, stream));
 #endif
-  std::map<const Op*, ParallelConfig> strategies;
+  std::map<Op*, ParallelConfig> strategies;
   if (model->config.import_strategy_file.length() > 0) {
     // Load the strategy from config.strategies
     for (size_t l = 0; l < model->layers.size(); l++) {
@@ -156,7 +156,7 @@ void Simulator::strategy_search_task(const Task *task,
   if (model->config.export_strategy_file.length() > 0) {
     fprintf(stderr, "Exporting the best discovered strategy to %s.\n",
         model->config.export_strategy_file.c_str());
-    std::map<const Op*, ParallelConfig>::const_iterator iter;
+    std::map<Op*, ParallelConfig>::const_iterator iter;
     std::map<std::string, ParallelConfig> strategy_output;
     for (iter = strategies.begin(); iter != strategies.end(); iter++) {
       strategy_output[iter->first->name] = iter->second;
