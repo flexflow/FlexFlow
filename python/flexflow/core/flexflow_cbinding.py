@@ -396,22 +396,6 @@ class FFConfig(object):
   def epochs(self):
     return ffc.flexflow_config_get_epochs(self.handle)
 
-  def get_batch_size(self):
-    warnings.warn("FFConfig getters are deprecated. Use properties instead.", DeprecationWarning)
-    return ffc.flexflow_config_get_batch_size(self.handle)
-
-  def get_workers_per_node(self):
-    warnings.warn("FFConfig getters are deprecated. Use properties instead.", DeprecationWarning)
-    return ffc.flexflow_config_get_workers_per_node(self.handle)
-
-  def get_num_nodes(self):
-    warnings.warn("FFConfig getters are deprecated. Use properties instead.", DeprecationWarning)
-    return ffc.flexflow_config_get_num_nodes(self.handle)
-
-  def get_epochs(self):
-    warnings.warn("FFConfig getters are deprecated. Use properties instead.", DeprecationWarning)
-    return ffc.flexflow_config_get_epochs(self.handle)
-
   def get_current_time(self):
     return ffc.flexflow_get_current_time(self.handle)
 
@@ -1478,14 +1462,7 @@ class FFModel(object):
 
     :returns:  None -- no returns.
     """
-    if isinstance(optimizer, SGDOptimizer) == True:
-      self.set_sgd_optimizer(optimizer)
-    elif isinstance(optimizer, AdamOptimizer) == True:
-      self.set_adam_optimizer(optimizer)
-    elif optimizer == None:
-      pass
-    else:
-      assert 0, "[Model]: unknown optimizer"
+    self.optimizer = optimizer
 
     c_loss_type = enum_to_int(LossType, loss_type)
     metrics_int = []
@@ -1586,11 +1563,17 @@ class FFModel(object):
     """
     ffc.flexflow_model_zero_gradients(self.handle)
 
-  def set_sgd_optimizer(self, optimizer):
-    ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
+  def set_optimizer(self, optimizer):
+    if isinstance(optimizer, SGDOptimizer) == True:
+      ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
+    elif isinstance(optimizer, AdamOptimizer) == True:
+      ffc.flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
+    elif optimizer == None:
+      pass
+    else:
+      assert 0, "[Model]: unknown optimizer"
 
-  def set_adam_optimizer(self, optimizer):
-    ffc.flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
+  optimizer = property(fset=set_optimizer)
 
   def print_layers(self, id=-1):
     ffc.flexflow_model_print_layers(self.handle, id)
@@ -1610,7 +1593,8 @@ class FFModel(object):
     handle = ffc.flexflow_model_get_parameter_by_id(self.handle, id)
     return Parameter(handle)
 
-  def get_label_tensor(self):
+  @property
+  def label_tensor(self):
     handle = ffc.flexflow_model_get_label_tensor(self.handle)
     return Tensor(handle, deallocate=False)
 
