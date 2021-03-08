@@ -939,7 +939,7 @@ void FFModel::map_weight_with_dim(Tensor weight, const Op* parallel_op)
           map_linear_weight<NDIM, TDIM>(weight, parallel_op); \
           break; \
         }
-      LEGION_FOREACH_N(DIMFUNC)
+        LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
         default:
         {
@@ -1605,9 +1605,7 @@ void FFModel::compile(LossType loss_type,
         assert(op->inputs[i]->sync_type == ParameterSyncType::NONE);
         map_tensor(op->inputs[i], op);
       } else {
-        // Refresh op's input tensor
-        int tsIdx = op->inputs[i]->owner_idx;
-        op->inputs[i] = op->inputs[i]->owner_op->outputs[tsIdx];
+        // No need to do anything else otherwise
       }
     }
     for (int i = 0; i < op->numWeights; i++) {
