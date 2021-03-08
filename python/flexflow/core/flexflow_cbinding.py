@@ -879,7 +879,7 @@ class FFModel(object):
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
+    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, groups, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
     self.add_layer(OpType.CONV2D, name)
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 

@@ -341,8 +341,8 @@ flexflow_model_add_conv2d(
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
-  int groups,
   enum ActiMode activation /* AC_MODE_NONE */,
+  int groups,
   bool use_bias /* True */,
   flexflow_op_t shared_op_,
   flexflow_initializer_t kernel_initializer_,
@@ -355,7 +355,7 @@ flexflow_model_add_conv2d(
   Tensor *tensor = new Tensor();
   Initializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
   Initializer *bias_initializer = FFCObjectWrapper::unwrap(bias_initializer_);
-  *tensor = handle->conv2d(*input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups, activation, use_bias, shared_op, kernel_initializer, bias_initializer, name);
+  *tensor = handle->conv2d(*input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation, groups, use_bias, shared_op, kernel_initializer, bias_initializer, name);
   DEBUG_PRINT("[Conv2d] new Tensor 4D %p (%d, %d, %d, %d), input %p, out_channels %d, kernel(%d, %d), stride(%d, %d), padding(%d, %d), activation %d, use_bias %d, shared_op %p, kernel_init %p, bias_init %p, name %s",
     tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], input, out_channels,
     kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, 
