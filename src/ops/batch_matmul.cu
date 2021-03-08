@@ -54,6 +54,34 @@ BatchMatmul::BatchMatmul(FFModel& model,
 
 void BatchMatmul::create_input_partition(FFModel& model)
 {
+  // Do nothing since we don't have any weights
+}
+
+void BatchMatmul::create_output_and_partition(FFModel& model)
+{
+  // Retrive the task indexspace
+  int dim = inputs[0].numDim;
+  assert(dim == inputs[1].numDim);
+  switch (dim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      task_is = model.get_or_create_task_is(DIM, name); \
+      create_output_and_partition_with_dim<DIM>(model); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dim for BatchMatmul operator
+      assert(false);
+    }
+  }
+}
+
+void BatchMatmul::create_input_partition(FFModel& model)
+{
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Domain part_rect = runtime->get_index_space_domain(ctx, task_is);

@@ -60,6 +60,10 @@ Linear::Linear(FFModel& model,
                const Tensor _kernel,
                const Tensor _bias,
                ActiMode _activation,
+               bool _use_bias,
+               const Op* shared_op,
+               Initializer* _kernel_initializer,
+               Initializer* _bias_initializer,
                const char* name)
 : Op(model, OP_LINEAR, name, _input, _kernel, _bias),
   in_channels(_input->adim[0]), out_channels(_kernel->adim[1]),
@@ -82,7 +86,6 @@ Linear::Linear(FFModel& model,
   replica = new TensorBase();
 }
 
-#ifdef DEADCODE
 void Linear::create_weights(FFModel& model)
 {
   int dim = inputs[0].numDim;
@@ -132,7 +135,6 @@ void Linear::create_weights_with_dim(FFModel& model)
     assert(numWeights == 1);
   }
 }
-#endif
 
 void Linear::create_input_partition(FFModel& model)
 {

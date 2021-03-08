@@ -55,7 +55,7 @@ public:
   bool nesterov;
   double weight_decay;
   ParameterSyncType comm_type;
-  std::map<LogicalRegion, Tensor> v_values;
+  std::map<LogicalRegion, Parameter> v_values;
 };
 
 class AdamOptimizer : public Optimizer
@@ -79,6 +79,6 @@ public:
 #endif
   double alpha, beta1, beta2, weight_decay, epsilon;
   double alpha_t, beta1_t, beta2_t;
-  std::map<LogicalRegion, Tensor> v_values, m_values;
+  std::map<LogicalRegion, Parameter> v_values, m_values;
 };
 #endif

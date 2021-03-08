@@ -191,7 +191,7 @@ void FusedOp::create_weights(FFModel& model)
   assert(false && "Weights should be created before fusion optimizations");
 }
 
-void FusedOp::map_output_tensors(FFModel& model)
+void FusedOp::create_output_and_partition(FFModel& model)
 {
   assert(false && "Outputs should be created before fusion optimizations");
 }

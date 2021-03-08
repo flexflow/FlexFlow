@@ -53,7 +53,7 @@ void SGDOptimizer::init(void)
   Runtime* runtime = model->config.lg_hlr;
   Initializer* initializer = new ZeroInitializer();
   for (size_t i = 0; i < model->parameters.size(); i++) {
-    Tensor p = model->parameters[i];
+    Parameter p = model->parameters[i];
     Domain domain = runtime->get_index_space_domain(
         ctx, p->region.get_index_space());
     switch (domain.get_dim()) {
@@ -207,7 +207,7 @@ void AdamOptimizer::init(void)
   Runtime* runtime = model->config.lg_hlr;
   Initializer* initializer = new ZeroInitializer();
   for (size_t i = 0; i < model->parameters.size(); i++) {
-    Tensor p = model->parameters[i];
+    Parameter p = model->parameters[i];
     Domain domain = runtime->get_index_space_domain(
         ctx, p->region.get_index_space());
     switch (domain.get_dim()) {

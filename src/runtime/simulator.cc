@@ -140,7 +140,7 @@ SimTask* TaskManager::new_comm_task()
   return task;
 }
 
-SimTask* TaskManager::new_forward_task(const Op* op, int idx)
+SimTask* TaskManager::new_forward_task(Op* op, int idx)
 {
   SimTask* task = new_task();
   task->type = SimTask::TASK_FORWARD;
@@ -151,7 +151,7 @@ SimTask* TaskManager::new_forward_task(const Op* op, int idx)
   return task;
 }
 
-SimTask* TaskManager::new_backward_task(const Op* op, int idx)
+SimTask* TaskManager::new_backward_task(Op* op, int idx)
 {
   SimTask* task = new_task();
   task->type = SimTask::TASK_BACKWARD;
@@ -162,7 +162,7 @@ SimTask* TaskManager::new_backward_task(const Op* op, int idx)
   return task;
 }
 
-SimTask* TaskManager::get_forward_task(const Op* op, int idx)
+SimTask* TaskManager::get_forward_task(Op* op, int idx)
 {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
@@ -170,7 +170,7 @@ SimTask* TaskManager::get_forward_task(const Op* op, int idx)
   return hash_to_forward_task[hash];
 }
 
-SimTask* TaskManager::get_backward_task(const Op* op, int idx)
+SimTask* TaskManager::get_backward_task(Op* op, int idx)
 {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
@@ -316,14 +316,14 @@ CostMetrics Simulator::measure_operator_cost(Op* op, const ParallelConfig& confi
 }
 
 float Simulator::simulate_runtime(const FFModel* model,
-                                  const std::map<const Op*, ParallelConfig>& global,
+                                  const std::map<Op*, ParallelConfig>& global,
                                   CompMode comp_mode)
 {
   return this->simulate_runtime(model, global, comp_mode, "");
 }
 
 float Simulator::simulate_runtime(const FFModel* model,
-                                  const std::map<const Op*, ParallelConfig>& global,
+                                  const std::map<Op*, ParallelConfig>& global,
                                   CompMode comp_mode,
                                   std::string const &export_file_name)
 {
