@@ -39,20 +39,8 @@ def top_level_task(test_type=1):
   y_train = y_train.astype('int32')
   full_label_array = y_train
   
-  dims_full_input = [num_samples, 3, 32, 32]
-  full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
-
-  dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor(dims_full_label, DataType.DT_INT32)
-  
-  full_input.attach_numpy_array(ffconfig, full_input_array)
-  full_label.attach_numpy_array(ffconfig, full_label_array)
-  
-  dataloader_input = SingleDataLoader(ffmodel, input, full_input, num_samples, DataType.DT_FLOAT)
-  dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
-  
-  full_input.detach_numpy_array(ffconfig)
-  full_label.detach_numpy_array(ffconfig)
+  dataloader_input = ffmodel.create_data_loader(input, full_input_array)
+  dataloader_label = ffmodel.create_data_loader(label, full_label_array)
   
   num_samples = dataloader_input.get_num_samples()
 
