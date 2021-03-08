@@ -43,7 +43,7 @@ Use the following command line to build a DNN model (e.g., InceptionV3). See the
 
 ### Build FlexFlow Runtime with Python Interface (C++ interface is also enabled)
 
-* Set the following environment variables. For `CUDNN_HOME`, you should be able to find `cudnn.h` under `CUDNN_HOME/include` and `libcudnn.so` under `CUDNN_HOME/lib` or `CUDNN_HOME/lib64`.
+1. Set the following environment variables. For `CUDNN_HOME`, you should be able to find `cudnn.h` under `CUDNN_HOME/include` and `libcudnn.so` under `CUDNN_HOME/lib` or `CUDNN_HOME/lib64`.
 ```
 export FF_HOME=/path/to/FlexFlow
 export CUDNN_HOME=/path/to/cudnn
@@ -60,7 +60,7 @@ export GPU_ARCH=70,86
 
 If Legion can not automatically detect your Python installation, you need to tell Legion manually by setting the `PYTHON_EXE`, `PYTHON_LIB` and `PYTHON_VERSION_MAJOR`, please refer to the `python/Makefile` for details
 
-* Build the flexflow python executable using the following command line
+2. Build the flexflow python executable using the following command line
 ```
 cd python
 make 
@@ -96,44 +96,46 @@ make
 ```
 
 # 3. Test the FlexFlow
-* Set the `FF_HOME` environment variable before running the FlexFlow. You can add the following line in ~/.bashrc.
+1. Set the `FF_HOME` environment variable before running the FlexFlow. You can add the following line in ~/.bashrc.
 ```
 export FF_HOME=/path/to/FlexFlow
 ```
 
-* Run FlexFlow Python examples
+2. Run FlexFlow Python examples
 The C++ examples are in the [examples/python](https://github.com/flexflow/FlexFlow/tree/master/examples/python). 
 For example, the AlexNet can be run as:
 ```
 cd python
-./flexflow_python example/python/native/alexnet.py -ll:py 1 -ll:gpu 1 -ll:fsize size of gpu buffer -ll:zsize size of zero buffer
+./flexflow_python examples/python/native/alexnet.py -ll:py 1 -ll:gpu 1 -ll:fsize <size of gpu buffer> -ll:zsize <size of zero buffer>
 ``` 
 The script of running all the Python examples is `python/test.sh`
 
-* Run FlexFlow C++ examples
+3. Run FlexFlow C++ examples
 
 The C++ examples are in the [examples/cpp](https://github.com/flexflow/FlexFlow/tree/master/examples/cpp). 
 For example, the AlexNet can be run as:
 ```
-./alexnet -ll:gpu 1 -ll:fsize size of gpu buffer -ll:zsize size of zero buffer
+./alexnet -ll:gpu 1 -ll:fsize <size of gpu buffer> -ll:zsize <size of zero buffer>
 ``` 
+
+Size of buffers is in MBs, e.g. for an 8GB gpu `-ll:fsize 8000`
 
 # 4. Install the FlexFlow
 
-* Install the FlexFlow binary, header file and library if using CMake. 
+1. Install the FlexFlow binary, header file and library if using CMake. 
 ```
 cd build
 make install
 ```
 
-* Install the FlexFlow Python interface using pip
+2. Install the FlexFlow Python interface using pip
 If install from local:
 ```
 cd python
 pip install .
 ```
 
-If install from the PyPI repository
+If installing from the PyPI repository
 ```
 pip install flexflow
 ```

@@ -4,17 +4,16 @@ import numpy as np
 
 def top_level_task():
   ffconfig = FFConfig()
-  ffconfig.parse_args()
-  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
+  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
 
-  dims1 = [ffconfig.get_batch_size(), 3, 229, 229]
+  dims1 = [ffconfig.batch_size, 3, 229, 229]
   input1 = ffmodel.create_tensor(dims1, DataType.DT_FLOAT);
 
-  dims2 = [ffconfig.get_batch_size(), 16]
+  dims2 = [ffconfig.batch_size, 16]
   input2 = ffmodel.create_tensor(dims2, DataType.DT_FLOAT);
 
-  dims_label = [ffconfig.get_batch_size(), 1]
+  dims_label = [ffconfig.batch_size, 1]
   label = ffmodel.create_tensor(dims_label, DataType.DT_INT32);
 
   t1 = ffmodel.conv2d(input1, 64, 11, 11, 4, 4, 2, 2)
@@ -22,7 +21,7 @@ def top_level_task():
   #t3 = ffmodel.dense("dense1", t2, 128, ActiMode.AC_MODE_RELU)
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.compile(optimizer=ffoptimizer, loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
-  label = ffmodel.get_label_tensor()
+  label = ffmodel.label_tensor
 
   # Data Loader
   alexnetconfig = NetConfig()

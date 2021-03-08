@@ -12,10 +12,9 @@ def parse_args():
 def attention():
   args = parse_args()
   ffconfig = FFConfig()
-  ffconfig.parse_args()
-  print("Python API: batch_size(%d) GPUs/node(%d) nodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
+  print("Python API: batch_size(%d) GPUs/node(%d) nodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
-  batch_size = ffconfig.get_batch_size()
+  batch_size = ffconfig.batch_size
   dims_input = [batch_size, args.seq_length, args.hidden_size]
   input = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
   q = ffmodel.dense(input, args.hidden_size)
@@ -36,9 +35,9 @@ def attention():
   output = ffmodel.dense(output, args.hidden_size, ActiMode.AC_MODE_RELU)
   output = ffmodel.dense(output, args.hidden_size)
   ffoptimizer = SGDOptimizer(ffmodel)
-  ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.optimizer = ffoptimizer
   ffmodel.compile(loss_type=LossType.LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics=[MetricsType.METRICS_MEAN_SQUARED_ERROR], comp_mode=CompMode.INFERENCE)
-  label_tensor = ffmodel.get_label_tensor()
+  label_tensor = ffmodel.label_tensor
 
   # Full inputs/label
   dims = [batch_size * 10, args.seq_length, args.hidden_size]
@@ -53,7 +52,7 @@ def attention():
   dl_label = SingleDataLoader(ffmodel, label_tensor, full_label, batch_size * 10, DataType.DT_FLOAT)
   
   ffmodel.init_layers()
-  epochs = ffconfig.get_epochs()
+  epochs = ffconfig.epochs
 
   dl_input.next_batch(ffmodel)
   dl_label.next_batch(ffmodel)

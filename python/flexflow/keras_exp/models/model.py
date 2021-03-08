@@ -37,7 +37,7 @@ class BaseModel(object):
   def __init__(self, inputs, onnx_model):
     self._ffconfig = ff.FFConfig()
     self._ffconfig.parse_args()
-    print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.get_batch_size(), self._ffconfig.get_workers_per_node(), self._ffconfig.get_num_nodes()))
+    print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.batch_size, self._ffconfig.workers_per_node, self._ffconfig.num_nodes))
     self._ffmodel = None
     self._onnx_model = onnx_model
     
@@ -173,7 +173,7 @@ class BaseModel(object):
           workers=1,
           use_multiprocessing=False):
     if batch_size != None:
-      assert self._ffconfig.get_batch_size() == batch_size, "batch size is not correct use -b to set it"
+      assert self._ffconfig.batch_size == batch_size, "batch size is not correct use -b to set it"
     if validation_split != 0.0:
       assert 0, "validation_split is not supported"
     if validation_data != None:
@@ -213,8 +213,8 @@ class BaseModel(object):
     self._train(epochs, callbacks, eval=False)
 
   def _create_label_tensor(self):
-    label_ffhandle = self._ffmodel.get_label_tensor()
-    self._label_tensor = Tensor(ffconfig=self._ffconfig, batch_shape=(self._ffconfig.get_batch_size(), 1), dtype=self._label_type)
+    label_ffhandle = self._ffmodel.label_tensor
+    self._label_tensor = Tensor(ffconfig=self._ffconfig, batch_shape=(self._ffconfig.batch_size, 1), dtype=self._label_type)
     self._label_tensor.ffhandle = label_ffhandle
 
   def _create_input_tensors(self):
@@ -321,7 +321,7 @@ class BaseModel(object):
         dataloader.reset()
       self._label_dataloader.reset()
       self._ffmodel.reset_metrics()
-      iterations = self._num_samples / self._ffconfig.get_batch_size()
+      iterations = self._num_samples / self._ffconfig.batch_size
 
       for iter in range(0, int(iterations)):
         if callbacks != None:

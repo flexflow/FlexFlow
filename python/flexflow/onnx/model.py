@@ -366,7 +366,7 @@ class ONNXModelKeras(ONNXModel):
     
     def _create_initializer_tensor(self, ffconfig, ffmodel, input):
         if len(input.dims) == 1:
-            dims = [ffconfig.get_batch_size(), input.dims[0]]
+            dims = [ffconfig.batch_size, input.dims[0]]
             print("dims", dims)
         else:
             assert 0
