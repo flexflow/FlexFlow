@@ -141,7 +141,7 @@ void BatchNorm::create_weights(FFModel& model)
   weights[1] = model.create_conv_weight<1>(this, dims, DT_FLOAT, bias_initializer);
 }
 
-void BatchNorm::map_output_tensors(FFModel& model)
+void BatchNorm::create_output_and_partition(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;

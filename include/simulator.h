@@ -72,7 +72,7 @@ public:
   Device* device;
   int counter;
   std::vector<SimTask*> next_tasks;
-  const char *op_name;
+  char *op_name;
   std::string get_type_str() const;
 };
 
@@ -143,10 +143,10 @@ public:
   SimTask* new_barrier_task();
   SimTask* new_update_task();
   SimTask* new_comm_task();
-  SimTask* new_forward_task(const Op* op, int idx);
-  SimTask* new_backward_task(const Op* op, int idx);
-  SimTask* get_forward_task(const Op* op, int idx);
-  SimTask* get_backward_task(const Op* op, int idx);
+  SimTask* new_forward_task(Op* op, int idx);
+  SimTask* new_backward_task(Op* op, int idx);
+  SimTask* get_forward_task(Op* op, int idx);
+  SimTask* get_backward_task(Op* op, int idx);
 private:
   SimTask* new_task();
 public:
@@ -172,10 +172,10 @@ public:
       SimTask* src_task, SimTask* dst_task, size_t intersect);
   CostMetrics measure_operator_cost(Op* op, const ParallelConfig& config);
   float simulate_runtime(const FFModel* model,
-      const std::map<const Op*, ParallelConfig>& global,
+      const std::map<Op*, ParallelConfig>& global,
       CompMode comp_mode);
   float simulate_runtime(const FFModel* model,
-      const std::map<const Op*, ParallelConfig>& global,
+      const std::map<Op*, ParallelConfig>& global,
       CompMode comp_mode,
       std::string const &export_file_name);
   static void strategy_search_task(const Task *task,

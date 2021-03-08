@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(FlexFlow)
 
-#enable_language(CUDA)
-
 include(ExternalProject) 
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
@@ -46,15 +44,13 @@ set(CC_FLAGS $ENV{CC_FLAGS})
 set(NVCC_FLAGS $ENV{NVCC_FLAGS})
 set(LD_FLAGS $ENV{LD_FLAGS})
 
-set(MAX_DIM 4)
+set(FF_MAX_DIM 4)
 
 # ZLIB
 include(zlib)
 
 # CUDA
 include(cuda)
-#  list(JOIN CUDA_GENCODE " " CUDA_GENCODE_FLAG)
-#  set(CMAKE_CUDA_FLAGS ${CUDA_GENCODE_FLAG})
  
 # CUDNN
 include(cudnn)
@@ -68,11 +64,6 @@ if(FF_USE_NCCL)
     -DFF_USE_NCCL)
 endif()
 
-# GASNet
-if(FF_USE_GASNET)  
-  include(gasnet)
-endif()
-
 # Legion
 include(legion)
 
@@ -84,14 +75,21 @@ if(FF_USE_PYTHON)
 endif()
 
 # Start build FlexFlow
+if (CMAKE_BUILD_TYPE EQUAL "Debug")
+  list(APPEND CC_FLAGS
+    -DFF_DEBUG)
+  list(APPEND NVCC_FLAGS
+    -DFF_DEBUG)
+endif()
+
 list(APPEND CC_FLAGS
   -std=c++11
-  -DMAX_TENSOR_DIM=${MAX_DIM})
+  -DMAX_TENSOR_DIM=${FF_MAX_DIM})
   
 list(APPEND NVCC_FLAGS
   -Wno-deprecated-gpu-targets
   -std=c++11
-  -DMAX_TENSOR_DIM=${MAX_DIM})
+  -DMAX_TENSOR_DIM=${FF_MAX_DIM})
   
 list(APPEND LD_FLAGS
   -lrt
@@ -162,7 +160,7 @@ set(FLEXFLOW_GPU_SRC
 set(FLEXFLOW_CPP_DRV_SRC
   ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)  
 
-message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
+#message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
 
 # compile flexflow lib
 if(BUILD_SHARED_LIBS)
@@ -172,11 +170,6 @@ if(BUILD_SHARED_LIBS)
  endif()
 
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-
-# nccl
-if(FF_USE_NCCL)
-  add_dependencies(flexflow ${NCCL_NAME})
-endif()
 
 # build binary
 option(FF_BUILD_RESNET "build resnet example" OFF)

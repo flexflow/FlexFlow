@@ -23,13 +23,10 @@ using namespace Legion;
 
 class Op;
 class FFModel;
-class Initializer;
 
 struct Tensor {
-  static const Tensor NO_TENSOR;
   Tensor(void);
   Tensor& operator=(const Tensor& rhs);
-  bool operator==(const Tensor& rhs) const;
   void inline_map(FFConfig &config);
   void inline_unmap(FFConfig &config);
   template<typename T>
@@ -53,14 +50,12 @@ struct Tensor {
   bool get_tensor(const FFModel* model,
                   T* data,
                   ParameterSyncType comm_type);
-  int guid, numDim, adim[MAX_TENSOR_DIM];
+  int numDim, adim[MAX_TENSOR_DIM];
   DataType data_type;
   ParameterSyncType sync_type;
-  Initializer* initializer;
   // Describes the ownership of this tensor
-  const Op* owner_op;
+  Op* owner_op;
   int owner_idx;
-  bool create_gradients;
   // The following fields are initialized after model.compile
   LogicalRegion region, region_grad;
   LogicalPartition part, part_grad;

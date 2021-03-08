@@ -53,7 +53,7 @@ void Concat::create_weights(FFModel& model)
   // DO nothing
 }
 
-void Concat::map_output_tensors(FFModel& model)
+void Concat::create_output_and_partition(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;

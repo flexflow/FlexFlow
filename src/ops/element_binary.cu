@@ -85,7 +85,7 @@ void ElementBinary::create_weights(FFModel& model)
   // Do nothing
 }
 
-void ElementBinary::map_output_tensors(FFModel& model)
+void ElementBinary::create_output_and_partition(FFModel& model)
 {
   //TODO: implement broadcast op
   assert(inputs[0].numDim == inputs[1].numDim);
@@ -96,7 +96,7 @@ void ElementBinary::map_output_tensors(FFModel& model)
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      map_output_tensors_with_dim<DIM>(model); \
+      create_output_and_partition_with_dim<DIM>(model); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -110,7 +110,7 @@ void ElementBinary::map_output_tensors(FFModel& model)
 }
 
 template<int NDIM>
-void ElementBinary::map_output_tensors_with_dim(FFModel& model)
+void ElementBinary::create_output_and_partition_with_dim(FFModel& model)
 {
   // Retrive the task indexspace for the op
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
