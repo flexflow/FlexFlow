@@ -42,7 +42,7 @@ def top_level_task(test_type=1):
   dataloader_input = ffmodel.create_data_loader(input, full_input_array)
   dataloader_label = ffmodel.create_data_loader(label, full_label_array)
   
-  num_samples = dataloader_input.get_num_samples()
+  num_samples = dataloader_input.num_samples
 
   ffmodel.init_layers()
 

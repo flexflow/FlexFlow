@@ -18,7 +18,7 @@ $(error FF_HOME variable is not defined, aborting build)
 endif
 
 ifndef LG_RT_DIR
-LG_RT_DIR	?= $(FF_HOME)/legion/runtime
+LG_RT_DIR	?= $(FF_HOME)/deps/legion/runtime
 endif
 
 ifndef CUDA_HOME
@@ -79,6 +79,10 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/runtime/accessor_kernel.cu\
 		${FF_HOME}/src/runtime/simulator.cu\
 		${FF_HOME}/src/runtime/cuda_helper.cu
+
+ifneq ($(strip $(FF_USE_PYTHON)), 1)
+  GEN_SRC		+= ${FF_HOME}/src/runtime/cpp_driver.cc
+endif
 
 INC_FLAGS	+= -I${FF_HOME}/include/ -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
 LD_FLAGS	+= -lcudnn -lcublas -lcurand -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64

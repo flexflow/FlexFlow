@@ -8,6 +8,7 @@ from default_utils import finalize_parameters
 from uno_data import CombinedDataLoader, CombinedDataGenerator, DataFeeder
 
 import pandas as pd
+import numpy as np
 
 def initialize_parameters(default_model='uno_default_model.txt'):
   # Build benchmark object

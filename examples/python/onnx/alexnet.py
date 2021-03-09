@@ -4,6 +4,7 @@ from flexflow.onnx.model import ONNXModel
 
 from accuracy import ModelAccuracy
 from PIL import Image
+import numpy as np
 
 def top_level_task():
   ffconfig = FFConfig()
@@ -46,8 +47,8 @@ def top_level_task():
   dataloader_input = ffmodel.create_data_loader(input, full_input_np)
   dataloader_label = ffmodel.create_data_loader(label, full_label_np)
 
-  num_samples = dataloader_input.get_num_samples()
-  assert dataloader_input.get_num_samples() == dataloader_label.get_num_samples()
+  num_samples = dataloader_input.num_samples
+  assert dataloader_input.num_samples == dataloader_label.num_samples
 
   ffmodel.init_layers()
 

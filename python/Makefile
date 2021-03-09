@@ -94,4 +94,6 @@ clean::
 	$(RM) -f $(OUTFILE) $(SLIB_LEGION) $(SLIB_REALM) $(GEN_OBJS) $(GEN_GPU_OBJS) $(REALM_OBJS) $(LEGION_OBJS) $(GPU_RUNTIME_OBJS) $(MAPPER_OBJS) $(ASM_OBJS) legion_defines.h realm_defines.h flexflow/core/legion_cffi.py *.pyc
 	$(RM) -rf build dist *.egg-info
 
+FF_USE_PYTHON = $(USE_PYTHON)
+
 include $(FF_HOME)/FlexFlow.mk

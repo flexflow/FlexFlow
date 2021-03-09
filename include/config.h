@@ -147,6 +147,13 @@ public:
   std::map<MappingTagID, ParallelConfig> strategies;
 };
 
+class FFIterationConfig {
+public:
+  FFIterationConfig();
+  void reset();
+  int seq_length;
+};
+
 struct ParaConfigCompare {
   bool operator()(const ParallelConfig& a, const ParallelConfig& b) const {
     if (a.nDims != b.nDims)

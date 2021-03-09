@@ -187,18 +187,20 @@ flexflow_model_prefetch(
 
 void
 flexflow_model_forward(
-  flexflow_model_t handle_)
+  flexflow_model_t handle_,
+  int seq_length)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->forward();
+  handle->forward(seq_length);
 }
 
 void
 flexflow_model_backward(
-  flexflow_model_t handle_)
+  flexflow_model_t handle_,
+  int seq_length)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->backward();
+  handle->backward(seq_length);
 }
 
 void
@@ -416,12 +418,14 @@ flexflow_tensor_t
 flexflow_model_add_batch_matmul(
   flexflow_model_t handle_,
   const flexflow_tensor_t a_,
-  const flexflow_tensor_t b_)
+  const flexflow_tensor_t b_,
+  int a_seq_length_dim,
+  int b_seq_length_dim)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor a = FFCObjectWrapper::unwrap(a_);
   Tensor b = FFCObjectWrapper::unwrap(b_);
-  Tensor tensor = handle->batch_matmul(a, b);
+  Tensor tensor = handle->batch_matmul(a, b, a_seq_length_dim, b_seq_length_dim);
   DEBUG_PRINT("[BatchMatMul] new Tensor %p, a %p, b %p", tensor, a, b);
   return FFCObjectWrapper::wrap(tensor);
 }

@@ -18,8 +18,11 @@
 
 Tensor FFModel::batch_matmul(const Tensor A,
                              const Tensor B)
+                             int a_seq_length_dim,
+                             int b_seq_length_dim)
 {
-  BatchMatmul* bmm = new BatchMatmul(*this, A, B);
+  BatchMatmul* bmm = new BatchMatmul(*this, A, B,
+      a_seq_length_dim, b_seq_length_dim);
   layers.push_back(bmm);
   return bmm->outputs[0];
 }
@@ -27,9 +30,15 @@ Tensor FFModel::batch_matmul(const Tensor A,
 // return A*B
 BatchMatmul::BatchMatmul(FFModel& model,
                          const Tensor A,
-                         const Tensor B)
-: Op(model, OP_BATCHMATMUL, "BatchMatmul_", A, B)
+                         const Tensor B,
+                         int _a_seq_length_dim,
+                         int _b_seq_length_dim)
+: Op(model, OP_BATCHMATMUL, "BatchMatmul_", A, B),
+  a_seq_length_dim(A.numDim-1-_a_seq_length_dim),
+  b_seq_length_dim(B.numDim-1-_b_seq_length_dim)
 {
+  assert((a_seq_length_dim <= 1) && "FlexFlow currently only supports seq_length_dim of 0 or 1 (in Fortran ordering).");
+  assert((b_seq_length_dim <= 1) && "FlexFlow currently only supports seq_length_dim of 0 or 1 (in Fortran ordering).");
   assert(A->numDim == B->numDim);
   for (int i = A->numDim-1; i >= 2; i--)
     assert(A->adim[i] == B->adim[i]);
@@ -46,10 +55,7 @@ BatchMatmul::BatchMatmul(FFModel& model,
   //  assert(C.numDim == outputs[0].numDim);
   //  for (int i = 0; i < C.numDim; i++)
   //    assert(C.adim[i] == outputs[0].adim[i]);
-  //} else {
-    numInputs = 2;
   //}
-  numWeights = 0;
 }
 
 void BatchMatmul::create_input_partition(FFModel& model)
@@ -88,9 +94,12 @@ OpMeta* BatchMatmul::init_task(const Task* task,
                                const std::vector<PhysicalRegion>& regions,
                                Context ctx, Runtime* runtime)
 {
+  const BatchMatmul* bmm = (BatchMatmul*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   BatchMatmulMeta* m = new BatchMatmulMeta(handle);
-  m->profiling = false;
+  m->profiling = bmm->profiling;
+  m->a_seq_length_dim = bmm->a_seq_length_dim;
+  m->b_seq_length_dim = bmm->b_seq_length_dim;
   return m;
 }
 
@@ -160,15 +169,45 @@ void BatchMatmul::forward_kernel(const BatchMatmulMeta* meta,
                                  const float* a_ptr,
                                  const float* b_ptr,
                                  const float* c_ptr,
-                                 int m, int n, int k, int batch)
+                                 int m, int n, int k,
+                                 int batch,
+                                 int a_seq_length_dim,
+                                 int b_seq_length_dim,
+                                 int seq_length)
 {
-  int a_stride = n * k;
-  int b_stride = m * k;
-  int o_stride = n * m;
+  //int a_stride = n * k;
+  //int b_stride = m * k;
+  //int o_stride = n * m;
+  int lda = k; int ldb = m; int ldo = m;
+  long long int strideA = (long long int)n*k;
+  long long int strideB = (long long int)k*m;
+  long long int strideO = (long long int)n*m;
+  if ((a_seq_length_dim==0)&&(seq_length>=0)) {
+    assert(seq_length <= k);
+    k = seq_length;
+    assert(b_seq_length_dim == 1);
+  } else if ((a_seq_length_dim==1)&&(seq_length>=0)) {
+    assert(seq_length <= n);
+    n = seq_length;
+  } else {
+    // currently only support a_seq_length_dim = 0 or 1
+    assert((a_seq_length_dim<0)||(seq_length<0));
+  }
+  if ((b_seq_length_dim==0)&&(seq_length>=0)) {
+    assert(seq_length <= m);
+    m = seq_length;
+  } else if ((b_seq_length_dim==1)&&(seq_length>=0)) {
+    assert(a_seq_length_dim == 0);
+    assert(k == seq_length);
+  } else {
+    // currently only support a_seq_length_dim = 0 or 1
+    assert((b_seq_length_dim<0)||(seq_length<0));
+  }
+
   float alpha = 1.0f, beta = 0.0f;
   checkCUDA(cublasSgemmStridedBatched(meta->handle.blas, CUBLAS_OP_N, CUBLAS_OP_N,
-      m, n, k, &alpha, b_ptr, m, b_stride, a_ptr, k, a_stride,
-      &beta, o_ptr, m, o_stride, batch));
+      m, n, k, &alpha, b_ptr, ldb, strideB, a_ptr, lda, strideA,
+      &beta, o_ptr, ldo, strideO, batch));
   // current assume c is null
   assert(c_ptr == NULL);
 }
@@ -188,6 +227,7 @@ void BatchMatmul::forward_task(const Task* task,
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   //const BatchMatmul* bmm = (const BatchMatmul*) task->args;
+  const FFIterationConfig* iter_config = (const FFIterationConfig*) task->args;
   const BatchMatmulMeta* meta = *((BatchMatmulMeta**) task->local_args);
   Domain out_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
@@ -237,7 +277,8 @@ void BatchMatmul::forward_task(const Task* task,
   checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
 #endif
   forward_kernel(meta, out_ptr, a_ptr, b_ptr, c_ptr,
-    m, n, k, batch);
+    m, n, k, batch, meta->a_seq_length_dim, meta->b_seq_length_dim,
+    iter_config->seq_length);
   if (meta->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -279,9 +320,9 @@ void BatchMatmul::forward_with_dim(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(BATCHMATMUL_FWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+      TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)), argmap,
+      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+      FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->part, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
@@ -344,6 +385,7 @@ void BatchMatmul::backward_task(const Task *task,
   assert(regions.size() == 6);
   assert(task->regions.size() == 6);
   //BatchMatmul* bmm = (BatchMatmul*) task->args;
+  const FFIterationConfig* iter_config = (const FFIterationConfig*) task->args;
   const BatchMatmulMeta* meta = *((BatchMatmulMeta**) task->local_args);
   // output domains
   Domain out_domain = runtime->get_index_space_domain(
@@ -406,6 +448,10 @@ void BatchMatmul::backward_task(const Task *task,
   checkCUDA(cublasSetStream(meta->handle.blas, stream));
   checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
 #endif
+  // TODO: add support for meta->a_seq_length_dim >= 0
+  // or meta->b_seq_length_dim >= 0
+  assert((meta->a_seq_length_dim<0)||(iter_config->seq_length==0));
+  assert((meta->b_seq_length_dim<0)||(iter_config->seq_length==0));
   backward_kernel(meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr,
     b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch);
   if (meta->profiling) {
@@ -458,9 +504,9 @@ void BatchMatmul::backward_with_dim(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(BATCHMATMUL_BWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+      TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)), argmap,
+      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+      FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): output
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->part, 0/*projection id*/,

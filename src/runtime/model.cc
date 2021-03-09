@@ -1437,8 +1437,9 @@ void FFModel::init_layers()
     layers[i]->init(*this);
 }
 
-void FFModel::forward()
+void FFModel::forward(int seq_length)
 {
+  iter_config.seq_length = seq_length;
   for (size_t i = 0; i < layers.size(); i++)
     layers[i]->forward(*this);
 }
@@ -1450,8 +1451,9 @@ void FFModel::compute_metrics()
   metrics_op->compute(this, final_layer->outputs[0], label_tensor_with_final_part);
 }
 
-void FFModel::backward()
+void FFModel::backward(int seq_length)
 {
+  iter_config.seq_length = seq_length;
   assert(config.computationMode == COMP_MODE_TRAINING);
   // Compute metrics
   Op* final_layer = layers[layers.size()-1];
@@ -2045,6 +2047,19 @@ bool DataLoader::shuffle_samples(void)
 #endif
 
 // ========================================================
+// class FFIterationConfig
+// ========================================================
+FFIterationConfig::FFIterationConfig()
+{
+  seq_length = -1;
+}
+
+void FFIterationConfig::reset()
+{
+  seq_length = -1;
+}
+
+// ========================================================
 // class FFConfig
 // ========================================================
 
@@ -2216,7 +2231,7 @@ void FFConfig::parse_args(char **argv, int argc)
   }
 }
 
-void register_internal_tasks()
+void register_flexflow_internal_tasks()
 {
   // CNN_INIT_TASK
   {
@@ -2842,47 +2857,6 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "Weights Prefetch Task");
   }
 }
-
-#if !defined(FF_USE_PYTHON)
-// ========================================================
-// Task and mapper registrations
-// ========================================================
-int main(int argc, char** argv)
-{
-  // This needs to be set, otherwise NCCL will try to use group kernel launches,
-  // which are not compatible with the Realm CUDA hijack.
-  setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
-
-  Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
-  {
-    TaskVariantRegistrar registrar(TOP_LEVEL_TASK_ID, "top_level");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_replicable();
-    Runtime::preregister_task_variant<top_level_task>(registrar, "top_level");
-  }
-
-  register_internal_tasks();
-
-  // Register custom tasks
-  register_custom_tasks();
-
-  FFMapper::register_sharding_functor(argc, argv);
-
-  Runtime::add_registration_callback(update_mappers);
-  return Runtime::start(argc, argv);
-}
-
-#else
-void register_flexflow_tasks(int argc, char **argv)
-{
-  register_internal_tasks();
-
-  register_c_custom_tasks();
-
-  FFMapper::register_sharding_functor(argc, argv);
-}
-
-#endif // FF_USE_PYTHON
 
 // template instantiations
 #define DIMFUNC(DIM) \

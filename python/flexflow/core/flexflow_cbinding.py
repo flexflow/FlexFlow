@@ -1019,7 +1019,7 @@ class FFModel(object):
     self.add_layer(OpType.BATCH_NORM, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
 
-  def batch_matmul(self, A, B, name=None):
+  def batch_matmul(self, A, B, a_seq_length_dim=None, b_seq_length_dim=None, name=None):
     """Layer that applied batched matrix multiplication onto two input Tensors, :attr:`output = x * y`.
              
     :param A: the first input Tensor.
@@ -1027,13 +1027,23 @@ class FFModel(object):
     
     :param B: the second input Tensor.
     :type B: Tensor
-             
+
+    :param a_seq_length_dim: an int when set indicating the a_seq_length_dim dimention of A is a sequence_length dimension
+    :type a_seq_length_dim: int
+
+    :param b_seq_length_dim: an int when set indicating the b_seq_length_dim dimention of B is a sequence_length dimension
+    :type b_seq_length_dim: int
+            
     :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_batch_matmul(self.handle, A.handle, B.handle)
+    if a_seq_length_dim is None:
+      a_seq_length_dim = -1
+    if b_seq_length_dim is None:
+      b_seq_length_dim = -1
+    handle = ffc.flexflow_model_add_batch_matmul(self.handle, A.handle, B.handle, a_seq_length_dim, b_seq_length_dim)
     self.add_layer(OpType.BATCH_MATMUL, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_MATMUL)
 
@@ -1408,20 +1418,24 @@ class FFModel(object):
   def prefetch(self):
     ffc.flexflow_model_prefetch(self.handle)
 
-  def forward(self):
+  def forward(self, seq_length=None):
     """Forward propagation of all layers.
              
     :returns:  None -- no returns.
     """
-    ffc.flexflow_model_forward(self.handle)
+    if seq_length is None:
+      seq_length = -1
+    ffc.flexflow_model_forward(self.handle, seq_length)
 
   #TODO: seperate compute_metrics from backward
-  def backward(self):
+  def backward(self, seq_length=None):
     """Backward propagation of all layers.
              
     :returns:  None -- no returns.
     """
-    ffc.flexflow_model_backward(self.handle)
+    if seq_length is None:
+      seq_length = -1
+    ffc.flexflow_model_backward(self.handle, seq_length)
 
   def compute_metrics(self):
     """Compute performance metrics.
@@ -1500,7 +1514,7 @@ class FFModel(object):
       dataloaders = x
     dataloaders.append(y)
 
-    num_samples = y.get_num_samples()
+    num_samples = y.num_samples
     batch_size = self._ffconfig.batch_size
     self._tracing_id += 1 # get a new tracing id
     for epoch in range(0,epochs):
@@ -1544,7 +1558,7 @@ class FFModel(object):
       dataloaders = x
     dataloaders.append(y)
 
-    num_samples = y.get_num_samples()
+    num_samples = y.num_samples
     batch_size = self._ffconfig.batch_size
     for d in dataloaders:
       d.reset()
@@ -1837,11 +1851,13 @@ class DataLoader4D(object):
       self.handle = ffc.flexflow_dataloader_4d_create(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle)
     self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_4d_destroy)
 
-  def set_num_samples(self, samples):
-    ffc.flexflow_dataloader_4d_set_num_samples(self.handle, samples)
-
-  def get_num_samples(self):
+  @property
+  def num_samples(self):
     return ffc.flexflow_dataloader_4d_get_num_samples(self.handle)
+
+  @num_samples.setter
+  def num_samples(self, samples):
+    ffc.flexflow_dataloader_4d_set_num_samples(self.handle, samples)
 
   def next_batch(self, ffmodel):
     ffc.flowflow_dataloader_4d_next_batch(self.handle, ffmodel.handle)
@@ -1855,11 +1871,13 @@ class DataLoader2D(object):
     self.handle = ffc.flexflow_dataloader_2d_create_v2(ffmodel.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
     self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_2d_destroy)
 
-  def set_num_samples(self, samples):
-    ffc.flexflow_dataloader_2d_set_num_samples(self.handle, samples)
-
-  def get_num_samples(self):
+  @property
+  def num_samples(self):
     return ffc.flexflow_dataloader_2d_get_num_samples(self.handle)
+
+  @num_samples.setter
+  def num_samples(self, samples):
+    ffc.flexflow_dataloader_2d_set_num_samples(self.handle, samples)
 
   def next_batch(self, ffmodel):
     ffc.flowflow_dataloader_2d_next_batch(self.handle, ffmodel.handle)
@@ -1892,11 +1910,13 @@ class SingleDataLoader(object):
     c_data_type = enum_to_int(DataType, data_type)
     self.handle = ffc.flexflow_single_dataloader_create2(ffmodel.handle, input.handle, full_input, num_samples, c_data_type)
 
-  def set_num_samples(self, samples):
-    ffc.flexflow_single_dataloader_set_num_samples(self.handle, samples)
-
-  def get_num_samples(self):
+  @property
+  def num_samples(self):
     return ffc.flexflow_single_dataloader_get_num_samples(self.handle)
+
+  @num_samples.setter
+  def num_samples(self, samples):
+    ffc.flexflow_single_dataloader_set_num_samples(self.handle, samples)
 
   def next_batch(self, ffmodel):
     """Ask the dataloder to load the next batch to the :attr:`batch_tensor`. 
