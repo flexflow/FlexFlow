@@ -57,7 +57,7 @@ def top_level_task():
     dataloader_label = ffmodel.create_data_loader2(
         label_tensor, full_label_array)
 
-    num_samples = dataloader_input.get_num_samples()
+    num_samples = dataloader_input.num_samples
 
     ffmodel.init_layers()
 
