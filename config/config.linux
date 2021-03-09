@@ -19,13 +19,22 @@ echo " Defaults for Linux machine"
 FF_CUDA_ARCH=60
 
 # set CUDNN dir
-CUDNN_DIR=/projects/opt/centos7/cuda/10.1
+# CUDNN_DIR=/projects/opt/centos7/cuda/10.1
+
+#set CUDA dir
+# CUDA_DIR=/projects/opt/centos7/cuda/10.1
 
 # enable Python
 FF_USE_PYTHON=ON
 
+# enable NCCL
+FF_USE_NCCL=OFF
+
 # enable GASNet
-FF_USE_GASNET=ON
+FF_USE_GASNET=OFF
+
+# build C++ examples
+FF_BUILD_EXAMPLES=ON
 
 # set MAX_DIM
 FF_MAX_DIM=4

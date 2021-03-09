@@ -1,4 +1,5 @@
 # find cudnn in CUDNN_ROOT and CUDA_ROOT
+set(CUDNN_ROOT $ENV{CUDNN_PATH})
 find_library(CUDNN_LIBRARY 
   NAMES libcudnn${LIBEXT}
   PATHS ${CUDNN_ROOT} ${CUDA_ROOT}
