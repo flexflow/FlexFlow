@@ -43,14 +43,10 @@ def attention():
   dims = [batch_size * 10, args.seq_length, args.hidden_size]
   np_input = np.zeros(dims, dtype=np.float32)
   np_label = np.zeros(dims, dtype=np.float32)
-  full_input = ffmodel.create_tensor(dims, DataType.DT_FLOAT)
-  full_label = ffmodel.create_tensor(dims, DataType.DT_FLOAT)
-  full_input.attach_numpy_array(ffconfig, np_input)
-  full_label.attach_numpy_array(ffconfig, np_label)
 
-  dl_input = SingleDataLoader(ffmodel, input, full_input, batch_size * 10, DataType.DT_FLOAT)
-  dl_label = SingleDataLoader(ffmodel, label_tensor, full_label, batch_size * 10, DataType.DT_FLOAT)
-  
+  dl_input = ffmodel.create_data_loader(input, np_input)
+  dl_label = ffmodel.create_data_loader(label, np_label)
+
   ffmodel.init_layers()
   epochs = ffconfig.epochs
 
