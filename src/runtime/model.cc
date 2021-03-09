@@ -2305,13 +2305,6 @@ void register_flexflow_internal_tasks()
         registrar, "bn_init_task");
   }
   {
-    TaskVariantRegistrar registrar(BATCHNORM_INIT_PARA_TASK_ID, "bm_init_para_task");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<BatchNorm::init_para_task>(
-        registrar, "bm_init_para_task");
-  }
-  {
     TaskVariantRegistrar registrar(BATCHNORM_FWD_TASK_ID, "bn_fwd_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();

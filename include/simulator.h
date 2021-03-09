@@ -27,7 +27,7 @@ class ElementUnaryMeta;
 class ElementBinaryMeta;
 class SoftmaxMeta;
 class BatchMatmulMeta;
-class BatchNormMeta;
+//class BatchNormMeta;
 class ConcatMeta;
 class DropoutMeta;
 class TransposeMeta;
@@ -207,7 +207,7 @@ public:
   ElementBinaryMeta* ele_binary_meta;
   SoftmaxMeta *softmax_meta;
   BatchMatmulMeta *batch_matmul_meta;
-  BatchNormMeta *batch_norm_meta;
+  //BatchNormMeta *batch_norm_meta;
   ConcatMeta *concat_meta;
   DropoutMeta *dropout_meta;
   TransposeMeta *transpose_meta;
