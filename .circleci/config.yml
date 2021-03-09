@@ -39,8 +39,8 @@ jobs:
           name: Install FlexFlow dependencies
           command: |
             export FF_HOME=$PWD
+            git submodule update --init --recursive
             cd $FF_HOME/deps/nccl
-            #git submodule update --init --recursive
             make -j src.build NVCC_GENCODE="-gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_70,code=sm_70"
             cd $FF_HOME
             sudo add-apt-repository ppa:deadsnakes/ppa
@@ -114,8 +114,8 @@ jobs:
           name: Install FlexFlow dependencies
           command: |
             export FF_HOME=$PWD
+            git submodule update --init --recursive
             cd $FF_HOME/deps/nccl
-            #git submodule update --init --recursive
             make -j src.build NVCC_GENCODE="-gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_70,code=sm_70"
             cd $FF_HOME
             sudo add-apt-repository ppa:deadsnakes/ppa
