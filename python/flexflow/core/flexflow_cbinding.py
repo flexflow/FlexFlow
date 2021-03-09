@@ -429,8 +429,8 @@ class Tensor(object):
     self.mapped = False
     self.__get_dims()
     self.__get_data_type()
-    if (deallocate == True):
-      self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
+    # if (deallocate == True):
+    #   self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
     if (self.is_mapped() == True):
       self.mapped = True
 

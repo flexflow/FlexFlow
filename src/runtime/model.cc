@@ -771,6 +771,7 @@ Tensor FFModel::create_tensor(
   tensor->guid = tensor_global_guid ++;
   tensor->data_type = data_type;
   tensor->owner_op = owner_op;
+  tensor->owner_idx = owner_idx;
   tensor->create_gradients = create_grad;
   tensor->numDim = NDIM;
   for (int i = 0; i < NDIM; i++) {

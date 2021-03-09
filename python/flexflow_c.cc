@@ -493,16 +493,13 @@ flexflow_model_add_split(
   Tensor input = FFCObjectWrapper::unwrap(input_);
   std::vector<int> split_vec;
   Tensor *outputs = new Tensor[n];
-  //Tensor **outputs_aop = new Tensor*[n];
   for (int i = 0; i < n; i++ ) {
     split_vec.push_back(split[i]);
   }
   handle->split(input, outputs, split_vec, axis, name);
-  //for (int i = 0; i < n; i++ ) {
-  //  outputs_aop[i] = new Tensor();
-  //  *(outputs_aop[i]) = outputs[i];
-  //  outputs_[i] = FFCObjectWrapper::wrap(outputs_aop[i]);
-  //}
+  for (int i = 0; i < n; i++ ) {
+   outputs_[i] = FFCObjectWrapper::wrap(outputs[i]);
+  }
   char cbuffer[256];
   char *cbuffer_ptr = cbuffer;
   sprintf(cbuffer_ptr, "[Split] input tensor %p output tensors ", input);
@@ -516,7 +513,6 @@ flexflow_model_add_split(
   }
   DEBUG_PRINT("%s, n %d, axis %d, name %s", cbuffer, n, axis, name);
   delete[] outputs;
-  //delete[] outputs_aop;
 }
 
 flexflow_tensor_t
