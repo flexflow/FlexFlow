@@ -71,12 +71,7 @@ Conv2D::Conv2D(FFModel& model,
                const Tensor _bias,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
-               int _groups,
                ActiMode _activation,
-               bool _use_bias,
-               const Op* shared_op,
-               Initializer* _kernel_initializer,
-               Initializer* _bias_initializer,
                const char* name)
 : Op(model, OP_CONV2D, name, _input, _kernel, _bias),
   in_channels(_input->adim[2]), out_channels(_kernel->adim[3]),
@@ -109,16 +104,9 @@ Conv2D::Conv2D(FFModel& model,
   }
   // Require input channels is divisible by groups
   assert(in_channels % groups == 0);
-  weights[0].adim[2] = in_channels / groups;
-  weights[0].adim[3] = out_channels;
-  numWeights = 1;
-  if (use_bias) {
-    weights[1].numDim = 1;
-    weights[1].adim[0] = out_channels;
-    numWeights = 2;
-  }
 }
 
+#ifdef DEADCODE
 void Conv2D::create_weights(FFModel& model)
 {
   // Retrive the task indexspace for the op
@@ -148,7 +136,7 @@ void Conv2D::create_weights(FFModel& model)
   }
 }
 
-void Conv2D::create_output_and_partition(FFModel& model)
+void Conv2D::map_output_tensors(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;

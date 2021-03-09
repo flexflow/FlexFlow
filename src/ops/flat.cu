@@ -271,7 +271,7 @@ bool Flat::measure_operator_cost(Simulator* sim,
 }
 
 Domain Flat::get_input_tensor_shape(const ParallelConfig& pc,
-                                  int input_idx, int part_idx)
+    int input_idx, int part_idx) const
 {
   assert(input_idx < numInputs);
   assert(pc.nDims == 2);

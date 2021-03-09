@@ -24,6 +24,7 @@ LegionRuntime::Logger::Category log_model("ff");
 
 TensorBase::TensorBase(void)
 {
+  guid = 0;
   numDim = 0;
   for (int i = 0; i < MAX_TENSOR_DIM; i++) {
     adim[i] = 0;
@@ -37,6 +38,8 @@ TensorBase::TensorBase(void)
   owner_idx = 0;
   data_type = DataType::DT_NONE;
   sync_type = ParameterSyncType::NONE;
+  initializer = NULL;
+  create_gradients = false;
 
   //physical_region.impl = NULL;
 }
@@ -44,13 +47,16 @@ TensorBase::TensorBase(void)
 /*
 Tensor& Tensor::operator=(const Tensor& rhs)
 {
+  guid = rhs.guid;
   numDim = rhs.numDim;
   for (int i = 0; i < numDim; i++)
     adim[i] = rhs.adim[i];
   data_type = rhs.data_type;
   sync_type = rhs.sync_type;
+  initializer = rhs.initializer;
   owner_op = rhs.owner_op;
   owner_idx = rhs.owner_idx;
+  create_gradients = rhs.create_gradients;
   region = rhs.region;
   region_grad = rhs.region_grad;
   part = rhs.part;
@@ -496,7 +502,7 @@ ParallelConfig Op::get_random_parallel_config(const FFModel& ff) const
 }
 
 Domain Op::get_output_tensor_shape(const ParallelConfig& pc,
-                                   int output_idx, int part_idx)
+    int output_idx, int part_idx) const
 {
   assert(output_idx < numOutputs);
   Domain d;
@@ -516,7 +522,7 @@ Domain Op::get_output_tensor_shape(const ParallelConfig& pc,
 }
 
 Domain Op::get_input_tensor_shape(const ParallelConfig& pc,
-                                  int input_idx, int part_idx)
+    int input_idx, int part_idx) const
 {
   assert(input_idx < numInputs);
   Domain d;
@@ -552,7 +558,7 @@ Domain Op::get_input_tensor_shape(const ParallelConfig& pc,
 }
 
 Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
-                                   int weight_idx, int part_idx)
+    int weight_idx, int part_idx) const
 {
   // Default data parallel weight replication
   assert(weight_idx < numWeights);
@@ -620,7 +626,7 @@ OpMeta::OpMeta(FFHandler _handle)
 {}
 
 FFModel::FFModel(FFConfig& _config)
-: op_global_guid(100), config(_config),
+: op_global_guid(1000), tensor_global_guid(20000), config(_config),
   optimizer(NULL), loss_op(NULL), metrics_op(NULL)
 {
   Runtime *runtime = config.lg_hlr;
@@ -906,11 +912,7 @@ void FFModel::map_weight(Tensor weight, const Op* op)
       assert(false);
     }
   }
-  tensor.numDim = NDIM;
-  for (int i = 0; i < NDIM; i++) {
-    tensor.adim[i] = rect.hi[i] - rect.lo[i] + 1;
-    //tensor.pdim[i] = extent.hi[i] - extent.lo[i] + 1;
-  }
+}
 
 template<int NDIM>
 void FFModel::map_weight_with_dim(Tensor weight, const Op* parallel_op)
@@ -1780,8 +1782,8 @@ void FFModel::compile(LossType loss_type,
 #endif
 }
 
-void FFModel::rewrite(const std::map<Op*, ParallelConfig>& current,
-                      std::map<Op*, ParallelConfig>& next) const
+void FFModel::rewrite(const std::map<const Op*, ParallelConfig>& current,
+                      std::map<const Op*, ParallelConfig>& next) const
 {
   next = current;
   size_t opId = std::rand() % layers.size();
@@ -1792,12 +1794,12 @@ void FFModel::rewrite(const std::map<Op*, ParallelConfig>& current,
 }
 
 void FFModel::optimize(Simulator* simulator,
-                       std::map<Op*, ParallelConfig>& best,
+                       std::map<const Op*, ParallelConfig>& best,
                        size_t budget, float alpha,
                        CompMode comp_mode) const
 {
   // Start from data parallel
-  std::map<Op*, ParallelConfig> current, next;
+  std::map<const Op*, ParallelConfig> current, next;
   float best_runtime = simulator->simulate_runtime(this, best, comp_mode);
   current = best;
   float current_runtime = best_runtime;
@@ -1836,7 +1838,7 @@ void FFModel::optimize(Simulator* simulator,
   }
   printf("=========== Best Discovered Strategy ==========\n");
   simulator->simulate_runtime(this, best, comp_mode, this->config.export_strategy_task_graph_file);
-  std::map<Op*, ParallelConfig>::const_iterator it;
+  std::map<const Op*, ParallelConfig>::const_iterator it;
   for (it = best.begin(); it != best.end(); it++) {
     printf("[%s] num_dims(%d) dims[", it->first->name, it->second.nDims);
     for (int i = 0; i < it->second.nDims; i++)

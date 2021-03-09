@@ -54,7 +54,7 @@ void Dropout::map_output_tensors(FFModel& model)
     case DIM: \
     { \
       task_is = model.get_or_create_task_is(DIM, name); \
-      create_output_and_partition_with_dim<DIM>(model); \
+      map_output_tensors_with_dim<DIM>(model); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -67,7 +67,7 @@ void Dropout::map_output_tensors(FFModel& model)
 }
 
 template<int NDIM>
-void Dropout::create_output_and_partition_with_dim(FFModel& model)
+void Dropout::map_output_tensors_with_dim(FFModel& model)
 {
   // Retrive the task indexspace for the op
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));

@@ -216,9 +216,9 @@ public:
   // Other virtual functions that can be optionally overwritten
   virtual ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   virtual ParallelConfig get_data_parallel_config(const FFModel& ff) const;
-  virtual Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx);
-  virtual Domain get_output_tensor_shape(const ParallelConfig& pc, int output_idx, int part_idx);
-  virtual Domain get_weight_tensor_shape(const ParallelConfig& pc, int weight_idx, int part_idx);
+  virtual Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const;
+  virtual Domain get_output_tensor_shape(const ParallelConfig& pc, int output_idx, int part_idx) const;
+  virtual Domain get_weight_tensor_shape(const ParallelConfig& pc, int weight_idx, int part_idx) const;
   // Helper functions
   void prefetch(const FFModel&);
   void zero_grad(const FFModel&);
@@ -458,11 +458,11 @@ public:
                const std::vector<MetricsType>& metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
   void optimize(Simulator* simulator,
-                std::map<Op*, ParallelConfig>& best,
+                std::map<const Op*, ParallelConfig>& best,
                 size_t budget, float alpha,
                 CompMode comp_mode) const;
-  void rewrite(const std::map<Op*, ParallelConfig>& current,
-               std::map<Op*, ParallelConfig>& next) const;
+  void rewrite(const std::map<const Op*, ParallelConfig>& current,
+               std::map<const Op*, ParallelConfig>& next) const;
   void zero_gradients();
   void print_layers(int id);
   std::string get_operator_type_name(OperatorType type) const;
@@ -474,7 +474,7 @@ public:
   IndexSpace get_task_is(ParallelConfig pc) const;
   IndexSpace get_task_is(int ndims, const std::string& pcname) const;
 public:
-  int op_global_guid, ts_global_guid;
+  int op_global_guid, tensor_global_guid;
   FFConfig config;
   Optimizer* optimizer;
   Loss* loss_op;
@@ -483,7 +483,7 @@ public:
   //std::vector<Tensor> input_tensors;
   
   std::vector<Op*> layers;
-  std::vector<Parameter> parameters;
+  std::vector<Tensor> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
   Future current_metrics;
   //DataLoader *dataLoader;
@@ -635,12 +635,7 @@ public:
          const Tensor bias,
          int strideH, int strideW,
          int paddingH, int paddingW,
-         int groups,
          ActiMode activation,
-         bool use_bias,
-         const Op* shared_op,
-         Initializer* kernel_initializer,
-         Initializer* bias_initializer,
          const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -681,8 +676,6 @@ public:
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
   bool use_bias;
   ActiMode activation;
-  Initializer *kernel_initializer;
-  Initializer *bias_initializer;
 };
 
 class DropoutMeta : public OpMeta {
@@ -880,10 +873,6 @@ public:
          const Tensor kernel,
          const Tensor bias,
          ActiMode activation,
-         bool use_bias,
-         const Op* shared_op,
-         Initializer* kernel_initializer,
-         Initializer* bias_initializer,
          const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -958,8 +947,6 @@ public:
   Tensor replica;
   bool use_bias;
   ActiMode activation;
-  Initializer *kernel_initializer;
-  Initializer *bias_initializer;
 };
 
 class BatchMatmulMeta : public OpMeta {
@@ -1025,8 +1012,6 @@ public:
             const Tensor input,
             const Tensor weight,
             AggrMode _aggr,
-            const Op* shared_op,
-            Initializer* kernel_initializer,
             const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -1072,11 +1057,8 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
 public:
-  //IndexSpaceT<2> task_is;
   int num_entries, out_channels;
   AggrMode aggr;
-  //bool profiling;
-  Initializer* kernel_initializer;
 };
 
 class EmbeddingMeta : public OpMeta {
@@ -1117,7 +1099,7 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
-  Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx);
+  Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const;
 public:
 };
 
