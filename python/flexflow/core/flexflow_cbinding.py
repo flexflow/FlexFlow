@@ -1039,7 +1039,7 @@ class FFModel(object):
       a_seq_length_dim = -1
     if b_seq_length_dim is None:
       b_seq_length_dim = -1
-    handle = ffc.flexflow_model_add_batch_matmul(self.handle, A.handle, B.handle)
+    handle = ffc.flexflow_model_add_batch_matmul(self.handle, A.handle, B.handle, a_seq_length_dim, b_seq_length_dim)
     self.add_layer(OpType.BATCH_MATMUL, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_MATMUL)
 

@@ -37,6 +37,8 @@ BatchMatmul::BatchMatmul(FFModel& model,
   a_seq_length_dim(A.numDim-1-_a_seq_length_dim),
   b_seq_length_dim(B.numDim-1-_b_seq_length_dim)
 {
+  assert((a_seq_length_dim <= 1) && "FlexFlow currently only supports seq_length_dim of 0 or 1 (in Fortran ordering).");
+  assert((b_seq_length_dim <= 1) && "FlexFlow currently only supports seq_length_dim of 0 or 1 (in Fortran ordering).");
   assert(A.numDim == B.numDim);
   for (int i = A.numDim-1; i >= 2; i--)
     assert(A.adim[i] == B.adim[i]);
@@ -302,7 +304,7 @@ void BatchMatmul::forward_task(const Task* task,
   checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
 #endif
   forward_kernel(meta, out_ptr, a_ptr, b_ptr, c_ptr,
-    m, n, k, meta->a_seq_length_dim, meta->b_seq_length_dim,
+    m, n, k, batch, meta->a_seq_length_dim, meta->b_seq_length_dim,
     iter_config->seq_length);
   if (meta->profiling) {
     cudaEventRecord(t_end);
