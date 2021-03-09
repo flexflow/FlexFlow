@@ -1341,8 +1341,9 @@ void FFModel::init_layers()
     layers[i]->init(*this);
 }
 
-void FFModel::forward()
+void FFModel::forward(int seq_length)
 {
+  iter_config.seq_length = seq_length;
   for (size_t i = 0; i < layers.size(); i++)
     layers[i]->forward(*this);
 }
@@ -1354,8 +1355,9 @@ void FFModel::compute_metrics()
   metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
 }
 
-void FFModel::backward()
+void FFModel::backward(int seq_length)
 {
+  iter_config.seq_length = seq_length;
   assert(config.computationMode == COMP_MODE_TRAINING);
   // Compute metrics
   Op* final_layer = layers[layers.size()-1];
@@ -1944,6 +1946,19 @@ bool DataLoader::shuffle_samples(void)
   return true;
 }
 #endif
+
+// ========================================================
+// class FFIterationConfig
+// ========================================================
+FFIterationConfig::FFIterationConfig()
+{
+  seq_length = -1;
+}
+
+void FFIterationConfig::reset()
+{
+  seq_length = -1;
+}
 
 // ========================================================
 // class FFConfig

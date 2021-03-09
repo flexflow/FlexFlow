@@ -1015,7 +1015,7 @@ class FFModel(object):
     self.add_layer(OpType.BATCH_NORM, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
 
-  def batch_matmul(self, A, B, name=None):
+  def batch_matmul(self, A, B, a_seq_length_dim=None, b_seq_length_dim=None, name=None):
     """Layer that applied batched matrix multiplication onto two input Tensors, :attr:`output = x * y`.
              
     :param A: the first input Tensor.
@@ -1023,12 +1023,22 @@ class FFModel(object):
     
     :param B: the second input Tensor.
     :type B: Tensor
-             
+
+    :param a_seq_length_dim: an int when set indicating the a_seq_length_dim dimention of A is a sequence_length dimension
+    :type a_seq_length_dim: int
+
+    :param b_seq_length_dim: an int when set indicating the b_seq_length_dim dimention of B is a sequence_length dimension
+    :type b_seq_length_dim: int
+            
     :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
     """
+    if a_seq_length_dim is None:
+      a_seq_length_dim = -1
+    if b_seq_length_dim is None:
+      b_seq_length_dim = -1
     handle = ffc.flexflow_model_add_batch_matmul(self.handle, A.handle, B.handle)
     self.add_layer(OpType.BATCH_MATMUL, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_MATMUL)
@@ -1404,20 +1414,24 @@ class FFModel(object):
   def prefetch(self):
     ffc.flexflow_model_prefetch(self.handle)
 
-  def forward(self):
+  def forward(self, seq_length=None):
     """Forward propagation of all layers.
              
     :returns:  None -- no returns.
     """
-    ffc.flexflow_model_forward(self.handle)
+    if seq_length is None:
+      seq_length = -1
+    ffc.flexflow_model_forward(self.handle, seq_length)
 
   #TODO: seperate compute_metrics from backward
-  def backward(self):
+  def backward(self, seq_length=None):
     """Backward propagation of all layers.
              
     :returns:  None -- no returns.
     """
-    ffc.flexflow_model_backward(self.handle)
+    if seq_length is None:
+      seq_length = -1
+    ffc.flexflow_model_backward(self.handle, seq_length)
 
   def compute_metrics(self):
     """Compute performance metrics.

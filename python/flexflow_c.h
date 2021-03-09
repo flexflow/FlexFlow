@@ -106,11 +106,13 @@ flexflow_model_prefetch(
 
 void
 flexflow_model_forward(
-  flexflow_model_t handle);
+  flexflow_model_t handle,
+  int seq_length);
 
 void
 flexflow_model_backward(
-  flexflow_model_t handle);
+  flexflow_model_t handle,
+  int seq_length);
 
 void
 flexflow_model_compute_metrics(
@@ -218,7 +220,9 @@ flexflow_tensor_t
 flexflow_model_add_batch_matmul(
   flexflow_model_t handle,
   const flexflow_tensor_t a,
-  const flexflow_tensor_t b);
+  const flexflow_tensor_t b,
+  int a_seq_length_dim /* -1 */,
+  int b_seq_length_dim /* -1 */);
 
 flexflow_tensor_t
 flexflow_model_add_dense(

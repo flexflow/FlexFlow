@@ -438,7 +438,8 @@ void FusedOp::forward_task(const Task* task,
         }
         BatchMatmulMeta* meta = (BatchMatmulMeta*) metas->meta[op];
         BatchMatmul::forward_kernel(meta, my_op[0], my_ip[0], my_ip[1], NULL,
-          m, n, k, batch);
+          m, n, k, batch, meta->a_seq_length_dim, meta->b_seq_length_dim,
+          fused->iter_config.seq_length);
         break;
       }
       case OP_EW_ADD:
@@ -522,6 +523,8 @@ void FusedOp::forward_task(const Task* task,
 
 void FusedOp::forward(const FFModel& ff)
 {
+  // Set iter_config
+  iter_config = ff.iter_config;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -908,6 +911,8 @@ void FusedOp::backward_task(const Task* task,
 
 void FusedOp::backward(const FFModel& ff)
 {
+  // Set iter_config
+  iter_config = ff.iter_config;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
