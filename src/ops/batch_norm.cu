@@ -213,7 +213,7 @@ OpMeta* BatchNorm::init_task(const Task *task,
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
       .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
   BatchNormMeta* m = new BatchNormMeta(handle, bm, gpu_mem,
-      output_n, output_c, output_h, output_c);
+      output_n, output_c, output_h, output_w);
   return m;
 }
 
@@ -561,6 +561,8 @@ BatchNormMeta::BatchNormMeta(FFHandler handler,
 #if CUDNN_VERSION >= 7000
   mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
 #endif
+  fprintf(stderr, "output(%d,%d,%d,%d)\n",
+    output_n, output_c, output_h, output_w);
   checkCUDNN(cudnnSetTensor4dDescriptor(inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
@@ -671,5 +673,7 @@ bool BatchNorm::measure_operator_cost(Simulator* sim,
         name, sub_input.get_volume(),
         cost_metrics.forward_time);
   }
+  // Free batchnormmeta
+  delete m;
   return true;
 }

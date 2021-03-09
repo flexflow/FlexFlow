@@ -29,7 +29,7 @@ class SoftmaxMeta;
 class BatchMatmulMeta;
 //class BatchNormMeta;
 class ConcatMeta;
-class DropoutMeta;
+//class DropoutMeta;
 class TransposeMeta;
 class Op;
 class FFModel;
@@ -209,7 +209,7 @@ public:
   BatchMatmulMeta *batch_matmul_meta;
   //BatchNormMeta *batch_norm_meta;
   ConcatMeta *concat_meta;
-  DropoutMeta *dropout_meta;
+  //DropoutMeta *dropout_meta;
   TransposeMeta *transpose_meta;
 };
 #endif

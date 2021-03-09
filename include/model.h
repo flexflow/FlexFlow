@@ -663,15 +663,7 @@ public:
   Initializer *bias_initializer;
 };
 
-class DropoutMeta : public OpMeta {
-public:
-  DropoutMeta(FFHandler handle);
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
-  cudnnDropoutDescriptor_t dropoutDesc;
-  void *reserveSpace, *dropoutStates;
-  size_t reserveSpaceSize, dropoutStateSize;
-};
-
+class DropoutMeta;
 class Dropout : public Op {
 public:
   Dropout(FFModel& model,
@@ -690,9 +682,6 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  void init_meta(DropoutMeta *m,
-                 Domain const &input_domain,
-                 Domain const &output_domain) const;
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -716,6 +705,21 @@ public:
   float rate;
   unsigned long long seed;
 };
+
+class DropoutMeta : public OpMeta {
+public:
+  DropoutMeta(FFHandler handle,
+              const Dropout* dropout,
+              Memory gpu_mem,
+              const Domain& output_domain);
+  ~DropoutMeta(void);
+  Realm::RegionInstance reserveInst;
+  cudnnTensorDescriptor_t inputTensor, outputTensor;
+  cudnnDropoutDescriptor_t dropoutDesc;
+  void *reserveSpace, *dropoutStates;
+  size_t reserveSpaceSize, dropoutStateSize;
+};
+
 
 class Pool2D : public Op {
 public:
