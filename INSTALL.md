@@ -76,12 +76,12 @@ cd config
 
 The `config.linux` is an example of how to set the varibles required for CMake build. Please modify `FF_CUDA_ARCH`, `CUDNN_DIR`, `CUDA_DIR` according to your environment. `CUDA_DIR` is only required when CMake can not automatically detect the installation directory of CUDA. `CUDNN_DIR` is only required when CUDNN is not installed in the CUDA directory.
 
-`FF_CUDA_ARCH` is used to set the architecture of targeted GPUs, for example, the value can be 60 if the GPU architecture is Pascal. 
-`FF_USE_PYTHON` is used to enable the Python support for the FlexFlow.
-`FF_USE_NCCL` is used to enable the NCCL support for the FlexFlow, by default it is set to ON.
-`FF_USE_GASNET` is used to enable distributed run of the FlexFlow.
-`FF_BUILD_EXAMPLES` is used to enable all C++ examples.
-`FF_MAX_DIM` is used to set the maximum dimension of tensors, by default it is set to 4. 
+* `FF_CUDA_ARCH` is used to set the architecture of targeted GPUs, for example, the value can be 60 if the GPU architecture is Pascal. 
+* `FF_USE_PYTHON` is used to enable the Python support for the FlexFlow.
+* `FF_USE_NCCL` is used to enable the NCCL support for the FlexFlow, by default it is set to ON.
+* `FF_USE_GASNET` is used to enable distributed run of the FlexFlow.
+* `FF_BUILD_EXAMPLES` is used to enable all C++ examples.
+* `FF_MAX_DIM` is used to set the maximum dimension of tensors, by default it is set to 4. 
 
 More options are available in cmake, please run ccmake and search for options starting with FF. 
 
