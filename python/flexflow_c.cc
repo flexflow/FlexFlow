@@ -187,18 +187,20 @@ flexflow_model_prefetch(
 
 void
 flexflow_model_forward(
-  flexflow_model_t handle_)
+  flexflow_model_t handle_,
+  int seq_length)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->forward();
+  handle->forward(seq_length);
 }
 
 void
 flexflow_model_backward(
-  flexflow_model_t handle_)
+  flexflow_model_t handle_,
+  int seq_length)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->backward();
+  handle->backward(seq_length);
 }
 
 void

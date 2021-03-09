@@ -31,9 +31,9 @@ def mha(model, q, k, v, batch_size, seq_length, hidden_size, n_heads, kdim, vdim
     q = model.transpose(q, perm=(0, 2, 1, 3))
     k = model.transpose(k, perm=(0, 2, 3, 1))
     v = model.transpose(v, perm=(0, 2, 1, 3))
-    logits = model.batch_matmul(q, k)
+    logits = model.batch_matmul(q, k, a_seq_length_dim=2,b_seq_length_dim=3)
     #logits = model.softmax(logits)
-    output = model.batch_matmul(logits, v)
+    output = model.batch_matmul(logits, v, a_seq_length_dim=3,b_seq_length_dim=2)
     output = model.transpose(output, perm=(0, 2, 1, 3))
     output = model.reshape(output, shape=(batch_size, seq_length, hidden_size))
     output = model.dense(output, hidden_size, act)
@@ -102,7 +102,8 @@ def top_level_task():
     # t now contains entire model. Add single-neuron output
     t = ffmodel.dense(t, 1)
 
-    ffmodel.optimizer = SGDOptimizer(ffmodel, 1e-3)
+    optimizer = SGDOptimizer(ffmodel, 1e-3)
+    ffmodel.optimizer = optimizer
     ffmodel.compile(loss_type=LossType.LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics=[MetricsType.METRICS_ACCURACY], comp_mode=CompMode.INFERENCE)
     ffmodel.init_layers()
     ts_start = ffconfig.get_current_time()
@@ -110,9 +111,9 @@ def top_level_task():
     iterations = args.iterations
     for it in range(iterations):
 #        print(f" ITERATION: {it}")
-#        ffconfig.begin_trace(111)
-        ffmodel.forward()
-#        ffconfig.end_trace(111)
+        ffconfig.begin_trace(111)
+        ffmodel.forward(seq_length=it)
+        ffconfig.end_trace(111)
     ts_end = ffconfig.get_current_time()
     print(f" Time taken to run forward pass: {(ts_end - ts_start)/iterations}")
 
