@@ -3,6 +3,7 @@ from flexflow.keras.datasets import cifar10
 from flexflow.torch.model import PyTorchModel
 
 from PIL import Image
+import numpy as np
 
 def top_level_task():
   ffconfig = FFConfig()

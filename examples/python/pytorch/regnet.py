@@ -2,6 +2,7 @@ from flexflow.core import *
 from flexflow.keras.datasets import cifar10
 from flexflow.torch.model import PyTorchModel
 import os
+import numpy as np
 
 #from accuracy import ModelAccuracy
 from PIL import Image

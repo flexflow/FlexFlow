@@ -2,6 +2,7 @@ from flexflow.core import *
 from flexflow.keras.datasets import cifar10
 
 from PIL import Image
+import numpy as np
 
 def BottleneckBlock(ff, input, out_channels, stride):
   t = ff.conv2d(input, out_channels, 1, 1, 1, 1, 0, 0, ActiMode.AC_MODE_NONE)

@@ -3,6 +3,7 @@ from flexflow.keras.datasets import cifar10
 
 from accuracy import ModelAccuracy
 from PIL import Image
+import numpy as np
 
 def InceptionA(ffmodel, input, pool_features):
   t1 = ffmodel.conv2d(input, 64, 1, 1, 1, 1, 0, 0)

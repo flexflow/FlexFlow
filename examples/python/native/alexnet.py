@@ -4,6 +4,7 @@ from flexflow.keras.datasets import cifar10
 from accuracy import ModelAccuracy
 from PIL import Image
 import argparse
+import numpy as np
 
 
 def top_level_task():
