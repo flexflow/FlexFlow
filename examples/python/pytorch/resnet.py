@@ -4,6 +4,7 @@ from flexflow.torch.model import PyTorchModel
 
 #from accuracy import ModelAccuracy
 from PIL import Image
+import numpy as np
 
 def top_level_task():
   ffconfig = FFConfig()

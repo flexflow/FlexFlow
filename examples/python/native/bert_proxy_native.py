@@ -3,6 +3,7 @@ from flexflow.core import *
 from argparse import ArgumentParser
 
 import sys
+import numpy as np
 
 def parse_args():
     print(sys.argv)
