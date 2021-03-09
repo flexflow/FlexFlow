@@ -14,12 +14,12 @@ set(GPU_SRC
 cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})
 set_target_properties(${project_target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
 target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
-target_link_libraries(${project_target} -Wl,--whole-archive flexflow ${Legion_LIBRARIES} ${Realm_LIBRARIES} -Wl,--no-whole-archive ${FLEXFLOW_EXT_LIBRARIES})
+target_link_libraries(${project_target} -Wl,--whole-archive flexflow -Wl,--no-whole-archive ${FLEXFLOW_EXT_LIBRARIES})
 
 # create legion_cffi.py
 add_custom_command(TARGET ${project_target} 
   PRE_BUILD	
-  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/legion_cffi_build.py --runtime-dir ${LEGION_ROOT}/runtime  --output-dir ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/legion_cffi_build.py --runtime-dir ${LEGION_ROOT}/runtime  --defines-dir ${CMAKE_BINARY_DIR}/deps/legion/runtime --output-dir ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMENT "Creating legion_cffi.py..."
 )

@@ -2117,7 +2117,7 @@ void FFConfig::parse_args(char **argv, int argc)
   }
 }
 
-void register_internal_tasks()
+void register_flexflow_internal_tasks()
 {
   // CNN_INIT_TASK
   {
@@ -2743,47 +2743,6 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "Weights Prefetch Task");
   }
 }
-
-#if !defined(FF_USE_PYTHON)
-// ========================================================
-// Task and mapper registrations
-// ========================================================
-int main(int argc, char** argv)
-{
-  // This needs to be set, otherwise NCCL will try to use group kernel launches,
-  // which are not compatible with the Realm CUDA hijack.
-  setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
-
-  Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
-  {
-    TaskVariantRegistrar registrar(TOP_LEVEL_TASK_ID, "top_level");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_replicable();
-    Runtime::preregister_task_variant<top_level_task>(registrar, "top_level");
-  }
-
-  register_internal_tasks();
-
-  // Register custom tasks
-  register_custom_tasks();
-
-  FFMapper::register_sharding_functor(argc, argv);
-
-  Runtime::add_registration_callback(update_mappers);
-  return Runtime::start(argc, argv);
-}
-
-#else
-void register_flexflow_tasks(int argc, char **argv)
-{
-  register_internal_tasks();
-
-  register_c_custom_tasks();
-
-  FFMapper::register_sharding_functor(argc, argv);
-}
-
-#endif // FF_USE_PYTHON
 
 // template instantiations
 #define DIMFUNC(DIM) \
