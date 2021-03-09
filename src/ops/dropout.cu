@@ -365,17 +365,9 @@ bool Dropout::measure_operator_cost(Simulator* sim,
   if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type)) {
     return false;
   }
-
-  Domain output_domain;
-  output_domain.dim = sub_output.numDim;
-  for (int i = 0; i < sub_output.numDim; i++) {
-    output_domain.rect_data[i] = 0;
-    output_domain.rect_data[i+sub_output.numDim] = sub_output.adim[i]-1;
-  }
-  assert(sub_input.get_volume() == sub_output.get_volume());
-  assert(output_domain.get_volume() == sub_output.get_volume());
+  assert(sub_input.get_domain() == sub_output.get_domain());
   DropoutMeta *m = new DropoutMeta(sim->handler, this, sim->memory,
-      output_domain);
+      sub_output.get_domain());
 
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
