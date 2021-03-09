@@ -17,7 +17,7 @@
 #include "cuda_helper.h"
 
 Tensor FFModel::batch_matmul(const Tensor A,
-                             const Tensor B)
+                             const Tensor B,
                              int a_seq_length_dim,
                              int b_seq_length_dim)
 {
@@ -34,8 +34,8 @@ BatchMatmul::BatchMatmul(FFModel& model,
                          int _a_seq_length_dim,
                          int _b_seq_length_dim)
 : Op(model, OP_BATCHMATMUL, "BatchMatmul_", A, B),
-  a_seq_length_dim(A.numDim-1-_a_seq_length_dim),
-  b_seq_length_dim(B.numDim-1-_b_seq_length_dim)
+  a_seq_length_dim(A->numDim-1-_a_seq_length_dim),
+  b_seq_length_dim(B->numDim-1-_b_seq_length_dim)
 {
   assert((a_seq_length_dim <= 1) && "FlexFlow currently only supports seq_length_dim of 0 or 1 (in Fortran ordering).");
   assert((b_seq_length_dim <= 1) && "FlexFlow currently only supports seq_length_dim of 0 or 1 (in Fortran ordering).");
