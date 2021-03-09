@@ -61,7 +61,6 @@ void Op::inner_measure_operator_cost(Simulator *sim,
   cost_metrics.memory_requirement = (size_t)sim->offset;
 }
 
-
 FFHandler UtilityTasks::init_cuda_task(
               const Task *task,
               const std::vector<PhysicalRegion> &regions,
@@ -93,7 +92,20 @@ FFHandler UtilityTasks::init_cuda_task(
   //Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
   //off_t offset = memFBImpl->alloc_bytes(workSpaceSize);
   //handle.workSpace = memFBImpl->get_direct_ptr(offset, 0);
-  checkCUDA(cudaMalloc(&handle.workSpace, handle.workSpaceSize));
+  {
+    // allocate memory for workspace
+    Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+        .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
+    Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
+        Realm::Point<1, coord_t>(handle.workSpaceSize-1));
+    std::vector<size_t> field_sizes;
+    field_sizes.push_back(sizeof(char));
+    Realm::RegionInstance workspaceInst;
+    Realm::RegionInstance::create_instance(workspaceInst, gpu_mem, bounds,
+        field_sizes, 0, Realm::ProfilingRequestSet()).wait();
+    handle.workSpace = workspaceInst.pointer_untyped(0, sizeof(char));
+  }
+  //checkCUDA(cudaMalloc(&handle.workSpace, handle.workSpaceSize));
 #ifdef FF_USE_NCCL
   handle.ncclComm = NULL;
 #endif

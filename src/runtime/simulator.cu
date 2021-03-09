@@ -54,9 +54,8 @@ Simulator::Simulator(const FFModel* model,
   ele_binary_meta = new ElementBinaryMeta(handler);
   softmax_meta = new SoftmaxMeta(handler);
   batch_matmul_meta = new BatchMatmulMeta(handler);
-  batch_norm_meta = new BatchNormMeta(handler);
   concat_meta = new ConcatMeta(handler);
-  dropout_meta = new DropoutMeta(handler);
+  //dropout_meta = new DropoutMeta(handler);
   transpose_meta = new TransposeMeta(handler);
   num_nodes = model->config.numNodes;
   gpus_per_node = model->config.workersPerNode;
