@@ -1496,7 +1496,7 @@ class FFModel(object):
       dataloaders = x
     dataloaders.append(y)
 
-    num_samples = y.get_num_samples()
+    num_samples = y.num_samples
     batch_size = self._ffconfig.batch_size
     self._tracing_id += 1 # get a new tracing id
     for epoch in range(0,epochs):
@@ -1540,7 +1540,7 @@ class FFModel(object):
       dataloaders = x
     dataloaders.append(y)
 
-    num_samples = y.get_num_samples()
+    num_samples = y.num_samples
     batch_size = self._ffconfig.batch_size
     for d in dataloaders:
       d.reset()
@@ -1831,11 +1831,13 @@ class DataLoader4D(object):
       self.handle = ffc.flexflow_dataloader_4d_create(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle)
     self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_4d_destroy)
 
-  def set_num_samples(self, samples):
-    ffc.flexflow_dataloader_4d_set_num_samples(self.handle, samples)
-
-  def get_num_samples(self):
+  @property
+  def num_samples(self):
     return ffc.flexflow_dataloader_4d_get_num_samples(self.handle)
+
+  @num_samples.setter
+  def num_samples(self, samples):
+    ffc.flexflow_dataloader_4d_set_num_samples(self.handle, samples)
 
   def next_batch(self, ffmodel):
     ffc.flowflow_dataloader_4d_next_batch(self.handle, ffmodel.handle)
@@ -1849,11 +1851,13 @@ class DataLoader2D(object):
     self.handle = ffc.flexflow_dataloader_2d_create_v2(ffmodel.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
     self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_2d_destroy)
 
-  def set_num_samples(self, samples):
-    ffc.flexflow_dataloader_2d_set_num_samples(self.handle, samples)
-
-  def get_num_samples(self):
+  @property
+  def num_samples(self):
     return ffc.flexflow_dataloader_2d_get_num_samples(self.handle)
+
+  @num_samples.setter
+  def num_samples(self, samples):
+    ffc.flexflow_dataloader_2d_set_num_samples(self.handle, samples)
 
   def next_batch(self, ffmodel):
     ffc.flowflow_dataloader_2d_next_batch(self.handle, ffmodel.handle)
@@ -1886,11 +1890,13 @@ class SingleDataLoader(object):
     c_data_type = enum_to_int(DataType, data_type)
     self.handle = ffc.flexflow_single_dataloader_create2(ffmodel.handle, input.handle, full_input, num_samples, c_data_type)
 
-  def set_num_samples(self, samples):
-    ffc.flexflow_single_dataloader_set_num_samples(self.handle, samples)
-
-  def get_num_samples(self):
+  @property
+  def num_samples(self):
     return ffc.flexflow_single_dataloader_get_num_samples(self.handle)
+
+  @num_samples.setter
+  def num_samples(self, samples):
+    ffc.flexflow_single_dataloader_set_num_samples(self.handle, samples)
 
   def next_batch(self, ffmodel):
     """Ask the dataloder to load the next batch to the :attr:`batch_tensor`. 
