@@ -101,8 +101,7 @@ def top_level_task():
     # t now contains entire model. Add single-neuron output
     t = ffmodel.dense(t, 1)
 
-    optimizer = SGDOptimizer(ffmodel, 1e-3)
-    ffmodel.set_sgd_optimizer(optimizer)
+    ffmodel.optimizer = SGDOptimizer(ffmodel, 1e-3)
     ffmodel.compile(loss_type=LossType.LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics=[MetricsType.METRICS_ACCURACY], comp_mode=CompMode.INFERENCE)
     ffmodel.init_layers()
     ts_start = ffconfig.get_current_time()
