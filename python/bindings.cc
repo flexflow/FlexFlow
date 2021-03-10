@@ -62,6 +62,8 @@ void fit(FFModel &model, SingleDataLoader &x, SingleDataLoader &y, int epochs)
 {
   int num_samples = y.num_samples;
   int batch_size = model.config.batchSize;
+  static int tracing_id = 200;
+  tracing_id ++;
   for (int epoch = 0; epoch < epochs; epoch++) {
     x.reset();
     y.reset();
@@ -70,10 +72,12 @@ void fit(FFModel &model, SingleDataLoader &x, SingleDataLoader &y, int epochs)
     for (int iter = 0; iter < iterations; iter++) {
       x.next_batch(model);
       y.next_batch(model);
+      model.config.lg_hlr->begin_trace(model.config.lg_ctx, tracing_id);
       model.forward();
       model.zero_gradients();
       model.backward();
       model.update();
+      model.config.lg_hlr->end_trace(model.config.lg_ctx, tracing_id);
     }
   }
 }
@@ -124,6 +128,8 @@ PYBIND11_MODULE(flexflow_bindings, m) {
       .def_readonly("epochs", &FFConfig::epochs)
       .def_readonly("num_nodes", &FFConfig::numNodes)
       .def_readonly("workers_per_node", &FFConfig::workersPerNode)
+      .def("begin_trace", [](FFConfig &config, int trace_id) { config.lg_hlr->begin_trace(config.lg_ctx, trace_id); })
+      .def("end_trace", [](FFConfig &config, int trace_id) { config.lg_hlr->end_trace(config.lg_ctx, trace_id); })
       .def("get_current_time", &get_current_time);
 
   py::enum_<CompMode>(m, "CompMode")
