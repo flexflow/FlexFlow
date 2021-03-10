@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 const float LOG_MIN_VALUE = 0.00000001f;
 
 Metrics::Metrics(LossType _loss_type, const std::vector<MetricsType>& metrics)

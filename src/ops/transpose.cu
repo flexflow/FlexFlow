@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 Tensor FFModel::transpose(const Tensor input,
                           const std::vector<int>& perm,
                           const char* name)

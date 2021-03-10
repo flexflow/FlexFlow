@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 Tensor FFModel::dropout(const Tensor input,
                         float rate,
                         unsigned long long seed,

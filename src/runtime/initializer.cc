@@ -16,6 +16,8 @@
 #include "initializer.h"
 #include "model.h"
 
+using namespace Legion;
+
 Initializer::Initializer(void)
 {}
 

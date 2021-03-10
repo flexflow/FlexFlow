@@ -22,7 +22,7 @@
 #include "model.h"
 
 using namespace Legion;
-using namespace Legion::Mapping;
+using namespace Mapping;
 
 class FFShardingFunctor : public ShardingFunctor {
 public:
@@ -59,51 +59,51 @@ public:
 public:
   static void register_sharding_functor(int argv, char** argc);
   virtual void select_task_options(const MapperContext    ctx,
-                                   const Task&            task,
+                                   const Task&    task,
                                          TaskOptions&     output);
   virtual void premap_task(const MapperContext      ctx,
-                           const Task&              task, 
+                           const Task&      task, 
                            const PremapTaskInput&   input,
                            PremapTaskOutput&        output);
   virtual void slice_task(const MapperContext      ctx,
-                          const Task&              task, 
+                          const Task&      task, 
                           const SliceTaskInput&    input,
                                 SliceTaskOutput&   output);
   virtual void map_task(const MapperContext      ctx,
-                        const Task&              task,
+                        const Task&      task,
                         const MapTaskInput&      input,
                               MapTaskOutput&     output);
   virtual void map_replicate_task(const MapperContext      ctx,
-                                  const Task&              task,
+                                  const Task&      task,
                                   const MapTaskInput&      input,
                                   const MapTaskOutput&     default_output,
                                   MapReplicateTaskOutput&  output);
   virtual void select_task_variant(const MapperContext          ctx,
-                                   const Task&                  task,
+                                   const Task&          task,
                                    const SelectVariantInput&    input,
                                          SelectVariantOutput&   output);
   virtual void postmap_task(const MapperContext      ctx,
-                            const Task&              task,
+                            const Task&      task,
                             const PostMapInput&      input,
                                   PostMapOutput&     output);
   virtual void select_task_sources(const MapperContext        ctx,
-                                   const Task&                task,
+                                   const Task&        task,
                                    const SelectTaskSrcInput&  input,
                                          SelectTaskSrcOutput& output);
   virtual void create_task_temporary_instance(
                                 const MapperContext              ctx,
-                                const Task&                      task,
+                                const Task&              task,
                                 const CreateTaskTemporaryInput&  input,
                                       CreateTaskTemporaryOutput& output);
   virtual void speculate(const MapperContext      ctx,
-                         const Task&              task,
+                         const Task&      task,
                                SpeculativeOutput& output);
   virtual void report_profiling(const MapperContext      ctx,
-                                const Task&              task,
+                                const Task&      task,
                                 const TaskProfilingInfo& input);
   virtual void select_sharding_functor(
                              const MapperContext                ctx,
-                             const Task&                        task,
+                             const Task&                task,
                              const SelectShardingFunctorInput&  input,
                                    SelectShardingFunctorOutput& output);
 public: // Inline mapping calls
@@ -246,10 +246,10 @@ public: // Fill mapper calls
                                    SelectShardingFunctorOutput& output);
 public: // Task execution mapping calls
   virtual void configure_context(const MapperContext         ctx,
-                                 const Task&                 task,
+                                 const Task&         task,
                                        ContextConfigOutput&  output);
   virtual void select_tunable_value(const MapperContext         ctx,
-                                    const Task&                 task,
+                                    const Task&         task,
                                     const SelectTunableInput&   input,
                                           SelectTunableOutput&  output);
 public: // Must epoch mapping
@@ -367,5 +367,7 @@ protected:
 };
 #endif
 
-void update_mappers(Machine machine, Runtime *rt, const std::set<Processor> &local_procs);
+void update_mappers(Machine machine,
+    Runtime *rt,
+    const std::set<Processor> &local_procs);
 #endif

@@ -19,6 +19,7 @@
 #include "dirent.h"
 
 using namespace std;
+using namespace Legion;
 
 LegionRuntime::Logger::Category log_model("ff");
 
@@ -26,10 +27,13 @@ TensorBase::TensorBase(void)
 {
   guid = 0;
   numDim = 0;
+  parallel_dims = 0;
   for (int i = 0; i < MAX_TENSOR_DIM; i++) {
     adim[i] = 0;
-    //pdim[i] = 0;
+    degree[i] = 1;
+    parallel_is_to_dim[i] = -1;
   }
+  parallel_is = IndexSpace::NO_SPACE;
   region = LogicalRegion::NO_REGION;
   region_grad = LogicalRegion::NO_REGION;
   part = LogicalPartition::NO_PART;
@@ -309,6 +313,7 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
+  parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
 
 Op::Op(FFModel& model,
@@ -346,6 +351,7 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
+  parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
 
 Op::Op(FFModel& model,
@@ -369,7 +375,15 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
+  parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
+
+ParallelOp::ParallelOp(FFModel& model,
+                       OperatorType op_type,
+                       const char* name,
+                       const Tensor input)
+: Op(model, op_type, name, input)
+{}
 
 Tensor Op::get_parameter(int index)
 {
@@ -457,10 +471,12 @@ void Op::create_input_partition_with_dim(FFModel& model)
           ctx, input_task_is);
       assert(input_part_rect == input_part_rect2);
     }
+    assert(my_part_rect == input_part_rect);
     if (my_part_rect == input_part_rect) {
       input_lps[i] = inputs[i]->part;
       input_grad_lps[i] = inputs[i]->part_grad;
-    } else {
+    }
+    else {
       // Assert that this input must be activations 
       assert(inputs[i]->sync_type == ParameterSyncType::NONE);
       model.create_disjoint_partition(
@@ -621,6 +637,123 @@ ncclComm_t Op::init_nccl_comms_task(const Task* task,
 }
 #endif
 
+ParallelDimMappingRecord::ParallelDimMappingRecord(void)
+: output_dim(-1), input_dim(-1), weight_dim(-1),
+  output_idx(-1), input_idx(-1), weight_idx(-1)
+{}
+
+void Op::register_output_input_parallel_dims(
+    const Tensor output, int output_dim,
+    const Tensor input, int input_dim)
+{
+  ParallelDimMappingRecord record;
+  record.output_dim = output_dim;
+  record.input_dim = input_dim;
+  for (int i = 0; i < numOutputs; i++) {
+    if (output == outputs[i])
+      record.output_idx = i;
+  }
+  for (int i = 0; i < numInputs; i++) {
+    if (input == inputs[i])
+      record.input_idx = i;
+  }
+  parallel_dims_mapping->push_back(record);
+}
+
+void Op::register_output_weight_parallel_dims(
+    const Tensor output, int output_dim,
+    const Tensor weight, int weight_dim)
+{
+  ParallelDimMappingRecord record;
+  record.output_dim = output_dim;
+  record.weight_dim = weight_dim;
+  for (int i = 0; i < numOutputs; i++) {
+    if (output == outputs[i])
+      record.output_idx = i;
+  }
+  for (int i = 0; i < numWeights; i++) {
+    if (weight == weights[i])
+      record.weight_idx = i;
+  }
+  parallel_dims_mapping->push_back(record);
+}
+
+int Op::get_output_to_input_dim_mapping(
+    const Tensor output, int output_dim,
+    const Tensor input)
+{
+  int output_idx = -1, input_idx = -1;
+  for (int i = 0; i < numOutputs; i++)
+    if (output == outputs[i])
+      output_idx = i;
+  for (int i = 0; i < numInputs; i++)
+    if (input == inputs[i])
+      input_idx = i;
+  assert(output_idx != -1);
+  assert(input_idx != -1);
+  for (size_t i = 0; i < parallel_dims_mapping->size(); i++) {
+    if ((*parallel_dims_mapping)[i].output_idx != output_idx) continue;
+    if ((*parallel_dims_mapping)[i].output_dim != output_dim) continue;
+    if ((*parallel_dims_mapping)[i].input_idx != input_idx) continue;
+    // Check validness
+    assert((*parallel_dims_mapping)[i].weight_idx = -1);
+    assert((*parallel_dims_mapping)[i].weight_dim = -1);
+    return (*parallel_dims_mapping)[i].input_dim;
+  }
+  assert(false);
+  return -1;
+}
+
+int Op::get_output_to_weight_dim_mapping(
+    const Tensor output, int output_dim,
+    const Tensor weight)
+{
+  int output_idx = -1, weight_idx = -1;
+  for (int i = 0; i < numOutputs; i++)
+    if (output == outputs[i])
+      output_idx = i;
+  for (int i = 0; i < numInputs; i++)
+    if (weight == weights[i])
+      weight_idx = i;
+  assert(output_idx != -1);
+  assert(weight_idx != -1);
+  for (size_t i = 0; i < parallel_dims_mapping->size(); i++) {
+    if ((*parallel_dims_mapping)[i].output_idx != output_idx) continue;
+    if ((*parallel_dims_mapping)[i].output_dim != output_dim) continue;
+    if ((*parallel_dims_mapping)[i].weight_idx != weight_idx) continue;
+    // Check validness
+    assert((*parallel_dims_mapping)[i].input_idx = -1);
+    assert((*parallel_dims_mapping)[i].input_dim = -1);
+    return (*parallel_dims_mapping)[i].weight_dim;
+  }
+  assert(false);
+  return -1;
+}
+
+bool Op::check_output_input_weight_parallel_dims()
+{
+  for (size_t i = 0; i < parallel_dims_mapping->size(); i++) {
+    ParallelDimMappingRecord record = (*parallel_dims_mapping)[i];
+    assert(record.input_idx == -1 || record.weight_idx == -1);
+    int output_idx = record.output_idx;
+    int output_dim = record.output_dim;
+    if (record.weight_idx != -1) {
+      int weight_idx = record.weight_idx;
+      int weight_dim = record.weight_dim;
+      assert(outputs[output_idx]->degree[output_dim]
+          == weights[weight_idx]->degree[weight_dim]);
+    } else if (record.input_idx != -1) {
+      int input_idx = record.input_idx;
+      int input_dim = record.input_dim;
+      assert(outputs[output_idx]->degree[output_dim]
+          == inputs[input_idx]->degree[input_dim]);
+    } else {
+      assert(false);
+    }
+  }
+  return true;
+}
+
 OpMeta::OpMeta(FFHandler _handle)
 : handle(_handle)
 {}
@@ -759,9 +892,76 @@ Tensor FFModel::create_tensor(
   }
 }
 
+Tensor FFModel::create_tensor(
+    int numdim,
+    const int dims[],
+    const int degrees[],
+    DataType data_type,
+    const Op* op,
+    int idx,
+    bool create_grad)
+{
+  switch (numdim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return create_tensor<DIM>(dims, degrees, data_type, op, idx, create_grad);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false && "Unsupported dim!");
+  }
+}
+
+Tensor FFModel::create_tensor_legion_ordering(
+    int numdim,
+    const int dims[],
+    DataType data_type,
+    const Op* op,
+    int idx,
+    bool create_grad)
+{
+  int c_dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++)
+    c_dims[i] = dims[numdim-1-i];
+  return create_tensor(numdim, c_dims, data_type, op, idx, create_grad);
+}
+
+Tensor FFModel::create_tensor_legion_ordering(
+    int numdim,
+    const int dims[],
+    const int degrees[],
+    DataType data_type,
+    const Op* op,
+    int idx,
+    bool create_grad)
+{
+  int c_dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++)
+    c_dims[i] = dims[numdim-1-i];
+  int c_degrees[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++)
+    c_degrees[i] = degrees[numdim-1-i];
+  return create_tensor(numdim, c_dims, c_degrees, data_type, op, idx, create_grad);
+}
+
 template<int NDIM>
 Tensor FFModel::create_tensor(
     const int dims[],
+    DataType data_type,
+    const Op* owner_op,
+    int owner_idx,
+    bool create_grad)
+{
+  int degrees[NDIM];
+  for (int i = 0; i < NDIM; i++)
+    degrees[i] = 1;
+  return create_tensor<NDIM>(dims, degrees, data_type, owner_op, owner_idx, create_grad);
+}
+
+template<int NDIM>
+Tensor FFModel::create_tensor(
+    const int dims[],
+    const int degrees[],
     DataType data_type,
     const Op* owner_op,
     int owner_idx,
@@ -776,6 +976,8 @@ Tensor FFModel::create_tensor(
   tensor->numDim = NDIM;
   for (int i = 0; i < NDIM; i++) {
     tensor->adim[i] = dims[NDIM-1-i];
+    tensor->degree[i] = degrees[NDIM-1-i];
+    assert(tensor->adim[i] % tensor->degree[i] == 0);
   }
   return tensor;
 }
@@ -783,6 +985,23 @@ Tensor FFModel::create_tensor(
 template<int NDIM>
 Parameter FFModel::create_weight(
     const int dims[],
+    DataType data_type,
+    const Op* owner_op,
+    bool create_grad,
+    Initializer* initializer,
+    ParameterSyncType sync_type)
+{
+  int degrees[NDIM];
+  for (int i = 0; i < NDIM; i++)
+    degrees[i] = 1;
+  return create_weight<NDIM>(dims, degrees, data_type, owner_op,
+      create_grad, initializer, sync_type);
+}
+
+template<int NDIM>
+Parameter FFModel::create_weight(
+    const int dims[],
+    const int degrees[],
     DataType data_type,
     const Op* owner_op,
     bool create_grad,
@@ -799,6 +1018,8 @@ Parameter FFModel::create_weight(
   p->numDim = NDIM;
   for (int i = 0; i < NDIM; i++) {
     p->adim[i] = dims[NDIM-1-i];
+    p->degree[i] = degrees[NDIM-1-i];
+    assert(p->adim[i] % p->degree[i] == 0);
   }
   return p;
 }
@@ -2853,8 +3074,11 @@ void register_flexflow_internal_tasks()
 
 // template instantiations
 #define DIMFUNC(DIM) \
-  template Tensor FFModel::create_tensor<DIM>(const int* dims, DataType data_type, const Op* owner_op, int owner_idx, bool create_grad); \
+  template Tensor FFModel::create_tensor<DIM>(const int dims[], DataType data_type, const Op* owner_op, int owner_idx, bool create_grad); \
+  template Tensor FFModel::create_tensor<DIM>(const int dims[], const int degrees[], DataType data_type, const Op* owner_op, int owner_idx, bool create_grad); \
   template Parameter FFModel::create_weight<DIM>(const int dims[], DataType data_type, const Op* owner_op, bool create_grad,\
+    Initializer* initializer, ParameterSyncType sync_type);\
+  template Parameter FFModel::create_weight<DIM>(const int dims[], const int degrees[], DataType data_type, const Op* owner_op, bool create_grad,\
     Initializer* initializer, ParameterSyncType sync_type);\
   template void FFModel::map_tensor_with_dim<DIM>(Tensor tensor, const Op* parallel_op); \
   template void FFModel::map_weight_with_dim<DIM>(Tensor weight, const Op* parallel_op); \

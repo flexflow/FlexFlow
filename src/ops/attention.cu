@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 Tensor FFModel::multihead_attention(const Tensor query,
                                     const Tensor key,
                                     const Tensor value,

@@ -42,7 +42,7 @@
 #define MAP_TO_FB_MEMORY 0xABCD0000
 #define MAP_TO_ZC_MEMORY 0xABCE0000
 
-using namespace Legion;
+//using namespace Legion;
 
 struct ParallelConfig {
   enum DeviceType {
@@ -89,7 +89,7 @@ struct FFInitInfo {
 };
 
 bool load_strategies_from_file(const std::string& filename,
-         std::map<MappingTagID, ParallelConfig>& strategies);
+         std::map<Legion::MappingTagID, ParallelConfig>& strategies);
 
 bool save_strategies_to_file(const std::string& filename,
                              const std::map<std::string, ParallelConfig>& strategies);
@@ -114,7 +114,7 @@ public:
   //bool load_strategy_file(std::string filename);
   //bool save_strategy_file(std::string filename);
   void parse_args(char** argv, int argc);
-  static MappingTagID get_hash_id(const std::string& pcname);
+  static Legion::MappingTagID get_hash_id(const std::string& pcname);
   bool find_parallel_config(int ndims,
                             const std::string& pcname,
                             ParallelConfig& config) const;
@@ -124,9 +124,9 @@ public:
   int numNodes, cpusPerNode, workersPerNode;
   float learningRate, weightDecay;
   size_t workSpaceSize;
-  Context lg_ctx;
-  Runtime* lg_hlr;
-  FieldSpace field_space;
+  Legion::Context lg_ctx;
+  Legion::Runtime* lg_hlr;
+  Legion::FieldSpace field_space;
   bool syntheticInput, profiling, perform_fusion;
   size_t simulator_work_space_size;
   size_t search_budget;
@@ -143,8 +143,8 @@ public:
   std::string dataset_path;
   std::string import_strategy_file;
   std::string export_strategy_file;
-  // We use MappingTagID as the key since we will pass the tag to the mapper
-  std::map<MappingTagID, ParallelConfig> strategies;
+  // We use Legion::MappingTagID as the key since we will pass the tag to the mapper
+  std::map<Legion::MappingTagID, ParallelConfig> strategies;
 };
 
 class FFIterationConfig {

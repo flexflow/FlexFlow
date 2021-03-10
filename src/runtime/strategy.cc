@@ -19,6 +19,8 @@
 #include <iostream>
 #include <string>
 
+using namespace Legion;
+
 MappingTagID FFConfig::get_hash_id(const std::string& pcname)
 {
   return std::hash<std::string>{}(pcname);

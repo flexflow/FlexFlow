@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 Loss::Loss(const std::string& loss)
 {
   if (loss == "categorical_crossentropy")

@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 void FFModel::split(const Tensor input,
                     Tensor* outputs,
                     const std::vector<int>& splits,

@@ -17,6 +17,8 @@
 #include "model.h"
 #include "queue"
 
+using namespace Legion;
+
 int ParallelConfig::num_parts() const
 {
   int nparts = 1;

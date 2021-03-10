@@ -159,7 +159,7 @@ class Simulator {
 public:
   Simulator(const FFModel* model,
             FFHandler handler,
-            Memory memory);
+            Legion::Memory memory);
   ~Simulator(void);
   void free_all();
   void* allocate(size_t num_elements, DataType type);
@@ -178,12 +178,12 @@ public:
       const std::map<const Op*, ParallelConfig>& global,
       CompMode comp_mode,
       std::string const &export_file_name);
-  static void strategy_search_task(const Task *task,
-                                   const std::vector<PhysicalRegion> &regions,
-                                   Context ctx, Runtime *runtime);
+  static void strategy_search_task(const Legion::Task *task,
+                                   const std::vector<Legion::PhysicalRegion> &regions,
+                                   Legion::Context ctx, Legion::Runtime *runtime);
 public:
   Realm::RegionInstance simulatorInst;
-  Memory memory;
+  Legion::Memory memory;
   FFHandler handler;
   char* base_ptr;
   size_t capacity;

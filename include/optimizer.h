@@ -19,7 +19,7 @@
 #include "legion.h"
 #include "tensor.h"
 
-using namespace Legion;
+//using namespace Legion;
 
 class FFModel;
 
@@ -43,19 +43,19 @@ public:
   void next(void);
   void update(const Tensor p);
   void set_weight_decay(double _weight_decay);
-  static void ps_update_task(const Task* task,
-                          const std::vector<PhysicalRegion>& regions,
-                          Context ctx, Runtime* runtime);
+  static void ps_update_task(const Legion::Task* task,
+                          const std::vector<Legion::PhysicalRegion>& regions,
+                          Legion::Context ctx, Legion::Runtime* runtime);
 #ifdef FF_USE_NCCL
-  static void nccl_update_task(const Task* task,
-                          const std::vector<PhysicalRegion>& regions,
-                          Context ctx, Runtime* runtime);
+  static void nccl_update_task(const Legion::Task* task,
+                          const std::vector<Legion::PhysicalRegion>& regions,
+                          Legion::Context ctx, Legion::Runtime* runtime);
 #endif
   double lr, momentum;
   bool nesterov;
   double weight_decay;
   ParameterSyncType comm_type;
-  std::map<LogicalRegion, Tensor> v_values;
+  std::map<Legion::LogicalRegion, Tensor> v_values;
 };
 
 class AdamOptimizer : public Optimizer
@@ -69,16 +69,16 @@ public:
   void next(void);
   void update(const Tensor p);
   void set_weight_decay(double _weight_decay);
-  static void ps_update_task(const Task* task,
-                          const std::vector<PhysicalRegion>& regions,
-                          Context ctx, Runtime* runtime);
+  static void ps_update_task(const Legion::Task* task,
+                          const std::vector<Legion::PhysicalRegion>& regions,
+                          Legion::Context ctx, Legion::Runtime* runtime);
 #ifdef FF_USE_NCCL
-  static void nccl_update_task(const Task* task,
-                          const std::vector<PhysicalRegion>& regions,
-                          Context ctx, Runtime* runtime);
+  static void nccl_update_task(const Legion::Task* task,
+                          const std::vector<Legion::PhysicalRegion>& regions,
+                          Legion::Context ctx, Legion::Runtime* runtime);
 #endif
   double alpha, beta1, beta2, weight_decay, epsilon;
   double alpha_t, beta1_t, beta2_t;
-  std::map<LogicalRegion, Tensor> v_values, m_values;
+  std::map<Legion::LogicalRegion, Tensor> v_values, m_values;
 };
 #endif

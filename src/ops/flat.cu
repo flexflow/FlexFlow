@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 Tensor FFModel::flat(const Tensor input,
                      const char* name)
 {
@@ -167,9 +169,8 @@ void Flat::backward_kernel(float* input_grad_ptr,
                            const float* output_grad_ptr,
                            size_t num_elements)
 {
-  float alpha = 1.0f;
-  apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
-      input_grad_ptr, output_grad_ptr, num_elements, alpha);
+  add_kernel<float><<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
+      input_grad_ptr, output_grad_ptr, num_elements);
 }
 
 /*

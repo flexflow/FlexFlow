@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 Tensor FFModel::batch_matmul(const Tensor A,
                              const Tensor B,
                              int a_seq_length_dim,

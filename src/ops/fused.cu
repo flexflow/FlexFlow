@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 FusedOp::FusedOp(FFModel& model, Op* op)
 : Op(model, OP_FUSED, op->name, 0)
 {

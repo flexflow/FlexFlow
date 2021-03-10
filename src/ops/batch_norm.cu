@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 Tensor FFModel::batch_norm(const Tensor input,
                            bool relu,
                            const char* name)

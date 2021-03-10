@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <functional>
 
-using namespace Legion;
+//using namespace Legion;
 
 #include "ffconst.h"
 
@@ -134,6 +134,22 @@ enum TaskIDs {
   PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
   PY_DL_FLOAT_LOAD_BATCH_GPU_TASK_ID,
   PY_DL_INT_LOAD_BATCH_GPU_TASK_ID,
+  // Parallel Ops
+  REPARTITION_INIT_TASK_ID,
+  REPARTITION_FWD_TASK_ID,
+  REPARTITION_BWD_TASK_ID,
+  COMBINE_INIT_TASK_ID,
+  COMBINE_FWD_TASK_ID,
+  COMBINE_BWD_TASK_ID,
+  REPLICATE_INIT_TASK_ID,
+  REPLICATE_FWD_TASK_ID,
+  REPLICATE_BWD_TASK_ID,
+  REDUCTION_INIT_TASK_ID,
+  REDUCTION_FWD_TASK_ID,
+  REDUCTION_BWD_TASK_ID,
+  PIPELINE_INIT_TASK_ID,
+  PIPELINE_FWD_TASK_ID,
+  PIPELINE_BWD_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
   CUSTOM_GPU_TASK_ID_1,
@@ -179,12 +195,33 @@ public:
   bool profiling; // Measure the run time of the task
 };
 
+class ParallelDimMappingRecord {
+public:
+  ParallelDimMappingRecord();
+public:
+  int output_dim, input_dim, weight_dim;
+  int output_idx, input_idx, weight_idx;
+};
+
 class Op {
 protected:
   void inner_measure_operator_cost(Simulator *sim,
                                    std::function<void()> const &forward,
                                    std::function<void()> const &backward,
                                    CostMetrics& cost_metrics);
+  void register_output_input_parallel_dims(
+      const Tensor output, int output_dim,
+      const Tensor input, int input_dim);
+  void register_output_weight_parallel_dims(
+      const Tensor output, int output_dim,
+      const Tensor input, int input_dim);
+  int get_output_to_input_dim_mapping(
+      const Tensor output, int output_dim,
+      const Tensor input);
+  int get_output_to_weight_dim_mapping(
+      const Tensor output, int output_dim,
+      const Tensor weight);
+  bool check_output_input_weight_parallel_dims();
 public:
   Op(FFModel& model,
      OperatorType type,
@@ -216,20 +253,20 @@ public:
   // Other virtual functions that can be optionally overwritten
   virtual ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   virtual ParallelConfig get_data_parallel_config(const FFModel& ff) const;
-  virtual Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const;
-  virtual Domain get_output_tensor_shape(const ParallelConfig& pc, int output_idx, int part_idx) const;
-  virtual Domain get_weight_tensor_shape(const ParallelConfig& pc, int weight_idx, int part_idx) const;
+  virtual Legion::Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const;
+  virtual Legion::Domain get_output_tensor_shape(const ParallelConfig& pc, int output_idx, int part_idx) const;
+  virtual Legion::Domain get_weight_tensor_shape(const ParallelConfig& pc, int weight_idx, int part_idx) const;
   // Helper functions
   void prefetch(const FFModel&);
   void zero_grad(const FFModel&);
   Tensor get_parameter(int index);
 #ifdef FF_USE_NCCL
-  static ncclUniqueId get_nccl_unique_id_task(const Task *task,
-      const std::vector<PhysicalRegion> &regions,
-      Context ctx, Runtime *runtime);
-  static ncclComm_t init_nccl_comms_task(const Task *task,
-      const std::vector<PhysicalRegion> &regions,
-      Context ctx, Runtime *runtime);
+  static ncclUniqueId get_nccl_unique_id_task(const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  static ncclComm_t init_nccl_comms_task(const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
 #endif
 private:
   template<int NDIM>
@@ -237,13 +274,13 @@ private:
 public:
   OperatorType op_type;
   char name[MAX_OPNAME];
-  IndexSpace task_is;
+  Legion::IndexSpace task_is;
   Tensor outputs[MAX_NUM_OUTPUTS];
   Tensor inputs[MAX_NUM_INPUTS];
   Tensor weights[MAX_NUM_WEIGHTS];
   //bool trainableInputs[MAX_NUM_INPUTS];
   //bool resetInputGrads[MAX_NUM_INPUTS];
-  LogicalPartition input_lps[MAX_NUM_INPUTS], input_grad_lps[MAX_NUM_INPUTS];
+  Legion::LogicalPartition input_lps[MAX_NUM_INPUTS], input_grad_lps[MAX_NUM_INPUTS];
   //Tensor locals[MAX_NUM_LOCALS];
   OpMeta* meta[MAX_NUM_WORKERS];
   int numInputs, numWeights, numOutputs;
@@ -251,6 +288,8 @@ public:
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;
 #endif
+  // Note: parallel_dims_mapping should not be called in a DNN task
+  std::vector<ParallelDimMappingRecord>* parallel_dims_mapping;
 };
 
 class ElementBinary;
@@ -384,8 +423,30 @@ public:
                              bool add_zero_attn = false,
                              Initializer* kernel_initializer = NULL,
                              const char *name = NULL);
+  Tensor create_tensor_legion_ordering(
+      int num_dim,
+      const int dims[],
+      DataType data_type,
+      const Op* owner_op = NULL,
+      int owner_idx = 0,
+      bool create_grad = true);
+  Tensor create_tensor_legion_ordering(
+      int num_dim,
+      const int dims[],
+      const int degrees[],
+      DataType data_type,
+      const Op* owner_op = NULL,
+      int owner_idx = 0,
+      bool create_grad = true);
   Tensor create_tensor(int num_dim,
                        const int dims[],
+                       DataType data_type,
+                       const Op* owner_op = NULL,
+                       int owner_idx = 0,
+                       bool create_grad = true);
+  Tensor create_tensor(int num_dim,
+                       const int dims[],
+                       const int degrees[],
                        DataType data_type,
                        const Op* owner_op = NULL,
                        int owner_idx = 0,
@@ -396,8 +457,13 @@ public:
                        const Op* owner_op = NULL,
                        int owner_idx = 0,
                        bool create_grad = true);
-  void map_tensor(Tensor tensor, const Op* parallel_op);
-  void map_weight(Tensor tensor, const Op* parallel_op);
+  template<int NDIM>
+  Tensor create_tensor(const int dims[],
+                       const int degrees[], 
+                       DataType data_type,
+                       const Op* owner_op = NULL,
+                       int owner_idx = 0,
+                       bool create_grad = true);
   template<int NDIM>
   Parameter create_weight(const int dims[],
       DataType data_type,
@@ -405,6 +471,16 @@ public:
       bool create_grad = true,
       Initializer* initializer = NULL,
       ParameterSyncType sync_type = ParameterSyncType::NONE);
+  template<int NDIM>
+  Parameter create_weight(const int dims[],
+      const int degrees[],
+      DataType data_type,
+      const Op* owner_op = NULL,
+      bool create_grad = true,
+      Initializer* initializer = NULL,
+      ParameterSyncType sync_type = ParameterSyncType::NONE);
+  void map_tensor(Tensor tensor, const Op* parallel_op);
+  void map_weight(Tensor tensor, const Op* parallel_op);
   //void map_weight(Parameter tensor);
 
   template<int NDIM>
@@ -412,25 +488,38 @@ public:
                          float value,
                          DataType date_type);
   // ========================================
+  // Parallel APIs
+  // ========================================
+  Tensor repartition(
+      const Tensor input,
+      int partition_legion_dim,
+      int partition_degree,
+      const char* name = NULL);
+  Tensor combine(
+      const Tensor input,
+      int combine_legion_dim,
+      int combine_degree,
+      const char* name = NULL);
+  // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
   template<int NDIM>
   void create_disjoint_partition(
       const Tensor tensor,
-      const IndexSpaceT<NDIM>& part_is,
-      LogicalPartition& part_fwd,
-      LogicalPartition& part_bwd);
+      const Legion::IndexSpaceT<NDIM>& part_is,
+      Legion::LogicalPartition& part_fwd,
+      Legion::LogicalPartition& part_bwd);
 
   template<int NDIM, int TDIM>
   void create_data_parallel_partition_with_diff_dims(
       const Tensor tensor,
-      const IndexSpaceT<TDIM>& task_is,
-      LogicalPartition& part_fwd,
-      LogicalPartition& part_bwd);
+      const Legion::IndexSpaceT<TDIM>& task_is,
+      Legion::LogicalPartition& part_fwd,
+      Legion::LogicalPartition& part_bwd);
   // Deprecated API --- to be removed
   //template<int NDIM>
   //Tensor create_tensor(const int* dims,
-  //                     const IndexSpaceT<NDIM>& part_is,
+  //                     const Legion::IndexSpaceT<NDIM>& part_is,
   //                     DataType data_type,
   //                     bool create_grad = true);
   template<int NDIM>
@@ -439,11 +528,11 @@ public:
   void map_linear_weight(Tensor p, const Op* parallel_op);
   template<int NDIM, int TDIM>
   Tensor create_linear_replica(const int* dims,
-                               const IndexSpaceT<TDIM>& part_is,
+                               const Legion::IndexSpaceT<TDIM>& part_is,
                                DataType data_type);
-  static PerfMetrics update_metrics_task(const Task *task,
-                                         const std::vector<PhysicalRegion> &regions,
-                                         Context ctx, Runtime *runtime);
+  static PerfMetrics update_metrics_task(const Legion::Task *task,
+                                         const std::vector<Legion::PhysicalRegion> &regions,
+                                         Legion::Context ctx, Legion::Runtime *runtime);
   void reset_metrics();
   void init_layers();
   void prefetch();
@@ -469,12 +558,12 @@ public:
   void print_layers(int id);
   std::string get_operator_type_name(OperatorType type) const;
   // Internal funcitons
-  IndexSpace get_or_create_task_is(ParallelConfig pc);
-  IndexSpace get_or_create_task_is(const Domain& domain);
-  IndexSpace get_or_create_task_is(int ndims, const std::string& pcname);
-  IndexSpace get_task_is(const Domain& domain) const;
-  IndexSpace get_task_is(ParallelConfig pc) const;
-  IndexSpace get_task_is(int ndims, const std::string& pcname) const;
+  Legion::IndexSpace get_or_create_task_is(ParallelConfig pc);
+  Legion::IndexSpace get_or_create_task_is(const Legion::Domain& domain);
+  Legion::IndexSpace get_or_create_task_is(int ndims, const std::string& pcname);
+  Legion::IndexSpace get_task_is(const Legion::Domain& domain) const;
+  Legion::IndexSpace get_task_is(ParallelConfig pc) const;
+  Legion::IndexSpace get_task_is(int ndims, const std::string& pcname) const;
   // APIs for setting iteration configs
 public:
   void set_iteration_config_sequence_length(int seq_length);
@@ -491,12 +580,12 @@ public:
   std::vector<Op*> layers;
   std::vector<Tensor> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
-  Future current_metrics;
+  Legion::Future current_metrics;
   //DataLoader *dataLoader;
 private:
   bool debug;
   Tensor label_tensor_with_final_part;//FIXME: to be removed
-  std::map<ParallelConfig, IndexSpace, ParaConfigCompare> taskIs;
+  std::map<ParallelConfig, Legion::IndexSpace, ParaConfigCompare> taskIs;
 
   template<int NDIM>
   void map_tensor_with_dim(Tensor tensor, const Op* parallel_op);
@@ -539,15 +628,15 @@ public:
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, HighLevelRuntime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
@@ -565,7 +654,7 @@ private:
   template<int NDIM>
   void create_input_partition_with_dim(FFModel& model);
 public:
-  //IndexSpace task_is;
+  //Legion::IndexSpace task_is;
   OperatorType op_type;
   //bool profiling;
 };
@@ -591,15 +680,15 @@ public:
   //Parameter* get_parameter(int index) {assert(0); return NULL;}
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, HighLevelRuntime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(const ElementUnaryMeta* m,
                       const float* in_ptr,
                       float* out_ptr,
@@ -652,15 +741,15 @@ public:
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, HighLevelRuntime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(const Conv2DMeta* m,
                       const float* input_ptr,
                       float* output_ptr,
@@ -678,7 +767,7 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
 public:
-  //IndexSpaceT<4> task_is;
+  //Legion::IndexSpaceT<4> task_is;
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
   bool use_bias;
   ActiMode activation;
@@ -700,15 +789,15 @@ public:
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(DropoutMeta *m,
                              float const *input_ptr,
                              float *output_ptr);
@@ -722,7 +811,7 @@ private:
   //template<int NDIM>
   //void create_input_partition_with_dim(FFModel& model);
 public:
-  //IndexSpaceT<4> task_is;
+  //Legion::IndexSpaceT<4> task_is;
   float rate;
   unsigned long long seed;
 };
@@ -731,8 +820,8 @@ class DropoutMeta : public OpMeta {
 public:
   DropoutMeta(FFHandler handle,
               const Dropout* dropout,
-              Memory gpu_mem,
-              const Domain& output_domain);
+              Legion::Memory gpu_mem,
+              const Legion::Domain& output_domain);
   ~DropoutMeta(void);
   Realm::RegionInstance reserveInst;
   cudnnTensorDescriptor_t inputTensor, outputTensor;
@@ -760,15 +849,15 @@ public:
   //void create_weights(FFModel& model);
   void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(const Pool2DMeta* m,
                              const float* input_ptr,
                              float* output_ptr);
@@ -815,15 +904,15 @@ public:
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
@@ -851,7 +940,7 @@ class BatchNormMeta : public OpMeta {
 public:
   BatchNormMeta(FFHandler handle,
                 const BatchNorm* bn,
-                Memory gpu_mem,
+                Legion::Memory gpu_mem,
                 int output_n,
                 int output_c,
                 int output_h,
@@ -893,18 +982,18 @@ public:
   //void create_weights(FFModel& model);
   void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
-  static void backward2_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward2_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(const LinearMeta* m,
                       const float* input_ptr,
                       float* output_ptr,
@@ -936,21 +1025,21 @@ private:
   template<int NDIM>
   void backward_with_dim(const FFModel& ff);
   template<int NDIM>
-  static OpMeta* init_task_with_dim(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
-                                    Context ctx, Runtime *runtime);
+  static OpMeta* init_task_with_dim(const Legion::Task *task,
+                                    const std::vector<Legion::PhysicalRegion> &regions,
+                                    Legion::Context ctx, Legion::Runtime *runtime);
   template<int NDIM>
-  static void forward_task_with_dim(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
-                                    Context ctx, Runtime *runtime);
+  static void forward_task_with_dim(const Legion::Task *task,
+                                    const std::vector<Legion::PhysicalRegion> &regions,
+                                    Legion::Context ctx, Legion::Runtime *runtime);
   template<int NDIM>
-  static void backward_task_with_dim(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
-                                     Context ctx, Runtime *runtime);
+  static void backward_task_with_dim(const Legion::Task *task,
+                                     const std::vector<Legion::PhysicalRegion> &regions,
+                                     Legion::Context ctx, Legion::Runtime *runtime);
   template<int NDIM>
-  static void backward2_task_with_dim(const Task *task,
-                                      const std::vector<PhysicalRegion> &regions,
-                                      Context ctx, Runtime *runtime);
+  static void backward2_task_with_dim(const Legion::Task *task,
+                                      const std::vector<Legion::PhysicalRegion> &regions,
+                                      Legion::Context ctx, Legion::Runtime *runtime);
   static bool use_cudnn_activation(ActiMode mode);
 public:
   int in_channels, out_channels;
@@ -979,15 +1068,15 @@ public:
   void create_input_partition(FFModel& model);
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(const BatchMatmulMeta* meta,
                       float* o_ptr,
                       const float* a_ptr,
@@ -1040,21 +1129,21 @@ public:
   //void create_weights(FFModel& model);
   void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
-  static void forward_task_cpu(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
-                               Context ctx, Runtime *runtime);
-  static void backward_task_cpu(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
-                                Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task_cpu(const Legion::Task *task,
+                               const std::vector<Legion::PhysicalRegion> &regions,
+                               Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task_cpu(const Legion::Task *task,
+                                const std::vector<Legion::PhysicalRegion> &regions,
+                                Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(int64_t const *input_ptr,
                              float *output_ptr,
                              float const *weight_ptr,
@@ -1099,15 +1188,15 @@ public:
   //void create_weights(FFModel& model);
   void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(const float* input_ptr,
                              float* output_ptr,
                              size_t num_elements);
@@ -1117,7 +1206,7 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
-  Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const;
+  Legion::Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const;
 public:
 };
 
@@ -1148,15 +1237,15 @@ public:
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
@@ -1187,7 +1276,7 @@ class MultiHeadAttentionMeta : public OpMeta {
 public:
   MultiHeadAttentionMeta(FFHandler handler,
                          const MultiHeadAttention* attn,
-                         Memory gpu_mem,
+                         Legion::Memory gpu_mem,
                          int num_samples,
                          int num_heads);
   ~MultiHeadAttentionMeta(void);
@@ -1221,18 +1310,18 @@ public:
   //void create_weights(FFModel& model);
   void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   void init_meta(SoftmaxMeta *m,
-                 Rect<2> const &input,
-                 Rect<2> const &output) const;
+                 Legion::Rect<2> const &input,
+                 Legion::Rect<2> const &output) const;
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
@@ -1266,28 +1355,28 @@ public:
   //void create_weights(FFModel& model);
   void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
   void init_meta(TransposeMeta *m,
-                 Domain const &in_domain,
-                 Domain const &out_domain) const;
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+                 Legion::Domain const &in_domain,
+                 Legion::Domain const &out_domain) const;
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(const TransposeMeta* m,
                              const float* input_ptr,
                              float* output_ptr,
-                             Domain in_domain,
-                             Domain out_domain);
+                             Legion::Domain in_domain,
+                             Legion::Domain out_domain);
   static void backward_kernel(const TransposeMeta* m,
                               float* input_grad_ptr,
                               const float* output_grad_ptr,
-                              Domain in_grad_domain,
-                              Domain out_grad_domain);
+                              Legion::Domain in_grad_domain,
+                              Legion::Domain out_grad_domain);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
@@ -1311,27 +1400,27 @@ public:
   //void create_weights(FFModel& model);
   void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(float const *in_ptr,
                              float *out_ptr,
-                             coord_t num_out_blks,
-                             coord_t reverse_dim_size,
-                             coord_t in_blk_size,
-                             coord_t output_size);
+                             Legion::coord_t num_out_blks,
+                             Legion::coord_t reverse_dim_size,
+                             Legion::coord_t in_blk_size,
+                             Legion::coord_t output_size);
   static void backward_kernel(float const *out_grad_ptr,
                               float *in_grad_ptr,
-                              coord_t num_out_blks,
-                              coord_t reverse_dim_size,
-                              coord_t in_blk_size,
-                              coord_t input_size);
+                              Legion::coord_t num_out_blks,
+                              Legion::coord_t reverse_dim_size,
+                              Legion::coord_t in_blk_size,
+                              Legion::coord_t input_size);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
@@ -1355,15 +1444,15 @@ public:
   //void create_weights(FFModel& model);
   void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(const float* input_ptr,
                              float* output_ptr,
                              size_t num_elements);
@@ -1398,15 +1487,15 @@ public:
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, HighLevelRuntime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
@@ -1452,28 +1541,28 @@ public:
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
   void init_meta(ConcatMeta *meta) const;
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(float* output,
                              float const * const *inputs,
                              int num_inputs,
                              int axis,
-                             const Domain& out_domain,
-                             const Domain* in_domain);
+                             const Legion::Domain& out_domain,
+                             const Legion::Domain* in_domain);
   static void backward_kernel(const float* output_grad,
                               float** input_grads,
                               int num_inputs,
                               int axis,
-                              const Domain& out_grad_domain,
-                              const Domain* in_grad_domain);
+                              const Legion::Domain& out_grad_domain,
+                              const Legion::Domain* in_grad_domain);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
@@ -1498,20 +1587,20 @@ public:
   //void create_weights(FFModel& model);
   void create_input_partition(FFModel& model);
 
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(float **out_ptrs,
                              float const *in_ptr,
-                             coord_t const *out_blk_sizes,
-                             coord_t in_blk_size,
-                             coord_t num_blks,
+                             Legion::coord_t const *out_blk_sizes,
+                             Legion::coord_t in_blk_size,
+                             Legion::coord_t num_blks,
                              int numOutputs);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
@@ -1521,7 +1610,7 @@ private:
   void create_input_partition_with_dim(FFModel& model);
 public:
   int axis;
-  //IndexSpace task_is;
+  //Legion::IndexSpace task_is;
   //bool profiling;
 };
 
@@ -1552,15 +1641,15 @@ public:
   void print_layer(const FFModel& model) {assert(0);}
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
@@ -1581,35 +1670,123 @@ public:
   int numOperators;
 };
 
-class UtilityTasks {
+class ParallelOp : public Op {
 public:
-  static FFHandler init_cuda_task(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
-                                  Context ctx, Runtime *runtime);
-  static void dummy_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
-                         Context ctx, Runtime *runtime);
-  static void init_images_task(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
-                               Context ctx, Runtime *runtime);
-  static void init_labels_task(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
-                               Context ctx, Runtime *runtime);
-  static void load_images_task(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
-                               Context ctx, Runtime *runtime);
-  static void normalize_images_task(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
-                                    Context ctx, Runtime *runtime);
+  ParallelOp(FFModel& model,
+             OperatorType type,
+             const char* _name,
+             const Tensor input);
+  virtual void init(const FFModel&) = 0;
+  virtual void forward(const FFModel&) = 0;
+  virtual void backward(const FFModel&) = 0;
+  void print_layer(const FFModel& model) {};
+  virtual bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics) = 0;
+public:
+  Legion::LogicalPartition input_lp, output_grad_lp;
 };
 
-void top_level_task(const Task* task,
-                    const std::vector<PhysicalRegion>& regions,
-                    Context ctx, Runtime* runtime);
+class Combine : public ParallelOp {
+public:
+  Combine(FFModel& model,
+      const Tensor input,
+      int combine_legion_dim,
+      int combine_degree,
+      const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  static void forward_task(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename T>
+  static void forward_kernel(
+      const T* input_ptr,
+      T* output_ptr,
+      size_t num_elements);
+  template<typename T>
+  static void backward_kernel(
+      const T* output_grad_ptr,
+      T* input_grad_ptr,
+      size_t num_elements);
+  bool measure_operator_cost(
+      Simulator* sim,
+      const ParallelConfig& pc,
+      CostMetrics& cost_metrics);
+private:
+  int combine_dim, combine_degree;
+};
 
-void data_load_task(const Task* task,
-                    const std::vector<PhysicalRegion>& regions,
-                    Context ctx, Runtime* runtime);
+class Repartition : public ParallelOp {
+public:
+  Repartition(FFModel& model,
+              const Tensor input,
+              int repartition_legion_dim,
+              int repartition_degree,
+              const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  static void forward_task(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename T>
+  static void forward_kernel(
+      const T* input_ptr,
+      T* output_ptr,
+      size_t num_elements);
+  template<typename T>
+  static void backward_kernel(
+      const T* output_grad_ptr,
+      T* input_grad_ptr,
+      size_t num_elements);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+private:
+  int repartition_dim, repartition_degree;
+};
+
+class UtilityTasks {
+public:
+  static FFHandler init_cuda_task(const Legion::Task *task,
+                                  const std::vector<Legion::PhysicalRegion> &regions,
+                                  Legion::Context ctx, Legion::Runtime *runtime);
+  static void dummy_task(const Legion::Task *task,
+                         const std::vector<Legion::PhysicalRegion> &regions,
+                         Legion::Context ctx, Legion::Runtime *runtime);
+  static void init_images_task(const Legion::Task *task,
+                               const std::vector<Legion::PhysicalRegion> &regions,
+                               Legion::Context ctx, Legion::Runtime *runtime);
+  static void init_labels_task(const Legion::Task *task,
+                               const std::vector<Legion::PhysicalRegion> &regions,
+                               Legion::Context ctx, Legion::Runtime *runtime);
+  static void load_images_task(const Legion::Task *task,
+                               const std::vector<Legion::PhysicalRegion> &regions,
+                               Legion::Context ctx, Legion::Runtime *runtime);
+  static void normalize_images_task(const Legion::Task *task,
+                                    const std::vector<Legion::PhysicalRegion> &regions,
+                                    Legion::Context ctx, Legion::Runtime *runtime);
+};
+
+void top_level_task(const Legion::Task* task,
+                    const std::vector<Legion::PhysicalRegion>& regions,
+                    Legion::Context ctx, Legion::Runtime* runtime);
+
+void data_load_task(const Legion::Task* task,
+                    const std::vector<Legion::PhysicalRegion>& regions,
+                    Legion::Context ctx, Legion::Runtime* runtime);
 
 void register_flexflow_internal_tasks();
 

@@ -19,6 +19,8 @@
 //#include "realm/cuda/cuda_module.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 typedef long long int coord_t;
 
 typedef Realm::Point<1, coord_t> Point1;

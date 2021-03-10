@@ -16,6 +16,7 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
 
 Tensor FFModel::reshape(const Tensor input,
                         const std::vector<int>& shape,

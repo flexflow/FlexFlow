@@ -16,6 +16,7 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
 
 Tensor FFModel::softmax(const Tensor _input, const char *name)
 {

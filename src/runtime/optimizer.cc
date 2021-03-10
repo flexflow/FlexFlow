@@ -16,6 +16,8 @@
 #include "optimizer.h"
 #include "model.h"
 
+using namespace Legion;
+
 Optimizer::Optimizer(const FFModel* _model)
 : model(_model) {}
 

@@ -126,6 +126,12 @@ enum OperatorType {
   OP_GELU,
   OP_MULTIHEAD_ATTENTION,
   OP_FUSED, // Fused operator type for internal fusion optimizations
+  // Parallel Ops
+  OP_REPARTITION,
+  OP_COMBINE,
+  OP_REPLICATE,
+  OP_REDUCTION,
+  OP_PIPELINE
 };
 
 #endif // _FLEXFLOW_CONST_H_

@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 Tensor FFModel::embedding(const Tensor input,
                           int num_entries,
                           int out_dim,

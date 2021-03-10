@@ -25,20 +25,19 @@ void initialize_tensor_from_file(const std::string file_path,
   std::string data_type,  int num_dim);
 
 template<int DIM>
-void initialize_tensor_from_file_task(const Task *task,
-  const std::vector<PhysicalRegion> &regions,
-  Context ctx,
-  Runtime* runtime);
+void initialize_tensor_from_file_task(const Legion::Task *task,
+    const std::vector<Legion::PhysicalRegion> &regions,
+    Legion::Context ctx, Legion::Runtime* runtime);
 
 void dump_region_to_file(FFModel &ff,
-  LogicalRegion &region,
+  Legion::LogicalRegion &region,
   std::string file_path,
   int dims=4);
 
 template<int DIM>
-void dump_tensor_task(const Task* task,
-  const std::vector<PhysicalRegion>& regions,
-  Context ctx, Runtime* runtime);
+void dump_tensor_task(const Legion::Task* task,
+    const std::vector<Legion::PhysicalRegion>& regions,
+    Legion::Context ctx, Legion::Runtime* runtime);
 
 void register_custom_tasks();
 #endif

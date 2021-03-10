@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 Tensor FFModel::unary(OperatorType op,
                       const Tensor x,
                       const char *name)

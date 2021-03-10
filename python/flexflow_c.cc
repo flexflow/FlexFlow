@@ -16,6 +16,8 @@
 #include "flexflow_dataloader.h"
 #include "flexflow_c.h"
 
+using namespace Legion;
+
 class FFCObjectWrapper {
 public:
 #define FF_NEW_OPAQUE_WRAPPER(T_, T)                                   \

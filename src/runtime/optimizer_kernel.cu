@@ -18,6 +18,7 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
 LegionRuntime::Logger::Category log_optimizer("optimizer");
 
 __global__

@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 // For an input tensor, computes the top k entries in each row 
 // (resp. vector along the last dimension). Thus, 
 // values.shape = indices.shape = input.shape[:-1] + [k]

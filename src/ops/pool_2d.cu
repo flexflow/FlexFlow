@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 Tensor FFModel::pool2d(const Tensor input,
                        int kernelH, int kernelW,
                        int strideH, int strideW,

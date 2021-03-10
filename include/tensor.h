@@ -19,7 +19,7 @@
 #include "config.h"
 #include "ffconst.h"
 
-using namespace Legion;
+//using namespace Legion;
 
 class Op;
 class FFModel;
@@ -42,7 +42,7 @@ struct TensorBase {
                              TensorBase& tensor,
                              OperatorType type);
   size_t get_volume() const;
-  Domain get_domain() const;
+  Legion::Domain get_domain() const;
   template <typename T>
   bool set_tensor(const FFModel* model,
                    const std::vector<int>& dims,
@@ -50,7 +50,8 @@ struct TensorBase {
   template <typename T>
   bool get_tensor(const FFModel* model,
                   T* data);
-  int guid, numDim, adim[MAX_TENSOR_DIM];
+  int guid;
+  int numDim, adim[MAX_TENSOR_DIM], degree[MAX_TENSOR_DIM];
   DataType data_type;
   ParameterSyncType sync_type;
   Initializer* initializer;
@@ -59,9 +60,11 @@ struct TensorBase {
   int owner_idx;
   bool create_gradients;
   // The following fields are initialized after model.compile
-  LogicalRegion region, region_grad;
-  LogicalPartition part, part_grad;
-  PhysicalRegion physical_region;
+  int parallel_dims, parallel_is_to_dim[MAX_TENSOR_DIM];
+  Legion::IndexSpace parallel_is;
+  Legion::LogicalRegion region, region_grad;
+  Legion::LogicalPartition part, part_grad;
+  Legion::PhysicalRegion physical_region;
 };
 
 typedef TensorBase* Tensor;

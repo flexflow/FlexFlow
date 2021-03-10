@@ -19,7 +19,7 @@
 #include "legion.h"
 #include "tensor.h"
 
-using namespace Legion;
+//using namespace Legion;
 
 class FFModel;
 
@@ -37,9 +37,9 @@ public:
   GlorotUniform(int _seed);
   ~GlorotUniform(void);
   void init(const FFModel* ff, const Tensor p);
-  static void init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime *runtime);
+  static void init_task(const Legion::Task *task,
+                        const std::vector<Legion::PhysicalRegion> &regions,
+                        Legion::Context ctx, Legion::Runtime *runtime);
   int seed;
 };
 
@@ -49,12 +49,12 @@ public:
   ZeroInitializer(void);
   ~ZeroInitializer(void);
   void init(const FFModel* ff, const Tensor p);
-  static void init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime *runtime);
-  static void init_task_cpu(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime *runtime);
+  static void init_task(const Legion::Task *task,
+                        const std::vector<Legion::PhysicalRegion> &regions,
+                        Legion::Context ctx, Legion::Runtime *runtime);
+  static void init_task_cpu(const Legion::Task *task,
+                        const std::vector<Legion::PhysicalRegion> &regions,
+                        Legion::Context ctx, Legion::Runtime *runtime);
 };
 
 class UniformInitializer : public Initializer
@@ -63,9 +63,9 @@ public:
   UniformInitializer(int _seed, float _min, float _max);
   ~UniformInitializer(void);
   void init(const FFModel* ff, const Tensor p);
-  static void init_task(const Task *task,
-                        const std::vector<PhysicalRegion>& regions,
-                        Context ctx, Runtime *runtime);
+  static void init_task(const Legion::Task *task,
+                        const std::vector<Legion::PhysicalRegion>& regions,
+                        Legion::Context ctx, Legion::Runtime *runtime);
   int seed;
   float min_val, max_val;
 };
@@ -76,9 +76,9 @@ public:
   NormInitializer(int _seed, float _mean, float _stddev);
   ~NormInitializer(void);
   void init(const FFModel* ff, const Tensor p);
-  static void init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime *runtime);
+  static void init_task(const Legion::Task *task,
+                        const std::vector<Legion::PhysicalRegion> &regions,
+                        Legion::Context ctx, Legion::Runtime *runtime);
   int seed;
   float mean, stddev;
 };
@@ -89,12 +89,12 @@ public:
   ConstantInitializer(float _value);
   ~ConstantInitializer(void);
   void init(const FFModel* ff, const Tensor p);
-  static void init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime* runtime);
-  static void init_task_cpu(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime *runtime);
+  static void init_task(const Legion::Task *task,
+                        const std::vector<Legion::PhysicalRegion> &regions,
+                        Legion::Context ctx, Legion::Runtime* runtime);
+  static void init_task_cpu(const Legion::Task *task,
+                        const std::vector<Legion::PhysicalRegion> &regions,
+                        Legion::Context ctx, Legion::Runtime *runtime);
 public:
   float value;
 };

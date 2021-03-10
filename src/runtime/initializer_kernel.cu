@@ -21,6 +21,8 @@
 #include <random>
 #include <ctime>
 
+using namespace Legion;
+
 void UniformInitializer::init_task(const Task* task,
                                    const std::vector<PhysicalRegion>& regions,
                                    Context ctx, Runtime* runtime)

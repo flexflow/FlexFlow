@@ -2,6 +2,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 template<typename DT, int dim>
 TensorAccessorR<DT, dim>::TensorAccessorR(PhysicalRegion region,
                                           RegionRequirement req,

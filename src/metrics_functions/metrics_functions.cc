@@ -16,6 +16,7 @@
 #include "metrics_functions.h"
 #include "legion.h"
 
+using namespace Legion;
 
 PerfMetrics::PerfMetrics(void)
 : train_all(0), train_correct(0), cce_loss(0.0f), sparse_cce_loss(0.0f),

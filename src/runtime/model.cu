@@ -17,6 +17,8 @@
 //#include "realm/runtime_impl.h"
 //#include "realm/cuda/cuda_module.h"
 
+using namespace Legion;
+
 void Op::inner_measure_operator_cost(Simulator *sim,
                                      std::function<void()> const &forward,
                                      std::function<void()> const &backward,

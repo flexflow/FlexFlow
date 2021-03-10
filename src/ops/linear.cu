@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 Tensor FFModel::dense(const Tensor input,
                       int outDim,
                       ActiMode activation,
@@ -39,13 +41,13 @@ Tensor FFModel::dense(const Tensor input,
 #endif
   Tensor kernel, bias;
   {
-    const int dims[2] = {outDim, input->adim[0]};
-    kernel = create_weight<2>(dims, DT_FLOAT, NULL/*owner_op*/,
+    const int dims[3] = {1, outDim, input->adim[0]};
+    kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
         true/*create_grad*/, kernel_initializer, comm_type);
   }
   if (use_bias) {
-    const int dims[1] = {outDim};
-    bias = create_weight<1>(dims, DT_FLOAT, NULL/*owner_op*/,
+    const int dims[3] = {1, 1, outDim};
+    bias = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
         true/*create_grad*/, bias_initializer, comm_type);
   } else {
     bias = NULL;
@@ -72,67 +74,42 @@ Linear::Linear(FFModel& model,
     assert(numWeights == 2);
     use_bias = true;
   }
-  numOutputs = 1;
+  assert(numOutputs == 1);
   int numdim = _input->numDim;
-  int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
-    dims[i] = _input->adim[numdim-1-i];
-  dims[numdim-1] = _kernel->adim[1];
-  outputs[0] = model.create_tensor(numdim, dims, DT_FLOAT, this);
-  replica = new TensorBase();
-}
+  int dims[MAX_TENSOR_DIM], degrees[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++) {
+    dims[i] = _input->adim[i];
+    degrees[i] = _input->degree[i];
+  }
+  dims[numdim-1] = _input->degree[0];
+  degrees[numdim-1] = dims[numdim-1];
+  dims[0] = _kernel->adim[1];
+  degrees[0] = _input->degree[numdim-1];
+  outputs[0] = model.create_tensor_legion_ordering(
+      numdim, dims, degrees, DT_FLOAT, this);
 
-#ifdef DEADCODE
-void Linear::create_weights(FFModel& model)
-{
-  int dim = inputs[0].numDim;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      create_weights_with_dim<DIM>(model); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      // Unsupported dim
-      assert(false);
+  //replica = new TensorBase();
+  // register parallelizable dims
+  for (int i = 0; i < numdim; i++) {
+    if (i == 0) {
+      register_output_input_parallel_dims(outputs[0], i, inputs[0], numdim-1);
+    } else if (i == numdim-1) {
+      register_output_input_parallel_dims(outputs[0], i, inputs[0], 0);
+    } else {
+      register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
     }
   }
-}
-
-template<int NDIM>
-void Linear::create_weights_with_dim(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
-
-#ifdef FF_USE_NCCL
-  ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-  ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-
-  // Create kernel tensor
-  {
-    const int dims[2] = {out_channels, in_channels};
-    weights[0] = model.create_linear_weight<2, NDIM>(this, dims, DT_FLOAT,
-        kernel_initializer, true/*create_grad*/, comm_type);
-  }
-  // Create bias tensor
+  register_output_weight_parallel_dims(outputs[0], numdim-2, weights[0], 2);
+  register_output_weight_parallel_dims(outputs[0], 0, weights[0], 1);
+  register_output_weight_parallel_dims(outputs[0], numdim-1, weights[0], 0);
   if (use_bias) {
-    const int dims[1] = {out_channels};
-    weights[1] = model.create_linear_weight<1, NDIM>(this, dims, DT_FLOAT,
-        bias_initializer, true/*create_grad*/, comm_type);
-    assert(numWeights == 2);
-  } else {
-    assert(numWeights == 1);
+    register_output_weight_parallel_dims(outputs[0], numdim-2, weights[1], 2);
+    register_output_weight_parallel_dims(outputs[0], 0, weights[1], 1);
+    register_output_weight_parallel_dims(outputs[0], numdim-1, weights[1], 0);
   }
+  // Check correctness
+  assert(check_output_input_weight_parallel_dims());
 }
-#endif
 
 void Linear::create_input_partition(FFModel& model)
 {
