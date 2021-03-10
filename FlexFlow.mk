@@ -50,7 +50,8 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/ops/embedding.cc\
 		${FF_HOME}/src/runtime/strategy.cc\
 		${FF_HOME}/src/runtime/simulator.cc\
-		${FF_HOME}/src/metrics_functions/metrics_functions.cc
+		${FF_HOME}/src/metrics_functions/metrics_functions.cc\
+		${FF_HOME}/src/runtime/machine_model.cc
 
 GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/runtime/model.cu\

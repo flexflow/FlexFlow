@@ -82,13 +82,13 @@ void Simulator::strategy_search_task(const Task *task,
   // void* base_ptr = memFBImpl->get_direct_ptr(offset, 0);
   MachineModel *machine;
   if (model->config.machine_model_version == 0) {
-    machine = (MachineModel *) new MachineModel_old(model->config.numNodes, model->config.workersPerNode, gpu_mem.capacity());
+    machine = (MachineModel *) new SimpleMachineModel(model->config.numNodes, model->config.workersPerNode, gpu_mem.capacity());
   }
   else if (model->config.machine_model_version == 1 and !model->config.machine_model_file.empty()) {
-    machine = (MachineModel *) new MachineModel_new(model->config.machine_model_file, gpu_mem.capacity());
+    machine = (MachineModel *) new EnhancedMachineModel(model->config.machine_model_file, gpu_mem.capacity());
   }
   else {
-    assert(false && "machine model creation error");
+    assert(false && "machine model creation error: currently only support machine-model-version = 0 or 1. When machine-model-version = 1, machine-model-file should not be empty.");
   }
   // Assume this task is running on GPU0
   Simulator* simulator = new Simulator(model, model->handlers[0], gpu_mem, machine);
@@ -149,5 +149,6 @@ void Simulator::strategy_search_task(const Task *task,
   // Start from data
   // memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);
   delete(simulator);
+  delete(machine);
 }
 
