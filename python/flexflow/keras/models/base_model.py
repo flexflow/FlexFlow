@@ -36,7 +36,6 @@ class BaseModel(object):
                '_loss', '_metrics', '_label_type', '__tracing_id']
   def __init__(self, name):
     self._ffconfig = ff.FFConfig()
-    self._ffconfig.parse_args()
     print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.batch_size, self._ffconfig.workers_per_node, self._ffconfig.num_nodes))
     self._ffmodel = None
 

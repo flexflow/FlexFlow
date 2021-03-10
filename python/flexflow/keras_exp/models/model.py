@@ -36,7 +36,6 @@ tracing_id = 100
 class BaseModel(object):
   def __init__(self, inputs, onnx_model):
     self._ffconfig = ff.FFConfig()
-    self._ffconfig.parse_args()
     print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.batch_size, self._ffconfig.workers_per_node, self._ffconfig.num_nodes))
     self._ffmodel = None
     self._onnx_model = onnx_model

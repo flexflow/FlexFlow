@@ -186,6 +186,9 @@ option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
 
 # Python
 if(FF_USE_PYTHON)
+  if(FF_USE_PYBIND)
+    add_subdirectory(deps/pybind11)
+  endif()
   add_subdirectory(python)
 endif()
 

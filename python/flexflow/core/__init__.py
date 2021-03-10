@@ -17,8 +17,15 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
 
-from flexflow.core.flexflow_cbinding import *
-from flexflow.core.flexflow_type import *
+import os
+
+if 'FF_USE_PYBIND' in os.environ:
+  print("Using pybind11 flexflow bindings.")
+  from flexflow_bindings import *
+else:
+  print("Using cffi flexflow bindings.")
+  from flexflow.core.flexflow_cbinding import *
+  from flexflow.core.flexflow_type import *
 #from flexflow.core.flexflow_logger import *
 if 'FF_BUILD_DOCS' not in os.environ:
   build_docs = 0
