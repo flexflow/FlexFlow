@@ -1762,7 +1762,6 @@ void FFModel::print_layers(int id)
 
 std::string FFModel::get_operator_type_name(OperatorType type) const
 {
-  // TODO
   switch(type) {
     case OP_CONV2D: return "Conv2D";
     case OP_DROPOUT: return "Dropout";

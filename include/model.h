@@ -308,10 +308,11 @@ public:
                    Initializer* kernel_initializer = NULL,
                    const char* name = NULL);
   // Add a group_by layer
-  Tensor group_by(const Tensor& data,
-                   const Tensor& assign,
-                   /*int out_dim, */int n, int k, float alpha,
-                   const char* name = NULL);
+  void group_by(const Tensor& data,
+                const Tensor& assign,
+		Tensor* outputs,
+                int n, int k, float alpha,
+                const char* name = NULL);
   // Add a 2D pooling layer
   Tensor pool2d(const Tensor& input,
                 int kernelH, int kernelW,
@@ -1048,8 +1049,7 @@ public:
   Group_by(FFModel& model,
           const Tensor& _input,
           const Tensor& _assign,
-          /*int _out_dim, */int _n, int _k,
-          float _alpha,
+          int _n, int _k, float _alpha,
           const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -1057,8 +1057,6 @@ public:
   void print_layer(const FFModel& model) {assert(0);}
   void create_weights(FFModel& model);
   void create_output_and_partition(FFModel& model);
-
-  
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,

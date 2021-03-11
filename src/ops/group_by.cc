@@ -14,16 +14,19 @@
  */
 
 #include "model.h"
+#include <math.h>
+// TODO: ceil
 
-
-Tensor FFModel::group_by(const Tensor& input,
+void FFModel::group_by(const Tensor& input,
                         const Tensor& assign,
+                        Tensor* outputs,
                         int n, int k, float alpha,
                         const char* name)
 {
   Group_by* group_by = new Group_by(*this, input, assign, n, k, alpha, name);
   layers.push_back(group_by);
-  return group_by->outputs[0];
+  for (int i = 0; i < n; i++)
+    outputs[i] = group_by->outputs[i];
 }
 
 
@@ -44,10 +47,12 @@ Group_by::Group_by(FFModel& model,
   assert(_assign.adim[0] == k);
   assert(n >= k);
 
-  // TODO: Could have list as output, see split
-  outputs[0].numDim = 2;
-  outputs[0].adim[0] = inputs[0].adim[0];
-  outputs[0].adim[1] = (int)(alpha*k*inputs[0].adim[1]);
+  // List of outputs
+  for(int i = 0; i < n; i++) {
+    outputs[i].numDim = 2;
+    outputs[i].adim[0] = inputs[0].adim[0];
+    outputs[i].adim[1] = (int)ceil(alpha*k/n*inputs[0].adim[1]);
+  }
 
   numWeights = 0;
 }
@@ -68,13 +73,15 @@ void Group_by::create_output_and_partition(FFModel& model)
   Runtime* runtime = model.config.lg_hlr;
   Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
 
-  // Currently assume we can only partition over the sample dim
+  // Can only partition over the sample dim
   assert(part_rect.hi[0] == part_rect.lo[0]);
 
-  const int dims[2] = {(int)(alpha*k*inputs[0].adim[1]), inputs[0].adim[0]};
-  outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
-  outputs[0].owner_op = this;
-  outputs[0].owner_idx = 0;
+  const int dims[2] = {(int)ceil(alpha*k/n*inputs[0].adim[1]), inputs[0].adim[0]};
+  for(int i = 0; i < n; i++) {
+    outputs[i] = model.create_tensor<2>(dims, DT_FLOAT, this);
+    outputs[i].owner_op = this;
+    outputs[i].owner_idx = 0;
+  }
 
   // Compute partition bound for input
   Rect<2> input_rect = runtime->get_index_partition_color_space(
@@ -114,23 +121,25 @@ void Group_by::init(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
 
-  // output TODO: List
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
-  launcher.add_field(0, FID_DATA);
-
   // data
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0].region));
-  launcher.add_field(1, FID_DATA);
+  launcher.add_field(0, FID_DATA);
 
   // assign
   launcher.add_region_requirement(
     RegionRequirement(inputs[1].part, 0/*projection id*/, //TODO ?
       READ_ONLY, EXCLUSIVE, inputs[1].region));
-  launcher.add_field(2, FID_DATA);
+  launcher.add_field(1, FID_DATA);
+
+  // output
+  for(int i = 0; i < n; i++) {
+    launcher.add_region_requirement(
+      RegionRequirement(outputs[i].part, 0/*projection id*/,
+        WRITE_ONLY, EXCLUSIVE, outputs[i].region));
+    launcher.add_field(i+2, FID_DATA);
+  }
 
   runtime->execute_index_space(ctx, launcher);
 }
@@ -138,7 +147,7 @@ void Group_by::init(const FFModel& ff)
 
 void group_by_forward(const float* input,
         const int* exp_assign,
-        float* output,
+        float** outputs,
         int n, // num experts
         int k, // chosen experts
         float alpha, // factor additional memory assigned
@@ -147,7 +156,6 @@ void group_by_forward(const float* input,
 {
   std::vector<int> expert_idx(n, 0);
   int exp_tensor_rows = alpha*k/n*batch_size;
-  int exp_tensor_entries = exp_tensor_rows * out_dim;
 
   for(int i = 0; i < batch_size; i++) {
     for(int j = 0; j < k; j++) {
@@ -157,11 +165,10 @@ void group_by_forward(const float* input,
       if(row >= exp_tensor_rows)
         continue;
 
-      // copy over sample (maybe better memcpy or so)
-      int output_start = expert*exp_tensor_entries + row*out_dim;
+      // copy over sample
       int input_start = i*out_dim;
       for(int l = 0; l < out_dim; l++) {
-        output[output_start + l] = input[input_start + l];
+        outputs[expert][l] = input[input_start + l];
       }
       expert_idx[expert]++;
     }
@@ -171,7 +178,7 @@ void group_by_forward(const float* input,
 
 void group_by_backward(const float* input,
         const int* exp_assign,
-        float* output,
+        float** outputs,
         int n, // num experts
         int k, // chosen experts
         float alpha, // factor additional memory assigned*/
@@ -186,42 +193,48 @@ void Group_by::forward_task(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
-
   // Get n, k, alpha
   const Group_by* gb = (Group_by*) task->args;
   int n = gb->n;
   int k = gb->k;
   float alpha = gb->alpha;
 
-  // get regions
+  assert((int)regions.size() == n+2);
+  assert((int)task->regions.size() == n+2);
+
+  // get input and assign regions
   const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 2> acc_output(regions[1], FID_DATA); // TODO: We can make this 3D, more elegant
-  const AccessorRO<int, 2> acc_assign(regions[2], FID_DATA);
+  const AccessorRO<int, 2> acc_assign(regions[1], FID_DATA);
 
   Rect<2> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  Rect<2> rect_output = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
   Rect<2> rect_assign = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
+      ctx, task->regions[1].region.get_index_space());
 
-  // Get data shapes and rnsure they match
   coord_t input_rows = rect_input.hi[1] - rect_input.lo[1] + 1;
-  coord_t output_rows = rect_output.hi[1] - rect_output.lo[1] + 1;
-  int batch_size = input_rows;
-  assert((int)(alpha*k*(int)output_rows) == batch_size);
-
   coord_t input_cols = rect_input.hi[0] - rect_input.lo[0] + 1;
-  assert(input_cols == rect_output.hi[0] - rect_output.lo[0] + 1);
-  int data_dim = input_cols;
-
   assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
   assert(k == (int)(rect_assign.hi[0] - rect_assign.lo[0] + 1));
+  int batch_size = input_rows;
+  int data_dim = input_cols;
+
+  // get output
+  float* outputs[n];
+  int exp_output_rows = (int)ceil(alpha*k/n*batch_size);
+  for(int i = 0; i < n; i++) {
+    Domain out_domain = runtime->get_index_space_domain(
+      ctx, task->regions[i+2].region.get_index_space());
+    outputs[i] = helperGetTensorPointerWO<float>(
+      regions[i+1], task->regions[i+2], FID_DATA, ctx, runtime);
+
+    coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
+    coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
+    assert((int)output_rows == exp_output_rows);
+    assert(output_cols == input_cols);
+  }
 
   group_by_forward(acc_input.ptr(rect_input), acc_assign.ptr(rect_assign),
-      acc_output.ptr(rect_output), n, k, alpha, batch_size, data_dim);
+      outputs, n, k, alpha, batch_size, data_dim);
 }
 
 
@@ -229,52 +242,48 @@ void Group_by::backward_task(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
-
   // Get n, k, alpha
   const Group_by* gb = (Group_by*) task->args;
   int n = gb->n;
   int k = gb->k;
   float alpha = gb->alpha;
 
-  // get regions
+  assert((int)regions.size() == n+2);
+  assert((int)task->regions.size() == n+2);
+
+  // get input and assign regions
   const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 2> acc_output(regions[1], FID_DATA);
-  const AccessorRO<int, 2> acc_assign(regions[2], FID_DATA);
+  const AccessorRO<int, 2> acc_assign(regions[1], FID_DATA);
 
   Rect<2> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  Rect<2> rect_output = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
   Rect<2> rect_assign = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
+      ctx, task->regions[1].region.get_index_space());
 
-  // Get data shapes and ensure they match
   coord_t input_rows = rect_input.hi[1] - rect_input.lo[1] + 1;
-  coord_t output_rows = rect_output.hi[1] - rect_output.lo[1] + 1;
-  int batch_size = input_rows;
-  assert((int)(alpha*k*(int)output_rows) == batch_size);
-
   coord_t input_cols = rect_input.hi[0] - rect_input.lo[0] + 1;
-  assert(input_cols == rect_output.hi[0] - rect_output.lo[0] + 1);
-  int data_dim = input_cols;
-
   assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
   assert(k == (int)(rect_assign.hi[0] - rect_assign.lo[0] + 1));
+  int batch_size = input_rows;
+  int data_dim = input_cols;
+
+  // get output
+  float* outputs[n];
+  int exp_output_rows = (int)ceil(alpha*k/n*batch_size);
+  for(int i = 0; i < n; i++) {
+    Domain out_domain = runtime->get_index_space_domain(
+      ctx, task->regions[i+2].region.get_index_space());
+    outputs[i] = helperGetTensorPointerWO<float>(
+      regions[i+1], task->regions[i+2], FID_DATA, ctx, runtime);
+
+    coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
+    coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
+    assert((int)output_rows == exp_output_rows);
+    assert(output_cols == input_cols);
+  }
 
   group_by_backward(acc_input.ptr(rect_input), acc_assign.ptr(rect_assign),
-      acc_output.ptr(rect_output), n, k, alpha, batch_size, data_dim);
-}
-
-
-bool Group_by::measure_operator_cost(Simulator* sim,
-                                 const ParallelConfig& pc,
-                                 CostMetrics& cost_metrics)
-{
-  // TODO: To be implemented
-  assert(false);
-  return false;
+      outputs, n, k, alpha, batch_size, data_dim);
 }
 
 
@@ -287,24 +296,25 @@ void Group_by::forward(const FFModel& ff)
                          TaskArgument(this, sizeof(Group_by)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
-
-  // output TODO: List
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
-  launcher.add_field(0, FID_DATA);
-
   // data
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0].region));
-  launcher.add_field(1, FID_DATA);
+  launcher.add_field(0, FID_DATA);
 
   // assign
   launcher.add_region_requirement(
-    RegionRequirement(inputs[1].part, 0/*projection id*/,
+    RegionRequirement(inputs[1].part, 0/*projection id*/, //TODO ?
       READ_ONLY, EXCLUSIVE, inputs[1].region));
-  launcher.add_field(2, FID_DATA);
+  launcher.add_field(1, FID_DATA);
+
+  // output
+  for(int i = 0; i < n; i++) {
+    launcher.add_region_requirement(
+      RegionRequirement(outputs[i].part, 0/*projection id*/,
+        WRITE_ONLY, EXCLUSIVE, outputs[i].region));
+    launcher.add_field(i+2, FID_DATA);
+  }
 
   runtime->execute_index_space(ctx, launcher);
 }
@@ -319,23 +329,37 @@ void Group_by::backward(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
 
-  // output TODO: List
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
-  launcher.add_field(0, FID_DATA);
-
   // data
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+    RegionRequirement(input_lps[0], 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[0].region));
+  launcher.add_field(0, FID_DATA);
+
+  // assign
+  launcher.add_region_requirement(
+    RegionRequirement(inputs[1].part, 0/*projection id*/, //TODO ?
+      READ_ONLY, EXCLUSIVE, inputs[1].region));
   launcher.add_field(1, FID_DATA);
 
-  // assign -- not gradients
-  launcher.add_region_requirement(
-    RegionRequirement(inputs[1].part, 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[1].region));
-  launcher.add_field(2, FID_DATA);
+  // output
+  for(int i = 0; i < n; i++) {
+    launcher.add_region_requirement(
+      RegionRequirement(outputs[i].part, 0/*projection id*/,
+        WRITE_ONLY, EXCLUSIVE, outputs[i].region));
+    launcher.add_field(i+2, FID_DATA);
+  }
 
   runtime->execute_index_space(ctx, launcher);
+}
+
+
+bool Group_by::measure_operator_cost(Simulator* sim,
+                                 const ParallelConfig& pc,
+                                 CostMetrics& cost_metrics)
+{
+  //TODO: implement
+  cost_metrics.forward_time = 0.0f;
+  cost_metrics.backward_time = 0.0f;
+  cost_metrics.memory_requirement = 0;
+  return false;
 }
