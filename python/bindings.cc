@@ -199,7 +199,7 @@ PYBIND11_MODULE(flexflow_bindings, m) {
       .def("batch_matmul", &FFModel::batch_matmul, "A"_a, "B"_a, "a_seq_length_dim"_a = -1, "b_seq_length_dim"_a = -1)
       .def("dense", &FFModel::dense, "input"_a, "out_dim"_a, "activation"_a = ActiMode::AC_MODE_NONE, "use_bias"_a = true, "shared_op"_a = nullptr, "kernel_initializer"_a = nullptr, "bias_initializer"_a = nullptr, "name"_a = nullptr)
       .def("flat", &FFModel::flat, "input"_a, "name"_a = nullptr)
-      .def("softmax", &FFModel::softmax, "input"_a, "name"_a = nullptr)
+      .def("softmax", &FFModel::softmax, "input"_a, "axis"_a = -1, "name"_a = nullptr)
       .def("transpose", &FFModel::transpose, "input"_a, "perm"_a, "name"_a = nullptr)
       .def("reshape", &FFModel::reshape, "input"_a, "shape"_a, "name"_a = nullptr)
       .def("reverse", &FFModel::reverse, "input"_a, "axis"_a, "name"_a = nullptr)

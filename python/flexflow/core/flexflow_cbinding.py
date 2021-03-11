@@ -1171,7 +1171,7 @@ class FFModel(object):
     self.add_layer(OpType.FLAT, name)
     return Tensor(handle, owner_op_type=OpType.FLAT)
 
-  def softmax(self, input, name=None):
+  def softmax(self, input, axis=-1, name=None):
     """Softmax activation function.
              
     :param input: the input Tensor.
@@ -1183,7 +1183,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_softmax(self.handle, input.handle, c_name)
+    handle = ffc.flexflow_model_add_softmax(self.handle, input.handle, axis, c_name)
     self.add_layer(OpType.SOFTMAX, name)
     return Tensor(handle, owner_op_type=OpType.SOFTMAX)
 

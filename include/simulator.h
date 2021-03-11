@@ -26,7 +26,7 @@ class LinearMeta;
 class Pool2DMeta;
 class ElementUnaryMeta;
 class ElementBinaryMeta;
-class SoftmaxMeta;
+//class SoftmaxMeta;
 class BatchMatmulMeta;
 //class BatchNormMeta;
 class ConcatMeta;
@@ -378,7 +378,7 @@ public:
   Pool2DMeta* pool2d_meta;
   ElementUnaryMeta* ele_unary_meta;
   ElementBinaryMeta* ele_binary_meta;
-  SoftmaxMeta *softmax_meta;
+  //SoftmaxMeta *softmax_meta;
   BatchMatmulMeta *batch_matmul_meta;
   //BatchNormMeta *batch_norm_meta;
   ConcatMeta *concat_meta;

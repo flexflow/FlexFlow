@@ -264,6 +264,7 @@ flexflow_tensor_t
 flexflow_model_add_softmax(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
+  int dim,
   const char *name);
 
 flexflow_tensor_t
