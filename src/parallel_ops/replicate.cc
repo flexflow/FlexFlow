@@ -17,34 +17,35 @@
 
 using namespace Legion;
 
-Tensor FFModel::repartition(
+Tensor FFModel::replicate(
     const Tensor input,
-    int repartition_legion_dim,
-    int repartition_degree,
+    int replicate_legion_dim,
+    int replicate_degree,
     const char* name)
 {
-  Repartition *part = new Repartition(*this, input,
-      repartition_legion_dim, repartition_degree, name);
-  layers.push_back(part);
-  return part->outputs[0];
+  Replicate *repl = new Replicate(*this, input,
+      replicate_legion_dim, replicate_degree, name);
+  layers.push_back(repl);
+  return repl->outputs[0];
 }
 
-Repartition::Repartition(
+Replicate::Replicate(
     FFModel& model,
     const Tensor _input,
-    int _repartition_legion_dim,
-    int _repartition_degree,
+    int _replicate_legion_dim,
+    int _replicate_degree,
     const char* name)
-: ParallelOp(model, OP_REPARTITION, name, _input),
-  repartition_dim(_repartition_legion_dim),
-  repartition_degree(_repartition_degree)
+: ParallelOp(model, OP_REPLICATE, name, _input),
+  replicate_dim(_replicate_legion_dim),
+  replicate_degree(_replicate_degree)
 {
   int numdim = _input->numDim;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[i];
   }
-  dims[repartition_dim].degree *= repartition_degree;
+  dims[replicate_dim].size *= replicate_degree;
+  dims[replicate_dim].degree *= replicate_degree;
   TensorBase::update_parallel_ids(numdim, dims);
   for (int i = 0; i < numdim; i++) {
     register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
@@ -55,12 +56,12 @@ Repartition::Repartition(
   assert(check_output_input_weight_parallel_dims());
 }
 
-void Repartition::init(const FFModel& ff)
+void Replicate::init(const FFModel& ff)
 {
   // Do nothing
 }
 
-void Repartition::forward(const FFModel& ff)
+void Replicate::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -68,7 +69,7 @@ void Repartition::forward(const FFModel& ff)
   assert(numOutputs == 1);
   assert(numInputs == 1);
   IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(REPARTITION_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(REPLICATE_FWD_TASK_ID, task_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
@@ -83,7 +84,7 @@ void Repartition::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Repartition::backward(const FFModel& ff)
+void Replicate::backward(const FFModel& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -91,7 +92,7 @@ void Repartition::backward(const FFModel& ff)
   assert(numOutputs == 1);
   assert(numInputs == 1);
   IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(REPARTITION_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(REPLICATE_BWD_TASK_ID, task_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
@@ -102,12 +103,11 @@ void Repartition::backward(const FFModel& ff)
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
                         READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
-
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
-bool Repartition::measure_operator_cost(
+bool Replicate::measure_operator_cost(
     Simulator* sim,
     const ParallelConfig& pc,
     CostMetrics& cost_metrics)

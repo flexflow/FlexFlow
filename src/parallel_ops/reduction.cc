@@ -17,50 +17,46 @@
 
 using namespace Legion;
 
-Tensor FFModel::repartition(
+Tensor FFModel::reduction(
     const Tensor input,
-    int repartition_legion_dim,
-    int repartition_degree,
+    int reduction_legion_dim,
+    int reduction_degree,
     const char* name)
 {
-  Repartition *part = new Repartition(*this, input,
-      repartition_legion_dim, repartition_degree, name);
-  layers.push_back(part);
-  return part->outputs[0];
+  Reduction* reduce = new Reduction(*this, input,
+      reduction_legion_dim, reduction_degree, name);
+  layers.push_back(reduce);
+  return reduce->outputs[0];
 }
 
-Repartition::Repartition(
+Reduction::Reduction(
     FFModel& model,
     const Tensor _input,
-    int _repartition_legion_dim,
-    int _repartition_degree,
+    int _reduction_legion_dim,
+    int _reduction_degree,
     const char* name)
-: ParallelOp(model, OP_REPARTITION, name, _input),
-  repartition_dim(_repartition_legion_dim),
-  repartition_degree(_repartition_degree)
+: ParallelOp(model, OP_REDUCTION, name, _input),
+  reduction_dim(_reduction_legion_dim),
+  reduction_degree(_reduction_degree)
 {
   int numdim = _input->numDim;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[i];
   }
-  dims[repartition_dim].degree *= repartition_degree;
+  assert(dims[reduction_dim].degree % reduction_degree == 0);
+  dims[reduction_dim].degree /= reduction_degree;
   TensorBase::update_parallel_ids(numdim, dims);
+  outputs[0] = model.create_tensor_legion_ordering(
+      numdim, dims, DT_FLOAT, this);
   for (int i = 0; i < numdim; i++) {
     register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
   }
-  outputs[0] = model.create_tensor_legion_ordering(
-      numdim, dims, DT_FLOAT, this);
   // Check correctness
   assert(check_output_input_weight_parallel_dims());
 }
 
-void Repartition::init(const FFModel& ff)
-{
-  // Do nothing
-}
-
-void Repartition::forward(const FFModel& ff)
+void Reduction::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -68,7 +64,7 @@ void Repartition::forward(const FFModel& ff)
   assert(numOutputs == 1);
   assert(numInputs == 1);
   IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(REPARTITION_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(REDUCTION_FWD_TASK_ID, task_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
@@ -83,15 +79,15 @@ void Repartition::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Repartition::backward(const FFModel& ff)
+void Reduction::backward(const FFModel& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(REPARTITION_BWD_TASK_ID, task_is,
+  IndexSpace task_is = inputs[0]->parallel_is;
+  IndexLauncher launcher(REDUCTION_BWD_TASK_ID, task_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
@@ -100,14 +96,13 @@ void Repartition::backward(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
-
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+                        READ_WRITE, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
-bool Repartition::measure_operator_cost(
+bool Combine::measure_operator_cost(
     Simulator* sim,
     const ParallelConfig& pc,
     CostMetrics& cost_metrics)

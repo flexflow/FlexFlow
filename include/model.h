@@ -432,8 +432,7 @@ public:
       bool create_grad = true);
   Tensor create_tensor_legion_ordering(
       int num_dim,
-      const int dims[],
-      const int degrees[],
+      const ParallelDim dims[],
       DataType data_type,
       const Op* owner_op = NULL,
       int owner_idx = 0,
@@ -445,8 +444,7 @@ public:
                        int owner_idx = 0,
                        bool create_grad = true);
   Tensor create_tensor(int num_dim,
-                       const int dims[],
-                       const int degrees[],
+                       const ParallelDim dims[],
                        DataType data_type,
                        const Op* owner_op = NULL,
                        int owner_idx = 0,
@@ -458,8 +456,7 @@ public:
                        int owner_idx = 0,
                        bool create_grad = true);
   template<int NDIM>
-  Tensor create_tensor(const int dims[],
-                       const int degrees[], 
+  Tensor create_tensor(const ParallelDim dims[],
                        DataType data_type,
                        const Op* owner_op = NULL,
                        int owner_idx = 0,
@@ -472,8 +469,7 @@ public:
       Initializer* initializer = NULL,
       ParameterSyncType sync_type = ParameterSyncType::NONE);
   template<int NDIM>
-  Parameter create_weight(const int dims[],
-      const int degrees[],
+  Parameter create_weight(const ParallelDim dims[],
       DataType data_type,
       const Op* owner_op = NULL,
       bool create_grad = true,
@@ -499,6 +495,16 @@ public:
       const Tensor input,
       int combine_legion_dim,
       int combine_degree,
+      const char* name = NULL);
+  Tensor replicate(
+      const Tensor input,
+      int replicate_legion_dim,
+      int replicate_degree,
+      const char* name = NULL);
+  Tensor reduction(
+      const Tensor input,
+      int reduction_legion_dim,
+      int reduction_degree,
       const char* name = NULL);
   // ========================================
   // Internal APIs that should not be invoked from applications
@@ -1756,6 +1762,80 @@ public:
                              CostMetrics& cost_metrics);
 private:
   int repartition_dim, repartition_degree;
+};
+
+class Replicate : public ParallelOp {
+public:
+  Replicate(FFModel& model,
+      const Tensor input,
+      int replicate_legion_dim,
+      int replicate_degree,
+      const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  static void forward_task(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename T>
+  static void forward_kernel(
+      const T* input_ptr,
+      T* output_ptr,
+      size_t num_elements);
+  template<typename T>
+  static void backward_kernel(
+      const T* output_grad_ptr,
+      T* input_grad_ptr,
+      size_t num_elements,
+      size_t num_replicas);
+  bool measure_operator_cost(
+      Simulator* sim,
+      const ParallelConfig& pc,
+      CostMetrics& cost_metrics);
+private:
+  int replicate_dim, replicate_degree;
+};
+
+class Reduction : public ParallelOp {
+public:
+  Reduction(FFModel& model,
+      const Tensor input,
+      int reduction_legion_dim,
+      int reduction_degree,
+      const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  static void forward_task(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename T>
+  static void forward_kernel(
+      const T* input_ptr,
+      T* output_ptr,
+      size_t num_elements,
+      size_t num_replicas);
+  template<typename T>
+  static void backward_kernel(
+      const T* output_grad_ptr,
+      T* input_grad_ptr,
+      size_t num_elements);
+  bool measure_operator_cost(
+      Simulator* sim,
+      const ParallelConfig& pc,
+      CostMetrics& cost_metrics);
+private:
+  int reduction_dim, reduction_degree;
 };
 
 class UtilityTasks {

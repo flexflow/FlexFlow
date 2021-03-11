@@ -27,12 +27,6 @@ TensorBase::TensorBase(void)
 {
   guid = 0;
   numDim = 0;
-  parallel_dims = 0;
-  for (int i = 0; i < MAX_TENSOR_DIM; i++) {
-    adim[i] = 0;
-    degree[i] = 1;
-    parallel_is_to_dim[i] = -1;
-  }
   parallel_is = IndexSpace::NO_SPACE;
   region = LogicalRegion::NO_REGION;
   region_grad = LogicalRegion::NO_REGION;
@@ -266,6 +260,59 @@ Domain TensorBase::get_domain() const
     d.rect_data[i+d.dim] = this->adim[i] - 1;
   }
   return d;
+}
+
+bool TensorBase::check_valid() const
+{
+  bool used[MAX_TENSOR_DIM];
+  for (int i = 0; i < MAX_TENSOR_DIM; i++)
+    used[i] = false;
+  for (int i = 0; i < numDim; i++) {
+    if (dims[i].size % dims[i].degree != 0)
+      return false;
+    if (dims[i].parallel_idx > MAX_TENSOR_DIM)
+      return false;
+    if (dims[i].parallel_idx >= 0) {
+      if (used[dims[i].parallel_idx])
+        return false;
+      used[dims[i].parallel_idx] = true;
+    }
+  }
+  int idx = 0;
+  while (used[idx]) idx++;
+  for (int i = idx; i < MAX_TENSOR_DIM; i++)
+    if (used[i]) return false;
+  return true;
+}
+
+bool TensorBase::update_parallel_ids(
+    int numdim,
+    ParallelDim* dims)
+{
+  for (int i = 0; i < numdim; i++) {
+    if (dims[i].degree == 1)
+      dims[i].parallel_idx = -1;
+  }
+  bool used[MAX_TENSOR_DIM];
+  for (int i = 0; i < MAX_TENSOR_DIM; i++)
+    used[i] = false;
+  for (int i = 0; i < numdim; i++)
+    if (dims[i].parallel_idx != -1) {
+      assert(!used[dims[i].parallel_idx]);
+      used[dims[i].parallel_idx] = true;
+    }
+  for (int i = 0; i < numdim; i++)
+    if (dims[i].parallel_idx == -1 && dims[i].degree > 1) {
+      int idx = 0;
+      while (used[idx]) idx++;
+      dims[i].parallel_idx = idx;
+      used[idx] = true;
+    }
+  int idx = 0;
+  while (used[idx]) idx++;
+  for (int i = idx; i < MAX_TENSOR_DIM; i++)
+    assert(!used[idx]);
+  return true;
 }
 
 Op::Op(FFModel& model,
@@ -740,13 +787,17 @@ bool Op::check_output_input_weight_parallel_dims()
     if (record.weight_idx != -1) {
       int weight_idx = record.weight_idx;
       int weight_dim = record.weight_dim;
-      assert(outputs[output_idx]->degree[output_dim]
-          == weights[weight_idx]->degree[weight_dim]);
+      assert(outputs[output_idx]->dims[output_dim].degree
+          == weights[weight_idx]->dims[weight_dim].degree);
+      assert(outputs[output_idx]->dims[output_dim].parallel_idx
+          == weights[weight_idx]->dims[weight_dim].parallel_idx);
     } else if (record.input_idx != -1) {
       int input_idx = record.input_idx;
       int input_dim = record.input_dim;
-      assert(outputs[output_idx]->degree[output_dim]
-          == inputs[input_idx]->degree[input_dim]);
+      assert(outputs[output_idx]->dims[output_dim].degree
+          == inputs[input_idx]->dims[input_dim].degree);
+      assert(outputs[output_idx]->dims[output_dim].parallel_idx
+          == inputs[input_idx]->dims[input_dim].parallel_idx);
     } else {
       assert(false);
     }
@@ -894,8 +945,7 @@ Tensor FFModel::create_tensor(
 
 Tensor FFModel::create_tensor(
     int numdim,
-    const int dims[],
-    const int degrees[],
+    const ParallelDim dims[],
     DataType data_type,
     const Op* op,
     int idx,
@@ -904,7 +954,7 @@ Tensor FFModel::create_tensor(
   switch (numdim) {
 #define DIMFUNC(DIM) \
     case DIM: \
-      return create_tensor<DIM>(dims, degrees, data_type, op, idx, create_grad);
+      return create_tensor<DIM>(dims, data_type, op, idx, create_grad);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -928,20 +978,16 @@ Tensor FFModel::create_tensor_legion_ordering(
 
 Tensor FFModel::create_tensor_legion_ordering(
     int numdim,
-    const int dims[],
-    const int degrees[],
+    const ParallelDim dims[],
     DataType data_type,
     const Op* op,
     int idx,
     bool create_grad)
 {
-  int c_dims[MAX_TENSOR_DIM];
+  ParallelDim c_dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++)
     c_dims[i] = dims[numdim-1-i];
-  int c_degrees[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
-    c_degrees[i] = degrees[numdim-1-i];
-  return create_tensor(numdim, c_dims, c_degrees, data_type, op, idx, create_grad);
+  return create_tensor(numdim, c_dims, data_type, op, idx, create_grad);
 }
 
 template<int NDIM>
@@ -952,16 +998,16 @@ Tensor FFModel::create_tensor(
     int owner_idx,
     bool create_grad)
 {
-  int degrees[NDIM];
-  for (int i = 0; i < NDIM; i++)
-    degrees[i] = 1;
-  return create_tensor<NDIM>(dims, degrees, data_type, owner_op, owner_idx, create_grad);
+  ParallelDim pdims[NDIM];
+  for (int i = 0; i < NDIM; i++) {
+    pdims[i].size = dims[i];
+  }
+  return create_tensor<NDIM>(dims, data_type, owner_op, owner_idx, create_grad);
 }
 
 template<int NDIM>
 Tensor FFModel::create_tensor(
-    const int dims[],
-    const int degrees[],
+    const ParallelDim dims[],
     DataType data_type,
     const Op* owner_op,
     int owner_idx,
@@ -975,10 +1021,9 @@ Tensor FFModel::create_tensor(
   tensor->create_gradients = create_grad;
   tensor->numDim = NDIM;
   for (int i = 0; i < NDIM; i++) {
-    tensor->adim[i] = dims[NDIM-1-i];
-    tensor->degree[i] = degrees[NDIM-1-i];
-    assert(tensor->adim[i] % tensor->degree[i] == 0);
+    tensor->dims[i] = dims[NDIM-1-i];
   }
+  assert(tensor->check_valid());
   return tensor;
 }
 
@@ -991,17 +1036,16 @@ Parameter FFModel::create_weight(
     Initializer* initializer,
     ParameterSyncType sync_type)
 {
-  int degrees[NDIM];
+  ParallelDim pdims[NDIM];
   for (int i = 0; i < NDIM; i++)
-    degrees[i] = 1;
-  return create_weight<NDIM>(dims, degrees, data_type, owner_op,
+    pdims[i].size = dims[i];
+  return create_weight<NDIM>(pdims, data_type, owner_op,
       create_grad, initializer, sync_type);
 }
 
 template<int NDIM>
 Parameter FFModel::create_weight(
-    const int dims[],
-    const int degrees[],
+    const ParallelDim dims[],
     DataType data_type,
     const Op* owner_op,
     bool create_grad,
@@ -1016,11 +1060,7 @@ Parameter FFModel::create_weight(
   p->initializer = initializer;
   p->sync_type = sync_type;
   p->numDim = NDIM;
-  for (int i = 0; i < NDIM; i++) {
-    p->adim[i] = dims[NDIM-1-i];
-    p->degree[i] = degrees[NDIM-1-i];
-    assert(p->adim[i] % p->degree[i] == 0);
-  }
+  assert(p->check_valid());
   return p;
 }
 
@@ -3075,10 +3115,10 @@ void register_flexflow_internal_tasks()
 // template instantiations
 #define DIMFUNC(DIM) \
   template Tensor FFModel::create_tensor<DIM>(const int dims[], DataType data_type, const Op* owner_op, int owner_idx, bool create_grad); \
-  template Tensor FFModel::create_tensor<DIM>(const int dims[], const int degrees[], DataType data_type, const Op* owner_op, int owner_idx, bool create_grad); \
+  template Tensor FFModel::create_tensor<DIM>(const ParallelDim dims[], DataType data_type, const Op* owner_op, int owner_idx, bool create_grad); \
   template Parameter FFModel::create_weight<DIM>(const int dims[], DataType data_type, const Op* owner_op, bool create_grad,\
     Initializer* initializer, ParameterSyncType sync_type);\
-  template Parameter FFModel::create_weight<DIM>(const int dims[], const int degrees[], DataType data_type, const Op* owner_op, bool create_grad,\
+  template Parameter FFModel::create_weight<DIM>(const ParallelDim dims[], DataType data_type, const Op* owner_op, bool create_grad,\
     Initializer* initializer, ParameterSyncType sync_type);\
   template void FFModel::map_tensor_with_dim<DIM>(Tensor tensor, const Op* parallel_op); \
   template void FFModel::map_weight_with_dim<DIM>(Tensor weight, const Op* parallel_op); \

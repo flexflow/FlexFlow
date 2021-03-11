@@ -40,15 +40,15 @@ Combine::Combine(
   combine_degree(_combine_degree)
 {
   int numdim = _input->numDim;
-  int dims[MAX_TENSOR_DIM], degrees[MAX_TENSOR_DIM];
+  ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
-    dims[i] = _input->adim[i];
-    degrees[i] = _input->degree[i];
+    dims[i] = _input->dims[i];
   }
-  assert(degrees[combine_dim] % combine_degree == 0);
+  assert(dims[combine_dim].degree % combine_degree == 0);
+  dims[combine_dim].degree /= combine_degree;
+  TensorBase::update_parallel_ids(numdim, dims);
   outputs[0] = model.create_tensor_legion_ordering(
-      numdim, dims, degrees, DT_FLOAT, this);
-  degrees[combine_dim] /= combine_degree;
+      numdim, dims, DT_FLOAT, this);
   for (int i = 0; i < numdim; i++) {
     register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
   }
@@ -91,8 +91,8 @@ void Combine::backward(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(COMBINE_FWD_TASK_ID, task_is,
+  IndexSpace task_is = inputs[0]->parallel_is;
+  IndexLauncher launcher(COMBINE_BWD_TASK_ID, task_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));

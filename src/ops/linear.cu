@@ -76,17 +76,16 @@ Linear::Linear(FFModel& model,
   }
   assert(numOutputs == 1);
   int numdim = _input->numDim;
-  int dims[MAX_TENSOR_DIM], degrees[MAX_TENSOR_DIM];
+  ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
-    dims[i] = _input->adim[i];
-    degrees[i] = _input->degree[i];
+    dims[i] = _input->dims[i];
   }
-  dims[numdim-1] = _input->degree[0];
-  degrees[numdim-1] = dims[numdim-1];
-  dims[0] = _kernel->adim[1];
-  degrees[0] = _input->degree[numdim-1];
+  dims[numdim-1].size = _input->dims[0].degree;
+  dims[numdim-1].parallel_idx = _input->dims[0].parallel_idx;
+  dims[numdim-1].degree = dims[numdim-1].size;
+  dims[0] = _kernel->dims[1];
   outputs[0] = model.create_tensor_legion_ordering(
-      numdim, dims, degrees, DT_FLOAT, this);
+      numdim, dims, DT_FLOAT, this);
 
   //replica = new TensorBase();
   // register parallelizable dims

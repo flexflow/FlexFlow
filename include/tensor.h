@@ -25,6 +25,13 @@ class Op;
 class FFModel;
 class Initializer;
 
+struct ParallelDim {
+  ParallelDim(): size(0), degree(1), parallel_idx(-1) {}
+  int size;
+  int degree;
+  int parallel_idx;
+};
+
 struct TensorBase {
   TensorBase(void);
   //Tensor& operator=(const Tensor& rhs);
@@ -43,6 +50,8 @@ struct TensorBase {
                              OperatorType type);
   size_t get_volume() const;
   Legion::Domain get_domain() const;
+  bool check_valid() const;
+  static bool update_parallel_ids(int numdim, ParallelDim* dims);
   template <typename T>
   bool set_tensor(const FFModel* model,
                    const std::vector<int>& dims,
@@ -51,7 +60,9 @@ struct TensorBase {
   bool get_tensor(const FFModel* model,
                   T* data);
   int guid;
-  int numDim, adim[MAX_TENSOR_DIM], degree[MAX_TENSOR_DIM];
+  int numDim;
+  int adim[MAX_TENSOR_DIM];
+  ParallelDim dims[MAX_TENSOR_DIM];
   DataType data_type;
   ParameterSyncType sync_type;
   Initializer* initializer;
@@ -60,7 +71,6 @@ struct TensorBase {
   int owner_idx;
   bool create_gradients;
   // The following fields are initialized after model.compile
-  int parallel_dims, parallel_is_to_dim[MAX_TENSOR_DIM];
   Legion::IndexSpace parallel_is;
   Legion::LogicalRegion region, region_grad;
   Legion::LogicalPartition part, part_grad;
