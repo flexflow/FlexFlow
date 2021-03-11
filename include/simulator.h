@@ -325,18 +325,11 @@ public:
   SimTask* new_barrier_task();
   SimTask* new_update_task();
   SimTask* new_comm_task();
-<<<<<<< HEAD
+  SimTask* new_comm_task(std::string const &name, CommDevice *comm_device, size_t message_size);
   SimTask* new_forward_task(const Op* op, int idx);
   SimTask* new_backward_task(const Op* op, int idx);
   SimTask* get_forward_task(const Op* op, int idx);
   SimTask* get_backward_task(const Op* op, int idx);
-=======
-  SimTask* new_comm_task(std::string const &name, CommDevice *comm_device, size_t message_size);
-  SimTask* new_forward_task(Op* op, int idx);
-  SimTask* new_backward_task(Op* op, int idx);
-  SimTask* get_forward_task(Op* op, int idx);
-  SimTask* get_backward_task(Op* op, int idx);
->>>>>>> 96178bf2975eed84cc2d25ec42897b00c4ce2133
 private:
   SimTask* new_task();
 public:
@@ -349,12 +342,8 @@ class Simulator {
 public:
   Simulator(const FFModel* model,
             FFHandler handler,
-<<<<<<< HEAD
-            Legion::Memory memory);
-=======
-            Memory memory,
+            Legion::Memory memory,
             MachineModel *machine);
->>>>>>> 96178bf2975eed84cc2d25ec42897b00c4ce2133
   ~Simulator(void);
   void free_all();
   void* allocate(size_t num_elements, DataType type);
@@ -373,12 +362,8 @@ public:
                                    Legion::Context ctx, Legion::Runtime *runtime);
 public:
   Realm::RegionInstance simulatorInst;
-<<<<<<< HEAD
-  Legion::Memory memory;
-=======
   MachineModel *machine;
-  Memory memory;
->>>>>>> 96178bf2975eed84cc2d25ec42897b00c4ce2133
+  Legion::Memory memory;
   FFHandler handler;
   char* base_ptr;
   size_t capacity;

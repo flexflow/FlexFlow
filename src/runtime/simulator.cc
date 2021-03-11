@@ -144,7 +144,7 @@ SimTask* TaskManager::new_comm_task(std::string const &name, CommDevice *comm_de
   return task;
 }
 
-SimTask* TaskManager::new_forward_task(Op* op, int idx)
+SimTask* TaskManager::new_forward_task(const Op* op, int idx)
 {
   SimTask* task = new_task();
   task->type = SimTask::TASK_FORWARD;
