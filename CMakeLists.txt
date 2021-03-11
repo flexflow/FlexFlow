@@ -126,7 +126,8 @@ set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/runtime/model.cc
   ${FLEXFLOW_ROOT}/src/runtime/optimizer.cc
   ${FLEXFLOW_ROOT}/src/runtime/strategy.cc
-  ${FLEXFLOW_ROOT}/src/runtime/simulator.cc)
+  ${FLEXFLOW_ROOT}/src/runtime/simulator.cc
+  ${FLEXFLOW_ROOT}/src/runtime/machine_model.cc)
 
 set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/loss_functions/loss_functions.cu

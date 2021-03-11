@@ -143,8 +143,12 @@ public:
   std::string dataset_path;
   std::string import_strategy_file;
   std::string export_strategy_file;
-  // We use Legion::MappingTagID as the key since we will pass the tag to the mapper
-  std::map<Legion::MappingTagID, ParallelConfig> strategies;
+  // We use MappingTagID as the key since we will pass the tag to the mapper
+  std::map<MappingTagID, ParallelConfig> strategies;
+  int machine_model_version;
+  std::string machine_model_file;
+  int simulator_segment_size;
+  int simulator_max_num_segments;
 };
 
 class FFIterationConfig {
