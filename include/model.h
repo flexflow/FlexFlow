@@ -56,6 +56,9 @@ enum TaskIDs {
   EMBED_INIT_TASK_ID,
   EMBED_FWD_TASK_ID,
   EMBED_BWD_TASK_ID,
+  GROUP_BY_INIT_TASK_ID,
+  GROUP_BY_FWD_TASK_ID,
+  GROUP_BY_BWD_TASK_ID,
   POOL2D_INIT_TASK_ID,
   POOL2D_FWD_TASK_ID,
   POOL2D_BWD_TASK_ID,
@@ -304,6 +307,11 @@ public:
                    const Op* shared_op = NULL,
                    Initializer* kernel_initializer = NULL,
                    const char* name = NULL);
+  // Add a group_by layer
+  Tensor group_by(const Tensor& data,
+                   const Tensor& assign,
+                   /*int out_dim, */int n, int k, float alpha,
+                   const char* name = NULL);
   // Add a 2D pooling layer
   Tensor pool2d(const Tensor& input,
                 int kernelH, int kernelW,
@@ -458,7 +466,7 @@ public:
   Metrics* metrics_op;
   Tensor label_tensor;
   //std::vector<Tensor> input_tensors;
-  
+
   std::vector<Op*> layers;
   std::vector<Parameter> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
@@ -1027,6 +1035,47 @@ public:
   AggrMode aggr;
   bool profiling;
   Initializer* kernel_initializer;
+};
+
+
+class Group_byMeta : public OpMeta {
+public:
+  Group_byMeta(FFHandler handle);
+};
+
+class Group_by : public Op {
+public:
+  Group_by(FFModel& model,
+          const Tensor& _input,
+          const Tensor& _assign,
+          /*int _out_dim, */int _n, int _k,
+          float _alpha,
+          const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+public:
+  int n, k;
+  float alpha;
+  bool profiling;
 };
 
 

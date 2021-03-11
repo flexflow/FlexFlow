@@ -76,6 +76,7 @@ enum OperatorType {
   OP_CONCAT,
   OP_SPLIT,
   OP_EMBEDDING,
+  OP_GROUP_BY,
   //OP_ELEMENTWISE,
   OP_RESHAPE,
   OP_REVERSE,
