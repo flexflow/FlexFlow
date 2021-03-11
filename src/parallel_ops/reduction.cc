@@ -102,7 +102,7 @@ void Reduction::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-bool Combine::measure_operator_cost(
+bool Reduction::measure_operator_cost(
     Simulator* sim,
     const ParallelConfig& pc,
     CostMetrics& cost_metrics)
