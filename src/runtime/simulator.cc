@@ -39,30 +39,21 @@ bool ParallelConfig::is_data_parallel() const
   return true;
 }
 
-Device::Device(Device::DeviceType _type,
-               int _node_id,
-               int _gpu_id,
-               size_t _capacity)
-: node_id(_node_id),
-  gpu_id(_gpu_id),
-  bandwidth(0.0f),
-  capacity(_capacity),
-  type(_type)
-{
-  printf("Device: node_id(%d) gpu_id(%d) capacity(%zu)\n", node_id, gpu_id, capacity);
-  assert(type == DEVICE_GPU);
-}
+Device::Device(std::string const &name, DeviceType type, int node_id, int socket_id, int device_id)
+: name(name), type(type), node_id(node_id), socket_id(socket_id), device_id(device_id)
+{}
 
-Device::Device(Device::DeviceType _type,
-               float _bandwidth)
-: node_id(-1),
-  gpu_id(-1),
-  bandwidth(_bandwidth),
-  capacity(0),
-  type(_type)
-{
-  assert(type == DEVICE_COMM);
-}
+CompDevice::CompDevice(std::string const &name, CompDevType comp_type, int node_id, int socket_id, int device_id)
+: Device(name, Device::DEVICE_COMP, node_id, socket_id, device_id), comp_type(comp_type)
+{}
+
+MemDevice::MemDevice(std::string const &name, MemDevType mem_type, int node_id, int socket_id, int device_id, size_t capacity)
+: Device(name, Device::DEVICE_MEM, node_id, socket_id, device_id), mem_type(mem_type), capacity(capacity)
+{}
+
+CommDevice::CommDevice(std::string const &name, CommDevType comm_type, int node_id, int socket_id, int device_id, float latency, float bandwidth)
+: Device(name, Device::DEVICE_COMM, node_id, socket_id, device_id), comm_type(comm_type), latency(latency), bandwidth(bandwidth)
+{}
 
 SimTask::SimTask()
 {}
@@ -115,7 +106,8 @@ SimTask* TaskManager::new_task()
   task->next_tasks.clear();
   task->counter = 0;
   task->device = NULL;
-  task->op_name = NULL;
+  task->mem = NULL;
+  task->name.clear();
   return task;
 }
 
@@ -140,6 +132,16 @@ SimTask* TaskManager::new_comm_task()
   return task;
 }
 
+SimTask* TaskManager::new_comm_task(std::string const &name, CommDevice *comm_device, size_t message_size)
+{
+  SimTask* task = new_task();
+  task->type = SimTask::TASK_COMM;
+  task->name = name;
+  task->device = comm_device;
+  task->run_time = comm_device->latency + message_size / comm_device->bandwidth;
+  return task;
+}
+
 SimTask* TaskManager::new_forward_task(Op* op, int idx)
 {
   SimTask* task = new_task();
@@ -147,7 +149,7 @@ SimTask* TaskManager::new_forward_task(Op* op, int idx)
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
   hash_to_forward_task[hash] = task;
-  task->op_name = op->name;
+  task->name = op->name;
   return task;
 }
 
@@ -158,7 +160,7 @@ SimTask* TaskManager::new_backward_task(Op* op, int idx)
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
   hash_to_backward_task[hash] = task;
-  task->op_name = op->name;
+  task->name = op->name;
   return task;
 }
 
@@ -215,72 +217,75 @@ void* Simulator::allocate(size_t num_elements, DataType type)
   return ret_ptr;
 }
 
-Device* Simulator::get_compute_device_by_id(int device_id)
-{
-  assert(id_to_compute_device.find(device_id) != id_to_compute_device.end());
-  return id_to_compute_device[device_id];
-}
-
-Device* Simulator::get_inter_gpu_comm_device_by_ids(int src_id,
-                                                    int dst_id)
-{
-  int hash = src_id * total_num_gpus + dst_id;
-  assert(ids_to_inter_gpu_comm_device.find(hash) != ids_to_inter_gpu_comm_device.end());
-  return ids_to_inter_gpu_comm_device[hash];
-}
-
-Device* Simulator::get_gpu_to_dram_comm_device_by_id(int gpu_id)
-{
-  assert(id_to_gputodram_comm_device.find(gpu_id) != id_to_gputodram_comm_device.end());
-  return id_to_gputodram_comm_device[gpu_id];
-}
-
-Device* Simulator::get_dram_to_gpu_comm_device_by_id(int gpu_id)
-{
-  assert(id_to_dramtogpu_comm_device.find(gpu_id) != id_to_dramtogpu_comm_device.end());
-  return id_to_dramtogpu_comm_device[gpu_id];
-}
-
-Device* Simulator::get_inter_node_comm_device_by_ids(int src_id,
-                                                     int dst_id)
-{
-  int hash = src_id * total_num_gpus + dst_id;
-  assert(ids_to_inter_node_comm_device.find(hash) != ids_to_inter_node_comm_device.end());
-  return ids_to_inter_node_comm_device[hash];
-}
-
 void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
                                                 SimTask* dst_task,
-                                                size_t intersect)
+                                                size_t message_size)
 {
-  if (src_task->device == dst_task->device) {
+  std::vector<CommDevice *> path = machine->get_comm_path(src_task->mem, dst_task->mem);
+  // print the communication path
+  // printf("Path from %s to %s is: ", src_task->mem->name.c_str(), dst_task->mem->name.c_str());
+  // for (size_t i = 0; i < path.size(); i++) {
+  //   printf("%s ", path[i]->name.c_str());
+  // }
+  // printf("\n");
+
+  if (path.empty()) {
     src_task->add_next_task(dst_task);
-  } else if (src_task->device->node_id == dst_task->device->node_id) {
-    // Intra-node communication
-    SimTask* task = task_manager->new_comm_task();
-    task->device = get_inter_gpu_comm_device_by_ids(src_task->device->gpu_id,
-                                                    dst_task->device->gpu_id);
-    task->run_time = (float)intersect * sizeof(float) / task->device->bandwidth;
-    //printf("Comm task: run_time(%.4lf) size(%zu) bandwidth(%.4lf)\n",
-    //       task->run_time, intersect * sizeof(float), task->device->bandwidth);
-    src_task->add_next_task(task);
-    task->add_next_task(dst_task);
-  } else {
-    // Inter-node communication
-    SimTask* gpu_to_dram = task_manager->new_comm_task();
-    gpu_to_dram->device = get_gpu_to_dram_comm_device_by_id(src_task->device->gpu_id);
-    gpu_to_dram->run_time = (float)intersect * sizeof(float) / gpu_to_dram->device->bandwidth;
-    SimTask* dram_to_dram = task_manager->new_comm_task();
-    dram_to_dram->device = get_inter_node_comm_device_by_ids(src_task->device->node_id,
-                                                             dst_task->device->node_id);
-    dram_to_dram->run_time = (float)intersect * sizeof(float) / dram_to_dram->device->bandwidth;
-    SimTask* dram_to_gpu = task_manager->new_comm_task();
-    dram_to_gpu->device = get_dram_to_gpu_comm_device_by_id(dst_task->device->gpu_id);
-    dram_to_gpu->run_time = (float)intersect * sizeof(float) / dram_to_gpu->device->bandwidth;
-    src_task->add_next_task(gpu_to_dram);
-    gpu_to_dram->add_next_task(dram_to_dram);
-    dram_to_dram->add_next_task(dram_to_gpu);
-    dram_to_gpu->add_next_task(dst_task);
+    return;
+  }
+  assert(message_size > 0);
+  std::vector<std::vector<SimTask *>> all_tasks;
+  // Limit the max number of segments per message
+  int seg_size = segment_size;
+  int num_segment = message_size / seg_size;
+  if (message_size % seg_size != 0) {
+    num_segment += 1;
+  }
+  if (num_segment > max_num_segments) {
+    num_segment = max_num_segments;
+    seg_size = message_size / num_segment;
+  }
+  // Create all the comm tasks
+  // Divide messages into segments
+  for (size_t i = 0; i < path.size(); i++) {
+    all_tasks.push_back({});
+    for (int j = 0; j < num_segment; j++) {
+      int cur_seg_size = seg_size;
+      if (j == num_segment - 1) {
+        cur_seg_size = message_size - (num_segment - 1) * seg_size;
+      }
+      std::string name = "seg " + std::to_string(j) + " from " + src_task->name + " to " + dst_task->name;
+      SimTask *cur_task = task_manager->new_comm_task(name, path[i], cur_seg_size);
+      all_tasks[i].push_back(cur_task);
+    }
+  }
+
+  // Add dependencies among the comm tasks
+  for (size_t i = 0; i < path.size(); i++) {
+    for (int j = 0; j < num_segment; j++) {
+      if (i == 0) {
+        src_task->add_next_task(all_tasks[i][j]);
+      }
+      if (i == path.size() - 1) {
+        all_tasks[i][j]->add_next_task(dst_task);
+      }
+      if (i > 0) {
+        all_tasks[i-1][j]->add_next_task(all_tasks[i][j]);
+      }
+    }
+  }
+
+  // Add special dependencies for upi_ins, upi_outs, nic_ins, and nic_outs to prevent communication
+  // overlap between upi_ins and upi_outs, and between nic_ins and nic_outs.
+  if (num_segment > 1 and path.size() >= 2) {
+    for (size_t i = 0; i < path.size(); i++) {
+      for (int j = 1; j < num_segment; j++) {
+        if (((CommDevice *)all_tasks[i][j]->device)->comm_type == CommDevice::NIC_OUT_COMM or
+            ((CommDevice *)all_tasks[i][j]->device)->comm_type == CommDevice::UPI_OUT_COMM) {
+          all_tasks[i+1][j-1]->add_next_task(all_tasks[i][j]);
+        }
+      }
+    }
   }
 }
 
@@ -327,6 +332,7 @@ float Simulator::simulate_runtime(const FFModel* model,
                                   CompMode comp_mode,
                                   std::string const &export_file_name)
 {
+  // printf("%s\n", machine->to_string().c_str());
   task_manager->reset();
   // Step 1: register forward and backward tasks
   for (size_t l = 0; l < model->layers.size(); l++) {
@@ -337,11 +343,13 @@ float Simulator::simulate_runtime(const FFModel* model,
     float backward_time = cost_metrics.backward_time;
     for (int j = 0; j < config.num_parts(); j++) {
       SimTask* task1 = task_manager->new_forward_task(op, j);
-      task1->device = get_compute_device_by_id(config.device_ids[j]);
+      task1->device = machine->get_gpu(config.device_ids[j]);
+      task1->mem = machine->get_gpu_fb_mem(config.device_ids[j]);
       task1->run_time = forward_time;
       if (comp_mode == COMP_MODE_TRAINING) {
         SimTask* task2 = task_manager->new_backward_task(op, j);
-        task2->device = get_compute_device_by_id(config.device_ids[j]);
+        task2->device = machine->get_gpu(config.device_ids[j]);
+        task2->mem = machine->get_gpu_fb_mem(config.device_ids[j]);
         task2->run_time = backward_time;
         task1->add_next_task(task2);
       }
@@ -385,9 +393,10 @@ float Simulator::simulate_runtime(const FFModel* model,
   // Step 2.5: add finals tasks for each compute device to capture the returning comm tasks
   // from parameter servers
   std::vector<SimTask*> finals;
-  for (int d = 0; d < total_num_gpus; d++) {
+  for (int d = 0; d < machine->get_num_gpus(); d++) {
     SimTask* t = task_manager->new_barrier_task();
-    t->device = get_compute_device_by_id(d);
+    t->device = machine->get_gpu(d);
+    t->mem = machine->get_gpu_fb_mem(d);
     t->run_time = 0;
     finals.push_back(t);
   }
@@ -405,7 +414,8 @@ float Simulator::simulate_runtime(const FFModel* model,
             Domain firstR = op->get_weight_tensor_shape(pc, j, firstId);
             // Add a compute task for parameter update
             SimTask* updateT = task_manager->new_update_task();
-            updateT->device = get_compute_device_by_id(pc.device_ids[firstId]);
+            updateT->device = machine->get_gpu(pc.device_ids[firstId]);
+            updateT->mem = machine->get_gpu_fb_mem(pc.device_ids[firstId]);
             // TODO add parameter synchronization time
             updateT->run_time = 0.0f; // Assume update task takes no time
             for (int nextId = firstId+1; nextId < pc.num_parts(); nextId++) {
@@ -420,7 +430,7 @@ float Simulator::simulate_runtime(const FFModel* model,
                 SimTask* backT = task_manager->get_backward_task(op, nextId);
                 add_task_dependencies_with_xfer(backT, updateT, firstR.get_volume());
                 // Add comm. tasks from updateT to finalT
-                SimTask* finalT = finals[backT->device->gpu_id];
+                SimTask* finalT = finals[backT->device->device_id];
                 add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume());
               }
             }
@@ -431,9 +441,10 @@ float Simulator::simulate_runtime(const FFModel* model,
     // Step 3b: Bulk Synchronous Model
     // Add a per-device barrier before weight update
     std::vector<SimTask*> barriers;
-    for (int d = 0; d < total_num_gpus; d++) {
+    for (int d = 0; d < machine->get_num_gpus(); d++) {
       SimTask* t = task_manager->new_barrier_task();
-      t->device = get_compute_device_by_id(d);
+      t->device = machine->get_gpu(d);
+      t->mem = machine->get_gpu_fb_mem(d);
       t->run_time = 0;
       barriers.push_back(t);
     }
@@ -442,7 +453,7 @@ float Simulator::simulate_runtime(const FFModel* model,
       ParallelConfig pc = global.find(op)->second;
       for (int j = 0; j < pc.num_parts(); j++) {
         SimTask* backT = task_manager->get_backward_task(op, j);
-        backT->add_next_task(barriers[backT->device->gpu_id]);
+        backT->add_next_task(barriers[backT->device->device_id]);
       }
     }
     for (size_t l = 0; l < model->layers.size(); l++) {
@@ -456,9 +467,10 @@ float Simulator::simulate_runtime(const FFModel* model,
             Domain firstR = op->get_weight_tensor_shape(pc, j, firstId);
             // Add a compute task for parameter update
             SimTask* updateT = task_manager->new_update_task();
-            updateT->device = get_compute_device_by_id(pc.device_ids[firstId]);
+            updateT->device = machine->get_gpu(pc.device_ids[firstId]);
+            updateT->mem = machine->get_gpu_fb_mem(pc.device_ids[firstId]);
             updateT->run_time = 0.0f; // Assume update task takes no time
-            barriers[updateT->device->gpu_id]->add_next_task(updateT);
+            barriers[updateT->device->device_id]->add_next_task(updateT);
             for (int nextId = firstId+1; nextId < pc.num_parts(); nextId++) {
               Domain nextR = op->get_weight_tensor_shape(pc, j, nextId);
               if (firstR.intersection(nextR).get_volume() > 0) {
@@ -468,12 +480,12 @@ float Simulator::simulate_runtime(const FFModel* model,
                 assert(synched.find(nextId) == synched.end());
                 synched.insert(nextId);
                 SimTask* backT = task_manager->get_backward_task(op, nextId);
-                assert(backT->device->gpu_id == pc.device_ids[nextId]);
-                SimTask* barrierT = barriers[backT->device->gpu_id];
+                assert(backT->device->device_id == pc.device_ids[nextId]);
+                SimTask* barrierT = barriers[backT->device->device_id];
                 // Add comm. tasks from barrierT to updateT
                 add_task_dependencies_with_xfer(barrierT, updateT, firstR.get_volume());
                 // Add comm. tasks from updateT to finalT
-                SimTask* finalT = finals[backT->device->gpu_id];
+                SimTask* finalT = finals[backT->device->device_id];
                 add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume());
               }
             }
@@ -500,37 +512,37 @@ float Simulator::simulate_runtime(const FFModel* model,
   }
   while (!ready_queue.empty()) {
     // Find the task with the earliest start time
-    SimTask* t = ready_queue.top();
+    SimTask* cur_task = ready_queue.top();
     ready_queue.pop();
     float ready_time = 0;
-    if (device_times.find(t->device) != device_times.end()) {
-      ready_time = device_times[t->device];
+    if (device_times.find(cur_task->device) != device_times.end()) {
+      ready_time = device_times[cur_task->device];
     }
-    float start_time = std::max(ready_time, t->ready_time);
-    float end_time = start_time + t->run_time;
-    device_times[t->device] = end_time;
+    float start_time = std::max(ready_time, cur_task->ready_time);
+    float end_time = start_time + cur_task->run_time;
+    device_times[cur_task->device] = end_time;
     if (export_taskgraph) {
       std::map<std::string, std::string> nodeAttrs;
       std::ostringstream label;
       label << "\"{ ";
-      if (t->op_name != NULL) {
-        label << t->op_name << " | ";
+      if (!(cur_task->name).empty()) {
+        label << cur_task->name << " | ";
       }
-      label << t->get_type_str() << " | ";
+      label << cur_task->get_type_str() << " | ";
       label << "{ " << start_time << " | " << end_time << " }";
       label << " }\"";
       nodeAttrs["label"] = label.str();
       nodeAttrs["shape"] = "record";
-      taskGraph.add_node(t, nodeAttrs);
+      taskGraph.add_node(cur_task, nodeAttrs);
     }
-    /* printf("task[%d] type(%d) run_time(%.4lf) ready_time(%.4lf) start_time(%.4lf) device(%d)\n", */
-    /*     idx, t->type, t->run_time, ready_time, start_time, t->device->gpu_id); */
+    // printf("task[%lu] type(%d) run_time(%.4lf) ready_time(%.4lf) start_time(%.4lf) device(%s)\n",
+    //       idx, cur_task->type, cur_task->run_time, ready_time, start_time, (cur_task->device->name).c_str());
     if (end_time > sim_time)
       sim_time = end_time;
-    for (size_t i = 0; i < t->next_tasks.size(); i++) {
-      SimTask* next = t->next_tasks[i];
+    for (size_t i = 0; i < cur_task->next_tasks.size(); i++) {
+      SimTask* next = cur_task->next_tasks[i];
       if (export_taskgraph) {
-        taskGraph.add_edge(t, next);
+        taskGraph.add_edge(cur_task, next);
       }
       next->ready_time = std::max(next->ready_time, end_time);
       next->counter --;
@@ -558,7 +570,7 @@ float Simulator::simulate_runtime(const FFModel* model,
           if (synched.find(firstId) == synched.end()) {
             synched.insert(firstId);
             Domain firstR = op->get_weight_tensor_shape(pc, j, firstId);
-            Device* firstDevice = get_compute_device_by_id(pc.device_ids[firstId]);
+            Device* firstDevice = machine->get_gpu(pc.device_ids[firstId]);
             float nccl_time = 0.0f;
             for (int nextId = firstId+1; nextId < pc.num_parts(); nextId++) {
               Domain nextR = op->get_weight_tensor_shape(pc, j, nextId);
@@ -568,17 +580,13 @@ float Simulator::simulate_runtime(const FFModel* model,
                 assert(firstR == nextR);
                 assert(synched.find(nextId) == synched.end());
                 synched.insert(nextId);
-                Device* nextDevice = get_compute_device_by_id(pc.device_ids[nextId]);
+                Device* nextDevice = machine->get_gpu(pc.device_ids[nextId]);
                 // Compute the bandwidth between firstDevice/nextDevice
                 float bandwidth = 0.0f;
                 if (firstDevice->node_id == nextDevice->node_id) {
-                  Device* commDevice = get_inter_gpu_comm_device_by_ids(
-                      firstDevice->gpu_id, nextDevice->gpu_id);
-                  bandwidth = commDevice->bandwidth;
+                  bandwidth = machine->get_intra_node_gpu_bandwidth();
                 } else {
-                  Device* commDevice = get_inter_node_comm_device_by_ids(
-                      firstDevice->node_id, nextDevice->node_id);
-                  bandwidth = commDevice->bandwidth;
+                  bandwidth = machine->get_inter_node_gpu_bandwidth();
                 }
                 nccl_time = std::max(nccl_time, (float)firstR.get_volume() * sizeof(float) / bandwidth);
               }
@@ -593,7 +601,7 @@ float Simulator::simulate_runtime(const FFModel* model,
   }
 #endif
   // Step 6: add penalty to strategies that exceed the memory limits on devices
-  std::vector<size_t> gpu_mem_usage(total_num_gpus, 0);
+  std::vector<size_t> gpu_mem_usage(machine->get_num_gpus(), 0);
   float memory_penalty = 0.0f;
   for (size_t l = 0; l < model->layers.size(); l++) {
     Op* op = model->layers[l];
@@ -605,15 +613,15 @@ float Simulator::simulate_runtime(const FFModel* model,
     }
   }
   if (export_file_name != "") {  
-    for (int i = 0; i < total_num_gpus; i++) {
+    for (int i = 0; i < machine->get_num_gpus(); i++) {
         printf("Before penalty, dev id %d, usage %zu \n", i, gpu_mem_usage[i]); 
     }
   }
   // Penalize the total runtiem by 1ms if we exceed the memory budget by 1MB
-  for (int i = 0; i < total_num_gpus; i++) {
-    Device* gpu = get_compute_device_by_id(i);
-    if (gpu_mem_usage[i] > gpu->capacity)
-      memory_penalty += (gpu_mem_usage[i] - gpu->capacity) * 1e-6;
+  for (int i = 0; i < machine->get_num_gpus(); i++) {
+    MemDevice* gpu_fb_mem = machine->get_gpu_fb_mem(i);
+    if (gpu_mem_usage[i] > gpu_fb_mem->capacity and gpu_fb_mem->capacity >= 0)
+      memory_penalty += (gpu_mem_usage[i] - gpu_fb_mem->capacity) * 1e-6;
   }
   //if (memory_penalty > 0.0f)
   //  printf("Memory penalty = %.4lf ms\n", memory_penalty);

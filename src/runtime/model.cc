@@ -1984,6 +1984,9 @@ struct DefaultConfig {
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
   const static bool allowTensorOpMathConversion = false;
+  const static int machine_model_version = 0;
+  const static int simulator_segment_size = 16777216; // 16 MB
+  const static int simulator_max_num_segments = 1;
 };
 
 FFConfig::FFConfig()
@@ -2007,7 +2010,10 @@ FFConfig::FFConfig()
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
   allow_tensor_op_math_conversion = DefaultConfig::allowTensorOpMathConversion;
-
+  machine_model_version = DefaultConfig::machine_model_version;
+  simulator_segment_size = DefaultConfig::simulator_segment_size;
+  simulator_max_num_segments = DefaultConfig::simulator_max_num_segments;
+  machine_model_file = "";
   import_strategy_file = "";
   export_strategy_file = "";
   export_strategy_task_graph_file = "";
@@ -2127,6 +2133,22 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if (!strcmp(argv[i], "--taskgraph")) {
       export_strategy_task_graph_file = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--machine-model-version")) {
+      machine_model_version = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--machine-model-file")) {
+      machine_model_file = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--simulator-segment-size")) {
+      simulator_segment_size = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--simulator-max-num-segments")) {
+      simulator_max_num_segments = atoi(argv[++i]);
       continue;
     }
   }

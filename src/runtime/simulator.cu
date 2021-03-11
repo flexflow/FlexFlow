@@ -26,7 +26,8 @@ typedef Realm::Rect<1, coord_t> Rect1;
 
 Simulator::Simulator(const FFModel* model,
                      FFHandler _handler,
-                     Memory _memory)
+                     Memory _memory,
+                     MachineModel *machine)
 : memory(_memory), handler(_handler),
   offset(0), warmup_times(5), repeat_times(10),
   computationMode(model->config.computationMode)
@@ -40,9 +41,6 @@ Simulator::Simulator(const FFModel* model,
   base_ptr = (char*)simulatorInst.pointer_untyped(0, sizeof(char));
   capacity = model->config.simulator_work_space_size;
 
-  float inter_gpu_bandwidth = 20 * 1024 * 1024.0f; /* B/ms*/
-  float inter_node_bandwidth = 12 * 1024 * 1024.0f / model->config.numNodes; /* B/ms*/
-  float gpu_dram_bandwidth = 16 * 1024 * 1024.0f; /* B/ms*/
   size_t max_num_tasks = 1024 * 1024;
 
   cudaEventCreate(&start_event);
@@ -57,41 +55,9 @@ Simulator::Simulator(const FFModel* model,
   concat_meta = new ConcatMeta(handler);
   //dropout_meta = new DropoutMeta(handler);
   transpose_meta = new TransposeMeta(handler);
-  num_nodes = model->config.numNodes;
-  gpus_per_node = model->config.workersPerNode;
-  total_num_gpus = num_nodes * gpus_per_node;
-  // Create GPU compute device
-  for (int i = 0; i < num_nodes; i++)
-    for (int j = 0; j < gpus_per_node; j++) {
-      id_to_compute_device[i*gpus_per_node+j] = new Device(Device::DEVICE_GPU,
-          i, i*gpus_per_node+j, memory.capacity());
-    }
-  // Create inter GPU comm devices:
-  for (int i = 0; i < total_num_gpus; i++)
-    for (int j = 0; j < total_num_gpus; j++) {
-      Device* src = id_to_compute_device[i];
-      Device* dst = id_to_compute_device[j];
-      if (src->node_id == dst->node_id && src != dst) {
-        int hash = i * total_num_gpus + j;
-        ids_to_inter_gpu_comm_device[hash] = new Device(Device::DEVICE_COMM,
-            inter_gpu_bandwidth);
-      }
-    }
-  // Create gpu<->dram comm devices
-  for (int i = 0; i < total_num_gpus; i++) {
-    id_to_gputodram_comm_device[i] = new Device(Device::DEVICE_COMM,
-        gpu_dram_bandwidth);
-    id_to_dramtogpu_comm_device[i] = new Device(Device::DEVICE_COMM,
-        gpu_dram_bandwidth);
-  }
-  // Create inter node comm devices
-  for (int i = 0; i < num_nodes; i++)
-    for (int j = 0; j < num_nodes; j++)
-      if (i != j) {
-        int hash = i * total_num_gpus + j;
-        ids_to_inter_node_comm_device[hash] = new Device(Device::DEVICE_COMM,
-            inter_node_bandwidth);
-      }
+  this->machine = machine;
+  segment_size = model->config.simulator_segment_size;
+  max_num_segments = model->config.simulator_max_num_segments;
   // Initialize task manager
   task_manager = new TaskManager(max_num_tasks);
 }
@@ -114,8 +80,18 @@ void Simulator::strategy_search_task(const Task *task,
   // Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
   // off_t offset = memFBImpl->alloc_bytes_local(model->config.simulator_work_space_size);
   // void* base_ptr = memFBImpl->get_direct_ptr(offset, 0);
+  MachineModel *machine;
+  if (model->config.machine_model_version == 0) {
+    machine = (MachineModel *) new SimpleMachineModel(model->config.numNodes, model->config.workersPerNode, gpu_mem.capacity());
+  }
+  else if (model->config.machine_model_version == 1 and !model->config.machine_model_file.empty()) {
+    machine = (MachineModel *) new EnhancedMachineModel(model->config.machine_model_file, gpu_mem.capacity());
+  }
+  else {
+    assert(false && "machine model creation error: currently only support machine-model-version = 0 or 1. When machine-model-version = 1, machine-model-file should not be empty.");
+  }
   // Assume this task is running on GPU0
-  Simulator* simulator = new Simulator(model, model->handlers[0], gpu_mem);
+  Simulator* simulator = new Simulator(model, model->handlers[0], gpu_mem, machine);
   // Set cublas/cudnn streams to allow Realm catch the events
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
@@ -173,5 +149,6 @@ void Simulator::strategy_search_task(const Task *task,
   // Start from data
   // memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);
   delete(simulator);
+  delete(machine);
 }
 
