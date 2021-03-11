@@ -8,12 +8,11 @@ import argparse
 
 def top_level_task():
     ffconfig = FFConfig()
-    ffconfig.parse_args()
     print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" % (
-        ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
+        ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
     ffmodel = FFModel(ffconfig)
 
-    dims_input = [ffconfig.get_batch_size(), 784]
+    dims_input = [ffconfig.batch_size, 784]
     input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
     num_samples = 60000
@@ -27,10 +26,10 @@ def top_level_task():
     t = ffmodel.softmax(t)
 
     ffoptimizer = SGDOptimizer(ffmodel, 0.01)
-    ffmodel.set_sgd_optimizer(ffoptimizer)
+    ffmodel.optimizer = ffoptimizer
     ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[
                     MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
-    label_tensor = ffmodel.get_label_tensor()
+    label_tensor = ffmodel.label_tensor
 
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -46,7 +45,7 @@ def top_level_task():
 
     ffmodel.init_layers()
 
-    epochs = ffconfig.get_epochs()
+    epochs = ffconfig.epochs
 
     ts_start = ffconfig.get_current_time()
 

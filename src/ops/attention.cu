@@ -64,8 +64,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
   qSize(_query.adim[0]), kSize(_key.adim[0]), vSize(_value.adim[0]),
   qProjSize(_kdim), kProjSize(_kdim), vProjSize(_vdim), oProjSize(_embed_dim),
   qoSeqLength(_query.adim[1]), kvSeqLength(_key.adim[1]),
-  kernel_initializer(_kernel_initializer),
-  profiling(model.config.profiling)
+  kernel_initializer(_kernel_initializer)
   //bias_initializer(_bias_initializer)
 {
   // assert key and value have the same sequence length
@@ -180,10 +179,8 @@ OpMeta* MultiHeadAttention::init_task(
          .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
   MultiHeadAttentionMeta* m = new MultiHeadAttentionMeta(handle,
       attn, gpu_mem, num_samples, num_heads);
+  m->profiling = attn->profiling;
   assert(acc_weight.rect.volume() * sizeof(float) == m->weightSize);
-#ifdef FF_USE_NCCL
-  m->init_nccl_communicator(task, attn->ncclId);
-#endif
   return m;
 }
 
@@ -199,6 +196,9 @@ void MultiHeadAttention::init(const FFModel& ff)
   int idx = 0;
   for (PointInRectIterator<3> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[pc.device_ids[idx++]];
+#ifdef FF_USE_NCCL
+    handle.ncclComm = pc.nccl_comms[idx-1];
+#endif
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
   IndexLauncher launcher(ATTENTION_INIT_TASK_ID, task_is,
@@ -233,13 +233,14 @@ void MultiHeadAttention::init(const FFModel& ff)
   }
 }
 
+/*static*/
 void MultiHeadAttention::forward_kernel(
     const MultiHeadAttentionMeta* m,
     const float* query_ptr,
     const float* key_ptr,
     const float* value_ptr,
     const float* weight_ptr,
-    float* output_ptr) const
+    float* output_ptr)
 {
   checkCUDNN(cudnnMultiHeadAttnForward(m->handle.dnn,
       m->attnDesc, -1, m->loWinIdx, m->hiWinIdx,
@@ -265,7 +266,7 @@ void MultiHeadAttention::forward_task(
 {
   assert(regions.size() == 5);
   assert(task->regions.size() == regions.size());
-  const MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
+  //const MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
   const MultiHeadAttentionMeta* m = *((MultiHeadAttentionMeta**) task->local_args);
   TensorAccessorR<float, 3> acc_query(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -279,7 +280,7 @@ void MultiHeadAttention::forward_task(
       regions[4], task->regions[4], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   cudaEvent_t t_start, t_end;
-  if (attn->profiling) {
+  if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -289,9 +290,10 @@ void MultiHeadAttention::forward_task(
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  attn->forward_kernel(m, acc_query.ptr, acc_key.ptr, acc_value.ptr,
+  MultiHeadAttention::forward_kernel(m,
+      acc_query.ptr, acc_key.ptr, acc_value.ptr,
       acc_weight.ptr, acc_output.ptr);
-  if (attn->profiling) {
+  if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -316,7 +318,7 @@ void MultiHeadAttention::forward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(ATTENTION_FWD_TASK_ID, task_is,
-      TaskArgument(this, sizeof(MultiHeadAttention)), argmap,
+      TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -342,6 +344,7 @@ void MultiHeadAttention::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+/*static*/
 void MultiHeadAttention::backward_kernel(
     const MultiHeadAttentionMeta* m,
     const float* query_ptr,
@@ -352,7 +355,7 @@ void MultiHeadAttention::backward_kernel(
     float* value_grad_ptr,
     const float* weight_ptr,
     float* weight_grad_ptr,
-    const float* output_grad_ptr) const
+    const float* output_grad_ptr)
 {
   checkCUDNN(cudnnMultiHeadAttnBackwardData(m->handle.dnn,
       m->attnDesc, m->loWinIdx, m->hiWinIdx, m->devQoSeqArray,
@@ -388,7 +391,7 @@ void MultiHeadAttention::backward_task(
 {
   assert(regions.size() >= 7);
   assert(task->regions.size() == regions.size());
-  MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
+  //MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
   const MultiHeadAttentionMeta* m = *((MultiHeadAttentionMeta**) task->local_args);
   TensorAccessorR<float, 3> acc_query(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -438,7 +441,7 @@ void MultiHeadAttention::backward_task(
     key_grad_ptr = acc_key_grad.ptr;
   }
   cudaEvent_t t_start, t_end;
-  if (attn->profiling) {
+  if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -449,11 +452,12 @@ void MultiHeadAttention::backward_task(
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  attn->backward_kernel(m, acc_query.ptr, acc_query_grad.ptr,
+  MultiHeadAttention::backward_kernel(m,
+      acc_query.ptr, acc_query_grad.ptr,
       acc_key.ptr, key_grad_ptr, acc_value.ptr, value_grad_ptr,
       acc_weight.ptr, acc_weight_grad.ptr,
       acc_output_grad.ptr);
-  if (attn->profiling) {
+  if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -476,7 +480,7 @@ void MultiHeadAttention::backward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(ATTENTION_BWD_TASK_ID, task_is,
-      TaskArgument(this, sizeof(MultiHeadAttention)), argmap,
+      TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(

@@ -26,6 +26,7 @@ enum DataType {
   DT_INT32 = 42,
   DT_INT64 = 43,
   DT_BOOLEAN = 44,
+  DT_NONE = 49,
 };
 
 enum LossType {

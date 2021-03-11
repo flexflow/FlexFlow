@@ -103,6 +103,7 @@ enum TaskIDs {
   ATTENTION_FWD_TASK_ID,
   ATTENTION_BWD_TASK_ID,
   MSELOSS_BWD_TASK_ID,
+  FUSEDOP_INIT_TASK_ID,
   FUSEDOP_FWD_TASK_ID,
   FUSEDOP_BWD_TASK_ID,
   //Metrics tasks
@@ -126,6 +127,7 @@ enum TaskIDs {
   NORMAL_INIT_TASK_ID,
   // NCCL tasks
   NCCL_GETUNIQUEID_TASK_ID,
+  NCCL_INIT_COMMS_TASK_ID,
   // Search
   STRATEGY_SEARCH_TASK_ID,
   // Python data loader
@@ -175,14 +177,9 @@ class DataLoader;
 class OpMeta {
 public:
   OpMeta(FFHandler _handle);
-#ifdef FF_USE_NCCL
-  void init_nccl_communicator(const Task* task, ncclUniqueId ncclId);
-#endif
 public:
   FFHandler handle;
-#ifdef FF_USE_NCCL
-  ncclComm_t ncclComm;
-#endif
+  bool profiling; // Measure the run time of the task
 };
 
 class Op {
@@ -219,8 +216,10 @@ public:
   void zero_grad(const FFModel&);
   Parameter* get_parameter(int index);
 #ifdef FF_USE_NCCL
-  void get_nccl_unique_id(const FFModel& model);
   static ncclUniqueId get_nccl_unique_id_task(const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
+  static ncclComm_t init_nccl_comms_task(const Task *task,
       const std::vector<PhysicalRegion> &regions,
       Context ctx, Runtime *runtime);
 #endif
@@ -237,6 +236,7 @@ public:
   //Tensor locals[MAX_NUM_LOCALS];
   OpMeta* meta[MAX_NUM_WORKERS];
   int numInputs, numWeights, numOutputs;
+  bool profiling;
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;
 #endif
@@ -288,8 +288,8 @@ public:
                 int kernelH, int kernelW,
                 int strideH, int strideW,
                 int paddingH, int paddingW,
-                int groups = 1,
                 ActiMode activation = AC_MODE_NONE,
+                int groups = 1,
                 bool use_bias = true,
                 const Op* shared_op = NULL,
                 Initializer* krenel_initializer = NULL,
@@ -327,7 +327,9 @@ public:
                     const char* name = NULL);
   // Add a batch_matmul layer
   Tensor batch_matmul(const Tensor& A,
-                      const Tensor& B);
+                      const Tensor& B,
+                      int a_seq_length_dim=-1,
+                      int b_seq_length_dim=-1);
   // Add a dense layer
   Tensor dense(const Tensor& input,
                int outDim,
@@ -350,6 +352,7 @@ public:
   Tensor flat(const Tensor& input, const char *name = NULL);
   // Add a softmax layer
   Tensor softmax(const Tensor& input,
+                 int dim=-1,
                  const char *name = NULL);
   // Create input tensors and constants
   Tensor transpose(const Tensor& input,
@@ -430,9 +433,9 @@ public:
   void reset_metrics();
   void init_layers();
   void prefetch();
-  void forward();
+  void forward(int seq_length = -1);
   void compute_metrics();
-  void backward();
+  void backward(int seq_length = -1);
   void update();
   bool apply_fusion(const std::vector<Op*>& layers, std::vector<Op*>& new_layers);
   void compile(LossType loss_type,
@@ -459,9 +462,13 @@ public:
   IndexSpace get_task_is(const Domain& domain) const;
   IndexSpace get_task_is(ParallelConfig pc) const;
   IndexSpace get_task_is(int ndims, const std::string& pcname) const;
+  // APIs for setting iteration configs
+public:
+  void set_iteration_config_sequence_length(int seq_length);
 public:
   int op_global_guid;
   FFConfig config;
+  FFIterationConfig iter_config;
   Optimizer* optimizer;
   Loss* loss_op;
   Metrics* metrics_op;
@@ -542,7 +549,7 @@ private:
 public:
   //IndexSpace task_is;
   OperatorType op_type;
-  bool profiling;
+  //bool profiling;
 };
 
 class ElementUnaryMeta : public OpMeta {
@@ -604,7 +611,8 @@ public:
   cudnnConvolutionFwdAlgo_t fwdAlgo;
   cudnnConvolutionBwdFilterAlgo_t bwdFilterAlgo;
   cudnnConvolutionBwdDataAlgo_t bwdDataAlgo;
-  bool relu;
+  bool relu, use_bias;
+  char op_name[MAX_OPNAME];
 };
 
 class Conv2D : public Op {
@@ -659,21 +667,13 @@ public:
 public:
   //IndexSpaceT<4> task_is;
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
-  bool profiling, use_bias;
+  bool use_bias;
   ActiMode activation;
   Initializer *kernel_initializer;
   Initializer *bias_initializer;
 };
 
-class DropoutMeta : public OpMeta {
-public:
-  DropoutMeta(FFHandler handle);
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
-  cudnnDropoutDescriptor_t dropoutDesc;
-  void *reserveSpace, *dropoutStates;
-  size_t reserveSpaceSize, dropoutStateSize;
-};
-
+class DropoutMeta;
 class Dropout : public Op {
 public:
   Dropout(FFModel& model,
@@ -692,9 +692,6 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  void init_meta(DropoutMeta *m,
-                 Domain const &input_domain,
-                 Domain const &output_domain) const;
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -717,8 +714,22 @@ public:
   //IndexSpaceT<4> task_is;
   float rate;
   unsigned long long seed;
-  bool profiling;
 };
+
+class DropoutMeta : public OpMeta {
+public:
+  DropoutMeta(FFHandler handle,
+              const Dropout* dropout,
+              Memory gpu_mem,
+              const Domain& output_domain);
+  ~DropoutMeta(void);
+  Realm::RegionInstance reserveInst;
+  cudnnTensorDescriptor_t inputTensor, outputTensor;
+  cudnnDropoutDescriptor_t dropoutDesc;
+  void *reserveSpace, *dropoutStates;
+  size_t reserveSpaceSize, dropoutStateSize;
+};
+
 
 class Pool2D : public Op {
 public:
@@ -762,7 +773,6 @@ public:
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
   ActiMode activation;
-  bool profiling;
 };
 
 class Pool2DMeta : public OpMeta {
@@ -772,8 +782,10 @@ public:
   cudnnActivationDescriptor_t actiDesc;
   cudnnPoolingDescriptor_t poolDesc;
   bool relu;
+  char op_name[MAX_OPNAME];
 };
 
+class BatchNormMeta;
 class BatchNorm : public Op {
 public:
   BatchNorm(FFModel& model,
@@ -792,14 +804,6 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  void init_meta(BatchNormMeta *meta,
-                 Rect<4> const &input,
-                 Rect<4> const &output,
-                 Rect<1> const &scale,
-                 Rect<1> const &bias) const;
-  static void init_para_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
-                             Context ctx, Runtime *runtime);
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -809,15 +813,37 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
+  static void forward_kernel(BatchNormMeta *m,
+                             float const *input_ptr,
+                             float *output_ptr,
+                             float const *scale_ptr,
+                             float const *bias_ptr);
+  static void backward_kernel(BatchNormMeta *m,
+                              float const *input_ptr,
+                              float *output_grad_ptr,
+                              float const *output_ptr,
+                              float *input_grad_ptr,
+                              float const *scale_ptr,
+                              float *scale_grad_ptr,
+                              float *bias_grad_ptr,
+                              size_t numElements);
 public:
-  bool relu, profiling;
+  bool relu;
   int num_replica;
   //Tensor locals[MAX_NUM_LOCALS];
 };
 
 class BatchNormMeta : public OpMeta {
 public:
-  BatchNormMeta(FFHandler handle);
+  BatchNormMeta(FFHandler handle,
+                const BatchNorm* bn,
+                Memory gpu_mem,
+                int output_n,
+                int output_c,
+                int output_h,
+                int output_w);
+  ~BatchNormMeta(void);
+  Realm::RegionInstance reserveInst;
   cudnnTensorDescriptor_t inputTensor, outputTensor, biasTensor;
   cudnnActivationDescriptor_t actiDesc;
   cudnnBatchNormMode_t mode;
@@ -832,6 +858,8 @@ public:
   cudnnActivationDescriptor_t actiDesc;
   const float *one_ptr;
   ActiMode activation;
+  bool use_bias;
+  char op_name[MAX_OPNAME];
 };
 
 class Linear : public Op {
@@ -916,7 +944,7 @@ private:
 public:
   int in_channels, out_channels;
   Tensor replica;
-  bool profiling, use_bias;
+  bool use_bias;
   ActiMode activation;
   Initializer *kernel_initializer;
   Initializer *bias_initializer;
@@ -925,13 +953,16 @@ public:
 class BatchMatmulMeta : public OpMeta {
 public:
   BatchMatmulMeta(FFHandler handler);
+  int a_seq_length_dim, b_seq_length_dim;
 };
 
 class BatchMatmul : public Op {
 public:
   BatchMatmul(FFModel& model,
               const Tensor& A,
-              const Tensor& B);
+              const Tensor& B,
+              int a_seq_length_dim,
+              int b_seq_length_dim);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -952,7 +983,11 @@ public:
                       const float* a_ptr,
                       const float* b_ptr,
                       const float* c_ptr,
-                      int m, int n, int k, int batch);
+                      int m, int n, int k,
+                      int batch,
+                      int a_seq_length_dim = -1,
+                      int b_seq_length_dim = -1,
+                      int seq_length = -1);
   static void backward_kernel(const BatchMatmulMeta* meta,
                        const float* o_ptr,
                        const float* o_grad_ptr,
@@ -975,7 +1010,8 @@ private:
   template<int NDIM>
   void backward_with_dim(const FFModel& ff);
 public:
-  bool profiling;
+  int a_seq_length_dim, b_seq_length_dim;
+  //bool profiling;
 };
 
 class Embedding : public Op {
@@ -1034,10 +1070,15 @@ public:
   //IndexSpaceT<2> task_is;
   int num_entries, out_channels;
   AggrMode aggr;
-  bool profiling;
+  //bool profiling;
   Initializer* kernel_initializer;
 };
 
+class EmbeddingMeta : public OpMeta {
+public:
+  EmbeddingMeta(FFHandler handle): OpMeta(handle) {}
+  AggrMode aggr;
+};
 
 class Group_byMeta : public OpMeta {
 public:
@@ -1119,6 +1160,7 @@ public:
 };
 
 class MultiHeadAttentionMeta;
+
 class MultiHeadAttention : public Op {
 public:
   MultiHeadAttention(FFModel& model,
@@ -1150,13 +1192,13 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
-  void forward_kernel(const MultiHeadAttentionMeta* m,
+  static void forward_kernel(const MultiHeadAttentionMeta* m,
                       const float* query_ptr,
                       const float* key_ptr,
                       const float* value_ptr,
                       const float* weight_ptr,
-                      float* output_ptr) const;
-  void backward_kernel(const MultiHeadAttentionMeta* m,
+                      float* output_ptr);
+  static void backward_kernel(const MultiHeadAttentionMeta* m,
                        const float* query_ptr,
                        float* query_grad_ptr,
                        const float* key_ptr,
@@ -1165,13 +1207,13 @@ public:
                        float* value_grad_ptr,
                        const float* weight_ptr,
                        float* weight_grad_ptr,
-                       const float* output_grad_ptr) const;
+                       const float* output_grad_ptr);
 public:
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
   Initializer* kernel_initializer;
   float dropout;
-  bool profiling, bias, add_bias_kv, add_zero_attn;
+  bool bias, add_bias_kv, add_zero_attn;
 };
 
 class MultiHeadAttentionMeta : public OpMeta {
@@ -1191,18 +1233,12 @@ public:
   void *reserveSpace;
 };
 
-class SoftmaxMeta : public OpMeta {
-public:
-  SoftmaxMeta(FFHandler handle);
-#ifndef DISABLE_COMPUTATION
-  cudnnTensorDescriptor_t inputTensor;
-#endif
-};
-
+class SoftmaxMeta;
 class Softmax : public Op {
 public:
   Softmax(FFModel& model,
           const Tensor& logit,
+          int dim,
           const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -1222,9 +1258,6 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
-  void init_meta(SoftmaxMeta *m,
-                 Rect<2> const &input,
-                 Rect<2> const &output) const;
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
@@ -1234,9 +1267,31 @@ public:
   static void backward_kernel(float *input_grad_ptr,
                               float const *output_grad_ptr,
                               size_t num_elements);
-
+private:
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
+  template<int NDIM>
+  static void forward_task_with_dim(const Task *task,
+                                    const std::vector<PhysicalRegion> &regions,
+                                    Context ctx, Runtime *runtime);
+  template<int NDIM>
+  static void backward_task_with_dim(const Task *task,
+                                     const std::vector<PhysicalRegion> &regions,
+                                     Context ctx, Runtime *runtime);
 public:
+  //bool profiling;
+  int dim;
+};
+
+class SoftmaxMeta : public OpMeta {
+public:
+  SoftmaxMeta(FFHandler handle,
+              const Softmax* softmax,
+              const Domain& input_domain); 
+  cudnnTensorDescriptor_t inputTensor;
   bool profiling;
+  int dim;
+  char op_name[MAX_OPNAME];
 };
 
 class TransposeMeta : public OpMeta {
@@ -1374,6 +1429,7 @@ private:
 class TopKMeta : public OpMeta {
 public:
   TopKMeta(FFHandler handle);
+  bool sorted;
 };
 
 class TopK : public Op {
@@ -1417,8 +1473,9 @@ private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
 public:
-  bool k, sorted;
-  bool profiling;
+  int k;
+  bool sorted;
+  //bool profiling;
 };
 
 class ConcatMeta : public OpMeta {
@@ -1470,7 +1527,7 @@ public:
                              CostMetrics& cost_metrics);
 public:
   int axis;
-  bool profiling;
+  //bool profiling;
 };
 
 class Split : public Op {
@@ -1513,13 +1570,15 @@ private:
 public:
   int axis;
   //IndexSpace task_is;
-  bool profiling;
+  //bool profiling;
 };
 
+class FusedOp;
 class FusedOpMeta {
 public:
   FusedOpMeta(void) {}
   OpMeta* meta[MAX_NUM_FUSED_OPERATORS];
+  FusedOp* fused_op;
   int numOperators;
 };
 
@@ -1554,6 +1613,7 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
 public:
+  FFIterationConfig iter_config;
   int op_num_inputs[MAX_NUM_FUSED_OPERATORS];
   int op_num_weights[MAX_NUM_FUSED_OPERATORS];
   int op_num_outputs[MAX_NUM_FUSED_OPERATORS];
@@ -1599,7 +1659,7 @@ void data_load_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime);
 
-void register_custom_tasks();
+void register_flexflow_internal_tasks();
 
-void register_c_custom_tasks();
+void register_custom_tasks();
 #endif//_FLEXFLOW_MODEL_H_

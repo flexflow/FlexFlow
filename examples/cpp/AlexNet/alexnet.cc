@@ -41,14 +41,10 @@ void top_level_task(const Task* task,
     const InputArgs &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
-    ffConfig.parse_args(argv, argc);
     parse_input_args(argv, argc, alexnetConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
         ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
   }
-  ffConfig.lg_ctx = ctx;
-  ffConfig.lg_hlr = runtime;
-  ffConfig.field_space = runtime->create_field_space(ctx);
   FFModel ff(ffConfig);
 
   Tensor input;
@@ -63,15 +59,15 @@ void top_level_task(const Task* task,
   //}
   // Add layers
   Tensor t = input, ts[2];
-  t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, 1, AC_MODE_RELU);
+  t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
   //ts[1] = ff.conv2d("conv1", input, 64, 11, 11, 4, 4, 2, 2);
   //t = ff.concat("concat", 2, ts, 1/*axis*/);
   t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, 1, AC_MODE_RELU);
+  t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
   t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d(t, 384, 3, 3, 1, 1, 1, 1, 1, AC_MODE_RELU);
-  t = ff.conv2d(t, 256, 3, 3, 1, 1, 1, 1, 1, AC_MODE_RELU);
-  t = ff.conv2d(t, 256, 3, 3, 1, 1, 1, 1, 1, AC_MODE_RELU);
+  t = ff.conv2d(t, 384, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+  t = ff.conv2d(t, 256, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+  t = ff.conv2d(t, 256, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
   t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
   t = ff.flat(t);
   t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);

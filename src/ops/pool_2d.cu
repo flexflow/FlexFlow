@@ -42,8 +42,7 @@ Pool2D::Pool2D(FFModel& model,
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),
   padding_h(_padding_h), padding_w(_padding_w),
-  pool_type(_type), activation(_activation),
-  profiling(model.config.profiling)
+  pool_type(_type), activation(_activation)
 {
   int input_w = inputs[0].adim[0];
   int input_h = inputs[0].adim[1];
@@ -110,6 +109,8 @@ OpMeta* Pool2D::init_task(const Task *task,
   const Pool2D* pool = (Pool2D*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   Pool2DMeta* m = new Pool2DMeta(handle);
+  m->profiling = pool->profiling;
+  std::strcpy(m->op_name, pool->name);
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 4> acc_output(
@@ -230,7 +231,7 @@ void Pool2D::forward_task(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const Pool2D* pool = (Pool2D*) task->args;
+  //const Pool2D* pool = (Pool2D*) task->args;
   const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -238,7 +239,7 @@ void Pool2D::forward_task(const Task *task,
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   cudaEvent_t t_start, t_end;
-  if (pool->profiling) {
+  if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -249,7 +250,7 @@ void Pool2D::forward_task(const Task *task,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   forward_kernel(m, acc_input.ptr, acc_output.ptr);
-  if (pool->profiling) {
+  if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     //print_tensor<4, float>(acc_input.ptr, acc_input.rect, "[Pool2D:forward:input]");
@@ -258,7 +259,7 @@ void Pool2D::forward_task(const Task *task,
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("%s [Pool2D] forward time = %.2fms\n", pool->name, elapsed);
+    printf("%s [Pool2D] forward time = %.2fms\n", m->op_name, elapsed);
   }
 }
 
@@ -274,7 +275,7 @@ void Pool2D::forward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(POOL2D_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Pool2D)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -316,7 +317,7 @@ void Pool2D::backward_task(const Task *task,
 {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  const Pool2D* pool = (Pool2D*) task->args;
+  //const Pool2D* pool = (Pool2D*) task->args;
   const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
   TensorAccessorR<float, 4> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -329,7 +330,7 @@ void Pool2D::backward_task(const Task *task,
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
   cudaEvent_t t_start, t_end;
-  if (pool->profiling) {
+  if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -340,7 +341,7 @@ void Pool2D::backward_task(const Task *task,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   backward_kernel(m, acc_input.ptr, acc_input_grad.ptr, acc_output.ptr, acc_output_grad.ptr);
-  if (pool->profiling) {
+  if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -363,7 +364,7 @@ void Pool2D::backward(const FFModel& ff)
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
   IndexLauncher launcher(POOL2D_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Pool2D)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): input

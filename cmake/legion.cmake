@@ -1,19 +1,22 @@
-include_directories(${LEGION_ROOT}/include ${LEGION_ROOT}/include/mappers)
-#set(CMAKE_FIND_DEBUG_MODE TRUE)
-find_library(Legion_LIBRARIES
-        NAMES legion
-	PATHS ${LEGION_ROOT}/lib64 ${LEGION_ROOT}/lib
-	NO_DEFAULT_PATH)
-find_library(Realm_LIBRARIES
-        NAMES realm
-	PATHS ${LEGION_ROOT}/lib64 ${LEGION_ROOT}/lib 
-	NO_DEFAULT_PATH)
-message( STATUS "Legion root : ${LEGION_ROOT}" )
-message( STATUS "Legion libraries : ${Legion_LIBRARIES}" )
-message( STATUS "Realm libraries : ${Realm_LIBRARIES}" )
-#list(APPEND FLEXFLOW_EXT_LIBRARIES ${Legion_LIBRARIES} ${Realm_LIBRARIES})
-#target_link_libraries(flexflow ${LEGION_LIB} ${REALM_LIB})
-#add_library(legion STATIC IMPORTED)
-#set_property(TARGET legion PROPERTY IMPORTED_LOCATION ${LEGION_ROOT}/lib/liblegion.a)
-#add_library(realm STATIC IMPORTED)
-#set_property(TARGET realm PROPERTY IMPORTED_LOCATION ${LEGION_ROOT}/lib/librealm.a)
+set(LEGION_ROOT ${CMAKE_SOURCE_DIR}/deps/legion)
+if(FF_USE_PYTHON)
+  set(Legion_USE_Python ON CACHE BOOL "enable Legion_USE_Python")
+endif()
+if(FF_USE_GASNET)
+  set(Legion_EMBED_GASNet ON CACHE BOOL "Use embed GASNet")
+  set(Legion_EMBED_GASNet_VERSION "GASNet-2020.11.0-memory_kinds_prototype" CACHE STRING "GASNet version")
+  set(Legion_NETWORKS "gasnetex" CACHE STRING "GASNet conduit")
+  set(GASNet_CONDUIT ${FF_GASNET_CONDUIT})
+endif()
+message("GASNET ROOT: $ENV{GASNet_ROOT_DIR}")
+set(Legion_MAX_DIM ${FF_MAX_DIM} CACHE STRING "Maximum number of dimensions")
+set(Legion_USE_CUDA ON CACHE BOOL "enable Legion_USE_CUDA")
+set(Legion_CUDA_ARCH ${FF_CUDA_ARCH} CACHE STRING "Legion CUDA ARCH")
+add_subdirectory(deps/legion)
+list(APPEND FLEXFLOW_INCLUDE_DIRS
+  ${LEGION_ROOT}/runtime
+  ${LEGION_ROOT}/runtime/mappers
+  ${LEGION_ROOT}/runtime/realm/transfer
+  ${CMAKE_CURRENT_BINARY_DIR}/deps/legion/runtime)
+list(APPEND FLEXFLOW_EXT_LIBRARIES
+  Legion)

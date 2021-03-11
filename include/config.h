@@ -66,6 +66,9 @@ struct ParallelConfig {
   DeviceType device_type;
   int nDims, dim[MAX_TENSOR_DIM];
   int device_ids[MAX_NUM_WORKERS];
+#ifdef FF_USE_NCCL
+  ncclComm_t nccl_comms[MAX_NUM_WORKERS];
+#endif
 };
 
 struct FFHandler {
@@ -74,6 +77,9 @@ struct FFHandler {
   void *workSpace;
   size_t workSpaceSize;
   bool allowTensorOpMathConversion;
+#ifdef FF_USE_NCCL
+  ncclComm_t ncclComm;
+#endif
 };
 
 struct FFInitInfo {
@@ -139,6 +145,17 @@ public:
   std::string export_strategy_file;
   // We use MappingTagID as the key since we will pass the tag to the mapper
   std::map<MappingTagID, ParallelConfig> strategies;
+  int machine_model_version;
+  std::string machine_model_file;
+  int simulator_segment_size;
+  int simulator_max_num_segments;
+};
+
+class FFIterationConfig {
+public:
+  FFIterationConfig();
+  void reset();
+  int seq_length;
 };
 
 struct ParaConfigCompare {

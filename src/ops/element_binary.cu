@@ -66,8 +66,7 @@ ElementBinary::ElementBinary(FFModel& model,
     in1,
     in2
   ),
-  op_type(_op_type),
-  profiling(model.config.profiling)
+  op_type(_op_type)
 {
   //TODO: implement broadcast op
   numOutputs = 1;
@@ -149,6 +148,7 @@ OpMeta* ElementBinary::init_task(const Task* task,
   FFHandler handle = *((FFHandler*) task->local_args);
   ElementBinaryMeta* m = new ElementBinaryMeta(handle);
   m->op_type = eb->op_type;
+  m->profiling = eb->profiling;
   cudnnOpTensorOp_t mode;
   switch (eb->op_type) {
     case OP_EW_ADD:
@@ -327,7 +327,7 @@ void ElementBinary::forward_task(const Task* task,
 {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const ElementBinary* ele = (const ElementBinary*) task->args;
+  //const ElementBinary* ele = (const ElementBinary*) task->args;
   const ElementBinaryMeta* m = *((ElementBinaryMeta**) task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
@@ -346,7 +346,7 @@ void ElementBinary::forward_task(const Task* task,
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
   cudaEvent_t t_start, t_end;
-  if (ele->profiling) {
+  if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
@@ -358,9 +358,9 @@ void ElementBinary::forward_task(const Task* task,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  ele->forward_kernel(m, in1_ptr, in2_ptr, out_ptr);
+  forward_kernel(m, in1_ptr, in2_ptr, out_ptr);
 
-  if (ele->profiling) {
+  if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
@@ -368,7 +368,7 @@ void ElementBinary::forward_task(const Task* task,
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     char const *opName;
-    switch (ele->op_type) {
+    switch (m->op_type) {
       case OP_EW_ADD:
         opName = "Add";
         break;
@@ -384,7 +384,7 @@ void ElementBinary::forward_task(const Task* task,
       default:
         assert(false);
     }
-    printf("%s [%s] forward time (CF) = %.2fms\n", ele->name, opName, elapsed);
+    printf("[%s] forward time (CF) = %.2fms\n", opName, elapsed);
   }
 }
 
@@ -412,7 +412,7 @@ void ElementBinary::forward(const FFModel& ff)
       assert(false);
   }
   IndexLauncher launcher(ELEMENTBINARY_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(ElementBinary)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -533,7 +533,7 @@ void ElementBinary::backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime* runtime)
 {
-  const ElementBinary* ele = (const ElementBinary*) task->args;
+  //const ElementBinary* ele = (const ElementBinary*) task->args;
   const ElementBinaryMeta* m = *((ElementBinaryMeta**) task->local_args);
   assert(regions.size() == 5 || regions.size() == 4);
   assert(task->regions.size() == regions.size());
@@ -573,7 +573,7 @@ void ElementBinary::backward_task(const Task *task,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  ele->backward_kernel(m, out_grad_ptr, in1_ptr, in2_ptr, in1_grad_ptr, in2_grad_ptr);
+  backward_kernel(m, out_grad_ptr, in1_ptr, in2_ptr, in1_grad_ptr, in2_grad_ptr);
   //elewise_binary_backward_kernel<<<GET_BLOCKS(out_grad_domain.get_volume()), CUDA_NUM_THREADS>>>(
     //out_grad_domain.get_volume(), alpha, alpha, ele->op_type, out_grad_ptr, in1_ptr, in2_ptr,
     //in1_grad_ptr, in2_grad_ptr);
@@ -604,7 +604,7 @@ void ElementBinary::backward(const FFModel& ff)
   }
 
   IndexLauncher launcher(ELEMENTBINARY_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(ElementBinary)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): output_grad

@@ -43,7 +43,7 @@ Embedding::Embedding(FFModel& model,
                      const char* name)
 : Op(model, OP_EMBEDDING, shared_op, name, _input),
   num_entries(_num_entries), out_channels(outDim), aggr(_aggr),
-  kernel_initializer(_kernel_initializer), profiling(model.config.profiling)
+  kernel_initializer(_kernel_initializer)
 {
   assert(_input.numDim == 2);
   outputs[0].numDim = 2;
@@ -106,12 +106,11 @@ OpMeta* Embedding::init_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, Runtime* runtime)
 {
+  const Embedding* embed = (Embedding*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
-  OpMeta* m = new OpMeta(handle);
-#ifdef FF_USE_NCCL
-  const Embedding* linear = (Embedding*) task->args;
-  m->init_nccl_communicator(task, linear->ncclId);
-#endif
+  EmbeddingMeta* m = new EmbeddingMeta(handle);
+  m->profiling = embed->profiling;
+  m->aggr = embed->aggr;
   return m;
 }
 
@@ -127,6 +126,9 @@ void Embedding::init(const FFModel& ff)
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[pc.device_ids[idx++]];
+#ifdef FF_USE_NCCL
+    handle.ncclComm = pc.nccl_comms[idx-1];
+#endif
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
   IndexLauncher launcher(EMBED_INIT_TASK_ID, task_is,
@@ -239,7 +241,8 @@ void Embedding::forward_task(const Task *task,
 {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const Embedding* embed = (Embedding*) task->args;
+  //const Embedding* embed = (Embedding*) task->args;
+  const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
   TensorAccessorR<int64_t, 2> accInput(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 2> accOutput(
@@ -255,8 +258,8 @@ void Embedding::forward_task(const Task *task,
   int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
   int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
-  forward_kernel(accInput.ptr, accOutput.ptr, accWeight.ptr, in_dim, out_dim, batch_size, embed->aggr, accOutput.rect.volume());
-  if (embed->profiling) {
+  forward_kernel(accInput.ptr, accOutput.ptr, accWeight.ptr, in_dim, out_dim, batch_size,  m->aggr, accOutput.rect.volume());
+  if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
     print_tensor<int64_t>(accInput.ptr, accInput.rect.volume(), "[Embedding:forward:input]");
     print_tensor<float>(accWeight.ptr, accWeight.rect.volume(), "[Embedding:forward:weight]");
@@ -269,8 +272,14 @@ void Embedding::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  int idx = 0;
+  for (PointInRectIterator<2> it(rect); it(); it++) {
+    OpMeta* mp = meta[idx++];
+    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
+  }
   IndexLauncher launcher(EMBED_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Embedding)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0]: input
@@ -311,7 +320,8 @@ void Embedding::backward_task(const Task *task,
 {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const Embedding* embed = (Embedding*) task->args;
+  //const Embedding* embed = (Embedding*) task->args;
+  const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
   TensorAccessorR<int64_t, 2> accInput(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorR<float, 2> accOutput(
@@ -326,8 +336,8 @@ void Embedding::backward_task(const Task *task,
   int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
   int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
-  backward_kernel(accInput.ptr, accOutput.ptr, accWeightGrad.ptr, in_dim, out_dim, batch_size, embed->aggr, accOutput.rect.volume());
-  if (embed->profiling) {
+  backward_kernel(accInput.ptr, accOutput.ptr, accWeightGrad.ptr, in_dim, out_dim, batch_size, m->aggr, accOutput.rect.volume());
+  if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
     print_tensor<float>(accOutput.ptr, accOutput.rect.volume(), "[Embedding:backward:output_grad]");
     print_tensor<float>(accWeightGrad.ptr, accWeightGrad.rect.volume(), "[Embedding:backward:weight_grad]");
@@ -340,8 +350,14 @@ void Embedding::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  int idx = 0;
+  for (PointInRectIterator<2> it(rect); it(); it++) {
+    OpMeta* mp = meta[idx++];
+    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
+  }
   IndexLauncher launcher(EMBED_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Embedding)), argmap,
+                         TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0]: input

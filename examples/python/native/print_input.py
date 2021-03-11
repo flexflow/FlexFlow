@@ -4,17 +4,16 @@ import numpy as np
 
 def top_level_task():
   ffconfig = FFConfig()
-  ffconfig.parse_args()
-  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
+  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
 
-  dims1 = [ffconfig.get_batch_size(), 3, 229, 229]
+  dims1 = [ffconfig.batch_size, 3, 229, 229]
   input1 = ffmodel.create_tensor(dims1,  DataType.DT_FLOAT);
 
-  dims2 = [ffconfig.get_batch_size(), 256]
+  dims2 = [ffconfig.batch_size, 256]
   input2 = ffmodel.create_tensor(dims2, DataType.DT_FLOAT);
 
-  dims_label = [ffconfig.get_batch_size(), 1]
+  dims_label = [ffconfig.batch_size, 1]
   label = ffmodel.create_tensor(dims_label, DataType.DT_INT32);
 
   alexnetconfig = NetConfig()

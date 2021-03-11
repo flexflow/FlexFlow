@@ -35,6 +35,9 @@ Tensor::Tensor(void)
   part_grad = LogicalPartition::NO_PART;
   owner_op = NULL;
   owner_idx = 0;
+  data_type = DataType::DT_NONE;
+  sync_type = ParameterSyncType::NONE;
+
   //physical_region.impl = NULL;
 }
 
@@ -44,6 +47,7 @@ Tensor& Tensor::operator=(const Tensor& rhs)
   for (int i = 0; i < numDim; i++)
     adim[i] = rhs.adim[i];
   data_type = rhs.data_type;
+  sync_type = rhs.sync_type;
   owner_op = rhs.owner_op;
   owner_idx = rhs.owner_idx;
   region = rhs.region;
@@ -248,7 +252,8 @@ Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,
        const Tensor& _input)
-: op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1),
+  profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -271,9 +276,6 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
-#ifdef FF_USE_NCCL
-  get_nccl_unique_id(model);
-#endif
 }
 
 Op::Op(FFModel& model,
@@ -281,7 +283,8 @@ Op::Op(FFModel& model,
        const Op* shared_op,
        const char* _name,
        const Tensor& _input)
-: op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(1), numWeights(0), numOutputs(1),
+  profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -308,9 +311,6 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
-#ifdef FF_USE_NCCL
-  get_nccl_unique_id(model);
-#endif
 }
 
 Op::Op(FFModel& model,
@@ -318,7 +318,8 @@ Op::Op(FFModel& model,
        const char* _name,
        const Tensor& _input1,
        const Tensor& _input2)
-: op_type(_op_type), numInputs(2), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(2), numWeights(0), numOutputs(1),
+  profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -342,9 +343,6 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
-#ifdef FF_USE_NCCL
-  get_nccl_unique_id(model);
-#endif
 }
 
 Op::Op(FFModel& model,
@@ -353,7 +351,8 @@ Op::Op(FFModel& model,
        const Tensor& _input1,
        const Tensor& _input2,
        const Tensor& _input3)
-: op_type(_op_type), numInputs(3), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(3), numWeights(0), numOutputs(1),
+  profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -378,16 +377,14 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
-#ifdef FF_USE_NCCL
-  get_nccl_unique_id(model);
-#endif
 }
 
 Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,
        int n, const Tensor* _inputs)
-: op_type(_op_type), numInputs(n), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(n), numWeights(0), numOutputs(1),
+  profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -412,16 +409,14 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
-#ifdef FF_USE_NCCL
-  get_nccl_unique_id(model);
-#endif
 }
 
 Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,
        int _numInputs)
-: op_type(_op_type), numInputs(_numInputs), numWeights(0), numOutputs(1)
+: op_type(_op_type), numInputs(_numInputs), numWeights(0), numOutputs(1),
+  profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -443,9 +438,6 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
-#ifdef FF_USE_NCCL
-  get_nccl_unique_id(model);
-#endif
 }
 
 Parameter* Op::get_parameter(int index)
@@ -595,6 +587,7 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
 }
 
 #ifdef FF_USE_NCCL
+#ifdef DEADCODE
 void Op::get_nccl_unique_id(const FFModel& ff)
 {
   // Init NCCL id
@@ -611,6 +604,7 @@ void Op::get_nccl_unique_id(const FFModel& ff)
   //fprintf(stderr, "In Op(%p): MPImyrank(%d) MPIallranks(%d) ncclID(%p)\n",
   //    this, my_rank, all_ranks, ncclId);
 }
+#endif
 
 ncclUniqueId Op::get_nccl_unique_id_task(const Task *task,
     const std::vector<PhysicalRegion> &regions,
@@ -620,29 +614,31 @@ ncclUniqueId Op::get_nccl_unique_id_task(const Task *task,
   checkNCCL(ncclGetUniqueId(&ncclId));
   return ncclId;
 }
-#endif
 
-OpMeta::OpMeta(FFHandler _handle)
-: handle(_handle)
-{}
-
-#ifdef FF_USE_NCCL
-void OpMeta::init_nccl_communicator(const Task* task,
-                                    ncclUniqueId ncclId)
+ncclComm_t Op::init_nccl_comms_task(const Task* task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime* runtime)
 {
   // Must be an index space launch
   assert(task->is_index_space);
+  ncclUniqueId ncclId = *((const ncclUniqueId*) task->args);
   int allRanks = task->index_domain.get_volume();
   assert(task->index_domain.contains(task->index_point));
   int myRank = 0;
   for (Domain::DomainPointIterator it(task->index_domain); it; it++, myRank++) {
     if (it.p == task->index_point) break;
   }
+  ncclComm_t ncclComm;
   checkNCCL(ncclCommInitRank(&ncclComm, allRanks, ncclId, myRank));
+  return ncclComm;
   //fprintf(stderr, "ncclComm(%p) allRanks(%d) myRank(%d) ncclId(%p)\n",
   //    ncclComm, allRanks, myRank, ncclId);
 }
 #endif
+
+OpMeta::OpMeta(FFHandler _handle)
+: handle(_handle)
+{}
 
 FFModel::FFModel(FFConfig& _config)
 : op_global_guid(100), config(_config),
@@ -962,7 +958,7 @@ Parameter FFModel::create_linear_weight(Op* op,
   for (int i = 0; i < TDIM; i++)
     num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
   Parameter weight;
-  weight.type = comm_type;
+  weight.sync_type = comm_type;
   weight.owner_op = op;
   weight.numDim = NDIM;
   weight.data_type = data_type;
@@ -984,7 +980,7 @@ Parameter FFModel::create_linear_weight(Op* op,
       assert(false);
   }
   // Step 1: forward region and partition
-  if (weight.type == ParameterSyncType::PS) {
+  if (weight.sync_type == ParameterSyncType::PS) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
       hi[i] = dims[NDIM-1-i]-1;
@@ -1004,7 +1000,7 @@ Parameter FFModel::create_linear_weight(Op* op,
     assert(runtime->is_index_partition_complete(ctx, ip));
     weight.part = runtime->get_logical_partition(
         ctx, weight.region, ip);
-  } else if (weight.type == ParameterSyncType::NCCL) {
+  } else if (weight.sync_type == ParameterSyncType::NCCL) {
     // FIXME: Currently only support the sample dimension for operators with NCCL
     //for (int i = 0; i < TDIM-1; i++)
     //  assert(num_parts[i] == 1);
@@ -1093,7 +1089,7 @@ Parameter FFModel::create_conv_weight(Op* op,
   // Currently assume we do not split over the channel dimension
   assert(num_par_c == 1);
   Parameter weight;
-  weight.type = comm_type;
+  weight.sync_type = comm_type;
   weight.owner_op = op;
   weight.numDim = NDIM;
   weight.data_type = data_type;
@@ -1115,7 +1111,7 @@ Parameter FFModel::create_conv_weight(Op* op,
       assert(false);
   }
   // Step 1: forward region and partition
-  if (weight.type == ParameterSyncType::PS) {
+  if (weight.sync_type == ParameterSyncType::PS) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
       hi[i] = dims[NDIM-1-i]-1;
@@ -1131,7 +1127,7 @@ Parameter FFModel::create_conv_weight(Op* op,
     assert(runtime->is_index_partition_complete(ctx, ip));
     weight.part = runtime->get_logical_partition(
         ctx, weight.region, ip);
-  } else if (weight.type == ParameterSyncType::NCCL) {
+  } else if (weight.sync_type == ParameterSyncType::NCCL) {
     // Currently only support sample and attribute parallelism for NCCL communication
     assert(num_par_c == 1);
     Point<NDIM> hi;
@@ -1345,8 +1341,9 @@ void FFModel::init_layers()
     layers[i]->init(*this);
 }
 
-void FFModel::forward()
+void FFModel::forward(int seq_length)
 {
+  iter_config.seq_length = seq_length;
   for (size_t i = 0; i < layers.size(); i++)
     layers[i]->forward(*this);
 }
@@ -1358,8 +1355,9 @@ void FFModel::compute_metrics()
   metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
 }
 
-void FFModel::backward()
+void FFModel::backward(int seq_length)
 {
+  iter_config.seq_length = seq_length;
   assert(config.computationMode == COMP_MODE_TRAINING);
   // Compute metrics
   Op* final_layer = layers[layers.size()-1];
@@ -1647,6 +1645,45 @@ void FFModel::compile(LossType loss_type,
   // init optimizer
   assert(optimizer != NULL);
   optimizer->init();
+#ifdef FF_USE_NCCL
+  if (config.computationMode == COMP_MODE_TRAINING) {
+    // init all nccl communicators
+    std::map<MappingTagID, ParallelConfig>::iterator iter;
+    for (iter = config.strategies.begin(); iter != config.strategies.end(); iter++) {
+      // only init nccl for GPU parallel configurations
+      if (iter->second.device_type != ParallelConfig::GPU) continue;
+      std::map<MappingTagID, ParallelConfig>::const_iterator it2;
+      bool found = false;
+      // Reuse nccl comms for same parallel config
+      for (it2 = config.strategies.begin(); it2 != iter; it2++) {
+        if (it2->second == iter->second) {
+          found = true;
+          for (int i = 0; i < it2->second.num_parts(); i++)
+            iter->second.nccl_comms[i] = it2->second.nccl_comms[i];
+        }
+      }
+      // Create new nccl comms
+      if (!found) {
+        TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));
+        Future future = runtime->execute_task(ctx, launcher);
+        ncclUniqueId ncclId = future.get_result<ncclUniqueId>();
+        IndexSpace task_is = get_or_create_task_is(iter->second);
+        ArgumentMap argmap;
+        IndexLauncher index_launcher(NCCL_INIT_COMMS_TASK_ID, task_is,
+            TaskArgument(&ncclId, sizeof(ncclUniqueId)), argmap,
+            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+            iter->first/*MappingTagID*/);
+        FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
+        fm.wait_all_results();
+        int idx = 0;
+        Domain task_domain = runtime->get_index_space_domain(ctx, task_is);
+        for (Domain::DomainPointIterator it(task_domain); it; it++, idx++) {
+          iter->second.nccl_comms[idx] = fm.get_result<ncclComm_t>(*it);
+        }
+      }
+    }
+  }
+#endif
 }
 
 void FFModel::rewrite(const std::map<Op*, ParallelConfig>& current,
@@ -1912,6 +1949,19 @@ bool DataLoader::shuffle_samples(void)
 #endif
 
 // ========================================================
+// class FFIterationConfig
+// ========================================================
+FFIterationConfig::FFIterationConfig()
+{
+  seq_length = -1;
+}
+
+void FFIterationConfig::reset()
+{
+  seq_length = -1;
+}
+
+// ========================================================
 // class FFConfig
 // ========================================================
 
@@ -1921,7 +1971,6 @@ struct DefaultConfig {
   const static int iterations = 1;
   const static int batchSize = 64;
   const static bool profiling = false;
-  const static bool debug = false;
   constexpr static float learningRate = 0.01f;
   constexpr static float weightDecay = 0.0001f;
   const static size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
@@ -1936,6 +1985,9 @@ struct DefaultConfig {
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
   const static bool allowTensorOpMathConversion = false;
+  const static int machine_model_version = 0;
+  const static int simulator_segment_size = 16777216; // 16 MB
+  const static int simulator_max_num_segments = 1;
 };
 
 FFConfig::FFConfig()
@@ -1959,13 +2011,29 @@ FFConfig::FFConfig()
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
   allow_tensor_op_math_conversion = DefaultConfig::allowTensorOpMathConversion;
-
+  machine_model_version = DefaultConfig::machine_model_version;
+  simulator_segment_size = DefaultConfig::simulator_segment_size;
+  simulator_max_num_segments = DefaultConfig::simulator_max_num_segments;
+  machine_model_file = "";
   import_strategy_file = "";
   export_strategy_file = "";
   export_strategy_task_graph_file = "";
   dataset_path = "";
   syntheticInput = false;
   perform_fusion = false;
+
+  // Parse input arguments
+  {
+    const InputArgs &command_args = HighLevelRuntime::get_input_args();
+    char **argv = command_args.argv;
+    int argc = command_args.argc;
+    parse_args(argv, argc);
+  }
+
+  Runtime *runtime = Runtime::get_runtime();
+  lg_hlr = runtime;
+  lg_ctx = Runtime::get_context();
+  field_space = runtime->create_field_space(lg_ctx);
 }
 
 void FFConfig::parse_args(char **argv, int argc)
@@ -2068,10 +2136,26 @@ void FFConfig::parse_args(char **argv, int argc)
       export_strategy_task_graph_file = std::string(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--machine-model-version")) {
+      machine_model_version = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--machine-model-file")) {
+      machine_model_file = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--simulator-segment-size")) {
+      simulator_segment_size = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--simulator-max-num-segments")) {
+      simulator_max_num_segments = atoi(argv[++i]);
+      continue;
+    }
   }
 }
 
-void register_internal_tasks()
+void register_flexflow_internal_tasks()
 {
   // CNN_INIT_TASK
   {
@@ -2266,13 +2350,6 @@ void register_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta*, BatchNorm::init_task>(
         registrar, "bn_init_task");
-  }
-  {
-    TaskVariantRegistrar registrar(BATCHNORM_INIT_PARA_TASK_ID, "bm_init_para_task");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<BatchNorm::init_para_task>(
-        registrar, "bm_init_para_task");
   }
   {
     TaskVariantRegistrar registrar(BATCHNORM_FWD_TASK_ID, "bn_fwd_task");
@@ -2572,6 +2649,14 @@ void register_internal_tasks()
   }
   // FusedOp Task
   {
+    TaskVariantRegistrar registrar(FUSEDOP_INIT_TASK_ID, "FusedOp Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, FusedOp::init_task>(
+        registrar, "FusedOp Init Task");
+  }
+
+  {
     TaskVariantRegistrar registrar(FUSEDOP_FWD_TASK_ID, "FusedOp Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
@@ -2687,6 +2772,14 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<ncclUniqueId, Op::get_nccl_unique_id_task>(
         registrar, "NCCL GetUniqueId Task");
   }
+  {
+    TaskVariantRegistrar registrar(NCCL_INIT_COMMS_TASK_ID,
+                                   "NCCL Init Communicators");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<ncclComm_t, Op::init_nccl_comms_task>(
+        registrar, "NCCL Init Communicators Task");
+  }
 #endif
   // Search
   {
@@ -2705,47 +2798,6 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "Weights Prefetch Task");
   }
 }
-
-#if !defined(FF_USE_PYTHON)
-// ========================================================
-// Task and mapper registrations
-// ========================================================
-int main(int argc, char** argv)
-{
-  // This needs to be set, otherwise NCCL will try to use group kernel launches,
-  // which are not compatible with the Realm CUDA hijack.
-  setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
-
-  Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
-  {
-    TaskVariantRegistrar registrar(TOP_LEVEL_TASK_ID, "top_level");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_replicable();
-    Runtime::preregister_task_variant<top_level_task>(registrar, "top_level");
-  }
-
-  register_internal_tasks();
-
-  // Register custom tasks
-  register_custom_tasks();
-
-  FFMapper::register_sharding_functor(argc, argv);
-
-  Runtime::add_registration_callback(update_mappers);
-  return Runtime::start(argc, argv);
-}
-
-#else
-void register_flexflow_tasks(int argc, char **argv)
-{
-  register_internal_tasks();
-
-  register_c_custom_tasks();
-
-  FFMapper::register_sharding_functor(argc, argv);
-}
-
-#endif // FF_USE_PYTHON
 
 // template instantiations
 #define DIMFUNC(DIM) \

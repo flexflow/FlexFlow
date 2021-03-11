@@ -195,9 +195,22 @@ void FusedOp::create_output_and_partition(FFModel& model)
   assert(false && "Outputs should be created before fusion optimizations");
 }
 
+OpMeta* FusedOp::init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime)
+{
+  const FusedOp* fused = (FusedOp*) task->args;
+  const FusedOpMeta* metas = (FusedOpMeta*) task->local_args;
+  FusedOpMeta* local_meta = new FusedOpMeta();
+  memcpy(local_meta, metas, sizeof(FusedOpMeta));
+  local_meta->fused_op = (FusedOp*) malloc(sizeof(FusedOp));
+  memcpy(local_meta->fused_op, fused, sizeof(FusedOp));
+  return ((OpMeta*)local_meta);
+}
+
 void FusedOp::init(const FFModel& ff)
 {
-  //ArgumenMap argmap;
+  ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   // Call init methods in individual operators
@@ -209,6 +222,44 @@ void FusedOp::init(const FFModel& ff)
   }
   for (size_t j = 0; j < domain.get_volume(); j++)
     fused_meta[j].numOperators = numOperators;
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        argmap.set_point(*it, TaskArgument(&fused_meta[idx++], sizeof(FusedOpMeta))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+  IndexLauncher launcher(FUSEDOP_INIT_TASK_ID, task_is,
+      TaskArgument(this, sizeof(FusedOp)), argmap,
+      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+      FFConfig::get_hash_id(std::string(name)));
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        meta[idx++] = fm.get_result<OpMeta*>(*it); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
 }
 
 /*
@@ -221,8 +272,9 @@ void FusedOp::forward_task(const Task* task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime* runtime)
 {
-  const FusedOp* fused = (FusedOp*) task->args;
-  const FusedOpMeta* metas = (FusedOpMeta*) task->local_args;
+  //const FusedOp* fused = (FusedOp*) task->args;
+  const FusedOpMeta* metas = *((FusedOpMeta**) task->local_args);
+  const FusedOp* fused = metas->fused_op;
   assert(metas->numOperators == fused->numOperators);
   assert(regions.size() == task->regions.size());
   assert((int)regions.size() == fused->numInputs+fused->numWeights+fused->numOutputs);
@@ -324,6 +376,26 @@ void FusedOp::forward_task(const Task* task,
         Conv2D::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1]);
         break;
       }
+      case OP_BATCHNORM:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_id[0].get_dim() == 4);
+        assert(my_od[0].get_dim() == 4);
+        assert(my_wd[0].get_dim() == 1);
+        assert(my_wd[1].get_dim() == 1);
+        BatchNormMeta* m = (BatchNormMeta*) metas->meta[op];
+        BatchNorm::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1]);
+        break;
+      }
+      case OP_DROPOUT:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        DropoutMeta* m = (DropoutMeta*) metas->meta[op];
+        Dropout::forward_kernel(m, my_ip[0], my_op[0]);
+        break;
+      }
       case OP_LINEAR:
       {
         assert(fused->op_num_inputs[op] == 1);
@@ -366,7 +438,8 @@ void FusedOp::forward_task(const Task* task,
         }
         BatchMatmulMeta* meta = (BatchMatmulMeta*) metas->meta[op];
         BatchMatmul::forward_kernel(meta, my_op[0], my_ip[0], my_ip[1], NULL,
-          m, n, k, batch);
+          m, n, k, batch, meta->a_seq_length_dim, meta->b_seq_length_dim,
+          fused->iter_config.seq_length);
         break;
       }
       case OP_EW_ADD:
@@ -435,7 +508,10 @@ void FusedOp::forward_task(const Task* task,
         break;
       }
       default:
+      {
+        fprintf(stderr, "Fusion currently does not support type = %d\n", fused->op_op_type[op]);
         assert(false && "Fusion currently does not support type");
+      }
     }
     ioff += fused->op_num_inputs[op];
     woff += fused->op_num_weights[op];
@@ -447,6 +523,8 @@ void FusedOp::forward_task(const Task* task,
 
 void FusedOp::forward(const FFModel& ff)
 {
+  // Set iter_config
+  iter_config = ff.iter_config;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -458,17 +536,18 @@ void FusedOp::forward(const FFModel& ff)
       Rect<DIM> rect = domain; \
       int idx = 0; \
       for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        argmap.set_point(*it, TaskArgument(&fused_meta[idx++], sizeof(FusedOpMeta))); \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
       } \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUC
+#undef DIMFUNC
     default:
       assert(false);
   }
   IndexLauncher launcher(FUSEDOP_FWD_TASK_ID, task_is,
-      TaskArgument(this, sizeof(FusedOp)), argmap,
+      TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
   int offset = 0;
@@ -513,8 +592,10 @@ void FusedOp::backward_task(const Task* task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime* runtime)
 {
-  const FusedOp* fused = (FusedOp*) task->args;
-  const FusedOpMeta* metas = (FusedOpMeta*) task->local_args;
+ // const FusedOp* fused = (FusedOp*) task->args;
+  const FusedOpMeta* metas = *((FusedOpMeta**) task->local_args);
+  const FusedOp* fused = metas->fused_op;
+
   assert(metas->numOperators == fused->numOperators);
   assert(regions.size() == task->regions.size());
   {
@@ -674,6 +755,28 @@ void FusedOp::backward_task(const Task* task,
             my_wp[0], my_grad_wp[0], my_grad_wp[1]);
         break;
       }
+      case OP_BATCHNORM:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        assert(my_id[0].get_dim() == 4);
+        assert(my_wd[0].get_dim() == 1);
+        assert(my_wd[1].get_dim() == 1);
+        assert(my_od[0].get_dim() == 4);
+        BatchNormMeta* m = (BatchNormMeta*) metas->meta[op];
+        BatchNorm::backward_kernel(m, my_ip[0], my_grad_op[0], my_op[0],
+            my_grad_ip[0], my_wp[0], my_grad_wp[0], my_grad_wp[1],
+            my_od[0].get_volume());
+        break;
+      }
+      case OP_DROPOUT:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        DropoutMeta* m = (DropoutMeta*) metas->meta[op];
+        Dropout::backward_kernel(m, my_grad_op[0], my_grad_ip[0]);
+        break;
+      }
       case OP_LINEAR:
       {
         assert(fused->op_num_inputs[op] == 1);
@@ -808,6 +911,8 @@ void FusedOp::backward_task(const Task* task,
 
 void FusedOp::backward(const FFModel& ff)
 {
+  // Set iter_config
+  iter_config = ff.iter_config;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -819,12 +924,13 @@ void FusedOp::backward(const FFModel& ff)
       Rect<DIM> rect = domain; \
       int idx = 0; \
       for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        argmap.set_point(*it, TaskArgument(&fused_meta[idx++], sizeof(FusedOpMeta))); \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
       } \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUC
+#undef DIMFUNC
     default:
       assert(false);
   }
