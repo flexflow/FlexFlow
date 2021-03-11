@@ -56,6 +56,11 @@ Reduction::Reduction(
   assert(check_output_input_weight_parallel_dims());
 }
 
+void Reduction::init(const FFModel& ff)
+{
+  // Do nothing
+}
+
 void Reduction::forward(const FFModel& ff)
 {
   ArgumentMap argmap;

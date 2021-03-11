@@ -18,74 +18,97 @@
 
 using namespace Legion;
 
-Tensor FFModel::softmax(const Tensor _input, const char *name)
+Tensor FFModel::softmax(const Tensor _input, int dim, const char *name)
 {
-  assert(_input->numDim == 2);
-  Softmax *sm = new Softmax(*this, _input, name);
+  if (dim < 0)
+    dim += _input->numDim;
+  Softmax *sm = new Softmax(*this, _input, dim, name);
   layers.push_back(sm);
   return sm->outputs[0];
 }
 
-SoftmaxMeta::SoftmaxMeta(FFHandler handler)
+SoftmaxMeta::SoftmaxMeta(FFHandler handler,
+                         const Softmax* softmax,
+                         const Domain& input_domain)
 : OpMeta(handler)
 {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
+  dim = softmax->dim;
+  profiling = softmax->profiling;
+  std::strcpy(op_name, softmax->name);
 }
 
 Softmax::Softmax(FFModel& model,
                  const Tensor _input,
+                 int _dim,
                  const char* name)
-: Op(model, OP_SOFTMAX, name, _input)
+: Op(model, OP_SOFTMAX, name, _input),
+  dim(_input->numDim-1-_dim)
 {
-  const int dims[2] = {_input->adim[1], _input->adim[0]};
-  outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
+  // Currently assume we always perform softmax along the inner most dim
+  assert(dim == 0);
+  int dims[MAX_TENSOR_DIM];
+  int numdim = _input->numDim;
+  for (int i = 0; i < numdim; i++)
+    dims[i] = _input->adim[numdim-1-i];
+  outputs[0] = model.create_tensor(numdim, dims, DT_FLOAT, this);
 }
 
 void Softmax::create_input_partition(FFModel& model)
 {
+  int dim = outputs[0]->numDim;
+  switch (dim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      create_output_and_partition_with_dim<DIM>(model); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dim
+      assert(false);
+    }
+  }
+}
+
+template<int NDIM>
+void Softmax::create_output_and_partition_with_dim(FFModel& model)
+{
   // Retrive the task indexspace for the op
   std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
   int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
-  int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
+  //int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
   // Current require data parallelism for Softmax
   assert(num_par_c == 1);
   return Op::create_input_partition(model);
 #ifdef DEADCODE
   {
-    const int dims[2] = {inputs[0].adim[1], inputs[0].adim[0]};
-    outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
+    int dims[NDIM];
+    for (int i = 0; i < NDIM; i++)
+      dims[i] = outputs[0].adim[NDIM-1-i];
+    outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
     outputs[0].owner_op = this;
     outputs[0].owner_idx = 0;
   }
   // Compute partition bound for input
-  Rect<2> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0]->part.get_index_partition());
+  Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
+      ctx, inputs[0].part.get_index_partition());
   if (input_rect == part_rect) {
     input_lps[0] = inputs[0]->part;
     input_grad_lps[0] = inputs[0]->part_grad;
   } else {
-    model.create_disjoint_partition<2>(
-        inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
+    model.create_disjoint_partition<NDIM>(
+        inputs[0], (IndexSpaceT<NDIM>)task_is, input_lps[0], input_grad_lps[0]);
   }
 #endif
-}
-
-void Softmax::init_meta(SoftmaxMeta *m,
-                        Rect<2> const &input,
-                        Rect<2> const &output) const
-{
-  checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
-  assert(input == output);
-  int input_c = input.hi[0] - input.lo[0] + 1;
-  int input_n = input.hi[1] - input.lo[1] + 1;
-  checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        input_n, input_c, 1, 1));
 }
 
 /*
@@ -99,17 +122,14 @@ OpMeta* Softmax::init_task(const Task *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   const Softmax* softmax = (Softmax*) task->args;
-  TensorAccessorR<float, 2> acc_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_output(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime,
-      false/*readutput*/);
   FFHandler handle = *((const FFHandler*) task->local_args);
-  SoftmaxMeta* m = new SoftmaxMeta(handle);
+  Domain input_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain output_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  assert(input_domain == output_domain);
+  SoftmaxMeta* m = new SoftmaxMeta(handle, softmax, output_domain);
   //checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
-  softmax->init_meta(m, acc_input.rect, acc_output.rect);
-  m->profiling = softmax->profiling;
-  std::strcpy(m->op_name, softmax->name);
   return m;
 }
 
@@ -161,23 +181,41 @@ void Softmax::forward_kernel(SoftmaxMeta const *m,
                                  &beta, m->inputTensor, output_ptr));
 }
 
+void Softmax::forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime)
+{
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (in_domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return forward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
 
 /*
   regions[0](I): input
   regions[1](O): output
 */
+template<int NDIM>
 __host__
-void Softmax::forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime)
+void Softmax::forward_task_with_dim(
+    const Task *task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime *runtime)
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   //const Softmax* softmax = (Softmax*) task->args;
   const SoftmaxMeta* m = *((SoftmaxMeta**) task->local_args);
-  TensorAccessorR<float, 2> acc_input(
+  TensorAccessorR<float, NDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_output(
+  TensorAccessorW<float, NDIM> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
 
@@ -212,11 +250,23 @@ void Softmax::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
-  int idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
-    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
   }
   IndexLauncher launcher(SOFTMAX_FWD_TASK_ID, task_is,
                          TaskArgument(NULL, 0), argmap,
@@ -230,7 +280,6 @@ void Softmax::forward(const FFModel& ff)
       RegionRequirement(outputs[0]->part, 0/*projection id*/,
                         WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -244,6 +293,23 @@ void Softmax::backward_kernel(float *input_grad_ptr,
                             cudaMemcpyDeviceToDevice));
 }
 
+void Softmax::backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime)
+{
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (in_domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
 /*
   regions[0](I/O): input_grad
   regions[1](I): output_grad
@@ -251,19 +317,21 @@ void Softmax::backward_kernel(float *input_grad_ptr,
 // Note that the backward task of softmax is actually a no op (i.e., input_grad = output_grad)
 // since the upstream cross_entropy_loss function computes performs softmax_cross_entropy_loss
 // to avoid intermediate zeros
+template<int NDIM>
 __host__
-void Softmax::backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime)
+void Softmax::backward_task_with_dim(
+    const Task *task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime *runtime)
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   //const Softmax* softmax = (Softmax*) task->args;
   const SoftmaxMeta* m = *((SoftmaxMeta**) task->local_args);
-  TensorAccessorW<float, 2> acc_input_grad(
+  TensorAccessorW<float, NDIM> acc_input_grad(
       regions[0], task->regions[0], FID_DATA, ctx, runtime,
       true/*readOutput*/);
-  TensorAccessorR<float, 2> acc_output_grad(
+  TensorAccessorR<float, NDIM> acc_output_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   // make sure the image indices match!
   assert(acc_input_grad.rect == acc_output_grad.rect);
@@ -300,11 +368,23 @@ void Softmax::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  int idx = 0;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
-  for (PointInRectIterator<2> it(rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
-    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
   }
   IndexLauncher launcher(SOFTMAX_BWD_TASK_ID, task_is,
                          TaskArgument(NULL, 0), argmap,
@@ -333,8 +413,7 @@ bool Softmax::measure_operator_cost(Simulator* sim,
     return false;
   }
 
-  SoftmaxMeta *m = sim->softmax_meta;
-  this->init_meta(m, sub_input.get_domain(), sub_output.get_domain());
+  SoftmaxMeta *m = new SoftmaxMeta(sim->handler, this, sub_output.get_domain());
 
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -368,5 +447,7 @@ bool Softmax::measure_operator_cost(Simulator* sim,
         name, sub_output.get_volume(),
         cost_metrics.forward_time);
   }
+  // Free softmaxmeta
+  delete m;
   return true;
 }

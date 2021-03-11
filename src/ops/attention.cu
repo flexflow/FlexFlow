@@ -47,9 +47,9 @@ Tensor FFModel::multihead_attention(const Tensor query,
   Tensor kernel;
   {
     // Compute weight size
-    int qSize = query->adim[0];
-    int kSize = key->adim[0];
-    int vSize = value->adim[0];
+    int qSize = query->dims[0].size;
+    int kSize = key->dims[0].size;
+    int vSize = value->dim[0].size;
     int qProjSize = kdim;
     int kProjSize = kdim;
     int vProjSize = vdim;
@@ -87,18 +87,18 @@ MultiHeadAttention::MultiHeadAttention(
      _query, _key, _value, _weight),
   dropout(_dropout), bias(_bias),
   add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
-  qSize(_query->adim[0]), kSize(_key->adim[0]), vSize(_value->adim[0]),
+  qSize(_query->dims[0].size), kSize(_key->dims[0].size), vSize(_value->dims[0].size),
   qProjSize(_kdim), kProjSize(_kdim), vProjSize(_vdim), oProjSize(_embed_dim),
-  qoSeqLength(_query->adim[1]), kvSeqLength(_key->adim[1])
+  qoSeqLength(_query->dim[1].size), kvSeqLength(_key->dim[1].size)
   //bias_initializer(_bias_initializer)
 {
   // assert key and value have the same sequence length
-  assert(_key->adim[1] == _value->adim[1]);
+  assert(_key->dims[1] == _value->dims[1]);
   numOutputs = 1;
-  int dims[MAX_TENSOR_DIM];
+  ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < _query->numDim; i++)
-    dims[i] = _query->adim[_query->numDim-1-i];
-  dims[_query->numDim-1] = _embed_dim;
+    dims[i] = _query->dims[_query->numDim-1-i];
+  dims[_query->numDim-1].size = _embed_dim;
   outputs[0] = model.create_tensor(_query->numDim, dims, DT_FLOAT, this);
 }
 
@@ -114,7 +114,7 @@ void MultiHeadAttention::create_weights(FFModel& model)
   ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
   {
-    const int dims[2] = {weights[0].adim[1], weights[0].adim[0]};
+    const int dims[2] = {weights[0].dims[1].size, weights[0].dims[0].size};
     weights[0] = model.create_linear_weight<2, 3>(this, dims, DT_FLOAT,
         kernel_initializer, true/*create_grad*/, comm_type);
   }
@@ -138,7 +138,7 @@ void MultiHeadAttention::create_input_partition(FFModel& model)
   assert(num_part_c == 1);
   return Op::create_input_partition(model);
   //{
-  //  const int dims[3] = {outputs[0].adim[2], outputs[0].adim[1], outputs[0].adim[0]};
+  //  const int dims[3] = {outputs[0].dims[2].size, outputs[0].dims[1].size, outputs[0].dims[0].size};
   //  outputs[0] = model.create_tensor<3>(dims, DT_FLOAT, this);
   //  outputs[0].owner_op = this;
   //  outputs[0].owner_idx = 0;
@@ -701,9 +701,9 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
   // Currently assume only data parallel
   Tensor sub_weight = weights[0];
   assert(sub_weight->numDim == 2);
-  int num_heads = sub_weight->adim[1];
+  int num_heads = sub_weight->dims[1].size;
   assert(sub_query.numDim == 3);
-  int num_samples = sub_query.adim[2];
+  int num_samples = sub_query.dims[2].size;
   MultiHeadAttentionMeta* m = new MultiHeadAttentionMeta(sim->handler,
       this, sim->memory, num_samples, num_heads);
 
@@ -749,18 +749,18 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) value(%d %d %d) output(%d %d %d)"
          "forward_time(%.4lf) backward_time(%.4lf)\n",
-         sub_query.adim[2], sub_query.adim[1], sub_query.adim[0],
-         sub_key.adim[2], sub_key.adim[1], sub_key.adim[0],
-         sub_value.adim[2], sub_value.adim[1], sub_value.adim[0],
-         sub_output.adim[2], sub_output.adim[1], sub_output.adim[0],
+         sub_query.dims[2].size, sub_query.dims[1].size, sub_query.dims[0].size,
+         sub_key.dims[2].size, sub_key.dims[1].size, sub_key.dims[0].size,
+         sub_value.dims[2].size, sub_value.dims[1].size, sub_value.dims[0].size,
+         sub_output.dims[2].size, sub_output.dims[1].size, sub_output.dims[0].size,
          cost_metrics.forward_time, cost_metrics.backward_time);
   } else {
     printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) value(%d %d %d) output(%d %d %d)"
          "forward_time(%.4lf)\n",
-         sub_query.adim[2], sub_query.adim[1], sub_query.adim[0],
-         sub_key.adim[2], sub_key.adim[1], sub_key.adim[0],
-         sub_value.adim[2], sub_value.adim[1], sub_value.adim[0],
-         sub_output.adim[2], sub_output.adim[1], sub_output.adim[0],
+         sub_query.dims[2].size, sub_query.dims[1].size, sub_query.dims[0].size,
+         sub_key.dims[2].size, sub_key.dims[1].size, sub_key.dims[0].size,
+         sub_value.dims[2].size, sub_value.dims[1].size, sub_value.dims[0].size,
+         sub_output.dims[2].size, sub_output.dims[1].size, sub_output.dims[0].size,
          cost_metrics.forward_time);
   }
   // Free multiheadattentionmeta

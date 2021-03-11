@@ -1002,7 +1002,7 @@ Tensor FFModel::create_tensor(
   for (int i = 0; i < NDIM; i++) {
     pdims[i].size = dims[i];
   }
-  return create_tensor<NDIM>(dims, data_type, owner_op, owner_idx, create_grad);
+  return create_tensor<NDIM>(pdims, data_type, owner_op, owner_idx, create_grad);
 }
 
 template<int NDIM>
@@ -1060,6 +1060,10 @@ Parameter FFModel::create_weight(
   p->initializer = initializer;
   p->sync_type = sync_type;
   p->numDim = NDIM;
+  for (int i = 0; i < NDIM; i++) {
+    p->dims[i] = dims[NDIM-1-i];
+  }
+  assert(p->get_volume() > 0);
   assert(p->check_valid());
   return p;
 }
@@ -2990,7 +2994,6 @@ void register_flexflow_internal_tasks()
     Runtime::preregister_task_variant<OpMeta*, FusedOp::init_task>(
         registrar, "FusedOp Init Task");
   }
-
   {
     TaskVariantRegistrar registrar(FUSEDOP_FWD_TASK_ID, "FusedOp Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
@@ -3004,6 +3007,67 @@ void register_flexflow_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<FusedOp::backward_task>(
         registrar, "FusedOp Backward Task");
+  }
+  // ParallelOp Task
+  // Repartition
+  {
+    TaskVariantRegistrar registrar(REPARTITION_FWD_TASK_ID, "Repartition Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Repartition::forward_task>(
+        registrar, "Repartition Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(REPARTITION_BWD_TASK_ID, "Repartition Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Repartition::backward_task>(
+        registrar, "Repartition Backward Task");
+  }
+  // Combine
+  {
+    TaskVariantRegistrar registrar(COMBINE_FWD_TASK_ID, "Combine Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Combine::forward_task>(
+        registrar, "Combine Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(COMBINE_BWD_TASK_ID, "Combine Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Combine::backward_task>(
+        registrar, "Combine Backward Task");
+  }
+  // Replicate
+  {
+    TaskVariantRegistrar registrar(REPLICATE_FWD_TASK_ID, "Replicate Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Replicate::forward_task>(
+        registrar, "Replicate Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(REPLICATE_BWD_TASK_ID, "Replicate Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Replicate::backward_task>(
+        registrar, "Replicate Backward Task");
+  }
+  // Reduction
+  {
+    TaskVariantRegistrar registrar(REDUCTION_FWD_TASK_ID, "Reduction Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Reduction::forward_task>(
+        registrar, "Reduction Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(REDUCTION_BWD_TASK_ID, "Reduction Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Reduction::backward_task>(
+        registrar, "Reduction Backward Task");
   }
   // Optimizer
   {

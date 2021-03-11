@@ -105,10 +105,10 @@ void GlorotUniform::init_task(const Task* task,
       // https://github.com/tensorflow/tensorflow/blob/r2.0/tensorflow/python/ops/init_ops.py#L1415-L1439
       int num_dim = domain.get_dim();
       coord_t receptive_field_size = 1;
-      for (int i = 0; i < num_dim - 2; i++)
+      for (int i = 2; i < num_dim; i++)
         receptive_field_size *= (accW.rect.hi[i] - accW.rect.lo[i] + 1);
-      coord_t c_in = accW.rect.hi[num_dim-2] - accW.rect.lo[num_dim-2] + 1;
-      coord_t c_out = accW.rect.hi[num_dim-1] - accW.rect.lo[num_dim-1] + 1;
+      coord_t c_in = accW.rect.hi[1] - accW.rect.lo[1] + 1;
+      coord_t c_out = accW.rect.hi[0] - accW.rect.lo[0] + 1;
       coord_t fan_in = c_in * receptive_field_size;
       coord_t fan_out = c_out * receptive_field_size;
       scale = sqrt(6.0 / (fan_in + fan_out));
@@ -123,10 +123,10 @@ void GlorotUniform::init_task(const Task* task,
       // https://github.com/tensorflow/tensorflow/blob/r2.0/tensorflow/python/ops/init_ops.py#L1415-L1439
       int num_dim = domain.get_dim();
       coord_t receptive_field_size = 1;
-      for (int i = 0; i < num_dim - 2; i++)
+      for (int i = 2; i < num_dim; i++)
         receptive_field_size *= (accW.rect.hi[i] - accW.rect.lo[i] + 1);
-      coord_t c_in = accW.rect.hi[num_dim-2] - accW.rect.lo[num_dim-2] + 1;
-      coord_t c_out = accW.rect.hi[num_dim-1] - accW.rect.lo[num_dim-1] + 1;
+      coord_t c_in = accW.rect.hi[1] - accW.rect.lo[1] + 1;
+      coord_t c_out = accW.rect.hi[0] - accW.rect.lo[0] + 1;
       coord_t fan_in = c_in * receptive_field_size;
       coord_t fan_out = c_out * receptive_field_size;
       scale = sqrt(6.0 / (fan_in + fan_out));

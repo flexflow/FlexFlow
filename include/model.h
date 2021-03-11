@@ -396,6 +396,7 @@ public:
   Tensor flat(const Tensor input, const char *name = NULL);
   // Add a softmax layer
   Tensor softmax(const Tensor input,
+                 int dim=-1,
                  const char *name = NULL);
   // Create input tensors and constants
   Tensor transpose(const Tensor input,
@@ -1295,17 +1296,12 @@ public:
   void *reserveSpace;
 };
 
-class SoftmaxMeta : public OpMeta {
-public:
-  SoftmaxMeta(FFHandler handle); 
-  cudnnTensorDescriptor_t inputTensor;
-  char op_name[MAX_OPNAME];
-};
-
+class SoftmaxMeta;
 class Softmax : public Op {
 public:
   Softmax(FFModel& model,
           const Tensor logit,
+          int dim,
           const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -1337,8 +1333,31 @@ public:
   static void backward_kernel(float *input_grad_ptr,
                               float const *output_grad_ptr,
                               size_t num_elements);
+private:
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
+  template<int NDIM>
+  static void forward_task_with_dim(const Legion::Task *task,
+                                    const std::vector<Legion::PhysicalRegion> &regions,
+                                    Legion::Context ctx, Legion::Runtime *runtime);
+  template<int NDIM>
+  static void backward_task_with_dim(const Legion::Task *task,
+                                     const std::vector<Legion::PhysicalRegion> &regions,
+                                     Legion::Context ctx, Legion::Runtime *runtime);
 public:
   //bool profiling;
+  int dim;
+};
+
+class SoftmaxMeta : public OpMeta {
+public:
+  SoftmaxMeta(FFHandler handle,
+              const Softmax* softmax,
+              const Legion::Domain& input_domain); 
+  cudnnTensorDescriptor_t inputTensor;
+  bool profiling;
+  int dim;
+  char op_name[MAX_OPNAME];
 };
 
 class TransposeMeta : public OpMeta {
