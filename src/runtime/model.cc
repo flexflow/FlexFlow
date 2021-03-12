@@ -2299,7 +2299,7 @@ void register_flexflow_internal_tasks()
   }*/
 
   // Group by task CPU
-  {
+  /*{
     TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "Group_by Init");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
@@ -2319,7 +2319,7 @@ void register_flexflow_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<Group_by::backward_task>(
         registrar, "Group_by Backward Task");
-  }
+  }*/
 
   // Pool2D task
   {

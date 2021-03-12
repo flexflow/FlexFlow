@@ -310,8 +310,8 @@ public:
   // Add a group_by layer
   void group_by(const Tensor& data,
                 const Tensor& assign,
-		Tensor* outputs,
-                int n, int k, float alpha,
+                Tensor* outputs,
+                int n, float alpha,
                 const char* name = NULL);
   // Add a 2D pooling layer
   Tensor pool2d(const Tensor& input,
@@ -1090,7 +1090,7 @@ public:
   Group_by(FFModel& model,
           const Tensor& _input,
           const Tensor& _assign,
-          int _n, int _k, float _alpha,
+          int _n, float _alpha,
           const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -1112,7 +1112,7 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
 public:
-  int n, k;
+  int n;
   float alpha;
   bool profiling;
 };
@@ -1287,7 +1287,7 @@ class SoftmaxMeta : public OpMeta {
 public:
   SoftmaxMeta(FFHandler handle,
               const Softmax* softmax,
-              const Domain& input_domain); 
+              const Domain& input_domain);
   cudnnTensorDescriptor_t inputTensor;
   bool profiling;
   int dim;

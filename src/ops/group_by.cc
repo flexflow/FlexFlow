@@ -15,15 +15,15 @@
 
 #include "model.h"
 #include <math.h>
-// TODO: ceil
+
 
 void FFModel::group_by(const Tensor& input,
                         const Tensor& assign,
                         Tensor* outputs,
-                        int n, int k, float alpha,
+                        int n, float alpha,
                         const char* name)
 {
-  Group_by* group_by = new Group_by(*this, input, assign, n, k, alpha, name);
+  Group_by* group_by = new Group_by(*this, input, assign, n, alpha, name);
   layers.push_back(group_by);
   for (int i = 0; i < n; i++)
     outputs[i] = group_by->outputs[i];
@@ -33,21 +33,20 @@ void FFModel::group_by(const Tensor& input,
 Group_by::Group_by(FFModel& model,
                   const Tensor& _input,
                   const Tensor& _assign,
-                  int _n, int _k, float _alpha,
+                  int _n, float _alpha,
                   const char* name)
 : Op(model, OP_GROUP_BY, name, _input, _assign),
   n(_n),
-  k(_k),
   alpha(_alpha)
   //profiling(model.config.profiling)
 {
   assert(_input.numDim == 2); // NOTE: Is that a problem if you e.g. want to pass in images
   assert(_input.numDim == 2);
   assert(_input.adim[1] == _assign.adim[1]);
-  assert(_assign.adim[0] == k);
-  assert(n >= k);
+  assert(n > 0);
 
   // List of outputs
+  int k = _assign.adim[0];
   for(int i = 0; i < n; i++) {
     outputs[i].numDim = 2;
     outputs[i].adim[0] = inputs[0].adim[0];
@@ -76,6 +75,7 @@ void Group_by::create_output_and_partition(FFModel& model)
   // Can only partition over the sample dim
   assert(part_rect.hi[0] == part_rect.lo[0]);
 
+  int k = inputs[1].adim[0];
   const int dims[2] = {(int)ceil(alpha*k/n*inputs[0].adim[1]), inputs[0].adim[0]};
   for(int i = 0; i < n; i++) {
     outputs[i] = model.create_tensor<2>(dims, DT_FLOAT, this);
@@ -129,7 +129,7 @@ void Group_by::init(const FFModel& ff)
 
   // assign
   launcher.add_region_requirement(
-    RegionRequirement(inputs[1].part, 0/*projection id*/, //TODO ?
+    RegionRequirement(input_lps[1], 0/*projection id*/, //TODO ?
       READ_ONLY, EXCLUSIVE, inputs[1].region));
   launcher.add_field(1, FID_DATA);
 
@@ -193,10 +193,9 @@ void Group_by::forward_task(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
-  // Get n, k, alpha
+  // Get n, alpha
   const Group_by* gb = (Group_by*) task->args;
   int n = gb->n;
-  int k = gb->k;
   float alpha = gb->alpha;
 
   assert((int)regions.size() == n+2);
@@ -214,7 +213,7 @@ void Group_by::forward_task(const Task *task,
   coord_t input_rows = rect_input.hi[1] - rect_input.lo[1] + 1;
   coord_t input_cols = rect_input.hi[0] - rect_input.lo[0] + 1;
   assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
-  assert(k == (int)(rect_assign.hi[0] - rect_assign.lo[0] + 1));
+  int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
   int batch_size = input_rows;
   int data_dim = input_cols;
 
@@ -225,7 +224,7 @@ void Group_by::forward_task(const Task *task,
     Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[i+2].region.get_index_space());
     outputs[i] = helperGetTensorPointerWO<float>(
-      regions[i+1], task->regions[i+2], FID_DATA, ctx, runtime);
+      regions[i+2], task->regions[i+2], FID_DATA, ctx, runtime);
 
     coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
     coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
@@ -242,10 +241,9 @@ void Group_by::backward_task(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
-  // Get n, k, alpha
+  // Get n, alpha
   const Group_by* gb = (Group_by*) task->args;
   int n = gb->n;
-  int k = gb->k;
   float alpha = gb->alpha;
 
   assert((int)regions.size() == n+2);
@@ -263,7 +261,7 @@ void Group_by::backward_task(const Task *task,
   coord_t input_rows = rect_input.hi[1] - rect_input.lo[1] + 1;
   coord_t input_cols = rect_input.hi[0] - rect_input.lo[0] + 1;
   assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
-  assert(k == (int)(rect_assign.hi[0] - rect_assign.lo[0] + 1));
+  int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
   int batch_size = input_rows;
   int data_dim = input_cols;
 
@@ -274,7 +272,7 @@ void Group_by::backward_task(const Task *task,
     Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[i+2].region.get_index_space());
     outputs[i] = helperGetTensorPointerWO<float>(
-      regions[i+1], task->regions[i+2], FID_DATA, ctx, runtime);
+      regions[i+2], task->regions[i+2], FID_DATA, ctx, runtime);
 
     coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
     coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
@@ -304,7 +302,7 @@ void Group_by::forward(const FFModel& ff)
 
   // assign
   launcher.add_region_requirement(
-    RegionRequirement(inputs[1].part, 0/*projection id*/, //TODO ?
+    RegionRequirement(input_lps[1], 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[1].region));
   launcher.add_field(1, FID_DATA);
 
@@ -337,7 +335,7 @@ void Group_by::backward(const FFModel& ff)
 
   // assign
   launcher.add_region_requirement(
-    RegionRequirement(inputs[1].part, 0/*projection id*/, //TODO ?
+    RegionRequirement(input_lps[1], 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[1].region));
   launcher.add_field(1, FID_DATA);
 
