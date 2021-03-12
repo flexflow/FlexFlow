@@ -1,4 +1,4 @@
-# Copyright 2020 Stanford University
+# Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,10 +23,10 @@ USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 
 # Put the binary file name here
-OUTFILE		?= alexnet
+OUTFILE		?= mlp
 # List all the application source files here
-GEN_SRC		= alexnet_new.cc
-GEN_GPU_SRC	= alexnet.cu
+GEN_SRC		= mlp.cc
+GEN_GPU_SRC	= mlp.cu
 
 ifndef FF_HOME
 $(error FF_HOME variable is not defined, aborting build)

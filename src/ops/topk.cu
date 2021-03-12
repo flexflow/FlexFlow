@@ -16,10 +16,12 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 // For an input tensor, computes the top k entries in each row 
 // (resp. vector along the last dimension). Thus, 
 // values.shape = indices.shape = input.shape[:-1] + [k]
-void FFModel::top_k(const Tensor& input,
+void FFModel::top_k(const Tensor input,
                     Tensor* outputs,
                     int k,
                     bool sorted,
@@ -33,36 +35,32 @@ void FFModel::top_k(const Tensor& input,
 }
 
 TopK::TopK(FFModel& model,
-           const Tensor& _input,
+           const Tensor _input,
            int _k, bool _sorted,
            const char* name)
 : Op(model, OP_TOPK, name, _input),
   k(_k), sorted(_sorted)
 {
-  numOutputs = 2;
-  outputs[0].numDim = inputs[0].numDim;
-  outputs[1].numDim = inputs[0].numDim;
-  outputs[0].adim[0] = k;
-  outputs[1].adim[0] = k;
-  for (int i = 1; i < inputs[0].numDim; i++) {
-    outputs[0].adim[i] = outputs[1].adim[i] = inputs[0].adim[i];
-  }
-  numWeights = 0;
+  int numdim = inputs[0]->numDim;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++)
+    dims[i] = inputs[0]->adim[numdim-1-i];
+  dims[numdim-1] = k;
+  outputs[0] = model.create_tensor(numdim, dims, _input->data_type,
+      this, 0/*owner_idx*/);
+  outputs[1] = model.create_tensor(numdim, dims, DT_INT32,
+      this, 1/*owner_idx*/);
 }
 
-void TopK::create_weights(FFModel& model)
+#ifdef DEADCODE
+void TopK::create_input_partition(FFModel& model)
 {
-  // Do nothing
-}
-
-void TopK::create_output_and_partition(FFModel& model)
-{
-  int dim = inputs[0].numDim;
+  int dim = inputs[0]->numDim;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      create_output_and_partition_with_dim<DIM>(model); \
+      create_input_partition_with_dim<DIM>(model); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -76,7 +74,7 @@ void TopK::create_output_and_partition(FFModel& model)
 }
 
 template<int NDIM>
-void TopK::create_output_and_partition_with_dim(FFModel& model)
+void TopK::create_input_partition_with_dim(FFModel& model)
 {
   // Retrive the task indexspace for the op
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
@@ -94,15 +92,16 @@ void TopK::create_output_and_partition_with_dim(FFModel& model)
   outputs[1].owner_idx = 1;
   Rect<NDIM> input_rect;
   input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0].part.get_index_partition());
+      ctx, inputs[0]->part.get_index_partition());
   if (input_rect == part_rect) {
-    input_lps[0] = inputs[0].part;
-    input_grad_lps[0] = inputs[0].part_grad;
+    input_lps[0] = inputs[0]->part;
+    input_grad_lps[0] = inputs[0]->part_grad;
   } else {
     model.create_disjoint_partition<NDIM>(
         inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
   }
 }
+#endif
 
 OpMeta* TopK::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
@@ -148,15 +147,15 @@ void TopK::init(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-    RegionRequirement(outputs[1].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[1].region));
+    RegionRequirement(outputs[1]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[1]->region));
   launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -595,15 +594,15 @@ void TopK::forward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-    RegionRequirement(outputs[1].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[1].region));
+    RegionRequirement(outputs[1]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[1]->region));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -715,18 +714,18 @@ void TopK::backward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): value_grad
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
+    RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
+                      READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[1](I): indices
   launcher.add_region_requirement(
-    RegionRequirement(outputs[1].part, 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, outputs[1].region));
+    RegionRequirement(outputs[1]->part, 0/*projection id*/,
+                      READ_ONLY, EXCLUSIVE, outputs[1]->region));
   launcher.add_field(1, FID_DATA);
   // regions[2](I/O): input_grad
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                      READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+                      READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }

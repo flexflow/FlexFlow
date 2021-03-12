@@ -16,6 +16,8 @@
 #include "cuda_helper.h"
 #include "flexflow_dataloader.h"
 
+using namespace Legion;
+
 void ImgDataLoader::load_label(const Task *task,
                                const std::vector<PhysicalRegion> &regions,
                                Context ctx,

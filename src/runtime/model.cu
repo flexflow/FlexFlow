@@ -17,6 +17,8 @@
 //#include "realm/runtime_impl.h"
 //#include "realm/cuda/cuda_module.h"
 
+using namespace Legion;
+
 void Op::inner_measure_operator_cost(Simulator *sim,
                                      std::function<void()> const &forward,
                                      std::function<void()> const &backward,
@@ -327,20 +329,20 @@ void FFModel::prefetch()
 //}
 
 template <typename T>
-bool Tensor::set_tensor(const FFModel* ff,
-                        const std::vector<int>& dims,
-                        const T* data,
-                        ParameterSyncType comm_type)
+bool TensorBase::set_tensor(
+    const FFModel* ff,
+    const std::vector<int>& dims,
+    const T* data)
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
   //TODO: check data type matches
   //TODO: Currently we use a task launch, change to index launch for NCCL parameter
   size_t volume = 1, num_replicas = 0;
-  if (comm_type == ParameterSyncType::NCCL) {
+  if (sync_type == ParameterSyncType::NCCL) {
     Domain domain = runtime->get_index_space_domain(ctx, owner_op->task_is);
     num_replicas = domain.get_volume();
-  } else if (comm_type == ParameterSyncType::PS) {
+  } else if (sync_type == ParameterSyncType::PS) {
     num_replicas = 1;
   } else {
     assert(false);
@@ -382,14 +384,14 @@ bool Tensor::set_tensor(const FFModel* ff,
 }
 
 template <typename T>
-bool Tensor::get_tensor(const FFModel* ff,
-                        T* data,
-                        ParameterSyncType comm_type)
+bool TensorBase::get_tensor(
+    const FFModel* ff,
+    T* data)
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
   LogicalRegion weight_lr = LogicalRegion::NO_REGION;
-  if (comm_type == ParameterSyncType::PS) {
+  if (sync_type == ParameterSyncType::PS) {
     weight_lr = region;
   } else {
     assert(owner_op != NULL);
@@ -436,6 +438,7 @@ bool Tensor::get_tensor(const FFModel* ff,
   return true;
 }
 
+/*
 template <typename T>
 bool Parameter::set_weights(const FFModel* ff,
                             const std::vector<int>& dims,
@@ -450,10 +453,11 @@ bool Parameter::get_weights(const FFModel* ff,
 {
   return get_tensor<T>(ff, data, sync_type);
 }
+*/
 
-template bool Tensor::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data, ParameterSyncType comm_type);
-template bool Tensor::get_tensor<float>(const FFModel* ff, float* data, ParameterSyncType comm_type);
-template bool Tensor::set_tensor<int>(const FFModel* ff, const std::vector<int>& dims, const int* data, ParameterSyncType comm_type);
-template bool Tensor::get_tensor<int>(const FFModel* ff, int* data, ParameterSyncType comm_type);
-template bool Parameter::set_weights<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
-template bool Parameter::get_weights<float>(const FFModel* ff, float* data);
+template bool TensorBase::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
+template bool TensorBase::get_tensor<float>(const FFModel* ff, float* data);
+template bool TensorBase::set_tensor<int>(const FFModel* ff, const std::vector<int>& dims, const int* data);
+template bool TensorBase::get_tensor<int>(const FFModel* ff, int* data);
+//template bool Parameter::set_weights<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
+//template bool Parameter::get_weights<float>(const FFModel* ff, float* data);

@@ -16,6 +16,9 @@
 #include "model.h"
 #include "mapper.h"
 #include "dirent.h"
+
+using namespace Legion;
+
 // ========================================================
 // Task and mapper registrations
 // ========================================================

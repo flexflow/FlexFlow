@@ -1,6 +1,8 @@
 #include "cuda_helper.h"
 #include "model.h"
 
+using namespace Legion;
+
 __global__
 void scale_kernel(float* ptr, coord_t size, float a, float b)
 {
@@ -75,6 +77,16 @@ void apply_add_with_scale(float *data_ptr, const float *grad_ptr,
   CUDA_KERNEL_LOOP(i, size)
   {
     data_ptr[i] += grad_ptr[i] * scale;
+  }
+}
+
+template<typename T>
+__global__
+void add_kernel(T* data_ptr, const T* grad_ptr, size_t size)
+{
+  CUDA_KERNEL_LOOP(i, size)
+  {
+    data_ptr[i] += grad_ptr[i];
   }
 }
 
@@ -221,6 +233,9 @@ cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
 template __global__ void assign_kernel<float>(float* ptr, coord_t size, float value);
 template __global__ void assign_kernel<int32_t>(int32_t* ptr, coord_t size, int32_t value);
 template __global__ void assign_kernel<int64_t>(int64_t* ptr, coord_t size, int64_t value);
+
+template __global__ void add_kernel<float>(float* dst, const float* src, size_t size);
+template __global__ void add_kernel<double>(double* dst, const double* src, size_t size);
 
 template __global__ void copy_kernel<float>(float* dst, const float* src, coord_t size);
 template __global__ void copy_kernel<int>(int* dst, const int* src, coord_t size);

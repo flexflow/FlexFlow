@@ -48,6 +48,10 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/runtime/initializer.cc\
 		${FF_HOME}/src/runtime/optimizer.cc\
 		${FF_HOME}/src/ops/embedding.cc\
+		${FF_HOME}/src/parallel_ops/partition.cc\
+		${FF_HOME}/src/parallel_ops/combine.cc\
+		${FF_HOME}/src/parallel_ops/replicate.cc\
+		${FF_HOME}/src/parallel_ops/reduction.cc\
 		${FF_HOME}/src/runtime/strategy.cc\
 		${FF_HOME}/src/runtime/simulator.cc\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cc\
@@ -73,6 +77,10 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/transpose.cu\
 		${FF_HOME}/src/ops/attention.cu\
 		${FF_HOME}/src/ops/fused.cu\
+		${FF_HOME}/src/parallel_ops/combine.cu\
+		${FF_HOME}/src/parallel_ops/partition.cu\
+		${FF_HOME}/src/parallel_ops/replicate.cu\
+		${FF_HOME}/src/parallel_ops/reduction.cu\
 		${FF_HOME}/src/loss_functions/loss_functions.cu\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cu\
 		${FF_HOME}/src/runtime/initializer_kernel.cu\

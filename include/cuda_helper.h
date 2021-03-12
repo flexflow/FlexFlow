@@ -48,7 +48,7 @@
 
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n) \
-  for (coord_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); i += blockDim.x * gridDim.x)
+  for (Legion::coord_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); i += blockDim.x * gridDim.x)
 
 // Use 1024 threads per block, which requires cuda sm_2x or above
 const int CUDA_NUM_THREADS = 1024;
@@ -60,21 +60,25 @@ inline int GET_BLOCKS(const int N)
   int ret = (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
   return (ret > BLOCK_SIZE_LIMIT) ? BLOCK_SIZE_LIMIT : ret;
 }
-using namespace Legion;
+//using namespace Legion;
 
 __global__
-void scale_kernel(float* ptr, coord_t size, float a, float b);
+void scale_kernel(float* ptr, Legion::coord_t size, float a, float b);
 
 __global__
-void ones_kernel(float* ptr, coord_t size);
-
-template<typename DT>
-__global__
-void assign_kernel(DT* ptr, coord_t size, DT value);
+void ones_kernel(float* ptr, Legion::coord_t size);
 
 template<typename DT>
 __global__
-void copy_kernel(DT* dst, const DT* src, coord_t size);
+void assign_kernel(DT* ptr, Legion::coord_t size, DT value);
+
+template<typename DT>
+__global__
+void copy_kernel(DT* dst, const DT* src, Legion::coord_t size);
+
+template<typename T>
+__global__
+void add_kernel(T* data_ptr, const T* grad_ptr, size_t size);
 
 __global__
 void reluBackward(float* grad_ptr, const float* input, int n);

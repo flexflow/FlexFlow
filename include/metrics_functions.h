@@ -19,7 +19,6 @@
 #include "legion.h"
 #include "loss_functions.h"
 
-class Tensor;
 class FFModel;
 class Metrics;
 
@@ -44,16 +43,16 @@ class Metrics
 {
 public:
   Metrics(LossType _loss_type, const std::vector<MetricsType>& metrics);
-  static PerfMetrics compute_task(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
-                                  Context ctx, Runtime *runtime);
+  static PerfMetrics compute_task(const Legion::Task *task,
+                                  const std::vector<Legion::PhysicalRegion> &regions,
+                                  Legion::Context ctx, Legion::Runtime *runtime);
   template<int NDIM>
-  static PerfMetrics compute_task_with_dim(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
-                                  Context ctx, Runtime *runtime);
-  void compute(FFModel* model, const Tensor* logit, const Tensor* label);
+  static PerfMetrics compute_task_with_dim(const Legion::Task *task,
+                                  const std::vector<Legion::PhysicalRegion> &regions,
+                                  Legion::Context ctx, Legion::Runtime *runtime);
+  void compute(FFModel* model, const Tensor logit, const Tensor label);
   template<int NDIM>
-  void compute_with_dim(FFModel* model, const Tensor* logit, const Tensor* label);
+  void compute_with_dim(FFModel* model, const Tensor logit, const Tensor label);
 public:
   LossType loss_type;
   bool measure_accuracy;

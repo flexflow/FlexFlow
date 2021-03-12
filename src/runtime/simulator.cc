@@ -17,6 +17,8 @@
 #include "model.h"
 #include "queue"
 
+using namespace Legion;
+
 int ParallelConfig::num_parts() const
 {
   int nparts = 1;
@@ -142,7 +144,7 @@ SimTask* TaskManager::new_comm_task(std::string const &name, CommDevice *comm_de
   return task;
 }
 
-SimTask* TaskManager::new_forward_task(Op* op, int idx)
+SimTask* TaskManager::new_forward_task(const Op* op, int idx)
 {
   SimTask* task = new_task();
   task->type = SimTask::TASK_FORWARD;
@@ -153,7 +155,7 @@ SimTask* TaskManager::new_forward_task(Op* op, int idx)
   return task;
 }
 
-SimTask* TaskManager::new_backward_task(Op* op, int idx)
+SimTask* TaskManager::new_backward_task(const Op* op, int idx)
 {
   SimTask* task = new_task();
   task->type = SimTask::TASK_BACKWARD;
@@ -164,7 +166,7 @@ SimTask* TaskManager::new_backward_task(Op* op, int idx)
   return task;
 }
 
-SimTask* TaskManager::get_forward_task(Op* op, int idx)
+SimTask* TaskManager::get_forward_task(const Op* op, int idx)
 {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
@@ -172,7 +174,7 @@ SimTask* TaskManager::get_forward_task(Op* op, int idx)
   return hash_to_forward_task[hash];
 }
 
-SimTask* TaskManager::get_backward_task(Op* op, int idx)
+SimTask* TaskManager::get_backward_task(const Op* op, int idx)
 {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
@@ -321,14 +323,14 @@ CostMetrics Simulator::measure_operator_cost(Op* op, const ParallelConfig& confi
 }
 
 float Simulator::simulate_runtime(const FFModel* model,
-                                  const std::map<Op*, ParallelConfig>& global,
+                                  const std::map<const Op*, ParallelConfig>& global,
                                   CompMode comp_mode)
 {
   return this->simulate_runtime(model, global, comp_mode, "");
 }
 
 float Simulator::simulate_runtime(const FFModel* model,
-                                  const std::map<Op*, ParallelConfig>& global,
+                                  const std::map<const Op*, ParallelConfig>& global,
                                   CompMode comp_mode,
                                   std::string const &export_file_name)
 {
@@ -361,14 +363,14 @@ float Simulator::simulate_runtime(const FFModel* model,
     ParallelConfig config = global.find(op)->second;
     for (int j = 0; j < op->numInputs; j++) {
       Tensor t = op->inputs[j];
-      Op* pre_op = t.owner_op;
+      const Op* pre_op = t->owner_op;
       if (pre_op == NULL)
         continue;
       ParallelConfig pre_config = global.find(pre_op)->second;
       for (int dstId = 0; dstId < config.num_parts(); dstId ++) {
         Domain dstR = op->get_input_tensor_shape(config, j, dstId);
         for (int srcId = 0; srcId < pre_config.num_parts(); srcId ++) {
-          Domain srcR = pre_op->get_output_tensor_shape(pre_config, t.owner_idx, srcId);
+          Domain srcR = pre_op->get_output_tensor_shape(pre_config, t->owner_idx, srcId);
           if (dstR.intersection(srcR).get_volume() > 0) {
             // Forward dependency
             {

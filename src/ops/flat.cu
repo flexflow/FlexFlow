@@ -16,10 +16,12 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-Tensor FFModel::flat(const Tensor& input,
+using namespace Legion;
+
+Tensor FFModel::flat(const Tensor input,
                      const char* name)
 {
-  assert(input.numDim == 4);
+  assert(input->numDim == 4);
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
   Flat *flat = new Flat(*this, input, name);
@@ -28,24 +30,19 @@ Tensor FFModel::flat(const Tensor& input,
 }
 
 Flat::Flat(FFModel& model,
-           const Tensor& _input,
+           const Tensor _input,
            const char* name)
 : Op(model, OP_FLAT, name, _input)
 {
-  assert(_input.numDim == 4);
-  int out_dim = _input.adim[0] * _input.adim[1] * _input.adim[2];
-  int batch_size = _input.adim[3];
-  outputs[0].numDim = 2;
-  outputs[0].adim[0] = out_dim;
-  outputs[0].adim[1] = batch_size;
+  assert(_input->numDim == 4);
+  int out_dim = _input->adim[0] * _input->adim[1] * _input->adim[2];
+  int batch_size = _input->adim[3];
+  numOutputs = 1;
+  const int dims[2] = {batch_size, out_dim};
+  outputs[0] = model.create_tensor<2>(dims, _input->data_type, this);
 }
 
-void Flat::create_weights(FFModel& model)
-{
-  // Do nothing
-}
-
-void Flat::create_output_and_partition(FFModel& model)
+void Flat::create_input_partition(FFModel& model)
 {
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
@@ -56,16 +53,15 @@ void Flat::create_output_and_partition(FFModel& model)
   int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
   // Assert data parallelism for operators with dim changes
   assert(num_par_c == 1);
-
-  int out_dim = inputs[0].adim[0] * inputs[0].adim[1] * inputs[0].adim[2];
-  int batch_size = inputs[0].adim[3];
+  //int out_dim = inputs[0].adim[0] * inputs[0].adim[1] * inputs[0].adim[2];
+  //int batch_size = inputs[0].adim[3];
   // Create output tensor
-  {
-    const int dims[2] = {batch_size, out_dim};
-    outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
-    outputs[0].owner_op = this;
-    outputs[0].owner_idx = 0;
-  }
+  //{
+  //  const int dims[2] = {batch_size, out_dim};
+  //  outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
+  //  outputs[0].owner_op = this;
+  //  outputs[0].owner_idx = 0;
+  //}
   model.create_data_parallel_partition_with_diff_dims<4, 2>(
       inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
 }
@@ -99,11 +95,11 @@ void Flat::init(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -160,11 +156,11 @@ void Flat::forward(const FFModel& ff)
     FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -173,9 +169,8 @@ void Flat::backward_kernel(float* input_grad_ptr,
                            const float* output_grad_ptr,
                            size_t num_elements)
 {
-  float alpha = 1.0f;
-  apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
-      input_grad_ptr, output_grad_ptr, num_elements, alpha);
+  add_kernel<float><<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
+      input_grad_ptr, output_grad_ptr, num_elements);
 }
 
 /*
@@ -218,11 +213,11 @@ void Flat::backward(const FFModel& ff)
     FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+                        READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
+      RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -231,11 +226,11 @@ bool Flat::measure_operator_cost(Simulator* sim,
                                  const ParallelConfig& pc,
                                  CostMetrics& cost_metrics)
 {
-  Tensor sub_input, sub_output;
-  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+  TensorBase sub_input, sub_output;
+  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
     return false;
   }
-  if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type)) {
+  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type)) {
     return false;
   }
 
@@ -277,20 +272,20 @@ bool Flat::measure_operator_cost(Simulator* sim,
 }
 
 Domain Flat::get_input_tensor_shape(const ParallelConfig& pc,
-                                  int input_idx, int part_idx)
+    int input_idx, int part_idx) const
 {
   assert(input_idx < numInputs);
   assert(pc.nDims == 2);
   // Currently assume data parallelism for Flat
   assert(pc.dim[0] == 1);
   Domain d;
-  d.dim = inputs[input_idx].numDim;
+  d.dim = inputs[input_idx]->numDim;
   for (int i = 0; i < d.dim-1; i++) {
     d.rect_data[i] = 0;
-    d.rect_data[i+d.dim] = inputs[input_idx].adim[i] - 1;
+    d.rect_data[i+d.dim] = inputs[input_idx]->adim[i] - 1;
   }
-  assert(inputs[input_idx].adim[d.dim-1] % pc.num_parts() == 0);
-  int dim_size = inputs[input_idx].adim[d.dim-1] / pc.num_parts();
+  assert(inputs[input_idx]->adim[d.dim-1] % pc.num_parts() == 0);
+  int dim_size = inputs[input_idx]->adim[d.dim-1] / pc.num_parts();
   d.rect_data[d.dim-1] = part_idx * dim_size;
   d.rect_data[2*d.dim-1] = d.rect_data[d.dim-1] + dim_size - 1;
   return d;

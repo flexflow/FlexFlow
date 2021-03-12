@@ -16,8 +16,9 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
 
-Tensor FFModel::reshape(const Tensor& input,
+Tensor FFModel::reshape(const Tensor input,
                         const std::vector<int>& shape,
                         const char* name)
 {
@@ -27,43 +28,37 @@ Tensor FFModel::reshape(const Tensor& input,
 }
 
 Reshape::Reshape(FFModel& model,
-                 const Tensor& input,
+                 const Tensor input,
                  const std::vector<int>& shape,
                  const char* name)
 : Op(model, OP_RESHAPE, name, input)
 {
   numOutputs = 1;
   numWeights = 0;
-  outputs[0].numDim = (int)shape.size();
-  size_t volume = 1;
-  for (int i = 0; i < outputs[0].numDim; i++) {
-    outputs[0].adim[i] = shape[outputs[0].numDim-1-i];
-    volume *= (size_t)outputs[0].adim[i];
-  }
-  assert(volume == inputs[0].get_volume());
+  int numdim = (int)shape.size();
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++)
+    dims[i] = shape[i];
+  outputs[0] = model.create_tensor(numdim, dims, input->data_type, this);
+  assert(outputs[0]->get_volume() == inputs[0]->get_volume());
 }
 
-void Reshape::create_weights(FFModel& model)
+void Reshape::create_input_partition(FFModel& model)
 {
-  // Do nothing
-}
-
-void Reshape::create_output_and_partition(FFModel& model)
-{
-  switch(inputs[0].numDim) {
+  switch(inputs[0]->numDim) {
     case 1:
     {
-      if (outputs[0].numDim == 1) {
-        create_output_and_partition_with_dim<1, 1>(model);
-      } else if (outputs[0].numDim == 2) {
-        create_output_and_partition_with_dim<1, 2>(model);
-      } else if (outputs[0].numDim == 3) {
-        create_output_and_partition_with_dim<1, 3>(model);
-      } else if (outputs[0].numDim == 4) {
-        create_output_and_partition_with_dim<1, 4>(model);
+      if (outputs[0]->numDim == 1) {
+        create_input_partition_with_dim<1, 1>(model);
+      } else if (outputs[0]->numDim == 2) {
+        create_input_partition_with_dim<1, 2>(model);
+      } else if (outputs[0]->numDim == 3) {
+        create_input_partition_with_dim<1, 3>(model);
+      } else if (outputs[0]->numDim == 4) {
+        create_input_partition_with_dim<1, 4>(model);
 #if MAX_TENSOR_DIM >= 5
-      } else if (outputs[0].numDim == 5) {
-        create_output_and_partition_with_dim<1, 5>(model);
+      } else if (outputs[0]->numDim == 5) {
+        create_input_partition_with_dim<1, 5>(model);
 #endif
       } else {
         assert(false);
@@ -72,17 +67,17 @@ void Reshape::create_output_and_partition(FFModel& model)
     }
     case 2:
     {
-      if (outputs[0].numDim == 1) {
-        create_output_and_partition_with_dim<2, 1>(model);
-      } else if (outputs[0].numDim == 2) {
-        create_output_and_partition_with_dim<2, 2>(model);
-      } else if (outputs[0].numDim == 3) {
-        create_output_and_partition_with_dim<2, 3>(model);
-      } else if (outputs[0].numDim == 4) {
-        create_output_and_partition_with_dim<2, 4>(model);
+      if (outputs[0]->numDim == 1) {
+        create_input_partition_with_dim<2, 1>(model);
+      } else if (outputs[0]->numDim == 2) {
+        create_input_partition_with_dim<2, 2>(model);
+      } else if (outputs[0]->numDim == 3) {
+        create_input_partition_with_dim<2, 3>(model);
+      } else if (outputs[0]->numDim == 4) {
+        create_input_partition_with_dim<2, 4>(model);
 #if MAX_TENSOR_DIM >= 5
-      } else if (outputs[0].numDim == 5) {
-        create_output_and_partition_with_dim<2, 5>(model);
+      } else if (outputs[0]->numDim == 5) {
+        create_input_partition_with_dim<2, 5>(model);
 #endif
       } else {
         assert(false);
@@ -91,17 +86,17 @@ void Reshape::create_output_and_partition(FFModel& model)
     }
     case 3:
     {
-      if (outputs[0].numDim == 1) {
-        create_output_and_partition_with_dim<3, 1>(model);
-      } else if (outputs[0].numDim == 2) {
-        create_output_and_partition_with_dim<3, 2>(model);
-      } else if (outputs[0].numDim == 3) {
-        create_output_and_partition_with_dim<3, 3>(model);
-      } else if (outputs[0].numDim == 4) {
-        create_output_and_partition_with_dim<3, 4>(model);
+      if (outputs[0]->numDim == 1) {
+        create_input_partition_with_dim<3, 1>(model);
+      } else if (outputs[0]->numDim == 2) {
+        create_input_partition_with_dim<3, 2>(model);
+      } else if (outputs[0]->numDim == 3) {
+        create_input_partition_with_dim<3, 3>(model);
+      } else if (outputs[0]->numDim == 4) {
+        create_input_partition_with_dim<3, 4>(model);
 #if MAX_TENSOR_DIM >= 5
-      } else if (outputs[0].numDim == 5) {
-        create_output_and_partition_with_dim<3, 5>(model);
+      } else if (outputs[0]->numDim == 5) {
+        create_input_partition_with_dim<3, 5>(model);
 #endif
       } else {
         assert(false);
@@ -110,17 +105,17 @@ void Reshape::create_output_and_partition(FFModel& model)
     }
     case 4:
     {
-      if (outputs[0].numDim == 1) {
-        create_output_and_partition_with_dim<4, 1>(model);
-      } else if (outputs[0].numDim == 2) {
-        create_output_and_partition_with_dim<4, 2>(model);
-      } else if (outputs[0].numDim == 3) {
-        create_output_and_partition_with_dim<4, 3>(model);
-      } else if (outputs[0].numDim == 4) {
-        create_output_and_partition_with_dim<4, 4>(model);
+      if (outputs[0]->numDim == 1) {
+        create_input_partition_with_dim<4, 1>(model);
+      } else if (outputs[0]->numDim == 2) {
+        create_input_partition_with_dim<4, 2>(model);
+      } else if (outputs[0]->numDim == 3) {
+        create_input_partition_with_dim<4, 3>(model);
+      } else if (outputs[0]->numDim == 4) {
+        create_input_partition_with_dim<4, 4>(model);
 #if MAX_TENSOR_DIM >= 5
-      } else if (outputs[0].numDim == 5) {
-        create_output_and_partition_with_dim<4, 5>(model);
+      } else if (outputs[0]->numDim == 5) {
+        create_input_partition_with_dim<4, 5>(model);
 #endif
       } else {
         assert(false);
@@ -130,16 +125,16 @@ void Reshape::create_output_and_partition(FFModel& model)
 #if MAX_TENSOR_DIM >= 5
     case 5:
     {
-      if (outputs[0].numDim == 1) {
-        create_output_and_partition_with_dim<5, 1>(model);
-      } else if (outputs[0].numDim == 2) {
-        create_output_and_partition_with_dim<5, 2>(model);
-      } else if (outputs[0].numDim == 3) {
-        create_output_and_partition_with_dim<5, 3>(model);
-      } else if (outputs[0].numDim == 4) {
-        create_output_and_partition_with_dim<5, 4>(model);
-      } else if (outputs[0].numDim == 5) {
-        create_output_and_partition_with_dim<5, 5>(model);
+      if (outputs[0]->numDim == 1) {
+        create_input_partition_with_dim<5, 1>(model);
+      } else if (outputs[0]->numDim == 2) {
+        create_input_partition_with_dim<5, 2>(model);
+      } else if (outputs[0]->numDim == 3) {
+        create_input_partition_with_dim<5, 3>(model);
+      } else if (outputs[0]->numDim == 4) {
+        create_input_partition_with_dim<5, 4>(model);
+      } else if (outputs[0]->numDim == 5) {
+        create_input_partition_with_dim<5, 5>(model);
       } else {
         assert(false);
       }
@@ -152,22 +147,25 @@ void Reshape::create_output_and_partition(FFModel& model)
 }
 
 template<int IDIM, int ODIM>
-void Reshape::create_output_and_partition_with_dim(FFModel& model)
+void Reshape::create_input_partition_with_dim(FFModel& model)
 {
   task_is = IndexSpaceT<ODIM>(model.get_or_create_task_is(ODIM, name));
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Rect<ODIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
   int num_tasks = part_rect.volume();
+  // Data parallel
+  for (int i = 0; i < ODIM - 1; i++)
+    assert(part_rect.lo[i] == part_rect.hi[i]);
   // number batches has to be divisible by partitions
-  assert(inputs[0].adim[inputs[0].numDim-1] % num_tasks == 0);
+  assert(inputs[0]->adim[inputs[0]->numDim-1] % num_tasks == 0);
   // Create output tensor
-  int output_shape[ODIM];
-  for (int i = 0; i < ODIM; i++)
-    output_shape[i] = outputs[0].adim[ODIM-1-i];
-  outputs[0] = model.create_tensor<ODIM>(output_shape, DT_FLOAT, this);
-  outputs[0].owner_op = this;
-  outputs[0].owner_idx = 0;
+  //int output_shape[ODIM];
+  //for (int i = 0; i < ODIM; i++)
+  //  output_shape[i] = outputs[0].adim[ODIM-1-i];
+  //outputs[0] = model.create_tensor<ODIM>(output_shape, DT_FLOAT, this);
+  //outputs[0].owner_op = this;
+  //outputs[0].owner_idx = 0;
   model.create_data_parallel_partition_with_diff_dims<IDIM, ODIM>(
       inputs[0], (IndexSpaceT<ODIM>)task_is, input_lps[0], input_grad_lps[0]);
 }
@@ -190,11 +188,11 @@ void Reshape::init(const FFModel& ff)
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -238,11 +236,11 @@ void Reshape::forward(const FFModel& ff)
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -288,13 +286,13 @@ void Reshape::backward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): output_grad
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
+    RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
+                      READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   // regions[3](I/O): input0_grad
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                      READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+                      READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -303,11 +301,11 @@ bool Reshape::measure_operator_cost(Simulator* sim,
                                     const ParallelConfig& pc,
                                     CostMetrics& cost_metrics)
 {
-  Tensor sub_input, sub_output;
-  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+  TensorBase sub_input, sub_output;
+  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
     return false;
   }
-  if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type)) {
+  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type)) {
     return false;
   }
 

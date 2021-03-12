@@ -35,7 +35,7 @@ FF_NEW_OPAQUE_TYPE(flexflow_zero_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_uniform_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_norm_initializer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_op_t);
-FF_NEW_OPAQUE_TYPE(flexflow_parameter_t);
+//FF_NEW_OPAQUE_TYPE(flexflow_parameter_t);
 FF_NEW_OPAQUE_TYPE(flexflow_perf_metrics_t);
 FF_NEW_OPAQUE_TYPE(flexflow_net_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_dlrm_config_t);
@@ -359,7 +359,7 @@ flexflow_model_get_layer_by_id(
   flexflow_model_t handle,
   int layer_id);
 
-flexflow_parameter_t
+flexflow_tensor_t
 flexflow_model_get_parameter_by_id(
   flexflow_model_t handle,
   int layer_id);
@@ -379,6 +379,12 @@ flexflow_tensor_create(
   const int* dims,
   enum DataType data_type,
   bool create_grad /* true */);
+
+void
+flexflow_tensor_map(
+  flexflow_model_t model,
+  flexflow_tensor_t tensor,
+  flexflow_op_t op);
 
 flexflow_tensor_t
 flexflow_constant_create(
@@ -450,15 +456,13 @@ flexflow_tensor_set_tensor_float(
   flexflow_model_t model,
   int num_dim,
   int *dims,
-  const float *data,
-  enum ParameterSyncType comm_type);
+  const float *data);
 
 bool
 flexflow_tensor_get_tensor_float(
   flexflow_tensor_t handle,
   flexflow_model_t model,
-  float *data,
-  enum ParameterSyncType comm_type);
+  float *data);
   
 bool
 flexflow_tensor_set_tensor_int(
@@ -466,23 +470,21 @@ flexflow_tensor_set_tensor_int(
   flexflow_model_t model,
   int num_dim,
   int *dims,
-  const int *data,
-  enum ParameterSyncType comm_type);
+  const int *data);
 
 bool
 flexflow_tensor_get_tensor_int(
   flexflow_tensor_t handle,
   flexflow_model_t model,
-  int *data,
-  enum ParameterSyncType comm_type);
+  int *data);
 
 // -----------------------------------------------------------------------
 // Parameter
 // -----------------------------------------------------------------------
-
+/*
 bool
 flexflow_parameter_set_weights_float(
-  flexflow_parameter_t handle,
+  flexflow_tensor_t handle,
   flexflow_model_t model,
   int num_dim,
   int *dims,
@@ -493,7 +495,7 @@ flexflow_parameter_get_weights_float(
   flexflow_parameter_t handle,
   flexflow_model_t model,
   float *data);
-
+*/
 // -----------------------------------------------------------------------
 // SGDOptimizer
 // -----------------------------------------------------------------------
@@ -816,7 +818,7 @@ int
 flexflow_op_get_num_parameters(
   flexflow_op_t handle);
 
-flexflow_parameter_t
+flexflow_tensor_t
 flexflow_op_get_parameter_by_id(
   flexflow_op_t handle,
   int id);

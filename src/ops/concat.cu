@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 Tensor FFModel::concat(int n,
                        const Tensor* tensors,
                        int axis,
@@ -30,30 +32,30 @@ Concat::Concat(FFModel& model,
                int _n, const Tensor* _tensors,
                int _axis,
                const char* name)
-: Op(model, OP_CONCAT, name, _n, _tensors), axis(_axis)
+: Op(model, OP_CONCAT, name, _n, _tensors),
+  axis(inputs[0]->numDim-1-_axis)
 {
   //TODO: swich to use the Legion dim ordering
-  int num_dim = inputs[0].numDim;
-  outputs[0].numDim = num_dim;
+  int num_dim = inputs[0]->numDim;
+  int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < num_dim; i++)
-    outputs[0].adim[i] = inputs[0].adim[i];
-  for (int i = 1; i < numInputs; i++)
+    dims[i] = inputs[0]->adim[num_dim-1-i];
+  for (int i = 1; i < numInputs; i++) {
+    assert(inputs[i]->data_type == inputs[0]->data_type);
+    assert(inputs[i]->numDim == inputs[0]->numDim);
     for (int j = 0; j < num_dim; j++) {
-      if (j != num_dim - 1 - axis)
-        assert(inputs[i].adim[j] == outputs[0].adim[j]);
+      if (j != axis)
+        assert(inputs[i]->adim[j] == inputs[0]->adim[j]);
       else
-        outputs[0].adim[j] += inputs[i].adim[j];
+        dims[num_dim-1-j] += inputs[i]->adim[j];
     }
+  }
   numOutputs = 1;
-  numWeights = 0;
+  outputs[0] = model.create_tensor(num_dim, dims, inputs[0]->data_type, this);
 }
 
-void Concat::create_weights(FFModel& model)
-{
-  // DO nothing
-}
-
-void Concat::create_output_and_partition(FFModel& model)
+#ifdef DEADCODE
+void Concat::map_output_tensors(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;
@@ -69,9 +71,9 @@ void Concat::create_output_and_partition(FFModel& model)
   for (int i = 1; i < numInputs; i++)
     for (int j = 0; j < num_dim; j++) {
       if (j != axis)
-        assert(inputs[i].adim[num_dim-1-j] == dims[j]);
+        assert(inputs[i].adim[j] == dims[num_dim-1-j]);
       else
-        dims[j] += inputs[i].adim[num_dim-1-j];
+        dims[j] += inputs[i].adim[j];
     }
   //for (int i = 0; i < num_dim; i++)
     //printf("concat: dim[%d] = %d\n", i, dims[i]);
@@ -85,10 +87,10 @@ void Concat::create_output_and_partition(FFModel& model)
       outputs[0].owner_idx = 0; \
       for (int i = 0; i < numInputs; i++) { \
         Rect<DIM> input_rect = runtime->get_index_partition_color_space( \
-            ctx, inputs[i].part.get_index_partition()); \
+            ctx, inputs[i]->part.get_index_partition()); \
         if (input_rect == part_rect) { \
-          input_lps[i] = inputs[i].part; \
-          input_grad_lps[i] = inputs[i].part_grad; \
+          input_lps[i] = inputs[i]->part; \
+          input_grad_lps[i] = inputs[i]->part_grad; \
         } else { \
           model.create_disjoint_partition<DIM>(inputs[i], \
               IndexSpaceT<DIM>(task_is), input_lps[i], input_grad_lps[i]); \
@@ -105,10 +107,11 @@ void Concat::create_output_and_partition(FFModel& model)
     }
   }
 }
+#endif
 
 void Concat::init_meta(ConcatMeta *m) const
 {
-  m->axis = this->outputs[0].numDim - 1 - this->axis;
+  m->axis = this->axis;
 }
 
 __host__
@@ -156,19 +159,19 @@ void Concat::init(const FFModel& ff)
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_lps[i], 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i].region));
+        READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(i + 1, FID_DATA);
   }
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[i], 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
+        WRITE_ONLY, EXCLUSIVE, inputs[i]->region_grad));
     launcher.add_field(i + numInputs + 1, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
@@ -257,12 +260,11 @@ void Concat::forward_task(const Task *task,
 {
   const Concat* cc = (Concat*) task->args;
   // Note that our internal axis index ordering is opposite to other frameworks
-  int axis = cc->outputs[0].numDim - 1 - cc->axis;
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
   Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  assert(out_domain.get_dim() == cc->outputs[0].numDim);
+  //assert(out_domain.get_dim() == cc->outputs[0].numDim);
   Domain in_domain[MAX_NUM_INPUTS];
   for (int i = 0; i < cc->numInputs; i++)
     in_domain[i] = runtime->get_index_space_domain(
@@ -279,7 +281,7 @@ void Concat::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
-  forward_kernel(output, inputs, cc->numInputs, axis, out_domain, in_domain);
+  forward_kernel(output, inputs, cc->numInputs, cc->axis, out_domain, in_domain);
   if (cc->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -305,13 +307,13 @@ void Concat::forward(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_lps[i], 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i].region));
+        READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -369,13 +371,12 @@ void Concat::backward_task(const Task *task,
 {
   const Concat* cc = (Concat*) task->args;
   // Note that our internal axis index ordering is opposite to other frameworks
-  int axis = cc->outputs[0].numDim - 1 - cc->axis;
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
   assert(cc->numInputs <= MAX_NUM_INPUTS);
   Domain out_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  assert(out_grad_domain.get_dim() == cc->outputs[0].numDim);
+  //assert(out_grad_domain.get_dim() == cc->outputs[0].numDim);
   Domain in_grad_domains[MAX_NUM_INPUTS];
   for (int i = 0; i < cc->numInputs; i++)
     in_grad_domains[i] = runtime->get_index_space_domain(
@@ -393,7 +394,7 @@ void Concat::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
-  backward_kernel(output_grad, input_grads, cc->numInputs, axis,
+  backward_kernel(output_grad, input_grads, cc->numInputs, cc->axis,
       out_grad_domain, in_grad_domains);
   if (cc->profiling) {
     cudaEventRecord(t_end);
@@ -416,14 +417,14 @@ void Concat::backward(const FFModel& ff)
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
+    RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[i], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i].region_grad));
-    //LogicalRegion lr = inputs[i].region_grad;
+        READ_WRITE, EXCLUSIVE, inputs[i]->region_grad));
+    //LogicalRegion lr = inputs[i]->region_grad;
     //printf("concat[%d]: region(%d,%d,%d)\n", i+1, lr.get_index_space().get_id(), lr.get_field_space().get_id(), lr.get_tree_id());
     launcher.add_field(i + 1, FID_DATA);
   }
@@ -436,12 +437,12 @@ bool Concat::measure_operator_cost(Simulator* sim,
                                    CostMetrics& cost_metrics)
 {
   assert (numInputs <= MAX_NUM_INPUTS);
-  Tensor sub_inputs[MAX_NUM_INPUTS], sub_output;
-  if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type)) {
+  TensorBase sub_inputs[MAX_NUM_INPUTS], sub_output;
+  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
     return false;
   }
   for (int i = 0; i < numInputs; i++) {
-    if (!inputs[i].get_input_sub_tensor(pc, sub_inputs[i], op_type)) {
+    if (!inputs[i]->get_input_sub_tensor(pc, sub_inputs[i], op_type)) {
       return false;
     }
   }
@@ -458,8 +459,6 @@ bool Concat::measure_operator_cost(Simulator* sim,
   }
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert (output_ptr != NULL);
-
-  int axis = outputs[0].numDim - 1 - this->axis;
 
   Domain out_domain = sub_output.get_domain();
   Domain in_domains[MAX_NUM_INPUTS];

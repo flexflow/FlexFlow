@@ -15,6 +15,8 @@
 
 #include "model.h"
 
+using namespace Legion;
+
 void EmbeddingLookup_int64_t_float_float__avx2_fma(
     const int block_size,
     const int output_size,

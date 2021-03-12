@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+using namespace Legion;
+
 const float LOG_MIN_VALUE = 0.00000001f;
 
 Metrics::Metrics(LossType _loss_type, const std::vector<MetricsType>& metrics)
@@ -243,8 +245,8 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
 }
 
 void Metrics::compute(FFModel* model,
-                      const Tensor* logit,
-                      const Tensor* label)
+                      const Tensor logit,
+                      const Tensor label)
 {
   assert(logit->numDim == label->numDim);
   int dim = logit->numDim;
@@ -266,8 +268,8 @@ void Metrics::compute(FFModel* model,
 
 template<int NDIM>
 void Metrics::compute_with_dim(FFModel* model,
-                               const Tensor* logit,
-                               const Tensor* label)
+                               const Tensor logit,
+                               const Tensor label)
 {
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
