@@ -39,7 +39,7 @@ Repartition::Repartition(
   repartition_dim(_repartition_legion_dim),
   repartition_degree(_repartition_degree)
 {
-  int numdim = _input->numDim;
+  int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[i];

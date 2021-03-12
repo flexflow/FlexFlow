@@ -26,7 +26,7 @@ LegionRuntime::Logger::Category log_model("ff");
 TensorBase::TensorBase(void)
 {
   guid = 0;
-  numDim = 0;
+  num_dims = 0;
   parallel_is = IndexSpace::NO_SPACE;
   region = LogicalRegion::NO_REGION;
   region_grad = LogicalRegion::NO_REGION;
@@ -46,9 +46,9 @@ TensorBase::TensorBase(void)
 Tensor& Tensor::operator=(const Tensor& rhs)
 {
   guid = rhs.guid;
-  numDim = rhs.numDim;
-  for (int i = 0; i < numDim; i++)
-    adim[i] = rhs.adim[i];
+  num_dims = rhs.num_dims;
+  for (int i = 0; i < num_dims; i++)
+    dims[i].size = rhs.dims[i].size;
   data_type = rhs.data_type;
   sync_type = rhs.sync_type;
   initializer = rhs.initializer;
@@ -100,20 +100,20 @@ T* TensorBase::get_raw_ptr(FFConfig &config)
   RegionRequirement region_req(region, READ_WRITE, EXCLUSIVE, region);
   region_req.add_field(FID_DATA);
   T *raw_ptr = NULL;
-  if (numDim == 1) {
+  if (num_dims == 1) {
     TensorAccessorW<T, 1> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
     raw_ptr = (T*)acc.ptr;
-  } else if (numDim == 2) {
+  } else if (num_dims == 2) {
     TensorAccessorW<T, 2> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
     raw_ptr = (T*)acc.ptr;
-  } else if (numDim == 3) {
+  } else if (num_dims == 3) {
     TensorAccessorW<T, 3> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
     raw_ptr = (T*)acc.ptr;
-  } else if (numDim == 4) {
+  } else if (num_dims == 4) {
     TensorAccessorW<T, 4> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
     raw_ptr = (T*)acc.ptr;
   } else {
-    printf("wrong numDim %d", numDim);
+    printf("wrong num_dims %d", num_dims);
     assert(0);
   }
   return raw_ptr;
@@ -153,15 +153,15 @@ bool TensorBase::get_input_sub_tensor(
         assert (pc.nDims == 2 && "Invalid dimension for parallel config of OP_FLAT");
         int nonBatchDim = pc.dim[0];
         int batchDim = pc.dim[1];
-        tensor.numDim = numDim;
+        tensor.num_dims = num_dims;
         assert (nonBatchDim == 1 && "I'm not sure this is correct otherwise");
-        if (adim[numDim - 1] % batchDim != 0) {
-          printf("Could not get input subtensor because the dimension is not divisiable: %d %% %d != 0\n", adim[numDim - 1], batchDim);
+        if (dims[num_dims-1].size % batchDim != 0) {
+          printf("Could not get input subtensor because the dimension is not divisiable: %d %% %d != 0\n", dims[num_dims-1].size, batchDim);
         }
-        for (int i = numDim - 2; i >= 0; i--) {
-          tensor.adim[i] = adim[i];
+        for (int i = num_dims - 2; i >= 0; i--) {
+          tensor.dims[i].size = dims[i].size;
         }
-        tensor.adim[numDim-1] = adim[numDim-1] / batchDim;
+        tensor.dims[num_dims-1].size = dims[num_dims-1].size / batchDim;
         break;
       }
     case OP_RESHAPE:
@@ -169,50 +169,50 @@ bool TensorBase::get_input_sub_tensor(
         for (int i = 0; i < pc.nDims - 1; i ++)
           assert(pc.dim[i] == 1 && "Assuming data parallel for RESHAPE");
         int batchDim = pc.dim[pc.nDims-1];
-        if (adim[numDim - 1] % batchDim != 0) {
-          printf("Could not get input subtensor because the dimension is not divisiable: %d %% %d != 0\n", adim[numDim - 1], batchDim);
+        if (dims[num_dims-1].size % batchDim != 0) {
+          printf("Could not get input subtensor because the dimension is not divisiable: %d %% %d != 0\n", dims[num_dims-1].size, batchDim);
         }
-        tensor.numDim = numDim;
-        for (int i = numDim-2; i >= 0; i--) {
-          tensor.adim[i] = adim[i];
+        tensor.num_dims = num_dims;
+        for (int i = num_dims-2; i >= 0; i--) {
+          tensor.dims[i].size = dims[i].size;
         }
-        tensor.adim[numDim-1] = adim[numDim-1] / batchDim;
+        tensor.dims[num_dims-1].size = dims[num_dims-1].size / batchDim;
         break;
       }
     case OP_LINEAR:
     case OP_CONV2D:
       {
-        if (pc.nDims != numDim) {
-          printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, numDim);
+        if (pc.nDims != num_dims) {
+          printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, num_dims);
           return false;
         }
-        tensor.numDim = numDim;
-        for (int i = 1; i < numDim; i++) {
-          if (adim[i] % pc.dim[i] != 0) {
-            printf("Could not get input subtensor because the given dimension is not divisible: %d %% %d != 0\n", adim[i], pc.dim[i]);
+        tensor.num_dims = num_dims;
+        for (int i = 1; i < num_dims; i++) {
+          if (dims[i].size % pc.dim[i] != 0) {
+            printf("Could not get input subtensor because the given dimension is not divisible: %d %% %d != 0\n", dims[i].size, pc.dim[i]);
             return false;
           }
-          tensor.adim[i] = adim[i] / pc.dim[i];
+          tensor.dims[i].size = dims[i].size / pc.dim[i];
         }
-        tensor.adim[0] = adim[0];
+        tensor.dims[0].size = dims[0].size;
         tensor.data_type = data_type;
 	break;
       }
     default:
       {
-        if (pc.nDims != numDim) {
-          printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, numDim);
+        if (pc.nDims != num_dims) {
+          printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, num_dims);
           return false;
         }
-        for (int i = 0; i < numDim; i++) {
-          if (adim[i] % pc.dim[i] != 0) {
-            printf("Could not get input subtensor because the given dimension is not divisible: %d %% %d != 0\n", adim[i], pc.dim[i]);
+        for (int i = 0; i < num_dims; i++) {
+          if (dims[i].size % pc.dim[i] != 0) {
+            printf("Could not get input subtensor because the given dimension is not divisible: %d %% %d != 0\n", dims[i].size, pc.dim[i]);
             return false;
           }
         }
-        tensor.numDim = numDim;
-        for (int i = 0; i < numDim; i++) {
-          tensor.adim[i] = adim[i] / pc.dim[i];
+        tensor.num_dims = num_dims;
+        for (int i = 0; i < num_dims; i++) {
+          tensor.dims[i].size = dims[i].size / pc.dim[i];
         }
         tensor.data_type = data_type;
       }
@@ -226,19 +226,19 @@ bool TensorBase::get_output_sub_tensor(
     TensorBase& tensor,
     OperatorType type)
 {
-  if (pc.nDims != numDim) {
-    printf("Could not get output subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, numDim);
+  if (pc.nDims != num_dims) {
+    printf("Could not get output subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, num_dims);
     return false;
   }
-  for (int i = 0; i < numDim; i++) {
-    if (adim[i] % pc.dim[i] != 0) {
-      printf("Could not get output subtensor because the given dimension is not divisible: %d %% %d != 0\n", adim[i], pc.dim[i]);
+  for (int i = 0; i < num_dims; i++) {
+    if (dims[i].size % pc.dim[i] != 0) {
+      printf("Could not get output subtensor because the given dimension is not divisible: %d %% %d != 0\n", dims[i].size, pc.dim[i]);
       return false;
     }
   }
-  tensor.numDim = numDim;
-  for (int i = 0; i < numDim; i++)
-    tensor.adim[i] = adim[i] / pc.dim[i];
+  tensor.num_dims = num_dims;
+  for (int i = 0; i < num_dims; i++)
+    tensor.dims[i].size = dims[i].size / pc.dim[i];
   tensor.data_type = data_type;
   return true;
 }
@@ -246,18 +246,18 @@ bool TensorBase::get_output_sub_tensor(
 size_t TensorBase::get_volume() const
 {
   size_t volume = 1;
-  for (int i = 0; i < numDim; i++)
-    volume *= adim[i];
+  for (int i = 0; i < num_dims; i++)
+    volume *= dims[i].size;
   return volume;
 }
 
 Domain TensorBase::get_domain() const
 {
   Domain d;
-  d.dim = this->numDim;
-  for (int i = 0; i < this->numDim; i++) {
+  d.dim = this->num_dims;
+  for (int i = 0; i < this->num_dims; i++) {
     d.rect_data[i] = 0;
-    d.rect_data[i+d.dim] = this->adim[i] - 1;
+    d.rect_data[i+d.dim] = this->dims[i].size - 1;
   }
   return d;
 }
@@ -267,7 +267,7 @@ bool TensorBase::check_valid() const
   bool used[MAX_TENSOR_DIM];
   for (int i = 0; i < MAX_TENSOR_DIM; i++)
     used[i] = false;
-  for (int i = 0; i < numDim; i++) {
+  for (int i = 0; i < num_dims; i++) {
     if (dims[i].size % dims[i].degree != 0)
       return false;
     if (dims[i].parallel_idx > MAX_TENSOR_DIM)
@@ -469,7 +469,7 @@ ParallelConfig Op::get_data_parallel_config(const FFModel& ff) const
   int num_parts = ff.config.workersPerNode * ff.config.numNodes;
   ParallelConfig pc;
   pc.device_type = ParallelConfig::GPU;
-  pc.nDims = outputs[0]->numDim;
+  pc.nDims = outputs[0]->num_dims;
   for (int i = 0; i < pc.nDims; i++)
     pc.dim[i] = i == pc.nDims - 1 ? num_parts : 1;
   for (int i = 0; i < num_parts; i++)
@@ -479,7 +479,7 @@ ParallelConfig Op::get_data_parallel_config(const FFModel& ff) const
 
 void Op::create_input_partition(FFModel& model)
 {
-  int dim = outputs[0]->numDim;
+  int dim = outputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -536,7 +536,7 @@ void Op::create_input_partition_with_dim(FFModel& model)
 ParallelConfig Op::get_random_parallel_config(const FFModel& ff) const
 {
   std::vector<int> candidates;
-  int batch_size = outputs[0]->adim[outputs[0]->numDim-1];
+  int batch_size = outputs[0]->dims[outputs[0]->num_dims-1].size;
   for (int i = 1; i <= ff.config.workersPerNode; i++)
     if (ff.config.workersPerNode % i == 0) {
       if (batch_size % i != 0)
@@ -554,7 +554,7 @@ ParallelConfig Op::get_random_parallel_config(const FFModel& ff) const
   int num_parts = candidates[idx];
   ParallelConfig pc;
   pc.device_type = ParallelConfig::GPU;
-  pc.nDims = outputs[0]->numDim;
+  pc.nDims = outputs[0]->num_dims;
   for (int i = 0; i < pc.nDims; i++)
     pc.dim[i] = i == pc.nDims - 1 ? num_parts : 1;
   int total_num_devices = ff.config.workersPerNode * ff.config.numNodes;
@@ -569,13 +569,13 @@ Domain Op::get_output_tensor_shape(const ParallelConfig& pc,
 {
   assert(output_idx < numOutputs);
   Domain d;
-  d.dim = outputs[output_idx]->numDim;
+  d.dim = outputs[output_idx]->num_dims;
   // Assume pc dim matches output dim
   assert(d.dim == pc.nDims);
   for (int i = 0; i < d.dim; i++) {
     // Assume an equal partitioning
-    assert(outputs[output_idx]->adim[i] % pc.dim[i] == 0);
-    int dim_size = outputs[output_idx]->adim[i] / pc.dim[i];
+    assert(outputs[output_idx]->dims[i].size % pc.dim[i] == 0);
+    int dim_size = outputs[output_idx]->dims[i].size / pc.dim[i];
     d.rect_data[i] = (part_idx % pc.dim[i]) * dim_size;
     d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
     part_idx = part_idx / pc.dim[i];
@@ -589,12 +589,12 @@ Domain Op::get_input_tensor_shape(const ParallelConfig& pc,
 {
   assert(input_idx < numInputs);
   Domain d;
-  d.dim = inputs[input_idx]->numDim;
+  d.dim = inputs[input_idx]->num_dims;
   if (pc.nDims == d.dim) {
     for (int i = 0; i < d.dim; i++) {
       // Assume an equal partitioning
-      assert(inputs[input_idx]->adim[i] % pc.dim[i] == 0);
-      int dim_size = inputs[input_idx]->adim[i] / pc.dim[i];
+      assert(inputs[input_idx]->dims[i].size % pc.dim[i] == 0);
+      int dim_size = inputs[input_idx]->dims[i].size / pc.dim[i];
       d.rect_data[i] = (part_idx % pc.dim[i]) * dim_size;
       d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
       part_idx = part_idx / pc.dim[i];
@@ -604,14 +604,14 @@ Domain Op::get_input_tensor_shape(const ParallelConfig& pc,
     for (int i = 0; i < pc.nDims-1; i++)
       assert(pc.dim[i] == 1);
     for (int i = 0; i < d.dim-1; i++) {
-      int dim_size = inputs[input_idx]->adim[i];
+      int dim_size = inputs[input_idx]->dims[i].size;
       d.rect_data[i] = 0;
       d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
     }
     // Assume an equal partitioning
-    assert(inputs[input_idx]->adim[d.dim-1] % pc.dim[pc.nDims-1] == 0);
+    assert(inputs[input_idx]->dims[d.dim-1].size % pc.dim[pc.nDims-1] == 0);
     assert(part_idx < pc.dim[pc.nDims-1]);
-    int dim_size = inputs[input_idx]->adim[d.dim-1] / pc.dim[pc.nDims-1];
+    int dim_size = inputs[input_idx]->dims[d.dim-1].size / pc.dim[pc.nDims-1];
     d.rect_data[d.dim - 1] = part_idx * dim_size;
     d.rect_data[2*d.dim - 1] = d.rect_data[d.dim-1] + dim_size - 1;
     part_idx = part_idx / pc.dim[pc.nDims-1];
@@ -626,10 +626,10 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
   // Default data parallel weight replication
   assert(weight_idx < numWeights);
   Domain d;
-  d.dim = weights[weight_idx]->numDim;
+  d.dim = weights[weight_idx]->num_dims;
   for (int i = 0; i < d.dim; i++) {
     d.rect_data[i] = 0;
-    d.rect_data[i+d.dim] = weights[weight_idx]->adim[i] - 1;
+    d.rect_data[i+d.dim] = weights[weight_idx]->dims[i].size - 1;
   }
   return d;
 }
@@ -1019,7 +1019,7 @@ Tensor FFModel::create_tensor(
   tensor->owner_op = owner_op;
   tensor->owner_idx = owner_idx;
   tensor->create_gradients = create_grad;
-  tensor->numDim = NDIM;
+  tensor->num_dims = NDIM;
   for (int i = 0; i < NDIM; i++) {
     tensor->dims[i] = dims[NDIM-1-i];
   }
@@ -1059,7 +1059,7 @@ Parameter FFModel::create_weight(
   p->create_gradients = create_grad;
   p->initializer = initializer;
   p->sync_type = sync_type;
-  p->numDim = NDIM;
+  p->num_dims = NDIM;
   for (int i = 0; i < NDIM; i++) {
     p->dims[i] = dims[NDIM-1-i];
   }
@@ -1070,7 +1070,7 @@ Parameter FFModel::create_weight(
 
 void FFModel::map_tensor(Tensor tensor, const Op* op)
 {
-  switch (tensor->numDim) {
+  switch (tensor->num_dims) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
@@ -1124,7 +1124,7 @@ void FFModel::map_tensor_with_dim(Tensor tensor, const Op* parallel_op)
   }
   Point<NDIM> hi;
   for (int i = 0; i < NDIM; i++)
-    hi[i] = tensor->adim[i] - 1;
+    hi[i] = tensor->dims[i].size - 1;
   Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
   IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
   tensor->region = runtime->create_logical_region(ctx, is, fs);
@@ -1163,7 +1163,7 @@ void FFModel::map_tensor_with_dim(Tensor tensor, const Op* parallel_op)
 
 void FFModel::map_weight(Tensor weight, const Op* op)
 {
-  switch (weight->numDim) {
+  switch (weight->num_dims) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
@@ -1192,7 +1192,7 @@ void FFModel::map_weight_with_dim(Tensor weight, const Op* parallel_op)
     assert(weight->owner_op == parallel_op);
   }
   assert(parallel_op != NULL);
-  int tdim = parallel_op->outputs[0]->numDim;
+  int tdim = parallel_op->outputs[0]->num_dims;
   switch (parallel_op->op_type) {
     case OP_LINEAR:
     case OP_EMBEDDING:
@@ -1240,7 +1240,7 @@ void FFModel::create_disjoint_partition(const Tensor tensor,
   Runtime* runtime = config.lg_hlr;
   // Check that dimension sizes match
   {
-    assert(tensor->numDim == NDIM);
+    assert(tensor->num_dims == NDIM);
     Domain domain = runtime->get_index_space_domain(ctx, part_is);
     assert(domain.get_dim() == NDIM);
   }
@@ -1279,7 +1279,7 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor tensor,
                                                             LogicalPartition& part_fwd,
                                                             LogicalPartition& part_bwd)
 {
-  assert(tensor->numDim == NDIM);
+  assert(tensor->num_dims == NDIM);
   if (config.computationMode == COMP_MODE_TRAINING) {
     // Current assume forward and grad share the same index space
     assert(tensor->region.get_index_space() == tensor->region_grad.get_index_space());
@@ -1349,12 +1349,12 @@ void FFModel::map_linear_weight(
     default:
       assert(false);
   }
-  int out_channels = weight->adim[weight->numDim-1];
+  int out_channels = weight->dims[weight->num_dims-1].size;
   // Step 1: forward region and partition
   if (weight->sync_type == ParameterSyncType::PS) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
-      hi[i] = weight->adim[i]-1;
+      hi[i] = weight->dims[i].size-1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight->region = runtime->create_logical_region(ctx, is, fs);
@@ -1377,7 +1377,7 @@ void FFModel::map_linear_weight(
     //  assert(num_parts[i] == 1);
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
-      hi[i] = weight->adim[i]-1;
+      hi[i] = weight->dims[i].size-1;
     int num_batches = 1;
     for (int i = 1; i < TDIM; i++)
       num_batches *= num_parts[i];
@@ -1413,7 +1413,7 @@ void FFModel::map_linear_weight(
   if (weight->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
-      hi[i] = weight->adim[i]-1;
+      hi[i] = weight->dims[i].size-1;
     int num_batches = 1;
     for (int i = 1; i < TDIM; i++)
       num_batches *= num_parts[i];
@@ -1471,11 +1471,11 @@ void FFModel::map_conv_weight(
       assert(false);
   }
   // Step 1: forward region and partition
-  int out_channels = weight->adim[weight->numDim-1];
+  int out_channels = weight->dims[weight->num_dims-1].size;
   if (weight->sync_type == ParameterSyncType::PS) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
-      hi[i] = weight->adim[i]-1;
+      hi[i] = weight->dims[i].size-1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight->region = runtime->create_logical_region(ctx, is, fs);
@@ -1493,7 +1493,7 @@ void FFModel::map_conv_weight(
     assert(num_par_c == 1);
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
-      hi[i] = weight->adim[i]-1;
+      hi[i] = weight->dims[i].size-1;
     hi[NDIM-1] = num_par_n * num_par_h * num_par_w * out_channels - 1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
@@ -1528,7 +1528,7 @@ void FFModel::map_conv_weight(
   if (weight->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
     Point<NDIM> hi;
     for (int i = 0; i < NDIM; i++)
-      hi[i] = weight->adim[i]-1;
+      hi[i] = weight->dims[i].size-1;
     hi[NDIM-1] = num_par_n * num_par_h * num_par_w * out_channels - 1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
@@ -1568,10 +1568,10 @@ Tensor FFModel::create_linear_replica(const int dims[],
     num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
   Tensor replica = new TensorBase();
   replica->guid = tensor_global_guid ++;
-  replica->numDim = NDIM;
+  replica->num_dims = NDIM;
   replica->data_type = data_type;
   for (int i = 0; i < NDIM; i++)
-    replica->adim[i] = dims[NDIM-1-i];
+    replica->dims[i].size = dims[NDIM-1-i];
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator= runtime->create_field_allocator(ctx, fs);
   switch (data_type) {
@@ -1977,12 +1977,12 @@ void FFModel::compile(LossType loss_type,
                           handle.get_tree_id());
       }
   }
-  //assert(final_layer->outputs[0].numDim == 2);
+  //assert(final_layer->outputs[0].num_dims == 2);
   int dims[MAX_TENSOR_DIM], num_dims;
-  num_dims = final_layer->outputs[0]->numDim;
+  num_dims = final_layer->outputs[0]->num_dims;
   // Note that FlexFlow's runtim internally reverse the array ordering
   for (int i = 0; i < num_dims; i++)
-    dims[i] = final_layer->outputs[0]->adim[num_dims-1-i];
+    dims[i] = final_layer->outputs[0]->dims[num_dims-1-i].size;
   DataType label_type = DT_FLOAT;
   if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     // assign dims[num_dims-1] = 1 for sparse categorical labels

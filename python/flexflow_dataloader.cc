@@ -38,14 +38,14 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff, Tensor input, Tensor label,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {num_samples, input->adim[2], input->adim[1], input->adim[0]};
+    const int dims[] = {num_samples, input->dims[2].size, input->dims[1].size, input->dims[0].size};
     full_input = ff.create_tensor<4>(dims, DT_FLOAT);
     ff.map_tensor(full_input, NULL/*parallel_op*/);
   }
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {num_samples, label->adim[0]};
+    const int dims[] = {num_samples, label->dims[0].size};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
     ff.map_tensor(full_label, NULL/*parallel_op*/);
   }
@@ -101,14 +101,14 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {num_samples, input->adim[2], input->adim[1], input->adim[0]};
+    const int dims[] = {num_samples, input->dims[2].size, input->dims[1].size, input->dims[0].size};
     full_input = ff.create_tensor<4>(dims, DT_FLOAT);
     ff.map_tensor(full_input, NULL/*parallel_op*/);
   }
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {num_samples, label->adim[0]};
+    const int dims[] = {num_samples, label->dims[0].size};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
     ff.map_tensor(full_label, NULL/*parallel_op*/);
   }
@@ -349,14 +349,14 @@ ImgDataLoader2D::ImgDataLoader2D(FFModel& ff, Tensor input, Tensor label,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {num_samples, input->adim[0]};
+    const int dims[] = {num_samples, input->dims[0].size};
     full_input = ff.create_tensor<2>(dims, DT_FLOAT);
     ff.map_tensor(full_input, NULL);
   }
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {num_samples, label->adim[0]};
+    const int dims[] = {num_samples, label->dims[0].size};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
     ff.map_tensor(full_label, NULL);
   }
@@ -502,15 +502,15 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_
   num_samples = num_samples_;
   datatype = datatype_;
   // Create full input
-  assert(input->numDim == full_input_->numDim);
-  for (int i = 0; i < input->numDim-1; i++)
-    assert(full_input_->adim[i] == input->adim[i]);
+  assert(input->num_dims == full_input_->num_dims);
+  for (int i = 0; i < input->num_dims-1; i++)
+    assert(full_input_->dims[i].size == input->dims[i].size);
   batch_input = input;
   int dims[MAX_TENSOR_DIM];
   dims[0] = num_samples;
-  for (int i = 1; i < input->numDim; i++)
-    dims[i] = input->adim[input->numDim-1-i];
-  switch (input->numDim) {
+  for (int i = 1; i < input->num_dims; i++)
+    dims[i] = input->dims[input->num_dims-1-i].size;
+  switch (input->num_dims) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
@@ -560,8 +560,8 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, void *full_input_p
   batch_input = input;
   int dims[MAX_TENSOR_DIM];
   dims[0] = num_samples;
-  for (int i = 1; i < input->numDim; i++)
-    dims[i] = input->adim[input->numDim-1-i];
+  for (int i = 1; i < input->num_dims; i++)
+    dims[i] = input->dims[input->num_dims-1-i].size;
   
   int task_id = -1;
   if (datatype == DT_FLOAT) {
@@ -573,11 +573,11 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, void *full_input_p
   }
 
   size_t size_per_sample = 1;
-  for (int i = 1; i < input->numDim; i++) {
+  for (int i = 1; i < input->num_dims; i++) {
     assert (dims[i] != 0);
     size_per_sample *= dims[i];
   }
-  switch (input->numDim) {
+  switch (input->num_dims) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
@@ -665,7 +665,7 @@ void SingleDataLoader::next_batch(FFModel& ff)
     task_id = PY_DL_INT_LOAD_BATCH_GPU_TASK_ID;
   else
     assert(0);
-  switch (full_input->numDim) {
+  switch (full_input->num_dims) {
 #define DIMFUNC(DIM) \
     case DIM: \
       next_batch_xd_launcher<DIM>(ff, task_id); \

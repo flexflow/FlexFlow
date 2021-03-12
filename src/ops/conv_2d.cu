@@ -31,7 +31,7 @@ Tensor FFModel::conv2d(const Tensor input,
                        Initializer* bias_initializer,
                        char const *name)
 {
-  assert(input->numDim == 4); /*NCHW*/
+  assert(input->num_dims == 4); /*NCHW*/
   if (kernel_initializer == NULL) {
     int seed = std::rand();
     kernel_initializer = new GlorotUniform(seed);
@@ -46,7 +46,7 @@ Tensor FFModel::conv2d(const Tensor input,
 #endif
   Tensor kernel, bias;
   {
-    const int dims[4] = {outChannels, input->adim[2] / groups, kernelH, kernelW};
+    const int dims[4] = {outChannels, input->dims[2].size / groups, kernelH, kernelW};
     kernel = create_weight<4>(dims, DT_FLOAT, NULL/*owner_op*/,
         true/*create_grad*/, kernel_initializer, comm_type);
   }
@@ -76,13 +76,13 @@ Conv2D::Conv2D(FFModel& model,
                ActiMode _activation,
                const char* name)
 : Op(model, OP_CONV2D, name, _input, _kernel, _bias),
-  in_channels(_input->adim[2]), out_channels(_kernel->adim[3]),
-  kernel_h(_kernel->adim[1]), kernel_w(_kernel->adim[0]),
+  in_channels(_input->dims[2].size), out_channels(_kernel->dims[3].size),
+  kernel_h(_kernel->dims[1].size), kernel_w(_kernel->dims[0].size),
   stride_h(_stride_h), stride_w(_stride_w),
   padding_h(_padding_h), padding_w(_padding_w),
-  groups(_input->adim[2]/_kernel->adim[2]), activation(_activation)
+  groups(_input->dims[2].size/_kernel->dims[2].size), activation(_activation)
 {
-  assert(_input->numDim == 4);
+  assert(_input->num_dims == 4);
   if (_bias == NULL) {
     assert(numInputs == 1);
     assert(numWeights == 1);
@@ -93,12 +93,12 @@ Conv2D::Conv2D(FFModel& model,
     use_bias = true;
   }
   // Set output shape
-  int input_w = inputs[0]->adim[0];
-  int input_h = inputs[0]->adim[1];
+  int input_w = inputs[0]->dims[0].size;
+  int input_h = inputs[0]->dims[1].size;
   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
   int output_c = out_channels;
-  int output_n = inputs[0]->adim[3];
+  int output_n = inputs[0]->dims[3].size;
   numOutputs = 1;
   {
     const int dims[4] = {output_n, output_c, output_h, output_w};
@@ -148,12 +148,12 @@ void Conv2D::map_output_tensors(FFModel& model)
   Runtime* runtime = model.config.lg_hlr;
   Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
   // Create output tensor
-  int input_w = inputs[0].adim[0];
-  int input_h = inputs[0].adim[1];
+  int input_w = inputs[0].dims[0].size;
+  int input_h = inputs[0].dims[1].size;
   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
   int output_c = out_channels;
-  int output_n = inputs[0].adim[3];
+  int output_n = inputs[0].dims[3].size;
   int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
   int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
   int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
@@ -953,14 +953,14 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
     return false;
   if(!inputs[0]->get_input_sub_tensor(pc, sub_input, OP_CONV2D))
     return false;
-  int input_w = sub_input.adim[0];
-  int input_h = sub_input.adim[1];
-  int input_c = sub_input.adim[2];
-  int input_n = sub_input.adim[3];
-  int output_w = sub_output.adim[0];
-  int output_h = sub_output.adim[1];
-  int output_c = sub_output.adim[2];
-  int output_n = sub_output.adim[3];
+  int input_w = sub_input.dims[0].size;
+  int input_h = sub_input.dims[1].size;
+  int input_c = sub_input.dims[2].size;
+  int input_n = sub_input.dims[3].size;
+  int output_w = sub_output.dims[0].size;
+  int output_h = sub_output.dims[1].size;
+  int output_c = sub_output.dims[2].size;
+  int output_n = sub_output.dims[3].size;
   int pad_h = ((output_h - 1) * stride_h + kernel_h - input_h + 1) / 2;
   int pad_w = ((output_w - 1) * stride_w + kernel_w - input_w + 1) / 2;
 

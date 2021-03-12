@@ -550,18 +550,18 @@ class Tensor(object):
 
   def __get_dims(self):
     self.num_dims = ffc.flexflow_tensor_get_num_dims(self.handle)
-    d = ffc.flexflow_tensor_get_dims(self.handle)
+    #d = ffc.flexflow_tensor_get_dims(self.handle)
     #fflogger.debug(d[0], d[1], d[2], d[3])
     if (self.num_dims == 1):
-      self.dims = (d[0],)
+      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 0))
     elif (self.num_dims == 2):
-      self.dims = (d[1], d[0])
+      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
     elif (self.num_dims == 3):
-      self.dims = (d[2], d[1], d[0])
+      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
     elif (self.num_dims == 4):
-      self.dims = (d[3], d[2], d[1], d[0])
+      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 3), ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
     elif (self.num_dims == 5):
-      self.dims = (d[4], d[3], d[2], d[1], d[0])
+      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 4), ffc.flexflow_tensor_get_dim(self.handle, 3), ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
     else:
       assert 0, "unknown num_dims"
 

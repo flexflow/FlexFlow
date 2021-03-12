@@ -39,7 +39,7 @@ Combine::Combine(
   combine_dim(_combine_legion_dim),
   combine_degree(_combine_degree)
 {
-  int numdim = _input->numDim;
+  int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[i];

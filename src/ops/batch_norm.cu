@@ -22,7 +22,7 @@ Tensor FFModel::batch_norm(const Tensor input,
                            bool relu,
                            const char* name)
 {
-  assert(input->numDim == 4); //Only support 4D BN for now
+  assert(input->num_dims == 4); //Only support 4D BN for now
   Initializer* scale_initializer = new ConstantInitializer(1.0f);
   Initializer* bias_initializer = new ConstantInitializer(0.0f);
 #ifdef FF_USE_NCCL
@@ -32,7 +32,7 @@ Tensor FFModel::batch_norm(const Tensor input,
 #endif
   Tensor scale, bias;
   {
-    const int dims[1] = {input->adim[2]};
+    const int dims[1] = {input->dims[2].size};
     scale = create_weight<1>(dims, DT_FLOAT, NULL/*owner_op*/,
         true/*create_grad*/, scale_initializer, comm_type);
   }
@@ -58,12 +58,12 @@ BatchNorm::BatchNorm(FFModel& model,
                      const char* name)
 : Op(model, OP_BATCHNORM, name, _input, _scale, _bias), relu(_relu)
 {
-  assert(_input->numDim == 4);
+  assert(_input->num_dims == 4);
   numOutputs = 1;
   int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < _input->numDim; i++)
-    dims[i] = _input->adim[_input->numDim-1-i];
-  outputs[0] = model.create_tensor(_input->numDim, dims, DT_FLOAT, this);
+  for (int i = 0; i < _input->num_dims; i++)
+    dims[i] = _input->adim[_input->num_dims-1-i];
+  outputs[0] = model.create_tensor(_input->num_dims, dims, DT_FLOAT, this);
   return;
 }
 

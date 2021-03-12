@@ -25,7 +25,7 @@ Tensor FFModel::pool2d(const Tensor input,
                        PoolType type, ActiMode activation,
                        char const *name)
 {
-  assert(input->numDim == 4); /*NCHW*/
+  assert(input->num_dims == 4); /*NCHW*/
   Pool2D *pool = new Pool2D(*this, input, kernelH, kernelW,
                       strideH, strideW, paddingH, paddingW,
                       type, activation, name);
@@ -46,12 +46,12 @@ Pool2D::Pool2D(FFModel& model,
   padding_h(_padding_h), padding_w(_padding_w),
   pool_type(_type), activation(_activation)
 {
-  int input_w = inputs[0]->adim[0];
-  int input_h = inputs[0]->adim[1];
+  int input_w = inputs[0]->dims[0].size;
+  int input_h = inputs[0]->dims[1].size;
   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  int output_c = inputs[0]->adim[2];
-  int output_n = inputs[0]->adim[3];
+  int output_c = inputs[0]->dims[2].size;
+  int output_n = inputs[0]->dims[3].size;
   const int dims[4] = {output_n, output_c, output_h, output_w};
   outputs[0] = model.create_tensor<4>(dims, DT_FLOAT, this);
 }
@@ -68,12 +68,12 @@ void Pool2D::create_input_partition(FFModel& model)
   assert(num_par_c == 1);
   return Op::create_input_partition(model);
 #ifdef DEADCODE
-  int input_w = inputs[0].adim[0];
-  int input_h = inputs[0].adim[1];
+  int input_w = inputs[0].dims[0].size;
+  int input_h = inputs[0].dims[1].size;
   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  int output_c = inputs[0].adim[2];
-  int output_n = inputs[0].adim[3];
+  int output_c = inputs[0].dims[2].size;
+  int output_n = inputs[0].dims[3].size;
   {
     const int dims[4] = {output_n, output_c, output_h, output_w};
     outputs[0] = model.create_tensor<4>(dims, DT_FLOAT, this);
@@ -404,14 +404,14 @@ bool Pool2D::measure_operator_cost(Simulator* sim,
     return false;
   if(!inputs[0]->get_input_sub_tensor(pc, sub_input, OP_CONV2D))
     return false;
-  int input_w = sub_input.adim[0];
-  int input_h = sub_input.adim[1];
-  int input_c = sub_input.adim[2];
-  int input_n = sub_input.adim[3];
-  int output_w = sub_output.adim[0];
-  int output_h = sub_output.adim[1];
-  int output_c = sub_output.adim[2];
-  int output_n = sub_output.adim[3];
+  int input_w = sub_input.dims[0].size;
+  int input_h = sub_input.dims[1].size;
+  int input_c = sub_input.dims[2].size;
+  int input_n = sub_input.dims[3].size;
+  int output_w = sub_output.dims[0].size;
+  int output_h = sub_output.dims[1].size;
+  int output_c = sub_output.dims[2].size;
+  int output_n = sub_output.dims[3].size;
   int pad_h = ((output_h - 1) * stride_h + kernel_h - input_h + 1) / 2;
   int pad_w = ((output_w - 1) * stride_w + kernel_w - input_w + 1) / 2;
   Pool2DMeta* m = sim->pool2d_meta;

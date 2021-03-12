@@ -39,7 +39,7 @@ Reduction::Reduction(
   reduction_dim(_reduction_legion_dim),
   reduction_degree(_reduction_degree)
 {
-  int numdim = _input->numDim;
+  int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[i];

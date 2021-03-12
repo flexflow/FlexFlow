@@ -36,7 +36,7 @@ void GlorotUniform::init(const FFModel* ff,
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
   if (p->sync_type == ParameterSyncType::PS) {
-    assert(p->numDim >= 2);
+    assert(p->num_dims >= 2);
     TaskLauncher launcher(GLOROT_INIT_TASK_ID,
                           TaskArgument(this, sizeof(GlorotUniform)));
     // regions[0]: p->region

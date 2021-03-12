@@ -60,8 +60,8 @@ struct TensorBase {
   bool get_tensor(const FFModel* model,
                   T* data);
   int guid;
-  int numDim;
-  int adim[MAX_TENSOR_DIM];
+  int num_dims;
+  //int adim[MAX_TENSOR_DIM];
   ParallelDim dims[MAX_TENSOR_DIM];
   DataType data_type;
   ParameterSyncType sync_type;

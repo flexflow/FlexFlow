@@ -888,16 +888,17 @@ flexflow_tensor_get_num_dims(
   flexflow_tensor_t handle_)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
-  return handle->numDim;
+  return handle->num_dims;
 }
 
-int*
-flexflow_tensor_get_dims(
-  flexflow_tensor_t handle_)
+int
+flexflow_tensor_get_dim(
+  flexflow_tensor_t handle_,
+  int legion_axis)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
-  DEBUG_PRINT("[Tensor] get dims [%d, %d, %d, %d]", handle->adim[3], handle->adim[2], handle->adim[1], handle->adim[0]);
-  return &(handle->adim[0]);
+  DEBUG_PRINT("[Tensor] get dims [%d, %d, %d, %d]", handle->dims[3].size, handle->dims[2].size, handle->dims[1].size, handle->dims[0].size);
+  return handle->dims[legion_axis].size;
 }
 
 int

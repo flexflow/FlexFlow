@@ -331,7 +331,7 @@ void FFModel::prefetch()
 template <typename T>
 bool TensorBase::set_tensor(
     const FFModel* ff,
-    const std::vector<int>& dims,
+    const std::vector<int>& dim_sizes,
     const T* data)
 {
   Context ctx = ff->config.lg_ctx;
@@ -348,19 +348,19 @@ bool TensorBase::set_tensor(
     assert(false);
   }
   // Check dimensions
-  if (numDim != (int)dims.size())
+  if (num_dims != (int)dim_sizes.size())
     return false;
-  for (int i = 0; i < numDim; i++) {
-    if (adim[numDim-1-i] != dims[i])
+  for (int i = 0; i < num_dims; i++) {
+    if (dims[num_dims-1-i].size != dim_sizes[i])
       return false;
-    volume = volume * dims[i];
+    volume = volume * dim_sizes[i];
   }
   RegionRequirement req(region, READ_WRITE, EXCLUSIVE, region);
   req.add_field(FID_DATA);
   InlineLauncher launcher(req);
   PhysicalRegion pr = runtime->map_region(ctx, launcher);
   pr.wait_until_valid();
-  switch (numDim) {
+  switch (num_dims) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
@@ -411,15 +411,15 @@ bool TensorBase::get_tensor(
   }
   //TODO: check data type matches
   size_t volume = 1;
-  for (int i = 0; i < numDim; i++) {
-    volume = volume * adim[i];
+  for (int i = 0; i < num_dims; i++) {
+    volume = volume * dims[i].size;
   }
   RegionRequirement req(weight_lr, READ_ONLY, EXCLUSIVE, region);
   req.add_field(FID_DATA);
   InlineLauncher launcher(req);
   PhysicalRegion pr = runtime->map_region(ctx, launcher);
   pr.wait_until_valid();
-  switch (numDim) {
+  switch (num_dims) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \

@@ -39,7 +39,7 @@ Replicate::Replicate(
   replicate_dim(_replicate_legion_dim),
   replicate_degree(_replicate_degree)
 {
-  int numdim = _input->numDim;
+  int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[i];
