@@ -1816,6 +1816,7 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_SPLIT: return "Split";
     case OP_EMBEDDING: return "Embedding";
     case OP_GROUP_BY: return "Group_by";
+    case OP_AGGREGATE: return "Aggregate";
     case OP_RESHAPE: return "Reshape";
     case OP_REVERSE: return "Reverse";
     case OP_TRANSPOSE: return "Transpose";
@@ -2299,7 +2300,7 @@ void register_flexflow_internal_tasks()
   }*/
 
   // Group by task CPU
-  /*{
+  {
     TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "Group_by Init");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
@@ -2319,7 +2320,30 @@ void register_flexflow_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<Group_by::backward_task>(
         registrar, "Group_by Backward Task");
-  }*/
+  }
+
+  // Aggregate task CPU
+  {
+    TaskVariantRegistrar registrar(AGGREGATE_INIT_TASK_ID, "Aggregate Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Aggregate::init_task>(
+        registrar, "Aggregate Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(AGGREGATE_FWD_TASK_ID, "Aggregate Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Aggregate::forward_task>(
+        registrar, "Aggregate Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(AGGREGATE_BWD_TASK_ID, "Aggregate Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Aggregate::backward_task>(
+        registrar, "Aggregate Backward Task");
+  }
 
   // Pool2D task
   {

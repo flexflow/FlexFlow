@@ -65,7 +65,7 @@ void Group_by::create_weights(FFModel& model)
 
 void Group_by::create_output_and_partition(FFModel& model)
 {
-  // Retrive the task indexspace for the op
+  // Retrieve the task indexspace for the op
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
   Context ctx = model.config.lg_ctx;
@@ -129,7 +129,7 @@ void Group_by::init(const FFModel& ff)
 
   // assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/, //TODO ?
+    RegionRequirement(input_lps[1], 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[1].region));
   launcher.add_field(1, FID_DATA);
 
@@ -186,6 +186,11 @@ void group_by_backward(const float* input,
         int out_dim)
 {
   // TODO: Implement. In case not data passed directly (this is uncommon though)
+  for(int i = 0; i < batch_size; i++) {
+
+  }
+
+
 }
 
 
@@ -329,21 +334,21 @@ void Group_by::backward(const FFModel& ff)
 
   // data
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
 
   // assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[1].region));
+    RegionRequirement(input_grad_lps[1], 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[1].region_grad));
   launcher.add_field(1, FID_DATA);
 
   // output
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(outputs[i].part, 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, outputs[i].region));
+      RegionRequirement(outputs[i].part_grad, 0/*projection id*/,
+        WRITE_ONLY, EXCLUSIVE, outputs[i].region_grad));
     launcher.add_field(i+2, FID_DATA);
   }
 

@@ -59,6 +59,9 @@ enum TaskIDs {
   GROUP_BY_INIT_TASK_ID,
   GROUP_BY_FWD_TASK_ID,
   GROUP_BY_BWD_TASK_ID,
+  AGGREGATE_INIT_TASK_ID,
+  AGGREGATE_FWD_TASK_ID,
+  AGGREGATE_BWD_TASK_ID,
   POOL2D_INIT_TASK_ID,
   POOL2D_FWD_TASK_ID,
   POOL2D_BWD_TASK_ID,
@@ -195,6 +198,7 @@ public:
   Op(FFModel& model, OperatorType type, const char* _name, int num, const Tensor* inputs);
   Op(FFModel& model, OperatorType type, const char* _name, int num);
   Op(FFModel& model, OperatorType type, const Op* shared_op, const char* _name, const Tensor& input);
+
   // Pure virtual functions that must be implemented
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
@@ -313,6 +317,10 @@ public:
                 Tensor* outputs,
                 int n, float alpha,
                 const char* name = NULL);
+  // Add aggregate layer
+  Tensor aggregate(const Tensor* inputs,
+                  int n,
+                  const char* name = NULL);
   // Add a 2D pooling layer
   Tensor pool2d(const Tensor& input,
                 int kernelH, int kernelW,
@@ -1114,6 +1122,41 @@ public:
 public:
   int n;
   float alpha;
+  bool profiling;
+};
+
+
+class AggregateMeta : public OpMeta {
+public:
+  AggregateMeta(FFHandler handle);
+};
+
+class Aggregate : public Op {
+public:
+  Aggregate(FFModel& model,
+            const Tensor* inputs,
+            int _n, const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+public:
+  int n;
   bool profiling;
 };
 
