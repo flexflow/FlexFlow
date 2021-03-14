@@ -142,7 +142,7 @@ void TopK::init(const FFModel& ff)
     default:
       assert(false);
   }
-  IndexLauncher launcher(ELEMENTBINARY_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(TOPK_INIT_TASK_ID, task_is,
                          TaskArgument(this, sizeof(TopK)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));

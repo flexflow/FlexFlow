@@ -160,9 +160,11 @@ OpMeta* Aggregate::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
 {
-  FFHandler handle = *((FFHandler*)task->local_args);
-  TopKMeta* m = new TopKMeta(handle);
-  return m;
+  //FFHandler handle = *((FFHandler*)task->local_args);
+  //TopKMeta* m = new TopKMeta(handle);
+  //return m;
+  // return NULL if we don't need local metadata for Aggregate
+  return NULL;
 }
 
 
@@ -175,33 +177,28 @@ void Aggregate::init(const FFModel& ff)
                          TaskArgument(this, sizeof(Aggregate)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
-
   // gate_preds
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
+      READ_WRITE, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
-
   // gate_assign
   launcher.add_region_requirement(
     RegionRequirement(input_lps[1], 0/*projection id*/, //TODO ?
-      READ_ONLY, EXCLUSIVE, inputs[1].region));
+      READ_WRITE, EXCLUSIVE, inputs[1].region));
   launcher.add_field(1, FID_DATA);
-
   // exp_preds
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_lps[i+2], 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i+2].region));
+        READ_WRITE, EXCLUSIVE, inputs[i+2].region));
     launcher.add_field(i+2, FID_DATA);
   }
-
   // output
   launcher.add_region_requirement(
     RegionRequirement(outputs[0].part, 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, outputs[0].region));
-  launcher.add_field(n+3, FID_DATA);
-
+      READ_WRITE, EXCLUSIVE, outputs[0].region));
+  launcher.add_field(n+2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -370,13 +367,11 @@ void Aggregate::forward(const FFModel& ff)
     RegionRequirement(input_lps[0], 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
-
   // gate_assign
   launcher.add_region_requirement(
     RegionRequirement(input_lps[1], 0/*projection id*/, //TODO ?
       READ_ONLY, EXCLUSIVE, inputs[1].region));
   launcher.add_field(1, FID_DATA);
-
   // exp_preds
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
@@ -384,12 +379,11 @@ void Aggregate::forward(const FFModel& ff)
         READ_ONLY, EXCLUSIVE, inputs[i+2].region));
     launcher.add_field(i+2, FID_DATA);
   }
-
   // output
   launcher.add_region_requirement(
     RegionRequirement(outputs[0].part, 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, outputs[0].region));
-  launcher.add_field(n+3, FID_DATA);
+      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+  launcher.add_field(n+2, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
 }
@@ -408,20 +402,20 @@ void Aggregate::backward(const FFModel& ff)
   // gate_preds
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region_grad));
+      READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
 
   // gate_assign
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[1], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[1].region_grad));
+      READ_WRITE, EXCLUSIVE, inputs[1].region_grad));
   launcher.add_field(1, FID_DATA);
 
   // exp_preds
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[i+2], 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i+2].region_grad));
+        READ_WRITE, EXCLUSIVE, inputs[i+2].region_grad));
     launcher.add_field(i+2, FID_DATA);
   }
 
@@ -429,7 +423,7 @@ void Aggregate::backward(const FFModel& ff)
   launcher.add_region_requirement(
     RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
-  launcher.add_field(n+3, FID_DATA);
+  launcher.add_field(n+2, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
 }

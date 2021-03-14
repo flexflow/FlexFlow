@@ -11,7 +11,7 @@
  *
  ******************** IMPORTANT ****************************/
 
-/* #undef DEBUG_LEGION */
+#define DEBUG_LEGION
 
 /* #undef LEGION_PRIVILEGE_CHECKS */
 

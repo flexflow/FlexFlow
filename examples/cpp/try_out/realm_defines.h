@@ -11,7 +11,7 @@
 //
 // ******************** IMPORTANT **************************
 
-/* #undef DEBUG_REALM */
+#define DEBUG_REALM
 
 #define COMPILE_TIME_MIN_LEVEL LEVEL_DEBUG
 

@@ -105,9 +105,10 @@ OpMeta* Group_by::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
 {
-  FFHandler handle = *((FFHandler*)task->local_args);
-  TopKMeta* m = new TopKMeta(handle);
-  return m;
+  //FFHandler handle = *((FFHandler*)task->local_args);
+  //TopKMeta* m = new TopKMeta(handle);
+  // return NULL if we don't need local metadata for GroupBy
+  return NULL;
 }
 
 
@@ -120,13 +121,11 @@ void Group_by::init(const FFModel& ff)
                          TaskArgument(this, sizeof(Group_by)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
-
   // data
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
-
   // assign
   launcher.add_region_requirement(
     RegionRequirement(input_lps[1], 0/*projection id*/,
