@@ -272,12 +272,14 @@ public:
                 char const *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor& x,
+              bool inplace = true,
               const char *name = NULL);
   Tensor sigmoid(const Tensor& x,
                  const char *name = NULL);
   Tensor tanh(const Tensor& x,
               const char *name = NULL);
   Tensor elu(const Tensor& x,
+             bool inplace = true,
              const char *name = NULL);
   // Add a 2D convolutional layer
   Tensor conv2d(const Tensor& input,
@@ -484,6 +486,7 @@ private:
                          char const *name = NULL);
   Tensor unary(OperatorType op,
                Tensor const &x,
+               bool inplace = true,
                char const *name = NULL);
   ElementUnary * unary(OperatorType op,
                        char const *name = NULL);
@@ -549,6 +552,7 @@ public:
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
   OperatorType op_type;
+  bool inplace;
 };
 
 class ElementUnary : public Op {
@@ -556,6 +560,7 @@ public:
   ElementUnary(FFModel& model,
                OperatorType type,
                const Tensor& x,
+               bool inplace,
                const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -590,6 +595,8 @@ public:
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
+public:
+  bool inplace;
 };
 
 class Conv2DMeta : public OpMeta {

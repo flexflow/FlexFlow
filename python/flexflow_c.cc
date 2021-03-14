@@ -622,6 +622,7 @@ flexflow_tensor_t
 flexflow_model_add_relu(
   flexflow_model_t handle_,
   const flexflow_tensor_t input_,
+  bool inplace,
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
@@ -664,6 +665,7 @@ flexflow_tensor_t
 flexflow_model_add_elu(
   flexflow_model_t handle_,
   const flexflow_tensor_t input_,
+  bool inplace,
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);

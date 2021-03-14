@@ -1432,6 +1432,8 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
           fused_op = (FusedOp*) layers[i];
         else {
           //created = true;
+          // cannot be an in-place operator
+          if (layers[i]->op_type == OP_RELU) continue;
           fused_op = new FusedOp(*this, layers[i]);
         }
         if (fused_op->add_operator(*this, layers[l])) {

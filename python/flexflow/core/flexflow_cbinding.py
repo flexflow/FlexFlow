@@ -1251,7 +1251,7 @@ class FFModel(object):
     self.add_layer(OpType.REVERSE, name)
     return Tensor(handle, owner_op_type=OpType.REVERSE)
 
-  def relu(self, input, name=None):
+  def relu(self, input, inplace=True, name=None):
     """Rectified Linear Unit activation function.
              
     :param input: the input Tensor.
@@ -1263,7 +1263,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_relu(self.handle, input.handle, c_name)
+    handle = ffc.flexflow_model_add_relu(self.handle, input.handle, inplace, c_name)
     self.add_layer(OpType.RELU, name)
     return Tensor(handle, owner_op_type=OpType.RELU)
 
@@ -1299,7 +1299,7 @@ class FFModel(object):
     self.add_layer(OpType.TANH, name)
     return Tensor(handle, owner_op_type=OpType.TANH)
 
-  def elu(self, input, name=None):
+  def elu(self, input, inplace=True, name=None):
     """Exponential Linear Unit. activation function.
              
     :param input: the input Tensor.
@@ -1311,7 +1311,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_elu(self.handle, input.handle, c_name)
+    handle = ffc.flexflow_model_add_elu(self.handle, input.handle, inplace, c_name)
     self.add_layer(OpType.ELU, name)
     return Tensor(handle, owner_op_type=OpType.ELU)
 

@@ -294,6 +294,7 @@ flexflow_tensor_t
 flexflow_model_add_relu(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
+  bool inplace,
   const char *name);
 
 flexflow_tensor_t
@@ -312,6 +313,7 @@ flexflow_tensor_t
 flexflow_model_add_elu(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
+  bool inplace,
   const char *name);
 
 flexflow_tensor_t

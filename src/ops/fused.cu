@@ -151,6 +151,15 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
   }
   // Set outputs
   for (int i = 0; i < op->numOutputs; i++) {
+    bool found = false;
+    for (int j = 0; j < numOutputs; j++)
+      if (outputs[j].region == op->outputs[i].region) {
+        assert(!found);
+        found = true;
+        op_output_source[output_offset+i] = SOURCE_OUTPUT;
+        op_output_idx[output_offset+i] = j;
+      }
+    if (found) continue;
     outputs[numOutputs] = op->outputs[i];
     outputs[numOutputs].owner_op = this;
     outputs[numOutputs].owner_idx = numOutputs;
