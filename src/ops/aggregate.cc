@@ -120,6 +120,7 @@ void Aggregate::create_weights(FFModel& model)
 
 void Aggregate::create_output_and_partition(FFModel& model)
 {
+  printf("output part\n");
   // Retrive the task indexspace for the op
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
@@ -151,6 +152,7 @@ void Aggregate::create_output_and_partition(FFModel& model)
         inputs[i], (IndexSpaceT<2>)task_is, input_lps[i], input_grad_lps[i]);
     }
   }
+  printf("done output part\n");
 }
 
 
@@ -160,6 +162,7 @@ OpMeta* Aggregate::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
 {
+  printf("init_task\n");
   //FFHandler handle = *((FFHandler*)task->local_args);
   //TopKMeta* m = new TopKMeta(handle);
   //return m;
@@ -170,6 +173,8 @@ OpMeta* Aggregate::init_task(const Task* task,
 
 void Aggregate::init(const FFModel& ff)
 {
+  printf("in init\n");
+
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -213,6 +218,7 @@ void aggregate_forward(float** exp_preds,
         int batch_size,
         int out_dim)
 {
+  printf("my fwd\n");
   std::vector<int> expert_idx(n, 0);
   float* chosen_exp_preds[k];
   for(int i = 0; i < batch_size; i++) {
@@ -241,7 +247,7 @@ void aggregate_backward(float** exp_preds,
         int batch_size,
         int out_dim)
 {
-
+  printf("my bwd\n");
 }
 
 
@@ -249,6 +255,8 @@ void Aggregate::forward_task(const Task *task,
                              const std::vector<PhysicalRegion>& regions,
                              Context ctx, Runtime* runtime)
 {
+  printf("here fwd_task\n");
+
   int n = ((Aggregate*)task->args)->n;
 
   assert((int)regions.size() == n+3);
@@ -302,6 +310,8 @@ void Aggregate::backward_task(const Task *task,
                               const std::vector<PhysicalRegion>& regions,
                               Context ctx, Runtime* runtime)
 {
+  printf("backward_task\n");
+
   int n = ((Aggregate*)task->args)->n;
 
   assert((int)regions.size() == n+3);
@@ -354,6 +364,8 @@ void Aggregate::backward_task(const Task *task,
 
 void Aggregate::forward(const FFModel& ff)
 {
+    printf("here fwd\n");
+
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -386,11 +398,15 @@ void Aggregate::forward(const FFModel& ff)
   launcher.add_field(n+2, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
+
+  printf("done fwd\n");
 }
 
 
 void Aggregate::backward(const FFModel& ff)
 {
+printf("here bwd\n");
+
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -426,6 +442,9 @@ void Aggregate::backward(const FFModel& ff)
   launcher.add_field(n+2, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
+
+printf("done bwd\n");
+
 }
 
 
@@ -433,6 +452,7 @@ bool Aggregate::measure_operator_cost(Simulator* sim,
                                  const ParallelConfig& pc,
                                  CostMetrics& cost_metrics)
 {
+  printf("operator cost\n");
   //TODO: implement
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;

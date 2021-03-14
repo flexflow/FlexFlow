@@ -80,7 +80,7 @@ void Group_by::create_output_and_partition(FFModel& model)
   for(int i = 0; i < n; i++) {
     outputs[i] = model.create_tensor<2>(dims, DT_FLOAT, this);
     outputs[i].owner_op = this;
-    outputs[i].owner_idx = 0;
+    outputs[i].owner_idx = i; // TODO: von topK
   }
 
   // Compute partition bound for input
@@ -88,12 +88,17 @@ void Group_by::create_output_and_partition(FFModel& model)
       ctx, inputs[0].part.get_index_partition());
   if (input_rect == part_rect) {
     input_lps[0] = inputs[0].part;
-    input_lps[1] = inputs[1].part;
     input_grad_lps[0] = inputs[0].part_grad;
-    input_grad_lps[1] = inputs[1].part_grad;
   } else {
     model.create_disjoint_partition<2>(
       inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
+  }
+  input_rect = runtime->get_index_partition_color_space(
+      ctx, inputs[1].part.get_index_partition());
+  if (input_rect == part_rect) {
+    input_lps[1] = inputs[1].part;
+    input_grad_lps[1] = inputs[1].part_grad;
+  } else {
     model.create_disjoint_partition<2>(
       inputs[1], (IndexSpaceT<2>)task_is, input_lps[1], input_grad_lps[1]);
   }
@@ -153,25 +158,45 @@ void group_by_forward(const float* input,
         int batch_size,
         int out_dim)
 {
+  printf("group_by my fwd\n");
+
+  printf("exp assign:\n");
+  for(int i = 0; i < batch_size; i++) {
+    for(int j = 0; j < k; j++) {
+      printf("%d ", exp_assign[i*k+j]);
+    }
+    printf("\n");
+  }
+
+  printf("\n");
+
   std::vector<int> expert_idx(n, 0);
   int exp_tensor_rows = alpha*k/n*batch_size;
 
   for(int i = 0; i < batch_size; i++) {
     for(int j = 0; j < k; j++) {
+      printf("  1 exp_assign\n");
       int expert = exp_assign[i*k + j];
+      printf("  2 exp_idx\n");
       int row = expert_idx[expert];
 
       if(row >= exp_tensor_rows)
         continue;
 
       // copy over sample
+      printf("  3 outputs\n");
       int input_start = i*out_dim;
       for(int l = 0; l < out_dim; l++) {
-        outputs[expert][l] = input[input_start + l];
+        printf("     ex: %d, l: %d, input: %d\n", expert, l, input_start+l);
+        float a = input[input_start + l];
+        printf("     input worked\n");
+        outputs[expert][l] = a;
       }
+      printf("  4 exp_idx\n");
       expert_idx[expert]++;
     }
   }
+  printf("DONE group_by my fwd\n");
 }
 
 
@@ -197,6 +222,8 @@ void Group_by::forward_task(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
+  printf("group by fwd_task\n");
+
   // Get n, alpha
   const Group_by* gb = (Group_by*) task->args;
   int n = gb->n;
@@ -238,6 +265,7 @@ void Group_by::forward_task(const Task *task,
 
   group_by_forward(acc_input.ptr(rect_input), acc_assign.ptr(rect_assign),
       outputs, n, k, alpha, batch_size, data_dim);
+  printf("done group by fwd_task\n");
 }
 
 
@@ -291,6 +319,7 @@ void Group_by::backward_task(const Task *task,
 
 void Group_by::forward(const FFModel& ff)
 {
+    printf("group by fwd\n");
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -319,6 +348,7 @@ void Group_by::forward(const FFModel& ff)
   }
 
   runtime->execute_index_space(ctx, launcher);
+  printf("done group by fwd\n");
 }
 
 void Group_by::backward(const FFModel& ff)

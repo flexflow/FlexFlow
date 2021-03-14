@@ -57,12 +57,12 @@ void DataLoader::load_label(const Task *task,
       regions[1], task->regions[1], FID_DATA, ctx, runtime, false/*readOutput*/);
   int batch_size = acc_batch_label.rect.hi[1] - acc_batch_label.rect.lo[1] + 1;
   //FIXME: currently assume continous indices
-  assert(batch_size == meta->num_samples);
+  // TODO
+  /*assert(batch_size == meta->num_samples);
   for (int i = 1; i < batch_size; i++)
-    assert(meta->idxs[i] == meta->idxs[0] + i);
+    assert(meta->idxs[i] == meta->idxs[0] + i);*/
   const int* input_zc = acc_full_label.ptr + meta->idxs[0];
   copy_kernel<<<GET_BLOCKS(acc_batch_label.rect.volume()), CUDA_NUM_THREADS>>>(
     acc_batch_label.ptr, input_zc, acc_batch_label.rect.volume());
   checkCUDA(cudaDeviceSynchronize());
 }
-

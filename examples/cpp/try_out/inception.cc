@@ -126,9 +126,9 @@ void top_level_task(const Task* task,
       if (epoch > 0)
         runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
-      ff.zero_gradients();
-      ff.backward();
-      ff.update();
+      //ff.zero_gradients();
+      //ff.backward();
+      //ff.update();
       if (epoch > 0)
         runtime->end_trace(ctx, 111/*trace_id*/);
     }
@@ -166,8 +166,8 @@ DataLoader::DataLoader(FFModel& ff, const InceptionConfig& inception,
   num_samples = 0;
   if (inception.dataset_path == "") {
     log_app.print("Use random dataset...");
-    num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
-    //num_samples = 256;
+    //num_samples = 256 * 10 * ff.config.workersPerNode * ff.config.numNodes;
+    num_samples = 256;
     log_app.print("Number of random samples = %d\n", num_samples);
   } else {
     log_app.print("Start loading dataset from %s", inception.dataset_path.c_str());
