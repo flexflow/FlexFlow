@@ -392,6 +392,11 @@ public:
                Initializer* kernel_initializer = NULL,
                Initializer* bias_initializer = NULL,
                const char *name = NULL);
+  Tensor dense(const Tensor input,
+               const Tensor kernel,
+               const Tensor bias = NULL,
+               ActiMode activation = AC_MODE_NONE,
+               const char *name = NULL);
   // Add a concat layer
   Tensor concat(int n,
                 const Tensor* tensors,

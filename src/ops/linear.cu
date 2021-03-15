@@ -57,6 +57,17 @@ Tensor FFModel::dense(const Tensor input,
   return li->outputs[0];
 }
 
+Tensor FFModel::dense(const Tensor input,
+                      const Tensor weight,
+                      const Tensor bias,
+                      ActiMode activation,
+                      const char *name)
+{
+  Linear *li = new Linear(*this, input, kernel, bias, activation, name);
+  layers.push_back(li);
+  return li->outputs[0];
+}
+
 Linear::Linear(FFModel& model,
                const Tensor _input,
                const Tensor _kernel,
