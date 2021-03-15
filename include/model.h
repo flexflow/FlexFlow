@@ -213,6 +213,7 @@ public:
   void zero_grad(const FFModel&);
   Parameter* get_parameter(int index);
   virtual bool can_inplace_output();
+  virtual bool has_inplace_output();
   virtual void do_inplace_output();
 #ifdef FF_USE_NCCL
   static ncclUniqueId get_nccl_unique_id_task(const Task *task,
@@ -524,6 +525,7 @@ public:
   void create_weights(FFModel& model);
   void create_output_and_partition(FFModel& model);
   bool can_inplace_output();
+  bool has_inplace_output();
   void do_inplace_output();
 
   static OpMeta* init_task(const Task *task,
@@ -579,6 +581,7 @@ public:
   void create_weights(FFModel& model);
   void create_output_and_partition(FFModel& model);
   bool can_inplace_output();
+  bool has_inplace_output();
   void do_inplace_output();
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,

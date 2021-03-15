@@ -445,6 +445,11 @@ bool Op::can_inplace_output()
   return false;
 }
 
+bool Op::has_inplace_output()
+{
+  return false;
+}
+
 void Op::do_inplace_output()
 {
   assert(false);
@@ -1443,7 +1448,7 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
         else {
           //created = true;
           // cannot be an in-place operator
-          if (layers[i]->op_type == OP_RELU) continue;
+          if (layers[i]->has_inplace_output()) continue;
           fused_op = new FusedOp(*this, layers[i]);
         }
         if (fused_op->add_operator(*this, layers[l])) {
