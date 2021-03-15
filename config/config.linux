@@ -13,16 +13,16 @@ echo " Defaults for Linux machine"
 #LD_FLAGS=${LD_FLAGS+=""}
 
 # set build type
-#BUILD_TYPE=Debug
+BUILD_TYPE=Release
 
-# set CUDA Arch
-FF_CUDA_ARCH=60
+# set CUDA Arch, replace xx with your GPU architecture
+#FF_CUDA_ARCH=xx
 
-# set CUDNN dir
-# CUDNN_DIR=/projects/opt/centos7/cuda/10.1
+# set CUDNN dir in case cmake cannot autodetect a path
+#CUDNN_DIR=/usr/local/cuda
 
-#set CUDA dir
-# CUDA_DIR=/projects/opt/centos7/cuda/10.1
+# set CUDA dir in case cmake cannot autodetect a path
+#CUDA_DIR=/usr/local/cuda
 
 # enable Python
 FF_USE_PYTHON=ON
@@ -34,7 +34,7 @@ FF_USE_NCCL=OFF
 FF_USE_GASNET=OFF
 
 # build C++ examples
-FF_BUILD_EXAMPLES=ON
+FF_BUILD_EXAMPLES=OFF
 
 # set MAX_DIM
 FF_MAX_DIM=4

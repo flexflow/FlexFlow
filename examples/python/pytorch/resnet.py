@@ -13,10 +13,10 @@ def top_level_task():
   print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
   
-  dims_input = [ffconfig.batch_size, 3, 229, 229]
+  dims_input = [ffconfig.batch_size, 3, 224, 224]
   input = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
-  torch_model = PyTorchModel("resnet.ff")
+  torch_model = PyTorchModel("resnet18.ff")
   output_tensors = torch_model.apply(ffmodel, [input])
   t = ffmodel.softmax(output_tensors[0])
 
@@ -29,13 +29,13 @@ def top_level_task():
   
   (x_train, y_train), (x_test, y_test) = cifar10.load_data(num_samples)
 
-  full_input_np = np.zeros((num_samples, 3, 229, 229), dtype=np.float32)
+  full_input_np = np.zeros((num_samples, 3, 224, 224), dtype=np.float32)
   
   for i in range(0, num_samples):
     image = x_train[i, :, :, :]
     image = image.transpose(1, 2, 0)
     pil_image = Image.fromarray(image)
-    pil_image = pil_image.resize((229,229), Image.NEAREST)
+    pil_image = pil_image.resize((224,224), Image.NEAREST)
     image = np.array(pil_image, dtype=np.float32)
     image = image.transpose(2, 0, 1)
     full_input_np[i, :, :, :] = image

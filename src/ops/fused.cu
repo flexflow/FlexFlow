@@ -108,7 +108,7 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
         break;
       }
     for (int j = 0; j < output_offset; j++)
-      if (outputs[j]->region == op->inputs[i]->region) {
+      if ((outputs[j]->region == op->inputs[i]->region)&&(!found)) {
         // This input is one of my outputs
         assert(!found);
         assert(outputs[j]->region != LogicalRegion::NO_REGION);
@@ -153,6 +153,16 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
   }
   // Set outputs
   for (int i = 0; i < op->numOutputs; i++) {
+    bool found = false;
+    for (int j = 0; j < numOutputs; j++) {
+      if (outputs[j].region == op->outputs[i].region) {
+        assert(!found);
+        found = true;
+        op_output_source[output_offset+i] = SOURCE_OUTPUT;
+        op_output_idx[output_offset+i] = j;
+      }
+    }
+    if (found) continue;
     outputs[numOutputs] = op->outputs[i];
     outputs[numOutputs]->owner_op = this;
     outputs[numOutputs]->owner_idx = numOutputs;

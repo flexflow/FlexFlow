@@ -21,9 +21,9 @@ if(FF_USE_PYBIND)
   pybind11_add_module(flexflow_bindings
     bindings.cc
   )
+  set_target_properties(flexflow_bindings PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
+  target_link_libraries(flexflow_bindings PRIVATE flexflow)
 endif()
-set_target_properties(flexflow_bindings PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
-target_link_libraries(flexflow_bindings PRIVATE flexflow)
 
 # create legion_cffi.py
 add_custom_command(TARGET ${project_target} 

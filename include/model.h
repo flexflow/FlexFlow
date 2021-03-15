@@ -260,6 +260,9 @@ public:
   void prefetch(const FFModel&);
   void zero_grad(const FFModel&);
   Tensor get_parameter(int index);
+  virtual bool can_inplace_output();
+  virtual bool has_inplace_output();
+  virtual void do_inplace_output();
 #ifdef FF_USE_NCCL
   static ncclUniqueId get_nccl_unique_id_task(const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,
@@ -310,27 +313,33 @@ public:
   // Add an add layer
   Tensor add(const Tensor x,
              const Tensor y,
+             bool inplace = false,
              char const *name = NULL);
   // Add a subtract layer
   Tensor subtract(const Tensor x,
                   const Tensor y,
+                  bool inplace = false,
                   char const *name = NULL);
   // Add a multiply layer
   Tensor multiply(const Tensor x,
                   const Tensor y,
+                  bool inplace = false,
                   char const *name = NULL);
   // Add a divide layer
   Tensor divide(const Tensor x,
                 const Tensor y,
+                bool inplace = false,
                 char const *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor x,
+              bool inplace = true,
               const char *name = NULL);
   Tensor sigmoid(const Tensor x,
                  const char *name = NULL);
   Tensor tanh(const Tensor x,
               const char *name = NULL);
   Tensor elu(const Tensor x,
+             bool inplace = true,
              const char *name = NULL);
   // Add a 2D convolutional layer
   Tensor conv2d(const Tensor input,
@@ -602,11 +611,13 @@ private:
   Tensor binary(OperatorType op,
                 Tensor const x,
                 Tensor const y,
+                bool inplace_a = false,
                 char const *name = NULL);
   ElementBinary * binary(OperatorType op,
                          char const *name = NULL);
   Tensor unary(OperatorType op,
                Tensor const x,
+               bool inplace = true,
                char const *name = NULL);
   ElementUnary * unary(OperatorType op,
                        char const *name = NULL);
@@ -618,6 +629,7 @@ public:
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnOpTensorDescriptor_t opDesc;
   OperatorType op_type;
+  bool inplace_a;
 };
 
 class ElementBinary : public Op {
@@ -626,6 +638,7 @@ public:
                 OperatorType type,
                 const Tensor x,
                 const Tensor y,
+                bool inplace_a,
                 const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -634,6 +647,9 @@ public:
   //Parameter* get_parameter(int index) {assert(0); return NULL;}
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
+  bool can_inplace_output();
+  bool has_inplace_output();
+  void do_inplace_output();
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -661,9 +677,7 @@ private:
   template<int NDIM>
   void create_input_partition_with_dim(FFModel& model);
 public:
-  //Legion::IndexSpace task_is;
-  OperatorType op_type;
-  //bool profiling;
+  bool inplace_a;
 };
 
 class ElementUnaryMeta : public OpMeta {
@@ -672,6 +686,7 @@ public:
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
   OperatorType op_type;
+  bool inplace;
 };
 
 class ElementUnary : public Op {
@@ -679,6 +694,7 @@ public:
   ElementUnary(FFModel& model,
                OperatorType type,
                const Tensor x,
+               bool inplace,
                const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -687,6 +703,10 @@ public:
   //Parameter* get_parameter(int index) {assert(0); return NULL;}
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
+  bool can_inplace_output();
+  bool has_inplace_output();
+  void do_inplace_output();
+
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
@@ -712,7 +732,9 @@ public:
   static bool use_cudnn(OperatorType type);
 private:
   //template<int NDIM>
-  //void create_input_partition_with_dim(FFModel& model);
+  //void create_output_and_partition_with_dim(FFModel& model);
+public:
+  bool inplace;
 };
 
 class Conv2DMeta : public OpMeta {

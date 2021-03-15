@@ -21,7 +21,7 @@
 using namespace std;
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_model("ff");
+LegionRuntime::Logger::Category log_model("Model");
 
 TensorBase::TensorBase(void)
 {
@@ -52,13 +52,13 @@ Tensor& Tensor::operator=(const Tensor& rhs)
   data_type = rhs.data_type;
   sync_type = rhs.sync_type;
   initializer = rhs.initializer;
-  owner_op = rhs.owner_op;
-  owner_idx = rhs.owner_idx;
+  owner_op = rhs->owner_op;
+  owner_idx = rhs->owner_idx;
   create_gradients = rhs.create_gradients;
-  region = rhs.region;
-  region_grad = rhs.region_grad;
-  part = rhs.part;
-  part_grad = rhs.part_grad;
+  region = rhs->region;
+  region_grad = rhs->region_grad;
+  part = rhs->part;
+  part_grad = rhs->part_grad;
   physical_region = rhs.physical_region;
   return *this;
 }
@@ -432,6 +432,21 @@ ParallelOp::ParallelOp(FFModel& model,
 : Op(model, op_type, name, input)
 {}
 
+bool Op::can_inplace_output()
+{
+  return false;
+}
+
+bool Op::has_inplace_output()
+{
+  return false;
+}
+
+void Op::do_inplace_output()
+{
+  assert(false);
+}
+
 Tensor Op::get_parameter(int index)
 {
   assert(index < numWeights);
@@ -457,7 +472,7 @@ void Op::zero_grad(const FFModel& ff)
     launcher.add_region_requirement(
         RegionRequirement(outputs[i]->part_grad, 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, outputs[i]->region_grad));
-    //LogicalRegion lr = outputs[i].region_grad;
+    //LogicalRegion lr = outputs[i]->region_grad;
     //printf("zero_grad:output[%d]: region(%d,%d,%d)\n", i, lr.get_index_space().get_id(), lr.get_field_space().get_id(), lr.get_tree_id());
     launcher.add_field(i + numWeights, FID_DATA);
   }
@@ -1731,8 +1746,8 @@ void FFModel::backward(int seq_length)
   for (int l = layers.size() - 1; l >= 0; l--) {
 #ifdef ENABLE_RESNET_INPUT_GRADIENT_OPTIMIZATION
     for (int i = 0; i < layers[l]->numInputs; i++)
-      if (resetedInputGrads.find(layers[l]->inputs[i].region) == resetedInputGrads.end()) {
-        resetedInputGrads.insert(layers[l]->inputs[i].region);
+      if (resetedInputGrads.find(layers[l]->inputs[i]->region) == resetedInputGrads.end()) {
+        resetedInputGrads.insert(layers[l]->inputs[i]->region);
       } else {
         // This input's gradients has been reseted by other layers
         // So we should not do it again
@@ -1793,6 +1808,8 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
           fused_op = (FusedOp*) layers[i];
         else {
           //created = true;
+          // cannot be an in-place operator
+          if (layers[i]->has_inplace_output()) continue;
           fused_op = new FusedOp(*this, layers[i]);
         }
         if (fused_op->add_operator(*this, layers[l])) {
@@ -1864,6 +1881,38 @@ void FFModel::compile(LossType loss_type,
   // Init performance metrics
   TaskLauncher launcher(UPDATE_METRICS_TASK_ID, TaskArgument(metrics_op, sizeof(Metrics)));
   current_metrics = runtime->execute_task(ctx, launcher);
+
+  // Perform inplace optimizations
+  for (size_t l = 1; l < layers.size(); l++) {
+    if (layers[l]->can_inplace_output()) {
+      // Assume outputs[0] is inplace with inputs[0]
+      assert(layers[l]->numOutputs == 1);
+      if (layers[l]->inputs[0]->owner_op != NULL) {
+        int dim1 = layers[l]->outputs[0]->num_dims;
+        int dim2 = layers[l]->inputs[0]->num_dims;
+        ParallelConfig pc1, pc2;
+        assert(config.find_parallel_config(dim1, layers[l]->name, pc1));
+        assert(config.find_parallel_config(dim2, layers[l]->inputs[0]->owner_op->name, pc2));
+        if (pc1 == pc2) {
+          // Check no others also need layers[l]->inputs[0]
+          bool found = false;
+          for (size_t i = 0; i < layers.size(); i++) {
+            if (i == l) continue;
+            for (int j = 0; j < layers[i]->numInputs; j++) {
+              if ((layers[i]->inputs[j]->owner_op == layers[l]->inputs[0]->owner_op)
+              &&(layers[i]->inputs[j]->owner_idx == layers[l]->inputs[0]->owner_idx)) {
+                found = true;
+              }
+            }
+          }
+          if (!found) {
+            // Perform inplace
+            layers[l]->do_inplace_output();
+          }
+        }
+      }
+    }
+  }
 
   for (size_t l = 0; l < layers.size(); l++) {
     Op* op = layers[l];
@@ -1956,11 +2005,32 @@ void FFModel::compile(LossType loss_type,
       }
     }
     fprintf(stderr, "%zu layers after fusion...\n", layers.size());
+    for (size_t i = 0; i < layers.size(); i++) {
+        Op* op = layers[i];
+        printf("layer[%zu]: type(%d)\n", i, layers[i]->op_type);
+        for (int j = 0; j < op->numInputs; j++) {
+          LogicalRegion handle = op->inputs[j]->region;
+          printf("inputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
+                            handle.get_field_space().get_id(),
+                            handle.get_tree_id());
+        }
+        for (int j = 0; j < op->numOutputs; j++) {
+          LogicalRegion handle = op->outputs[j]->region;
+          printf("outputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
+                            handle.get_field_space().get_id(),
+                            handle.get_tree_id());
+        }
+        for (int j = 0; j < op->numWeights; j++) {
+          LogicalRegion handle = op->weights[j]->region;
+          printf("weights[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
+                            handle.get_field_space().get_id(),
+                            handle.get_tree_id());
+        }
+    }
   }
   Op* final_layer = layers[layers.size()-1];
   // FIXME: currently assume the final layer has exactly one output
   assert(final_layer->numOutputs == 1);
-
   for (size_t i = 0; i < layers.size(); i++) {
       Op* op = layers[i];
       printf("layer[%zu]: type(%d)\n", i, layers[i]->op_type);
@@ -2129,25 +2199,6 @@ void FFModel::zero_gradients(void)
 {
   for (int l = layers.size() - 1; l >= 0; l--)
     layers[l]->zero_grad(*this);
-#ifdef DEADCODE
-  ArgumentMap arg_map;
-  Context ctx = config.lg_ctx;
-  Runtime* runtime = config.lg_hlr;
-  for (size_t p = 0; p < parameters.size(); p++) {
-    Domain domain = runtime->get_index_partition_color_space(
-        ctx, parameters[p].part_grad.get_index_partition());
-    IndexSpace task_is = get_or_create_task_is(domain);
-    IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
-                           TaskArgument(NULL, 0), arg_map,
-                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(std::string(parameters[p].pcname)));
-    launcher.add_region_requirement(
-        RegionRequirement(parameters[p].part_grad, 0/*projection*/,
-                          WRITE_ONLY, EXCLUSIVE, parameters[p].region_grad));
-    launcher.add_field(0, FID_DATA);
-    runtime->execute_index_space(ctx, launcher);
-  }
-#endif
 }
 
 void FFModel::print_layers(int id)
@@ -2331,7 +2382,7 @@ void FFIterationConfig::reset()
 // Default Config Parameters
 struct DefaultConfig {
   const static int epochs = 1;
-  const static int iterations = 1;
+  //const static int iterations = 1;
   const static int batchSize = 64;
   const static bool profiling = false;
   constexpr static float learningRate = 0.01f;
@@ -2356,7 +2407,7 @@ struct DefaultConfig {
 FFConfig::FFConfig()
 {
   epochs = DefaultConfig::epochs;
-  iterations = DefaultConfig::iterations;
+  //iterations = DefaultConfig::iterations;
   batchSize = DefaultConfig::batchSize;
   profiling = DefaultConfig::profiling;
   learningRate = DefaultConfig::learningRate;
@@ -2407,10 +2458,10 @@ void FFConfig::parse_args(char **argv, int argc)
       epochs = atoi(argv[++i]);
       continue;
     }
-    if ((!strcmp(argv[i], "-i")) || (!strcmp(argv[i], "--iterations"))) {
-      iterations = atoi(argv[++i]);
-      continue;
-    }
+    //if ((!strcmp(argv[i], "-i")) || (!strcmp(argv[i], "--iterations"))) {
+    //  iterations = atoi(argv[++i]);
+    //  continue;
+    //}
     if ((!strcmp(argv[i], "-b")) || (!strcmp(argv[i], "--batch-size"))) {
       batchSize = atoi(argv[++i]);
       continue;

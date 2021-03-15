@@ -37,7 +37,7 @@ Tensor FFModel::batch_norm(const Tensor input,
         true/*create_grad*/, scale_initializer, comm_type);
   }
   {
-    const int dims[1] = {input->adim[2]};
+    const int dims[1] = {input->dims[2].size};
     bias = create_weight<1>(dims, DT_FLOAT, NULL/*owner_op*/,
         true/*create_grad*/, bias_initializer, comm_type);
   }
@@ -60,9 +60,9 @@ BatchNorm::BatchNorm(FFModel& model,
 {
   assert(_input->num_dims == 4);
   numOutputs = 1;
-  int dims[MAX_TENSOR_DIM];
+  ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < _input->num_dims; i++)
-    dims[i] = _input->adim[_input->num_dims-1-i];
+    dims[i] = _input->dims[_input->num_dims-1-i];
   outputs[0] = model.create_tensor(_input->num_dims, dims, DT_FLOAT, this);
   return;
 }
@@ -102,10 +102,10 @@ void BatchNorm::create_input_partition(FFModel& model)
   return Op::create_input_partition(model);
 #ifdef DEADCODE
   // Create output tensor
-  int output_w = outputs[0].adim[0];
-  int output_h = outputs[0].adim[1];
-  int output_c = outputs[0].adim[2];
-  int output_n = outputs[0].adim[3];
+  int output_w = outputs[0].dims[0].size;
+  int output_h = outputs[0].dims[1].size;
+  int output_c = outputs[0].dims[2].size;
+  int output_n = outputs[0].dims[3].size;
   {
     const int dims[4] = {output_n, output_c, output_h, output_w};
     outputs[0] = model.create_tensor<4>(dims, DT_FLOAT, this);
@@ -569,10 +569,10 @@ bool BatchNorm::measure_operator_cost(Simulator* sim,
     return false;
   }
 
-  int output_w = sub_output.adim[0];
-  int output_h = sub_output.adim[1];
-  int output_c = sub_output.adim[2];
-  int output_n = sub_output.adim[3];
+  int output_w = sub_output.dims[0].size;
+  int output_h = sub_output.dims[1].size;
+  int output_c = sub_output.dims[2].size;
+  int output_n = sub_output.dims[3].size;
   BatchNormMeta *m = new BatchNormMeta(sim->handler, this, sim->memory,
       output_n, output_c, output_h, output_w);
 
