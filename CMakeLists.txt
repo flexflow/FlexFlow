@@ -3,6 +3,9 @@ project(FlexFlow)
 
 include(ExternalProject) 
 
+# Set policy CMP0074 to eliminate cmake warnings
+cmake_policy(SET CMP0074 NEW)
+cmake_policy(SET CMP0077 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
 
