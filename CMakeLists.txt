@@ -187,6 +187,14 @@ option(FF_BUILD_INCEPTION "build inception example" OFF)
 option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
 option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
 option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
+option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
+
+if(FF_BUILD_TESTS)
+  set(BUILD_GMOCK OFF)
+  add_subdirectory(deps/googletest)
+  enable_testing()
+  add_subdirectory(tests/unit)
+endif()
 
 # Python
 if(FF_USE_PYTHON)

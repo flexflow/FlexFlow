@@ -127,7 +127,7 @@ void Simulator::strategy_search_task(const Task *task,
         model->config.search_budget, model->config.search_alpha);
   }
   model->optimize(simulator, strategies, model->config.search_budget,
-      model->config.search_alpha, model->config.computationMode);
+      model->config.search_alpha, model->config.computationMode, model->config.enable_propagation);
   if (model->config.export_strategy_file.length() > 0) {
     fprintf(stderr, "Exporting the best discovered strategy to %s.\n",
         model->config.export_strategy_file.c_str());

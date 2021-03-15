@@ -253,6 +253,11 @@ class Embedding;
 class FFModel {
 public:
   FFModel(FFConfig &config);
+
+  static constexpr float PROPAGATION_CHANCE = 0.25;
+  static constexpr float CONTINUE_PROPAGATION_CHANCE = 0.75;
+  static constexpr float PROPAGATION_SIZE_WEIGHT = 1.0;
+
   // C++ APIs for constructing models
   // Add an exp layer
   Tensor exp(const Tensor& x,
@@ -448,12 +453,19 @@ public:
   void optimize(Simulator* simulator,
                 std::map<Op*, ParallelConfig>& best,
                 size_t budget, float alpha,
-                CompMode comp_mode) const;
+                CompMode comp_mode,
+                bool use_propagation) const;
+  void propagate(std::map<Op *, ParallelConfig> const &current,
+                 std::map<Op *, ParallelConfig> &next) const;
   void rewrite(const std::map<Op*, ParallelConfig>& current,
-               std::map<Op*, ParallelConfig>& next) const;
+               std::map<Op*, ParallelConfig>& next,
+               bool use_propagation) const;
   void zero_gradients();
   void print_layers(int id);
   std::string get_operator_type_name(OperatorType type) const;
+
+  std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> get_bwd_edge_map() const;
+
   // Internal funcitons
   Tensor get_tensor_from_guid(int guid);
   IndexSpace get_or_create_task_is(ParallelConfig pc);
