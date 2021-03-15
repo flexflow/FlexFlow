@@ -66,6 +66,16 @@ ElementUnary::ElementUnary(FFModel& model,
     outputs[0].adim[i] = inputs[0].adim[i];
 }
 
+bool ElementUnary::can_inplace_output(void)
+{
+  return true;
+}
+
+void ElementUnary::do_inplace_output(void)
+{
+  inplace = true;
+}
+
 bool ElementUnary::use_cudnn(OperatorType type)
 {
   if (type == OP_RELU)
@@ -218,8 +228,8 @@ void ElementUnary::init(const FFModel& ff)
                               Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                               FFConfig::get_hash_id(std::string(name)));
   init_launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+    RegionRequirement(input_lps[0], 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, inputs[0].region));
   init_launcher.add_field(0, FID_DATA);
   if (!inplace) {
     init_launcher.add_region_requirement(
@@ -433,7 +443,6 @@ void ElementUnary::backward_task(const Task* task,
   float* input_grad_ptr = NULL;
   Domain input_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
-
   if (m->inplace) {
     assert(regions.size() == 2);
     assert(task->regions.size() == 2);

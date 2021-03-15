@@ -711,7 +711,7 @@ class FFModel(object):
     self.add_layer(OpType.EXP, name)
     return Tensor(handle, owner_op_type=OpType.EXP)
 
-  def add(self, x, y, name=None):
+  def add(self, x, y, inplace_a=False, name=None):
     """Layer that adds two input Tensors, :attr:`output = x + y`.
              
     :param x: the first input Tensor.
@@ -726,11 +726,11 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_add(self.handle, x.handle, y.handle, c_name)
+    handle = ffc.flexflow_model_add_add(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.ADD, name)
     return Tensor(handle, owner_op_type=OpType.ADD)
 
-  def subtract(self, x, y, name=None):
+  def subtract(self, x, y, inplace_a=False, name=None):
     """Layer that subtracts two input Tensors, :attr:`output = x * y`.
              
     :param x: the first input Tensor.
@@ -745,11 +745,11 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_subtract(self.handle, x.handle, y.handle, c_name)
+    handle = ffc.flexflow_model_add_subtract(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.SUBTRACT, name)
     return Tensor(handle, owner_op_type=OpType.SUBTRACT)
 
-  def multiply(self, x, y, name=None):
+  def multiply(self, x, y, inplace_a=False, name=None):
     """Layer that multiplies (element-wise) two input Tensors, :attr:`output = x * y`.
              
     :param x: the first input Tensor.
@@ -764,11 +764,11 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_multiply(self.handle, x.handle, y.handle, c_name)
+    handle = ffc.flexflow_model_add_multiply(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.MULTIPLY, name)
     return Tensor(handle, owner_op_type=OpType.MULTIPLY)
 
-  def divide(self, x, y, name=None):
+  def divide(self, x, y, inplace_a=False, name=None):
     """Layer that divides (element-wise) two input Tensors, :attr:`output = x / y`.
              
     :param x: the first input Tensor.
@@ -783,7 +783,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle, c_name)
+    handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
 

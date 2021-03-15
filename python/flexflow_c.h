@@ -149,6 +149,7 @@ flexflow_model_add_add(
   flexflow_model_t handle,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y,
+  bool inplace_a,
   const char *name);
 
 flexflow_tensor_t
@@ -156,6 +157,7 @@ flexflow_model_add_subtract(
   flexflow_model_t handle,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y,
+  bool inplace_a,
   const char *name);
 
 flexflow_tensor_t
@@ -163,6 +165,7 @@ flexflow_model_add_multiply(
   flexflow_model_t handle,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y,
+  bool inplace_a,
   const char *name);
 
 flexflow_tensor_t
@@ -170,6 +173,7 @@ flexflow_model_add_divide(
   flexflow_model_t handle,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y,
+  bool inplace_a,
   const char *name);
 
 flexflow_tensor_t
