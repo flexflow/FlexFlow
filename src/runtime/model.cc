@@ -20,7 +20,7 @@
 
 using namespace std;
 
-LegionRuntime::Logger::Category log_model("ff");
+LegionRuntime::Logger::Category log_model("Model");
 
 Tensor::Tensor(void)
 {
@@ -438,6 +438,16 @@ Op::Op(FFModel& model,
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
     meta[i] = NULL;
+}
+
+bool Op::can_inplace_output()
+{
+  return false;
+}
+
+void Op::do_inplace_output()
+{
+  assert(false);
 }
 
 Parameter* Op::get_parameter(int index)
@@ -1432,6 +1442,8 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
           fused_op = (FusedOp*) layers[i];
         else {
           //created = true;
+          // cannot be an in-place operator
+          if (layers[i]->op_type == OP_RELU) continue;
           fused_op = new FusedOp(*this, layers[i]);
         }
         if (fused_op->add_operator(*this, layers[l])) {
@@ -1503,6 +1515,38 @@ void FFModel::compile(LossType loss_type,
   // Init performance metrics
   TaskLauncher launcher(UPDATE_METRICS_TASK_ID, TaskArgument(metrics_op, sizeof(Metrics)));
   current_metrics = runtime->execute_task(ctx, launcher);
+
+  // Perform inplace optimizations
+  for (size_t l = 1; l < layers.size(); l++) {
+    if (layers[l]->can_inplace_output()) {
+      // Assume outputs[0] is inplace with inputs[0]
+      assert(layers[l]->numOutputs == 1);
+      if (layers[l]->inputs[0].owner_op != NULL) {
+        int dim1 = layers[l]->outputs[0].numDim;
+        int dim2 = layers[l]->inputs[0].numDim;
+        ParallelConfig pc1, pc2;
+        assert(config.find_parallel_config(dim1, layers[l]->name, pc1));
+        assert(config.find_parallel_config(dim2, layers[l]->inputs[0].owner_op->name, pc2));
+        if (pc1 == pc2) {
+          // Check no others also need layers[l]->inputs[0]
+          bool found = false;
+          for (size_t i = 0; i < layers.size(); i++) {
+            if (i == l) continue;
+            for (int j = 0; j < layers[i]->numInputs; j++) {
+              if ((layers[i]->inputs[j].owner_op == layers[l]->inputs[0].owner_op)
+              &&(layers[i]->inputs[j].owner_idx == layers[l]->inputs[0].owner_idx)) {
+                found = true;
+              }
+            }
+          }
+          if (!found) {
+            // Perform inplace
+            layers[l]->do_inplace_output();
+          }
+        }
+      }
+    }
+  }
 
   for (size_t l = 0; l < layers.size(); l++) {
     Op* op = layers[l];
@@ -1588,27 +1632,32 @@ void FFModel::compile(LossType loss_type,
       }
     }
     fprintf(stderr, "%zu layers after fusion...\n", layers.size());
+    for (size_t i = 0; i < layers.size(); i++) {
+        Op* op = layers[i];
+        printf("layer[%zu]: type(%d)\n", i, layers[i]->op_type);
+        for (int j = 0; j < op->numInputs; j++) {
+          LogicalRegion handle = op->inputs[j].region;
+          printf("inputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
+                            handle.get_field_space().get_id(),
+                            handle.get_tree_id());
+        }
+        for (int j = 0; j < op->numOutputs; j++) {
+          LogicalRegion handle = op->outputs[j].region;
+          printf("outputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
+                            handle.get_field_space().get_id(),
+                            handle.get_tree_id());
+        }
+        for (int j = 0; j < op->numWeights; j++) {
+          LogicalRegion handle = op->weights[j].region;
+          printf("weights[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
+                            handle.get_field_space().get_id(),
+                            handle.get_tree_id());
+        }
+    }
   }
   Op* final_layer = layers[layers.size()-1];
   // FIXME: currently assume the final layer has exactly one output
   assert(final_layer->numOutputs == 1);
-
-  for (size_t i = 0; i < layers.size(); i++) {
-      Op* op = layers[i];
-      printf("layer[%zu]: type(%d)\n", i, layers[i]->op_type);
-      for (int j = 0; j < op->numInputs; j++) {
-        LogicalRegion handle = op->inputs[j].region;
-        printf("inputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
-                          handle.get_field_space().get_id(),
-                          handle.get_tree_id());
-      }
-      for (int j = 0; j < op->numOutputs; j++) {
-        LogicalRegion handle = op->outputs[j].region;
-        printf("outputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
-                          handle.get_field_space().get_id(),
-                          handle.get_tree_id());
-      }
-  }
   //assert(final_layer->outputs[0].numDim == 2);
   int dims[MAX_TENSOR_DIM], num_dims;
   num_dims = final_layer->outputs[0].numDim;
@@ -1969,7 +2018,7 @@ void FFIterationConfig::reset()
 // Default Config Parameters
 struct DefaultConfig {
   const static int epochs = 1;
-  const static int iterations = 1;
+  //const static int iterations = 1;
   const static int batchSize = 64;
   const static bool profiling = false;
   constexpr static float learningRate = 0.01f;
@@ -1994,7 +2043,7 @@ struct DefaultConfig {
 FFConfig::FFConfig()
 {
   epochs = DefaultConfig::epochs;
-  iterations = DefaultConfig::iterations;
+  //iterations = DefaultConfig::iterations;
   batchSize = DefaultConfig::batchSize;
   profiling = DefaultConfig::profiling;
   learningRate = DefaultConfig::learningRate;
@@ -2045,10 +2094,10 @@ void FFConfig::parse_args(char **argv, int argc)
       epochs = atoi(argv[++i]);
       continue;
     }
-    if ((!strcmp(argv[i], "-i")) || (!strcmp(argv[i], "--iterations"))) {
-      iterations = atoi(argv[++i]);
-      continue;
-    }
+    //if ((!strcmp(argv[i], "-i")) || (!strcmp(argv[i], "--iterations"))) {
+    //  iterations = atoi(argv[++i]);
+    //  continue;
+    //}
     if ((!strcmp(argv[i], "-b")) || (!strcmp(argv[i], "--batch-size"))) {
       batchSize = atoi(argv[++i]);
       continue;

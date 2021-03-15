@@ -517,7 +517,10 @@ void TopK::forward_kernel(const TopKMeta* m,
   }
   // We are limited by the amount of shared memory we have per block.
   size_t shared_memory_size = (num_shards + 1) * k * sizeof(Entry<float>);
-  size_t num_blocks = (batch_size + num_shards - 1) / num_shards;
+  //size_t num_blocks = (batch_size + num_shards - 1) / num_shards;
+  size_t num_blocks = batch_size;
+  assert(num_shards >= (size_t)k);
+  num_shards = k;
   topk_forward_kernel<<<num_blocks, num_shards>>>(
     input_ptr, shared_memory_size, length, k, sorted,
     output_ptr, indices_ptr);

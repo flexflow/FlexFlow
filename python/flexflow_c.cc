@@ -272,13 +272,14 @@ flexflow_model_add_add(
   flexflow_model_t handle_,
   const flexflow_tensor_t x_,
   const flexflow_tensor_t y_,
+  bool inplace_a,
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor *x = FFCObjectWrapper::unwrap_const(x_);
   const Tensor *y = FFCObjectWrapper::unwrap_const(y_);
   Tensor *tensor = new Tensor();
-  *tensor = handle->add(*x, *y, name);
+  *tensor = handle->add(*x, *y, inplace_a, name);
   DEBUG_PRINT("[Add] new Tensor %p, x %p, y %p, name %s", 
     tensor, x, y, name);
   return FFCObjectWrapper::wrap(tensor);
@@ -289,13 +290,14 @@ flexflow_model_add_subtract(
   flexflow_model_t handle_,
   const flexflow_tensor_t x_,
   const flexflow_tensor_t y_,
+  bool inplace_a,
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor *x = FFCObjectWrapper::unwrap_const(x_);
   const Tensor *y = FFCObjectWrapper::unwrap_const(y_);
   Tensor *tensor = new Tensor();
-  *tensor = handle->subtract(*x, *y, name);
+  *tensor = handle->subtract(*x, *y, inplace_a, name);
   DEBUG_PRINT("[Subtract] new Tensor %p, x %p, y %p, name %s", 
     tensor, x, y, name);
   return FFCObjectWrapper::wrap(tensor);
@@ -306,13 +308,14 @@ flexflow_model_add_multiply(
   flexflow_model_t handle_,
   const flexflow_tensor_t x_,
   const flexflow_tensor_t y_,
+  bool inplace_a,
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor *x = FFCObjectWrapper::unwrap_const(x_);
   const Tensor *y = FFCObjectWrapper::unwrap_const(y_);
   Tensor *tensor = new Tensor();
-  *tensor = handle->multiply(*x, *y, name);
+  *tensor = handle->multiply(*x, *y, inplace_a, name);
   DEBUG_PRINT("[Multiply] new Tensor %p, x %p, y %p, name %s", 
     tensor, x, y, name);
   return FFCObjectWrapper::wrap(tensor);
@@ -323,13 +326,14 @@ flexflow_model_add_divide(
   flexflow_model_t handle_,
   const flexflow_tensor_t x_,
   const flexflow_tensor_t y_,
+  bool inplace_a,
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor *x = FFCObjectWrapper::unwrap_const(x_);
   const Tensor *y = FFCObjectWrapper::unwrap_const(y_);
   Tensor *tensor = new Tensor();
-  *tensor = handle->divide(*x, *y, name);
+  *tensor = handle->divide(*x, *y, inplace_a, name);
   DEBUG_PRINT("[Divide] new Tensor %p, x %p, y %p, name %s", 
     tensor, x, y, name);
   return FFCObjectWrapper::wrap(tensor);
@@ -622,6 +626,7 @@ flexflow_tensor_t
 flexflow_model_add_relu(
   flexflow_model_t handle_,
   const flexflow_tensor_t input_,
+  bool inplace,
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
@@ -664,6 +669,7 @@ flexflow_tensor_t
 flexflow_model_add_elu(
   flexflow_model_t handle_,
   const flexflow_tensor_t input_,
+  bool inplace,
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);

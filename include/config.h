@@ -119,7 +119,7 @@ public:
                             const std::string& pcname,
                             ParallelConfig& config) const;
 public:
-  int epochs, batchSize, iterations, printFreq;
+  int epochs, batchSize, printFreq;
   //int inputHeight, inputWidth;
   int numNodes, cpusPerNode, workersPerNode;
   float learningRate, weightDecay;
