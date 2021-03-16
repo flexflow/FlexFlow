@@ -378,8 +378,8 @@ public:
                    Initializer* kernel_initializer = NULL,
                    const char* name = NULL);
   // Add a group_by layer
-  void group_by(const Tensor& data,
-                const Tensor& assign,
+  void group_by(const Tensor data,
+                const Tensor assign,
                 Tensor* outputs,
                 int n, float alpha,
                 const char* name = NULL);
@@ -595,8 +595,10 @@ public:
                 size_t budget, float alpha,
                 CompMode comp_mode,
                 bool use_propagation) const;
-  void propagate(std::map<const Op *, ParallelConfig> const &current,
-                 std::map<const Op *, ParallelConfig> &next) const;
+#ifdef FF_USE_PROPAGATE
+  void propagate(std::map<Op *, ParallelConfig> const &current,
+                 std::map<Op *, ParallelConfig> &next) const;
+#endif
   void rewrite(const std::map<const Op*, ParallelConfig>& current,
                std::map<const Op*, ParallelConfig>& next,
                bool use_propagation) const;
@@ -1244,33 +1246,29 @@ public:
 class Group_by : public Op {
 public:
   Group_by(FFModel& model,
-          const Tensor& _input,
-          const Tensor& _assign,
+          const Tensor _input,
+          const Tensor _assign,
           int _n, float _alpha,
           const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  void create_weights(FFModel& model);
-  void create_output_and_partition(FFModel& model);
-
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
 public:
   int n;
   float alpha;
-  bool profiling;
 };
 
 
@@ -1288,24 +1286,20 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  void create_weights(FFModel& model);
-  void create_output_and_partition(FFModel& model);
-
-  static OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
 public:
   int n;
-  bool profiling;
 };
 
 

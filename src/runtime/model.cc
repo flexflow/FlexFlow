@@ -2131,6 +2131,7 @@ float randf() {
   return static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
 }
 
+#ifdef FF_USE_PROPAGATE
 void FFModel::propagate(std::map<Op*, ParallelConfig> const &current,
                         std::map<Op*, ParallelConfig> &next) const {
   next = current;
@@ -2195,6 +2196,7 @@ void FFModel::propagate(std::map<Op*, ParallelConfig> const &current,
     selected_op = chosenEdgeInfo.dstOp;
   } while (randf() < FFModel::CONTINUE_PROPAGATION_CHANCE);
 }
+#endif
 
 void FFModel::rewrite(const std::map<const Op*, ParallelConfig>& current,
                       std::map<const Op*, ParallelConfig>& next,
@@ -2209,7 +2211,9 @@ void FFModel::rewrite(const std::map<const Op*, ParallelConfig>& current,
   }
 
   if (randf() < propagate_chance) {
+#ifdef FF_USE_PROPAGATE
     this->propagate(current, next);
+#endif
   } else {
     size_t opId = std::rand() % layers.size();
     //TODO: need to make sure opId is not an output layer of the model
@@ -2371,8 +2375,8 @@ std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> FFModel::get_bwd_edg
   std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> bwd_edge_map;
   for (auto const &layer : this->layers) {
     for (int i = 0; i < layer->numInputs; i++) {
-      Op *src = layer->inputs[i].owner_op;
-      bwd_edge_map[src].push_back({layer, layer->inputs[i].get_volume()});
+      Op *src = (Op*) layer->inputs[i]->owner_op;
+      bwd_edge_map[src].push_back({layer, layer->inputs[i]->get_volume()});
     }
   }
 

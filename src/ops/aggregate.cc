@@ -15,6 +15,8 @@
 
 #include "model.h"
 
+using namespace Legion;
+
 /* NOTE: This is the very, very un-performant.
 - You should get rid of the functions and not do each sample
   individually
@@ -108,27 +110,27 @@ Aggregate::Aggregate(FFModel& model,
   n(_n)
   //profiling(model.config.profiling)
 {
-  assert(inputs[0].numDim == 2); // TODO: More flexible. pass in images etc.
-  assert(inputs[1].numDim == 2);
-  assert(inputs[0].adim[0] == inputs[1].adim[0]);
-  assert(inputs[0].adim[1] == inputs[1].adim[1]);
+  assert(inputs[0]->num_dims == 2); // TODO: More flexible. pass in images etc.
+  assert(inputs[1]->num_dims == 2);
+  assert(inputs[0]->dims[0] == inputs[1]->dims[0]);
+  assert(inputs[0]->dims[1] == inputs[1]->dims[1]);
   assert(n+2 == numInputs);
   assert(n > 0);
 
-  int out_dim = inputs[2].adim[0];
-  int batch_size = inputs[0].adim[1];
-  outputs[0].numDim = 2;
-  outputs[0].adim[0] = out_dim;
-  outputs[0].adim[1] = batch_size;
+  int out_dim = inputs[2]->dims[0].size;
+  int batch_size = inputs[0]->dims[1].size;
+  outputs[0]->num_dims = 2;
+  outputs[0]->dims[0].size = out_dim;
+  outputs[0]->dims[1].size = batch_size;
 
   for(int i = 0; i < n; i++) {
-    assert(inputs[i+2].adim[0] == out_dim);
+    assert(inputs[i+2]->dims[0].size == out_dim);
   }
 
   numWeights = 0;
 }
 
-
+#ifdef DEADCODE
 void Aggregate::create_weights(FFModel& model)
 {
   // Do nothing
@@ -159,17 +161,17 @@ void Aggregate::create_output_and_partition(FFModel& model)
   // Compute partition bound for input
   for(int i = 0; i < n+2; i++) {
     Rect<2> input_rect = runtime->get_index_partition_color_space(
-        ctx, inputs[i].part.get_index_partition());
+        ctx, inputs[i]->part.get_index_partition());
     if (input_rect == part_rect) {
-      input_lps[i] = inputs[i].part;
-      input_grad_lps[i] = inputs[i].part_grad;
+      input_lps[i] = inputs[i]->part;
+      input_grad_lps[i] = inputs[i]->part_grad;
     } else {
       model.create_disjoint_partition<2>(
         inputs[i], (IndexSpaceT<2>)task_is, input_lps[i], input_grad_lps[i]);
     }
   }
 }
-
+#endif
 
 OpMeta* Aggregate::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
@@ -195,24 +197,24 @@ void Aggregate::init(const FFModel& ff)
   // gate_preds
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region));
+      READ_WRITE, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // gate_assign
   launcher.add_region_requirement(
     RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[1].region));
+      READ_WRITE, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   // exp_preds
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_lps[i+2], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i+2].region));
+        READ_WRITE, EXCLUSIVE, inputs[i+2]->region));
     launcher.add_field(i+2, FID_DATA);
   }
   // output
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      READ_WRITE, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(n+2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -421,24 +423,24 @@ void Aggregate::forward(const FFModel& ff)
   // gate_preds
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region));
+      READ_WRITE, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // gate_assign
   launcher.add_region_requirement(
     RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[1].region));
+      READ_WRITE, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   // exp_preds
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_lps[i+2], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i+2].region));
+        READ_WRITE, EXCLUSIVE, inputs[i+2]->region));
     launcher.add_field(i+2, FID_DATA);
   }
   // output
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(n+2, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
@@ -458,26 +460,26 @@ void Aggregate::backward(const FFModel& ff)
   // gate_preds
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region));
+      READ_WRITE, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
 
   // gate gradients
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+      READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
 
   // gate_assign
   launcher.add_region_requirement(
     RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[1].region));
+      READ_WRITE, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(2, FID_DATA);
 
   // exp_preds
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_lps[i+2], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i+2].region));
+        READ_WRITE, EXCLUSIVE, inputs[i+2]->region));
     launcher.add_field(i+3, FID_DATA);
   }
 
@@ -485,14 +487,14 @@ void Aggregate::backward(const FFModel& ff)
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[i+2], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i+2].region_grad));
+        READ_WRITE, EXCLUSIVE, inputs[i+2]->region_grad));
     launcher.add_field(i+n+3, FID_DATA);
   }
 
   // output
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, outputs[0].region_grad));
+    RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
+      READ_WRITE, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(2*n+3, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
