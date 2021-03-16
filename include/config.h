@@ -149,6 +149,7 @@ public:
   std::string machine_model_file;
   int simulator_segment_size;
   int simulator_max_num_segments;
+  bool enable_propagation;
 };
 
 class FFIterationConfig {

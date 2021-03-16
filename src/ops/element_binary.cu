@@ -88,11 +88,16 @@ ElementBinary::ElementBinary(FFModel& model,
 
 bool ElementBinary::can_inplace_output(void)
 {
-  //if (op_type == OP_EW_ADD)
-  //  return true;
-  //if (op_type == OP_EW_MUL)
-  //  return true;
+  if (op_type == OP_EW_ADD)
+    return true;
+  if (op_type == OP_EW_MUL)
+    return true;
   return false;
+}
+
+bool ElementBinary::has_inplace_output(void)
+{
+  return inplace_a;
 }
 
 void ElementBinary::do_inplace_output(void)

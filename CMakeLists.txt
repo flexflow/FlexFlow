@@ -3,6 +3,9 @@ project(FlexFlow)
 
 include(ExternalProject) 
 
+# Set policy CMP0074 to eliminate cmake warnings
+cmake_policy(SET CMP0074 NEW)
+cmake_policy(SET CMP0077 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
 
@@ -184,6 +187,14 @@ option(FF_BUILD_INCEPTION "build inception example" OFF)
 option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
 option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
 option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
+option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
+
+if(FF_BUILD_TESTS)
+  set(BUILD_GMOCK OFF)
+  add_subdirectory(deps/googletest)
+  enable_testing()
+  add_subdirectory(tests/unit)
+endif()
 
 # Python
 if(FF_USE_PYTHON)

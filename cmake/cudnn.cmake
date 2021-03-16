@@ -1,5 +1,5 @@
 # find cudnn in CUDNN_ROOT and CUDA_ROOT
-set(CUDNN_ROOT $ENV{CUDNN_PATH})
+set(CUDNN_ROOT ${CUDNN_PATH})
 find_library(CUDNN_LIBRARY 
   NAMES libcudnn${LIBEXT}
   PATHS ${CUDNN_ROOT} ${CUDA_ROOT}
@@ -32,5 +32,5 @@ if(CUDNN_FOUND)
 message( STATUS "CUDNN inlcude : ${CUDNN_INCLUDE_DIR}" )
   message( STATUS "CUDNN libraries : ${CUDNN_LIBRARIES}" )
 else()
-  message( FATAL_ERROR "CUDNN package not found -> specify search path via CUDNN_ROOT variable")
+  message( FATAL_ERROR "CUDNN package not found -> specify search path via CUDNN_DIR variable")
 endif()
