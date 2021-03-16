@@ -18,8 +18,8 @@
 
 using namespace Legion;
 
-// For an input tensor, computes the top k entries in each row 
-// (resp. vector along the last dimension). Thus, 
+// For an input tensor, computes the top k entries in each row
+// (resp. vector along the last dimension). Thus,
 // values.shape = indices.shape = input.shape[:-1] + [k]
 void FFModel::top_k(const Tensor input,
                     Tensor* outputs,
@@ -86,8 +86,9 @@ void TopK::create_input_partition_with_dim(FFModel& model)
   Runtime* runtime = model.config.lg_hlr;
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
   int dims[NDIM];
-  for (int i = 0; i < NDIM; i++)
-    dims[i] = inputs[0].dims[NDIM-1-i];
+  dims[NDIM-1] = k;
+  for (int i = 0; i < NDIM-1; i++)
+    dims[i] = inputs[0].adim[NDIM-1-i];
   outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
   outputs[0].owner_op = this;
   outputs[0].owner_idx = 0;
@@ -145,7 +146,7 @@ void TopK::init(const FFModel& ff)
     default:
       assert(false);
   }
-  IndexLauncher launcher(ELEMENTBINARY_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(TOPK_INIT_TASK_ID, task_is,
                          TaskArgument(this, sizeof(TopK)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -391,7 +392,7 @@ __device__ void heapTopK(const T* __restrict__ input, int length, int k,
 // The overall top k elements are written to `top_k_values` and their indices
 // to top_k_indices.
 // `top_k_heap` is used as temporary storage for the merge heap.
-template <typename T> __device__ 
+template <typename T> __device__
 void mergeShards(int num_shards, int k,
                  Entry<T>* __restrict__ entries,
                  Entry<T>* __restrict__ top_k_heap, T* top_k_values,
@@ -524,6 +525,8 @@ void TopK::forward_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
 {
+
+
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   //const TopK* topk = (const TopK*) task->args;
@@ -534,6 +537,11 @@ void TopK::forward_task(const Task* task,
     ctx, task->regions[1].region.get_index_space());
   Domain out2_domain = runtime->get_index_space_domain(
     ctx, task->regions[2].region.get_index_space());
+
+  int in_cols = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
+  int out1_cols = out1_domain.hi()[0] - out1_domain.lo()[0] + 1;
+  int out2_cols = out2_domain.hi()[0] - out2_domain.lo()[0] + 1;
+
   assert(out1_domain == out2_domain);
   for (int i = 1; i < in1_domain.get_dim(); i++) {
     assert(in1_domain.lo()[i] == out1_domain.lo()[i]);
@@ -552,7 +560,7 @@ void TopK::forward_task(const Task* task,
     cudaEventRecord(t_start);
   }
   int length = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
-  int k = out1_domain.hi()[0] - out1_domain.lo()[0] + 1;
+  int k = out1_domain.hi()[0] - out1_domain.lo()[0] + 1; /*TODO: This prints to 5*/
   size_t batch_size = in1_domain.get_volume() / length;
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
@@ -562,6 +570,7 @@ void TopK::forward_task(const Task* task,
 #endif
   forward_kernel(m, in_ptr, value_ptr, index_ptr,
       batch_size, length, k, m->sorted);
+
   if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -638,7 +647,7 @@ void TopK::backward_kernel(const TopKMeta* m,
                            size_t batch_size, int length, int k)
 {
   assign_kernel<<<GET_BLOCKS(batch_size*length), CUDA_NUM_THREADS>>>(
-    in_grad_ptr, batch_size * length, 0.0f); 
+    in_grad_ptr, batch_size * length, 0.0f);
   topk_backward_kernel<<<GET_BLOCKS(batch_size*k), CUDA_NUM_THREADS>>>(
     value_grad_ptr, indices_ptr, in_grad_ptr, batch_size, length, k);
 }

@@ -56,6 +56,12 @@ enum TaskIDs {
   EMBED_INIT_TASK_ID,
   EMBED_FWD_TASK_ID,
   EMBED_BWD_TASK_ID,
+  GROUP_BY_INIT_TASK_ID,
+  GROUP_BY_FWD_TASK_ID,
+  GROUP_BY_BWD_TASK_ID,
+  AGGREGATE_INIT_TASK_ID,
+  AGGREGATE_FWD_TASK_ID,
+  AGGREGATE_BWD_TASK_ID,
   POOL2D_INIT_TASK_ID,
   POOL2D_FWD_TASK_ID,
   POOL2D_BWD_TASK_ID,
@@ -306,6 +312,11 @@ class Embedding;
 class FFModel {
 public:
   FFModel(FFConfig &config);
+
+  static constexpr float PROPAGATION_CHANCE = 0.25;
+  static constexpr float CONTINUE_PROPAGATION_CHANCE = 0.75;
+  static constexpr float PROPAGATION_SIZE_WEIGHT = 1.0;
+
   // C++ APIs for constructing models
   // Add an exp layer
   Tensor exp(const Tensor x,
@@ -366,6 +377,16 @@ public:
                    const Op* shared_op = NULL,
                    Initializer* kernel_initializer = NULL,
                    const char* name = NULL);
+  // Add a group_by layer
+  void group_by(const Tensor& data,
+                const Tensor& assign,
+                Tensor* outputs,
+                int n, float alpha,
+                const char* name = NULL);
+  // Add aggregate layer
+  Tensor aggregate(const Tensor* inputs,
+                  int n,
+                  const char* name = NULL);
   // Add a 2D pooling layer
   Tensor pool2d(const Tensor input,
                 int kernelH, int kernelW,
@@ -572,12 +593,19 @@ public:
   void optimize(Simulator* simulator,
                 std::map<const Op*, ParallelConfig>& best,
                 size_t budget, float alpha,
-                CompMode comp_mode) const;
+                CompMode comp_mode,
+                bool use_propagation) const;
+  void propagate(std::map<const Op *, ParallelConfig> const &current,
+                 std::map<const Op *, ParallelConfig> &next) const;
   void rewrite(const std::map<const Op*, ParallelConfig>& current,
-               std::map<const Op*, ParallelConfig>& next) const;
+               std::map<const Op*, ParallelConfig>& next,
+               bool use_propagation) const;
   void zero_gradients();
   void print_layers(int id);
   std::string get_operator_type_name(OperatorType type) const;
+
+  std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> get_bwd_edge_map() const;
+
   // Internal funcitons
   Legion::IndexSpace get_or_create_task_is(ParallelConfig pc);
   Legion::IndexSpace get_or_create_task_is(const Legion::Domain& domain);
@@ -597,7 +625,7 @@ public:
   Metrics* metrics_op;
   Tensor label_tensor;
   //std::vector<Tensor> input_tensors;
-  
+
   std::vector<Op*> layers;
   std::vector<Tensor> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
@@ -1207,6 +1235,79 @@ public:
   EmbeddingMeta(FFHandler handle): OpMeta(handle) {}
   AggrMode aggr;
 };
+
+class Group_byMeta : public OpMeta {
+public:
+  Group_byMeta(FFHandler handle);
+};
+
+class Group_by : public Op {
+public:
+  Group_by(FFModel& model,
+          const Tensor& _input,
+          const Tensor& _assign,
+          int _n, float _alpha,
+          const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+public:
+  int n;
+  float alpha;
+  bool profiling;
+};
+
+
+class AggregateMeta : public OpMeta {
+public:
+  AggregateMeta(FFHandler handle);
+};
+
+class Aggregate : public Op {
+public:
+  Aggregate(FFModel& model,
+            const Tensor* inputs,
+            int _n, const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+public:
+  int n;
+  bool profiling;
+};
+
 
 class Flat : public Op {
 public:

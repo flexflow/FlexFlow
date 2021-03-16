@@ -17,6 +17,8 @@
 #include "mapper.h"
 #include "test_utils.h"
 #include "dirent.h"
+#include <unordered_set>
+#include "random_utils.h"
 
 using namespace std;
 using namespace Legion;
@@ -2120,21 +2122,108 @@ void FFModel::compile(LossType loss_type,
 #endif
 }
 
+struct PropagationEdgeInfo {
+  Op *dstOp;
+  size_t size;
+};
+
+float randf() {
+  return static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+}
+
+void FFModel::propagate(std::map<Op*, ParallelConfig> const &current,
+                        std::map<Op*, ParallelConfig> &next) const {
+  next = current;
+  size_t opId = std::rand() % (layers.size() - 1);
+  //TODO: need to make sure opId is not an output layer of the model
+  assert (opId != layers.size() - 1);
+
+  std::vector<PropagationEdgeInfo> choosable_edges;
+  std::unordered_set<Op *> opsSeen;
+
+  auto bwd_edge_map = this->get_bwd_edge_map();
+
+  Op *selected_op = this->layers[opId];
+  do {
+    opsSeen.insert(selected_op);
+    choosable_edges.clear();
+    for (int i = 0; i < selected_op->numInputs; i++) {
+      auto const &input = selected_op->inputs[i];
+      if (opsSeen.find(input.owner_op) == opsSeen.end()) {
+        PropagationEdgeInfo edgeInfo;
+        edgeInfo.dstOp = selected_op->inputs[i].owner_op;
+        if (edgeInfo.dstOp == NULL) {
+          continue;
+        }
+        assert(edgeInfo.dstOp != NULL);
+        edgeInfo.size = selected_op->inputs[i].get_volume();
+        choosable_edges.push_back(edgeInfo);
+      }
+    }
+    if (bwd_edge_map.find(selected_op) != bwd_edge_map.end()) {
+      for (auto const &kv : bwd_edge_map.at(selected_op)) {
+        if (opsSeen.find(kv.first) == opsSeen.end()) {
+          PropagationEdgeInfo edgeInfo;
+          edgeInfo.dstOp = kv.first;
+          assert(edgeInfo.dstOp != NULL);
+          edgeInfo.size = kv.second;
+          choosable_edges.push_back(edgeInfo);
+        }
+      }
+    }
+
+    if (choosable_edges.size() == 0) {
+      break;
+    }
+
+    float avg_edge_size = 0.0f;
+    for (auto const &edge : choosable_edges) {
+      avg_edge_size += edge.size;
+    }
+    avg_edge_size /= choosable_edges.size();
+    std::vector<float> edge_weights;
+    for (auto const &edge : choosable_edges) {
+      edge_weights.push_back(
+          FFModel::PROPAGATION_SIZE_WEIGHT * edge.size
+            + avg_edge_size * (1 - FFModel::PROPAGATION_SIZE_WEIGHT)
+      );
+    }
+    assert (edge_weights.size() == choosable_edges.size());
+    PropagationEdgeInfo chosenEdgeInfo = select_random(choosable_edges, edge_weights);
+
+    next[chosenEdgeInfo.dstOp] = next.at(selected_op);
+    selected_op = chosenEdgeInfo.dstOp;
+  } while (randf() < FFModel::CONTINUE_PROPAGATION_CHANCE);
+}
+
 void FFModel::rewrite(const std::map<const Op*, ParallelConfig>& current,
-                      std::map<const Op*, ParallelConfig>& next) const
+                      std::map<const Op*, ParallelConfig>& next,
+                      bool use_propagation) const
 {
   next = current;
-  size_t opId = std::rand() % layers.size();
-  //TODO: need to make sure opId is not an output layer of the model
-  if (opId == layers.size() - 1)
-    return;
-  next[layers[opId]] = layers[opId]->get_random_parallel_config(*this);
+  float propagate_chance;
+  if (use_propagation) {
+    propagate_chance = FFModel::PROPAGATION_CHANCE;
+  } else {
+    propagate_chance = 0.0f;
+  }
+
+  if (randf() < propagate_chance) {
+    this->propagate(current, next);
+  } else {
+    size_t opId = std::rand() % layers.size();
+    //TODO: need to make sure opId is not an output layer of the model
+    if (opId == layers.size() - 1)
+      return;
+    next[layers[opId]] = layers[opId]->get_random_parallel_config(*this);
+  }
 }
 
 void FFModel::optimize(Simulator* simulator,
                        std::map<const Op*, ParallelConfig>& best,
                        size_t budget, float alpha,
-                       CompMode comp_mode) const
+                       CompMode comp_mode,
+                       bool use_propagation) const
 {
   // Start from data parallel
   std::map<const Op*, ParallelConfig> current, next;
@@ -2153,7 +2242,7 @@ void FFModel::optimize(Simulator* simulator,
       current_runtime = best_runtime;
       last_reset_iter = iter;
     }
-    rewrite(current, next);
+    rewrite(current, next, use_propagation);
     float next_runtime = simulator->simulate_runtime(this, next, comp_mode);
     if (iter % 1000 == 0) {
       printf("iteration(%zu) current_strategy(%.4lf) best_strategy(%.4lf)\n", iter,
@@ -2230,6 +2319,8 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_CONCAT: return "Concat";
     case OP_SPLIT: return "Split";
     case OP_EMBEDDING: return "Embedding";
+    case OP_GROUP_BY: return "Group_by";
+    case OP_AGGREGATE: return "Aggregate";
     case OP_RESHAPE: return "Reshape";
     case OP_REVERSE: return "Reverse";
     case OP_TRANSPOSE: return "Transpose";
@@ -2275,6 +2366,18 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     default: assert(false && "Not supported Operator type"); return "Unsupported";
   }
 }
+
+std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> FFModel::get_bwd_edge_map() const {
+  std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> bwd_edge_map;
+  for (auto const &layer : this->layers) {
+    for (int i = 0; i < layer->numInputs; i++) {
+      Op *src = layer->inputs[i].owner_op;
+      bwd_edge_map[src].push_back({layer, layer->inputs[i].get_volume()});
+    }
+  }
+
+  return bwd_edge_map;
+};
 
 PerfMetrics FFModel::update_metrics_task(const Task *task,
                                          const std::vector<PhysicalRegion>& regions,
@@ -2566,6 +2669,10 @@ void FFConfig::parse_args(char **argv, int argc)
       simulator_max_num_segments = atoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--enable-propagation")) {
+      enable_propagation = true;
+      continue;
+    }
   }
 }
 
@@ -2711,6 +2818,53 @@ void register_flexflow_internal_tasks()
     Runtime::preregister_task_variant<Embedding::backward_task_cpu>(
         registrar, "Embedding Backward Task");
   }*/
+
+  // Group by task CPU
+  {
+    TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "Group_by Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Group_by::init_task>(
+        registrar, "Group_by Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(GROUP_BY_FWD_TASK_ID, "Group_by Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Group_by::forward_task>(
+        registrar, "Group_by Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(GROUP_BY_BWD_TASK_ID, "Group_by Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Group_by::backward_task>(
+        registrar, "Group_by Backward Task");
+  }
+
+  // Aggregate task CPU
+  {
+    TaskVariantRegistrar registrar(AGGREGATE_INIT_TASK_ID, "Aggregate Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Aggregate::init_task>(
+        registrar, "Aggregate Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(AGGREGATE_FWD_TASK_ID, "Aggregate Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Aggregate::forward_task>(
+        registrar, "Aggregate Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(AGGREGATE_BWD_TASK_ID, "Aggregate Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Aggregate::backward_task>(
+        registrar, "Aggregate Backward Task");
+  }
+
   // Pool2D task
   {
     TaskVariantRegistrar registrar(POOL2D_INIT_TASK_ID, "pool2d_init_task");

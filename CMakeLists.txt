@@ -124,6 +124,8 @@ set(FLEXFLOW_HDR
 set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/mapper/mapper.cc
   ${FLEXFLOW_ROOT}/src/ops/embedding.cc
+  ${FLEXFLOW_ROOT}/src/ops/group_by.cc
+  ${FLEXFLOW_ROOT}/src/ops/aggregate.cc
   ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cc
   ${FLEXFLOW_ROOT}/src/runtime/initializer.cc
   ${FLEXFLOW_ROOT}/src/runtime/model.cc
@@ -187,6 +189,14 @@ option(FF_BUILD_INCEPTION "build inception example" OFF)
 option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
 option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
 option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
+option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
+
+if(FF_BUILD_TESTS)
+  set(BUILD_GMOCK OFF)
+  add_subdirectory(deps/googletest)
+  enable_testing()
+  add_subdirectory(tests/unit)
+endif()
 
 # Python
 if(FF_USE_PYTHON)
