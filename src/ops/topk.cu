@@ -39,8 +39,6 @@ TopK::TopK(FFModel& model,
 : Op(model, OP_TOPK, name, _input),
   k(_k), sorted(_sorted)
 {
-  printf("constr k: %d\n", k);
-  printf("constr k: inputs dim %d: %d x %d\n", inputs[0].numDim, inputs[0].adim[0], inputs[0].adim[1]);
   numOutputs = 2;
   outputs[0].numDim = inputs[0].numDim;
   outputs[1].numDim = inputs[0].numDim;
@@ -447,8 +445,6 @@ void mergeShards(int num_shards, int k,
       top_k_values[rank] = max_element.value;
       int shard_index = max_element.index;
       top_k_indices[rank] = entries[shard_index].index;
-      //top_k_indices[rank] = 42;
-      printf("INDEX: %d\n", entries[shard_index].index);
       int next_shard_index = shard_index + num_shards;
       // For rank < k-1, each top k heap still contains at least 1 element,
       // so we can draw a replacement.
@@ -461,7 +457,6 @@ void mergeShards(int num_shards, int k,
     top_k_values[last_k] = max_element.value;
     int shard_index = max_element.index;
     top_k_indices[last_k] = entries[shard_index].index;
-    //top_k_indices[last_k] = 42;
   }
 }
 
@@ -473,7 +468,6 @@ topk_forward_kernel(const T* __restrict__ input,
                     T* __restrict__ output,
                     int* __restrict__ indices)
 {
-  printf("HEEEREEEE\n");
   __shared__ char shared_memory[48 << 10];
   const int batch_index = blockIdx.x;
   const T* batch_input = input + batch_index * length;
@@ -501,8 +495,6 @@ void TopK::forward_kernel(const TopKMeta* m,
                           size_t batch_size, int length, int k,
                           bool sorted)
 {
-  printf("TOPK forward\n");
-
   // Adopted from TensorFlow's TopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
   int num_shards = 0;
@@ -547,8 +539,6 @@ void TopK::forward_task(const Task* task,
   int out1_cols = out1_domain.hi()[0] - out1_domain.lo()[0] + 1;
   int out2_cols = out2_domain.hi()[0] - out2_domain.lo()[0] + 1;
 
-  printf("in %d, out1 %d, out2 %d\n", in_cols, out1_cols, out2_cols);
-
   assert(out1_domain == out2_domain);
   for (int i = 1; i < in1_domain.get_dim(); i++) {
     assert(in1_domain.lo()[i] == out1_domain.lo()[i]);
@@ -577,16 +567,6 @@ void TopK::forward_task(const Task* task,
 #endif
   forward_kernel(m, in_ptr, value_ptr, index_ptr,
       batch_size, length, k, m->sorted);
-
-  /*printf("topK output:\n");
-  printf("%d\n", k);
-  for(int i = 0; i < batch_size; i++) {
-    for(int j = 0; j < 2; j++) {
-      printf("%d ", index_ptr[i*k+j]);
-    }
-    printf("\n");
-  }
-  printf("\n");*/
 
   if (m->profiling) {
     cudaEventRecord(t_end);
