@@ -155,7 +155,7 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
   for (int i = 0; i < op->numOutputs; i++) {
     bool found = false;
     for (int j = 0; j < numOutputs; j++) {
-      if (outputs[j].region == op->outputs[i].region) {
+      if (outputs[j]->region == op->outputs[i]->region) {
         assert(!found);
         found = true;
         op_output_source[output_offset+i] = SOURCE_OUTPUT;

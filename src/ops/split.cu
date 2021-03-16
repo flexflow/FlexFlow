@@ -36,32 +36,36 @@ Split::Split(FFModel& model,
              int _axis,
              const char* name)
 : Op(model, OP_SPLIT, name, input),
-  axis(input->numDim-1-_axis)
+  axis(input->num_dims-1-_axis)
 {
   numOutputs = splits.size();
   // Note that we use the Legion dim ordering
-  // axis = input->numDim-1-_axis
+  // axis = input->num_dims-1-_axis
   assert(axis >= 0);
   numWeights = 0;
   int split_size = 0;
   for (int i = 0; i < numOutputs; i++) {
     split_size += splits[i];
-    int numdim = input->numDim;
-    int dims[MAX_TENSOR_DIM];
+    int numdim = input->num_dims;
+    ParallelDim dims[MAX_TENSOR_DIM];
     for (int j = 0; j < numdim; j++)
-      dims[j] = input->adim[numdim-1-j];
-    dims[_axis] = splits[i];
-    outputs[i] = model.create_tensor(numdim, dims, input->data_type,
+      dims[j] = input->dims[j];
+    dims[axis].size = splits[i];
+    // Assert the _axis dim cannot be parallelized
+    assert(dims[axis].degree == 1);
+    assert(dims[axis].parallel_idx == -1);
+    outputs[i] = model.create_tensor_legion_ordering(
+        numdim, dims, input->data_type,
         this/*owner_op*/, i/*owner_idx*/);
   }
   // Check split sizes
-  assert(split_size == input->adim[axis]);
+  assert(split_size == input->dims[axis].size);
 }
 
 void Split::create_input_partition(FFModel& model)
 {
   // Retrive the task indexspace
-  int dim = inputs[0]->numDim;
+  int dim = inputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \

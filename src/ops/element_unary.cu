@@ -20,6 +20,7 @@ using namespace Legion;
 
 Tensor FFModel::unary(OperatorType op,
                       const Tensor x,
+                      bool inplace,
                       const char *name)
 {
   ElementUnary *ele = new ElementUnary(*this, op, x, inplace, name);
@@ -63,12 +64,12 @@ ElementUnary::ElementUnary(FFModel& model,
 : Op(model, _op_type, name, x), inplace(_inplace)
 {
   numOutputs = 1;
-  int numdim = x->numDim;
-  int dims[MAX_TENSOR_DIM];
+  int numdim = x->num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
-    dims[numdim-1-i] = x->adim[i];
+    dims[i] = x->dims[i];
   }
-  outputs[0] = model.create_tensor(numdim, dims, x->data_type, this);
+  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, x->data_type, this);
 }
 
 bool ElementUnary::can_inplace_output(void)
@@ -102,7 +103,7 @@ bool ElementUnary::use_cudnn(OperatorType type)
 #ifdef DEADCODE
 void ElementUnary::map_output_tensors(FFModel& model)
 {
-  int dim = inputs[0].numDim;
+  int dim = inputs[0].num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -197,7 +198,7 @@ OpMeta* ElementUnary::init_task(const Task *task,
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, mode,
                                             CUDNN_PROPAGATE_NAN, 0.0));
     Domain input_domain = runtime->get_index_space_domain(
-        ctx, task->regions[0]->region.get_index_space());
+        ctx, task->regions[0].region.get_index_space());
     checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
       checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, input_domain));
   }
@@ -315,7 +316,7 @@ void ElementUnary::forward_task(const Task* task,
   //const ElementUnary* ele = (const ElementUnary*) task->args;
   const ElementUnaryMeta* m = *((ElementUnaryMeta**) task->local_args);
   Domain input_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0]->region.get_index_space());
+    ctx, task->regions[0].region.get_index_space());
   const float* input_ptr = NULL;
   float* output_ptr = NULL;
   if (m->inplace) {
@@ -328,7 +329,7 @@ void ElementUnary::forward_task(const Task* task,
     assert(regions.size() == 2);
     assert(task->regions.size() == 2);
     Domain output_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1]->region.get_index_space());
+      ctx, task->regions[1].region.get_index_space());
     assert(output_domain == input_domain);
     input_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -449,12 +450,12 @@ void ElementUnary::backward_task(const Task* task,
   const float* input_ptr = NULL, *output_ptr = NULL, *output_grad_ptr = NULL;
   float* input_grad_ptr = NULL;
   Domain input_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0]->region.get_index_space());
+    ctx, task->regions[0].region.get_index_space());
   if (m->inplace) {
     assert(regions.size() == 2);
     assert(task->regions.size() == 2);
     Domain input_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1]->region.get_index_space());
+      ctx, task->regions[1].region.get_index_space());
     assert(input_grad_domain == input_domain);
     input_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -466,11 +467,11 @@ void ElementUnary::backward_task(const Task* task,
     assert(regions.size() == 4);
     assert(task->regions.size() == 4);
     Domain input_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1]->region.get_index_space());
+      ctx, task->regions[1].region.get_index_space());
     Domain output_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2]->region.get_index_space());
+      ctx, task->regions[2].region.get_index_space());
     Domain output_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[3]->region.get_index_space());
+      ctx, task->regions[3].region.get_index_space());
     assert(output_grad_domain == input_domain);
     assert(output_grad_domain == output_domain);
     assert(output_grad_domain == input_grad_domain);
@@ -554,7 +555,6 @@ void ElementUnary::backward(const FFModel& ff)
         READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
     launcher.add_field(3, FID_DATA);
   }
->>>>>>> 4519e21a022492e456e7a34744fa5c752c1be320
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -599,15 +599,15 @@ bool ElementUnary::measure_operator_cost(Simulator* sim,
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, mode,
                                             CUDNN_PROPAGATE_NAN, 0.0));
     Domain input_domain, output_domain;
-    input_domain.dim = sub_input.numDim;
-    for (int i = 0; i < sub_input.numDim; i++) {
+    input_domain.dim = sub_input.num_dims;
+    for (int i = 0; i < sub_input.num_dims; i++) {
       input_domain.rect_data[i] = 0;
-      input_domain.rect_data[i+input_domain.dim] = sub_input.adim[i]-1;
+      input_domain.rect_data[i+input_domain.dim] = sub_input.dims[i].size-1;
     }
-    output_domain.dim = sub_output.numDim;
-    for (int i = 0; i < sub_output.numDim; i++) {
+    output_domain.dim = sub_output.num_dims;
+    for (int i = 0; i < sub_output.num_dims; i++) {
       output_domain.rect_data[i] = 0;
-      output_domain.rect_data[i+input_domain.dim] = sub_output.adim[i]-1;
+      output_domain.rect_data[i+input_domain.dim] = sub_output.dims[i].size-1;
     }
     checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
     checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));

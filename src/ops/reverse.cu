@@ -34,17 +34,17 @@ Reverse::Reverse(FFModel& model,
 : Op(model, OP_REVERSE, name, input), axis(_axis)
 {
   numOutputs = 1;
-  int numdim = input->numDim;
-  int dims[MAX_TENSOR_DIM];
+  int numdim = input->num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++)
-    dims[i] = input->adim[numdim-1-i];
-  outputs[0] = model.create_tensor(numdim, dims, input->data_type, this);
+    dims[i] = input->dims[i];
+  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, input->data_type, this);
 }
 
 void Reverse::create_input_partition(FFModel& model)
 {
   // Retrive the task indexspace
-  int dim = inputs[0]->numDim;
+  int dim = inputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -75,7 +75,7 @@ void Reverse::create_input_partition_with_dim(FFModel& model)
 #ifdef DEADCODE
   int dims[NDIM];
   for (int i = 0; i < NDIM; i++)
-    dims[i] = outputs[0].adim[NDIM-1-i];
+    dims[i] = outputs[0].dims[NDIM-1-i].size;
   outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
   outputs[0].owner_op = this;
   outputs[0].owner_idx = 0;
@@ -284,13 +284,13 @@ bool Reverse::measure_operator_cost(Simulator* sim,
   assert (output_ptr != NULL);
 
   coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
-  for (int i = 0; i < sub_output.numDim; i++) {
+  for (int i = 0; i < sub_output.num_dims; i++) {
     if (i < axis) {
-      in_blk_size *= sub_output.adim[i];
+      in_blk_size *= sub_output.dims[i].size;
     } else if (i == axis) {
-      reverse_dim_size = sub_output.adim[i];
+      reverse_dim_size = sub_output.dims[i].size;
     } else {
-      num_out_blks *= sub_output.adim[i];
+      num_out_blks *= sub_output.dims[i].size;
     }
   }
 

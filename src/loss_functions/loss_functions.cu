@@ -165,8 +165,8 @@ void Loss::backward(FFModel* model,
                     const Tensor logit,
                     const Tensor label)
 {
-  assert(logit->numDim == label->numDim);
-  int dim = logit->numDim;
+  assert(logit->num_dims == label->num_dims);
+  int dim = logit->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -189,7 +189,7 @@ void Loss::backward_with_dim(FFModel* model,
                              const Tensor label)
 {
   // Compute scale factor for loss backpropagation
-  scale_factor = 1.0f/ logit->adim[logit->numDim-1];
+  scale_factor = 1.0f/ logit->dims[logit->num_dims-1].size;
   //scale_factor = 1.0f;
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;

@@ -36,26 +36,26 @@ BatchMatmul::BatchMatmul(FFModel& model,
                          int _a_seq_length_dim,
                          int _b_seq_length_dim)
 : Op(model, OP_BATCHMATMUL, "BatchMatmul_", A, B),
-  a_seq_length_dim(A->numDim-1-_a_seq_length_dim),
-  b_seq_length_dim(B->numDim-1-_b_seq_length_dim)
+  a_seq_length_dim(A->num_dims-1-_a_seq_length_dim),
+  b_seq_length_dim(B->num_dims-1-_b_seq_length_dim)
 {
   assert((a_seq_length_dim <= 1) && "FlexFlow currently only supports seq_length_dim of 0 or 1 (in Fortran ordering).");
   assert((b_seq_length_dim <= 1) && "FlexFlow currently only supports seq_length_dim of 0 or 1 (in Fortran ordering).");
-  assert(A->numDim == B->numDim);
-  for (int i = A->numDim-1; i >= 2; i--)
-    assert(A->adim[i] == B->adim[i]);
-  assert(A->adim[0] == B->adim[1]);
-  int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < A->numDim; i++)
-    dims[i] = A->adim[A->numDim-1-i];
-  dims[A->numDim-1] = B->adim[0];
+  assert(A->num_dims == B->num_dims);
+  for (int i = A->num_dims-1; i >= 2; i--)
+    assert(A->dims[i] == B->dims[i]);
+  assert(A->dims[0] == B->dims[1]);
+  ParallelDim dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < A->num_dims; i++)
+    dims[i] = A->dims[i];
+  dims[0] = B->dims[0];
   numOutputs = 1;
-  outputs[0] = model.create_tensor(A->numDim, dims, DT_FLOAT, this);
+  outputs[0] = model.create_tensor_legion_ordering(A->num_dims, dims, DT_FLOAT, this);
   // C is not none
   //if (C != Tensor::NO_TENSOR) {
   //  numInputs = 3;
-  //  assert(C.numDim == outputs[0].numDim);
-  //  for (int i = 0; i < C.numDim; i++)
+  //  assert(C.num_dims == outputs[0].num_dims);
+  //  for (int i = 0; i < C.num_dims; i++)
   //    assert(C.adim[i] == outputs[0].adim[i]);
   //}
 }
@@ -107,7 +107,7 @@ OpMeta* BatchMatmul::init_task(const Task* task,
 
 void BatchMatmul::init(const FFModel& ff)
 {
-  int dim = outputs[0]->numDim;
+  int dim = outputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -294,7 +294,7 @@ void BatchMatmul::forward_task(const Task* task,
 
 void BatchMatmul::forward(const FFModel& ff)
 {
-  int dim = outputs[0]->numDim;
+  int dim = outputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -469,7 +469,7 @@ void BatchMatmul::backward_task(const Task *task,
 
 void BatchMatmul::backward(const FFModel& ff)
 {
-  int dim = outputs[0]->numDim;
+  int dim = outputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -567,25 +567,25 @@ bool BatchMatmul::measure_operator_cost(Simulator* sim,
     return false;
   }
 
-  int input0_c = sub_input0.adim[0];
-  int input0_r = sub_input0.adim[1];
-  int input1_c = sub_input1.adim[0];
-  int input1_r = sub_input1.adim[1];
-  int output_c = sub_output.adim[0];
-  int output_r = sub_output.adim[1];
+  int input0_c = sub_input0.dims[0].size;
+  int input0_r = sub_input0.dims[1].size;
+  int input1_c = sub_input1.dims[0].size;
+  int input1_r = sub_input1.dims[1].size;
+  int output_c = sub_output.dims[0].size;
+  int output_r = sub_output.dims[1].size;
 
   assert (input0_c == input1_r);
   assert (input0_r == output_r);
   assert (input1_c == output_c);
 
-  assert (sub_input0.adim[2] == sub_input1.adim[2]);
-  assert (sub_input1.adim[2] == sub_output.adim[2]);
+  assert (sub_input0.dims[2] == sub_input1.dims[2]);
+  assert (sub_input1.dims[2] == sub_output.dims[2]);
   int batch = 1;
-  assert(sub_input0.numDim == sub_input1.numDim);
-  for (int i = 2; i < sub_input0.numDim; i++) {
-    assert(sub_input0.adim[i] == sub_input1.adim[i]);
-    assert(sub_input0.adim[i] == sub_output.adim[i]);
-    batch *= sub_input0.adim[i];
+  assert(sub_input0.num_dims == sub_input1.num_dims);
+  for (int i = 2; i < sub_input0.num_dims; i++) {
+    assert(sub_input0.dims[i] == sub_input1.dims[i]);
+    assert(sub_input0.dims[i] == sub_output.dims[i]);
+    batch *= sub_input0.dims[i].size;
   }
 
   BatchMatmulMeta *meta = sim->batch_matmul_meta;

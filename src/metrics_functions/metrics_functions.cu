@@ -248,8 +248,8 @@ void Metrics::compute(FFModel* model,
                       const Tensor logit,
                       const Tensor label)
 {
-  assert(logit->numDim == label->numDim);
-  int dim = logit->numDim;
+  assert(logit->num_dims == label->num_dims);
+  int dim = logit->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \

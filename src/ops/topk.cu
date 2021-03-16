@@ -41,21 +41,25 @@ TopK::TopK(FFModel& model,
 : Op(model, OP_TOPK, name, _input),
   k(_k), sorted(_sorted)
 {
-  int numdim = inputs[0]->numDim;
-  int dims[MAX_TENSOR_DIM];
+  int numdim = inputs[0]->num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++)
-    dims[i] = inputs[0]->adim[numdim-1-i];
-  dims[numdim-1] = k;
-  outputs[0] = model.create_tensor(numdim, dims, _input->data_type,
+    dims[i] = inputs[0]->dims[i];
+  dims[0].size = k;
+  assert(inputs[0]->dims[0].degree == 1);
+  assert(inputs[0]->dims[0].parallel_idx == -1);
+  outputs[0] = model.create_tensor_legion_ordering(
+      numdim, dims, _input->data_type,
       this, 0/*owner_idx*/);
-  outputs[1] = model.create_tensor(numdim, dims, DT_INT32,
+  outputs[1] = model.create_tensor_legion_ordering(
+      numdim, dims, DT_INT32,
       this, 1/*owner_idx*/);
 }
 
 #ifdef DEADCODE
 void TopK::create_input_partition(FFModel& model)
 {
-  int dim = inputs[0]->numDim;
+  int dim = inputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -83,7 +87,7 @@ void TopK::create_input_partition_with_dim(FFModel& model)
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
   int dims[NDIM];
   for (int i = 0; i < NDIM; i++)
-    dims[i] = inputs[0].adim[NDIM-1-i];
+    dims[i] = inputs[0].dims[NDIM-1-i];
   outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
   outputs[0].owner_op = this;
   outputs[0].owner_idx = 0;

@@ -40,17 +40,17 @@ Dropout::Dropout(FFModel& model,
 : Op(model, OP_DROPOUT, name, _input), rate(_rate), seed(_seed)
 {
   // Set output shape
-  int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < _input->numDim; i++)
-    dims[i] = _input->adim[_input->numDim-1-i];
+  ParallelDim dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < _input->num_dims; i++)
+    dims[i] = _input->dims[i];
   numOutputs = 1;
-  outputs[0] = model.create_tensor(_input->numDim, dims, DT_FLOAT, this);
+  outputs[0] = model.create_tensor_legion_ordering(_input->num_dims, dims, DT_FLOAT, this);
 }
 
 #ifdef DEADCODE
 void Dropout::map_output_tensors(FFModel& model)
 {
-  int dim = inputs[0].numDim;
+  int dim = inputs[0].num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \

@@ -33,21 +33,25 @@ Concat::Concat(FFModel& model,
                int _axis,
                const char* name)
 : Op(model, OP_CONCAT, name, _n, _tensors),
-  axis(inputs[0]->numDim-1-_axis)
+  axis(inputs[0]->num_dims-1-_axis)
 {
   //TODO: swich to use the Legion dim ordering
-  int num_dim = inputs[0]->numDim;
-  int dims[MAX_TENSOR_DIM];
+  int num_dim = inputs[0]->num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < num_dim; i++)
-    dims[i] = inputs[0]->adim[num_dim-1-i];
+    dims[i] = inputs[0]->dims[num_dim-1-i];
   for (int i = 1; i < numInputs; i++) {
     assert(inputs[i]->data_type == inputs[0]->data_type);
-    assert(inputs[i]->numDim == inputs[0]->numDim);
+    assert(inputs[i]->num_dims == inputs[0]->num_dims);
     for (int j = 0; j < num_dim; j++) {
       if (j != axis)
-        assert(inputs[i]->adim[j] == inputs[0]->adim[j]);
-      else
-        dims[num_dim-1-j] += inputs[i]->adim[j];
+        assert(inputs[i]->dims[j] == inputs[0]->dims[j]);
+      else {
+        // Assert that the concat dim cannot be parallelized
+        assert(inputs[i]->dims[j].parallel_idx == -1);
+        assert(inputs[i]->dims[j].degree == 1);
+        dims[num_dim-1-j].size += inputs[i]->dims[j].size;
+      }
     }
   }
   numOutputs = 1;
@@ -59,12 +63,12 @@ void Concat::map_output_tensors(FFModel& model)
 {
   // Retrive the task indexspace for the op
   std::string pcname = name;
-  task_is = model.get_or_create_task_is(inputs[0].numDim, pcname);
+  task_is = model.get_or_create_task_is(inputs[0].num_dims, pcname);
 
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  int dims[MAX_TENSOR_DIM], num_dim = inputs[0].numDim;
+  int dims[MAX_TENSOR_DIM], num_dim = inputs[0].num_dims;
   assert(num_dim == domain.get_dim());
   for (int i = 0; i < num_dim; i++)
     dims[i] = inputs[0].adim[num_dim-1-i];
@@ -264,7 +268,7 @@ void Concat::forward_task(const Task *task,
   assert(task->regions.size() == cc->numInputs + 1);
   Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  //assert(out_domain.get_dim() == cc->outputs[0].numDim);
+  //assert(out_domain.get_dim() == cc->outputs[0].num_dims);
   Domain in_domain[MAX_NUM_INPUTS];
   for (int i = 0; i < cc->numInputs; i++)
     in_domain[i] = runtime->get_index_space_domain(
@@ -376,7 +380,7 @@ void Concat::backward_task(const Task *task,
   assert(cc->numInputs <= MAX_NUM_INPUTS);
   Domain out_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  //assert(out_grad_domain.get_dim() == cc->outputs[0].numDim);
+  //assert(out_grad_domain.get_dim() == cc->outputs[0].num_dims);
   Domain in_grad_domains[MAX_NUM_INPUTS];
   for (int i = 0; i < cc->numInputs; i++)
     in_grad_domains[i] = runtime->get_index_space_domain(

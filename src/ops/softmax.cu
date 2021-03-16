@@ -21,7 +21,7 @@ using namespace Legion;
 Tensor FFModel::softmax(const Tensor _input, int dim, const char *name)
 {
   if (dim < 0)
-    dim += _input->numDim;
+    dim += _input->num_dims;
   Softmax *sm = new Softmax(*this, _input, dim, name);
   layers.push_back(sm);
   return sm->outputs[0];
@@ -44,20 +44,20 @@ Softmax::Softmax(FFModel& model,
                  int _dim,
                  const char* name)
 : Op(model, OP_SOFTMAX, name, _input),
-  dim(_input->numDim-1-_dim)
+  dim(_input->num_dims-1-_dim)
 {
   // Currently assume we always perform softmax along the inner most dim
   assert(dim == 0);
-  int dims[MAX_TENSOR_DIM];
-  int numdim = _input->numDim;
+  ParallelDim dims[MAX_TENSOR_DIM];
+  int numdim = _input->num_dims;
   for (int i = 0; i < numdim; i++)
-    dims[i] = _input->adim[numdim-1-i];
+    dims[i] = _input->dims[numdim-1-i];
   outputs[0] = model.create_tensor(numdim, dims, DT_FLOAT, this);
 }
 
 void Softmax::create_input_partition(FFModel& model)
 {
-  int dim = outputs[0]->numDim;
+  int dim = outputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \

@@ -79,15 +79,15 @@ ElementBinary::ElementBinary(FFModel& model,
   //TODO: implement broadcast op
   numOutputs = 1;
   numWeights = 0;
-  assert(in1->numDim == in2->numDim);
+  assert(in1->num_dims == in2->num_dims);
   assert(in1->data_type == in2->data_type);
-  int numdim = in1->numDim;
-  int dims[MAX_TENSOR_DIM];
+  int numdim = in1->num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
-    assert(in1->adim[i] == in2->adim[i]);
-    dims[numdim-1-i] = in1->adim[i];
+    assert(in1->dims[i] == in2->dims[i]);
+    dims[i] = in1->dims[i];
   }
-  outputs[0] = model.create_tensor(numdim, dims, in1->data_type, this);
+  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, in1->data_type, this);
 }
 
 bool ElementBinary::can_inplace_output(void)
@@ -121,19 +121,19 @@ OpMeta* ElementBinary::init_task(const Task* task,
   m->profiling = eb->profiling;
   m->inplace_a = eb->inplace_a;
   Domain input_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0]->region.get_index_space());
+    ctx, task->regions[0].region.get_index_space());
   Domain output_domain;
   if (m->inplace_a) {
     assert(regions.size() == 2);
     assert(task->regions.size() == regions.size());
     output_domain = runtime->get_index_space_domain(
-        ctx, task->regions[1]->region.get_index_space());
+        ctx, task->regions[1].region.get_index_space());
     assert(output_domain == input_domain);
   } else {
     assert(regions.size() == 3);
     assert(task->regions.size() == regions.size());
     output_domain = runtime->get_index_space_domain(
-        ctx, task->regions[2]->region.get_index_space());
+        ctx, task->regions[2].region.get_index_space());
     assert(output_domain == input_domain);
   }
   cudnnOpTensorOp_t mode;
@@ -316,9 +316,9 @@ void ElementBinary::forward_task(const Task* task,
   //const ElementBinary* ele = (const ElementBinary*) task->args;
   const ElementBinaryMeta* m = *((ElementBinaryMeta**) task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0]->region.get_index_space());
+    ctx, task->regions[0].region.get_index_space());
   Domain in2_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1]->region.get_index_space());
+    ctx, task->regions[1].region.get_index_space());
   assert(in1_domain == in2_domain);
   const float* in1_ptr = NULL, *in2_ptr = NULL;
   float *out_ptr = NULL;
@@ -334,7 +334,7 @@ void ElementBinary::forward_task(const Task* task,
     assert(regions.size() == 3);
     assert(task->regions.size() == 3);
     Domain out_domain = runtime->get_index_space_domain(
-        ctx, task->regions[2]->region.get_index_space());
+        ctx, task->regions[2].region.get_index_space());
     assert(out_domain == in1_domain);
     in1_ptr = helperGetTensorPointerRO<float>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -550,7 +550,7 @@ void ElementBinary::backward_task(const Task *task,
   const float *in0_ptr = NULL, *in1_ptr = NULL, *out_grad_ptr = NULL;
   float *in0_grad_ptr = NULL, *in1_grad_ptr = NULL;
   Domain out_grad_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0]->region.get_index_space());
+    ctx, task->regions[0].region.get_index_space());
   if (m->inplace_a) {
     in0_grad_ptr = helperGetTensorPointerRW<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -558,7 +558,7 @@ void ElementBinary::backward_task(const Task *task,
     assert(task->regions.size() == regions.size());
     if (regions.size() == 2) {
       Domain in0_domain = runtime->get_index_space_domain(
-        ctx, task->regions[1]->region.get_index_space());
+        ctx, task->regions[1].region.get_index_space());
       assert(in0_domain == out_grad_domain);
       in0_ptr = helperGetTensorPointerRO<float>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
@@ -567,9 +567,9 @@ void ElementBinary::backward_task(const Task *task,
       out_grad_ptr = in0_grad_ptr;
     } else {
       Domain in0_domain = runtime->get_index_space_domain(
-        ctx, task->regions[1]->region.get_index_space());
+        ctx, task->regions[1].region.get_index_space());
       Domain in1_domain = runtime->get_index_space_domain(
-        ctx, task->regions[2]->region.get_index_space());
+        ctx, task->regions[2].region.get_index_space());
       assert(in0_domain == out_grad_domain);
       assert(in1_domain == out_grad_domain);
       in0_ptr = helperGetTensorPointerRO<float>(
@@ -586,9 +586,9 @@ void ElementBinary::backward_task(const Task *task,
     out_grad_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
     Domain in0_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1]->region.get_index_space());
+      ctx, task->regions[1].region.get_index_space());
     Domain in0_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2]->region.get_index_space());
+      ctx, task->regions[2].region.get_index_space());
     assert(out_grad_domain == in0_grad_domain);
     assert(out_grad_domain == in0_domain);
     in0_ptr = helperGetTensorPointerRO<float>(
@@ -601,9 +601,9 @@ void ElementBinary::backward_task(const Task *task,
       in1_grad_ptr = in0_grad_ptr;
     } else {
       Domain in1_domain = runtime->get_index_space_domain(
-        ctx, task->regions[3]->region.get_index_space());
+        ctx, task->regions[3].region.get_index_space());
       Domain in1_grad_domain = runtime->get_index_space_domain(
-        ctx, task->regions[4]->region.get_index_space());
+        ctx, task->regions[4].region.get_index_space());
       assert(out_grad_domain == in1_domain);
       assert(out_grad_domain == in1_grad_domain);
       in1_ptr = helperGetTensorPointerRO<float>(

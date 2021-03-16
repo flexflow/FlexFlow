@@ -41,7 +41,7 @@ Tensor FFModel::dense(const Tensor input,
 #endif
   Tensor kernel, bias;
   {
-    const int dims[3] = {1, outDim, input->adim[0]};
+    const int dims[3] = {1, outDim, input->dims[0].size};
     kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
         true/*create_grad*/, kernel_initializer, comm_type);
   }
@@ -63,7 +63,7 @@ Tensor FFModel::dense(const Tensor input,
                       ActiMode activation,
                       const char *name)
 {
-  Linear *li = new Linear(*this, input, kernel, bias, activation, name);
+  Linear *li = new Linear(*this, input, weight, bias, activation, name);
   layers.push_back(li);
   return li->outputs[0];
 }
@@ -75,7 +75,8 @@ Linear::Linear(FFModel& model,
                ActiMode _activation,
                const char* name)
 : Op(model, OP_LINEAR, name, _input, _kernel, _bias),
-  in_channels(_input->adim[0]), out_channels(_kernel->adim[1]),
+  in_channels(_input->dims[0].size),
+  out_channels(_kernel->dims[1].size),
   activation(_activation)
 {
   if (_bias == NULL) {
@@ -86,7 +87,7 @@ Linear::Linear(FFModel& model,
     use_bias = true;
   }
   assert(numOutputs == 1);
-  int numdim = _input->numDim;
+  int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[i];
@@ -123,7 +124,7 @@ Linear::Linear(FFModel& model,
 
 void Linear::create_input_partition(FFModel& model)
 {
-  int dim = inputs[0]->numDim;
+  int dim = inputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -153,9 +154,9 @@ void Linear::create_input_partition_with_dim(FFModel& model)
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
   int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
   int num_par_n = part_rect.hi[NDIM-1] - part_rect.lo[NDIM-1] + 1;
-  int in_dim = inputs[0]->adim[0];
+  int in_dim = inputs[0]->dims[0].size;
   assert(in_dim == in_channels);
-  int batch_size = inputs[0]->adim[NDIM-1];
+  int batch_size = inputs[0]->dims[NDIM-1].size;
   //{
   //  int dims[NDIM];
   //  for (int i = 0; i < NDIM; i++)
@@ -173,8 +174,8 @@ void Linear::create_input_partition_with_dim(FFModel& model)
       Rect<NDIM> extent;
       for (int i = 1; i < NDIM; i++) {
         extent.lo[i] = 0;
-        assert(outputs[0]->adim[i] % (part_rect.hi[i] - part_rect.lo[i] + 1) == 0);
-        extent.hi[i] = outputs[0]->adim[i] / (part_rect.hi[i] - part_rect.lo[i] + 1) - 1;
+        assert(outputs[0]->dims[i].size % (part_rect.hi[i] - part_rect.lo[i] + 1) == 0);
+        extent.hi[i] = outputs[0]->dims[i].size / (part_rect.hi[i] - part_rect.lo[i] + 1) - 1;
       }
       extent.lo[0] = 0;
       extent.hi[0] = in_dim-1;
@@ -198,7 +199,7 @@ void Linear::create_input_partition_with_dim(FFModel& model)
         const int dims[3] = {num_par_c, batch_size, in_dim};
         replica = model.create_linear_replica<3>(dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT);
       } else if (NDIM==3) {
-        const int dims[4] = {num_par_c, batch_size, inputs[0]->adim[1], in_dim};
+        const int dims[4] = {num_par_c, batch_size, inputs[0]->dims[1].size, in_dim};
         replica = model.create_linear_replica<4>(dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT);
       } else {
         assert(false && "Unsupported dimension for parallelizing Linear operators"
@@ -211,8 +212,8 @@ void Linear::create_input_partition_with_dim(FFModel& model)
         Rect<NDIM+1> extent;
         for (int i = 0; i < NDIM; i++) {
           extent.lo[i] = 0;
-          assert(inputs[0]->adim[i] % (input_rect.hi[i] - input_rect.lo[i] + 1) == 0);
-          extent.hi[i] = inputs[0]->adim[i] / (input_rect.hi[i] - input_rect.lo[i] + 1) - 1;
+          assert(inputs[0]->dims[i].size % (input_rect.hi[i] - input_rect.lo[i] + 1) == 0);
+          extent.hi[i] = inputs[0]->dims[i].size / (input_rect.hi[i] - input_rect.lo[i] + 1) - 1;
         }
         extent.lo[NDIM] = 0;
         extent.hi[NDIM] = num_par_c - 1;
@@ -221,7 +222,7 @@ void Linear::create_input_partition_with_dim(FFModel& model)
           for (int j = 0; j < NDIM; j++)
             transform[i][j] = 0;
         for (int i = 0; i < NDIM; i++)
-          transform[i][i] = inputs[0]->adim[i] / (input_rect.hi[i] - input_rect.lo[i] + 1);
+          transform[i][i] = inputs[0]->dims[i].size / (input_rect.hi[i] - input_rect.lo[i] + 1);
         IndexPartition ip = runtime->create_partition_by_restriction(
             ctx, replica->region_grad.get_index_space(), input_task_is,
             transform, extent);
@@ -244,8 +245,8 @@ void Linear::create_input_partition_with_dim(FFModel& model)
       Rect<NDIM> extent;
       for (int i = 0; i < NDIM; i++) {
         extent.lo[i] = 0;
-        assert(inputs[0]->adim[i] % (part_rect.hi[i] - part_rect.lo[i] + 1) == 0);
-        extent.hi[i] = inputs[0]->adim[i] / (part_rect.hi[i] - part_rect.lo[i] + 1) - 1;
+        assert(inputs[0]->dims[i].size % (part_rect.hi[i] - part_rect.lo[i] + 1) == 0);
+        extent.hi[i] = inputs[0]->dims[i].size / (part_rect.hi[i] - part_rect.lo[i] + 1) - 1;
       }
       Transform<NDIM, NDIM> transform;
       for (int i = 0; i < NDIM; i++)
@@ -357,7 +358,7 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
 
 void Linear::init(const FFModel& ff)
 {
-  int dim = outputs[0]->numDim;
+  int dim = outputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -548,7 +549,7 @@ void Linear::forward_task_with_dim(const Task *task,
 
 void Linear::forward(const FFModel& ff)
 {
-  int dim = outputs[0]->numDim;
+  int dim = outputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -820,7 +821,7 @@ void Linear::backward2_task_with_dim(const Task *task,
 
 void Linear::backward(const FFModel& ff)
 {
-  int dim = outputs[0]->numDim;
+  int dim = outputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -1007,9 +1008,9 @@ bool Linear::measure_operator_cost(Simulator* sim,
     return false;
   if (!inputs[0]->get_input_sub_tensor(pc, sub_input, OP_LINEAR))
     return false;
-  int input_c = sub_input.adim[0];
+  int input_c = sub_input.dims[0].size;
   int input_n = sub_input.get_volume() / input_c;
-  int output_c = sub_output.adim[0];
+  int output_c = sub_output.dims[0].size;
   int output_n = sub_output.get_volume() / output_c;
   LinearMeta* m = sim->linear_meta;
   m->activation = activation;
@@ -1078,8 +1079,8 @@ ParallelConfig Linear::get_random_parallel_config(const FFModel& ff) const
     return Op::get_random_parallel_config(ff);
   std::vector<int> batch_candidates;
   std::vector<int> channel_candidates;
-  int batch = outputs[0]->adim[outputs[0]->numDim-1];
-  int channel = outputs[0]->adim[0];
+  int batch = outputs[0]->dims[outputs[0]->num_dims-1].size;
+  int channel = outputs[0]->dims[0].size;
   int total_devices = ff.config.workersPerNode * ff.config.numNodes;
   for (int i = 1; i <= ff.config.workersPerNode; i++)
     if (channel % i == 0)
@@ -1094,7 +1095,7 @@ ParallelConfig Linear::get_random_parallel_config(const FFModel& ff) const
   int num_par_b = batch_candidates[idx];
   ParallelConfig pc;
   pc.device_type = ParallelConfig::GPU;
-  pc.nDims = outputs[0]->numDim;
+  pc.nDims = outputs[0]->num_dims;
   pc.dim[0] = num_par_c;
   pc.dim[pc.nDims-1] = num_par_b;
   for (int i = 1; i < pc.nDims - 1; i++)

@@ -33,20 +33,20 @@ Transpose::Transpose(FFModel& model,
                      const char* name)
 : Op(model, OP_TRANSPOSE, name, input)
 {
-  assert(_perm.size() == input->numDim);
+  assert(_perm.size() == input->num_dims);
   // Use Legion indexing to store perm
-  for (int i = 0; i < input->numDim; i++)
-    perm[i] = input->numDim - 1 - _perm[input->numDim - 1 - i];
-  int dims[MAX_TENSOR_DIM];
-  int numdim = input->numDim;
+  for (int i = 0; i < input->num_dims; i++)
+    perm[i] = input->num_dims - 1 - _perm[input->num_dims - 1 - i];
+  ParallelDim dims[MAX_TENSOR_DIM];
+  int numdim = input->num_dims;
   for (int i = 0; i < numdim; i++)
-    dims[numdim-1-i] = input->adim[perm[i]];
-  outputs[0] = model.create_tensor(numdim, dims, input->data_type, this);
+    dims[i] = input->dims[perm[i]];
+  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, input->data_type, this);
 }
 
 void Transpose::create_input_partition(FFModel& model)
 {
-  int dim = inputs[0]->numDim;
+  int dim = inputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM) \
     case DIM: \

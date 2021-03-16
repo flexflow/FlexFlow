@@ -21,7 +21,7 @@ using namespace Legion;
 Tensor FFModel::flat(const Tensor input,
                      const char* name)
 {
-  assert(input->numDim == 4);
+  assert(input->num_dims == 4);
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
   Flat *flat = new Flat(*this, input, name);
@@ -34,12 +34,16 @@ Flat::Flat(FFModel& model,
            const char* name)
 : Op(model, OP_FLAT, name, _input)
 {
-  assert(_input->numDim == 4);
-  int out_dim = _input->adim[0] * _input->adim[1] * _input->adim[2];
-  int batch_size = _input->adim[3];
+  assert(_input->num_dims == 4);
+  ParallelDim dims[2];
+  dims[1] = _input->dims[3];
+  dims[0].size = _input->dims[0].size * _input->dims[1].size * _input->dims[2].size;
+  for (int i = 0; i < 3; i++) {
+    assert(_input->dims[0].degree == 1);
+    assert(_input->dims[0].parallel_idx == -1);
+  }
   numOutputs = 1;
-  const int dims[2] = {batch_size, out_dim};
-  outputs[0] = model.create_tensor<2>(dims, _input->data_type, this);
+  outputs[0] = model.create_tensor_legion_ordering(2, dims, _input->data_type, this);
 }
 
 void Flat::create_input_partition(FFModel& model)
@@ -279,13 +283,13 @@ Domain Flat::get_input_tensor_shape(const ParallelConfig& pc,
   // Currently assume data parallelism for Flat
   assert(pc.dim[0] == 1);
   Domain d;
-  d.dim = inputs[input_idx]->numDim;
+  d.dim = inputs[input_idx]->num_dims;
   for (int i = 0; i < d.dim-1; i++) {
     d.rect_data[i] = 0;
-    d.rect_data[i+d.dim] = inputs[input_idx]->adim[i] - 1;
+    d.rect_data[i+d.dim] = inputs[input_idx]->dims[i].size - 1;
   }
-  assert(inputs[input_idx]->adim[d.dim-1] % pc.num_parts() == 0);
-  int dim_size = inputs[input_idx]->adim[d.dim-1] / pc.num_parts();
+  assert(inputs[input_idx]->dims[d.dim-1].size % pc.num_parts() == 0);
+  int dim_size = inputs[input_idx]->dims[d.dim-1].size / pc.num_parts();
   d.rect_data[d.dim-1] = part_idx * dim_size;
   d.rect_data[2*d.dim-1] = d.rect_data[d.dim-1] + dim_size - 1;
   return d;

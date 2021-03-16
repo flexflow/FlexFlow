@@ -52,12 +52,17 @@ Embedding::Embedding(FFModel& model,
                      AggrMode _aggr,
                      const char* name)
 : Op(model, OP_EMBEDDING, name, _input, _weight),
-  num_entries(_weight->adim[1]), out_channels(_weight->adim[0]), aggr(_aggr)
+  num_entries(_weight->dims[1].size), out_channels(_weight->dims[0].size), aggr(_aggr)
 {
-  assert(_input->numDim == 2);
+  assert(_input->num_dims == 2);
   numOutputs = 1;
-  const int dims[2] = {inputs[0]->adim[1], out_channels};
-  outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
+  ParallelDim dims[2];
+  dims[1] = inputs[0]->dims[1];
+  dims[0].size = out_channels;
+  // Assert no parallelism along the first dim
+  assert(inputs[0]->dims[0].degree == 1);
+  assert(inputs[0]->dims[0].parallel_idx == -1);
+  outputs[0] = model.create_tensor_legion_ordering(2, dims, DT_FLOAT, this);
 }
 
 #ifdef DEADCODE
@@ -408,10 +413,10 @@ bool Embedding::measure_operator_cost(Simulator* sim,
   assert (output_ptr != NULL);
   float *weight_ptr = (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
   assert (weight_ptr != NULL);
-  int in_dim = sub_input.adim[0];
-  int out_dim = sub_input.adim[0];
-  assert (sub_input.adim[1] == sub_output.adim[2]);
-  int batch_size = sub_input.adim[1];
+  int in_dim = sub_input.dims[0].size;
+  int out_dim = sub_input.dims[0].size;
+  assert (sub_input.dims[1] == sub_output.dims[1]);
+  int batch_size = sub_input.dims[1].size;
 
   std::function<void()> forward, backward;
   forward = [&] {

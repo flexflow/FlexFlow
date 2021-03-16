@@ -49,7 +49,7 @@ Tensor FFModel::multihead_attention(const Tensor query,
     // Compute weight size
     int qSize = query->dims[0].size;
     int kSize = key->dims[0].size;
-    int vSize = value->dim[0].size;
+    int vSize = value->dims[0].size;
     int qProjSize = kdim;
     int kProjSize = kdim;
     int vProjSize = vdim;
@@ -89,17 +89,17 @@ MultiHeadAttention::MultiHeadAttention(
   add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
   qSize(_query->dims[0].size), kSize(_key->dims[0].size), vSize(_value->dims[0].size),
   qProjSize(_kdim), kProjSize(_kdim), vProjSize(_vdim), oProjSize(_embed_dim),
-  qoSeqLength(_query->dim[1].size), kvSeqLength(_key->dim[1].size)
+  qoSeqLength(_query->dims[1].size), kvSeqLength(_key->dims[1].size)
   //bias_initializer(_bias_initializer)
 {
   // assert key and value have the same sequence length
   assert(_key->dims[1] == _value->dims[1]);
   numOutputs = 1;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < _query->numDim; i++)
-    dims[i] = _query->dims[_query->numDim-1-i];
-  dims[_query->numDim-1].size = _embed_dim;
-  outputs[0] = model.create_tensor(_query->numDim, dims, DT_FLOAT, this);
+  for (int i = 0; i < _query->num_dims; i++)
+    dims[i] = _query->dims[_query->num_dims-1-i];
+  dims[_query->num_dims-1].size = _embed_dim;
+  outputs[0] = model.create_tensor(_query->num_dims, dims, DT_FLOAT, this);
 }
 
 #ifdef DEADCODE
@@ -700,9 +700,9 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
     return false;
   // Currently assume only data parallel
   Tensor sub_weight = weights[0];
-  assert(sub_weight->numDim == 2);
+  assert(sub_weight->num_dims == 2);
   int num_heads = sub_weight->dims[1].size;
-  assert(sub_query.numDim == 3);
+  assert(sub_query.num_dims == 3);
   int num_samples = sub_query.dims[2].size;
   MultiHeadAttentionMeta* m = new MultiHeadAttentionMeta(sim->handler,
       this, sim->memory, num_samples, num_heads);

@@ -36,28 +36,34 @@ Reshape::Reshape(FFModel& model,
   numOutputs = 1;
   numWeights = 0;
   int numdim = (int)shape.size();
-  int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
-    dims[i] = shape[i];
-  outputs[0] = model.create_tensor(numdim, dims, input->data_type, this);
+  ParallelDim dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++) {
+    dims[i].size = shape[numdim-1-i];
+  }
+  for (int i = 0; i < numdim && i < input->num_dims; i++) {
+    if (dims[numdim-1-i].size != input->dims[input->num_dims-1-i].size)
+      break;
+    dims[numdim-1-i] = input->dims[input->num_dims-1-i];
+  }
+  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, input->data_type, this);
   assert(outputs[0]->get_volume() == inputs[0]->get_volume());
 }
 
 void Reshape::create_input_partition(FFModel& model)
 {
-  switch(inputs[0]->numDim) {
+  switch(inputs[0]->num_dims) {
     case 1:
     {
-      if (outputs[0]->numDim == 1) {
+      if (outputs[0]->num_dims == 1) {
         create_input_partition_with_dim<1, 1>(model);
-      } else if (outputs[0]->numDim == 2) {
+      } else if (outputs[0]->num_dims == 2) {
         create_input_partition_with_dim<1, 2>(model);
-      } else if (outputs[0]->numDim == 3) {
+      } else if (outputs[0]->num_dims == 3) {
         create_input_partition_with_dim<1, 3>(model);
-      } else if (outputs[0]->numDim == 4) {
+      } else if (outputs[0]->num_dims == 4) {
         create_input_partition_with_dim<1, 4>(model);
 #if MAX_TENSOR_DIM >= 5
-      } else if (outputs[0]->numDim == 5) {
+      } else if (outputs[0]->num_dims == 5) {
         create_input_partition_with_dim<1, 5>(model);
 #endif
       } else {
@@ -67,16 +73,16 @@ void Reshape::create_input_partition(FFModel& model)
     }
     case 2:
     {
-      if (outputs[0]->numDim == 1) {
+      if (outputs[0]->num_dims == 1) {
         create_input_partition_with_dim<2, 1>(model);
-      } else if (outputs[0]->numDim == 2) {
+      } else if (outputs[0]->num_dims == 2) {
         create_input_partition_with_dim<2, 2>(model);
-      } else if (outputs[0]->numDim == 3) {
+      } else if (outputs[0]->num_dims == 3) {
         create_input_partition_with_dim<2, 3>(model);
-      } else if (outputs[0]->numDim == 4) {
+      } else if (outputs[0]->num_dims == 4) {
         create_input_partition_with_dim<2, 4>(model);
 #if MAX_TENSOR_DIM >= 5
-      } else if (outputs[0]->numDim == 5) {
+      } else if (outputs[0]->num_dims == 5) {
         create_input_partition_with_dim<2, 5>(model);
 #endif
       } else {
@@ -86,16 +92,16 @@ void Reshape::create_input_partition(FFModel& model)
     }
     case 3:
     {
-      if (outputs[0]->numDim == 1) {
+      if (outputs[0]->num_dims == 1) {
         create_input_partition_with_dim<3, 1>(model);
-      } else if (outputs[0]->numDim == 2) {
+      } else if (outputs[0]->num_dims == 2) {
         create_input_partition_with_dim<3, 2>(model);
-      } else if (outputs[0]->numDim == 3) {
+      } else if (outputs[0]->num_dims == 3) {
         create_input_partition_with_dim<3, 3>(model);
-      } else if (outputs[0]->numDim == 4) {
+      } else if (outputs[0]->num_dims == 4) {
         create_input_partition_with_dim<3, 4>(model);
 #if MAX_TENSOR_DIM >= 5
-      } else if (outputs[0]->numDim == 5) {
+      } else if (outputs[0]->num_dims == 5) {
         create_input_partition_with_dim<3, 5>(model);
 #endif
       } else {
@@ -105,16 +111,16 @@ void Reshape::create_input_partition(FFModel& model)
     }
     case 4:
     {
-      if (outputs[0]->numDim == 1) {
+      if (outputs[0]->num_dims == 1) {
         create_input_partition_with_dim<4, 1>(model);
-      } else if (outputs[0]->numDim == 2) {
+      } else if (outputs[0]->num_dims == 2) {
         create_input_partition_with_dim<4, 2>(model);
-      } else if (outputs[0]->numDim == 3) {
+      } else if (outputs[0]->num_dims == 3) {
         create_input_partition_with_dim<4, 3>(model);
-      } else if (outputs[0]->numDim == 4) {
+      } else if (outputs[0]->num_dims == 4) {
         create_input_partition_with_dim<4, 4>(model);
 #if MAX_TENSOR_DIM >= 5
-      } else if (outputs[0]->numDim == 5) {
+      } else if (outputs[0]->num_dims == 5) {
         create_input_partition_with_dim<4, 5>(model);
 #endif
       } else {
@@ -125,15 +131,15 @@ void Reshape::create_input_partition(FFModel& model)
 #if MAX_TENSOR_DIM >= 5
     case 5:
     {
-      if (outputs[0]->numDim == 1) {
+      if (outputs[0]->num_dims == 1) {
         create_input_partition_with_dim<5, 1>(model);
-      } else if (outputs[0]->numDim == 2) {
+      } else if (outputs[0]->num_dims == 2) {
         create_input_partition_with_dim<5, 2>(model);
-      } else if (outputs[0]->numDim == 3) {
+      } else if (outputs[0]->num_dims == 3) {
         create_input_partition_with_dim<5, 3>(model);
-      } else if (outputs[0]->numDim == 4) {
+      } else if (outputs[0]->num_dims == 4) {
         create_input_partition_with_dim<5, 4>(model);
-      } else if (outputs[0]->numDim == 5) {
+      } else if (outputs[0]->num_dims == 5) {
         create_input_partition_with_dim<5, 5>(model);
       } else {
         assert(false);
@@ -158,7 +164,7 @@ void Reshape::create_input_partition_with_dim(FFModel& model)
   for (int i = 0; i < ODIM - 1; i++)
     assert(part_rect.lo[i] == part_rect.hi[i]);
   // number batches has to be divisible by partitions
-  assert(inputs[0]->adim[inputs[0]->numDim-1] % num_tasks == 0);
+  assert(inputs[0]->dims[inputs[0]->num_dims-1].size % num_tasks == 0);
   // Create output tensor
   //int output_shape[ODIM];
   //for (int i = 0; i < ODIM; i++)

@@ -27,6 +27,13 @@ class Initializer;
 
 struct ParallelDim {
   ParallelDim(): size(0), degree(1), parallel_idx(-1) {}
+  bool operator==(const ParallelDim &rhs) const
+  {
+    if (size != rhs.size) return false;
+    if (degree != rhs.degree) return false;
+    if (parallel_idx != rhs.parallel_idx) return false;
+    return true;
+  }
   int size;
   int degree;
   int parallel_idx;
