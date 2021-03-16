@@ -373,9 +373,23 @@ void FFMapper::slice_task(const MapperContext ctx,
     assert(hash != 0);
     if (strategies.find(hash) == strategies.end()) {
       // No strategy found, use default data parallelism
-      int ndim = input.domain.get_dim();
-      assert(strategies.find(FFConfig::DataParallelism_GPU_1D-1+ndim) != strategies.end());
-      config = strategies[FFConfig::DataParallelism_GPU_1D-1+ndim];
+      std::vector<VariantID> variant_ids;
+      runtime->find_valid_variants(ctx, task.task_id, variant_ids, Processor::TOC_PROC);
+      if (variant_ids.size() > 0) {
+        // Use GPU implementation
+        // Currently assume there is exactly one variant
+        assert(variant_ids.size() == 1);
+        int ndim = input.domain.get_dim();
+        assert(strategies.find(FFConfig::DataParallelism_GPU_1D-1+ndim) != strategies.end());
+        config = strategies[FFConfig::DataParallelism_GPU_1D-1+ndim];
+      } else {
+        // Use CPU implementation
+        runtime->find_valid_variants(ctx, task.task_id, variant_ids, Processor::LOC_PROC);
+        assert(variant_ids.size() == 1);
+        int ndim = input.domain.get_dim();
+        assert(strategies.find(FFConfig::DataParallelism_CPU_1D-1+ndim) != strategies.end());
+        config = strategies[FFConfig::DataParallelism_CPU_1D-1+ndim];
+      }
     } else {
       // Found a strategy
       config = strategies[hash];
