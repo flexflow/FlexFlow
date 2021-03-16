@@ -124,6 +124,8 @@ set(FLEXFLOW_HDR
 set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/mapper/mapper.cc
   ${FLEXFLOW_ROOT}/src/ops/embedding.cc
+  ${FLEXFLOW_ROOT}/src/ops/group_by.cc
+  ${FLEXFLOW_ROOT}/src/ops/aggregate.cc
   ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cc
   ${FLEXFLOW_ROOT}/src/runtime/initializer.cc
   ${FLEXFLOW_ROOT}/src/runtime/model.cc
