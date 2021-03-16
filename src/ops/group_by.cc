@@ -80,7 +80,7 @@ void Group_by::create_output_and_partition(FFModel& model)
   for(int i = 0; i < n; i++) {
     outputs[i] = model.create_tensor<2>(dims, DT_FLOAT, this);
     outputs[i].owner_op = this;
-    outputs[i].owner_idx = i; // TODO: von topK
+    outputs[i].owner_idx = i;
   }
 
   // Compute partition bound for input
@@ -105,14 +105,10 @@ void Group_by::create_output_and_partition(FFModel& model)
 }
 
 
-// TODO: ?
 OpMeta* Group_by::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
 {
-  //FFHandler handle = *((FFHandler*)task->local_args);
-  //TopKMeta* m = new TopKMeta(handle);
-  // return NULL if we don't need local metadata for GroupBy
   return NULL;
 }
 
@@ -158,63 +154,56 @@ void group_by_forward(const float* input,
         int batch_size,
         int out_dim)
 {
-  printf("group_by my fwd\n");
-
-  printf("exp assign:\n");
-  for(int i = 0; i < batch_size; i++) {
-    for(int j = 0; j < k; j++) {
-      printf("%d ", exp_assign[i*k+j]);
-    }
-    printf("\n");
-  }
-
-  printf("\n");
-
   std::vector<int> expert_idx(n, 0);
-  int exp_tensor_rows = alpha*k/n*batch_size;
+  int exp_tensor_rows = ceil(alpha*k/n*batch_size);
 
   for(int i = 0; i < batch_size; i++) {
     for(int j = 0; j < k; j++) {
-      printf("  1 exp_assign\n");
       int expert = exp_assign[i*k + j];
-      printf("  2 exp_idx\n");
       int row = expert_idx[expert];
 
       if(row >= exp_tensor_rows)
-        continue;
+        continue; // dropped sample
 
       // copy over sample
-      printf("  3 outputs\n");
       int input_start = i*out_dim;
       for(int l = 0; l < out_dim; l++) {
-        printf("     ex: %d, l: %d, input: %d\n", expert, l, input_start+l);
-        float a = input[input_start + l];
-        printf("     input worked\n");
-        outputs[expert][l] = a;
+        outputs[expert][row*out_dim + l] = input[input_start + l];
       }
-      printf("  4 exp_idx\n");
       expert_idx[expert]++;
     }
   }
-  printf("DONE group_by my fwd\n");
 }
 
 
-void group_by_backward(const float* input,
+void group_by_backward(float* input_grad,
         const int* exp_assign,
-        float** outputs,
+        float** output_grads,
         int n, // num experts
         int k, // chosen experts
-        float alpha, // factor additional memory assigned*/
+        float alpha, // factor additional memory assigned
         int batch_size,
         int out_dim)
 {
-  // TODO: Implement. In case not data passed directly (this is uncommon though)
+  std::vector<int> expert_idx(n, 0);
+  int exp_tensor_rows = ceil(alpha*k/n*batch_size);
+
   for(int i = 0; i < batch_size; i++) {
+    for(int j = 0; j < k; j++) {
+      int expert = exp_assign[i*k + j];
+      int row = expert_idx[expert];
 
+      if(row >= exp_tensor_rows)
+        continue; // dropped sample
+
+      // add gradient
+      int input_start = i*out_dim;
+      for(int l = 0; l < out_dim; l++) {
+        input_grad[input_start + l] += output_grads[expert][row*out_dim + l]/k;
+      }
+      expert_idx[expert]++;
+    }
   }
-
-
 }
 
 
@@ -222,8 +211,6 @@ void Group_by::forward_task(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
-  printf("group by fwd_task\n");
-
   // Get n, alpha
   const Group_by* gb = (Group_by*) task->args;
   int n = gb->n;
@@ -265,7 +252,6 @@ void Group_by::forward_task(const Task *task,
 
   group_by_forward(acc_input.ptr(rect_input), acc_assign.ptr(rect_assign),
       outputs, n, k, alpha, batch_size, data_dim);
-  printf("done group by fwd_task\n");
 }
 
 
@@ -282,28 +268,28 @@ void Group_by::backward_task(const Task *task,
   assert((int)task->regions.size() == n+2);
 
   // get input and assign regions
-  const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, 2> acc_input_grad(regions[0], FID_DATA);
   const AccessorRO<int, 2> acc_assign(regions[1], FID_DATA);
 
-  Rect<2> rect_input = runtime->get_index_space_domain(
+  Rect<2> rect_input_grad = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<2> rect_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
 
-  coord_t input_rows = rect_input.hi[1] - rect_input.lo[1] + 1;
-  coord_t input_cols = rect_input.hi[0] - rect_input.lo[0] + 1;
+  coord_t input_rows = rect_input_grad.hi[1] - rect_input_grad.lo[1] + 1;
+  coord_t input_cols = rect_input_grad.hi[0] - rect_input_grad.lo[0] + 1;
   assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
   int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
   int batch_size = input_rows;
   int data_dim = input_cols;
 
   // get output
-  float* outputs[n];
+  float* output_grads[n];
   int exp_output_rows = (int)ceil(alpha*k/n*batch_size);
   for(int i = 0; i < n; i++) {
     Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[i+2].region.get_index_space());
-    outputs[i] = helperGetTensorPointerWO<float>(
+    output_grads[i] = helperGetTensorPointerRW<float>(
       regions[i+2], task->regions[i+2], FID_DATA, ctx, runtime);
 
     coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
@@ -312,14 +298,13 @@ void Group_by::backward_task(const Task *task,
     assert(output_cols == input_cols);
   }
 
-  group_by_backward(acc_input.ptr(rect_input), acc_assign.ptr(rect_assign),
-      outputs, n, k, alpha, batch_size, data_dim);
+  group_by_backward(acc_input_grad.ptr(rect_input_grad), acc_assign.ptr(rect_assign),
+      output_grads, n, k, alpha, batch_size, data_dim);
 }
 
 
 void Group_by::forward(const FFModel& ff)
 {
-    printf("group by fwd\n");
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -348,7 +333,6 @@ void Group_by::forward(const FFModel& ff)
   }
 
   runtime->execute_index_space(ctx, launcher);
-  printf("done group by fwd\n");
 }
 
 void Group_by::backward(const FFModel& ff)
@@ -361,19 +345,19 @@ void Group_by::backward(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
 
-  // data
+  // input_grad
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region_grad));
+      WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(0, FID_DATA);
 
   // assign
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[1], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[1].region_grad));
+    RegionRequirement(input_lps[1], 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[1].region));
   launcher.add_field(1, FID_DATA);
 
-  // output
+  // output grad
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
       RegionRequirement(outputs[i].part_grad, 0/*projection id*/,
