@@ -128,15 +128,7 @@ void BatchMatmul::init_with_dim(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
-  ParallelConfig pc;
-  std::string pcname = name;
-  ff.config.find_parallel_config(NDIM, pcname, pc);
-  int idx = 0;
-  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
-    FFHandler handle = ff.handlers[pc.device_ids[idx++]];
-    argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
-  }
+  set_argumentmap_for_init(ff, argmap);
   IndexLauncher launcher(BATCHMATMUL_INIT_TASK_ID, task_is,
                          TaskArgument(this, sizeof(BatchMatmul)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -153,11 +145,7 @@ void BatchMatmul::init_with_dim(const FFModel& ff)
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  idx = 0;
-  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
-    meta[idx++] = fm.get_result<OpMeta*>(*it);
-  }
-
+  set_opmeta_from_futuremap(ff, fm);
 }
 
 /*
@@ -315,12 +303,7 @@ void BatchMatmul::forward_with_dim(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
-  int idx = 0;
-  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
-    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
-  }
+  set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(BATCHMATMUL_FWD_TASK_ID, task_is,
       TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -499,12 +482,7 @@ void BatchMatmul::backward_with_dim(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
-  int idx = 0;
-  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
-    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
-  }
+  set_argumentmap_for_backward(ff, argmap);
   IndexLauncher launcher(BATCHMATMUL_BWD_TASK_ID, task_is,
       TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,

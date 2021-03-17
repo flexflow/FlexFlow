@@ -52,13 +52,32 @@ Repartition::Repartition(
     }
   outputs[0] = model.create_tensor_legion_ordering(
       numdim, dims, DT_FLOAT, this);
+  outputs[0]->print("Repartition::output");
   // Check correctness
   assert(check_output_input_weight_parallel_dims());
 }
 
 void Repartition::init(const FFModel& ff)
 {
-  // Do nothing
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  IndexSpace task_is = outputs[0]->parallel_is;
+  IndexLauncher launcher(REPARTITION_FWD_TASK_ID, task_is,
+      TaskArgument(NULL, 0), argmap,
+      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+      FFConfig::get_hash_id(std::string(name)));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
 }
 
 void Repartition::forward(const FFModel& ff)

@@ -162,27 +162,7 @@ void ElementBinary::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      ParallelConfig pc; \
-      std::string pcname = name; \
-      ff.config.find_parallel_config(DIM, pcname, pc); \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        FFHandler handle = ff.handlers[pc.device_ids[idx++]]; \
-        argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
+  set_argumentmap_for_init(ff, argmap);
   IndexLauncher launcher(ELEMENTBINARY_INIT_TASK_ID, task_is,
                          TaskArgument(this, sizeof(ElementBinary)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -217,22 +197,7 @@ void ElementBinary::init(const FFModel& ff)
   //}
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        meta[idx++] = fm.get_result<OpMeta*>(*it); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
+  set_opmeta_from_futuremap(ff, fm);
 }
 
 __global__
@@ -394,24 +359,7 @@ void ElementBinary::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        OpMeta* mp = meta[idx++]; \
-        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
+  set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(ELEMENTBINARY_FWD_TASK_ID, task_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -631,25 +579,7 @@ void ElementBinary::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        OpMeta* mp = meta[idx++]; \
-        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-
+  set_argumentmap_for_backward(ff, argmap);
   IndexLauncher launcher(ELEMENTBINARY_BWD_TASK_ID, task_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,

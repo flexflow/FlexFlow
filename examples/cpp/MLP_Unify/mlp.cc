@@ -72,8 +72,8 @@ void top_level_task(const Task* task,
       runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
-      ff.backward();
-      ff.update();
+      //ff.backward();
+      //ff.update();
       runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }

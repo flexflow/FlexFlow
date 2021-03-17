@@ -542,24 +542,7 @@ void FusedOp::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        OpMeta* mp = meta[idx++]; \
-        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
+  set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(FUSEDOP_FWD_TASK_ID, task_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -930,24 +913,7 @@ void FusedOp::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        OpMeta* mp = meta[idx++]; \
-        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
+  set_argumentmap_for_backward(ff, argmap);
   IndexLauncher launcher(FUSEDOP_BWD_TASK_ID, task_is,
       TaskArgument(this, sizeof(FusedOp)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,

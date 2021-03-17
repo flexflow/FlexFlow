@@ -317,8 +317,9 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
   TensorAccessorW<float, NDIM> acc_output(
       regions[0], task->regions[0], FID_DATA, ctx, runtime,
       false/*readOutput*/);
-  TensorAccessorR<float, 2> acc_kernel(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 3> acc_kernel(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime,
+      false/*readOutput*/);
   // TensorAccessorR<float, 1> acc_bias(
   //     regions[3], task->regions[3], FID_DATA, ctx, runtime);
   //int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
@@ -402,7 +403,7 @@ void Linear::init_with_dim(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(weights[0]->part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, weights[0]->region));
+                        WRITE_ONLY, EXCLUSIVE, weights[0]->region));
   launcher.add_field(1, FID_DATA);
   // launcher.add_region_requirement(
   //     RegionRequirement(weights[1]->part, 0/*projection id*/,
@@ -501,7 +502,7 @@ void Linear::forward_task_with_dim(const Task *task,
   TensorAccessorW<float, NDIM> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
-  TensorAccessorR<float, 2> acc_kernel(
+  TensorAccessorR<float, 3> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
@@ -511,7 +512,7 @@ void Linear::forward_task_with_dim(const Task *task,
   assert(acc_kernel.rect.volume() == in_dim * out_dim);
   const float* acc_bias_ptr = NULL;
   if (m->use_bias) {
-    TensorAccessorR<float, 1> acc_bias(
+    TensorAccessorR<float, 3> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
     assert(acc_bias.rect.volume() == out_dim);
     acc_bias_ptr = acc_bias.ptr;
@@ -716,9 +717,9 @@ void Linear::backward_task_with_dim(const Task *task,
   TensorAccessorW<float, NDIM> acc_output_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime,
       true/*readOutput*/);
-  TensorAccessorR<float, 2> acc_kernel(
+  TensorAccessorR<float, 3> acc_kernel(
       regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_kernel_grad(
+  TensorAccessorW<float, 3> acc_kernel_grad(
       regions[5], task->regions[5], FID_DATA, ctx, runtime,
       true/*readOutput*/);
   // make sure the sizes match
@@ -728,7 +729,7 @@ void Linear::backward_task_with_dim(const Task *task,
   assert(acc_kernel_grad.rect.volume() == in_dim * out_dim);
   float* acc_bias_grad_ptr = NULL;
   if (m->use_bias) {
-    TensorAccessorW<float, 1> acc_bias_grad(
+    TensorAccessorW<float, 3> acc_bias_grad(
         regions[6], task->regions[6], FID_DATA, ctx, runtime,
         true/*readOutput*/);
     assert(acc_bias_grad.rect.volume() == out_dim);
@@ -856,17 +857,11 @@ void Linear::backward_with_dim(const FFModel& ff)
                           READ_ONLY, EXCLUSIVE, inputs[0]->region));
     launcher.add_field(0, FID_DATA);
     // regions[1](I/O): replica_grad
-    if (replica->region_grad != LogicalRegion::NO_REGION) {
-      launcher.add_region_requirement(
-          RegionRequirement(replica->part_grad, 0/*projection id*/,
-                            WRITE_ONLY, EXCLUSIVE, replica->region_grad));
-      launcher.add_field(1, FID_DATA);
-    } else {
-      launcher.add_region_requirement(
-          RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                            READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
-      launcher.add_field(1, FID_DATA);
-    }
+    assert(replica == NULL);
+    launcher.add_region_requirement(
+        RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
+    launcher.add_field(1, FID_DATA);
     // regions[2](I): output
     launcher.add_region_requirement(
         RegionRequirement(outputs[0]->part, 0/*projection id*/,
@@ -896,6 +891,8 @@ void Linear::backward_with_dim(const FFModel& ff)
     }
     runtime->execute_index_space(ctx, launcher);
   }
+  assert(replica == NULL);
+#ifdef DEADCODE
   if (replica->region_grad != LogicalRegion::NO_REGION) {
     // We aggregate parameters from replica tensor to input tensor
     // Note we use input's task_is to reduce extra data transfers
@@ -918,6 +915,7 @@ void Linear::backward_with_dim(const FFModel& ff)
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
+#endif
 }
 
 /*

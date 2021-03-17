@@ -276,6 +276,11 @@ public:
       const std::vector<Legion::PhysicalRegion> &regions,
       Legion::Context ctx, Legion::Runtime *runtime);
 #endif
+protected:
+  void set_argumentmap_for_init(const FFModel& ff, Legion::ArgumentMap& argmap);
+  void set_argumentmap_for_forward(const FFModel& ff, Legion::ArgumentMap& argmap);
+  void set_argumentmap_for_backward(const FFModel& ff, Legion::ArgumentMap& argmap);
+  void set_opmeta_from_futuremap(const FFModel& ff, const Legion::FutureMap& fm);
 private:
   template<int NDIM>
   void create_input_partition_with_dim(FFModel& model);

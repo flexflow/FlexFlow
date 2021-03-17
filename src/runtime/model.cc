@@ -287,6 +287,23 @@ bool TensorBase::check_valid() const
   return true;
 }
 
+void TensorBase::print(const std::string& name) const
+{
+  printf("%s: sizes[", name.c_str());
+
+  for (int i = 0; i < num_dims; i++) {
+    printf("%d ", dims[i].size);
+  }
+  printf("] degree[");
+  for (int i = 0; i < num_dims; i++)
+    printf("%d ", dims[i].degree);
+  printf("] parallel_ids[");
+  for (int i = 0; i < num_dims; i++)
+    printf("%d ", dims[i].parallel_idx);
+  printf("]\n");
+
+}
+
 bool TensorBase::update_parallel_ids(
     int numdim,
     ParallelDim* dims)
@@ -807,6 +824,108 @@ bool Op::check_output_input_weight_parallel_dims()
   return true;
 }
 
+void Op::set_argumentmap_for_init(const FFModel& ff,
+                                  ArgumentMap& argmap)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      ParallelConfig pc; \
+      std::string pcname = name; \
+      ff.config.find_parallel_config(DIM, pcname, pc); \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        FFHandler handle = ff.handlers[pc.device_ids[idx++]]; \
+        argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+void Op::set_opmeta_from_futuremap(const FFModel& ff,
+                                   const FutureMap& fm)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        meta[idx++] = fm.get_result<OpMeta*>(*it); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+void Op::set_argumentmap_for_forward(const FFModel& ff,
+                                 ArgumentMap& argmap)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+void Op::set_argumentmap_for_backward(const FFModel& ff,
+                                      ArgumentMap& argmap)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
 OpMeta::OpMeta(FFHandler _handle)
 : handle(_handle)
 {}
@@ -1101,6 +1220,9 @@ void FFModel::map_tensor_with_dim(Tensor tensor, const Op* parallel_op)
   } else {
     assert(tensor->owner_op == parallel_op);
   }
+  std::string pcname = parallel_op->name;
+  tensor->parallel_is = IndexSpaceT<NDIM>(get_or_create_task_is(NDIM, pcname));
+
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
 
@@ -1906,17 +2028,19 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i < op->numInputs; i++) {
       if (op->inputs[i]->owner_op == NULL) {
         // Input tensor
-        assert(op->inputs[i]->sync_type == ParameterSyncType::NONE);
+        //assert(op->inputs[i]->sync_type == ParameterSyncType::NONE);
         map_tensor(op->inputs[i], op);
       } else {
         // No need to do anything else otherwise
       }
     }
     for (int i = 0; i < op->numWeights; i++) {
-      // Weight tensor
-      assert(op->weights[i]->owner_op == NULL);
-      map_weight(op->weights[i], op);
-      parameters.push_back(op->weights[i]);
+      if (op->weights[i]->owner_op == NULL) {
+        // Weight tensor
+        assert(op->weights[i]->owner_op == NULL);
+        map_tensor(op->weights[i], op);
+        parameters.push_back(op->weights[i]);
+      }
     }
     op->create_input_partition(*this);
     for (int i = 0; i < op->numOutputs; i++) {
