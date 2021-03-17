@@ -1560,11 +1560,14 @@ class FFModel(object):
       d.reset()
     self.reset_metrics()
     iterations = num_samples / batch_size
+    self._tracing_id += 1 # get a new tracing id
     for iter in range(0, int(iterations)):
       for d in dataloaders:
         d.next_batch(self)
+      self._ffconfig.begin_trace(self._tracing_id)
       self.forward()
       self.compute_metrics()
+      self._ffconfig.end_trace(self._tracing_id)
 
   def zero_gradients(self):
     """Empty the gradients of all layers.

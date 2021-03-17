@@ -57,7 +57,8 @@ def top_level_task():
 
   ts_start = ffconfig.get_current_time()
 
-  ffmodel.fit(x=dataloader_input, y=dataloader_label, epochs=epochs)
+  #ffmodel.fit(x=dataloader_input, y=dataloader_label, epochs=epochs)
+  ffmodel.eval(x=dataloader_input, y=dataloader_label)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
