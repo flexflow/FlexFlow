@@ -61,7 +61,7 @@ ElementUnary::ElementUnary(FFModel& model,
                            const Tensor x,
                            bool _inplace,
                            const char* name)
-: Op(model, _op_type, name, x), inplace(_inplace)
+: Op(model, _op_type, name, 1/*inputs*/, 0/*weights*/, x), inplace(_inplace)
 {
   numOutputs = 1;
   int numdim = x->num_dims;

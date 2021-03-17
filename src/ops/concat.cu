@@ -32,7 +32,7 @@ Concat::Concat(FFModel& model,
                int _n, const Tensor* _tensors,
                int _axis,
                const char* name)
-: Op(model, OP_CONCAT, name, _n, _tensors),
+: Op(model, OP_CONCAT, name, _n/*inputs*/, 0/*weights*/, _tensors),
   axis(inputs[0]->num_dims-1-_axis)
 {
   //TODO: swich to use the Legion dim ordering

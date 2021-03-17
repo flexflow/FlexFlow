@@ -320,12 +320,14 @@ bool TensorBase::update_parallel_ids(
 Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,
+       int _numInputs,
+       int _numWeights,
        const Tensor _input1,
        const Tensor _input2,
        const Tensor _input3,
        const Tensor _input4)
-: op_type(_op_type), numInputs(0), numWeights(0), numOutputs(1),
-  profiling(model.config.profiling)
+: op_type(_op_type), numInputs(_numInputs), numWeights(_numWeights),
+  numOutputs(1), profiling(model.config.profiling)
 {
   for (int i = 0; i < MAX_NUM_INPUTS; i++)
     inputs[i] = NULL;
@@ -343,14 +345,14 @@ Op::Op(FFModel& model,
   pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
-  for (size_t i = 0; i < tensors.size(); i++) {
-    if (tensors[i] == NULL) continue;
-    if (tensors[i]->sync_type == ParameterSyncType::NONE) {
+  for (int i = 0; i < numInputs + numWeights; i++) {
+    assert(tensors[i] != NULL);
+    if (i < numInputs) {
       // Activation
-      inputs[numInputs++] = tensors[i];
+      inputs[i] = tensors[i];
     } else {
       // Weight
-      weights[numWeights++] = tensors[i];
+      weights[i - numInputs] = tensors[i];
     }
   }
   //for (int i = 0; i < numInputs; i++) {
@@ -368,9 +370,11 @@ Op::Op(FFModel& model,
 Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,
-       int n, const Tensor* _inputs)
-: op_type(_op_type), numInputs(0), numWeights(0), numOutputs(1),
-  profiling(model.config.profiling)
+       int _numInputs,
+       int _numWeights,
+       const Tensor* _inputs)
+: op_type(_op_type), numInputs(_numInputs), numWeights(_numWeights),
+  numOutputs(1), profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -380,45 +384,22 @@ Op::Op(FFModel& model,
   }
   pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
-  assert(n <= MAX_NUM_INPUTS);
+  assert(numInputs <= MAX_NUM_INPUTS);
+  assert(numWeights <= MAX_NUM_WEIGHTS);
   std::strcpy(name, pcname.c_str());
-  for (int i = 0; i < n; i++) {
-    if (_inputs[i]->sync_type == ParameterSyncType::NONE) {
+  for (int i = 0; i < numInputs + numWeights; i++) {
+    if (i < numInputs) {
       // Activation
-      inputs[numInputs++] = _inputs[i];
+      inputs[i] = _inputs[i];
     } else {
       // Weight
-      weights[numWeights++] = _inputs[i];
+      weights[i - numInputs] = _inputs[i];
     }
   }
   //for (int i = 0; i < numInputs; i++) {
   //  trainableInputs[i] = true;
   //  resetInputGrads[i] = true;
   //}
-  for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    outputs[i] = NULL;
-  }
-  for (int i = 0; i < MAX_NUM_WORKERS; i++)
-    meta[i] = NULL;
-  parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
-}
-
-Op::Op(FFModel& model,
-       OperatorType _op_type,
-       const char* _name,
-       int _numInputs)
-: op_type(_op_type), numInputs(_numInputs), numWeights(0), numOutputs(1),
-  profiling(model.config.profiling)
-{
-  std::string pcname;
-  if (_name == NULL) {
-    pcname = model.get_operator_type_name(op_type);
-  } else {
-    pcname = std::string(_name);
-  }
-  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
-  assert(pcname.length() < MAX_OPNAME);
-  std::strcpy(name, pcname.c_str());
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i] = NULL;
   }
@@ -431,7 +412,7 @@ ParallelOp::ParallelOp(FFModel& model,
                        OperatorType op_type,
                        const char* name,
                        const Tensor input)
-: Op(model, op_type, name, input)
+: Op(model, op_type, name, 1/*num_inputs*/, 0/*num_weights*/, input)
 {}
 
 bool Op::can_inplace_output()
@@ -717,10 +698,12 @@ void Op::register_output_input_parallel_dims(
     if (output == outputs[i])
       record.output_idx = i;
   }
+  assert(record.output_idx >= 0);
   for (int i = 0; i < numInputs; i++) {
     if (input == inputs[i])
       record.input_idx = i;
   }
+  assert(record.input_idx >= 0);
   parallel_dims_mapping->push_back(record);
 }
 
@@ -735,10 +718,12 @@ void Op::register_output_weight_parallel_dims(
     if (output == outputs[i])
       record.output_idx = i;
   }
+  assert(record.output_idx >= 0);
   for (int i = 0; i < numWeights; i++) {
     if (weight == weights[i])
       record.weight_idx = i;
   }
+  assert(record.weight_idx >= 0);
   parallel_dims_mapping->push_back(record);
 }
 
@@ -2367,6 +2352,12 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_PRELU: return "PReLU";
     case OP_MULTIHEAD_ATTENTION: return "MultiHeadAttention";
     case OP_FUSED: return "FusedOp";
+    // Parallel Ops
+    case OP_REPARTITION: return "Repartition";
+    case OP_COMBINE: return "Combine";
+    case OP_REPLICATE: return "Replicate";
+    case OP_REDUCTION: return "Reduction";
+    case OP_PIPELINE: return "Pipeline";
     default: assert(false && "Not supported Operator type"); return "Unsupported";
   }
 }

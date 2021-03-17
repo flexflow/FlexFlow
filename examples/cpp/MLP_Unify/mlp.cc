@@ -24,13 +24,8 @@ void top_level_task(const Task* task,
                     Context ctx, Runtime* runtime)
 {
   FFConfig ffConfig;
-  {
-    const InputArgs &command_args = HighLevelRuntime::get_input_args();
-    char **argv = command_args.argv;
-    int argc = command_args.argc;
-    log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-        ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
-  }
+  fprintf(stderr, "batchSize(%d) workersPerNodes(%d) numNodes(%d)",
+      ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
   FFModel ff(ffConfig);
 
   std::vector<int> hidden_dims = {4096, 4096, 1024};
@@ -40,10 +35,10 @@ void top_level_task(const Task* task,
     input = ff.create_tensor<3>(dims, DT_FLOAT);
   }
   int total_workers = ffConfig.workersPerNode * ffConfig.numNodes;
-  t = ff.repartition(input, 0/*dim*/, total_workers);
+  Tensor t = ff.repartition(input, 1/*dim*/, total_workers);
   for (size_t i = 0; i < hidden_dims.size(); i++) {
     const int dims[] = {1, hidden_dims[i], t->dims[0].size};
-    Initializer* initializer = new GlorotUniform();
+    Initializer* initializer = new GlorotUniform(123);
 #ifdef FF_USE_NCCL
     ParameterSyncType comm_type = ParameterSyncType::NCCL;
 #else
@@ -51,9 +46,9 @@ void top_level_task(const Task* task,
 #endif
     Tensor weight = ff.create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
         true/*create_grad*/, initializer, comm_type);
-    weight = ff.replicate(weight, 0/*dim*/, total_workers);
+    weight = ff.replicate(weight, 2/*dim*/, total_workers);
     ActiMode acti_mode = (i+1 == hidden_dims.size()) ? AC_MODE_NONE: AC_MODE_RELU;
-    t = ff.dense(t, weight, acti_mode);
+    t = ff.dense(t, weight, NULL, acti_mode);
   }
   t = ff.softmax(t);
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
@@ -93,4 +88,8 @@ void top_level_task(const Task* task,
   double run_time = 1e-6 * (ts_end - ts_start);
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
          ffConfig.batchSize * 128 * ffConfig.epochs / run_time);
+}
+
+void register_custom_tasks()
+{
 }

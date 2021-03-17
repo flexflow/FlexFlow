@@ -83,7 +83,7 @@ MultiHeadAttention::MultiHeadAttention(
 //    Initializer* _bias_initializer)
 : Op(model,
      OP_MULTIHEAD_ATTENTION,
-     name,
+     name, 3/*inputs*/, 1/*weights*/,
      _query, _key, _value, _weight),
   dropout(_dropout), bias(_bias),
   add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),

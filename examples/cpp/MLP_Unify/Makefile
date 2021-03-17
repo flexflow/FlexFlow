@@ -26,7 +26,7 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 OUTFILE		?= mlp
 # List all the application source files here
 GEN_SRC		= mlp.cc
-GEN_GPU_SRC	= mlp.cu
+GEN_GPU_SRC	=
 
 ifndef FF_HOME
 $(error FF_HOME variable is not defined, aborting build)

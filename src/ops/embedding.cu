@@ -51,7 +51,7 @@ Embedding::Embedding(FFModel& model,
                      const Tensor _weight,
                      AggrMode _aggr,
                      const char* name)
-: Op(model, OP_EMBEDDING, name, _input, _weight),
+: Op(model, OP_EMBEDDING, name, 2/*inputs*/, 0/*weights*/, _input, _weight),
   num_entries(_weight->dims[1].size), out_channels(_weight->dims[0].size), aggr(_aggr)
 {
   assert(_input->num_dims == 2);

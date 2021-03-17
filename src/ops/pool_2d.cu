@@ -40,7 +40,7 @@ Pool2D::Pool2D(FFModel& model,
                int _padding_h, int _padding_w,
                PoolType _type, ActiMode _activation,
                const char* name)
-: Op(model, OP_POOL2D, name, _input),
+: Op(model, OP_POOL2D, name, 1/*inputs*/, 0/*weights*/, _input),
   kernel_h(_kernel_h), kernel_w(_kernel_w),
   stride_h(_stride_h), stride_w(_stride_w),
   padding_h(_padding_h), padding_w(_padding_w),

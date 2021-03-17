@@ -71,6 +71,8 @@ ElementBinary::ElementBinary(FFModel& model,
     model,
     _op_type,
     name,
+    2/*inputs*/,
+    0/*weights*/,
     in1,
     in2
   ),

@@ -74,7 +74,7 @@ Linear::Linear(FFModel& model,
                const Tensor _bias,
                ActiMode _activation,
                const char* name)
-: Op(model, OP_LINEAR, name, _input, _kernel, _bias),
+: Op(model, OP_LINEAR, name, 1/*inputs*/, _bias == NULL ? 1 : 2/*weights*/, _input, _kernel, _bias),
   in_channels(_input->dims[0].size),
   out_channels(_kernel->dims[1].size),
   activation(_activation)

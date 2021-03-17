@@ -232,6 +232,8 @@ public:
   Op(FFModel& model,
      OperatorType type,
      const char* _name,
+     int numInputs,
+     int numWeights,
      const Tensor input1 = NULL,
      const Tensor input2 = NULL,
      const Tensor input3 = NULL,
@@ -239,12 +241,9 @@ public:
   Op(FFModel& model,
      OperatorType type,
      const char* _name,
-     int num,
-     const Tensor* inputs);
-  Op(FFModel& model,
-     OperatorType type,
-     const char* _name,
-     int num);
+     int numInputs,
+     int numWeights,
+     const Tensor* tensors);
   // Pure virtual functions that must be implemented
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;

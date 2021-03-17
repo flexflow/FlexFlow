@@ -75,7 +75,7 @@ Conv2D::Conv2D(FFModel& model,
                int _padding_h, int _padding_w,
                ActiMode _activation,
                const char* name)
-: Op(model, OP_CONV2D, name, _input, _kernel, _bias),
+: Op(model, OP_CONV2D, name, 1/*numInputs*/, _bias == NULL ? 1 : 2/*numWeights*/, _input, _kernel, _bias),
   in_channels(_input->dims[2].size), out_channels(_kernel->dims[3].size),
   kernel_h(_kernel->dims[1].size), kernel_w(_kernel->dims[0].size),
   stride_h(_stride_h), stride_w(_stride_w),

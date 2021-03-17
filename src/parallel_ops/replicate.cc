@@ -47,9 +47,10 @@ Replicate::Replicate(
   dims[replicate_dim].size *= replicate_degree;
   dims[replicate_dim].degree *= replicate_degree;
   TensorBase::update_parallel_ids(numdim, dims);
-  for (int i = 0; i < numdim; i++) {
-    register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
-  }
+  for (int i = 0; i < numdim; i++)
+    if (i != replicate_dim) {
+      register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
+    }
   outputs[0] = model.create_tensor_legion_ordering(
       numdim, dims, DT_FLOAT, this);
   // Check correctness

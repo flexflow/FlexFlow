@@ -37,7 +37,8 @@ Dropout::Dropout(FFModel& model,
                  float _rate,
                  unsigned long long _seed,
                  const char* name)
-: Op(model, OP_DROPOUT, name, _input), rate(_rate), seed(_seed)
+: Op(model, OP_DROPOUT, name, 1/*inputs*/, 0/*weights*/, _input),
+  rate(_rate), seed(_seed)
 {
   // Set output shape
   ParallelDim dims[MAX_TENSOR_DIM];

@@ -31,7 +31,7 @@ Reshape::Reshape(FFModel& model,
                  const Tensor input,
                  const std::vector<int>& shape,
                  const char* name)
-: Op(model, OP_RESHAPE, name, input)
+: Op(model, OP_RESHAPE, name, 1/*inputs*/, 0/*weights*/, input)
 {
   numOutputs = 1;
   numWeights = 0;
