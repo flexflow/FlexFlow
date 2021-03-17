@@ -533,6 +533,18 @@ ParallelConfig Op::get_random_parallel_config(const FFModel& ff) const
   return pc;
 }
 
+bool Op::is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const
+{
+  // By default only data parallelism is allowed
+  // Check dim match
+  if (pc.nDims != outputs[0].numDim)
+    return false;
+  for (int i = 0; i < pc.nDims-1; i++)
+    if (pc.dim[i] != 1)
+      return false;
+  return true;
+}
+
 Domain Op::get_output_tensor_shape(const ParallelConfig& pc,
                                    int output_idx, int part_idx)
 {
