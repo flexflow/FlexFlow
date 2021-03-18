@@ -213,6 +213,7 @@ public:
   virtual ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   virtual ParallelConfig get_data_parallel_config(const FFModel& ff) const;
   virtual bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
+  virtual bool is_adoptable_parallel_config(FFModel const &ff, ParallelConfig const &pc) const;
   virtual Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx);
   virtual Domain get_output_tensor_shape(const ParallelConfig& pc, int output_idx, int part_idx);
   virtual Domain get_weight_tensor_shape(const ParallelConfig& pc, int weight_idx, int part_idx);
@@ -223,6 +224,8 @@ public:
   virtual bool can_inplace_output();
   virtual bool has_inplace_output();
   virtual void do_inplace_output();
+
+  int get_dimension() const;
 #ifdef FF_USE_NCCL
   static ncclUniqueId get_nccl_unique_id_task(const Task *task,
       const std::vector<PhysicalRegion> &regions,
@@ -249,6 +252,8 @@ public:
   ncclUniqueId ncclId;
 #endif
 };
+
+ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
 
 class ElementBinary;
 class ElementUnary;
