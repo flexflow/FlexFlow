@@ -45,7 +45,7 @@ void Replicate::forward_task(
     assert(output_domain.lo()[i] == input_domain.lo()[i]);
     assert(output_domain.hi()[i] == input_domain.hi()[i]);
   }
-  assert(input_domain == output_domain);
+  assert(input_domain.get_volume() == output_domain.get_volume());
   const float* input_ptr = helperGetTensorPointerRO<float>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float* output_ptr = helperGetTensorPointerRW<float>(

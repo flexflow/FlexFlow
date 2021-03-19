@@ -48,8 +48,7 @@ void GlorotUniform::init(const FFModel* ff,
     //assert(p->owner_op != NULL);
     IndexSpace task_is = p->parallel_is;
     assert(task_is != IndexSpace::NO_SPACE);
-    Domain domain = runtime->get_index_space_domain(ctx, task_is);
-    assert(domain.get_dim() >= 2);
+    assert(p->num_dims >= 2);
     ArgumentMap argmap;
     IndexLauncher launcher(GLOROT_INIT_TASK_ID, task_is,
         TaskArgument(this, sizeof(GlorotUniform)), argmap,

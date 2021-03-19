@@ -455,9 +455,13 @@ Tensor Op::get_parameter(int index)
 
 void Op::zero_grad(const FFModel& ff)
 {
+  // Do nothing for input and weight
+  if (op_type == OP_INPUT || op_type == OP_WEIGHT)
+    return;
   Runtime* runtime = ff.config.lg_hlr;
   Context ctx = ff.config.lg_ctx;
   ArgumentMap argmap;
+  IndexSpace task_is = outputs[0]->parallel_is;
   IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -1311,11 +1315,7 @@ void FFModel::map_tensor_with_dim2(Tensor tensor, const Op* parallel_op)
   if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
     tensor->region_grad = runtime->create_logical_region(ctx, is, fs);
   }
-  // Step 2: initialize the tensor
-  if (tensor->initializer != NULL) {
-    tensor->initializer->init(this, tensor);
-  }
-  // Step 3: create partitions if parallel_op != NULL
+  // Step 2: create partitions if parallel_op != NULL
   if (parallel_op != NULL) {
     IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
     //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
@@ -1340,6 +1340,10 @@ void FFModel::map_tensor_with_dim2(Tensor tensor, const Op* parallel_op)
     if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
       tensor->part_grad = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
     }
+  }
+  // Step 3: initialize the tensor
+  if (tensor->initializer != NULL) {
+    tensor->initializer->init(this, tensor);
   }
 }
 
