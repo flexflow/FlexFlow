@@ -45,8 +45,8 @@ void GlorotUniform::init(const FFModel* ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
-    assert(p->owner_op != NULL);
-    IndexSpace task_is = p->owner_op->task_is;
+    //assert(p->owner_op != NULL);
+    IndexSpace task_is = p->parallel_is;
     assert(task_is != IndexSpace::NO_SPACE);
     Domain domain = runtime->get_index_space_domain(ctx, task_is);
     assert(domain.get_dim() >= 2);
@@ -85,8 +85,8 @@ void ZeroInitializer::init(const FFModel* ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
-    assert(p->owner_op != NULL);
-    IndexSpace task_is = p->owner_op->task_is;
+    //assert(p->owner_op != NULL);
+    IndexSpace task_is = p->parallel_is;
     assert(task_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
     IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
@@ -178,8 +178,8 @@ void UniformInitializer::init(const FFModel* ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
-    assert(p->owner_op != NULL);
-    IndexSpace task_is = p->owner_op->task_is;
+    //assert(p->owner_op != NULL);
+    IndexSpace task_is = p->parallel_is;
     assert(task_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
     IndexLauncher launcher(UNIFORM_INIT_TASK_ID, task_is,
@@ -216,8 +216,8 @@ void NormInitializer::init(const FFModel* ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
-    assert(p->owner_op != NULL);
-    IndexSpace task_is = p->owner_op->task_is;
+    //assert(p->owner_op != NULL);
+    IndexSpace task_is = p->parallel_is;
     assert(task_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
     IndexLauncher launcher(NORMAL_INIT_TASK_ID, task_is,
@@ -257,8 +257,8 @@ void ConstantInitializer::init(const FFModel* ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if(p->sync_type == ParameterSyncType::NCCL) {
-    assert(p->owner_op != NULL);
-    IndexSpace task_is = p->owner_op->task_is;
+    //assert(p->owner_op != NULL);
+    IndexSpace task_is = p->parallel_is;
     assert(task_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
     IndexLauncher launcher(CONSTANT_INIT_TASK_ID, task_is,

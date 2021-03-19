@@ -50,6 +50,7 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/ops/embedding.cc\
 		${FF_HOME}/src/ops/group_by.cc\
 		${FF_HOME}/src/ops/aggregate.cc\
+		${FF_HOME}/src/ops/noop.cc\
 		${FF_HOME}/src/parallel_ops/partition.cc\
 		${FF_HOME}/src/parallel_ops/combine.cc\
 		${FF_HOME}/src/parallel_ops/replicate.cc\

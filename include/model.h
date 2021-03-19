@@ -549,6 +549,33 @@ public:
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
+  void create_disjoint_partition(
+      int num_dims,
+      const ParallelDim dims[],
+      const Legion::IndexSpace& part_is,
+      const Legion::LogicalRegion& region,
+      Legion::LogicalPartition& part);
+  template<int NDIM, int TDIM>
+  void create_disjoint_partition_with_dim2(
+      const ParallelDim dims[],
+      const Legion::IndexSpaceT<TDIM>& part_is,
+      const Legion::LogicalRegion& region,
+      Legion::LogicalPartition& part);
+  void create_aliased_partition(
+      int num_dims,
+      const ParallelDim dims[],
+      int aliased_dim,
+      const Legion::IndexSpace& part_is,
+      const Legion::LogicalRegion& region,
+      Legion::LogicalPartition& part);
+  template<int NDIM, int TDIM>
+  void create_aliased_partition_with_dim2(
+      const ParallelDim dims[],
+      int aliased_dim,
+      const Legion::IndexSpaceT<TDIM>& part_is,
+      const Legion::LogicalRegion& region,
+      Legion::LogicalPartition& part);
+
   template<int NDIM>
   void create_disjoint_partition(
       const Tensor tensor,
@@ -616,6 +643,7 @@ public:
   Legion::IndexSpace get_or_create_task_is(ParallelConfig pc);
   Legion::IndexSpace get_or_create_task_is(const Legion::Domain& domain);
   Legion::IndexSpace get_or_create_task_is(int ndims, const std::string& pcname);
+  Legion::IndexSpace get_or_create_task_is(const Tensor);
   Legion::IndexSpace get_task_is(const Legion::Domain& domain) const;
   Legion::IndexSpace get_task_is(ParallelConfig pc) const;
   Legion::IndexSpace get_task_is(int ndims, const std::string& pcname) const;
@@ -644,6 +672,8 @@ private:
 
   template<int NDIM>
   void map_tensor_with_dim(Tensor tensor, const Op* parallel_op);
+  template<int NDIM, int TDIM>
+  void map_tensor_with_dim2(Tensor tensor, const Op* parallel_op);
   template<int NDIM>
   void map_weight_with_dim(Tensor weight, const Op* parallel_op);
 
@@ -669,6 +699,21 @@ public:
   cudnnOpTensorDescriptor_t opDesc;
   OperatorType op_type;
   bool inplace_a;
+};
+
+class NoOp : public Op {
+public:
+  NoOp(FFModel& model,
+       OperatorType type,
+       const Tensor output,
+       const char* name = NULL);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
 };
 
 class ElementBinary : public Op {
@@ -1048,7 +1093,7 @@ public:
   void print_layer(const FFModel& model);
   //Parameter* get_parameter(int index);
   //void create_weights(FFModel& model);
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -1086,12 +1131,6 @@ private:
   void create_input_partition_with_dim(FFModel& model);
   //template<int NDIM>
   //void create_weights_with_dim(FFModel& model);
-  template<int NDIM>
-  void init_with_dim(const FFModel& ff);
-  template<int NDIM>
-  void forward_with_dim(const FFModel& ff);
-  template<int NDIM>
-  void backward_with_dim(const FFModel& ff);
   template<int NDIM>
   static OpMeta* init_task_with_dim(const Legion::Task *task,
                                     const std::vector<Legion::PhysicalRegion> &regions,
@@ -1881,6 +1920,7 @@ public:
               int repartition_legion_dim,
               int repartition_degree,
               const char* name);
+  void create_input_partition(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -1916,6 +1956,7 @@ public:
       int replicate_legion_dim,
       int replicate_degree,
       const char* name);
+  void create_input_partition(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);

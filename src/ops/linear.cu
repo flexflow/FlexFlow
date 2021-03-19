@@ -122,6 +122,7 @@ Linear::Linear(FFModel& model,
   assert(check_output_input_weight_parallel_dims());
 }
 
+#ifdef DEADCODE
 void Linear::create_input_partition(FFModel& model)
 {
   int dim = inputs[0]->num_dims;
@@ -268,6 +269,7 @@ void Linear::create_input_partition_with_dim(FFModel& model)
     }
   }
 }
+#endif
 
 /*
   regions[0](O): output
@@ -359,36 +361,10 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
 
 void Linear::init(const FFModel& ff)
 {
-  int dim = outputs[0]->num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-      return init_with_dim<DIM>(ff);
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-}
-
-template<int NDIM>
-void Linear::init_with_dim(const FFModel& ff)
-{
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
-  ParallelConfig pc;
-  std::string pcname = name;
-  ff.config.find_parallel_config(NDIM, pcname, pc);
-  int idx = 0;
-  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
-    FFHandler handle = ff.handlers[pc.device_ids[idx++]];
-#ifdef FF_USE_NCCL
-    handle.ncclComm = pc.nccl_comms[idx-1];
-#endif
-    argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
-  }
+  set_argumentmap_for_init(ff, argmap);
   IndexLauncher launcher(LINEAR_INIT_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Linear)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -418,10 +394,7 @@ void Linear::init_with_dim(const FFModel& ff)
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  idx = 0;
-  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
-    meta[idx++] = fm.get_result<OpMeta*>(*it);
-  }
+  set_opmeta_from_futuremap(ff, fm);
 }
 
 /*static*/
@@ -550,30 +523,10 @@ void Linear::forward_task_with_dim(const Task *task,
 
 void Linear::forward(const FFModel& ff)
 {
-  int dim = outputs[0]->num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-      return forward_with_dim<DIM>(ff);
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-}
-
-template<int NDIM>
-void Linear::forward_with_dim(const FFModel& ff)
-{
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
-  int idx = 0;
-  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
-    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
-  }
+  set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(LINEAR_FWD_TASK_ID, task_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -822,31 +775,11 @@ void Linear::backward2_task_with_dim(const Task *task,
 
 void Linear::backward(const FFModel& ff)
 {
-  int dim = outputs[0]->num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-      return backward_with_dim<DIM>(ff);
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-}
-
-template<int NDIM>
-void Linear::backward_with_dim(const FFModel& ff)
-{
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   {
     ArgumentMap argmap;
-    Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
-    int idx = 0;
-    for (PointInRectIterator<NDIM> it(rect); it(); it++) {
-      OpMeta* mp = meta[idx++];
-      argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
-    }
+    set_argumentmap_for_backward(ff, argmap);
     IndexLauncher launcher(LINEAR_BWD_TASK_ID, task_is,
                            TaskArgument(NULL, 0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,

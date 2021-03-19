@@ -515,11 +515,30 @@ template<int NDIM>
 void Op::create_input_partition_with_dim(FFModel& model)
 {
   std::string pcname = name;
-  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
+  assert(numOutputs > 0);
+  task_is = model.get_or_create_task_is(outputs[0]);
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  Rect<NDIM> my_part_rect = runtime->get_index_space_domain(ctx, task_is);
+  //Rect<NDIM> my_part_rect = runtime->get_index_space_domain(ctx, task_is);
   for (int i = 0; i < numInputs; i++) {
+    input_lps[i] = inputs[i]->part;
+    input_grad_lps[i] = inputs[i]->part_grad;
+    switch (op_type) {
+      case OP_REPARTITION:
+      case OP_COMBINE:
+      case OP_REPLICATE:
+      case OP_REDUCTION:
+      case OP_PIPELINE:
+        break;
+      default:
+      {
+        Domain my_domain = runtime->get_index_space_domain(ctx, task_is);
+        Domain in_domain = runtime->get_index_space_domain(ctx, inputs[i]->parallel_is);
+        assert(task_is == inputs[i]->parallel_is);
+        assert(my_domain == in_domain);
+      }
+    }
+#ifdef DEADCODE
     Rect<NDIM> input_part_rect = runtime->get_index_partition_color_space(
         ctx, inputs[i]->part.get_index_partition());
     // sanity check
@@ -545,6 +564,7 @@ void Op::create_input_partition_with_dim(FFModel& model)
           inputs[i], (IndexSpaceT<NDIM>)task_is,
           input_lps[i], input_grad_lps[i]);
     }
+#endif
   }
 }
 
@@ -841,6 +861,7 @@ void Op::set_argumentmap_for_init(const FFModel& ff,
       int idx = 0; \
       for (PointInRectIterator<DIM> it(rect); it(); it++) { \
         FFHandler handle = ff.handlers[pc.device_ids[idx++]]; \
+        handle.ncclComm = pc.nccl_comms[idx-1]; \
         argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
       } \
       break; \
@@ -1137,8 +1158,15 @@ Tensor FFModel::create_tensor(
   Tensor tensor = new TensorBase();
   tensor->guid = tensor_global_guid ++;
   tensor->data_type = data_type;
-  tensor->owner_op = owner_op;
-  tensor->owner_idx = owner_idx;
+  if (owner_op == NULL) {
+    NoOp* input_op = new NoOp(*this, OP_INPUT, tensor);
+    layers.push_back(input_op);
+    tensor->owner_op = input_op;
+    tensor->owner_idx = 0;
+  } else {
+    tensor->owner_op = owner_op;
+    tensor->owner_idx = owner_idx;
+  }
   tensor->create_gradients = create_grad;
   tensor->num_dims = NDIM;
   for (int i = 0; i < NDIM; i++) {
@@ -1176,7 +1204,14 @@ Parameter FFModel::create_weight(
   Parameter p = new TensorBase();
   p->guid = tensor_global_guid ++;
   p->data_type = data_type;
-  p->owner_op = owner_op;
+  if (owner_op == NULL) {
+    NoOp* weight_op = new NoOp(*this, OP_WEIGHT, p);
+    layers.push_back(weight_op);
+    p->owner_op = weight_op;
+    p->owner_idx = 0;
+  } else {
+    p->owner_op = owner_op;
+  }
   p->create_gradients = create_grad;
   p->initializer = initializer;
   p->sync_type = sync_type;
@@ -1192,10 +1227,10 @@ Parameter FFModel::create_weight(
 void FFModel::map_tensor(Tensor tensor, const Op* op)
 {
   switch (tensor->num_dims) {
-#define DIMFUNC(DIM) \
-    case DIM: \
+#define DIMFUNC(NDIM) \
+    case NDIM: \
     { \
-      map_tensor_with_dim<DIM>(tensor, op); \
+      map_tensor_with_dim<NDIM>(tensor, op); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -1212,6 +1247,30 @@ void FFModel::map_tensor(Tensor tensor, const Op* op)
 template<int NDIM>
 void FFModel::map_tensor_with_dim(Tensor tensor, const Op* parallel_op)
 {
+  tensor->parallel_is = get_or_create_task_is(tensor);
+  assert(tensor->owner_op != NULL);
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  Domain task_domain = runtime->get_index_space_domain(ctx, tensor->parallel_is);
+  switch (task_domain.get_dim()) {
+#define DIMFUNC(TDIM) \
+    case TDIM: \
+    { \
+      map_tensor_with_dim2<NDIM, TDIM>(tensor, parallel_op); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      assert(false && "Unsupported Task Dim");
+    }
+  }
+}
+
+template<int NDIM, int TDIM>
+void FFModel::map_tensor_with_dim2(Tensor tensor, const Op* parallel_op)
+{
   // Step 0: check we are the owner or the owner is NULL
   // in which case set the owner to us
   if (tensor->owner_op == NULL) {
@@ -1220,13 +1279,10 @@ void FFModel::map_tensor_with_dim(Tensor tensor, const Op* parallel_op)
   } else {
     assert(tensor->owner_op == parallel_op);
   }
-  std::string pcname = parallel_op->name;
-  tensor->parallel_is = IndexSpaceT<NDIM>(get_or_create_task_is(NDIM, pcname));
-
+  // Step 1: create regions
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
 
-  // Step 1: create regions
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator= runtime->create_field_allocator(ctx, fs);
   switch (tensor->data_type)
@@ -1255,22 +1311,24 @@ void FFModel::map_tensor_with_dim(Tensor tensor, const Op* parallel_op)
   if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
     tensor->region_grad = runtime->create_logical_region(ctx, is, fs);
   }
-
-  // Step 2: create partitions if parallel_op != NULL
+  // Step 2: initialize the tensor
+  if (tensor->initializer != NULL) {
+    tensor->initializer->init(this, tensor);
+  }
+  // Step 3: create partitions if parallel_op != NULL
   if (parallel_op != NULL) {
-    std::string name = std::string(parallel_op->name);
-    IndexSpaceT<NDIM> part_is = (IndexSpaceT<NDIM>) get_or_create_task_is(NDIM, name);
-    Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
-    Transform<NDIM, NDIM> transform;
+    IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
+    //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
+    Transform<NDIM, TDIM> transform;
     Point<NDIM> ext_hi;
     for (int i = 0; i < NDIM; i++) {
-      int nparts = part_rect.hi[i] - part_rect.lo[i] + 1;
+      int nparts = tensor->dims[i].degree;
       ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
     }
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
     for (int i = 0; i < NDIM; i++)
-      for (int j = 0; j < NDIM; j++)
-        if (i == j)
+      for (int j = 0; j < TDIM; j++)
+        if (tensor->dims[i].parallel_idx == j)
           transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
         else
           transform[i][j] = 0;
@@ -1352,6 +1410,118 @@ void FFModel::map_weight_with_dim(Tensor weight, const Op* parallel_op)
       assert(false && "Unsupported type for mapping weight");
     }
   }
+}
+
+void FFModel::create_disjoint_partition(int num_dims,
+                                        const ParallelDim dims[],
+                                        const IndexSpace& part_is,
+                                        const LogicalRegion& region,
+                                        LogicalPartition& part)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  Domain task_domain = runtime->get_index_space_domain(ctx, part_is);
+  switch ((num_dims-1)*MAX_TENSOR_DIM+task_domain.get_dim()-1) {
+#define DIMFUNC(NDIM, TDIM) \
+    case (NDIM-1)*MAX_TENSOR_DIM+(TDIM-1): \
+    { \
+      IndexSpaceT<TDIM> part_is_t(part_is); \
+      return create_disjoint_partition_with_dim2<NDIM, TDIM>( \
+          dims, part_is_t, region, part);  \
+    }
+    LEGION_FOREACH_NN(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false && "Unsupported NDIM/TDIM");
+  }
+}
+
+template<int NDIM, int TDIM>
+void FFModel::create_disjoint_partition_with_dim2(const ParallelDim dims[],
+                                                  const IndexSpaceT<TDIM>& part_is,
+                                                  const LogicalRegion& region,
+                                                  LogicalPartition& part)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  //Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  Transform<NDIM, TDIM> transform;
+  Point<NDIM> ext_hi;
+  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, region.get_index_space());
+  for (int i = 0; i < NDIM; i++) {
+    int nparts = dims[i].degree;
+    ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
+  }
+  Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
+  for (int i = 0; i < NDIM; i++)
+    for (int j = 0; j < TDIM; j++)
+      if (dims[i].parallel_idx == j)
+        transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
+      else
+        transform[i][j] = 0;
+  IndexPartition ip = runtime->create_partition_by_restriction(
+      ctx, region.get_index_space(), part_is, transform, extent);
+  assert(runtime->is_index_partition_disjoint(ctx, ip));
+  assert(runtime->is_index_partition_complete(ctx, ip));
+  part = runtime->get_logical_partition(ctx, region, ip);
+}
+
+void FFModel::create_aliased_partition(int num_dims,
+                                       const ParallelDim dims[],
+                                       int aliased_dim,
+                                       const IndexSpace& part_is,
+                                       const LogicalRegion& region,
+                                       LogicalPartition& part)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  Domain task_domain = runtime->get_index_space_domain(ctx, part_is);
+  switch ((num_dims-1)*MAX_TENSOR_DIM+task_domain.get_dim()-1) {
+#define DIMFUNC(NDIM, TDIM) \
+    case (NDIM-1)*MAX_TENSOR_DIM+(TDIM-1): \
+    { \
+      IndexSpaceT<TDIM> part_is_t(part_is); \
+      return create_aliased_partition_with_dim2<NDIM, TDIM>( \
+          dims, aliased_dim, part_is_t, region, part);  \
+    }
+    LEGION_FOREACH_NN(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false && "Unsupported NDIM/TDIM");
+  }
+}
+
+template<int NDIM, int TDIM>
+void FFModel::create_aliased_partition_with_dim2(const ParallelDim dims[],
+                                                 int aliased_dim,
+                                                 const IndexSpaceT<TDIM>& part_is,
+                                                 const LogicalRegion& region,
+                                                 LogicalPartition& part)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  //Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  Transform<NDIM, TDIM> transform;
+  Point<NDIM> ext_hi;
+  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, region.get_index_space());
+  for (int i = 0; i < NDIM; i++) {
+    int nparts = dims[i].degree;
+    if (aliased_dim == i)
+      nparts = 1;
+    ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
+  }
+  Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
+  for (int i = 0; i < NDIM; i++)
+    for (int j = 0; j < TDIM; j++)
+      if (dims[i].parallel_idx == j && i != aliased_dim)
+        transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
+      else
+        transform[i][j] = 0;
+  IndexPartition ip = runtime->create_partition_by_restriction(
+      ctx, region.get_index_space(), part_is, transform, extent);
+  //assert(runtime->is_index_partition_disjoint(ctx, ip));
+  assert(runtime->is_index_partition_complete(ctx, ip));
+  part = runtime->get_logical_partition(ctx, region, ip);
 }
 
 template<int NDIM>
@@ -1746,6 +1916,22 @@ IndexSpace FFModel::get_task_is(ParallelConfig pc) const
   return iter->second;
 }
 
+IndexSpace FFModel::get_or_create_task_is(const Tensor tensor)
+{
+  ParallelConfig pc;
+  pc.nDims = 0;
+  for (int i = 0; i < tensor->num_dims; i++)
+    if (tensor->dims[i].parallel_idx >= 0) {
+      pc.dim[tensor->dims[i].parallel_idx] = tensor->dims[i].degree;
+      pc.nDims++;
+    }
+  if (pc.nDims == 0) {
+    pc.nDims = 1;
+    pc.dim[0] = 1;
+  }
+  return get_or_create_task_is(pc);
+}
+
 IndexSpace FFModel::get_or_create_task_is(ParallelConfig pc)
 {
   if (taskIs.find(pc) != taskIs.end())
@@ -2042,11 +2228,11 @@ void FFModel::compile(LossType loss_type,
         parameters.push_back(op->weights[i]);
       }
     }
-    op->create_input_partition(*this);
     for (int i = 0; i < op->numOutputs; i++) {
       // Output tensor
       map_tensor(op->outputs[i], op);
     }
+    op->create_input_partition(*this);
     // op->map_output_tensors(*this);
   }
 
@@ -2176,7 +2362,7 @@ void FFModel::compile(LossType loss_type,
     case DIM: \
     { \
       label_tensor = create_tensor<DIM>(dims, label_type); \
-      map_tensor(label_tensor, final_layer); \
+      map_tensor(label_tensor, label_tensor->owner_op); \
       label_tensor_with_final_part = label_tensor; \
       break; \
     }
@@ -3538,6 +3724,9 @@ void register_flexflow_internal_tasks()
 #undef DIMFUNC
 
 #define DIMFUNC(D1,D2) \
+  template void FFModel::map_tensor_with_dim2<D1,D2>(Tensor tensor, const Op* parallel_op); \
+  template void FFModel::create_disjoint_partition_with_dim2<D1,D2>(const ParallelDim dims[], const IndexSpaceT<D2>& part_is, const LogicalRegion& region, LogicalPartition& part); \
+  template void FFModel::create_aliased_partition_with_dim2<D1,D2>(const ParallelDim dims[], int aliased_dim, const IndexSpaceT<D2>& part_is, const LogicalRegion& region, LogicalPartition& part); \
   template void FFModel::create_data_parallel_partition_with_diff_dims<D1, D2>(const Tensor tensor, const IndexSpaceT<D2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
   LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
