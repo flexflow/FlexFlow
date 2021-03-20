@@ -244,6 +244,11 @@ public:
      int numInputs,
      int numWeights,
      const Tensor* tensors);
+  // graph substitution related methods
+  virtual bool get_int_parameter(PMParameter, int*);
+  virtual bool get_tensor_parameter(TNParameter, DIMParameter, int*);
+  virtual bool get_input_parameter(TNParameter, DIMParameter, int*);
+  virtual bool get_weight_parameter(TNParameter, DIMParameter, int*);
   // Pure virtual functions that must be implemented
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
@@ -286,6 +291,7 @@ private:
   void create_input_partition_with_dim(FFModel& model);
 public:
   OperatorType op_type;
+  size_t op_guid;
   char name[MAX_OPNAME];
   Legion::IndexSpace task_is;
   Tensor outputs[MAX_NUM_OUTPUTS];
@@ -651,7 +657,7 @@ public:
 public:
   void set_iteration_config_sequence_length(int seq_length);
 public:
-  int op_global_guid, tensor_global_guid;
+  size_t op_global_guid, tensor_global_guid;
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer* optimizer;

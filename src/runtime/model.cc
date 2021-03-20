@@ -27,7 +27,7 @@ LegionRuntime::Logger::Category log_model("Model");
 
 TensorBase::TensorBase(void)
 {
-  guid = 0;
+  ts_guid = 0;
   num_dims = 0;
   parallel_is = IndexSpace::NO_SPACE;
   region = LogicalRegion::NO_REGION;
@@ -343,8 +343,9 @@ Op::Op(FFModel& model,
        const Tensor _input2,
        const Tensor _input3,
        const Tensor _input4)
-: op_type(_op_type), numInputs(_numInputs), numWeights(_numWeights),
-  numOutputs(1), profiling(model.config.profiling)
+: op_type(_op_type), op_guid(model.op_global_guid++),
+  numInputs(_numInputs), numWeights(_numWeights), numOutputs(1),
+  profiling(model.config.profiling)
 {
   for (int i = 0; i < MAX_NUM_INPUTS; i++)
     inputs[i] = NULL;
@@ -359,7 +360,7 @@ Op::Op(FFModel& model,
   } else {
     pcname = std::string(_name);
   }
-  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
+  pcname = pcname + "_" + std::to_string(op_guid);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   for (int i = 0; i < numInputs + numWeights; i++) {
@@ -390,8 +391,9 @@ Op::Op(FFModel& model,
        int _numInputs,
        int _numWeights,
        const Tensor* _inputs)
-: op_type(_op_type), numInputs(_numInputs), numWeights(_numWeights),
-  numOutputs(1), profiling(model.config.profiling)
+: op_type(_op_type), op_guid(model.op_global_guid++),
+  numInputs(_numInputs), numWeights(_numWeights), numOutputs(1),
+  profiling(model.config.profiling)
 {
   std::string pcname;
   if (_name == NULL) {
@@ -399,7 +401,7 @@ Op::Op(FFModel& model,
   } else {
     pcname = std::string(_name);
   }
-  pcname = pcname + "_" + std::to_string(model.op_global_guid++);
+  pcname = pcname + "_" + std::to_string(op_guid);
   assert(pcname.length() < MAX_OPNAME);
   assert(numInputs <= MAX_NUM_INPUTS);
   assert(numWeights <= MAX_NUM_WEIGHTS);
@@ -951,12 +953,91 @@ void Op::set_argumentmap_for_backward(const FFModel& ff,
   }
 }
 
+bool Op::get_int_parameter(PMParameter para, int* value)
+{
+  switch (para) {
+    case PM_OP_TYPE:
+      *value = (int) op_type;
+      return true;
+    case PM_NUM_INPUTS:
+      *value = numInputs;
+      return true;
+    case PM_NUM_OUTPUTS:
+      *value = numOutputs;
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool Op::get_tensor_parameter(TNParameter tnp, DIMParameter dim, int* value)
+{
+  if (tnp >= INPUT_0 && tnp <= INPUT_5)
+    return get_input_parameter(tnp, dim, value);
+  if (tnp >= WEIGHT_0 && tnp <= WEIGHT_5)
+    return get_weight_parameter(tnp, dim, value);
+  return false;
+}
+
+bool Op::get_input_parameter(TNParameter tnp, DIMParameter dim, int* value)
+{
+  int inputIdx = 0, dimIdx = 0;
+  assert(tnp <= INPUT_5 && tnp >= INPUT_0);
+  inputIdx = tnp - INPUT_0;
+  if (inputIdx >= numInputs) return false;
+  switch (dim) {
+    case DIM_3:
+      dimIdx ++;
+    case DIM_2:
+      dimIdx ++;
+    case DIM_1:
+      dimIdx ++;
+    case DIM_0:
+      break;
+    case DIM_ND:
+      *value = inputs[inputIdx]->num_dims;
+      return true;
+    default:
+      return false;
+  }
+  if (dimIdx >= inputs[inputIdx]->num_dims) return false;
+  *value = inputs[inputIdx]->dims[dimIdx].size;
+  return true;
+}
+
+bool Op::get_weight_parameter(TNParameter tnp, DIMParameter dim, int* value)
+{
+  int weightIdx = 0, dimIdx = 0;
+  assert(tnp <= WEIGHT_5 && tnp >= WEIGHT_0);
+  weightIdx = tnp - WEIGHT_0;
+  if (weightIdx >= numWeights) return false;
+  switch (dim) {
+    case DIM_3:
+      dimIdx ++;
+    case DIM_2:
+      dimIdx ++;
+    case DIM_1:
+      dimIdx ++;
+    case DIM_0:
+      break;
+    case DIM_ND:
+      *value = weights[weightIdx]->num_dims;
+      return true;
+    default:
+      return false;
+  }
+  if (dimIdx >= weights[weightIdx]->num_dims) return false;
+  *value = weights[weightIdx]->dims[dimIdx].size;
+  return true;
+}
+
 OpMeta::OpMeta(FFHandler _handle)
 : handle(_handle)
 {}
 
 FFModel::FFModel(FFConfig& _config)
-: op_global_guid(1000), tensor_global_guid(20000), config(_config),
+: op_global_guid(OP_GUID_FIRST_VALID),
+  tensor_global_guid(TS_GUID_FIRST_VALID), config(_config),
   optimizer(NULL), loss_op(NULL), metrics_op(NULL)
 {
   Runtime *runtime = config.lg_hlr;
@@ -1160,7 +1241,7 @@ Tensor FFModel::create_tensor(
     bool create_grad)
 {
   Tensor tensor = new TensorBase();
-  tensor->guid = tensor_global_guid ++;
+  tensor->ts_guid = tensor_global_guid ++;
   tensor->data_type = data_type;
   if (owner_op == NULL) {
     NoOp* input_op = new NoOp(*this, OP_INPUT, tensor);
@@ -1206,7 +1287,7 @@ Parameter FFModel::create_weight(
     ParameterSyncType sync_type)
 {
   Parameter p = new TensorBase();
-  p->guid = tensor_global_guid ++;
+  p->ts_guid = tensor_global_guid ++;
   p->data_type = data_type;
   if (owner_op == NULL) {
     NoOp* weight_op = new NoOp(*this, OP_WEIGHT, p);
@@ -1865,7 +1946,7 @@ Tensor FFModel::create_linear_replica(const int dims[],
   for (int i = 0; i < TDIM; i++)
     num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
   Tensor replica = new TensorBase();
-  replica->guid = tensor_global_guid ++;
+  replica->ts_guid = tensor_global_guid ++;
   replica->num_dims = NDIM;
   replica->data_type = data_type;
   for (int i = 0; i < NDIM; i++)
@@ -2246,7 +2327,7 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i < op->numOutputs; i++) {
       assert(op->outputs[i]->owner_op == op);
       assert(op->outputs[i]->owner_idx == i);
-      assert(op->outputs[i]->guid != 0);
+      assert(op->outputs[i]->ts_guid != 0);
     }
   }
 
