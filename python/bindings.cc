@@ -182,15 +182,15 @@ PYBIND11_MODULE(flexflow_bindings, m) {
       .def("update", &FFModel::update)
       // Arithmetic operators
       .def("exp", &FFModel::exp, "x"_a, "name"_a = nullptr)
-      .def("add", &FFModel::add, "x"_a, "y"_a, "name"_a = nullptr)
-      .def("subtract", &FFModel::subtract, "x"_a, "y"_a, "name"_a = nullptr)
-      .def("multiply", &FFModel::multiply, "x"_a, "y"_a, "name"_a = nullptr)
-      .def("divide", &FFModel::divide, "x"_a, "y"_a, "name"_a = nullptr)
+      .def("add", &FFModel::add, "x"_a, "y"_a, "inplace_a"_a = false, "name"_a = nullptr)
+      .def("subtract", &FFModel::subtract, "x"_a, "y"_a, "inplace_a"_a = false, "name"_a = nullptr)
+      .def("multiply", &FFModel::multiply, "x"_a, "y"_a, "inplace_a"_a = false, "name"_a = nullptr)
+      .def("divide", &FFModel::divide, "x"_a, "y"_a, "inplace_a"_a = false, "name"_a = nullptr)
       // Activations
-      .def("relu", &FFModel::relu, "x"_a, "name"_a = nullptr)
+      .def("relu", &FFModel::relu, "x"_a, "inplace"_a = true, "name"_a = nullptr)
       .def("sigmoid", &FFModel::sigmoid, "x"_a, "name"_a = nullptr)
       .def("tanh", &FFModel::tanh, "x"_a, "name"_a = nullptr)
-      .def("elu", &FFModel::elu, "x"_a, "name"_a = nullptr)
+      .def("elu", &FFModel::elu, "x"_a, "inplace"_a = true, "name"_a = nullptr)
       // Layers
       .def("conv2d", &FFModel::conv2d, "input"_a, "out_channels"_a, "kernel_h"_a, "kernel_w"_a, "stride_h"_a, "stride_w"_a, "padding_h"_a, "padding_w"_a, "activation"_a = ActiMode::AC_MODE_NONE, "groups"_a = 1, "use_bias"_a = true, "shared_op"_a = nullptr, "kernel_initializer"_a = nullptr, "bias_initializer"_a = nullptr, "name"_a = nullptr)
       .def("dropout", &FFModel::dropout, "input"_a, "rate"_a, "seed"_a = 0, "name"_a = nullptr)

@@ -278,22 +278,22 @@ public:
   // Add an add layer
   Tensor add(const Tensor& x,
              const Tensor& y,
-             bool inplace = false,
+             bool inplace_a = false,
              char const *name = NULL);
   // Add a subtract layer
   Tensor subtract(const Tensor& x,
                   const Tensor& y,
-                  bool inplace = false,
+                  bool inplace_a = false,
                   char const *name = NULL);
   // Add a multiply layer
   Tensor multiply(const Tensor& x,
                   const Tensor& y,
-                  bool inplace = false,
+                  bool inplace_a = false,
                   char const *name = NULL);
   // Add a divide layer
   Tensor divide(const Tensor& x,
                 const Tensor& y,
-                bool inplace = false,
+                bool inplace_a = false,
                 char const *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor& x,
