@@ -17,6 +17,7 @@
 
 #include "ffconst.h"
 #include "config.h"
+#include "tensor.h"
 #include <memory>
 #include <fstream>
 #include <unordered_map>
@@ -350,6 +351,10 @@ public:
   void add_task_dependencies_with_xfer(
       SimTask* src_task, SimTask* dst_task, size_t message_size);
   CostMetrics measure_operator_cost(Op* op, const ParallelConfig& config);
+  CostMetrics measure_operator_cost(const Op* op, const MachineView& view);
+  float estimate_xfer_cost(const Tensor tensor,
+                           const MachineView& source_view,
+                           const MachineView& sink_view);
   float simulate_runtime(const FFModel* model,
       const std::map<const Op*, ParallelConfig>& global,
       CompMode comp_mode);

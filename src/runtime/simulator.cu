@@ -74,7 +74,7 @@ void Simulator::strategy_search_task(const Task *task,
                                      const std::vector<PhysicalRegion> &regions,
                                      Context ctx, Runtime *runtime)
 {
-  const FFModel* model = *((FFModel**) task->args);
+  FFModel* model = *((FFModel**) task->args);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
          .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
   // Realm::MemoryImpl* memImpl =
@@ -94,6 +94,7 @@ void Simulator::strategy_search_task(const Task *task,
   }
   // Assume this task is running on GPU0
   Simulator* simulator = new Simulator(model, model->handlers[0], gpu_mem, machine);
+  model->simulator = simulator;
   // Set cublas/cudnn streams to allow Realm catch the events
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
@@ -151,6 +152,7 @@ void Simulator::strategy_search_task(const Task *task,
   // Start from data
   // memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);
   delete(simulator);
+  model->simulator = NULL;
   delete(machine);
 }
 

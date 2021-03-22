@@ -41,6 +41,16 @@ bool ParallelConfig::is_data_parallel() const
   return true;
 }
 
+bool MachineResource::is_valid_view(const MachineView& view) const
+{
+  // Currently assume start_device_idx == 0
+  assert(view.start_device_id == 0);
+  int last_device_id = 0;
+  for (int i = 0; i < view.ndims; i++)
+    last_device_id += (view.dim[i]-1) * view.stride[i];
+  return last_device_id < num_nodes * gpus_per_node;
+}
+
 Device::Device(std::string const &name, DeviceType type, int node_id, int socket_id, int device_id)
 : name(name), type(type), node_id(node_id), socket_id(socket_id), device_id(device_id)
 {}

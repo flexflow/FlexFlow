@@ -44,6 +44,29 @@
 
 //using namespace Legion;
 
+struct MachineView {
+  static const MachineView NO_VIEW;
+  MachineView();
+  size_t hash() const;
+  enum DeviceType {
+    GPU = 0,
+    CPU = 1,
+  };
+  DeviceType device_type;
+  int ndims, start_device_id, dim[MAX_TENSOR_DIM], stride[MAX_TENSOR_DIM];
+#ifdef FF_USE_NCCL
+  ncclComm_t nccl_comms[MAX_NUM_WORKERS];
+#endif
+};
+
+struct MachineResource {
+  bool is_valid_view(const MachineView& view) const;
+  size_t hash() const;
+  int num_nodes;
+  int gpus_per_node;
+  int cpus_per_node;
+};
+
 struct ParallelConfig {
   enum DeviceType {
     GPU = 0,

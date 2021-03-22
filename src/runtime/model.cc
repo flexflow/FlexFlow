@@ -953,7 +953,7 @@ void Op::set_argumentmap_for_backward(const FFModel& ff,
   }
 }
 
-bool Op::get_int_parameter(PMParameter para, int* value)
+bool Op::get_int_parameter(PMParameter para, int* value) const
 {
   switch (para) {
     case PM_OP_TYPE:
@@ -970,7 +970,7 @@ bool Op::get_int_parameter(PMParameter para, int* value)
   }
 }
 
-bool Op::get_tensor_parameter(TNParameter tnp, DIMParameter dim, int* value)
+bool Op::get_tensor_parameter(TNParameter tnp, DIMParameter dim, int* value) const
 {
   if (tnp >= INPUT_0 && tnp <= INPUT_5)
     return get_input_parameter(tnp, dim, value);
@@ -979,7 +979,7 @@ bool Op::get_tensor_parameter(TNParameter tnp, DIMParameter dim, int* value)
   return false;
 }
 
-bool Op::get_input_parameter(TNParameter tnp, DIMParameter dim, int* value)
+bool Op::get_input_parameter(TNParameter tnp, DIMParameter dim, int* value) const
 {
   int inputIdx = 0, dimIdx = 0;
   assert(tnp <= INPUT_5 && tnp >= INPUT_0);
@@ -1005,7 +1005,7 @@ bool Op::get_input_parameter(TNParameter tnp, DIMParameter dim, int* value)
   return true;
 }
 
-bool Op::get_weight_parameter(TNParameter tnp, DIMParameter dim, int* value)
+bool Op::get_weight_parameter(TNParameter tnp, DIMParameter dim, int* value) const
 {
   int weightIdx = 0, dimIdx = 0;
   assert(tnp <= WEIGHT_5 && tnp >= WEIGHT_0);
@@ -1038,7 +1038,7 @@ OpMeta::OpMeta(FFHandler _handle)
 FFModel::FFModel(FFConfig& _config)
 : op_global_guid(OP_GUID_FIRST_VALID),
   tensor_global_guid(TS_GUID_FIRST_VALID), config(_config),
-  optimizer(NULL), loss_op(NULL), metrics_op(NULL)
+  optimizer(NULL), loss_op(NULL), metrics_op(NULL), simulator(NULL)
 {
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;

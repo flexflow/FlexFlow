@@ -22,16 +22,15 @@ Tensor TensorX::to_tensor(const GraphXfer* xfer) const
     assert(op->mapOp != NULL);
     return op->mapOp->outputs[idx];
   } else {
-    std::multimap<int, std::pair<Op*, int> >::const_iterator it;
-    it = xfer->mappedInputs.find(idx);
+    const auto& it = xfer->mappedInputs.find(idx);
     assert(it != xfer->mappedInputs.end());
-    Op* op = it->second.first;
+    const Op* op = it->second.first;
     int outIdx = it->second.second;
     return op->outputs[outIdx];
   }
 }
 
-bool GraphXfer::can_match(OpX* srcOp, Op* op, Graph* graph)
+bool GraphXfer::can_match(OpX* srcOp, const Op* op, Graph* graph)
 {
   if (srcOp->type != op->op_type) return false;
   // check num input tensors
@@ -79,31 +78,29 @@ bool GraphXfer::can_match(OpX* srcOp, Op* op, Graph* graph)
     }
   }
   // check inputs
-  std::map<int, std::pair<Op*, int> > newMapInputs;
+  std::map<int, std::pair<const Op*, int> > newMapInputs;
   for (size_t i = 0; i < srcOp->inputs.size(); i++) {
     TensorX in = srcOp->inputs[i];
     if (in.op == NULL) {
       // input tensor
-      std::multimap<int, std::pair<Op*, int> >::const_iterator it;
+      std::multimap<int, std::pair<const Op*, int> >::const_iterator it;
       it = mappedInputs.find(in.idx);
       if (it != mappedInputs.end()) {
-        Op* mappedOp = it->second.first;
+        const Op* mappedOp = it->second.first;
         int mappedIdx = it->second.second;
-        if (!(graph->has_edge(mappedOp, op, mappedIdx, i)))
+        if (!(graph->has_edge(mappedOp, op, mappedIdx, i, false/*weight*/)))
           return false;
       } else {
-        std::map<int, std::pair<Op*, int> >::const_iterator newit;
+        std::map<int, std::pair<const Op*, int> >::const_iterator newit;
         newit = newMapInputs.find(in.idx);
         if (newit != newMapInputs.end()) {
-          Op* mappedOp = newit->second.first;
+          const Op* mappedOp = newit->second.first;
           int mappedIdx = newit->second.second;
-          if (!(graph->has_edge(mappedOp, op, mappedIdx, i)))
+          if (!(graph->has_edge(mappedOp, op, mappedIdx, i, false/*weight*/)))
             return false;
         } else {
-          std::set<Edge, EdgeCompare> list = graph->inEdges.find(op)->second;
-          std::set<Edge, EdgeCompare>::const_iterator it2;
-          for (it2 = list.begin(); it2 != list.end(); it2++) {
-            Edge e = *it2;
+          const auto& list = graph->inEdges.find(op)->second;
+          for (const auto& e : list) {
             if (e.dstIdx == (int)i) {
               newMapInputs.insert(std::make_pair(in.idx,
                                       std::make_pair(e.srcOp, e.srcIdx)));
@@ -123,7 +120,53 @@ bool GraphXfer::can_match(OpX* srcOp, Op* op, Graph* graph)
     } else {
       // intermediate tensor
       assert(in.op->mapOp != NULL);
-      if (!(graph->has_edge(in.op->mapOp, op, in.idx, i)))
+      if (!(graph->has_edge(in.op->mapOp, op, in.idx, i, false/*weight*/)))
+        return false;
+    }
+  }
+  // check weights
+  for (size_t i = 0; i < srcOp->weights.size(); i++) {
+    TensorX weight = srcOp->weights[i];
+    if (weight.op == NULL) {
+      // input tensor
+      std::multimap<int, std::pair<const Op*, int> >::const_iterator it;
+      it = mappedInputs.find(weight.idx);
+      if (it != mappedInputs.end()) {
+        const Op* mappedOp = it->second.first;
+        int mappedIdx = it->second.second;
+        if (!(graph->has_edge(mappedOp, op, mappedIdx, i, true/*weight*/)))
+          return false;
+      } else {
+        std::map<int, std::pair<const Op*, int> >::const_iterator newit;
+        newit = newMapInputs.find(weight.idx);
+        if (newit != newMapInputs.end()) {
+          const Op* mappedOp = newit->second.first;
+          int mappedIdx = newit->second.second;
+          if (!(graph->has_edge(mappedOp, op, mappedIdx, i, true/*weight*/)))
+            return false;
+        } else {
+          const auto& list = graph->inEdges.find(op)->second;
+          for (const auto& e : list) {
+            if (e.dstIdx == (int)i) {
+              newMapInputs.insert(std::make_pair(weight.idx,
+                                      std::make_pair(e.srcOp, e.srcIdx)));
+            }
+          }
+        }
+        // Do nothing when we check the match
+        /* mapped in.idx to an op
+        std::set<Edge, EdgeCompare> list = graph->inEdges.find(op)->second;
+        std::set<Edge, EdgeCompare>::const_iterator it2;
+        for (it2 = list.begin(); it2 != list.end(); it2++) {
+          Edge e = *it2;
+          if (e.dstIdx == i)
+            mappedInputs[in.idx] = std::make_pair(e.srcOp, e.srcIdx);
+        }*/
+      }
+    } else {
+      // intermediate tensor
+      assert(weight.op->mapOp != NULL);
+      if (!(graph->has_edge(weight.op->mapOp, op, weight.idx, i, true/*weight*/)))
         return false;
     }
   }
@@ -176,16 +219,14 @@ bool GraphXfer::can_match(OpX* srcOp, Op* op, Graph* graph)
   return true;
 }
 
-void GraphXfer::match(OpX* srcOp, Op* op, Graph* graph)
+void GraphXfer::match(OpX* srcOp, const Op* op, Graph* graph)
 {
   for (size_t i = 0; i < srcOp->inputs.size(); i++) {
     TensorX in = srcOp->inputs[i];
     if (in.op == NULL) {
       // Update mappedInputs
-      std::set<Edge, EdgeCompare> list = graph->inEdges.find(op)->second;
-      std::set<Edge, EdgeCompare>::const_iterator it2;
-      for (it2 = list.begin(); it2 != list.end(); it2++) {
-        Edge e = *it2;
+      const auto& list = graph->inEdges.find(op)->second;
+      for (const auto& e : list) {
         if (e.dstIdx == (int)i) {
           mappedInputs.insert(std::make_pair(in.idx,
                                   std::make_pair(e.srcOp, e.srcIdx)));
@@ -198,13 +239,13 @@ void GraphXfer::match(OpX* srcOp, Op* op, Graph* graph)
   mappedOps[op] = srcOp;
 }
 
-void GraphXfer::unmatch(OpX* srcOp, Op* op, Graph* graph)
+void GraphXfer::unmatch(OpX* srcOp, const Op* op, Graph* graph)
 {
   for (size_t i = 0; i < srcOp->inputs.size(); i++) {
     TensorX in = srcOp->inputs[i];
     if (in.op == NULL) {
       // Update mappedInputsa
-      std::multimap<int, std::pair<Op*, int> >::iterator it;
+      std::multimap<int, std::pair<const Op*, int> >::iterator it;
       it = mappedInputs.find(in.idx);
       mappedInputs.erase(it);
     }
@@ -230,16 +271,14 @@ void GraphXfer::run(int depth, Graph* graph,
       }
     if (!pass) return;
     // Check that output tensors with external edges are mapped
-    std::map<Op*, OpX*, OpCompare>::const_iterator opIt;
-    for (opIt = mappedOps.begin(); opIt != mappedOps.end(); opIt++) {
-      const std::set<Edge, EdgeCompare>& list = graph->outEdges[opIt->first];
-      std::set<Edge, EdgeCompare>::const_iterator it;
-      for (it = list.begin(); it != list.end(); it++)
-        if (mappedOps.find(it->dstOp) == mappedOps.end()) {
+    for (const auto& opIt : mappedOps) {
+      const auto& list = graph->outEdges[opIt.first];
+      for (const auto& e : list)
+        if (mappedOps.find(e.dstOp) == mappedOps.end()) {
           // dstOp is external, (srcOp, srcIdx) must be in mappedOutputs
           TensorX srcTen;
-          srcTen.op = opIt->second;
-          srcTen.idx = it->srcIdx;
+          srcTen.op = opIt.second;
+          srcTen.idx = e.srcIdx;
           if (mappedOutputs.find(srcTen) == mappedOutputs.end()) {
             pass = false;
             return;
@@ -266,12 +305,11 @@ void GraphXfer::run(int depth, Graph* graph,
     }
   } else {
     OpX* srcOp = srcOps[depth];
-    std::map<Op*, std::set<Edge, EdgeCompare>, OpCompare>::const_iterator it;
-    for (it = graph->inEdges.begin(); it != graph->inEdges.end(); it++) {
+    for (const auto& it : graph->inEdges) {
       //printf("can_match(%d)\n", can_match(srcOp, it->first, graph));
-      if (can_match(srcOp, it->first, graph)
-      && (mappedOps.find(it->first) == mappedOps.end())) {
-        Op* op = it->first;
+      if (can_match(srcOp, it.first, graph)
+      && (mappedOps.find(it.first) == mappedOps.end())) {
+        const Op* op = it.first;
         // Check mapOutput
         match(srcOp, op, graph);
         run(depth + 1, graph, candidates, hashmap, threshold, maxNumOps);
@@ -285,50 +323,64 @@ Graph* GraphXfer::create_new_graph(Graph* graph)
 {
   Graph* newGraph = new Graph(model);
   // Step 1: map dst ops
-  std::map<Op*, std::set<Edge, EdgeCompare>, OpCompare>::const_iterator opIt;
   std::vector<OpX*>::const_iterator dstIt;
   // Step 2: add edges to the graph
-  for (opIt = graph->inEdges.begin(); opIt != graph->inEdges.end(); opIt++)
-    if (mappedOps.find(opIt->first) == mappedOps.end()) {
+  for (const auto& opIt : graph->inEdges)
+    if (mappedOps.find(opIt.first) == mappedOps.end()) {
       // Unmapped ops
-      const std::set<Edge, EdgeCompare>& list = opIt->second;
-      std::set<Edge, EdgeCompare>::const_iterator it;
-      for (it = list.begin(); it != list.end(); it++)
-        if (mappedOps.find(it->srcOp) != mappedOps.end()) {
+      const auto& list = opIt.second;
+      for (const auto& it : list)
+        if (mappedOps.find(it.srcOp) != mappedOps.end()) {
           // mapped src -> unmapped dst
           TensorX srcTen;
-          srcTen.op = mappedOps[it->srcOp];
-          srcTen.idx = it->srcIdx;
+          srcTen.op = mappedOps[it.srcOp];
+          srcTen.idx = it.srcIdx;
           assert(mappedOutputs.find(srcTen) != mappedOutputs.end());
           TensorX dstTen = mappedOutputs[srcTen];
-          newGraph->add_edge(dstTen.op->mapOp, it->dstOp, dstTen.idx, it->dstIdx);
+          newGraph->add_edge(dstTen.op->mapOp, it.dstOp, dstTen.idx, it.dstIdx, it.weightEdge);
         } else {
           // unmapped src -> unmmaped dst
-          newGraph->add_edge(it->srcOp, it->dstOp, it->srcIdx, it->dstIdx);
+          newGraph->add_edge(it.srcOp, it.dstOp, it.srcIdx, it.dstIdx, it.weightEdge);
         }
     }
   // Step 3: add edges for mapped ops
   for (dstIt = dstOps.begin(); dstIt != dstOps.end(); dstIt ++) {
     OpX* dstOp = *dstIt;
+    // inputs
     for (size_t i = 0; i < dstOp->inputs.size(); i++)
       if (dstOp->inputs[i].op == NULL) {
         // unmapped src -> mapped dst
-        std::multimap<int, std::pair<Op*, int> >::const_iterator it
+        std::multimap<int, std::pair<const Op*, int> >::const_iterator it
             = mappedInputs.find(dstOp->inputs[i].idx);
         assert(it != mappedInputs.end());
-        std::pair<Op*, int> srcEdge = it->second;
-        newGraph->add_edge(srcEdge.first, dstOp->mapOp, srcEdge.second, i);
+        std::pair<const Op*, int> srcEdge = it->second;
+        newGraph->add_edge(srcEdge.first, dstOp->mapOp, srcEdge.second, i, false);
       } else {
         // mapped src -> mapped dst
         OpX* srcOp = dstOp->inputs[i].op;
         int srcIdx = dstOp->inputs[i].idx;
-        newGraph->add_edge(srcOp->mapOp, dstOp->mapOp, srcIdx, i);
+        newGraph->add_edge(srcOp->mapOp, dstOp->mapOp, srcIdx, i, false);
+      }
+    // weights
+    for (size_t i = 0; i < dstOp->weights.size(); i++)
+      if (dstOp->weights[i].op == NULL) {
+        // unmapped src -> mapped dst
+        std::multimap<int, std::pair<const Op*, int> >::const_iterator it
+            = mappedInputs.find(dstOp->weights[i].idx);
+        assert(it != mappedInputs.end());
+        std::pair<const Op*, int> srcEdge = it->second;
+        newGraph->add_edge(srcEdge.first, dstOp->mapOp, srcEdge.second, i, true);
+      } else {
+        // mapped src -> mapped dst
+        OpX* srcOp = dstOp->weights[i].op;
+        int srcIdx = dstOp->weights[i].idx;
+        newGraph->add_edge(srcOp->mapOp, dstOp->mapOp, srcIdx, i, true);
       }
   }
   return newGraph;
 }
 
-bool GraphXfer::create_new_operator(const OpX* opx, Op*& op)
+bool GraphXfer::create_new_operator(const OpX* opx, const Op*& op)
 {
   Tensor inputs[MAX_NUM_INPUTS], weights[MAX_NUM_WEIGHTS];
   for (size_t i = 0; i < opx->inputs.size(); i++)

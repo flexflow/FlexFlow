@@ -245,10 +245,10 @@ public:
      int numWeights,
      const Tensor* tensors);
   // graph substitution related methods
-  virtual bool get_int_parameter(PMParameter, int*);
-  virtual bool get_tensor_parameter(TNParameter, DIMParameter, int*);
-  virtual bool get_input_parameter(TNParameter, DIMParameter, int*);
-  virtual bool get_weight_parameter(TNParameter, DIMParameter, int*);
+  virtual bool get_int_parameter(PMParameter, int*) const;
+  virtual bool get_tensor_parameter(TNParameter, DIMParameter, int*) const;
+  virtual bool get_input_parameter(TNParameter, DIMParameter, int*) const;
+  virtual bool get_weight_parameter(TNParameter, DIMParameter, int*) const;
   // Pure virtual functions that must be implemented
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
@@ -318,6 +318,7 @@ class Pool2D;
 class Flat;
 class Linear;
 class Embedding;
+class Graph;
 
 class FFModel {
 public:
@@ -553,6 +554,24 @@ public:
       int reduction_degree,
       const char* name = NULL);
   // ========================================
+  // Graph APIs
+  // ========================================
+  float graph_cost(const Graph* graph,
+                   const Op* sink_node,
+                   const MachineView& sink_view,
+                   const Op* source_node,
+                   const MachineView& source_view,
+                   const MachineResource& resources,
+                   bool include_sink_compute_time);
+  size_t dp_state_hash(const Graph* graph,
+                       const Op* sink_node,
+                       const MachineView& sink_view,
+                       const Op* source_node,
+                       const MachineView& source_view,
+                       const MachineResource& resource);
+  bool get_valid_machine_views(const Op* op,
+                               std::vector<MachineView>& valid_views);
+  // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
   void create_disjoint_partition(
@@ -663,6 +682,7 @@ public:
   Optimizer* optimizer;
   Loss* loss_op;
   Metrics* metrics_op;
+  Simulator* simulator;
   Tensor label_tensor;
   //std::vector<Tensor> input_tensors;
 
@@ -670,6 +690,7 @@ public:
   std::vector<Tensor> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
+  std::unordered_map<size_t, float> cached_graph_costs;
   //DataLoader *dataLoader;
 private:
   bool debug;
