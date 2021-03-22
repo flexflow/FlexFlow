@@ -142,7 +142,7 @@ void Replicate::backward(const FFModel& ff)
 bool Replicate::measure_operator_cost(
     Simulator* sim,
     const ParallelConfig& pc,
-    CostMetrics& cost_metrics)
+    CostMetrics& cost_metrics) const
 {
   assert(false);
   return false;

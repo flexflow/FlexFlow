@@ -39,7 +39,7 @@ void NoOp::backward(const FFModel& ff)
 bool NoOp::measure_operator_cost(
     Simulator* sim,
     const ParallelConfig& pc,
-    CostMetrics& cost_metrics)
+    CostMetrics& cost_metrics) const
 {
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;

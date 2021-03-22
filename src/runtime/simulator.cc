@@ -41,7 +41,7 @@ bool ParallelConfig::is_data_parallel() const
   return true;
 }
 
-bool MachineResource::is_valid_view(const MachineView& view) const
+bool MachineResource::is_valid_machine_view(const MachineView& view) const
 {
   // Currently assume start_device_idx == 0
   assert(view.start_device_id == 0);
@@ -310,14 +310,14 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
     std::abort();
 }
 
-CostMetrics Simulator::measure_operator_cost(Op* op, const ParallelConfig& config)
+CostMetrics Simulator::measure_operator_cost(const Op* op, const ParallelConfig& config)
 {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(config.device_type);
   hash = hash * 31 + std::hash<int>()(config.nDims);
   for (int i = 0; i < config.nDims; i++)
     hash = hash * 31 + std::hash<int>()(config.dim[i]);
-  std::map<size_t, CostMetrics>::const_iterator iter =
+  std::unordered_map<size_t, CostMetrics>::const_iterator iter =
     hash_to_operator_cost.find(hash);
   if (iter == hash_to_operator_cost.end()) {
     CostMetrics cost_metrics;
@@ -330,6 +330,54 @@ CostMetrics Simulator::measure_operator_cost(Op* op, const ParallelConfig& confi
   } else {
     return iter->second;
   }
+}
+
+CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& view)
+{
+  size_t hash = 17 * 31 + std::hash<size_t>()(op->op_guid);
+  hash = hash * 31 + std::hash<int>()(view.device_type);
+  // start_device_id does not affect operator_cost
+  //hash = hash * 31 + std::hash<int>()(view.start_device_id);
+  for (int i = 0; i < view.ndims; i++) {
+    hash = hash * 31 + std::hash<int>()(view.dim[i]);
+  }
+  // strides does not affect operator's cost
+  //for (int i = 0; i < view.ndims; i++) {
+  //  hash = hash * 31 + std::hash<int>()(view.stride[i]);
+  //}
+  std::unordered_map<size_t, CostMetrics>::const_iterator iter =
+    hash_to_operator_cost.find(hash);
+  if (iter == hash_to_operator_cost.end()) {
+    CostMetrics cost_metrics;
+    ParallelConfig config;
+    config.device_type = (ParallelConfig::DeviceType) view.device_type;
+    const Tensor output = op->outputs[0];
+    config.nDims = output->num_dims;
+    for (int i = 0; i < config.nDims; i++) {
+      if (output->dims[i].parallel_idx == -1)
+        config.dim[i] = 1;
+      else
+        config.dim[i] = view.dim[output->dims[i].parallel_idx];
+    }
+    bool is_implemented = op->measure_operator_cost(this, config, cost_metrics);
+    if (! is_implemented) {
+      handle_measure_operator_cost_unimplemented(op);
+    }
+    hash_to_operator_cost[hash] = cost_metrics;
+    return cost_metrics;
+  } else {
+    return iter->second;
+  }
+}
+
+float Simulator::estimate_xfer_cost(const Tensor tensor,
+                                    const MachineView& source_view,
+                                    const MachineView& sink_view)
+{
+  // TODO: to be implemented
+  assert(tensor->is_valid_machine_view(source_view));
+  assert(tensor->is_valid_machine_view(sink_view));
+  return 0.0f;
 }
 
 float Simulator::simulate_runtime(const FFModel* model,

@@ -438,7 +438,7 @@ void Concat::backward(const FFModel& ff)
 
 bool Concat::measure_operator_cost(Simulator* sim,
                                    const ParallelConfig& pc,
-                                   CostMetrics& cost_metrics)
+                                   CostMetrics& cost_metrics) const
 {
   assert (numInputs <= MAX_NUM_INPUTS);
   TensorBase sub_inputs[MAX_NUM_INPUTS], sub_output;

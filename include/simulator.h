@@ -350,7 +350,7 @@ public:
   void* allocate(size_t num_elements, DataType type);
   void add_task_dependencies_with_xfer(
       SimTask* src_task, SimTask* dst_task, size_t message_size);
-  CostMetrics measure_operator_cost(Op* op, const ParallelConfig& config);
+  CostMetrics measure_operator_cost(const Op* op, const ParallelConfig& config);
   CostMetrics measure_operator_cost(const Op* op, const MachineView& view);
   float estimate_xfer_cost(const Tensor tensor,
                            const MachineView& source_view,
@@ -377,7 +377,7 @@ public:
   TaskManager* task_manager;
   CompMode computationMode;
   cudaEvent_t start_event, end_event;
-  std::map<size_t, CostMetrics> hash_to_operator_cost;
+  std::unordered_map<size_t, CostMetrics> hash_to_operator_cost;
 public:
   Conv2DMeta* conv2d_meta;
   LinearMeta* linear_meta;

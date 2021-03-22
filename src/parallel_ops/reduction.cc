@@ -110,7 +110,7 @@ void Reduction::backward(const FFModel& ff)
 bool Reduction::measure_operator_cost(
     Simulator* sim,
     const ParallelConfig& pc,
-    CostMetrics& cost_metrics)
+    CostMetrics& cost_metrics) const
 {
   assert(false);
   return false;

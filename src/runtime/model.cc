@@ -334,6 +334,23 @@ bool TensorBase::update_parallel_ids(
   return true;
 }
 
+bool TensorBase::is_valid_machine_view(const MachineView& view) const
+{
+  int is_dim = 0;
+  for (int i = 0; i < num_dims; i++)
+    if (dims[i].parallel_idx != -1) {
+      is_dim++;
+      if (dims[i].parallel_idx > view.ndims)
+        return false;
+      if (view.dim[dims[i].parallel_idx] != dims[i].degree)
+        return false;
+    }
+  if (is_dim == 0) is_dim = 1;
+  if (is_dim != view.ndims)
+    return false;
+  return true;
+}
+
 Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,

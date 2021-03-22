@@ -683,7 +683,7 @@ TopKMeta::TopKMeta(FFHandler handler)
 
 bool TopK::measure_operator_cost(Simulator* sim,
                                  const ParallelConfig& pc,
-                                 CostMetrics& cost_metrics)
+                                 CostMetrics& cost_metrics) const
 {
   // To be implemented
   assert(false);

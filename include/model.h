@@ -214,7 +214,7 @@ protected:
   void inner_measure_operator_cost(Simulator *sim,
                                    std::function<void()> const &forward,
                                    std::function<void()> const &backward,
-                                   CostMetrics& cost_metrics);
+                                   CostMetrics& cost_metrics) const;
   void register_output_input_parallel_dims(
       const Tensor output, int output_dim,
       const Tensor input, int input_dim);
@@ -259,7 +259,7 @@ public:
   virtual void print_layer(const FFModel& model) = 0;
   virtual bool measure_operator_cost(Simulator* sim,
       const ParallelConfig& pc,
-      CostMetrics& cost_metrics) = 0;
+      CostMetrics& cost_metrics) const = 0;
   // Other virtual functions that can be optionally overwritten
   virtual ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   virtual ParallelConfig get_data_parallel_config(const FFModel& ff) const;
@@ -569,8 +569,7 @@ public:
                        const Op* source_node,
                        const MachineView& source_view,
                        const MachineResource& resource);
-  bool get_valid_machine_views(const Op* op,
-                               std::vector<MachineView>& valid_views);
+  std::vector<MachineView>* get_valid_machine_views(const Op* op);
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
@@ -691,6 +690,8 @@ public:
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
   std::unordered_map<size_t, float> cached_graph_costs;
+  std::unordered_map<size_t, std::vector<MachineView>* > cached_operator_valid_views;
+  std::vector<MachineView> all_valid_views;
   //DataLoader *dataLoader;
 private:
   bool debug;
@@ -740,7 +741,7 @@ public:
   void print_layer(const FFModel& model) {assert(0);}
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 };
 
 class ElementBinary : public Op {
@@ -773,7 +774,7 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
   static void forward_kernel(const ElementBinaryMeta* m,
                       const float* in1_ptr,
                       const float* in2_ptr,
@@ -839,7 +840,7 @@ public:
                        size_t num_elements);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
   static bool use_cudnn(OperatorType type);
 private:
   //template<int NDIM>
@@ -905,7 +906,7 @@ public:
                        float* bias_ptr);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 public:
   //Legion::IndexSpaceT<4> task_is;
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
@@ -946,7 +947,7 @@ public:
                               float *input_grad_ptr);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 private:
   //template<int NDIM>
   //void create_input_partition_with_dim(FFModel& model);
@@ -1008,7 +1009,7 @@ public:
                               const float* output_grad_ptr);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 public:
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
@@ -1055,7 +1056,7 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
   static void forward_kernel(BatchNormMeta *m,
                              float const *input_ptr,
                              float *output_ptr,
@@ -1151,7 +1152,7 @@ public:
                        int in_dim, int out_dim, int batch_size);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
   ParallelConfig get_random_parallel_config(const FFModel& ff) const;
 private:
   template<int NDIM>
@@ -1232,7 +1233,7 @@ public:
                        int m, int n, int k, int batch);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 private:
   template<int NDIM>
   void create_input_partition_with_dim(FFModel& model);
@@ -1296,7 +1297,7 @@ public:
                               int outputSize);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 public:
   int num_entries, out_channels;
   AggrMode aggr;
@@ -1335,7 +1336,7 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 public:
   int n;
   float alpha;
@@ -1367,7 +1368,7 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 public:
   int n;
 };
@@ -1404,7 +1405,7 @@ public:
                               size_t num_elements);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
   Legion::Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const;
 public:
 };
@@ -1447,7 +1448,7 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
   static void forward_kernel(const MultiHeadAttentionMeta* m,
                       const float* query_ptr,
                       const float* key_ptr,
@@ -1518,7 +1519,7 @@ public:
                  Legion::Rect<2> const &output) const;
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
   static void forward_kernel(SoftmaxMeta const *m,
                              float const *input_ptr,
                              float *output_ptr);
@@ -1596,7 +1597,7 @@ public:
                               Legion::Domain out_grad_domain);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 private:
   template<int NDIM>
   void create_input_partition_with_dim(FFModel& model);
@@ -1640,7 +1641,7 @@ public:
                               Legion::coord_t input_size);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 private:
   template<int NDIM>
   void create_input_partition_with_dim(FFModel& model);
@@ -1678,7 +1679,7 @@ public:
                               size_t num_elements);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 private:
   template<int IDIM, int ODIM>
   void create_input_partition_with_dim(FFModel& model);
@@ -1715,7 +1716,7 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
   static void forward_kernel(const TopKMeta* m,
                       const float* input_ptr,
                       float* output_ptr,
@@ -1782,7 +1783,7 @@ public:
                               const Legion::Domain* in_grad_domain);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 public:
   int axis;
   //bool profiling;
@@ -1821,7 +1822,7 @@ public:
                              int numOutputs);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 private:
   template<int NDIM>
   void create_input_partition_with_dim(FFModel& model);
@@ -1869,7 +1870,7 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 public:
   FFIterationConfig iter_config;
   int op_num_inputs[MAX_NUM_FUSED_OPERATORS];
@@ -1899,7 +1900,7 @@ public:
   void print_layer(const FFModel& model) {};
   virtual bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) = 0;
+                             CostMetrics& cost_metrics) const = 0;
 public:
   Legion::LogicalPartition input_lp, output_grad_lp;
 };
@@ -1935,7 +1936,7 @@ public:
   bool measure_operator_cost(
       Simulator* sim,
       const ParallelConfig& pc,
-      CostMetrics& cost_metrics);
+      CostMetrics& cost_metrics) const;
 private:
   int combine_dim, combine_degree;
 };
@@ -1971,7 +1972,7 @@ public:
       size_t num_elements);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
 private:
   int repartition_dim, repartition_degree;
 };
@@ -2009,7 +2010,7 @@ public:
   bool measure_operator_cost(
       Simulator* sim,
       const ParallelConfig& pc,
-      CostMetrics& cost_metrics);
+      CostMetrics& cost_metrics) const;
 private:
   int replicate_dim, replicate_degree;
 };
@@ -2046,7 +2047,7 @@ public:
   bool measure_operator_cost(
       Simulator* sim,
       const ParallelConfig& pc,
-      CostMetrics& cost_metrics);
+      CostMetrics& cost_metrics) const;
 private:
   int reduction_dim, reduction_degree;
 };

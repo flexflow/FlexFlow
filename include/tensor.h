@@ -58,6 +58,7 @@ struct TensorBase {
   size_t get_volume() const;
   Legion::Domain get_domain() const;
   bool check_valid() const;
+  bool is_valid_machine_view(const MachineView& view) const;
   void print(const std::string& name) const;
   static bool update_parallel_ids(int numdim, ParallelDim* dims);
   template <typename T>

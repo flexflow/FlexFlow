@@ -22,7 +22,7 @@ using namespace Legion;
 void Op::inner_measure_operator_cost(Simulator *sim,
                                      std::function<void()> const &forward,
                                      std::function<void()> const &backward,
-                                     CostMetrics& cost_metrics)
+                                     CostMetrics& cost_metrics) const
 {
   // measure forward time
   checkCUDA(cudaDeviceSynchronize());

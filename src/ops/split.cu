@@ -292,7 +292,7 @@ void Split::backward(const FFModel& ff)
 
 bool Split::measure_operator_cost(Simulator* sim,
                                   const ParallelConfig& pc,
-                                  CostMetrics& cost_metrics)
+                                  CostMetrics& cost_metrics) const
 {
   //TODO: implement measure_forward
   cost_metrics.forward_time = 0.0f;

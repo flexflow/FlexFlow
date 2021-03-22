@@ -960,7 +960,7 @@ void FusedOp::backward(const FFModel& ff)
 
 bool FusedOp::measure_operator_cost(Simulator* sim,
                                     const ParallelConfig& pc,
-                                    CostMetrics& cost_metrics)
+                                    CostMetrics& cost_metrics) const
 {
   // The search should happen before fusion
   assert(false);

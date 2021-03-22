@@ -932,7 +932,7 @@ LinearMeta::LinearMeta(FFHandler handler, int batch_size)
 
 bool Linear::measure_operator_cost(Simulator* sim,
                                    const ParallelConfig& pc,
-                                   CostMetrics& cost_metrics)
+                                   CostMetrics& cost_metrics) const
 {
   TensorBase sub_output, sub_input;
   if (!outputs[0]->get_output_sub_tensor(pc, sub_output, OP_LINEAR))

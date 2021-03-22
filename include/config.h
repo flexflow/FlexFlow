@@ -60,7 +60,7 @@ struct MachineView {
 };
 
 struct MachineResource {
-  bool is_valid_view(const MachineView& view) const;
+  bool is_valid_machine_view(const MachineView& view) const;
   size_t hash() const;
   int num_nodes;
   int gpus_per_node;

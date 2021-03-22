@@ -16,6 +16,14 @@
 
 const MachineView MachineView::NO_VIEW = MachineView();
 
+MachineView::MachineView()
+: device_type(MachineView::GPU), ndims(0), start_device_id(0)
+{
+  for (int i = 0; i < MAX_TENSOR_DIM; i++) {
+    dim[i] = stride[i] = 0;
+  }
+}
+
 size_t MachineView::hash() const
 {
   size_t ret = 17;
@@ -171,6 +179,22 @@ bool Graph::check_correctness(void)
   return okay;
 }
 
+std::vector<MachineView>* FFModel::get_valid_machine_views(const Op* op)
+{
+  const auto& iter = cached_operator_valid_views.find(op->op_guid);
+  if (iter != cached_operator_valid_views.end()) {
+    return iter->second;
+  } else {
+    std::vector<MachineView>* valid_views = new std::vector<MachineView>();
+    for (size_t i = 0; i < all_valid_views.size(); i++) {
+      if (op->outputs[0]->is_valid_machine_view(all_valid_views[i]))
+        valid_views->push_back(all_valid_views[i]);
+    }
+    cached_operator_valid_views[op->op_guid] = valid_views;
+    return valid_views;
+  }
+}
+
 float FFModel::graph_cost(const Graph* graph,
                           const Op* sink_node,
                           const MachineView& sink_view,
@@ -226,11 +250,10 @@ float FFModel::graph_cost(const Graph* graph,
           }
         }
       }
-      std::vector<MachineView> valid_views;
-      assert(get_valid_machine_views(bn_node, valid_views));
-      for (size_t i = 0; i < valid_views.size(); i++) {
-        MachineView bn_view = valid_views[i];
-        if (!resources.is_valid_view(bn_view)) continue;
+      std::vector<MachineView>* valid_views = get_valid_machine_views(bn_node);
+      for (size_t i = 0; i < valid_views->size(); i++) {
+        MachineView bn_view = (*valid_views)[i];
+        if (!resources.is_valid_machine_view(bn_view)) continue;
         float first_cost = graph_cost(first_graph, bn_node, bn_view,
                                       source_node, source_view, resources, true);
         float second_cost = graph_cost(second_graph, sink_node, sink_view, 
@@ -437,12 +460,11 @@ float Graph::total_cost(void)
   resource.num_nodes = model->config.numNodes;
   resource.cpus_per_node = model->config.cpusPerNode;
   resource.gpus_per_node = model->config.workersPerNode;
-  std::vector<MachineView> valid_views;
-  assert(model->get_valid_machine_views(sink_node, valid_views));
+  std::vector<MachineView>* valid_views = model->get_valid_machine_views(sink_node);
   float total_cost = 1e7;
-  for (size_t i = 0; i < valid_views.size(); i++) {
+  for (size_t i = 0; i < valid_views->size(); i++) {
     total_cost = std::min(total_cost,
-                          model->graph_cost(this, sink_node, valid_views[i],
+                          model->graph_cost(this, sink_node, (*valid_views)[i],
                                             NULL, MachineView::NO_VIEW,
                                             resource, true));
   }
