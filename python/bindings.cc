@@ -120,7 +120,9 @@ PYBIND11_MODULE(flexflow_bindings, m) {
       .def("next_batch", &SingleDataLoader::next_batch);
 
   py::class_<Tensor>(m, "Tensor")
-      .def_property_readonly("dims", [](Tensor &t) { return std::vector<int>(t.adim, &t.adim[t.numDim]); });
+      .def_readonly("data_type", &Tensor::data_type)
+      .def_property_readonly("dims", [](Tensor &t) { std::vector<int> dims(t.adim, &t.adim[t.numDim]); std::reverse(dims.begin(), dims.end()); return dims; })
+      .def_readonly("num_dims", &Tensor::numDim);
 
   py::class_<FFConfig>(m, "FFConfig")
       .def(py::init())
@@ -171,14 +173,15 @@ PYBIND11_MODULE(flexflow_bindings, m) {
       .def("compile", static_cast<void (FFModel::*)(LossType, const std::vector<MetricsType>&, CompMode)>(&FFModel::compile), "loss_type"_a, "metrics"_a, "comp_mode"_a = CompMode::COMP_MODE_TRAINING)
       .def("create_data_loader", &create_data_loader, "batch_tensor"_a, "full_array"_a)
       .def("create_tensor", &create_tensor, "dims"_a, "data_type"_a, "create_grad"_a = true)
+      .def("get_layer_by_id", [](FFModel &m, int id) { return m.layers[id] ; })
       .def("get_perf_metrics", [](FFModel &m) { return m.current_metrics.get_result<PerfMetrics>(); })
       .def("init_layers", &FFModel::init_layers)
       .def("reset_metrics", &FFModel::reset_metrics)
       // Training
       .def("fit", &fit, "x"_a, "y"_a, "epochs"_a = 1)
-      .def("forward", &FFModel::forward)
+      .def("forward", &FFModel::forward, "seq_length"_a = -1)
       .def("zero_gradients", &FFModel::zero_gradients)
-      .def("backward", &FFModel::backward)
+      .def("backward", &FFModel::backward, "seq_length"_a = -1)
       .def("update", &FFModel::update)
       // Arithmetic operators
       .def("exp", &FFModel::exp, "x"_a, "name"_a = nullptr)
