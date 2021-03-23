@@ -109,7 +109,7 @@ bool Graph::has_edge(const Edge& e)
   return (inEdges[e.dstOp].find(e) != inEdges[e.dstOp].end());
 }
 
-void Graph::print(void)
+void Graph::print(void) const
 {
   for (const auto& it : inEdges) {
     if (it.first->op_guid == 0) continue;
@@ -195,6 +195,121 @@ std::vector<MachineView>* FFModel::get_valid_machine_views(const Op* op)
   }
 }
 
+void FFModel::register_machine_views()
+{
+  // Data parallel views
+  for (int i = 1; i <= config.numNodes * config.workersPerNode; i++)
+    if (config.numNodes * config.workersPerNode % i == 0) {
+      MachineView view;
+      view.device_type = MachineView::GPU;
+      view.ndims = 1;
+      view.dim[0] = i;
+      view.stride[0] = 1;
+      view.start_device_id = 0;
+      all_valid_views.push_back(view);
+    }
+}
+
+Op* Graph::find_bottleneck_node(const Op* sink_node,
+                                const Op* source_node,
+                                std::unordered_set<const Op*>& used_nodes) const
+{
+  std::unordered_map<const Op*, int> todos;
+  std::unordered_map<const Op*, size_t> indices;
+  // Need two queues
+  std::vector<const Op*> queue;
+  // Use queue2 to calculate the todos for each operator
+  // Only input_edges are considered
+  {
+    std::vector<const Op*> queue2;
+    std::unordered_set<const Op*> visited;
+    size_t index = 0;
+    queue2.push_back(sink_node);
+    visited.insert(sink_node);
+    while (index < queue2.size()) {
+      const Op* node = queue2[index++];
+      int cnt = 0;
+      const auto& it = inEdges.find(node);
+      if (it != inEdges.end()) {
+        const auto& inList = it->second;
+        for (const auto& e : inList) {
+          // Ignore weight edge
+          if (e.weightEdge) continue;
+          if (e.srcOp == source_node) continue;
+          if (visited.find(e.srcOp) == visited.end()) {
+            visited.insert(e.srcOp);
+            queue2.push_back(e.srcOp);
+          }
+          cnt ++;
+        }
+      }
+      todos[node] = cnt;
+      if (cnt == 0) {
+        queue.push_back(node);
+      }
+    }
+  }
+  size_t index = 0;
+  while (index < queue.size()) {
+    const Op* op = queue[index++];
+    const auto& it = outEdges.find(op);
+    if (it == outEdges.end())
+      continue;
+    const auto& outList = it->second;
+    for (const auto& it2 : outList) {
+      if (it2.weightEdge) continue;
+      todos[it2.dstOp] --;
+      assert(todos[it2.dstOp] >= 0);
+      if (todos[it2.dstOp] == 0) {
+        indices[it2.dstOp] = queue.size();
+        queue.push_back(it2.dstOp);
+      }
+    }
+  }
+  // assert(queue.size() == inEdges.size());
+  // assert that sink_node must be the last one
+  assert(indices[sink_node] == queue.size() - 1);
+  std::vector<bool> available(queue.size(), true);
+  for (const auto& it : inEdges) {
+    const auto& inList = it.second;
+    for (const auto& it2 : inList) {
+      if (indices.find(it2.srcOp) == indices.end()) continue;
+      if (indices.find(it2.dstOp) == indices.end()) continue;
+      size_t start_idx = indices[it2.srcOp];
+      size_t end_idx = indices[it2.dstOp];
+      for (size_t i = start_idx+1; i < end_idx; i++)
+        available[i] = false;
+    }
+  }
+  const Op* bn_node = NULL;
+  for (size_t i = 0; i < queue.size(); i++) {
+    if (!available[i]) continue;
+    if (queue[i]->op_type == OP_INPUT) continue;
+    if (queue[i]->op_type == OP_WEIGHT) continue;
+    bn_node = queue[i];
+    break;
+  }
+  if (bn_node == NULL)
+    return NULL;
+  used_nodes.insert(bn_node);
+  queue.clear();
+  queue.push_back(bn_node);
+  index = 0;
+  while (index < queue.size()) {
+    const Op* op = queue[index++];
+    const auto& it = inEdges.find(op);
+    if (it == inEdges.end()) continue;
+    const auto& inList = it->second;
+    for (const auto& e : inList) {
+      if (used_nodes.find(e.srcOp) == used_nodes.end()) {
+        used_nodes.insert(e.srcOp);
+        queue.push_back(e.srcOp);
+      }
+    }
+  }
+  return (Op*)bn_node;
+}
+
 float FFModel::graph_cost(const Graph* graph,
                           const Op* sink_node,
                           const MachineView& sink_view,
@@ -203,6 +318,13 @@ float FFModel::graph_cost(const Graph* graph,
                           const MachineResource& resources,
                           bool include_sink_compute_time)
 {
+  size_t source_node_guid = 0;
+  if (source_node != NULL)
+    source_node_guid = source_node->op_guid;
+  fprintf(stderr, "[DP] sink(%zu) sink_view(%d %d) source(%zu) source_view(%d %d)\n",
+          sink_node->op_guid, sink_view.ndims, sink_view.dim[0],
+          source_node_guid, source_view.ndims, source_view.dim[0]);
+  graph->print();
   size_t hash = dp_state_hash(graph, sink_node, sink_view,
                               source_node, source_view, resources);
   assert(graph->inEdges.find(sink_node) != graph->inEdges.end());
@@ -234,6 +356,7 @@ float FFModel::graph_cost(const Graph* graph,
     Op* bn_node = graph->find_bottleneck_node(sink_node, source_node, used_nodes);
     if (bn_node != NULL) {
       // We found a bottleneck node
+      fprintf(stderr, " found bn_node = %zu\n", bn_node->op_guid);
       Graph* first_graph = new Graph(this);
       Graph* second_graph = new Graph(this);
       for (const auto& it : graph->inEdges) {
@@ -254,8 +377,11 @@ float FFModel::graph_cost(const Graph* graph,
       for (size_t i = 0; i < valid_views->size(); i++) {
         MachineView bn_view = (*valid_views)[i];
         if (!resources.is_valid_machine_view(bn_view)) continue;
+        fprintf(stderr, "       expore view(%d %d)\n", bn_view.ndims, bn_view.dim[0]);
+        fprintf(stderr, "       First Graph\n");
         float first_cost = graph_cost(first_graph, bn_node, bn_view,
                                       source_node, source_view, resources, true);
+        fprintf(stderr, "       Second Graph\n");
         float second_cost = graph_cost(second_graph, sink_node, sink_view, 
                                        bn_node, bn_view, resources, false);
         if (first_cost + second_cost < cost)
@@ -369,82 +495,6 @@ float FFModel::graph_cost(const Graph* graph,
   return cost;
 }
 
-Op* Graph::find_bottleneck_node(const Op* sink_node,
-                                const Op* source_node,
-                                std::unordered_set<const Op*>& used_nodes) const
-{
-  std::unordered_map<const Op*, int> todos;
-  std::unordered_map<const Op*, size_t> indices;
-  std::vector<const Op*> queue;
-  for (const auto& it : inEdges) {
-    const auto& inList = it.second;
-    int cnt = 0;
-    for (const auto& it2 : inList) {
-      // Ignore weight edge
-      if (it2.weightEdge) continue;
-      if (it2.srcOp != source_node) continue;
-        cnt ++;
-    }
-    todos[it.first] = cnt;
-    if (cnt == 0) {
-      indices[it.first] = queue.size();
-      queue.push_back(it.first);
-    }
-  }
-  size_t index = 0;
-  while (index < queue.size()) {
-    const Op* op = queue[index++];
-    const auto& outList = outEdges.find(op)->second;
-    for (const auto& it2 : outList) {
-      todos[it2.dstOp] --;
-      if (todos[it2.dstOp] == 0) {
-        indices[it2.dstOp] = queue.size();
-        queue.push_back(it2.dstOp);
-      }
-    }
-  }
-  // assert(queue.size() == inEdges.size());
-  // assert that sink_node must be the last one
-  assert(indices[sink_node] == queue.size() - 1);
-  std::vector<bool> available(queue.size(), true);
-  for (const auto& it : inEdges) {
-    const auto& inList = it.second;
-    for (const auto& it2 : inList) {
-      if (indices.find(it2.srcOp) == indices.end()) continue;
-      if (indices.find(it2.dstOp) == indices.end()) continue;
-      size_t start_idx = indices[it2.srcOp];
-      size_t end_idx = indices[it2.dstOp];
-      for (size_t i = start_idx+1; i < end_idx; i++)
-        available[i] = false;
-    }
-  }
-  const Op* bn_node = NULL;
-  for (size_t i = 0; i < queue.size(); i++) {
-    if (!available[i]) continue;
-    if (queue[i]->op_type == OP_INPUT) continue;
-    if (queue[i]->op_type == OP_WEIGHT) continue;
-    bn_node = queue[i];
-    break;
-  }
-  if (bn_node == NULL)
-    return NULL;
-  used_nodes.insert(bn_node);
-  queue.clear();
-  queue.push_back(bn_node);
-  index = 0;
-  while (index < queue.size()) {
-    const Op* op = queue[index++];
-    const auto& inList = inEdges.find(op)->second;
-    for (const auto& it2 : inList) {
-      if (used_nodes.find(it2.srcOp) == used_nodes.end()) {
-        used_nodes.insert(it2.srcOp);
-        queue.push_back(it2.srcOp);
-      }
-    }
-  }
-  return (Op*)bn_node;
-}
-
 float Graph::total_cost(void)
 {
   // Find sink_nodes
@@ -469,6 +519,22 @@ float Graph::total_cost(void)
                                             resource, true));
   }
   return total_cost;
+}
+
+void FFModel::dp_optimize()
+{
+  // Construct graph structure
+  Graph* graph = new Graph(this);
+  for (size_t l = 0; l < layers.size(); l++) {
+    const Op* op = layers[l];
+    for (int j = 0; j < op->numInputs; j++) {
+      graph->add_edge(op->inputs[j]->owner_op, op, op->inputs[j]->owner_idx, j,
+                      false/*weight*/);
+    }
+  }
+  // Run DP
+  float total_cost = graph->total_cost();
+  printf("total_cost = %.4lf\n", total_cost);
 }
 
 size_t Graph::hash(void) const
@@ -498,9 +564,12 @@ size_t FFModel::dp_state_hash(const Graph* graph,
                               const MachineResource& resource)
 {
   size_t key = graph->hash();
-  key = key * 31 + sink_node->op_guid;
+  key = key * 31 + std::hash<size_t>()(sink_node->op_guid);
   key = key * 31 + sink_view.hash();
-  key = key * 31 + source_node->op_guid;
+  if (source_node != NULL)
+    key = key * 31 + std::hash<size_t>()(source_node->op_guid);
+  else
+    key = key * 31 + std::hash<size_t>()(0);
   key = key * 31 + source_view.hash();
   key = key * 31 + resource.hash();
   return key;

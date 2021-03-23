@@ -81,7 +81,7 @@ public:
   bool has_edge(const Edge& e);
   float total_cost();
   size_t hash(void) const;
-  void print(void);
+  void print(void) const;
   bool check_correctness(void);
   bool has_loop(void);
   Op* find_bottleneck_node(const Op* sink_node,

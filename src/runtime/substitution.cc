@@ -128,7 +128,7 @@ bool GraphXfer::can_match(OpX* srcOp, const Op* op, Graph* graph)
   for (size_t i = 0; i < srcOp->weights.size(); i++) {
     TensorX weight = srcOp->weights[i];
     if (weight.op == NULL) {
-      // input tensor
+      // weight tensor
       std::multimap<int, std::pair<const Op*, int> >::const_iterator it;
       it = mappedInputs.find(weight.idx);
       if (it != mappedInputs.end()) {

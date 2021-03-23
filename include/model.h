@@ -570,6 +570,7 @@ public:
                        const MachineView& source_view,
                        const MachineResource& resource);
   std::vector<MachineView>* get_valid_machine_views(const Op* op);
+  void register_machine_views();
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
@@ -645,11 +646,11 @@ public:
                LossType loss_type,
                const std::vector<MetricsType>& metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
-  void optimize(Simulator* simulator,
-                std::map<const Op*, ParallelConfig>& best,
-                size_t budget, float alpha,
-                CompMode comp_mode,
-                bool use_propagation) const;
+  void dp_optimize();
+  void mcmc_optimize(std::map<const Op*, ParallelConfig>& best,
+                     size_t budget, float alpha,
+                     CompMode comp_mode,
+                     bool use_propagation) const;
 #ifdef FF_USE_PROPAGATE
   void propagate(std::map<Op *, ParallelConfig> const &current,
                  std::map<Op *, ParallelConfig> &next) const;

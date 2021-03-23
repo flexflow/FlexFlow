@@ -1059,6 +1059,8 @@ FFModel::FFModel(FFConfig& _config)
 {
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
+  // Register machine views
+  register_machine_views();
   // Load strategy file
   int start_dim = 1, end_dim = 4;
 #if MAX_TENSOR_DIM >= 5
@@ -2620,11 +2622,10 @@ void FFModel::rewrite(const std::map<const Op*, ParallelConfig>& current,
   }
 }
 
-void FFModel::optimize(Simulator* simulator,
-                       std::map<const Op*, ParallelConfig>& best,
-                       size_t budget, float alpha,
-                       CompMode comp_mode,
-                       bool use_propagation) const
+void FFModel::mcmc_optimize(std::map<const Op*, ParallelConfig>& best,
+                            size_t budget, float alpha,
+                            CompMode comp_mode,
+                            bool use_propagation) const
 {
   // Start from data parallel
   std::map<const Op*, ParallelConfig> current, next;
