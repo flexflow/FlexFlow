@@ -1099,3 +1099,21 @@ bool Linear::get_int_parameter(PMParameter para, int* value) const
       return Op::get_int_parameter(para, value);
   }
 }
+
+Linear* FFModel::get_or_create_linear(const Tensor input,
+                                      int out_dim,
+                                      ActiMode activation,
+                                      bool use_bias)
+{
+  size_t hash = input->get_owner_independent_hash();
+  hash = hash * 31 + std::hash<int>()(out_dim);
+  hash = hash * 31 + std::hash<int>()(activation);
+  hash = hash * 31 + std::hash<int>()(use_bias);
+  const auto& it = cached_linear_ops.find(hash);
+  if (it != cached_linear_ops.end()) {
+    return it->second;
+  }
+  Linear* li = new Linear(*this, input, out_dim, activation, use_bias, NULL);
+  cached_linear_ops[hash] = li;
+  return li;
+}

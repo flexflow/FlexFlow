@@ -55,6 +55,7 @@ struct TensorBase {
   bool get_output_sub_tensor(const ParallelConfig& pc,
                              TensorBase& tensor,
                              OperatorType type);
+  size_t get_owner_independent_hash() const;
   size_t get_volume() const;
   size_t get_total_num_parts() const;
   Legion::Domain get_domain() const;

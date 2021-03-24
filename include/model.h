@@ -318,6 +318,8 @@ class Pool2D;
 class Flat;
 class Linear;
 class Embedding;
+class Repartition;
+class Combine;
 class Graph;
 
 class FFModel {
@@ -572,6 +574,19 @@ public:
   std::vector<MachineView>* get_valid_machine_views(const Op* op);
   void register_machine_views();
   // ========================================
+  // Functional APIs
+  // ========================================
+  Linear* get_or_create_linear(const Tensor input,
+                               int out_dim,
+                               ActiMode activation,
+                               bool use_bias);
+  Repartition* get_or_create_repartition(const Tensor input,
+                                         int repartition_dim,
+                                         int repartition_degree);
+  Combine* get_or_create_combine(const Tensor input,
+                                 int combine_dim,
+                                 int combine_degree);
+  // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
   void create_disjoint_partition(
@@ -692,6 +707,10 @@ public:
   Legion::Future current_metrics;
   std::unordered_map<size_t, float> cached_graph_costs;
   std::unordered_map<size_t, std::vector<MachineView>* > cached_operator_valid_views;
+  // Cached operators: key: operator hash, value: operator pointer
+  std::unordered_map<size_t, Linear*> cached_linear_ops;
+  std::unordered_map<size_t, Repartition*> cached_repartition_ops;
+  std::unordered_map<size_t, Combine*> cached_combine_ops;
   std::vector<MachineView> all_valid_views;
   //DataLoader *dataLoader;
 private:

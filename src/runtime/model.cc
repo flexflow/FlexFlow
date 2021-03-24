@@ -245,6 +245,19 @@ bool TensorBase::get_output_sub_tensor(
   return true;
 }
 
+size_t TensorBase::get_owner_independent_hash() const
+{
+  size_t hash = 17 * 31 + std::hash<int>()((int)data_type);
+  hash = hash * 31 + std::hash<int>()((int)sync_type);
+  hash = hash * 31 + std::hash<int>()(num_dims);
+  for (int i = 0; i < num_dims; i++) {
+    hash = hash * 31 + std::hash<int>()(dims[i].size);
+    hash = hash * 31 + std::hash<int>()(dims[i].degree);
+    hash = hash * 31 + std::hash<int>()(dims[i].parallel_idx);
+  }
+  return hash;
+}
+
 size_t TensorBase::get_volume() const
 {
   size_t volume = 1;

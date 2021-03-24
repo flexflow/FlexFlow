@@ -487,8 +487,8 @@ bool GraphXfer::create_new_operator(const OpX* opx, const Op*& op)
       int output_channels, activation;
       assert(opx->get_pm_constraint(PM_OUTPUT_CHANNELS, output_channels));
       assert(opx->get_pm_constraint(PM_ACTI, activation));
-      op = new Linear(*model, inputs[0], output_channels,
-                      (ActiMode)activation, false, NULL);
+      op = model->get_or_create_linear(inputs[0], output_channels,
+                                       (ActiMode)activation, false);
       break;
     }
     case OP_REPARTITION:
@@ -496,8 +496,8 @@ bool GraphXfer::create_new_operator(const OpX* opx, const Op*& op)
       int repartition_dim, repartition_degree;
       assert(opx->get_pm_constraint(PM_REPARTITION_DIM, repartition_dim));
       assert(opx->get_pm_constraint(PM_NUM_PARTITIONS, repartition_degree));
-      op = new Repartition(*model, inputs[0], repartition_dim,
-                           repartition_degree, NULL);
+      op = model->get_or_create_repartition(inputs[0], repartition_dim,
+                                            repartition_degree);
       break;
     }
     case OP_COMBINE:
@@ -505,8 +505,8 @@ bool GraphXfer::create_new_operator(const OpX* opx, const Op*& op)
       int combine_dim, combine_degree;
       assert(opx->get_pm_constraint(PM_COMBINE_DIM, combine_dim));
       assert(opx->get_pm_constraint(PM_NUM_PARTITIONS, combine_degree));
-      op = new Combine(*model, inputs[0], combine_dim,
-                       combine_degree, NULL);
+      op = model->get_or_create_combine(inputs[0], combine_dim,
+                                        combine_degree);
       break;
     }
     default:
