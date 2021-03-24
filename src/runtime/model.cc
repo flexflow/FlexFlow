@@ -17,10 +17,12 @@
 #include "mapper.h"
 #include "test_utils.h"
 #include "dirent.h"
+#include <unordered_set>
+#include "random_utils.h"
 
 using namespace std;
 
-LegionRuntime::Logger::Category log_model("ff");
+LegionRuntime::Logger::Category log_model("Model");
 
 Tensor::Tensor(void)
 {
@@ -440,6 +442,21 @@ Op::Op(FFModel& model,
     meta[i] = NULL;
 }
 
+bool Op::can_inplace_output()
+{
+  return false;
+}
+
+bool Op::has_inplace_output()
+{
+  return false;
+}
+
+void Op::do_inplace_output()
+{
+  assert(false);
+}
+
 Parameter* Op::get_parameter(int index)
 {
   assert(index < numWeights);
@@ -474,10 +491,17 @@ void Op::zero_grad(const FFModel& ff)
 
 ParallelConfig Op::get_data_parallel_config(const FFModel& ff) const
 {
-  int num_parts = ff.config.workersPerNode * ff.config.numNodes;
+  return get_basic_data_parallel_config(
+      ff.config.workersPerNode * ff.config.numNodes,
+      this->get_dimension()
+  );
+}
+
+ParallelConfig get_basic_data_parallel_config(int num_parts, int dims)
+{
   ParallelConfig pc;
   pc.device_type = ParallelConfig::GPU;
-  pc.nDims = outputs[0].numDim;
+  pc.nDims = dims;
   for (int i = 0; i < pc.nDims; i++)
     pc.dim[i] = i == pc.nDims - 1 ? num_parts : 1;
   for (int i = 0; i < num_parts; i++)
@@ -514,6 +538,52 @@ ParallelConfig Op::get_random_parallel_config(const FFModel& ff) const
   for (int i = 0; i < num_parts; i++)
     pc.device_ids[i] = start_idx + i;
   return pc;
+}
+
+int Op::get_dimension() const {
+  return this->outputs[0].numDim;
+}
+
+ParallelConfig ParallelConfig::change_data_parallel_dimensionality(int new_dimensionality) const {
+  ParallelConfig pc = *this;
+  assert (this->is_data_parallel());
+  assert (new_dimensionality <= MAX_TENSOR_DIM);
+  assert (new_dimensionality > 0);
+
+  for (int i = 0; i < new_dimensionality - 1; i++) {
+    pc.dim[i] = 1;
+  }
+  pc.dim[new_dimensionality - 1] = this->dim[this->nDims - 1];
+  pc.nDims = new_dimensionality;
+
+  return pc;
+}
+
+bool Op::is_adoptable_parallel_config(FFModel const &ff, ParallelConfig const &pc) const {
+  if (this->is_valid_parallel_config(ff, pc)) {
+    return true;
+  }
+
+  if (pc.is_data_parallel()) {
+    ParallelConfig adopted_pc = pc.change_data_parallel_dimensionality(this->outputs[0].numDim);
+    if (this->is_valid_parallel_config(ff, adopted_pc)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool Op::is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const
+{
+  // By default only data parallelism is allowed
+  // Check dim match
+  if (pc.nDims != this->get_dimension())
+    return false;
+  for (int i = 0; i < pc.nDims-1; i++)
+    if (pc.dim[i] != 1)
+      return false;
+  return true;
 }
 
 Domain Op::get_output_tensor_shape(const ParallelConfig& pc,
@@ -1341,8 +1411,9 @@ void FFModel::init_layers()
     layers[i]->init(*this);
 }
 
-void FFModel::forward()
+void FFModel::forward(int seq_length)
 {
+  iter_config.seq_length = seq_length;
   for (size_t i = 0; i < layers.size(); i++)
     layers[i]->forward(*this);
 }
@@ -1354,8 +1425,9 @@ void FFModel::compute_metrics()
   metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
 }
 
-void FFModel::backward()
+void FFModel::backward(int seq_length)
 {
+  iter_config.seq_length = seq_length;
   assert(config.computationMode == COMP_MODE_TRAINING);
   // Compute metrics
   Op* final_layer = layers[layers.size()-1];
@@ -1430,6 +1502,8 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
           fused_op = (FusedOp*) layers[i];
         else {
           //created = true;
+          // cannot be an in-place operator
+          if (layers[i]->has_inplace_output()) continue;
           fused_op = new FusedOp(*this, layers[i]);
         }
         if (fused_op->add_operator(*this, layers[l])) {
@@ -1501,6 +1575,38 @@ void FFModel::compile(LossType loss_type,
   // Init performance metrics
   TaskLauncher launcher(UPDATE_METRICS_TASK_ID, TaskArgument(metrics_op, sizeof(Metrics)));
   current_metrics = runtime->execute_task(ctx, launcher);
+
+  // Perform inplace optimizations
+  for (size_t l = 1; l < layers.size(); l++) {
+    if (layers[l]->can_inplace_output()) {
+      // Assume outputs[0] is inplace with inputs[0]
+      assert(layers[l]->numOutputs == 1);
+      if (layers[l]->inputs[0].owner_op != NULL) {
+        int dim1 = layers[l]->outputs[0].numDim;
+        int dim2 = layers[l]->inputs[0].numDim;
+        ParallelConfig pc1, pc2;
+        assert(config.find_parallel_config(dim1, layers[l]->name, pc1));
+        assert(config.find_parallel_config(dim2, layers[l]->inputs[0].owner_op->name, pc2));
+        if (pc1 == pc2) {
+          // Check no others also need layers[l]->inputs[0]
+          bool found = false;
+          for (size_t i = 0; i < layers.size(); i++) {
+            if (i == l) continue;
+            for (int j = 0; j < layers[i]->numInputs; j++) {
+              if ((layers[i]->inputs[j].owner_op == layers[l]->inputs[0].owner_op)
+              &&(layers[i]->inputs[j].owner_idx == layers[l]->inputs[0].owner_idx)) {
+                found = true;
+              }
+            }
+          }
+          if (!found) {
+            // Perform inplace
+            layers[l]->do_inplace_output();
+          }
+        }
+      }
+    }
+  }
 
   for (size_t l = 0; l < layers.size(); l++) {
     Op* op = layers[l];
@@ -1586,27 +1692,32 @@ void FFModel::compile(LossType loss_type,
       }
     }
     fprintf(stderr, "%zu layers after fusion...\n", layers.size());
+    for (size_t i = 0; i < layers.size(); i++) {
+        Op* op = layers[i];
+        printf("layer[%zu]: type(%d)\n", i, layers[i]->op_type);
+        for (int j = 0; j < op->numInputs; j++) {
+          LogicalRegion handle = op->inputs[j].region;
+          printf("inputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
+                            handle.get_field_space().get_id(),
+                            handle.get_tree_id());
+        }
+        for (int j = 0; j < op->numOutputs; j++) {
+          LogicalRegion handle = op->outputs[j].region;
+          printf("outputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
+                            handle.get_field_space().get_id(),
+                            handle.get_tree_id());
+        }
+        for (int j = 0; j < op->numWeights; j++) {
+          LogicalRegion handle = op->weights[j].region;
+          printf("weights[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
+                            handle.get_field_space().get_id(),
+                            handle.get_tree_id());
+        }
+    }
   }
   Op* final_layer = layers[layers.size()-1];
   // FIXME: currently assume the final layer has exactly one output
   assert(final_layer->numOutputs == 1);
-
-  for (size_t i = 0; i < layers.size(); i++) {
-      Op* op = layers[i];
-      printf("layer[%zu]: type(%d)\n", i, layers[i]->op_type);
-      for (int j = 0; j < op->numInputs; j++) {
-        LogicalRegion handle = op->inputs[j].region;
-        printf("inputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
-                          handle.get_field_space().get_id(),
-                          handle.get_tree_id());
-      }
-      for (int j = 0; j < op->numOutputs; j++) {
-        LogicalRegion handle = op->outputs[j].region;
-        printf("outputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
-                          handle.get_field_space().get_id(),
-                          handle.get_tree_id());
-      }
-  }
   //assert(final_layer->outputs[0].numDim == 2);
   int dims[MAX_TENSOR_DIM], num_dims;
   num_dims = final_layer->outputs[0].numDim;
@@ -1684,21 +1795,118 @@ void FFModel::compile(LossType loss_type,
 #endif
 }
 
+struct PropagationEdgeInfo {
+  Op *dstOp;
+  size_t size;
+};
+
+float randf() {
+  return static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+}
+
+void FFModel::propagate(std::map<Op*, ParallelConfig> const &current,
+                        std::map<Op*, ParallelConfig> &next) const {
+  next = current;
+  size_t opId = std::rand() % (layers.size() - 1);
+  //TODO: need to make sure opId is not an output layer of the model
+  assert (opId != layers.size() - 1);
+
+  std::vector<PropagationEdgeInfo> choosable_edges;
+  std::unordered_set<Op *> opsSeen;
+
+  auto bwd_edge_map = this->get_bwd_edge_map();
+
+  Op *selected_op = this->layers[opId];
+  do {
+    opsSeen.insert(selected_op);
+    choosable_edges.clear();
+    for (int i = 0; i < selected_op->numInputs; i++) {
+      auto const &input = selected_op->inputs[i];
+      if (opsSeen.find(input.owner_op) == opsSeen.end()) {
+        PropagationEdgeInfo edgeInfo;
+        edgeInfo.dstOp = selected_op->inputs[i].owner_op;
+        if (edgeInfo.dstOp == NULL) {
+          continue;
+        }
+        if (!edgeInfo.dstOp->is_adoptable_parallel_config(*this, next.at(selected_op))) {
+          continue;
+        }
+        assert(edgeInfo.dstOp != NULL);
+        edgeInfo.size = selected_op->inputs[i].get_volume();
+        choosable_edges.push_back(edgeInfo);
+      }
+    }
+    if (bwd_edge_map.find(selected_op) != bwd_edge_map.end()) {
+      for (auto const &kv : bwd_edge_map.at(selected_op)) {
+        if (opsSeen.find(kv.first) == opsSeen.end()) {
+          PropagationEdgeInfo edgeInfo;
+          edgeInfo.dstOp = kv.first;
+          assert(edgeInfo.dstOp != NULL);
+          if (!edgeInfo.dstOp->is_adoptable_parallel_config(*this, next.at(selected_op))) {
+            continue;
+          }
+          edgeInfo.size = kv.second;
+          choosable_edges.push_back(edgeInfo);
+        }
+      }
+    }
+
+    if (choosable_edges.size() == 0) {
+      break;
+    }
+
+    float avg_edge_size = 0.0f;
+    for (auto const &edge : choosable_edges) {
+      avg_edge_size += edge.size;
+    }
+    avg_edge_size /= choosable_edges.size();
+    std::vector<float> edge_weights;
+    for (auto const &edge : choosable_edges) {
+      edge_weights.push_back(
+          FFModel::PROPAGATION_SIZE_WEIGHT * edge.size
+            + avg_edge_size * (1 - FFModel::PROPAGATION_SIZE_WEIGHT)
+      );
+    }
+    assert (edge_weights.size() == choosable_edges.size());
+    PropagationEdgeInfo chosenEdgeInfo = select_random(choosable_edges, edge_weights);
+
+    auto const &dstOp = chosenEdgeInfo.dstOp;
+    if (next.at(selected_op).is_data_parallel()) {
+      next[dstOp] = next.at(selected_op).change_data_parallel_dimensionality(dstOp->get_dimension());
+      assert (dstOp->is_valid_parallel_config(*this, next.at(dstOp)));
+    }
+    selected_op = chosenEdgeInfo.dstOp;
+  } while (randf() < FFModel::CONTINUE_PROPAGATION_CHANCE);
+}
+
 void FFModel::rewrite(const std::map<Op*, ParallelConfig>& current,
-                      std::map<Op*, ParallelConfig>& next) const
+                      std::map<Op*, ParallelConfig>& next,
+                      bool use_propagation) const
 {
   next = current;
-  size_t opId = std::rand() % layers.size();
-  //TODO: need to make sure opId is not an output layer of the model
-  if (opId == layers.size() - 1)
-    return;
-  next[layers[opId]] = layers[opId]->get_random_parallel_config(*this);
+  float propagate_chance;
+  if (use_propagation) {
+    propagate_chance = FFModel::PROPAGATION_CHANCE;
+  } else {
+    propagate_chance = 0.0f;
+  }
+
+  if (randf() < propagate_chance) {
+    this->propagate(current, next);
+  } else {
+    size_t opId = std::rand() % layers.size();
+    //TODO: need to make sure opId is not an output layer of the model
+    if (opId == layers.size() - 1)
+      return;
+    next[layers[opId]] = layers[opId]->get_random_parallel_config(*this);
+  }
 }
 
 void FFModel::optimize(Simulator* simulator,
                        std::map<Op*, ParallelConfig>& best,
                        size_t budget, float alpha,
-                       CompMode comp_mode) const
+                       CompMode comp_mode,
+                       bool use_propagation) const
 {
   // Start from data parallel
   std::map<Op*, ParallelConfig> current, next;
@@ -1717,7 +1925,7 @@ void FFModel::optimize(Simulator* simulator,
       current_runtime = best_runtime;
       last_reset_iter = iter;
     }
-    rewrite(current, next);
+    rewrite(current, next, use_propagation);
     float next_runtime = simulator->simulate_runtime(this, next, comp_mode);
     if (iter % 1000 == 0) {
       printf("iteration(%zu) current_strategy(%.4lf) best_strategy(%.4lf)\n", iter,
@@ -1813,6 +2021,8 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_CONCAT: return "Concat";
     case OP_SPLIT: return "Split";
     case OP_EMBEDDING: return "Embedding";
+    case OP_GROUP_BY: return "Group_by";
+    case OP_AGGREGATE: return "Aggregate";
     case OP_RESHAPE: return "Reshape";
     case OP_REVERSE: return "Reverse";
     case OP_TRANSPOSE: return "Transpose";
@@ -1858,6 +2068,18 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     default: assert(false && "Not supported Operator type"); return "Unsupported";
   }
 }
+
+std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> FFModel::get_bwd_edge_map() const {
+  std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> bwd_edge_map;
+  for (auto const &layer : this->layers) {
+    for (int i = 0; i < layer->numInputs; i++) {
+      Op *src = layer->inputs[i].owner_op;
+      bwd_edge_map[src].push_back({layer, layer->inputs[i].get_volume()});
+    }
+  }
+
+  return bwd_edge_map;
+};
 
 PerfMetrics FFModel::update_metrics_task(const Task *task,
                                          const std::vector<PhysicalRegion>& regions,
@@ -1946,13 +2168,26 @@ bool DataLoader::shuffle_samples(void)
 #endif
 
 // ========================================================
+// class FFIterationConfig
+// ========================================================
+FFIterationConfig::FFIterationConfig()
+{
+  seq_length = -1;
+}
+
+void FFIterationConfig::reset()
+{
+  seq_length = -1;
+}
+
+// ========================================================
 // class FFConfig
 // ========================================================
 
 // Default Config Parameters
 struct DefaultConfig {
   const static int epochs = 1;
-  const static int iterations = 1;
+  //const static int iterations = 1;
   const static int batchSize = 64;
   const static bool profiling = false;
   constexpr static float learningRate = 0.01f;
@@ -1969,12 +2204,15 @@ struct DefaultConfig {
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
   const static bool allowTensorOpMathConversion = false;
+  const static int machine_model_version = 0;
+  const static int simulator_segment_size = 16777216; // 16 MB
+  const static int simulator_max_num_segments = 1;
 };
 
 FFConfig::FFConfig()
 {
   epochs = DefaultConfig::epochs;
-  iterations = DefaultConfig::iterations;
+  //iterations = DefaultConfig::iterations;
   batchSize = DefaultConfig::batchSize;
   profiling = DefaultConfig::profiling;
   learningRate = DefaultConfig::learningRate;
@@ -1992,7 +2230,10 @@ FFConfig::FFConfig()
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
   allow_tensor_op_math_conversion = DefaultConfig::allowTensorOpMathConversion;
-
+  machine_model_version = DefaultConfig::machine_model_version;
+  simulator_segment_size = DefaultConfig::simulator_segment_size;
+  simulator_max_num_segments = DefaultConfig::simulator_max_num_segments;
+  machine_model_file = "";
   import_strategy_file = "";
   export_strategy_file = "";
   export_strategy_task_graph_file = "";
@@ -2022,10 +2263,10 @@ void FFConfig::parse_args(char **argv, int argc)
       epochs = atoi(argv[++i]);
       continue;
     }
-    if ((!strcmp(argv[i], "-i")) || (!strcmp(argv[i], "--iterations"))) {
-      iterations = atoi(argv[++i]);
-      continue;
-    }
+    //if ((!strcmp(argv[i], "-i")) || (!strcmp(argv[i], "--iterations"))) {
+    //  iterations = atoi(argv[++i]);
+    //  continue;
+    //}
     if ((!strcmp(argv[i], "-b")) || (!strcmp(argv[i], "--batch-size"))) {
       batchSize = atoi(argv[++i]);
       continue;
@@ -2114,10 +2355,30 @@ void FFConfig::parse_args(char **argv, int argc)
       export_strategy_task_graph_file = std::string(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--machine-model-version")) {
+      machine_model_version = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--machine-model-file")) {
+      machine_model_file = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--simulator-segment-size")) {
+      simulator_segment_size = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--simulator-max-num-segments")) {
+      simulator_max_num_segments = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--enable-propagation")) {
+      enable_propagation = true;
+      continue;
+    }
   }
 }
 
-void register_internal_tasks()
+void register_flexflow_internal_tasks()
 {
   // CNN_INIT_TASK
   {
@@ -2259,6 +2520,53 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<Embedding::backward_task_cpu>(
         registrar, "Embedding Backward Task");
   }*/
+
+  // Group by task CPU
+  {
+    TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "Group_by Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Group_by::init_task>(
+        registrar, "Group_by Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(GROUP_BY_FWD_TASK_ID, "Group_by Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Group_by::forward_task>(
+        registrar, "Group_by Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(GROUP_BY_BWD_TASK_ID, "Group_by Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Group_by::backward_task>(
+        registrar, "Group_by Backward Task");
+  }
+
+  // Aggregate task CPU
+  {
+    TaskVariantRegistrar registrar(AGGREGATE_INIT_TASK_ID, "Aggregate Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Aggregate::init_task>(
+        registrar, "Aggregate Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(AGGREGATE_FWD_TASK_ID, "Aggregate Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Aggregate::forward_task>(
+        registrar, "Aggregate Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(AGGREGATE_BWD_TASK_ID, "Aggregate Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Aggregate::backward_task>(
+        registrar, "Aggregate Backward Task");
+  }
+
   // Pool2D task
   {
     TaskVariantRegistrar registrar(POOL2D_INIT_TASK_ID, "pool2d_init_task");
@@ -2288,13 +2596,6 @@ void register_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta*, BatchNorm::init_task>(
         registrar, "bn_init_task");
-  }
-  {
-    TaskVariantRegistrar registrar(BATCHNORM_INIT_PARA_TASK_ID, "bm_init_para_task");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<BatchNorm::init_para_task>(
-        registrar, "bm_init_para_task");
   }
   {
     TaskVariantRegistrar registrar(BATCHNORM_FWD_TASK_ID, "bn_fwd_task");
@@ -2743,47 +3044,6 @@ void register_internal_tasks()
     Runtime::preregister_task_variant<UtilityTasks::dummy_task>(registrar, "Weights Prefetch Task");
   }
 }
-
-#if !defined(FF_USE_PYTHON)
-// ========================================================
-// Task and mapper registrations
-// ========================================================
-int main(int argc, char** argv)
-{
-  // This needs to be set, otherwise NCCL will try to use group kernel launches,
-  // which are not compatible with the Realm CUDA hijack.
-  setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
-
-  Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
-  {
-    TaskVariantRegistrar registrar(TOP_LEVEL_TASK_ID, "top_level");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_replicable();
-    Runtime::preregister_task_variant<top_level_task>(registrar, "top_level");
-  }
-
-  register_internal_tasks();
-
-  // Register custom tasks
-  register_custom_tasks();
-
-  FFMapper::register_sharding_functor(argc, argv);
-
-  Runtime::add_registration_callback(update_mappers);
-  return Runtime::start(argc, argv);
-}
-
-#else
-void register_flexflow_tasks(int argc, char **argv)
-{
-  register_internal_tasks();
-
-  register_c_custom_tasks();
-
-  FFMapper::register_sharding_functor(argc, argv);
-}
-
-#endif // FF_USE_PYTHON
 
 // template instantiations
 #define DIMFUNC(DIM) \

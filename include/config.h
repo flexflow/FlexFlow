@@ -63,6 +63,7 @@ struct ParallelConfig {
   }
   int num_parts() const;
   bool is_data_parallel() const;
+  ParallelConfig change_data_parallel_dimensionality(int new_dimensionality) const;
   DeviceType device_type;
   int nDims, dim[MAX_TENSOR_DIM];
   int device_ids[MAX_NUM_WORKERS];
@@ -119,7 +120,7 @@ public:
                             const std::string& pcname,
                             ParallelConfig& config) const;
 public:
-  int epochs, batchSize, iterations, printFreq;
+  int epochs, batchSize, printFreq;
   //int inputHeight, inputWidth;
   int numNodes, cpusPerNode, workersPerNode;
   float learningRate, weightDecay;
@@ -145,6 +146,18 @@ public:
   std::string export_strategy_file;
   // We use MappingTagID as the key since we will pass the tag to the mapper
   std::map<MappingTagID, ParallelConfig> strategies;
+  int machine_model_version;
+  std::string machine_model_file;
+  int simulator_segment_size;
+  int simulator_max_num_segments;
+  bool enable_propagation;
+};
+
+class FFIterationConfig {
+public:
+  FFIterationConfig();
+  void reset();
+  int seq_length;
 };
 
 struct ParaConfigCompare {

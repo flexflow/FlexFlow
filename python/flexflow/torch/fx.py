@@ -315,7 +315,7 @@ def torch_to_flexflow_str(model):
       elif function_name.find('transpose') >= 0:
         op_str = parse_inoutedge(op_str,(node.inedges[0],), node.outedges)
         op_str = parse_transpose(op_str, node) 
-
+        
       else:
         # Unrecogonized type
         assert False, "Unrecogonized built-in function: {}".format(function_name)

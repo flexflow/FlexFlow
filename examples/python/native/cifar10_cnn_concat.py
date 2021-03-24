@@ -7,11 +7,10 @@ def top_level_task():
   ffconfig = FFConfig()
   alexnetconfig = NetConfig()
   print(alexnetconfig.dataset_path)
-  ffconfig.parse_args()
-  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
+  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
 
-  dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
+  dims_input = [ffconfig.batch_size, 3, 32, 32]
   input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
   t1 = ffmodel.conv2d(input_tensor, 32, 3, 3, 1, 1, 1, 1, ActiMode.AC_MODE_RELU)
@@ -33,9 +32,9 @@ def top_level_task():
   t = ffmodel.softmax(t)
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
-  ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.optimizer = ffoptimizer
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
-  label_tensor = ffmodel.get_label_tensor()
+  label_tensor = ffmodel.label_tensor
 
   num_samples = 10000
 
@@ -49,26 +48,14 @@ def top_level_task():
   y_train = y_train.astype('int32')
   full_label_array = y_train
 
-  dims_full_input = [num_samples, 3, 32, 32]
-  full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
+  dataloader_input = ffmodel.create_data_loader(input_tensor, full_input_array)
+  dataloader_label = ffmodel.create_data_loader(label_tensor, full_label_array)
 
-  dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor(dims_full_label, DataType.DT_INT32)
-
-  full_input.attach_numpy_array(ffconfig, full_input_array)
-  full_label.attach_numpy_array(ffconfig, full_label_array)
-
-  dataloader_input = SingleDataLoader(ffmodel, input_tensor, full_input, num_samples, DataType.DT_FLOAT)
-  dataloader_label = SingleDataLoader(ffmodel, label_tensor, full_label, num_samples, DataType.DT_INT32)
-
-  full_input.detach_numpy_array(ffconfig)
-  full_label.detach_numpy_array(ffconfig)
-
-  num_samples = dataloader_input.get_num_samples()
+  num_samples = dataloader_input.num_samples
 
   ffmodel.init_layers()
 
-  epochs = ffconfig.get_epochs()
+  epochs = ffconfig.epochs
 
   ts_start = ffconfig.get_current_time()
 

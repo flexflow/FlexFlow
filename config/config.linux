@@ -13,28 +13,31 @@ echo " Defaults for Linux machine"
 #LD_FLAGS=${LD_FLAGS+=""}
 
 # set build type
-#BUILD_TYPE=Debug
+BUILD_TYPE=Debug
 
-# set CUDA Arch
-CUDA_ARCH=60
+# set CUDA Arch, replace xx with your GPU architecture
+#FF_CUDA_ARCH=xx
 
-# set CUDNN dir
-CUDNN_DIR=/scratch/shared/wwu12/cudnn
+# set CUDNN dir in case cmake cannot autodetect a path
+CUDNN_DIR=/usr/local/cuda
+
+# set CUDA dir in case cmake cannot autodetect a path
+#CUDA_DIR=/usr/local/cuda
 
 # enable Python
-USE_PYTHON=ON
+FF_USE_PYTHON=ON
+
+# enable NCCL
+FF_USE_NCCL=OFF
 
 # enable GASNet
-# USE_GASNET=ON
+FF_USE_GASNET=OFF
+
+# build C++ examples
+FF_BUILD_EXAMPLES=OFF
 
 # set MAX_DIM
-MAX_DIM=4
-
-# set Legion dir, if not set, FlexFlow will use the default Legion in the repo
-LEGION_DIR=/home/wwu12/flexflow-tpl/build/legion/install
-
-# set Protobuf dir, if not set, FlexFlow will use the default Protobuf in the repo
-PROTOBUF_DIR=/home/wwu12/flexflow-tpl/build/protobuf/install
+FF_MAX_DIM=4
 
 . $(dirname $0)/config.inc
 run_cmake $*

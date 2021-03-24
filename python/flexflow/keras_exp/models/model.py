@@ -36,8 +36,7 @@ tracing_id = 100
 class BaseModel(object):
   def __init__(self, inputs, onnx_model):
     self._ffconfig = ff.FFConfig()
-    self._ffconfig.parse_args()
-    print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.get_batch_size(), self._ffconfig.get_workers_per_node(), self._ffconfig.get_num_nodes()))
+    print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.batch_size, self._ffconfig.workers_per_node, self._ffconfig.num_nodes))
     self._ffmodel = None
     self._onnx_model = onnx_model
     
@@ -62,8 +61,6 @@ class BaseModel(object):
     self._label_type = ff.DataType.DT_FLOAT
     self._my_onnx_model = None
     self._output_tensor = None
-    self._full_input_tensors = []
-    self._full_label_tensor = 0
     self._num_samples = 0
     self._input_dataloaders = []
     self._input_dataloaders_dim = []
@@ -173,7 +170,7 @@ class BaseModel(object):
           workers=1,
           use_multiprocessing=False):
     if batch_size != None:
-      assert self._ffconfig.get_batch_size() == batch_size, "batch size is not correct use -b to set it"
+      assert self._ffconfig.batch_size == batch_size, "batch size is not correct use -b to set it"
     if validation_split != 0.0:
       assert 0, "validation_split is not supported"
     if validation_data != None:
@@ -213,8 +210,8 @@ class BaseModel(object):
     self._train(epochs, callbacks, eval=False)
 
   def _create_label_tensor(self):
-    label_ffhandle = self._ffmodel.get_label_tensor()
-    self._label_tensor = Tensor(ffconfig=self._ffconfig, batch_shape=(self._ffconfig.get_batch_size(), 1), dtype=self._label_type)
+    label_ffhandle = self._ffmodel.label_tensor
+    self._label_tensor = Tensor(ffconfig=self._ffconfig, batch_shape=(self._ffconfig.batch_size, 1), dtype=self._label_type)
     self._label_tensor.ffhandle = label_ffhandle
 
   def _create_input_tensors(self):
@@ -254,31 +251,6 @@ class BaseModel(object):
       assert np_shape[i] == self._label_tensor.batch_shape[i], "check label dims"
     assert label_array.dtype == self._label_tensor.dtype_str
     
-  def __create_single_data_loader(self, batch_tensor, full_array):
-    array_shape = full_array.shape
-    num_dim = len(array_shape)
-    print("dataloader type:", full_array.dtype)
-    if (full_array.dtype == "float32"):
-      datatype = ff.DataType.DT_FLOAT
-    elif (full_array.dtype == "int32"):
-      datatype = ff.DataType.DT_INT32
-    else:
-      assert 0, "unsupported datatype"
-
-    if (num_dim == 2):
-      full_tensor = Tensor(ffconfig=self._ffconfig, batch_shape=[self._num_samples, array_shape[1]], dtype=datatype)
-    elif (num_dim == 4):
-      full_tensor = Tensor(ffconfig=self._ffconfig, batch_shape=[self._num_samples, array_shape[1], array_shape[2], array_shape[3]], dtype=datatype)
-    else:
-      assert 0, "unsupported dims"
-
-    full_tensor.create_ff_tensor(self._ffmodel)
-    full_tensor.ffhandle.attach_numpy_array(self._ffconfig, full_array)
-    dataloader = ff.SingleDataLoader(self._ffmodel, batch_tensor.ffhandle, full_tensor.ffhandle, self._num_samples, datatype)
-    full_tensor.ffhandle.detach_numpy_array(self._ffconfig)
-
-    return full_tensor, dataloader
-
   def _create_data_loaders(self, x_trains, y_train):
     # Todo: check all num_samples, should be the same
     input_shape = x_trains[0].shape
@@ -289,13 +261,11 @@ class BaseModel(object):
 
     idx = 0
     for x_train in x_trains:
-      full_tensor, dataloader = self.__create_single_data_loader(self._input_tensors[idx], x_train)
-      self._full_input_tensors.append(full_tensor)
+      dataloader = self._ffmodel.create_data_loader(self._input_tensors[idx].ffhandle, x_train)
       self._input_dataloaders.append(dataloader)
       self._input_dataloaders_dim.append(len(input_shape))
       idx += 1
-    full_tensor, dataloader = self.__create_single_data_loader(self._label_tensor, y_train)
-    self.__full_label_tensor = full_tensor
+    dataloader = self._ffmodel.create_data_loader(self._label_tensor.ffhandle, y_train)
     self._label_dataloader = dataloader
     self._label_dataloader_dim = len(input_shape)
 
@@ -321,7 +291,7 @@ class BaseModel(object):
         dataloader.reset()
       self._label_dataloader.reset()
       self._ffmodel.reset_metrics()
-      iterations = self._num_samples / self._ffconfig.get_batch_size()
+      iterations = self._num_samples / self._ffconfig.batch_size
 
       for iter in range(0, int(iterations)):
         if callbacks != None:

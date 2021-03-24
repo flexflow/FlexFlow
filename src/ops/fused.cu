@@ -106,7 +106,7 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
         break;
       }
     for (int j = 0; j < output_offset; j++)
-      if (outputs[j].region == op->inputs[i].region) {
+      if ((outputs[j].region == op->inputs[i].region)&&(!found)) {
         // This input is one of my outputs
         assert(!found);
         assert(outputs[j].region != LogicalRegion::NO_REGION);
@@ -151,6 +151,16 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
   }
   // Set outputs
   for (int i = 0; i < op->numOutputs; i++) {
+    bool found = false;
+    for (int j = 0; j < numOutputs; j++) {
+      if (outputs[j].region == op->outputs[i].region) {
+        assert(!found);
+        found = true;
+        op_output_source[output_offset+i] = SOURCE_OUTPUT;
+        op_output_idx[output_offset+i] = j;
+      }
+    }
+    if (found) continue;
     outputs[numOutputs] = op->outputs[i];
     outputs[numOutputs].owner_op = this;
     outputs[numOutputs].owner_idx = numOutputs;
@@ -388,6 +398,14 @@ void FusedOp::forward_task(const Task* task,
         BatchNorm::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1]);
         break;
       }
+      case OP_DROPOUT:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        DropoutMeta* m = (DropoutMeta*) metas->meta[op];
+        Dropout::forward_kernel(m, my_ip[0], my_op[0]);
+        break;
+      }
       case OP_LINEAR:
       {
         assert(fused->op_num_inputs[op] == 1);
@@ -430,7 +448,8 @@ void FusedOp::forward_task(const Task* task,
         }
         BatchMatmulMeta* meta = (BatchMatmulMeta*) metas->meta[op];
         BatchMatmul::forward_kernel(meta, my_op[0], my_ip[0], my_ip[1], NULL,
-          m, n, k, batch);
+          m, n, k, batch, meta->a_seq_length_dim, meta->b_seq_length_dim,
+          fused->iter_config.seq_length);
         break;
       }
       case OP_EW_ADD:
@@ -514,6 +533,8 @@ void FusedOp::forward_task(const Task* task,
 
 void FusedOp::forward(const FFModel& ff)
 {
+  // Set iter_config
+  iter_config = ff.iter_config;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -758,6 +779,14 @@ void FusedOp::backward_task(const Task* task,
             my_od[0].get_volume());
         break;
       }
+      case OP_DROPOUT:
+      {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        DropoutMeta* m = (DropoutMeta*) metas->meta[op];
+        Dropout::backward_kernel(m, my_grad_op[0], my_grad_ip[0]);
+        break;
+      }
       case OP_LINEAR:
       {
         assert(fused->op_num_inputs[op] == 1);
@@ -892,6 +921,8 @@ void FusedOp::backward_task(const Task* task,
 
 void FusedOp::backward(const FFModel& ff)
 {
+  // Set iter_config
+  iter_config = ff.iter_config;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;

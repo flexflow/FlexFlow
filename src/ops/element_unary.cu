@@ -18,9 +18,10 @@
 
 Tensor FFModel::unary(OperatorType op,
                       const Tensor& x,
+                      bool inplace,
                       const char *name)
 {
-  ElementUnary *ele = new ElementUnary(*this, op, x, name);
+  ElementUnary *ele = new ElementUnary(*this, op, x, inplace, name);
   layers.push_back(ele);
   return ele->outputs[0];
 }
@@ -28,38 +29,56 @@ Tensor FFModel::unary(OperatorType op,
 Tensor FFModel::exp(const Tensor& x,
                     const char *name)
 {
-  return this->unary(OP_EXP, x, name);
+  return this->unary(OP_EXP, x, false/*inplace*/, name);
 }
 
-Tensor FFModel::relu(const Tensor& x, const char *name)
+Tensor FFModel::relu(const Tensor& x, bool inplace, const char *name)
 {
-  return this->unary(OP_RELU, x, name);
+  return this->unary(OP_RELU, x, inplace, name);
 }
 
 Tensor FFModel::sigmoid(const Tensor& x, const char *name)
 {
-  return this->unary(OP_SIGMOID, x, name);
+  return this->unary(OP_SIGMOID, x, false/*inplace*/, name);
 }
 
 Tensor FFModel::tanh(const Tensor& x, const char *name)
 {
-  return this->unary(OP_TANH, x, name);
+  return this->unary(OP_TANH, x, false/*inplace*/, name);
 }
 
-Tensor FFModel::elu(const Tensor& x, const char *name)
+Tensor FFModel::elu(const Tensor& x, bool inplace, const char *name)
 {
-  return this->unary(OP_ELU, x, name);
+  // Currently assume inplace is false
+  assert(!inplace);
+  return this->unary(OP_ELU, x, inplace, name);
 }
 
 ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
                            const Tensor& x,
+                           bool _inplace,
                            const char* name)
-: Op(model, _op_type, name, x)
+: Op(model, _op_type, name, x), inplace(_inplace)
 {
   outputs[0].numDim = inputs[0].numDim;
   for (int i = 0; i < outputs[0].numDim; i++)
     outputs[0].adim[i] = inputs[0].adim[i];
+}
+
+bool ElementUnary::can_inplace_output(void)
+{
+  return true;
+}
+
+bool ElementUnary::has_inplace_output(void)
+{
+  return inplace;
+}
+
+void ElementUnary::do_inplace_output(void)
+{
+  inplace = true;
 }
 
 bool ElementUnary::use_cudnn(OperatorType type)
@@ -109,15 +128,24 @@ void ElementUnary::create_output_and_partition_with_dim(FFModel& model)
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
+      ctx, inputs[0].part.get_index_partition());
+  if (inplace) {
+    // output reuse input tensor
+    outputs[0] = inputs[0];
+    outputs[0].owner_op = this;
+    outputs[0].owner_idx = 0;
+    assert(input_rect == part_rect && "Inplace require the same partitioning");
+    input_lps[0] = inputs[0].part;
+    input_grad_lps[0] = inputs[0].part_grad;
+    return; 
+  }
   int dims[NDIM];
   for (int i = 0; i < NDIM; i++)
     dims[i] = inputs[0].adim[NDIM-1-i];
   outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
   outputs[0].owner_op = this;
   outputs[0].owner_idx = 0;
-  Rect<NDIM> input_rect;
-  input_rect = runtime->get_index_partition_color_space(
-        ctx, inputs[0].part.get_index_partition());
   if (input_rect == part_rect) {
     input_lps[0] = inputs[0].part;
     input_grad_lps[0] = inputs[0].part_grad;
@@ -131,13 +159,20 @@ OpMeta* ElementUnary::init_task(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
                                 Context ctx, Runtime *runtime)
 {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
   ElementUnary* eu = (ElementUnary*) task->args;
   FFHandler handle = *((FFHandler*) task->local_args);
   ElementUnaryMeta* m = new ElementUnaryMeta(handle);
   m->op_type = eu->op_type;
   m->profiling = eu->profiling;
+  m->inplace = eu->inplace;
+  if (m->inplace) {
+    assert(regions.size() == 1);
+    assert(task->regions.size() == 1);
+  } else {
+    assert(regions.size() == 2);
+    assert(task->regions.size() == 2);
+  }
+
   if (use_cudnn(m->op_type))
   {
     cudnnActivationMode_t mode;
@@ -161,11 +196,8 @@ OpMeta* ElementUnary::init_task(const Task *task,
                                             CUDNN_PROPAGATE_NAN, 0.0));
     Domain input_domain = runtime->get_index_space_domain(
         ctx, task->regions[0].region.get_index_space());
-    Domain output_domain = runtime->get_index_space_domain(
-        ctx, task->regions[1].region.get_index_space());
-
     checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
-    checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
+      checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, input_domain));
   }
   return m;
 }
@@ -201,13 +233,15 @@ void ElementUnary::init(const FFModel& ff)
                               Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                               FFConfig::get_hash_id(std::string(name)));
   init_launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0].region));
+    RegionRequirement(input_lps[0], 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, inputs[0].region));
   init_launcher.add_field(0, FID_DATA);
-  init_launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
-  init_launcher.add_field(1, FID_DATA);
+  if (!inplace) {
+    init_launcher.add_region_requirement(
+        RegionRequirement(outputs[0].part, 0/*projection id*/,
+            WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    init_launcher.add_field(1, FID_DATA);
+  }
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
   switch (domain.get_dim()) {
@@ -276,27 +310,35 @@ void ElementUnary::forward_task(const Task* task,
                                 const std::vector<PhysicalRegion> &regions,
                                 Context ctx, Runtime* runtime)
 {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
   //const ElementUnary* ele = (const ElementUnary*) task->args;
   const ElementUnaryMeta* m = *((ElementUnaryMeta**) task->local_args);
   Domain input_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
-  Domain output_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
-  assert(output_domain == input_domain);
-
-  const float* input_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* output_ptr = helperGetTensorPointerWO<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-
+  const float* input_ptr = NULL;
+  float* output_ptr = NULL;
+  if (m->inplace) {
+    assert(regions.size() == 1);
+    assert(task->regions.size() == 1);
+    output_ptr = helperGetTensorPointerRW<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    input_ptr = output_ptr;
+  } else {
+    assert(regions.size() == 2);
+    assert(task->regions.size() == 2);
+    Domain output_domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+    assert(output_domain == input_domain);
+    input_ptr = helperGetTensorPointerRO<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    output_ptr = helperGetTensorPointerWO<float>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  forward_kernel(m, input_ptr, output_ptr, output_domain.get_volume());
+  forward_kernel(m, input_ptr, output_ptr, input_domain.get_volume());
 }
 
 void ElementUnary::forward(const FFModel& ff)
@@ -323,17 +365,26 @@ void ElementUnary::forward(const FFModel& ff)
       assert(false);
   }
   IndexLauncher launcher(ELEMENTUNARY_FWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
-  launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
-  launcher.add_field(1, FID_DATA);
+      TaskArgument(NULL, 0), argmap,
+      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+      FFConfig::get_hash_id(std::string(name)));
+  if (inplace) {
+    assert(outputs[0].part == input_lps[0]);
+    assert(outputs[0].region == inputs[0].region);
+    launcher.add_region_requirement(
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+        READ_WRITE, EXCLUSIVE, outputs[0].region));
+    launcher.add_field(0, FID_DATA);
+  } else {
+    launcher.add_region_requirement(
+      RegionRequirement(input_lps[0], 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, inputs[0].region));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+         WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    launcher.add_field(1, FID_DATA);
+  }
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -391,30 +442,45 @@ void ElementUnary::backward_task(const Task* task,
                                  const std::vector<PhysicalRegion> &regions,
                                  Context ctx, Runtime* runtime)
 {
-  assert(regions.size() == 4);
-  assert(task->regions.size() == 4);
   //const ElementUnary* ele = (const ElementUnary*) task->args;
   const ElementUnaryMeta* m = *((ElementUnaryMeta**) task->local_args);
+  const float* input_ptr = NULL, *output_ptr = NULL, *output_grad_ptr = NULL;
+  float* input_grad_ptr = NULL;
   Domain input_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
-  Domain input_grad_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
-  Domain output_domain = runtime->get_index_space_domain(
-    ctx, task->regions[2].region.get_index_space());
-  Domain output_grad_domain = runtime->get_index_space_domain(
-    ctx, task->regions[3].region.get_index_space());
-  assert(output_grad_domain == input_domain);
-  assert(output_grad_domain == output_domain);
-  assert(output_grad_domain == input_grad_domain);
-
-  const float* input_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* input_grad_ptr = helperGetTensorPointerRW<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  const float* output_ptr = helperGetTensorPointerRO<float>(
-    regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  const float* output_grad_ptr = helperGetTensorPointerRO<float>(
-    regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  if (m->inplace) {
+    assert(regions.size() == 2);
+    assert(task->regions.size() == 2);
+    Domain input_grad_domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+    assert(input_grad_domain == input_domain);
+    input_ptr = helperGetTensorPointerRO<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    input_grad_ptr = helperGetTensorPointerRW<float>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    output_ptr = input_ptr;
+    output_grad_ptr = input_grad_ptr;
+  } else {
+    assert(regions.size() == 4);
+    assert(task->regions.size() == 4);
+    Domain input_grad_domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+    Domain output_domain = runtime->get_index_space_domain(
+      ctx, task->regions[2].region.get_index_space());
+    Domain output_grad_domain = runtime->get_index_space_domain(
+      ctx, task->regions[3].region.get_index_space());
+    assert(output_grad_domain == input_domain);
+    assert(output_grad_domain == output_domain);
+    assert(output_grad_domain == input_grad_domain);
+    input_ptr = helperGetTensorPointerRO<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    input_grad_ptr = helperGetTensorPointerRW<float>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    output_ptr = helperGetTensorPointerRO<float>(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+    output_grad_ptr = helperGetTensorPointerRO<float>(
+      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));
@@ -448,29 +514,44 @@ void ElementUnary::backward(const FFModel& ff)
   }
 
   IndexLauncher launcher(ELEMENTUNARY_BWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
-  // regions[0](I): input
-  launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, inputs[0].region));
-  launcher.add_field(0, FID_DATA);
-  // regions[1](I/O): input_grad
-  launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                      READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
-  launcher.add_field(1, FID_DATA);
-  // regions[2](I): output_grad
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, outputs[0].region));
-  launcher.add_field(2, FID_DATA);
-  // regions[3](I): output_grad
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-                      READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
-  launcher.add_field(3, FID_DATA);
+      TaskArgument(NULL, 0), argmap,
+      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+      FFConfig::get_hash_id(std::string(name)));
+  if (inplace) {
+    assert(input_lps[0] == outputs[0].part);
+    assert(input_grad_lps[0] == outputs[0].part_grad);
+    // regions[2](I): output_grad
+    launcher.add_region_requirement(
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, outputs[0].region));
+    launcher.add_field(0, FID_DATA);
+    // regions[3](I): output_grad
+    launcher.add_region_requirement(
+      RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
+        READ_WRITE, EXCLUSIVE, outputs[0].region_grad));
+    launcher.add_field(1, FID_DATA);
+  } else {
+    // regions[0](I): input
+    launcher.add_region_requirement(
+      RegionRequirement(input_lps[0], 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, inputs[0].region));
+    launcher.add_field(0, FID_DATA);
+    // regions[1](I/O): input_grad
+    launcher.add_region_requirement(
+      RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+        READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+    launcher.add_field(1, FID_DATA);
+    // regions[2](I): output_grad
+    launcher.add_region_requirement(
+      RegionRequirement(outputs[0].part, 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, outputs[0].region));
+    launcher.add_field(2, FID_DATA);
+    // regions[3](I): output_grad
+    launcher.add_region_requirement(
+      RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
+    launcher.add_field(3, FID_DATA);
+  }
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -531,7 +612,12 @@ bool ElementUnary::measure_operator_cost(Simulator* sim,
   sim->free_all();
   float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert(input_ptr != NULL);
-  float* output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  float* output_ptr = NULL;
+  if (inplace) {
+    output_ptr = input_ptr;
+  } else {
+    output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  }
   assert(output_ptr != NULL);
 
   std::function<void()> forward, backward;
@@ -541,7 +627,12 @@ bool ElementUnary::measure_operator_cost(Simulator* sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
     assert(input_grad_ptr != NULL);
-    float* output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    float* output_grad_ptr = NULL;
+    if (inplace) {
+      output_grad_ptr = input_grad_ptr;
+    } else {
+      output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    }
     assert(output_grad_ptr != NULL);
     backward = [&] {
       backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr,

@@ -18,6 +18,8 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import cffi
 import os
 import subprocess
+import logging
+import warnings
 import numpy as np
 from .flexflow_logger import fflogger
 from .flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
@@ -32,6 +34,8 @@ ffi.cdef(_flexflow_cheader)
 ffc = ffi.dlopen(None)
 
 ff_tracing_id = 200
+
+warnings.simplefilter('always', DeprecationWarning)
 
 def get_c_name(name):
   if name is None:
@@ -376,16 +380,20 @@ class FFConfig(object):
   def parse_args(self):
     ffc.flexflow_config_parse_args_default(self.handle)
 
-  def get_batch_size(self):
+  @property
+  def batch_size(self):
     return ffc.flexflow_config_get_batch_size(self.handle)
 
-  def get_workers_per_node(self):
+  @property
+  def workers_per_node(self):
     return ffc.flexflow_config_get_workers_per_node(self.handle)
 
-  def get_num_nodes(self):
+  @property
+  def num_nodes(self):
     return ffc.flexflow_config_get_num_nodes(self.handle)
 
-  def get_epochs(self):
+  @property
+  def epochs(self):
     return ffc.flexflow_config_get_epochs(self.handle)
 
   def get_current_time(self):
@@ -703,7 +711,7 @@ class FFModel(object):
     self.add_layer(OpType.EXP, name)
     return Tensor(handle, owner_op_type=OpType.EXP)
 
-  def add(self, x, y, name=None):
+  def add(self, x, y, inplace_a=False, name=None):
     """Layer that adds two input Tensors, :attr:`output = x + y`.
              
     :param x: the first input Tensor.
@@ -718,11 +726,11 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_add(self.handle, x.handle, y.handle, c_name)
+    handle = ffc.flexflow_model_add_add(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.ADD, name)
     return Tensor(handle, owner_op_type=OpType.ADD)
 
-  def subtract(self, x, y, name=None):
+  def subtract(self, x, y, inplace_a=False, name=None):
     """Layer that subtracts two input Tensors, :attr:`output = x * y`.
              
     :param x: the first input Tensor.
@@ -737,11 +745,11 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_subtract(self.handle, x.handle, y.handle, c_name)
+    handle = ffc.flexflow_model_add_subtract(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.SUBTRACT, name)
     return Tensor(handle, owner_op_type=OpType.SUBTRACT)
 
-  def multiply(self, x, y, name=None):
+  def multiply(self, x, y, inplace_a=False, name=None):
     """Layer that multiplies (element-wise) two input Tensors, :attr:`output = x * y`.
              
     :param x: the first input Tensor.
@@ -756,11 +764,11 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_multiply(self.handle, x.handle, y.handle, c_name)
+    handle = ffc.flexflow_model_add_multiply(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.MULTIPLY, name)
     return Tensor(handle, owner_op_type=OpType.MULTIPLY)
 
-  def divide(self, x, y, name=None):
+  def divide(self, x, y, inplace_a=False, name=None):
     """Layer that divides (element-wise) two input Tensors, :attr:`output = x / y`.
              
     :param x: the first input Tensor.
@@ -775,7 +783,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle, c_name)
+    handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
 
@@ -871,7 +879,7 @@ class FFModel(object):
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
+    handle = ffc.flexflow_model_add_conv2d(self.handle, input.handle, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, c_activation, groups, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
     self.add_layer(OpType.CONV2D, name)
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 
@@ -1007,7 +1015,7 @@ class FFModel(object):
     self.add_layer(OpType.BATCH_NORM, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
 
-  def batch_matmul(self, A, B, name=None):
+  def batch_matmul(self, A, B, a_seq_length_dim=None, b_seq_length_dim=None, name=None):
     """Layer that applied batched matrix multiplication onto two input Tensors, :attr:`output = x * y`.
              
     :param A: the first input Tensor.
@@ -1015,13 +1023,23 @@ class FFModel(object):
     
     :param B: the second input Tensor.
     :type B: Tensor
-             
+
+    :param a_seq_length_dim: an int when set indicating the a_seq_length_dim dimention of A is a sequence_length dimension
+    :type a_seq_length_dim: int
+
+    :param b_seq_length_dim: an int when set indicating the b_seq_length_dim dimention of B is a sequence_length dimension
+    :type b_seq_length_dim: int
+            
     :param name: the name of the layer. Default is None.
     :type name: string
 
     :returns:  Tensor -- the output tensor.
     """
-    handle = ffc.flexflow_model_add_batch_matmul(self.handle, A.handle, B.handle)
+    if a_seq_length_dim is None:
+      a_seq_length_dim = -1
+    if b_seq_length_dim is None:
+      b_seq_length_dim = -1
+    handle = ffc.flexflow_model_add_batch_matmul(self.handle, A.handle, B.handle, a_seq_length_dim, b_seq_length_dim)
     self.add_layer(OpType.BATCH_MATMUL, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_MATMUL)
 
@@ -1153,7 +1171,7 @@ class FFModel(object):
     self.add_layer(OpType.FLAT, name)
     return Tensor(handle, owner_op_type=OpType.FLAT)
 
-  def softmax(self, input, name=None):
+  def softmax(self, input, axis=-1, name=None):
     """Softmax activation function.
              
     :param input: the input Tensor.
@@ -1165,7 +1183,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_softmax(self.handle, input.handle, c_name)
+    handle = ffc.flexflow_model_add_softmax(self.handle, input.handle, axis, c_name)
     self.add_layer(OpType.SOFTMAX, name)
     return Tensor(handle, owner_op_type=OpType.SOFTMAX)
 
@@ -1233,7 +1251,7 @@ class FFModel(object):
     self.add_layer(OpType.REVERSE, name)
     return Tensor(handle, owner_op_type=OpType.REVERSE)
 
-  def relu(self, input, name=None):
+  def relu(self, input, inplace=True, name=None):
     """Rectified Linear Unit activation function.
              
     :param input: the input Tensor.
@@ -1245,7 +1263,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_relu(self.handle, input.handle, c_name)
+    handle = ffc.flexflow_model_add_relu(self.handle, input.handle, inplace, c_name)
     self.add_layer(OpType.RELU, name)
     return Tensor(handle, owner_op_type=OpType.RELU)
 
@@ -1281,7 +1299,7 @@ class FFModel(object):
     self.add_layer(OpType.TANH, name)
     return Tensor(handle, owner_op_type=OpType.TANH)
 
-  def elu(self, input, name=None):
+  def elu(self, input, inplace=True, name=None):
     """Exponential Linear Unit. activation function.
              
     :param input: the input Tensor.
@@ -1293,7 +1311,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_elu(self.handle, input.handle, c_name)
+    handle = ffc.flexflow_model_add_elu(self.handle, input.handle, inplace, c_name)
     self.add_layer(OpType.ELU, name)
     return Tensor(handle, owner_op_type=OpType.ELU)
 
@@ -1396,20 +1414,24 @@ class FFModel(object):
   def prefetch(self):
     ffc.flexflow_model_prefetch(self.handle)
 
-  def forward(self):
+  def forward(self, seq_length=None):
     """Forward propagation of all layers.
              
     :returns:  None -- no returns.
     """
-    ffc.flexflow_model_forward(self.handle)
+    if seq_length is None:
+      seq_length = -1
+    ffc.flexflow_model_forward(self.handle, seq_length)
 
   #TODO: seperate compute_metrics from backward
-  def backward(self):
+  def backward(self, seq_length=None):
     """Backward propagation of all layers.
              
     :returns:  None -- no returns.
     """
-    ffc.flexflow_model_backward(self.handle)
+    if seq_length is None:
+      seq_length = -1
+    ffc.flexflow_model_backward(self.handle, seq_length)
 
   def compute_metrics(self):
     """Compute performance metrics.
@@ -1450,14 +1472,7 @@ class FFModel(object):
 
     :returns:  None -- no returns.
     """
-    if isinstance(optimizer, SGDOptimizer) == True:
-      self.set_sgd_optimizer(optimizer)
-    elif isinstance(optimizer, AdamOptimizer) == True:
-      self.set_adam_optimizer(optimizer)
-    elif optimizer == None:
-      pass
-    else:
-      assert 0, "[Model]: unknown optimizer"
+    self.optimizer = optimizer
 
     c_loss_type = enum_to_int(LossType, loss_type)
     metrics_int = []
@@ -1495,8 +1510,8 @@ class FFModel(object):
       dataloaders = x
     dataloaders.append(y)
 
-    num_samples = y.get_num_samples()
-    batch_size = self._ffconfig.get_batch_size()
+    num_samples = y.num_samples
+    batch_size = self._ffconfig.batch_size
     self._tracing_id += 1 # get a new tracing id
     for epoch in range(0,epochs):
       for d in dataloaders:
@@ -1539,17 +1554,20 @@ class FFModel(object):
       dataloaders = x
     dataloaders.append(y)
 
-    num_samples = y.get_num_samples()
-    batch_size = self._ffconfig.get_batch_size()
+    num_samples = y.num_samples
+    batch_size = self._ffconfig.batch_size
     for d in dataloaders:
       d.reset()
     self.reset_metrics()
     iterations = num_samples / batch_size
+    self._tracing_id += 1 # get a new tracing id
     for iter in range(0, int(iterations)):
       for d in dataloaders:
         d.next_batch(self)
+      self._ffconfig.begin_trace(self._tracing_id)
       self.forward()
       self.compute_metrics()
+      self._ffconfig.end_trace(self._tracing_id)
 
   def zero_gradients(self):
     """Empty the gradients of all layers.
@@ -1558,11 +1576,17 @@ class FFModel(object):
     """
     ffc.flexflow_model_zero_gradients(self.handle)
 
-  def set_sgd_optimizer(self, optimizer):
-    ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
+  def set_optimizer(self, optimizer):
+    if isinstance(optimizer, SGDOptimizer) == True:
+      ffc.flexflow_model_set_sgd_optimizer(self.handle, optimizer.handle)
+    elif isinstance(optimizer, AdamOptimizer) == True:
+      ffc.flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
+    elif optimizer == None:
+      pass
+    else:
+      assert 0, "[Model]: unknown optimizer"
 
-  def set_adam_optimizer(self, optimizer):
-    ffc.flexflow_model_set_adam_optimizer(self.handle, optimizer.handle)
+  optimizer = property(fset=set_optimizer)
 
   def print_layers(self, id=-1):
     ffc.flexflow_model_print_layers(self.handle, id)
@@ -1582,7 +1606,8 @@ class FFModel(object):
     handle = ffc.flexflow_model_get_parameter_by_id(self.handle, id)
     return Parameter(handle)
 
-  def get_label_tensor(self):
+  @property
+  def label_tensor(self):
     handle = ffc.flexflow_model_get_label_tensor(self.handle)
     return Tensor(handle, deallocate=False)
 
@@ -1823,11 +1848,13 @@ class DataLoader4D(object):
       self.handle = ffc.flexflow_dataloader_4d_create(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle)
     self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_4d_destroy)
 
-  def set_num_samples(self, samples):
-    ffc.flexflow_dataloader_4d_set_num_samples(self.handle, samples)
-
-  def get_num_samples(self):
+  @property
+  def num_samples(self):
     return ffc.flexflow_dataloader_4d_get_num_samples(self.handle)
+
+  @num_samples.setter
+  def num_samples(self, samples):
+    ffc.flexflow_dataloader_4d_set_num_samples(self.handle, samples)
 
   def next_batch(self, ffmodel):
     ffc.flowflow_dataloader_4d_next_batch(self.handle, ffmodel.handle)
@@ -1841,11 +1868,13 @@ class DataLoader2D(object):
     self.handle = ffc.flexflow_dataloader_2d_create_v2(ffmodel.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
     self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_2d_destroy)
 
-  def set_num_samples(self, samples):
-    ffc.flexflow_dataloader_2d_set_num_samples(self.handle, samples)
-
-  def get_num_samples(self):
+  @property
+  def num_samples(self):
     return ffc.flexflow_dataloader_2d_get_num_samples(self.handle)
+
+  @num_samples.setter
+  def num_samples(self, samples):
+    ffc.flexflow_dataloader_2d_set_num_samples(self.handle, samples)
 
   def next_batch(self, ffmodel):
     ffc.flowflow_dataloader_2d_next_batch(self.handle, ffmodel.handle)
@@ -1878,11 +1907,13 @@ class SingleDataLoader(object):
     c_data_type = enum_to_int(DataType, data_type)
     self.handle = ffc.flexflow_single_dataloader_create2(ffmodel.handle, input.handle, full_input, num_samples, c_data_type)
 
-  def set_num_samples(self, samples):
-    ffc.flexflow_single_dataloader_set_num_samples(self.handle, samples)
-
-  def get_num_samples(self):
+  @property
+  def num_samples(self):
     return ffc.flexflow_single_dataloader_get_num_samples(self.handle)
+
+  @num_samples.setter
+  def num_samples(self, samples):
+    ffc.flexflow_single_dataloader_set_num_samples(self.handle, samples)
 
   def next_batch(self, ffmodel):
     """Ask the dataloder to load the next batch to the :attr:`batch_tensor`. 
