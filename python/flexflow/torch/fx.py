@@ -205,7 +205,13 @@ def parse_elu(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.ELU) + "\n"
   return op_str
-  
+ 
+def parse_transpose(op_str,node):
+    assert len(node.inedges) == 3, "wrong number of inputs"
+    op_str = op_str + enum_to_str(OpType, OpType.TRANSPOSE)
+    op_str = op_str +", " + str(node.inedges[1])+", "+str(node.inedges[2])+"\n"
+    return op_str
+
 def parse_softmax(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.SOFTMAX) + "\n"
@@ -305,7 +311,11 @@ def torch_to_flexflow_str(model):
       elif function_name.find('getattr') >= 0:
         op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
         op_str = parse_getattr(op_str, node)
-      
+     
+      elif function_name.find('transpose') >= 0:
+        op_str = parse_inoutedge(op_str,(node.inedges[0],), node.outedges)
+        op_str = parse_transpose(op_str, node) 
+
       else:
         # Unrecogonized type
         assert False, "Unrecogonized built-in function: {}".format(function_name)
