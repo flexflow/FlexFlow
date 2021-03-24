@@ -82,7 +82,7 @@ public:
   bool get_pm_constraint(PMParameter para, int &value) const;
 public:
   OperatorType type;
-  const Op* mapOp;
+  Node mapOp;
   std::vector<TensorX> inputs, weights, outputs;
   std::vector<PMConstraint> pmConstraints;
   std::vector<TNConstraint> tnConstraints;
@@ -99,9 +99,9 @@ class GraphXfer {
 public:
   GraphXfer(FFModel* _model);
   TensorX new_tensor(void);
-  bool can_match(OpX* srcOp, const Op* op, Graph* graph);
-  void match(OpX* srcOp, const Op* op, Graph* graph);
-  void unmatch(OpX* srcOp, const Op* op, Graph* graph);
+  bool can_match(OpX* srcOp, const Node& op, Graph* graph);
+  void match(OpX* srcOp, const Node& op, Graph* graph);
+  void unmatch(OpX* srcOp, const Node& op, Graph* graph);
   OpX* create_linear(const TensorX& input,
                      int num_dims,
                      int out_channels,
@@ -119,12 +119,12 @@ public:
            std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>&,
            std::unordered_set<size_t>&, float threshold, int maxNumOps);
            Graph* create_new_graph(Graph* graph);
-  bool create_new_operator(const OpX* opx, const Op*& op);
+  bool create_new_operator(const OpX* opx, Node& op);
 public:
   FFModel* model;
   int tensorId;
-  std::map<const Op*, OpX*, OpCompare> mappedOps;
-  std::multimap<int, std::pair<const Op*, int> > mappedInputs;
+  std::map<Node, OpX*, NodeCompare> mappedOps;
+  std::multimap<int, std::pair<Node, int> > mappedInputs;
   std::map<TensorX, TensorX, TensorXCompare> mappedOutputs;
   std::vector<OpX*> srcOps;
   std::vector<OpX*> dstOps;

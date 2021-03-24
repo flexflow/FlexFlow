@@ -18,14 +18,16 @@
 //#include "ffconst.h"
 #include "model.h"
 #include <unordered_set>
+
 struct Edge {
   Edge(void);
-  Edge(const Op* _srcOp, const Op* _dstOp, int _srcIdx, int _dstIdx, bool _weightEdge);
+  Edge(const Node& _srcOp,
+       const Node& _dstOp,
+       int _srcIdx,
+       int _dstIdx);
   bool operator==(const Edge &rhs) const;
-  const Op *srcOp;
-  const Op *dstOp;
+  Node srcOp, dstOp;
   int srcIdx, dstIdx;
-  bool weightEdge;
 };
 
 struct EdgeCompare {
@@ -34,7 +36,6 @@ struct EdgeCompare {
     if (!(a.dstOp == b.dstOp)) return a.dstOp < b.dstOp;
     if (a.srcIdx != b.srcIdx) return a.srcIdx < b.srcIdx;
     if (a.dstIdx != b.dstIdx) return a.dstIdx < b.dstIdx;
-    if (a.weightEdge != b.weightEdge) return a.weightEdge < b.weightEdge;
     return false;
   };
 };
@@ -46,49 +47,53 @@ namespace std {
     size_t operator()(const Edge& e) const
     {
       size_t res = 17;
-      res = res * 31 + hash<size_t>()((size_t)e.srcOp);
-      res = res * 31 + hash<size_t>()((size_t)e.dstOp);
+      res = res * 31 + hash<size_t>()((size_t)e.srcOp.guid);
+      res = res * 31 + hash<size_t>()((size_t)e.dstOp.guid);
       res = res * 31 + hash<int>()(e.srcIdx);
       res = res * 31 + hash<int>()(e.dstIdx);
-      res = res * 31 + hash<bool>()(e.weightEdge);
       return res;
+    }
+  };
+  template <>
+  struct hash<Node>
+  {
+    size_t operator()(const Node& n) const
+    {
+      return n.guid;
     }
   };
 }
 
-struct OpCompare {
-  bool operator()(const Op* a, const Op* b) const {
-    if (a->op_guid != b->op_guid)
-      return a->op_guid < b->op_guid;
-    return false;
+struct NodeCompare {
+  bool operator()(const Node& a, const Node& b) const {
+    if (a.guid != b.guid) return a.guid < b.guid;
+    return a.ptr < b.ptr;
   };
 };
 
 class Graph {
 public:
   Graph(FFModel* model);
-  void add_edge(const Op* srcOp,
-                const Op* dstOp,
+  void add_edge(const Node& srcOp,
+                const Node& dstOp,
                 int srcIdx,
-                int dstIdx,
-                bool weightEdge);
+                int dstIdx);
   void add_edge(const Edge& e);
-  bool has_edge(const Op* srcOp,
-                const Op* dstOp,
+  bool has_edge(const Node& srcOp,
+                const Node& dstOp,
                 int srcIdx,
-                int dstIdx,
-                bool weightEdge);
+                int dstIdx);
   bool has_edge(const Edge& e);
   float total_cost();
   size_t hash(void) const;
   void print(void) const;
   bool check_correctness(void);
   bool has_loop(void);
-  Op* find_bottleneck_node(const Op* sink_node,
-                           const Op* source_node,
-                           std::unordered_set<const Op*>& used_nodes) const;
+  Node find_bottleneck_node(const Node& sink_node,
+                              const Node& source_node,
+                              std::unordered_set<Node>& used_nodes) const;
 public:
   FFModel* model;
-  std::unordered_map<const Op*, std::unordered_set<Edge> > inEdges, outEdges;
+  std::unordered_map<Node, std::unordered_set<Edge> > inEdges, outEdges;
 };
 #endif

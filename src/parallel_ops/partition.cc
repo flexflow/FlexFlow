@@ -161,19 +161,24 @@ bool Repartition::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
-Repartition* FFModel::get_or_create_repartition(const Tensor input,
-                                                int repartition_dim,
-                                                int repartition_degree)
+Node FFModel::create_repartition_node(const Tensor input,
+                                      int repartition_dim,
+                                      int repartition_degree)
 {
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(repartition_dim);
   hash = hash * 31 + std::hash<int>()(repartition_degree);
   const auto& it = cached_repartition_ops.find(hash);
+  Repartition* repartition = NULL;
   if (it != cached_repartition_ops.end()) {
-    return it->second;
+    repartition = it->second;
+  } else {
+    repartition = new Repartition(*this, input, repartition_dim,
+                                  repartition_degree, NULL);
+    cached_repartition_ops[hash] = repartition;
   }
-  Repartition* rep = new Repartition(*this, input, repartition_dim,
-                                     repartition_degree, NULL);
-  cached_repartition_ops[hash] = rep;
-  return rep;
+  Node ret;
+  ret.ptr = repartition;
+  ret.guid = node_global_guid++;
+  return ret;
 }

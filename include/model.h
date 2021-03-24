@@ -311,6 +311,45 @@ public:
   std::vector<ParallelDimMappingRecord>* parallel_dims_mapping;
 };
 
+struct Node {
+  Node(void);
+  Node(size_t _guid, Op* _ptr): guid(_guid), ptr(_ptr) {}
+  inline bool operator==(const Node& b) const {
+    if (guid != b.guid) return false;
+    if (ptr != b.ptr) return false;
+    return true;
+  }
+  inline bool operator!=(const Node& b) const {
+    if (guid != b.guid) return true;
+    if (ptr != b.ptr) return true;
+    return false;
+  }
+  inline bool operator<(const Node& b) const {
+    if (guid != b.guid) return guid < b.guid;
+    if (ptr != b.ptr) return ptr < b.ptr;
+    return false;
+  }
+  Node& operator=(const Node& n)
+  {
+    guid = n.guid;
+    ptr = n.ptr;
+    return *this;
+  }
+  std::string op_to_string(const Op* ptr);
+  std::string to_string(void)
+  {
+    if (ptr != NULL) {
+      return op_to_string(ptr) + "_" + std::to_string(guid);
+    }
+    else {
+      return "UnmappedOp_" + std::to_string(guid);
+    }
+  }
+  static const Node INVALID_NODE;
+  size_t guid;
+  const Op* ptr;
+};
+
 class ElementBinary;
 class ElementUnary;
 class Conv2D;
@@ -559,16 +598,16 @@ public:
   // Graph APIs
   // ========================================
   float graph_cost(const Graph* graph,
-                   const Op* sink_node,
+                   const Node& sink_node,
                    const MachineView& sink_view,
-                   const Op* source_node,
+                   const Node& source_node,
                    const MachineView& source_view,
                    const MachineResource& resources,
                    bool include_sink_compute_time);
   size_t dp_state_hash(const Graph* graph,
-                       const Op* sink_node,
+                       const Node& sink_node,
                        const MachineView& sink_view,
-                       const Op* source_node,
+                       const Node& source_node,
                        const MachineView& source_view,
                        const MachineResource& resource);
   std::vector<MachineView>* get_valid_machine_views(const Op* op);
@@ -576,16 +615,16 @@ public:
   // ========================================
   // Functional APIs
   // ========================================
-  Linear* get_or_create_linear(const Tensor input,
-                               int out_dim,
-                               ActiMode activation,
-                               bool use_bias);
-  Repartition* get_or_create_repartition(const Tensor input,
-                                         int repartition_dim,
-                                         int repartition_degree);
-  Combine* get_or_create_combine(const Tensor input,
-                                 int combine_dim,
-                                 int combine_degree);
+  Node create_linear_node(const Tensor input,
+                          int out_dim,
+                          ActiMode activation,
+                          bool use_bias);
+  Node create_repartition_node(const Tensor input,
+                               int repartition_dim,
+                               int repartition_degree);
+  Node create_combine_node(const Tensor input,
+                           int combine_dim,
+                           int combine_degree);
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
@@ -691,7 +730,7 @@ public:
 public:
   void set_iteration_config_sequence_length(int seq_length);
 public:
-  size_t op_global_guid, tensor_global_guid;
+  size_t op_global_guid, tensor_global_guid, node_global_guid;
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer* optimizer;

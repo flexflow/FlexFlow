@@ -16,6 +16,8 @@
 
 const MachineView MachineView::NO_VIEW = MachineView();
 
+const Node Node::INVALID_NODE = Node();
+
 MachineView::MachineView()
 : device_type(MachineView::GPU), ndims(0), start_device_id(0)
 {
@@ -55,14 +57,128 @@ size_t MachineResource::hash() const
   return ret;
 }
 
-Edge::Edge(void)
-: srcOp(NULL), dstOp(NULL), srcIdx(-1), dstIdx(-1), weightEdge(false)
+Node::Node(void)
+: guid(0), ptr(NULL)
 {}
 
-Edge::Edge(const Op* _srcOp, const Op* _dstOp,
-           int _srcIdx, int _dstIdx, bool _weightEdge)
-: srcOp(_srcOp), dstOp(_dstOp), srcIdx(_srcIdx), dstIdx(_dstIdx),
-  weightEdge(_weightEdge)
+std::string Node::op_to_string(const Op* ptr)
+{
+  switch (ptr->op_type) {
+    case OP_INPUT:
+      return "Input";
+    case OP_WEIGHT:
+      return "Weight";
+    case OP_ANY:
+      return "Any";
+    case OP_CONV2D:
+      return "Conv";
+    case OP_DROPOUT:
+      return "Dropout";
+    case OP_LINEAR:
+      return "Linear";
+    case OP_POOL2D:
+      return "Pool";
+    case OP_RELU:
+      return "Relu";
+    case OP_SIGMOID:
+      return "Sigmoid";
+    case OP_TANH:
+      return "TanH";
+    case OP_BATCHNORM:
+      return "Batchnorm";
+    case OP_CONCAT:
+      return "Concat";
+    case OP_SPLIT:
+      return "Split";
+    case OP_RESHAPE:
+      return "Reshape";
+    case OP_TRANSPOSE:
+      return "Transpose";
+    case OP_EW_ADD:
+      return "Add";
+    case OP_EW_MUL:
+      return "Mul";
+    case OP_MATMUL:
+      return "MatMul";
+    case OP_MUL:
+      return "Mul";
+    case OP_ENLARGE:
+      return "Enlarge";
+    case OP_SQUEEZE:
+      return "Squeeze";
+    case OP_UNSQUEEZE:
+      return "Unsqueeze";
+    case OP_EW_SUB:
+      return "Sub";
+    case OP_EW_DIV:
+      return "Div";
+    case OP_EW_EQUAL:
+      return "Equal";
+    case OP_EW_GREATER:
+      return "Greater";
+    case OP_EW_LESS:
+      return "Less";
+    case OP_EW_MAX:
+      return "Max";
+    case OP_EW_MIN:
+      return "Min";
+    case OP_REDUCE_ARGMAX:
+      return "ArgMax";
+    case OP_REDUCE_ARGMIN:
+      return "ArgMin";
+    case OP_REDUCE_MAX:
+      return "ReduceMax";
+    case OP_REDUCE_MEAN:
+      return "ReduceMean";
+    case OP_REDUCE_MIN:
+      return "ReduceMin";
+    case OP_REDUCE_PROD:
+      return "ReduceProd";
+    case OP_REDUCE_SUM:
+      return "ReduceSum";
+    case OP_PAD:
+      return "Pad";
+    case OP_SHAPE:
+      return "Shape";
+    case OP_SIZE:
+      return "Size";
+    case OP_TOPK:
+      return "TopK";
+    case OP_WHERE:
+      return "Where";
+    case OP_CEIL:
+      return "Ceil";
+    case OP_CAST:
+      return "Cast";
+    case OP_EXP:
+      return "Exp";
+    case OP_ROUND:
+      return "Round";
+    case OP_LOG:
+      return "Log";
+    case OP_LOGICAL_NOT:
+      return "Not";
+    case OP_SQRT:
+      return "Sqrt";
+    case OP_LEAKYRELU:
+      return "LeakyRelu";
+    case OP_SLICE:
+      return "Slice";
+    case OP_RESIZE:
+      return "Resize";
+    default:
+      return "Unknown_" + std::to_string(ptr->op_type);
+  }
+}
+
+Edge::Edge(void)
+: srcOp(Node::INVALID_NODE), dstOp(Node::INVALID_NODE),
+  srcIdx(-1), dstIdx(-1)
+{}
+
+Edge::Edge(const Node& _srcOp, const Node& _dstOp,
+           int _srcIdx, int _dstIdx)
+: srcOp(_srcOp), dstOp(_dstOp), srcIdx(_srcIdx), dstIdx(_dstIdx)
 {}
 
 bool Edge::operator==(const Edge& rhs) const
@@ -71,7 +187,6 @@ bool Edge::operator==(const Edge& rhs) const
   if (dstOp != rhs.dstOp) return false;
   if (srcIdx != rhs.srcIdx) return false;
   if (dstIdx != rhs.dstIdx) return false;
-  if (weightEdge != rhs.weightEdge) return false;
   return true;
 }
 
@@ -80,11 +195,10 @@ Graph::Graph(FFModel* _model)
 {
 }
 
-void Graph::add_edge(const Op* srcOp,
-                     const Op* dstOp,
+void Graph::add_edge(const Node& srcOp,
+                     const Node& dstOp,
                      int srcIdx,
-                     int dstIdx,
-                     bool weightEdge)
+                     int dstIdx)
 {
   if (inEdges.find(dstOp) == inEdges.end()) {
     inEdges[dstOp];
@@ -92,7 +206,7 @@ void Graph::add_edge(const Op* srcOp,
   if (outEdges.find(srcOp) == outEdges.end()) {
     outEdges[srcOp];
   }
-  Edge e(srcOp, dstOp, srcIdx, dstIdx, weightEdge);
+  Edge e(srcOp, dstOp, srcIdx, dstIdx);
   inEdges[srcOp];
   outEdges[dstOp];
   inEdges[dstOp].insert(e);
@@ -108,13 +222,12 @@ void Graph::add_edge(const Edge& e)
   outEdges[e.srcOp].insert(e);
 }
 
-bool Graph::has_edge(const Op* srcOp,
-                     const Op* dstOp,
+bool Graph::has_edge(const Node& srcOp,
+                     const Node& dstOp,
                      int srcIdx,
-                     int dstIdx,
-                     bool weightEdge)
+                     int dstIdx)
 {
-  Edge e(srcOp, dstOp, srcIdx, dstIdx, weightEdge);
+  Edge e(srcOp, dstOp, srcIdx, dstIdx);
   return (inEdges[dstOp].find(e) != inEdges[dstOp].end());
 }
 
@@ -126,12 +239,12 @@ bool Graph::has_edge(const Edge& e)
 void Graph::print(void) const
 {
   for (const auto& it : inEdges) {
-    if (it.first->op_guid == 0) continue;
-    printf("	op_guid(%zu) type(%d): ", it.first->op_guid, it.first->op_type);
+    if (it.first.guid == 0) continue;
+    printf("	guid(%zu) type(%d): ", it.first.guid, it.first.ptr->op_type);
     const std::unordered_set<Edge>& list = it.second;
     for (const auto& it2 : list) {
       Edge e = it2;
-      printf(" inEdge(op_guid(%zu) idx(%d))", e.srcOp->op_guid, e.srcIdx);
+      printf(" inEdge(guid(%zu) idx(%d))", e.srcOp.guid, e.srcIdx);
     }
     printf("\n");
     // if (it->first.ptr->type == OP_CONV2D) {
@@ -151,8 +264,8 @@ void Graph::print(void) const
 
 bool Graph::has_loop(void)
 {
-  std::unordered_map<const Op*, int> todos;
-  std::vector<const Op*> opList;
+  std::unordered_map<Node, int> todos;
+  std::vector<Node> opList;
   for (const auto& it : inEdges) {
     const auto& inList = it.second;
     todos[it.first] = (int)inList.size();
@@ -168,7 +281,7 @@ bool Graph::has_loop(void)
   #endif
   size_t i = 0;
   while (i < opList.size()) {
-    const Op* op = opList[i++];
+    Node op = opList[i++];
     const auto& outList = outEdges[op];
     for (const auto& it2 : outList) {
       todos[it2.dstOp] --;
@@ -188,9 +301,9 @@ bool Graph::check_correctness(void)
     for (auto it2 = list.begin(); it2 != list.end(); it2++) {
       Edge e = *it2;
       if (!has_edge(e)) assert(false);
-      if (e.srcOp == NULL) continue;
-      Tensor srcTensor = e.srcOp->outputs[e.srcIdx];
-      Tensor dstTensor = e.dstOp->inputs[e.dstIdx];
+      if (e.srcOp.ptr == NULL) continue;
+      Tensor srcTensor = e.srcOp.ptr->outputs[e.srcIdx];
+      Tensor dstTensor = e.dstOp.ptr->inputs[e.dstIdx];
       if (srcTensor->num_dims != dstTensor->num_dims) assert(false);
       for (int i = 0; i < srcTensor->num_dims; i++) {
         assert(srcTensor->dims[i] == dstTensor->dims[i]);
@@ -231,31 +344,31 @@ void FFModel::register_machine_views()
     }
 }
 
-Op* Graph::find_bottleneck_node(const Op* sink_node,
-                                const Op* source_node,
-                                std::unordered_set<const Op*>& used_nodes) const
+Node Graph::find_bottleneck_node(const Node& sink_node,
+                                 const Node& source_node,
+                                std::unordered_set<Node>& used_nodes) const
 {
-  std::unordered_map<const Op*, int> todos;
-  std::unordered_map<const Op*, size_t> indices;
+  std::unordered_map<Node, int> todos;
+  std::unordered_map<Node, size_t> indices;
   // Need two queues
-  std::vector<const Op*> queue;
+  std::vector<Node> queue;
   // Use queue2 to calculate the todos for each operator
   // Only input_edges are considered
   {
-    std::vector<const Op*> queue2;
-    std::unordered_set<const Op*> visited;
+    std::vector<Node> queue2;
+    std::unordered_set<Node> visited;
     size_t index = 0;
     queue2.push_back(sink_node);
     visited.insert(sink_node);
     while (index < queue2.size()) {
-      const Op* node = queue2[index++];
+      Node node = queue2[index++];
       int cnt = 0;
       const auto& it = inEdges.find(node);
       if (it != inEdges.end()) {
         const auto& inList = it->second;
         for (const auto& e : inList) {
           // Ignore weight edge
-          if (e.weightEdge) continue;
+          //if (e.weightEdge) continue;
           if (e.srcOp == source_node) continue;
           if (visited.find(e.srcOp) == visited.end()) {
             visited.insert(e.srcOp);
@@ -272,13 +385,13 @@ Op* Graph::find_bottleneck_node(const Op* sink_node,
   }
   size_t index = 0;
   while (index < queue.size()) {
-    const Op* op = queue[index++];
+    Node op = queue[index++];
     const auto& it = outEdges.find(op);
     if (it == outEdges.end())
       continue;
     const auto& outList = it->second;
     for (const auto& it2 : outList) {
-      if (it2.weightEdge) continue;
+      //if (it2.weightEdge) continue;
       todos[it2.dstOp] --;
       assert(todos[it2.dstOp] >= 0);
       if (todos[it2.dstOp] == 0) {
@@ -302,22 +415,22 @@ Op* Graph::find_bottleneck_node(const Op* sink_node,
         available[i] = false;
     }
   }
-  const Op* bn_node = NULL;
+  Node bn_node = Node::INVALID_NODE;
   for (size_t i = 0; i < queue.size(); i++) {
     if (!available[i]) continue;
-    if (queue[i]->op_type == OP_INPUT) continue;
-    if (queue[i]->op_type == OP_WEIGHT) continue;
+    if (queue[i].ptr->op_type == OP_INPUT) continue;
+    if (queue[i].ptr->op_type == OP_WEIGHT) continue;
     bn_node = queue[i];
     break;
   }
-  if (bn_node == NULL)
-    return NULL;
+  if (bn_node == Node::INVALID_NODE)
+    return bn_node;
   used_nodes.insert(bn_node);
   queue.clear();
   queue.push_back(bn_node);
   index = 0;
   while (index < queue.size()) {
-    const Op* op = queue[index++];
+    Node op = queue[index++];
     const auto& it = inEdges.find(op);
     if (it == inEdges.end()) continue;
     const auto& inList = it->second;
@@ -328,57 +441,54 @@ Op* Graph::find_bottleneck_node(const Op* sink_node,
       }
     }
   }
-  return (Op*)bn_node;
+  return bn_node;
 }
 
 float FFModel::graph_cost(const Graph* graph,
-                          const Op* sink_node,
+                          const Node& sink_node,
                           const MachineView& sink_view,
-                          const Op* source_node,
+                          const Node& source_node,
                           const MachineView& source_view,
                           const MachineResource& resources,
                           bool include_sink_compute_time)
 {
-  size_t source_node_guid = 0;
-  if (source_node != NULL)
-    source_node_guid = source_node->op_guid;
   fprintf(stderr, "[DP] sink(%zu) sink_view(%d %d) source(%zu) source_view(%d %d)\n",
-          sink_node->op_guid, sink_view.ndims, sink_view.dim[0],
-          source_node_guid, source_view.ndims, source_view.dim[0]);
+          sink_node.guid, sink_view.ndims, sink_view.dim[0],
+          source_node.guid, source_view.ndims, source_view.dim[0]);
   graph->print();
   size_t hash = dp_state_hash(graph, sink_node, sink_view,
                               source_node, source_view, resources);
   assert(graph->inEdges.find(sink_node) != graph->inEdges.end());
-  if (source_node != NULL)
+  if (source_node != Node::INVALID_NODE)
     assert(graph->outEdges.find(source_node) != graph->outEdges.end());
   if (cached_graph_costs.find(hash) != cached_graph_costs.end()) {
     // cached_graph_costs does not include sink_compute_time
     if (include_sink_compute_time) {
-      CostMetrics metrics = simulator->measure_operator_cost(sink_node, sink_view);
+      CostMetrics metrics = simulator->measure_operator_cost(sink_node.ptr, sink_view);
       return cached_graph_costs[hash]+metrics.forward_time+metrics.backward_time;
     } else 
       return cached_graph_costs[hash];
   }
   float cost = 1e7;
   if (graph->inEdges.size() <= 2) {
-    if (source_node == NULL)
+    if (source_node == Node::INVALID_NODE)
       cost = 0.0f;
     else {
       cost = 0.0f;
       const auto& inList = graph->inEdges.find(sink_node)->second;
       for (const auto& it2 : inList) {
         assert(it2.srcOp == source_node);
-        assert(sink_node->inputs[it2.dstIdx]->is_valid_machine_view(source_view));
-        cost += simulator->estimate_xfer_cost(source_node->outputs[it2.srcIdx],
+        assert(sink_node.ptr->inputs[it2.dstIdx]->is_valid_machine_view(source_view));
+        cost += simulator->estimate_xfer_cost(source_node.ptr->outputs[it2.srcIdx],
                                               source_view, sink_view);
       }
     }
   } else {
-    std::unordered_set<const Op*> used_nodes;
-    Op* bn_node = graph->find_bottleneck_node(sink_node, source_node, used_nodes);
-    if (bn_node != NULL) {
+    std::unordered_set<Node> used_nodes;
+    Node bn_node = graph->find_bottleneck_node(sink_node, source_node, used_nodes);
+    if (bn_node != Node::INVALID_NODE) {
       // We found a bottleneck node
-      fprintf(stderr, " found bn_node = %zu\n", bn_node->op_guid);
+      fprintf(stderr, " found bn_node = %zu\n", bn_node.guid);
       Graph* first_graph = new Graph(this);
       Graph* second_graph = new Graph(this);
       for (const auto& it : graph->inEdges) {
@@ -395,12 +505,12 @@ float FFModel::graph_cost(const Graph* graph,
           }
         }
       }
-      std::vector<MachineView>* valid_views = get_valid_machine_views(bn_node);
+      std::vector<MachineView>* valid_views = get_valid_machine_views(bn_node.ptr);
       for (size_t i = 0; i < valid_views->size(); i++) {
         bool valid = true;
         MachineView bn_view = (*valid_views)[i];
-        for (int j = 0; j < bn_node->numOutputs; j++) {
-          if (!bn_node->outputs[j]->is_valid_machine_view(bn_view))
+        for (int j = 0; j < bn_node.ptr->numOutputs; j++) {
+          if (!bn_node.ptr->outputs[j]->is_valid_machine_view(bn_view))
             valid = false;
         }
         if (!valid) continue;
@@ -423,24 +533,24 @@ float FFModel::graph_cost(const Graph* graph,
       assert(graph->inEdges.find(sink_node)->second.size() > 1);
       Graph* first_graph = new Graph(this);
       Graph* second_graph = new Graph(this);
-      const Op* bn_node = NULL;
+      Node bn_node = Node::INVALID_NODE;
       // Find sink_node's first input
       {
         const auto& inList = graph->inEdges.find(sink_node)->second;
         for (const auto& it2 : inList) {
           if (it2.dstIdx != 0) continue;
-          if (it2.weightEdge) continue;
+          //if (it2.weightEdge) continue;
           bn_node = it2.srcOp;
         }
       }
-      assert(bn_node != NULL);
-      std::unordered_set<const Op*> used_node;
-      std::vector<const Op*> queue;
+      assert(bn_node != Node::INVALID_NODE);
+      std::unordered_set<Node> used_node;
+      std::vector<Node> queue;
       queue.push_back(bn_node);
       used_node.insert(bn_node);
       size_t i = 0;
       while (i < queue.size()) {
-        const Op* node = queue[i++];
+        Node node = queue[i++];
         const auto& inList = graph->inEdges.find(node)->second;
         for (const auto& it2 : inList) {
           if (used_nodes.find(it2.srcOp) == used_nodes.end()) {
@@ -517,7 +627,7 @@ float FFModel::graph_cost(const Graph* graph,
   }
   cached_graph_costs[hash] = cost;
   if (include_sink_compute_time) {
-    CostMetrics metrics = simulator->measure_operator_cost(sink_node, sink_view);
+    CostMetrics metrics = simulator->measure_operator_cost(sink_node.ptr, sink_view);
     cost += metrics.forward_time + metrics.backward_time;
   }
   return cost;
@@ -528,25 +638,25 @@ float Graph::total_cost(void)
   // Find sink_nodes
   // i.e., nodes with no out edge
   print();
-  const Op* sink_node = NULL;
+  Node sink_node = Node::INVALID_NODE;
   for (const auto& it : outEdges) {
     const auto& outList = it.second;
     if (outList.size() == 0) {
-      assert(sink_node == NULL);
+      assert(sink_node == Node::INVALID_NODE);
       sink_node = it.first;
     }
   }
-  assert(sink_node != NULL);
+  assert(sink_node != Node::INVALID_NODE);
   MachineResource resource;
   resource.num_nodes = model->config.numNodes;
   resource.cpus_per_node = model->config.cpusPerNode;
   resource.gpus_per_node = model->config.workersPerNode;
-  std::vector<MachineView>* valid_views = model->get_valid_machine_views(sink_node);
+  std::vector<MachineView>* valid_views = model->get_valid_machine_views(sink_node.ptr);
   float total_cost = 1e7;
   for (size_t i = 0; i < valid_views->size(); i++) {
     total_cost = std::min(total_cost,
                           model->graph_cost(this, sink_node, (*valid_views)[i],
-                                            NULL, MachineView::NO_VIEW,
+                                            Node::INVALID_NODE, MachineView::NO_VIEW,
                                             resource, true));
   }
   return total_cost;
@@ -558,10 +668,10 @@ size_t Graph::hash(void) const
   size_t total_hash = 0;
   for (const auto& it : inEdges) {
     const auto& inList = it.second;
-    size_t node_hash = std::hash<size_t>()(it.first->op_guid);
+    size_t node_hash = std::hash<size_t>()(it.first.guid);
     for (const auto& e : inList) {
       size_t edge_hash = 17;
-      edge_hash = edge_hash * 31 + std::hash<size_t>()(e.srcOp->op_guid);
+      edge_hash = edge_hash * 31 + std::hash<size_t>()(e.srcOp.guid);
       edge_hash = edge_hash * 31 + std::hash<int>()(e.srcIdx);
       edge_hash = edge_hash * 31 + std::hash<int>()(e.dstIdx);
       node_hash *= edge_hash;
@@ -572,19 +682,16 @@ size_t Graph::hash(void) const
 }
 
 size_t FFModel::dp_state_hash(const Graph* graph,
-                              const Op* sink_node,
+                              const Node& sink_node,
                               const MachineView& sink_view,
-                              const Op* source_node,
+                              const Node& source_node,
                               const MachineView& source_view,
                               const MachineResource& resource)
 {
   size_t key = graph->hash();
-  key = key * 31 + std::hash<size_t>()(sink_node->op_guid);
+  key = key * 31 + std::hash<size_t>()(sink_node.guid);
   key = key * 31 + sink_view.hash();
-  if (source_node != NULL)
-    key = key * 31 + std::hash<size_t>()(source_node->op_guid);
-  else
-    key = key * 31 + std::hash<size_t>()(0);
+  key = key * 31 + std::hash<size_t>()(source_node.guid);
   key = key * 31 + source_view.hash();
   key = key * 31 + resource.hash();
   return key;

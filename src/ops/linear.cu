@@ -1100,20 +1100,25 @@ bool Linear::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
-Linear* FFModel::get_or_create_linear(const Tensor input,
-                                      int out_dim,
-                                      ActiMode activation,
-                                      bool use_bias)
+Node FFModel::create_linear_node(const Tensor input,
+                                 int out_dim,
+                                 ActiMode activation,
+                                 bool use_bias)
 {
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(out_dim);
   hash = hash * 31 + std::hash<int>()(activation);
   hash = hash * 31 + std::hash<int>()(use_bias);
   const auto& it = cached_linear_ops.find(hash);
+  Linear* li = NULL;
   if (it != cached_linear_ops.end()) {
-    return it->second;
+    li = it->second;
+  } else {
+    li = new Linear(*this, input, out_dim, activation, use_bias, NULL);
+    cached_linear_ops[hash] = li;
   }
-  Linear* li = new Linear(*this, input, out_dim, activation, use_bias, NULL);
-  cached_linear_ops[hash] = li;
-  return li;
+  Node ret;
+  ret.guid = node_global_guid ++;
+  ret.ptr = li;
+  return ret;
 }

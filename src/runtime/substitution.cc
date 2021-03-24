@@ -38,14 +38,14 @@ TNConstraint::TNConstraint(Compare c, TNParameter p1, DIMParameter d1,
 Tensor TensorX::to_tensor(const GraphXfer* xfer) const
 {
   if (op != NULL) {
-    assert(op->mapOp != NULL);
-    return op->mapOp->outputs[idx];
+    assert(op->mapOp.ptr != NULL);
+    return op->mapOp.ptr->outputs[idx];
   } else {
     const auto& it = xfer->mappedInputs.find(idx);
     assert(it != xfer->mappedInputs.end());
-    const Op* op = it->second.first;
+    Node op = it->second.first;
     int outIdx = it->second.second;
-    return op->outputs[outIdx];
+    return op.ptr->outputs[outIdx];
   }
 }
 
@@ -125,16 +125,16 @@ bool GraphXfer::map_output(const TensorX& src, const TensorX& dst)
   return true;
 }
 
-bool GraphXfer::can_match(OpX* srcOp, const Op* op, Graph* graph)
+bool GraphXfer::can_match(OpX* srcOp, const Node& op, Graph* graph)
 {
-  if (srcOp->type != op->op_type) return false;
+  if (srcOp->type != op.ptr->op_type) return false;
   // check num input tensors
-  if ((int)srcOp->inputs.size() != op->numInputs) return false;
+  if ((int)srcOp->inputs.size() != op.ptr->numInputs) return false;
   // check pmConstraints
   for (size_t i = 0; i < srcOp->pmConstraints.size(); i++) {
     PMConstraint pmc = srcOp->pmConstraints[i];
     int actValue = 0;
-    assert(op->get_int_parameter(pmc.para, &actValue));
+    assert(op.ptr->get_int_parameter(pmc.para, &actValue));
     //printf("pmc[%d] para(%d) comp(%d) value(%d) actValue(%d)\n",
     //       i, pmc.para, pmc.comp, pmc.value, actValue);
     switch (pmc.comp) {
@@ -173,25 +173,25 @@ bool GraphXfer::can_match(OpX* srcOp, const Op* op, Graph* graph)
     }
   }
   // check inputs
-  std::map<int, std::pair<const Op*, int> > newMapInputs;
+  std::map<int, std::pair<Node, int> > newMapInputs;
   for (size_t i = 0; i < srcOp->inputs.size(); i++) {
     TensorX in = srcOp->inputs[i];
     if (in.op == NULL) {
       // input tensor
-      std::multimap<int, std::pair<const Op*, int> >::const_iterator it;
+      std::multimap<int, std::pair<Node, int> >::const_iterator it;
       it = mappedInputs.find(in.idx);
       if (it != mappedInputs.end()) {
-        const Op* mappedOp = it->second.first;
+        Node mappedOp = it->second.first;
         int mappedIdx = it->second.second;
-        if (!(graph->has_edge(mappedOp, op, mappedIdx, i, false/*weight*/)))
+        if (!(graph->has_edge(mappedOp, op, mappedIdx, i)))
           return false;
       } else {
-        std::map<int, std::pair<const Op*, int> >::const_iterator newit;
+        std::map<int, std::pair<Node, int> >::const_iterator newit;
         newit = newMapInputs.find(in.idx);
         if (newit != newMapInputs.end()) {
-          const Op* mappedOp = newit->second.first;
+          Node mappedOp = newit->second.first;
           int mappedIdx = newit->second.second;
-          if (!(graph->has_edge(mappedOp, op, mappedIdx, i, false/*weight*/)))
+          if (!(graph->has_edge(mappedOp, op, mappedIdx, i)))
             return false;
         } else {
           const auto& list = graph->inEdges.find(op)->second;
@@ -214,54 +214,8 @@ bool GraphXfer::can_match(OpX* srcOp, const Op* op, Graph* graph)
       }
     } else {
       // intermediate tensor
-      assert(in.op->mapOp != NULL);
-      if (!(graph->has_edge(in.op->mapOp, op, in.idx, i, false/*weight*/)))
-        return false;
-    }
-  }
-  // check weights
-  for (size_t i = 0; i < srcOp->weights.size(); i++) {
-    TensorX weight = srcOp->weights[i];
-    if (weight.op == NULL) {
-      // weight tensor
-      std::multimap<int, std::pair<const Op*, int> >::const_iterator it;
-      it = mappedInputs.find(weight.idx);
-      if (it != mappedInputs.end()) {
-        const Op* mappedOp = it->second.first;
-        int mappedIdx = it->second.second;
-        if (!(graph->has_edge(mappedOp, op, mappedIdx, i, true/*weight*/)))
-          return false;
-      } else {
-        std::map<int, std::pair<const Op*, int> >::const_iterator newit;
-        newit = newMapInputs.find(weight.idx);
-        if (newit != newMapInputs.end()) {
-          const Op* mappedOp = newit->second.first;
-          int mappedIdx = newit->second.second;
-          if (!(graph->has_edge(mappedOp, op, mappedIdx, i, true/*weight*/)))
-            return false;
-        } else {
-          const auto& list = graph->inEdges.find(op)->second;
-          for (const auto& e : list) {
-            if (e.dstIdx == (int)i) {
-              newMapInputs.insert(std::make_pair(weight.idx,
-                                      std::make_pair(e.srcOp, e.srcIdx)));
-            }
-          }
-        }
-        // Do nothing when we check the match
-        /* mapped in.idx to an op
-        std::set<Edge, EdgeCompare> list = graph->inEdges.find(op)->second;
-        std::set<Edge, EdgeCompare>::const_iterator it2;
-        for (it2 = list.begin(); it2 != list.end(); it2++) {
-          Edge e = *it2;
-          if (e.dstIdx == i)
-            mappedInputs[in.idx] = std::make_pair(e.srcOp, e.srcIdx);
-        }*/
-      }
-    } else {
-      // intermediate tensor
-      assert(weight.op->mapOp != NULL);
-      if (!(graph->has_edge(weight.op->mapOp, op, weight.idx, i, true/*weight*/)))
+      assert(in.op->mapOp != Node::INVALID_NODE);
+      if (!(graph->has_edge(in.op->mapOp, op, in.idx, i)))
         return false;
     }
   }
@@ -270,11 +224,11 @@ bool GraphXfer::can_match(OpX* srcOp, const Op* op, Graph* graph)
     TNConstraint tnc = srcOp->tnConstraints[i];
     int actValue = 0, expValue = 0;
     if (tnc.singlePara) {
-      assert(op->get_tensor_parameter(tnc.para1, tnc.dim1, &actValue));
+      assert(op.ptr->get_tensor_parameter(tnc.para1, tnc.dim1, &actValue));
       expValue = tnc.value;
     } else {
-      assert(op->get_tensor_parameter(tnc.para1, tnc.dim1, &actValue));
-      assert(op->get_tensor_parameter(tnc.para2, tnc.dim2, &expValue));
+      assert(op.ptr->get_tensor_parameter(tnc.para1, tnc.dim1, &actValue));
+      assert(op.ptr->get_tensor_parameter(tnc.para2, tnc.dim2, &expValue));
     }
     switch (tnc.comp) {
       case COMPARE_EQ:
@@ -314,7 +268,7 @@ bool GraphXfer::can_match(OpX* srcOp, const Op* op, Graph* graph)
   return true;
 }
 
-void GraphXfer::match(OpX* srcOp, const Op* op, Graph* graph)
+void GraphXfer::match(OpX* srcOp, const Node& op, Graph* graph)
 {
   for (size_t i = 0; i < srcOp->inputs.size(); i++) {
     TensorX in = srcOp->inputs[i];
@@ -334,20 +288,21 @@ void GraphXfer::match(OpX* srcOp, const Op* op, Graph* graph)
   mappedOps[op] = srcOp;
 }
 
-void GraphXfer::unmatch(OpX* srcOp, const Op* op, Graph* graph)
+void GraphXfer::unmatch(OpX* srcOp, const Node& op, Graph* graph)
 {
   for (size_t i = 0; i < srcOp->inputs.size(); i++) {
     TensorX in = srcOp->inputs[i];
     if (in.op == NULL) {
       // Update mappedInputsa
-      std::multimap<int, std::pair<const Op*, int> >::iterator it;
+      std::multimap<int, std::pair<Node, int> >::iterator it;
       it = mappedInputs.find(in.idx);
       mappedInputs.erase(it);
     }
   }
   // Unmap op
   mappedOps.erase(op);
-  srcOp->mapOp = NULL;
+  srcOp->mapOp.guid = 0;
+  srcOp->mapOp.ptr = NULL;
 }
 
 void GraphXfer::run(int depth, Graph* graph,
@@ -405,7 +360,7 @@ void GraphXfer::run(int depth, Graph* graph,
       //printf("can_match(%d)\n", can_match(srcOp, it->first, graph));
       if (can_match(srcOp, it.first, graph)
       && (mappedOps.find(it.first) == mappedOps.end())) {
-        const Op* op = it.first;
+        Node op = it.first;
         // Check mapOutput
         match(srcOp, op, graph);
         run(depth + 1, graph, candidates, hashmap, threshold, maxNumOps);
@@ -433,38 +388,38 @@ Graph* GraphXfer::create_new_graph(Graph* graph)
           srcTen.idx = it.srcIdx;
           assert(mappedOutputs.find(srcTen) != mappedOutputs.end());
           TensorX dstTen = mappedOutputs[srcTen];
-          newGraph->add_edge(dstTen.op->mapOp, it.dstOp, dstTen.idx, it.dstIdx, it.weightEdge);
+          newGraph->add_edge(dstTen.op->mapOp, it.dstOp, dstTen.idx, it.dstIdx);
         } else {
           // unmapped src -> unmmaped dst
-          newGraph->add_edge(it.srcOp, it.dstOp, it.srcIdx, it.dstIdx, it.weightEdge);
+          newGraph->add_edge(it.srcOp, it.dstOp, it.srcIdx, it.dstIdx);
         }
     }
   // Step 3: add edges for mapped ops
   for (dstIt = dstOps.begin(); dstIt != dstOps.end(); dstIt ++) {
     OpX* dstOp = *dstIt;
-    // inputs
     for (size_t i = 0; i < dstOp->inputs.size(); i++)
       if (dstOp->inputs[i].op == NULL) {
         // unmapped src -> mapped dst
-        std::multimap<int, std::pair<const Op*, int> >::const_iterator it
+        std::multimap<int, std::pair<Node, int> >::const_iterator it
             = mappedInputs.find(dstOp->inputs[i].idx);
         assert(it != mappedInputs.end());
-        std::pair<const Op*, int> srcEdge = it->second;
-        newGraph->add_edge(srcEdge.first, dstOp->mapOp, srcEdge.second, i, false);
+        const std::pair<Node, int>& srcEdge = it->second;
+        newGraph->add_edge(srcEdge.first, dstOp->mapOp, srcEdge.second, i);
       } else {
         // mapped src -> mapped dst
         OpX* srcOp = dstOp->inputs[i].op;
         int srcIdx = dstOp->inputs[i].idx;
-        newGraph->add_edge(srcOp->mapOp, dstOp->mapOp, srcIdx, i, false);
+        newGraph->add_edge(srcOp->mapOp, dstOp->mapOp, srcIdx, i);
       }
+#ifdef DEADCODE
     // weights
     for (size_t i = 0; i < dstOp->weights.size(); i++)
       if (dstOp->weights[i].op == NULL) {
         // unmapped src -> mapped dst
-        std::multimap<int, std::pair<const Op*, int> >::const_iterator it
+        std::multimap<int, std::pair<Node, int> >::const_iterator it
             = mappedInputs.find(dstOp->weights[i].idx);
         assert(it != mappedInputs.end());
-        std::pair<const Op*, int> srcEdge = it->second;
+        const std::pair<Node, int>& srcEdge = it->second;
         newGraph->add_edge(srcEdge.first, dstOp->mapOp, srcEdge.second, i, true);
       } else {
         // mapped src -> mapped dst
@@ -472,11 +427,12 @@ Graph* GraphXfer::create_new_graph(Graph* graph)
         int srcIdx = dstOp->weights[i].idx;
         newGraph->add_edge(srcOp->mapOp, dstOp->mapOp, srcIdx, i, true);
       }
+#endif
   }
   return newGraph;
 }
 
-bool GraphXfer::create_new_operator(const OpX* opx, const Op*& op)
+bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
 {
   Tensor inputs[MAX_NUM_INPUTS];
   for (size_t i = 0; i < opx->inputs.size(); i++)
@@ -487,8 +443,8 @@ bool GraphXfer::create_new_operator(const OpX* opx, const Op*& op)
       int output_channels, activation;
       assert(opx->get_pm_constraint(PM_OUTPUT_CHANNELS, output_channels));
       assert(opx->get_pm_constraint(PM_ACTI, activation));
-      op = model->get_or_create_linear(inputs[0], output_channels,
-                                       (ActiMode)activation, false);
+      op = model->create_linear_node(inputs[0], output_channels,
+                                     (ActiMode)activation, false);
       break;
     }
     case OP_REPARTITION:
@@ -496,8 +452,8 @@ bool GraphXfer::create_new_operator(const OpX* opx, const Op*& op)
       int repartition_dim, repartition_degree;
       assert(opx->get_pm_constraint(PM_REPARTITION_DIM, repartition_dim));
       assert(opx->get_pm_constraint(PM_NUM_PARTITIONS, repartition_degree));
-      op = model->get_or_create_repartition(inputs[0], repartition_dim,
-                                            repartition_degree);
+      op = model->create_repartition_node(inputs[0], repartition_dim,
+                                          repartition_degree);
       break;
     }
     case OP_COMBINE:
@@ -505,8 +461,8 @@ bool GraphXfer::create_new_operator(const OpX* opx, const Op*& op)
       int combine_dim, combine_degree;
       assert(opx->get_pm_constraint(PM_COMBINE_DIM, combine_dim));
       assert(opx->get_pm_constraint(PM_NUM_PARTITIONS, combine_degree));
-      op = model->get_or_create_combine(inputs[0], combine_dim,
-                                        combine_degree);
+      op = model->create_combine_node(inputs[0], combine_dim,
+                                      combine_degree);
       break;
     }
     default:
@@ -516,18 +472,18 @@ bool GraphXfer::create_new_operator(const OpX* opx, const Op*& op)
     }
   }
   // Check operator validness
-  if (op == NULL)
+  if (op == Node::INVALID_NODE)
     return false;
   // Check tnConstraints
   for (size_t i = 0; i < opx->tnConstraints.size(); i++) {
     TNConstraint tnc = opx->tnConstraints[i];
     int actValue = 0, expValue = 0;
     if (tnc.singlePara) {
-      assert(op->get_tensor_parameter(tnc.para1, tnc.dim1, &actValue));
+      assert(op.ptr->get_tensor_parameter(tnc.para1, tnc.dim1, &actValue));
       expValue = tnc.value;
     } else {
-      assert(op->get_tensor_parameter(tnc.para1, tnc.dim1, &actValue));
-      assert(op->get_tensor_parameter(tnc.para2, tnc.dim2, &expValue));
+      assert(op.ptr->get_tensor_parameter(tnc.para1, tnc.dim1, &actValue));
+      assert(op.ptr->get_tensor_parameter(tnc.para2, tnc.dim2, &expValue));
     }
     switch (tnc.comp) {
       case COMPARE_EQ:
@@ -592,11 +548,20 @@ void FFModel::dp_optimize()
 {
   // Construct graph structure
   Graph* graph = new Graph(this);
-  for (size_t l = 0; l < layers.size(); l++) {
-    const Op* op = layers[l];
-    for (int j = 0; j < op->numInputs; j++) {
-      graph->add_edge(op->inputs[j]->owner_op, op, op->inputs[j]->owner_idx, j,
-                      false/*weight*/);
+  {
+    std::unordered_map<const Op*, Node> op_to_node_map;
+    for (size_t l = 0; l < layers.size(); l++) {
+      const Op* dstOp = layers[l];
+      Node dstNode;
+      dstNode.ptr = dstOp;
+      dstNode.guid = node_global_guid++;
+      op_to_node_map[dstOp] = dstNode;
+      for (int j = 0; j < dstOp->numInputs; j++) {
+        const Op* srcOp = dstOp->inputs[j]->owner_op;
+        assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
+        Node srcNode = op_to_node_map[srcOp];
+        graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
+      }
     }
   }
   // Construct graph substitutions

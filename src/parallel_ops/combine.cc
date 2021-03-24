@@ -132,19 +132,24 @@ bool Combine::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
-Combine* FFModel::get_or_create_combine(const Tensor input,
-                                        int combine_dim,
-                                        int combine_degree)
+Node FFModel::create_combine_node(const Tensor input,
+                                  int combine_dim,
+                                  int combine_degree)
 {
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(combine_dim);
   hash = hash * 31 + std::hash<int>()(combine_degree);
   const auto& it = cached_combine_ops.find(hash);
+  Combine* combine = NULL;
   if (it != cached_combine_ops.end()) {
-    return it->second;
+    combine = it->second;
+  } else {
+    combine = new Combine(*this, input, combine_dim,
+                          combine_degree, NULL);
+    cached_combine_ops[hash] = combine;
   }
-  Combine* cb = new Combine(*this, input, combine_dim,
-                            combine_degree, NULL);
-  cached_combine_ops[hash] = cb;
-  return cb;
+  Node ret;
+  ret.ptr = combine;
+  ret.guid = node_global_guid ++;
+  return ret;
 }

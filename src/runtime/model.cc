@@ -1079,7 +1079,9 @@ OpMeta::OpMeta(FFHandler _handle)
 
 FFModel::FFModel(FFConfig& _config)
 : op_global_guid(OP_GUID_FIRST_VALID),
-  tensor_global_guid(TS_GUID_FIRST_VALID), config(_config),
+  tensor_global_guid(TS_GUID_FIRST_VALID),
+  node_global_guid(NODE_GUID_FIRST_VALID),
+  config(_config),
   optimizer(NULL), loss_op(NULL), metrics_op(NULL), simulator(NULL)
 {
   Runtime *runtime = config.lg_hlr;
