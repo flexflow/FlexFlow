@@ -54,7 +54,7 @@ Replicate::Replicate(
   outputs[0] = model.create_tensor_legion_ordering(
       numdim, dims, DT_FLOAT, this);
   // Check correctness
-  assert(check_output_input_weight_parallel_dims());
+  // assert(check_output_input_weight_parallel_dims());
 }
 
 void Replicate::create_input_partition(FFModel& ff)

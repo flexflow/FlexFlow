@@ -56,6 +56,7 @@ struct TensorBase {
                              TensorBase& tensor,
                              OperatorType type);
   size_t get_volume() const;
+  size_t get_total_num_parts() const;
   Legion::Domain get_domain() const;
   bool check_valid() const;
   bool is_valid_machine_view(const MachineView& view) const;

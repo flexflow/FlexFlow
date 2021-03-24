@@ -253,6 +253,14 @@ size_t TensorBase::get_volume() const
   return volume;
 }
 
+size_t TensorBase::get_total_num_parts() const
+{
+  size_t parts = 1;
+  for (int i = 0; i < num_dims; i++)
+    parts *= dims[i].degree;
+  return parts;
+}
+
 Domain TensorBase::get_domain() const
 {
   Domain d;
@@ -345,8 +353,12 @@ bool TensorBase::is_valid_machine_view(const MachineView& view) const
       if (view.dim[dims[i].parallel_idx] != dims[i].degree)
         return false;
     }
-  if (is_dim == 0) is_dim = 1;
+  if (is_dim == 0) {
+    is_dim = 1;
+  }
   if (is_dim != view.ndims)
+    return false;
+  if (get_total_num_parts() != view.num_parts())
     return false;
   return true;
 }

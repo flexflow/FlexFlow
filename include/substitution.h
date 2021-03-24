@@ -52,6 +52,7 @@ class OpX;
 class GraphXfer;
 
 struct TensorX {
+  static const TensorX NO_TX;
   TensorX(void): op(NULL), idx(0) {}
   TensorX(OpX* _op, int _idx): op(_op), idx(_idx) {}
   Tensor to_tensor(const GraphXfer* xfer) const;
@@ -70,16 +71,14 @@ class OpX {
 public:
   OpX(OperatorType type,
       int numInputs,
-      int numWeights,
-      const Tensor input1 = NULL,
-      const Tensor input2 = NULL,
-      const Tensor input3 = NULL,
-      const Tensor input4 = NULL);
-  OpX(OperatorType type,
-      int numInputs,
-      int numWeights,
-      const Tensor* inputs);
-  bool add_pm_constraint(PMParameter para, int value);
+      int numOutputs,
+      const TensorX& input1 = TensorX::NO_TX,
+      const TensorX& input2 = TensorX::NO_TX,
+      const TensorX& input3 = TensorX::NO_TX,
+      const TensorX& input4 = TensorX::NO_TX);
+  bool add_pm_constraint(Compare, PMParameter para, int value);
+  bool add_input_constraint(Compare, TNParameter, DIMParameter, int);
+  bool add_input_constraint(Compare, TNParameter, DIMParameter, TNParameter, DIMParameter);
   bool get_pm_constraint(PMParameter para, int &value) const;
 public:
   OperatorType type;
@@ -103,25 +102,22 @@ public:
   bool can_match(OpX* srcOp, const Op* op, Graph* graph);
   void match(OpX* srcOp, const Op* op, Graph* graph);
   void unmatch(OpX* srcOp, const Op* op, Graph* graph);
-
-  OpX* create_activation(const TensorX& input,
-                         OperatorType type,
-                         bool isSrcOp=true);
-  OpX* create_conv2d(const TensorX& input,
-                     const TensorX& weight,
-                     int strideH, int strideW,
-                     int paddingH, int paddingW,
-                     ActiMode activation,
-                     bool isSrcOp=true);
-  OpX* create_batchnorm(const TensorX& input,
-                        const TensorX& scale,
-                        const TensorX& bias,
-                        bool relu,
-                        bool isSrcOp=true);
-  bool map_output(TensorX src, TensorX dst);
+  OpX* create_linear(const TensorX& input,
+                     int num_dims,
+                     int out_channels,
+                     ActiMode acti_mode,
+                     bool use_bias);
+  OpX* create_repartition(const TensorX& input,
+                          int repartition_dim,
+                          int num_parts);
+  OpX* create_combine(const TensorX& input,
+                      int combine_dim,
+                      int num_parts);
+  bool map_output(const TensorX& src,
+                  const TensorX& dst);
   void run(int depth, Graph* graph,
            std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>&,
-           std::set<size_t>&, float threshold, int maxNumOps);
+           std::unordered_set<size_t>&, float threshold, int maxNumOps);
            Graph* create_new_graph(Graph* graph);
   bool create_new_operator(const OpX* opx, const Op*& op);
 public:

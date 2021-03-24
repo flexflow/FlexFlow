@@ -157,6 +157,12 @@ enum PMParameter {
   PM_AXES,		// Squeeze, Unsqueeze, Reduce*
   PM_KEEP_DIMS,         // Reduce*
   PM_EPSILON,   // BatchNorm
+  PM_NUM_PARTITIONS,    // Repartition, Replicate, Combine, Reduction
+  PM_REPARTITION_DIM,   // Repartition
+  PM_REPLICATE_DIM,     // Replicate
+  PM_COMBINE_DIM,       // Combine
+  PM_REDUCTION_DIM,     // Reduction
+  PM_OUTPUT_CHANNELS,   // Linear, Conv2D
 };
 
 enum TNParameter {

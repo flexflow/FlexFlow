@@ -27,6 +27,12 @@ Tensor FFModel::dense(const Tensor input,
                       Initializer* bias_initializer,
                       const char *name)
 {
+  {
+    Linear* li = new Linear(*this, input, outDim, activation, use_bias, name);
+    layers.push_back(li);
+    return li->outputs[0];
+  }
+
   if (kernel_initializer == NULL) {
     int seed = std::rand();
     kernel_initializer = new GlorotUniform(seed);
@@ -70,11 +76,53 @@ Tensor FFModel::dense(const Tensor input,
 
 Linear::Linear(FFModel& model,
                const Tensor _input,
+               int out_dim,
+               ActiMode _activation,
+               bool _use_bias,
+               const char* name)
+: Op(model, OP_LINEAR, name, 1/*inputs*/, 0/*weights*/, _input),
+  in_channels(_input->dims[0].size),
+  out_channels(out_dim),
+  activation(_activation),
+  use_bias(_use_bias)
+{
+  assert(numOutputs == 1);
+  int numdim = _input->num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++) {
+    dims[i] = _input->dims[i];
+  }
+  dims[numdim-1].size = _input->dims[0].degree;
+  dims[numdim-1].parallel_idx = _input->dims[0].parallel_idx;
+  dims[numdim-1].degree = dims[numdim-1].size;
+  dims[0].size = out_channels;
+  dims[0].degree = _input->dims[numdim-1].degree;
+  dims[0].parallel_idx = _input->dims[numdim-1].parallel_idx;
+  outputs[0] = model.create_tensor_legion_ordering(
+      numdim, dims, DT_FLOAT, this);
+
+  //replica = new TensorBase();
+  // register parallelizable dims
+  for (int i = 0; i < numdim; i++) {
+    if (i == 0) {
+      register_output_input_parallel_dims(outputs[0], i, inputs[0], numdim-1);
+    } else if (i == numdim-1) {
+      register_output_input_parallel_dims(outputs[0], i, inputs[0], 0);
+    } else {
+      register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
+    }
+  }
+  // Check correctness
+  assert(check_output_input_weight_parallel_dims());
+}
+
+Linear::Linear(FFModel& model,
+               const Tensor _input,
                const Tensor _kernel,
                const Tensor _bias,
                ActiMode _activation,
                const char* name)
-: Op(model, OP_LINEAR, name, 1/*inputs*/, _bias == NULL ? 1 : 2/*weights*/, _input, _kernel, _bias),
+: Op(model, OP_LINEAR, name, 1/*inputs*/, _bias == NULL ? 1 : 2/*weights*/, _input,_kernel, _bias),
   in_channels(_input->dims[0].size),
   out_channels(_kernel->dims[1].size),
   activation(_activation)
@@ -1038,3 +1086,16 @@ ParallelConfig Linear::get_random_parallel_config(const FFModel& ff) const
   return pc;
 }
 
+bool Linear::get_int_parameter(PMParameter para, int* value) const
+{
+  switch(para) {
+    case PM_OUTPUT_CHANNELS:
+      *value = out_channels;
+      return true;
+    case PM_ACTI:
+      *value = (int) activation;
+      return true;
+    default:
+      return Op::get_int_parameter(para, value);
+  }
+}

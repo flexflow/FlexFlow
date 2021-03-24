@@ -48,6 +48,7 @@ struct MachineView {
   static const MachineView NO_VIEW;
   MachineView();
   size_t hash() const;
+  size_t num_parts() const;
   enum DeviceType {
     GPU = 0,
     CPU = 1,

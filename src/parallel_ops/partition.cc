@@ -54,7 +54,7 @@ Repartition::Repartition(
       numdim, dims, DT_FLOAT, this);
   outputs[0]->print("Repartition::output");
   // Check correctness
-  assert(check_output_input_weight_parallel_dims());
+  // assert(check_output_input_weight_parallel_dims());
 }
 
 void Repartition::init(const FFModel& ff)
@@ -145,4 +145,18 @@ bool Repartition::measure_operator_cost(
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
   return true;
+}
+
+bool Repartition::get_int_parameter(PMParameter para, int* value) const
+{
+  switch(para) {
+    case PM_REPARTITION_DIM:
+      *value = repartition_dim;
+      return true;
+    case PM_NUM_PARTITIONS:
+      *value = repartition_degree;
+      return true;
+    default:
+      return Op::get_int_parameter(para, value);
+  }
 }

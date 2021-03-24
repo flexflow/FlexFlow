@@ -24,6 +24,15 @@ MachineView::MachineView()
   }
 }
 
+size_t MachineView::num_parts() const
+{
+  size_t parts = 1;
+  for (int i = 0; i < ndims; i++) {
+    parts *= dim[i];
+  }
+  return parts;
+}
+
 size_t MachineView::hash() const
 {
   size_t ret = 17;
@@ -84,12 +93,17 @@ void Graph::add_edge(const Op* srcOp,
     outEdges[srcOp];
   }
   Edge e(srcOp, dstOp, srcIdx, dstIdx, weightEdge);
+  inEdges[srcOp];
+  outEdges[dstOp];
   inEdges[dstOp].insert(e);
   outEdges[srcOp].insert(e);
 }
 
 void Graph::add_edge(const Edge& e)
 {
+  inEdges[e.srcOp];
+  outEdges[e.dstOp];
+
   inEdges[e.dstOp].insert(e);
   outEdges[e.srcOp].insert(e);
 }
@@ -145,6 +159,13 @@ bool Graph::has_loop(void)
     if (todos[it.first] == 0)
       opList.push_back(it.first);
   }
+  #ifdef DEADCODE
+  for (const auto& it : outEdges) {
+    if (inEdges.find(it.first) == inEdges.end()) {
+      opList.push_back(it.first);
+    }
+  }
+  #endif
   size_t i = 0;
   while (i < opList.size()) {
     const Op* op = opList[i++];
@@ -339,7 +360,7 @@ float FFModel::graph_cost(const Graph* graph,
       return cached_graph_costs[hash];
   }
   float cost = 1e7;
-  if (graph->inEdges.size() == 1) {
+  if (graph->inEdges.size() <= 2) {
     if (source_node == NULL)
       cost = 0.0f;
     else {
@@ -347,6 +368,7 @@ float FFModel::graph_cost(const Graph* graph,
       const auto& inList = graph->inEdges.find(sink_node)->second;
       for (const auto& it2 : inList) {
         assert(it2.srcOp == source_node);
+        assert(sink_node->inputs[it2.dstIdx]->is_valid_machine_view(source_view));
         cost += simulator->estimate_xfer_cost(source_node->outputs[it2.srcIdx],
                                               source_view, sink_view);
       }
@@ -375,9 +397,15 @@ float FFModel::graph_cost(const Graph* graph,
       }
       std::vector<MachineView>* valid_views = get_valid_machine_views(bn_node);
       for (size_t i = 0; i < valid_views->size(); i++) {
+        bool valid = true;
         MachineView bn_view = (*valid_views)[i];
+        for (int j = 0; j < bn_node->numOutputs; j++) {
+          if (!bn_node->outputs[j]->is_valid_machine_view(bn_view))
+            valid = false;
+        }
+        if (!valid) continue;
         if (!resources.is_valid_machine_view(bn_view)) continue;
-        fprintf(stderr, "       expore view(%d %d)\n", bn_view.ndims, bn_view.dim[0]);
+        fprintf(stderr, "       explore view(%d %d)\n", bn_view.ndims, bn_view.dim[0]);
         fprintf(stderr, "       First Graph\n");
         float first_cost = graph_cost(first_graph, bn_node, bn_view,
                                       source_node, source_view, resources, true);
@@ -498,14 +526,17 @@ float FFModel::graph_cost(const Graph* graph,
 float Graph::total_cost(void)
 {
   // Find sink_nodes
-  // i.e., nodes without no out edge
+  // i.e., nodes with no out edge
+  print();
   const Op* sink_node = NULL;
-  for (const auto& it : inEdges) {
-    if (outEdges.find(it.first) == outEdges.end()) {
+  for (const auto& it : outEdges) {
+    const auto& outList = it.second;
+    if (outList.size() == 0) {
       assert(sink_node == NULL);
       sink_node = it.first;
     }
   }
+  assert(sink_node != NULL);
   MachineResource resource;
   resource.num_nodes = model->config.numNodes;
   resource.cpus_per_node = model->config.cpusPerNode;
@@ -519,22 +550,6 @@ float Graph::total_cost(void)
                                             resource, true));
   }
   return total_cost;
-}
-
-void FFModel::dp_optimize()
-{
-  // Construct graph structure
-  Graph* graph = new Graph(this);
-  for (size_t l = 0; l < layers.size(); l++) {
-    const Op* op = layers[l];
-    for (int j = 0; j < op->numInputs; j++) {
-      graph->add_edge(op->inputs[j]->owner_op, op, op->inputs[j]->owner_idx, j,
-                      false/*weight*/);
-    }
-  }
-  // Run DP
-  float total_cost = graph->total_cost();
-  printf("total_cost = %.4lf\n", total_cost);
 }
 
 size_t Graph::hash(void) const

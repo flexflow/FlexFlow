@@ -375,8 +375,8 @@ float Simulator::estimate_xfer_cost(const Tensor tensor,
                                     const MachineView& sink_view)
 {
   // TODO: to be implemented
-  assert(tensor->is_valid_machine_view(source_view));
-  assert(tensor->is_valid_machine_view(sink_view));
+  //assert(tensor->is_valid_machine_view(source_view));
+  //assert(tensor->is_valid_machine_view(sink_view));
   return 0.0f;
 }
 

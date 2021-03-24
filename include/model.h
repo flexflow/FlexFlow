@@ -1111,6 +1111,12 @@ class Linear : public Op {
 public:
   Linear(FFModel& model,
          const Tensor input,
+         int out_dim,
+         ActiMode activation,
+         bool _use_bias,
+         const char* name);
+  Linear(FFModel& model,
+         const Tensor input,
          const Tensor kernel,
          const Tensor bias,
          ActiMode activation,
@@ -1120,6 +1126,7 @@ public:
   void backward(const FFModel&);
   //void update(const FFModel&);
   void print_layer(const FFModel& model);
+  bool get_int_parameter(PMParameter, int*) const;
   //Parameter* get_parameter(int index);
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
@@ -1916,6 +1923,7 @@ public:
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
+  bool get_int_parameter(PMParameter, int*) const;
   static void forward_task(
       const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,
@@ -1953,6 +1961,7 @@ public:
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
+  bool get_int_parameter(PMParameter, int*) const;
   static void forward_task(
       const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,

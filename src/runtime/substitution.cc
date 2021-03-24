@@ -16,6 +16,25 @@
 #include "substitution.h"
 using namespace Legion;
 
+const TensorX TensorX::NO_TX = TensorX();
+
+GraphXfer* create_partition_linear_combine(FFModel* model,
+                                           int num_dims,
+                                           int out_channels,
+                                           int num_parts,
+                                           ActiMode activation,
+                                           bool use_bias);
+
+PMConstraint::PMConstraint(Compare c, PMParameter p, int v)
+: comp(c), para(p), value(v) {}
+
+TNConstraint::TNConstraint(Compare c, TNParameter p, DIMParameter d, int v)
+: singlePara(true), comp(c), para1(p), dim1(d), value(v) {}
+
+TNConstraint::TNConstraint(Compare c, TNParameter p1, DIMParameter d1,
+                           TNParameter p2, DIMParameter d2)
+: singlePara(false), comp(c), para1(p1), para2(p2), dim1(d1), dim2(d2) {}
+
 Tensor TensorX::to_tensor(const GraphXfer* xfer) const
 {
   if (op != NULL) {
@@ -28,6 +47,82 @@ Tensor TensorX::to_tensor(const GraphXfer* xfer) const
     int outIdx = it->second.second;
     return op->outputs[outIdx];
   }
+}
+
+OpX::OpX(const OperatorType _type,
+         int num_inputs,
+         int num_outputs,
+         const TensorX& input0,
+         const TensorX& input1,
+         const TensorX& input2,
+         const TensorX& input3)
+: type(_type)
+{
+  TensorX all_inputs[MAX_NUM_INPUTS];
+  all_inputs[0] = input0;
+  all_inputs[1] = input1;
+  all_inputs[2] = input2;
+  all_inputs[3] = input3;
+  for (int i = 0; i < num_inputs; i++) {
+    inputs.push_back(all_inputs[i]);
+  }
+  for (int i = 0; i < num_outputs; i++) {
+    TensorX out(this, i);
+    outputs.push_back(out);
+  }
+}
+
+bool OpX::add_pm_constraint(Compare comp, PMParameter para, int value)
+{
+  PMConstraint pmc(comp, para, value);
+  pmConstraints.push_back(pmc);
+  return true;
+}
+
+bool OpX::add_input_constraint(Compare comp, TNParameter para,
+                               DIMParameter dim, int value)
+{
+  TNConstraint tnc(comp, para, dim, value);
+  tnConstraints.push_back(tnc);
+  return true;
+}
+
+bool OpX::add_input_constraint(Compare comp,
+                               TNParameter para1, DIMParameter dim1,
+                               TNParameter para2, DIMParameter dim2)
+{
+  TNConstraint tnc(comp, para1, dim1, para2, dim2);
+  tnConstraints.push_back(tnc);
+  return true;
+}
+
+bool OpX::get_pm_constraint(PMParameter para, int& value) const
+{
+  for (size_t i = 0; i < pmConstraints.size(); i++)
+    if ((pmConstraints[i].comp == COMPARE_EQ)
+    && (pmConstraints[i].para == para)) {
+      value = pmConstraints[i].value;
+      return true;
+    }
+  return false;
+}
+
+GraphXfer::GraphXfer(FFModel* _model)
+: model(_model), tensorId(10)
+{}
+
+TensorX GraphXfer::new_tensor(void)
+{
+  TensorX t;
+  t.op = NULL;
+  t.idx = tensorId++;
+  return t;
+}
+
+bool GraphXfer::map_output(const TensorX& src, const TensorX& dst)
+{
+  mappedOutputs[src] = dst;
+  return true;
 }
 
 bool GraphXfer::can_match(OpX* srcOp, const Op* op, Graph* graph)
@@ -257,7 +352,7 @@ void GraphXfer::unmatch(OpX* srcOp, const Op* op, Graph* graph)
 
 void GraphXfer::run(int depth, Graph* graph,
                     std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>& candidates,
-                    std::set<size_t>& hashmap, float threshold, int maxNumOps)
+                    std::unordered_set<size_t>& hashmap, float threshold, int maxNumOps)
 {
   //printf("run: depth(%d) srcOps.size(%zu) graph.size(%zu) candidates(%zu)\n", depth, srcOps.size(), graph->inEdges.size(), candidates.size());
   if (depth >= (int)srcOps.size()) {
@@ -289,7 +384,8 @@ void GraphXfer::run(int depth, Graph* graph,
     Graph* newGraph = create_new_graph(graph);
     // Check that the new graph should not have any loop
     if (newGraph->has_loop()) {
-      //printf("Found a new graph with LOOP!!!!\n");
+      printf("Found a new graph with LOOP!!!!\n");
+      newGraph->print();
       delete newGraph;
       return;
     }
@@ -382,17 +478,36 @@ Graph* GraphXfer::create_new_graph(Graph* graph)
 
 bool GraphXfer::create_new_operator(const OpX* opx, const Op*& op)
 {
-  Tensor inputs[MAX_NUM_INPUTS], weights[MAX_NUM_WEIGHTS];
+  Tensor inputs[MAX_NUM_INPUTS];
   for (size_t i = 0; i < opx->inputs.size(); i++)
     inputs[i] = opx->inputs[i].to_tensor(this);
-  for (size_t i = 0; i < opx->weights.size(); i++)
-    weights[i] = opx->weights[i].to_tensor(this);
   switch (opx->type) {
-    case OP_CONV2D:
-    {
-    }
     case OP_LINEAR:
     {
+      int output_channels, activation;
+      assert(opx->get_pm_constraint(PM_OUTPUT_CHANNELS, output_channels));
+      assert(opx->get_pm_constraint(PM_ACTI, activation));
+      op = new Linear(*model, inputs[0], output_channels,
+                      (ActiMode)activation, false, NULL);
+      break;
+    }
+    case OP_REPARTITION:
+    {
+      int repartition_dim, repartition_degree;
+      assert(opx->get_pm_constraint(PM_REPARTITION_DIM, repartition_dim));
+      assert(opx->get_pm_constraint(PM_NUM_PARTITIONS, repartition_degree));
+      op = new Repartition(*model, inputs[0], repartition_dim,
+                           repartition_degree, NULL);
+      break;
+    }
+    case OP_COMBINE:
+    {
+      int combine_dim, combine_degree;
+      assert(opx->get_pm_constraint(PM_COMBINE_DIM, combine_dim));
+      assert(opx->get_pm_constraint(PM_NUM_PARTITIONS, combine_degree));
+      op = new Combine(*model, inputs[0], combine_dim,
+                       combine_degree, NULL);
+      break;
     }
     default:
     {
@@ -439,3 +554,106 @@ bool GraphXfer::create_new_operator(const OpX* opx, const Op*& op)
   }
   return true;
 }
+
+OpX* GraphXfer::create_linear(const TensorX& input,
+                              int num_dims,
+                              int out_channels,
+                              ActiMode acti_mode,
+                              bool use_bias)
+{
+  OpX* li = new OpX(OP_LINEAR, 1, 1, input);
+  li->add_pm_constraint(COMPARE_EQ, PM_OUTPUT_CHANNELS, out_channels);
+  li->add_pm_constraint(COMPARE_EQ, PM_ACTI, acti_mode);
+  li->add_input_constraint(COMPARE_EQ, INPUT_0, DIM_ND, num_dims);
+  return li;
+}
+
+OpX* GraphXfer::create_repartition(const TensorX& input,
+                                   int repartition_dim,
+                                   int num_parts)
+{
+  OpX* part = new OpX(OP_REPARTITION, 1, 1, input);
+  part->add_pm_constraint(COMPARE_EQ, PM_REPARTITION_DIM, repartition_dim);
+  part->add_pm_constraint(COMPARE_EQ, PM_NUM_PARTITIONS, num_parts);
+  return part;
+}
+
+OpX* GraphXfer::create_combine(const TensorX& input,
+                               int combine_dim,
+                               int num_parts)
+{
+  OpX* part = new OpX(OP_COMBINE, 1, 1, input);
+  part->add_pm_constraint(COMPARE_EQ, PM_COMBINE_DIM, combine_dim);
+  part->add_pm_constraint(COMPARE_EQ, PM_NUM_PARTITIONS, num_parts);
+  return part;
+}
+
+void FFModel::dp_optimize()
+{
+  // Construct graph structure
+  Graph* graph = new Graph(this);
+  for (size_t l = 0; l < layers.size(); l++) {
+    const Op* op = layers[l];
+    for (int j = 0; j < op->numInputs; j++) {
+      graph->add_edge(op->inputs[j]->owner_op, op, op->inputs[j]->owner_idx, j,
+                      false/*weight*/);
+    }
+  }
+  // Construct graph substitutions
+  std::vector<GraphXfer*> xfers;
+  xfers.push_back(create_partition_linear_combine(this, 3, 4096, 4, AC_MODE_RELU, false));
+  xfers.push_back(create_partition_linear_combine(this, 3, 4096, 4, AC_MODE_NONE, false));
+
+  std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
+  std::unordered_set<size_t> hashmap;
+  candidates.push(graph);
+  hashmap.insert(graph->hash());
+  Graph* best_graph = graph;
+  float best_cost = graph->total_cost();
+  int counter = 0;
+  while (!candidates.empty()) {
+    Graph *cur_graph = candidates.top();
+    candidates.pop();
+    if (cur_graph->total_cost() < best_cost) {
+      delete best_graph;
+      best_graph = cur_graph;
+      best_cost = cur_graph->total_cost();
+    }
+    printf("    [%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)\n",
+           counter, cur_graph->total_cost(), best_cost, candidates.size());
+    counter ++;
+    for (size_t i = 0; i < xfers.size(); i++) {
+      xfers[i]->run(0, cur_graph, candidates, hashmap, best_cost * 1.05, 100000);
+    }
+    if (best_graph != cur_graph) {
+      delete cur_graph;
+    }
+  }
+  // Run DP
+  printf("best_cost = %.4lf\n", best_cost);
+  best_graph->print();
+}
+
+GraphXfer* create_partition_linear_combine(FFModel* model,
+                                           int num_dims,
+                                           int out_channels,
+                                           int num_parts,
+                                           ActiMode activation,
+                                           bool use_bias)
+{
+  GraphXfer* subst = new GraphXfer(model);
+  TensorX input = subst->new_tensor();
+  OpX* linear1 = subst->create_linear(input, num_dims, out_channels,
+                                      activation, use_bias);
+  OpX* repartition = subst->create_repartition(input, num_dims-2, num_parts);
+  OpX* linear2 = subst->create_linear(repartition->outputs[0], num_dims,
+                                      out_channels, activation, use_bias);
+  OpX* combine = subst->create_combine(linear2->outputs[0], num_dims-2, num_parts);
+  subst->map_output(linear1->outputs[0], combine->outputs[0]);
+  subst->srcOps.push_back(linear1);
+  subst->dstOps.push_back(repartition);
+  subst->dstOps.push_back(linear2);
+  subst->dstOps.push_back(combine);
+  return subst;
+}
+
