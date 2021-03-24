@@ -186,6 +186,13 @@ class PyTorchModel(object):
         output = input_tensor[idx]
         output = FXTensor(output)
         
+      elif op_type == OpType.GETATTR:
+        assert len(items) == 5, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        output = getattr(input_tensor, items[4]) 
+        output = FXTensor(output)
+
       elif op_type == OpType.BATCH_NORM:
         assert len(items) == 4, "wrong format"
         assert len(self.input_ops_list) == 1, "wrong format"
