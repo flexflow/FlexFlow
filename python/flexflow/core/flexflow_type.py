@@ -75,6 +75,7 @@ class OpType(Enum):
   OUTPUT = 2051
   MULTIHEAD_ATTENTION = 2060
   GETITEM = 2070
+  GETATTR = 2080
 
 def enum_to_int(enum, enum_item):
   for item in enum:

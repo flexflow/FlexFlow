@@ -109,6 +109,12 @@ def parse_getitem(op_str, node):
   op_str = op_str + str(node.inedges[1]) + "\n"
   return op_str
   
+def parse_getattr(op_str, node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.GETATTR) + ", "
+  op_str = op_str + str(node.inedges[1]) + "\n"
+  return op_str
+
 def parse_flat(op_str, node):
   if type(node) == FunctionNode:
     assert len(node.inedges) == 2, "wrong number of inputs"
@@ -291,9 +297,14 @@ def torch_to_flexflow_str(model):
       elif function_name.find('getitem') >= 0:
         op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
         op_str = parse_getitem(op_str, node)
+      
       elif function_name.find('mul') >= 0:
         op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_mul(op_str,node)
+      
+      elif function_name.find('getattr') >= 0:
+        op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+        op_str = parse_getattr(op_str, node)
       
       else:
         # Unrecogonized type
