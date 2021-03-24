@@ -61,7 +61,7 @@ enum MetricsType {
 enum OperatorType {
   OP_INPUT,
   OP_WEIGHT,
-  OP_ANY,
+  OP_NOOP,
   OP_CONV2D,
   OP_DROPOUT,
   OP_LINEAR,

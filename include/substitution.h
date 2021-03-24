@@ -102,6 +102,7 @@ public:
   bool can_match(OpX* srcOp, const Node& op, Graph* graph);
   void match(OpX* srcOp, const Node& op, Graph* graph);
   void unmatch(OpX* srcOp, const Node& op, Graph* graph);
+  OpX* create_noop(const TensorX& input);
   OpX* create_linear(const TensorX& input,
                      int num_dims,
                      int out_channels,

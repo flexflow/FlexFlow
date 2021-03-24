@@ -350,6 +350,7 @@ struct Node {
   const Op* ptr;
 };
 
+class NoOp;
 class ElementBinary;
 class ElementUnary;
 class Conv2D;
@@ -613,8 +614,9 @@ public:
   std::vector<MachineView>* get_valid_machine_views(const Op* op);
   void register_machine_views();
   // ========================================
-  // Functional APIs
+  // Internal Node creation APIs
   // ========================================
+  Node create_noop_node(const Tensor input);
   Node create_linear_node(const Tensor input,
                           int out_dim,
                           ActiMode activation,
@@ -747,6 +749,7 @@ public:
   std::unordered_map<size_t, float> cached_graph_costs;
   std::unordered_map<size_t, std::vector<MachineView>* > cached_operator_valid_views;
   // Cached operators: key: operator hash, value: operator pointer
+  std::unordered_map<size_t, NoOp*> cached_noop_ops;
   std::unordered_map<size_t, Linear*> cached_linear_ops;
   std::unordered_map<size_t, Repartition*> cached_repartition_ops;
   std::unordered_map<size_t, Combine*> cached_combine_ops;

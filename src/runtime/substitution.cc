@@ -25,6 +25,10 @@ GraphXfer* create_partition_linear_combine(FFModel* model,
                                            ActiMode activation,
                                            bool use_bias);
 
+GraphXfer* eliminate_combine_partition(FFModel* model,
+                                       int parallel_dim,
+                                       int num_parts);
+
 PMConstraint::PMConstraint(Compare c, PMParameter p, int v)
 : comp(c), para(p), value(v) {}
 
@@ -438,6 +442,11 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
   for (size_t i = 0; i < opx->inputs.size(); i++)
     inputs[i] = opx->inputs[i].to_tensor(this);
   switch (opx->type) {
+    case OP_NOOP:
+    {
+      op = model->create_noop_node(inputs[0]);
+      break;
+    }
     case OP_LINEAR:
     {
       int output_channels, activation;
@@ -511,6 +520,12 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
   return true;
 }
 
+OpX* GraphXfer::create_noop(const TensorX& input)
+{
+  OpX* noop = new OpX(OP_NOOP, 1, 1, input);
+  return noop;
+}
+
 OpX* GraphXfer::create_linear(const TensorX& input,
                               int num_dims,
                               int out_channels,
@@ -568,6 +583,7 @@ void FFModel::dp_optimize()
   std::vector<GraphXfer*> xfers;
   xfers.push_back(create_partition_linear_combine(this, 3, 4096, 4, AC_MODE_RELU, false));
   xfers.push_back(create_partition_linear_combine(this, 3, 4096, 4, AC_MODE_NONE, false));
+  xfers.push_back(eliminate_combine_partition(this, 1/*parallel_dims*/, 4/*num_parts*/));
 
   std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
   std::unordered_set<size_t> hashmap;
@@ -619,6 +635,23 @@ GraphXfer* create_partition_linear_combine(FFModel* model,
   subst->dstOps.push_back(repartition);
   subst->dstOps.push_back(linear2);
   subst->dstOps.push_back(combine);
+  return subst;
+}
+
+GraphXfer* eliminate_combine_partition(FFModel* model,
+                                       int parallel_dim,
+                                       int num_parts)
+{
+  GraphXfer* subst = new GraphXfer(model);
+  TensorX input = subst->new_tensor();
+  OpX* combine = subst->create_combine(input, parallel_dim, num_parts);
+  OpX* repartition = subst->create_repartition(combine->outputs[0],
+                                               parallel_dim, num_parts);
+  OpX* noop = subst->create_noop(input);
+  subst->map_output(repartition->outputs[0], noop->outputs[0]);
+  subst->srcOps.push_back(combine);
+  subst->srcOps.push_back(repartition);
+  subst->dstOps.push_back(noop);
   return subst;
 }
 

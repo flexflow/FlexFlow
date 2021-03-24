@@ -68,8 +68,8 @@ std::string Node::op_to_string(const Op* ptr)
       return "Input";
     case OP_WEIGHT:
       return "Weight";
-    case OP_ANY:
-      return "Any";
+    case OP_NOOP:
+      return "Noop";
     case OP_CONV2D:
       return "Conv";
     case OP_DROPOUT:

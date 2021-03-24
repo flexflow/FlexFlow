@@ -23,6 +23,12 @@ NoOp::NoOp(FFModel& model,
            const char* _name)
 : Op(model, _type, name, 0/*inputs*/, 0/*weights*/)
 {
+  // NOOP takes one input and has one output
+  // both of them are _output
+  if (op_type == OP_NOOP) {
+    numInputs = 1;
+    inputs[0] = _output;
+  }
   numOutputs = 1;
   outputs[0] = _output;
 }
@@ -45,4 +51,21 @@ bool NoOp::measure_operator_cost(
   cost_metrics.backward_time = 0.0f;
   cost_metrics.memory_requirement = 0;
   return true;
+}
+
+Node FFModel::create_noop_node(const Tensor input)
+{
+  size_t hash = input->get_owner_independent_hash();
+  NoOp* noop = NULL;
+  const auto& it = cached_noop_ops.find(hash);
+  if (it != cached_noop_ops.end()) {
+    noop = it->second;
+  } else {
+    noop = new NoOp(*this, OP_NOOP, input, NULL);
+    cached_noop_ops[hash] = noop;
+  }
+  Node ret;
+  ret.guid = node_global_guid ++;
+  ret.ptr = noop;
+  return ret;
 }

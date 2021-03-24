@@ -645,7 +645,7 @@ ElementBinaryMeta::ElementBinaryMeta(FFHandler handler)
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateOpTensorDescriptor(&opDesc));
-  op_type = OP_ANY;
+  op_type = OP_NOOP;
 }
 
 bool ElementBinary::measure_operator_cost(Simulator* sim,
