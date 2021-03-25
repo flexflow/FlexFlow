@@ -133,6 +133,14 @@ class PyTorchModel(object):
         assert len(self.input_ops_list) == 1, "wrong format"
         input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
         output = ffmodel.relu(input=input_tensor,perm=[items[4],items[5]], name=op_name)
+      
+      elif op_type == OpType.BATCH_MATMUL:
+        assert len(items) == 4, "wrong format"
+        assert len(self.input_ops_list) == 2, "wrong format"
+        input_tensor1 = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        input_tensor2 = self.tensor_dict[self._get_input_key(op_name, 1)].fftensor
+        output = ffmodel.batch_matmul(A=input_tensor1, B=input_tensor2, name=op_name)
+        output = FXTensor(output)
 
       elif op_type == OpType.SIGMOID:
         assert len(items) == 4, "wrong format"
