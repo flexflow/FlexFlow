@@ -17,11 +17,16 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
 
+import atexit
 import os
+import sys
 
 if 'FF_USE_PYBIND' in os.environ:
   print("Using pybind11 flexflow bindings.")
-  from flexflow_bindings import *
+  from flexflow.core.flexflow_bindings import *
+  if not "FLEXFLOW_PYTHON" in os.environ:
+    begin_flexflow_task(sys.argv)
+    atexit.register(finish_flexflow_task)
 else:
   print("Using cffi flexflow bindings.")
   from flexflow.core.flexflow_cbinding import *
