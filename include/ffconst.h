@@ -68,6 +68,7 @@ enum OperatorType {
   OP_BATCHMATMUL,
   OP_POOL2D,
   OP_RELU,
+  OP_IDENTITY,
   OP_SIGMOID,
   OP_TANH,
   OP_ELU,

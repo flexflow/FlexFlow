@@ -1267,6 +1267,22 @@ class FFModel(object):
     self.add_layer(OpType.RELU, name)
     return Tensor(handle, owner_op_type=OpType.RELU)
 
+  def identity(self, input, name=None):
+    """Identity function.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_identity(self.handle, input.handle, c_name)
+    self.add_layer(OpType.IDENTITY, name)
+    return Tensor(handle, owner_op_type=OpType.IDENTITY)
+  
   def sigmoid(self, input, name=None):
     """Sigmoid activation function, :math:`sigmoid(x) = 1 / (1 + exp(-x))`.
              
