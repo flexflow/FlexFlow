@@ -4,6 +4,8 @@
 
 #include "config.h"
 #include "ffconst.h"
+#include "flexflow_c.h"
+#include "mapper.h"
 #include "metrics_functions.h"
 #include "model.h"
 #include "tensor.h"
@@ -13,6 +15,47 @@ namespace py = pybind11;
 using py::literals::operator""_a;
 
 namespace {
+
+static Context ctx;
+
+void begin_flexflow_task(std::vector<std::string> args) {
+  // This needs to be set, otherwise NCCL will try to use group kernel launches,
+  // which are not compatible with the Realm CUDA hijack.
+  setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
+
+  std::vector<const char *> argvec;
+  argvec.push_back("python");
+  for (auto &arg: args) {
+    argvec.push_back(arg.data());
+  }
+  int argc = argvec.size();
+  char **argv = const_cast<char **>(argvec.data());
+
+  register_flexflow_internal_tasks();
+
+  register_c_custom_tasks();
+
+  FFMapper::register_sharding_functor(argc, argv);
+
+  Runtime::add_registration_callback(update_mappers);
+
+  // Start the runtime in background mode
+  Runtime::start(argc, argv, true/*background*/);
+  // Get the runtime now that we've started it
+  Runtime *runtime = Runtime::get_runtime();
+  // Then we can bind make this thread into an implicit top-level task
+  ctx = runtime->begin_implicit_task(PYTHON_TOP_LEVEL_TASK_ID, 0/*mapper id*/,
+                                     Processor::LOC_PROC, "flexflow_top_level_task",
+                                     true/*control replicable*/);
+}
+
+void finish_flexflow_task() {
+  Runtime *runtime = Runtime::get_runtime();
+  runtime->finish_implicit_task(ctx);
+  // The previous call is asynchronous so we still need to
+  // wait for the shutdown of the runtime to complete
+  Runtime::wait_for_shutdown();
+}
 
 double get_current_time(FFConfig &config)
 {
@@ -87,6 +130,9 @@ void fit(FFModel &model, SingleDataLoader &x, SingleDataLoader &y, int epochs)
 PYBIND11_MODULE(flexflow_bindings, m) {
   m.attr("cuda_enabled") =
       true;
+
+  m.def("begin_flexflow_task", &begin_flexflow_task);
+  m.def("finish_flexflow_task", &finish_flexflow_task);
 
   py::enum_<ActiMode>(m, "ActiMode")
       .value("AC_MODE_NONE", ActiMode::AC_MODE_NONE)

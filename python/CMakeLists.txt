@@ -5,24 +5,26 @@ set(project_target flexflow_python)
 
 set(CPU_SRC
   flexflow_c.cc
-  flexflow_dataloader.cc
-  main.cc)
+  flexflow_dataloader.cc)
 
 set(GPU_SRC
   flexflow_dataloader.cu)
 
-cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})
+cuda_add_library(flexflow_dataloader SHARED ${GPU_SRC} ${CPU_SRC} OPTIONS ${CUDA_GENCODE})
+target_include_directories(flexflow_dataloader PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
+
+cuda_add_executable(${project_target} main.cc)
 set_target_properties(${project_target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
 target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
-target_link_libraries(${project_target} -Wl,--whole-archive flexflow -Wl,--no-whole-archive ${FLEXFLOW_EXT_LIBRARIES})
+target_link_libraries(${project_target} -Wl,--whole-archive flexflow -Wl,--no-whole-archive flexflow_dataloader ${FLEXFLOW_EXT_LIBRARIES})
 
 # create pybind bindings
 if(FF_USE_PYBIND)
   pybind11_add_module(flexflow_bindings
     bindings.cc
   )
-  set_target_properties(flexflow_bindings PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
-  target_link_libraries(flexflow_bindings PRIVATE flexflow)
+  set_target_properties(flexflow_bindings PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/flexflow/core)
+  target_link_libraries(flexflow_bindings PRIVATE flexflow flexflow_dataloader ${FLEXFLOW_EXT_LIBRARIES})
 endif()
 
 # create legion_cffi.py
