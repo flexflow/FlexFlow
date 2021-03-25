@@ -22,6 +22,7 @@
 using namespace Legion;
 
 #include "mapper.h"
+#include "flexflow_c.h"
 
 //enum MainTaskIDs {
 //  PYTHON_TOP_LEVEL_TASK_ID = 11111,
@@ -41,8 +42,6 @@ VariantID preregister_python_task_variant(
     registrar, code_desc, userdata, userlen,
     registrar.task_variant_name);
 }
-
-void register_flexflow_tasks(int argc, char **argv);
 
 int main(int argc, char **argv)
 {
@@ -96,7 +95,11 @@ int main(int argc, char **argv)
     preregister_python_task_variant(registrar, "flexflow.core", "flexflow_top_level_task");
   }
   
-  register_flexflow_tasks(argc, argv);
+  register_flexflow_internal_tasks();
+
+  register_c_custom_tasks();
+
+  FFMapper::register_sharding_functor(argc, argv);
 
   Runtime::add_registration_callback(update_mappers);
   return Runtime::start(argc, argv);

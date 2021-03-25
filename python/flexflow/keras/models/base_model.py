@@ -30,14 +30,13 @@ tracing_id = 100
 class BaseModel(object):
   __slots__ = ['_ffconfig', '_ffmodel', '_ffoptimizer', '_layers', '_nb_layers', \
                '_input_layers', '_input_tensors', '_output_tensor', '_label_tensor', \
-               '_full_input_tensors', '_full_label_tensor', '_num_samples',\
+               '_num_samples',\
                '_input_dataloaders', '_input_dataloaders_dim', \
                '_label_dataloader', '_label_dataloader_dim', \
                '_loss', '_metrics', '_label_type', '__tracing_id']
   def __init__(self, name):
     self._ffconfig = ff.FFConfig()
-    self._ffconfig.parse_args()
-    print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.get_batch_size(), self._ffconfig.get_workers_per_node(), self._ffconfig.get_num_nodes()))
+    print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(self._ffconfig.batch_size, self._ffconfig.workers_per_node, self._ffconfig.num_nodes))
     self._ffmodel = None
 
     self._name = name
@@ -48,8 +47,6 @@ class BaseModel(object):
     self._input_tensors = []
     self._output_tensor = 0
     self._label_tensor = 0
-    self._full_input_tensors = []
-    self._full_label_tensor = 0
     self._num_samples = 0
     self._input_dataloaders = []
     self._input_dataloaders_dim = []
@@ -134,8 +131,9 @@ class BaseModel(object):
               loss_weights=None,
               weighted_metrics=None,
               run_eagerly=None,
-              comp_mode=None,
+              comp_mode=ff.CompMode.TRAINING,
               **kwargs):
+
     if loss_weights != None:
       assert 0, "loss_weights is not supported"
     if weighted_metrics != None:
@@ -188,7 +186,8 @@ class BaseModel(object):
     metrics_type = []
     for metric in self._metrics:
       metrics_type.append(metric.type)
-    self._ffmodel.compile(optimizer=self._ffoptimizer.ffhandle, loss_type=self._loss.type, metrics=metrics_type, comp_mode=comp_mode)
+    self._ffmodel.optimizer = optimizer.ffhandle
+    self._ffmodel.compile(loss_type=self._loss.type, metrics=metrics_type, comp_mode=comp_mode)
     self._create_label_tensor()
     fflogger.debug("%s, %s, %s, %s" %( str(self._input_tensors[0]), str(self._output_tensor), str(self._input_tensors[0].ffhandle), str(self._output_tensor.ffhandle)))
 
@@ -214,7 +213,7 @@ class BaseModel(object):
           workers=1,
           use_multiprocessing=False):
     if batch_size != None:
-      assert self._ffconfig.get_batch_size() == batch_size, "batch size is not correct use -b to set it"
+      assert self._ffconfig.batch_size == batch_size, "batch size is not correct use -b to set it"
     if validation_split != 0.0:
       assert 0, "validation_split is not supported"
     if validation_data != None:
@@ -268,7 +267,7 @@ class BaseModel(object):
                use_multiprocessing=False,
                return_dict=False):
     if batch_size != None:
-      assert self._ffconfig.get_batch_size() == batch_size, "batch size is not correct use -b to set it"
+      assert self._ffconfig.batch_size == batch_size, "batch size is not correct use -b to set it"
     assert self._output_tensor.ffhandle != None, "tensor is not init"
     if (isinstance(x, list) == False):
       input_tensors = [x]
@@ -287,13 +286,13 @@ class BaseModel(object):
     self._input_tensors[idx].create_ff_tensor(self._ffmodel)
 
   def _create_label_tensor(self):
-    label_ffhandle = self._ffmodel.get_label_tensor()
-    self._label_tensor = Tensor(ffmodel=self._ffmodel, batch_shape=(self._ffconfig.get_batch_size(), 1), name="", dtype=self._label_type, ffhandle=label_ffhandle)
+    label_ffhandle = self._ffmodel.label_tensor
+    self._label_tensor = Tensor(ffmodel=self._ffmodel, batch_shape=(self._ffconfig.batch_size, 1), name="", dtype=self._label_type, ffhandle=label_ffhandle)
 
   def _create_input_tensors(self):
     idx = 0
     for input_tensor in self._input_tensors:
-      input_tensor.set_batch_size(self._ffconfig.get_batch_size())
+      input_tensor.set_batch_size(self._ffconfig.batch_size)
       self._create_input_tensor(idx)
       idx += 1
 
@@ -327,30 +326,6 @@ class BaseModel(object):
     else:
       assert 0, "unknown optimizer"
 
-  def __create_single_data_loader(self, batch_tensor, full_array):
-    array_shape = full_array.shape
-    num_dim = len(array_shape)
-    print("dataloader type:", full_array.dtype)
-    if (full_array.dtype == "float32"):
-      datatype = ff.DataType.DT_FLOAT
-    elif (full_array.dtype == "int32"):
-      datatype = ff.DataType.DT_INT32
-    else:
-      assert 0, "unsupported datatype"
-
-    if (num_dim == 2):
-      full_tensor = Tensor(self._ffmodel, batch_shape=[self._num_samples, array_shape[1]], name="", dtype=datatype)
-    elif (num_dim == 4):
-      full_tensor = Tensor(self._ffmodel, batch_shape=[self._num_samples, array_shape[1], array_shape[2], array_shape[3]], name="", dtype=datatype)
-    else:
-      assert 0, "unsupported dims"
-
-    full_tensor.ffhandle.attach_numpy_array(self._ffconfig, full_array)
-    dataloader = ff.SingleDataLoader(self._ffmodel, batch_tensor.ffhandle, full_tensor.ffhandle, self._num_samples, datatype)
-    full_tensor.ffhandle.detach_numpy_array(self._ffconfig)
-
-    return full_tensor, dataloader
-
   def _create_data_loaders(self, x_trains, y_train):
     # Todo: check all num_samples, should be the same
     input_shape = x_trains[0].shape
@@ -361,13 +336,11 @@ class BaseModel(object):
 
     idx = 0
     for x_train in x_trains:
-      full_tensor, dataloader = self.__create_single_data_loader(self._input_tensors[idx], x_train)
-      self._full_input_tensors.append(full_tensor)
+      dataloader = self._ffmodel.create_data_loader(self._input_tensors[idx].ffhandle, x_train)
       self._input_dataloaders.append(dataloader)
       self._input_dataloaders_dim.append(len(input_shape))
       idx += 1
-    full_tensor, dataloader = self.__create_single_data_loader(self._label_tensor, y_train)
-    self.__full_label_tensor = full_tensor
+    dataloader = self._ffmodel.create_data_loader(self._label_tensor.ffhandle, y_train)
     self._label_dataloader = dataloader
     self._label_dataloader_dim = len(input_shape)
 
@@ -393,7 +366,7 @@ class BaseModel(object):
         dataloader.reset()
       self._label_dataloader.reset()
       self._ffmodel.reset_metrics()
-      iterations = self._num_samples / self._ffconfig.get_batch_size()
+      iterations = self._num_samples / self._ffconfig.batch_size
 
       for iter in range(0, int(iterations)):
         if callbacks != None:
@@ -454,10 +427,10 @@ class BaseModel(object):
     out_t = 0
 
     for layer in self._input_layers:
-      layer.set_batch_size(self._ffconfig.get_batch_size())
+      layer.set_batch_size(self._ffconfig.batch_size)
 
     for layer in self._layers:
-      layer.set_batch_size(self._ffconfig.get_batch_size())
+      layer.set_batch_size(self._ffconfig.batch_size)
 
       if isinstance(layer, Activation) == True:
         if layer.activation == 'softmax':

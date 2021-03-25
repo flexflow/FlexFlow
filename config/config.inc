@@ -29,42 +29,63 @@ if [ -n "$BUILD_TYPE" ]; then
 fi
 
 # set CUDA Arch
-if [ -n "CUDA_ARCH" ]; then
-  SET_CUDA_ARCH="-DCUDA_ARCH=${CUDA_ARCH}"
+if [ -n "$FF_CUDA_ARCH" ]; then
+  SET_CUDA_ARCH="-DFF_CUDA_ARCH=${FF_CUDA_ARCH}"
 fi
 
-# enable Python
-if [ -n "$USE_PYTHON" ]; then
-  SET_PYTHON="-DENABLE_PYTHON=ON"
+# set CUDA dir
+if [ -n "$CUDA_DIR" ]; then
+  SET_CUDA="-DCUDA_PATH=${CUDA_DIR}"
 fi
 
 # set cudnn dir
 if [ -n "$CUDNN_DIR" ]; then
-  SET_CUDNN="-DCUDNN_ROOT=${CUDNN_DIR}"
+  SET_CUDNN="-DCUDNN_PATH=${CUDNN_DIR}"
+fi
+
+# enable Python
+if [ "$FF_USE_PYTHON" = "ON" ]; then
+  SET_PYTHON="-DFF_USE_PYTHON=ON"
+elif [ "$FF_USE_PYTHON" = "OFF" ]; then
+  SET_PYTHON="-DFF_USE_PYTHON=OFF"
+else
+  SET_PYTHON="-DFF_USE_PYTHON=ON"
+fi
+
+# enable NCCL
+if [ "$FF_USE_NCCL" = "ON" ]; then
+  SET_NCCL="-DFF_USE_NCCL=ON"
+elif [ "$FF_USE_NCCL" = "OFF" ]; then
+  SET_NCCL="-DFF_USE_NCCL=OFF"
+else
+  SET_NCCL="-DFF_USE_NCCL=ON"
 fi
 
 # enable GASNET
-if [ -n "$USE_GASNET" ]; then
-  SET_GASNET="-DENABLE_GASNET=ON"
+if [ "$FF_USE_GASNET" = "ON" ]; then
+  SET_GASNET="-DFF_USE_GASNET=ON"
+elif [ "$FF_USE_GASNET" = "OFF" ]; then
+  SET_GASNET="-DFF_USE_GASNET=OFF"
+else
+  SET_GASNET="-DFF_USE_GASNET=ON"
 fi
 
-# set Legion fir
-if [ -n "$LEGION_DIR" ]; then
-  SET_LEGION="-DLEGION_ROOT=${LEGION_DIR}"
-fi
-
-# set Protobuf fir
-if [ -n "$PROTOBUF_DIR" ]; then
-  SET_PROTOBUF="-DPROTOBUF_ROOT=${PROTOBUF_DIR}"
+# build C++ examples
+if [ "$FF_BUILD_EXAMPLES" = "ON" ]; then
+  SET_EXAMPLES="-DFF_BUILD_ALL_EXAMPLES=ON"
+elif [ "$FF_BUILD_EXAMPLES" = "OFF" ]; then
+  SET_EXAMPLES="-FF_BUILD_EXAMPLES=OFF"
+else
+  SET_EXAMPLES="-FF_BUILD_EXAMPLES=ON"
 fi
 
 #set max dims
-if [ -n "$MAX_DIM" ]; then
-  SET_MAX_DIM="-DMAX_DIM=${MAX_DIM}"
+if [ -n "$FF_MAX_DIM" ]; then
+  SET_MAX_DIM="-DFF_MAX_DIM=${FF_MAX_DIM}"
 fi
 
 SRC_LOCATION=${SRC_LOCATION:=`dirname $0`/../}
-CMAKE_COMMAND="${SET_CC_FLAGS} ${SET_NVCC_FLAGS} ${SET_LD_FLAGS} cmake -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF ${SET_CC} ${SET_CXX} ${SET_BUILD} ${SET_CUDA_ARCH} ${SET_PYTHON} ${SET_CUDNN} ${SET_GASNET} ${SET_LEGION} ${SET_PROTOBUF} ${SET_MAX_DIM} $* ${SRC_LOCATION}"
+CMAKE_COMMAND="${SET_CC_FLAGS} ${SET_NVCC_FLAGS} ${SET_LD_FLAGS} cmake -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF ${SET_CC} ${SET_CXX} ${SET_BUILD} ${SET_CUDA_ARCH} ${SET_CUDA} ${SET_CUDNN} ${SET_PYTHON} ${SET_NCCL} ${SET_GASNET} ${SET_EXAMPLES} ${SET_MAX_DIM} $* ${SRC_LOCATION}"
 echo $CMAKE_COMMAND
 eval $CMAKE_COMMAND
 }

@@ -38,19 +38,20 @@ jobs:
       - run:
           name: Install FlexFlow dependencies
           command: |
-            cd nccl
+            export FF_HOME=$PWD
             git submodule update --init --recursive
+            cd $FF_HOME/deps/nccl
             make -j src.build NVCC_GENCODE="-gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_70,code=sm_70"
-            cd ..
+            cd $FF_HOME
             sudo add-apt-repository ppa:deadsnakes/ppa
             sudo apt-get update
             sudo apt-get install mpich
-            cd ..
+            cd $FF_HOME
             git clone https://github.com/StanfordLegion/gasnet.git
-            cd gasnet
+            cd $FF_HOME/gasnet
             export CONDUIT=mpi
             make -j
-            cd ..
+            cd $FF_HOME
             wget -c http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-10.1-linux-x64-v8.0.5.39.tgz
             sudo tar -xzf cudnn-10.1-linux-x64-v8.0.5.39.tgz -C /usr/local
             rm cudnn-10.1-linux-x64-v8.0.5.39.tgz
@@ -63,7 +64,7 @@ jobs:
             export CUDA_ARCH="52,60,70"
             export GPU_ARCH="52,60,70"
             export CUDA_HOME=/usr/local/cuda-10.1
-            export NCCL_HOME=$FF_HOME/nccl/build
+            export NCCL_HOME=$FF_HOME/deps/nccl/build
             export PATH=/opt/conda/bin:$PATH
             which python3
             #export PYTHON_ROOT=/opt/conda/bin/python3
@@ -81,7 +82,7 @@ jobs:
             export FF_HOME=$PWD
             export CUDNN_HOME=$CUDNN_ROOT_DIR
             export CUDA_HOME=/usr/local/cuda-10.1
-            export NCCL_HOME=$FF_HOME/nccl/build
+            export NCCL_HOME=$FF_HOME/deps/nccl/build
             export PATH=/opt/conda/bin:$PATH
             export GASNET=$FF_HOME/../gasnet/release
             export CPLUS_INCLUDE_PATH=/usr/include/mpi:$CPLUS_INCLUDE_PATH
@@ -112,19 +113,20 @@ jobs:
       - run: 
           name: Install FlexFlow dependencies
           command: |
-            cd nccl
+            export FF_HOME=$PWD
             git submodule update --init --recursive
+            cd $FF_HOME/deps/nccl
             make -j src.build NVCC_GENCODE="-gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_70,code=sm_70"
-            cd ..
+            cd $FF_HOME
             sudo add-apt-repository ppa:deadsnakes/ppa
             sudo apt-get update
             sudo apt-get install mpich
-            cd ..
+            cd $FF_HOME
             git clone https://github.com/StanfordLegion/gasnet.git
-            cd gasnet
+            cd $FF_HOME/gasnet
             export CONDUIT=mpi
             make -j
-            cd ..
+            cd $FF_HOME
             wget -c http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-10.1-linux-x64-v8.0.5.39.tgz
             sudo tar -xzf cudnn-10.1-linux-x64-v8.0.5.39.tgz -C /usr/local
             rm cudnn-10.1-linux-x64-v8.0.5.39.tgz
@@ -137,7 +139,7 @@ jobs:
             export CUDA_ARCH="52,60,70"
             export GPU_ARCH="52,60,70"
             export CUDA_HOME=/usr/local/cuda-10.1
-            export NCCL_HOME=$FF_HOME/nccl/build
+            export NCCL_HOME=$FF_HOME/deps/nccl/build
             export PATH=/opt/conda/bin:$PATH
             which python3
             #export PYTHON_ROOT=/opt/conda/bin/python3
@@ -155,7 +157,7 @@ jobs:
             export FF_HOME=$PWD
             export CUDNN_HOME=$CUDNN_ROOT_DIR
             export CUDA_HOME=/usr/local/cuda-10.1
-            export NCCL_HOME=$FF_HOME/nccl/build
+            export NCCL_HOME=$FF_HOME/deps/nccl/build
             export PATH=/opt/conda/bin:$PATH
             export GASNET=$FF_HOME/../gasnet/release
             export LD_LIBRARY_PATH=$NCCL_HOME/lib:$LD_LIBRARY_PATH

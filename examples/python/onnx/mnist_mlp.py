@@ -8,11 +8,10 @@ from accuracy import ModelAccuracy
 
 def top_level_task(test_type=1):
   ffconfig = FFConfig()
-  ffconfig.parse_args()
-  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.get_batch_size(), ffconfig.get_workers_per_node(), ffconfig.get_num_nodes()))
+  print("Python API batchSize(%d) workersPerNodes(%d) numNodes(%d)" %(ffconfig.batch_size, ffconfig.workers_per_node, ffconfig.num_nodes))
   ffmodel = FFModel(ffconfig)
   
-  dims1 = [ffconfig.get_batch_size(), 784]
+  dims1 = [ffconfig.batch_size, 784]
   input1 = ffmodel.create_tensor(dims1, DataType.DT_FLOAT);
   
   num_samples = 60000
@@ -25,9 +24,9 @@ def top_level_task(test_type=1):
     t = onnx_model.apply(ffmodel, {"input_1": input1})
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
-  ffmodel.set_sgd_optimizer(ffoptimizer)
+  ffmodel.optimizer = ffoptimizer
   ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
-  label = ffmodel.get_label_tensor()
+  label = ffmodel.label_tensor
 
   (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -37,24 +36,12 @@ def top_level_task(test_type=1):
   y_train = y_train.astype('int32')
   y_train = np.reshape(y_train, (len(y_train), 1))
 
-  dims_full_input = [num_samples, 784]
-  full_input = ffmodel.create_tensor(dims_full_input, DataType.DT_FLOAT)
-
-  dims_full_label = [num_samples, 1]
-  full_label = ffmodel.create_tensor(dims_full_label, DataType.DT_INT32)
-
-  full_input.attach_numpy_array(ffconfig, x_train)
-  full_label.attach_numpy_array(ffconfig, y_train)
-
-  dataloader_input = SingleDataLoader(ffmodel, input1, full_input, num_samples, DataType.DT_FLOAT)
-  dataloader_label = SingleDataLoader(ffmodel, label, full_label, num_samples, DataType.DT_INT32)
-
-  full_input.detach_numpy_array(ffconfig)
-  full_label.detach_numpy_array(ffconfig)
+  dataloader_input = ffmodel.create_data_loader(input1, x_train)
+  dataloader_label = ffmodel.create_data_loader(label, y_train)
 
   ffmodel.init_layers()
 
-  epochs = ffconfig.get_epochs()
+  epochs = ffconfig.epochs
 
   ts_start = ffconfig.get_current_time()
 

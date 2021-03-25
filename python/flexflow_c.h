@@ -106,11 +106,13 @@ flexflow_model_prefetch(
 
 void
 flexflow_model_forward(
-  flexflow_model_t handle);
+  flexflow_model_t handle,
+  int seq_length);
 
 void
 flexflow_model_backward(
-  flexflow_model_t handle);
+  flexflow_model_t handle,
+  int seq_length);
 
 void
 flexflow_model_compute_metrics(
@@ -147,6 +149,7 @@ flexflow_model_add_add(
   flexflow_model_t handle,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y,
+  bool inplace_a,
   const char *name);
 
 flexflow_tensor_t
@@ -154,6 +157,7 @@ flexflow_model_add_subtract(
   flexflow_model_t handle,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y,
+  bool inplace_a,
   const char *name);
 
 flexflow_tensor_t
@@ -161,6 +165,7 @@ flexflow_model_add_multiply(
   flexflow_model_t handle,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y,
+  bool inplace_a,
   const char *name);
 
 flexflow_tensor_t
@@ -168,6 +173,7 @@ flexflow_model_add_divide(
   flexflow_model_t handle,
   const flexflow_tensor_t x,
   const flexflow_tensor_t y,
+  bool inplace_a,
   const char *name);
 
 flexflow_tensor_t
@@ -178,8 +184,8 @@ flexflow_model_add_conv2d(
   int kernel_h, int kernel_w,
   int stride_h, int stride_w,
   int padding_h, int padding_w,
-  int groups,
   enum ActiMode activation /* AC_MODE_NONE */,
+  int groups,
   bool use_bias /* True */,
   flexflow_op_t shared_op,
   flexflow_initializer_t kernel_initializer,
@@ -218,7 +224,9 @@ flexflow_tensor_t
 flexflow_model_add_batch_matmul(
   flexflow_model_t handle,
   const flexflow_tensor_t a,
-  const flexflow_tensor_t b);
+  const flexflow_tensor_t b,
+  int a_seq_length_dim /* -1 */,
+  int b_seq_length_dim /* -1 */);
 
 flexflow_tensor_t
 flexflow_model_add_dense(
@@ -260,6 +268,7 @@ flexflow_tensor_t
 flexflow_model_add_softmax(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
+  int dim,
   const char *name);
 
 flexflow_tensor_t
@@ -289,6 +298,7 @@ flexflow_tensor_t
 flexflow_model_add_relu(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
+  bool inplace,
   const char *name);
 
 flexflow_tensor_t
@@ -307,6 +317,7 @@ flexflow_tensor_t
 flexflow_model_add_elu(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
+  bool inplace,
   const char *name);
 
 flexflow_tensor_t
@@ -843,6 +854,9 @@ void
 flexflow_op_forward(
   flexflow_op_t handle,
   flexflow_model_t model);
+
+void
+register_c_custom_tasks();
 
 #ifdef __cplusplus
 }

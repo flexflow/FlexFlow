@@ -56,6 +56,12 @@ enum TaskIDs {
   EMBED_INIT_TASK_ID,
   EMBED_FWD_TASK_ID,
   EMBED_BWD_TASK_ID,
+  GROUP_BY_INIT_TASK_ID,
+  GROUP_BY_FWD_TASK_ID,
+  GROUP_BY_BWD_TASK_ID,
+  AGGREGATE_INIT_TASK_ID,
+  AGGREGATE_FWD_TASK_ID,
+  AGGREGATE_BWD_TASK_ID,
   POOL2D_INIT_TASK_ID,
   POOL2D_FWD_TASK_ID,
   POOL2D_BWD_TASK_ID,
@@ -192,6 +198,7 @@ public:
   Op(FFModel& model, OperatorType type, const char* _name, int num, const Tensor* inputs);
   Op(FFModel& model, OperatorType type, const char* _name, int num);
   Op(FFModel& model, OperatorType type, const Op* shared_op, const char* _name, const Tensor& input);
+
   // Pure virtual functions that must be implemented
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
@@ -205,6 +212,8 @@ public:
   // Other virtual functions that can be optionally overwritten
   virtual ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   virtual ParallelConfig get_data_parallel_config(const FFModel& ff) const;
+  virtual bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
+  virtual bool is_adoptable_parallel_config(FFModel const &ff, ParallelConfig const &pc) const;
   virtual Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx);
   virtual Domain get_output_tensor_shape(const ParallelConfig& pc, int output_idx, int part_idx);
   virtual Domain get_weight_tensor_shape(const ParallelConfig& pc, int weight_idx, int part_idx);
@@ -212,6 +221,11 @@ public:
   void prefetch(const FFModel&);
   void zero_grad(const FFModel&);
   Parameter* get_parameter(int index);
+  virtual bool can_inplace_output();
+  virtual bool has_inplace_output();
+  virtual void do_inplace_output();
+
+  int get_dimension() const;
 #ifdef FF_USE_NCCL
   static ncclUniqueId get_nccl_unique_id_task(const Task *task,
       const std::vector<PhysicalRegion> &regions,
@@ -239,6 +253,8 @@ public:
 #endif
 };
 
+ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
+
 class ElementBinary;
 class ElementUnary;
 class Conv2D;
@@ -250,6 +266,11 @@ class Embedding;
 class FFModel {
 public:
   FFModel(FFConfig &config);
+
+  static constexpr float PROPAGATION_CHANCE = 0.25;
+  static constexpr float CONTINUE_PROPAGATION_CHANCE = 0.75;
+  static constexpr float PROPAGATION_SIZE_WEIGHT = 1.0;
+
   // C++ APIs for constructing models
   // Add an exp layer
   Tensor exp(const Tensor& x,
@@ -257,27 +278,33 @@ public:
   // Add an add layer
   Tensor add(const Tensor& x,
              const Tensor& y,
+             bool inplace_a = false,
              char const *name = NULL);
   // Add a subtract layer
   Tensor subtract(const Tensor& x,
                   const Tensor& y,
+                  bool inplace_a = false,
                   char const *name = NULL);
   // Add a multiply layer
   Tensor multiply(const Tensor& x,
                   const Tensor& y,
+                  bool inplace_a = false,
                   char const *name = NULL);
   // Add a divide layer
   Tensor divide(const Tensor& x,
                 const Tensor& y,
+                bool inplace_a = false,
                 char const *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor& x,
+              bool inplace = true,
               const char *name = NULL);
   Tensor sigmoid(const Tensor& x,
                  const char *name = NULL);
   Tensor tanh(const Tensor& x,
               const char *name = NULL);
   Tensor elu(const Tensor& x,
+             bool inplace = true,
              const char *name = NULL);
   // Add a 2D convolutional layer
   Tensor conv2d(const Tensor& input,
@@ -285,8 +312,8 @@ public:
                 int kernelH, int kernelW,
                 int strideH, int strideW,
                 int paddingH, int paddingW,
-                int groups = 1,
                 ActiMode activation = AC_MODE_NONE,
+                int groups = 1,
                 bool use_bias = true,
                 const Op* shared_op = NULL,
                 Initializer* krenel_initializer = NULL,
@@ -304,6 +331,16 @@ public:
                    const Op* shared_op = NULL,
                    Initializer* kernel_initializer = NULL,
                    const char* name = NULL);
+  // Add a group_by layer
+  void group_by(const Tensor& data,
+                const Tensor& assign,
+                Tensor* outputs,
+                int n, float alpha,
+                const char* name = NULL);
+  // Add aggregate layer
+  Tensor aggregate(const Tensor* inputs,
+                  int n,
+                  const char* name = NULL);
   // Add a 2D pooling layer
   Tensor pool2d(const Tensor& input,
                 int kernelH, int kernelW,
@@ -318,7 +355,9 @@ public:
                     const char* name = NULL);
   // Add a batch_matmul layer
   Tensor batch_matmul(const Tensor& A,
-                      const Tensor& B);
+                      const Tensor& B,
+                      int a_seq_length_dim=-1,
+                      int b_seq_length_dim=-1);
   // Add a dense layer
   Tensor dense(const Tensor& input,
                int outDim,
@@ -341,6 +380,7 @@ public:
   Tensor flat(const Tensor& input, const char *name = NULL);
   // Add a softmax layer
   Tensor softmax(const Tensor& input,
+                 int dim=-1,
                  const char *name = NULL);
   // Create input tensors and constants
   Tensor transpose(const Tensor& input,
@@ -421,9 +461,9 @@ public:
   void reset_metrics();
   void init_layers();
   void prefetch();
-  void forward();
+  void forward(int seq_length = -1);
   void compute_metrics();
-  void backward();
+  void backward(int seq_length = -1);
   void update();
   bool apply_fusion(const std::vector<Op*>& layers, std::vector<Op*>& new_layers);
   void compile(LossType loss_type,
@@ -436,12 +476,19 @@ public:
   void optimize(Simulator* simulator,
                 std::map<Op*, ParallelConfig>& best,
                 size_t budget, float alpha,
-                CompMode comp_mode) const;
+                CompMode comp_mode,
+                bool use_propagation) const;
+  void propagate(std::map<Op *, ParallelConfig> const &current,
+                 std::map<Op *, ParallelConfig> &next) const;
   void rewrite(const std::map<Op*, ParallelConfig>& current,
-               std::map<Op*, ParallelConfig>& next) const;
+               std::map<Op*, ParallelConfig>& next,
+               bool use_propagation) const;
   void zero_gradients();
   void print_layers(int id);
   std::string get_operator_type_name(OperatorType type) const;
+
+  std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> get_bwd_edge_map() const;
+
   // Internal funcitons
   Tensor get_tensor_from_guid(int guid);
   IndexSpace get_or_create_task_is(ParallelConfig pc);
@@ -450,15 +497,19 @@ public:
   IndexSpace get_task_is(const Domain& domain) const;
   IndexSpace get_task_is(ParallelConfig pc) const;
   IndexSpace get_task_is(int ndims, const std::string& pcname) const;
+  // APIs for setting iteration configs
+public:
+  void set_iteration_config_sequence_length(int seq_length);
 public:
   int op_global_guid;
   FFConfig config;
+  FFIterationConfig iter_config;
   Optimizer* optimizer;
   Loss* loss_op;
   Metrics* metrics_op;
   Tensor label_tensor;
   //std::vector<Tensor> input_tensors;
-  
+
   std::vector<Op*> layers;
   std::vector<Parameter> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
@@ -472,11 +523,13 @@ private:
   Tensor binary(OperatorType op,
                 Tensor const &x,
                 Tensor const &y,
+                bool inplace_a = false,
                 char const *name = NULL);
   ElementBinary * binary(OperatorType op,
                          char const *name = NULL);
   Tensor unary(OperatorType op,
                Tensor const &x,
+               bool inplace = true,
                char const *name = NULL);
   ElementUnary * unary(OperatorType op,
                        char const *name = NULL);
@@ -488,6 +541,7 @@ public:
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnOpTensorDescriptor_t opDesc;
   OperatorType op_type;
+  bool inplace_a;
 };
 
 class ElementBinary : public Op {
@@ -496,6 +550,7 @@ public:
                 OperatorType type,
                 const Tensor& x,
                 const Tensor& y,
+                bool inplace_a,
                 const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -504,6 +559,9 @@ public:
   //Parameter* get_parameter(int index) {assert(0); return NULL;}
   void create_weights(FFModel& model);
   void create_output_and_partition(FFModel& model);
+  bool can_inplace_output();
+  bool has_inplace_output();
+  void do_inplace_output();
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -531,9 +589,7 @@ private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
 public:
-  //IndexSpace task_is;
-  OperatorType op_type;
-  //bool profiling;
+  bool inplace_a;
 };
 
 class ElementUnaryMeta : public OpMeta {
@@ -542,6 +598,7 @@ public:
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
   OperatorType op_type;
+  bool inplace;
 };
 
 class ElementUnary : public Op {
@@ -549,6 +606,7 @@ public:
   ElementUnary(FFModel& model,
                OperatorType type,
                const Tensor& x,
+               bool inplace,
                const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -557,6 +615,9 @@ public:
   //Parameter* get_parameter(int index) {assert(0); return NULL;}
   void create_weights(FFModel& model);
   void create_output_and_partition(FFModel& model);
+  bool can_inplace_output();
+  bool has_inplace_output();
+  void do_inplace_output();
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -583,6 +644,8 @@ public:
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
+public:
+  bool inplace;
 };
 
 class Conv2DMeta : public OpMeta {
@@ -657,15 +720,7 @@ public:
   Initializer *bias_initializer;
 };
 
-class DropoutMeta : public OpMeta {
-public:
-  DropoutMeta(FFHandler handle);
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
-  cudnnDropoutDescriptor_t dropoutDesc;
-  void *reserveSpace, *dropoutStates;
-  size_t reserveSpaceSize, dropoutStateSize;
-};
-
+class DropoutMeta;
 class Dropout : public Op {
 public:
   Dropout(FFModel& model,
@@ -684,9 +739,6 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  void init_meta(DropoutMeta *m,
-                 Domain const &input_domain,
-                 Domain const &output_domain) const;
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -710,6 +762,21 @@ public:
   float rate;
   unsigned long long seed;
 };
+
+class DropoutMeta : public OpMeta {
+public:
+  DropoutMeta(FFHandler handle,
+              const Dropout* dropout,
+              Memory gpu_mem,
+              const Domain& output_domain);
+  ~DropoutMeta(void);
+  Realm::RegionInstance reserveInst;
+  cudnnTensorDescriptor_t inputTensor, outputTensor;
+  cudnnDropoutDescriptor_t dropoutDesc;
+  void *reserveSpace, *dropoutStates;
+  size_t reserveSpaceSize, dropoutStateSize;
+};
+
 
 class Pool2D : public Op {
 public:
@@ -765,6 +832,7 @@ public:
   char op_name[MAX_OPNAME];
 };
 
+class BatchNormMeta;
 class BatchNorm : public Op {
 public:
   BatchNorm(FFModel& model,
@@ -783,14 +851,6 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  void init_meta(BatchNormMeta *meta,
-                 Rect<4> const &input,
-                 Rect<4> const &output,
-                 Rect<1> const &scale,
-                 Rect<1> const &bias) const;
-  static void init_para_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
-                             Context ctx, Runtime *runtime);
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
@@ -822,13 +882,20 @@ public:
 
 class BatchNormMeta : public OpMeta {
 public:
-  BatchNormMeta(FFHandler handle);
+  BatchNormMeta(FFHandler handle,
+                const BatchNorm* bn,
+                Memory gpu_mem,
+                int output_n,
+                int output_c,
+                int output_h,
+                int output_w);
+  ~BatchNormMeta(void);
+  Realm::RegionInstance reserveInst;
   cudnnTensorDescriptor_t inputTensor, outputTensor, biasTensor;
   cudnnActivationDescriptor_t actiDesc;
   cudnnBatchNormMode_t mode;
   float *runningMean, *runningVar, *saveMean, *saveVar;
   bool relu;
-  coord_t numChannels;
 };
 
 class LinearMeta : public OpMeta {
@@ -893,6 +960,7 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
   ParallelConfig get_random_parallel_config(const FFModel& ff) const;
+  bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
@@ -933,13 +1001,16 @@ public:
 class BatchMatmulMeta : public OpMeta {
 public:
   BatchMatmulMeta(FFHandler handler);
+  int a_seq_length_dim, b_seq_length_dim;
 };
 
 class BatchMatmul : public Op {
 public:
   BatchMatmul(FFModel& model,
               const Tensor& A,
-              const Tensor& B);
+              const Tensor& B,
+              int a_seq_length_dim,
+              int b_seq_length_dim);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -960,7 +1031,11 @@ public:
                       const float* a_ptr,
                       const float* b_ptr,
                       const float* c_ptr,
-                      int m, int n, int k, int batch);
+                      int m, int n, int k,
+                      int batch,
+                      int a_seq_length_dim = -1,
+                      int b_seq_length_dim = -1,
+                      int seq_length = -1);
   static void backward_kernel(const BatchMatmulMeta* meta,
                        const float* o_ptr,
                        const float* o_grad_ptr,
@@ -983,6 +1058,7 @@ private:
   template<int NDIM>
   void backward_with_dim(const FFModel& ff);
 public:
+  int a_seq_length_dim, b_seq_length_dim;
   //bool profiling;
 };
 
@@ -1051,6 +1127,79 @@ public:
   EmbeddingMeta(FFHandler handle): OpMeta(handle) {}
   AggrMode aggr;
 };
+
+class Group_byMeta : public OpMeta {
+public:
+  Group_byMeta(FFHandler handle);
+};
+
+class Group_by : public Op {
+public:
+  Group_by(FFModel& model,
+          const Tensor& _input,
+          const Tensor& _assign,
+          int _n, float _alpha,
+          const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+public:
+  int n;
+  float alpha;
+  bool profiling;
+};
+
+
+class AggregateMeta : public OpMeta {
+public:
+  AggregateMeta(FFHandler handle);
+};
+
+class Aggregate : public Op {
+public:
+  Aggregate(FFModel& model,
+            const Tensor* inputs,
+            int _n, const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+public:
+  int n;
+  bool profiling;
+};
+
 
 class Flat : public Op {
 public:
@@ -1167,17 +1316,12 @@ public:
   void *reserveSpace;
 };
 
-class SoftmaxMeta : public OpMeta {
-public:
-  SoftmaxMeta(FFHandler handle); 
-  cudnnTensorDescriptor_t inputTensor;
-  char op_name[MAX_OPNAME];
-};
-
+class SoftmaxMeta;
 class Softmax : public Op {
 public:
   Softmax(FFModel& model,
           const Tensor& logit,
+          int dim,
           const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -1197,9 +1341,6 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
-  void init_meta(SoftmaxMeta *m,
-                 Rect<2> const &input,
-                 Rect<2> const &output) const;
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
@@ -1209,8 +1350,31 @@ public:
   static void backward_kernel(float *input_grad_ptr,
                               float const *output_grad_ptr,
                               size_t num_elements);
+private:
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
+  template<int NDIM>
+  static void forward_task_with_dim(const Task *task,
+                                    const std::vector<PhysicalRegion> &regions,
+                                    Context ctx, Runtime *runtime);
+  template<int NDIM>
+  static void backward_task_with_dim(const Task *task,
+                                     const std::vector<PhysicalRegion> &regions,
+                                     Context ctx, Runtime *runtime);
 public:
   //bool profiling;
+  int dim;
+};
+
+class SoftmaxMeta : public OpMeta {
+public:
+  SoftmaxMeta(FFHandler handle,
+              const Softmax* softmax,
+              const Domain& input_domain);
+  cudnnTensorDescriptor_t inputTensor;
+  bool profiling;
+  int dim;
+  char op_name[MAX_OPNAME];
 };
 
 class TransposeMeta : public OpMeta {
@@ -1532,6 +1696,7 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
 public:
+  FFIterationConfig iter_config;
   int op_num_inputs[MAX_NUM_FUSED_OPERATORS];
   int op_num_weights[MAX_NUM_FUSED_OPERATORS];
   int op_num_outputs[MAX_NUM_FUSED_OPERATORS];
@@ -1577,7 +1742,7 @@ void data_load_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime);
 
-void register_custom_tasks();
+void register_flexflow_internal_tasks();
 
-void register_c_custom_tasks();
+void register_custom_tasks();
 #endif//_FLEXFLOW_MODEL_H_

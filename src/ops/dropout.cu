@@ -94,23 +94,6 @@ void Dropout::create_output_and_partition_with_dim(FFModel& model)
   }
 }
 
-void Dropout::init_meta(DropoutMeta *m, Domain const &input_domain, Domain const &output_domain) const {
-  assert(input_domain == output_domain);
-  checkCUDNN(cudnnCreateTensorDescriptor(&m->inputTensor));
-  checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
-  checkCUDNN(cudnnCreateDropoutDescriptor(&m->dropoutDesc));
-
-  checkCUDNN(cudnnDropoutGetStatesSize(m->handle.dnn, &(m->dropoutStateSize)));
-  checkCUDA(cudaMalloc(&m->dropoutStates, m->dropoutStateSize));
-  checkCUDNN(cudnnSetDropoutDescriptor(
-    m->dropoutDesc, m->handle.dnn, this->rate, m->dropoutStates, m->dropoutStateSize, this->seed
-  ));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
-  checkCUDNN(cudnnDropoutGetReserveSpaceSize(m->outputTensor, &(m->reserveSpaceSize)));
-  checkCUDA(cudaMalloc(&m->reserveSpace, m->reserveSpaceSize));
-}
-
 OpMeta* Dropout::init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime)
@@ -119,14 +102,14 @@ OpMeta* Dropout::init_task(const Task *task,
   assert(task->regions.size() == 2);
   Dropout* dropout = (Dropout*) task->args;
   FFHandler handle = *((FFHandler*) task->local_args);
-  DropoutMeta* m = new DropoutMeta(handle);
   Domain input_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
     ctx, task->regions[1].region.get_index_space());
-
-  dropout->init_meta(m, input_domain, output_domain);
-  m->profiling = dropout->profiling;
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+      .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
+  assert(input_domain == output_domain);
+  DropoutMeta* m = new DropoutMeta(handle, dropout, gpu_mem, output_domain);
   return m;
 }
 
@@ -331,9 +314,46 @@ void Dropout::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-DropoutMeta::DropoutMeta(FFHandler handler)
+DropoutMeta::DropoutMeta(FFHandler handler,
+                         const Dropout* dropout,
+                         Memory gpu_mem,
+                         const Domain& output_domain)
 : OpMeta(handler)
-{}
+{
+  profiling = dropout->profiling;
+  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(cudnnCreateDropoutDescriptor(&dropoutDesc));
+  checkCUDNN(cudnnDropoutGetStatesSize(handle.dnn, &(dropoutStateSize)));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, output_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
+  checkCUDNN(cudnnDropoutGetReserveSpaceSize(outputTensor, &(reserveSpaceSize)));
+  {
+    // allocate memory for dropoutStates and reserveSpace
+    size_t totalSize = dropoutStateSize + reserveSpaceSize;
+    Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
+        Realm::Point<1, coord_t>(totalSize-1));
+    std::vector<size_t> field_sizes;
+    field_sizes.push_back(sizeof(char));
+    Realm::RegionInstance::create_instance(reserveInst, gpu_mem, bounds,
+        field_sizes, 0, Realm::ProfilingRequestSet()).wait();
+    dropoutStates = reserveInst.pointer_untyped(0, sizeof(char));
+    reserveSpace = ((char*)dropoutStates) + dropoutStateSize;
+  }
+  //checkCUDA(cudaMalloc(&dropoutStates, dropoutStateSize));
+  //checkCUDA(cudaMalloc(&reserveSpace, reserveSpaceSize));
+  checkCUDNN(cudnnSetDropoutDescriptor(
+    dropoutDesc, handle.dnn, dropout->rate, dropoutStates, dropoutStateSize, dropout->seed
+  ));
+}
+
+DropoutMeta::~DropoutMeta(void)
+{
+  reserveInst.destroy();
+  checkCUDNN(cudnnDestroyTensorDescriptor(inputTensor));
+  checkCUDNN(cudnnDestroyTensorDescriptor(outputTensor));
+  checkCUDNN(cudnnDestroyDropoutDescriptor(dropoutDesc));
+}
 
 bool Dropout::measure_operator_cost(Simulator* sim,
                                     const ParallelConfig& pc,
@@ -346,9 +366,9 @@ bool Dropout::measure_operator_cost(Simulator* sim,
   if (!inputs[0].get_input_sub_tensor(pc, sub_input, op_type)) {
     return false;
   }
-
-  DropoutMeta *m = sim->dropout_meta;
-  this->init_meta(m, sub_input.get_domain(), sub_output.get_domain());
+  assert(sub_input.get_domain() == sub_output.get_domain());
+  DropoutMeta *m = new DropoutMeta(sim->handler, this, sim->memory,
+      sub_output.get_domain());
 
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -382,6 +402,7 @@ bool Dropout::measure_operator_cost(Simulator* sim,
         name,
         cost_metrics.forward_time);
   }
-
+  // Free dropoutmeta
+  delete m;
   return true;
 }
