@@ -66,8 +66,10 @@ GEN_GPU_SRC	?= flexflow_dataloader.cu # .cu files
 ifeq ($(strip $(FF_USE_PYBIND)),1)
   PYBIND_INC    = $(shell $$PYTHON_EXE -m pybind11 --includes)
   PYBIND_EXT    = $(shell $$PYTHON_EXE-config --extension-suffix)
-  FF_BYBIND_LIB = flexflow_bindings$(PYBIND_EXT)
-	INC_FLAGS    += -I${FF_HOME}
+  FF_BYBIND_LIB = flexflow/core/flexflow_bindings$(PYBIND_EXT)
+  INC_FLAGS     += -I${FF_HOME}
+  CC_FLAGS      += -fPIC
+  NVCC_FLAGS    += -Xcompiler -fPIC
 endif
 
 CC_FLAGS	  ?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON 
@@ -97,8 +99,8 @@ DEFINE_HEADERS_DIR ?= ./
 flexflow/core/legion_cffi.py: legion_cffi.py.in legion_cffi_build.py
 	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
 	
-$(FF_BYBIND_LIB): bindings.cc
-	$(CC) $(CC_FLAGS) $(INC_FLAGS) -Wall -shared -std=c++11 -fPIC $(PYBIND_INC) bindings.cc -o $@
+$(FF_BYBIND_LIB): bindings.cc flexflow_dataloader.cu.o flexflow_dataloader.cc.o
+	$(CC) $(CC_FLAGS) $(INC_FLAGS) -Wall -shared -std=c++11 -fPIC $(PYBIND_INC) bindings.cc flexflow_dataloader.cu.o flexflow_dataloader.cc.o -o $@
 
 clean::
 	$(RM) -f $(OUTFILE) $(SLIB_LEGION) $(SLIB_REALM) $(GEN_OBJS) $(GEN_GPU_OBJS) $(REALM_OBJS) $(LEGION_OBJS) $(GPU_RUNTIME_OBJS) $(MAPPER_OBJS) $(ASM_OBJS) $(FF_BYBIND_LIB) legion_defines.h realm_defines.h flexflow/core/legion_cffi.py *.pyc

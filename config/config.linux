@@ -27,6 +27,9 @@ CUDNN_DIR=/usr/local/cuda
 # enable Python
 FF_USE_PYTHON=ON
 
+# enable PyBind11
+FF_USE_PYBIND=OFF
+
 # enable NCCL
 FF_USE_NCCL=OFF
 
