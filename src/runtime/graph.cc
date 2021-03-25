@@ -61,7 +61,7 @@ Node::Node(void)
 : guid(0), ptr(NULL)
 {}
 
-std::string Node::op_to_string(const Op* ptr)
+std::string Node::op_to_string(const Op* ptr) const
 {
   switch (ptr->op_type) {
     case OP_INPUT:
@@ -166,6 +166,12 @@ std::string Node::op_to_string(const Op* ptr)
       return "Slice";
     case OP_RESIZE:
       return "Resize";
+    case OP_SOFTMAX:
+      return "Softmax";
+    case OP_REPARTITION:
+      return "Partition";
+    case OP_COMBINE:
+      return "Combine";
     default:
       return "Unknown_" + std::to_string(ptr->op_type);
   }
@@ -349,14 +355,35 @@ Node Graph::find_bottleneck_node(const Node& sink_node,
                                  std::unordered_set<Node>& used_nodes) const
 {
   Node bn_node = Node::INVALID_NODE;
-  std::vector<Node> queue;
   std::unordered_set<Node> visited;
-  for (const auto& it : inEdges) {
-    Node cur_node = it.first;
+  std::vector<Node> candidates;
+  {
+    candidates.push_back(sink_node);
+    visited.insert(sink_node);
+    size_t index = 0;
+    while (index < candidates.size()) {
+      Node node = candidates[index++];
+      const auto& it = inEdges.find(node);
+      if (it != inEdges.end()) {
+        const auto& inList = it->second;
+        for (const auto& e : inList) {
+          if (visited.find(e.srcOp) == visited.end()) {
+            visited.insert(e.srcOp);
+            candidates.push_back(e.srcOp);
+          }
+        }
+      }
+    }
+  }
+  std::vector<Node> queue;
+  size_t cand_index = 0;
+  while (cand_index < candidates.size()) {
+    Node cur_node = candidates[cand_index++];
     // Check if we can get from sink_node to a source_node or input_node
     visited.clear();
     queue.clear();
     queue.push_back(sink_node);
+    visited.insert(sink_node);
     size_t index = 0;
     bool found_source = false;
     while (index < queue.size()) {
@@ -921,7 +948,6 @@ float Graph::total_cost(void)
   }
   return total_cost;
 }
-
 void Graph::construct_optimal_view(float optimal_cost,
                                    std::unordered_map<Node, MachineView>& optimal_views)
 {
@@ -963,10 +989,10 @@ size_t Graph::hash(void) const
   size_t total_hash = 0;
   for (const auto& it : inEdges) {
     const auto& inList = it.second;
-    size_t node_hash = std::hash<size_t>()(it.first.guid);
+    size_t node_hash = std::hash<size_t>()((size_t)it.first.ptr);
     for (const auto& e : inList) {
       size_t edge_hash = 17;
-      edge_hash = edge_hash * 31 + std::hash<size_t>()(e.srcOp.guid);
+      edge_hash = edge_hash * 31 + std::hash<size_t>()((size_t)e.srcOp.ptr);
       edge_hash = edge_hash * 31 + std::hash<int>()(e.srcIdx);
       edge_hash = edge_hash * 31 + std::hash<int>()(e.dstIdx);
       node_hash *= edge_hash;
@@ -984,9 +1010,9 @@ size_t FFModel::dp_state_hash(const Graph* graph,
                               const MachineResource& resource)
 {
   size_t key = graph->hash();
-  key = key * 31 + std::hash<size_t>()(sink_node.guid);
+  key = key * 31 + std::hash<size_t>()((size_t)sink_node.ptr);
   key = key * 31 + sink_view.hash();
-  key = key * 31 + std::hash<size_t>()(source_node.guid);
+  key = key * 31 + std::hash<size_t>()((size_t)source_node.ptr);
   key = key * 31 + source_view.hash();
   key = key * 31 + resource.hash();
   return key;

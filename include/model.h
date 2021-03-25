@@ -335,11 +335,11 @@ struct Node {
     ptr = n.ptr;
     return *this;
   }
-  std::string op_to_string(const Op* ptr);
-  std::string to_string(void)
+  std::string op_to_string(const Op* ptr) const;
+  std::string to_string(void) const
   {
     if (ptr != NULL) {
-      return op_to_string(ptr) + "_" + std::to_string(guid);
+      return op_to_string(ptr);
     }
     else {
       return "UnmappedOp_" + std::to_string(guid);

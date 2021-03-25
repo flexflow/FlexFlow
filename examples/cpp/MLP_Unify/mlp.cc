@@ -28,7 +28,7 @@ void top_level_task(const Task* task,
       ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
   FFModel ff(ffConfig);
 
-  std::vector<int> hidden_dims = {4096};
+  std::vector<int> hidden_dims = {4096, 4096, 4096};
   Tensor input1, input2;
   {
     const int dims[] = {1, ffConfig.batchSize, 1024};

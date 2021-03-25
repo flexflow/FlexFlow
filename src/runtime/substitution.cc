@@ -661,8 +661,16 @@ void FFModel::dp_optimize()
   best_graph->construct_optimal_view(best_cost, optimal_views);
   printf("Optimal Views...\n");
   for (const auto& it : optimal_views) {
-    printf("guid(%d) view(%d %d)\n", it.first.guid, it.second.ndims,
+    printf("node[%zu]: type(%s) view(%d %d) ", it.first.guid,
+           it.first.to_string().c_str(),
+           it.second.ndims,
            it.second.dim[0]);
+    const auto& list = best_graph->inEdges.find(it.first)->second;
+    for (const auto& it2 : list) {
+      Edge e = it2;
+      printf(" inEdge(node(%zu) idx(%d))", e.srcOp.guid, e.srcIdx);
+    }
+    printf("\n");
   }
 }
 
