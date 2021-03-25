@@ -66,10 +66,10 @@ GEN_GPU_SRC	?= flexflow_dataloader.cu # .cu files
 ifeq ($(strip $(FF_USE_PYBIND)),1)
   PYBIND_INC    = $(shell $$PYTHON_EXE -m pybind11 --includes)
   PYBIND_EXT    = $(shell $$PYTHON_EXE-config --extension-suffix)
-  FF_BYBIND_LIB = flexflow_bindings$(PYBIND_EXT)
-	INC_FLAGS    += -I${FF_HOME}
-	CC_FLAGS += -fPIC
-	NVCC_FLAGS += -Xcompiler -fPIC
+  FF_BYBIND_LIB = flexflow/core/flexflow_bindings$(PYBIND_EXT)
+  INC_FLAGS     += -I${FF_HOME}
+  CC_FLAGS      += -fPIC
+  NVCC_FLAGS    += -Xcompiler -fPIC
 endif
 
 CC_FLAGS	  ?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON 
