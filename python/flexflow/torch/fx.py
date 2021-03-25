@@ -87,7 +87,6 @@ def parse_add(op_str, node):
   
 def parse_concat(op_str, node):
   #FIXME assume it is a merge
-  print(node.inedges)
   assert len(node.inedges[0]) >= 2, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.CONCAT) + ", "
   if len(node.inedges) == 1:
@@ -190,7 +189,28 @@ def parse_relu(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.RELU) + "\n"
   return op_str
-  
+
+def parse_identity(op_str,node):
+  assert len(node.inedges) == 1, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.IDENTITY) + "\n"
+  return op_str
+
+def parse_gelu(op_str,node):
+  assert len(node.inedges) == 1, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.GELU) + "\n"
+  return op_str
+
+def parse_layernorm(op_str, node):
+  assert len(node.inedges) == 1, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.LAYER_NORM) + "\n"
+  return op_str
+
+def parse_floordiv(op_str, node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.FLOOR_DIVIDE) + ", "
+  op_str = op_str + str(node.inedges[1]) + "\n"
+  return op_str
+
 def parse_sigmoid(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.SIGMOID) + "\n"
@@ -200,21 +220,59 @@ def parse_tanh(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.TANH) + "\n"
   return op_str
-  
+
 def parse_elu(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.ELU) + "\n"
   return op_str
-  
+ 
+def parse_transpose(op_str,node):
+    assert len(node.inedges) == 3, "wrong number of inputs"
+    op_str = op_str + enum_to_str(OpType, OpType.TRANSPOSE)
+    op_str = op_str +", " + str(node.inedges[1])+", "+str(node.inedges[2])+"\n"
+    return op_str
+
+def parse_expand(op_str,node):
+    assert len(node.inedges) == 4, "wrong number of inputs"
+    op_str = op_str + enum_to_str(OpType, OpType.EXPAND)
+    op_str = op_str +", " + str(node.inedges[2])+", "+str(node.inedges[3])+"\n"
+    return op_str
+
 def parse_softmax(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.SOFTMAX) + "\n"
+  return op_str
+
+def parse_scalarmul(op_str,node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.SCALAR_MULTIPLY) + ", "
+  op_str = op_str + str(node.inedges[1]) + "\n"
   return op_str
 
 def parse_mul(op_str,node):
   assert len(node.inedges) == 2, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.MULTIPLY) + "\n"
   return op_str
+
+def parse_batchmatmul(op_str,node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.BATCH_MATMUL) + "\n"
+  return op_str
+
+def parse_permute(op_str,node):
+    assert len(node.inedges) >= 1
+    op_str = op_str + enum_to_str(OpType, OpType.PERMUTE) + ", "
+    for dim in node.inedges[1:-1]:
+        op_str = op_str + str(dim) + ", "
+    op_str = op_str + str(node.inedges[-1]) + "\n"
+    return op_str
+        
+def parse_reshape(op_str,node):
+    assert len(node.inedges) >= 1
+    op_str = op_str + enum_to_str(OpType, OpType.RESHAPE) + ", "
+    for dim in node.inedges[1:]:
+        op_str = op_str + (str(dim) if type(dim) is int else (str(dim)+":"))+ ", "
+    return op_str + "\n"
   
 def parse_inoutedge(op_str, inedges, outedges):
   if inedges == None:
@@ -297,17 +355,49 @@ def torch_to_flexflow_str(model):
       elif function_name.find('getitem') >= 0:
         op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
         op_str = parse_getitem(op_str, node)
-      
-      elif function_name.find('mul') >= 0:
+
+      elif function_name.find('matmul') >= 0:
         op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
-        op_str = parse_mul(op_str,node)
+        op_str = parse_batchmatmul(op_str,node)
+
+      elif function_name.find('mul') >= 0:
+          if type(node.inedges[1]) is float:
+            op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+            op_str = parse_scalarmul(op_str,node)
+          else:
+            op_str = parse_inoutedge(op_str, node.inedges[0], node.outedges)
+            op_str = parse_mul(op_str,node)
       
       elif function_name.find('getattr') >= 0:
         op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
         op_str = parse_getattr(op_str, node)
-      
+     
+      elif function_name.find('transpose') >= 0:
+        op_str = parse_inoutedge(op_str,(node.inedges[0],), node.outedges)
+        op_str = parse_transpose(op_str, node) 
+
+      elif function_name.find('expand') >= 0:
+        op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+        op_str = parse_expand(op_str, node)
+
+      elif function_name.find('floordiv') >= 0:
+        op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+        op_str = parse_floordiv(op_str,node)
+
+      elif function_name.find('reshape') >= 0:
+        op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+        op_str = parse_reshape(op_str,node)
+
+      elif function_name.find('permute') >= 0:
+        op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+        op_str = parse_permute(op_str,node)
+     
+      elif function_name.find('softmax') >= 0:
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
+        op_str = parse_softmax(op_str, node)
+
       else:
-        # Unrecogonized type
+        # Unrecogonized type 
         assert False, "Unrecogonized built-in function: {}".format(function_name)
     
     if type(node) == ModuleNode:
@@ -366,6 +456,18 @@ def torch_to_flexflow_str(model):
         op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
         op_str = parse_softmax(op_str, node)
       
+      elif type(node.module) == torch.nn.modules.normalization.LayerNorm:
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
+        op_str = parse_layernorm(op_str, node)
+
+      elif type(node.module) == torch.nn.Identity:
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
+        op_str = parse_identity(op_str, node)
+
+      elif type(node.module) == torch.nn.GELU:
+        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
+        op_str = parse_gelu(op_str, node)
+
       else:
         print(node.module)
         assert 0, "unknown op"
