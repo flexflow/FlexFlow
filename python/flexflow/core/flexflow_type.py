@@ -76,6 +76,13 @@ class OpType(Enum):
   MULTIHEAD_ATTENTION = 2060
   GETITEM = 2070
   GETATTR = 2080
+  EXPAND = 2081
+  LAYER_NORM = 2082
+  FLOOR_DIVIDE = 2083
+  IDENTITY = 2084
+  GELU = 2085
+  PERMUTE = 2086
+  SCALAR_MULTIPLY = 2087
 
 def enum_to_int(enum, enum_item):
   for item in enum:
