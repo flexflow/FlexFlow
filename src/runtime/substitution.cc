@@ -657,6 +657,13 @@ void FFModel::dp_optimize()
   // Run DP
   printf("best_cost = %.4lf\n", best_cost);
   best_graph->print();
+  std::unordered_map<Node, MachineView> optimal_views;
+  best_graph->construct_optimal_view(best_cost, optimal_views);
+  printf("Optimal Views...\n");
+  for (const auto& it : optimal_views) {
+    printf("guid(%d) view(%d %d)\n", it.first.guid, it.second.ndims,
+           it.second.dim[0]);
+  }
 }
 
 GraphXfer* create_partition_linear_combine(FFModel* model,

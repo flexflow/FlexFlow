@@ -85,6 +85,8 @@ public:
                 int dstIdx);
   bool has_edge(const Edge& e);
   float total_cost();
+  void construct_optimal_view(float optimal_cost,
+                              std::unordered_map<Node, MachineView>& optimal_views);
   size_t hash(void) const;
   void print(void) const;
   bool check_correctness(void);

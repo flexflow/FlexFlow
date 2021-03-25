@@ -605,7 +605,17 @@ public:
                    const Node& source_node,
                    const MachineView& source_view,
                    const MachineResource& resources,
-                   bool include_sink_compute_time);
+                   bool include_sink_compute_time,
+                   bool constructing_optimal_view = false);
+  void construct_optimal_view(const Graph* graph,
+                              const Node& sink_node,
+                              const MachineView& sink_view,
+                              const Node& source_node,
+                              const MachineView& source_view,
+                              const MachineResource& resources,
+                              bool include_sink_compute_time,
+                              float optimal_cost,
+                              std::unordered_map<Node, MachineView>& optimal_views);
   size_t dp_state_hash(const Graph* graph,
                        const Node& sink_node,
                        const MachineView& sink_view,
