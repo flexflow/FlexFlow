@@ -346,8 +346,44 @@ void FFModel::register_machine_views()
 
 Node Graph::find_bottleneck_node(const Node& sink_node,
                                  const Node& source_node,
-                                std::unordered_set<Node>& used_nodes) const
+                                 std::unordered_set<Node>& used_nodes) const
 {
+  Node bn_node = Node::INVALID_NODE;
+  std::vector<Node> queue;
+  std::unordered_set<Node> visited;
+  for (const auto& it : inEdges) {
+    Node cur_node = it.first;
+    // Check if we can get from sink_node to a source_node or input_node
+    visited.clear();
+    queue.clear();
+    queue.push_back(sink_node);
+    size_t index = 0;
+    bool found_source = false;
+    while (index < queue.size()) {
+      if (found_source) break;
+      Node node = queue[index++];
+      const auto& it2 = inEdges.find(node);
+      if (it2 != inEdges.end()) {
+        const auto& inList = it2->second;
+        for (const auto& e : inList) {
+          if (e.srcOp == source_node || e.srcOp.ptr->op_type == OP_INPUT) {
+            found_source = true;
+            break;
+          }
+          if (visited.find(e.srcOp) == visited.end() && e.srcOp != cur_node) {
+            visited.insert(e.srcOp);
+            queue.push_back(e.srcOp);
+          }
+        }
+      }
+    }
+    if (!found_source) {
+      // Found a bottleneck node
+      bn_node = cur_node;
+      break;
+    }
+  }
+#ifdef DEADCODE
   std::unordered_map<Node, int> todos;
   std::unordered_map<Node, size_t> indices;
   // Need two queues
@@ -423,12 +459,13 @@ Node Graph::find_bottleneck_node(const Node& sink_node,
     bn_node = queue[i];
     break;
   }
+#endif
   if (bn_node == Node::INVALID_NODE)
     return bn_node;
   used_nodes.insert(bn_node);
   queue.clear();
   queue.push_back(bn_node);
-  index = 0;
+  size_t index = 0;
   while (index < queue.size()) {
     Node op = queue[index++];
     const auto& it = inEdges.find(op);
@@ -452,12 +489,14 @@ float FFModel::graph_cost(const Graph* graph,
                           const MachineResource& resources,
                           bool include_sink_compute_time)
 {
-  fprintf(stderr, "[DP] sink(%zu) sink_view(%d %d) source(%zu) source_view(%d %d)\n",
+  fprintf(stderr, "[DP] sink(%zu) sink_view(%d %d) source(%zu) source_view(%d %d) resources(%d %d)\n",
           sink_node.guid, sink_view.ndims, sink_view.dim[0],
-          source_node.guid, source_view.ndims, source_view.dim[0]);
+          source_node.guid, source_view.ndims, source_view.dim[0],
+          resources.num_nodes, resources.gpus_per_node);
   graph->print();
   size_t hash = dp_state_hash(graph, sink_node, sink_view,
                               source_node, source_view, resources);
+  fprintf(stderr, "hash = %zu\n", hash);
   assert(graph->inEdges.find(sink_node) != graph->inEdges.end());
   if (source_node != Node::INVALID_NODE)
     assert(graph->outEdges.find(source_node) != graph->outEdges.end());
@@ -533,7 +572,7 @@ float FFModel::graph_cost(const Graph* graph,
       assert(graph->inEdges.find(sink_node)->second.size() > 1);
       Graph* first_graph = new Graph(this);
       Graph* second_graph = new Graph(this);
-      Node bn_node = Node::INVALID_NODE;
+      bn_node = Node::INVALID_NODE;
       // Find sink_node's first input
       {
         const auto& inList = graph->inEdges.find(sink_node)->second;
@@ -544,10 +583,10 @@ float FFModel::graph_cost(const Graph* graph,
         }
       }
       assert(bn_node != Node::INVALID_NODE);
-      std::unordered_set<Node> used_node;
+      used_nodes.clear();
       std::vector<Node> queue;
       queue.push_back(bn_node);
-      used_node.insert(bn_node);
+      used_nodes.insert(bn_node);
       size_t i = 0;
       while (i < queue.size()) {
         Node node = queue[i++];
@@ -558,30 +597,33 @@ float FFModel::graph_cost(const Graph* graph,
             queue.push_back(it2.srcOp);
           }
         }
+        printf("                queue[%d]: guid(%zu)\n", i-1, node.guid);
       }
       for (const auto& it : graph->inEdges) {
         if (it.first == sink_node) continue;
         const auto& inList = it.second;
         if (used_nodes.find(it.first) != used_nodes.end()) {
+          printf("              In used_nodes: guid(%zu)\n", it.first.guid);
           // Add all in-edges of used_nodes in to the first_graph
-          for (const auto& it2 : inList) {
-            first_graph->add_edge(it2);
+          for (const auto& e : inList) {
+            first_graph->add_edge(e);
           }
         } else {
           // Add all in-edges of not_used_nodes into the second_graph
-          for (const auto& it2 : inList) {
-            second_graph->add_edge(it2);
+          printf("              Not in used_nodes: guid(%zu)\n", it.first.guid);
+          for (const auto& e : inList) {
+            second_graph->add_edge(e);
           }
         }
       }
       // Split sink_node's inedges between the two graphs
       {
         const auto& inList = graph->inEdges.find(sink_node)->second;
-        for (const auto& it2 : inList) {
-          if (used_nodes.find(it2.srcOp) != used_nodes.end()) {
-            first_graph->add_edge(it2);
+        for (const auto& e : inList) {
+          if (used_nodes.find(e.srcOp) != used_nodes.end()) {
+            first_graph->add_edge(e);
           } else {
-            second_graph->add_edge(it2);
+            second_graph->add_edge(e);
           }
         }
       }
@@ -625,6 +667,7 @@ float FFModel::graph_cost(const Graph* graph,
       delete second_graph;
     }
   }
+  printf("cached_graph_costs[%zu]=%.4lf\n", hash, cost);
   cached_graph_costs[hash] = cost;
   if (include_sink_compute_time) {
     CostMetrics metrics = simulator->measure_operator_cost(sink_node.ptr, sink_view);

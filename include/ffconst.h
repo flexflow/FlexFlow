@@ -163,6 +163,7 @@ enum PMParameter {
   PM_COMBINE_DIM,       // Combine
   PM_REDUCTION_DIM,     // Reduction
   PM_OUTPUT_CHANNELS,   // Linear, Conv2D
+  PM_SOFTMAX_DIM,       // Softmax
 };
 
 enum TNParameter {

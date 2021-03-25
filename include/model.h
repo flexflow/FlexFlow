@@ -357,6 +357,7 @@ class Conv2D;
 class Pool2D;
 class Flat;
 class Linear;
+class Softmax;
 class Embedding;
 class Repartition;
 class Combine;
@@ -617,10 +618,15 @@ public:
   // Internal Node creation APIs
   // ========================================
   Node create_noop_node(const Tensor input);
+  Node create_element_binary_node(const Tensor input1,
+                                  const Tensor input2,
+                                  OperatorType type);
   Node create_linear_node(const Tensor input,
                           int out_dim,
                           ActiMode activation,
                           bool use_bias);
+  Node create_softmax_node(const Tensor input,
+                           int softmax_dim);
   Node create_repartition_node(const Tensor input,
                                int repartition_dim,
                                int repartition_degree);
@@ -750,7 +756,9 @@ public:
   std::unordered_map<size_t, std::vector<MachineView>* > cached_operator_valid_views;
   // Cached operators: key: operator hash, value: operator pointer
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
+  std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
   std::unordered_map<size_t, Linear*> cached_linear_ops;
+  std::unordered_map<size_t, Softmax*> cached_softmax_ops;
   std::unordered_map<size_t, Repartition*> cached_repartition_ops;
   std::unordered_map<size_t, Combine*> cached_combine_ops;
   std::vector<MachineView> all_valid_views;
@@ -1568,6 +1576,7 @@ public:
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
+  bool get_int_parameter(PMParameter, int*) const;
   //void update(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
   //Parameter* get_parameter(int index) {assert(0); return NULL;}

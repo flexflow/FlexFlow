@@ -28,20 +28,23 @@ void top_level_task(const Task* task,
       ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
   FFModel ff(ffConfig);
 
-  std::vector<int> hidden_dims = {4096, 4096, 4096};
-  Tensor input;
+  std::vector<int> hidden_dims = {4096};
+  Tensor input1, input2;
   {
     const int dims[] = {1, ffConfig.batchSize, 1024};
-    input = ff.create_tensor<3>(dims, DT_FLOAT);
+    input1 = ff.create_tensor<3>(dims, DT_FLOAT);
+    input2 = ff.create_tensor<3>(dims, DT_FLOAT);
   }
   //int total_workers = ffConfig.workersPerNode * ffConfig.numNodes;
   //Tensor t = ff.repartition(input, 1/*dim*/, total_workers);
-  Tensor t = input;
+  Tensor t1 = input1, t2 = input2;
   for (size_t i = 0; i < hidden_dims.size(); i++) {
-    const int dims[] = {1, hidden_dims[i], t->dims[0].size};
+    const int dims[] = {1, hidden_dims[i], t1->dims[0].size};
     ActiMode acti_mode = (i+1 == hidden_dims.size()) ? AC_MODE_NONE: AC_MODE_RELU;
-    t = ff.dense(t, hidden_dims[i], acti_mode, false);
+    t1 = ff.dense(t1, hidden_dims[i], acti_mode, false);
+    t2 = ff.dense(t2, hidden_dims[i], acti_mode, false);
   }
+  Tensor t = ff.add(t1, t2);
   t = ff.softmax(t);
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;

@@ -102,12 +102,19 @@ public:
   bool can_match(OpX* srcOp, const Node& op, Graph* graph);
   void match(OpX* srcOp, const Node& op, Graph* graph);
   void unmatch(OpX* srcOp, const Node& op, Graph* graph);
+  // Compute Ops
   OpX* create_noop(const TensorX& input);
+  OpX* create_element_binary(const TensorX& input1,
+                             const TensorX& input2,
+                             OperatorType op_type);
   OpX* create_linear(const TensorX& input,
                      int num_dims,
                      int out_channels,
                      ActiMode acti_mode,
                      bool use_bias);
+  OpX* create_softmax(const TensorX& input,
+                      int softmax_dim);
+  // Parallel Ops
   OpX* create_repartition(const TensorX& input,
                           int repartition_dim,
                           int num_parts);

@@ -22,7 +22,7 @@ Tensor FFModel::softmax(const Tensor _input, int dim, const char *name)
 {
   if (dim < 0)
     dim += _input->num_dims;
-  Softmax *sm = new Softmax(*this, _input, dim, name);
+  Softmax *sm = new Softmax(*this, _input, _input->num_dims-1-dim, name);
   layers.push_back(sm);
   return sm->outputs[0];
 }
@@ -44,7 +44,7 @@ Softmax::Softmax(FFModel& model,
                  int _dim,
                  const char* name)
 : Op(model, OP_SOFTMAX, name, 1/*inputs*/, 0/*weights*/, _input),
-  dim(_input->num_dims-1-_dim)
+  dim(_dim)
 {
   // Currently assume we always perform softmax along the inner most dim
   assert(dim == 0);
@@ -405,4 +405,34 @@ bool Softmax::measure_operator_cost(Simulator* sim,
   // Free softmaxmeta
   delete m;
   return true;
+}
+
+bool Softmax::get_int_parameter(PMParameter para, int* value) const
+{
+  switch(para) {
+    case PM_SOFTMAX_DIM:
+      *value = dim;
+      return true;
+    default:
+      return Op::get_int_parameter(para, value);
+  }
+}
+
+Node FFModel::create_softmax_node(const Tensor input,
+                                  int softmax_dim)
+{
+  size_t hash = input->get_owner_independent_hash();
+  hash = hash * 31 + std::hash<int>()(softmax_dim);
+  const auto& it = cached_softmax_ops.find(hash);
+  Softmax* softmax = NULL;
+  if (it != cached_softmax_ops.end()) {
+    softmax = it->second;
+  } else {
+    softmax = new Softmax(*this, input, softmax_dim, NULL);
+    cached_softmax_ops[hash] = softmax;
+  }
+  Node ret;
+  ret.guid = node_global_guid ++;
+  ret.ptr = softmax;
+  return ret;
 }

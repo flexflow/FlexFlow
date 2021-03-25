@@ -25,6 +25,15 @@ GraphXfer* create_partition_linear_combine(FFModel* model,
                                            ActiMode activation,
                                            bool use_bias);
 
+GraphXfer* create_partition_add_combine(FFModel* model,
+                                        int out_channels,
+                                        int num_parts);
+
+GraphXfer* create_partition_softmax_combine(FFModel* model,
+                                            int softmax_dim,
+                                            int out_channels,
+                                            int num_parts);
+
 GraphXfer* eliminate_combine_partition(FFModel* model,
                                        int parallel_dim,
                                        int num_parts);
@@ -447,6 +456,11 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
       op = model->create_noop_node(inputs[0]);
       break;
     }
+    case OP_EW_ADD:
+    {
+      op = model->create_element_binary_node(inputs[0], inputs[1], opx->type);
+      break;
+    }
     case OP_LINEAR:
     {
       int output_channels, activation;
@@ -454,6 +468,13 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
       assert(opx->get_pm_constraint(PM_ACTI, activation));
       op = model->create_linear_node(inputs[0], output_channels,
                                      (ActiMode)activation, false);
+      break;
+    }
+    case OP_SOFTMAX:
+    {
+      int softmax_dim;
+      assert(opx->get_pm_constraint(PM_SOFTMAX_DIM, softmax_dim));
+      op = model->create_softmax_node(inputs[0], softmax_dim);
       break;
     }
     case OP_REPARTITION:
@@ -526,6 +547,14 @@ OpX* GraphXfer::create_noop(const TensorX& input)
   return noop;
 }
 
+OpX* GraphXfer::create_element_binary(const TensorX& input1,
+                                      const TensorX& input2,
+                                      OperatorType op_type)
+{
+  OpX* eb = new OpX(op_type, 2/*numInputs*/, 1, input1, input2);
+  return eb;
+}
+
 OpX* GraphXfer::create_linear(const TensorX& input,
                               int num_dims,
                               int out_channels,
@@ -537,6 +566,14 @@ OpX* GraphXfer::create_linear(const TensorX& input,
   li->add_pm_constraint(COMPARE_EQ, PM_ACTI, acti_mode);
   li->add_input_constraint(COMPARE_EQ, INPUT_0, DIM_ND, num_dims);
   return li;
+}
+
+OpX* GraphXfer::create_softmax(const TensorX& input,
+                               int softmax_dim)
+{
+  OpX* softmax = new OpX(OP_SOFTMAX, 1, 1, input);
+  softmax->add_pm_constraint(COMPARE_EQ, PM_SOFTMAX_DIM, softmax_dim);
+  return softmax;
 }
 
 OpX* GraphXfer::create_repartition(const TensorX& input,
@@ -583,7 +620,14 @@ void FFModel::dp_optimize()
   std::vector<GraphXfer*> xfers;
   xfers.push_back(create_partition_linear_combine(this, 3, 4096, 4, AC_MODE_RELU, false));
   xfers.push_back(create_partition_linear_combine(this, 3, 4096, 4, AC_MODE_NONE, false));
+  xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, 4/*num_parts*/));
+  xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, 4/*num_parts*/));
   xfers.push_back(eliminate_combine_partition(this, 1/*parallel_dims*/, 4/*num_parts*/));
+  xfers.push_back(create_partition_linear_combine(this, 3, 4096, 2, AC_MODE_RELU, false));
+  xfers.push_back(create_partition_linear_combine(this, 3, 4096, 2, AC_MODE_NONE, false));
+  xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, 2/*num_parts*/));
+  xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, 2/*num_parts*/));
+  xfers.push_back(eliminate_combine_partition(this, 1/*parallel_dims*/, 2/*num_parts*/));
 
   std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
   std::unordered_set<size_t> hashmap;
@@ -652,6 +696,49 @@ GraphXfer* eliminate_combine_partition(FFModel* model,
   subst->srcOps.push_back(combine);
   subst->srcOps.push_back(repartition);
   subst->dstOps.push_back(noop);
+  return subst;
+}
+
+GraphXfer* create_partition_add_combine(FFModel* model,
+                                        int parallel_dim,
+                                        int num_parts)
+{
+  GraphXfer* subst = new GraphXfer(model);
+  TensorX input1 = subst->new_tensor();
+  TensorX input2 = subst->new_tensor();
+  OpX* add1 = subst->create_element_binary(input1, input2, OP_EW_ADD);
+  OpX* repartition1 = subst->create_repartition(input1, parallel_dim, num_parts);
+  OpX* repartition2 = subst->create_repartition(input2, parallel_dim, num_parts);
+  OpX* add2 = subst->create_element_binary(repartition1->outputs[0],
+                                           repartition2->outputs[0],
+                                           OP_EW_ADD);
+  OpX* combine = subst->create_combine(add2->outputs[0], parallel_dim, num_parts);
+  subst->map_output(add1->outputs[0], combine->outputs[0]);
+  subst->srcOps.push_back(add1);
+  subst->dstOps.push_back(repartition1);
+  subst->dstOps.push_back(repartition2);
+  subst->dstOps.push_back(add2);
+  subst->dstOps.push_back(combine);
+  return subst;
+}
+
+GraphXfer* create_partition_softmax_combine(FFModel* model,
+                                            int softmax_dim,
+                                            int parallel_dim,
+                                            int num_parts)
+{
+  assert(parallel_dim != softmax_dim);
+  GraphXfer* subst = new GraphXfer(model);
+  TensorX input = subst->new_tensor();
+  OpX* softmax1 = subst->create_softmax(input, softmax_dim);
+  OpX* repartition = subst->create_repartition(input, parallel_dim, num_parts);
+  OpX* softmax2 = subst->create_softmax(repartition->outputs[0], softmax_dim);
+  OpX* combine = subst->create_combine(softmax2->outputs[0], parallel_dim, num_parts);
+  subst->map_output(softmax1->outputs[0], combine->outputs[0]);
+  subst->srcOps.push_back(softmax1);
+  subst->dstOps.push_back(repartition);
+  subst->dstOps.push_back(softmax2);
+  subst->dstOps.push_back(combine);
   return subst;
 }
 

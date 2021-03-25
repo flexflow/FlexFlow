@@ -727,3 +727,24 @@ bool ElementBinary::measure_operator_cost(Simulator* sim,
 
   return true;
 }
+
+Node FFModel::create_element_binary_node(const Tensor input1,
+                                         const Tensor input2,
+                                         OperatorType op_type)
+{
+  size_t hash = input1->get_owner_independent_hash();
+  hash = hash * 31 + input2->get_owner_independent_hash();
+  hash = hash * 31 + std::hash<int>()(op_type);
+  const auto& it = cached_element_binary_ops.find(hash);
+  ElementBinary* eb = NULL;
+  if (it != cached_element_binary_ops.end()) {
+    eb = it->second;
+  } else {
+    eb = new ElementBinary(*this, op_type, input1, input2, false/*inplace*/, NULL);
+    cached_element_binary_ops[hash] = eb;
+  }
+  Node ret;
+  ret.guid = node_global_guid ++;
+  ret.ptr = eb;
+  return ret;
+}
