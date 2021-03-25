@@ -301,6 +301,8 @@ public:
               const char *name = NULL);
   Tensor identity(const Tensor& x,
               const char *name = NULL);
+  Tensor gelu(const Tensor& x,
+              const char *name = NULL);
   Tensor sigmoid(const Tensor& x,
                  const char *name = NULL);
   Tensor tanh(const Tensor& x,
