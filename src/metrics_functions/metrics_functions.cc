@@ -47,12 +47,13 @@ void PerfMetrics::apply_scale(float scale)
 void PerfMetrics::print(const Metrics* m)
 {
   std::string output = "[Metrics]";
-  if (train_all == 0) {
+  std::string output_to_file = "";
+  FILE *fp = fopen("training_data.csv", "a+");    
     double current_time = Realm::Clock::current_time_in_microseconds();
     assert(current_time > start_time);
     double throughput = (double)train_all / ((current_time - start_time) * 1e-6);
     output = output + " throughput: " + std::to_string(throughput) + "samples/s";
-  }
+    output_to_file = output_to_file + std::to_string(throughput); 
   if (m->measure_accuracy) {
     float accuracy = train_correct * 100.0f / train_all;
     output = output + " accuracy: " + std::to_string(accuracy) + "% ("
@@ -77,5 +78,7 @@ void PerfMetrics::print(const Metrics* m)
     output = output + " mean_absolute_error: " + std::to_string(mae_loss / train_all);
   }
   fprintf(stderr, "%s\n", output.c_str());
+  fprintf(fp,"%s\n",output_to_file.c_str());
+  fclose(fp);
 }
 

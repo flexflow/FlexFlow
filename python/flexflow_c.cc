@@ -623,6 +623,21 @@ flexflow_model_add_reverse(
 }
 
 flexflow_tensor_t
+flexflow_model_add_identity(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  bool inplace,
+  const char *name)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->identity(*input, name);
+  DEBUG_PRINT("[Identity] new Tensor %p, input %p, name %s", tensor, input, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t
 flexflow_model_add_relu(
   flexflow_model_t handle_,
   const flexflow_tensor_t input_,

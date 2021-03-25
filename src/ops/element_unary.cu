@@ -47,6 +47,11 @@ Tensor FFModel::tanh(const Tensor& x, const char *name)
   return this->unary(OP_TANH, x, false/*inplace*/, name);
 }
 
+Tensor FFModel::identity(const Tensor& x, const char *name)
+{
+  return this->unary(OP_IDENTITY, x, false/*inplace*/, name);
+}
+
 Tensor FFModel::elu(const Tensor& x, bool inplace, const char *name)
 {
   // Currently assume inplace is false
@@ -278,6 +283,11 @@ void elewise_unary_forward_kernel(coord_t volume,
         out[i] = alpha * exp(in[i]) + beta * out[i];
         break;
       }
+      case OP_IDENTITY:
+      {
+	out[i] = in[i];
+	break;
+      }
       default:
         assert(false);
     }
@@ -405,6 +415,11 @@ void elewise_unary_backward_kernel(coord_t volume,
         //TODO: change to use output instead of recomputing
         input_grad[i] = alpha * output_grad[i] * exp(input[i]) + beta * input_grad[i];
         break;
+      }
+      case OP_IDENTITY:
+      {
+	input_grad[i] = output_grad[i];
+	break;
       }
       default:
         assert(false);
