@@ -26,6 +26,9 @@ void begin_flexflow_task(std::vector<std::string> args) {
   std::vector<const char *> argvec;
   argvec.push_back("python");
   for (auto &arg: args) {
+    if (arg == "-ll:py") {
+      throw std::invalid_argument("-ll:py is not supported when using native python");
+    }
     argvec.push_back(arg.data());
   }
   int argc = argvec.size();
