@@ -289,6 +289,13 @@ class Reshape(Op):
     super(Reshape, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Identity
+# -----------------------------------------------------------------------
+class Identity(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Identity, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # Transpose
 # -----------------------------------------------------------------------
 class Transpose(Op):
@@ -357,6 +364,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Split(handle, idx, name)
   elif op_type == OpType.RESHAPE:
     return Reshape(handle, idx, name)
+  elif op_type == OpType.IDENTITY:
+    return Identity(handle,idx,name)
   elif op_type == OpType.TRANSPOSE:
     return Transpose(handle, idx, name)
   elif op_type == OpType.REVERSE:
