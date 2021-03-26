@@ -19,9 +19,10 @@
 Tensor FFModel::unary(OperatorType op,
                       const Tensor& x,
                       bool inplace,
-                      const char *name)
+                      const char *name,
+		      float scalar)
 {
-  ElementUnary *ele = new ElementUnary(*this, op, x, inplace, name);
+  ElementUnary *ele = new ElementUnary(*this, op, x, inplace, name, scalar);
   layers.push_back(ele);
   return ele->outputs[0];
 }
@@ -30,6 +31,11 @@ Tensor FFModel::exp(const Tensor& x,
                     const char *name)
 {
   return this->unary(OP_EXP, x, false/*inplace*/, name);
+}
+
+Tensor FFModel::scalar_multiply(const Tensor& x,const float scalar ,bool inplace, const char *name)
+{
+  return this->unary(OP_SCALAR_MULTIPLY, x, inplace, name, scalar);
 }
 
 Tensor FFModel::relu(const Tensor& x, bool inplace, const char *name)
@@ -63,8 +69,9 @@ ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
                            const Tensor& x,
                            bool _inplace,
-                           const char* name)
-: Op(model, _op_type, name, x), inplace(_inplace)
+                           const char* name,
+			   float _scalar)
+: Op(model, _op_type, name, x), inplace(_inplace), scalar(_scalar)
 {
   outputs[0].numDim = inputs[0].numDim;
   for (int i = 0; i < outputs[0].numDim; i++)
@@ -170,6 +177,7 @@ OpMeta* ElementUnary::init_task(const Task *task,
   m->op_type = eu->op_type;
   m->profiling = eu->profiling;
   m->inplace = eu->inplace;
+  m->scalar = eu->scalar;
   if (m->inplace) {
     assert(regions.size() == 1);
     assert(task->regions.size() == 1);
@@ -271,7 +279,8 @@ __global__
 void elewise_unary_forward_kernel(coord_t volume,
                                   const float alpha,
                                   const float beta,
-                                  OperatorType type,
+                                  const float scalar,
+				  OperatorType type,
                                   const float* in,
                                   float* out)
 {
@@ -286,6 +295,11 @@ void elewise_unary_forward_kernel(coord_t volume,
       case OP_IDENTITY:
       {
 	out[i] = in[i];
+	break;
+      }
+      case OP_SCALAR_MULTIPLY:
+      {
+	out[i] = in[i] * scalar;
 	break;
       }
       default:
@@ -307,7 +321,7 @@ void ElementUnary::forward_kernel(const ElementUnaryMeta* m,
         &beta, m->outputTensor, output_ptr));
   } else {
     elewise_unary_forward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
-        num_elements, alpha, beta, m->op_type, input_ptr, output_ptr);
+        num_elements, alpha, beta,m->scalar, m->op_type, input_ptr, output_ptr);
   }
 }
 

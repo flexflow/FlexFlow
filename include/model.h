@@ -295,6 +295,11 @@ public:
                 const Tensor& y,
                 bool inplace_a = false,
                 char const *name = NULL);
+  // Add a scalar multiply layer
+  Tensor scalar_multiply(const Tensor& x,
+	      const float scalar,
+              bool inplace = true,
+              const char *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor& x,
               bool inplace = true,
@@ -532,9 +537,11 @@ private:
   Tensor unary(OperatorType op,
                Tensor const &x,
                bool inplace = true,
-               char const *name = NULL);
+               char const *name = NULL,
+	       float scalar = 0.0);
   ElementUnary * unary(OperatorType op,
-                       char const *name = NULL);
+                       char const *name = NULL,
+		       float scalar = 0.0);
 };
 
 class ElementBinaryMeta : public OpMeta {
@@ -601,6 +608,7 @@ public:
   cudnnActivationDescriptor_t actiDesc;
   OperatorType op_type;
   bool inplace;
+  float scalar;
 };
 
 class ElementUnary : public Op {
@@ -609,7 +617,8 @@ public:
                OperatorType type,
                const Tensor& x,
                bool inplace,
-               const char* name);
+               const char* name,
+	       float scalar);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -647,6 +656,7 @@ private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
 public:
+  float scalar;
   bool inplace;
 };
 
