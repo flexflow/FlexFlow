@@ -17,6 +17,7 @@ using py::literals::operator""_a;
 namespace {
 
 static Context ctx;
+static int global_tracing_id = 200;
 
 void begin_flexflow_task(std::vector<std::string> args) {
   // This needs to be set, otherwise NCCL will try to use group kernel launches,
@@ -108,8 +109,7 @@ void fit(FFModel &model, SingleDataLoader &x, SingleDataLoader &y, int epochs)
 {
   int num_samples = y.num_samples;
   int batch_size = model.config.batchSize;
-  static int tracing_id = 200;
-  tracing_id ++;
+  int tracing_id = global_tracing_id++;
   for (int epoch = 0; epoch < epochs; epoch++) {
     x.reset();
     y.reset();
@@ -125,6 +125,25 @@ void fit(FFModel &model, SingleDataLoader &x, SingleDataLoader &y, int epochs)
       model.update();
       model.config.lg_hlr->end_trace(model.config.lg_ctx, tracing_id);
     }
+  }
+}
+
+void eval(FFModel &model, SingleDataLoader &x, SingleDataLoader &y)
+{
+  int num_samples = y.num_samples;
+  int batch_size = model.config.batchSize;
+  int tracing_id = global_tracing_id++;
+  x.reset();
+  y.reset();
+  model.reset_metrics();
+  int iterations = num_samples / batch_size;
+  for (int iter = 0; iter < iterations; iter++) {
+    x.next_batch(model);
+    y.next_batch(model);
+    model.config.lg_hlr->begin_trace(model.config.lg_ctx, tracing_id);
+    model.forward();
+    model.compute_metrics();
+    model.config.lg_hlr->end_trace(model.config.lg_ctx, tracing_id);
   }
 }
 
@@ -227,6 +246,7 @@ PYBIND11_MODULE(flexflow_bindings, m) {
       .def("init_layers", &FFModel::init_layers)
       .def("reset_metrics", &FFModel::reset_metrics)
       // Training
+      .def("eval", &eval, "x"_a, "y"_a)
       .def("fit", &fit, "x"_a, "y"_a, "epochs"_a = 1)
       .def("forward", &FFModel::forward, "seq_length"_a = -1)
       .def("zero_gradients", &FFModel::zero_gradients)
@@ -240,7 +260,7 @@ PYBIND11_MODULE(flexflow_bindings, m) {
       .def("divide", &FFModel::divide, "x"_a, "y"_a, "inplace_a"_a = false, "name"_a = nullptr)
       // Activations
       .def("relu", &FFModel::relu, "x"_a, "inplace"_a = true, "name"_a = nullptr)
-      .def("identity", &FFModel::identity, "x"_a, "inplace"_a = true, "name"_a = nullptr)
+      .def("identity", &FFModel::identity, "x"_a, "name"_a = nullptr)
       .def("sigmoid", &FFModel::sigmoid, "x"_a, "name"_a = nullptr)
       .def("tanh", &FFModel::tanh, "x"_a, "name"_a = nullptr)
       .def("elu", &FFModel::elu, "x"_a, "inplace"_a = true, "name"_a = nullptr)
