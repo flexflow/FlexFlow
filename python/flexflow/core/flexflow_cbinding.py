@@ -1261,7 +1261,7 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.REVERSE)
 
   def gelu(self, input, inplace=True, name=None):
-    """Rectified Linear Unit activation function.
+    """Gaussian Error Linear Unit activation function.
              
     :param input: the input Tensor.
     :type input: Tensor
