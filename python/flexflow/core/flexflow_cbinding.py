@@ -233,6 +233,13 @@ class Dropout(Op):
     super(Dropout, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# ScalarMultiply
+# -----------------------------------------------------------------------
+class ScalarMultiply(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ScalarMultiply, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # Relu
 # -----------------------------------------------------------------------
 class Relu(Op):
@@ -339,6 +346,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Divide(handle, idx, name)
   elif op_type == OpType.MSELOSS:
     return MSELoss(handle, idx, name)
+  elif op_type == OpType.SCALAR_MULTIPLY:
+    return ScalarMultiply(handle, idx, name)
   elif op_type == OpType.RELU:
     return Relu(handle, idx, name)
   elif op_type == OpType.SIGMOID:
@@ -1250,6 +1259,25 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_reverse(self.handle, input.handle, axis, c_name)
     self.add_layer(OpType.REVERSE, name)
     return Tensor(handle, owner_op_type=OpType.REVERSE)
+
+  def scalar_multiply(self, input, scalar, inplace=True, name=None):
+    """Scalar multiplication of a tensor by an scalar.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param input: the scalar
+    :type scalar: float
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_scalar_multiply(self.handle, input.handle, scalar, inplace, c_name)
+    self.add_layer(OpType.SCALAR_MULTIPLY, name)
+    return Tensor(handle, owner_op_type=OpType.SCALAR_MULTIPLY)
 
   def relu(self, input, inplace=True, name=None):
     """Rectified Linear Unit activation function.
