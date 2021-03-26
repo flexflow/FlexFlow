@@ -416,6 +416,7 @@ __global__
 void elewise_unary_backward_kernel(coord_t volume,
                                    const float alpha,
                                    const float beta,
+				   const float scalar,
                                    OperatorType type,
                                    const float* output_grad,
                                    const float* input,
@@ -433,6 +434,11 @@ void elewise_unary_backward_kernel(coord_t volume,
       case OP_IDENTITY:
       {
 	input_grad[i] = output_grad[i];
+	break;
+      } 
+      case OP_SCALAR_MULTIPLY:
+      {
+	input_grad[i] = output_grad[i]*scalar;
 	break;
       }
       default:
@@ -456,7 +462,7 @@ void ElementUnary::backward_kernel(const ElementUnaryMeta* m,
         m->inputTensor, input_ptr, &alpha, m->inputTensor, input_grad_ptr));
   } else {
     elewise_unary_backward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
-        num_elements, alpha, alpha, m->op_type, output_grad_ptr, input_ptr, input_grad_ptr);
+        num_elements, alpha, alpha, m->scalar, m->op_type, output_grad_ptr, input_ptr, input_grad_ptr);
   }
 }
 
