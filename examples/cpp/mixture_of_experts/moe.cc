@@ -67,10 +67,8 @@ void top_level_task(const Task* task,
   int num_exp = 5;
   int num_select = 2;
 
-  // Load MNIST and make flat 784 vector
-  //Tensor flat_samples = ff.flat(input);
+  // MoE model
   Tensor gate_preds = ff.dense(input, num_exp, AC_MODE_RELU);
-
   Tensor topK_output[2];
   ff.top_k(gate_preds, topK_output, num_select, false);
 
@@ -78,18 +76,17 @@ void top_level_task(const Task* task,
   ff.group_by(input, topK_output[1], exp_tensors, num_exp, 2.0f);
 
   Tensor agg_inputs[num_exp+2];
-  agg_inputs[0] = topK_output[0]; /* gate preds */
+  agg_inputs[0] = ff.softmax(topK_output[0]); /* gate preds */
   agg_inputs[1] = topK_output[1]; /* gate assign */
   for(int i = 0; i < num_exp; i++) {
     agg_inputs[i+2] = ff.dense(exp_tensors[i], out_dim, AC_MODE_RELU);
-    // TODO: Softmax
+    agg_inputs[i+2] = ff.softmax(agg_inputs[i+2]);
   }
 
-  Tensor final_pred = ff.aggregate(agg_inputs, num_exp);
-  final_pred = ff.softmax(final_pred);
-
+  Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp);
 
 //-----------------------------------------------------------------
+
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
@@ -157,7 +154,6 @@ DataLoader::DataLoader(FFModel& ff, const MoeConfig& moe,
     const int dims[] = {num_samples, label.adim[0]};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
   }
-
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
   const MoeConfig* ptr = &moe;
@@ -240,7 +236,6 @@ void read_mnist(float* input_ptr, int* label_ptr)
   else {
     assert(false);
   }
-
   // read labels
   std::ifstream labels("train-labels-idx1-ubyte", std::ios::binary);
   if (labels.is_open())
@@ -250,12 +245,12 @@ void read_mnist(float* input_ptr, int* label_ptr)
     labels.read((char*)&magic_number,sizeof(magic_number));
     magic_number= reverseInt(magic_number);
     labels.read((char*)&number_of_images,sizeof(number_of_images));
-
+    number_of_images= reverseInt(number_of_images);
     for(int i = 0; i < number_of_images; i++) {
       unsigned char temp = 0;
       labels.read((char*)&temp, sizeof(temp));
       label_ptr[i] = temp;
-      }
+    }
   }
   else {
     assert(false);
@@ -285,7 +280,6 @@ void DataLoader::load_entire_dataset(const Task *task,
 
   read_mnist(input_ptr, label_ptr);
   log_app.print("finish loading MNIST\n");
-
 }
 
 void DataLoader::next_batch(FFModel& ff)

@@ -62,6 +62,9 @@ enum TaskIDs {
   AGGREGATE_INIT_TASK_ID,
   AGGREGATE_FWD_TASK_ID,
   AGGREGATE_BWD_TASK_ID,
+  AGG_SPEC_INIT_TASK_ID,
+  AGG_SPEC_FWD_TASK_ID,
+  AGG_SPEC_BWD_TASK_ID,
   POOL2D_INIT_TASK_ID,
   POOL2D_FWD_TASK_ID,
   POOL2D_BWD_TASK_ID,
@@ -333,6 +336,10 @@ public:
                 const char* name = NULL);
   // Add aggregate layer
   Tensor aggregate(const Tensor* inputs,
+                  int n,
+                  const char* name = NULL);
+  // Add aggregate_spec layer
+  Tensor aggregate_spec(const Tensor* inputs,
                   int n,
                   const char* name = NULL);
   // Add a 2D pooling layer
@@ -1167,6 +1174,41 @@ public:
 class Aggregate : public Op {
 public:
   Aggregate(FFModel& model,
+            const Tensor* inputs,
+            int _n, const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+public:
+  int n;
+  bool profiling;
+};
+
+
+class AggregateSpecMeta : public OpMeta {
+public:
+  AggregateSpecMeta(FFHandler handle);
+};
+
+class AggregateSpec : public Op {
+public:
+  AggregateSpec(FFModel& model,
             const Tensor* inputs,
             int _n, const char* name);
   void init(const FFModel&);

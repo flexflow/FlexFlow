@@ -1516,7 +1516,8 @@ void FFModel::compile(LossType loss_type,
     // Do nothing
   }
 
-  loss_op = new Loss(loss_type);
+  bool repl_labels = (layers[layers.size()-1]->op_type == OP_AGG_SPEC);
+  loss_op = new Loss(loss_type, repl_labels);
   metrics_op = new Metrics(loss_type, metrics);
 
   // Init performance metrics
@@ -1959,7 +1960,8 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_SPLIT: return "Split";
     case OP_EMBEDDING: return "Embedding";
     case OP_GROUP_BY: return "Group_by";
-    case OP_AGGREGATE: return "Aggregate";
+    case OP_AGGREGATE: return "Aggregate cooperation";
+    case OP_AGG_SPEC: return "Aggregate specification";
     case OP_RESHAPE: return "Reshape";
     case OP_REVERSE: return "Reverse";
     case OP_TRANSPOSE: return "Transpose";
@@ -2502,6 +2504,30 @@ void register_flexflow_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<Aggregate::backward_task>(
         registrar, "Aggregate Backward Task");
+  }
+
+
+  // AggregateSpec task CPU
+  {
+    TaskVariantRegistrar registrar(AGG_SPEC_INIT_TASK_ID, "Aggregate specification Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, AggregateSpec::init_task>(
+        registrar, "Aggregate specification Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(AGG_SPEC_FWD_TASK_ID, "Aggregate specification Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AggregateSpec::forward_task>(
+        registrar, "Aggregate specification Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(AGG_SPEC_BWD_TASK_ID, "Aggregate specification Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AggregateSpec::backward_task>(
+        registrar, "Aggregate specification Backward Task");
   }
 
   // Pool2D task

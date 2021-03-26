@@ -94,7 +94,7 @@ void Softmax::create_output_and_partition_with_dim(FFModel& model)
   {
     int dims[NDIM];
     for (int i = 0; i < NDIM; i++)
-      dims[i] = outputs[0].adim[NDIM-1-i];
+      dims[i] = inputs[0].adim[NDIM-1-i];
     outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
     outputs[0].owner_op = this;
     outputs[0].owner_idx = 0;
@@ -335,7 +335,6 @@ void Softmax::backward_task_with_dim(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   // make sure the image indices match!
   assert(acc_input_grad.rect == acc_output_grad.rect);
-
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
