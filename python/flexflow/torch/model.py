@@ -128,6 +128,13 @@ class PyTorchModel(object):
         output = ffmodel.relu(input=input_tensor, name=op_name)
         output = FXTensor(output)
 
+      elif op_type == OpType.GELU:
+        assert len(items) == 4, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        output = ffmodel.gelu(input=input_tensor, name=op_name)
+        output = FXTensor(output)
+
       elif op_type == OpType.IDENTITY:
         assert len(items) == 4, "wrong format"
         assert len(self.input_ops_list) == 1, "wrong format"

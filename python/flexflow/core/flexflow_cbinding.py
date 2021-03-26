@@ -240,6 +240,13 @@ class Relu(Op):
     super(Relu, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Gelu
+# -----------------------------------------------------------------------
+class Gelu(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Gelu, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # Sigmod
 # -----------------------------------------------------------------------
 class Sigmoid(Op):
@@ -247,7 +254,7 @@ class Sigmoid(Op):
     super(Sigmoid, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
-# Relu
+# Tanh
 # -----------------------------------------------------------------------
 class Tanh(Op):
   def __init__(self, handle, idx=None, name=None):
@@ -339,6 +346,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Divide(handle, idx, name)
   elif op_type == OpType.MSELOSS:
     return MSELoss(handle, idx, name)
+  elif op_type == OpType.GELU:
+    return Gelu(handle, idx, name)
   elif op_type == OpType.RELU:
     return Relu(handle, idx, name)
   elif op_type == OpType.SIGMOID:
@@ -1251,6 +1260,22 @@ class FFModel(object):
     self.add_layer(OpType.REVERSE, name)
     return Tensor(handle, owner_op_type=OpType.REVERSE)
 
+  def gelu(self, input, inplace=True, name=None):
+    """Rectified Linear Unit activation function.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_gelu(self.handle, input.handle, c_name)
+    self.add_layer(OpType.GELU, name)
+    return Tensor(handle, owner_op_type=OpType.GELU)
+  
   def relu(self, input, inplace=True, name=None):
     """Rectified Linear Unit activation function.
              
