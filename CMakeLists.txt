@@ -115,15 +115,15 @@ file(GLOB_RECURSE FLEXFLOW_HDR
 file(GLOB_RECURSE FLEXFLOW_SRC 
   LIST_DIRECTORIES False 
   ${FLEXFLOW_ROOT}/src/*.cc)
-list(FILTER FLEXFLOW_SRC EXCLUDE REGEX "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc" )
+list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc")
 
 file(GLOB_RECURSE FLEXFLOW_GPU_SRC 
   LIST_DIRECTORIES False 
   ${FLEXFLOW_ROOT}/src/*.cu)
 
 # remove these two ops as they are not compilable	
-list(FILTER FLEXFLOW_GPU_SRC EXCLUDE REGEX "${FLEXFLOW_ROOT}/src/ops/tanh.cu" )
-list(FILTER FLEXFLOW_SRC EXCLUDE REGEX "${FLEXFLOW_ROOT}/src/ops/embedding_avx2.cc" )
+list(REMOVE_ITEM FLEXFLOW_GPU_SRC "${FLEXFLOW_ROOT}/src/ops/tanh.cu")
+list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/ops/embedding_avx2.cc")
 
 set(FLEXFLOW_CPP_DRV_SRC
   ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)  
