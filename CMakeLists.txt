@@ -108,60 +108,22 @@ list(APPEND FLEXFLOW_INCLUDE_DIRS
   ${FLEXFLOW_ROOT}/include
   ${FLEXFLOW_ROOT})
 
-set(FLEXFLOW_HDR
-  ${FLEXFLOW_ROOT}/include/accessor.h
-  ${FLEXFLOW_ROOT}/include/config.h
-  ${FLEXFLOW_ROOT}/include/cuda_helper.h
-  ${FLEXFLOW_ROOT}/include/ffconst.h
-  ${FLEXFLOW_ROOT}/include/initializer.h
-  ${FLEXFLOW_ROOT}/include/loss_functions.h
-  ${FLEXFLOW_ROOT}/include/mapper.h
-  ${FLEXFLOW_ROOT}/include/metrics_functions.h
-  ${FLEXFLOW_ROOT}/include/model.h
-  ${FLEXFLOW_ROOT}/include/optimizer.h
-  ${FLEXFLOW_ROOT}/include/simulator.h)  
+file(GLOB_RECURSE FLEXFLOW_HDR 
+  LIST_DIRECTORIES False 
+  ${FLEXFLOW_ROOT}/include/*.h)
 
-set(FLEXFLOW_SRC
-  ${FLEXFLOW_ROOT}/src/mapper/mapper.cc
-  ${FLEXFLOW_ROOT}/src/ops/embedding.cc
-  ${FLEXFLOW_ROOT}/src/ops/group_by.cc
-  ${FLEXFLOW_ROOT}/src/ops/aggregate.cc
-  ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cc
-  ${FLEXFLOW_ROOT}/src/runtime/initializer.cc
-  ${FLEXFLOW_ROOT}/src/runtime/model.cc
-  ${FLEXFLOW_ROOT}/src/runtime/optimizer.cc
-  ${FLEXFLOW_ROOT}/src/runtime/strategy.cc
-  ${FLEXFLOW_ROOT}/src/runtime/simulator.cc
-  ${FLEXFLOW_ROOT}/src/runtime/machine_model.cc)
+file(GLOB_RECURSE FLEXFLOW_SRC 
+  LIST_DIRECTORIES False 
+  ${FLEXFLOW_ROOT}/src/*.cc)
+list(FILTER FLEXFLOW_SRC EXCLUDE REGEX "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc" )
 
-set(FLEXFLOW_GPU_SRC
-  ${FLEXFLOW_ROOT}/src/loss_functions/loss_functions.cu
-  ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cu
-  ${FLEXFLOW_ROOT}/src/ops/attention.cu
-  ${FLEXFLOW_ROOT}/src/ops/batch_matmul.cu
-  ${FLEXFLOW_ROOT}/src/ops/batch_norm.cu
-  ${FLEXFLOW_ROOT}/src/ops/concat.cu
-  ${FLEXFLOW_ROOT}/src/ops/conv_2d.cu
-  ${FLEXFLOW_ROOT}/src/ops/dropout.cu
-  ${FLEXFLOW_ROOT}/src/ops/element_binary.cu
-  ${FLEXFLOW_ROOT}/src/ops/element_unary.cu
-  ${FLEXFLOW_ROOT}/src/ops/embedding.cu
-  ${FLEXFLOW_ROOT}/src/ops/flat.cu
-  ${FLEXFLOW_ROOT}/src/ops/fused.cu
-  ${FLEXFLOW_ROOT}/src/ops/linear.cu
-  ${FLEXFLOW_ROOT}/src/ops/pool_2d.cu
-  ${FLEXFLOW_ROOT}/src/ops/reshape.cu
-  ${FLEXFLOW_ROOT}/src/ops/reverse.cu
-  ${FLEXFLOW_ROOT}/src/ops/softmax.cu
-  ${FLEXFLOW_ROOT}/src/ops/split.cu
-  ${FLEXFLOW_ROOT}/src/ops/topk.cu
-  ${FLEXFLOW_ROOT}/src/ops/transpose.cu
-  ${FLEXFLOW_ROOT}/src/runtime/accessor_kernel.cu
-  ${FLEXFLOW_ROOT}/src/runtime/cuda_helper.cu
-  ${FLEXFLOW_ROOT}/src/runtime/initializer_kernel.cu
-  ${FLEXFLOW_ROOT}/src/runtime/model.cu
-  ${FLEXFLOW_ROOT}/src/runtime/optimizer_kernel.cu
-  ${FLEXFLOW_ROOT}/src/runtime/simulator.cu)
+file(GLOB_RECURSE FLEXFLOW_GPU_SRC 
+  LIST_DIRECTORIES False 
+  ${FLEXFLOW_ROOT}/src/*.cu)
+
+# remove these two ops as they are not compilable	
+list(FILTER FLEXFLOW_GPU_SRC EXCLUDE REGEX "${FLEXFLOW_ROOT}/src/ops/tanh.cu" )
+list(FILTER FLEXFLOW_SRC EXCLUDE REGEX "${FLEXFLOW_ROOT}/src/ops/embedding_avx2.cc" )
 
 set(FLEXFLOW_CPP_DRV_SRC
   ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)  
