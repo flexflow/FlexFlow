@@ -258,6 +258,8 @@ PYBIND11_MODULE(flexflow_bindings, m) {
       .def("subtract", &FFModel::subtract, "x"_a, "y"_a, "inplace_a"_a = false, "name"_a = nullptr)
       .def("multiply", &FFModel::multiply, "x"_a, "y"_a, "inplace_a"_a = false, "name"_a = nullptr)
       .def("divide", &FFModel::divide, "x"_a, "y"_a, "inplace_a"_a = false, "name"_a = nullptr)
+      // Scalar arithmetic operators
+      .def("scalar_multiply", &FFModel::scalar_multiply, "x"_a, "scalar"_a, "inplace"_a = true, "name"_a = nullptr)
       // Activations
       .def("relu", &FFModel::relu, "x"_a, "inplace"_a = true, "name"_a = nullptr)
       .def("identity", &FFModel::identity, "x"_a, "name"_a = nullptr)
