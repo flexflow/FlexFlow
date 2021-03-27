@@ -606,7 +606,7 @@ void Op::create_input_partition_with_dim(FFModel& model)
       input_grad_lps[i] = inputs[i]->part_grad;
     }
     else {
-      // Assert that this input must be activations 
+      // Assert that this input must be activations
       assert(inputs[i]->sync_type == ParameterSyncType::NONE);
       model.create_disjoint_partition(
           inputs[i], (IndexSpaceT<NDIM>)task_is,

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(FlexFlow)
 
-include(ExternalProject) 
+include(ExternalProject)
 
 # Set policy CMP0074 to eliminate cmake warnings
 cmake_policy(SET CMP0074 NEW)
@@ -25,13 +25,13 @@ endif()
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 
 # option for using Python
-option(FF_USE_PYTHON "Enable Python" ON)  
+option(FF_USE_PYTHON "Enable Python" ON)
 
 # option for using Python
 option(FF_USE_GASNET "Run FlexFlow with GASNet" ON)
 set(FF_GASNET_CONDUITS udp mpi ibv)
 set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select Gasnet conduit ${FF_GASNET_CONDUITS}")
-set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})  
+set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})
 
 # option for cuda arch
 set(FF_CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
@@ -54,7 +54,7 @@ include(zlib)
 
 # CUDA
 include(cuda)
- 
+
 # CUDNN
 include(cudnn)
 
@@ -88,12 +88,12 @@ endif()
 list(APPEND CC_FLAGS
   -std=c++11
   -DMAX_TENSOR_DIM=${FF_MAX_DIM})
-  
+
 list(APPEND NVCC_FLAGS
   -Wno-deprecated-gpu-targets
   -std=c++11
   -DMAX_TENSOR_DIM=${FF_MAX_DIM})
-  
+
 list(APPEND LD_FLAGS
   -lrt
   -ldl
@@ -119,20 +119,29 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/metrics_functions.h
   ${FLEXFLOW_ROOT}/include/model.h
   ${FLEXFLOW_ROOT}/include/optimizer.h
-  ${FLEXFLOW_ROOT}/include/simulator.h)  
+  ${FLEXFLOW_ROOT}/include/simulator.h
+  ${FLEXFLOW_ROOT}/include/hash_utils.h
+  ${FLEXFLOW_ROOT}/include/dominators.h)
 
 set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/mapper/mapper.cc
   ${FLEXFLOW_ROOT}/src/ops/embedding.cc
   ${FLEXFLOW_ROOT}/src/ops/group_by.cc
   ${FLEXFLOW_ROOT}/src/ops/aggregate.cc
+  ${FLEXFLOW_ROOT}/src/ops/noop.cc
   ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cc
   ${FLEXFLOW_ROOT}/src/runtime/initializer.cc
   ${FLEXFLOW_ROOT}/src/runtime/model.cc
   ${FLEXFLOW_ROOT}/src/runtime/optimizer.cc
   ${FLEXFLOW_ROOT}/src/runtime/strategy.cc
   ${FLEXFLOW_ROOT}/src/runtime/simulator.cc
-  ${FLEXFLOW_ROOT}/src/runtime/machine_model.cc)
+  ${FLEXFLOW_ROOT}/src/runtime/machine_model.cc
+  ${FLEXFLOW_ROOT}/src/runtime/graph.cc
+  ${FLEXFLOW_ROOT}/src/runtime/substitution.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/combine.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/partition.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/reduction.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/replicate.cc)
 
 set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/loss_functions/loss_functions.cu
@@ -161,10 +170,15 @@ set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/runtime/initializer_kernel.cu
   ${FLEXFLOW_ROOT}/src/runtime/model.cu
   ${FLEXFLOW_ROOT}/src/runtime/optimizer_kernel.cu
-  ${FLEXFLOW_ROOT}/src/runtime/simulator.cu)
+  ${FLEXFLOW_ROOT}/src/runtime/simulator.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/combine.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/partition.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/reduction.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/replicate.cu
+  )
 
 set(FLEXFLOW_CPP_DRV_SRC
-  ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)  
+  ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)
 
 #message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
 
