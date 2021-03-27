@@ -1278,6 +1278,7 @@ class FFModel(object):
     self.add_layer(OpType.REVERSE, name)
     return Tensor(handle, owner_op_type=OpType.REVERSE)
 
+
   def scalar_multiply(self, input, scalar, inplace=True, name=None):
     """Scalar multiplication of a tensor by an scalar.
              
