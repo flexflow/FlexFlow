@@ -112,6 +112,43 @@ bool Reduction::measure_operator_cost(
     const ParallelConfig& pc,
     CostMetrics& cost_metrics) const
 {
-  assert(false);
-  return false;
+  cost_metrics.forward_time = 0.0f;
+  cost_metrics.backward_time = 0.0f;
+  return true;
+}
+
+bool Reduction::get_int_parameter(PMParameter para, int* value) const
+{
+  switch(para) {
+    case PM_REDUCTION_DIM:
+      *value = reduction_dim;
+      return true;
+    case PM_REDUCTION_DEGREE:
+      *value = reduction_degree;
+      return true;
+    default:
+      return Op::get_int_parameter(para, value);
+  }
+}
+
+Node FFModel::get_or_create_reduction_node(const Tensor input,
+                                           int reduction_dim,
+                                           int reduction_degree)
+{
+  size_t hash = input->get_owner_independent_hash();
+  hash = hash * 31 + std::hash<int>()(reduction_dim);
+  hash = hash * 31 + std::hash<int>()(reduction_degree);
+  const auto& it = cached_reduction_ops.find(hash);
+  Reduction* reduction = NULL;
+  if (it != cached_reduction_ops.end()) {
+    reduction = it->second;
+  } else {
+    reduction = new Reduction(*this, input, reduction_dim,
+                              reduction_degree, NULL);
+    cached_reduction_ops[hash] = reduction;
+  }
+  Node ret;
+  ret.ptr = reduction;
+  ret.guid = node_global_guid++;
+  return ret;
 }

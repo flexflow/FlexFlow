@@ -53,7 +53,7 @@ bool NoOp::measure_operator_cost(
   return true;
 }
 
-Node FFModel::create_noop_node(const Tensor input)
+Node FFModel::get_or_create_noop_node(const Tensor input)
 {
   size_t hash = input->get_owner_independent_hash();
   NoOp* noop = NULL;

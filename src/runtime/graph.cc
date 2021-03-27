@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 #include "graph.h"
+#include "legion.h"
+
+LegionRuntime::Logger::Category log_dp("DP");
+LegionRuntime::Logger::Category log_graph("Graph");
 
 const MachineView MachineView::NO_VIEW = MachineView();
 
@@ -170,6 +174,10 @@ std::string Node::op_to_string(const Op* ptr) const
       return "Softmax";
     case OP_REPARTITION:
       return "Partition";
+    case OP_REPLICATE:
+      return "Replicate";
+    case OP_REDUCTION:
+      return "Reduction";
     case OP_COMBINE:
       return "Combine";
     default:
@@ -244,15 +252,17 @@ bool Graph::has_edge(const Edge& e)
 
 void Graph::print(void) const
 {
+  log_graph.print("Printing graph...");
   for (const auto& it : inEdges) {
     if (it.first.guid == 0) continue;
-    printf("	guid(%zu) type(%d): ", it.first.guid, it.first.ptr->op_type);
+    log_graph.print("	guid(%zu) type(%d): ", it.first.guid,
+                    it.first.ptr->op_type);
     const std::unordered_set<Edge>& list = it.second;
     for (const auto& it2 : list) {
       Edge e = it2;
-      printf(" inEdge(guid(%zu) idx(%d))", e.srcOp.guid, e.srcIdx);
+      log_graph.print("         inEdge(guid(%zu) idx(%d))",
+                      e.srcOp.guid, e.srcIdx);
     }
-    printf("\n");
     // if (it->first.ptr->type == OP_CONV2D) {
     //   it->first.ptr->inputs[1].print_info("conv weight");
     // }
@@ -517,14 +527,16 @@ float FFModel::graph_cost(const Graph* graph,
                           bool include_sink_compute_time,
                           bool constructing_optimal_view)
 {
-  fprintf(stderr, "[DP] sink(%zu) sink_view(%d %d) source(%zu) source_view(%d %d) resources(%d %d)\n",
-          sink_node.guid, sink_view.ndims, sink_view.dim[0],
-          source_node.guid, source_view.ndims, source_view.dim[0],
-          resources.num_nodes, resources.gpus_per_node);
-  graph->print();
+  log_dp.debug("sink(%zu) sink_view(%d %d) source(%zu) source_view(%d %d) resources(%d %d)",
+               sink_node.guid, sink_view.ndims, sink_view.dim[0],
+               source_node.guid, source_view.ndims, source_view.dim[0],
+               resources.num_nodes, resources.gpus_per_node);
+  if (config.profiling) {
+    graph->print();
+  }
   size_t hash = dp_state_hash(graph, sink_node, sink_view,
                               source_node, source_view, resources);
-  fprintf(stderr, "hash = %zu\n", hash);
+  log_dp.debug("hash = %zu\n", hash);
   assert(graph->inEdges.find(sink_node) != graph->inEdges.end());
   if (source_node != Node::INVALID_NODE)
     assert(graph->outEdges.find(source_node) != graph->outEdges.end());
@@ -558,7 +570,7 @@ float FFModel::graph_cost(const Graph* graph,
     Node bn_node = graph->find_bottleneck_node(sink_node, source_node, used_nodes);
     if (bn_node != Node::INVALID_NODE) {
       // We found a bottleneck node
-      fprintf(stderr, " found bn_node = %zu\n", bn_node.guid);
+      log_dp.debug("  Found bn_node = %zu", bn_node.guid);
       Graph* first_graph = new Graph(this);
       Graph* second_graph = new Graph(this);
       for (const auto& it : graph->inEdges) {
@@ -585,11 +597,11 @@ float FFModel::graph_cost(const Graph* graph,
         }
         if (!valid) continue;
         if (!resources.is_valid_machine_view(bn_view)) continue;
-        fprintf(stderr, "       explore view(%d %d)\n", bn_view.ndims, bn_view.dim[0]);
-        fprintf(stderr, "       First Graph\n");
+        log_dp.debug("    explore view(%d %d)", bn_view.ndims, bn_view.dim[0]);
+        log_dp.debug("    First Graph...");
         float first_cost = graph_cost(first_graph, bn_node, bn_view,
                                       source_node, source_view, resources, true);
-        fprintf(stderr, "       Second Graph\n");
+        log_dp.debug("    Second Graph...");
         float second_cost = graph_cost(second_graph, sink_node, sink_view, 
                                        bn_node, bn_view, resources, false);
         if (first_cost + second_cost < cost)
@@ -628,20 +640,17 @@ float FFModel::graph_cost(const Graph* graph,
             queue.push_back(it2.srcOp);
           }
         }
-        printf("                queue[%d]: guid(%zu)\n", i-1, node.guid);
       }
       for (const auto& it : graph->inEdges) {
         if (it.first == sink_node) continue;
         const auto& inList = it.second;
         if (used_nodes.find(it.first) != used_nodes.end()) {
-          printf("              In used_nodes: guid(%zu)\n", it.first.guid);
           // Add all in-edges of used_nodes in to the first_graph
           for (const auto& e : inList) {
             first_graph->add_edge(e);
           }
         } else {
           // Add all in-edges of not_used_nodes into the second_graph
-          printf("              Not in used_nodes: guid(%zu)\n", it.first.guid);
           for (const auto& e : inList) {
             second_graph->add_edge(e);
           }
@@ -698,7 +707,7 @@ float FFModel::graph_cost(const Graph* graph,
       delete second_graph;
     }
   }
-  printf("cached_graph_costs[%zu]=%.4lf\n", hash, cost);
+  log_dp.debug("  cached_graph_costs[%zu]=%.4lf\n", hash, cost);
   cached_graph_costs[hash] = cost;
   if (include_sink_compute_time) {
     CostMetrics metrics = simulator->measure_operator_cost(sink_node.ptr, sink_view);
@@ -924,7 +933,6 @@ float Graph::total_cost(void)
 {
   // Find sink_nodes
   // i.e., nodes with no out edge
-  print();
   Node sink_node = Node::INVALID_NODE;
   for (const auto& it : outEdges) {
     const auto& outList = it.second;

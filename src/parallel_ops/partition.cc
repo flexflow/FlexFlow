@@ -153,7 +153,7 @@ bool Repartition::get_int_parameter(PMParameter para, int* value) const
     case PM_REPARTITION_DIM:
       *value = repartition_dim;
       return true;
-    case PM_NUM_PARTITIONS:
+    case PM_REPARTITION_DEGREE:
       *value = repartition_degree;
       return true;
     default:
@@ -161,9 +161,9 @@ bool Repartition::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
-Node FFModel::create_repartition_node(const Tensor input,
-                                      int repartition_dim,
-                                      int repartition_degree)
+Node FFModel::get_or_create_repartition_node(const Tensor input,
+                                             int repartition_dim,
+                                             int repartition_degree)
 {
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(repartition_dim);

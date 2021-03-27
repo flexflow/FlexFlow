@@ -728,9 +728,9 @@ bool ElementBinary::measure_operator_cost(Simulator* sim,
   return true;
 }
 
-Node FFModel::create_element_binary_node(const Tensor input1,
-                                         const Tensor input2,
-                                         OperatorType op_type)
+Node FFModel::get_or_create_element_binary_node(const Tensor input1,
+                                                const Tensor input2,
+                                                OperatorType op_type)
 {
   size_t hash = input1->get_owner_independent_hash();
   hash = hash * 31 + input2->get_owner_independent_hash();

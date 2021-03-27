@@ -360,6 +360,8 @@ class Linear;
 class Softmax;
 class Embedding;
 class Repartition;
+class Replicate;
+class Reduction;
 class Combine;
 class Graph;
 
@@ -627,22 +629,28 @@ public:
   // ========================================
   // Internal Node creation APIs
   // ========================================
-  Node create_noop_node(const Tensor input);
-  Node create_element_binary_node(const Tensor input1,
-                                  const Tensor input2,
-                                  OperatorType type);
-  Node create_linear_node(const Tensor input,
-                          int out_dim,
-                          ActiMode activation,
-                          bool use_bias);
-  Node create_softmax_node(const Tensor input,
-                           int softmax_dim);
-  Node create_repartition_node(const Tensor input,
-                               int repartition_dim,
-                               int repartition_degree);
-  Node create_combine_node(const Tensor input,
-                           int combine_dim,
-                           int combine_degree);
+  Node get_or_create_noop_node(const Tensor input);
+  Node get_or_create_element_binary_node(const Tensor input1,
+                                         const Tensor input2,
+                                         OperatorType type);
+  Node get_or_create_linear_node(const Tensor input,
+                                 int out_dim,
+                                 ActiMode activation,
+                                 bool use_bias);
+  Node get_or_create_softmax_node(const Tensor input,
+                                  int softmax_dim);
+  Node get_or_create_repartition_node(const Tensor input,
+                                      int repartition_dim,
+                                      int repartition_degree);
+  Node get_or_create_replicate_node(const Tensor input,
+                                    int replicate_dim,
+                                    int replicate_degree);
+  Node get_or_create_reduction_node(const Tensor input,
+                                    int reduction_dim,
+                                    int reduction_degree);
+  Node get_or_create_combine_node(const Tensor input,
+                                  int combine_dim,
+                                  int combine_degree);
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
@@ -770,6 +778,8 @@ public:
   std::unordered_map<size_t, Linear*> cached_linear_ops;
   std::unordered_map<size_t, Softmax*> cached_softmax_ops;
   std::unordered_map<size_t, Repartition*> cached_repartition_ops;
+  std::unordered_map<size_t, Replicate*> cached_replicate_ops;
+  std::unordered_map<size_t, Reduction*> cached_reduction_ops;
   std::unordered_map<size_t, Combine*> cached_combine_ops;
   std::vector<MachineView> all_valid_views;
   //DataLoader *dataLoader;
@@ -2078,6 +2088,7 @@ public:
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
+  bool get_int_parameter(PMParameter, int*) const;
   static void forward_task(
       const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,
@@ -2115,6 +2126,7 @@ public:
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
+  bool get_int_parameter(PMParameter, int*) const;
   static void forward_task(
       const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,

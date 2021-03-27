@@ -18,6 +18,13 @@ using namespace Legion;
 
 const TensorX TensorX::NO_TX = TensorX();
 
+GraphXfer* create_replicate_linear_combine(FFModel* model,
+                                           int num_dims,
+                                           int out_channels,
+                                           int num_parts,
+                                           ActiMode activation,
+                                           bool use_bias);
+
 GraphXfer* create_partition_linear_combine(FFModel* model,
                                            int num_dims,
                                            int out_channels,
@@ -453,12 +460,12 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
   switch (opx->type) {
     case OP_NOOP:
     {
-      op = model->create_noop_node(inputs[0]);
+      op = model->get_or_create_noop_node(inputs[0]);
       break;
     }
     case OP_EW_ADD:
     {
-      op = model->create_element_binary_node(inputs[0], inputs[1], opx->type);
+      op = model->get_or_create_element_binary_node(inputs[0], inputs[1], opx->type);
       break;
     }
     case OP_LINEAR:
@@ -466,33 +473,51 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
       int output_channels, activation;
       assert(opx->get_pm_constraint(PM_OUTPUT_CHANNELS, output_channels));
       assert(opx->get_pm_constraint(PM_ACTI, activation));
-      op = model->create_linear_node(inputs[0], output_channels,
-                                     (ActiMode)activation, false);
+      op = model->get_or_create_linear_node(inputs[0], output_channels,
+                                            (ActiMode)activation, false);
       break;
     }
     case OP_SOFTMAX:
     {
       int softmax_dim;
       assert(opx->get_pm_constraint(PM_SOFTMAX_DIM, softmax_dim));
-      op = model->create_softmax_node(inputs[0], softmax_dim);
+      op = model->get_or_create_softmax_node(inputs[0], softmax_dim);
       break;
     }
     case OP_REPARTITION:
     {
       int repartition_dim, repartition_degree;
       assert(opx->get_pm_constraint(PM_REPARTITION_DIM, repartition_dim));
-      assert(opx->get_pm_constraint(PM_NUM_PARTITIONS, repartition_degree));
-      op = model->create_repartition_node(inputs[0], repartition_dim,
-                                          repartition_degree);
+      assert(opx->get_pm_constraint(PM_REPARTITION_DEGREE, repartition_degree));
+      op = model->get_or_create_repartition_node(inputs[0], repartition_dim,
+                                                 repartition_degree);
+      break;
+    }
+    case OP_REPLICATE:
+    {
+      int replicate_dim, replicate_degree;
+      assert(opx->get_pm_constraint(PM_REPLICATE_DIM, replicate_dim));
+      assert(opx->get_pm_constraint(PM_REPLICATE_DEGREE, replicate_degree));
+      op = model->get_or_create_replicate_node(inputs[0], replicate_dim,
+                                               replicate_degree);
+      break;
+    }
+    case OP_REDUCTION:
+    {
+      int reduction_dim, reduction_degree;
+      assert(opx->get_pm_constraint(PM_REDUCTION_DIM, reduction_dim));
+      assert(opx->get_pm_constraint(PM_REDUCTION_DEGREE, reduction_degree));
+      op = model->get_or_create_reduction_node(inputs[0], reduction_dim,
+                                               reduction_degree);
       break;
     }
     case OP_COMBINE:
     {
       int combine_dim, combine_degree;
       assert(opx->get_pm_constraint(PM_COMBINE_DIM, combine_dim));
-      assert(opx->get_pm_constraint(PM_NUM_PARTITIONS, combine_degree));
-      op = model->create_combine_node(inputs[0], combine_dim,
-                                      combine_degree);
+      assert(opx->get_pm_constraint(PM_COMBINE_DEGREE, combine_degree));
+      op = model->get_or_create_combine_node(inputs[0], combine_dim,
+                                             combine_degree);
       break;
     }
     default:
@@ -582,8 +607,28 @@ OpX* GraphXfer::create_repartition(const TensorX& input,
 {
   OpX* part = new OpX(OP_REPARTITION, 1, 1, input);
   part->add_pm_constraint(COMPARE_EQ, PM_REPARTITION_DIM, repartition_dim);
-  part->add_pm_constraint(COMPARE_EQ, PM_NUM_PARTITIONS, num_parts);
+  part->add_pm_constraint(COMPARE_EQ, PM_REPARTITION_DEGREE, num_parts);
   return part;
+}
+
+OpX* GraphXfer::create_replicate(const TensorX& input,
+                                 int replicate_dim,
+                                 int num_parts)
+{
+  OpX* replicate = new OpX(OP_REPLICATE, 1, 1, input);
+  replicate->add_pm_constraint(COMPARE_EQ, PM_REPLICATE_DIM, replicate_dim);
+  replicate->add_pm_constraint(COMPARE_EQ, PM_REPLICATE_DEGREE, num_parts);
+  return replicate;
+}
+
+OpX* GraphXfer::create_reduction(const TensorX& input,
+                                 int reduction_dim,
+                                 int num_parts)
+{
+  OpX* reduction = new OpX(OP_REDUCTION, 1, 1, input);
+  reduction->add_pm_constraint(COMPARE_EQ, PM_REDUCTION_DIM, reduction_dim);
+  reduction->add_pm_constraint(COMPARE_EQ, PM_REDUCTION_DEGREE, num_parts);
+  return reduction;
 }
 
 OpX* GraphXfer::create_combine(const TensorX& input,
@@ -592,7 +637,7 @@ OpX* GraphXfer::create_combine(const TensorX& input,
 {
   OpX* part = new OpX(OP_COMBINE, 1, 1, input);
   part->add_pm_constraint(COMPARE_EQ, PM_COMBINE_DIM, combine_dim);
-  part->add_pm_constraint(COMPARE_EQ, PM_NUM_PARTITIONS, num_parts);
+  part->add_pm_constraint(COMPARE_EQ, PM_COMBINE_DEGREE, num_parts);
   return part;
 }
 
@@ -618,11 +663,16 @@ void FFModel::dp_optimize()
   }
   // Construct graph substitutions
   std::vector<GraphXfer*> xfers;
+  xfers.push_back(create_replicate_linear_combine(this, 3, 4096, 4, AC_MODE_RELU, false));
+  xfers.push_back(create_replicate_linear_combine(this, 3, 4096, 4, AC_MODE_NONE, false));
   xfers.push_back(create_partition_linear_combine(this, 3, 4096, 4, AC_MODE_RELU, false));
   xfers.push_back(create_partition_linear_combine(this, 3, 4096, 4, AC_MODE_NONE, false));
   xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, 4/*num_parts*/));
   xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, 4/*num_parts*/));
   xfers.push_back(eliminate_combine_partition(this, 1/*parallel_dims*/, 4/*num_parts*/));
+
+  xfers.push_back(create_replicate_linear_combine(this, 3, 4096, 2, AC_MODE_RELU, false));
+  xfers.push_back(create_replicate_linear_combine(this, 3, 4096, 2, AC_MODE_NONE, false));
   xfers.push_back(create_partition_linear_combine(this, 3, 4096, 2, AC_MODE_RELU, false));
   xfers.push_back(create_partition_linear_combine(this, 3, 4096, 2, AC_MODE_NONE, false));
   xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, 2/*num_parts*/));
@@ -692,6 +742,29 @@ GraphXfer* create_partition_linear_combine(FFModel* model,
   subst->map_output(linear1->outputs[0], combine->outputs[0]);
   subst->srcOps.push_back(linear1);
   subst->dstOps.push_back(repartition);
+  subst->dstOps.push_back(linear2);
+  subst->dstOps.push_back(combine);
+  return subst;
+}
+
+GraphXfer* create_replicate_linear_combine(FFModel* model,
+                                           int num_dims,
+                                           int out_channels,
+                                           int num_parts,
+                                           ActiMode activation,
+                                           bool use_bias)
+{
+  GraphXfer* subst = new GraphXfer(model);
+  TensorX input = subst->new_tensor();
+  OpX* linear1 = subst->create_linear(input, num_dims, out_channels,
+                                      activation, use_bias);
+  OpX* replicate = subst->create_replicate(input, num_dims-1, num_parts);
+  OpX* linear2 = subst->create_linear(replicate->outputs[0], num_dims,
+                                      out_channels, activation, use_bias);
+  OpX* combine = subst->create_combine(linear2->outputs[0], 0, num_parts);
+  subst->map_output(linear1->outputs[0], combine->outputs[0]);
+  subst->srcOps.push_back(linear1);
+  subst->dstOps.push_back(replicate);
   subst->dstOps.push_back(linear2);
   subst->dstOps.push_back(combine);
   return subst;

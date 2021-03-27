@@ -35,8 +35,6 @@ void top_level_task(const Task* task,
     input1 = ff.create_tensor<3>(dims, DT_FLOAT);
     input2 = ff.create_tensor<3>(dims, DT_FLOAT);
   }
-  //int total_workers = ffConfig.workersPerNode * ffConfig.numNodes;
-  //Tensor t = ff.repartition(input, 1/*dim*/, total_workers);
   Tensor t1 = input1, t2 = input2;
   for (size_t i = 0; i < hidden_dims.size(); i++) {
     const int dims[] = {1, hidden_dims[i], t1->dims[0].size};
