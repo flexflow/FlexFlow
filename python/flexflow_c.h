@@ -310,6 +310,12 @@ flexflow_model_add_scalar_multiply(
   const char *name);
 
 flexflow_tensor_t
+flexflow_model_add_gelu(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input,
+  const char *name);
+
+flexflow_tensor_t
 flexflow_model_add_identity(
   flexflow_model_t handle,
   const flexflow_tensor_t input,

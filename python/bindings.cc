@@ -263,6 +263,7 @@ PYBIND11_MODULE(flexflow_bindings, m) {
       // Activations
       .def("relu", &FFModel::relu, "x"_a, "inplace"_a = true, "name"_a = nullptr)
       .def("identity", &FFModel::identity, "x"_a, "name"_a = nullptr)
+      .def("gelu", &FFModel::identity, "x"_a, "name"_a = nullptr)
       .def("sigmoid", &FFModel::sigmoid, "x"_a, "name"_a = nullptr)
       .def("tanh", &FFModel::tanh, "x"_a, "name"_a = nullptr)
       .def("elu", &FFModel::elu, "x"_a, "inplace"_a = true, "name"_a = nullptr)
