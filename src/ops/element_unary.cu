@@ -456,11 +456,6 @@ void elewise_unary_backward_kernel(coord_t volume,
 	input_grad[i] = output_grad[i]*(0.5 * erfc(-input[i]*M_SQRT1_2)-0.5*M_SQRT1_2*input[i]*exp(-input[i]*input[i]*0.5));
 	break;
       }
-      case OP_GELU:
-      {
-	input_grad[i] = output_grad[i]*(0.5 * erfc(-input[i]*M_SQRT1_2)-0.5*M_SQRT1_2*input[i]*exp(-input[i]*input[i]*0.5));
-	break;
-      }
       default:
         assert(false);
     }
