@@ -247,6 +247,13 @@ class Relu(Op):
     super(Relu, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Gelu
+# -----------------------------------------------------------------------
+class Gelu(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Gelu, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # Sigmod
 # -----------------------------------------------------------------------
 class Sigmoid(Op):
@@ -254,7 +261,7 @@ class Sigmoid(Op):
     super(Sigmoid, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
-# Relu
+# Tanh
 # -----------------------------------------------------------------------
 class Tanh(Op):
   def __init__(self, handle, idx=None, name=None):
@@ -294,6 +301,13 @@ class Split(Op):
 class Reshape(Op):
   def __init__(self, handle, idx=None, name=None):
     super(Reshape, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Identity
+# -----------------------------------------------------------------------
+class Identity(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Identity, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Transpose
@@ -348,6 +362,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return MSELoss(handle, idx, name)
   elif op_type == OpType.SCALAR_MULTIPLY:
     return ScalarMultiply(handle, idx, name)
+  elif op_type == OpType.GELU:
+    return Gelu(handle, idx, name)
   elif op_type == OpType.RELU:
     return Relu(handle, idx, name)
   elif op_type == OpType.SIGMOID:
@@ -366,6 +382,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Split(handle, idx, name)
   elif op_type == OpType.RESHAPE:
     return Reshape(handle, idx, name)
+  elif op_type == OpType.IDENTITY:
+    return Identity(handle,idx,name)
   elif op_type == OpType.TRANSPOSE:
     return Transpose(handle, idx, name)
   elif op_type == OpType.REVERSE:
@@ -1279,6 +1297,22 @@ class FFModel(object):
     self.add_layer(OpType.SCALAR_MULTIPLY, name)
     return Tensor(handle, owner_op_type=OpType.SCALAR_MULTIPLY)
 
+  def gelu(self, input, inplace=True, name=None):
+    """Gaussian Error Linear Unit activation function.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_gelu(self.handle, input.handle, c_name)
+    self.add_layer(OpType.GELU, name)
+    return Tensor(handle, owner_op_type=OpType.GELU)
+  
   def relu(self, input, inplace=True, name=None):
     """Rectified Linear Unit activation function.
              

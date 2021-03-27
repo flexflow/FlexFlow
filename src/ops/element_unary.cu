@@ -58,6 +58,11 @@ Tensor FFModel::identity(const Tensor& x, const char *name)
   return this->unary(OP_IDENTITY, x, false/*inplace*/, name);
 }
 
+Tensor FFModel::gelu(const Tensor& x, const char *name)
+{
+  return this->unary(OP_GELU, x, false/*inplace*/, name);
+}
+
 Tensor FFModel::elu(const Tensor& x, bool inplace, const char *name)
 {
   // Currently assume inplace is false
@@ -302,6 +307,11 @@ void elewise_unary_forward_kernel(coord_t volume,
 	out[i] = in[i] * scalar;
 	break;
       }
+      case OP_GELU:
+      {
+	out[i] = in[i] * 0.5 * erfc(-in[i]*M_SQRT1_2);
+	break;
+      }
       default:
         assert(false);
     }
@@ -439,6 +449,11 @@ void elewise_unary_backward_kernel(coord_t volume,
       case OP_SCALAR_MULTIPLY:
       {
 	input_grad[i] = output_grad[i]*scalar;
+	break;
+      }
+      case OP_GELU:
+      {
+	input_grad[i] = output_grad[i]*(0.5 * erfc(-input[i]*M_SQRT1_2)-0.5*M_SQRT1_2*input[i]*exp(-input[i]*input[i]*0.5));
 	break;
       }
       default:
