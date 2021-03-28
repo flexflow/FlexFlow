@@ -39,6 +39,9 @@ set(FF_CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
 # option for nccl
 option(FF_USE_NCCL "Run FlexFlow with NCCL" ON)
 
+# option for avx2
+option(FF_USE_AVX2 "Run FlexFlow with AVX2" OFF)
+
 set(FLEXFLOW_EXT_LIBRARIES "")
 set(FLEXFLOW_INCLUDE_DIRS "")
 
@@ -88,6 +91,12 @@ endif()
 list(APPEND CC_FLAGS
   -std=c++11
   -DMAX_TENSOR_DIM=${FF_MAX_DIM})
+
+if(FF_USE_AVX2)
+  list(APPEND CC_FLAGS
+    -DFF_USE_AVX2
+    -mavx2)
+endif
   
 list(APPEND NVCC_FLAGS
   -Wno-deprecated-gpu-targets
@@ -120,10 +129,6 @@ list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc")
 file(GLOB_RECURSE FLEXFLOW_GPU_SRC 
   LIST_DIRECTORIES False 
   ${FLEXFLOW_ROOT}/src/*.cu)
-
-# remove these two ops as they are not compilable	
-list(REMOVE_ITEM FLEXFLOW_GPU_SRC "${FLEXFLOW_ROOT}/src/ops/tanh.cu")
-list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/ops/embedding_avx2.cc")
 
 set(FLEXFLOW_CPP_DRV_SRC
   ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)  
