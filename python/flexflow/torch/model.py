@@ -34,6 +34,7 @@ class PyTorchModel(object):
     
   def apply(self, ffmodel, input_tensors):
     output_tensors = []
+    intermediate_values = {}
     input_idx = 0
     for line in self.lines:
       items = line.strip().split(",")
@@ -150,11 +151,25 @@ class PyTorchModel(object):
         output = FXTensor(output)
       
       elif op_type == OpType.TRANSPOSE:
-        assert len(items) == 6
+        assert len(items) >= 6
         assert len(self.input_ops_list) == 1, "wrong format"
         input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
-        output = ffmodel.relu(input=input_tensor,perm=[items[4],items[5]], name=op_name)
+        output = ffmodel.transpose(input=input_tensor,perm=[int(dim) for dim in items[4:]], name=op_name)
       
+      elif op_type == OpType.RESHAPE:
+        assert len(items) >= 5
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        shape = items[4:]
+        for idx,dim in enumerate(shape):
+            try:
+                shape[idx] = int(dim)
+            except:
+                shape[idx] = intermediate_values[dim]
+
+        output = ffmodel.reshape(input=input_tensor,shape=shape,name=op_name)
+        output = FXTensor(output)
+
       elif op_type == OpType.BATCH_MATMUL:
         assert len(items) == 4, "wrong format"
         assert len(self.input_ops_list) == 2, "wrong format"
@@ -216,16 +231,21 @@ class PyTorchModel(object):
         assert len(items) == 5, "wrong format"
         assert len(self.input_ops_list) == 1, "wrong format"
         input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
-        assert type(input_tensor) == list
+        assert type(input_tensor) == list or type(input_tensor) == tuple
         idx = int(items[4])
         output = input_tensor[idx]
+        print(items[0]+":")
+        intermediate_values[items[0]+":"] = output        
         output = FXTensor(output)
         
       elif op_type == OpType.GETATTR:
         assert len(items) == 5, "wrong format"
         assert len(self.input_ops_list) == 1, "wrong format"
         input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
-        output = getattr(input_tensor, items[4]) 
+        if(items[4] == "shape"):
+            output = input_tensor.dims
+        else:
+            output = getattr(input_tensor, items[4]) 
         output = FXTensor(output)
 
       elif op_type == OpType.BATCH_NORM:
