@@ -126,10 +126,18 @@ set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/ops/embedding.cc
   ${FLEXFLOW_ROOT}/src/ops/group_by.cc
   ${FLEXFLOW_ROOT}/src/ops/aggregate.cc
+  ${FLEXFLOW_ROOT}/src/ops/noop.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/partition.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/combine.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/replicate.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/reduction.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/fused_parallel_op.cc
   ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cc
   ${FLEXFLOW_ROOT}/src/runtime/initializer.cc
   ${FLEXFLOW_ROOT}/src/runtime/model.cc
   ${FLEXFLOW_ROOT}/src/runtime/optimizer.cc
+  ${FLEXFLOW_ROOT}/src/runtime/graph.cc
+  ${FLEXFLOW_ROOT}/src/runtime/substitution.cc
   ${FLEXFLOW_ROOT}/src/runtime/strategy.cc
   ${FLEXFLOW_ROOT}/src/runtime/simulator.cc
   ${FLEXFLOW_ROOT}/src/runtime/machine_model.cc)
@@ -156,6 +164,11 @@ set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/ops/split.cu
   ${FLEXFLOW_ROOT}/src/ops/topk.cu
   ${FLEXFLOW_ROOT}/src/ops/transpose.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/partition.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/combine.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/replicate.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/reduction.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/fused_parallel_op.cu
   ${FLEXFLOW_ROOT}/src/runtime/accessor_kernel.cu
   ${FLEXFLOW_ROOT}/src/runtime/cuda_helper.cu
   ${FLEXFLOW_ROOT}/src/runtime/initializer_kernel.cu
@@ -204,6 +217,10 @@ if(FF_USE_PYTHON)
     add_subdirectory(deps/pybind11)
   endif()
   add_subdirectory(python)
+endif()
+
+if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/MLP_Unify)
 endif()
 
 if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
