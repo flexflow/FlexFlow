@@ -1122,3 +1122,17 @@ Node FFModel::get_or_create_linear_node(const Tensor input,
   ret.ptr = li;
   return ret;
 }
+
+bool Linear::is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const
+{
+  if (!ff.config.enable_parameter_parallel)
+    return Op::is_valid_parallel_config(ff, pc);
+  // Support data and parameter parallel
+  if (pc.nDims != outputs[0].numDim)
+    return false;
+  for (int i = 1; i < pc.nDims-1; i++)
+    if (pc.dim[i] != 1)
+      return false;
+  return true;
+}
+

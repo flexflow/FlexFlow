@@ -213,8 +213,8 @@ OpMeta* Conv2D::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
-  assert(regions.size() == 5);
-  assert(task->regions.size() == 5);
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
   const Conv2D* conv = (Conv2D*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   TensorAccessorR<float, 4> acc_input(
@@ -229,9 +229,9 @@ OpMeta* Conv2D::init_task(const Task *task,
   TensorAccessorW<float, 4> acc_kernel_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime,
       false/*readOutput*/);
-  TensorAccessorW<float, 4> acc_input_grad(
-      regions[4], task->regions[4], FID_DATA, ctx, runtime,
-      false/*readOutput*/);
+  //TensorAccessorW<float, 4> acc_input_grad(
+  //    regions[4], task->regions[4], FID_DATA, ctx, runtime,
+  //    false/*readOutput*/);
 
   Conv2DMeta* m = new Conv2DMeta(handle);
   m->relu = conv->activation == AC_MODE_RELU;
@@ -325,7 +325,7 @@ OpMeta* Conv2D::init_task(const Task *task,
                        m->handle.dnn, m->filterDesc, acc_kernel.ptr,
                        m->outputTensor, acc_output.ptr,
                        m->convDesc, m->handle.workSpace, m->handle.workSpaceSize,
-                       m->inputTensor, acc_input_grad.ptr);
+                       m->inputTensor, (float*)acc_input.ptr);
   if (m->relu) {
     checkCUDNN(cudnnSetActivationDescriptor(m->actiDesc, CUDNN_ACTIVATION_RELU,
                                             CUDNN_PROPAGATE_NAN, 0.0));
@@ -374,10 +374,10 @@ void Conv2D::init(const FFModel& ff)
       RegionRequirement(weights[0]->part_grad, 0/*projection id*/,
                         WRITE_ONLY, EXCLUSIVE, weights[0]->region_grad));
   launcher.add_field(3, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
-  launcher.add_field(4, FID_DATA);
+  //launcher.add_region_requirement(
+  //    RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
+  //                      WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
+  //launcher.add_field(4, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;

@@ -269,6 +269,8 @@ public:
   virtual Legion::Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const;
   virtual Legion::Domain get_output_tensor_shape(const ParallelConfig& pc, int output_idx, int part_idx) const;
   virtual Legion::Domain get_weight_tensor_shape(const ParallelConfig& pc, int weight_idx, int part_idx) const;
+  virtual bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
+  virtual bool is_adoptable_parallel_config(FFModel const &ff, ParallelConfig const &pc) const;
   // Helper functions
   void prefetch(const FFModel&);
   void zero_grad(const FFModel&);
@@ -276,6 +278,8 @@ public:
   virtual bool can_inplace_output();
   virtual bool has_inplace_output();
   virtual void do_inplace_output();
+
+  int get_dimension() const;
 #ifdef FF_USE_NCCL
   static ncclUniqueId get_nccl_unique_id_task(const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,
@@ -354,6 +358,9 @@ struct Node {
 };
 
 class NoOp;
+
+ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
+
 class ElementBinary;
 class ElementUnary;
 class Conv2D;
@@ -384,26 +391,35 @@ public:
   // Add an add layer
   Tensor add(const Tensor x,
              const Tensor y,
-             bool inplace = false,
+             bool inplace_a = false,
              char const *name = NULL);
   // Add a subtract layer
   Tensor subtract(const Tensor x,
                   const Tensor y,
-                  bool inplace = false,
+                  bool inplace_a = false,
                   char const *name = NULL);
   // Add a multiply layer
   Tensor multiply(const Tensor x,
                   const Tensor y,
-                  bool inplace = false,
+                  bool inplace_a = false,
                   char const *name = NULL);
   // Add a divide layer
   Tensor divide(const Tensor x,
                 const Tensor y,
-                bool inplace = false,
+                bool inplace_a = false,
                 char const *name = NULL);
+  // Add a scalar multiply layer
+  Tensor scalar_multiply(const Tensor x,
+	      const float scalar,
+              bool inplace = true,
+              const char *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor x,
               bool inplace = true,
+              const char *name = NULL);
+  Tensor identity(const Tensor x,
+              const char *name = NULL);
+  Tensor gelu(const Tensor x,
               const char *name = NULL);
   Tensor sigmoid(const Tensor x,
                  const char *name = NULL);
@@ -812,9 +828,11 @@ private:
   Tensor unary(OperatorType op,
                Tensor const x,
                bool inplace = true,
-               char const *name = NULL);
+               char const *name = NULL,
+	       float scalar = 0.0);
   ElementUnary * unary(OperatorType op,
-                       char const *name = NULL);
+                       char const *name = NULL,
+		       float scalar = 0.0);
 };
 
 class ElementBinaryMeta : public OpMeta {
@@ -896,6 +914,7 @@ public:
   cudnnActivationDescriptor_t actiDesc;
   OperatorType op_type;
   bool inplace;
+  float scalar;
 };
 
 class ElementUnary : public Op {
@@ -904,7 +923,8 @@ public:
                OperatorType type,
                const Tensor x,
                bool inplace,
-               const char* name);
+               const char* name,
+	       float scalar);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -943,6 +963,7 @@ private:
   //template<int NDIM>
   //void create_output_and_partition_with_dim(FFModel& model);
 public:
+  float scalar;
   bool inplace;
 };
 
@@ -1258,6 +1279,7 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
   ParallelConfig get_random_parallel_config(const FFModel& ff) const;
+  bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
 private:
   template<int NDIM>
   void create_input_partition_with_dim(FFModel& model);

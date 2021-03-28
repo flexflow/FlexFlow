@@ -691,7 +691,7 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel& ff, int task_id)
     int idx = next_index;
     for (PointInRectIterator<NDIM> it(rect); it(); it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[NDIM-1] + 1) == 0);
+      assert(ff.config.batchSize % (rect.hi[NDIM-1] - rect.lo[NDIM-1] + 1) == 0);
       meta.num_samples = ff.config.batchSize / (rect.hi[NDIM-1] - rect.lo[NDIM-1] + 1);
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
@@ -721,7 +721,7 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel& ff, int task_id)
     for (PointInRectIterator<NDIM> it(rect); it(); it++) {
       int idx = next_index;
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[NDIM-1] + 1) == 0);
+      assert(ff.config.batchSize % (rect.hi[NDIM-1] - rect.lo[NDIM-1] + 1) == 0);
       meta.num_samples = ff.config.batchSize / (rect.hi[NDIM-1] - rect.lo[NDIM-1] + 1);
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;

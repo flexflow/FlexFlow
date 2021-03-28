@@ -529,10 +529,17 @@ void Op::zero_grad(const FFModel& ff)
 
 ParallelConfig Op::get_data_parallel_config(const FFModel& ff) const
 {
-  int num_parts = ff.config.workersPerNode * ff.config.numNodes;
+  return get_basic_data_parallel_config(
+      ff.config.workersPerNode * ff.config.numNodes,
+      this->get_dimension()
+  );
+}
+
+ParallelConfig get_basic_data_parallel_config(int num_parts, int dims)
+{
   ParallelConfig pc;
   pc.device_type = ParallelConfig::GPU;
-  pc.nDims = outputs[0]->num_dims;
+  pc.nDims = num_dims;
   for (int i = 0; i < pc.nDims; i++)
     pc.dim[i] = i == pc.nDims - 1 ? num_parts : 1;
   for (int i = 0; i < num_parts; i++)
@@ -645,6 +652,52 @@ ParallelConfig Op::get_random_parallel_config(const FFModel& ff) const
   for (int i = 0; i < num_parts; i++)
     pc.device_ids[i] = start_idx + i;
   return pc;
+}
+
+int Op::get_dimension() const {
+  return this->outputs[0].numDim;
+}
+
+ParallelConfig ParallelConfig::change_data_parallel_dimensionality(int new_dimensionality) const {
+  ParallelConfig pc = *this;
+  assert (this->is_data_parallel());
+  assert (new_dimensionality <= MAX_TENSOR_DIM);
+  assert (new_dimensionality > 0);
+
+  for (int i = 0; i < new_dimensionality - 1; i++) {
+    pc.dim[i] = 1;
+  }
+  pc.dim[new_dimensionality - 1] = this->dim[this->nDims - 1];
+  pc.nDims = new_dimensionality;
+
+  return pc;
+}
+
+bool Op::is_adoptable_parallel_config(FFModel const &ff, ParallelConfig const &pc) const {
+  if (this->is_valid_parallel_config(ff, pc)) {
+    return true;
+  }
+
+  if (pc.is_data_parallel()) {
+    ParallelConfig adopted_pc = pc.change_data_parallel_dimensionality(this->outputs[0].numDim);
+    if (this->is_valid_parallel_config(ff, adopted_pc)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool Op::is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const
+{
+  // By default only data parallelism is allowed
+  // Check dim match
+  if (pc.nDims != this->get_dimension())
+    return false;
+  for (int i = 0; i < pc.nDims-1; i++)
+    if (pc.dim[i] != 1)
+      return false;
+  return true;
 }
 
 Domain Op::get_output_tensor_shape(const ParallelConfig& pc,
@@ -2582,6 +2635,9 @@ void FFModel::propagate(std::map<Op*, ParallelConfig> const &current,
         if (edgeInfo.dstOp == NULL) {
           continue;
         }
+        if (!edgeInfo.dstOp->is_adoptable_parallel_config(*this, next.at(selected_op))) {
+          continue;
+        }
         assert(edgeInfo.dstOp != NULL);
         edgeInfo.size = selected_op->inputs[i].get_volume();
         choosable_edges.push_back(edgeInfo);
@@ -2593,6 +2649,9 @@ void FFModel::propagate(std::map<Op*, ParallelConfig> const &current,
           PropagationEdgeInfo edgeInfo;
           edgeInfo.dstOp = kv.first;
           assert(edgeInfo.dstOp != NULL);
+          if (!edgeInfo.dstOp->is_adoptable_parallel_config(*this, next.at(selected_op))) {
+            continue;
+          }
           edgeInfo.size = kv.second;
           choosable_edges.push_back(edgeInfo);
         }
@@ -2618,7 +2677,11 @@ void FFModel::propagate(std::map<Op*, ParallelConfig> const &current,
     assert (edge_weights.size() == choosable_edges.size());
     PropagationEdgeInfo chosenEdgeInfo = select_random(choosable_edges, edge_weights);
 
-    next[chosenEdgeInfo.dstOp] = next.at(selected_op);
+    auto const &dstOp = chosenEdgeInfo.dstOp;
+    if (next.at(selected_op).is_data_parallel()) {
+      next[dstOp] = next.at(selected_op).change_data_parallel_dimensionality(dstOp->get_dimension());
+      assert (dstOp->is_valid_parallel_config(*this, next.at(dstOp)));
+    }
     selected_op = chosenEdgeInfo.dstOp;
   } while (randf() < FFModel::CONTINUE_PROPAGATION_CHANCE);
 }

@@ -302,6 +302,26 @@ flexflow_model_add_relu(
   const char *name);
 
 flexflow_tensor_t
+flexflow_model_add_scalar_multiply(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input,
+  const float scalar,
+  bool inplace,
+  const char *name);
+
+flexflow_tensor_t
+flexflow_model_add_gelu(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input,
+  const char *name);
+
+flexflow_tensor_t
+flexflow_model_add_identity(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input,
+  const char *name);
+
+flexflow_tensor_t
 flexflow_model_add_sigmoid(
   flexflow_model_t handle,
   const flexflow_tensor_t input,

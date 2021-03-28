@@ -30,7 +30,7 @@ tracing_id = 100
 class BaseModel(object):
   __slots__ = ['_ffconfig', '_ffmodel', '_ffoptimizer', '_layers', '_nb_layers', \
                '_input_layers', '_input_tensors', '_output_tensor', '_label_tensor', \
-               '_full_input_tensors', '_full_label_tensor', '_num_samples',\
+               '_num_samples',\
                '_input_dataloaders', '_input_dataloaders_dim', \
                '_label_dataloader', '_label_dataloader_dim', \
                '_loss', '_metrics', '_label_type', '__tracing_id']
@@ -47,8 +47,6 @@ class BaseModel(object):
     self._input_tensors = []
     self._output_tensor = 0
     self._label_tensor = 0
-    self._full_input_tensors = []
-    self._full_label_tensor = 0
     self._num_samples = 0
     self._input_dataloaders = []
     self._input_dataloaders_dim = []
@@ -133,8 +131,9 @@ class BaseModel(object):
               loss_weights=None,
               weighted_metrics=None,
               run_eagerly=None,
-              comp_mode=None,
+              comp_mode=ff.CompMode.TRAINING,
               **kwargs):
+
     if loss_weights != None:
       assert 0, "loss_weights is not supported"
     if weighted_metrics != None:
@@ -187,7 +186,8 @@ class BaseModel(object):
     metrics_type = []
     for metric in self._metrics:
       metrics_type.append(metric.type)
-    self._ffmodel.compile(optimizer=self._ffoptimizer.ffhandle, loss_type=self._loss.type, metrics=metrics_type, comp_mode=comp_mode)
+    self._ffmodel.optimizer = optimizer.ffhandle
+    self._ffmodel.compile(loss_type=self._loss.type, metrics=metrics_type, comp_mode=comp_mode)
     self._create_label_tensor()
     fflogger.debug("%s, %s, %s, %s" %( str(self._input_tensors[0]), str(self._output_tensor), str(self._input_tensors[0].ffhandle), str(self._output_tensor.ffhandle)))
 
@@ -362,13 +362,11 @@ class BaseModel(object):
 
     idx = 0
     for x_train in x_trains:
-      full_tensor, dataloader = self.__create_single_data_loader(self._input_tensors[idx], x_train)
-      self._full_input_tensors.append(full_tensor)
+      dataloader = self._ffmodel.create_data_loader(self._input_tensors[idx].ffhandle, x_train)
       self._input_dataloaders.append(dataloader)
       self._input_dataloaders_dim.append(len(input_shape))
       idx += 1
-    full_tensor, dataloader = self.__create_single_data_loader(self._label_tensor, y_train)
-    self.__full_label_tensor = full_tensor
+    dataloader = self._ffmodel.create_data_loader(self._label_tensor.ffhandle, y_train)
     self._label_dataloader = dataloader
     self._label_dataloader_dim = len(input_shape)
 
