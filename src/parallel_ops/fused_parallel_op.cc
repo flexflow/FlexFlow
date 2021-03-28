@@ -17,47 +17,82 @@
 
 using namespace Legion;
 
-Tensor FFModel::repartition(
-    const Tensor input,
-    int repartition_legion_dim,
-    int repartition_degree,
-    const char* name)
-{
-  Repartition *part = new Repartition(*this, input,
-      repartition_legion_dim, repartition_degree, name);
-  layers.push_back(part);
-  return part->outputs[0];
-}
-
-Repartition::Repartition(
+FusedParallelOp::FusedParallelOp(
     FFModel& model,
     const Tensor _input,
-    int _repartition_legion_dim,
-    int _repartition_degree,
-    const char* name)
-: ParallelOp(model, OP_REPARTITION, name, _input),
-  repartition_dim(_repartition_legion_dim),
-  repartition_degree(_repartition_degree)
+    const std::vector<ParallelOpInfo>& _parallel_ops)
+: ParallelOp(model, OP_FUSED_PARALLEL, NULL, _input),
+  num_parallel_ops(0)
 {
+  set_parallel_ops(_parallel_ops);
+  assert(check_no_redundant_parallel_ops());
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++) {
-    dims[i] = _input->dims[i];
-  }
-  dims[repartition_dim].degree *= repartition_degree;
-  TensorBase::update_parallel_ids(numdim, dims);
   for (int i = 0; i < numdim; i++)
-    if (i != repartition_dim) {
-      register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
+    dims[i] = _input->dims[i];
+  for (int i = 0; i < num_parallel_ops; i++) {
+    ParallelOpInfo info = parallel_ops[i];
+    switch (info.op_type) {
+      case OP_REPARTITION:
+      {
+        dims[info.parallel_dim].degree *= info.parallel_degree;
+        break;
+      }
+      case OP_COMBINE:
+      {
+        assert(dims[info.parallel_dim].degree % info.parallel_degree == 0);
+        dims[info.parallel_dim].degree /= info.parallel_degree;
+        break;
+      }
+      case OP_REPLICATE:
+      {
+        dims[info.parallel_dim].size *= info.parallel_degree;
+        dims[info.parallel_dim].degree *= info.parallel_degree;
+        break;
+      }
+      case OP_REDUCTION:
+      {
+        assert(dims[info.parallel_dim].degree % info.parallel_degree == 0);
+        assert(dims[info.parallel_dim].size % info.parallel_degree == 0);
+        dims[info.parallel_dim].degree /= info.parallel_degree;
+        dims[info.parallel_dim].size /= info.parallel_degree;
+        break;
+      }
+      default:
+      {
+        assert(false && "Unsupported parallel op");
+      }
     }
+    TensorBase::update_parallel_ids(numdim, dims);
+  }
   outputs[0] = model.create_tensor_legion_ordering(
       numdim, dims, inputs[0]->data_type, this);
-  outputs[0]->print("Repartition::output");
-  // Check correctness
-  // assert(check_output_input_weight_parallel_dims());
 }
 
-void Repartition::init(const FFModel& ff)
+void FusedParallelOp::set_parallel_ops(const std::vector<ParallelOpInfo>& _parallel_ops)
+{
+  for (size_t i = 0; i < _parallel_ops.size(); i++)
+    parallel_ops[num_parallel_ops++] = _parallel_ops[i];
+}
+
+bool FusedParallelOp::check_no_redundant_parallel_ops(void) const
+{
+  //for (int i = 1; i < num_parallel_ops; i++)
+  //  if (parallel_ops[i-1].parallel_dim > parallel_osp[i].parallel_dim)
+  //    return false;
+  // Check there are no redundant combine/repartition
+  for (int i = 0; i < num_parallel_ops; i ++)
+    if (parallel_ops[i].op_type == OP_COMBINE) {
+      for (int j = 0; j < num_parallel_ops; j++)
+        if (parallel_ops[j].op_type == OP_REPARTITION) {
+          if (parallel_ops[i].parallel_dim == parallel_ops[j].parallel_dim)
+            return false;
+        }
+    }
+  return true;
+}
+
+void FusedParallelOp::init(const FFModel& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -65,40 +100,7 @@ void Repartition::init(const FFModel& ff)
   assert(numOutputs == 1);
   assert(numInputs == 1);
   IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(REPARTITION_FWD_TASK_ID, task_is,
-      TaskArgument(NULL, 0), argmap,
-      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
-  launcher.add_region_requirement(
-      RegionRequirement(input_lp, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
-  launcher.add_field(1, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
-}
-
-void Repartition::create_input_partition(FFModel& ff)
-{
-  assert(outputs[0]->part != LogicalPartition::NO_PART);
-  assert(inputs[0]->part != LogicalPartition::NO_PART);
-  ff.create_disjoint_partition(outputs[0]->num_dims, outputs[0]->dims,
-      outputs[0]->parallel_is, inputs[0]->region, input_lp);
-  ff.create_disjoint_partition(inputs[0]->num_dims, inputs[0]->dims,
-      inputs[0]->parallel_is, outputs[0]->region_grad, output_grad_lp);
-}
-
-void Repartition::forward(const FFModel& ff)
-{
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  assert(numOutputs == 1);
-  assert(numInputs == 1);
-  IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(REPARTITION_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(FUSED_PARALLELOP_FWD_TASK_ID, task_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
@@ -113,7 +115,17 @@ void Repartition::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Repartition::backward(const FFModel& ff)
+void FusedParallelOp::create_input_partition(FFModel& ff)
+{
+  assert(outputs[0]->part != LogicalPartition::NO_PART);
+  assert(inputs[0]->part != LogicalPartition::NO_PART);
+  ff.create_disjoint_partition(outputs[0]->num_dims, outputs[0]->dims,
+      outputs[0]->parallel_is, inputs[0]->region, input_lp);
+  ff.create_disjoint_partition(inputs[0]->num_dims, inputs[0]->dims,
+      inputs[0]->parallel_is, outputs[0]->region_grad, output_grad_lp);
+}
+
+void FusedParallelOp::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -121,7 +133,30 @@ void Repartition::backward(const FFModel& ff)
   assert(numOutputs == 1);
   assert(numInputs == 1);
   IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(REPARTITION_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(FUSED_PARALLELOP_FWD_TASK_ID, task_is,
+      TaskArgument(NULL, 0), argmap,
+      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+      FFConfig::get_hash_id(std::string(name)));
+  launcher.add_region_requirement(
+      RegionRequirement(input_lp, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void FusedParallelOp::backward(const FFModel& ff)
+{
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  IndexSpace task_is = outputs[0]->parallel_is;
+  IndexLauncher launcher(FUSED_PARALLELOP_BWD_TASK_ID, task_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
@@ -137,7 +172,7 @@ void Repartition::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-bool Repartition::measure_operator_cost(
+bool FusedParallelOp::measure_operator_cost(
     Simulator* sim,
     const ParallelConfig& pc,
     CostMetrics& cost_metrics) const
@@ -147,38 +182,26 @@ bool Repartition::measure_operator_cost(
   return true;
 }
 
-bool Repartition::get_int_parameter(PMParameter para, int* value) const
-{
-  switch(para) {
-    case PM_REPARTITION_DIM:
-      *value = repartition_dim;
-      return true;
-    case PM_REPARTITION_DEGREE:
-      *value = repartition_degree;
-      return true;
-    default:
-      return Op::get_int_parameter(para, value);
-  }
-}
-
-Node FFModel::get_or_create_repartition_node(const Tensor input,
-                                             int repartition_dim,
-                                             int repartition_degree)
+Node FFModel::get_or_create_fused_parallel_node(const Tensor input,
+                                                const std::vector<ParallelOpInfo>& _parallel_ops)
 {
   size_t hash = input->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(repartition_dim);
-  hash = hash * 31 + std::hash<int>()(repartition_degree);
-  const auto& it = cached_repartition_ops.find(hash);
-  Repartition* repartition = NULL;
-  if (it != cached_repartition_ops.end()) {
-    repartition = it->second;
+  for (size_t i = 0; i < _parallel_ops.size(); i++) {
+    hash = hash * 31 + std::hash<int>()(_parallel_ops[i].op_type);
+    hash = hash * 31 + std::hash<int>()(_parallel_ops[i].parallel_dim);
+    hash = hash * 31 + std::hash<int>()(_parallel_ops[i].parallel_degree);
+  }
+  const auto& it = cached_fused_parallel_ops.find(hash);
+  FusedParallelOp* fused = NULL;
+  if (it != cached_fused_parallel_ops.end()) {
+    fused = it->second;
   } else {
-    repartition = new Repartition(*this, input, repartition_dim,
-                                  repartition_degree, NULL);
-    cached_repartition_ops[hash] = repartition;
+    fused = new FusedParallelOp(*this, input, _parallel_ops);
+    cached_fused_parallel_ops[hash] = fused;
   }
   Node ret;
-  ret.ptr = repartition;
+  ret.ptr = fused;
   ret.guid = node_global_guid++;
   return ret;
 }
+

@@ -133,7 +133,8 @@ enum OperatorType {
   OP_COMBINE,
   OP_REPLICATE,
   OP_REDUCTION,
-  OP_PIPELINE
+  OP_PIPELINE,
+  OP_FUSED_PARALLEL,
 };
 
 //This must be consistent with python/taso/_cython/CCore.pxd

@@ -45,7 +45,9 @@ Reduction::Reduction(
     dims[i] = _input->dims[i];
   }
   assert(dims[reduction_dim].degree % reduction_degree == 0);
+  assert(dims[reduction_dim].size % reduction_degree == 0);
   dims[reduction_dim].degree /= reduction_degree;
+  dims[reduction_dim].size /= reduction_degree;
   TensorBase::update_parallel_ids(numdim, dims);
   outputs[0] = model.create_tensor_legion_ordering(
       numdim, dims, DT_FLOAT, this);
