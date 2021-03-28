@@ -151,7 +151,7 @@ class PyTorchModel(object):
         output = FXTensor(output)
       
       elif op_type == OpType.TRANSPOSE:
-        assert len(items) == 6
+        assert len(items) >= 6
         assert len(self.input_ops_list) == 1, "wrong format"
         input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
         perm = list(range(0,len(input_tensor.dims)))
