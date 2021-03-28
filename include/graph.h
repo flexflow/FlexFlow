@@ -18,6 +18,8 @@
 //#include "ffconst.h"
 #include "model.h"
 #include <unordered_set>
+#include "dot_file.h"
+#include "dominators.h"
 
 struct Edge {
   Edge(void);
@@ -73,6 +75,9 @@ struct NodeCompare {
 
 class Graph {
 public:
+  using Node = ::Node;
+  using Edge = ::Edge;
+
   Graph(FFModel* model);
   void add_edge(const Node& srcOp,
                 const Node& dstOp,
@@ -94,8 +99,52 @@ public:
   Node find_bottleneck_node(const Node& sink_node,
                               const Node& source_node,
                               std::unordered_set<Node>& used_nodes) const;
+  void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::unique_ptr<std::ostream> out) const;
+  void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::string const &out_filename) const;
+  void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const;
 public:
   FFModel* model;
   std::unordered_map<Node, std::unordered_set<Edge> > inEdges, outEdges;
 };
+
+namespace flexflow::dominators {
+  template <>
+  struct GraphStructure<::Graph> {
+    std::unordered_set<Node> get_nodes(Graph const &g) const {
+      std::unordered_set<Node> nodes;
+      for (auto const &kv : g.inEdges) {
+        nodes.insert(kv.first);
+      }
+      for (auto const &kv : g.outEdges) {
+        nodes.insert(kv.first);
+      }
+
+      return nodes;
+    }
+
+    std::unordered_set<Edge> get_incoming_edges(Graph const &g, Node const &n) const {
+      if (g.inEdges.find(n) == g.inEdges.end()) {
+        return {};
+      } else {
+        return {g.inEdges.at(n).begin(), g.inEdges.at(n).end()};
+      }
+    }
+
+    std::unordered_set<Edge> get_outgoing_edges(Graph const &g, Node const &n) const {
+      if (g.outEdges.find(n) == g.outEdges.end()) {
+        return {};
+      } else {
+        return {g.outEdges.at(n).begin(), g.outEdges.at(n).end()};
+      }
+    }
+
+    Node get_src(Graph const &g, Edge const &e) const {
+      return e.srcOp;
+    }
+
+    Node get_dst(Graph const &g, Edge const &e) const {
+      return e.dstOp;
+    }
+  };
+}
 #endif

@@ -14,7 +14,12 @@
  */
 
 #include "substitution.h"
+#include <chrono>
+#include "dot_file.h"
+#include "dominators.h"
+
 using namespace Legion;
+using flexflow::dominators::GraphStructure;
 
 const TensorX TensorX::NO_TX = TensorX();
 
@@ -596,6 +601,46 @@ OpX* GraphXfer::create_combine(const TensorX& input,
   return part;
 }
 
+/* std::vector<Device> MachineView::get_devices() const { */
+/*   std::vector<Device> devices; */
+
+
+/* } */
+
+void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::string const &out_filename) const {
+  DotFile<Node> dot(out_filename);
+
+  this->export_strategy_computation_graph(strategy, dot);
+}
+
+void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::unique_ptr<std::ostream> out) const {
+  DotFile<Node> dot(std::move(out));
+
+  this->export_strategy_computation_graph(strategy, dot);
+}
+
+void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const {
+  GraphStructure<Graph, Node, Edge> s;
+
+  for (auto const &node : s.get_nodes(*this)) {
+    if (strategy.find(node) == strategy.end()) {
+      dot.add_node(node, {{"label", node.to_string()}});
+    } else {
+      RecordFormatter rf, machine_view_row;
+      MachineView mv = strategy.at(node);
+      machine_view_row << std::to_string(mv.ndims) << std::to_string(mv.dim[0]);
+      rf << node.to_string() << machine_view_row;
+      dot.add_record_node(node, rf);
+    }
+
+    for (auto const &edge : s.get_incoming_edges(*this, node)) {
+      dot.add_edge(s.get_src(*this, edge), s.get_dst(*this, edge));
+    }
+  }
+
+  dot.close();
+}
+
 void FFModel::dp_optimize()
 {
   // Construct graph structure
@@ -659,6 +704,9 @@ void FFModel::dp_optimize()
   best_graph->print();
   std::unordered_map<Node, MachineView> optimal_views;
   best_graph->construct_optimal_view(best_cost, optimal_views);
+  if (!this->config.export_strategy_computation_graph_file.empty()) {
+    best_graph->export_strategy_computation_graph(optimal_views, this->config.export_strategy_computation_graph_file);
+  }
   printf("Optimal Views...\n");
   for (const auto& it : optimal_views) {
     printf("node[%zu]: type(%s) view(%d %d) ", it.first.guid,

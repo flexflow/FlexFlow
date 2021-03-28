@@ -157,7 +157,6 @@ public:
   float search_alpha;
   bool search_overlap_backward_update;
   CompMode computationMode;
-  std::string export_strategy_task_graph_file;
   //Control parallelizable dimensions
   bool enable_sample_parallel;
   bool enable_parameter_parallel;
@@ -167,6 +166,8 @@ public:
   std::string dataset_path;
   std::string import_strategy_file;
   std::string export_strategy_file;
+  std::string export_strategy_task_graph_file;
+  std::string export_strategy_computation_graph_file;
   // We use MappingTagID as the key since we will pass the tag to the mapper
   std::map<Legion::MappingTagID, ParallelConfig> strategies;
   int machine_model_version;

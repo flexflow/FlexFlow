@@ -8,6 +8,7 @@ cmake_policy(SET CMP0074 NEW)
 cmake_policy(SET CMP0077 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -UNDEBUG")
 
 # Set a default build type if none was specified
 set(default_build_type "Debug")
@@ -121,7 +122,8 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/optimizer.h
   ${FLEXFLOW_ROOT}/include/simulator.h
   ${FLEXFLOW_ROOT}/include/hash_utils.h
-  ${FLEXFLOW_ROOT}/include/dominators.h)
+  ${FLEXFLOW_ROOT}/include/dominators.h
+  ${FLEXFLOW_ROOT}/include/dot_file.h)
 
 set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/mapper/mapper.cc
@@ -228,6 +230,10 @@ if(FF_BUILD_ALEXNET OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/AlexNet)
 endif()
 
+if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/MLP_Unify)
+endif()
+
 if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/InceptionV3)
 endif()
@@ -237,7 +243,7 @@ if(FF_BUILD_CANDLE_UNO)
   add_subdirectory(examples/cpp/candle_uno)
 endif()
 
-if(FF_BUILD_DLRM OR BUILD_ALL_EXAMPLES)
+if(FF_BUILD_DLRM OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/DLRM)
 
   add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)

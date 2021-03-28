@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "graph.h"
+#include "dominators.h"
 
 const MachineView MachineView::NO_VIEW = MachineView();
 

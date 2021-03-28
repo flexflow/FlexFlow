@@ -2970,6 +2970,7 @@ FFConfig::FFConfig()
   import_strategy_file = "";
   export_strategy_file = "";
   export_strategy_task_graph_file = "";
+  export_strategy_computation_graph_file = "";
   dataset_path = "";
   syntheticInput = false;
   perform_fusion = false;
@@ -3086,6 +3087,10 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if (!strcmp(argv[i], "--taskgraph")) {
       export_strategy_task_graph_file = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--compgraph")) {
+      export_strategy_computation_graph_file = std::string(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--machine-model-version")) {

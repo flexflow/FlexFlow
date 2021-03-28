@@ -16,6 +16,7 @@
 #include "simulator.h"
 #include "model.h"
 #include "queue"
+#include "dot_file.h"
 
 using namespace Legion;
 

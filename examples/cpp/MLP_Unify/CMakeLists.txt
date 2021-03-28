@@ -1,16 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(FlexFlowExample_AlexNet)
-set(project_target alexnet)
+project(FlexFlowExample_MLPUnify)
+set(project_target mlp_unify)
 
 set(CPU_SRC
   ${FLEXFLOW_CPP_DRV_SRC}
-  mlp.cc
-  mlp.h)
+  mlp.cc)
 
-set(GPU_SRC
-  mlp.cu)
+# set(GPU_SRC
+#   mlp.cu)
 
-cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})
+cuda_add_executable(${project_target} ${CPU_SRC})
 target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
 target_link_libraries(${project_target} -Wl,--whole-archive flexflow -Wl,--no-whole-archive ${FLEXFLOW_EXT_LIBRARIES})

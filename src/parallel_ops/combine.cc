@@ -44,6 +44,7 @@ Combine::Combine(
   for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[i];
   }
+  assert (combine_degree > 0 && "Must use combine_degree > 0");
   assert(dims[combine_dim].degree % combine_degree == 0);
   dims[combine_dim].degree /= combine_degree;
   TensorBase::update_parallel_ids(numdim, dims);
