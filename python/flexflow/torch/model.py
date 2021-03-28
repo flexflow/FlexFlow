@@ -160,6 +160,14 @@ class PyTorchModel(object):
         output = ffmodel.transpose(input=input_tensor,perm=perm,name=op_name)
         output = FXTensor(output)
       
+      elif op_type == OpType.PERMUTE:
+        assert len(items) > 4
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        perm = [int(dim) for dim in items[4:]]
+        output = ffmodel.transpose(input=input_tensor,perm=perm,name=op_name)
+        output = FXTensor(output)
+      
       elif op_type == OpType.RESHAPE:
         assert len(items) >= 5
         assert len(self.input_ops_list) == 1, "wrong format"
