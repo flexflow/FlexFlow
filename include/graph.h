@@ -75,9 +75,6 @@ struct NodeCompare {
 
 class Graph {
 public:
-  using Node = ::Node;
-  using Edge = ::Edge;
-
   Graph(FFModel* model);
   void add_edge(const Node& srcOp,
                 const Node& dstOp,
@@ -110,8 +107,12 @@ public:
 namespace flexflow::dominators {
   template <>
   struct GraphStructure<::Graph> {
-    std::unordered_set<Node> get_nodes(Graph const &g) const {
-      std::unordered_set<Node> nodes;
+    using G = ::Graph;
+    using vertex_type = ::Node;
+    using edge_type = ::Edge;
+
+    std::unordered_set<vertex_type> get_nodes(G const &g) const {
+      std::unordered_set<vertex_type> nodes;
       for (auto const &kv : g.inEdges) {
         nodes.insert(kv.first);
       }
@@ -122,7 +123,7 @@ namespace flexflow::dominators {
       return nodes;
     }
 
-    std::unordered_set<Edge> get_incoming_edges(Graph const &g, Node const &n) const {
+    std::unordered_set<edge_type> get_incoming_edges(G const &g, vertex_type const &n) const {
       if (g.inEdges.find(n) == g.inEdges.end()) {
         return {};
       } else {
@@ -130,7 +131,7 @@ namespace flexflow::dominators {
       }
     }
 
-    std::unordered_set<Edge> get_outgoing_edges(Graph const &g, Node const &n) const {
+    std::unordered_set<edge_type> get_outgoing_edges(G const &g, vertex_type const &n) const {
       if (g.outEdges.find(n) == g.outEdges.end()) {
         return {};
       } else {
@@ -138,13 +139,108 @@ namespace flexflow::dominators {
       }
     }
 
-    Node get_src(Graph const &g, Edge const &e) const {
+    vertex_type get_src(G const &g, edge_type const &e) const {
       return e.srcOp;
     }
 
-    Node get_dst(Graph const &g, Edge const &e) const {
+    vertex_type get_dst(G const &g, edge_type const &e) const {
       return e.dstOp;
     }
+
+    void set_src(G const &g, edge_type &e, vertex_type const &n) const {
+      e.srcOp = n;
+    }
+
+    void set_dst(G const &g, edge_type &e, vertex_type const &n) const {
+      e.dstOp = n;
+    }
   };
+
+  template <
+    typename G,
+    typename Structure = GraphStructure<G>
+  >
+  struct invalid_node;
+
+  template <>
+  struct invalid_node<::Graph, GraphStructure<::Graph>> {
+    using G = ::Graph;
+    using Structure = GraphStructure<::Graph>;
+    using vertex_type = typename Structure::vertex_type;
+
+    vertex_type operator()() const {
+      return vertex_type::INVALID_NODE;
+    }
+  };
+
+  template <
+    typename G,
+    typename BaseStructure = GraphStructure<G>,
+    typename Invalid = invalid_node<G, BaseStructure>
+  >
+  struct MultisourceGraphStructure {
+    using vertex_type = typename BaseStructure::vertex_type;
+    using edge_type = typename BaseStructure::edge_type;
+
+    std::unordered_set<vertex_type> get_nodes(G const &g) const {
+      Invalid invalid;
+
+      std::unordered_set<vertex_type> nodes = this->base.get_nodes(g);
+      nodes.insert(invalid());
+      return nodes;
+    }
+
+    std::unordered_set<edge_type> get_incoming_edges(G const &g, vertex_type const &n) const {
+      Invalid invalid;
+
+      std::unordered_set<edge_type> edges = this->base.get_incoming_edges(g, n);
+      if (edges.empty()) {
+        edge_type e;
+        this->base.set_src(g, e, invalid());
+        this->base.set_dst(g, e, n);
+        return {e};
+      }
+
+      return edges;
+    }
+
+    std::unordered_set<edge_type> get_outgoing_edges(G const &g, vertex_type const &n) const {
+      Invalid invalid;
+
+      if (n == invalid()) {
+        std::unordered_set<edge_type> edges;
+        for (auto const &node : this->base.get_nodes(g)) {
+          if (this->base.get_incoming_edges(g, node).empty()) {
+            edge_type e;
+            this->base.set_src(g, e, invalid());
+            this->base.set_dst(g, e, node);
+            edges.insert(e);
+          }
+        }
+        return edges;
+      } else {
+        return this->base.get_outgoing_edges(g, n);
+      }
+    }
+
+    vertex_type get_src(G const &g, edge_type const &e) const {
+      return this->base.get_src(g, e);
+    }
+
+    vertex_type get_dst(G const &g, edge_type const &e) const {
+      return this->base.get_dst(g, e);
+    }
+
+    void set_src(G const &g, edge_type &e, vertex_type const &n) const {
+      this->base.set_src(g, e, n);
+    }
+
+    void set_dst(G const &g, edge_type &e, vertex_type const &n) const {
+      this->base.set_dst(g, e, n);
+    }
+
+    BaseStructure base;
+  };
+
 }
 #endif

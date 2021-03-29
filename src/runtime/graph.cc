@@ -355,157 +355,41 @@ Node Graph::find_bottleneck_node(const Node& sink_node,
                                  const Node& source_node,
                                  std::unordered_set<Node>& used_nodes) const
 {
-  Node bn_node = Node::INVALID_NODE;
-  std::unordered_set<Node> visited;
-  std::vector<Node> candidates;
-  {
-    candidates.push_back(sink_node);
-    visited.insert(sink_node);
-    size_t index = 0;
-    while (index < candidates.size()) {
-      Node node = candidates[index++];
-      const auto& it = inEdges.find(node);
-      if (it != inEdges.end()) {
-        const auto& inList = it->second;
-        for (const auto& e : inList) {
-          if (visited.find(e.srcOp) == visited.end()) {
-            visited.insert(e.srcOp);
-            candidates.push_back(e.srcOp);
-          }
-        }
-      }
-    }
+  using flexflow::dominators::imm_post_dominators;
+  using flexflow::dominators::topo_sort;
+  using flexflow::dominators::MultisourceGraphStructure;
+  using flexflow::dominators::GraphStructure;
+  using flexflow::dominators::roots;
+
+  Node source(source_node);
+  std::unordered_map<Node, Node> ipd;
+  std::unordered_set<Node> graph_roots = roots(*this);
+  if (source_node != Node::INVALID_NODE) {
+    ipd = imm_post_dominators(*this);
+  } else if (graph_roots.size() == 1) {
+    ipd = imm_post_dominators(*this);
+    source = *graph_roots.begin();
+  } else {
+    ipd = imm_post_dominators<Graph, MultisourceGraphStructure<Graph>>(*this);
   }
-  std::vector<Node> queue;
-  size_t cand_index = 0;
-  while (cand_index < candidates.size()) {
-    Node cur_node = candidates[cand_index++];
-    // Check if we can get from sink_node to a source_node or input_node
-    visited.clear();
-    queue.clear();
-    queue.push_back(sink_node);
-    visited.insert(sink_node);
-    size_t index = 0;
-    bool found_source = false;
-    while (index < queue.size()) {
-      if (found_source) break;
-      Node node = queue[index++];
-      const auto& it2 = inEdges.find(node);
-      if (it2 != inEdges.end()) {
-        const auto& inList = it2->second;
-        for (const auto& e : inList) {
-          if (e.srcOp == source_node || e.srcOp.ptr->op_type == OP_INPUT) {
-            found_source = true;
-            break;
-          }
-          if (visited.find(e.srcOp) == visited.end() && e.srcOp != cur_node) {
-            visited.insert(e.srcOp);
-            queue.push_back(e.srcOp);
-          }
-        }
-      }
-    }
-    if (!found_source) {
-      // Found a bottleneck node
-      bn_node = cur_node;
+
+  std::vector<Node> topo_sorted;
+  topo_sort(*this, &topo_sorted);
+  Node bn_node = ipd.at(source);
+  if (bn_node == source || bn_node == sink_node) {
+    return Node::INVALID_NODE;
+  }
+
+  for (auto const &node : topo_sorted) {
+    if (node == bn_node) {
       break;
     }
+
+    used_nodes.insert(node);
   }
-#ifdef DEADCODE
-  std::unordered_map<Node, int> todos;
-  std::unordered_map<Node, size_t> indices;
-  // Need two queues
-  std::vector<Node> queue;
-  // Use queue2 to calculate the todos for each operator
-  // Only input_edges are considered
-  {
-    std::vector<Node> queue2;
-    std::unordered_set<Node> visited;
-    size_t index = 0;
-    queue2.push_back(sink_node);
-    visited.insert(sink_node);
-    while (index < queue2.size()) {
-      Node node = queue2[index++];
-      int cnt = 0;
-      const auto& it = inEdges.find(node);
-      if (it != inEdges.end()) {
-        const auto& inList = it->second;
-        for (const auto& e : inList) {
-          // Ignore weight edge
-          //if (e.weightEdge) continue;
-          if (e.srcOp == source_node) continue;
-          if (visited.find(e.srcOp) == visited.end()) {
-            visited.insert(e.srcOp);
-            queue2.push_back(e.srcOp);
-          }
-          cnt ++;
-        }
-      }
-      todos[node] = cnt;
-      if (cnt == 0) {
-        queue.push_back(node);
-      }
-    }
-  }
-  size_t index = 0;
-  while (index < queue.size()) {
-    Node op = queue[index++];
-    const auto& it = outEdges.find(op);
-    if (it == outEdges.end())
-      continue;
-    const auto& outList = it->second;
-    for (const auto& it2 : outList) {
-      //if (it2.weightEdge) continue;
-      todos[it2.dstOp] --;
-      assert(todos[it2.dstOp] >= 0);
-      if (todos[it2.dstOp] == 0) {
-        indices[it2.dstOp] = queue.size();
-        queue.push_back(it2.dstOp);
-      }
-    }
-  }
-  // assert(queue.size() == inEdges.size());
-  // assert that sink_node must be the last one
-  assert(indices[sink_node] == queue.size() - 1);
-  std::vector<bool> available(queue.size(), true);
-  for (const auto& it : inEdges) {
-    const auto& inList = it.second;
-    for (const auto& it2 : inList) {
-      if (indices.find(it2.srcOp) == indices.end()) continue;
-      if (indices.find(it2.dstOp) == indices.end()) continue;
-      size_t start_idx = indices[it2.srcOp];
-      size_t end_idx = indices[it2.dstOp];
-      for (size_t i = start_idx+1; i < end_idx; i++)
-        available[i] = false;
-    }
-  }
-  Node bn_node = Node::INVALID_NODE;
-  for (size_t i = 0; i < queue.size(); i++) {
-    if (!available[i]) continue;
-    if (queue[i].ptr->op_type == OP_INPUT) continue;
-    if (queue[i].ptr->op_type == OP_WEIGHT) continue;
-    bn_node = queue[i];
-    break;
-  }
-#endif
-  if (bn_node == Node::INVALID_NODE)
-    return bn_node;
   used_nodes.insert(bn_node);
-  queue.clear();
-  queue.push_back(bn_node);
-  size_t index = 0;
-  while (index < queue.size()) {
-    Node op = queue[index++];
-    const auto& it = inEdges.find(op);
-    if (it == inEdges.end()) continue;
-    const auto& inList = it->second;
-    for (const auto& e : inList) {
-      if (used_nodes.find(e.srcOp) == used_nodes.end()) {
-        used_nodes.insert(e.srcOp);
-        queue.push_back(e.srcOp);
-      }
-    }
-  }
+  assert (used_nodes.size() < topo_sorted.size());
+
   return bn_node;
 }
 

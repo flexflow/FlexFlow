@@ -1,42 +1,43 @@
 #include "gtest/gtest.h"
 #include "dominators.h"
 #include "hash_utils.h"
+#include "graph.h"
 
 using namespace flexflow::dominators;
 
+template <typename T>
 struct BasicGraph {
+  using N = T;
+  using E = std::pair<N, N>;
 
-  using Node = int;
-  using Edge = std::pair<Node, Node>;
+  std::unordered_set<T> nodes;
+  std::unordered_map<T, std::unordered_set<E>> in_edges, out_edges;
 
-  std::unordered_set<int> nodes;
-  std::unordered_map<int, std::unordered_set<Edge>> in_edges, out_edges;
-
-  void add_edge(Node const &src, Node const &dst) {
+  void add_edge(N const &src, N const &dst) {
     nodes.insert(src);
     nodes.insert(dst);
     out_edges[src].insert({src, dst});
     in_edges[dst].insert({src, dst});
   }
 
-  void add_edge(Edge const &e) {
+  void add_edge(E const &e) {
     nodes.insert(e.first);
     nodes.insert(e.second);
     out_edges[e.first].insert(e);
     in_edges[e.second].insert(e);
   }
 
-  void add_node(Node const &n) {
+  void add_node(N const &n) {
     nodes.insert(n);
   }
 
-  void add_nodes(std::vector<Node> const &nodes) {
+  void add_nodes(std::vector<N> const &nodes) {
     for (auto const &n : nodes) {
       this->add_node(n);
     }
   }
 
-  void add_edges(std::vector<Edge> const &edges) {
+  void add_edges(std::vector<E> const &edges) {
     for (auto const &e : edges) {
       this->add_edge(e);
     }
@@ -44,44 +45,60 @@ struct BasicGraph {
 };
 
 namespace flexflow::dominators {
-  template <>
-  struct GraphStructure<BasicGraph> {
-    using N = typename BasicGraph::Node;
-    using E = typename BasicGraph::Edge;
+  template <typename T>
+  struct GraphStructure<BasicGraph<T>> {
+    using graph_type = BasicGraph<T>;
+    using vertex_type = T;
+    using edge_type = std::pair<T, T>;
 
-    std::unordered_set<N> get_nodes(BasicGraph const &g) const {
-      std::unordered_set<N> nodes(g.nodes);
+    std::unordered_set<vertex_type> get_nodes(graph_type const &g) const {
+      std::unordered_set<vertex_type> nodes(g.nodes);
       return nodes;
     }
 
-    std::unordered_set<E> get_incoming_edges(BasicGraph const &g, N const &n) const {
-      std::unordered_set<E> edges;
+    std::unordered_set<edge_type> get_incoming_edges(graph_type const &g, vertex_type const &n) const {
+      std::unordered_set<edge_type> edges;
       if (g.in_edges.find(n) != g.in_edges.end()) {
         edges.insert(g.in_edges.at(n).begin(), g.in_edges.at(n).end());
       }
       return edges;
     }
 
-    std::unordered_set<E> get_outgoing_edges(BasicGraph const &g, N const &n) const {
-      std::unordered_set<E> edges;
+    std::unordered_set<edge_type> get_outgoing_edges(graph_type const &g, vertex_type const &n) const {
+      std::unordered_set<edge_type> edges;
       if (g.out_edges.find(n) != g.out_edges.end()) {
         edges.insert(g.out_edges.at(n).begin(), g.out_edges.at(n).end());
       }
       return edges;
     }
 
-    N get_src(BasicGraph const &g, E const &e) const {
+    vertex_type get_src(graph_type const &g, edge_type const &e) const {
       return e.first;
     }
 
-    N get_dst(BasicGraph const &g, E const &e) const {
+    vertex_type get_dst(graph_type const &g, edge_type const &e) const {
       return e.second;
+    }
+
+    void set_src(graph_type const &g, edge_type &e, vertex_type const &n) const {
+      e.first = n;
+    }
+
+    void set_dst(graph_type const &g, edge_type &e, vertex_type const &n) const {
+      e.second = n;
+    }
+  };
+
+  template <>
+  struct invalid_node<::BasicGraph<int>, GraphStructure<::BasicGraph<int>>> {
+    int operator()() const {
+      return -1;
     }
   };
 }
 
 TEST(pred_succ_cessors, basic) {
-  BasicGraph g;
+  BasicGraph<int> g;
   g.add_node(0);
   g.add_node(1);
   g.add_node(2);
@@ -93,7 +110,7 @@ TEST(pred_succ_cessors, basic) {
   g.add_edge(2, 3);
   g.add_edge(2, 4);
 
-  using AnswerMap = std::unordered_map<BasicGraph::Node, std::unordered_set<BasicGraph::Node>>;
+  using AnswerMap = std::unordered_map<int, std::unordered_set<int>>;
 
   AnswerMap expected_predecessors;
 
@@ -116,18 +133,18 @@ TEST(pred_succ_cessors, basic) {
   std::unordered_set<int> answer;
   for (auto const &kv : expected_predecessors) {
     answer.clear();
-    predecessors<BasicGraph>(g, kv.first, &answer);
+    predecessors<BasicGraph<int>>(g, kv.first, &answer);
     EXPECT_EQ(kv.second, answer) << "^^^ Predecessors for node " << kv.first << std::endl;
   }
   for (auto const &kv : expected_successors) {
     answer.clear();
-    successors<BasicGraph>(g, kv.first, &answer);
+    successors<BasicGraph<int>>(g, kv.first, &answer);
     EXPECT_EQ(kv.second, answer) << "^^^ Successors for node " << kv.first << std::endl;
   }
 }
 
 TEST(topo_sort, basic) {
-  BasicGraph g;
+  BasicGraph<int> g;
   g.add_nodes({0, 1, 2, 3});
   g.add_edges({
     {3, 1},
@@ -143,8 +160,8 @@ TEST(topo_sort, basic) {
   EXPECT_EQ(topo_result, topo_answer);
 }
 
-BasicGraph get_dominator_test_graph() {
-  BasicGraph g;
+BasicGraph<int> get_dominator_test_graph() {
+  BasicGraph<int> g;
   g.add_nodes({1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11});
   g.add_edges({
     {1, 2},
@@ -167,7 +184,7 @@ BasicGraph get_dominator_test_graph() {
 }
 
 TEST(dominators, basic) {
-  BasicGraph g = get_dominator_test_graph();
+  BasicGraph<int> g = get_dominator_test_graph();
 
   std::unordered_map<int, std::unordered_set<int>> answer = {
     {1, {1}},
@@ -187,7 +204,7 @@ TEST(dominators, basic) {
 }
 
 TEST(post_dominators, basic) {
-  BasicGraph g = get_dominator_test_graph();
+  BasicGraph<int> g = get_dominator_test_graph();
 
   std::unordered_map<int, std::unordered_set<int>> answer = {
     {1, {1, 8, 11}},
@@ -207,7 +224,7 @@ TEST(post_dominators, basic) {
 }
 
 TEST(imm_dominators, basic) {
-  BasicGraph g = get_dominator_test_graph();
+  BasicGraph<int> g = get_dominator_test_graph();
 
   std::unordered_map<int, int> answer = {
     {1, 1}, // no immediate dominator
@@ -227,7 +244,7 @@ TEST(imm_dominators, basic) {
 }
 
 TEST(imm_post_dominators, basic) {
-  BasicGraph g = get_dominator_test_graph();
+  BasicGraph<int> g = get_dominator_test_graph();
 
   std::unordered_map<int, int> answer = {
     {1, 8},
@@ -244,4 +261,28 @@ TEST(imm_post_dominators, basic) {
   };
 
   EXPECT_EQ(imm_post_dominators(g), answer);
+}
+
+TEST(imm_post_dominators, multisource) {
+  BasicGraph<int> g;
+
+  g.add_nodes({1, 2, 3, 4, 5});
+  g.add_edges({
+    {1, 3},
+    {2, 3},
+    {3, 4},
+    {3, 5}
+  });
+
+  std::unordered_map<int, int> answer = {
+    {-1, 3},
+    {1, 3},
+    {2, 3},
+    {3, 3},
+    {4, 4},
+    {5, 5}
+  };
+
+  auto result = imm_post_dominators<decltype(g), MultisourceGraphStructure<decltype(g)>>(g);
+  EXPECT_EQ(result, answer);
 }

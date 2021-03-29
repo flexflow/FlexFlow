@@ -620,7 +620,7 @@ void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineVi
 }
 
 void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const {
-  GraphStructure<Graph, Node, Edge> s;
+  GraphStructure<Graph> s;
 
   for (auto const &node : s.get_nodes(*this)) {
     if (strategy.find(node) == strategy.end()) {
