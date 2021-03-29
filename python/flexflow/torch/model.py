@@ -128,6 +128,16 @@ class PyTorchModel(object):
         output = ffmodel.scalar_multiply(input=input_tensor, scalar=float(items[4]), name=op_name)
         output = FXTensor(output)
       
+    elif op_type == OpType.SCALAR_FLOOR_DIVIDE:
+        assert len(items) == 5, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        if type(input_tensor) is float or type(input_tensor) is int:
+            output = input_tensor // float(items[4])
+        else:
+            output = ffmodel.scalar_floor_divide(input=input_tensor, scalar=float(items[4]), name=op_name)
+        output = FXTensor(output)
+      
       elif op_type == OpType.RELU:
         assert len(items) == 4, "wrong format"
         assert len(self.input_ops_list) == 1, "wrong format"

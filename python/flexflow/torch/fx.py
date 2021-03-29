@@ -205,9 +205,9 @@ def parse_layernorm(op_str, node):
   op_str = op_str + enum_to_str(OpType, OpType.LAYER_NORM) + "\n"
   return op_str
 
-def parse_floordiv(op_str, node):
+def parse_scalarfloordiv(op_str, node):
   assert len(node.inedges) == 2, "wrong number of inputs"
-  op_str = op_str + enum_to_str(OpType, OpType.FLOOR_DIVIDE) + ", "
+  op_str = op_str + enum_to_str(OpType, OpType.SCALAR_FLOOR_DIVIDE) + ", "
   op_str = op_str + str(node.inedges[1]) + "\n"
   return op_str
 
@@ -252,6 +252,11 @@ def parse_scalarmul(op_str,node):
 def parse_mul(op_str,node):
   assert len(node.inedges) == 2, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.MULTIPLY) + "\n"
+  return op_str
+
+def parse_floordiv(op_str,node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.FLOOR_DIVIDE) + "\n"
   return op_str
 
 def parse_batchmatmul(op_str,node):
@@ -382,8 +387,12 @@ def torch_to_flexflow_str(model):
         op_str = parse_expand(op_str, node)
 
       elif function_name.find('floordiv') >= 0:
-        op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
-        op_str = parse_floordiv(op_str,node)
+        if type(node.inedges[1]) is float or type(node.inedges[1]) is int:
+            op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+            op_str = parse_scalarfloordiv(op_str,node)
+        else:
+            op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+            op_str = parse_floordiv(op_str,node)
 
       elif function_name.find('reshape') >= 0:
         op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
