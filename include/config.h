@@ -68,6 +68,12 @@ struct MachineResource {
   int cpus_per_node;
 };
 
+struct ParallelOpInfo {
+  OperatorType op_type;
+  int parallel_dim;
+  int parallel_degree;
+};
+
 struct ParallelConfig {
   enum DeviceType {
     GPU = 0,

@@ -143,7 +143,8 @@ set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/parallel_ops/combine.cc
   ${FLEXFLOW_ROOT}/src/parallel_ops/partition.cc
   ${FLEXFLOW_ROOT}/src/parallel_ops/reduction.cc
-  ${FLEXFLOW_ROOT}/src/parallel_ops/replicate.cc)
+  ${FLEXFLOW_ROOT}/src/parallel_ops/replicate.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/fused_parallel_op.cc)
 
 set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/loss_functions/loss_functions.cu
@@ -177,6 +178,7 @@ set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/parallel_ops/partition.cu
   ${FLEXFLOW_ROOT}/src/parallel_ops/reduction.cu
   ${FLEXFLOW_ROOT}/src/parallel_ops/replicate.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/fused_parallel_op.cu
   )
 
 set(FLEXFLOW_CPP_DRV_SRC
@@ -204,6 +206,7 @@ option(FF_BUILD_DLRM "build DLRM example" OFF)
 option(FF_BUILD_INCEPTION "build inception example" OFF)
 option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
 option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
+option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
 option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
 option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
 

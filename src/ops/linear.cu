@@ -1100,10 +1100,10 @@ bool Linear::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
-Node FFModel::create_linear_node(const Tensor input,
-                                 int out_dim,
-                                 ActiMode activation,
-                                 bool use_bias)
+Node FFModel::get_or_create_linear_node(const Tensor input,
+                                        int out_dim,
+                                        ActiMode activation,
+                                        bool use_bias)
 {
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(out_dim);

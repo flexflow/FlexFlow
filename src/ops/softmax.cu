@@ -418,8 +418,8 @@ bool Softmax::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
-Node FFModel::create_softmax_node(const Tensor input,
-                                  int softmax_dim)
+Node FFModel::get_or_create_softmax_node(const Tensor input,
+                                         int softmax_dim)
 {
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(softmax_dim);

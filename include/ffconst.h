@@ -133,7 +133,8 @@ enum OperatorType {
   OP_COMBINE,
   OP_REPLICATE,
   OP_REDUCTION,
-  OP_PIPELINE
+  OP_PIPELINE,
+  OP_FUSED_PARALLEL,
 };
 
 //This must be consistent with python/taso/_cython/CCore.pxd
@@ -157,11 +158,14 @@ enum PMParameter {
   PM_AXES,		// Squeeze, Unsqueeze, Reduce*
   PM_KEEP_DIMS,         // Reduce*
   PM_EPSILON,   // BatchNorm
-  PM_NUM_PARTITIONS,    // Repartition, Replicate, Combine, Reduction
   PM_REPARTITION_DIM,   // Repartition
+  PM_REPARTITION_DEGREE,// Repartition
   PM_REPLICATE_DIM,     // Replicate
+  PM_REPLICATE_DEGREE,  // Replicate
   PM_COMBINE_DIM,       // Combine
+  PM_COMBINE_DEGREE,    // Combine
   PM_REDUCTION_DIM,     // Reduction
+  PM_REDUCTION_DEGREE,  // Reduction
   PM_OUTPUT_CHANNELS,   // Linear, Conv2D
   PM_SOFTMAX_DIM,       // Softmax
 };

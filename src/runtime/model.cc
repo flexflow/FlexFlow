@@ -3714,6 +3714,21 @@ void register_flexflow_internal_tasks()
     Runtime::preregister_task_variant<Reduction::backward_task>(
         registrar, "Reduction Backward Task");
   }
+  // FusedParallelOp
+  {
+    TaskVariantRegistrar registrar(FUSED_PARALLELOP_FWD_TASK_ID, "FusedParallel Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<FusedParallelOp::forward_task>(
+        registrar, "FusedParallel Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(FUSED_PARALLELOP_BWD_TASK_ID, "FusedParallel Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<FusedParallelOp::backward_task>(
+        registrar, "FusedParallel Backward Task");
+  }
   // Optimizer
   {
     TaskVariantRegistrar registrar(SGD_UPD_PS_TASK_ID,

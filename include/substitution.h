@@ -118,6 +118,12 @@ public:
   OpX* create_repartition(const TensorX& input,
                           int repartition_dim,
                           int num_parts);
+  OpX* create_replicate(const TensorX& input,
+                        int replicate_dim,
+                        int num_parts);
+  OpX* create_reduction(const TensorX& input,
+                        int reduction_dim,
+                        int num_parts);
   OpX* create_combine(const TensorX& input,
                       int combine_dim,
                       int num_parts);

@@ -144,6 +144,43 @@ bool Replicate::measure_operator_cost(
     const ParallelConfig& pc,
     CostMetrics& cost_metrics) const
 {
-  assert(false);
-  return false;
+  cost_metrics.forward_time = 0.0f;
+  cost_metrics.backward_time = 0.0f;
+  return true;
+}
+
+bool Replicate::get_int_parameter(PMParameter para, int* value) const
+{
+  switch(para) {
+    case PM_REPLICATE_DIM:
+      *value = replicate_dim;
+      return true;
+    case PM_REPLICATE_DEGREE:
+      *value = replicate_degree;
+      return true;
+    default:
+      return Op::get_int_parameter(para, value);
+  }
+}
+
+Node FFModel::get_or_create_replicate_node(const Tensor input,
+                                           int replicate_dim,
+                                           int replicate_degree)
+{
+  size_t hash = input->get_owner_independent_hash();
+  hash = hash * 31 + std::hash<int>()(replicate_dim);
+  hash = hash * 31 + std::hash<int>()(replicate_degree);
+  const auto& it = cached_replicate_ops.find(hash);
+  Replicate* replicate = NULL;
+  if (it != cached_replicate_ops.end()) {
+    replicate = it->second;
+  } else {
+    replicate = new Replicate(*this, input, replicate_dim,
+                              replicate_degree, NULL);
+    cached_replicate_ops[hash] = replicate;
+  }
+  Node ret;
+  ret.ptr = replicate;
+  ret.guid = node_global_guid++;
+  return ret;
 }
