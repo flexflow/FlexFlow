@@ -34,7 +34,6 @@ class PyTorchModel(object):
     
   def apply(self, ffmodel, input_tensors):
     output_tensors = []
-    intermediate_values = {}
     input_idx = 0
     for line in self.lines:
       items = line.strip().split(",")
@@ -177,7 +176,7 @@ class PyTorchModel(object):
             try:
                 shape[idx] = int(dim)
             except:
-                shape[idx] = intermediate_values[dim]
+                 shape[idx] = self.tensor_dict[dim+op_name].fftensor
 
         output = ffmodel.reshape(input=input_tensor,shape=shape,name=op_name)
         output = FXTensor(output)
@@ -246,8 +245,6 @@ class PyTorchModel(object):
         assert type(input_tensor) == list or type(input_tensor) == tuple
         idx = int(items[4])
         output = input_tensor[idx]
-        print(items[0]+":")
-        intermediate_values[items[0]+":"] = output        
         output = FXTensor(output)
         
       elif op_type == OpType.GETATTR:
