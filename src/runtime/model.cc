@@ -539,7 +539,7 @@ ParallelConfig get_basic_data_parallel_config(int num_parts, int dims)
 {
   ParallelConfig pc;
   pc.device_type = ParallelConfig::GPU;
-  pc.nDims = num_dims;
+  pc.nDims = dims;
   for (int i = 0; i < pc.nDims; i++)
     pc.dim[i] = i == pc.nDims - 1 ? num_parts : 1;
   for (int i = 0; i < num_parts; i++)
@@ -655,7 +655,7 @@ ParallelConfig Op::get_random_parallel_config(const FFModel& ff) const
 }
 
 int Op::get_dimension() const {
-  return this->outputs[0].numDim;
+  return this->outputs[0]->num_dims;
 }
 
 ParallelConfig ParallelConfig::change_data_parallel_dimensionality(int new_dimensionality) const {
@@ -679,7 +679,7 @@ bool Op::is_adoptable_parallel_config(FFModel const &ff, ParallelConfig const &p
   }
 
   if (pc.is_data_parallel()) {
-    ParallelConfig adopted_pc = pc.change_data_parallel_dimensionality(this->outputs[0].numDim);
+    ParallelConfig adopted_pc = pc.change_data_parallel_dimensionality(this->outputs[0]->num_dims);
     if (this->is_valid_parallel_config(ff, adopted_pc)) {
       return true;
     }

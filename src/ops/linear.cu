@@ -1128,7 +1128,7 @@ bool Linear::is_valid_parallel_config(const FFModel& ff, const ParallelConfig& p
   if (!ff.config.enable_parameter_parallel)
     return Op::is_valid_parallel_config(ff, pc);
   // Support data and parameter parallel
-  if (pc.nDims != outputs[0].numDim)
+  if (pc.nDims != outputs[0]->num_dims)
     return false;
   for (int i = 1; i < pc.nDims-1; i++)
     if (pc.dim[i] != 1)
