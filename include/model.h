@@ -295,11 +295,15 @@ public:
                 const Tensor& y,
                 bool inplace_a = false,
                 char const *name = NULL);
-  // Add a scalar multiply layer
+  // Add a scalar operation layer
   Tensor scalar_multiply(const Tensor& x,
 	      const float scalar,
               bool inplace = true,
               const char *name = NULL);
+  Tensor scalar_add(const Tensor& x,
+		  const float scalar,
+		  bool inplace = true,
+		  const char *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor& x,
               bool inplace = true,

@@ -639,6 +639,22 @@ flexflow_model_add_scalar_multiply(
 }
 
 flexflow_tensor_t
+flexflow_model_add_scalar_add(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  const float scalar,
+  bool inplace,
+  const char *name)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *tensor = new Tensor();
+  *tensor = handle->scalar_add(*input, scalar, inplace, name);
+  DEBUG_PRINT("[Scalar addition] new Tensor %p, input %p, scalar %f, name %s", tensor, input, scalar,  name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t
 flexflow_model_add_gelu(
   flexflow_model_t handle_,
   const flexflow_tensor_t input_,
