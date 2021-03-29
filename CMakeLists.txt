@@ -1,13 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
 project(FlexFlow)
 
-include(ExternalProject) 
+include(ExternalProject)
 
 # Set policy CMP0074 to eliminate cmake warnings
 cmake_policy(SET CMP0074 NEW)
 cmake_policy(SET CMP0077 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -UNDEBUG")
 
 # Set a default build type if none was specified
 set(default_build_type "Debug")
@@ -25,13 +26,13 @@ endif()
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 
 # option for using Python
-option(FF_USE_PYTHON "Enable Python" ON)  
+option(FF_USE_PYTHON "Enable Python" ON)
 
 # option for using Python
 option(FF_USE_GASNET "Run FlexFlow with GASNet" ON)
 set(FF_GASNET_CONDUITS udp mpi ibv)
 set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select Gasnet conduit ${FF_GASNET_CONDUITS}")
-set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})  
+set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})
 
 # option for cuda arch
 set(FF_CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
@@ -54,7 +55,7 @@ include(zlib)
 
 # CUDA
 include(cuda)
- 
+
 # CUDNN
 include(cudnn)
 
@@ -88,12 +89,12 @@ endif()
 list(APPEND CC_FLAGS
   -std=c++11
   -DMAX_TENSOR_DIM=${FF_MAX_DIM})
-  
+
 list(APPEND NVCC_FLAGS
   -Wno-deprecated-gpu-targets
   -std=c++11
   -DMAX_TENSOR_DIM=${FF_MAX_DIM})
-  
+
 list(APPEND LD_FLAGS
   -lrt
   -ldl
@@ -119,7 +120,10 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/metrics_functions.h
   ${FLEXFLOW_ROOT}/include/model.h
   ${FLEXFLOW_ROOT}/include/optimizer.h
-  ${FLEXFLOW_ROOT}/include/simulator.h)  
+  ${FLEXFLOW_ROOT}/include/simulator.h
+  ${FLEXFLOW_ROOT}/include/hash_utils.h
+  ${FLEXFLOW_ROOT}/include/dominators.h
+  ${FLEXFLOW_ROOT}/include/dot_file.h)
 
 set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/mapper/mapper.cc
@@ -127,20 +131,20 @@ set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/ops/group_by.cc
   ${FLEXFLOW_ROOT}/src/ops/aggregate.cc
   ${FLEXFLOW_ROOT}/src/ops/noop.cc
-  ${FLEXFLOW_ROOT}/src/parallel_ops/partition.cc
-  ${FLEXFLOW_ROOT}/src/parallel_ops/combine.cc
-  ${FLEXFLOW_ROOT}/src/parallel_ops/replicate.cc
-  ${FLEXFLOW_ROOT}/src/parallel_ops/reduction.cc
-  ${FLEXFLOW_ROOT}/src/parallel_ops/fused_parallel_op.cc
   ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cc
   ${FLEXFLOW_ROOT}/src/runtime/initializer.cc
   ${FLEXFLOW_ROOT}/src/runtime/model.cc
   ${FLEXFLOW_ROOT}/src/runtime/optimizer.cc
-  ${FLEXFLOW_ROOT}/src/runtime/graph.cc
-  ${FLEXFLOW_ROOT}/src/runtime/substitution.cc
   ${FLEXFLOW_ROOT}/src/runtime/strategy.cc
   ${FLEXFLOW_ROOT}/src/runtime/simulator.cc
-  ${FLEXFLOW_ROOT}/src/runtime/machine_model.cc)
+  ${FLEXFLOW_ROOT}/src/runtime/machine_model.cc
+  ${FLEXFLOW_ROOT}/src/runtime/graph.cc
+  ${FLEXFLOW_ROOT}/src/runtime/substitution.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/combine.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/partition.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/reduction.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/replicate.cc
+  ${FLEXFLOW_ROOT}/src/parallel_ops/fused_parallel_op.cc)
 
 set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/loss_functions/loss_functions.cu
@@ -164,20 +168,21 @@ set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/ops/split.cu
   ${FLEXFLOW_ROOT}/src/ops/topk.cu
   ${FLEXFLOW_ROOT}/src/ops/transpose.cu
-  ${FLEXFLOW_ROOT}/src/parallel_ops/partition.cu
-  ${FLEXFLOW_ROOT}/src/parallel_ops/combine.cu
-  ${FLEXFLOW_ROOT}/src/parallel_ops/replicate.cu
-  ${FLEXFLOW_ROOT}/src/parallel_ops/reduction.cu
-  ${FLEXFLOW_ROOT}/src/parallel_ops/fused_parallel_op.cu
   ${FLEXFLOW_ROOT}/src/runtime/accessor_kernel.cu
   ${FLEXFLOW_ROOT}/src/runtime/cuda_helper.cu
   ${FLEXFLOW_ROOT}/src/runtime/initializer_kernel.cu
   ${FLEXFLOW_ROOT}/src/runtime/model.cu
   ${FLEXFLOW_ROOT}/src/runtime/optimizer_kernel.cu
-  ${FLEXFLOW_ROOT}/src/runtime/simulator.cu)
+  ${FLEXFLOW_ROOT}/src/runtime/simulator.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/combine.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/partition.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/reduction.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/replicate.cu
+  ${FLEXFLOW_ROOT}/src/parallel_ops/fused_parallel_op.cu
+  )
 
 set(FLEXFLOW_CPP_DRV_SRC
-  ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)  
+  ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)
 
 #message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
 
@@ -201,6 +206,7 @@ option(FF_BUILD_DLRM "build DLRM example" OFF)
 option(FF_BUILD_INCEPTION "build inception example" OFF)
 option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
 option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
+option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
 option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
 option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
 
@@ -219,16 +225,16 @@ if(FF_USE_PYTHON)
   add_subdirectory(python)
 endif()
 
-if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/MLP_Unify)
-endif()
-
 if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/ResNet)
 endif()
 
 if(FF_BUILD_ALEXNET OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/AlexNet)
+endif()
+
+if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/MLP_Unify)
 endif()
 
 if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
@@ -240,7 +246,7 @@ if(FF_BUILD_CANDLE_UNO)
   add_subdirectory(examples/cpp/candle_uno)
 endif()
 
-if(FF_BUILD_DLRM OR BUILD_ALL_EXAMPLES)
+if(FF_BUILD_DLRM OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/DLRM)
 
   add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)
