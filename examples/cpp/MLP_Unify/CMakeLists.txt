@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(FlexFlowExample_MLPUnary)
-set(project_target mlp)
+project(FlexFlowExample_MLPUnify)
+set(project_target mlp_unify)
 
 set(CPU_SRC
   ${FLEXFLOW_CPP_DRV_SRC}

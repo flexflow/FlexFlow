@@ -1651,7 +1651,7 @@ class SoftmaxMeta : public OpMeta {
 public:
   SoftmaxMeta(FFHandler handle,
               const Softmax* softmax,
-              const Legion::Domain& input_domain); 
+              const Legion::Domain& input_domain);
   cudnnTensorDescriptor_t inputTensor;
   bool profiling;
   int dim;

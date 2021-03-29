@@ -606,7 +606,7 @@ void Op::create_input_partition_with_dim(FFModel& model)
       input_grad_lps[i] = inputs[i]->part_grad;
     }
     else {
-      // Assert that this input must be activations 
+      // Assert that this input must be activations
       assert(inputs[i]->sync_type == ParameterSyncType::NONE);
       model.create_disjoint_partition(
           inputs[i], (IndexSpaceT<NDIM>)task_is,
@@ -2970,6 +2970,7 @@ FFConfig::FFConfig()
   import_strategy_file = "";
   export_strategy_file = "";
   export_strategy_task_graph_file = "";
+  export_strategy_computation_graph_file = "";
   dataset_path = "";
   syntheticInput = false;
   perform_fusion = false;
@@ -3086,6 +3087,10 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if (!strcmp(argv[i], "--taskgraph")) {
       export_strategy_task_graph_file = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--compgraph")) {
+      export_strategy_computation_graph_file = std::string(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--machine-model-version")) {
