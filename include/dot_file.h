@@ -27,7 +27,7 @@ class RecordFormatter {
 
   friend std::ostream &operator<<(std::ostream &s, RecordFormatter const &r) {
     s << "{ ";
-    for (int i = 0; i < r.pieces.size(); i++) {
+    for (size_t i = 0; i < r.pieces.size(); i++) {
       s << r.pieces[i];
       if (i + 1 < r.pieces.size()) {
         s << " | ";

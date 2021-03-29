@@ -154,9 +154,9 @@ namespace flexflow {
     template <typename G, typename Structure = GraphStructure<G>>
     std::unordered_map<typename Structure::vertex_type, std::unordered_set<typename Structure::vertex_type>> dominators(G const &g) {
       using N = typename Structure::vertex_type;
-      using E = typename Structure::edge_type;
+      //using E = typename Structure::edge_type;
 
-      Structure s;
+      //Structure s;
 
       std::vector<N> nodes;
       topo_sort<G, Structure>(g, &nodes);
@@ -195,12 +195,12 @@ namespace flexflow {
     template <typename G, typename Structure = GraphStructure<G>>
     std::unordered_map<typename Structure::vertex_type, typename Structure::vertex_type> imm_dominators(G const &g) {
       using N = typename Structure::vertex_type;
-      using E = typename Structure::edge_type;
+      //using E = typename Structure::edge_type;
 
       std::vector<N> topo;
       topo_sort<G, Structure>(g, &topo);
       std::unordered_map<N, int> topo_rank;
-      for (int i = 0; i < topo.size(); i++) {
+      for (int i = 0; i < (int)topo.size(); i++) {
         topo_rank[topo[i]] = i;
       }
       std::unordered_map<N, std::unordered_set<N>> dom = dominators<G, Structure>(g);
