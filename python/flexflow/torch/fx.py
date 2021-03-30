@@ -205,12 +205,6 @@ def parse_layernorm(op_str, node):
   op_str = op_str + enum_to_str(OpType, OpType.LAYER_NORM) + "\n"
   return op_str
 
-def parse_scalarfloordiv(op_str, node):
-  assert len(node.inedges) == 2, "wrong number of inputs"
-  op_str = op_str + enum_to_str(OpType, OpType.SCALAR_FLOOR_DIVIDE) + ", "
-  op_str = op_str + str(node.inedges[1]) + "\n"
-  return op_str
-
 def parse_sigmoid(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.SIGMOID) + "\n"
@@ -252,6 +246,24 @@ def parse_scalarmul(op_str,node):
 def parse_scalaradd(op_str,node):
   assert len(node.inedges) == 2, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.SCALAR_ADD) + ", "
+  op_str = op_str + str(node.inedges[1]) + "\n"
+  return op_str
+
+def parse_scalarsub(op_str,node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.SCALAR_SUB) + ", "
+  op_str = op_str + str(node.inedges[1]) + "\n"
+  return op_str
+
+def parse_scalarfloordiv(op_str, node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.SCALAR_FLOORDIV) + ", "
+  op_str = op_str + str(node.inedges[1]) + "\n"
+  return op_str
+
+def parse_scalartruediv(op_str, node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.SCALAR_TRUEDIV) + ", "
   op_str = op_str + str(node.inedges[1]) + "\n"
   return op_str
 
@@ -356,6 +368,24 @@ def torch_to_flexflow_str(model):
             op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
             op_str = parse_add(op_str, node)
         
+      elif function_name.find('sub') >= 0:
+        if type(node.inedges[1]) is float:
+            op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+            op_str = parse_scalarsub(op_str,node)
+        else:
+            assert 0, "Unknown binary subtraction operator"
+            op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
+            op_str = parse_add(op_str, node)
+      
+      elif function_name.find('truediv') >= 0:
+        if type(node.inedges[1]) is float:
+            op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+            op_str = parse_scalartruediv(op_str,node)
+        else:
+            assert 0, "Unknown binary true division operator"
+            op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
+            op_str = parse_add(op_str, node)
+      
       elif function_name.find('cat') >= 0:
         op_str = parse_inoutedge(op_str, node.inedges[0], node.outedges)
         op_str = parse_concat(op_str, node)
