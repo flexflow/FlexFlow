@@ -271,6 +271,23 @@ Node FFModel::get_or_create_fused_parallel_node(const Tensor input,
   }
   if (parallel_ops.size() == 0) {
     return get_or_create_noop_node(input);
+  } else if (parallel_ops.size() == 1) {
+    switch (parallel_ops[0].op_type) {
+      case OP_COMBINE:
+        return get_or_create_combine_node(input, parallel_ops[0].parallel_dim,
+                                          parallel_ops[0].parallel_degree);
+      case OP_REPARTITION:
+        return get_or_create_repartition_node(input, parallel_ops[0].parallel_dim,
+                                              parallel_ops[0].parallel_degree);
+      case OP_REPLICATE:
+        return get_or_create_replicate_node(input, parallel_ops[0].parallel_dim,
+                                            parallel_ops[0].parallel_degree);
+      case OP_REDUCTION:
+        return get_or_create_reduction_node(input, parallel_ops[0].parallel_dim,
+                                            parallel_ops[0].parallel_degree);
+      default:
+        assert(false && "Unsupported Parallel Op");
+    }
   }
   size_t hash = input->get_owner_independent_hash();
   for (size_t i = 0; i < parallel_ops.size(); i++) {

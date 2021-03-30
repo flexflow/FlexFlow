@@ -478,6 +478,30 @@ Graph* GraphXfer::create_new_graph(Graph* graph)
       if (simplify) break;
     }
   }
+  // Remove NoOps
+  std::vector<Node> noop_nodes;
+  for (const auto& it : newGraph->inEdges) {
+    if (it.first.ptr == NULL) continue;
+    if (it.first.ptr->op_type == OP_NOOP) {
+      noop_nodes.push_back(it.first);
+    }
+  }
+  size_t index = 0;
+  while (index < noop_nodes.size()) {
+    Node noop = noop_nodes[index++];
+    const auto& inList = newGraph->inEdges.find(noop)->second;
+    assert(inList.size() == 1);
+    Edge in_edge = *inList.begin();
+    // make a copy of outList
+    if (newGraph->outEdges.find(noop) != newGraph->outEdges.end()) {
+      const auto outList = newGraph->outEdges.find(noop)->second;
+      for (const auto& e : outList) {
+        newGraph->add_edge(in_edge.srcOp, e.dstOp, in_edge.srcIdx, e.dstIdx);
+        newGraph->remove_edge(e);
+      }
+    }
+    newGraph->remove_edge(in_edge);
+  }
   return newGraph;
 }
 
