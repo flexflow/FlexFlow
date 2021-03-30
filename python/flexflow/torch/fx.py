@@ -205,9 +205,9 @@ def parse_layernorm(op_str, node):
   op_str = op_str + enum_to_str(OpType, OpType.LAYER_NORM) + "\n"
   return op_str
 
-def parse_floordiv(op_str, node):
+def parse_scalarfloordiv(op_str, node):
   assert len(node.inedges) == 2, "wrong number of inputs"
-  op_str = op_str + enum_to_str(OpType, OpType.FLOOR_DIVIDE) + ", "
+  op_str = op_str + enum_to_str(OpType, OpType.SCALAR_FLOOR_DIVIDE) + ", "
   op_str = op_str + str(node.inedges[1]) + "\n"
   return op_str
 
@@ -254,6 +254,11 @@ def parse_mul(op_str,node):
   op_str = op_str + enum_to_str(OpType, OpType.MULTIPLY) + "\n"
   return op_str
 
+def parse_floordiv(op_str,node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.FLOOR_DIVIDE) + "\n"
+  return op_str
+
 def parse_batchmatmul(op_str,node):
   assert len(node.inedges) == 2, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.BATCH_MATMUL) + "\n"
@@ -268,11 +273,15 @@ def parse_permute(op_str,node):
     return op_str
         
 def parse_reshape(op_str,node):
-    assert len(node.inedges) == 2
+    assert len(node.inedges) >= 2
     op_str = op_str + enum_to_str(OpType, OpType.RESHAPE) + ", "
-    for dim in node.inedges[1][:-1]:
+    if len(node.inedges) == 2:
+        input_shape = node.inedges[1]
+    else:
+        input_shape = node.inedges[1:]
+    for dim in input_shape[:-1]:
         op_str = op_str + (str(dim) if type(dim) is int else (str(dim)+":"))+ ", "
-    op_str = op_str + (str(node.inedges[1][-1]) if type(node.inedges[1][-1]) is int else (str(node.inedges[1][-1])+":"))+ "\n"
+    op_str = op_str + (str(input_shape[-1]) if type(input_shape[-1]) is int else (str(input_shape[-1])+":"))+ "\n"
     return op_str 
   
 def parse_inoutedge(op_str, inedges, outedges):
@@ -382,8 +391,12 @@ def torch_to_flexflow_str(model):
         op_str = parse_expand(op_str, node)
 
       elif function_name.find('floordiv') >= 0:
-        op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
-        op_str = parse_floordiv(op_str,node)
+        if type(node.inedges[1]) is float or type(node.inedges[1]) is int:
+            op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+            op_str = parse_scalarfloordiv(op_str,node)
+        else:
+            op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+            op_str = parse_floordiv(op_str,node)
 
       elif function_name.find('reshape') >= 0:
         op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)

@@ -34,7 +34,6 @@ class PyTorchModel(object):
     
   def apply(self, ffmodel, input_tensors):
     output_tensors = []
-    intermediate_values = {}
     input_idx = 0
     for line in self.lines:
       items = line.strip().split(",")
@@ -129,6 +128,16 @@ class PyTorchModel(object):
         output = ffmodel.scalar_multiply(input=input_tensor, scalar=float(items[4]), name=op_name)
         output = FXTensor(output)
       
+    elif op_type == OpType.SCALAR_FLOOR_DIVIDE:
+        assert len(items) == 5, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        if type(input_tensor) is float or type(input_tensor) is int:
+            output = input_tensor // float(items[4])
+        else:
+            output = ffmodel.scalar_floor_divide(input=input_tensor, scalar=float(items[4]), name=op_name)
+        output = FXTensor(output)
+      
       elif op_type == OpType.RELU:
         assert len(items) == 4, "wrong format"
         assert len(self.input_ops_list) == 1, "wrong format"
@@ -177,7 +186,7 @@ class PyTorchModel(object):
             try:
                 shape[idx] = int(dim)
             except:
-                shape[idx] = intermediate_values[dim]
+                 shape[idx] = self.tensor_dict[dim+op_name].fftensor
 
         output = ffmodel.reshape(input=input_tensor,shape=shape,name=op_name)
         output = FXTensor(output)
@@ -246,8 +255,6 @@ class PyTorchModel(object):
         assert type(input_tensor) == list or type(input_tensor) == tuple
         idx = int(items[4])
         output = input_tensor[idx]
-        print(items[0]+":")
-        intermediate_values[items[0]+":"] = output        
         output = FXTensor(output)
         
       elif op_type == OpType.GETATTR:
