@@ -240,6 +240,34 @@ class ScalarMultiply(Op):
     super(ScalarMultiply, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# ScalarAdd
+# -----------------------------------------------------------------------
+class ScalarAdd(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ScalarAdd, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# ScalarSub
+# -----------------------------------------------------------------------
+class ScalarSub(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ScalarSub, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# ScalarTrueDiv
+# -----------------------------------------------------------------------
+class ScalarTrueDiv(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ScalarTrueDiv, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# ScalarFloorDiv
+# -----------------------------------------------------------------------
+class ScalarFloorDiv(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ScalarFloorDiv, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # Relu
 # -----------------------------------------------------------------------
 class Relu(Op):
@@ -362,6 +390,14 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return MSELoss(handle, idx, name)
   elif op_type == OpType.SCALAR_MULTIPLY:
     return ScalarMultiply(handle, idx, name)
+  elif op_type == OpType.SCALAR_ADD:
+      return ScalarAdd(handle, idx, name)
+  elif op_type == OpType.SCALAR_SUB:
+      return ScalarSub(handle, idx, name)
+  elif op_type == OpType.SCALAR_FLOORDIV:
+      return ScalarFloorDiv(handle, idx, name)
+  elif op_type == OpType.SCALAR_TRUEDIV:
+      return ScalarTrueDiv(handle, idx, name)
   elif op_type == OpType.GELU:
     return Gelu(handle, idx, name)
   elif op_type == OpType.RELU:
@@ -1297,6 +1333,82 @@ class FFModel(object):
     self.add_layer(OpType.SCALAR_MULTIPLY, name)
     return Tensor(handle, owner_op_type=OpType.SCALAR_MULTIPLY)
 
+  def scalar_add(self, input, scalar, inplace=True, name=None):
+    """Scalar addition of a scalar to each entry of a tensor.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param input: the scalar
+    :type scalar: float
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_scalar_add(self.handle, input.handle, scalar, inplace, c_name)
+    self.add_layer(OpType.SCALAR_ADD, name)
+    return Tensor(handle, owner_op_type=OpType.SCALAR_ADD)
+
+  def scalar_sub(self, input, scalar, inplace=True, name=None):
+    """Scalar subtraction of a scalar to each entry of a tensor.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param input: the scalar
+    :type scalar: float
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_scalar_sub(self.handle, input.handle, scalar, inplace, c_name)
+    self.add_layer(OpType.SCALAR_SUB, name)
+    return Tensor(handle, owner_op_type=OpType.SCALAR_SUB)
+
+  def scalar_true_divide(self, input, scalar, inplace=True, name=None):
+    """Scalar regular division of a tensor by an scalar.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param input: the scalar
+    :type scalar: float
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_scalar_truediv(self.handle, input.handle, scalar, inplace, c_name)
+    self.add_layer(OpType.SCALAR_TRUEDIV, name)
+    return Tensor(handle, owner_op_type=OpType.SCALAR_TRUEDIV)
+
+  def scalar_floor_divide(self, input, scalar, inplace=True, name=None):
+    """Scalar floor division of a tensor by an scalar.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param input: the scalar
+    :type scalar: float
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_scalar_floordiv(self.handle, input.handle, scalar, inplace, c_name)
+    self.add_layer(OpType.SCALAR_FLOORDIV, name)
+    return Tensor(handle, owner_op_type=OpType.SCALAR_FLOORDIV)
+  
   def gelu(self, input, inplace=True, name=None):
     """Gaussian Error Linear Unit activation function.
              

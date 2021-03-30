@@ -83,7 +83,10 @@ class OpType(Enum):
   GELU = 2085
   PERMUTE = 2086
   SCALAR_MULTIPLY = 2087
-  SCALAR_FLOOR_DIVIDE = 2088
+  SCALAR_FLOORDIV = 2088
+  SCALAR_ADD = 2089
+  SCALAR_SUB = 2090
+  SCALAR_TRUEDIV = 2091
 
 def enum_to_int(enum, enum_item):
   for item in enum:
