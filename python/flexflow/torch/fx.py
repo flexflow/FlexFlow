@@ -430,7 +430,7 @@ def torch_to_flexflow_str(model):
         op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
         op_str = parse_expand(op_str, node)
 
-      elif function_name.find('floordiv') >= 0:
+      elif function_name.find('floordiv') >= 0 or function_name.find('floor_divide') >= 0:
         if type(node.inedges[1]) is float or type(node.inedges[1]) is int:
             op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
             op_str = parse_scalarfloordiv(op_str,node)

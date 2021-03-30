@@ -326,7 +326,7 @@ flexflow_model_add_scalar_sub(
   const char *name);
 
 flexflow_tensor_t
-flexflow_model_add_scalar_true_div(
+flexflow_model_add_scalar_truediv(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
   const float scalar,
@@ -334,7 +334,7 @@ flexflow_model_add_scalar_true_div(
   const char *name);
 
 flexflow_tensor_t
-flexflow_model_add_scalar_floor_div(
+flexflow_model_add_scalar_floordiv(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
   const float scalar,
