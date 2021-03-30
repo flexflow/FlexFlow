@@ -133,6 +133,16 @@ bool Combine::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
+bool Combine::append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const
+{
+  ParallelOpInfo ret;
+  ret.op_type = op_type;
+  ret.parallel_dim = combine_dim;
+  ret.parallel_degree = combine_degree;
+  parallel_ops.push_back(ret);
+  return true;
+}
+
 Node FFModel::get_or_create_combine_node(const Tensor input,
                                          int combine_dim,
                                          int combine_degree)

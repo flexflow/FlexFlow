@@ -81,14 +81,20 @@ bool FusedParallelOp::check_no_redundant_parallel_ops(void) const
   //  if (parallel_ops[i-1].parallel_dim > parallel_osp[i].parallel_dim)
   //    return false;
   // Check there are no redundant combine/repartition
-  for (int i = 0; i < num_parallel_ops; i ++)
+  for (int i = 1; i < num_parallel_ops; i ++) {
     if (parallel_ops[i].op_type == OP_COMBINE) {
-      for (int j = 0; j < num_parallel_ops; j++)
-        if (parallel_ops[j].op_type == OP_REPARTITION) {
-          if (parallel_ops[i].parallel_dim == parallel_ops[j].parallel_dim)
-            return false;
-        }
+      if (parallel_ops[i-1].op_type == OP_REPARTITION) {
+        if (parallel_ops[i].parallel_dim == parallel_ops[i-1].parallel_dim)
+          return false;
+      }
     }
+    if (parallel_ops[i].op_type == OP_REPARTITION) {
+      if (parallel_ops[i-1].op_type == OP_COMBINE) {
+        if (parallel_ops[i].parallel_dim == parallel_ops[i-1].parallel_dim)
+          return false;
+      }
+    }
+  }
   return true;
 }
 
@@ -182,21 +188,102 @@ bool FusedParallelOp::measure_operator_cost(
   return true;
 }
 
+bool FusedParallelOp::append_parallel_op_info(std::vector<ParallelOpInfo>& _parallel_ops) const
+{
+  for (int i = 0; i < num_parallel_ops; i++) {
+    _parallel_ops.push_back(parallel_ops[i]);
+  }
+  return true;
+}
+
 Node FFModel::get_or_create_fused_parallel_node(const Tensor input,
                                                 const std::vector<ParallelOpInfo>& _parallel_ops)
 {
-  size_t hash = input->get_owner_independent_hash();
+  // Try to combine _parallel_ops's dimensions
+  std::vector<ParallelOpInfo> parallel_ops;
   for (size_t i = 0; i < _parallel_ops.size(); i++) {
-    hash = hash * 31 + std::hash<int>()(_parallel_ops[i].op_type);
-    hash = hash * 31 + std::hash<int>()(_parallel_ops[i].parallel_dim);
-    hash = hash * 31 + std::hash<int>()(_parallel_ops[i].parallel_degree);
+    ParallelOpInfo new_op = _parallel_ops[i];
+    if (parallel_ops.size() == 0) {
+      parallel_ops.push_back(new_op);
+    } else {
+      ParallelOpInfo old_op = parallel_ops[parallel_ops.size()-1];
+      switch (new_op.op_type) {
+        case OP_REPARTITION:
+        {
+          if (old_op.op_type == OP_COMBINE
+          && old_op.parallel_dim == new_op.parallel_dim) {
+            // Eliminate repartition/combine
+            if (old_op.parallel_degree == new_op.parallel_degree) {
+              parallel_ops.pop_back();
+            } else if (old_op.parallel_degree > new_op.parallel_degree) {
+              assert(old_op.parallel_degree % new_op.parallel_degree == 0);
+              old_op.parallel_degree /= new_op.parallel_degree;
+              parallel_ops.pop_back();
+              parallel_ops.push_back(old_op);
+            } else {
+              assert(new_op.parallel_degree % old_op.parallel_degree == 0);
+              new_op.parallel_degree /= old_op.parallel_degree;
+              parallel_ops.pop_back();
+              parallel_ops.push_back(new_op);
+            }
+          } else {
+            parallel_ops.push_back(new_op);
+          }
+          break;
+        }
+        case OP_COMBINE:
+        {
+          if (old_op.op_type == OP_REPARTITION
+          && old_op.parallel_dim == new_op.parallel_dim) {
+            // Eliminate repartition/combine
+            if (old_op.parallel_degree == new_op.parallel_degree) {
+              parallel_ops.pop_back();
+            } else if (old_op.parallel_degree > new_op.parallel_degree) {
+              assert(old_op.parallel_degree % new_op.parallel_degree == 0);
+              old_op.parallel_degree /= new_op.parallel_degree;
+              parallel_ops.pop_back();
+              parallel_ops.push_back(old_op);
+            } else {
+              assert(new_op.parallel_degree % old_op.parallel_degree == 0);
+              new_op.parallel_degree /= old_op.parallel_degree;
+              parallel_ops.pop_back();
+              parallel_ops.push_back(new_op);
+            }
+          } else {
+            parallel_ops.push_back(new_op);
+          }
+          break;
+        }
+        case OP_REPLICATE:
+        {
+          parallel_ops.push_back(new_op);
+          break;
+        }
+        case OP_REDUCTION:
+        {
+          parallel_ops.push_back(new_op);
+          break;
+        }
+        default:
+          assert(false);
+      }
+    }
+  }
+  if (parallel_ops.size() == 0) {
+    return get_or_create_noop_node(input);
+  }
+  size_t hash = input->get_owner_independent_hash();
+  for (size_t i = 0; i < parallel_ops.size(); i++) {
+    hash = hash * 31 + std::hash<int>()(parallel_ops[i].op_type);
+    hash = hash * 31 + std::hash<int>()(parallel_ops[i].parallel_dim);
+    hash = hash * 31 + std::hash<int>()(parallel_ops[i].parallel_degree);
   }
   const auto& it = cached_fused_parallel_ops.find(hash);
   FusedParallelOp* fused = NULL;
   if (it != cached_fused_parallel_ops.end()) {
     fused = it->second;
   } else {
-    fused = new FusedParallelOp(*this, input, _parallel_ops);
+    fused = new FusedParallelOp(*this, input, parallel_ops);
     cached_fused_parallel_ops[hash] = fused;
   }
   Node ret;

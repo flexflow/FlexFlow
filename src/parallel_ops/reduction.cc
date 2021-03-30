@@ -133,6 +133,16 @@ bool Reduction::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
+bool Reduction::append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const
+{
+  ParallelOpInfo ret;
+  ret.op_type = op_type;
+  ret.parallel_dim = reduction_dim;
+  ret.parallel_degree = reduction_degree;
+  parallel_ops.push_back(ret);
+  return true;
+}
+
 Node FFModel::get_or_create_reduction_node(const Tensor input,
                                            int reduction_dim,
                                            int reduction_degree)

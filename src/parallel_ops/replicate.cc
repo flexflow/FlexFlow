@@ -163,6 +163,17 @@ bool Replicate::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
+bool Replicate::append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const
+{
+  ParallelOpInfo ret;
+  ret.op_type = op_type;
+  ret.parallel_dim = replicate_dim;
+  ret.parallel_degree = replicate_degree;
+  parallel_ops.push_back(ret);
+  return true;
+}
+
+
 Node FFModel::get_or_create_replicate_node(const Tensor input,
                                            int replicate_dim,
                                            int replicate_degree)

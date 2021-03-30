@@ -81,6 +81,7 @@ public:
                 int srcIdx,
                 int dstIdx);
   void add_edge(const Edge& e);
+  void remove_edge(const Edge& e);
   bool has_edge(const Node& srcOp,
                 const Node& dstOp,
                 int srcIdx,

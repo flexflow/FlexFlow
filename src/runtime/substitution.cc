@@ -436,23 +436,47 @@ Graph* GraphXfer::create_new_graph(Graph* graph)
         int srcIdx = dstOp->inputs[i].idx;
         newGraph->add_edge(srcOp->mapOp, dstOp->mapOp, srcIdx, i);
       }
-#ifdef DEADCODE
-    // weights
-    for (size_t i = 0; i < dstOp->weights.size(); i++)
-      if (dstOp->weights[i].op == NULL) {
-        // unmapped src -> mapped dst
-        std::multimap<int, std::pair<Node, int> >::const_iterator it
-            = mappedInputs.find(dstOp->weights[i].idx);
-        assert(it != mappedInputs.end());
-        const std::pair<Node, int>& srcEdge = it->second;
-        newGraph->add_edge(srcEdge.first, dstOp->mapOp, srcEdge.second, i, true);
-      } else {
-        // mapped src -> mapped dst
-        OpX* srcOp = dstOp->weights[i].op;
-        int srcIdx = dstOp->weights[i].idx;
-        newGraph->add_edge(srcOp->mapOp, dstOp->mapOp, srcIdx, i, true);
+  }
+  // Simplify the graph my eliminating reverse parallel ops
+  // and fusing multiple parallel ops
+  // old graph: e1->n1->e2->n2->en
+  // new graph: e1->new_node->en
+  bool simplify = true;
+  while (simplify) {
+    simplify = false;
+    for (const auto& it : newGraph->inEdges) {
+      if (it.first.ptr == NULL) continue;
+      if (it.first.ptr->is_parallel_op()) {
+        Node n2 = it.first;
+        assert(it.second.size() == 1);
+        Edge e2 = *it.second.begin();
+        if (e2.srcOp.ptr != NULL && e2.srcOp.ptr->is_parallel_op()) {
+          Node n1 = e2.srcOp;
+          // merge n1 and n2
+          std::vector<ParallelOpInfo> parallel_ops;
+          ((ParallelOp*)n1.ptr)->append_parallel_op_info(parallel_ops);
+          ((ParallelOp*)n2.ptr)->append_parallel_op_info(parallel_ops);
+          Node new_node = model->get_or_create_fused_parallel_node(n1.ptr->inputs[0], parallel_ops);
+          const auto& inList = newGraph->inEdges.find(n1)->second;
+          assert(inList.size() == 1);
+          Edge e1 = *inList.begin();
+          // Update graph by adding edges
+          newGraph->add_edge(e1.srcOp, new_node, e1.srcIdx, 0);
+          newGraph->remove_edge(e1);
+          newGraph->remove_edge(e2);
+          // make a copy of outList
+          if (newGraph->outEdges.find(n2) != newGraph->outEdges.end()) {
+            const auto outList = newGraph->outEdges.find(n2)->second;
+            for (const auto& e : outList) {
+              newGraph->add_edge(new_node, e.dstOp, 0, e.dstIdx);
+              newGraph->remove_edge(e);
+            }
+          }
+          simplify = true;
+        }
       }
-#endif
+      if (simplify) break;
+    }
   }
   return newGraph;
 }

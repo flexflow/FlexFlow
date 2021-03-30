@@ -476,6 +476,16 @@ ParallelOp::ParallelOp(FFModel& model,
 : Op(model, op_type, name, 1/*num_inputs*/, 0/*num_weights*/, input)
 {}
 
+bool ParallelOp::is_parallel_op() const
+{
+  return true;
+}
+
+bool Op::is_parallel_op() const
+{
+  return false;
+}
+
 bool Op::can_inplace_output()
 {
   return false;
@@ -2861,6 +2871,7 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_REPLICATE: return "Replicate";
     case OP_REDUCTION: return "Reduction";
     case OP_PIPELINE: return "Pipeline";
+    case OP_FUSED_PARALLEL: return "FusedParallelOp";
     default: assert(false && "Not supported Operator type"); return "Unsupported";
   }
 }

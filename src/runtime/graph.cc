@@ -181,6 +181,8 @@ std::string Node::op_to_string(const Op* ptr) const
       return "Reduction";
     case OP_COMBINE:
       return "Combine";
+    case OP_FUSED_PARALLEL:
+      return "FusedParallel";
     default:
       return "Unknown_" + std::to_string(ptr->op_type);
   }
@@ -237,6 +239,22 @@ void Graph::add_edge(const Edge& e)
   outEdges[e.srcOp].insert(e);
 }
 
+void Graph::remove_edge(const Edge& e)
+{
+  assert(outEdges[e.srcOp].find(e) != outEdges[e.srcOp].end());
+  assert(inEdges[e.dstOp].find(e) != inEdges[e.dstOp].end());
+  assert(outEdges[e.srcOp].erase(e) == 1);
+  assert(inEdges[e.dstOp].erase(e) == 1);
+  if ((outEdges[e.srcOp].size() == 0) && (inEdges[e.srcOp].size() == 0)) {
+    outEdges.erase(e.srcOp);
+    inEdges.erase(e.srcOp);
+  }
+  if ((outEdges[e.dstOp].size() == 0) && (inEdges[e.dstOp].size() == 0)) {
+    outEdges.erase(e.dstOp);
+    inEdges.erase(e.dstOp);
+  }
+}
+
 bool Graph::has_edge(const Node& srcOp,
                      const Node& dstOp,
                      int srcIdx,
@@ -253,7 +271,7 @@ bool Graph::has_edge(const Edge& e)
 
 void Graph::print(void) const
 {
-  log_graph.print("Printing graph...");
+  log_graph.print("Printing in-edge graph...");
   for (const auto& it : inEdges) {
     if (it.first.guid == 0) continue;
     log_graph.print("	guid(%zu) type(%d): ", it.first.guid,
@@ -277,6 +295,31 @@ void Graph::print(void) const
     //   it->first.ptr->inputs[4].print_info("var");
     // }
   }
+  log_graph.print("Printing out-edge graph...");
+  for (const auto& it : outEdges) {
+    if (it.first.guid == 0) continue;
+    log_graph.print("	guid(%zu) type(%d): ", it.first.guid,
+                    it.first.ptr->op_type);
+    const std::unordered_set<Edge>& list = it.second;
+    for (const auto& it2 : list) {
+      Edge e = it2;
+      log_graph.print("         outEdge(guid(%zu) idx(%d))",
+                      e.dstOp.guid, e.dstIdx);
+    }
+    // if (it->first.ptr->type == OP_CONV2D) {
+    //   it->first.ptr->inputs[1].print_info("conv weight");
+    // }
+    // else if (it->first.ptr->type == OP_BROADCAST_ADD) {
+    //   it->first.ptr->inputs[1].print_info("conv new bias");
+    // }
+    // else if (it->first.ptr->type == OP_BATCHNORM) {
+    //   it->first.ptr->inputs[1].print_info("gamma");
+    //   it->first.ptr->inputs[2].print_info("beta");
+    //   it->first.ptr->inputs[3].print_info("mean");
+    //   it->first.ptr->inputs[4].print_info("var");
+    // }
+  }
+
 }
 
 bool Graph::has_loop(void)

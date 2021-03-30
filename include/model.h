@@ -278,6 +278,7 @@ public:
   virtual bool can_inplace_output();
   virtual bool has_inplace_output();
   virtual void do_inplace_output();
+  virtual bool is_parallel_op() const;
 
   int get_dimension() const;
 #ifdef FF_USE_NCCL
@@ -2028,6 +2029,8 @@ public:
   virtual bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const = 0;
+  virtual bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const = 0;
+  virtual bool is_parallel_op() const;
 public:
   Legion::LogicalPartition input_lp, output_grad_lp;
 };
@@ -2040,6 +2043,7 @@ public:
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
+  bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const;
   void create_input_partition(FFModel& model);
   static void forward_task(
       const Legion::Task *task,
@@ -2081,6 +2085,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   bool get_int_parameter(PMParameter, int*) const;
+  bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const;
   static void forward_task(
       const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,
@@ -2119,6 +2124,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   bool get_int_parameter(PMParameter, int*) const;
+  bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const;
   static void forward_task(
       const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,
@@ -2156,6 +2162,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   bool get_int_parameter(PMParameter, int*) const;
+  bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const;
   static void forward_task(
       const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,
@@ -2194,6 +2201,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   bool get_int_parameter(PMParameter, int*) const;
+  bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const;
   static void forward_task(
       const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,

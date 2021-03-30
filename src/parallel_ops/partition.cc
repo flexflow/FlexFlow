@@ -161,6 +161,16 @@ bool Repartition::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
+bool Repartition::append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const
+{
+  ParallelOpInfo ret;
+  ret.op_type = op_type;
+  ret.parallel_dim = repartition_dim;
+  ret.parallel_degree = repartition_degree;
+  parallel_ops.push_back(ret);
+  return true;
+}
+
 Node FFModel::get_or_create_repartition_node(const Tensor input,
                                              int repartition_dim,
                                              int repartition_degree)
