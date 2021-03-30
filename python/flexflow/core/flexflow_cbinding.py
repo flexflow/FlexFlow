@@ -261,13 +261,6 @@ class ScalarTrueDiv(Op):
     super(ScalarTrueDiv, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
-# ScalarFloorDiv
-# -----------------------------------------------------------------------
-class ScalarFloorDiv(Op):
-  def __init__(self, handle, idx=None, name=None):
-    super(ScalarFloorDiv, self).__init__(handle, idx, name)
-
-# -----------------------------------------------------------------------
 # Relu
 # -----------------------------------------------------------------------
 class Relu(Op):
@@ -1390,25 +1383,6 @@ class FFModel(object):
     self.add_layer(OpType.SCALAR_TRUEDIV, name)
     return Tensor(handle, owner_op_type=OpType.SCALAR_TRUEDIV)
 
-  def scalar_floor_divide(self, input, scalar, inplace=True, name=None):
-    """Scalar floor division of a tensor by an scalar.
-             
-    :param input: the input Tensor.
-    :type input: Tensor
-
-    :param input: the scalar
-    :type scalar: float
-             
-    :param name: the name of the layer. Default is None.
-    :type name: string
-
-    :returns:  Tensor -- the output tensor.
-    """
-    c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_scalar_floordiv(self.handle, input.handle, scalar, inplace, c_name)
-    self.add_layer(OpType.SCALAR_FLOORDIV, name)
-    return Tensor(handle, owner_op_type=OpType.SCALAR_FLOORDIV)
-  
   def gelu(self, input, inplace=True, name=None):
     """Gaussian Error Linear Unit activation function.
              

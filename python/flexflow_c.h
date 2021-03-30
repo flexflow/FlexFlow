@@ -334,14 +334,6 @@ flexflow_model_add_scalar_truediv(
   const char *name);
 
 flexflow_tensor_t
-flexflow_model_add_scalar_floordiv(
-  flexflow_model_t handle,
-  const flexflow_tensor_t input,
-  const float scalar,
-  bool inplace,
-  const char *name);
-
-flexflow_tensor_t
 flexflow_model_add_gelu(
   flexflow_model_t handle,
   const flexflow_tensor_t input,

@@ -272,11 +272,6 @@ def parse_mul(op_str,node):
   op_str = op_str + enum_to_str(OpType, OpType.MULTIPLY) + "\n"
   return op_str
 
-def parse_floordiv(op_str,node):
-  assert len(node.inedges) == 2, "wrong number of inputs"
-  op_str = op_str + enum_to_str(OpType, OpType.FLOOR_DIVIDE) + "\n"
-  return op_str
-
 def parse_batchmatmul(op_str,node):
   assert len(node.inedges) == 2, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.BATCH_MATMUL) + "\n"
@@ -435,8 +430,7 @@ def torch_to_flexflow_str(model):
             op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
             op_str = parse_scalarfloordiv(op_str,node)
         else:
-            op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
-            op_str = parse_floordiv(op_str,node)
+            assert 0, "Tensor floor division is not supported."
 
       elif function_name.find('reshape') >= 0:
         op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
