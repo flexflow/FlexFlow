@@ -94,6 +94,7 @@ public:
   void print(void) const;
   bool check_correctness(void);
   bool has_loop(void);
+  bool map_operators_to_layers(std::vector<Op*>& layers) const;
   Node find_bottleneck_node(const Node& sink_node,
                               const Node& source_node,
                               std::unordered_set<Node>& used_nodes) const;

@@ -29,6 +29,7 @@ TensorBase::TensorBase(void)
 {
   ts_guid = 0;
   num_dims = 0;
+  machine_view = MachineView::NO_VIEW;
   parallel_is = IndexSpace::NO_SPACE;
   region = LogicalRegion::NO_REGION;
   region_grad = LogicalRegion::NO_REGION;
@@ -2407,6 +2408,7 @@ void FFModel::compile(LossType loss_type,
     Op* op = layers[l];
     for (int i = 0; i < op->numInputs; i++) {
       if (op->inputs[i]->owner_op == NULL) {
+        assert(false);
         // Input tensor
         //assert(op->inputs[i]->sync_type == ParameterSyncType::NONE);
         map_tensor(op->inputs[i], op);

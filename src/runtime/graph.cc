@@ -660,6 +660,14 @@ void FFModel::construct_optimal_view(const Graph* graph,
   }
   float cost = 1e7;
   if (graph->inEdges.size() <= 2) {
+    const auto& inList = graph->inEdges.find(sink_node)->second;
+    if (source_node == Node::INVALID_NODE) {
+      for (const auto& it2 : inList) {
+        // Assign it2.srcOp the same machine_view as sink_view
+        assert(optimal_views.find(it2.srcOp) == optimal_views.end());
+        optimal_views[it2.srcOp] = sink_view;
+      }
+    }
     return;
   } else {
     std::unordered_set<Node> used_nodes;
@@ -884,6 +892,7 @@ float Graph::total_cost(void)
   }
   return total_cost;
 }
+
 void Graph::construct_optimal_view(float optimal_cost,
                                    std::unordered_map<Node, MachineView>& optimal_views)
 {
@@ -953,4 +962,5 @@ size_t FFModel::dp_state_hash(const Graph* graph,
   key = key * 31 + resource.hash();
   return key;
 }
+
 

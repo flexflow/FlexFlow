@@ -645,6 +645,8 @@ public:
                        const Node& source_node,
                        const MachineView& source_view,
                        const MachineResource& resource);
+  bool convert_graph_to_layers(const Graph* graph,
+                               const std::unordered_map<Node, MachineView>& optimal_views);
   std::vector<MachineView>* get_valid_machine_views(const Op* op);
   void register_machine_views();
   // ========================================
@@ -2080,7 +2082,7 @@ public:
       const Tensor input,
       int combine_legion_dim,
       int combine_degree,
-      const char* name);
+      const char* name = NULL);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -2108,7 +2110,7 @@ public:
       Simulator* sim,
       const ParallelConfig& pc,
       CostMetrics& cost_metrics) const;
-private:
+public:
   int combine_dim, combine_degree;
 };
 
@@ -2118,7 +2120,7 @@ public:
               const Tensor input,
               int repartition_legion_dim,
               int repartition_degree,
-              const char* name);
+              const char* name = NULL);
   void create_input_partition(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -2146,7 +2148,7 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
-private:
+public:
   int repartition_dim, repartition_degree;
 };
 
@@ -2156,7 +2158,7 @@ public:
       const Tensor input,
       int replicate_legion_dim,
       int replicate_degree,
-      const char* name);
+      const char* name = NULL);
   void create_input_partition(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -2186,7 +2188,7 @@ public:
       Simulator* sim,
       const ParallelConfig& pc,
       CostMetrics& cost_metrics) const;
-private:
+public:
   int replicate_dim, replicate_degree;
 };
 
@@ -2196,7 +2198,7 @@ public:
       const Tensor input,
       int reduction_legion_dim,
       int reduction_degree,
-      const char* name);
+      const char* name = NULL);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -2225,7 +2227,7 @@ public:
       Simulator* sim,
       const ParallelConfig& pc,
       CostMetrics& cost_metrics) const;
-private:
+public:
   int reduction_dim, reduction_degree;
 };
 
