@@ -39,6 +39,9 @@ FF_USE_GASNET=OFF
 # build C++ examples
 FF_BUILD_EXAMPLES=OFF
 
+# enable avx2
+FF_USE_AVX2=OFF
+
 # set MAX_DIM
 FF_MAX_DIM=4
 
