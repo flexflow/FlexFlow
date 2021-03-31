@@ -99,7 +99,7 @@ if(FF_USE_AVX2)
   list(APPEND CC_FLAGS
     -DFF_USE_AVX2
     -mavx2)
-endif
+endif()
   
 list(APPEND NVCC_FLAGS
   -Wno-deprecated-gpu-targets
