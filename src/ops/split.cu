@@ -126,10 +126,12 @@ OpMeta* Split::init_task(const Task* task,
 
 void Split::init(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(SPLIT_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(SPLIT_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Split)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -214,7 +216,7 @@ void Split::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(SPLIT_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(SPLIT_FWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Split)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -275,7 +277,7 @@ void Split::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(SPLIT_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(SPLIT_BWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Split)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));

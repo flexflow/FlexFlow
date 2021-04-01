@@ -83,10 +83,12 @@ OpMeta* Flat::init_task(const Task *task,
 
 void Flat::init(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, parallel_is);
   ParallelConfig pc;
   std::string pcname = name;
   ff.config.find_parallel_config(2, pcname, pc);
@@ -95,7 +97,7 @@ void Flat::init(const FFModel& ff)
     FFHandler handle = ff.handlers[pc.device_ids[idx++]];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
-  IndexLauncher launcher(FLAT_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(FLAT_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Flat)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -150,13 +152,13 @@ void Flat::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, parallel_is);
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(FLAT_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(FLAT_FWD_TASK_ID, parallel_is,
     TaskArgument(NULL, 0), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
@@ -207,13 +209,13 @@ void Flat::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, parallel_is);
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(FLAT_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(FLAT_BWD_TASK_ID, parallel_is,
     TaskArgument(NULL, 0), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));

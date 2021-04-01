@@ -187,10 +187,12 @@ top_level (UID 1) is using uninitialized data for field(s) 0 of logical
 region (81,28,53) */
 void Aggregate::init(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(AGGREGATE_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(AGGREGATE_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Aggregate)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -415,7 +417,7 @@ void Aggregate::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(AGGREGATE_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(AGGREGATE_FWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Aggregate)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -452,7 +454,7 @@ void Aggregate::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(AGGREGATE_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(AGGREGATE_BWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Aggregate)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));

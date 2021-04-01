@@ -133,22 +133,13 @@ OpMeta* Embedding::init_task(const Task *task,
 
 void Embedding::init(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
-  ParallelConfig pc;
-  std::string pcname = name;
-  ff.config.find_parallel_config(2, pcname, pc);
-  int idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
-    FFHandler handle = ff.handlers[pc.device_ids[idx++]];
-#ifdef FF_USE_NCCL
-    handle.ncclComm = pc.nccl_comms[idx-1];
-#endif
-    argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
-  }
-  IndexLauncher launcher(EMBED_INIT_TASK_ID, task_is,
+  set_argumentmap_for_init(ff, argmap);
+  IndexLauncher launcher(EMBED_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Embedding)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -174,10 +165,7 @@ void Embedding::init(const FFModel& ff)
   launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
-    meta[idx++] = fm.get_result<OpMeta*>(*it);
-  }
+  set_opmeta_from_futuremap(ff, fm);
 }
 
 __global__
@@ -289,13 +277,8 @@ void Embedding::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
-  int idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
-    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
-  }
-  IndexLauncher launcher(EMBED_FWD_TASK_ID, task_is,
+  set_argumentmap_for_forward(ff, argmap);
+  IndexLauncher launcher(EMBED_FWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -367,13 +350,8 @@ void Embedding::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
-  int idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
-    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
-  }
-  IndexLauncher launcher(EMBED_BWD_TASK_ID, task_is,
+  set_argumentmap_for_backward(ff, argmap);
+  IndexLauncher launcher(EMBED_BWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));

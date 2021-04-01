@@ -134,10 +134,12 @@ OpMeta* Concat::init_task(const Task *task,
 
 void Concat::init(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -158,7 +160,7 @@ void Concat::init(const FFModel& ff)
     default:
       assert(false);
   }
-  IndexLauncher launcher(CONCAT_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(CONCAT_INIT_TASK_ID, parallel_is,
     TaskArgument(this, sizeof(Concat)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
@@ -306,7 +308,7 @@ void Concat::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(CONCAT_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(CONCAT_FWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Concat)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -416,7 +418,7 @@ void Concat::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(CONCAT_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(CONCAT_BWD_TASK_ID, parallel_is,
     TaskArgument(this, sizeof(Concat)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));

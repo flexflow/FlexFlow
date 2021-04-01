@@ -111,10 +111,12 @@ OpMeta* Group_by::init_task(const Task* task,
 
 void Group_by::init(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(GROUP_BY_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(GROUP_BY_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Group_by)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -304,7 +306,7 @@ void Group_by::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(GROUP_BY_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(GROUP_BY_FWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Group_by)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -336,7 +338,7 @@ void Group_by::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(GROUP_BY_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(GROUP_BY_BWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Group_by)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));

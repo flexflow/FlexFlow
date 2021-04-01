@@ -230,7 +230,8 @@ protected:
   int get_output_to_weight_dim_mapping(
       const Tensor output, int output_dim,
       const Tensor weight);
-  bool check_output_input_weight_parallel_dims();
+  bool check_output_input_weight_parallel_dims() const;
+  bool check_output_input_weight_same_parallel_is() const;
 public:
   Op(FFModel& model,
      OperatorType type,
@@ -301,7 +302,7 @@ public:
   OperatorType op_type;
   size_t op_guid;
   char name[MAX_OPNAME];
-  Legion::IndexSpace task_is;
+  Legion::IndexSpace parallel_is;
   Tensor outputs[MAX_NUM_OUTPUTS];
   Tensor inputs[MAX_NUM_INPUTS];
   Tensor weights[MAX_NUM_WEIGHTS];

@@ -930,7 +930,7 @@ int Op::get_output_to_weight_dim_mapping(
   return -1;
 }
 
-bool Op::check_output_input_weight_parallel_dims()
+bool Op::check_output_input_weight_parallel_dims() const
 {
   for (size_t i = 0; i < parallel_dims_mapping->size(); i++) {
     ParallelDimMappingRecord record = (*parallel_dims_mapping)[i];
@@ -958,12 +958,28 @@ bool Op::check_output_input_weight_parallel_dims()
   return true;
 }
 
+bool Op::check_output_input_weight_same_parallel_is() const
+{
+  assert(numOutputs > 0);
+  IndexSpace parallel_is = outputs[0]->parallel_is;
+  for (int i = 0; i < numOutputs; i++)
+    if (outputs[i]->parallel_is != parallel_is)
+      return false;
+  for (int i = 0; i < numInputs; i++)
+    if (inputs[i]->parallel_is != parallel_is)
+      return false;
+  for (int i = 0; i < numWeights; i++)
+    if (weights[i]->parallel_is != parallel_is)
+      return false;
+  return true;
+}
+
 void Op::set_argumentmap_for_init(const FFModel& ff,
                                   ArgumentMap& argmap)
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -992,7 +1008,7 @@ void Op::set_opmeta_from_futuremap(const FFModel& ff,
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -1016,7 +1032,7 @@ void Op::set_argumentmap_for_forward(const FFModel& ff,
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -1041,7 +1057,7 @@ void Op::set_argumentmap_for_backward(const FFModel& ff,
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -2288,8 +2304,8 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
       }
     }
     for (size_t i = start; i < l; i++) {
-      Domain d1 = runtime->get_index_space_domain(layers[l]->task_is);
-      Domain d2 = runtime->get_index_space_domain(layers[i]->task_is);
+      Domain d1 = runtime->get_index_space_domain(layers[l]->outputs[0]->parallel_is);
+      Domain d2 = runtime->get_index_space_domain(layers[i]->outputs[0]->parallel_is);
       ParallelConfig pc1, pc2;
       assert(config.find_parallel_config(d1.get_dim(), layers[l]->name, pc1));
       assert(config.find_parallel_config(d2.get_dim(), layers[i]->name, pc2));

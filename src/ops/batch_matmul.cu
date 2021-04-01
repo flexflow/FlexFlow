@@ -127,11 +127,13 @@ void BatchMatmul::init(const FFModel& ff)
 template<int NDIM>
 void BatchMatmul::init_with_dim(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(BATCHMATMUL_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(BATCHMATMUL_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(BatchMatmul)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -306,7 +308,7 @@ void BatchMatmul::forward_with_dim(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(BATCHMATMUL_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(BATCHMATMUL_FWD_TASK_ID, parallel_is,
       TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
@@ -485,7 +487,7 @@ void BatchMatmul::backward_with_dim(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(BATCHMATMUL_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(BATCHMATMUL_BWD_TASK_ID, parallel_is,
       TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
