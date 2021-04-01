@@ -334,7 +334,7 @@ void GraphXfer::run(int depth, Graph* graph,
                     std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>& candidates,
                     std::unordered_set<size_t>& hashmap, float threshold, int maxNumOps)
 {
-  //printf("run: depth(%d) srcOps.size(%zu) graph.size(%zu) candidates(%zu)\n", depth, srcOps.size(), graph->inEdges.size(), candidates.size());
+  printf("run: depth(%d) srcOps.size(%zu) graph.size(%zu) candidates(%zu)\n", depth, srcOps.size(), graph->inEdges.size(), candidates.size());
   if (depth >= (int)srcOps.size()) {
     // Create dst operators
     bool pass = true;
@@ -811,10 +811,11 @@ void FFModel::dp_optimize()
   }
   printf("Optimal Views...\n");
   for (const auto& it : optimal_views) {
-    printf("node[%zu]: type(%s) view(%d %d) ", it.first.guid,
+    printf("node[%zu]: type(%s) view(%d %d %d) ", it.first.guid,
            it.first.to_string().c_str(),
            it.second.ndims,
-           it.second.dim[0]);
+           it.second.dim[0],
+           it.second.start_device_id);
     const auto& list = best_graph->inEdges.find(it.first)->second;
     for (const auto& it2 : list) {
       Edge e = it2;

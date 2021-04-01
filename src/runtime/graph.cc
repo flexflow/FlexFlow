@@ -17,7 +17,7 @@
 #include "legion.h"
 
 LegionRuntime::Logger::Category log_dp("DP");
-LegionRuntime::Logger::Category log_graph("Graph");
+LegionRuntime::Logger::Category log_graph("graph");
 
 const MachineView MachineView::NO_VIEW = MachineView();
 
@@ -57,8 +57,10 @@ size_t MachineResource::hash() const
 {
   size_t ret = 17;
   ret = ret * 31 + std::hash<int>()(num_nodes);
-  ret = ret * 31 + std::hash<int>()(gpus_per_node);
-  ret = ret * 31 + std::hash<int>()(cpus_per_node);
+  ret = ret * 31 + std::hash<int>()(available_gpus_per_node);
+  ret = ret * 31 + std::hash<int>()(available_cpus_per_node);
+  ret = ret * 31 + std::hash<int>()(start_gpu_id);
+  ret = ret * 31 + std::hash<int>()(start_cpu_id);
   return ret;
 }
 
@@ -373,20 +375,39 @@ bool Graph::check_correctness(void)
   return okay;
 }
 
-std::vector<MachineView>* FFModel::get_valid_machine_views(const Op* op)
+bool FFModel::get_valid_machine_views(const Op* op,
+                                      const MachineResource& resource,
+                                      std::vector<MachineView>& valid_views)
 {
+  std::vector<MachineView>* cached_op_views = NULL;
   const auto& iter = cached_operator_valid_views.find(op->op_guid);
   if (iter != cached_operator_valid_views.end()) {
-    return iter->second;
+    cached_op_views = iter->second;
   } else {
-    std::vector<MachineView>* valid_views = new std::vector<MachineView>();
+    cached_op_views = new std::vector<MachineView>();
     for (size_t i = 0; i < all_valid_views.size(); i++) {
-      if (op->outputs[0]->is_valid_machine_view(all_valid_views[i]))
-        valid_views->push_back(all_valid_views[i]);
+      bool valid = true;
+      for (int j = 0; j < op->numOutputs; j++)
+        if (!op->outputs[j]->is_valid_machine_view(all_valid_views[i]))
+          valid = false;
+      if (valid)
+        cached_op_views->push_back(all_valid_views[i]);
     }
-    cached_operator_valid_views[op->op_guid] = valid_views;
-    return valid_views;
+    cached_operator_valid_views[op->op_guid] = cached_op_views;
   }
+  for (size_t i = 0; i < cached_op_views->size(); i++) {
+    MachineView view = (*cached_op_views)[i];
+    if (view.device_type == MachineView::GPU)
+      view.start_device_id = resource.start_gpu_id;
+    else if (view.device_type == MachineView::CPU)
+      view.start_device_id = resource.start_cpu_id;
+    else
+      assert(false);
+    if (!resource.is_valid_machine_view(view))
+      continue;
+    valid_views.push_back(view);
+  }
+  return true;
 }
 
 void FFModel::register_machine_views()
@@ -458,13 +479,13 @@ float FFModel::graph_cost(const Graph* graph,
   log_dp.debug("sink(%zu) sink_view(%d %d) source(%zu) source_view(%d %d) resources(%d %d)",
                sink_node.guid, sink_view.ndims, sink_view.dim[0],
                source_node.guid, source_view.ndims, source_view.dim[0],
-               resources.num_nodes, resources.gpus_per_node);
+               resources.num_nodes, resources.available_gpus_per_node);
   if (config.profiling) {
     graph->print();
   }
   size_t hash = dp_state_hash(graph, sink_node, sink_view,
                               source_node, source_view, resources);
-  log_dp.debug("hash = %zu\n", hash);
+  log_dp.debug("hash = %zu", hash);
   assert(graph->inEdges.find(sink_node) != graph->inEdges.end());
   if (source_node != Node::INVALID_NODE)
     assert(graph->outEdges.find(source_node) != graph->outEdges.end());
@@ -515,16 +536,17 @@ float FFModel::graph_cost(const Graph* graph,
           }
         }
       }
-      std::vector<MachineView>* valid_views = get_valid_machine_views(bn_node.ptr);
-      for (size_t i = 0; i < valid_views->size(); i++) {
-        bool valid = true;
-        MachineView bn_view = (*valid_views)[i];
-        for (int j = 0; j < bn_node.ptr->numOutputs; j++) {
-          if (!bn_node.ptr->outputs[j]->is_valid_machine_view(bn_view))
-            valid = false;
-        }
-        if (!valid) continue;
-        if (!resources.is_valid_machine_view(bn_view)) continue;
+      std::vector<MachineView> valid_views;
+      get_valid_machine_views(bn_node.ptr, resources, valid_views);
+      for (size_t i = 0; i < valid_views.size(); i++) {
+        MachineView bn_view = valid_views[i];
+        //bool valid = true;
+        //for (int j = 0; j < bn_node.ptr->numOutputs; j++) {
+        //  if (!bn_node.ptr->outputs[j]->is_valid_machine_view(bn_view))
+        //    valid = false;
+        //}
+        //if (!valid) continue;
+        //if (!resources.is_valid_machine_view(bn_view)) continue;
         log_dp.debug("    explore view(%d %d)", bn_view.ndims, bn_view.dim[0]);
         log_dp.debug("    First Graph...");
         float first_cost = graph_cost(first_graph, bn_node, bn_view,
@@ -605,10 +627,10 @@ float FFModel::graph_cost(const Graph* graph,
       // Consider run the two in parallel
       // Split resources vertically
       for (int i = 1; i < resources.num_nodes; i++) {
-        MachineResource firstRes, secondRes;
-        firstRes = resources; secondRes = resources;
+        MachineResource firstRes = resources, secondRes = resources;
         firstRes.num_nodes = i;
         secondRes.num_nodes = resources.num_nodes - i;
+        secondRes.start_gpu_id = resources.start_gpu_id + resources.all_gpus_per_node * i;
         float new_cost;
         new_cost = std::max(graph_cost(first_graph, sink_node, sink_view,
                                        source_node, source_view, firstRes, false),
@@ -618,11 +640,11 @@ float FFModel::graph_cost(const Graph* graph,
           cost = new_cost;
       }
       // Split resources horizontally
-      for (int i = 1; i < resources.gpus_per_node; i++) {
-        MachineResource firstRes, secondRes;
-        firstRes = resources; secondRes = resources;
-        firstRes.gpus_per_node = i;
-        secondRes.gpus_per_node = resources.gpus_per_node - i;
+      for (int i = 1; i < resources.available_gpus_per_node; i++) {
+        MachineResource firstRes = resources, secondRes = resources;
+        firstRes.available_gpus_per_node = i;
+        secondRes.available_gpus_per_node = resources.available_gpus_per_node - i;
+        secondRes.start_gpu_id = resources.start_gpu_id + i;
         float new_cost;
         new_cost = std::max(graph_cost(first_graph, sink_node, sink_view,
                                        source_node, source_view, firstRes, false),
@@ -690,18 +712,19 @@ void FFModel::construct_optimal_view(const Graph* graph,
           }
         }
       }
-      std::vector<MachineView>* valid_views = get_valid_machine_views(bn_node.ptr);
-      MachineView best_bn_view = MachineView::NO_VIEW;
       float best_first_cost = 0.0f, best_second_cost = 0.0f;
-      for (size_t i = 0; i < valid_views->size(); i++) {
-        bool valid = true;
-        MachineView bn_view = (*valid_views)[i];
-        for (int j = 0; j < bn_node.ptr->numOutputs; j++) {
-          if (!bn_node.ptr->outputs[j]->is_valid_machine_view(bn_view))
-            valid = false;
-        }
-        if (!valid) continue;
-        if (!resources.is_valid_machine_view(bn_view)) continue;
+      MachineView best_bn_view = MachineView::NO_VIEW;
+      std::vector<MachineView> valid_views;
+      get_valid_machine_views(bn_node.ptr, resources, valid_views);
+      for (size_t i = 0; i < valid_views.size(); i++) {
+        MachineView bn_view = valid_views[i];
+        //bool valid = true;
+        //for (int j = 0; j < bn_node.ptr->numOutputs; j++) {
+        //  if (!bn_node.ptr->outputs[j]->is_valid_machine_view(bn_view))
+        //    valid = false;
+        //}
+        //if (!valid) continue;
+        //if (!resources.is_valid_machine_view(bn_view)) continue;
         float first_cost = graph_cost(first_graph, bn_node, bn_view,
                                       source_node, source_view, resources,
                                       true/*include_sink*/,
@@ -805,10 +828,10 @@ void FFModel::construct_optimal_view(const Graph* graph,
       // Consider run the two in parallel
       // Split resources vertically
       for (int i = 1; i < resources.num_nodes; i++) {
-        MachineResource firstRes, secondRes;
-        firstRes = resources; secondRes = resources;
+        MachineResource firstRes = resources, secondRes = resources;
         firstRes.num_nodes = i;
         secondRes.num_nodes = resources.num_nodes - i;
+        secondRes.start_gpu_id = resources.start_gpu_id + resources.all_gpus_per_node * i;
         float first_cost = graph_cost(first_graph, sink_node, sink_view,
                                        source_node, source_view, firstRes,
                                        false/*include_sink*/,
@@ -827,11 +850,11 @@ void FFModel::construct_optimal_view(const Graph* graph,
         }
       }
       // Split resources horizontally
-      for (int i = 1; i < resources.gpus_per_node; i++) {
-        MachineResource firstRes, secondRes;
-        firstRes = resources; secondRes = resources;
-        firstRes.gpus_per_node = i;
-        secondRes.gpus_per_node = resources.gpus_per_node - i;
+      for (int i = 1; i < resources.available_gpus_per_node; i++) {
+        MachineResource firstRes = resources, secondRes = resources;
+        firstRes.available_gpus_per_node = i;
+        secondRes.available_gpus_per_node = resources.available_gpus_per_node - i;
+        secondRes.start_gpu_id = resources.start_gpu_id + i;
         float first_cost = graph_cost(first_graph, sink_node, sink_view,
                                       source_node, source_view, firstRes,
                                       false/*include_sink*/,
@@ -880,13 +903,18 @@ float Graph::total_cost(void)
   assert(sink_node != Node::INVALID_NODE);
   MachineResource resource;
   resource.num_nodes = model->config.numNodes;
-  resource.cpus_per_node = model->config.cpusPerNode;
-  resource.gpus_per_node = model->config.workersPerNode;
-  std::vector<MachineView>* valid_views = model->get_valid_machine_views(sink_node.ptr);
+  resource.all_cpus_per_node = model->config.cpusPerNode;
+  resource.all_gpus_per_node = model->config.workersPerNode;
+  resource.available_cpus_per_node = resource.all_cpus_per_node;
+  resource.available_gpus_per_node = resource.all_gpus_per_node;
+  resource.start_gpu_id = 0;
+  resource.start_cpu_id = 0;
+  std::vector<MachineView> valid_views;
+  model->get_valid_machine_views(sink_node.ptr, resource, valid_views);
   float total_cost = 1e7;
-  for (size_t i = 0; i < valid_views->size(); i++) {
+  for (size_t i = 0; i < valid_views.size(); i++) {
     total_cost = std::min(total_cost,
-                          model->graph_cost(this, sink_node, (*valid_views)[i],
+                          model->graph_cost(this, sink_node, valid_views[i],
                                             Node::INVALID_NODE, MachineView::NO_VIEW,
                                             resource, true));
   }
@@ -907,18 +935,23 @@ void Graph::construct_optimal_view(float optimal_cost,
   assert(sink_node != Node::INVALID_NODE);
   MachineResource resource;
   resource.num_nodes = model->config.numNodes;
-  resource.cpus_per_node = model->config.cpusPerNode;
-  resource.gpus_per_node = model->config.workersPerNode;
-  std::vector<MachineView>* valid_views = model->get_valid_machine_views(sink_node.ptr);
+  resource.all_cpus_per_node = model->config.cpusPerNode;
+  resource.all_gpus_per_node = model->config.workersPerNode;
+  resource.available_cpus_per_node = resource.all_cpus_per_node;
+  resource.available_gpus_per_node = resource.all_gpus_per_node;
+  resource.start_gpu_id = 0;
+  resource.start_cpu_id = 0;
+  std::vector<MachineView> valid_views;
+  model->get_valid_machine_views(sink_node.ptr, resource, valid_views);
   float total_cost = 1e7;
   MachineView best_sink_view = MachineView::NO_VIEW;
-  for (size_t i = 0; i < valid_views->size(); i++) {
-    float cost = model->graph_cost(this, sink_node, (*valid_views)[i],
+  for (size_t i = 0; i < valid_views.size(); i++) {
+    float cost = model->graph_cost(this, sink_node, valid_views[i],
                                    Node::INVALID_NODE, MachineView::NO_VIEW, resource,
                                    true/*include_sink*/, true/*construct optimal*/);
     if (cost < total_cost) {
       total_cost = cost;
-      best_sink_view = (*valid_views)[i];
+      best_sink_view = valid_views[i];
     }
   }
   assert(std::abs(total_cost - optimal_cost) < 1e-2);
@@ -962,5 +995,3 @@ size_t FFModel::dp_state_hash(const Graph* graph,
   key = key * 31 + resource.hash();
   return key;
 }
-
-

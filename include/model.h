@@ -647,7 +647,9 @@ public:
                        const MachineResource& resource);
   bool convert_graph_to_layers(const Graph* graph,
                                const std::unordered_map<Node, MachineView>& optimal_views);
-  std::vector<MachineView>* get_valid_machine_views(const Op* op);
+  bool get_valid_machine_views(const Op* op,
+                               const MachineResource& resource,
+                               std::vector<MachineView>& valid_views);
   void register_machine_views();
   // ========================================
   // Internal Node creation APIs
