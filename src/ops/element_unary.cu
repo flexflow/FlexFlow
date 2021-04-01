@@ -19,9 +19,10 @@
 Tensor FFModel::unary(OperatorType op,
                       const Tensor& x,
                       bool inplace,
-                      const char *name)
+                      const char *name,
+		      float scalar)
 {
-  ElementUnary *ele = new ElementUnary(*this, op, x, inplace, name);
+  ElementUnary *ele = new ElementUnary(*this, op, x, inplace, name, scalar);
   layers.push_back(ele);
   return ele->outputs[0];
 }
@@ -30,6 +31,31 @@ Tensor FFModel::exp(const Tensor& x,
                     const char *name)
 {
   return this->unary(OP_EXP, x, false/*inplace*/, name);
+}
+
+Tensor FFModel::scalar_multiply(const Tensor& x,const float scalar ,bool inplace, const char *name)
+{
+  return this->unary(OP_SCALAR_MULTIPLY, x, inplace, name, scalar);
+}
+
+Tensor FFModel::scalar_add(const Tensor& x,const float scalar ,bool inplace, const char *name)
+{
+  return this->unary(OP_SCALAR_ADD, x, inplace, name, scalar);
+}
+
+Tensor FFModel::scalar_sub(const Tensor& x,const float scalar ,bool inplace, const char *name)
+{
+  return this->unary(OP_SCALAR_SUB, x, inplace, name, scalar);
+}
+
+Tensor FFModel::scalar_truediv(const Tensor& x,const float scalar ,bool inplace, const char *name)
+{
+  return this->unary(OP_SCALAR_TRUE_DIV, x, inplace, name, scalar);
+}
+
+Tensor FFModel::scalar_floordiv(const Tensor& x,const float scalar ,bool inplace, const char *name)
+{
+  return this->unary(OP_SCALAR_FLOOR_DIV, x, inplace, name, scalar);
 }
 
 Tensor FFModel::relu(const Tensor& x, bool inplace, const char *name)
@@ -47,6 +73,16 @@ Tensor FFModel::tanh(const Tensor& x, const char *name)
   return this->unary(OP_TANH, x, false/*inplace*/, name);
 }
 
+Tensor FFModel::identity(const Tensor& x, const char *name)
+{
+  return this->unary(OP_IDENTITY, x, false/*inplace*/, name);
+}
+
+Tensor FFModel::gelu(const Tensor& x, const char *name)
+{
+  return this->unary(OP_GELU, x, false/*inplace*/, name);
+}
+
 Tensor FFModel::elu(const Tensor& x, bool inplace, const char *name)
 {
   // Currently assume inplace is false
@@ -58,8 +94,9 @@ ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
                            const Tensor& x,
                            bool _inplace,
-                           const char* name)
-: Op(model, _op_type, name, x), inplace(_inplace)
+                           const char* name,
+			   float _scalar)
+: Op(model, _op_type, name, x), inplace(_inplace), scalar(_scalar)
 {
   outputs[0].numDim = inputs[0].numDim;
   for (int i = 0; i < outputs[0].numDim; i++)
@@ -165,6 +202,7 @@ OpMeta* ElementUnary::init_task(const Task *task,
   m->op_type = eu->op_type;
   m->profiling = eu->profiling;
   m->inplace = eu->inplace;
+  m->scalar = eu->scalar;
   if (m->inplace) {
     assert(regions.size() == 1);
     assert(task->regions.size() == 1);
@@ -266,7 +304,8 @@ __global__
 void elewise_unary_forward_kernel(coord_t volume,
                                   const float alpha,
                                   const float beta,
-                                  OperatorType type,
+                                  const float scalar,
+				  OperatorType type,
                                   const float* in,
                                   float* out)
 {
@@ -277,6 +316,41 @@ void elewise_unary_forward_kernel(coord_t volume,
       {
         out[i] = alpha * exp(in[i]) + beta * out[i];
         break;
+      }
+      case OP_IDENTITY:
+      {
+	out[i] = in[i];
+	break;
+      }
+      case OP_SCALAR_MULTIPLY:
+      {
+	out[i] = in[i] * scalar;
+	break;
+      }
+      case OP_SCALAR_ADD:
+      {
+	out[i] = in[i] + scalar;
+	break;
+      }
+      case OP_SCALAR_SUB:
+      {
+	out[i] = in[i] - scalar;
+	break;
+      }
+      case OP_SCALAR_TRUE_DIV:
+      {
+	out[i] = in[i] / scalar;
+	break;
+      }
+      case OP_SCALAR_FLOOR_DIV:
+      {
+	out[i] = floor(in[i] / scalar);
+	break;
+      }
+      case OP_GELU:
+      {
+	out[i] = in[i] * 0.5 * erfc(-in[i]*M_SQRT1_2);
+	break;
       }
       default:
         assert(false);
@@ -297,7 +371,7 @@ void ElementUnary::forward_kernel(const ElementUnaryMeta* m,
         &beta, m->outputTensor, output_ptr));
   } else {
     elewise_unary_forward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
-        num_elements, alpha, beta, m->op_type, input_ptr, output_ptr);
+        num_elements, alpha, beta,m->scalar, m->op_type, input_ptr, output_ptr);
   }
 }
 
@@ -392,6 +466,7 @@ __global__
 void elewise_unary_backward_kernel(coord_t volume,
                                    const float alpha,
                                    const float beta,
+				   const float scalar,
                                    OperatorType type,
                                    const float* output_grad,
                                    const float* input,
@@ -405,6 +480,41 @@ void elewise_unary_backward_kernel(coord_t volume,
         //TODO: change to use output instead of recomputing
         input_grad[i] = alpha * output_grad[i] * exp(input[i]) + beta * input_grad[i];
         break;
+      }
+      case OP_IDENTITY:
+      {
+	input_grad[i] = output_grad[i];
+	break;
+      } 
+      case OP_SCALAR_MULTIPLY:
+      {
+	input_grad[i] = output_grad[i]*scalar;
+	break;
+      }
+      case OP_SCALAR_ADD:
+      {
+	input_grad[i] = output_grad[i];
+	break;
+      }
+      case OP_SCALAR_SUB:
+      {
+	input_grad[i] = output_grad[i];
+	break;
+      }
+      case OP_SCALAR_TRUE_DIV:
+      {
+	input_grad[i] = output_grad[i]/scalar;
+	break;
+      }
+      case OP_SCALAR_FLOOR_DIV:
+      {
+	input_grad[i] = output_grad[i]/scalar;
+	break;
+      }
+      case OP_GELU:
+      {
+	input_grad[i] = output_grad[i]*(0.5 * erfc(-input[i]*M_SQRT1_2)-0.5*M_SQRT1_2*input[i]*exp(-input[i]*input[i]*0.5));
+	break;
       }
       default:
         assert(false);
@@ -427,7 +537,7 @@ void ElementUnary::backward_kernel(const ElementUnaryMeta* m,
         m->inputTensor, input_ptr, &alpha, m->inputTensor, input_grad_ptr));
   } else {
     elewise_unary_backward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
-        num_elements, alpha, alpha, m->op_type, output_grad_ptr, input_ptr, input_grad_ptr);
+        num_elements, alpha, alpha, m->scalar, m->op_type, output_grad_ptr, input_ptr, input_grad_ptr);
   }
 }
 

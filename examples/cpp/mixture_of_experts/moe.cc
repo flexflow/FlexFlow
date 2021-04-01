@@ -95,11 +95,9 @@ void top_level_task(const Task* task,
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
 
-
   // Data Loader
   DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
   ff.init_layers();
-
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -158,6 +156,7 @@ DataLoader::DataLoader(FFModel& ff, const MoeConfig& moe,
     const int dims[] = {num_samples, label.adim[0]};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
   }
+
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
   const MoeConfig* ptr = &moe;
@@ -240,6 +239,7 @@ void read_mnist(float* input_ptr, int* label_ptr)
   else {
     assert(false);
   }
+
   // read labels
   std::ifstream labels("train-labels-idx1-ubyte", std::ios::binary);
   if (labels.is_open())
@@ -250,6 +250,7 @@ void read_mnist(float* input_ptr, int* label_ptr)
     magic_number= reverseInt(magic_number);
     labels.read((char*)&number_of_images,sizeof(number_of_images));
     number_of_images= reverseInt(number_of_images);
+
     for(int i = 0; i < number_of_images; i++) {
       unsigned char temp = 0;
       labels.read((char*)&temp, sizeof(temp));
@@ -284,6 +285,7 @@ void DataLoader::load_entire_dataset(const Task *task,
 
   read_mnist(input_ptr, label_ptr);
   log_app.print("finish loading MNIST\n");
+
 }
 
 void DataLoader::next_batch(FFModel& ff)

@@ -120,12 +120,104 @@ class PyTorchModel(object):
         input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
         output = ffmodel.flat(input=input_tensor, name=op_name)
         output = FXTensor(output)
+      
+      elif op_type == OpType.SCALAR_MULTIPLY:
+        assert len(items) == 5, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        output = ffmodel.scalar_multiply(input=input_tensor, scalar=float(items[4]), name=op_name)
+        output = FXTensor(output)
+      
+      elif op_type == OpType.SCALAR_FLOORDIV:
+        assert len(items) == 5, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        if type(input_tensor) is float or type(input_tensor) is int:
+            output = input_tensor // float(items[4])
+        else:
+            output = ffmodel.scalar_floor_divide(input=input_tensor, scalar=float(items[4]), name=op_name)
+        output = FXTensor(output)
+    
+      elif op_type == OpType.SCALAR_ADD:
+        assert len(items) == 5, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        output = ffmodel.scalar_add(input=input_tensor, scalar=float(items[4]), name=op_name)
+        output = FXTensor(output)
+      
+      elif op_type == OpType.SCALAR_SUB:
+        assert len(items) == 5, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        output = ffmodel.scalar_sub(input=input_tensor, scalar=float(items[4]), name=op_name)
+        output = FXTensor(output)
+
+      elif op_type == OpType.SCALAR_TRUEDIV:
+        assert len(items) == 5, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        output = ffmodel.scalar_true_divide(input=input_tensor, scalar=float(items[4]), name=op_name)
+        output = FXTensor(output)
 
       elif op_type == OpType.RELU:
         assert len(items) == 4, "wrong format"
         assert len(self.input_ops_list) == 1, "wrong format"
         input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
         output = ffmodel.relu(input=input_tensor, name=op_name)
+        output = FXTensor(output)
+
+      elif op_type == OpType.GELU:
+        assert len(items) == 4, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        output = ffmodel.gelu(input=input_tensor, name=op_name)
+        output = FXTensor(output)
+
+      elif op_type == OpType.IDENTITY:
+        assert len(items) == 4, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        output = ffmodel.identity(input=input_tensor, name=op_name)
+        output = FXTensor(output)
+      
+      elif op_type == OpType.TRANSPOSE:
+        assert len(items) >= 6
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        perm = list(range(0,len(input_tensor.dims)))
+        a,b = int(items[4]),int(items[5])
+        perm[a],perm[b] = perm[b],perm[a]
+        output = ffmodel.transpose(input=input_tensor,perm=perm,name=op_name)
+        output = FXTensor(output)
+      
+      elif op_type == OpType.PERMUTE:
+        assert len(items) > 4
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        perm = [int(dim) for dim in items[4:]]
+        output = ffmodel.transpose(input=input_tensor,perm=perm,name=op_name)
+        output = FXTensor(output)
+      
+      elif op_type == OpType.RESHAPE:
+        assert len(items) >= 5
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        shape = items[4:]
+        for idx,dim in enumerate(shape):
+            try:
+                shape[idx] = int(dim)
+            except:
+                 shape[idx] = self.tensor_dict[dim+op_name].fftensor
+
+        output = ffmodel.reshape(input=input_tensor,shape=shape,name=op_name)
+        output = FXTensor(output)
+
+      elif op_type == OpType.BATCH_MATMUL:
+        assert len(items) == 4, "wrong format"
+        assert len(self.input_ops_list) == 2, "wrong format"
+        input_tensor1 = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        input_tensor2 = self.tensor_dict[self._get_input_key(op_name, 1)].fftensor
+        output = ffmodel.batch_matmul(A=input_tensor1, B=input_tensor2, name=op_name)
         output = FXTensor(output)
 
       elif op_type == OpType.SIGMOID:
@@ -181,11 +273,21 @@ class PyTorchModel(object):
         assert len(items) == 5, "wrong format"
         assert len(self.input_ops_list) == 1, "wrong format"
         input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
-        assert type(input_tensor) == list
+        assert type(input_tensor) == list or type(input_tensor) == tuple
         idx = int(items[4])
         output = input_tensor[idx]
         output = FXTensor(output)
         
+      elif op_type == OpType.GETATTR:
+        assert len(items) == 5, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        if(items[4] == "shape"):
+            output = input_tensor.dims
+        else:
+            output = getattr(input_tensor, items[4]) 
+        output = FXTensor(output)
+
       elif op_type == OpType.BATCH_NORM:
         assert len(items) == 4, "wrong format"
         assert len(self.input_ops_list) == 1, "wrong format"

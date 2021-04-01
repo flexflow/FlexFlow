@@ -24,7 +24,7 @@ T select_random_determistic(std::vector<T> const &values, std::vector<float> con
   float r = value * total;
   float curr = 0.0f;
   int i = -1;
-  while (curr <= r && (i < 0 || i < values.size() - 1)) {
+  while (curr <= r && (i < 0 || i < (int)values.size() - 1)) {
     i++;
     curr += weights[i];
   }

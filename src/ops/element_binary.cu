@@ -149,9 +149,16 @@ void ElementBinary::create_output_and_partition_with_dim(FFModel& model)
     for (int i = 0; i < 2; i++) {
       Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
         ctx, inputs[i].part.get_index_partition());
-      assert(input_rect == part_rect);
-      input_lps[i] = inputs[i].part;
-      input_grad_lps[i] = inputs[i].part_grad;
+      // inplace_a require part_rect == inputs[0].part_rect
+      if (i == 0)
+        assert(input_rect == part_rect);
+      if (input_rect == part_rect) {
+        input_lps[i] = inputs[i].part;
+        input_grad_lps[i] = inputs[i].part_grad;
+      } else {
+        model.create_disjoint_partition<NDIM>(
+            inputs[i], IndexSpaceT<NDIM>(task_is), input_lps[i], input_grad_lps[i]);
+      }
     }
     return;
   }

@@ -21,6 +21,7 @@
 - You should at least use Eigen or uBlas or so for matrix multiplications.
   Preferably implement on GPU */
 
+
 // Multiply exp preds with gate weights (first loss in '91 Jacobs)
 void f_mm(float* output,
           const float* gate_net_preds,
@@ -257,7 +258,6 @@ void aggregate_backward(float** exp_preds,
       gating_net_grads+i*k, chosen_exp_grads, k, out_dim);
   }
 }
-
 
 
 void Aggregate::forward_task(const Task *task,

@@ -215,6 +215,8 @@ public:
   // Other virtual functions that can be optionally overwritten
   virtual ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   virtual ParallelConfig get_data_parallel_config(const FFModel& ff) const;
+  virtual bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
+  virtual bool is_adoptable_parallel_config(FFModel const &ff, ParallelConfig const &pc) const;
   virtual Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx);
   virtual Domain get_output_tensor_shape(const ParallelConfig& pc, int output_idx, int part_idx);
   virtual Domain get_weight_tensor_shape(const ParallelConfig& pc, int weight_idx, int part_idx);
@@ -225,6 +227,8 @@ public:
   virtual bool can_inplace_output();
   virtual bool has_inplace_output();
   virtual void do_inplace_output();
+
+  int get_dimension() const;
 #ifdef FF_USE_NCCL
   static ncclUniqueId get_nccl_unique_id_task(const Task *task,
       const std::vector<PhysicalRegion> &regions,
@@ -252,6 +256,8 @@ public:
 #endif
 };
 
+ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
+
 class ElementBinary;
 class ElementUnary;
 class Conv2D;
@@ -275,26 +281,51 @@ public:
   // Add an add layer
   Tensor add(const Tensor& x,
              const Tensor& y,
-             bool inplace = false,
+             bool inplace_a = false,
              char const *name = NULL);
   // Add a subtract layer
   Tensor subtract(const Tensor& x,
                   const Tensor& y,
-                  bool inplace = false,
+                  bool inplace_a = false,
                   char const *name = NULL);
   // Add a multiply layer
   Tensor multiply(const Tensor& x,
                   const Tensor& y,
-                  bool inplace = false,
+                  bool inplace_a = false,
                   char const *name = NULL);
   // Add a divide layer
   Tensor divide(const Tensor& x,
                 const Tensor& y,
-                bool inplace = false,
+                bool inplace_a = false,
                 char const *name = NULL);
+  // Add a scalar operation layer
+  Tensor scalar_multiply(const Tensor& x,
+	      const float scalar,
+              bool inplace = true,
+              const char *name = NULL);
+  Tensor scalar_add(const Tensor& x,
+		  const float scalar,
+		  bool inplace = true,
+		  const char *name = NULL);
+  Tensor scalar_sub(const Tensor& x,
+		  const float scalar,
+		  bool inplace = true,
+		  const char *name = NULL);
+  Tensor scalar_truediv(const Tensor& x,
+		  const float scalar,
+		  bool inplace = true,
+		  const char *name = NULL);
+  Tensor scalar_floordiv(const Tensor& x,
+		  const float scalar,
+		  bool inplace = true,
+		  const char *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor& x,
               bool inplace = true,
+              const char *name = NULL);
+  Tensor identity(const Tensor& x,
+              const char *name = NULL);
+  Tensor gelu(const Tensor& x,
               const char *name = NULL);
   Tensor sigmoid(const Tensor& x,
                  const char *name = NULL);
@@ -533,9 +564,11 @@ private:
   Tensor unary(OperatorType op,
                Tensor const &x,
                bool inplace = true,
-               char const *name = NULL);
+               char const *name = NULL,
+	       float scalar = 0.0);
   ElementUnary * unary(OperatorType op,
-                       char const *name = NULL);
+                       char const *name = NULL,
+		       float scalar = 0.0);
 };
 
 class ElementBinaryMeta : public OpMeta {
@@ -602,6 +635,7 @@ public:
   cudnnActivationDescriptor_t actiDesc;
   OperatorType op_type;
   bool inplace;
+  float scalar;
 };
 
 class ElementUnary : public Op {
@@ -610,7 +644,8 @@ public:
                OperatorType type,
                const Tensor& x,
                bool inplace,
-               const char* name);
+               const char* name,
+	       float scalar);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -648,6 +683,7 @@ private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
 public:
+  float scalar;
   bool inplace;
 };
 
@@ -963,6 +999,7 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
   ParallelConfig get_random_parallel_config(const FFModel& ff) const;
+  bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);

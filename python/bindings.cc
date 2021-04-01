@@ -4,6 +4,8 @@
 
 #include "config.h"
 #include "ffconst.h"
+#include "flexflow_c.h"
+#include "mapper.h"
 #include "metrics_functions.h"
 #include "model.h"
 #include "tensor.h"
@@ -13,6 +15,51 @@ namespace py = pybind11;
 using py::literals::operator""_a;
 
 namespace {
+
+static Context ctx;
+static int global_tracing_id = 200;
+
+void begin_flexflow_task(std::vector<std::string> args) {
+  // This needs to be set, otherwise NCCL will try to use group kernel launches,
+  // which are not compatible with the Realm CUDA hijack.
+  setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
+
+  std::vector<const char *> argvec;
+  argvec.push_back("python");
+  for (auto &arg: args) {
+    if (arg == "-ll:py") {
+      throw std::invalid_argument("-ll:py is not supported when using native python");
+    }
+    argvec.push_back(arg.data());
+  }
+  int argc = argvec.size();
+  char **argv = const_cast<char **>(argvec.data());
+
+  register_flexflow_internal_tasks();
+
+  register_c_custom_tasks();
+
+  FFMapper::register_sharding_functor(argc, argv);
+
+  Runtime::add_registration_callback(update_mappers);
+
+  // Start the runtime in background mode
+  Runtime::start(argc, argv, true/*background*/);
+  // Get the runtime now that we've started it
+  Runtime *runtime = Runtime::get_runtime();
+  // Then we can bind make this thread into an implicit top-level task
+  ctx = runtime->begin_implicit_task(PYTHON_TOP_LEVEL_TASK_ID, 0/*mapper id*/,
+                                     Processor::LOC_PROC, "flexflow_top_level_task",
+                                     true/*control replicable*/);
+}
+
+void finish_flexflow_task() {
+  Runtime *runtime = Runtime::get_runtime();
+  runtime->finish_implicit_task(ctx);
+  // The previous call is asynchronous so we still need to
+  // wait for the shutdown of the runtime to complete
+  Runtime::wait_for_shutdown();
+}
 
 double get_current_time(FFConfig &config)
 {
@@ -62,8 +109,7 @@ void fit(FFModel &model, SingleDataLoader &x, SingleDataLoader &y, int epochs)
 {
   int num_samples = y.num_samples;
   int batch_size = model.config.batchSize;
-  static int tracing_id = 200;
-  tracing_id ++;
+  int tracing_id = global_tracing_id++;
   for (int epoch = 0; epoch < epochs; epoch++) {
     x.reset();
     y.reset();
@@ -82,11 +128,33 @@ void fit(FFModel &model, SingleDataLoader &x, SingleDataLoader &y, int epochs)
   }
 }
 
+void eval(FFModel &model, SingleDataLoader &x, SingleDataLoader &y)
+{
+  int num_samples = y.num_samples;
+  int batch_size = model.config.batchSize;
+  int tracing_id = global_tracing_id++;
+  x.reset();
+  y.reset();
+  model.reset_metrics();
+  int iterations = num_samples / batch_size;
+  for (int iter = 0; iter < iterations; iter++) {
+    x.next_batch(model);
+    y.next_batch(model);
+    model.config.lg_hlr->begin_trace(model.config.lg_ctx, tracing_id);
+    model.forward();
+    model.compute_metrics();
+    model.config.lg_hlr->end_trace(model.config.lg_ctx, tracing_id);
+  }
+}
+
 }
 
 PYBIND11_MODULE(flexflow_bindings, m) {
   m.attr("cuda_enabled") =
       true;
+
+  m.def("begin_flexflow_task", &begin_flexflow_task);
+  m.def("finish_flexflow_task", &finish_flexflow_task);
 
   py::enum_<ActiMode>(m, "ActiMode")
       .value("AC_MODE_NONE", ActiMode::AC_MODE_NONE)
@@ -120,7 +188,9 @@ PYBIND11_MODULE(flexflow_bindings, m) {
       .def("next_batch", &SingleDataLoader::next_batch);
 
   py::class_<Tensor>(m, "Tensor")
-      .def_property_readonly("dims", [](Tensor &t) { return std::vector<int>(t.adim, &t.adim[t.numDim]); });
+      .def_readonly("data_type", &Tensor::data_type)
+      .def_property_readonly("dims", [](Tensor &t) { std::vector<int> dims(t.adim, &t.adim[t.numDim]); std::reverse(dims.begin(), dims.end()); return dims; })
+      .def_readonly("num_dims", &Tensor::numDim);
 
   py::class_<FFConfig>(m, "FFConfig")
       .def(py::init())
@@ -171,26 +241,36 @@ PYBIND11_MODULE(flexflow_bindings, m) {
       .def("compile", static_cast<void (FFModel::*)(LossType, const std::vector<MetricsType>&, CompMode)>(&FFModel::compile), "loss_type"_a, "metrics"_a, "comp_mode"_a = CompMode::COMP_MODE_TRAINING)
       .def("create_data_loader", &create_data_loader, "batch_tensor"_a, "full_array"_a)
       .def("create_tensor", &create_tensor, "dims"_a, "data_type"_a, "create_grad"_a = true)
+      .def("get_layer_by_id", [](FFModel &m, int id) { return m.layers[id] ; })
       .def("get_perf_metrics", [](FFModel &m) { return m.current_metrics.get_result<PerfMetrics>(); })
       .def("init_layers", &FFModel::init_layers)
       .def("reset_metrics", &FFModel::reset_metrics)
       // Training
+      .def("eval", &eval, "x"_a, "y"_a)
       .def("fit", &fit, "x"_a, "y"_a, "epochs"_a = 1)
-      .def("forward", &FFModel::forward)
+      .def("forward", &FFModel::forward, "seq_length"_a = -1)
       .def("zero_gradients", &FFModel::zero_gradients)
-      .def("backward", &FFModel::backward)
+      .def("backward", &FFModel::backward, "seq_length"_a = -1)
       .def("update", &FFModel::update)
       // Arithmetic operators
       .def("exp", &FFModel::exp, "x"_a, "name"_a = nullptr)
-      .def("add", &FFModel::add, "x"_a, "y"_a, "name"_a = nullptr)
-      .def("subtract", &FFModel::subtract, "x"_a, "y"_a, "name"_a = nullptr)
-      .def("multiply", &FFModel::multiply, "x"_a, "y"_a, "name"_a = nullptr)
-      .def("divide", &FFModel::divide, "x"_a, "y"_a, "name"_a = nullptr)
+      .def("add", &FFModel::add, "x"_a, "y"_a, "inplace_a"_a = false, "name"_a = nullptr)
+      .def("subtract", &FFModel::subtract, "x"_a, "y"_a, "inplace_a"_a = false, "name"_a = nullptr)
+      .def("multiply", &FFModel::multiply, "x"_a, "y"_a, "inplace_a"_a = false, "name"_a = nullptr)
+      .def("divide", &FFModel::divide, "x"_a, "y"_a, "inplace_a"_a = false, "name"_a = nullptr)
+      // Scalar arithmetic operators
+      .def("scalar_multiply", &FFModel::scalar_multiply, "x"_a, "scalar"_a, "inplace"_a = true, "name"_a = nullptr)
+      .def("scalar_add", &FFModel::scalar_add, "x"_a, "scalar"_a, "inplace"_a = true, "name"_a = nullptr)
+      .def("scalar_sub", &FFModel::scalar_add, "x"_a, "scalar"_a, "inplace"_a = true, "name"_a = nullptr)
+      .def("scalar_truediv", &FFModel::scalar_add, "x"_a, "scalar"_a, "inplace"_a = true, "name"_a = nullptr)
+      .def("scalar_floordiv", &FFModel::scalar_add, "x"_a, "scalar"_a, "inplace"_a = true, "name"_a = nullptr)
       // Activations
-      .def("relu", &FFModel::relu, "x"_a, "name"_a = nullptr)
+      .def("relu", &FFModel::relu, "x"_a, "inplace"_a = true, "name"_a = nullptr)
+      .def("identity", &FFModel::identity, "x"_a, "name"_a = nullptr)
+      .def("gelu", &FFModel::identity, "x"_a, "name"_a = nullptr)
       .def("sigmoid", &FFModel::sigmoid, "x"_a, "name"_a = nullptr)
       .def("tanh", &FFModel::tanh, "x"_a, "name"_a = nullptr)
-      .def("elu", &FFModel::elu, "x"_a, "name"_a = nullptr)
+      .def("elu", &FFModel::elu, "x"_a, "inplace"_a = true, "name"_a = nullptr)
       // Layers
       .def("conv2d", &FFModel::conv2d, "input"_a, "out_channels"_a, "kernel_h"_a, "kernel_w"_a, "stride_h"_a, "stride_w"_a, "padding_h"_a, "padding_w"_a, "activation"_a = ActiMode::AC_MODE_NONE, "groups"_a = 1, "use_bias"_a = true, "shared_op"_a = nullptr, "kernel_initializer"_a = nullptr, "bias_initializer"_a = nullptr, "name"_a = nullptr)
       .def("dropout", &FFModel::dropout, "input"_a, "rate"_a, "seed"_a = 0, "name"_a = nullptr)

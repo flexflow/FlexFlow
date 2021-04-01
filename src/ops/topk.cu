@@ -557,7 +557,7 @@ void TopK::forward_task(const Task* task,
     cudaEventRecord(t_start);
   }
   int length = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
-  int k = out1_domain.hi()[0] - out1_domain.lo()[0] + 1;
+  int k = out1_domain.hi()[0] - out1_domain.lo()[0] + 1; /*TODO: This prints to 5*/
   size_t batch_size = in1_domain.get_volume() / length;
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
