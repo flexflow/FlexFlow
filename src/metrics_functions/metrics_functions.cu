@@ -287,10 +287,10 @@ void Metrics::compute_with_dim(FFModel* model,
     assert(false);
   }
   ArgumentMap argmap;
-  IndexLauncher launcher(METRICS_COMP_TASK_ID, task_is,
+  IndexLauncher launcher(METRICS_COMP_TASK_ID, logit->parallel_is,
                          TaskArgument(this, sizeof(Metrics)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(pcname));
+                         logit->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(logit->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, logit->region));

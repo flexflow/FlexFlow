@@ -47,6 +47,28 @@
 struct MachineView {
   static const MachineView NO_VIEW;
   MachineView();
+  inline bool operator==(const MachineView& rhs) const
+  {
+    if (device_type != rhs.device_type) return false;
+    if (ndims != rhs.ndims) return false;
+    if (start_device_id != rhs.start_device_id) return false;
+    for (int i = 0; i < ndims; i++) {
+      if (dim[i] != rhs.dim[i]) return false;
+      if (stride[i] != rhs.dim[i]) return false;
+    }
+    return true;
+  }
+  inline bool operator!=(const MachineView& rhs) const
+  {
+    if (device_type != rhs.device_type) return true;
+    if (ndims != rhs.ndims) return true;
+    if (start_device_id != rhs.start_device_id) return true;
+    for (int i = 0; i < ndims; i++) {
+      if (dim[i] != rhs.dim[i]) return true;
+      if (stride[i] != rhs.dim[i]) return true;
+    }
+    return false;
+  }
   size_t hash() const;
   size_t num_parts() const;
   enum DeviceType {

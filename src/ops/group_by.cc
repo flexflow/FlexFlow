@@ -119,7 +119,7 @@ void Group_by::init(const FFModel& ff)
   IndexLauncher launcher(GROUP_BY_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Group_by)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   // data
   launcher.add_region_requirement(
     RegionRequirement(inputs[0]->part, 0/*projection id*/,
@@ -309,7 +309,7 @@ void Group_by::forward(const FFModel& ff)
   IndexLauncher launcher(GROUP_BY_FWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Group_by)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   // data
   launcher.add_region_requirement(
     RegionRequirement(inputs[0]->part, 0/*projection id*/,
@@ -341,7 +341,7 @@ void Group_by::backward(const FFModel& ff)
   IndexLauncher launcher(GROUP_BY_BWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Group_by)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
 
   // input_grad
   launcher.add_region_requirement(

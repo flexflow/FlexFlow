@@ -134,7 +134,7 @@ void Split::init(const FFModel& ff)
   IndexLauncher launcher(SPLIT_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Split)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -219,7 +219,7 @@ void Split::forward(const FFModel& ff)
   IndexLauncher launcher(SPLIT_FWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Split)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -280,7 +280,7 @@ void Split::backward(const FFModel& ff)
   IndexLauncher launcher(SPLIT_BWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Split)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));

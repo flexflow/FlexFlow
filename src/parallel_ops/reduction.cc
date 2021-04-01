@@ -82,11 +82,10 @@ void Reduction::forward(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(REDUCTION_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(REDUCTION_FWD_TASK_ID, outputs[0]->parallel_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
+      outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -105,11 +104,10 @@ void Reduction::backward(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexSpace task_is = inputs[0]->parallel_is;
-  IndexLauncher launcher(REDUCTION_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(REDUCTION_BWD_TASK_ID, inputs[0]->parallel_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
+      inputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));

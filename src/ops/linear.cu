@@ -410,6 +410,7 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
 void Linear::init(const FFModel& ff)
 {
   assert(check_output_input_weight_same_parallel_is());
+  assert(check_output_input_weight_same_machine_view());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -418,7 +419,7 @@ void Linear::init(const FFModel& ff)
   IndexLauncher launcher(LINEAR_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Linear)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   //launcher.add_region_requirement(
   //    RegionRequirement(input_lps[0], 0/*projection id*/,
   //                      READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -580,7 +581,7 @@ void Linear::forward(const FFModel& ff)
   IndexLauncher launcher(LINEAR_FWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -833,7 +834,7 @@ void Linear::backward(const FFModel& ff)
     IndexLauncher launcher(LINEAR_BWD_TASK_ID, parallel_is,
                            TaskArgument(NULL, 0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(std::string(name)));
+                           outputs[0]->machine_view.hash());
     // regions[0](I): input
     launcher.add_region_requirement(
         RegionRequirement(inputs[0]->part, 0/*projection id*/,

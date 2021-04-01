@@ -195,7 +195,7 @@ void Reshape::init(const FFModel& ff)
   IndexLauncher launcher(RESHAPE_INIT_TASK_ID, parallel_is,
       TaskArgument(this, sizeof(Reshape)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
+      outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -243,7 +243,7 @@ void Reshape::forward(const FFModel& ff)
   IndexLauncher launcher(RESHAPE_FWD_TASK_ID, parallel_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
+      outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -293,7 +293,7 @@ void Reshape::backward(const FFModel& ff)
   IndexLauncher launcher(RESHAPE_BWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   // regions[0](I): output_grad
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,

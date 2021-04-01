@@ -207,10 +207,10 @@ void Loss::backward_with_dim(FFModel* model,
     assert(false);
   }
   ArgumentMap argmap;
-  IndexLauncher launcher(LOSS_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(LOSS_BWD_TASK_ID, logit->parallel_is,
                          TaskArgument(this, sizeof(Loss)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(pcname));
+                         logit->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(logit->part_grad, 0/*projection id*/,
                         READ_WRITE, EXCLUSIVE, logit->region_grad));

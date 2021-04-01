@@ -516,11 +516,10 @@ void Op::zero_grad(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   Context ctx = ff.config.lg_ctx;
   ArgumentMap argmap;
-  IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(ZERO_INIT_TASK_ID, outputs[0]->parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   for (int i = 0; i < numWeights; i++) {
     launcher.add_region_requirement(
         RegionRequirement(weights[i]->part_grad, 0/*projection id*/,
@@ -970,6 +969,22 @@ bool Op::check_output_input_weight_same_parallel_is() const
       return false;
   for (int i = 0; i < numWeights; i++)
     if (weights[i]->parallel_is != parallel_is)
+      return false;
+  return true;
+}
+
+bool Op::check_output_input_weight_same_machine_view() const
+{
+  assert(numOutputs > 0);
+  MachineView machine_view = outputs[0]->machine_view;
+  for (int i = 0; i < numOutputs; i++)
+    if (outputs[i]->machine_view != machine_view)
+      return false;
+  for (int i = 0; i < numInputs; i++)
+    if (inputs[i]->machine_view != machine_view)
+      return false;
+  for (int i = 0; i < numWeights; i++)
+    if (weights[i]->machine_view != machine_view)
       return false;
   return true;
 }

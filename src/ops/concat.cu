@@ -163,7 +163,7 @@ void Concat::init(const FFModel& ff)
   IndexLauncher launcher(CONCAT_INIT_TASK_ID, parallel_is,
     TaskArgument(this, sizeof(Concat)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-    FFConfig::get_hash_id(std::string(name)));
+    outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->part, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
@@ -311,7 +311,7 @@ void Concat::forward(const FFModel& ff)
   IndexLauncher launcher(CONCAT_FWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Concat)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->part, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
@@ -421,7 +421,7 @@ void Concat::backward(const FFModel& ff)
   IndexLauncher launcher(CONCAT_BWD_TASK_ID, parallel_is,
     TaskArgument(this, sizeof(Concat)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-    FFConfig::get_hash_id(std::string(name)));
+    outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));

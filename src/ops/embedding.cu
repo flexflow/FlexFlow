@@ -142,7 +142,7 @@ void Embedding::init(const FFModel& ff)
   IndexLauncher launcher(EMBED_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Embedding)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   // regions[0]: input
   //launcher.add_region_requirement(
   //  RegionRequirement(input_lps[0], 0/*projection*/,
@@ -281,7 +281,7 @@ void Embedding::forward(const FFModel& ff)
   IndexLauncher launcher(EMBED_FWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   // regions[0]: input
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part, 0/*projection*/,
@@ -354,7 +354,7 @@ void Embedding::backward(const FFModel& ff)
   IndexLauncher launcher(EMBED_BWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   // regions[0]: input
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part, 0/*projection*/,

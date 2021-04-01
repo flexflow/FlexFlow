@@ -195,7 +195,7 @@ void Aggregate::init(const FFModel& ff)
   IndexLauncher launcher(AGGREGATE_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Aggregate)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   // gate_preds
   launcher.add_region_requirement(
     RegionRequirement(inputs[0]->part, 0/*projection id*/,
@@ -420,7 +420,7 @@ void Aggregate::forward(const FFModel& ff)
   IndexLauncher launcher(AGGREGATE_FWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Aggregate)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
 
   // gate_preds
   launcher.add_region_requirement(
@@ -457,7 +457,7 @@ void Aggregate::backward(const FFModel& ff)
   IndexLauncher launcher(AGGREGATE_BWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Aggregate)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
 
   // gate_preds
   launcher.add_region_requirement(

@@ -101,7 +101,7 @@ void SGDOptimizer::update(const Tensor p)
     TaskLauncher launcher(SGD_UPD_PS_TASK_ID,
         TaskArgument(this, sizeof(SGDOptimizer)),
         Predicate::TRUE_PRED, 0/*mapper_id*/,
-        FFConfig::get_hash_id(std::string(p->owner_op->name)));
+        p->machine_view.hash());
     // regions[0]: region_grad
     launcher.add_region_requirement(
         RegionRequirement(p->region_grad,
@@ -127,7 +127,7 @@ void SGDOptimizer::update(const Tensor p)
     IndexLauncher index_launcher(PS_PREFETCH_TASK_ID, p->parallel_is,
         TaskArgument(NULL, 0), argmap,
         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-        FFConfig::get_hash_id(std::string(p->owner_op->name)));
+        p->machine_view.hash());
     // regions[0]: region
     index_launcher.add_region_requirement(
         RegionRequirement(p->part, 0/*projection*/,
@@ -160,7 +160,7 @@ void SGDOptimizer::update(const Tensor p)
     IndexLauncher launcher(SGD_UPD_NCCL_TASK_ID, p->parallel_is,
         TaskArgument(this, sizeof(SGDOptimizer)), argmap,
         Predicate::TRUE_PRED, false/*must_epoch*/, 0/*mapper_id*/,
-        FFConfig::get_hash_id(p->owner_op->name));
+        p->machine_view.hash());
     // regions[0]: region_grad
     launcher.add_region_requirement(
         RegionRequirement(p->part_grad, 0/*projection id*/,
@@ -265,7 +265,7 @@ void AdamOptimizer::update(const Tensor p)
     TaskLauncher launcher(ADAM_UPD_PS_TASK_ID,
         TaskArgument(this, sizeof(AdamOptimizer)),
         Predicate::TRUE_PRED, 0/*mapper_id*/,
-        FFConfig::get_hash_id(std::string(p->owner_op->name)));
+        p->machine_view.hash());
     // regions[0]: region_grad
     launcher.add_region_requirement(
         RegionRequirement(p->region_grad,
@@ -293,7 +293,7 @@ void AdamOptimizer::update(const Tensor p)
     IndexLauncher index_launcher(PS_PREFETCH_TASK_ID, p->parallel_is,
         TaskArgument(NULL, 0), argmap,
         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-        FFConfig::get_hash_id(std::string(p->owner_op->name)));
+        p->machine_view.hash());
     // regions[0]: region
     index_launcher.add_region_requirement(
         RegionRequirement(p->part, 0/*projection*/,
@@ -326,7 +326,7 @@ void AdamOptimizer::update(const Tensor p)
     IndexLauncher launcher(ADAM_UPD_NCCL_TASK_ID, p->parallel_is,
         TaskArgument(this, sizeof(AdamOptimizer)), argmap,
         Predicate::TRUE_PRED, false/*must_epoch*/, 0/*mapper_id*/,
-        FFConfig::get_hash_id(p->owner_op->name));
+        p->machine_view.hash());
     // regions[0]: region_grad
     launcher.add_region_requirement(
         RegionRequirement(p->part_grad, 0/*projection id*/,

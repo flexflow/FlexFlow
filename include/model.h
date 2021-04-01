@@ -232,6 +232,7 @@ protected:
       const Tensor weight);
   bool check_output_input_weight_parallel_dims() const;
   bool check_output_input_weight_same_parallel_is() const;
+  bool check_output_input_weight_same_machine_view() const;
 public:
   Op(FFModel& model,
      OperatorType type,
