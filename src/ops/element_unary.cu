@@ -53,11 +53,6 @@ Tensor FFModel::scalar_truediv(const Tensor& x,const float scalar ,bool inplace,
   return this->unary(OP_SCALAR_TRUE_DIV, x, inplace, name, scalar);
 }
 
-Tensor FFModel::scalar_floordiv(const Tensor& x,const float scalar ,bool inplace, const char *name)
-{
-  return this->unary(OP_SCALAR_FLOOR_DIV, x, inplace, name, scalar);
-}
-
 Tensor FFModel::relu(const Tensor& x, bool inplace, const char *name)
 {
   return this->unary(OP_RELU, x, inplace, name);
@@ -342,11 +337,6 @@ void elewise_unary_forward_kernel(coord_t volume,
 	out[i] = in[i] / scalar;
 	break;
       }
-      case OP_SCALAR_FLOOR_DIV:
-      {
-	out[i] = floor(in[i] / scalar);
-	break;
-      }
       case OP_GELU:
       {
 	out[i] = in[i] * 0.5 * erfc(-in[i]*M_SQRT1_2);
@@ -502,11 +492,6 @@ void elewise_unary_backward_kernel(coord_t volume,
 	break;
       }
       case OP_SCALAR_TRUE_DIV:
-      {
-	input_grad[i] = output_grad[i]/scalar;
-	break;
-      }
-      case OP_SCALAR_FLOOR_DIV:
       {
 	input_grad[i] = output_grad[i]/scalar;
 	break;

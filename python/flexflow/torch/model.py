@@ -135,7 +135,7 @@ class PyTorchModel(object):
         if type(input_tensor) is float or type(input_tensor) is int:
             output = input_tensor // float(items[4])
         else:
-            output = ffmodel.scalar_floor_divide(input=input_tensor, scalar=float(items[4]), name=op_name)
+            assert 0, "Tensor floor division is not supported."
         output = FXTensor(output)
     
       elif op_type == OpType.SCALAR_ADD:

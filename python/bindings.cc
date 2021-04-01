@@ -263,7 +263,6 @@ PYBIND11_MODULE(flexflow_bindings, m) {
       .def("scalar_add", &FFModel::scalar_add, "x"_a, "scalar"_a, "inplace"_a = true, "name"_a = nullptr)
       .def("scalar_sub", &FFModel::scalar_add, "x"_a, "scalar"_a, "inplace"_a = true, "name"_a = nullptr)
       .def("scalar_truediv", &FFModel::scalar_add, "x"_a, "scalar"_a, "inplace"_a = true, "name"_a = nullptr)
-      .def("scalar_floordiv", &FFModel::scalar_add, "x"_a, "scalar"_a, "inplace"_a = true, "name"_a = nullptr)
       // Activations
       .def("relu", &FFModel::relu, "x"_a, "inplace"_a = true, "name"_a = nullptr)
       .def("identity", &FFModel::identity, "x"_a, "name"_a = nullptr)

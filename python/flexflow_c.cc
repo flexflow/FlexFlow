@@ -687,22 +687,6 @@ flexflow_model_add_scalar_truediv(
 }
 
 flexflow_tensor_t
-flexflow_model_add_scalar_floordiv(
-  flexflow_model_t handle_,
-  const flexflow_tensor_t input_,
-  const float scalar,
-  bool inplace,
-  const char *name)
-{
-  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->scalar_floordiv(*input, scalar, inplace, name);
-  DEBUG_PRINT("[Scalar floor division] new Tensor %p, input %p, scalar %f, name %s", tensor, input, scalar,  name);
-  return FFCObjectWrapper::wrap(tensor);
-}
-
-flexflow_tensor_t
 flexflow_model_add_gelu(
   flexflow_model_t handle_,
   const flexflow_tensor_t input_,
