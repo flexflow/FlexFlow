@@ -868,8 +868,49 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
       {
         assert(inList.size() == 1);
         Linear* linear = (Linear*) node.ptr;
-        new_op = new Linear(*this, inputs[0], linear->out_channels,
-                            linear->activation, linear->use_bias, NULL);
+        Tensor kernel = NULL, bias = NULL;
+        // Create kernel tensor
+        {
+          int num_dims = inputs[0]->num_dims;
+          ParallelDim dims[3];
+          dims[0] = inputs[0]->dims[num_dims-2];
+          dims[1] = inputs[0]->dims[num_dims-1];
+          dims[2] = inputs[0]->dims[0];
+          dims[0].size = dims[0].degree;
+          dims[1].size = linear->out_channels;
+          int seed = std::rand();
+          Initializer* initializer = new GlorotUniform(seed);
+#ifdef FF_USE_NCCL
+          ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+          ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+          kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
+                                    true/*create_grad*/, initializer,
+                                    comm_type);
+        }
+        // Create bias tensor
+        if (linear->use_bias)
+        {
+          int num_dims = inputs[0]->num_dims;
+          ParallelDim dims[3];
+          dims[0] = inputs[0]->dims[num_dims-2];
+          dims[1] = inputs[0]->dims[0];
+          dims[2] = inputs[0]->dims[num_dims-1];
+          dims[0].size = dims[0].degree;
+          dims[2].size = linear->out_channels;
+          Initializer* initializer = new ZeroInitializer();
+#ifdef FF_USE_NCCL
+          ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+          ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+          bias = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
+                                    true/*create_grad*/, initializer,
+                                    comm_type);
+        }
+        new_op = new Linear(*this, inputs[0], kernel, bias,
+                            linear->activation, NULL);
         break;
       }
       case OP_SOFTMAX:
@@ -941,7 +982,7 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
       }
     }
   }
-  assert(layers.size() == graph->inEdges.size());
+  assert(queue.size() == graph->inEdges.size());
   return true;
 }
 

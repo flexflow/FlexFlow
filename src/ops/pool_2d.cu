@@ -56,6 +56,7 @@ Pool2D::Pool2D(FFModel& model,
   outputs[0] = model.create_tensor<4>(dims, DT_FLOAT, this);
 }
 
+#ifdef DEADCODE
 void Pool2D::create_input_partition(FFModel& model)
 {
   Context ctx = model.config.lg_ctx;
@@ -91,6 +92,7 @@ void Pool2D::create_input_partition(FFModel& model)
   }
 #endif
 }
+#endif
 
 /*
   regions[0]: input

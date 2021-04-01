@@ -657,7 +657,7 @@ float FFModel::graph_cost(const Graph* graph,
       delete second_graph;
     }
   }
-  log_dp.debug("  cached_graph_costs[%zu]=%.4lf\n", hash, cost);
+  log_dp.debug("  cached_graph_costs[%zu]=%.4lf", hash, cost);
   cached_graph_costs[hash] = cost;
   if (include_sink_compute_time) {
     CostMetrics metrics = simulator->measure_operator_cost(sink_node.ptr, sink_view);

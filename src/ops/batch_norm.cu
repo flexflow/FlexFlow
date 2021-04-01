@@ -83,6 +83,7 @@ void BatchNorm::create_weights(FFModel& model)
 }
 #endif
 
+#ifdef DEADCODE
 void BatchNorm::create_input_partition(FFModel& model)
 {
   // Retrive the task indexspace for the op
@@ -125,6 +126,7 @@ void BatchNorm::create_input_partition(FFModel& model)
   }
 #endif
 }
+#endif
 
 /*
   regions[0]: input

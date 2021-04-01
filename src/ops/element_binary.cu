@@ -95,9 +95,9 @@ ElementBinary::ElementBinary(FFModel& model,
 bool ElementBinary::can_inplace_output(void)
 {
   if (op_type == OP_EW_ADD)
-    return true;
+    return false;
   if (op_type == OP_EW_MUL)
-    return true;
+    return false;
   return false;
 }
 

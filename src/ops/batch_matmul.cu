@@ -60,6 +60,7 @@ BatchMatmul::BatchMatmul(FFModel& model,
   //}
 }
 
+#ifdef DEADCODE
 void BatchMatmul::create_input_partition(FFModel& model)
 {
   Context ctx = model.config.lg_ctx;
@@ -90,6 +91,7 @@ void BatchMatmul::create_input_partition(FFModel& model)
   }
 #endif
 }
+#endif
 
 __host__
 OpMeta* BatchMatmul::init_task(const Task* task,

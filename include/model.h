@@ -1111,7 +1111,7 @@ public:
   void print_layer(const FFModel& model) {assert(0);}
   //Parameter* get_parameter(int index) {assert(0); return NULL;}
   //void create_weights(FFModel& model);
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -1163,7 +1163,7 @@ public:
   void backward(const FFModel&);
   void update(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
   //Parameter* get_parameter(int index) {assert(0);return NULL;}
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
@@ -1331,7 +1331,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void print_layer(const FFModel& model);
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
   static OpMeta* init_task(const Legion::Task *task,
@@ -2085,6 +2085,7 @@ public:
       int combine_legion_dim,
       int combine_degree,
       const char* name = NULL);
+  void create_input_partition(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -2201,6 +2202,7 @@ public:
       int reduction_legion_dim,
       int reduction_degree,
       const char* name = NULL);
+  void create_input_partition(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);

@@ -31,6 +31,8 @@ NoOp::NoOp(FFModel& model,
   }
   numOutputs = 1;
   outputs[0] = _output;
+  outputs[0]->owner_op = this;
+  outputs[0]->owner_idx = 0;
 }
 
 void NoOp::init(const FFModel& ff)

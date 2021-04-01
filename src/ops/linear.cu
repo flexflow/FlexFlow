@@ -163,8 +163,8 @@ Linear::Linear(FFModel& model,
   register_output_weight_parallel_dims(outputs[0], numdim-1, weights[0], 0);
   if (use_bias) {
     register_output_weight_parallel_dims(outputs[0], numdim-2, weights[1], 2);
-    register_output_weight_parallel_dims(outputs[0], 0, weights[1], 1);
-    register_output_weight_parallel_dims(outputs[0], numdim-1, weights[1], 0);
+    register_output_weight_parallel_dims(outputs[0], 0, weights[1], 0);
+    register_output_weight_parallel_dims(outputs[0], numdim-1, weights[1], 1);
   }
   // Check correctness
   assert(check_output_input_weight_parallel_dims());
