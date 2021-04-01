@@ -168,13 +168,13 @@ void Concat::init(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i], 0/*projection id*/,
+      RegionRequirement(inputs[i]->part, 0/*projection id*/,
         READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(i + 1, FID_DATA);
   }
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[i], 0/*projection id*/,
+      RegionRequirement(inputs[i]->part_grad, 0/*projection id*/,
         WRITE_ONLY, EXCLUSIVE, inputs[i]->region_grad));
     launcher.add_field(i + numInputs + 1, FID_DATA);
   }
@@ -316,7 +316,7 @@ void Concat::forward(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i], 0/*projection id*/,
+      RegionRequirement(inputs[i]->part, 0/*projection id*/,
         READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(i + 1, FID_DATA);
   }
@@ -426,7 +426,7 @@ void Concat::backward(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[i], 0/*projection id*/,
+      RegionRequirement(inputs[i]->part_grad, 0/*projection id*/,
         READ_WRITE, EXCLUSIVE, inputs[i]->region_grad));
     //LogicalRegion lr = inputs[i]->region_grad;
     //printf("concat[%d]: region(%d,%d,%d)\n", i+1, lr.get_index_space().get_id(), lr.get_field_space().get_id(), lr.get_tree_id());

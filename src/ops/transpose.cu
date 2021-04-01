@@ -44,6 +44,7 @@ Transpose::Transpose(FFModel& model,
   outputs[0] = model.create_tensor_legion_ordering(numdim, dims, input->data_type, this);
 }
 
+#ifdef DEADCODE
 void Transpose::create_input_partition(FFModel& model)
 {
   int dim = inputs[0]->num_dims;
@@ -97,6 +98,7 @@ void Transpose::create_input_partition_with_dim(FFModel& model)
   }
 #endif
 }
+#endif
 
 void Transpose::init_meta(TransposeMeta *m, Domain const &in_domain, Domain const &out_domain) const
 {
@@ -139,7 +141,7 @@ void Transpose::init(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -233,7 +235,7 @@ void Transpose::forward(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -305,7 +307,7 @@ void Transpose::backward(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   // regions[1](I/O): input_grad
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
                       READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);

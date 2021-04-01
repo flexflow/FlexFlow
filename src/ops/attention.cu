@@ -121,6 +121,7 @@ void MultiHeadAttention::create_weights(FFModel& model)
 }
 #endif
 
+#ifdef DEADCODE
 void MultiHeadAttention::create_input_partition(FFModel& model)
 {
   // Retrive the task indexspace for the op
@@ -155,6 +156,7 @@ void MultiHeadAttention::create_input_partition(FFModel& model)
   //  }
   //}
 }
+#endif
 
 /*
   regions[0](I): query
@@ -226,15 +228,15 @@ void MultiHeadAttention::init(const FFModel& ff)
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
+      RegionRequirement(inputs[0]->part, 0/*projection id*/,
           READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[1], 0/*projection id*/,
+      RegionRequirement(inputs[1]->part, 0/*projection id*/,
           READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[2], 0/*projection id*/,
+      RegionRequirement(inputs[2]->part, 0/*projection id*/,
           READ_ONLY, EXCLUSIVE, inputs[2]->region));
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(
@@ -342,15 +344,15 @@ void MultiHeadAttention::forward(const FFModel& ff)
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
+      RegionRequirement(inputs[0]->part, 0/*projection id*/,
           READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[1], 0/*projection id*/,
+      RegionRequirement(inputs[1]->part, 0/*projection id*/,
           READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[2], 0/*projection id*/,
+      RegionRequirement(inputs[2]->part, 0/*projection id*/,
           READ_ONLY, EXCLUSIVE, inputs[2]->region));
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(
@@ -504,15 +506,15 @@ void MultiHeadAttention::backward(const FFModel& ff)
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
+      RegionRequirement(inputs[0]->part, 0/*projection id*/,
           READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[1], 0/*projection id*/,
+      RegionRequirement(inputs[1]->part, 0/*projection id*/,
           READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[2], 0/*projection id*/,
+      RegionRequirement(inputs[2]->part, 0/*projection id*/,
           READ_ONLY, EXCLUSIVE, inputs[2]->region));
   launcher.add_field(2, FID_DATA);
   launcher.add_region_requirement(
@@ -528,14 +530,14 @@ void MultiHeadAttention::backward(const FFModel& ff)
           READ_WRITE, EXCLUSIVE, weights[0]->region_grad));
   launcher.add_field(5, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+      RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
           READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(6, FID_DATA);
   int num_regions = 7;
   if (inputs[1]->region != inputs[0]->region) {
     // when key != query
     launcher.add_region_requirement(
-        RegionRequirement(input_grad_lps[1], 0/*projection id*/,
+        RegionRequirement(inputs[1]->part_grad, 0/*projection id*/,
             READ_WRITE, EXCLUSIVE, inputs[1]->region_grad));
     launcher.add_field(num_regions++, FID_DATA);
   }
@@ -543,7 +545,7 @@ void MultiHeadAttention::backward(const FFModel& ff)
   && (inputs[2]->region != inputs[1]->region)) {
     // when value != key and value != query
     launcher.add_region_requirement(
-        RegionRequirement(input_grad_lps[2], 0/*projection id*/,
+        RegionRequirement(inputs[2]->part_grad, 0/*projection id*/,
             READ_WRITE, EXCLUSIVE, inputs[2]->region_grad));
     launcher.add_field(num_regions++, FID_DATA);
   }

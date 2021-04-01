@@ -49,6 +49,7 @@ Reshape::Reshape(FFModel& model,
   assert(outputs[0]->get_volume() == inputs[0]->get_volume());
 }
 
+#ifdef DEADCODE
 void Reshape::create_input_partition(FFModel& model)
 {
   switch(inputs[0]->num_dims) {
@@ -175,6 +176,7 @@ void Reshape::create_input_partition_with_dim(FFModel& model)
   model.create_data_parallel_partition_with_diff_dims<IDIM, ODIM>(
       inputs[0], (IndexSpaceT<ODIM>)task_is, input_lps[0], input_grad_lps[0]);
 }
+#endif
 
 OpMeta* Reshape::init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -193,7 +195,7 @@ void Reshape::init(const FFModel& ff)
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -241,7 +243,7 @@ void Reshape::forward(const FFModel& ff)
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -297,7 +299,7 @@ void Reshape::backward(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   // regions[3](I/O): input0_grad
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
                       READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);

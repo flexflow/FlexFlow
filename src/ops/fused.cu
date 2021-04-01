@@ -24,8 +24,8 @@ FusedOp::FusedOp(FFModel& model, Op* op)
   numInputs = op->numInputs;
   for (int i = 0; i < numInputs; i++) {
     inputs[i] = op->inputs[i];
-    input_lps[i] = op->input_lps[i];
-    input_grad_lps[i] = op->input_grad_lps[i];   
+    //input_lps[i] = op->input_lps[i];
+    //input_grad_lps[i] = op->input_grad_lps[i];   
   }
   numWeights = op->numWeights;
   for (int i = 0; i < numWeights; i++) {
@@ -121,8 +121,8 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
       // Do nothing
     } else {
       inputs[numInputs] = op->inputs[i];
-      input_lps[numInputs] = op->input_lps[i];
-      input_grad_lps[numInputs] = op->input_grad_lps[i];
+      //input_lps[numInputs] = op->input_lps[i];
+      //input_grad_lps[numInputs] = op->input_grad_lps[i];
       op_input_source[input_offset+i] = SOURCE_INPUT;
       op_input_idx[input_offset+i] = numInputs;
       numInputs += 1;
@@ -549,10 +549,10 @@ void FusedOp::forward(const FFModel& ff)
       FFConfig::get_hash_id(std::string(name)));
   int offset = 0;
   for (int i = 0; i < numInputs; i++) {
-    assert(input_lps[i] != LogicalPartition::NO_PART);
+    assert(inputs[i]->part != LogicalPartition::NO_PART);
     assert(inputs[i]->region != LogicalRegion::NO_REGION);
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i], 0/*projection id*/,
+      RegionRequirement(inputs[i]->part, 0/*projection id*/,
         READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(offset+i, FID_DATA);
   }
@@ -921,7 +921,7 @@ void FusedOp::backward(const FFModel& ff)
   int idx = 0;
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i], 0/*projection id*/,
+      RegionRequirement(inputs[i]->part, 0/*projection id*/,
         READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(idx++, FID_DATA);
   }
@@ -939,7 +939,7 @@ void FusedOp::backward(const FFModel& ff)
   }
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[i], 0/*projection id*/,
+      RegionRequirement(inputs[i]->part_grad, 0/*projection id*/,
         READ_WRITE, EXCLUSIVE, inputs[i]->region_grad));
     launcher.add_field(idx++, FID_DATA);
   }

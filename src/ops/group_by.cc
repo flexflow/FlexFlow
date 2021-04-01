@@ -120,12 +120,12 @@ void Group_by::init(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   // data
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
+    RegionRequirement(inputs[1]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
 
@@ -310,13 +310,13 @@ void Group_by::forward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   // data
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
 
   // assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
+    RegionRequirement(inputs[1]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
 
@@ -343,13 +343,13 @@ void Group_by::backward(const FFModel& ff)
 
   // input_grad
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
 
   // assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
+    RegionRequirement(inputs[1]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
 

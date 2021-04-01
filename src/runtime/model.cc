@@ -558,6 +558,7 @@ ParallelConfig get_basic_data_parallel_config(int num_parts, int dims)
   return pc;
 }
 
+#ifdef DEADCODE
 void Op::create_input_partition(FFModel& model)
 {
   int dim = outputs[0]->num_dims;
@@ -633,6 +634,7 @@ void Op::create_input_partition_with_dim(FFModel& model)
 #endif
   }
 }
+#endif
 
 ParallelConfig Op::get_random_parallel_config(const FFModel& ff) const
 {
@@ -2428,7 +2430,8 @@ void FFModel::compile(LossType loss_type,
       // Output tensor
       map_tensor(op->outputs[i], op);
     }
-    op->create_input_partition(*this);
+    if (op->is_parallel_op()) 
+      ((ParallelOp*)op)->create_input_partition(*this);
     // op->map_output_tensors(*this);
   }
 

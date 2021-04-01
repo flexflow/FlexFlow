@@ -196,18 +196,18 @@ void Aggregate::init(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   // gate_preds
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // gate_assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
+    RegionRequirement(inputs[1]->part, 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   // exp_preds
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i+2], 0/*projection id*/,
+      RegionRequirement(inputs[i+2]->part, 0/*projection id*/,
         READ_WRITE, EXCLUSIVE, inputs[i+2]->region));
     launcher.add_field(i+2, FID_DATA);
   }
@@ -422,18 +422,18 @@ void Aggregate::forward(const FFModel& ff)
 
   // gate_preds
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // gate_assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
+    RegionRequirement(inputs[1]->part, 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   // exp_preds
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i+2], 0/*projection id*/,
+      RegionRequirement(inputs[i+2]->part, 0/*projection id*/,
         READ_WRITE, EXCLUSIVE, inputs[i+2]->region));
     launcher.add_field(i+2, FID_DATA);
   }
@@ -459,26 +459,26 @@ void Aggregate::backward(const FFModel& ff)
 
   // gate_preds
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
 
   // gate gradients
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
 
   // gate_assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
+    RegionRequirement(inputs[1]->part, 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(2, FID_DATA);
 
   // exp_preds
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i+2], 0/*projection id*/,
+      RegionRequirement(inputs[i+2]->part, 0/*projection id*/,
         READ_WRITE, EXCLUSIVE, inputs[i+2]->region));
     launcher.add_field(i+3, FID_DATA);
   }
@@ -486,7 +486,7 @@ void Aggregate::backward(const FFModel& ff)
   // exp_preds gradients
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[i+2], 0/*projection id*/,
+      RegionRequirement(inputs[i+2]->part_grad, 0/*projection id*/,
         READ_WRITE, EXCLUSIVE, inputs[i+2]->region_grad));
     launcher.add_field(i+n+3, FID_DATA);
   }

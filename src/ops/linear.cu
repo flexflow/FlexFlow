@@ -436,7 +436,7 @@ void Linear::init(const FFModel& ff)
   if (ff.config.computationMode == COMP_MODE_TRAINING) {
     // Add inputs[0]->region_grad to avoid Legion warning
     launcher.add_region_requirement(
-        RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+        RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
             WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
     launcher.add_field(2, FID_DATA);
   }
@@ -580,7 +580,7 @@ void Linear::forward(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
+      RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -834,13 +834,13 @@ void Linear::backward(const FFModel& ff)
                            FFConfig::get_hash_id(std::string(name)));
     // regions[0](I): input
     launcher.add_region_requirement(
-        RegionRequirement(input_lps[0], 0/*projection id*/,
+        RegionRequirement(inputs[0]->part, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, inputs[0]->region));
     launcher.add_field(0, FID_DATA);
     // regions[1](I/O): replica_grad
     assert(replica == NULL);
     launcher.add_region_requirement(
-        RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+        RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
                           READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
     launcher.add_field(1, FID_DATA);
     // regions[2](I): output

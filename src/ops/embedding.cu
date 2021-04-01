@@ -85,6 +85,7 @@ void Embedding::create_weights(FFModel& model)
 }
 #endif
 
+#ifdef DEADCODE
 void Embedding::create_input_partition(FFModel& model)
 {
   // Retrive the task indexspace for the op
@@ -115,6 +116,7 @@ void Embedding::create_input_partition(FFModel& model)
   }
 #endif
 }
+#endif
 
 __host__
 OpMeta* Embedding::init_task(const Task *task,
@@ -167,7 +169,7 @@ void Embedding::init(const FFModel& ff)
   launcher.add_field(1, FID_DATA);
   // regions[3]: input_grad
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[0], 0/*projection*/,
+    RegionRequirement(inputs[0]->part_grad, 0/*projection*/,
       WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
@@ -299,7 +301,7 @@ void Embedding::forward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0]: input
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection*/,
+      RegionRequirement(inputs[0]->part, 0/*projection*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // regions[1]: output
@@ -377,7 +379,7 @@ void Embedding::backward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0]: input
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection*/,
+      RegionRequirement(inputs[0]->part, 0/*projection*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // regions[1]: output_grad
