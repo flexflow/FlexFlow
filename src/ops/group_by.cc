@@ -152,7 +152,7 @@ void group_by_forward(const float* input,
         int k, // chosen experts
         float alpha, // factor additional memory assigned
         int batch_size,
-        int out_dim)
+        int data_dim)
 {
   std::vector<int> expert_idx(n, 0);
   int exp_tensor_rows = ceil(alpha*k/n*batch_size);
@@ -166,9 +166,9 @@ void group_by_forward(const float* input,
         continue; // dropped sample
 
       // copy over sample
-      int input_start = i*out_dim;
-      for(int l = 0; l < out_dim; l++) {
-        outputs[expert][row*out_dim + l] = input[input_start + l];
+      int input_start = i*data_dim;
+      for(int l = 0; l < data_dim; l++) {
+        outputs[expert][row*data_dim + l] = input[input_start + l];
       }
       expert_idx[expert]++;
     }
@@ -183,7 +183,7 @@ void group_by_backward(float* input_grad,
         int k, // chosen experts
         float alpha, // factor additional memory assigned
         int batch_size,
-        int out_dim)
+        int data_dim)
 {
   std::vector<int> expert_idx(n, 0);
   int exp_tensor_rows = ceil(alpha*k/n*batch_size);
@@ -197,9 +197,9 @@ void group_by_backward(float* input_grad,
         continue; // dropped sample
 
       // add gradient
-      int input_start = i*out_dim;
-      for(int l = 0; l < out_dim; l++) {
-        input_grad[input_start + l] += output_grads[expert][row*out_dim + l]/k;
+      int input_start = i*data_dim;
+      for(int l = 0; l < data_dim; l++) {
+        input_grad[input_start + l] += output_grads[expert][row*data_dim + l]/k;
       }
       expert_idx[expert]++;
     }

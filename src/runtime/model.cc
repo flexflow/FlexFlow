@@ -663,6 +663,8 @@ FFModel::FFModel(FFConfig& _config)
 {
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
+  metrics_input = -1;
+
   // Load strategy file
   int start_dim = 1, end_dim = 4;
 #if MAX_TENSOR_DIM >= 5
@@ -1367,9 +1369,14 @@ void FFModel::forward(int seq_length)
 
 void FFModel::compute_metrics()
 {
-  Op* final_layer = layers[layers.size()-1];
-  assert(final_layer->numOutputs == 1);
-  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
+  Op* metrics_layer = layers[metrics_input];
+  assert(metrics_layer->numOutputs == 1);
+  metrics_op->compute(this, &(metrics_layer->outputs[0]), &label_tensor_with_final_part);
+}
+
+void FFModel::get_metrics()
+{
+  metrics_input = layers.size()-1;
 }
 
 void FFModel::backward(int seq_length)
@@ -1377,10 +1384,10 @@ void FFModel::backward(int seq_length)
   iter_config.seq_length = seq_length;
   assert(config.computationMode == COMP_MODE_TRAINING);
   // Compute metrics
+  compute_metrics();
+  // Compute the gradients of the final layer wrt loss
   Op* final_layer = layers[layers.size()-1];
   assert(final_layer->numOutputs == 1);
-  metrics_op->compute(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
-  // Compute the gradients of the final layer wrt loss
   loss_op->backward(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
   // Perform backpropagation
   // std::set<LogicalRegion> resetedInputGrads;
@@ -1499,6 +1506,7 @@ void FFModel::compile(LossType loss_type,
                       const std::vector<MetricsType>& metrics,
                       CompMode comp_mode)
 {
+  if(metrics_input == -1) metrics_input = layers.size()-1;
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   config.computationMode = comp_mode;
@@ -1670,7 +1678,12 @@ void FFModel::compile(LossType loss_type,
   int dims[MAX_TENSOR_DIM], num_dims;
   num_dims = final_layer->outputs[0].numDim;
   // Note that FlexFlow's runtim internally reverse the array ordering
-  for (int i = 0; i < num_dims; i++)
+  Op* first_layer = layers[0];
+  int input_dims = first_layer->inputs[0].numDim;
+  // FIXME: Currently assume 1st input for 1st layer = batch_size
+  int batch_size = first_layer->inputs[0].adim[input_dims-1];
+  dims[0] = batch_size;
+  for (int i = 1; i < num_dims; i++)
     dims[i] = final_layer->outputs[0].adim[num_dims-1-i];
   DataType label_type = DT_FLOAT;
   if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
@@ -2025,7 +2038,6 @@ PerfMetrics FFModel::update_metrics_task(const Task *task,
                                          Context ctx, Runtime* runtime)
 {
   Metrics* m = (Metrics*) task->args;
-  //printf("in update_metrics_task\n");
   if (task->futures.size() == 0) {
     // Create an empty future
     PerfMetrics perf;

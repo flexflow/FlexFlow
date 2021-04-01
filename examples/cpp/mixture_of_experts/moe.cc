@@ -83,6 +83,8 @@ void top_level_task(const Task* task,
     agg_inputs[i+2] = ff.softmax(agg_inputs[i+2]);
   }
 
+  Tensor coop_output = ff.aggregate(agg_inputs, num_exp);
+  ff.get_metrics();
   Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp);
 
 //-----------------------------------------------------------------
@@ -93,9 +95,11 @@ void top_level_task(const Task* task,
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
 
+
   // Data Loader
   DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
   ff.init_layers();
+
   //Start timer
   {
     runtime->issue_execution_fence(ctx);

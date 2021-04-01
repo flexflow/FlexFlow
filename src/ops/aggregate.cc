@@ -21,30 +21,6 @@
 - You should at least use Eigen or uBlas or so for matrix multiplications.
   Preferably implement on GPU */
 
-// Take exp pred with highest weight (debug)
-void f_first(float* output,
-            const float* gate_net_preds,
-            float** exp_preds,
-            int k,
-            int out_dim)
-{
-  if(exp_preds[0] == 0) return;
-  for(int i = 0; i < out_dim; i++) {
-    output[i] = exp_preds[0][i];
-  }
-}
-
-void f_first_back(float* output,
-                  const float* gate_net_preds,
-                  float** exp_preds,
-                  int k,
-                  int out_dim)
-{
-  for(int i = 0; i < out_dim; i++) {
-    exp_preds[0][i] += output[i];
-  }
-}
-
 // Multiply exp preds with gate weights (first loss in '91 Jacobs)
 void f_mm(float* output,
           const float* gate_net_preds,
@@ -245,15 +221,6 @@ void aggregate_forward(float** exp_preds,
     f_mm(output+i*out_dim, gating_net_preds+i*k, chosen_exp_preds,
       k, out_dim);
   }
-
-  printf("OUTPUT:\n");
-  for(int j = 0; j < batch_size; j++) {
-    for(int i = 0; i < out_dim; i++) {
-      printf("%.2f ", output[j*out_dim+i]);
-    }
-    printf("\n");
-  }
-  printf("\n");
 }
 
 
@@ -269,16 +236,6 @@ void aggregate_backward(float** exp_preds,
         int batch_size,
         int out_dim)
 {
-  printf("GRADIENTS:\n");
-  for(int i = 0; i < batch_size; i++) {
-    for(int j = 0; j < out_dim; j++) {
-      printf("%.4f ", output_grads[i*out_dim + j]);
-    }
-    printf("\n");
-  }
-  printf("\n");
-
-
   std::vector<int> expert_idx(n, 0);
   float* chosen_exp_preds[k];
   float* chosen_exp_grads[k];

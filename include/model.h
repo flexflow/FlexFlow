@@ -464,6 +464,7 @@ public:
   void prefetch();
   void forward(int seq_length = -1);
   void compute_metrics();
+  void get_metrics();
   void backward(int seq_length = -1);
   void update();
   bool apply_fusion(const std::vector<Op*>& layers, std::vector<Op*>& new_layers);
@@ -508,6 +509,7 @@ public:
   Optimizer* optimizer;
   Loss* loss_op;
   Metrics* metrics_op;
+  int metrics_input;
   Tensor label_tensor;
   //std::vector<Tensor> input_tensors;
 

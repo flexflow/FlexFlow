@@ -19,10 +19,6 @@
 - You should at least use Eigen or uBlas or so for matrix multiplications.
   Preferably implement on GPU */
 
-// TODO: Softmax for gating net
-// TODO; Loss function, enough data samples
-// TODO: Hier noch schauen *k etc. im output
-
 
 Tensor FFModel::aggregate_spec(const Tensor* inputs, /* gate_preds, gate_assign, n * exp_pred */
                           int n, const char* name)
@@ -49,9 +45,10 @@ AggregateSpec::AggregateSpec(FFModel& model,
 
   int out_dim = inputs[2].adim[0];
   int batch_size = inputs[0].adim[1];
+  int k = inputs[0].adim[0];
   outputs[0].numDim = 2;
   outputs[0].adim[0] = out_dim;
-  outputs[0].adim[1] = batch_size;
+  outputs[0].adim[1] = k*batch_size;
 
   for(int i = 0; i < n; i++) {
     assert(inputs[i+2].adim[0] == out_dim);
@@ -161,43 +158,18 @@ void agg_spec_forward(float** exp_preds,
         int batch_size,
         int out_dim)
 {
-
-/*
-printf("INPUT GATE:\n");
-for(int j = 0; j < batch_size; j++) {
-  for(int i = 0; i < k; i++) {
-    printf("%.2f ", gating_net_preds[j*k+i]);
-  }
-  printf("\n");
-}
-printf("\n");
-*/
-
-
   std::vector<int> expert_idx(n, 0);
   for(int i = 0; i < batch_size; i++) {
-  	for(int j = 0; j < k; j++) {
-  		// Get pointer to chosen expert predictions
-  		int expert = exp_assign[k*i + j];
-  		if(expert_idx[expert] < exp_samples) {
-  			// sample not dropped. Else: Output doesn't matter, gradient set to 0
-  			float* chosen_exp_preds = exp_preds[expert] + expert_idx[expert]*out_dim;
-  			memcpy(output + i*k*out_dim + j*out_dim, chosen_exp_preds, out_dim*sizeof(float));
-  		}
-  		expert_idx[expert]++;
-  	}
-  }
-
-  /*
-  printf("OUTPUT:\n");
-  for(int j = 0; j < k*batch_size; j++) {
-    for(int i = 0; i < out_dim; i++) {
-      printf("%.2f ", output[j*out_dim+i]);
+    for(int j = 0; j < k; j++) {
+      // Get pointer to chosen expert predictions
+      int expert = exp_assign[k*i + j];
+      if(expert_idx[expert] < exp_samples) { // sample not dropped
+        float* chosen_exp_preds = exp_preds[expert] + expert_idx[expert]*out_dim;
+        memcpy(output + i*k*out_dim + j*out_dim, chosen_exp_preds, out_dim*sizeof(float));
+      }
+      expert_idx[expert]++;
     }
-    printf("\n");
   }
-  printf("\n");*/
-
 }
 
 
@@ -213,16 +185,6 @@ void agg_spec_backward(float** exp_preds,
         int batch_size,
         int out_dim)
 {
-  /*
-  printf("GRADIENTS:\n");
-  for(int i = 0; i < k*batch_size; i++) {
-    for(int j = 0; j < out_dim; j++) {
-      printf("%.4f ", output_grads[i*out_dim + j]);
-    }
-    printf("\n");
-  }
-  printf("\n");
-  */
   std::vector<int> expert_idx(n, 0);
   for(int i = 0; i < batch_size; i++) {
     const float* sample_gating_weights = gating_net_preds + i*k;
@@ -242,7 +204,10 @@ void agg_spec_backward(float** exp_preds,
         correct. */
         float sq_norm = 0.0f;
         for(int l = 0; l < out_dim; l++) {
-          sq_norm += sample_output_grads[j*out_dim+l] * sample_output_grads[j*out_dim+l];
+          /*NOTE: sample output grads are per default normalized by 1/batch_size.
+          So in the default case, multiplying *batch_Size will make gating net
+          grads normalized by 1/batchsize (and not 1/batch_size^2).*/
+          sq_norm += batch_size * sample_output_grads[j*out_dim+l] * sample_output_grads[j*out_dim+l];
         }
         gating_net_grads[i*k+j] += sq_norm;
 

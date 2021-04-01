@@ -136,7 +136,6 @@ void update_metrics_label_kernel(
             true_label = i;
           }
         }
-        //printf("[%d] logit(%.4lf) label(%.4lf) my_label(%d) num_classes(%d)\n", b, logits[b], labels[b], my_label, num_classes);
         assert(my_label >= 0);
         assert(true_label >= 0);
         if (true_label == my_label)

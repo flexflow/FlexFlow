@@ -136,23 +136,22 @@ void Loss::backward_task_with_dim(const Task *task,
     if(loss->repl_labels) {
       k = (acc_logit.rect.hi[NDIM-1]-acc_logit.rect.lo[NDIM-1]+1) /
         (acc_label.rect.hi[NDIM-1]-acc_label.rect.lo[NDIM-1]+1);
-      //printf("DEBUG!!!!!!!!!!!!!!!!!!!!!!! loss_f.cu k = %d, %d/%d\n", k,acc_logit.rect.hi[NDIM-1]-acc_logit.rect.lo[NDIM-1]+1, acc_label.rect.hi[NDIM-1]-acc_label.rect.lo[NDIM-1]+1);
     }
     for (int i = 1; i < NDIM-1; i++) {
       assert(acc_label.rect.hi[i] == acc_logit.rect.hi[i]);
       assert(acc_label.rect.lo[i] == acc_logit.rect.lo[i]);
     }
-    assert(k*acc_label.rect.hi[NDIM-1] == acc_logit.rect.hi[NDIM-1]);
-    assert(k*acc_label.rect.lo[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
+    assert(k*(acc_label.rect.hi[NDIM-1]-acc_label.rect.lo[NDIM-1]+1)
+      == acc_logit.rect.hi[NDIM-1]-acc_logit.rect.lo[NDIM-1]+1);
     assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
     checkCUDA(cudaMemcpy(acc_logit_grad.ptr, acc_logit.ptr,
                          acc_logit.rect.volume() * sizeof(float),
                          cudaMemcpyDeviceToDevice));
     sparse_categorical_crossentropy_loss_backward<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS>>>(
         acc_logit_grad.ptr, acc_label.ptr, num_samples, num_classes, k);
-    // Scale logit gradients by op->scale_factor TODO: Das warum grads so klein
+    // Scale logit gradients by op->scale_factor
     scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
-        acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor*2);
+        acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor*k);
   } else {
     if(loss->repl_labels) assert(false && "Loss not yet supported for aggr_spec.");
     TensorAccessorW<float, NDIM> acc_logit_grad(
@@ -171,14 +170,14 @@ void Loss::backward_task_with_dim(const Task *task,
       categorical_crossentropy_loss_backward<<<GET_BLOCKS(acc_logit.rect.volume()), CUDA_NUM_THREADS>>>(
           acc_logit_grad.ptr, acc_logit.ptr, acc_label.ptr,
           acc_logit.rect.volume());
-      // Scale logit gradients by loss->scale_factor TODO: Das warum grads so klein
+      // Scale logit gradients by loss->scale_factor
       scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
           acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor);
     } else if (loss->loss_type == LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE) {
       mean_squared_error_avg_loss_backward<<<GET_BLOCKS(acc_logit.rect.volume()), CUDA_NUM_THREADS>>>(
           acc_logit_grad.ptr, acc_logit.ptr, acc_label.ptr,
           acc_logit.rect.volume());
-      // Scale logit gradients by loss->scale_factor TODO: Das warum grads so klein
+      // Scale logit gradients by loss->scale_factor
       scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
           acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor);
     } else {
