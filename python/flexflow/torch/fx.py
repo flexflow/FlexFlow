@@ -227,10 +227,13 @@ def parse_transpose(op_str,node):
     return op_str
 
 def parse_expand(op_str,node):
-    assert len(node.inedges) == 4, "wrong number of inputs"
-    op_str = op_str + enum_to_str(OpType, OpType.EXPAND)
-    op_str = op_str +", " + str(node.inedges[2])+", "+str(node.inedges[3])+"\n"
-    return op_str
+    assert len(node.inedges) >= 1, "wrong number of inputs"
+    op_str = op_str + enum_to_str(OpType, OpType.EXPAND)+", "
+    input_shape = node.inedges[1:]
+    for dim in input_shape[:-1]:
+        op_str = op_str + (str(dim) if type(dim) is int else (str(dim)+":"))+ ", "
+    op_str = op_str + (str(input_shape[-1]) if type(input_shape[-1]) is int else (str(input_shape[-1])+":"))+ "\n"
+    return op_str 
 
 def parse_softmax(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
