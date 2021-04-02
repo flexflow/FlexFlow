@@ -14,7 +14,41 @@ We recommend to use `pip` or `conda` to install the dependencies.
 Note: all Python dependencies will be automatically installed if install the FlexFlow Python Interface using the PyPi repository (see the Installation below).
 
 # 2. Build the FlexFlow
+
+## 2.1 CMake
+It is prefer to use the CMake building system as it will automatically build all dependencies inlcuding NCCL and Legion. 
+
+### Build the FlexFlow (including C++ and Python)
+```
+cd FlexFlow
+cd config
+```
+
+The `config.linux` is an example of how to set the varibles required for CMake build. The followings are configurable parameters:
+
+* `CUDA_DIR` is used to specify the directory of CUDA. It is only required when CMake can not automatically detect the installation directory of CUDA.
+* `CUDNN_DIR` is only required when CUDNN is not installed in the CUDA directory.
+* `FF_CUDA_ARCH` is used to set the architecture of targeted GPUs, for example, the value can be 60 if the GPU architecture is Pascal. If it is not sepecified, FlexFlow is compiled for all architectures.
+* `FF_USE_PYTHON` is used to enable the Python support for the FlexFlow.
+* `FF_USE_PYBIND` is used to enable the PyBind11 for the Python Support. If it is turnd off (by default), then CFFI is used.  
+* `FF_USE_NCCL` is used to enable the NCCL support for the FlexFlow, by default it is set to ON.
+* `FF_USE_GASNET` is used to enable distributed run of the FlexFlow.
+* `FF_BUILD_EXAMPLES` is used to enable all C++ examples.
+* `FF_MAX_DIM` is used to set the maximum dimension of tensors, by default it is set to 4. 
+
+More options are available in cmake, please run ccmake and search for options starting with FF. 
+
+Once the variables in the `config.linux` is set correctly, go to the home directory of FlexFlow, and run
+```
+mkdir build
+cd build
+../config/config.linux
+make
+```
+
 ## 2.1 Makefile
+The Makefile building system is deprecated.
+
 ### Build dependent libraries
 
 * Build the NCCL library. (If using NCCL for parameter synchronization. )
@@ -64,33 +98,6 @@ If Legion can not automatically detect your Python installation, you need to tel
 ```
 cd python
 make 
-```
-
-## 2.2 CMake
-
-### Build the FlexFlow (including C++ and Python)
-```
-cd FlexFlow
-cd config
-```
-
-The `config.linux` is an example of how to set the varibles required for CMake build. Please modify `FF_CUDA_ARCH`, `CUDNN_DIR`, `CUDA_DIR` according to your environment. `CUDA_DIR` is only required when CMake can not automatically detect the installation directory of CUDA. `CUDNN_DIR` is only required when CUDNN is not installed in the CUDA directory.
-
-* `FF_CUDA_ARCH` is used to set the architecture of targeted GPUs, for example, the value can be 60 if the GPU architecture is Pascal. 
-* `FF_USE_PYTHON` is used to enable the Python support for the FlexFlow.
-* `FF_USE_NCCL` is used to enable the NCCL support for the FlexFlow, by default it is set to ON.
-* `FF_USE_GASNET` is used to enable distributed run of the FlexFlow.
-* `FF_BUILD_EXAMPLES` is used to enable all C++ examples.
-* `FF_MAX_DIM` is used to set the maximum dimension of tensors, by default it is set to 4. 
-
-More options are available in cmake, please run ccmake and search for options starting with FF. 
-
-Once the variables in the `config.linux` is set correctly, go to the home directory of FlexFlow, and run
-```
-mkdir build
-cd build
-../config/config.linux
-make
 ```
 
 # 3. Test the FlexFlow
