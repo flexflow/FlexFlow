@@ -32,7 +32,7 @@ Tensor FFModel::dense(const Tensor input,
     layers.push_back(li);
     return li->outputs[0];
   }
-
+#ifdef OLD_LAYER_CREATION
   if (kernel_initializer == NULL) {
     int seed = std::rand();
     kernel_initializer = new GlorotUniform(seed);
@@ -61,6 +61,7 @@ Tensor FFModel::dense(const Tensor input,
   Linear *li = new Linear(*this, input, kernel, bias, activation, name);
   layers.push_back(li);
   return li->outputs[0];
+#endif
 }
 
 Tensor FFModel::dense(const Tensor input,
@@ -86,7 +87,7 @@ Linear::Linear(FFModel& model,
   activation(_activation),
   use_bias(_use_bias)
 {
-  assert(numOutputs == 1);
+  numOutputs = 1;
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
@@ -410,6 +411,7 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
 void Linear::init(const FFModel& ff)
 {
   assert(check_output_input_weight_same_parallel_is());
+  //assert(check_output_input_weight_same_machine_view());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -418,7 +420,7 @@ void Linear::init(const FFModel& ff)
   IndexLauncher launcher(LINEAR_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Linear)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   //launcher.add_region_requirement(
   //    RegionRequirement(input_lps[0], 0/*projection id*/,
   //                      READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -580,7 +582,7 @@ void Linear::forward(const FFModel& ff)
   IndexLauncher launcher(LINEAR_FWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -833,7 +835,7 @@ void Linear::backward(const FFModel& ff)
     IndexLauncher launcher(LINEAR_BWD_TASK_ID, parallel_is,
                            TaskArgument(NULL, 0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(std::string(name)));
+                           outputs[0]->machine_view.hash());
     // regions[0](I): input
     launcher.add_region_requirement(
         RegionRequirement(inputs[0]->part, 0/*projection id*/,
@@ -1091,9 +1093,6 @@ ParallelConfig Linear::get_random_parallel_config(const FFModel& ff) const
 bool Linear::get_int_parameter(PMParameter para, int* value) const
 {
   switch(para) {
-    case PM_OUTPUT_CHANNELS:
-      *value = out_channels;
-      return true;
     case PM_ACTI:
       *value = (int) activation;
       return true;
@@ -1107,6 +1106,9 @@ Node FFModel::get_or_create_linear_node(const Tensor input,
                                         ActiMode activation,
                                         bool use_bias)
 {
+  // out_dim must be divisble by replicate_degree
+  if (out_dim % input->dims[input->num_dims-1].degree != 0)
+    return Node::INVALID_NODE;
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(out_dim);
   hash = hash * 31 + std::hash<int>()(activation);

@@ -268,22 +268,21 @@ void ImgDataLoader4D::next_batch(FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   // Load input
   {
-    IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, ""));
-    Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain = runtime->get_index_space_domain(ctx, batch_input->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<4> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[3] - rect.lo[3] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[3] - rect.lo[3] + 1);
+      assert(ff.config.batchSize == batch_input->dims[3].size);
+      meta.num_samples = batch_input->dims[3].size / batch_input->dims[3].degree;
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, batch_input->parallel_is,
                            TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(""));
+                           batch_input->machine_view.hash());
     launcher.add_region_requirement(
         RegionRequirement(full_input->region, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, full_input->region,
@@ -297,22 +296,21 @@ void ImgDataLoader4D::next_batch(FFModel& ff)
   }
   // Load label
   {
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
-    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain = runtime->get_index_space_domain(ctx, batch_label->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<2> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      assert(ff.config.batchSize == batch_label->dims[1].size);
+      meta.num_samples = batch_label->dims[1].size / batch_label->dims[1].degree;
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, batch_label->parallel_is,
                            TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(""));
+                           batch_label->machine_view.hash());
     launcher.add_region_requirement(
         RegionRequirement(full_label->region, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, full_label->region,
@@ -436,22 +434,21 @@ void ImgDataLoader2D::next_batch(FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   // Load input
   {
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
-    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain = runtime->get_index_space_domain(ctx, batch_input->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<2> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      assert(ff.config.batchSize == batch_input->dims[1].size);
+      meta.num_samples = batch_input->dims[1].size / batch_input->dims[1].degree;
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_3, task_is,
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_3, batch_input->parallel_is,
                            TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(""));
+                           batch_input->machine_view.hash());
     launcher.add_region_requirement(
         RegionRequirement(full_input->region, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, full_input->region,
@@ -465,22 +462,21 @@ void ImgDataLoader2D::next_batch(FFModel& ff)
   }
   // Load label
   {
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
-    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain = runtime->get_index_space_domain(ctx, batch_label->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<2> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      assert(ff.config.batchSize == batch_label->dims[1].size);
+      meta.num_samples = batch_label->dims[1].size / batch_label->dims[1].degree;
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, batch_label->parallel_is,
                            TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(""));
+                           batch_label->machine_view.hash());
     launcher.add_region_requirement(
         RegionRequirement(full_label->region, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, full_label->region,
@@ -684,23 +680,24 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel& ff, int task_id)
   Runtime* runtime = ff.config.lg_hlr;
   // Load input
 #if 1
-  {  
-    IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(ff.get_or_create_task_is(NDIM, ""));
-    Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
+  {
+    // We should have an extra replica dim
+    assert(full_input->num_dims == NDIM + 1);
+    Domain domain = runtime->get_index_space_domain(ctx, full_input->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<NDIM> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[NDIM-1] - rect.lo[NDIM-1] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[NDIM-1] - rect.lo[NDIM-1] + 1);
+      assert(ff.config.batchSize == batch_input->dims[NDIM-1].size);
+      meta.num_samples = batch_input->dims[NDIM-1].size / batch_input->dims[NDIM-1].degree;
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(task_id, task_is,
+    IndexLauncher launcher(task_id, full_input->parallel_is,
                            TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(""));
+                           full_input->machine_view.hash());
     launcher.add_region_requirement(
         RegionRequirement(full_input->region, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, full_input->region,

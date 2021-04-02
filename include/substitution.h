@@ -83,6 +83,7 @@ public:
 public:
   OperatorType type;
   Node mapOp;
+  const OpX* matchOpX;
   std::vector<TensorX> inputs, weights, outputs;
   std::vector<PMConstraint> pmConstraints;
   std::vector<TNConstraint> tnConstraints;
@@ -108,8 +109,8 @@ public:
                              const TensorX& input2,
                              OperatorType op_type);
   OpX* create_linear(const TensorX& input,
+                     const OpX* match_opx,
                      int num_dims,
-                     int out_channels,
                      ActiMode acti_mode,
                      bool use_bias);
   OpX* create_softmax(const TensorX& input,

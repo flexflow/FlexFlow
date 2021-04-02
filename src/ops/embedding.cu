@@ -26,6 +26,13 @@ Tensor FFModel::embedding(const Tensor input,
                           Initializer* kernel_initializer,
                           const char* name)
 {
+  {
+    Embedding* embed = new Embedding(*this, input, num_entries, out_dim,
+                                     aggr, name);
+    layers.push_back(embed);
+    return embed->outputs[0];
+  }
+#ifdef OLD_LAYER_CREATION
   if (kernel_initializer == NULL) {
     int seed = std::rand();
     kernel_initializer = new GlorotUniform(seed);
@@ -44,6 +51,35 @@ Tensor FFModel::embedding(const Tensor input,
   Embedding* embed = new Embedding(*this, input, weight, aggr, name);
   layers.push_back(embed);
   return embed->outputs[0];
+#endif
+}
+
+Embedding::Embedding(FFModel& model,
+                     const Tensor _input,
+                     int _num_entries,
+                     int _out_channels,
+                     AggrMode _aggr,
+                     const char* name)
+: Op(model, OP_EMBEDDING, name, 1/*inputs*/, 0/*weighs*/, _input),
+  num_entries(_num_entries), out_channels(_out_channels), aggr(_aggr)
+{
+  numOutputs = 1;
+  int numdim = _input->num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
+  for (int i = 1; i < numdim; i++) {
+    dims[i] = _input->dims[i];
+    assert(i == 1 || dims[i].degree == 1);
+  }
+  dims[0].size = out_channels;
+  dims[0].degree = 1;
+  dims[0].parallel_idx = -1;
+  outputs[0] = model.create_tensor_legion_ordering(
+      numdim, dims, DT_FLOAT, this);
+  for (int i = 1; i < numdim; i++) {
+    register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
+  }
+  // Check correctness
+  assert(check_output_input_weight_parallel_dims());
 }
 
 Embedding::Embedding(FFModel& model,
@@ -51,18 +87,28 @@ Embedding::Embedding(FFModel& model,
                      const Tensor _weight,
                      AggrMode _aggr,
                      const char* name)
-: Op(model, OP_EMBEDDING, name, 2/*inputs*/, 0/*weights*/, _input, _weight),
+: Op(model, OP_EMBEDDING, name, 1/*inputs*/, 1/*weights*/, _input, _weight),
   num_entries(_weight->dims[1].size), out_channels(_weight->dims[0].size), aggr(_aggr)
 {
-  assert(_input->num_dims == 2);
   numOutputs = 1;
-  ParallelDim dims[2];
-  dims[1] = inputs[0]->dims[1];
+  int numdim = _input->num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
+  for (int i = 1; i < numdim; i++) {
+    dims[i] = _input->dims[i];
+    assert(i == 1 || dims[i].degree == 1);
+  }
   dims[0].size = out_channels;
   // Assert no parallelism along the first dim
   assert(inputs[0]->dims[0].degree == 1);
   assert(inputs[0]->dims[0].parallel_idx == -1);
-  outputs[0] = model.create_tensor_legion_ordering(2, dims, DT_FLOAT, this);
+  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, DT_FLOAT, this);
+  for (int i = 1; i < numdim; i++) {
+    register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
+  }
+  // sample dim and replica dim
+  register_output_weight_parallel_dims(outputs[0], 1, weights[0], 2);
+  // Check correctness
+  assert(check_output_input_weight_parallel_dims());
 }
 
 #ifdef DEADCODE
@@ -142,7 +188,7 @@ void Embedding::init(const FFModel& ff)
   IndexLauncher launcher(EMBED_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Embedding)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   // regions[0]: input
   //launcher.add_region_requirement(
   //  RegionRequirement(input_lps[0], 0/*projection*/,
@@ -244,25 +290,46 @@ void Embedding::forward_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
                              Context ctx, Runtime* runtime)
 {
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (in_domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return forward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+template<int NDIM>
+__host__
+void Embedding::forward_task_with_dim(const Task *task,
+                                      const std::vector<PhysicalRegion> &regions,
+                                      Context ctx, Runtime* runtime)
+{
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   //const Embedding* embed = (Embedding*) task->args;
   const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
-  TensorAccessorR<int64_t, 2> accInput(
+  TensorAccessorR<int64_t, NDIM> accInput(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> accOutput(
+  TensorAccessorW<float, NDIM> accOutput(
       regions[1], task->regions[1], FID_DATA, ctx, runtime, false/*readOutput*/);
-  TensorAccessorR<float, 2> accWeight(
+  TensorAccessorR<float, NDIM> accWeight(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   // Input matches Output
-  assert(accInput.rect.hi[1] == accOutput.rect.hi[1]);
-  assert(accInput.rect.lo[1] == accOutput.rect.lo[1]);
+  for (int i = 1; i < NDIM; i++) {
+    assert(accInput.rect.hi[i] == accOutput.rect.hi[i]);
+    assert(accInput.rect.lo[i] == accOutput.rect.lo[i]);
+  }
   // Weight matches Output
   assert(accWeight.rect.hi[0] - accWeight.rect.lo[0]
       == accOutput.rect.hi[0] - accOutput.rect.lo[0]);
   int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
-  int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
+  int batch_size = accOutput.rect.volume() / out_dim;
   forward_kernel(accInput.ptr, accOutput.ptr, accWeight.ptr, in_dim, out_dim, batch_size,  m->aggr, accOutput.rect.volume());
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
@@ -281,7 +348,7 @@ void Embedding::forward(const FFModel& ff)
   IndexLauncher launcher(EMBED_FWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   // regions[0]: input
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part, 0/*projection*/,
@@ -318,24 +385,45 @@ void Embedding::backward_task(const Task *task,
                               const std::vector<PhysicalRegion> &regions,
                               Context ctx, Runtime *runtime)
 {
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (in_domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+template<int NDIM>
+__host__
+void Embedding::backward_task_with_dim(const Task *task,
+                                       const std::vector<PhysicalRegion> &regions,
+                                       Context ctx, Runtime* runtime)
+{
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   //const Embedding* embed = (Embedding*) task->args;
   const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
-  TensorAccessorR<int64_t, 2> accInput(
+  TensorAccessorR<int64_t, NDIM> accInput(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 2> accOutput(
+  TensorAccessorR<float, NDIM> accOutput(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> accWeightGrad(
+  TensorAccessorW<float, NDIM> accWeightGrad(
       regions[2], task->regions[2], FID_DATA, ctx, runtime, true/*readOutput*/);
   // Input matches Output
-  assert(accInput.rect.hi[1] == accOutput.rect.hi[1]);
-  assert(accInput.rect.lo[1] == accOutput.rect.lo[1]);
+  for (int i = 1; i < NDIM; i++) {
+    assert(accInput.rect.hi[i] == accOutput.rect.hi[i]);
+    assert(accInput.rect.lo[i] == accOutput.rect.lo[i]);
+  }
   // WeightGrad matches Output
   assert(accWeightGrad.rect.hi[0] - accWeightGrad.rect.lo[0] == accOutput.rect.hi[0] - accOutput.rect.lo[0]);
   int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
-  int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
+  int batch_size = accOutput.rect.volume() / out_dim;
   backward_kernel(accInput.ptr, accOutput.ptr, accWeightGrad.ptr, in_dim, out_dim, batch_size, m->aggr, accOutput.rect.volume());
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
@@ -354,7 +442,7 @@ void Embedding::backward(const FFModel& ff)
   IndexLauncher launcher(EMBED_BWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   // regions[0]: input
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part, 0/*projection*/,
@@ -430,4 +518,28 @@ bool Embedding::measure_operator_cost(Simulator* sim,
   }
 
   return true;
+}
+
+Node FFModel::get_or_create_embedding_node(const Tensor input,
+                                           int num_entries,
+                                           int out_channels,
+                                           AggrMode aggr)
+{
+  size_t hash = input->get_owner_independent_hash();
+  hash = hash * 31 + std::hash<int>()(num_entries);
+  hash = hash * 31 + std::hash<int>()(out_channels);
+  hash = hash * 31 + std::hash<int>()(aggr);
+  const auto& it = cached_embedding_ops.find(hash);
+  Embedding* embed = NULL;
+  if (it != cached_embedding_ops.end()) {
+    embed = it->second;
+  } else {
+    embed = new Embedding(*this, input, num_entries, out_channels,
+                          aggr, NULL);
+    cached_embedding_ops[hash] = embed;
+  }
+  Node ret;
+  ret.guid = node_global_guid ++;
+  ret.ptr = embed;
+  return ret;
 }

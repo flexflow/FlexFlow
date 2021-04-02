@@ -41,6 +41,7 @@ struct ParallelDim {
 
 struct TensorBase {
   TensorBase(void);
+  TensorBase(const TensorBase& rhs);
   //Tensor& operator=(const Tensor& rhs);
   //bool operator==(const Tensor& rhs) const;
   void inline_map(FFConfig &config);

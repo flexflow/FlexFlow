@@ -75,14 +75,15 @@ struct NodeCompare {
   };
 };
 
-size_t dp_state_hash(const Graph* graph,
-                     const Node& sink_node,
-                     const MachineView& sink_view,
-                     const Node& source_node,
-                     const MachineView& source_view,
-                     const MachineResource& resource);
-
-using SequenceGraph = ::flexflow::graph::BasicGraph<Node>;
+struct GraphOptimalViewSerialized {
+#ifdef LEGION_MAX_RETURN_SIZE
+  static const size_t buffer_size = LEGION_MAX_RETURN_SIZE - 8;
+#else
+  static const size_t buffer_size = 32 * 1024 - 8;
+#endif
+  size_t total_bytes;
+  char data[buffer_size];
+};
 
 class SearchHelper {
 public:
@@ -103,7 +104,10 @@ public:
                                          NodeAssignment const &source,
                                          NodeAssignment const &sink,
                                          MachineResource const &resources) const;
-  float find_optimal_nonsequence_graph_time(Graph const *g, NodeAssignment const &source, NodeAssignment const &sink, MachineResource const &resources) const;
+  float find_optimal_nonsequence_graph_time(Graph const *g, 
+                                            NodeAssignment const &source, 
+                                            NodeAssignment const &sink, 
+                                            MachineResource const &resources) const;
 private:
   FFModel *model;
 
@@ -133,13 +137,13 @@ public:
   bool check_correctness(void);
   bool has_loop(void);
   bool map_operators_to_layers(std::vector<Op*>& layers) const;
+  static GraphOptimalViewSerialized graph_optimize_task(const Legion::Task *task,
+             const std::vector<Legion::PhysicalRegion> &regions,
+             Legion::Context ctx, Legion::Runtime *runtime);
   Node find_bottleneck_node(const Node& sink_node, const Node& source_node) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::unique_ptr<std::ostream> out) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::string const &out_filename) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const;
-
-  Graph apply_sequence_graph(SequenceGraph const &sequence) const;
-  SequenceGraph get_sequence_graph() const;
 
   std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_at_node(Node const &bottleneck) const;
 public:

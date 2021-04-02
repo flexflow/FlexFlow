@@ -26,6 +26,7 @@ MappingTagID FFConfig::get_hash_id(const std::string& pcname)
   return std::hash<std::string>{}(pcname);
 }
 
+/*
 bool FFConfig::find_parallel_config(int ndims,
                                     const std::string& pcname,
                                     ParallelConfig& config) const
@@ -93,6 +94,7 @@ bool FFConfig::find_parallel_config(int ndims,
     return true;
   }
 }
+*/
 
 bool load_strategies_from_file(const std::string& filename,
                                std::map<MappingTagID, ParallelConfig>& strategies)

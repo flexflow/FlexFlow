@@ -20,6 +20,7 @@
 #include <unordered_set>
 #include "random_utils.h"
 #include "graph.h"
+#include "legion/legion_utilities.h"
 
 using namespace std;
 using namespace Legion;
@@ -42,8 +43,27 @@ TensorBase::TensorBase(void)
   sync_type = ParameterSyncType::NONE;
   initializer = NULL;
   create_gradients = false;
-
   //physical_region.impl = NULL;
+}
+
+TensorBase::TensorBase(const TensorBase& rhs)
+{
+  ts_guid = rhs.ts_guid;
+  num_dims = rhs.num_dims;
+  for (int i = 0; i < num_dims; i++)
+    dims[i] = rhs.dims[i];
+  machine_view = rhs.machine_view;
+  parallel_is = rhs.parallel_is;
+  region = rhs.region;
+  region_grad = rhs.region_grad;
+  part = rhs.part;
+  part_grad = rhs.part_grad;
+  owner_op = rhs.owner_op;
+  owner_idx = rhs.owner_idx;
+  data_type = rhs.data_type;
+  sync_type = rhs.sync_type;
+  initializer = rhs.initializer;
+  create_gradients = rhs.create_gradients;
 }
 
 /*
@@ -517,11 +537,10 @@ void Op::zero_grad(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   Context ctx = ff.config.lg_ctx;
   ArgumentMap argmap;
-  IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(ZERO_INIT_TASK_ID, outputs[0]->parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   for (int i = 0; i < numWeights; i++) {
     launcher.add_region_requirement(
         RegionRequirement(weights[i]->part_grad, 0/*projection id*/,
@@ -975,6 +994,22 @@ bool Op::check_output_input_weight_same_parallel_is() const
   return true;
 }
 
+bool Op::check_output_input_weight_same_machine_view() const
+{
+  assert(numOutputs > 0);
+  MachineView machine_view = outputs[0]->machine_view;
+  for (int i = 0; i < numOutputs; i++)
+    if (outputs[i]->machine_view != machine_view)
+      return false;
+  for (int i = 0; i < numInputs; i++)
+    if (inputs[i]->machine_view != machine_view)
+      return false;
+  for (int i = 0; i < numWeights; i++)
+    if (weights[i]->machine_view != machine_view)
+      return false;
+  return true;
+}
+
 void Op::set_argumentmap_for_init(const FFModel& ff,
                                   ArgumentMap& argmap)
 {
@@ -986,13 +1021,15 @@ void Op::set_argumentmap_for_init(const FFModel& ff,
     case DIM: \
     { \
       Rect<DIM> rect = domain; \
-      ParallelConfig pc; \
-      std::string pcname = name; \
-      ff.config.find_parallel_config(DIM, pcname, pc); \
+      MachineView view = outputs[0]->machine_view; \
+      ncclComm_t* nccl_comms = NULL; \
+      if (numWeights > 0) \
+        nccl_comms = ff.find_nccl_comms(view); \
       int idx = 0; \
       for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        FFHandler handle = ff.handlers[pc.device_ids[idx++]]; \
-        handle.ncclComm = pc.nccl_comms[idx-1]; \
+        FFHandler handle = ff.handlers[view.get_device_id(*it)]; \
+        if (numWeights > 0) \
+          handle.ncclComm = nccl_comms[idx-1]; \
         argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
       } \
       break; \
@@ -1172,8 +1209,10 @@ FFModel::FFModel(FFConfig& _config)
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
   // Register machine views
-  register_machine_views();
+  register_all_machine_views(config.numNodes, config.workersPerNode,
+                             config.cpusPerNode, all_valid_views);
   // Load strategy file
+#ifdef DEADCODE
   int start_dim = 1, end_dim = 4;
 #if MAX_TENSOR_DIM >= 5
   end_dim = 5;
@@ -1200,6 +1239,7 @@ FFModel::FFModel(FFConfig& _config)
       pc.device_ids[j] = j;
     config.strategies[FFConfig::DataParallelism_CPU_1D+i-1] = pc;
   }
+#endif
 
   // Create field space
   {
@@ -1215,12 +1255,12 @@ FFModel::FFModel(FFConfig& _config)
   //}
 
   ArgumentMap argmap;
-  Rect<2> task_rect(Point<2>(0, 0),
-                    Point<2>(0, config.workersPerNode * config.numNodes - 1));
-  IndexSpaceT<2> task_is = runtime->create_index_space(ctx, task_rect);
+  Rect<1> task_rect(Point<1>(0),
+                    Point<1>(config.workersPerNode * config.numNodes - 1));
+  IndexSpaceT<1> task_is = runtime->create_index_space(ctx, task_rect);
 
   //int rank = 0;
-  for (PointInRectIterator<2> it(task_rect); it(); it++) {
+  for (PointInRectIterator<1> it(task_rect); it(); it++) {
     FFInitInfo info;
     //info.myRank = rank++;
     //info.allRanks = config.workersPerNode * config.numNodes;
@@ -1233,14 +1273,27 @@ FFModel::FFModel(FFConfig& _config)
   IndexLauncher initLauncher(FF_INIT_TASK_ID, task_is,
                              TaskArgument(NULL, 0), argmap,
                              Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                             FFConfig::DataParallelism_GPU_2D);
+                             FFConfig::DataParallelism_GPU);
   FutureMap fm = runtime->execute_index_space(ctx, initLauncher);
   fm.wait_all_results();
   int idx = 0;
-  for (PointInRectIterator<2> it(task_rect); it(); it++) {
+  for (PointInRectIterator<1> it(task_rect); it(); it++) {
     handlers[idx++] = fm.get_result<FFHandler>(*it);
   }
 }
+
+#ifdef FF_USE_NCCL
+ncclComm_t* FFModel::find_nccl_comms(const MachineView& view) const
+{
+  const auto& it = view_hash_to_nccl_comms.find(view.hash());
+  if (it == view_hash_to_nccl_comms.end()) {
+    assert(false);
+    return NULL;
+  } else {
+    return it->second;
+  }
+}
+#endif
 
 /*
 template<int NDIM>
@@ -1264,15 +1317,14 @@ Tensor FFModel::create_constant(const int dims[],
   // FIXME: currently create gradients for constants since the current auto grad algorithm
   // computes gradients for all operators
   Tensor tensor = create_tensor<NDIM>(dims, data_type, NULL/*owner_op*/, true/*create_grad*/);
-  IndexSpaceT<NDIM> part_is = (IndexSpaceT<NDIM>) get_or_create_task_is(NDIM, "");
   ConstantInitializer* init =  new ConstantInitializer(value);
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   ArgumentMap argmap;
-  IndexLauncher launcher(CONSTANT_INIT_TASK_ID, part_is,
+  IndexLauncher launcher(CONSTANT_INIT_TASK_ID, tensor->parallel_is,
       TaskArgument(init, sizeof(ConstantInitializer)), argmap,
       Predicate::TRUE_PRED, false, 0,
-      FFConfig::get_hash_id(""));
+      tensor->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(tensor->part, 0/*projection id*/,
                         WRITE_ONLY, EXCLUSIVE, tensor->region));
@@ -1837,10 +1889,9 @@ void FFModel::map_linear_weight(
 {
   assert(op->op_type == OP_LINEAR);
   std::string pcname = op->name;
-  IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>)get_or_create_task_is(TDIM, pcname);
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
-  Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, op->parallel_is);
   int num_parts[TDIM];
   for (int i = 0; i < TDIM; i++)
     num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
@@ -1877,7 +1928,7 @@ void FFModel::map_linear_weight(
         transform[i][j] = 0;
     transform[NDIM-1][0] = out_channels / num_parts[0];
     IndexPartition ip = runtime->create_partition_by_restriction(
-        ctx, is, part_is, transform, extent);
+        ctx, is, op->parallel_is, transform, extent);
     assert(runtime->is_index_partition_complete(ctx, ip));
     weight->part = runtime->get_logical_partition(
         ctx, weight->region, ip);
@@ -1905,7 +1956,7 @@ void FFModel::map_linear_weight(
     for (int i = 1; i < TDIM; i++)
       transform[NDIM-1][i] = transform[NDIM-1][i-1] * num_parts[i-1];
     IndexPartition ip = runtime->create_partition_by_restriction(
-        ctx, is, part_is, transform, extent);
+        ctx, is, op->parallel_is, transform, extent);
     assert(runtime->is_index_partition_complete(ctx, ip));
     assert(runtime->is_index_partition_disjoint(ctx, ip));
     weight->part = runtime->get_logical_partition(
@@ -1941,7 +1992,7 @@ void FFModel::map_linear_weight(
     for (int i = 1; i < TDIM; i++)
       transform[NDIM-1][i] = transform[NDIM-1][i-1] * num_parts[i-1];
     IndexPartition ip = runtime->create_partition_by_restriction(
-        ctx, is, part_is, transform, extent);
+        ctx, is, op->parallel_is, transform, extent);
     assert(runtime->is_index_partition_complete(ctx, ip));
     assert(runtime->is_index_partition_disjoint(ctx, ip));
     weight->part_grad = runtime->get_logical_partition(
@@ -1952,13 +2003,11 @@ void FFModel::map_linear_weight(
 template<int NDIM>
 void FFModel::map_conv_weight(
     Tensor weight,
-    const Op* parallel_op)
+    const Op* op)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
-  std::string pcname = parallel_op->name;
-  IndexSpaceT<4> part_is = (IndexSpaceT<4>) get_or_create_task_is(4, pcname);
-  Rect<4> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  Rect<4> part_rect = runtime->get_index_space_domain(ctx, op->parallel_is);
   int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
   int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
   int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
@@ -1994,7 +2043,7 @@ void FFModel::map_conv_weight(
       for (int j = 0; j < 4; j++)
         transform[i][j] = 0;
     IndexPartition ip = runtime->create_partition_by_restriction(
-        ctx, is, part_is, transform, rect);
+        ctx, is, op->parallel_is, transform, rect);
     assert(runtime->is_index_partition_complete(ctx, ip));
     weight->part = runtime->get_logical_partition(
         ctx, weight->region, ip);
@@ -2019,7 +2068,7 @@ void FFModel::map_conv_weight(
     transform[NDIM-1][2] = out_channels * num_par_w * num_par_h;
     transform[NDIM-1][3] = out_channels * num_par_w * num_par_h * num_par_c;
     IndexPartition ip = runtime->create_partition_by_restriction(
-        ctx, is, part_is, transform, extent);
+        ctx, is, op->parallel_is, transform, extent);
     assert(runtime->is_index_partition_complete(ctx, ip));
     assert(runtime->is_index_partition_disjoint(ctx, ip));
     weight->part = runtime->get_logical_partition(
@@ -2054,7 +2103,7 @@ void FFModel::map_conv_weight(
     transform[NDIM-1][2] = out_channels * num_par_w * num_par_h;
     transform[NDIM-1][3] = out_channels * num_par_w * num_par_h * num_par_c;
     IndexPartition ip = runtime->create_partition_by_restriction(
-        ctx, is, part_is, transform, extent);
+        ctx, is, op->parallel_is, transform, extent);
     assert(runtime->is_index_partition_complete(ctx, ip));
     assert(runtime->is_index_partition_disjoint(ctx, ip));
     weight->part_grad = runtime->get_logical_partition(
@@ -2124,45 +2173,62 @@ Tensor FFModel::create_linear_replica(const int dims[],
   return replica;
 }
 
-IndexSpace FFModel::get_task_is(ParallelConfig pc) const
+IndexSpace FFModel::get_task_is(const MachineView& view) const
 {
-  std::map<ParallelConfig, IndexSpace, ParaConfigCompare>::const_iterator iter;
-  iter = taskIs.find(pc);
-  assert(iter != taskIs.end());
+  const auto& iter = all_task_is.find(view);
+  assert(iter != all_task_is.end());
   return iter->second;
+}
+
+IndexSpace FFModel::get_task_is(const ParallelConfig& pc) const
+{
+  MachineView view;
+  view.ndims = pc.nDims;
+  for (int i = 0; i < view.ndims; i++)
+    view.dim[i] = pc.dim[i];
+  return get_task_is(view);
 }
 
 IndexSpace FFModel::get_or_create_task_is(const Tensor tensor)
 {
-  ParallelConfig pc;
-  pc.nDims = 0;
+  MachineView view;
+  view.ndims = 0;
   for (int i = 0; i < tensor->num_dims; i++)
     if (tensor->dims[i].parallel_idx >= 0) {
-      pc.dim[tensor->dims[i].parallel_idx] = tensor->dims[i].degree;
-      pc.nDims++;
+      view.dim[tensor->dims[i].parallel_idx] = tensor->dims[i].degree;
+      view.ndims++;
     }
-  if (pc.nDims == 0) {
-    pc.nDims = 1;
-    pc.dim[0] = 1;
+  if (view.ndims == 0) {
+    view.ndims = 1;
+    view.dim[0] = 1;
   }
-  return get_or_create_task_is(pc);
+  return get_or_create_task_is(view);
 }
 
-IndexSpace FFModel::get_or_create_task_is(ParallelConfig pc)
+IndexSpace FFModel::get_or_create_task_is(const ParallelConfig& pc)
 {
-  if (taskIs.find(pc) != taskIs.end())
-    return taskIs[pc];
+  MachineView view;
+  view.ndims = pc.nDims;
+  for (int i = 0; i < view.ndims; i++)
+    view.dim[i] = pc.dim[i];
+  return get_or_create_task_is(view);
+}
+
+IndexSpace FFModel::get_or_create_task_is(const MachineView& view)
+{
+  if (all_task_is.find(view) != all_task_is.end())
+    return all_task_is[view];
   IndexSpace task_is;
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
-  switch (pc.nDims) {
+  switch (view.ndims) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
       Rect<DIM> task_rect; \
       for (int i = 0; i < DIM; i++) { \
         task_rect.lo[i] = 0; \
-        task_rect.hi[i] = pc.dim[i]-1; \
+        task_rect.hi[i] = view.dim[i]-1; \
       } \
       task_is = runtime->create_index_space(ctx, task_rect); \
       break; \
@@ -2173,21 +2239,22 @@ IndexSpace FFModel::get_or_create_task_is(ParallelConfig pc)
       assert(false);
   }
   printf("ndim(%d) dims[%d %d %d %d]\n",
-      pc.nDims, pc.dim[0], pc.dim[1], pc.dim[2], pc.dim[3]);
-  taskIs[pc] = task_is;
+      view.ndims, view.dim[0], view.dim[1], view.dim[2], view.dim[3]);
+  all_task_is[view] = task_is;
   return task_is;
 }
 
 IndexSpace FFModel::get_or_create_task_is(const Domain& domain)
 {
-  ParallelConfig pc;
-  pc.nDims = domain.get_dim();
-  for (int i = 0; i < pc.nDims; i++) {
-    pc.dim[i] = domain.hi()[i] - domain.lo()[i] + 1;
+  MachineView view;
+  view.ndims = domain.get_dim();
+  for (int i = 0; i < view.ndims; i++) {
+    view.dim[i] = domain.hi()[i] - domain.lo()[i] + 1;
   }
-  return get_or_create_task_is(pc);
+  return get_or_create_task_is(view);
 }
 
+/*
 IndexSpace FFModel::get_or_create_task_is(int ndims, const std::string& pcname)
 {
   ParallelConfig pc;
@@ -2201,17 +2268,17 @@ IndexSpace FFModel::get_task_is(int ndims, const std::string& pcname) const
   assert(config.find_parallel_config(ndims, pcname, pc));
   return get_task_is(pc);
 }
+*/
 
 IndexSpace FFModel::get_task_is(const Domain& domain) const
 {
-  ParallelConfig pc;
-  pc.nDims = domain.get_dim();
-  for (int i = 0; i < pc.nDims; i++)
-    pc.dim[i] = domain.hi()[i] - domain.lo()[i] + 1;
-  std::map<ParallelConfig, IndexSpace, ParaConfigCompare>::const_iterator it;
-  it = taskIs.find(pc);
-  assert(it != taskIs.end());
-  return it->second;
+  MachineView view;
+  view.ndims = domain.get_dim();
+  for (int i = 0; i < view.ndims; i++)
+    view.dim[i] = domain.hi()[i] - domain.lo()[i] + 1;
+  const auto& iter = all_task_is.find(view);
+  assert(iter != all_task_is.end());
+  return iter->second;
 }
 
 void FFModel::reset_metrics()
@@ -2290,7 +2357,7 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
                            std::vector<Op*>& new_layers)
 {
   //Context ctx = config.lg_ctx;
-  Runtime* runtime = config.lg_hlr;
+  //Runtime* runtime = config.lg_hlr;
   for (size_t l = 1; l < layers.size() - 1; l++) {
     size_t start = 0;
     {
@@ -2307,12 +2374,11 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
       }
     }
     for (size_t i = start; i < l; i++) {
-      Domain d1 = runtime->get_index_space_domain(layers[l]->outputs[0]->parallel_is);
-      Domain d2 = runtime->get_index_space_domain(layers[i]->outputs[0]->parallel_is);
-      ParallelConfig pc1, pc2;
-      assert(config.find_parallel_config(d1.get_dim(), layers[l]->name, pc1));
-      assert(config.find_parallel_config(d2.get_dim(), layers[i]->name, pc2));
-      if (pc1 == pc2) {
+      //Domain d1 = runtime->get_index_space_domain(layers[l]->outputs[0]->parallel_is);
+      //Domain d2 = runtime->get_index_space_domain(layers[i]->outputs[0]->parallel_is);
+      MachineView view1 = layers[l]->outputs[0]->machine_view;
+      MachineView view2 = layers[i]->outputs[0]->machine_view;
+      if (view1 == view2) {
         FusedOp* fused_op;
         //bool created = false;
         if (layers[i]->op_type == OP_FUSED)
@@ -2372,18 +2438,25 @@ void FFModel::compile(LossType loss_type,
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   config.computationMode = comp_mode;
-  if (config.import_strategy_file.length() > 0) {
-    load_strategies_from_file(config.import_strategy_file, config.strategies);
-  }
-  if (config.search_budget > 0) {
-    // Launch the search task
+  //if (config.import_strategy_file.length() > 0) {
+  //  load_strategies_from_file(config.import_strategy_file, config.strategies);
+  //}
+  // Launch the graph optimize task
+  {
     FFModel* model = this;
-    TaskLauncher launcher(STRATEGY_SEARCH_TASK_ID,
+    TaskLauncher launcher(GRAPH_OPTIMIZE_TASK_ID,
         TaskArgument(&model, sizeof(FFModel*)));
     Future future = runtime->execute_task(ctx, launcher);
-    future.get_void_result();
-  } else {
-    // Do nothing
+
+    GraphOptimalViewSerialized ret = future.get_result<GraphOptimalViewSerialized>();
+    Deserializer dez(ret.data, ret.total_bytes);
+    // Reconstruct layers
+    Graph* best_graph = new Graph(this);
+    std::unordered_map<Node, MachineView> optimal_views;
+    deserialize_graph_optimal_view(dez, best_graph, optimal_views);
+    layers.clear();
+    convert_graph_to_layers(best_graph, optimal_views);
+    delete best_graph;
   }
 
   loss_op = new Loss(loss_type);
@@ -2399,12 +2472,11 @@ void FFModel::compile(LossType loss_type,
       // Assume outputs[0] is inplace with inputs[0]
       assert(layers[l]->numOutputs == 1);
       if (layers[l]->inputs[0]->owner_op != NULL) {
-        int dim1 = layers[l]->outputs[0]->num_dims;
-        int dim2 = layers[l]->inputs[0]->num_dims;
-        ParallelConfig pc1, pc2;
-        assert(config.find_parallel_config(dim1, layers[l]->name, pc1));
-        assert(config.find_parallel_config(dim2, layers[l]->inputs[0]->owner_op->name, pc2));
-        if (pc1 == pc2) {
+        //int dim1 = layers[l]->outputs[0]->num_dims;
+        //int dim2 = layers[l]->inputs[0]->num_dims;
+        MachineView view1 = layers[l]->outputs[0]->machine_view;
+        MachineView view2 = layers[l]->inputs[0]->machine_view;
+        if (view1 == view2) {
           // Check no others also need layers[l]->inputs[0]
           bool found = false;
           for (size_t i = 0; i < layers.size(); i++) {
@@ -2563,15 +2635,16 @@ void FFModel::compile(LossType loss_type,
       }
   }
   //assert(final_layer->outputs[0].num_dims == 2);
-  int dims[MAX_TENSOR_DIM], num_dims;
-  num_dims = final_layer->outputs[0]->num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
+  int num_dims = final_layer->outputs[0]->num_dims;
   // Note that FlexFlow's runtim internally reverse the array ordering
   for (int i = 0; i < num_dims; i++)
-    dims[i] = final_layer->outputs[0]->dims[num_dims-1-i].size;
+    dims[i] = final_layer->outputs[0]->dims[i];
   DataType label_type = DT_FLOAT;
   if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     // assign dims[num_dims-1] = 1 for sparse categorical labels
-    dims[num_dims-1] = 1;
+    assert(dims[0].degree == 1);
+    dims[0].size = 1;
     label_type = DT_INT32;
   }
   // create label tensor
@@ -2579,7 +2652,8 @@ void FFModel::compile(LossType loss_type,
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      label_tensor = create_tensor<DIM>(dims, label_type); \
+      label_tensor = create_tensor_legion_ordering(num_dims, dims, label_type); \
+      label_tensor->machine_view = final_layer->outputs[0]->machine_view; \
       map_tensor(label_tensor, label_tensor->owner_op); \
       label_tensor_with_final_part = label_tensor; \
       break; \
@@ -2597,6 +2671,32 @@ void FFModel::compile(LossType loss_type,
 #ifdef FF_USE_NCCL
   if (config.computationMode == COMP_MODE_TRAINING) {
     // init all nccl communicators
+    for (size_t l = 0; l < layers.size(); l++) {
+      // Only create nccl for weights
+      if (layers[l]->op_type != OP_WEIGHT) continue;
+      MachineView view = layers[l]->outputs[0]->machine_view;
+      if (view_hash_to_nccl_comms.find(view.hash())==view_hash_to_nccl_comms.end()) {
+        TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));
+        Future future = runtime->execute_task(ctx, launcher);
+        ncclUniqueId ncclId = future.get_result<ncclUniqueId>();
+        IndexSpace task_is = get_or_create_task_is(view);
+        ArgumentMap argmap;
+        IndexLauncher index_launcher(NCCL_INIT_COMMS_TASK_ID, task_is,
+            TaskArgument(&ncclId, sizeof(ncclUniqueId)), argmap,
+            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+            view.hash()/*MappingTagID*/);
+        FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
+        fm.wait_all_results();
+        int idx = 0;
+        Domain task_domain = runtime->get_index_space_domain(ctx, task_is);
+        ncclComm_t* nccl_comms = (ncclComm_t*) malloc(sizeof(ncclComm_t)*task_domain.get_volume());
+        for (Domain::DomainPointIterator it(task_domain); it; it++, idx++) {
+          nccl_comms[idx] = fm.get_result<ncclComm_t>(*it);
+        }
+        view_hash_to_nccl_comms[view.hash()] = nccl_comms;
+      }
+    }
+#ifdef DEADCODE
     std::map<MappingTagID, ParallelConfig>::iterator iter;
     for (iter = config.strategies.begin(); iter != config.strategies.end(); iter++) {
       // only init nccl for GPU parallel configurations
@@ -2631,6 +2731,7 @@ void FFModel::compile(LossType loss_type,
         }
       }
     }
+#endif
   }
 #endif
 }
@@ -3031,6 +3132,7 @@ struct DefaultConfig {
   const static size_t simulatorWorkSpaceSize = (size_t)2 * 1024 * 1024 * 1024; //2GB
   constexpr static float searchAlpha = 1.0f;
   const static bool searchOverlapBackwardUpdate = false;
+  const static bool onlyDataParallel = false;
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
@@ -3057,6 +3159,7 @@ FFConfig::FFConfig()
   search_alpha = DefaultConfig::searchAlpha;
   search_overlap_backward_update = DefaultConfig::searchOverlapBackwardUpdate;
   computationMode = COMP_MODE_TRAINING;
+  only_data_parallel = DefaultConfig::onlyDataParallel;
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
@@ -3138,6 +3241,10 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if ((!strcmp(argv[i], "--export")) || (!strcmp(argv[i], "--export-strategy"))) {
       export_strategy_file = std::string(argv[++i]);
+      continue;
+    }
+    if ((!strcmp(argv[i], "--only-data-parallel"))) {
+      only_data_parallel = true;
       continue;
     }
     if ((!strcmp(argv[i], "--enable-parameter-parallel"))) {
@@ -3946,6 +4053,15 @@ void register_flexflow_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<Simulator::strategy_search_task>(
         registrar, "Stretegy Search Task");
+  }
+  // Graph optimize
+  {
+    TaskVariantRegistrar registrar(GRAPH_OPTIMIZE_TASK_ID,
+                                   "Graph Optimize");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<GraphOptimalViewSerialized, Graph::graph_optimize_task>(
+        registrar, "Graph Optimize Task");
   }
   // Parameter Server Prefetch task
   {

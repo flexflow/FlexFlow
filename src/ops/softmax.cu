@@ -147,7 +147,7 @@ void Softmax::init(const FFModel& ff)
   IndexLauncher launcher(SOFTMAX_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Softmax)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -247,7 +247,7 @@ void Softmax::forward(const FFModel& ff)
   IndexLauncher launcher(SOFTMAX_FWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -348,7 +348,7 @@ void Softmax::backward(const FFModel& ff)
   IndexLauncher launcher(SOFTMAX_BWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
                         READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));

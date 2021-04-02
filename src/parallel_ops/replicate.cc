@@ -77,11 +77,10 @@ void Replicate::init(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(REPLICATE_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(REPLICATE_FWD_TASK_ID, outputs[0]->parallel_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
+      outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(input_lp, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -100,11 +99,10 @@ void Replicate::forward(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(REPLICATE_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(REPLICATE_FWD_TASK_ID, outputs[0]->parallel_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
+      outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(input_lp, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -123,11 +121,10 @@ void Replicate::backward(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexSpace task_is = outputs[0]->parallel_is;
-  IndexLauncher launcher(REPLICATE_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(REPLICATE_BWD_TASK_ID, inputs[0]->parallel_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
+      inputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(output_grad_lp, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));

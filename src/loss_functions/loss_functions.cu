@@ -193,11 +193,9 @@ void Loss::backward_with_dim(FFModel* model,
   //scale_factor = 1.0f;
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
-  IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(
-    model->get_or_create_task_is(NDIM, pcname));
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, logit->parallel_is);
   Rect<NDIM> logit_rect = runtime->get_index_partition_color_space(
       ctx, logit->part.get_index_partition());
   Rect<NDIM> label_rect = runtime->get_index_partition_color_space(
@@ -207,10 +205,10 @@ void Loss::backward_with_dim(FFModel* model,
     assert(false);
   }
   ArgumentMap argmap;
-  IndexLauncher launcher(LOSS_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(LOSS_BWD_TASK_ID, logit->parallel_is,
                          TaskArgument(this, sizeof(Loss)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(pcname));
+                         logit->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(logit->part_grad, 0/*projection id*/,
                         READ_WRITE, EXCLUSIVE, logit->region_grad));

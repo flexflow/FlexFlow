@@ -61,17 +61,19 @@ FusedOp::FusedOp(FFModel& model, Op* op)
 
 bool FusedOp::add_operator(FFModel& model, Op* op)
 {
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
+  //Context ctx = model.config.lg_ctx;
+  //Runtime* runtime = model.config.lg_hlr;
   // Currently assume fusion optimization is performed
   // after map_tensors
   // So parallel_is and op->parallel_is are not empty
-  Domain my_domain = runtime->get_index_space_domain(ctx, outputs[0]->parallel_is);
-  Domain op_domain = runtime->get_index_space_domain(ctx, op->outputs[0]->parallel_is);
-  ParallelConfig my_config, op_config;
-  assert(model.config.find_parallel_config(my_domain.get_dim(), name, my_config));
-  assert(model.config.find_parallel_config(op_domain.get_dim(), op->name, op_config));
-  if (my_config == op_config) {
+  //Domain my_domain = runtime->get_index_space_domain(ctx, outputs[0]->parallel_is);
+  //Domain op_domain = runtime->get_index_space_domain(ctx, op->outputs[0]->parallel_is);
+  //ParallelConfig my_config, op_config;
+  //assert(model.config.find_parallel_config(my_domain.get_dim(), name, my_config));
+  //assert(model.config.find_parallel_config(op_domain.get_dim(), op->name, op_config));
+  MachineView my_view = outputs[0]->machine_view;
+  MachineView op_view = op->outputs[0]->machine_view;
+  if (my_view == op_view) {
     // Do nothing
   } else {
     return false;
@@ -256,7 +258,7 @@ void FusedOp::init(const FFModel& ff)
   IndexLauncher launcher(FUSEDOP_INIT_TASK_ID, parallel_is,
       TaskArgument(this, sizeof(FusedOp)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
+      outputs[0]->machine_view.hash());
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   switch (domain.get_dim()) {
@@ -547,7 +549,7 @@ void FusedOp::forward(const FFModel& ff)
   IndexLauncher launcher(FUSEDOP_FWD_TASK_ID, parallel_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
+      outputs[0]->machine_view.hash());
   int offset = 0;
   for (int i = 0; i < numInputs; i++) {
     assert(inputs[i]->part != LogicalPartition::NO_PART);
@@ -918,7 +920,7 @@ void FusedOp::backward(const FFModel& ff)
   IndexLauncher launcher(FUSEDOP_BWD_TASK_ID, parallel_is,
       TaskArgument(this, sizeof(FusedOp)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
+      outputs[0]->machine_view.hash());
   int idx = 0;
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(

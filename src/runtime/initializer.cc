@@ -46,14 +46,13 @@ void GlorotUniform::init(const FFModel* ff,
     runtime->execute_task(ctx, launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
     //assert(p->owner_op != NULL);
-    IndexSpace task_is = p->parallel_is;
-    assert(task_is != IndexSpace::NO_SPACE);
+    assert(p->parallel_is != IndexSpace::NO_SPACE);
     assert(p->num_dims >= 2);
     ArgumentMap argmap;
-    IndexLauncher launcher(GLOROT_INIT_TASK_ID, task_is,
+    IndexLauncher launcher(GLOROT_INIT_TASK_ID, p->parallel_is,
         TaskArgument(this, sizeof(GlorotUniform)), argmap,
         Predicate::TRUE_PRED, false, 0,
-        FFConfig::get_hash_id(p->owner_op->name));
+        p->machine_view.hash());
     launcher.add_region_requirement(
         RegionRequirement(p->part, 0/*projection id*/,
             WRITE_ONLY, EXCLUSIVE, p->region));
@@ -85,13 +84,12 @@ void ZeroInitializer::init(const FFModel* ff,
     runtime->execute_task(ctx, launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
     //assert(p->owner_op != NULL);
-    IndexSpace task_is = p->parallel_is;
-    assert(task_is != IndexSpace::NO_SPACE);
+    assert(p->parallel_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
-    IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
+    IndexLauncher launcher(ZERO_INIT_TASK_ID, p->parallel_is,
        TaskArgument(NULL, 0), argmap,
        Predicate::TRUE_PRED, false, 0,
-       FFConfig::get_hash_id(p->owner_op->name));
+       p->machine_view.hash());
     launcher.add_region_requirement(
         RegionRequirement(p->part, 0/*projection id*/,
             WRITE_ONLY, EXCLUSIVE, p->region));
@@ -178,13 +176,12 @@ void UniformInitializer::init(const FFModel* ff,
     runtime->execute_task(ctx, launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
     //assert(p->owner_op != NULL);
-    IndexSpace task_is = p->parallel_is;
-    assert(task_is != IndexSpace::NO_SPACE);
+    assert(p->parallel_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
-    IndexLauncher launcher(UNIFORM_INIT_TASK_ID, task_is,
+    IndexLauncher launcher(UNIFORM_INIT_TASK_ID, p->parallel_is,
         TaskArgument(this, sizeof(UniformInitializer)), argmap,
         Predicate::TRUE_PRED, false, 0,
-        FFConfig::get_hash_id(p->owner_op->name));
+        p->machine_view.hash());
     launcher.add_region_requirement(
         RegionRequirement(p->part, 0/*projection id*/,
             WRITE_ONLY, EXCLUSIVE, p->region));
@@ -216,13 +213,12 @@ void NormInitializer::init(const FFModel* ff,
     runtime->execute_task(ctx, launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
     //assert(p->owner_op != NULL);
-    IndexSpace task_is = p->parallel_is;
-    assert(task_is != IndexSpace::NO_SPACE);
+    assert(p->parallel_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
-    IndexLauncher launcher(NORMAL_INIT_TASK_ID, task_is,
+    IndexLauncher launcher(NORMAL_INIT_TASK_ID, p->parallel_is,
         TaskArgument(this, sizeof(NormInitializer)), argmap,
         Predicate::TRUE_PRED, false, 0,
-        FFConfig::get_hash_id(p->owner_op->name));
+        p->machine_view.hash());
     launcher.add_region_requirement(
         RegionRequirement(p->part, 0/*projection id*/,
             WRITE_ONLY, EXCLUSIVE, p->region));
@@ -257,13 +253,12 @@ void ConstantInitializer::init(const FFModel* ff,
     runtime->execute_task(ctx, launcher);
   } else if(p->sync_type == ParameterSyncType::NCCL) {
     //assert(p->owner_op != NULL);
-    IndexSpace task_is = p->parallel_is;
-    assert(task_is != IndexSpace::NO_SPACE);
+    assert(p->parallel_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
-    IndexLauncher launcher(CONSTANT_INIT_TASK_ID, task_is,
+    IndexLauncher launcher(CONSTANT_INIT_TASK_ID, p->parallel_is,
         TaskArgument(this, sizeof(ConstantInitializer)), argmap,
         Predicate::TRUE_PRED, false, 0,
-        FFConfig::get_hash_id(p->owner_op->name));
+        p->machine_view.hash());
     launcher.add_region_requirement(
         RegionRequirement(p->part, 0/*projection id*/,
             WRITE_ONLY, EXCLUSIVE, p->region));

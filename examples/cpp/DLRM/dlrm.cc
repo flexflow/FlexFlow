@@ -98,14 +98,14 @@ void top_level_task(const Task* task,
 
   std::vector<Tensor> sparse_inputs;
   for (size_t i = 0; i < dlrmConfig.embedding_size.size(); i++) {
-    const int dims[] = {ffConfig.batchSize, dlrmConfig.embedding_bag_size};
-    Tensor input = ff.create_tensor<2>(dims, DT_INT64);
+    const int dims[] = {1, ffConfig.batchSize, dlrmConfig.embedding_bag_size};
+    Tensor input = ff.create_tensor<3>(dims, DT_INT64);
     sparse_inputs.push_back(input);
   }
   Tensor dense_input;
   {
-    const int dims[] = {ffConfig.batchSize, dlrmConfig.mlp_bot[0]};
-    dense_input = ff.create_tensor<2>(dims, DT_FLOAT);
+    const int dims[] = {1, ffConfig.batchSize, dlrmConfig.mlp_bot[0]};
+    dense_input = ff.create_tensor<3>(dims, DT_FLOAT);
   }
   //Tensor label;
   //{
@@ -330,16 +330,19 @@ DataLoader::DataLoader(FFModel& ff,
   {
     const int dims[] = {num_samples, (int)_sparse_inputs.size()*dlrm.embedding_bag_size};
     full_sparse_input = ff.create_tensor<2>(dims, DT_INT64);
+    ff.map_tensor(full_sparse_input, full_sparse_input->owner_op);
   }
   {
     batch_dense_input = _dense_input;
     const int dims[] = {num_samples, dlrm.mlp_bot[0]};
     full_dense_input = ff.create_tensor<2>(dims, DT_FLOAT);
+    ff.map_tensor(full_dense_input, full_dense_input->owner_op);
   }
   {
     batch_label = _label;
     const int dims[] = {num_samples, 1};
     full_label = ff.create_tensor<2>(dims, DT_FLOAT);
+    ff.map_tensor(full_label, full_label->owner_op);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
@@ -353,25 +356,25 @@ DataLoader::DataLoader(FFModel& ff,
     assert (s == prev_s);
   dlrm_args.embedding_size = prev_s;
   strcpy(dlrm_args.dataset_path, dlrm.dataset_path.c_str());
-  // <-
+  //
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
       TaskArgument(&dlrm_args, sizeof(dlrm_args)));
   // regions[0]: full_sparse_input
   launcher.add_region_requirement(
-      RegionRequirement(full_sparse_input.region,
-                        WRITE_ONLY, EXCLUSIVE, full_sparse_input.region,
+      RegionRequirement(full_sparse_input->region,
+                        WRITE_ONLY, EXCLUSIVE, full_sparse_input->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_dense_input
   launcher.add_region_requirement(
-      RegionRequirement(full_dense_input.region,
-                        WRITE_ONLY, EXCLUSIVE, full_dense_input.region,
+      RegionRequirement(full_dense_input->region,
+                        WRITE_ONLY, EXCLUSIVE, full_dense_input->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   // regions[3]: full_label
   launcher.add_region_requirement(
-      RegionRequirement(full_label.region,
-                        WRITE_ONLY, EXCLUSIVE, full_label.region,
+      RegionRequirement(full_label->region,
+                        WRITE_ONLY, EXCLUSIVE, full_label->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(2, FID_DATA);
   runtime->execute_task(ctx, launcher);
@@ -486,97 +489,90 @@ void DataLoader::next_batch(FFModel& ff)
   // Load Sparse Inputs
   for (size_t i = 0; i < batch_sparse_inputs.size(); i++) {
     int hash = batch_sparse_inputs.size() * MAX_NUM_EMB + i;
-    std::string pc_name = "embedding"+std::to_string(i);
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, pc_name));
-    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain = runtime->get_index_space_domain(ctx, batch_sparse_inputs[i]->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<2> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      assert(ff.config.batchSize == batch_sparse_inputs[i]->dims[1].size);
+      meta.num_samples = ff.config.batchSize / batch_sparse_inputs[i]->dims[1].degree;
       // Assert that we have enough slots to save the indices
       assert(meta.num_samples <= MAX_NUM_SAMPLES);
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, batch_sparse_inputs[i]->parallel_is,
                            TaskArgument(&hash, sizeof(int)), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(pc_name));
-
+                           batch_sparse_inputs[i]->machine_view.hash());
     // Full dataset in ZCM
     launcher.add_region_requirement(
-        RegionRequirement(full_sparse_input.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_sparse_input.region,
+        RegionRequirement(full_sparse_input->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_sparse_input->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_sparse_inputs[i].part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_sparse_inputs[i].region));
+        RegionRequirement(batch_sparse_inputs[i]->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_sparse_inputs[i]->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
   // Load Dense Input
   {
-    std::string pc_name = "";
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, pc_name));
-    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain = runtime->get_index_space_domain(ctx, batch_dense_input->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<2> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      assert(ff.config.batchSize == batch_dense_input->dims[1].size);
+      meta.num_samples = ff.config.batchSize / batch_dense_input->dims[1].degree;
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(pc_name)));
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, batch_dense_input->parallel_is,
+                           TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           batch_dense_input->machine_view.hash());
     // Full dataset in ZCM
     launcher.add_region_requirement(
-        RegionRequirement(full_dense_input.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_dense_input.region,
+        RegionRequirement(full_dense_input->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_dense_input->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_dense_input.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_dense_input.region));
+        RegionRequirement(batch_dense_input->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_dense_input->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
   // Load Labels
   {
-    std::string pc_name = "";
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, pc_name));
-    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain = runtime->get_index_space_domain(ctx, batch_label->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<2> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      assert(ff.config.batchSize % batch_label->dims[1].size);
+      meta.num_samples = ff.config.batchSize / batch_label->dims[1].degree;
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_3, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(pc_name)));
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_3, batch_label->parallel_is,
+                           TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           batch_label->machine_view.hash());
     // Full dataset in ZCM
     launcher.add_region_requirement(
-        RegionRequirement(full_label.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_label.region,
+        RegionRequirement(full_label->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_label->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_label.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_label.region));
+        RegionRequirement(batch_label->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_label->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }

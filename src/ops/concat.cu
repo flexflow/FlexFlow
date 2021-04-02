@@ -23,17 +23,17 @@ Tensor FFModel::concat(int n,
                        int axis,
                        const char *name)
 {
-  Concat *cat = new Concat(*this, n, tensors, axis, name);
+  Concat *cat = new Concat(*this, n, tensors, tensors[0]->num_dims-1-axis, name);
   layers.push_back(cat);
   return cat->outputs[0];
 }
 
 Concat::Concat(FFModel& model,
                int _n, const Tensor* _tensors,
-               int _axis,
+               int _legion_axis,
                const char* name)
 : Op(model, OP_CONCAT, name, _n/*inputs*/, 0/*weights*/, _tensors),
-  axis(inputs[0]->num_dims-1-_axis)
+  axis(_legion_axis)
 {
   //TODO: swich to use the Legion dim ordering
   int num_dim = inputs[0]->num_dims;
@@ -139,31 +139,11 @@ void Concat::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      ParallelConfig pc; \
-      std::string pcname = name; \
-      ff.config.find_parallel_config(DIM, pcname, pc); \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        FFHandler handle = ff.handlers[pc.device_ids[idx++]]; \
-        argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
+  set_argumentmap_for_init(ff, argmap);
   IndexLauncher launcher(CONCAT_INIT_TASK_ID, parallel_is,
     TaskArgument(this, sizeof(Concat)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-    FFConfig::get_hash_id(std::string(name)));
+    outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->part, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
@@ -182,22 +162,7 @@ void Concat::init(const FFModel& ff)
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        meta[idx++] = fm.get_result<OpMeta*>(*it); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
+  set_opmeta_from_futuremap(ff, fm);
 }
 
 template<int N>
@@ -308,10 +273,11 @@ void Concat::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(CONCAT_FWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Concat)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->part, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
@@ -418,10 +384,11 @@ void Concat::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_backward(ff, argmap);
   IndexLauncher launcher(CONCAT_BWD_TASK_ID, parallel_is,
     TaskArgument(this, sizeof(Concat)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-    FFConfig::get_hash_id(std::string(name)));
+    outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
@@ -502,4 +469,26 @@ bool Concat::measure_operator_cost(Simulator* sim,
   }
 
   return true;
+}
+
+Node FFModel::get_or_create_concat_node(int num_inputs,
+                                        const Tensor* inputs,
+                                        int axis)
+{
+  size_t hash = std::hash<int>()(num_inputs);
+  hash = hash * 31 + std::hash<int>()(axis);
+  for (int i = 0; i < num_inputs; i++)
+    hash = hash * 31 + inputs[i]->get_owner_independent_hash();
+  const auto& it = cached_concat_ops.find(hash);
+  Concat* concat = NULL;
+  if (it != cached_concat_ops.end()) {
+    concat = it->second;
+  } else {
+    concat = new Concat(*this, num_inputs, inputs, axis, NULL);
+    cached_concat_ops[hash] = concat;
+  }
+  Node ret;
+  ret.guid = node_global_guid ++;
+  ret.ptr = concat;
+  return ret;
 }

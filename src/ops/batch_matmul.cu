@@ -136,7 +136,7 @@ void BatchMatmul::init_with_dim(const FFModel& ff)
   IndexLauncher launcher(BATCHMATMUL_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(BatchMatmul)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->part, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
@@ -311,7 +311,7 @@ void BatchMatmul::forward_with_dim(const FFModel& ff)
   IndexLauncher launcher(BATCHMATMUL_FWD_TASK_ID, parallel_is,
       TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
+      outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->part, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
@@ -490,7 +490,7 @@ void BatchMatmul::backward_with_dim(const FFModel& ff)
   IndexLauncher launcher(BATCHMATMUL_BWD_TASK_ID, parallel_is,
       TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
+      outputs[0]->machine_view.hash());
   // regions[0](I): output
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->part, 0/*projection id*/,

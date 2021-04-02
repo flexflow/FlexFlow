@@ -234,7 +234,7 @@ void ElementUnary::init(const FFModel& ff)
   IndexLauncher init_launcher(ELEMENTUNARY_INIT_TASK_ID, parallel_is,
                               TaskArgument(this, sizeof(ElementUnary)), argmap,
                               Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                              FFConfig::get_hash_id(std::string(name)));
+                              outputs[0]->machine_view.hash());
   init_launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
@@ -354,7 +354,7 @@ void ElementUnary::forward(const FFModel& ff)
   IndexLauncher launcher(ELEMENTUNARY_FWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
   if (inplace) {
     assert(outputs[0]->part == inputs[0]->part);
     assert(outputs[0]->region == inputs[0]->region);
@@ -501,7 +501,7 @@ void ElementUnary::backward(const FFModel& ff)
   IndexLauncher launcher(ELEMENTUNARY_BWD_TASK_ID, parallel_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      FFConfig::get_hash_id(std::string(name)));
+      outputs[0]->machine_view.hash());
   if (inplace) {
     assert(inputs[0]->part == outputs[0]->part);
     assert(inputs[0]->part_grad == outputs[0]->part_grad);

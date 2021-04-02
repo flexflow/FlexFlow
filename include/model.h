@@ -133,6 +133,8 @@ enum TaskIDs {
   NCCL_INIT_COMMS_TASK_ID,
   // Search
   STRATEGY_SEARCH_TASK_ID,
+  // Graph
+  GRAPH_OPTIMIZE_TASK_ID,
   // Python data loader
   PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID,
   PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID,
@@ -233,6 +235,7 @@ protected:
       const Tensor weight);
   bool check_output_input_weight_parallel_dims() const;
   bool check_output_input_weight_same_parallel_is() const;
+  bool check_output_input_weight_same_machine_view() const;
 public:
   Op(FFModel& model,
      OperatorType type,
@@ -360,27 +363,23 @@ struct Node {
   const Op* ptr;
 };
 
-struct NodeAssignment {
-  Node node;
-  MachineView view;
-};
-
 class NoOp;
 
 ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
 
+class Concat;
+class Conv2D;
 class ElementBinary;
 class ElementUnary;
-class Conv2D;
-class Pool2D;
+class Embedding;
 class Flat;
 class Linear;
+class Pool2D;
 class Softmax;
-class Embedding;
-class Repartition;
-class Replicate;
-class Reduction;
 class Combine;
+class Repartition;
+class Reduction;
+class Replicate;
 class FusedParallelOp;
 class Graph;
 
@@ -652,17 +651,30 @@ public:
                        const Node& source_node,
                        const MachineView& source_view,
                        const MachineResource& resource);
+  void deserialize_graph_optimal_view(Legion::Deserializer& dez,
+                                      Graph* graph,
+                                      std::unordered_map<Node, MachineView>& optimal_views);
   bool convert_graph_to_layers(const Graph* graph,
                                const std::unordered_map<Node, MachineView>& optimal_views);
   std::vector<MachineView> get_valid_machine_views(const Op* op, const MachineResource& resource);
-  void register_machine_views();
+  static void register_all_machine_views(int num_nodes,
+                                         int gpus_per_node,
+                                         int cpus_per_node,
+                                         std::vector<MachineView>& valid_views);
   // ========================================
   // Internal Node creation APIs
   // ========================================
   Node get_or_create_noop_node(const Tensor input);
+  Node get_or_create_concat_node(int num_inputs,
+                                 const Tensor* inputs,
+                                 int axis);
   Node get_or_create_element_binary_node(const Tensor input1,
                                          const Tensor input2,
                                          OperatorType type);
+  Node get_or_create_embedding_node(const Tensor input,
+                                    int num_entries,
+                                    int out_channels,
+                                    AggrMode aggr);
   Node get_or_create_linear_node(const Tensor input,
                                  int out_dim,
                                  ActiMode activation,
@@ -758,11 +770,17 @@ public:
                LossType loss_type,
                const std::vector<MetricsType>& metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
-  void dp_optimize();
+  void graph_optimize(size_t budget,
+                      bool only_data_parallel,
+                      Graph*& best_graph,
+                      std::unordered_map<Node, MachineView>& optimal_view);
   void mcmc_optimize(std::map<const Op*, ParallelConfig>& best,
                      size_t budget, float alpha,
                      CompMode comp_mode,
                      bool use_propagation) const;
+#ifdef FF_USE_NCCL
+  ncclComm_t* find_nccl_comms(const MachineView& view) const;
+#endif
 #ifdef FF_USE_PROPAGATE
   void propagate(std::map<Op *, ParallelConfig> const &current,
                  std::map<Op *, ParallelConfig> &next) const;
@@ -777,13 +795,15 @@ public:
   std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> get_bwd_edge_map() const;
 
   // Internal funcitons
-  Legion::IndexSpace get_or_create_task_is(ParallelConfig pc);
+  Legion::IndexSpace get_or_create_task_is(const ParallelConfig& pc);
+  Legion::IndexSpace get_or_create_task_is(const MachineView& view);
   Legion::IndexSpace get_or_create_task_is(const Legion::Domain& domain);
-  Legion::IndexSpace get_or_create_task_is(int ndims, const std::string& pcname);
+  //Legion::IndexSpace get_or_create_task_is(int ndims, const std::string& pcname);
   Legion::IndexSpace get_or_create_task_is(const Tensor);
   Legion::IndexSpace get_task_is(const Legion::Domain& domain) const;
-  Legion::IndexSpace get_task_is(ParallelConfig pc) const;
-  Legion::IndexSpace get_task_is(int ndims, const std::string& pcname) const;
+  Legion::IndexSpace get_task_is(const ParallelConfig& pc) const;
+  Legion::IndexSpace get_task_is(const MachineView& view) const;
+  //Legion::IndexSpace get_task_is(int ndims, const std::string& pcname) const;
   // APIs for setting iteration configs
 public:
   void set_iteration_config_sequence_length(int seq_length);
@@ -803,11 +823,11 @@ public:
   std::vector<Tensor> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
-  mutable std::unordered_map<size_t, float> cached_graph_costs;
-  mutable std::unordered_map<size_t, std::unique_ptr<const std::vector<MachineView>>> cached_operator_valid_views;
   // Cached operators: key: operator hash, value: operator pointer
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
+  std::unordered_map<size_t, Concat*> cached_concat_ops;
   std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
+  std::unordered_map<size_t, Embedding*> cached_embedding_ops;
   std::unordered_map<size_t, Linear*> cached_linear_ops;
   std::unordered_map<size_t, Softmax*> cached_softmax_ops;
   std::unordered_map<size_t, Repartition*> cached_repartition_ops;
@@ -816,11 +836,14 @@ public:
   std::unordered_map<size_t, Combine*> cached_combine_ops;
   std::unordered_map<size_t, FusedParallelOp*> cached_fused_parallel_ops;
   std::vector<MachineView> all_valid_views;
+#ifdef FF_USE_NCCL
+  std::unordered_map<size_t, ncclComm_t*> view_hash_to_nccl_comms;
+#endif
   //DataLoader *dataLoader;
 private:
   bool debug;
   Tensor label_tensor_with_final_part;//FIXME: to be removed
-  std::map<ParallelConfig, Legion::IndexSpace, ParaConfigCompare> taskIs;
+  std::map<MachineView, Legion::IndexSpace, MachineViewDimCompare> all_task_is;
 
   template<int NDIM>
   void map_tensor_with_dim(Tensor tensor, const Op* parallel_op);
@@ -1388,6 +1411,12 @@ public:
 class Embedding : public Op {
 public:
   Embedding(FFModel& model,
+            const Tensor _input,
+            int _num_entries,
+            int _out_channels,
+            AggrMode _aggr,
+            const char* name);
+  Embedding(FFModel& model,
             const Tensor input,
             const Tensor weight,
             AggrMode _aggr,
@@ -1435,6 +1464,15 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
+private:
+  template<int NDIM>
+  static void forward_task_with_dim(const Legion::Task *task,
+                                    const std::vector<Legion::PhysicalRegion> &regions,
+                                    Legion::Context ctx, Legion::Runtime *runtime);
+  template<int NDIM>
+  static void backward_task_with_dim(const Legion::Task *task,
+                                     const std::vector<Legion::PhysicalRegion> &regions,
+                                     Legion::Context ctx, Legion::Runtime *runtime);
 public:
   int num_entries, out_channels;
   AggrMode aggr;
