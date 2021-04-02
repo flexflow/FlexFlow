@@ -19,6 +19,7 @@
 LegionRuntime::Logger::Category log_dp("DP");
 LegionRuntime::Logger::Category log_graph("Graph");
 
+
 const MachineView MachineView::NO_VIEW = MachineView();
 
 const Node Node::INVALID_NODE = Node();
@@ -373,19 +374,19 @@ bool Graph::check_correctness(void)
   return okay;
 }
 
-std::vector<MachineView>* FFModel::get_valid_machine_views(const Op* op)
+std::vector<MachineView> const * FFModel::get_valid_machine_views(const Op* op)
 {
   const auto& iter = cached_operator_valid_views.find(op->op_guid);
   if (iter != cached_operator_valid_views.end()) {
-    return iter->second;
+    return iter->second.get();
   } else {
-    std::vector<MachineView>* valid_views = new std::vector<MachineView>();
+    auto valid_views = std::unique_ptr<std::vector<MachineView>>(new std::vector<MachineView>());
     for (size_t i = 0; i < all_valid_views.size(); i++) {
       if (op->outputs[0]->is_valid_machine_view(all_valid_views[i]))
         valid_views->push_back(all_valid_views[i]);
     }
-    cached_operator_valid_views[op->op_guid] = valid_views;
-    return valid_views;
+    cached_operator_valid_views[op->op_guid] = valid_views.get();
+    return cached_operator_valid_views.at(op->op_guid);
   }
 }
 
@@ -408,30 +409,35 @@ Node Graph::find_bottleneck_node(const Node& sink_node,
                                  const Node& source_node,
                                  std::unordered_set<Node>& used_nodes) const
 {
-  using flexflow::dominators::imm_post_dominators;
-  using flexflow::dominators::topo_sort;
-  using flexflow::dominators::MultisourceGraphStructure;
-  using flexflow::dominators::GraphStructure;
-  using flexflow::dominators::roots;
+  using ::flexflow::graph::imm_post_dominators;
+  using ::flexflow::graph::topo_sort;
+  using ::flexflow::graph::MultisourceGraphStructure;
+  using ::flexflow::graph::GraphStructure;
+  using ::flexflow::graph::roots;
+  using ::flexflow::graph::transitive_reduction;
+  using ::flexflow::graph::BasicGraph;
+
+  BasicGraph<Node> reduction = transitive_reduction(*this);
 
   Node source(source_node);
   std::unordered_map<Node, Node> ipd;
-  std::unordered_set<Node> graph_roots = roots(*this);
+  std::unordered_set<Node> graph_roots = roots(reduction);
   if (source_node != Node::INVALID_NODE) {
-    ipd = imm_post_dominators(*this);
+    ipd = imm_post_dominators(reduction);
   } else if (graph_roots.size() == 1) {
-    ipd = imm_post_dominators(*this);
+    ipd = imm_post_dominators(reduction);
     source = *graph_roots.begin();
   } else {
-    ipd = imm_post_dominators<Graph, MultisourceGraphStructure<Graph>>(*this);
+    ipd = imm_post_dominators<decltype(reduction), MultisourceGraphStructure<decltype(reduction)>>(reduction);
   }
 
-  std::vector<Node> topo_sorted;
-  topo_sort(*this, &topo_sorted);
   Node bn_node = ipd.at(source);
   if (bn_node == source || bn_node == sink_node) {
     return Node::INVALID_NODE;
   }
+
+  std::vector<Node> topo_sorted;
+  topo_sort(*this, &topo_sorted);
 
   for (auto const &node : topo_sorted) {
     if (node == bn_node) {
@@ -444,6 +450,50 @@ Node Graph::find_bottleneck_node(const Node& sink_node,
   assert (used_nodes.size() < topo_sorted.size());
 
   return bn_node;
+}
+
+std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> Graph::split_at_node(Node const &bottleneck) const {
+  using ::flexflow::graph::topo_sort;
+
+  auto first_graph = std::unique_ptr<Graph>(new Graph(this->model));
+  auto second_graph = std::unique_ptr<Graph>(new Graph(this->model));
+
+  std::unordered_set<Node> used_nodes;
+  {
+    std::vector<Node> topo_sorted;
+    topo_sort(*this, &topo_sorted);
+
+    for (auto const &node : topo_sorted) {
+      if (node == bottleneck) {
+        break;
+      }
+
+      used_nodes.insert(node);
+    }
+    used_nodes.insert(bottleneck);
+
+    assert (used_nodes.size() < topo_sorted.size());
+  }
+
+  for (const auto& it : this->inEdges) {
+    const auto& inList = it.second;
+    if (used_nodes.find(it.first) != used_nodes.end()) {
+      // Add all in-edges of used_nodes in to the first_graph
+      for (const auto& it2 : inList) {
+        first_graph->add_edge(it2);
+      }
+    } else {
+      // Add all in-edges of not_used_nodes into the second_graph
+      for (const auto& it2 : inList) {
+        second_graph->add_edge(it2);
+      }
+    }
+  }
+
+  return {
+    std::move(first_graph),
+    std::move(second_graph)
+  };
 }
 
 float FFModel::graph_cost(const Graph* graph,
@@ -473,7 +523,7 @@ float FFModel::graph_cost(const Graph* graph,
     if (include_sink_compute_time) {
       CostMetrics metrics = simulator->measure_operator_cost(sink_node.ptr, sink_view);
       return cached_graph_costs[hash]+metrics.forward_time+metrics.backward_time;
-    } else 
+    } else
       return cached_graph_costs[hash];
   }
   // cached_graph_costs should include hash when constructing optimal view
@@ -499,22 +549,11 @@ float FFModel::graph_cost(const Graph* graph,
     if (bn_node != Node::INVALID_NODE) {
       // We found a bottleneck node
       log_dp.debug("  Found bn_node = %zu", bn_node.guid);
-      Graph* first_graph = new Graph(this);
-      Graph* second_graph = new Graph(this);
-      for (const auto& it : graph->inEdges) {
-        const auto& inList = it.second;
-        if (used_nodes.find(it.first) != used_nodes.end()) {
-          // Add all in-edges of used_nodes in to the first_graph
-          for (const auto& it2 : inList) {
-            first_graph->add_edge(it2);
-          }
-        } else {
-          // Add all in-edges of not_used_nodes into the second_graph
-          for (const auto& it2 : inList) {
-            second_graph->add_edge(it2);
-          }
-        }
-      }
+
+      std::unique_ptr<Graph> pre_graph;
+      std::unique_ptr<Graph> post_graph;
+      std::tie(pre_graph, post_graph) = graph->split_at_node(bn_node);
+
       std::vector<MachineView>* valid_views = get_valid_machine_views(bn_node.ptr);
       for (size_t i = 0; i < valid_views->size(); i++) {
         bool valid = true;
@@ -527,16 +566,14 @@ float FFModel::graph_cost(const Graph* graph,
         if (!resources.is_valid_machine_view(bn_view)) continue;
         log_dp.debug("    explore view(%d %d)", bn_view.ndims, bn_view.dim[0]);
         log_dp.debug("    First Graph...");
-        float first_cost = graph_cost(first_graph, bn_node, bn_view,
+        float pre_cost = graph_cost(pre_graph.get(), bn_node, bn_view,
                                       source_node, source_view, resources, true);
         log_dp.debug("    Second Graph...");
-        float second_cost = graph_cost(second_graph, sink_node, sink_view, 
+        float post_cost = graph_cost(post_graph.get(), sink_node, sink_view,
                                        bn_node, bn_view, resources, false);
-        if (first_cost + second_cost < cost)
-          cost = first_cost + second_cost;
+        if (pre_cost + post_cost < cost)
+          cost = pre_cost + post_cost;
       }
-      delete first_graph;
-      delete second_graph;
     } else {
       // sink node must have multiple branches
       // otherwise we should not be here
@@ -598,7 +635,7 @@ float FFModel::graph_cost(const Graph* graph,
       // Assert there must be at least on sink_source's inEdges in the second graph
       assert(second_graph->inEdges.find(sink_node) != second_graph->inEdges.end());
       // Run the two sequentially
-      cost = graph_cost(first_graph, sink_node, sink_view, 
+      cost = graph_cost(first_graph, sink_node, sink_view,
                         source_node, source_view, resources, false)
            + graph_cost(second_graph, sink_node, sink_view,
                         source_node, source_view, resources, false);
@@ -698,7 +735,7 @@ void FFModel::construct_optimal_view(const Graph* graph,
                                       source_node, source_view, resources,
                                       true/*include_sink*/,
                                       true/*construct_optimal*/);
-        float second_cost = graph_cost(second_graph, sink_node, sink_view, 
+        float second_cost = graph_cost(second_graph, sink_node, sink_view,
                                        bn_node, bn_view, resources,
                                        false/*include_sink*/,
                                        true/*construct_optimal*/);
@@ -783,7 +820,7 @@ void FFModel::construct_optimal_view(const Graph* graph,
       // Assert there must be at least on sink_source's inEdges in the second graph
       assert(second_graph->inEdges.find(sink_node) != second_graph->inEdges.end());
       // Run the two sequentially
-      float best_first_cost = graph_cost(first_graph, sink_node, sink_view, 
+      float best_first_cost = graph_cost(first_graph, sink_node, sink_view,
                                          source_node, source_view, resources,
                                          false/*include_sink*/,
                                          true/*construct_optimal*/);

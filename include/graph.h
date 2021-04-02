@@ -19,7 +19,8 @@
 #include "model.h"
 #include <unordered_set>
 #include "dot_file.h"
-#include "dominators.h"
+#include "basic_graph.h"
+#include "graph_structures.h"
 
 struct Edge {
   Edge(void);
@@ -56,6 +57,7 @@ namespace std {
       return res;
     }
   };
+
   template <>
   struct hash<Node>
   {
@@ -100,12 +102,14 @@ public:
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::unique_ptr<std::ostream> out) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::string const &out_filename) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const;
+
+  std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_at_node(Node const &bottleneck) const;
 public:
   FFModel* model;
   std::unordered_map<Node, std::unordered_set<Edge> > inEdges, outEdges;
 };
 
-namespace flexflow::dominators {
+namespace flexflow::graph {
   template <>
   struct GraphStructure<::Graph> {
     using G = ::Graph;
@@ -157,12 +161,6 @@ namespace flexflow::dominators {
     }
   };
 
-  template <
-    typename G,
-    typename Structure = GraphStructure<G>
-  >
-  struct invalid_node;
-
   template <>
   struct invalid_node<::Graph, GraphStructure<::Graph>> {
     using G = ::Graph;
@@ -174,74 +172,11 @@ namespace flexflow::dominators {
     }
   };
 
-  template <
-    typename G,
-    typename BaseStructure = GraphStructure<G>,
-    typename Invalid = invalid_node<G, BaseStructure>
-  >
-  struct MultisourceGraphStructure {
-    using vertex_type = typename BaseStructure::vertex_type;
-    using edge_type = typename BaseStructure::edge_type;
-
-    std::unordered_set<vertex_type> get_nodes(G const &g) const {
-      Invalid invalid;
-
-      std::unordered_set<vertex_type> nodes = this->base.get_nodes(g);
-      nodes.insert(invalid());
-      return nodes;
+  template <>
+  struct invalid_node<::flexflow::graph::BasicGraph<Node>, GraphStructure<::flexflow::graph::BasicGraph<Node>>> {
+    Node operator()() const {
+      return Node::INVALID_NODE;
     }
-
-    std::unordered_set<edge_type> get_incoming_edges(G const &g, vertex_type const &n) const {
-      Invalid invalid;
-
-      std::unordered_set<edge_type> edges = this->base.get_incoming_edges(g, n);
-      if (edges.empty()) {
-        edge_type e;
-        this->base.set_src(g, e, invalid());
-        this->base.set_dst(g, e, n);
-        return {e};
-      }
-
-      return edges;
-    }
-
-    std::unordered_set<edge_type> get_outgoing_edges(G const &g, vertex_type const &n) const {
-      Invalid invalid;
-
-      if (n == invalid()) {
-        std::unordered_set<edge_type> edges;
-        for (auto const &node : this->base.get_nodes(g)) {
-          if (this->base.get_incoming_edges(g, node).empty()) {
-            edge_type e;
-            this->base.set_src(g, e, invalid());
-            this->base.set_dst(g, e, node);
-            edges.insert(e);
-          }
-        }
-        return edges;
-      } else {
-        return this->base.get_outgoing_edges(g, n);
-      }
-    }
-
-    vertex_type get_src(G const &g, edge_type const &e) const {
-      return this->base.get_src(g, e);
-    }
-
-    vertex_type get_dst(G const &g, edge_type const &e) const {
-      return this->base.get_dst(g, e);
-    }
-
-    void set_src(G const &g, edge_type &e, vertex_type const &n) const {
-      this->base.set_src(g, e, n);
-    }
-
-    void set_dst(G const &g, edge_type &e, vertex_type const &n) const {
-      this->base.set_dst(g, e, n);
-    }
-
-    BaseStructure base;
   };
-
 }
 #endif

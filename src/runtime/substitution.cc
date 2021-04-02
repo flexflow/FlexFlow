@@ -19,7 +19,6 @@
 #include "dominators.h"
 
 using namespace Legion;
-using flexflow::dominators::GraphStructure;
 
 const TensorX TensorX::NO_TX = TensorX();
 
@@ -713,6 +712,8 @@ void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineVi
 }
 
 void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const {
+  using flexflow::graph::GraphStructure;
+
   GraphStructure<Graph> s;
 
   for (auto const &node : s.get_nodes(*this)) {

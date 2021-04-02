@@ -645,7 +645,7 @@ public:
                        const Node& source_node,
                        const MachineView& source_view,
                        const MachineResource& resource);
-  std::vector<MachineView>* get_valid_machine_views(const Op* op);
+  std::vector<MachineView> const *get_valid_machine_views(const Op* op);
   void register_machine_views();
   // ========================================
   // Internal Node creation APIs
@@ -794,7 +794,7 @@ public:
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
   std::unordered_map<size_t, float> cached_graph_costs;
-  std::unordered_map<size_t, std::vector<MachineView>* > cached_operator_valid_views;
+  std::unordered_map<size_t, std::unique_ptr<const std::vector<MachineView>>> cached_operator_valid_views;
   // Cached operators: key: operator hash, value: operator pointer
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
   std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
