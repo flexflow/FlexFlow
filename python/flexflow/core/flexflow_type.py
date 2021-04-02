@@ -87,7 +87,7 @@ class OpType(Enum):
   SCALAR_ADD = 2089
   SCALAR_SUB = 2090
   SCALAR_TRUEDIV = 2091
-
+  INIT_PARAM = 2092
 def enum_to_int(enum, enum_item):
   for item in enum:
     if (enum_item == item):
