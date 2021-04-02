@@ -410,18 +410,21 @@ bool FFModel::get_valid_machine_views(const Op* op,
   return true;
 }
 
-void FFModel::register_machine_views()
+void FFModel::register_all_machine_views(int num_nodes,
+                                         int gpus_per_node,
+                                         int cpus_per_node,
+                                         std::vector<MachineView>& valid_views)
 {
   // Data parallel views
-  for (int i = 1; i <= config.numNodes * config.workersPerNode; i++)
-    if (config.numNodes * config.workersPerNode % i == 0) {
+  for (int i = 1; i <= num_nodes * gpus_per_node; i++)
+    if (num_nodes * gpus_per_node % i == 0) {
       MachineView view;
       view.device_type = MachineView::GPU;
       view.ndims = 1;
       view.dim[0] = i;
       view.stride[0] = 1;
       view.start_device_id = 0;
-      all_valid_views.push_back(view);
+      valid_views.push_back(view);
     }
 }
 

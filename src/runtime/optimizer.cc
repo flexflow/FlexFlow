@@ -143,8 +143,6 @@ void SGDOptimizer::update(const Tensor p)
       case DIM: \
       { \
         Rect<DIM> rect = domain; \
-        ParallelConfig pc; \
-        model->config.find_parallel_config(DIM, p->owner_op->name, pc); \
         int idx = 0; \
         for (PointInRectIterator<DIM> it(rect); it(); it++) { \
           OpMeta* mp = p->owner_op->meta[idx++]; \
@@ -309,8 +307,6 @@ void AdamOptimizer::update(const Tensor p)
       case DIM: \
       { \
         Rect<DIM> rect = domain; \
-        ParallelConfig pc; \
-        model->config.find_parallel_config(DIM, p->owner_op->name, pc); \
         int idx = 0; \
         for (PointInRectIterator<DIM> it(rect); it(); it++) { \
           OpMeta* mp = p->owner_op->meta[idx++]; \

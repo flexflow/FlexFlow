@@ -29,7 +29,7 @@ public:
   FFShardingFunctor(int gpus_per_node,
                     int cpus_per_node,
                     int num_nodes,
-                    ParallelConfig _pc);
+                    const MachineView& _mv);
   ~FFShardingFunctor(void);
 public:
   ShardID shard(const DomainPoint &point,
@@ -37,7 +37,7 @@ public:
                 const size_t total_shards);
 private:
   int gpus_per_node, cpus_per_node, num_nodes;
-  ParallelConfig config;
+  MachineView machine_view;
 };
 
 struct InstanceCreationLog {
@@ -50,7 +50,7 @@ struct InstanceCreationLog {
 class FFMapper : public NullMapper {
 public:
   FFMapper(MapperRuntime *rt, Machine machine, Processor local,
-           const char *mapper_name, const std::string& strategyFile,
+           const char *mapper_name,// const std::string& strategyFile,
            bool _enable_control_replication,
            bool _log_instance_creation);
   ~FFMapper();
@@ -318,7 +318,7 @@ private:
 protected:
   const Processor local_processor;
   const AddressSpace node_id;
-  size_t total_nodes;
+  int total_nodes;
   const char* mapper_name;
   bool enable_control_replication;
   bool log_instance_creation;
@@ -326,7 +326,7 @@ protected:
   std::map<Processor, Memory> proc_fbmems, proc_zcmems;
   std::map<unsigned long long, Processor> cache_update_tasks;
   // We use MappingTagID has the key since we will pass the tag to the mapper
-  std::map<MappingTagID, ParallelConfig> strategies;
+  std::map<MappingTagID, MachineView> machine_views;
   std::map<std::pair<Memory::Kind,FieldSpace>, LayoutConstraintID> layout_constraint_cache;
   std::vector<InstanceCreationLog> created_instances;
 };

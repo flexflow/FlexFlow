@@ -20,11 +20,11 @@ LegionRuntime::Logger::Category log_ff_mapper("Mapper");
 FFShardingFunctor::FFShardingFunctor(int _gpus_per_node,
                                      int _cpus_per_node,
                                      int _num_nodes,
-                                     ParallelConfig _config)
+                                     const MachineView& _mv)
 : gpus_per_node(_gpus_per_node),
   cpus_per_node(_cpus_per_node),
   num_nodes(_num_nodes),
-  config(_config)
+  machine_view(_mv)
 {}
 
 FFShardingFunctor::~FFShardingFunctor(void)
@@ -35,26 +35,29 @@ ShardID FFShardingFunctor::shard(const DomainPoint &point,
                                  const size_t total_shards)
 {
   assert(point.get_dim() == full_space.get_dim());
-  int idx = 0;
-  for (int i = point.get_dim()-1; i>=0; i--) {
-    int dim_width = full_space.hi()[i] - full_space.lo()[i] + 1;
-    idx = idx * dim_width + point[i] - full_space.lo()[i];
+  int device_id = machine_view.start_device_id;
+  for (int i = 0; i < point.get_dim(); i++) {
+    device_id += (point[i] - full_space.lo()[i]) * machine_view.stride[i];
   }
-  assert(idx < config.num_parts());
+  //for (int i = point.get_dim()-1; i>=0; i--) {
+  //  int dim_width = full_space.hi()[i] - full_space.lo()[i] + 1;
+  //  idx = idx * dim_width + point[i] - full_space.lo()[i];
+  //}
   ShardID shard_id;
-  if (config.device_type == ParallelConfig::GPU) {
-    shard_id = config.device_ids[idx] / gpus_per_node;
-  } else if (config.device_type == ParallelConfig::CPU) {
-    shard_id = config.device_ids[idx] / cpus_per_node;
+  if (machine_view.device_type == MachineView::GPU) {
+    shard_id = device_id / gpus_per_node;
+  } else if (machine_view.device_type == MachineView::CPU) {
+    shard_id = device_id / cpus_per_node;
   } else {
     assert(false && "Unsupported device type");
   }
+  assert(shard_id < (size_t)num_nodes);
   return shard_id;
 }
 
 FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor _local,
                    const char *_mapper_name,
-                   const std::string& strategyFile,
+                   //const std::string& strategyFile,
                    bool _enable_control_replication,
                    bool _log_instance_creation)
   : NullMapper(rt, machine), local_processor(_local),
@@ -107,52 +110,65 @@ FFMapper::FFMapper(MapperRuntime *rt, Machine machine, Processor _local,
   total_nodes = address_space_set.size();
   if (enable_control_replication)
     log_ff_mapper.print("Enabled Control Replication Optimizations.");
-  if (strategyFile == "") {
-    // No strategy file provided, use data parallelism
-    log_ff_mapper.print("No strategy file provided. Use default data parallelism.");
-  } else {
-    log_ff_mapper.print("Load parallelization strategy from file %s",
-                     strategyFile.c_str());
-    load_strategies_from_file(strategyFile, strategies);
+  //if (strategyFile == "") {
+  //  // No strategy file provided, use data parallelism
+  //  log_ff_mapper.print("No strategy file provided. Use default data parallelism.");
+  //} else {
+  //  log_ff_mapper.print("Load parallelization strategy from file %s",
+  //                   strategyFile.c_str());
+  //  load_strategies_from_file(strategyFile, strategies);
+  //}
+  {
+    MachineView view;
+    view.device_type = MachineView::GPU;
+    view.ndims = 1;
+    view.dim[0] = all_gpus.size();
+    view.stride[0] = 1;
+    view.start_device_id = 0;
+    machine_views[FFConfig::DataParallelism_GPU] = view;
   }
-  int start_dim = 1, end_dim = 4;
-#if MAX_TENSOR_DIM >= 5
-  end_dim = 5;
-#endif
-  for (int i = start_dim; i <= end_dim; i++) {
-    ParallelConfig pc;
-    pc.device_type = ParallelConfig::GPU;
-    pc.nDims = i;
-    for (int j = 0; j < pc.nDims; j++)
-      pc.dim[j] = 1;
-    pc.dim[pc.nDims-1] = all_gpus.size();
-    for (size_t j = 0; j < all_gpus.size(); j++)
-      pc.device_ids[j] = j;
-    strategies[FFConfig::DataParallelism_GPU_1D+i-1] = pc;
+  {
+    MachineView view;
+    view.device_type = MachineView::CPU;
+    view.ndims = 1;
+    view.dim[0] = all_cpus.size();
+    view.stride[0] = 1;
+    machine_views[FFConfig::DataParallelism_CPU] = view;
   }
-  for (int i = start_dim; i <= end_dim; i++) {
-    ParallelConfig pc;
-    pc.device_type = ParallelConfig::CPU;
-    pc.nDims = i;
-    for (int j = 0; j < pc.nDims; j++)
-      pc.dim[j] = 1;
-    pc.dim[pc.nDims-1] = all_cpus.size();
-    for (size_t j = 0; j < all_cpus.size(); j++)
-      pc.device_ids[j] = j;
-    strategies[FFConfig::DataParallelism_CPU_1D+i-1] = pc;
+  std::vector<MachineView> all_valid_views;
+  assert(all_gpus.size() % total_nodes == 0);
+  assert(all_cpus.size() % total_nodes == 0);
+  int gpus_per_node = all_gpus.size() / total_nodes;
+  int cpus_per_node = all_cpus.size() / total_nodes;
+  FFModel::register_all_machine_views(total_nodes, gpus_per_node, cpus_per_node,
+                                      all_valid_views);
+  for (const auto& it : all_valid_views) {
+    MachineView view = it;
+    if (view.device_type == MachineView::GPU) {
+      // Registering views with different start_device_id;
+      for (int i = 0; i < total_nodes * gpus_per_node; i++) {
+        view.start_device_id = i;
+        machine_views[view.hash()] = view;
+      }
+    } else {
+      // Registering views with different start_device_id;
+      for (int i = 0; i < total_nodes * cpus_per_node; i++) {
+        view.start_device_id = i;
+        machine_views[view.hash()] = view;
+      }
+    }
   }
 }
 
 void FFMapper::register_sharding_functor(int argc, char** argv)
 {
-  std::string strategyFile = "";
-  std::map<MappingTagID, ParallelConfig> all_strategies;
+  //std::string strategyFile = "";
   int gpus_per_node = 0, cpus_per_node = 1, num_nodes = 1;
   for (int i = 1; i < argc; i++) {
-    if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i], "--import-strategy"))) {
-      strategyFile = std::string(argv[++i]);
-      continue;
-    }
+    //if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i], "--import-strategy"))) {
+    //  strategyFile = std::string(argv[++i]);
+    //  continue;
+    //}
     if (!strcmp(argv[i], "-ll:gpu"))
     {
       gpus_per_node = atoi(argv[++i]);
@@ -169,42 +185,54 @@ void FFMapper::register_sharding_functor(int argc, char** argv)
       continue;
     }
   }
-  if (strategyFile != "") {
-    load_strategies_from_file(strategyFile, all_strategies);
+  //if (strategyFile != "") {
+  //  load_strategies_from_file(strategyFile, all_strategies);
+  //}
+  {
+    MachineView view;
+    view.device_type = MachineView::GPU;
+    view.ndims = 1;
+    view.dim[0] = num_nodes * gpus_per_node;
+    view.stride[0] = 1;
+    view.start_device_id = 0;
+    FFShardingFunctor* functor = new FFShardingFunctor(
+        gpus_per_node, cpus_per_node, num_nodes, view);
+    Runtime::preregister_sharding_functor(FFConfig::DataParallelism_GPU, functor);
   }
-  int start_dim = 1, end_dim = 4;
-#if MAX_TENSOR_DIM >= 5
-  end_dim = 5;
-#endif
-  for (int i = start_dim; i <= end_dim; i++) {
-    ParallelConfig pc;
-    pc.device_type = ParallelConfig::GPU;
-    pc.nDims = i;
-    for (int j = 0; j < pc.nDims; j++)
-      pc.dim[j] = 1;
-    pc.dim[pc.nDims-1] = num_nodes * gpus_per_node;
-    for (int j = 0; j < num_nodes * gpus_per_node; j++)
-      pc.device_ids[j] = j;
-    all_strategies[FFConfig::DataParallelism_GPU_1D+i-1] = pc;
-  }
-  for (int i = start_dim; i <= end_dim; i++) {
-    ParallelConfig pc;
-    pc.device_type = ParallelConfig::CPU;
-    pc.nDims = i;
-    for (int j = 0; j < pc.nDims; j++)
-      pc.dim[j] = 1;
-    pc.dim[pc.nDims-1] = num_nodes * cpus_per_node;
-    for (int j = 0; j < num_nodes * cpus_per_node; j++)
-      pc.device_ids[j] = j;
-    all_strategies[FFConfig::DataParallelism_CPU_1D+i-1] = pc;
+  {
+    MachineView view;
+    view.device_type = MachineView::CPU;
+    view.ndims = 1;
+    view.dim[0] = num_nodes * cpus_per_node;
+    view.stride[0] = 1;
+    FFShardingFunctor* functor = new FFShardingFunctor(
+        gpus_per_node, cpus_per_node, num_nodes, view);
+    Runtime::preregister_sharding_functor(FFConfig::DataParallelism_CPU, functor);
   }
   assert(gpus_per_node > 0);
   assert(cpus_per_node > 0);
-  std::map<MappingTagID, ParallelConfig>::const_iterator it;
-  for (it = all_strategies.begin(); it != all_strategies.end(); it++) {
-    FFShardingFunctor* functor = new FFShardingFunctor(
-        gpus_per_node, cpus_per_node, num_nodes, it->second);
-    Runtime::preregister_sharding_functor(it->first, functor);
+  std::vector<MachineView> all_valid_views;
+  FFModel::register_all_machine_views(num_nodes, gpus_per_node, cpus_per_node,
+                                      all_valid_views);
+  for (const auto& it : all_valid_views) {
+    MachineView view = it;
+    if (view.device_type == MachineView::GPU) {
+      // Registering views with different start_device_id;
+      for (int i = 0; i < num_nodes * gpus_per_node; i++) {
+        view.start_device_id = i;
+        FFShardingFunctor* functor = new FFShardingFunctor(
+            gpus_per_node, cpus_per_node, num_nodes, it);
+        Runtime::preregister_sharding_functor(view.hash(), functor);
+      }
+    } else {
+      // Registering views with different start_device_id;
+      for (int i = 0; i < num_nodes * cpus_per_node; i++) {
+        view.start_device_id = i;
+        FFShardingFunctor* functor = new FFShardingFunctor(
+            gpus_per_node, cpus_per_node, num_nodes, it);
+        Runtime::preregister_sharding_functor(view.hash(), functor);
+      }
+    }
   }
 }
 
@@ -285,19 +313,19 @@ void FFMapper::select_task_options(const MapperContext ctx,
   || is_initializer_task(task.task_id)) {
     // For Parameter Server Update, pick a processor from config
     MappingTagID hash = task.tag;
-    ParallelConfig config;
-    if (strategies.find(hash) != strategies.end()) {
-      config = strategies[hash];
+    MachineView view;
+    if (machine_views.find(hash) != machine_views.end()) {
+      view = machine_views[hash];
       int num_parts = 1;
-      for (int i = 0; i < config.nDims; i++)
-        num_parts *= config.dim[i];
+      for (int i = 0; i < view.ndims; i++)
+        num_parts *= view.dim[i];
       if (num_parts == 1) {
-        output.initial_proc = all_gpus[config.device_ids[0]];
+        output.initial_proc = all_gpus[view.start_device_id];
         // Current assert this sould be a local proc
         assert(output.initial_proc.address_space() == node_id);
         return;
       } else {
-        output.initial_proc = all_gpus[config.device_ids[0]];
+        output.initial_proc = all_gpus[view.start_device_id];
         return;
       }
     }
@@ -350,28 +378,33 @@ void FFMapper::slice_task(const MapperContext ctx,
 {
   output.slices.resize(input.domain.get_volume());
   const std::vector<Processor>* devices;
-  ParallelConfig config;
+  MachineView view;
   if ((task.task_id == TOP_LEVEL_TASK_ID)
   || ((task.task_id >= CUSTOM_CPU_TASK_ID_FIRST)
      && (task.task_id <= CUSTOM_CPU_TASK_ID_LAST))) {
     int ndim = input.domain.get_dim();
-    assert(strategies.find(FFConfig::DataParallelism_CPU_1D-1+ndim) != strategies.end());
-    config = strategies[FFConfig::DataParallelism_CPU_1D-1+ndim];
-    printf("num_parts %d", config.num_parts());
+    // Assert data parallelism must be 1-d index space
+    // since all other dims with a degree of 1 should be eliminated
+    assert(ndim == 1);
+    assert(machine_views.find(FFConfig::DataParallelism_CPU) != machine_views.end());
+    view = machine_views[FFConfig::DataParallelism_CPU];
+    printf("num_parts %zu", view.num_parts());
     devices = &all_cpus;
   } else if ((task.task_id == PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)
   || (task.task_id == PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)) {
     // FIXME: even though it is a CPU task, we use data parallelism
     assert(enable_control_replication);
-    int ndim = input.domain.get_dim();
-    assert(strategies.find(FFConfig::DataParallelism_GPU_1D-1+ndim) != strategies.end());
-    config = strategies[FFConfig::DataParallelism_GPU_1D-1+ndim];
+    // Assert data parallelism must be 1-d index space
+    // since all other dims with a degree of 1 should be eliminated
+    assert(input.domain.get_dim() == 1);
+    assert(machine_views.find(FFConfig::DataParallelism_GPU) != machine_views.end());
+    view = machine_views[FFConfig::DataParallelism_GPU];
     devices = &all_cpus;
   } else {
     MappingTagID hash = task.tag;
     // Make sure the task has a non-zero tag
     assert(hash != 0);
-    if (strategies.find(hash) == strategies.end()) {
+    if (machine_views.find(hash) == machine_views.end()) {
       // No strategy found, use default data parallelism
       std::vector<VariantID> variant_ids;
       runtime->find_valid_variants(ctx, task.task_id, variant_ids, Processor::TOC_PROC);
@@ -379,24 +412,28 @@ void FFMapper::slice_task(const MapperContext ctx,
         // Use GPU implementation
         // Currently assume there is exactly one variant
         assert(variant_ids.size() == 1);
-        int ndim = input.domain.get_dim();
-        assert(strategies.find(FFConfig::DataParallelism_GPU_1D-1+ndim) != strategies.end());
-        config = strategies[FFConfig::DataParallelism_GPU_1D-1+ndim];
+        // Assert data parallelism must be 1-d index space
+        // since all other dims with a degree of 1 should be eliminated
+        assert(input.domain.get_dim() == 1);
+        assert(machine_views.find(FFConfig::DataParallelism_GPU) != machine_views.end());
+        view = machine_views[FFConfig::DataParallelism_GPU];
       } else {
         // Use CPU implementation
         runtime->find_valid_variants(ctx, task.task_id, variant_ids, Processor::LOC_PROC);
         assert(variant_ids.size() == 1);
-        int ndim = input.domain.get_dim();
-        assert(strategies.find(FFConfig::DataParallelism_CPU_1D-1+ndim) != strategies.end());
-        config = strategies[FFConfig::DataParallelism_CPU_1D-1+ndim];
+        // Assert data parallelism must be 1-d index space
+        // since all other dims with a degree of 1 should be eliminated
+        assert(input.domain.get_dim() == 1);
+        assert(machine_views.find(FFConfig::DataParallelism_CPU) != machine_views.end());
+        view = machine_views[FFConfig::DataParallelism_CPU];
       }
     } else {
       // Found a strategy
-      config = strategies[hash];
+      view = machine_views[hash];
       // Check that the dimensions match
-      assert(config.nDims == input.domain.get_dim());
+      assert(view.ndims == input.domain.get_dim());
     }
-    if (config.device_type == ParallelConfig::GPU) {
+    if (view.device_type == MachineView::GPU) {
       devices = &all_gpus;
     } else {
       devices = &all_cpus;
@@ -410,14 +447,15 @@ void FFMapper::slice_task(const MapperContext ctx,
       Rect<DIM> rect = input.domain; \
       int cnt = 0; \
       for (PointInRectIterator<DIM> pir(rect); pir(); pir++) { \
-        int idx = 0; \
-        for (int i = input.domain.get_dim()-1; i >= 0; i--) \
-          idx = idx*(task.index_domain.hi()[i]-task.index_domain.lo()[i]+1)+pir[i]-task.index_domain.lo()[i]; \
-        assert(config.num_parts() > idx); \
+        int idx = view.start_device_id; \
+        for (int i = 0; i < input.domain.get_dim(); i++) \
+          idx += (pir[i] - task.index_domain.lo()[i]) * view.stride[i]; \
+        assert((size_t)idx < devices->size()); \
         Rect<DIM> slice(*pir, *pir); \
         output.slices[cnt++] = TaskSlice(slice, \
-            (*devices)[config.device_ids[idx] % devices->size()], \
-            false/*recurse*/, false/*stealable*/); \
+                                         (*devices)[idx], \
+                                         false/*recurse*/, \
+                                         false/*stealable*/); \
       } \
       break; \
     }
@@ -653,7 +691,7 @@ void FFMapper::map_replicate_task(const MapperContext      ctx,
     }
   }
   output.control_replication_map.resize(total_nodes);
-  for (unsigned idx = 0; idx < total_nodes; idx++)
+  for (int idx = 0; idx < total_nodes; idx++)
   {
     output.task_mappings[idx].chosen_variant = chosen_variant;
     output.control_replication_map[idx] =
@@ -686,16 +724,16 @@ void FFMapper::select_task_sources(const MapperContext        ctx,
     // Dummy task refers to prefetching weights tasks
     MappingTagID hash = task.tag;
     assert(hash != 0);
-    ParallelConfig config;
-    if (strategies.find(hash) == strategies.end()) {
+    MachineView view;
+    if (machine_views.find(hash) == machine_views.end()) {
       // No strategy found, use default data parallelism
-      assert(strategies.find(FFConfig::DataParallelism_GPU_2D) != strategies.end());
-      config = strategies[FFConfig::DataParallelism_GPU_2D];
+      assert(machine_views.find(FFConfig::DataParallelism_GPU) != machine_views.end());
+      view = machine_views[FFConfig::DataParallelism_GPU];
     } else {
       // Found a strategy
-      config = strategies[hash];
+      view = machine_views[hash];
     }
-    Processor parameter_server = all_gpus[config.device_ids[0]];
+    Processor parameter_server = all_gpus[view.start_device_id];
     // Prefer instances located on the parameter server
     Memory ps_memory = proc_fbmems[parameter_server];
     default_policy_select_sources(ctx, input.target, input.source_instances,
@@ -786,19 +824,19 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
   || ((task.task_id >= CUSTOM_CPU_TASK_ID_FIRST)
      && (task.task_id <= CUSTOM_CPU_TASK_ID_LAST)))
   {
-    output.chosen_functor = FFConfig::DataParallelism_CPU_1D;
+    output.chosen_functor = FFConfig::DataParallelism_CPU;
     return;
   }
   if ((task.task_id == PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)
   || (task.task_id == PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)) {
     // FIXME: even though it is a CPU task, we use data parallelism
     assert(enable_control_replication);
-    output.chosen_functor = FFConfig::DataParallelism_GPU_1D;
+    output.chosen_functor = FFConfig::DataParallelism_GPU;
     return;
   }
   MappingTagID hash = task.tag;
-  if (strategies.find(hash) == strategies.end()) {
-    output.chosen_functor = FFConfig::DataParallelism_GPU_1D;
+  if (machine_views.find(hash) == machine_views.end()) {
+    output.chosen_functor = FFConfig::DataParallelism_GPU;
     return;
   } else {
     output.chosen_functor = hash;
@@ -1494,17 +1532,17 @@ void update_mappers(Machine machine, Runtime *runtime,
   }
 */
   // Find strategy file path
-  std::string strategyFile = "";
+  //std::string strategyFile = "";
   const InputArgs &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
   bool enable_control_replication = false;
   bool log_instance_creation = false;
   for (int i = 1; i < argc; i++) {
-    if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i], "--import-strategy"))) {
-      strategyFile = std::string(argv[++i]);
-      continue;
-    }
+    //if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i], "--import-strategy"))) {
+    //  strategyFile = std::string(argv[++i]);
+    //  continue;
+    //}
     if (!strcmp(argv[i], "--control-replication")) {
       enable_control_replication = true;
       continue;
@@ -1520,7 +1558,7 @@ void update_mappers(Machine machine, Runtime *runtime,
   {
     FFMapper* mapper = new FFMapper(runtime->get_mapper_runtime(),
                                     machine, *it, "FlexFlow Mapper",
-                                    strategyFile, enable_control_replication,
+                                    enable_control_replication,
                                     log_instance_creation);
     runtime->replace_default_mapper(mapper, *it);
   }

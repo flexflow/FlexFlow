@@ -47,6 +47,14 @@
 struct MachineView {
   static const MachineView NO_VIEW;
   MachineView();
+  inline int get_device_id(const Legion::DomainPoint& p) const
+  {
+    assert(p.get_dim() == ndims);
+    int idx = start_device_id;
+    for (int i = 0; i < ndims; i++)
+      idx += p[i] * stride[i];
+    return idx;
+  }
   inline bool operator==(const MachineView& rhs) const
   {
     if (device_type != rhs.device_type) return false;
@@ -77,9 +85,6 @@ struct MachineView {
   };
   DeviceType device_type;
   int ndims, start_device_id, dim[MAX_TENSOR_DIM], stride[MAX_TENSOR_DIM];
-#ifdef FF_USE_NCCL
-  ncclComm_t nccl_comms[MAX_NUM_WORKERS];
-#endif
 };
 
 struct MachineResource {
@@ -142,26 +147,26 @@ struct FFInitInfo {
   //int myRank, allRanks;
 };
 
-bool load_strategies_from_file(const std::string& filename,
-         std::map<Legion::MappingTagID, ParallelConfig>& strategies);
+//bool load_strategies_from_file(const std::string& filename,
+//         std::map<Legion::MappingTagID, ParallelConfig>& strategies);
 
-bool save_strategies_to_file(const std::string& filename,
-                             const std::map<std::string, ParallelConfig>& strategies);
+//bool save_strategies_to_file(const std::string& filename,
+//                             const std::map<std::string, ParallelConfig>& strategies);
 
 class FFConfig {
 public:
   enum PreservedIDs{
     InvalidID = 0,
-    DataParallelism_GPU_1D = 1,
-    DataParallelism_GPU_2D = 2,
-    DataParallelism_GPU_3D = 3,
-    DataParallelism_GPU_4D = 4,
-    DataParallelism_GPU_5D = 5,
-    DataParallelism_CPU_1D = 11,
-    DataParallelism_CPU_2D = 12,
-    DataParallelism_CPU_3D = 13,
-    DataParallelism_CPU_4D = 14,
-    DataParallelism_CPU_5D = 15,
+    DataParallelism_GPU = 1,
+    //DataParallelism_GPU_2D = 2,
+    //DataParallelism_GPU_3D = 3,
+    //DataParallelism_GPU_4D = 4,
+    //DataParallelism_GPU_5D = 5,
+    DataParallelism_CPU = 11,
+    //DataParallelism_CPU_2D = 12,
+    //DataParallelism_CPU_3D = 13,
+    //DataParallelism_CPU_4D = 14,
+    //DataParallelism_CPU_5D = 15,
   };
 
   FFConfig();
@@ -169,9 +174,9 @@ public:
   //bool save_strategy_file(std::string filename);
   void parse_args(char** argv, int argc);
   static Legion::MappingTagID get_hash_id(const std::string& pcname);
-  bool find_parallel_config(int ndims,
-                            const std::string& pcname,
-                            ParallelConfig& config) const;
+  //bool find_parallel_config(int ndims,
+  //                          const std::string& pcname,
+  //                          ParallelConfig& config) const;
 public:
   int epochs, batchSize, printFreq;
   //int inputHeight, inputWidth;
@@ -199,7 +204,7 @@ public:
   std::string export_strategy_task_graph_file;
   std::string export_strategy_computation_graph_file;
   // We use MappingTagID as the key since we will pass the tag to the mapper
-  std::map<Legion::MappingTagID, ParallelConfig> strategies;
+  //std::map<Legion::MappingTagID, ParallelConfig> strategies;
   int machine_model_version;
   std::string machine_model_file;
   int simulator_segment_size;
@@ -214,11 +219,11 @@ public:
   int seq_length;
 };
 
-struct ParaConfigCompare {
-  bool operator()(const ParallelConfig& a, const ParallelConfig& b) const {
-    if (a.nDims != b.nDims)
-      return a.nDims < b.nDims;
-    for (int i = 0; i < a.nDims; i++)
+struct MachineViewDimCompare {
+  bool operator()(const MachineView& a, const MachineView& b) const {
+    if (a.ndims != b.ndims)
+      return a.ndims < b.ndims;
+    for (int i = 0; i < a.ndims; i++)
       if (a.dim[i] != b.dim[i])
         return a.dim[i] < b.dim[i];
     return false;

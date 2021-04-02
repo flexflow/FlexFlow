@@ -61,17 +61,19 @@ FusedOp::FusedOp(FFModel& model, Op* op)
 
 bool FusedOp::add_operator(FFModel& model, Op* op)
 {
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
+  //Context ctx = model.config.lg_ctx;
+  //Runtime* runtime = model.config.lg_hlr;
   // Currently assume fusion optimization is performed
   // after map_tensors
   // So parallel_is and op->parallel_is are not empty
-  Domain my_domain = runtime->get_index_space_domain(ctx, outputs[0]->parallel_is);
-  Domain op_domain = runtime->get_index_space_domain(ctx, op->outputs[0]->parallel_is);
-  ParallelConfig my_config, op_config;
-  assert(model.config.find_parallel_config(my_domain.get_dim(), name, my_config));
-  assert(model.config.find_parallel_config(op_domain.get_dim(), op->name, op_config));
-  if (my_config == op_config) {
+  //Domain my_domain = runtime->get_index_space_domain(ctx, outputs[0]->parallel_is);
+  //Domain op_domain = runtime->get_index_space_domain(ctx, op->outputs[0]->parallel_is);
+  //ParallelConfig my_config, op_config;
+  //assert(model.config.find_parallel_config(my_domain.get_dim(), name, my_config));
+  //assert(model.config.find_parallel_config(op_domain.get_dim(), op->name, op_config));
+  MachineView my_view = outputs[0]->machine_view;
+  MachineView op_view = op->outputs[0]->machine_view;
+  if (my_view == op_view) {
     // Do nothing
   } else {
     return false;

@@ -193,11 +193,9 @@ void Loss::backward_with_dim(FFModel* model,
   //scale_factor = 1.0f;
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
-  IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(
-    model->get_or_create_task_is(NDIM, pcname));
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, logit->parallel_is);
   Rect<NDIM> logit_rect = runtime->get_index_partition_color_space(
       ctx, logit->part.get_index_partition());
   Rect<NDIM> label_rect = runtime->get_index_partition_color_space(
