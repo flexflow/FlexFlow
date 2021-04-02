@@ -1001,11 +1001,14 @@ void Op::set_argumentmap_for_init(const FFModel& ff,
     { \
       Rect<DIM> rect = domain; \
       MachineView view = outputs[0]->machine_view; \
-      ncclComm_t* nccl_comms = ff.find_nccl_comms(view); \
+      ncclComm_t* nccl_comms = NULL; \
+      if (numWeights > 0) \
+        ncclComm_t* nccl_comms = ff.find_nccl_comms(view); \
       int idx = 0; \
       for (PointInRectIterator<DIM> it(rect); it(); it++) { \
         FFHandler handle = ff.handlers[view.get_device_id(*it)]; \
-        handle.ncclComm = nccl_comms[idx-1]; \
+        if (numWeights > 0) \
+          handle.ncclComm = nccl_comms[idx-1]; \
         argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
       } \
       break; \
@@ -2602,15 +2605,16 @@ void FFModel::compile(LossType loss_type,
       }
   }
   //assert(final_layer->outputs[0].num_dims == 2);
-  int dims[MAX_TENSOR_DIM], num_dims;
-  num_dims = final_layer->outputs[0]->num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
+  int num_dims = final_layer->outputs[0]->num_dims;
   // Note that FlexFlow's runtim internally reverse the array ordering
   for (int i = 0; i < num_dims; i++)
-    dims[i] = final_layer->outputs[0]->dims[num_dims-1-i].size;
+    dims[i] = final_layer->outputs[0]->dims[i];
   DataType label_type = DT_FLOAT;
   if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     // assign dims[num_dims-1] = 1 for sparse categorical labels
-    dims[num_dims-1] = 1;
+    assert(dims[0].degree == 1);
+    dims[0].size = 1;
     label_type = DT_INT32;
   }
   // create label tensor
@@ -2618,7 +2622,8 @@ void FFModel::compile(LossType loss_type,
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      label_tensor = create_tensor<DIM>(dims, label_type); \
+      label_tensor = create_tensor_legion_ordering(num_dims, dims, label_type); \
+      label_tensor->machine_view = final_layer->outputs[0]->machine_view; \
       map_tensor(label_tensor, label_tensor->owner_op); \
       label_tensor_with_final_part = label_tensor; \
       break; \
@@ -2637,6 +2642,8 @@ void FFModel::compile(LossType loss_type,
   if (config.computationMode == COMP_MODE_TRAINING) {
     // init all nccl communicators
     for (size_t l = 0; l < layers.size(); l++) {
+      // Only create nccl for weights
+      if (layers[l]->op_type != OP_WEIGHT) continue;
       MachineView view = layers[l]->outputs[0]->machine_view;
       if (view_hash_to_nccl_comms.find(view.hash())==view_hash_to_nccl_comms.end()) {
         TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));

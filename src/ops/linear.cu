@@ -410,7 +410,7 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
 void Linear::init(const FFModel& ff)
 {
   assert(check_output_input_weight_same_parallel_is());
-  assert(check_output_input_weight_same_machine_view());
+  //assert(check_output_input_weight_same_machine_view());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;

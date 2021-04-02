@@ -334,7 +334,7 @@ void GraphXfer::run(int depth, Graph* graph,
                     std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>& candidates,
                     std::unordered_set<size_t>& hashmap, float threshold, int maxNumOps)
 {
-  printf("run: depth(%d) srcOps.size(%zu) graph.size(%zu) candidates(%zu)\n", depth, srcOps.size(), graph->inEdges.size(), candidates.size());
+  //printf("run: depth(%d) srcOps.size(%zu) graph.size(%zu) candidates(%zu)\n", depth, srcOps.size(), graph->inEdges.size(), candidates.size());
   if (depth >= (int)srcOps.size()) {
     // Create dst operators
     bool pass = true;
@@ -971,6 +971,10 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
     for (int i = 0; i < new_op->numOutputs; i++) {
       new_op->outputs[i]->machine_view = view;
     }
+    // Set machine view for the weight tensors of this operator
+    for (int i = 0; i < new_op->numWeights; i++) {
+      new_op->weights[i]->machine_view = view;
+    }
     node_to_op[node] = new_op;
     layers.push_back(new_op);
     // Decrease the todos
@@ -983,6 +987,23 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
     }
   }
   assert(queue.size() == graph->inEdges.size());
+  // Remove the final parallel operators
+  while (layers[layers.size()-1]->is_parallel_op()) {
+    Op* op = layers[layers.size()-1];
+    if (op->op_type == OP_REDUCTION)
+      break;
+    if (op->op_type == OP_FUSED_PARALLEL) {
+      FusedParallelOp* fused_op = (FusedParallelOp*) op;
+      bool has_reduction = false;
+      for (int i = 0; i < fused_op->num_parallel_ops; i++) {
+        if (fused_op->parallel_ops[i].op_type == OP_REDUCTION)
+          has_reduction = true;
+      }
+      if (has_reduction)
+        break;
+    }
+    layers.pop_back();
+  }
   return true;
 }
 

@@ -62,7 +62,7 @@ struct MachineView {
     if (start_device_id != rhs.start_device_id) return false;
     for (int i = 0; i < ndims; i++) {
       if (dim[i] != rhs.dim[i]) return false;
-      if (stride[i] != rhs.dim[i]) return false;
+      if (stride[i] != rhs.stride[i]) return false;
     }
     return true;
   }
@@ -73,7 +73,7 @@ struct MachineView {
     if (start_device_id != rhs.start_device_id) return true;
     for (int i = 0; i < ndims; i++) {
       if (dim[i] != rhs.dim[i]) return true;
-      if (stride[i] != rhs.dim[i]) return true;
+      if (stride[i] != rhs.stride[i]) return true;
     }
     return false;
   }
