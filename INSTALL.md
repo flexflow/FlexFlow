@@ -46,7 +46,7 @@ cd build
 make
 ```
 
-## 2.1 Makefile
+## 2.2 Makefile
 The Makefile building system is deprecated.
 
 ### Build dependent libraries
