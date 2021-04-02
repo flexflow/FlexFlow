@@ -24,8 +24,8 @@ FusedOp::FusedOp(FFModel& model, Op* op)
   numInputs = op->numInputs;
   for (int i = 0; i < numInputs; i++) {
     inputs[i] = op->inputs[i];
-    input_lps[i] = op->input_lps[i];
-    input_grad_lps[i] = op->input_grad_lps[i];   
+    //input_lps[i] = op->input_lps[i];
+    //input_grad_lps[i] = op->input_grad_lps[i];   
   }
   numWeights = op->numWeights;
   for (int i = 0; i < numWeights; i++) {
@@ -57,7 +57,6 @@ FusedOp::FusedOp(FFModel& model, Op* op)
     op_output_source[i] = SOURCE_OUTPUT;
     op_output_idx[i] = i;
   }
-  task_is = op->task_is;
 }
 
 bool FusedOp::add_operator(FFModel& model, Op* op)
@@ -65,10 +64,10 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   // Currently assume fusion optimization is performed
-  // after create_weights and create_outputs
-  // So task_is and op->task_is are not empty
-  Domain my_domain = runtime->get_index_space_domain(ctx, task_is);
-  Domain op_domain = runtime->get_index_space_domain(ctx, op->task_is);
+  // after map_tensors
+  // So parallel_is and op->parallel_is are not empty
+  Domain my_domain = runtime->get_index_space_domain(ctx, outputs[0]->parallel_is);
+  Domain op_domain = runtime->get_index_space_domain(ctx, op->outputs[0]->parallel_is);
   ParallelConfig my_config, op_config;
   assert(model.config.find_parallel_config(my_domain.get_dim(), name, my_config));
   assert(model.config.find_parallel_config(op_domain.get_dim(), op->name, op_config));
@@ -121,8 +120,8 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
       // Do nothing
     } else {
       inputs[numInputs] = op->inputs[i];
-      input_lps[numInputs] = op->input_lps[i];
-      input_grad_lps[numInputs] = op->input_grad_lps[i];
+      //input_lps[numInputs] = op->input_lps[i];
+      //input_grad_lps[numInputs] = op->input_grad_lps[i];
       op_input_source[input_offset+i] = SOURCE_INPUT;
       op_input_idx[input_offset+i] = numInputs;
       numInputs += 1;
@@ -224,11 +223,13 @@ OpMeta* FusedOp::init_task(const Task *task,
 
 void FusedOp::init(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   // Call init methods in individual operators
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
   for (int i = 0; i < numOperators; i++) {
     operators[i]->init(ff);
     for (size_t j = 0; j < domain.get_volume(); j++)
@@ -252,7 +253,7 @@ void FusedOp::init(const FFModel& ff)
     default:
       assert(false);
   }
-  IndexLauncher launcher(FUSEDOP_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(FUSEDOP_INIT_TASK_ID, parallel_is,
       TaskArgument(this, sizeof(FusedOp)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
@@ -543,16 +544,16 @@ void FusedOp::forward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(FUSEDOP_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(FUSEDOP_FWD_TASK_ID, parallel_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
   int offset = 0;
   for (int i = 0; i < numInputs; i++) {
-    assert(input_lps[i] != LogicalPartition::NO_PART);
+    assert(inputs[i]->part != LogicalPartition::NO_PART);
     assert(inputs[i]->region != LogicalRegion::NO_REGION);
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i], 0/*projection id*/,
+      RegionRequirement(inputs[i]->part, 0/*projection id*/,
         READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(offset+i, FID_DATA);
   }
@@ -914,14 +915,14 @@ void FusedOp::backward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(FUSEDOP_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(FUSEDOP_BWD_TASK_ID, parallel_is,
       TaskArgument(this, sizeof(FusedOp)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
   int idx = 0;
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i], 0/*projection id*/,
+      RegionRequirement(inputs[i]->part, 0/*projection id*/,
         READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(idx++, FID_DATA);
   }
@@ -939,7 +940,7 @@ void FusedOp::backward(const FFModel& ff)
   }
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[i], 0/*projection id*/,
+      RegionRequirement(inputs[i]->part_grad, 0/*projection id*/,
         READ_WRITE, EXCLUSIVE, inputs[i]->region_grad));
     launcher.add_field(idx++, FID_DATA);
   }

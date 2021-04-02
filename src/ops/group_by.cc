@@ -111,21 +111,23 @@ OpMeta* Group_by::init_task(const Task* task,
 
 void Group_by::init(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(GROUP_BY_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(GROUP_BY_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Group_by)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // data
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
+    RegionRequirement(inputs[1]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
 
@@ -304,19 +306,19 @@ void Group_by::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(GROUP_BY_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(GROUP_BY_FWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Group_by)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // data
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
 
   // assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
+    RegionRequirement(inputs[1]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
 
@@ -336,20 +338,20 @@ void Group_by::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(GROUP_BY_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(GROUP_BY_BWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Group_by)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
 
   // input_grad
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
       WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
 
   // assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
+    RegionRequirement(inputs[1]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
 

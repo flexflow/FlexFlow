@@ -83,6 +83,7 @@ void BatchNorm::create_weights(FFModel& model)
 }
 #endif
 
+#ifdef DEADCODE
 void BatchNorm::create_input_partition(FFModel& model)
 {
   // Retrive the task indexspace for the op
@@ -125,6 +126,7 @@ void BatchNorm::create_input_partition(FFModel& model)
   }
 #endif
 }
+#endif
 
 /*
   regions[0]: input
@@ -210,24 +212,18 @@ void BatchNorm::init_para_task(const Task *task,
 __host__
 void BatchNorm::init(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
-  ParallelConfig pc;
-  std::string pcname = name;
-  ff.config.find_parallel_config(4, pcname, pc);
-  int idx = 0;
-  for (PointInRectIterator<4> it(rect); it(); it++) {
-    FFHandler handle = ff.handlers[pc.device_ids[idx++]];
-    argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
-  }
-  IndexLauncher launcher(BATCHNORM_INIT_TASK_ID, task_is,
+  set_argumentmap_for_init(ff, argmap);
+  IndexLauncher launcher(BATCHNORM_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(BatchNorm)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
+      RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -244,10 +240,7 @@ void BatchNorm::init(const FFModel& ff)
   launcher.add_field(3, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  idx = 0;
-  for (PointInRectIterator<4> it(rect); it(); it++) {
-    meta[idx++] = fm.get_result<OpMeta*>(*it);
-  }
+  set_opmeta_from_futuremap(ff, fm);
 }
 
 /*static*/
@@ -319,18 +312,13 @@ void BatchNorm::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
-  int idx = 0;
-  for (PointInRectIterator<4> it(rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
-    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
-  }
-  IndexLauncher launcher(BATCHNORM_FWD_TASK_ID, task_is,
+  set_argumentmap_for_forward(ff, argmap);
+  IndexLauncher launcher(BATCHNORM_FWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
+      RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -439,20 +427,14 @@ void BatchNorm::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
-  int idx = 0;
-  for (PointInRectIterator<4> it(rect); it(); it++) {
-    OpMeta* mp = meta[idx++];
-    argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
-  }
-
-  IndexLauncher launcher(BATCHNORM_BWD_TASK_ID, task_is,
+  set_argumentmap_for_backward(ff, argmap);
+  IndexLauncher launcher(BATCHNORM_BWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): input
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
+      RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // regions[1](I/O): input_grad (we only need grad tensors)

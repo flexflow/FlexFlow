@@ -24,7 +24,7 @@ void top_level_task(const Task* task,
                     Context ctx, Runtime* runtime)
 {
   FFConfig ffConfig;
-  fprintf(stderr, "batchSize(%d) workersPerNodes(%d) numNodes(%d)",
+  fprintf(stderr, "batchSize(%d) workersPerNodes(%d) numNodes(%d)\n",
       ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
   FFModel ff(ffConfig);
 

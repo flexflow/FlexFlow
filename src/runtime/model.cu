@@ -340,7 +340,7 @@ bool TensorBase::set_tensor(
   //TODO: Currently we use a task launch, change to index launch for NCCL parameter
   size_t volume = 1, num_replicas = 0;
   if (sync_type == ParameterSyncType::NCCL) {
-    Domain domain = runtime->get_index_space_domain(ctx, owner_op->task_is);
+    Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
     num_replicas = domain.get_volume();
   } else if (sync_type == ParameterSyncType::PS) {
     num_replicas = 1;
@@ -395,7 +395,7 @@ bool TensorBase::get_tensor(
     weight_lr = region;
   } else {
     assert(owner_op != NULL);
-    Domain domain = runtime->get_index_space_domain(ctx, owner_op->task_is);
+    Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
     switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
       case DIM: \

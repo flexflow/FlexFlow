@@ -163,8 +163,8 @@ Linear::Linear(FFModel& model,
   register_output_weight_parallel_dims(outputs[0], numdim-1, weights[0], 0);
   if (use_bias) {
     register_output_weight_parallel_dims(outputs[0], numdim-2, weights[1], 2);
-    register_output_weight_parallel_dims(outputs[0], 0, weights[1], 1);
-    register_output_weight_parallel_dims(outputs[0], numdim-1, weights[1], 0);
+    register_output_weight_parallel_dims(outputs[0], 0, weights[1], 0);
+    register_output_weight_parallel_dims(outputs[0], numdim-1, weights[1], 1);
   }
   // Check correctness
   assert(check_output_input_weight_parallel_dims());
@@ -409,11 +409,13 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
 
 void Linear::init(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(LINEAR_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(LINEAR_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Linear)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -436,7 +438,7 @@ void Linear::init(const FFModel& ff)
   if (ff.config.computationMode == COMP_MODE_TRAINING) {
     // Add inputs[0]->region_grad to avoid Legion warning
     launcher.add_region_requirement(
-        RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+        RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
             WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
     launcher.add_field(2, FID_DATA);
   }
@@ -575,12 +577,12 @@ void Linear::forward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(LINEAR_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(LINEAR_FWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
+      RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -828,19 +830,19 @@ void Linear::backward(const FFModel& ff)
   {
     ArgumentMap argmap;
     set_argumentmap_for_backward(ff, argmap);
-    IndexLauncher launcher(LINEAR_BWD_TASK_ID, task_is,
+    IndexLauncher launcher(LINEAR_BWD_TASK_ID, parallel_is,
                            TaskArgument(NULL, 0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(std::string(name)));
     // regions[0](I): input
     launcher.add_region_requirement(
-        RegionRequirement(input_lps[0], 0/*projection id*/,
+        RegionRequirement(inputs[0]->part, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, inputs[0]->region));
     launcher.add_field(0, FID_DATA);
     // regions[1](I/O): replica_grad
     assert(replica == NULL);
     launcher.add_region_requirement(
-        RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+        RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
                           READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
     launcher.add_field(1, FID_DATA);
     // regions[2](I): output

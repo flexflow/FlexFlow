@@ -333,7 +333,7 @@ void GraphXfer::run(int depth, Graph* graph,
                     std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>& candidates,
                     std::unordered_set<size_t>& hashmap, float threshold, int maxNumOps)
 {
-  //printf("run: depth(%d) srcOps.size(%zu) graph.size(%zu) candidates(%zu)\n", depth, srcOps.size(), graph->inEdges.size(), candidates.size());
+  printf("run: depth(%d) srcOps.size(%zu) graph.size(%zu) candidates(%zu)\n", depth, srcOps.size(), graph->inEdges.size(), candidates.size());
   if (depth >= (int)srcOps.size()) {
     // Create dst operators
     bool pass = true;
@@ -803,15 +803,20 @@ void FFModel::dp_optimize()
   best_graph->print();
   std::unordered_map<Node, MachineView> optimal_views;
   best_graph->construct_optimal_view(best_cost, optimal_views);
+  // Reconstruct layers
+  layers.clear();
+  convert_graph_to_layers(best_graph, optimal_views);
+  // Export results
   if (!this->config.export_strategy_computation_graph_file.empty()) {
     best_graph->export_strategy_computation_graph(optimal_views, this->config.export_strategy_computation_graph_file);
   }
   printf("Optimal Views...\n");
   for (const auto& it : optimal_views) {
-    printf("node[%zu]: type(%s) view(%d %d) ", it.first.guid,
+    printf("node[%zu]: type(%s) view(%d %d %d) ", it.first.guid,
            it.first.to_string().c_str(),
            it.second.ndims,
-           it.second.dim[0]);
+           it.second.dim[0],
+           it.second.start_device_id);
     const auto& list = best_graph->inEdges.find(it.first)->second;
     for (const auto& it2 : list) {
       Edge e = it2;
@@ -819,6 +824,167 @@ void FFModel::dp_optimize()
     }
     printf("\n");
   }
+}
+
+bool FFModel::convert_graph_to_layers(const Graph* graph,
+                                      const std::unordered_map<Node, MachineView>& optimal_views)
+{
+  std::unordered_map<Node, int> todos;
+  std::unordered_map<Node, Op*> node_to_op;
+  std::vector<Node> queue;
+  for (const auto& it : graph->inEdges) {
+    const auto& inList = it.second;
+    if (inList.size() == 0) {
+      queue.push_back(it.first);
+    } else {
+      todos[it.first] = (int)inList.size();
+    }
+  }
+  size_t index = 0;
+  while (index < queue.size()) {
+    Node node = queue[index++];
+    assert(node.ptr != NULL);
+    const auto& inList = graph->inEdges.find(node)->second;
+    Tensor inputs[MAX_NUM_INPUTS];
+    for (const auto& e : inList) {
+      inputs[e.dstIdx] = node_to_op[e.srcOp]->outputs[e.srcIdx];
+      assert(e.dstIdx < (int)inList.size());
+    }
+    Op* new_op = NULL;
+    switch (node.ptr->op_type) {
+      case OP_INPUT:
+      {
+        new_op = new NoOp(*this, OP_INPUT, node.ptr->outputs[0]);
+        break;
+      }
+      case OP_EW_ADD:
+      {
+        assert(inList.size() == 2);
+        ElementBinary* eb = (ElementBinary*) node.ptr;
+        new_op = new ElementBinary(*this, eb->op_type, inputs[0], inputs[1],
+                                   eb->inplace_a, NULL);
+        break;
+      }
+      case OP_LINEAR:
+      {
+        assert(inList.size() == 1);
+        Linear* linear = (Linear*) node.ptr;
+        Tensor kernel = NULL, bias = NULL;
+        // Create kernel tensor
+        {
+          int num_dims = inputs[0]->num_dims;
+          ParallelDim dims[3];
+          dims[0] = inputs[0]->dims[num_dims-2];
+          dims[1] = inputs[0]->dims[num_dims-1];
+          dims[2] = inputs[0]->dims[0];
+          dims[0].size = dims[0].degree;
+          dims[1].size = linear->out_channels;
+          int seed = std::rand();
+          Initializer* initializer = new GlorotUniform(seed);
+#ifdef FF_USE_NCCL
+          ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+          ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+          kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
+                                    true/*create_grad*/, initializer,
+                                    comm_type);
+        }
+        // Create bias tensor
+        if (linear->use_bias)
+        {
+          int num_dims = inputs[0]->num_dims;
+          ParallelDim dims[3];
+          dims[0] = inputs[0]->dims[num_dims-2];
+          dims[1] = inputs[0]->dims[0];
+          dims[2] = inputs[0]->dims[num_dims-1];
+          dims[0].size = dims[0].degree;
+          dims[2].size = linear->out_channels;
+          Initializer* initializer = new ZeroInitializer();
+#ifdef FF_USE_NCCL
+          ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+          ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+          bias = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
+                                    true/*create_grad*/, initializer,
+                                    comm_type);
+        }
+        new_op = new Linear(*this, inputs[0], kernel, bias,
+                            linear->activation, NULL);
+        break;
+      }
+      case OP_SOFTMAX:
+      {
+        assert(inList.size() == 1);
+        Softmax* softmax = (Softmax*) node.ptr;
+        new_op = new Softmax(*this, inputs[0], softmax->dim, NULL);
+        break;
+      }
+      case OP_COMBINE:
+      {
+        assert(inList.size() == 1);
+        Combine* combine = (Combine*) node.ptr;
+        new_op = new Combine(*this, inputs[0], combine->combine_dim,
+                             combine->combine_degree);
+        break;
+      }
+      case OP_REPARTITION:
+      {
+        assert(inList.size() == 1);
+        Repartition* repart = (Repartition*) node.ptr;
+        new_op = new Repartition(*this, inputs[0], repart->repartition_dim,
+                                 repart->repartition_degree);
+        break;
+      }
+      case OP_REPLICATE:
+      {
+        assert(inList.size() == 1);
+        Replicate* replicate = (Replicate*) node.ptr;
+        new_op = new Replicate(*this, inputs[0], replicate->replicate_dim,
+                               replicate->replicate_degree);
+        break;
+      }
+      case OP_REDUCTION:
+      {
+        assert(inList.size() == 1);
+        Reduction* reduction = (Reduction*) node.ptr;
+        new_op = new Reduction(*this, inputs[0], reduction->reduction_dim,
+                               reduction->reduction_degree);
+        break;
+      }
+      case OP_FUSED_PARALLEL:
+      {
+        assert(inList.size() == 1);
+        FusedParallelOp* fused = (FusedParallelOp*) node.ptr;
+        std::vector<ParallelOpInfo> parallel_ops;
+        for (int i = 0; i < fused->num_parallel_ops; i++)
+          parallel_ops.push_back(fused->parallel_ops[i]);
+        new_op = new FusedParallelOp(*this, inputs[0], parallel_ops);
+        break;
+      }
+      default:
+        assert(false && "Unsupported Operator Type");
+    }
+    // Set machine view for the output tensors of this operator
+    assert(optimal_views.find(node) != optimal_views.end());
+    MachineView view = optimal_views.find(node)->second;
+    for (int i = 0; i < new_op->numOutputs; i++) {
+      new_op->outputs[i]->machine_view = view;
+    }
+    node_to_op[node] = new_op;
+    layers.push_back(new_op);
+    // Decrease the todos
+    const auto& outList = graph->outEdges.find(node)->second;
+    for (const auto& it : outList) {
+      todos[it.dstOp] -= 1;
+      if (todos[it.dstOp] == 0) {
+        queue.push_back(it.dstOp);
+      }
+    }
+  }
+  assert(queue.size() == graph->inEdges.size());
+  return true;
 }
 
 GraphXfer* create_partition_linear_combine(FFModel* model,

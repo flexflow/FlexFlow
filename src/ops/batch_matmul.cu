@@ -60,6 +60,7 @@ BatchMatmul::BatchMatmul(FFModel& model,
   //}
 }
 
+#ifdef DEADCODE
 void BatchMatmul::create_input_partition(FFModel& model)
 {
   Context ctx = model.config.lg_ctx;
@@ -90,6 +91,7 @@ void BatchMatmul::create_input_partition(FFModel& model)
   }
 #endif
 }
+#endif
 
 __host__
 OpMeta* BatchMatmul::init_task(const Task* task,
@@ -125,11 +127,13 @@ void BatchMatmul::init(const FFModel& ff)
 template<int NDIM>
 void BatchMatmul::init_with_dim(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(BATCHMATMUL_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(BATCHMATMUL_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(BatchMatmul)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
@@ -139,7 +143,7 @@ void BatchMatmul::init_with_dim(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i], 0/*projection id*/,
+      RegionRequirement(inputs[i]->part, 0/*projection id*/,
         READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(i+1, FID_DATA);
   }
@@ -304,7 +308,7 @@ void BatchMatmul::forward_with_dim(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(BATCHMATMUL_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(BATCHMATMUL_FWD_TASK_ID, parallel_is,
       TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
@@ -314,7 +318,7 @@ void BatchMatmul::forward_with_dim(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i], 0/*projection id*/,
+      RegionRequirement(inputs[i]->part, 0/*projection id*/,
         READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(i+1, FID_DATA);
   }
@@ -483,7 +487,7 @@ void BatchMatmul::backward_with_dim(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(BATCHMATMUL_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(BATCHMATMUL_BWD_TASK_ID, parallel_is,
       TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
@@ -499,22 +503,22 @@ void BatchMatmul::backward_with_dim(const FFModel& ff)
   launcher.add_field(1, FID_DATA);
   // regions[2](I): A
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(2, FID_DATA);
   // regions[3](I/O): A_grad
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(3, FID_DATA);
   // regions[4](I): B
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
+    RegionRequirement(inputs[1]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(4, FID_DATA);
   // regions[5](I/O): B_grad
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[1], 0/*projection id*/,
+    RegionRequirement(inputs[1]->part_grad, 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[1]->region_grad));
   launcher.add_field(5, FID_DATA);
   runtime->execute_index_space(ctx, launcher);

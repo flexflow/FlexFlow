@@ -230,7 +230,8 @@ protected:
   int get_output_to_weight_dim_mapping(
       const Tensor output, int output_dim,
       const Tensor weight);
-  bool check_output_input_weight_parallel_dims();
+  bool check_output_input_weight_parallel_dims() const;
+  bool check_output_input_weight_same_parallel_is() const;
 public:
   Op(FFModel& model,
      OperatorType type,
@@ -258,7 +259,7 @@ public:
   virtual void backward(const FFModel&) = 0;
   //virtual void create_weights(FFModel& model) = 0;
   //virtual void create_input_partition(FFModel& model) = 0;
-  virtual void create_input_partition(FFModel& model);
+  //virtual void create_input_partition(FFModel& model);
   virtual void print_layer(const FFModel& model) = 0;
   virtual bool measure_operator_cost(Simulator* sim,
       const ParallelConfig& pc,
@@ -295,19 +296,19 @@ protected:
   void set_argumentmap_for_backward(const FFModel& ff, Legion::ArgumentMap& argmap);
   void set_opmeta_from_futuremap(const FFModel& ff, const Legion::FutureMap& fm);
 private:
-  template<int NDIM>
-  void create_input_partition_with_dim(FFModel& model);
+  //template<int NDIM>
+  //void create_input_partition_with_dim(FFModel& model);
 public:
   OperatorType op_type;
   size_t op_guid;
   char name[MAX_OPNAME];
-  Legion::IndexSpace task_is;
+  Legion::IndexSpace parallel_is;
   Tensor outputs[MAX_NUM_OUTPUTS];
   Tensor inputs[MAX_NUM_INPUTS];
   Tensor weights[MAX_NUM_WEIGHTS];
   //bool trainableInputs[MAX_NUM_INPUTS];
   //bool resetInputGrads[MAX_NUM_INPUTS];
-  Legion::LogicalPartition input_lps[MAX_NUM_INPUTS], input_grad_lps[MAX_NUM_INPUTS];
+  //Legion::LogicalPartition input_lps[MAX_NUM_INPUTS], input_grad_lps[MAX_NUM_INPUTS];
   //Tensor locals[MAX_NUM_LOCALS];
   OpMeta* meta[MAX_NUM_WORKERS];
   int numInputs, numWeights, numOutputs;
@@ -645,7 +646,11 @@ public:
                        const Node& source_node,
                        const MachineView& source_view,
                        const MachineResource& resource);
-  std::vector<MachineView> const *get_valid_machine_views(const Op* op);
+  bool convert_graph_to_layers(const Graph* graph,
+                               const std::unordered_map<Node, MachineView>& optimal_views);
+  bool get_valid_machine_views(const Op* op,
+                               const MachineResource& resource,
+                               std::vector<MachineView>& valid_views);
   void register_machine_views();
   // ========================================
   // Internal Node creation APIs
@@ -902,8 +907,8 @@ public:
                        float* in1_grad_ptr,
                        float* in2_grad_ptr);
 private:
-  template<int NDIM>
-  void create_input_partition_with_dim(FFModel& model);
+  //template<int NDIM>
+  //void create_input_partition_with_dim(FFModel& model);
 public:
   bool inplace_a;
 };
@@ -1107,7 +1112,7 @@ public:
   void print_layer(const FFModel& model) {assert(0);}
   //Parameter* get_parameter(int index) {assert(0); return NULL;}
   //void create_weights(FFModel& model);
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -1159,7 +1164,7 @@ public:
   void backward(const FFModel&);
   void update(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
   //Parameter* get_parameter(int index) {assert(0);return NULL;}
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
@@ -1282,8 +1287,8 @@ public:
   ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
 private:
-  template<int NDIM>
-  void create_input_partition_with_dim(FFModel& model);
+  //template<int NDIM>
+  //void create_input_partition_with_dim(FFModel& model);
   //template<int NDIM>
   //void create_weights_with_dim(FFModel& model);
   template<int NDIM>
@@ -1327,7 +1332,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void print_layer(const FFModel& model);
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
   static OpMeta* init_task(const Legion::Task *task,
@@ -1362,8 +1367,8 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
 private:
-  template<int NDIM>
-  void create_input_partition_with_dim(FFModel& model);
+  //template<int NDIM>
+  //void create_input_partition_with_dim(FFModel& model);
   template<int NDIM>
   void init_with_dim(const FFModel& ff);
   template<int NDIM>
@@ -1389,7 +1394,7 @@ public:
   void print_layer(const FFModel& model) {assert(0);}
   //Parameter* get_parameter(int index);
   //void create_weights(FFModel& model);
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -1513,7 +1518,7 @@ public:
   void print_layer(const FFModel& model) {assert(0);}
   //Parameter* get_parameter(int index) {return NULL;}
   //void create_weights(FFModel& model);
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -1560,7 +1565,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
 
@@ -1631,7 +1636,7 @@ public:
   void print_layer(const FFModel& model) {assert(0);}
   //Parameter* get_parameter(int index) {assert(0); return NULL;}
   //void create_weights(FFModel& model);
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -1655,8 +1660,8 @@ public:
                               float const *output_grad_ptr,
                               size_t num_elements);
 private:
-  template<int NDIM>
-  void create_output_and_partition_with_dim(FFModel& model);
+  //template<int NDIM>
+  //void create_output_and_partition_with_dim(FFModel& model);
   template<int NDIM>
   static void forward_task_with_dim(const Legion::Task *task,
                                     const std::vector<Legion::PhysicalRegion> &regions,
@@ -1699,7 +1704,7 @@ public:
   void backward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
   //void create_weights(FFModel& model);
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -1727,8 +1732,8 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
 private:
-  template<int NDIM>
-  void create_input_partition_with_dim(FFModel& model);
+  //template<int NDIM>
+  //void create_input_partition_with_dim(FFModel& model);
 public:
   int perm[MAX_TENSOR_DIM];
 };
@@ -1744,7 +1749,7 @@ public:
   void backward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
   //void create_weights(FFModel& model);
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -1771,8 +1776,8 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
 private:
-  template<int NDIM>
-  void create_input_partition_with_dim(FFModel& model);
+  //template<int NDIM>
+  //void create_input_partition_with_dim(FFModel& model);
 public:
   int axis;
 };
@@ -1788,7 +1793,7 @@ public:
   void backward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
   //void create_weights(FFModel& model);
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -1809,8 +1814,8 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
 private:
-  template<int IDIM, int ODIM>
-  void create_input_partition_with_dim(FFModel& model);
+  //template<int IDIM, int ODIM>
+  //void create_input_partition_with_dim(FFModel& model);
 };
 
 class TopKMeta : public OpMeta {
@@ -1931,7 +1936,7 @@ public:
   void print_layer(const FFModel& model) {assert(0);}
   //Parameter* get_parameter(int index) {assert(0); return NULL;}
   //void create_weights(FFModel& model);
-  void create_input_partition(FFModel& model);
+  //void create_input_partition(FFModel& model);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -1952,8 +1957,8 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
 private:
-  template<int NDIM>
-  void create_input_partition_with_dim(FFModel& model);
+  //template<int NDIM>
+  //void create_input_partition_with_dim(FFModel& model);
 public:
   int axis;
   //Legion::IndexSpace task_is;
@@ -2025,6 +2030,7 @@ public:
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
   virtual void backward(const FFModel&) = 0;
+  virtual void create_input_partition(FFModel& model) = 0;
   void print_layer(const FFModel& model) {};
   virtual bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
@@ -2080,7 +2086,8 @@ public:
       const Tensor input,
       int combine_legion_dim,
       int combine_degree,
-      const char* name);
+      const char* name = NULL);
+  void create_input_partition(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -2108,7 +2115,7 @@ public:
       Simulator* sim,
       const ParallelConfig& pc,
       CostMetrics& cost_metrics) const;
-private:
+public:
   int combine_dim, combine_degree;
 };
 
@@ -2118,7 +2125,7 @@ public:
               const Tensor input,
               int repartition_legion_dim,
               int repartition_degree,
-              const char* name);
+              const char* name = NULL);
   void create_input_partition(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -2146,7 +2153,7 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
-private:
+public:
   int repartition_dim, repartition_degree;
 };
 
@@ -2156,7 +2163,7 @@ public:
       const Tensor input,
       int replicate_legion_dim,
       int replicate_degree,
-      const char* name);
+      const char* name = NULL);
   void create_input_partition(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -2186,7 +2193,7 @@ public:
       Simulator* sim,
       const ParallelConfig& pc,
       CostMetrics& cost_metrics) const;
-private:
+public:
   int replicate_dim, replicate_degree;
 };
 
@@ -2196,7 +2203,8 @@ public:
       const Tensor input,
       int reduction_legion_dim,
       int reduction_degree,
-      const char* name);
+      const char* name = NULL);
+  void create_input_partition(FFModel& model);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -2225,7 +2233,7 @@ public:
       Simulator* sim,
       const ParallelConfig& pc,
       CostMetrics& cost_metrics) const;
-private:
+public:
   int reduction_dim, reduction_degree;
 };
 

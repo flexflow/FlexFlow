@@ -44,12 +44,50 @@ bool ParallelConfig::is_data_parallel() const
 
 bool MachineResource::is_valid_machine_view(const MachineView& view) const
 {
-  // Currently assume start_device_idx == 0
-  assert(view.start_device_id == 0);
-  int last_device_id = 0;
-  for (int i = 0; i < view.ndims; i++)
-    last_device_id += (view.dim[i]-1) * view.stride[i];
-  return last_device_id < num_nodes * gpus_per_node;
+  if (view.device_type == MachineView::GPU) {
+    // Currently assume start_gpu_id == view.start_device_id
+    assert(view.start_device_id == start_gpu_id);
+    int last_device_id = start_gpu_id;
+    for (int i = 0; i < view.ndims; i++)
+      last_device_id += (view.dim[i]-1) * view.stride[i];
+    // Check that last device id in range
+    if (last_device_id >= start_gpu_id + (num_nodes-1) * all_gpus_per_node + available_gpus_per_node)
+      return false;
+    // in case all_gpus_per_node > available_gpus_per_node
+    if (all_gpus_per_node > available_gpus_per_node) {
+      int used_gpus_per_node = 1;
+      for (int i = 0; i < view.ndims; i++) {
+        if (view.stride[i] < all_gpus_per_node)
+          used_gpus_per_node += (view.dim[i]-1) * view.stride[i];
+      }
+      if (used_gpus_per_node > available_gpus_per_node)
+        return false;
+    }
+    return true;
+  } else if (view.device_type == MachineView::CPU) {
+     // Currently assume start_cpu_id == view.start_device_id
+    assert(view.start_device_id == start_cpu_id);
+    int last_device_id = start_cpu_id;
+    for (int i = 0; i < view.ndims; i++)
+      last_device_id += (view.dim[i]-1) * view.stride[i];
+    // Check that last device id in range
+    if (last_device_id >= start_cpu_id + (num_nodes-1) * all_cpus_per_node + available_cpus_per_node)
+      return false;
+    // in case all_cpus_per_node > available_cpus_per_node
+    if (all_cpus_per_node > available_cpus_per_node) {
+      int used_cpus_per_node = 1;
+      for (int i = 0; i < view.ndims; i++) {
+        if (view.stride[i] < all_cpus_per_node)
+          used_cpus_per_node += (view.dim[i]-1) * view.stride[i];
+      }
+      if (used_cpus_per_node > available_cpus_per_node)
+        return false;
+    }
+    return true;   
+  } else {
+    assert(false && "Unsupported Device Type");
+    return false;
+  }
 }
 
 Device::Device(std::string const &name, DeviceType type, int node_id, int socket_id, int device_id)

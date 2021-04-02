@@ -58,6 +58,18 @@ Reduction::Reduction(
   // assert(check_output_input_weight_parallel_dims());
 }
 
+void Reduction::create_input_partition(FFModel& ff)
+{
+  assert(outputs[0]->part != LogicalPartition::NO_PART);
+  assert(inputs[0]->part != LogicalPartition::NO_PART);
+  // input_lp is a disjoint partition
+  ff.create_disjoint_partition(outputs[0]->num_dims, outputs[0]->dims,
+      outputs[0]->parallel_is, inputs[0]->region, input_lp);
+  // output_grad_lp is an aliased partitioning along the replica dim
+  ff.create_aliased_partition(inputs[0]->num_dims, inputs[0]->dims,
+      reduction_dim, inputs[0]->parallel_is, outputs[0]->region_grad, output_grad_lp);
+}
+
 void Reduction::init(const FFModel& ff)
 {
   // Do nothing

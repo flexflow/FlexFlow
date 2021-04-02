@@ -144,11 +144,11 @@ void Simulator::strategy_search_task(const Task *task,
     fprintf(stderr, "To use the strategy for distributed training, restart"
         " FlexFlow and import the strategy (i.e., --import %s)\n",
         model->config.export_strategy_file.c_str());
-    exit(0);
+    //exit(0);
   }  else {
     fprintf(stderr, "The best discovered strategy is not exported.\n"
         "Please set a path to export the strategy using --export or --export-strategy.\n");
-    exit(0);
+    //exit(0);
   }
   // Start from data
   // memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);

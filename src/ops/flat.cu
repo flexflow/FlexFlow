@@ -46,6 +46,7 @@ Flat::Flat(FFModel& model,
   outputs[0] = model.create_tensor_legion_ordering(2, dims, _input->data_type, this);
 }
 
+#ifdef DEADCODE
 void Flat::create_input_partition(FFModel& model)
 {
   std::string pcname = name;
@@ -69,6 +70,7 @@ void Flat::create_input_partition(FFModel& model)
   model.create_data_parallel_partition_with_diff_dims<4, 2>(
       inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
 }
+#endif
 
 OpMeta* Flat::init_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,
@@ -81,10 +83,12 @@ OpMeta* Flat::init_task(const Task *task,
 
 void Flat::init(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, parallel_is);
   ParallelConfig pc;
   std::string pcname = name;
   ff.config.find_parallel_config(2, pcname, pc);
@@ -93,12 +97,12 @@ void Flat::init(const FFModel& ff)
     FFHandler handle = ff.handlers[pc.device_ids[idx++]];
     argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
   }
-  IndexLauncher launcher(FLAT_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(FLAT_INIT_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(Flat)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
+      RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -148,18 +152,18 @@ void Flat::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, parallel_is);
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(FLAT_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(FLAT_FWD_TASK_ID, parallel_is,
     TaskArgument(NULL, 0), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -205,18 +209,18 @@ void Flat::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<2> rect = runtime->get_index_space_domain(ctx, parallel_is);
   int idx = 0;
   for (PointInRectIterator<2> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
-  IndexLauncher launcher(FLAT_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(FLAT_BWD_TASK_ID, parallel_is,
     TaskArgument(NULL, 0), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+      RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
                         READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(

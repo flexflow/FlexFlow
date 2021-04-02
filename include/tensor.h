@@ -82,6 +82,7 @@ struct TensorBase {
   int owner_idx;
   bool create_gradients;
   // The following fields are initialized after model.compile
+  MachineView machine_view;
   Legion::IndexSpace parallel_is;
   Legion::LogicalRegion region, region_grad;
   Legion::LogicalPartition part, part_grad;

@@ -117,16 +117,18 @@ OpMeta* Dropout::init_task(const Task *task,
 
 void Dropout::init(const FFModel& ff)
 {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher init_launcher(DROPOUT_INIT_TASK_ID, task_is,
+  IndexLauncher init_launcher(DROPOUT_INIT_TASK_ID, parallel_is,
                               TaskArgument(this, sizeof(ElementUnary)), argmap,
                               Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                               FFConfig::get_hash_id(std::string(name)));
   init_launcher.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
+      RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
   init_launcher.add_field(0, FID_DATA);
   init_launcher.add_region_requirement(
@@ -175,12 +177,12 @@ void Dropout::forward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(DROPOUT_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(DROPOUT_FWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -232,12 +234,12 @@ void Dropout::backward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(DROPOUT_BWD_TASK_ID, task_is,
+  IndexLauncher launcher(DROPOUT_BWD_TASK_ID, parallel_is,
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+    RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
