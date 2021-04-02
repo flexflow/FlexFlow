@@ -209,6 +209,48 @@ bool Edge::operator==(const Edge& rhs) const
   return true;
 }
 
+SearchHelper::SearchHelper(FFModel *model)
+  : model(model)
+{ }
+
+float SearchHelper::find_optimal_sequence_graph_time(
+  Graph const *pre_graph,
+  Graph const *post_graph,
+  Node const &bn_node,
+  NodeAssignment const &source,
+  NodeAssignment const &sink,
+  MachineResource const &resources
+) const {
+  float cost = std::numeric_limits<float>::infinity();
+
+  std::vector<MachineView> valid_views = this->model->get_valid_machine_views(bn_node.ptr, resources);
+  for (size_t i = 0; i < valid_views.size(); i++) {
+    MachineView bn_view = valid_views[i];
+
+    log_dp.debug("    explore view(%d %d)", bn_view.ndims, bn_view.dim[0]);
+    log_dp.debug("    First Graph...");
+    float pre_cost = this->model->graph_cost(pre_graph, bn_node, bn_view,
+                                             source.node, source.view, resources, true);
+    log_dp.debug("    Second Graph...");
+    float post_cost = this->model->graph_cost(post_graph, sink.node, sink.view,
+                                              bn_node, bn_view, resources, false);
+    if (pre_cost + post_cost < cost) {
+      cost = pre_cost + post_cost;
+    }
+  }
+
+  return cost;
+}
+
+float SearchHelper::find_optimal_nonsequence_graph_time(
+  Graph const *g,
+  NodeAssignment const &source,
+  NodeAssignment const &sink,
+  MachineResource const &resources
+) const {
+  return 0.0f;
+}
+
 Graph::Graph(FFModel* _model)
 : model(_model)
 {
@@ -375,25 +417,26 @@ bool Graph::check_correctness(void)
   return okay;
 }
 
-bool FFModel::get_valid_machine_views(const Op* op,
-                                      const MachineResource& resource,
-                                      std::vector<MachineView>& valid_views)
+std::vector<MachineView> FFModel::get_valid_machine_views(const Op* op, const MachineResource& resource)
 {
-  std::vector<MachineView>* cached_op_views = NULL;
+  std::vector<MachineView> const *cached_op_views = NULL;
+  std::vector<MachineView> valid_views;
+
   const auto& iter = cached_operator_valid_views.find(op->op_guid);
   if (iter != cached_operator_valid_views.end()) {
     cached_op_views = iter->second.get();
   } else {
-    auto valid_views = std::unique_ptr<std::vector<MachineView>>(new std::vector<MachineView>());
+    auto to_cache = std::unique_ptr<std::vector<MachineView>>(new std::vector<MachineView>());
     for (size_t i = 0; i < all_valid_views.size(); i++) {
       bool valid = true;
       for (int j = 0; j < op->numOutputs; j++)
         if (!op->outputs[j]->is_valid_machine_view(all_valid_views[i]))
           valid = false;
       if (valid)
-        cached_op_views->push_back(all_valid_views[i]);
+        to_cache->push_back(all_valid_views[i]);
     }
-    cached_operator_valid_views[op->op_guid] = cached_op_views;
+    cached_operator_valid_views[op->op_guid] = std::move(to_cache);
+    cached_op_views = cached_operator_valid_views.at(op->op_guid).get();
   }
   for (size_t i = 0; i < cached_op_views->size(); i++) {
     MachineView view = (*cached_op_views)[i];
@@ -407,7 +450,7 @@ bool FFModel::get_valid_machine_views(const Op* op,
       continue;
     valid_views.push_back(view);
   }
-  return true;
+  return valid_views;
 }
 
 void FFModel::register_machine_views()
@@ -425,9 +468,7 @@ void FFModel::register_machine_views()
     }
 }
 
-Node Graph::find_bottleneck_node(const Node& sink_node,
-                                 const Node& source_node,
-                                 std::unordered_set<Node>& used_nodes) const
+Node Graph::find_bottleneck_node(const Node& sink_node, const Node& source_node) const
 {
   using ::flexflow::graph::imm_post_dominators;
   using ::flexflow::graph::topo_sort;
@@ -456,20 +497,59 @@ Node Graph::find_bottleneck_node(const Node& sink_node,
     return Node::INVALID_NODE;
   }
 
-  std::vector<Node> topo_sorted;
-  topo_sort(*this, &topo_sorted);
-
-  for (auto const &node : topo_sorted) {
-    if (node == bn_node) {
-      break;
-    }
-
-    used_nodes.insert(node);
-  }
-  used_nodes.insert(bn_node);
-  assert (used_nodes.size() < topo_sorted.size());
-
   return bn_node;
+}
+
+Graph Graph::apply_sequence_graph(SequenceGraph const &sequence) const {
+  Graph result(*this);
+
+  std::unordered_set<Edge> to_delete;
+  for (auto const &kv : this->inEdges) {
+    Node const &src = kv.first;
+    for (auto const &e : kv.second) {
+      if (sequence.has_edge(e.srcOp, e.dstOp)) {
+        to_delete.insert(e);
+      }
+    }
+  }
+
+  std::unordered_set<Edge> to_add;
+  for (auto const &node : sequence.nodes) {
+    auto my_edges = this->inEdges.at(node);
+    if (sequence.in_edges.find(node) != sequence.in_edges.end()) {
+      for (auto const &e : sequence.in_edges.at(node)) {
+        bool found = false;
+
+        for (auto const &my_e : my_edges) {
+          if (my_e.srcOp == e.first && my_e.dstOp == e.second) {
+            found = true;
+            break;
+          }
+        }
+
+        if (!found) {
+          Edge e_to_add(e.first, e.second, -1, -1);
+          to_add.insert(e_to_add);
+        }
+      }
+    }
+  }
+
+  for (auto const &e : to_delete) {
+    result.remove_edge(e);
+  }
+
+  for (auto const &e : to_add) {
+    result.add_edge(e);
+  }
+
+  return result;
+}
+
+SequenceGraph Graph::get_sequence_graph() const {
+  using ::flexflow::graph::transitive_reduction;
+
+  return transitive_reduction(*this);
 }
 
 std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> Graph::split_at_node(Node const &bottleneck) const {
@@ -525,15 +605,33 @@ float FFModel::graph_cost(const Graph* graph,
                           bool include_sink_compute_time,
                           bool constructing_optimal_view)
 {
+  return this->search->graph_cost(
+      graph,
+      sink_node, sink_view,
+      source_node, source_view,
+      resources,
+      include_sink_compute_time,
+      constructing_optimal_view
+  );
+}
+
+float SearchHelper::graph_cost(const Graph* graph,
+                          const Node& sink_node,
+                          const MachineView& sink_view,
+                          const Node& source_node,
+                          const MachineView& source_view,
+                          const MachineResource& resources,
+                          bool include_sink_compute_time,
+                          bool constructing_optimal_view) const
+{
   log_dp.debug("sink(%zu) sink_view(%d %d) source(%zu) source_view(%d %d) resources(%d %d)",
                sink_node.guid, sink_view.ndims, sink_view.dim[0],
                source_node.guid, source_view.ndims, source_view.dim[0],
                resources.num_nodes, resources.available_gpus_per_node);
-  if (config.profiling) {
+  if (this->model->config.profiling) {
     graph->print();
   }
-  size_t hash = dp_state_hash(graph, sink_node, sink_view,
-                              source_node, source_view, resources);
+  size_t hash = dp_state_hash(graph, sink_node, sink_view, source_node, source_view, resources);
   log_dp.debug("hash = %zu", hash);
   assert(graph->inEdges.find(sink_node) != graph->inEdges.end());
   if (source_node != Node::INVALID_NODE)
@@ -541,7 +639,7 @@ float FFModel::graph_cost(const Graph* graph,
   if (cached_graph_costs.find(hash) != cached_graph_costs.end()) {
     // cached_graph_costs does not include sink_compute_time
     if (include_sink_compute_time) {
-      CostMetrics metrics = simulator->measure_operator_cost(sink_node.ptr, sink_view);
+      CostMetrics metrics = this->model->simulator->measure_operator_cost(sink_node.ptr, sink_view);
       return cached_graph_costs[hash]+metrics.forward_time+metrics.backward_time;
     } else
       return cached_graph_costs[hash];
@@ -549,7 +647,7 @@ float FFModel::graph_cost(const Graph* graph,
   // cached_graph_costs should include hash when constructing optimal view
   // So we should not be here
   assert(!constructing_optimal_view);
-  float cost = 1e7;
+  float cost = std::numeric_limits<float>::infinity();
   if (graph->inEdges.size() <= 2) {
     if (source_node == Node::INVALID_NODE)
       cost = 0.0f;
@@ -559,13 +657,11 @@ float FFModel::graph_cost(const Graph* graph,
       for (const auto& it2 : inList) {
         assert(it2.srcOp == source_node);
         assert(sink_node.ptr->inputs[it2.dstIdx]->is_valid_machine_view(source_view));
-        cost += simulator->estimate_xfer_cost(source_node.ptr->outputs[it2.srcIdx],
-                                              source_view, sink_view);
+        cost += this->model->simulator->estimate_xfer_cost(source_node.ptr->outputs[it2.srcIdx], source_view, sink_view);
       }
     }
   } else {
-    std::unordered_set<Node> used_nodes;
-    Node bn_node = graph->find_bottleneck_node(sink_node, source_node, used_nodes);
+    Node bn_node = graph->find_bottleneck_node(sink_node, source_node);
     if (bn_node != Node::INVALID_NODE) {
       // We found a bottleneck node
       log_dp.debug("  Found bn_node = %zu", bn_node.guid);
@@ -574,138 +670,25 @@ float FFModel::graph_cost(const Graph* graph,
       std::unique_ptr<Graph> post_graph;
       std::tie(pre_graph, post_graph) = graph->split_at_node(bn_node);
 
-      std::vector<MachineView>* valid_views = get_valid_machine_views(bn_node.ptr);
-      for (size_t i = 0; i < valid_views->size(); i++) {
-        bool valid = true;
-        MachineView bn_view = (*valid_views)[i];
-        for (int j = 0; j < bn_node.ptr->numOutputs; j++) {
-          if (!bn_node.ptr->outputs[j]->is_valid_machine_view(bn_view))
-            valid = false;
-        }
-      }
-      std::vector<MachineView> valid_views;
-      get_valid_machine_views(bn_node.ptr, resources, valid_views);
-      for (size_t i = 0; i < valid_views.size(); i++) {
-        MachineView bn_view = valid_views[i];
-        //bool valid = true;
-        //for (int j = 0; j < bn_node.ptr->numOutputs; j++) {
-        //  if (!bn_node.ptr->outputs[j]->is_valid_machine_view(bn_view))
-        //    valid = false;
-        //}
-        //if (!valid) continue;
-        //if (!resources.is_valid_machine_view(bn_view)) continue;
-        log_dp.debug("    explore view(%d %d)", bn_view.ndims, bn_view.dim[0]);
-        log_dp.debug("    First Graph...");
-        float pre_cost = graph_cost(pre_graph.get(), bn_node, bn_view,
-                                      source_node, source_view, resources, true);
-        log_dp.debug("    Second Graph...");
-        float post_cost = graph_cost(post_graph.get(), sink_node, sink_view,
-                                       bn_node, bn_view, resources, false);
-        if (pre_cost + post_cost < cost)
-          cost = pre_cost + post_cost;
-      }
+      cost = this->find_optimal_sequence_graph_time(
+        pre_graph.get(),
+        post_graph.get(),
+        bn_node,
+        { source_node, source_view },
+        { sink_node, sink_view },
+        resources
+      );
+
     } else {
       // sink node must have multiple branches
       // otherwise we should not be here
       assert(graph->inEdges.find(sink_node)->second.size() > 1);
-      Graph* first_graph = new Graph(this);
-      Graph* second_graph = new Graph(this);
-      bn_node = Node::INVALID_NODE;
-      // Find sink_node's first input
-      {
-        const auto& inList = graph->inEdges.find(sink_node)->second;
-        for (const auto& it2 : inList) {
-          if (it2.dstIdx != 0) continue;
-          //if (it2.weightEdge) continue;
-          bn_node = it2.srcOp;
-        }
-      }
-      assert(bn_node != Node::INVALID_NODE);
-      used_nodes.clear();
-      std::vector<Node> queue;
-      queue.push_back(bn_node);
-      used_nodes.insert(bn_node);
-      size_t i = 0;
-      while (i < queue.size()) {
-        Node node = queue[i++];
-        const auto& inList = graph->inEdges.find(node)->second;
-        for (const auto& it2 : inList) {
-          if (used_nodes.find(it2.srcOp) == used_nodes.end()) {
-            used_nodes.insert(it2.srcOp);
-            queue.push_back(it2.srcOp);
-          }
-        }
-      }
-      for (const auto& it : graph->inEdges) {
-        if (it.first == sink_node) continue;
-        const auto& inList = it.second;
-        if (used_nodes.find(it.first) != used_nodes.end()) {
-          // Add all in-edges of used_nodes in to the first_graph
-          for (const auto& e : inList) {
-            first_graph->add_edge(e);
-          }
-        } else {
-          // Add all in-edges of not_used_nodes into the second_graph
-          for (const auto& e : inList) {
-            second_graph->add_edge(e);
-          }
-        }
-      }
-      // Split sink_node's inedges between the two graphs
-      {
-        const auto& inList = graph->inEdges.find(sink_node)->second;
-        for (const auto& e : inList) {
-          if (used_nodes.find(e.srcOp) != used_nodes.end()) {
-            first_graph->add_edge(e);
-          } else {
-            second_graph->add_edge(e);
-          }
-        }
-      }
-      // Assert there must be at least on sink_source's inEdges in the second graph
-      assert(second_graph->inEdges.find(sink_node) != second_graph->inEdges.end());
-      // Run the two sequentially
-      cost = graph_cost(first_graph, sink_node, sink_view,
-                        source_node, source_view, resources, false)
-           + graph_cost(second_graph, sink_node, sink_view,
-                        source_node, source_view, resources, false);
-      // Consider run the two in parallel
-      // Split resources vertically
-      for (int i = 1; i < resources.num_nodes; i++) {
-        MachineResource firstRes = resources, secondRes = resources;
-        firstRes.num_nodes = i;
-        secondRes.num_nodes = resources.num_nodes - i;
-        secondRes.start_gpu_id = resources.start_gpu_id + resources.all_gpus_per_node * i;
-        float new_cost;
-        new_cost = std::max(graph_cost(first_graph, sink_node, sink_view,
-                                       source_node, source_view, firstRes, false),
-                            graph_cost(second_graph, sink_node, sink_view,
-                                       source_node, source_view, secondRes, false));
-        if (new_cost < cost)
-          cost = new_cost;
-      }
-      // Split resources horizontally
-      for (int i = 1; i < resources.available_gpus_per_node; i++) {
-        MachineResource firstRes = resources, secondRes = resources;
-        firstRes.available_gpus_per_node = i;
-        secondRes.available_gpus_per_node = resources.available_gpus_per_node - i;
-        secondRes.start_gpu_id = resources.start_gpu_id + i;
-        float new_cost;
-        new_cost = std::max(graph_cost(first_graph, sink_node, sink_view,
-                                       source_node, source_view, firstRes, false),
-                            graph_cost(second_graph, sink_node, sink_view,
-                                       source_node, source_view, secondRes, false));
-        if (new_cost < cost)
-          cost = new_cost;
-      }
-      delete first_graph;
-      delete second_graph;
     }
   }
   log_dp.debug("  cached_graph_costs[%zu]=%.4lf", hash, cost);
   cached_graph_costs[hash] = cost;
   if (include_sink_compute_time) {
-    CostMetrics metrics = simulator->measure_operator_cost(sink_node.ptr, sink_view);
+    CostMetrics metrics = this->model->simulator->measure_operator_cost(sink_node.ptr, sink_view);
     cost += metrics.forward_time + metrics.backward_time;
   }
   return cost;
@@ -737,8 +720,7 @@ void FFModel::construct_optimal_view(const Graph* graph,
     }
     return;
   } else {
-    std::unordered_set<Node> used_nodes;
-    Node bn_node = graph->find_bottleneck_node(sink_node, source_node, used_nodes);
+    Node bn_node = graph->find_bottleneck_node(sink_node, source_node);
     if (bn_node != Node::INVALID_NODE) {
       // We found a bottleneck node
       Graph* first_graph = new Graph(this);
@@ -759,8 +741,7 @@ void FFModel::construct_optimal_view(const Graph* graph,
       }
       float best_first_cost = 0.0f, best_second_cost = 0.0f;
       MachineView best_bn_view = MachineView::NO_VIEW;
-      std::vector<MachineView> valid_views;
-      get_valid_machine_views(bn_node.ptr, resources, valid_views);
+      std::vector<MachineView> valid_views = get_valid_machine_views(bn_node.ptr, resources);
       for (size_t i = 0; i < valid_views.size(); i++) {
         MachineView bn_view = valid_views[i];
         //bool valid = true;
@@ -954,8 +935,7 @@ float Graph::total_cost(void)
   resource.available_gpus_per_node = resource.all_gpus_per_node;
   resource.start_gpu_id = 0;
   resource.start_cpu_id = 0;
-  std::vector<MachineView> valid_views;
-  model->get_valid_machine_views(sink_node.ptr, resource, valid_views);
+  std::vector<MachineView> valid_views = model->get_valid_machine_views(sink_node.ptr, resource);
   float total_cost = 1e7;
   for (size_t i = 0; i < valid_views.size(); i++) {
     total_cost = std::min(total_cost,
@@ -986,8 +966,7 @@ void Graph::construct_optimal_view(float optimal_cost,
   resource.available_gpus_per_node = resource.all_gpus_per_node;
   resource.start_gpu_id = 0;
   resource.start_cpu_id = 0;
-  std::vector<MachineView> valid_views;
-  model->get_valid_machine_views(sink_node.ptr, resource, valid_views);
+  std::vector<MachineView> valid_views = model->get_valid_machine_views(sink_node.ptr, resource);
   float total_cost = 1e7;
   MachineView best_sink_view = MachineView::NO_VIEW;
   for (size_t i = 0; i < valid_views.size(); i++) {
@@ -1025,12 +1004,12 @@ size_t Graph::hash(void) const
   return total_hash;
 }
 
-size_t FFModel::dp_state_hash(const Graph* graph,
-                              const Node& sink_node,
-                              const MachineView& sink_view,
-                              const Node& source_node,
-                              const MachineView& source_view,
-                              const MachineResource& resource)
+size_t dp_state_hash(const Graph* graph,
+                     const Node& sink_node,
+                     const MachineView& sink_view,
+                     const Node& source_node,
+                     const MachineView& source_view,
+                     const MachineResource& resource)
 {
   size_t key = graph->hash();
   key = key * 31 + std::hash<size_t>()((size_t)sink_node.ptr);

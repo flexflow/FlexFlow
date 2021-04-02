@@ -424,7 +424,7 @@ void Conv2D::forward_task(const Task *task,
   TensorAccessorR<float, 4> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   const float* acc_bias_ptr = NULL;
-  if (m->use_bias) { 
+  if (m->use_bias) {
     TensorAccessorR<float, 1> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
     acc_bias_ptr = acc_bias.ptr;
@@ -569,13 +569,13 @@ void Conv2D::backward_task(const Task *task,
       regions[5], task->regions[5], FID_DATA, ctx, runtime,
       true/*readOutput*/);
   float* acc_bias_grad_ptr = NULL;
-  if (m->use_bias) { 
+  if (m->use_bias) {
     TensorAccessorW<float, 1> acc_bias_grad(
         regions[6], task->regions[6], FID_DATA, ctx, runtime,
         true/*readOutput*/);
     acc_bias_grad_ptr = static_cast<float*>(acc_bias_grad.ptr);
   }
-  
+
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {

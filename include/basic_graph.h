@@ -56,6 +56,20 @@ namespace flexflow::graph {
       in_edges[e.second].insert(e);
     }
 
+    bool has_edge(N const &src, N const &dst) const {
+      auto iter = this->in_edges.find(dst);
+      if (iter == this->in_edges.end()) {
+        return false;
+      }
+
+      std::unordered_set<E> dst_in_edges = iter->second;
+      return dst_in_edges.find({src, dst}) != dst_in_edges.end();
+    }
+
+    bool has_edge(E const &e) const {
+      return this->has_edge(e.first, e.second);
+    }
+
     void remove_edge(N const &src, N const &dst) {
       out_edges[src].erase({src, dst});
       in_edges[dst].erase({src, dst});

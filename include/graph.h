@@ -75,6 +75,42 @@ struct NodeCompare {
   };
 };
 
+size_t dp_state_hash(const Graph* graph,
+                     const Node& sink_node,
+                     const MachineView& sink_view,
+                     const Node& source_node,
+                     const MachineView& source_view,
+                     const MachineResource& resource);
+
+using SequenceGraph = ::flexflow::graph::BasicGraph<Node>;
+
+class SearchHelper {
+public:
+  SearchHelper(FFModel *model);
+
+  float graph_cost(const Graph* graph,
+                   const Node& sink_node,
+                   const MachineView& sink_view,
+                   const Node& source_node,
+                   const MachineView& source_view,
+                   const MachineResource& resources,
+                   bool include_sink_compute_time,
+                   bool constructing_optimal_view = false) const;
+
+  float find_optimal_sequence_graph_time(Graph const *pre_graph,
+                                         Graph const *post_graph,
+                                         Node const &bottleneck_node,
+                                         NodeAssignment const &source,
+                                         NodeAssignment const &sink,
+                                         MachineResource const &resources) const;
+  float find_optimal_nonsequence_graph_time(Graph const *g, NodeAssignment const &source, NodeAssignment const &sink, MachineResource const &resources) const;
+private:
+  FFModel *model;
+
+  mutable std::unordered_map<size_t, float> cached_graph_costs;
+  mutable std::unordered_map<size_t, std::unique_ptr<const std::vector<MachineView>>> cached_operator_valid_views;
+};
+
 class Graph {
 public:
   Graph(FFModel* model);
@@ -97,12 +133,13 @@ public:
   bool check_correctness(void);
   bool has_loop(void);
   bool map_operators_to_layers(std::vector<Op*>& layers) const;
-  Node find_bottleneck_node(const Node& sink_node,
-                              const Node& source_node,
-                              std::unordered_set<Node>& used_nodes) const;
+  Node find_bottleneck_node(const Node& sink_node, const Node& source_node) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::unique_ptr<std::ostream> out) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::string const &out_filename) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const;
+
+  Graph apply_sequence_graph(SequenceGraph const &sequence) const;
+  SequenceGraph get_sequence_graph() const;
 
   std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_at_node(Node const &bottleneck) const;
 public:

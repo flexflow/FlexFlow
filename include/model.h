@@ -192,6 +192,7 @@ enum FieldIDs {
   FID_DATA,
 };
 
+class SearchHelper;
 class FFModel;
 class Op;
 class DataLoader;
@@ -357,6 +358,11 @@ struct Node {
   static const Node INVALID_NODE;
   size_t guid;
   const Op* ptr;
+};
+
+struct NodeAssignment {
+  Node node;
+  MachineView view;
 };
 
 class NoOp;
@@ -648,9 +654,7 @@ public:
                        const MachineResource& resource);
   bool convert_graph_to_layers(const Graph* graph,
                                const std::unordered_map<Node, MachineView>& optimal_views);
-  bool get_valid_machine_views(const Op* op,
-                               const MachineResource& resource,
-                               std::vector<MachineView>& valid_views);
+  std::vector<MachineView> get_valid_machine_views(const Op* op, const MachineResource& resource);
   void register_machine_views();
   // ========================================
   // Internal Node creation APIs
@@ -788,6 +792,7 @@ public:
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer* optimizer;
+  SearchHelper *search;
   Loss* loss_op;
   Metrics* metrics_op;
   Simulator* simulator;
@@ -798,8 +803,8 @@ public:
   std::vector<Tensor> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
-  std::unordered_map<size_t, float> cached_graph_costs;
-  std::unordered_map<size_t, std::unique_ptr<const std::vector<MachineView>>> cached_operator_valid_views;
+  mutable std::unordered_map<size_t, float> cached_graph_costs;
+  mutable std::unordered_map<size_t, std::unique_ptr<const std::vector<MachineView>>> cached_operator_valid_views;
   // Cached operators: key: operator hash, value: operator pointer
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
   std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
