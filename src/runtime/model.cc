@@ -1003,7 +1003,7 @@ void Op::set_argumentmap_for_init(const FFModel& ff,
       MachineView view = outputs[0]->machine_view; \
       ncclComm_t* nccl_comms = NULL; \
       if (numWeights > 0) \
-        ncclComm_t* nccl_comms = ff.find_nccl_comms(view); \
+        nccl_comms = ff.find_nccl_comms(view); \
       int idx = 0; \
       for (PointInRectIterator<DIM> it(rect); it(); it++) { \
         FFHandler handle = ff.handlers[view.get_device_id(*it)]; \

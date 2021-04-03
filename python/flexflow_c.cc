@@ -613,9 +613,8 @@ flexflow_model_add_scalar_multiply(
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->scalar_multiply(*input, scalar, inplace, name);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->scalar_multiply(input, scalar, inplace, name);
   DEBUG_PRINT("[Scalar multiply] new Tensor %p, input %p, scalar %f, name %s", tensor, input, scalar,  name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -627,9 +626,8 @@ flexflow_model_add_gelu(
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->gelu(*input, name);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->gelu(input, name);
   DEBUG_PRINT("[GeLU] new Tensor %p, input %p, name %s", tensor, input, name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -641,9 +639,8 @@ flexflow_model_add_identity(
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->identity(*input, name);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->identity(input, name);
   DEBUG_PRINT("[Identity] new Tensor %p, input %p, name %s", tensor, input, name);
   return FFCObjectWrapper::wrap(tensor);
 }
