@@ -43,6 +43,14 @@ Simulator::Simulator(const FFModel* model,
   base_ptr = (char*)simulatorInst.pointer_untyped(0, sizeof(char));
   capacity = model->config.simulator_work_space_size;
 
+  // Set cublas/cudnn streams to allow Realm catch the events
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(handler.blas, stream));
+  checkCUDNN(cudnnSetStream(handler.dnn, stream));
+#endif
+
   size_t max_num_tasks = 1024 * 1024;
 
   cudaEventCreate(&start_event);
@@ -74,6 +82,8 @@ void Simulator::strategy_search_task(const Task *task,
                                      const std::vector<PhysicalRegion> &regions,
                                      Context ctx, Runtime *runtime)
 {
+  // This method should no longer be used
+  assert(false);
   FFModel* model = *((FFModel**) task->args);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
          .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
@@ -131,7 +141,6 @@ void Simulator::strategy_search_task(const Task *task,
     fprintf(stderr, "MCMC search configuration: budget(%zu) alpha(%.8lf) mode(INFERENCE)\n",
         model->config.search_budget, model->config.search_alpha);
   }
-  model->dp_optimize();
   //model->mcmc_optimize(strategies, model->config.search_budget,
   //    model->config.search_alpha, model->config.computationMode, model->config.enable_propagation);
 #ifdef DEADCODE

@@ -15,6 +15,9 @@
 #include "graph.h"
 #include "dominators.h"
 #include "legion.h"
+#include "legion/legion_utilities.h"
+
+using namespace Legion;
 
 LegionRuntime::Logger::Category log_dp("DP");
 LegionRuntime::Logger::Category log_graph("graph");
@@ -68,9 +71,10 @@ Node::Node(void)
 : guid(0), ptr(NULL)
 {}
 
-std::string Node::op_to_string(const Op* ptr) const
+/*static*/
+std::string optype_to_string(OperatorType op_type)
 {
-  switch (ptr->op_type) {
+  switch (op_type) {
     case OP_INPUT:
       return "Input";
     case OP_WEIGHT:
@@ -186,8 +190,13 @@ std::string Node::op_to_string(const Op* ptr) const
     case OP_FUSED_PARALLEL:
       return "FusedParallel";
     default:
-      return "Unknown_" + std::to_string(ptr->op_type);
+      return "Unknown_" + std::to_string(op_type);
   }
+}
+
+std::string Node::op_to_string(const Op* op) const
+{
+  return optype_to_string(op->op_type);
 }
 
 Edge::Edge(void)
@@ -998,3 +1007,314 @@ size_t FFModel::dp_state_hash(const Graph* graph,
   key = key * 31 + resource.hash();
   return key;
 }
+
+GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime *runtime)
+{
+  FFModel* model = *((FFModel**) task->args);
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+         .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
+  MachineModel *machine;
+  if (model->config.machine_model_version == 0) {
+    machine = (MachineModel *) new SimpleMachineModel(model->config.numNodes, model->config.workersPerNode, gpu_mem.capacity());
+  }
+  else if (model->config.machine_model_version == 1 and !model->config.machine_model_file.empty()) {
+    machine = (MachineModel *) new EnhancedMachineModel(model->config.machine_model_file, gpu_mem.capacity());
+  }
+  else {
+    assert(false && "machine model creation error: currently only support machine-model-version = 0 or 1. When machine-model-version = 1, machine-model-file should not be empty.");
+  }
+  // Assume this task is running on GPU0
+  Simulator* simulator = new Simulator(model, model->handlers[0], gpu_mem, machine);
+  model->simulator = simulator;
+  Graph* best_graph = NULL;
+  std::unordered_map<Node, MachineView> optimal_views;
+  model->graph_optimize(model->config.search_budget,
+                        model->config.only_data_parallel,
+                        best_graph, optimal_views);
+  Serializer sez;
+  // FIrst serialize graph
+  sez.serialize(best_graph->inEdges.size());
+  std::unordered_map<Node, int> todos;
+  std::vector<Node> opList;
+  for (const auto& it : best_graph->inEdges) {
+    const auto& inList = it.second;
+    todos[it.first] = (int)inList.size();
+    if (todos[it.first] == 0)
+      opList.push_back(it.first);
+  }
+  size_t node_idx = 0;
+  while (node_idx < opList.size()) {
+    Node cur_node = opList[node_idx++];
+    const auto& outList = best_graph->outEdges[cur_node];
+    for (const auto& e : outList) {
+      todos[e.dstOp] --;
+      if (todos[e.dstOp] == 0) {
+        opList.push_back(e.dstOp);
+      }
+    }
+    const auto& inList = best_graph->inEdges[cur_node];
+    sez.serialize(inList.size());
+    for (const auto& e : inList) {
+      sez.serialize(e.srcOp.guid);
+      assert(e.dstOp.guid == cur_node.guid);
+      sez.serialize(e.srcIdx);
+      sez.serialize(e.dstIdx);
+    }
+    sez.serialize((size_t)10101010); // safe guard for the end of inedges
+    const Op* op = cur_node.ptr;
+    assert(op != NULL);
+    sez.serialize(cur_node.guid);
+    sez.serialize(op->op_type);
+    switch (op->op_type) {
+      case OP_INPUT:
+      {
+        assert(op->numOutputs == 1);
+        sez.serialize(op->op_type);
+        sez.serialize(op->outputs[0]->data_type);
+        sez.serialize(op->outputs[0]->num_dims);
+        for (int i = 0; i < op->outputs[0]->num_dims; i++)
+          sez.serialize(op->outputs[0]->dims[i].size);
+        break;
+      }
+      case OP_NOOP:
+      {
+        break;
+      }
+      case OP_EW_ADD:
+      {
+        sez.serialize(op->op_type);
+        break;
+      }
+      case OP_LINEAR:
+      {
+        Linear* linear = (Linear*) op;
+        sez.serialize(linear->out_channels);
+        sez.serialize(linear->activation);
+        break;
+      }
+      case OP_SOFTMAX:
+      {
+        Softmax* softmax = (Softmax*) op;
+        sez.serialize(softmax->dim);
+        break;
+      }
+      case OP_REPARTITION:
+      {
+        Repartition* repart = (Repartition*) op;
+        sez.serialize(repart->repartition_dim);
+        sez.serialize(repart->repartition_degree);
+        break;
+      }
+      case OP_REPLICATE:
+      {
+        Replicate* replicate = (Replicate*) op;
+        sez.serialize(replicate->replicate_dim);
+        sez.serialize(replicate->replicate_degree);
+        break;
+      }
+      case OP_REDUCTION:
+      {
+        Reduction* reduction = (Reduction*) op;
+        sez.serialize(reduction->reduction_dim);
+        sez.serialize(reduction->reduction_degree);
+        break;
+      }
+      case OP_COMBINE:
+      {
+        Combine* combine = (Combine*) op;
+        sez.serialize(combine->combine_dim);
+        sez.serialize(combine->combine_degree);
+        break;
+      }
+      default:
+      {
+        fprintf(stderr, "The following operator type is currently not supported"
+                " for graph serialization: %s\n"
+                "Report the issue to the FlexFlow developers",
+                optype_to_string(op->op_type).c_str());
+        assert(false && "Unsupported operator type");
+      }
+    }
+    sez.serialize((size_t)12345678); // safe guard for the end of an op
+  }
+  assert(node_idx == best_graph->inEdges.size());
+  // Second, serialize optimal machine view
+  sez.serialize(optimal_views.size());
+  for (const auto & it : optimal_views) {
+    sez.serialize((size_t) 98765432); // safe guard
+    sez.serialize(it.first.guid);
+    sez.serialize(it.second);
+  }
+  assert(sez.get_used_bytes() < GraphOptimalViewSerialized::buffer_size);
+  GraphOptimalViewSerialized ret;
+  ret.total_bytes = sez.get_used_bytes();
+  memcpy(ret.data, sez.get_buffer(), ret.total_bytes);
+  // Deallocate best_graph
+  delete best_graph;
+  return ret;
+}
+
+void FFModel::deserialize_graph_optimal_view(Deserializer& dez,
+                                             Graph* graph,
+                                             std::unordered_map<Node, MachineView>& optimal_views)
+{
+  //Deserializer dez(serialized.data, serialized.total_bytes);
+  std::unordered_map<size_t, Node> guid_to_nodes;
+  size_t num_nodes;
+  dez.deserialize(num_nodes);
+  //best_graph = new Graph(this);
+  for (size_t node_idx = 0; node_idx < num_nodes; node_idx++) {
+    Edge inedges[MAX_NUM_INPUTS];
+    Tensor inputs[MAX_NUM_INPUTS];
+    size_t num_inputs;
+    dez.deserialize(num_inputs);
+    for (size_t j = 0; j < num_inputs; j++) {
+      size_t src_guid;
+      int src_idx, dst_idx;
+      dez.deserialize(src_guid);
+      assert(guid_to_nodes.find(src_guid) != guid_to_nodes.end());
+      dez.deserialize(src_idx);
+      dez.deserialize(dst_idx);
+      assert(dst_idx < (int)num_inputs);
+      inedges[dst_idx].srcOp = guid_to_nodes[src_guid];
+      inedges[dst_idx].srcIdx = src_idx;
+      inedges[dst_idx].dstIdx = dst_idx;
+      inputs[dst_idx] = inedges[dst_idx].srcOp.ptr->outputs[src_idx];
+    }
+    {
+      size_t safecode;
+      dez.deserialize(safecode);
+      assert(safecode == 10101010);
+    }
+    Node node = Node::INVALID_NODE;
+    size_t guid;
+    OperatorType op_type;
+    dez.deserialize(guid);
+    dez.deserialize(op_type);
+    switch(op_type) {
+      case OP_INPUT:
+      {
+        assert(num_inputs == 0);
+        int num_dims, dims[MAX_TENSOR_DIM];
+        OperatorType op_type;
+        dez.deserialize(op_type);
+        DataType data_type;
+        dez.deserialize(data_type);
+        dez.deserialize(num_dims);
+        for (int i = 0; i < num_dims; i++)
+          dez.deserialize(dims[i]);
+        Tensor t = create_tensor_legion_ordering(num_dims, dims, data_type);
+        node.ptr = t->owner_op;
+        node.guid = node_global_guid ++;
+        break;
+      }
+      case OP_NOOP:
+      {
+        assert(num_inputs == 1);
+        node = get_or_create_noop_node(inputs[0]);
+        break;
+      }
+      case OP_EW_ADD:
+      {
+        assert(num_inputs == 2);
+        OperatorType op_type;
+        dez.deserialize(op_type);
+        node = get_or_create_element_binary_node(inputs[0], inputs[1], op_type);
+        break;
+      }
+      case OP_LINEAR:
+      {
+        assert(num_inputs == 1);
+        int out_channels;
+        ActiMode activation;
+        dez.deserialize(out_channels);
+        dez.deserialize(activation);
+        node = get_or_create_linear_node(inputs[0], out_channels, activation, false);
+        break;
+      }
+      case OP_SOFTMAX:
+      {
+        assert(num_inputs == 1);
+        int softmax_dim;
+        dez.deserialize(softmax_dim);
+        node = get_or_create_softmax_node(inputs[0], softmax_dim);
+        break;
+      }
+      case OP_COMBINE:
+      {
+        assert(num_inputs == 1);
+        int combine_dim, combine_degree;
+        dez.deserialize(combine_dim);
+        dez.deserialize(combine_degree);
+        node = get_or_create_combine_node(inputs[0], combine_dim,
+                                          combine_degree);
+        break;
+      }
+      case OP_REPARTITION:
+      {
+        assert(num_inputs == 1);
+        int repartition_dim, repartition_degree;
+        dez.deserialize(repartition_dim);
+        dez.deserialize(repartition_degree);
+        node = get_or_create_repartition_node(inputs[0], repartition_dim,
+                                              repartition_degree);
+        break;
+      }
+      case OP_REPLICATE:
+      {
+        assert(num_inputs == 1);
+        int replicate_dim, replicate_degree;
+        dez.deserialize(replicate_dim);
+        dez.deserialize(replicate_degree);
+        node = get_or_create_replicate_node(inputs[0], replicate_dim,
+                                            replicate_degree);
+        break;
+      }
+      case OP_REDUCTION:
+      {
+        assert(num_inputs == 1);
+        int reduction_dim, reduction_degree;
+        dez.deserialize(reduction_dim);
+        dez.deserialize(reduction_degree);
+        node = get_or_create_reduction_node(inputs[0], reduction_dim,
+                                            reduction_degree);
+        break;
+      }
+      default:
+      {
+        fprintf(stderr, "The following operator type is currently not supported"
+                " for graph deserialization: %s\n"
+                "Report the issue to the FlexFlow developers",
+                optype_to_string(op_type).c_str());
+        assert(false && "Unsupported operator type");
+      }
+    }
+    {
+      size_t safecode;
+      dez.deserialize(safecode);
+      assert(safecode == 12345678);
+    }
+    guid_to_nodes[guid] = node;
+    for (size_t i = 0; i < num_inputs; i++) {
+      inedges[i].dstOp = node;
+      graph->add_edge(inedges[i]);
+    }
+  }
+  // Second, deserialize optimal machine view
+  size_t num_views;
+  dez.deserialize(num_views);
+  for (size_t i = 0; i < num_views; i++) {
+    size_t safecode, guid;
+    MachineView view;
+    dez.deserialize(safecode);
+    assert(safecode == 98765432);
+    dez.deserialize(guid);
+    assert(guid_to_nodes.find(guid) != guid_to_nodes.end());
+    dez.deserialize(view);
+    optimal_views[guid_to_nodes[guid]] = view;
+  }
+  assert(dez.get_remaining_bytes() == 0);
+}
+

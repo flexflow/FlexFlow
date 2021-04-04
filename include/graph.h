@@ -73,6 +73,16 @@ struct NodeCompare {
   };
 };
 
+struct GraphOptimalViewSerialized {
+#ifdef LEGION_MAX_RETURN_SIZE
+  static const size_t buffer_size = LEGION_MAX_RETURN_SIZE - 8;
+#else
+  static const size_t buffer_size = 32 * 1024 - 8;
+#endif
+  size_t total_bytes;
+  char data[buffer_size];
+};
+
 class Graph {
 public:
   Graph(FFModel* model);
@@ -95,6 +105,9 @@ public:
   bool check_correctness(void);
   bool has_loop(void);
   bool map_operators_to_layers(std::vector<Op*>& layers) const;
+  static GraphOptimalViewSerialized graph_optimize_task(const Legion::Task *task,
+             const std::vector<Legion::PhysicalRegion> &regions,
+             Legion::Context ctx, Legion::Runtime *runtime);
   Node find_bottleneck_node(const Node& sink_node,
                               const Node& source_node,
                               std::unordered_set<Node>& used_nodes) const;

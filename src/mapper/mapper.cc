@@ -284,6 +284,10 @@ void FFMapper::select_task_options(const MapperContext ctx,
     output.initial_proc = all_gpus[0];
     return;
   }
+  if (task.task_id == GRAPH_OPTIMIZE_TASK_ID) {
+    output.initial_proc = all_gpus[0];
+    return;
+  }
   if (task.task_id == NCCL_GETUNIQUEID_TASK_ID) {
     output.initial_proc = all_gpus[0];
     return;

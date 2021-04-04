@@ -193,6 +193,7 @@ public:
   bool search_overlap_backward_update;
   CompMode computationMode;
   //Control parallelizable dimensions
+  bool only_data_parallel;
   bool enable_sample_parallel;
   bool enable_parameter_parallel;
   bool enable_attribute_parallel;

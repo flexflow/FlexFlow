@@ -19,6 +19,8 @@
 #include "dirent.h"
 #include <unordered_set>
 #include "random_utils.h"
+#include "graph.h"
+#include "legion/legion_utilities.h"
 
 using namespace std;
 using namespace Legion;
@@ -41,8 +43,27 @@ TensorBase::TensorBase(void)
   sync_type = ParameterSyncType::NONE;
   initializer = NULL;
   create_gradients = false;
-
   //physical_region.impl = NULL;
+}
+
+TensorBase::TensorBase(const TensorBase& rhs)
+{
+  ts_guid = rhs.ts_guid;
+  num_dims = rhs.num_dims;
+  for (int i = 0; i < num_dims; i++)
+    dims[i] = rhs.dims[i];
+  machine_view = rhs.machine_view;
+  parallel_is = rhs.parallel_is;
+  region = rhs.region;
+  region_grad = rhs.region_grad;
+  part = rhs.part;
+  part_grad = rhs.part_grad;
+  owner_op = rhs.owner_op;
+  owner_idx = rhs.owner_idx;
+  data_type = rhs.data_type;
+  sync_type = rhs.sync_type;
+  initializer = rhs.initializer;
+  create_gradients = rhs.create_gradients;
 }
 
 /*
@@ -2418,15 +2439,22 @@ void FFModel::compile(LossType loss_type,
   //if (config.import_strategy_file.length() > 0) {
   //  load_strategies_from_file(config.import_strategy_file, config.strategies);
   //}
-  if (config.search_budget > 0) {
-    // Launch the search task
+  // Launch the graph optimize task
+  {
     FFModel* model = this;
-    TaskLauncher launcher(STRATEGY_SEARCH_TASK_ID,
+    TaskLauncher launcher(GRAPH_OPTIMIZE_TASK_ID,
         TaskArgument(&model, sizeof(FFModel*)));
     Future future = runtime->execute_task(ctx, launcher);
-    future.get_void_result();
-  } else {
-    // Do nothing
+
+    GraphOptimalViewSerialized ret = future.get_result<GraphOptimalViewSerialized>();
+    Deserializer dez(ret.data, ret.total_bytes);
+    // Reconstruct layers
+    Graph* best_graph = new Graph(this);
+    std::unordered_map<Node, MachineView> optimal_views;
+    deserialize_graph_optimal_view(dez, best_graph, optimal_views);
+    layers.clear();
+    convert_graph_to_layers(best_graph, optimal_views);
+    delete best_graph;
   }
 
   loss_op = new Loss(loss_type);
@@ -3102,6 +3130,7 @@ struct DefaultConfig {
   const static size_t simulatorWorkSpaceSize = (size_t)2 * 1024 * 1024 * 1024; //2GB
   constexpr static float searchAlpha = 1.0f;
   const static bool searchOverlapBackwardUpdate = false;
+  const static bool onlyDataParallel = false;
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
@@ -3128,6 +3157,7 @@ FFConfig::FFConfig()
   search_alpha = DefaultConfig::searchAlpha;
   search_overlap_backward_update = DefaultConfig::searchOverlapBackwardUpdate;
   computationMode = COMP_MODE_TRAINING;
+  only_data_parallel = DefaultConfig::onlyDataParallel;
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
@@ -3209,6 +3239,10 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if ((!strcmp(argv[i], "--export")) || (!strcmp(argv[i], "--export-strategy"))) {
       export_strategy_file = std::string(argv[++i]);
+      continue;
+    }
+    if ((!strcmp(argv[i], "--only-data-parallel"))) {
+      only_data_parallel = true;
       continue;
     }
     if ((!strcmp(argv[i], "--enable-parameter-parallel"))) {
@@ -4017,6 +4051,15 @@ void register_flexflow_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<Simulator::strategy_search_task>(
         registrar, "Stretegy Search Task");
+  }
+  // Graph optimize
+  {
+    TaskVariantRegistrar registrar(GRAPH_OPTIMIZE_TASK_ID,
+                                   "Graph Optimize");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<GraphOptimalViewSerialized, Graph::graph_optimize_task>(
+        registrar, "Graph Optimize Task");
   }
   // Parameter Server Prefetch task
   {

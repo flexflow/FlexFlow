@@ -734,7 +734,10 @@ void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineVi
   dot.close();
 }
 
-void FFModel::dp_optimize()
+void FFModel::graph_optimize(size_t budget,
+                             bool only_data_parallel,
+                             Graph*& best_graph,
+                             std::unordered_map<Node, MachineView>& optimal_views)
 {
   // Construct graph structure
   Graph* graph = new Graph(this);
@@ -776,7 +779,7 @@ void FFModel::dp_optimize()
   std::unordered_set<size_t> hashmap;
   candidates.push(graph);
   hashmap.insert(graph->hash());
-  Graph* best_graph = graph;
+  best_graph = graph;
   float best_cost = graph->total_cost();
   int counter = 0;
   while (!candidates.empty()) {
@@ -800,11 +803,7 @@ void FFModel::dp_optimize()
   // Run DP
   printf("best_cost = %.4lf\n", best_cost);
   best_graph->print();
-  std::unordered_map<Node, MachineView> optimal_views;
   best_graph->construct_optimal_view(best_cost, optimal_views);
-  // Reconstruct layers
-  layers.clear();
-  convert_graph_to_layers(best_graph, optimal_views);
   // Export results
   if (!this->config.export_strategy_computation_graph_file.empty()) {
     best_graph->export_strategy_computation_graph(optimal_views, this->config.export_strategy_computation_graph_file);

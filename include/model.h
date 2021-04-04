@@ -133,6 +133,8 @@ enum TaskIDs {
   NCCL_INIT_COMMS_TASK_ID,
   // Search
   STRATEGY_SEARCH_TASK_ID,
+  // Graph
+  GRAPH_OPTIMIZE_TASK_ID,
   // Python data loader
   PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID,
   PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID,
@@ -647,6 +649,9 @@ public:
                        const Node& source_node,
                        const MachineView& source_view,
                        const MachineResource& resource);
+  void deserialize_graph_optimal_view(Legion::Deserializer& dez,
+                                      Graph* graph,
+                                      std::unordered_map<Node, MachineView>& optimal_views);
   bool convert_graph_to_layers(const Graph* graph,
                                const std::unordered_map<Node, MachineView>& optimal_views);
   bool get_valid_machine_views(const Op* op,
@@ -758,7 +763,10 @@ public:
                LossType loss_type,
                const std::vector<MetricsType>& metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
-  void dp_optimize();
+  void graph_optimize(size_t budget,
+                      bool only_data_parallel,
+                      Graph*& best_graph,
+                      std::unordered_map<Node, MachineView>& optimal_view);
   void mcmc_optimize(std::map<const Op*, ParallelConfig>& best,
                      size_t budget, float alpha,
                      CompMode comp_mode,
