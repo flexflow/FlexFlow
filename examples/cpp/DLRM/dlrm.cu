@@ -29,7 +29,7 @@ void DataLoader::load_sparse_input(const Task *task,
   SampleIdxs* meta = (SampleIdxs*) task->local_args;
   TensorAccessorR<int64_t, 2> acc_full_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<int64_t, 2> acc_batch_input(
+  TensorAccessorW<int64_t, 3> acc_batch_input(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   int batch_size = acc_batch_input.rect.hi[1] - acc_batch_input.rect.lo[1] + 1;
@@ -65,7 +65,7 @@ void DataLoader::load_dense_input(const Task *task,
   SampleIdxs* meta = (SampleIdxs*) task->local_args;
   TensorAccessorR<float, 2> acc_full_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_batch_input(
+  TensorAccessorW<float, 3> acc_batch_input(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   int batch_size = acc_batch_input.rect.hi[1] - acc_batch_input.rect.lo[1] + 1;
@@ -97,7 +97,7 @@ void DataLoader::load_label(const Task *task,
   SampleIdxs* meta = (SampleIdxs*) task->local_args;
   TensorAccessorR<float, 2> acc_full_label(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_batch_label(
+  TensorAccessorW<float, 3> acc_batch_label(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   int batch_size = acc_batch_label.rect.hi[1] - acc_batch_label.rect.lo[1] + 1;

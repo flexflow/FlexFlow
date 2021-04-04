@@ -366,18 +366,19 @@ class NoOp;
 
 ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
 
+class Concat;
+class Conv2D;
 class ElementBinary;
 class ElementUnary;
-class Conv2D;
-class Pool2D;
+class Embedding;
 class Flat;
 class Linear;
+class Pool2D;
 class Softmax;
-class Embedding;
-class Repartition;
-class Replicate;
-class Reduction;
 class Combine;
+class Repartition;
+class Reduction;
+class Replicate;
 class FusedParallelOp;
 class Graph;
 
@@ -665,9 +666,16 @@ public:
   // Internal Node creation APIs
   // ========================================
   Node get_or_create_noop_node(const Tensor input);
+  Node get_or_create_concat_node(int num_inputs,
+                                 const Tensor* inputs,
+                                 int axis);
   Node get_or_create_element_binary_node(const Tensor input1,
                                          const Tensor input2,
                                          OperatorType type);
+  Node get_or_create_embedding_node(const Tensor input,
+                                    int num_entries,
+                                    int out_channels,
+                                    AggrMode aggr);
   Node get_or_create_linear_node(const Tensor input,
                                  int out_dim,
                                  ActiMode activation,
@@ -819,7 +827,9 @@ public:
   std::unordered_map<size_t, std::vector<MachineView>* > cached_operator_valid_views;
   // Cached operators: key: operator hash, value: operator pointer
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
+  std::unordered_map<size_t, Concat*> cached_concat_ops;
   std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
+  std::unordered_map<size_t, Embedding*> cached_embedding_ops;
   std::unordered_map<size_t, Linear*> cached_linear_ops;
   std::unordered_map<size_t, Softmax*> cached_softmax_ops;
   std::unordered_map<size_t, Repartition*> cached_repartition_ops;
@@ -1403,6 +1413,12 @@ public:
 class Embedding : public Op {
 public:
   Embedding(FFModel& model,
+            const Tensor _input,
+            int _num_entries,
+            int _out_channels,
+            AggrMode _aggr,
+            const char* name);
+  Embedding(FFModel& model,
             const Tensor input,
             const Tensor weight,
             AggrMode _aggr,
@@ -1450,6 +1466,15 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
+private:
+  template<int NDIM>
+  static void forward_task_with_dim(const Legion::Task *task,
+                                    const std::vector<Legion::PhysicalRegion> &regions,
+                                    Legion::Context ctx, Legion::Runtime *runtime);
+  template<int NDIM>
+  static void backward_task_with_dim(const Legion::Task *task,
+                                     const std::vector<Legion::PhysicalRegion> &regions,
+                                     Legion::Context ctx, Legion::Runtime *runtime);
 public:
   int num_entries, out_channels;
   AggrMode aggr;

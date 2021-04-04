@@ -168,7 +168,6 @@ enum PMParameter {
   PM_COMBINE_DEGREE,    // Combine
   PM_REDUCTION_DIM,     // Reduction
   PM_REDUCTION_DEGREE,  // Reduction
-  PM_OUTPUT_CHANNELS,   // Linear, Conv2D
   PM_SOFTMAX_DIM,       // Softmax
 };
 

@@ -23,17 +23,17 @@ Tensor FFModel::concat(int n,
                        int axis,
                        const char *name)
 {
-  Concat *cat = new Concat(*this, n, tensors, axis, name);
+  Concat *cat = new Concat(*this, n, tensors, tensors[0]->num_dims-1-axis, name);
   layers.push_back(cat);
   return cat->outputs[0];
 }
 
 Concat::Concat(FFModel& model,
                int _n, const Tensor* _tensors,
-               int _axis,
+               int _legion_axis,
                const char* name)
 : Op(model, OP_CONCAT, name, _n/*inputs*/, 0/*weights*/, _tensors),
-  axis(inputs[0]->num_dims-1-_axis)
+  axis(_legion_axis)
 {
   //TODO: swich to use the Legion dim ordering
   int num_dim = inputs[0]->num_dims;
@@ -469,4 +469,26 @@ bool Concat::measure_operator_cost(Simulator* sim,
   }
 
   return true;
+}
+
+Node FFModel::get_or_create_concat_node(int num_inputs,
+                                        const Tensor* inputs,
+                                        int axis)
+{
+  size_t hash = std::hash<int>()(num_inputs);
+  hash = hash * 31 + std::hash<int>()(axis);
+  for (int i = 0; i < num_inputs; i++)
+    hash = hash * 31 + inputs[i]->get_owner_independent_hash();
+  const auto& it = cached_concat_ops.find(hash);
+  Concat* concat = NULL;
+  if (it != cached_concat_ops.end()) {
+    concat = it->second;
+  } else {
+    concat = new Concat(*this, num_inputs, inputs, axis, NULL);
+    cached_concat_ops[hash] = concat;
+  }
+  Node ret;
+  ret.guid = node_global_guid ++;
+  ret.ptr = concat;
+  return ret;
 }

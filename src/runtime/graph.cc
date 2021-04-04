@@ -1082,6 +1082,20 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
       {
         break;
       }
+      case OP_CONCAT:
+      {
+        Concat* concat = (Concat*) op;
+        sez.serialize(concat->axis);
+        break;
+      }
+      case OP_EMBEDDING:
+      {
+        Embedding* embed = (Embedding*) op;
+        sez.serialize(embed->num_entries);
+        sez.serialize(embed->out_channels);
+        sez.serialize(embed->aggr);
+        break;
+      }
       case OP_EW_ADD:
       {
         sez.serialize(op->op_type);
@@ -1214,6 +1228,24 @@ void FFModel::deserialize_graph_optimal_view(Deserializer& dez,
       {
         assert(num_inputs == 1);
         node = get_or_create_noop_node(inputs[0]);
+        break;
+      }
+      case OP_CONCAT:
+      {
+        int axis;
+        dez.deserialize(axis);
+        node = get_or_create_concat_node(num_inputs, inputs, axis);
+        break;
+      }
+      case OP_EMBEDDING:
+      {
+        assert(num_inputs == 1);
+        AggrMode aggr;
+        int num_entries, out_channels;
+        dez.deserialize(num_entries);
+        dez.deserialize(out_channels);
+        dez.deserialize(aggr);
+        node = get_or_create_embedding_node(inputs[0], num_entries, out_channels, aggr);
         break;
       }
       case OP_EW_ADD:

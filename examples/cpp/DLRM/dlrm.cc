@@ -328,18 +328,21 @@ DataLoader::DataLoader(FFModel& ff,
     batch_sparse_inputs.push_back(_sparse_inputs[i]);
   }
   {
-    const int dims[] = {1, num_samples, (int)_sparse_inputs.size()*dlrm.embedding_bag_size};
-    full_sparse_input = ff.create_tensor<3>(dims, DT_INT64);
+    const int dims[] = {num_samples, (int)_sparse_inputs.size()*dlrm.embedding_bag_size};
+    full_sparse_input = ff.create_tensor<2>(dims, DT_INT64);
+    ff.map_tensor(full_sparse_input, full_sparse_input->owner_op);
   }
   {
     batch_dense_input = _dense_input;
-    const int dims[] = {1, num_samples, dlrm.mlp_bot[0]};
-    full_dense_input = ff.create_tensor<3>(dims, DT_FLOAT);
+    const int dims[] = {num_samples, dlrm.mlp_bot[0]};
+    full_dense_input = ff.create_tensor<2>(dims, DT_FLOAT);
+    ff.map_tensor(full_dense_input, full_dense_input->owner_op);
   }
   {
     batch_label = _label;
-    const int dims[] = {1, num_samples, 1};
-    full_label = ff.create_tensor<3>(dims, DT_FLOAT);
+    const int dims[] = {num_samples, 1};
+    full_label = ff.create_tensor<2>(dims, DT_FLOAT);
+    ff.map_tensor(full_label, full_label->owner_op);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
@@ -353,7 +356,7 @@ DataLoader::DataLoader(FFModel& ff,
     assert (s == prev_s);
   dlrm_args.embedding_size = prev_s;
   strcpy(dlrm_args.dataset_path, dlrm.dataset_path.c_str());
-  // <-
+  //
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
       TaskArgument(&dlrm_args, sizeof(dlrm_args)));
   // regions[0]: full_sparse_input

@@ -25,25 +25,23 @@ const TensorX TensorX::NO_TX = TensorX();
 
 GraphXfer* create_replicate_linear_combine(FFModel* model,
                                            int num_dims,
-                                           int out_channels,
                                            int num_parts,
                                            ActiMode activation,
                                            bool use_bias);
 
 GraphXfer* create_partition_linear_combine(FFModel* model,
                                            int num_dims,
-                                           int out_channels,
                                            int num_parts,
                                            ActiMode activation,
                                            bool use_bias);
 
 GraphXfer* create_partition_add_combine(FFModel* model,
-                                        int out_channels,
+                                        int parallel_dim,
                                         int num_parts);
 
 GraphXfer* create_partition_softmax_combine(FFModel* model,
                                             int softmax_dim,
-                                            int out_channels,
+                                            int part_dim,
                                             int num_parts);
 
 GraphXfer* eliminate_combine_partition(FFModel* model,
@@ -81,7 +79,7 @@ OpX::OpX(const OperatorType _type,
          const TensorX& input1,
          const TensorX& input2,
          const TensorX& input3)
-: type(_type)
+: type(_type), mapOp(Node::INVALID_NODE), matchOpX(NULL)
 {
   TensorX all_inputs[MAX_NUM_INPUTS];
   all_inputs[0] = input0;
@@ -523,10 +521,13 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
     }
     case OP_LINEAR:
     {
-      int output_channels, activation;
-      assert(opx->get_pm_constraint(PM_OUTPUT_CHANNELS, output_channels));
+      int activation;
+      assert(opx->matchOpX != NULL);
+      assert(opx->matchOpX->mapOp.ptr != NULL);
+      Linear* linear = (Linear*)opx->matchOpX->mapOp.ptr;
+      //assert(opx->get_pm_constraint(PM_OUTPUT_CHANNELS, output_channels));
       assert(opx->get_pm_constraint(PM_ACTI, activation));
-      op = model->get_or_create_linear_node(inputs[0], output_channels,
+      op = model->get_or_create_linear_node(inputs[0], linear->out_channels,
                                             (ActiMode)activation, false);
       break;
     }
@@ -634,13 +635,14 @@ OpX* GraphXfer::create_element_binary(const TensorX& input1,
 }
 
 OpX* GraphXfer::create_linear(const TensorX& input,
+                              const OpX* _matchOpX,
                               int num_dims,
-                              int out_channels,
                               ActiMode acti_mode,
                               bool use_bias)
 {
   OpX* li = new OpX(OP_LINEAR, 1, 1, input);
-  li->add_pm_constraint(COMPARE_EQ, PM_OUTPUT_CHANNELS, out_channels);
+  li->matchOpX = _matchOpX;
+  //li->add_pm_constraint(COMPARE_EQ, PM_OUTPUT_CHANNELS, out_channels);
   li->add_pm_constraint(COMPARE_EQ, PM_ACTI, acti_mode);
   li->add_input_constraint(COMPARE_EQ, INPUT_0, DIM_ND, num_dims);
   return li;
@@ -759,18 +761,18 @@ void FFModel::graph_optimize(size_t budget,
   }
   // Construct graph substitutions
   std::vector<GraphXfer*> xfers;
-  xfers.push_back(create_replicate_linear_combine(this, 3, 4096, 4, AC_MODE_RELU, false));
-  xfers.push_back(create_replicate_linear_combine(this, 3, 4096, 4, AC_MODE_NONE, false));
-  xfers.push_back(create_partition_linear_combine(this, 3, 4096, 4, AC_MODE_RELU, false));
-  xfers.push_back(create_partition_linear_combine(this, 3, 4096, 4, AC_MODE_NONE, false));
+  xfers.push_back(create_replicate_linear_combine(this, 3, 4, AC_MODE_RELU, false));
+  xfers.push_back(create_replicate_linear_combine(this, 3, 4, AC_MODE_NONE, false));
+  xfers.push_back(create_partition_linear_combine(this, 3, 4, AC_MODE_RELU, false));
+  xfers.push_back(create_partition_linear_combine(this, 3, 4, AC_MODE_NONE, false));
   xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, 4/*num_parts*/));
   xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, 4/*num_parts*/));
   xfers.push_back(eliminate_combine_partition(this, 1/*parallel_dims*/, 4/*num_parts*/));
 
-  xfers.push_back(create_replicate_linear_combine(this, 3, 4096, 2, AC_MODE_RELU, false));
-  xfers.push_back(create_replicate_linear_combine(this, 3, 4096, 2, AC_MODE_NONE, false));
-  xfers.push_back(create_partition_linear_combine(this, 3, 4096, 2, AC_MODE_RELU, false));
-  xfers.push_back(create_partition_linear_combine(this, 3, 4096, 2, AC_MODE_NONE, false));
+  xfers.push_back(create_replicate_linear_combine(this, 3, 2, AC_MODE_RELU, false));
+  xfers.push_back(create_replicate_linear_combine(this, 3, 2, AC_MODE_NONE, false));
+  xfers.push_back(create_partition_linear_combine(this, 3, 2, AC_MODE_RELU, false));
+  xfers.push_back(create_partition_linear_combine(this, 3, 2, AC_MODE_NONE, false));
   xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, 2/*num_parts*/));
   xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, 2/*num_parts*/));
   xfers.push_back(eliminate_combine_partition(this, 1/*parallel_dims*/, 2/*num_parts*/));
@@ -853,6 +855,44 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
       case OP_INPUT:
       {
         new_op = new NoOp(*this, OP_INPUT, node.ptr->outputs[0]);
+        break;
+      }
+      case OP_CONCAT:
+      {
+        Concat* concat = (Concat*) node.ptr;
+        new_op = new Concat(*this, (int)inList.size(), inputs, concat->axis, NULL);
+        break;
+      }
+      case OP_EMBEDDING:
+      {
+        assert(inList.size() == 1);
+        Embedding* embed = (Embedding*) node.ptr;
+        Tensor kernel = NULL;
+        // Create kernel tensor
+        {
+          ParallelDim dims[3];
+          dims[2].size = embed->out_channels;
+          dims[1].size = embed->num_entries;
+          dims[1].degree = 1;
+          dims[1].parallel_idx = -1;
+          dims[0].size = inputs[0]->dims[1].degree;
+          dims[0].degree = dims[2].size;
+          if (dims[0].degree > 1)
+            dims[0].parallel_idx = 0;
+          else
+            dims[0].parallel_idx = -1;
+          int seed = std::rand();
+          Initializer* initializer = new GlorotUniform(seed);
+#ifdef FF_USE_NCCL
+          ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+          ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+          kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
+                                    true/*create_grad*/, initializer,
+                                    comm_type);
+        }
+        new_op = new Embedding(*this, inputs[0], kernel, embed->aggr, NULL);
         break;
       }
       case OP_EW_ADD:
@@ -962,6 +1002,10 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
         break;
       }
       default:
+        fprintf(stderr, "The following operator type is currently not supported"
+                " for graph serialization: %s\n"
+                "Report the issue to the FlexFlow developers",
+                node.to_string().c_str());
         assert(false && "Unsupported Operator Type");
     }
     // Set machine view for the output tensors of this operator
@@ -1008,18 +1052,17 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
 
 GraphXfer* create_partition_linear_combine(FFModel* model,
                                            int num_dims,
-                                           int out_channels,
                                            int num_parts,
                                            ActiMode activation,
                                            bool use_bias)
 {
   GraphXfer* subst = new GraphXfer(model);
   TensorX input = subst->new_tensor();
-  OpX* linear1 = subst->create_linear(input, num_dims, out_channels,
+  OpX* linear1 = subst->create_linear(input, NULL/*matchOpX*/, num_dims,
                                       activation, use_bias);
   OpX* repartition = subst->create_repartition(input, num_dims-2, num_parts);
-  OpX* linear2 = subst->create_linear(repartition->outputs[0], num_dims,
-                                      out_channels, activation, use_bias);
+  OpX* linear2 = subst->create_linear(repartition->outputs[0], linear1/*matchOpX*/,
+                                      num_dims, activation, use_bias);
   OpX* combine = subst->create_combine(linear2->outputs[0], num_dims-2, num_parts);
   subst->map_output(linear1->outputs[0], combine->outputs[0]);
   subst->srcOps.push_back(linear1);
@@ -1031,18 +1074,17 @@ GraphXfer* create_partition_linear_combine(FFModel* model,
 
 GraphXfer* create_replicate_linear_combine(FFModel* model,
                                            int num_dims,
-                                           int out_channels,
                                            int num_parts,
                                            ActiMode activation,
                                            bool use_bias)
 {
   GraphXfer* subst = new GraphXfer(model);
   TensorX input = subst->new_tensor();
-  OpX* linear1 = subst->create_linear(input, num_dims, out_channels,
+  OpX* linear1 = subst->create_linear(input, NULL/*matchOpX*/, num_dims,
                                       activation, use_bias);
   OpX* replicate = subst->create_replicate(input, num_dims-1, num_parts);
-  OpX* linear2 = subst->create_linear(replicate->outputs[0], num_dims,
-                                      out_channels, activation, use_bias);
+  OpX* linear2 = subst->create_linear(replicate->outputs[0], linear1/*matchOpX*/,
+                                      num_dims, activation, use_bias);
   OpX* combine = subst->create_combine(linear2->outputs[0], 0, num_parts);
   subst->map_output(linear1->outputs[0], combine->outputs[0]);
   subst->srcOps.push_back(linear1);
