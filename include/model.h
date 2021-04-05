@@ -645,18 +645,11 @@ public:
                               bool include_sink_compute_time,
                               float optimal_cost,
                               std::unordered_map<Node, MachineView>& optimal_views);
-  size_t dp_state_hash(const Graph* graph,
-                       const Node& sink_node,
-                       const MachineView& sink_view,
-                       const Node& source_node,
-                       const MachineView& source_view,
-                       const MachineResource& resource);
   void deserialize_graph_optimal_view(Legion::Deserializer& dez,
                                       Graph* graph,
                                       std::unordered_map<Node, MachineView>& optimal_views);
   bool convert_graph_to_layers(const Graph* graph,
                                const std::unordered_map<Node, MachineView>& optimal_views);
-  std::vector<MachineView> get_valid_machine_views(const Op* op, const MachineResource& resource);
   static void register_all_machine_views(int num_nodes,
                                          int gpus_per_node,
                                          int cpus_per_node,

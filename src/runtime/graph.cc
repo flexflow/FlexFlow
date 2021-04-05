@@ -232,7 +232,7 @@ float SearchHelper::find_optimal_sequence_graph_time(
 ) const {
   float cost = std::numeric_limits<float>::infinity();
 
-  std::vector<MachineView> valid_views = this->model->get_valid_machine_views(bn_node.ptr, resources);
+  std::vector<MachineView> valid_views = this->get_valid_machine_views(bn_node.ptr, resources);
   for (size_t i = 0; i < valid_views.size(); i++) {
     MachineView bn_view = valid_views[i];
 
@@ -251,6 +251,49 @@ float SearchHelper::find_optimal_sequence_graph_time(
   return cost;
 }
 
+void SearchHelper::find_optimal_sequence_graph_views(
+  Graph const *first_graph,
+  Graph const *second_graph,
+  Node const &bn_node,
+  NodeAssignment const &source,
+  NodeAssignment const &sink,
+  MachineResource const &resources,
+  float optimal_cost,
+  std::unordered_map<Node, MachineView>& optimal_views) const
+{
+  float best_first_cost = 0.0f, best_second_cost = 0.0f;
+  float cost = std::numeric_limits<float>::infinity();
+  MachineView best_bn_view = MachineView::NO_VIEW;
+  std::vector<MachineView> valid_views = get_valid_machine_views(bn_node.ptr, resources);
+  for (MachineView const &bn_view : valid_views) {
+    float first_cost = graph_cost(first_graph, bn_node, bn_view,
+                                  source.node, source.view, resources,
+                                  true/*include_sink*/,
+                                  true/*construct_optimal*/);
+    float second_cost = graph_cost(second_graph, sink.node, sink.view,
+                                   bn_node, bn_view, resources,
+                                   false/*include_sink*/,
+                                   true/*construct_optimal*/);
+    if (first_cost + second_cost < cost) {
+      cost = first_cost + second_cost;
+      best_bn_view = bn_view;
+      best_first_cost = first_cost;
+      best_second_cost = second_cost;
+    }
+  }
+  assert(std::abs(cost - optimal_cost) < 1e-2);
+  assert(optimal_views.find(bn_node) == optimal_views.end());
+  optimal_views[bn_node] = best_bn_view;
+  this->construct_optimal_view(first_graph, bn_node, best_bn_view,
+                         source.node, source.view, resources,
+                         true/*include_sink*/,
+                         best_first_cost, optimal_views);
+  this->construct_optimal_view(second_graph, sink.node, sink.view,
+                         bn_node, best_bn_view, resources,
+                         false/*include_sink*/,
+                         best_second_cost, optimal_views);
+}
+
 float SearchHelper::find_optimal_nonsequence_graph_time(
   Graph const *g,
   NodeAssignment const &source,
@@ -263,7 +306,7 @@ float SearchHelper::find_optimal_nonsequence_graph_time(
 }
 
 Graph::Graph(FFModel* _model)
-: model(_model)
+: model(_model), search(_model->search)
 {
 }
 
@@ -428,7 +471,7 @@ bool Graph::check_correctness(void)
   return okay;
 }
 
-std::vector<MachineView> FFModel::get_valid_machine_views(const Op* op, const MachineResource& resource)
+std::vector<MachineView> SearchHelper::get_valid_machine_views(const Op* op, const MachineResource& resource) const
 {
   std::vector<MachineView> const *cached_op_views = NULL;
   std::vector<MachineView> valid_views;
@@ -438,13 +481,13 @@ std::vector<MachineView> FFModel::get_valid_machine_views(const Op* op, const Ma
     cached_op_views = iter->second.get();
   } else {
     auto to_cache = std::unique_ptr<std::vector<MachineView>>(new std::vector<MachineView>());
-    for (size_t i = 0; i < all_valid_views.size(); i++) {
+    for (size_t i = 0; i < this->model->all_valid_views.size(); i++) {
       bool valid = true;
       for (int j = 0; j < op->numOutputs; j++)
-        if (!op->outputs[j]->is_valid_machine_view(all_valid_views[i]))
+        if (!op->outputs[j]->is_valid_machine_view(this->model->all_valid_views[i]))
           valid = false;
       if (valid)
-        to_cache->push_back(all_valid_views[i]);
+        to_cache->push_back(this->model->all_valid_views[i]);
     }
     cached_operator_valid_views[op->op_guid] = std::move(to_cache);
     cached_op_views = cached_operator_valid_views.at(op->op_guid).get();
@@ -489,7 +532,8 @@ Node Graph::find_bottleneck_node(const Node& sink_node, const Node& source_node)
   using ::flexflow::graph::MultisourceGraphStructure;
   using ::flexflow::graph::GraphStructure;
   using ::flexflow::graph::roots;
-
+  using ::flexflow::graph::BasicGraph;
+  using ::flexflow::graph::transitive_reduction;
 
 
   BasicGraph<Node> reduction = transitive_reduction(*this);
@@ -514,6 +558,53 @@ Node Graph::find_bottleneck_node(const Node& sink_node, const Node& source_node)
   return bn_node;
 }
 
+std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> Graph::split_at_node(Node const &bottleneck) const {
+  using ::flexflow::graph::topo_sort;
+
+  auto first_graph = std::unique_ptr<Graph>(new Graph(this->model));
+  auto second_graph = std::unique_ptr<Graph>(new Graph(this->model));
+
+  /* SequenceGraph sequence = this->get_sequence_graph(); */
+  /* Graph transed = this->apply_sequence_graph(sequence); */
+  Graph const &transed = *this;
+
+  std::unordered_set<Node> used_nodes;
+  {
+    std::vector<Node> topo_sorted;
+    topo_sort(transed, &topo_sorted);
+
+    for (auto const &node : topo_sorted) {
+      if (node == bottleneck) {
+        break;
+      }
+
+      used_nodes.insert(node);
+    }
+    used_nodes.insert(bottleneck);
+
+    assert (used_nodes.size() < topo_sorted.size());
+  }
+
+  for (const auto& it : transed.inEdges) {
+    const auto& inList = it.second;
+    if (used_nodes.find(it.first) != used_nodes.end()) {
+      // Add all in-edges of used_nodes in to the first_graph
+      for (const auto& it2 : inList) {
+        first_graph->add_edge(it2);
+      }
+    } else {
+      // Add all in-edges of not_used_nodes into the second_graph
+      for (const auto& it2 : inList) {
+        second_graph->add_edge(it2);
+      }
+    }
+  }
+
+  return {
+    std::move(first_graph),
+    std::move(second_graph)
+  };
+}
 float FFModel::graph_cost(const Graph* graph,
                           const Node& sink_node,
                           const MachineView& sink_view,
@@ -614,7 +705,7 @@ float SearchHelper::graph_cost(const Graph* graph,
   return cost;
 }
 
-void FFModel::construct_optimal_view(const Graph* graph,
+void FFModel::construct_optimal_view(const Graph *graph,
                                      const Node& sink_node,
                                      const MachineView& sink_view,
                                      const Node& source_node,
@@ -624,8 +715,24 @@ void FFModel::construct_optimal_view(const Graph* graph,
                                      float optimal_cost,
                                      std::unordered_map<Node, MachineView>& optimal_views)
 {
+  this->search->construct_optimal_view(
+      graph, sink_node, sink_view, source_node, source_view,
+      resources, include_sink_compute_time, optimal_cost, optimal_views
+  );
+}
+
+void SearchHelper::construct_optimal_view(const Graph* graph,
+                                     const Node& sink_node,
+                                     const MachineView& sink_view,
+                                     const Node& source_node,
+                                     const MachineView& source_view,
+                                     const MachineResource& resources,
+                                     bool include_sink_compute_time,
+                                     float optimal_cost,
+                                     std::unordered_map<Node, MachineView>& optimal_views) const
+{
   if (include_sink_compute_time) {
-    CostMetrics metrics = simulator->measure_operator_cost(sink_node.ptr, sink_view);
+    CostMetrics metrics = this->model->simulator->measure_operator_cost(sink_node.ptr, sink_view);
     optimal_cost -= (metrics.forward_time + metrics.backward_time);
   }
   float cost = 1e7;
@@ -643,68 +750,27 @@ void FFModel::construct_optimal_view(const Graph* graph,
     Node bn_node = graph->find_bottleneck_node(sink_node, source_node);
     if (bn_node != Node::INVALID_NODE) {
       // We found a bottleneck node
-      Graph* first_graph = new Graph(this);
-      Graph* second_graph = new Graph(this);
-      for (const auto& it : graph->inEdges) {
-        const auto& inList = it.second;
-        if (used_nodes.find(it.first) != used_nodes.end()) {
-          // Add all in-edges of used_nodes in to the first_graph
-          for (const auto& it2 : inList) {
-            first_graph->add_edge(it2);
-          }
-        } else {
-          // Add all in-edges of not_used_nodes into the second_graph
-          for (const auto& it2 : inList) {
-            second_graph->add_edge(it2);
-          }
-        }
-      }
-      float best_first_cost = 0.0f, best_second_cost = 0.0f;
-      MachineView best_bn_view = MachineView::NO_VIEW;
-      std::vector<MachineView> valid_views = get_valid_machine_views(bn_node.ptr, resources);
-      for (size_t i = 0; i < valid_views.size(); i++) {
-        MachineView bn_view = valid_views[i];
-        //bool valid = true;
-        //for (int j = 0; j < bn_node.ptr->numOutputs; j++) {
-        //  if (!bn_node.ptr->outputs[j]->is_valid_machine_view(bn_view))
-        //    valid = false;
-        //}
-        //if (!valid) continue;
-        //if (!resources.is_valid_machine_view(bn_view)) continue;
-        float first_cost = graph_cost(first_graph, bn_node, bn_view,
-                                      source_node, source_view, resources,
-                                      true/*include_sink*/,
-                                      true/*construct_optimal*/);
-        float second_cost = graph_cost(second_graph, sink_node, sink_view,
-                                       bn_node, bn_view, resources,
-                                       false/*include_sink*/,
-                                       true/*construct_optimal*/);
-        if (first_cost + second_cost < cost) {
-          cost = first_cost + second_cost;
-          best_bn_view = bn_view;
-          best_first_cost = first_cost;
-          best_second_cost = second_cost;
-        }
-      }
-      assert(std::abs(cost - optimal_cost) < 1e-2);
-      assert(optimal_views.find(bn_node) == optimal_views.end());
-      optimal_views[bn_node] = best_bn_view;
-      construct_optimal_view(first_graph, bn_node, best_bn_view,
-                             source_node, source_view, resources,
-                             true/*include_sink*/,
-                             best_first_cost, optimal_views);
-      construct_optimal_view(second_graph, sink_node, sink_view,
-                             bn_node, best_bn_view, resources,
-                             false/*include_sink*/,
-                             best_second_cost, optimal_views);
-      delete first_graph;
-      delete second_graph;
+      std::unique_ptr<Graph> first_graph;
+      std::unique_ptr<Graph> second_graph;
+      std::tie(first_graph, second_graph) = graph->split_at_node(bn_node);
+
+      this->find_optimal_sequence_graph_views(
+          first_graph.get(),
+          second_graph.get(),
+          bn_node,
+          { source_node, source_view },
+          { sink_node, sink_view },
+          resources,
+          optimal_cost,
+          optimal_views
+      );
     } else {
       // sink node must have multiple branches
       // otherwise we should not be here
       assert(graph->inEdges.find(sink_node)->second.size() > 1);
-      Graph* first_graph = new Graph(this);
-      Graph* second_graph = new Graph(this);
+
+      Graph* first_graph = new Graph(this->model);
+      Graph* second_graph = new Graph(this->model);
       bn_node = Node::INVALID_NODE;
       // Find sink_node's first input
       {
@@ -716,7 +782,7 @@ void FFModel::construct_optimal_view(const Graph* graph,
         }
       }
       assert(bn_node != Node::INVALID_NODE);
-      used_nodes.clear();
+      std::unordered_set<Node> used_nodes;
       std::vector<Node> queue;
       queue.push_back(bn_node);
       used_nodes.insert(bn_node);
@@ -855,7 +921,7 @@ float Graph::total_cost(void)
   resource.available_gpus_per_node = resource.all_gpus_per_node;
   resource.start_gpu_id = 0;
   resource.start_cpu_id = 0;
-  std::vector<MachineView> valid_views = model->get_valid_machine_views(sink_node.ptr, resource);
+  std::vector<MachineView> valid_views = search->get_valid_machine_views(sink_node.ptr, resource);
   float total_cost = 1e7;
   for (size_t i = 0; i < valid_views.size(); i++) {
     total_cost = std::min(total_cost,
@@ -886,7 +952,7 @@ void Graph::construct_optimal_view(float optimal_cost,
   resource.available_gpus_per_node = resource.all_gpus_per_node;
   resource.start_gpu_id = 0;
   resource.start_cpu_id = 0;
-  std::vector<MachineView> valid_views = model->get_valid_machine_views(sink_node.ptr, resource);
+  std::vector<MachineView> valid_views = this->search->get_valid_machine_views(sink_node.ptr, resource);
   float total_cost = 1e7;
   MachineView best_sink_view = MachineView::NO_VIEW;
   for (size_t i = 0; i < valid_views.size(); i++) {

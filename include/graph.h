@@ -85,6 +85,18 @@ struct GraphOptimalViewSerialized {
   char data[buffer_size];
 };
 
+struct NodeAssignment {
+  Node node;
+  MachineView view;
+};
+
+size_t dp_state_hash(const Graph* graph,
+                     const Node& sink_node,
+                     const MachineView& sink_view,
+                     const Node& source_node,
+                     const MachineView& source_view,
+                     const MachineResource& resource);
+
 class SearchHelper {
 public:
   SearchHelper(FFModel *model);
@@ -97,17 +109,34 @@ public:
                    const MachineResource& resources,
                    bool include_sink_compute_time,
                    bool constructing_optimal_view = false) const;
-
+  void construct_optimal_view(const Graph* graph,
+                              const Node& sink_node,
+                              const MachineView& sink_view,
+                              const Node& source_node,
+                              const MachineView& source_view,
+                              const MachineResource& resources,
+                              bool include_sink_compute_time,
+                              float optimal_cost,
+                              std::unordered_map<Node, MachineView>& optimal_views) const;
   float find_optimal_sequence_graph_time(Graph const *pre_graph,
                                          Graph const *post_graph,
                                          Node const &bottleneck_node,
                                          NodeAssignment const &source,
                                          NodeAssignment const &sink,
                                          MachineResource const &resources) const;
-  float find_optimal_nonsequence_graph_time(Graph const *g, 
-                                            NodeAssignment const &source, 
-                                            NodeAssignment const &sink, 
+  void find_optimal_sequence_graph_views(Graph const *first_graph,
+                                         Graph const *second_graph,
+                                         Node const &bn_node,
+                                         NodeAssignment const &source,
+                                         NodeAssignment const &sink,
+                                         MachineResource const &resources,
+                                         float optimal_cost,
+                                         std::unordered_map<Node, MachineView>& optimal_views) const;
+  float find_optimal_nonsequence_graph_time(Graph const *g,
+                                            NodeAssignment const &source,
+                                            NodeAssignment const &sink,
                                             MachineResource const &resources) const;
+  std::vector<MachineView> get_valid_machine_views(const Op* op, const MachineResource& resource) const;
 private:
   FFModel *model;
 
@@ -148,6 +177,7 @@ public:
   std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_at_node(Node const &bottleneck) const;
 public:
   FFModel* model;
+  SearchHelper* search;
   std::unordered_map<Node, std::unordered_set<Edge> > inEdges, outEdges;
 };
 
