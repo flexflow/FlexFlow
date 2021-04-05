@@ -85,6 +85,8 @@ std::string optype_to_string(OperatorType op_type)
       return "Conv";
     case OP_DROPOUT:
       return "Dropout";
+    case OP_EMBEDDING:
+      return "Embedding";
     case OP_LINEAR:
       return "Linear";
     case OP_POOL2D:

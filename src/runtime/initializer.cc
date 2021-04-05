@@ -232,7 +232,15 @@ void NormInitializer::init(const FFModel* ff,
 
 // ConstantInitializer
 ConstantInitializer::ConstantInitializer(float _value)
-: Initializer(), value(_value)
+: Initializer(), data_type(DT_FLOAT), float_value(_value)
+{}
+
+ConstantInitializer::ConstantInitializer(int64_t _value)
+: Initializer(), data_type(DT_INT64), int64_value(_value)
+{}
+
+ConstantInitializer::ConstantInitializer(int _value)
+: Initializer(), data_type(DT_INT32), int32_value(_value)
 {}
 
 ConstantInitializer::~ConstantInitializer(void)
@@ -276,6 +284,8 @@ void ConstantInitializer::init_task_cpu(const Task* task,
   ConstantInitializer* initializer = (ConstantInitializer*) task->args;
   assert(regions.size() == task->regions.size());
   for (size_t i = 0; i < regions.size(); i++) {
+    // Currently only support Float
+    assert(initializer->data_type == DT_FLOAT);
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
     float* w;
@@ -320,7 +330,7 @@ void ConstantInitializer::init_task_cpu(const Task* task,
       }
     }
     for (size_t i = 0; i < domain.get_volume(); i++) {
-      w[i] = initializer->value;
+      w[i] = initializer->float_value;
     }
   }
 }

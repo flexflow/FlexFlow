@@ -247,6 +247,7 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
 void Metrics::compute(FFModel* model,
                       const Tensor logit,
                       const Tensor label)
+#ifdef DEADCODE
 {
   assert(logit->num_dims == label->num_dims);
   int dim = logit->num_dims;
@@ -270,16 +271,17 @@ template<int NDIM>
 void Metrics::compute_with_dim(FFModel* model,
                                const Tensor logit,
                                const Tensor label)
+#endif
 {
   // Use the same parallel strategy as the owner of logit
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, logit->parallel_is);
-  Rect<NDIM> logit_rect = runtime->get_index_partition_color_space(
+  Domain part_domain = runtime->get_index_space_domain(ctx, logit->parallel_is);
+  Domain logit_domain = runtime->get_index_partition_color_space(
       ctx, logit->part.get_index_partition());
-  Rect<NDIM> label_rect = runtime->get_index_partition_color_space(
+  Domain label_domain = runtime->get_index_partition_color_space(
       ctx, label->part.get_index_partition());
-  if((logit_rect != part_rect) || (label_rect != part_rect)) {
+  if((logit_domain != part_domain) || (label_domain != part_domain)) {
     fprintf(stderr, "Encounter inconsistency in parallelizing loss computation\n");
     assert(false);
   }
@@ -300,7 +302,7 @@ void Metrics::compute_with_dim(FFModel* model,
   // Update metrics
   TaskLauncher metrics_task(UPDATE_METRICS_TASK_ID, TaskArgument(this, sizeof(Metrics)));
   metrics_task.add_future(model->current_metrics);
-  for (PointInRectIterator<NDIM> it(part_rect); it(); it++) {
+  for (Domain::DomainPointIterator it(part_domain); it; it++) {
     metrics_task.add_future(new_metrics[*it]);
   }
   model->current_metrics = runtime->execute_task(ctx, metrics_task);

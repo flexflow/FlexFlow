@@ -171,3 +171,13 @@ template int* helperGetTensorPointerRW(
 
 template int* helperGetTensorPointerWO(
   PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
+
+template const int64_t* helperGetTensorPointerRO(
+  PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
+
+template int64_t* helperGetTensorPointerRW(
+  PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
+
+template int64_t* helperGetTensorPointerWO(
+  PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
+

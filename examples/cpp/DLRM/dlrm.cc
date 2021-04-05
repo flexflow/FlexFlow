@@ -324,6 +324,7 @@ DataLoader::DataLoader(FFModel& ff,
     log_app.print("Finish loading dataset from %s", dlrm.dataset_path.c_str());
     log_app.print("Loaded %d samples", num_samples);
   }
+  return;
   for (size_t i = 0; i < _sparse_inputs.size(); i++) {
     batch_sparse_inputs.push_back(_sparse_inputs[i]);
   }
@@ -484,6 +485,7 @@ void DataLoader::load_entire_dataset(const Task *task,
 
 void DataLoader::next_batch(FFModel& ff)
 {
+  return;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   // Load Sparse Inputs

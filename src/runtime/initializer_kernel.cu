@@ -250,26 +250,36 @@ void ConstantInitializer::init_task(const Task* task,
   for (size_t i = 0; i < regions.size(); i++) {
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
-    float* w;
-    switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-      case DIM: \
-      { \
-        TensorAccessorW<float, DIM> accW( \
-            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/); \
-        w = accW.ptr; \
-        break; \
+    switch (initializer->data_type) {
+      case DT_FLOAT:
+      {
+        float* w = helperGetTensorPointerWO<float>(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime);
+        assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
+            w, domain.get_volume(), initializer->float_value);
+        break;
       }
-      LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
+      case DT_INT64:
+      {
+        int64_t* w = helperGetTensorPointerWO<int64_t>(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime);
+        assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
+            w, domain.get_volume(), initializer->int64_value);
+        break;
+      }
+      case DT_INT32:
+      {
+        int* w = helperGetTensorPointerWO<int>(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime);
+        assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
+            w, domain.get_volume(), initializer->int32_value);
+        break;
+      }
       default:
       {
-         assert(false);
-         break;
+        assert(false && "Unsupported Initialzier Type");
       }
     }
-    assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
-        w, domain.get_volume(), initializer->value);
   }
   checkCUDA(cudaDeviceSynchronize());
 }
