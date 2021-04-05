@@ -72,7 +72,7 @@ void Reduction::create_input_partition(FFModel& ff)
 
 void Reduction::init(const FFModel& ff)
 {
-  // Do nothing
+  forward(ff);
 }
 
 void Reduction::forward(const FFModel& ff)

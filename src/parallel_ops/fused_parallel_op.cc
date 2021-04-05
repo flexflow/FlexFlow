@@ -94,6 +94,10 @@ bool FusedParallelOp::check_no_redundant_parallel_ops(void) const
           return false;
       }
     }
+    if (parallel_ops[i].op_type == parallel_ops[i-1].op_type) {
+      if (parallel_ops[i].parallel_dim == parallel_ops[i-1].parallel_dim)
+        return false;
+    }
   }
   return true;
 }
@@ -223,6 +227,10 @@ Node FFModel::get_or_create_fused_parallel_node(const Tensor input,
               parallel_ops.pop_back();
               parallel_ops.push_back(new_op);
             }
+          } else if (old_op.op_type == OP_REPARTITION && old_op.parallel_dim == new_op.parallel_dim) {
+            old_op.parallel_degree *= new_op.parallel_degree;
+            parallel_ops.pop_back();
+            parallel_ops.push_back(old_op);
           } else {
             parallel_ops.push_back(new_op);
           }
@@ -246,6 +254,10 @@ Node FFModel::get_or_create_fused_parallel_node(const Tensor input,
               parallel_ops.pop_back();
               parallel_ops.push_back(new_op);
             }
+          } else if (old_op.op_type == OP_COMBINE && old_op.parallel_dim == new_op.parallel_dim) {
+            old_op.parallel_degree *= new_op.parallel_degree;
+            parallel_ops.pop_back();
+            parallel_ops.push_back(old_op);
           } else {
             parallel_ops.push_back(new_op);
           }
@@ -253,11 +265,22 @@ Node FFModel::get_or_create_fused_parallel_node(const Tensor input,
         }
         case OP_REPLICATE:
         {
-          parallel_ops.push_back(new_op);
+          if (old_op.op_type == OP_REPLICATE && old_op.parallel_dim == new_op.parallel_dim) {
+            old_op.parallel_degree *= new_op.parallel_degree;
+            parallel_ops.pop_back();
+            parallel_ops.push_back(old_op);
+          } else {
+            parallel_ops.push_back(new_op);
+          }
           break;
         }
         case OP_REDUCTION:
         {
+          if (old_op.op_type == OP_REDUCTION && old_op.parallel_dim == new_op.parallel_dim) {
+            old_op.parallel_degree *= new_op.parallel_degree;
+            parallel_ops.pop_back();
+            parallel_ops.push_back(old_op);
+          }
           parallel_ops.push_back(new_op);
           break;
         }

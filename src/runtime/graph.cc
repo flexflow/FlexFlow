@@ -494,9 +494,6 @@ float FFModel::graph_cost(const Graph* graph,
                sink_node.guid, sink_view.ndims, sink_view.dim[0],
                source_node.guid, source_view.ndims, source_view.dim[0],
                resources.num_nodes, resources.available_gpus_per_node);
-  if (config.profiling) {
-    graph->print();
-  }
   size_t hash = dp_state_hash(graph, sink_node, sink_view,
                               source_node, source_view, resources);
   log_dp.debug("hash = %zu", hash);
@@ -582,11 +579,15 @@ float FFModel::graph_cost(const Graph* graph,
       bn_node = Node::INVALID_NODE;
       // Find sink_node's first input
       {
+        int minIdx = MAX_NUM_INPUTS;
         const auto& inList = graph->inEdges.find(sink_node)->second;
         for (const auto& it2 : inList) {
-          if (it2.dstIdx != 0) continue;
+          //if (it2.dstIdx != 0) continue;
           //if (it2.weightEdge) continue;
-          bn_node = it2.srcOp;
+          if (it2.dstIdx < minIdx) {
+            minIdx = it2.dstIdx;
+            bn_node = it2.srcOp;
+          }
         }
       }
       assert(bn_node != Node::INVALID_NODE);
@@ -776,11 +777,15 @@ void FFModel::construct_optimal_view(const Graph* graph,
       bn_node = Node::INVALID_NODE;
       // Find sink_node's first input
       {
+        int minIdx = MAX_NUM_INPUTS;
         const auto& inList = graph->inEdges.find(sink_node)->second;
         for (const auto& it2 : inList) {
-          if (it2.dstIdx != 0) continue;
+          //if (it2.dstIdx != 0) continue;
           //if (it2.weightEdge) continue;
-          bn_node = it2.srcOp;
+          if (it2.dstIdx < minIdx) {
+            minIdx = it2.dstIdx;
+            bn_node = it2.srcOp;
+          }
         }
       }
       assert(bn_node != Node::INVALID_NODE);
