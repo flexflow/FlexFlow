@@ -52,6 +52,7 @@ Repartition::Repartition(
     }
   outputs[0] = model.create_tensor_legion_ordering(
       numdim, dims, inputs[0]->data_type, this);
+  inputs[0]->print("Repartition::input");
   outputs[0]->print("Repartition::output");
   // Check correctness
   // assert(check_output_input_weight_parallel_dims());
@@ -172,6 +173,12 @@ Node FFModel::get_or_create_repartition_node(const Tensor input,
                                              int repartition_dim,
                                              int repartition_degree)
 {
+  // check that degree is not larger than total available devices
+  int degree = input->get_total_num_parts() * repartition_degree;
+  if (degree > config.workersPerNode * config.numNodes
+  && (degree > config.cpusPerNode * config.numNodes))
+    return Node::INVALID_NODE;
+
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(repartition_dim);
   hash = hash * 31 + std::hash<int>()(repartition_degree);

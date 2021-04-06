@@ -57,7 +57,7 @@ Tensor interact_features(FFModel* model, const Tensor& x,
     inputs[0] = x;
     for (size_t i = 0; i < ly.size(); i++)
       inputs[i+1] = ly[i];
-    return model->concat(ly.size() + 1, inputs, 1/*axis*/);
+    return model->concat(ly.size() + 1, inputs, -1/*axis*/);
     free(inputs);
   } else {
     assert(false);
@@ -129,8 +129,8 @@ void top_level_task(const Task* task,
   // Use SGD Optimizer
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.01f);
   std::vector<MetricsType> metrics;
-  metrics.push_back(METRICS_ACCURACY);
-  metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
+  //metrics.push_back(METRICS_ACCURACY);
+  //metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
   ff.compile(optimizer, LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics);
   // Data Loader
   DataLoader data_loader(ff, dlrmConfig, sparse_inputs, dense_input, ff.label_tensor);

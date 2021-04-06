@@ -451,8 +451,7 @@ void Embedding::backward(const FFModel& ff)
   // regions[1]: output_grad
   launcher.add_region_requirement(
       RegionRequirement(outputs[0]->part_grad, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, outputs[0]->region_grad,
-                        MAP_TO_ZC_MEMORY));
+                        READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2]: weight_grad
   launcher.add_region_requirement(

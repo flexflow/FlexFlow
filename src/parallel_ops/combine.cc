@@ -53,6 +53,8 @@ Combine::Combine(
   for (int i = 0; i < numdim; i++) {
     register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
   }
+  inputs[0]->print("Combine::input");
+  outputs[0]->print("Combine::output");
   // Check correctness
   //assert(check_output_input_weight_parallel_dims());
 }
@@ -110,8 +112,8 @@ void Combine::backward(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, outputs[0]->region));
+      RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
+                        READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }

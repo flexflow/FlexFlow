@@ -53,6 +53,8 @@ Replicate::Replicate(
     }
   outputs[0] = model.create_tensor_legion_ordering(
       numdim, dims, DT_FLOAT, this);
+  inputs[0]->print("Replicate::input");
+  outputs[0]->print("Replicate::output");
   // Check correctness
   // assert(check_output_input_weight_parallel_dims());
 }
@@ -175,6 +177,12 @@ Node FFModel::get_or_create_replicate_node(const Tensor input,
                                            int replicate_dim,
                                            int replicate_degree)
 {
+  // check that degree is not larger than total available devices
+  int degree = input->get_total_num_parts() * replicate_degree;
+  if (degree > config.workersPerNode * config.numNodes
+  && (degree > config.cpusPerNode * config.numNodes))
+    return Node::INVALID_NODE;
+
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(replicate_dim);
   hash = hash * 31 + std::hash<int>()(replicate_degree);

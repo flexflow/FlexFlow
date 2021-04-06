@@ -23,7 +23,8 @@ Tensor FFModel::concat(int n,
                        int axis,
                        const char *name)
 {
-  Concat *cat = new Concat(*this, n, tensors, tensors[0]->num_dims-1-axis, name);
+  assert(axis < 0);
+  Concat *cat = new Concat(*this, n, tensors, -1-axis, name);
   layers.push_back(cat);
   return cat->outputs[0];
 }

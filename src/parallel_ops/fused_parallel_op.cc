@@ -323,6 +323,7 @@ Node FFModel::get_or_create_fused_parallel_node(const Tensor input,
     fused = new FusedParallelOp(*this, input, parallel_ops);
     cached_fused_parallel_ops[hash] = fused;
   }
+
   Node ret;
   ret.ptr = fused;
   ret.guid = node_global_guid++;

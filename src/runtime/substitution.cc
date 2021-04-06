@@ -508,6 +508,15 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
   Tensor inputs[MAX_NUM_INPUTS];
   for (size_t i = 0; i < opx->inputs.size(); i++)
     inputs[i] = opx->inputs[i].to_tensor(this);
+  // Check that the total degree of inputs[0] does not exceed available resources
+  if (opx->inputs.size() > 0) {
+    int degree = 1;
+    for (int i = 0; i < inputs[0]->num_dims; i++)
+      degree *= inputs[0]->dims[i].degree;
+    if (degree > model->config.workersPerNode * model->config.numNodes
+    && (degree > model->config.cpusPerNode * model->config.numNodes))
+      return false;
+  }
   switch (opx->type) {
     case OP_NOOP:
     {
@@ -767,7 +776,7 @@ void FFModel::graph_optimize(size_t budget,
   xfers.push_back(create_partition_linear_combine(this, 3, 4, AC_MODE_NONE, false));
   xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, 4/*num_parts*/));
   xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, 4/*num_parts*/));
-  xfers.push_back(eliminate_combine_partition(this, 1/*parallel_dims*/, 4/*num_parts*/));
+  //xfers.push_back(eliminate_combine_partition(this, 1/*parallel_dims*/, 4/*num_parts*/));
 
   xfers.push_back(create_replicate_linear_combine(this, 3, 2, AC_MODE_RELU, false));
   xfers.push_back(create_replicate_linear_combine(this, 3, 2, AC_MODE_NONE, false));
@@ -775,7 +784,7 @@ void FFModel::graph_optimize(size_t budget,
   xfers.push_back(create_partition_linear_combine(this, 3, 2, AC_MODE_NONE, false));
   xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, 2/*num_parts*/));
   xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, 2/*num_parts*/));
-  xfers.push_back(eliminate_combine_partition(this, 1/*parallel_dims*/, 2/*num_parts*/));
+  //xfers.push_back(eliminate_combine_partition(this, 1/*parallel_dims*/, 2/*num_parts*/));
 
   std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
   std::unordered_set<size_t> hashmap;

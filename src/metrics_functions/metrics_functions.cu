@@ -126,7 +126,7 @@ void update_metrics_label_kernel(
         atomicAdd(&(perf->train_all), 1);
         atomicAdd(&(perf->train_correct), 1);
       } else {
-        float max_val = -1000000.0f;
+        float max_val = 0.0f;
         int my_label = -1, true_label = -1;
         for (int i = 0; i < num_classes; i++) {
           if (my_label == -1 || logits[b*num_classes+i] > max_val) {
