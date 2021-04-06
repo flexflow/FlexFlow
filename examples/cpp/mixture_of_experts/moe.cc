@@ -66,6 +66,9 @@ void top_level_task(const Task* task,
   int out_dim = 10;
   int num_exp = 5;
   int num_select = 2;
+  float alpha = 2.0f; // factor overhead tensor size for imbalance
+  float lambda = 0.16f; // multiplier for load balance term
+
 
   // MoE model
   Tensor gate_preds = ff.dense(input, num_exp, AC_MODE_RELU);
@@ -73,19 +76,20 @@ void top_level_task(const Task* task,
   ff.top_k(gate_preds, topK_output, num_select, false);
 
   Tensor exp_tensors[num_exp];
-  ff.group_by(input, topK_output[1], exp_tensors, num_exp, 2.0f);
+  ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
 
-  Tensor agg_inputs[num_exp+2];
+  Tensor agg_inputs[num_exp+3];
   agg_inputs[0] = ff.softmax(topK_output[0]); /* gate preds */
   agg_inputs[1] = topK_output[1]; /* gate assign */
+  agg_inputs[2] = gate_preds; /* full gate preds */
   for(int i = 0; i < num_exp; i++) {
-    agg_inputs[i+2] = ff.dense(exp_tensors[i], out_dim, AC_MODE_RELU);
-    agg_inputs[i+2] = ff.softmax(agg_inputs[i+2]);
+    agg_inputs[i+3] = ff.dense(exp_tensors[i], out_dim, AC_MODE_RELU);
+    agg_inputs[i+3] = ff.softmax(agg_inputs[i+3]);
   }
 
-  Tensor coop_output = ff.aggregate(agg_inputs, num_exp);
+  Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
   ff.get_metrics();
-  Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp);
+  Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
 
 //-----------------------------------------------------------------
 

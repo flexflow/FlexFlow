@@ -367,11 +367,11 @@ public:
                 const char* name = NULL);
   // Add aggregate layer
   Tensor aggregate(const Tensor* inputs,
-                  int n,
+                  int n, float lambda_bal,
                   const char* name = NULL);
   // Add aggregate_spec layer
   Tensor aggregate_spec(const Tensor* inputs,
-                  int n,
+                  int n, float lambda_bal,
                   const char* name = NULL);
   // Add a 2D pooling layer
   Tensor pool2d(const Tensor& input,
@@ -1214,7 +1214,7 @@ class Aggregate : public Op {
 public:
   Aggregate(FFModel& model,
             const Tensor* inputs,
-            int _n, const char* name);
+            int _n, float _lambda_bal, const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -1236,6 +1236,7 @@ public:
                              CostMetrics& cost_metrics);
 public:
   int n;
+  float lambda_bal;
   bool profiling;
 };
 
@@ -1249,7 +1250,7 @@ class AggregateSpec : public Op {
 public:
   AggregateSpec(FFModel& model,
             const Tensor* inputs,
-            int _n, const char* name);
+            int _n, float _lambda_bal, const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -1271,6 +1272,7 @@ public:
                              CostMetrics& cost_metrics);
 public:
   int n;
+  float lambda_bal;
   bool profiling;
 };
 
