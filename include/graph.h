@@ -90,6 +90,21 @@ struct NodeAssignment {
   MachineView view;
 };
 
+struct GraphCostResult {
+  float cost;
+  std::unordered_map<Node, MachineView> views;
+
+  static GraphCostResult invalid();
+
+  bool operator<(GraphCostResult const &other) const;
+};
+
+template <typename T>
+T sequence_cost(T const &first, T const &second);
+
+template <typename T>
+T parallel_cost(T const &first, T const &second);
+
 size_t dp_state_hash(const Graph* graph,
                      const Node& sink_node,
                      const MachineView& sink_view,
@@ -101,42 +116,54 @@ class SearchHelper {
 public:
   SearchHelper(FFModel *model);
 
-  float graph_cost(const Graph* graph,
-                   const Node& sink_node,
-                   const MachineView& sink_view,
-                   const Node& source_node,
-                   const MachineView& source_view,
+  template <typename T>
+  T graph_cost(const Graph* graph,
+                   const NodeAssignment& source,
+                   const NodeAssignment& sink,
                    const MachineResource& resources,
-                   bool include_sink_compute_time,
-                   bool constructing_optimal_view = false) const;
-  void construct_optimal_view(const Graph* graph,
-                              const Node& sink_node,
-                              const MachineView& sink_view,
-                              const Node& source_node,
-                              const MachineView& source_view,
-                              const MachineResource& resources,
-                              bool include_sink_compute_time,
-                              float optimal_cost,
-                              std::unordered_map<Node, MachineView>& optimal_views) const;
-  float find_optimal_sequence_graph_time(Graph const *pre_graph,
-                                         Graph const *post_graph,
+                   bool include_sink_compute_time) const;
+  template <typename T>
+  T find_optimal_sequence_graph_time(Graph const *g,
                                          Node const &bottleneck_node,
                                          NodeAssignment const &source,
                                          NodeAssignment const &sink,
                                          MachineResource const &resources) const;
-  void find_optimal_sequence_graph_views(Graph const *first_graph,
-                                         Graph const *second_graph,
-                                         Node const &bn_node,
-                                         NodeAssignment const &source,
-                                         NodeAssignment const &sink,
-                                         MachineResource const &resources,
-                                         float optimal_cost,
-                                         std::unordered_map<Node, MachineView>& optimal_views) const;
-  float find_optimal_nonsequence_graph_time(Graph const *g,
+  template <typename T>
+  T find_optimal_nonsequence_graph_time(Graph const *g,
                                             NodeAssignment const &source,
                                             NodeAssignment const &sink,
                                             MachineResource const &resources) const;
+  /* void find_optimal_nonsequence_graph_views(Graph const *g, */
+  /*                                           NodeAssignment const &source, */
+  /*                                           NodeAssignment const &sink, */
+  /*                                           MachineResource const &resources, */
+  /*                                           float optimal_cost, */
+  /*                                           std::unordered_map<Node, MachineView>& optimal_views) const; */
   std::vector<MachineView> get_valid_machine_views(const Op* op, const MachineResource& resource) const;
+
+  template <typename T>
+  std::pair<bool, T> try_get_cost_from_cache(size_t hash) const;
+
+  template <typename T>
+  void try_cache_result(size_t hash, T const &value) const;
+
+  template <typename T>
+  T infinity() const;
+
+  template <typename T>
+  T empty() const;
+
+  template <typename T>
+  bool is_invalid(T const &) const;
+
+  template <typename T>
+  T estimate_xfer_cost(Graph const *g, NodeAssignment const &source, NodeAssignment const &sink) const;
+
+  template <typename T>
+  void add_operator_cost(NodeAssignment const &, float, T *) const;
+
+  template <typename T>
+  void check_matches_graph(Graph const *, T const &, Node const &) const;
 private:
   FFModel *model;
 
@@ -158,9 +185,10 @@ public:
                 int srcIdx,
                 int dstIdx);
   bool has_edge(const Edge& e);
-  float total_cost();
-  void construct_optimal_view(float optimal_cost,
-                              std::unordered_map<Node, MachineView>& optimal_views);
+  float optimal_cost() const;
+  std::unordered_map<Node, MachineView> optimal_views() const;
+
+
   size_t hash(void) const;
   void print(void) const;
   bool check_correctness(void);
@@ -175,16 +203,21 @@ public:
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const;
 
   std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_at_node(Node const &bottleneck) const;
+  std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_horizontal(Node const &source_node, Node const &sink_node) const;
 public:
   FFModel* model;
   SearchHelper* search;
   std::unordered_map<Node, std::unordered_set<Edge> > inEdges, outEdges;
+private:
+  template <typename T>
+  T generic_optimal_cost() const;
 };
 
 namespace flexflow::graph {
   template <>
   struct GraphStructure<::Graph> {
     using G = ::Graph;
+    using graph_type = ::Graph;
     using vertex_type = ::Node;
     using edge_type = ::Edge;
 

@@ -368,7 +368,7 @@ void GraphXfer::run(int depth, Graph* graph,
     }
     // TODO: remove me for better performance
     assert(newGraph->check_correctness());
-    if (newGraph->total_cost() < threshold && (int)newGraph->inEdges.size() < maxNumOps) {
+    if (newGraph->optimal_cost() < threshold && (int)newGraph->inEdges.size() < maxNumOps) {
       if (hashmap.find(newGraph->hash()) == hashmap.end()) {
         hashmap.insert(newGraph->hash());
         candidates.push(newGraph);
@@ -724,7 +724,14 @@ void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineVi
     } else {
       RecordFormatter rf, machine_view_row;
       MachineView mv = strategy.at(node);
-      machine_view_row << std::to_string(mv.ndims) << std::to_string(mv.dim[0]);
+      std::ostringstream oss;
+      if (mv.ndims == 0) {
+        machine_view_row << "N/A";
+      } else {
+        for (int i = 0; i < mv.ndims; i++) {
+          machine_view_row << std::to_string(mv.dim[i]);
+        }
+      }
       rf << node.to_string() << machine_view_row;
       dot.add_record_node(node, rf);
     }
@@ -782,19 +789,19 @@ void FFModel::graph_optimize(size_t budget,
   std::unordered_set<size_t> hashmap;
   candidates.push(graph);
   hashmap.insert(graph->hash());
-  best_graph = graph;
-  float best_cost = graph->total_cost();
+  best_graph = new Graph(*graph);
+  float best_cost = graph->optimal_cost();
   int counter = 0;
   while (!candidates.empty()) {
     Graph *cur_graph = candidates.top();
     candidates.pop();
-    if (cur_graph->total_cost() < best_cost) {
+    if (cur_graph->optimal_cost() < best_graph->optimal_cost()) {
       delete best_graph;
       best_graph = cur_graph;
-      best_cost = cur_graph->total_cost();
+      best_cost = cur_graph->optimal_cost();
     }
     printf("    [%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)\n",
-           counter, cur_graph->total_cost(), best_cost, candidates.size());
+           counter, cur_graph->optimal_cost(), best_cost, candidates.size());
     counter ++;
     for (size_t i = 0; i < xfers.size(); i++) {
       xfers[i]->run(0, cur_graph, candidates, hashmap, best_cost * 1.05, 100000);
@@ -806,7 +813,7 @@ void FFModel::graph_optimize(size_t budget,
   // Run DP
   printf("best_cost = %.4lf\n", best_cost);
   best_graph->print();
-  best_graph->construct_optimal_view(best_cost, optimal_views);
+  optimal_views = best_graph->optimal_views();
   // Export results
   if (!this->config.export_strategy_computation_graph_file.empty()) {
     best_graph->export_strategy_computation_graph(optimal_views, this->config.export_strategy_computation_graph_file);
@@ -818,7 +825,7 @@ void FFModel::graph_optimize(size_t budget,
            it.second.ndims,
            it.second.dim[0],
            it.second.start_device_id);
-    const auto& list = best_graph->inEdges.find(it.first)->second;
+    const auto& list = best_graph->inEdges.at(it.first);
     for (const auto& it2 : list) {
       Edge e = it2;
       printf(" inEdge(node(%zu) idx(%d))", e.srcOp.guid, e.srcIdx);

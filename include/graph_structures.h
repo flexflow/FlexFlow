@@ -4,8 +4,10 @@
 #include "basic_graph.h"
 
 namespace flexflow::graph {
-  template <typename G, typename BaseStructure = GraphStructure<G>>
+  template <typename BaseStructure>
   struct ReverseStructure {
+    using graph_type = typename BaseStructure::graph_type;
+    using G = graph_type;
     using vertex_type = typename BaseStructure::vertex_type;
     using edge_type = typename BaseStructure::edge_type;
 
@@ -52,6 +54,7 @@ namespace flexflow::graph {
     typename Invalid = invalid_node<G, BaseStructure>
   >
   struct MultisourceGraphStructure {
+    using graph_type = typename BaseStructure::graph_type;
     using vertex_type = typename BaseStructure::vertex_type;
     using edge_type = typename BaseStructure::edge_type;
 

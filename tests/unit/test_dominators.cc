@@ -290,3 +290,41 @@ TEST(inplace_transitive_reduction, basic) {
 
   EXPECT_EQ(g, answer);
 }
+
+TEST(roots, basic) {
+  BasicGraph<int> g(
+    {1, 2, 3, 4, 5, 6},
+    {
+      {1, 3},
+      {2, 3},
+      {3, 4},
+      {3, 5},
+      {3, 6},
+    }
+  );
+
+  std::unordered_set<int> answer { 1, 2 };
+
+  auto result = roots(g);
+
+  EXPECT_EQ(result, answer);
+}
+
+TEST(leaves, basic) {
+  BasicGraph<int> g(
+    {1, 2, 3, 4, 5, 6},
+    {
+      {1, 3},
+      {2, 3},
+      {3, 4},
+      {3, 5},
+      {3, 6}
+    }
+  );
+
+  std::unordered_set<int> answer { 4, 5, 6 };
+
+  auto result = leaves(g);
+
+  EXPECT_EQ(result, answer);
+}

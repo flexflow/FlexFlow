@@ -128,6 +128,11 @@ namespace flexflow::graph {
   }
 
   template <typename G, typename Structure = GraphStructure<G>>
+  std::unordered_set<typename Structure::vertex_type> leaves(G const &g) {
+    return roots<G, ReverseStructure<Structure>>(g);
+  }
+
+  template <typename G, typename Structure = GraphStructure<G>>
   void topo_sort(
       G const &g,
       std::vector<typename Structure::vertex_type> *ordering
@@ -214,7 +219,7 @@ namespace flexflow::graph {
 
   template <typename G, typename Structure = GraphStructure<G>>
   std::unordered_map<typename Structure::vertex_type, std::unordered_set<typename Structure::vertex_type>> post_dominators(G const &g) {
-    return dominators<G, ReverseStructure<G, Structure>>(g);
+    return dominators<G, ReverseStructure<Structure>>(g);
   }
 
   template <typename G, typename Structure = GraphStructure<G>>
@@ -258,7 +263,7 @@ namespace flexflow::graph {
 
   template <typename G, typename Structure = GraphStructure<G>>
   std::unordered_map<typename Structure::vertex_type, typename Structure::vertex_type> imm_post_dominators(G const &g) {
-    return imm_dominators<G, ReverseStructure<G, Structure>>(g);
+    return imm_dominators<G, ReverseStructure<Structure>>(g);
   }
 
   /* template <typename G, typename Structure> */
