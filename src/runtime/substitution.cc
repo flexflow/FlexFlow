@@ -732,7 +732,7 @@ void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineVi
           machine_view_row << std::to_string(mv.dim[i]);
         }
       }
-      rf << node.to_string() << machine_view_row;
+      rf << node.to_string() << std::to_string(node.guid) << machine_view_row;
       dot.add_record_node(node, rf);
     }
 

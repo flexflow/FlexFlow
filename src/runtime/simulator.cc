@@ -83,7 +83,7 @@ bool MachineResource::is_valid_machine_view(const MachineView& view) const
       if (used_cpus_per_node > available_cpus_per_node)
         return false;
     }
-    return true;   
+    return true;
   } else {
     assert(false && "Unsupported Device Type");
     return false;

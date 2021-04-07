@@ -204,6 +204,8 @@ public:
 
   std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_at_node(Node const &bottleneck) const;
   std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_horizontal(Node const &source_node, Node const &sink_node) const;
+
+  Graph reduced() const;
 public:
   FFModel* model;
   SearchHelper* search;

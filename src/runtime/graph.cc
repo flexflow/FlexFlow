@@ -382,8 +382,8 @@ void Graph::print(void) const
   log_graph.print("Printing in-edge graph...");
   for (const auto& it : inEdges) {
     if (it.first.guid == 0) continue;
-    log_graph.print("	guid(%zu) type(%d): ", it.first.guid,
-                    it.first.ptr->op_type);
+    log_graph.print("	guid(%zu) type(%s): ", it.first.guid,
+                    optype_to_string(it.first.ptr->op_type).data());
     const std::unordered_set<Edge>& list = it.second;
     for (const auto& it2 : list) {
       Edge e = it2;
@@ -538,26 +538,21 @@ void FFModel::register_all_machine_views(int num_nodes,
 Node Graph::find_bottleneck_node(const Node& sink_node, const Node& source_node) const
 {
   using ::flexflow::graph::imm_post_dominators;
-  using ::flexflow::graph::topo_sort;
   using ::flexflow::graph::MultisourceGraphStructure;
   using ::flexflow::graph::GraphStructure;
   using ::flexflow::graph::roots;
-  using ::flexflow::graph::BasicGraph;
-  using ::flexflow::graph::transitive_reduction;
 
-
-  BasicGraph<Node> reduction = transitive_reduction(*this);
 
   Node source(source_node);
   std::unordered_map<Node, Node> ipd;
-  std::unordered_set<Node> graph_roots = roots(reduction);
+  std::unordered_set<Node> graph_roots = roots(*this);
   if (source_node != Node::INVALID_NODE) {
-    ipd = imm_post_dominators(reduction);
+    ipd = imm_post_dominators(*this);
   } else if (graph_roots.size() == 1) {
-    ipd = imm_post_dominators(reduction);
+    ipd = imm_post_dominators(*this);
     source = *graph_roots.begin();
   } else {
-    ipd = imm_post_dominators<decltype(reduction), MultisourceGraphStructure<decltype(reduction)>>(reduction);
+    ipd = imm_post_dominators<Graph, MultisourceGraphStructure<Graph>>(*this);
   }
 
   Node bn_node = ipd.at(source);
@@ -940,6 +935,7 @@ T SearchHelper::graph_cost(const Graph* graph,
         );
       }
     }
+
     this->try_cache_result<T>(hash, result);
   }
 
@@ -961,14 +957,34 @@ std::unordered_map<Node, MachineView> Graph::optimal_views() const {
   return this->generic_optimal_cost<GraphCostResult>().views;
 }
 
+Graph Graph::reduced() const {
+  using ::flexflow::graph::BasicGraph;
+  using ::flexflow::graph::transitive_reduction;
+  using ::flexflow::graph::get_edges;
+
+  BasicGraph<Node> transitive_skeleton = transitive_reduction(*this);
+
+  Graph reduced_graph(this->model);
+
+  for (Edge const &e : get_edges(*this)) {
+    if (transitive_skeleton.has_edge(e.srcOp, e.dstOp)) {
+      reduced_graph.add_edge(e);
+    }
+  }
+
+  return reduced_graph;
+}
+
 template <typename T>
 T Graph::generic_optimal_cost() const
 {
   using ::flexflow::graph::leaves;
 
+  Graph reduced_graph = this->reduced();
+
   // Find sink_nodes
   // i.e., nodes with no out edge
-  std::unordered_set<Node> sink_nodes = leaves(*this);
+  std::unordered_set<Node> sink_nodes = leaves(reduced_graph);
   assert (sink_nodes.size() == 1);
 
   Node sink_node = *sink_nodes.cbegin();
@@ -988,7 +1004,7 @@ T Graph::generic_optimal_cost() const
 
   for (MachineView const &sink_view : valid_views) {
     T new_cost = search->graph_cost<T>(
-        this,
+        &reduced_graph,
         {Node::INVALID_NODE, MachineView::NO_VIEW},
         {sink_node, sink_view},
         resource,
