@@ -62,6 +62,9 @@ enum TaskIDs {
   AGGREGATE_INIT_TASK_ID,
   AGGREGATE_FWD_TASK_ID,
   AGGREGATE_BWD_TASK_ID,
+  AGG_SPEC_INIT_TASK_ID,
+  AGG_SPEC_FWD_TASK_ID,
+  AGG_SPEC_BWD_TASK_ID,
   POOL2D_INIT_TASK_ID,
   POOL2D_FWD_TASK_ID,
   POOL2D_BWD_TASK_ID,
@@ -360,7 +363,11 @@ public:
                 const char* name = NULL);
   // Add aggregate layer
   Tensor aggregate(const Tensor* inputs,
-                  int n,
+                  int n, float lambda_bal,
+                  const char* name = NULL);
+  // Add aggregate_spec layer
+  Tensor aggregate_spec(const Tensor* inputs,
+                  int n, float lambda_bal,
                   const char* name = NULL);
   // Add a 2D pooling layer
   Tensor pool2d(const Tensor& input,
@@ -484,6 +491,7 @@ public:
   void prefetch();
   void forward(int seq_length = -1);
   void compute_metrics();
+  void get_metrics();
   void backward(int seq_length = -1);
   void update();
   bool apply_fusion(const std::vector<Op*>& layers, std::vector<Op*>& new_layers);
@@ -528,6 +536,7 @@ public:
   Optimizer* optimizer;
   Loss* loss_op;
   Metrics* metrics_op;
+  int metrics_input;
   Tensor label_tensor;
   //std::vector<Tensor> input_tensors;
 
@@ -1201,7 +1210,7 @@ class Aggregate : public Op {
 public:
   Aggregate(FFModel& model,
             const Tensor* inputs,
-            int _n, const char* name);
+            int _n, float _lambda_bal, const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -1223,6 +1232,43 @@ public:
                              CostMetrics& cost_metrics);
 public:
   int n;
+  float lambda_bal;
+  bool profiling;
+};
+
+
+class AggregateSpecMeta : public OpMeta {
+public:
+  AggregateSpecMeta(FFHandler handle);
+};
+
+class AggregateSpec : public Op {
+public:
+  AggregateSpec(FFModel& model,
+            const Tensor* inputs,
+            int _n, float _lambda_bal, const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+public:
+  int n;
+  float lambda_bal;
   bool profiling;
 };
 

@@ -27,6 +27,8 @@ class FFModel;
 class Loss
 {
 public:
+  Loss(const std::string& loss, bool _repl_labels);
+  Loss(LossType _loss_type, bool _repl_labels);
   Loss(const std::string& loss);
   Loss(LossType _loss_type);
   static void backward_task(const Task *task,
@@ -42,9 +44,10 @@ public:
 public:
   FFModel* model;
   LossType loss_type;
+  bool repl_labels; // for aggregate_spec: More predictions than labels
   // scale factor for computing the logit gradients
   // normally 1.0f / global_batch_size
-  float scale_factor; 
+  float scale_factor;
 };
 
 #endif

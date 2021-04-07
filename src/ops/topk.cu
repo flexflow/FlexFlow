@@ -565,6 +565,7 @@ void TopK::forward_task(const Task* task,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
+
   forward_kernel(m, in_ptr, value_ptr, index_ptr,
       batch_size, length, k, m->sorted);
 

@@ -66,30 +66,33 @@ void top_level_task(const Task* task,
   int out_dim = 10;
   int num_exp = 5;
   int num_select = 2;
+  float alpha = 2.0f; // factor overhead tensor size for imbalance
+  float lambda = 0.16f; // multiplier for load balance term
 
-  // Load MNIST and make flat 784 vector
-  //Tensor flat_samples = ff.flat(input);
+
+  // MoE model
   Tensor gate_preds = ff.dense(input, num_exp, AC_MODE_RELU);
-
   Tensor topK_output[2];
   ff.top_k(gate_preds, topK_output, num_select, false);
 
   Tensor exp_tensors[num_exp];
-  ff.group_by(input, topK_output[1], exp_tensors, num_exp, 2.0f);
+  ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
 
-  Tensor agg_inputs[num_exp+2];
-  agg_inputs[0] = topK_output[0]; /* gate preds */
+  Tensor agg_inputs[num_exp+3];
+  agg_inputs[0] = ff.softmax(topK_output[0]); /* gate preds */
   agg_inputs[1] = topK_output[1]; /* gate assign */
+  agg_inputs[2] = gate_preds; /* full gate preds */
   for(int i = 0; i < num_exp; i++) {
-    agg_inputs[i+2] = ff.dense(exp_tensors[i], out_dim, AC_MODE_RELU);
-    // TODO: Softmax
+    agg_inputs[i+3] = ff.dense(exp_tensors[i], out_dim, AC_MODE_RELU);
+    agg_inputs[i+3] = ff.softmax(agg_inputs[i+3]);
   }
 
-  Tensor final_pred = ff.aggregate(agg_inputs, num_exp);
-  final_pred = ff.softmax(final_pred);
-
+  Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
+  ff.get_metrics();
+  Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
 
 //-----------------------------------------------------------------
+
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
@@ -250,12 +253,13 @@ void read_mnist(float* input_ptr, int* label_ptr)
     labels.read((char*)&magic_number,sizeof(magic_number));
     magic_number= reverseInt(magic_number);
     labels.read((char*)&number_of_images,sizeof(number_of_images));
+    number_of_images= reverseInt(number_of_images);
 
     for(int i = 0; i < number_of_images; i++) {
       unsigned char temp = 0;
       labels.read((char*)&temp, sizeof(temp));
       label_ptr[i] = temp;
-      }
+    }
   }
   else {
     assert(false);

@@ -16,8 +16,27 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+Loss::Loss(const std::string& loss, bool _repl_labels)
+{
+  repl_labels = _repl_labels;
+  if (loss == "categorical_crossentropy")
+    loss_type = LOSS_CATEGORICAL_CROSSENTROPY;
+  else if (loss == "sparse_categorical_crossentropy")
+    loss_type = LOSS_SPARSE_CATEGORICAL_CROSSENTROPY;
+  else if (loss == "mean_squared_error")
+    loss_type = LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE;
+  else
+    // Unrecognized loss type
+    assert(false);
+}
+
+Loss::Loss(LossType _loss_type, bool _repl_labels)
+: loss_type(_loss_type), repl_labels(_repl_labels)
+{}
+
 Loss::Loss(const std::string& loss)
 {
+  repl_labels = false;
   if (loss == "categorical_crossentropy")
     loss_type = LOSS_CATEGORICAL_CROSSENTROPY;
   else if (loss == "sparse_categorical_crossentropy")
@@ -30,7 +49,7 @@ Loss::Loss(const std::string& loss)
 }
 
 Loss::Loss(LossType _loss_type)
-: loss_type(_loss_type)
+: loss_type(_loss_type), repl_labels(false)
 {}
 
 __global__
@@ -38,11 +57,12 @@ void sparse_categorical_crossentropy_loss_backward(
     float *logit_grad,
     const int *label,
     coord_t num_samples,
-    coord_t num_classes)
+    coord_t num_classes,
+    const int k)
 {
   CUDA_KERNEL_LOOP(i, num_samples)
   {
-    int label_idx = label[i];
+    int label_idx = label[i/k];
     logit_grad[i * num_classes + label_idx] -= 1.0f;
   }
 }
@@ -112,20 +132,28 @@ void Loss::backward_task_with_dim(const Task *task,
     int num_samples = acc_logit.rect.hi[NDIM-1] - acc_logit.rect.lo[NDIM-1] + 1;
     int num_classes = acc_logit.rect.volume() / num_samples;
     assert(acc_logit_grad.rect == acc_logit.rect);
-    for (int i = 1; i < NDIM; i++) {
+    int k = 1;
+    if(loss->repl_labels) {
+      k = (acc_logit.rect.hi[NDIM-1]-acc_logit.rect.lo[NDIM-1]+1) /
+        (acc_label.rect.hi[NDIM-1]-acc_label.rect.lo[NDIM-1]+1);
+    }
+    for (int i = 1; i < NDIM-1; i++) {
       assert(acc_label.rect.hi[i] == acc_logit.rect.hi[i]);
       assert(acc_label.rect.lo[i] == acc_logit.rect.lo[i]);
     }
+    assert(k*(acc_label.rect.hi[NDIM-1]-acc_label.rect.lo[NDIM-1]+1)
+      == acc_logit.rect.hi[NDIM-1]-acc_logit.rect.lo[NDIM-1]+1);
     assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
     checkCUDA(cudaMemcpy(acc_logit_grad.ptr, acc_logit.ptr,
                          acc_logit.rect.volume() * sizeof(float),
                          cudaMemcpyDeviceToDevice));
     sparse_categorical_crossentropy_loss_backward<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS>>>(
-        acc_logit_grad.ptr, acc_label.ptr, num_samples, num_classes);
+        acc_logit_grad.ptr, acc_label.ptr, num_samples, num_classes, k);
     // Scale logit gradients by op->scale_factor
     scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS>>>(
-        acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor);
+        acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor*k);
   } else {
+    if(loss->repl_labels) assert(false && "Loss not yet supported for aggr_spec.");
     TensorAccessorW<float, NDIM> acc_logit_grad(
         regions[0], task->regions[0], FID_DATA, ctx, runtime,
         true/*readOutput*/);
@@ -136,7 +164,7 @@ void Loss::backward_task_with_dim(const Task *task,
     // other loss require label and logit have identical shape
     assert(acc_logit.rect == acc_label.rect);
     assert(acc_logit_grad.rect == acc_logit.rect);
-    int num_samples = acc_logit.rect.hi[NDIM-1] - acc_logit.rect.lo[NDIM-1] + 1;
+    int num_samples = acc_label.rect.hi[NDIM-1] - acc_label.rect.lo[NDIM-1] + 1;
     int num_channels = acc_logit.rect.volume() / num_samples;
     if (loss->loss_type == LOSS_CATEGORICAL_CROSSENTROPY) {
       categorical_crossentropy_loss_backward<<<GET_BLOCKS(acc_logit.rect.volume()), CUDA_NUM_THREADS>>>(
@@ -223,4 +251,3 @@ void Loss::backward_with_dim(FFModel* model,
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
-
