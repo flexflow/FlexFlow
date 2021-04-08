@@ -123,6 +123,8 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/simulator.h
   ${FLEXFLOW_ROOT}/include/hash_utils.h
   ${FLEXFLOW_ROOT}/include/dominators.h
+  ${FLEXFLOW_ROOT}/include/basic_graph.h
+  ${FLEXFLOW_ROOT}/include/graph_structures.h
   ${FLEXFLOW_ROOT}/include/dot_file.h)
 
 set(FLEXFLOW_SRC

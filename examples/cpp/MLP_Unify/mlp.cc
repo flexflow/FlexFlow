@@ -43,6 +43,9 @@ void top_level_task(const Task* task,
     t2 = ff.dense(t2, hidden_dims[i], acti_mode, false);
   }
   Tensor t = ff.add(t1, t2);
+  t1 = ff.add(t, t1);
+  t2 = ff.add(t, t2);
+  t = ff.add(t1, t2);
   t = ff.softmax(t);
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;
