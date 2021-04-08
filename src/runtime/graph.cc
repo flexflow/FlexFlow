@@ -618,10 +618,14 @@ Graph::split_horizontal(Node const &source_node, Node const &sink_node) const
   // Find sink_node's first input
   {
     const auto& inList = this->inEdges.find(sink_node)->second;
+    int minIdx = MAX_NUM_INPUTS;
     for (const auto& it2 : inList) {
-      if (it2.dstIdx != 0) continue;
+      //if (it2.dstIdx != 0) continue;
       //if (it2.weightEdge) continue;
-      bn_node = it2.srcOp;
+      if (it2.dstIdx < minIdx) {
+        minIdx = it2.dstIdx;
+        bn_node = it2.srcOp;
+      }
     }
   }
   assert(bn_node != Node::INVALID_NODE);

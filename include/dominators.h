@@ -77,7 +77,7 @@ namespace flexflow::graph {
       G const &g,
       typename Structure::vertex_type const &node
   ) {
-    using N = typename Structure::vertex_type;
+    //using N = typename Structure::vertex_type;
 
     std::unordered_set<typename Structure::vertex_type> succ;
     successors<G, Structure>(g, node, &succ);
@@ -102,7 +102,7 @@ namespace flexflow::graph {
       G const &g,
       typename Structure::vertex_type const &node
   ) {
-    using N = typename Structure::vertex_type;
+    //using N = typename Structure::vertex_type;
 
     std::unordered_set<typename Structure::vertex_type> pred;
     predecessors<G, Structure>(g, node, &pred);
