@@ -59,7 +59,7 @@ Combine::Combine(
 
 void Combine::init(const FFModel& ff)
 {
-  // Do nothing
+  forward(ff);
 }
 
 void Combine::create_input_partition(FFModel& ff)

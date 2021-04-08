@@ -2304,7 +2304,7 @@ void FFModel::forward(int seq_length)
 
 void FFModel::compute_metrics()
 {
-  Op* final_layer = layers[layers.size()-1];
+  Op* final_layer = get_final_layer();
   assert(final_layer->numOutputs == 1);
   metrics_op->compute(this, final_layer->outputs[0], label_tensor_with_final_part);
 }
@@ -2314,7 +2314,7 @@ void FFModel::backward(int seq_length)
   iter_config.seq_length = seq_length;
   assert(config.computationMode == COMP_MODE_TRAINING);
   // Compute metrics
-  Op* final_layer = layers[layers.size()-1];
+  Op* final_layer = get_final_layer();
   assert(final_layer->numOutputs == 1);
   metrics_op->compute(this, final_layer->outputs[0], label_tensor_with_final_part);
   // Compute the gradients of the final layer wrt loss
@@ -2342,6 +2342,14 @@ void FFModel::update()
   for (size_t i = 0; i < parameters.size(); i++) {
     optimizer->update(parameters[i]);
   }
+}
+
+Op* FFModel::get_final_layer() const
+{
+  int idx = layers.size() - 1;
+  while (layers[idx]->op_type == OP_INPUT || layers[idx]->op_type == OP_WEIGHT)
+    idx --;
+  return layers[idx];
 }
 
 void FFModel::compile(Optimizer* _optimizer,
@@ -2615,7 +2623,7 @@ void FFModel::compile(LossType loss_type,
         }
     }
   }
-  Op* final_layer = layers[layers.size()-1];
+  Op* final_layer = get_final_layer();
   // FIXME: currently assume the final layer has exactly one output
   assert(final_layer->numOutputs == 1);
   for (size_t i = 0; i < layers.size(); i++) {
@@ -3660,11 +3668,11 @@ void register_flexflow_internal_tasks()
   }
   // compute Metrics
   {
-    TaskVariantRegistrar registrar(METRICS_COMP_TASK_ID, "MSELoss Backward");
+    TaskVariantRegistrar registrar(METRICS_COMP_TASK_ID, "Metrics Compute");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<PerfMetrics, Metrics::compute_task>(
-        registrar, "MSELoss Backward Task");
+        registrar, "Metrics Compute Task");
   }
   // MSELoss
   //{

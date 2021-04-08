@@ -164,6 +164,7 @@ void Loss::backward_task_with_dim(const Task *task,
 void Loss::backward(FFModel* model,
                     const Tensor logit,
                     const Tensor label)
+#ifdef DEADCODE
 {
   assert(logit->num_dims == label->num_dims);
   int dim = logit->num_dims;
@@ -187,6 +188,7 @@ template<int NDIM>
 void Loss::backward_with_dim(FFModel* model,
                              const Tensor logit,
                              const Tensor label)
+#endif
 {
   // Compute scale factor for loss backpropagation
   scale_factor = 1.0f/ logit->dims[logit->num_dims-1].size;
@@ -195,12 +197,12 @@ void Loss::backward_with_dim(FFModel* model,
   std::string pcname = logit->owner_op->name;
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, logit->parallel_is);
-  Rect<NDIM> logit_rect = runtime->get_index_partition_color_space(
+  Domain part_domain = runtime->get_index_space_domain(ctx, logit->parallel_is);
+  Domain logit_domain = runtime->get_index_partition_color_space(
       ctx, logit->part.get_index_partition());
-  Rect<NDIM> label_rect = runtime->get_index_partition_color_space(
+  Domain label_domain = runtime->get_index_partition_color_space(
       ctx, label->part.get_index_partition());
-  if((logit_rect != part_rect) || (label_rect != part_rect)) {
+  if((logit_domain != part_domain) || (label_domain != part_domain)) {
     fprintf(stderr, "Encounter inconsistency in parallelizing loss computation");
     assert(false);
   }

@@ -884,7 +884,7 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
           dims[1].degree = 1;
           dims[1].parallel_idx = -1;
           dims[0].size = inputs[0]->dims[1].degree;
-          dims[0].degree = dims[2].size;
+          dims[0].degree = dims[0].size;
           if (dims[0].degree > 1)
             dims[0].parallel_idx = 0;
           else

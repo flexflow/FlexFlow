@@ -87,6 +87,8 @@ class ConstantInitializer : public Initializer
 {
 public:
   ConstantInitializer(float _value);
+  ConstantInitializer(int64_t _value);
+  ConstantInitializer(int _value);
   ~ConstantInitializer(void);
   void init(const FFModel* ff, const Tensor p);
   static void init_task(const Legion::Task *task,
@@ -96,6 +98,9 @@ public:
                         const std::vector<Legion::PhysicalRegion> &regions,
                         Legion::Context ctx, Legion::Runtime *runtime);
 public:
-  float value;
+  DataType data_type;
+  float float_value;
+  int64_t int64_value;
+  int int32_value;
 };
 #endif
