@@ -62,7 +62,7 @@ namespace flexflow::graph {
         return false;
       }
 
-      std::unordered_set<E> &dst_in_edges = iter->second;
+      std::unordered_set<E> const &dst_in_edges = iter->second;
       return dst_in_edges.find({src, dst}) != dst_in_edges.end();
     }
 
