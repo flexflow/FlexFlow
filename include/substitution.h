@@ -92,7 +92,7 @@ public:
 class GraphCompare {
 public:
   bool operator() (Graph* lhs, Graph* rhs) {
-    return lhs->total_cost() > rhs->total_cost();
+    return lhs->optimal_cost() > rhs->optimal_cost();
   }
 };
 

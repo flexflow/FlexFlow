@@ -3,92 +3,9 @@
 #include "hash_utils.h"
 #include "graph.h"
 
-using namespace flexflow::dominators;
+using namespace flexflow::graph;
 
-template <typename T>
-struct BasicGraph {
-  using N = T;
-  using E = std::pair<N, N>;
-
-  std::unordered_set<T> nodes;
-  std::unordered_map<T, std::unordered_set<E>> in_edges, out_edges;
-
-  void add_edge(N const &src, N const &dst) {
-    nodes.insert(src);
-    nodes.insert(dst);
-    out_edges[src].insert({src, dst});
-    in_edges[dst].insert({src, dst});
-  }
-
-  void add_edge(E const &e) {
-    nodes.insert(e.first);
-    nodes.insert(e.second);
-    out_edges[e.first].insert(e);
-    in_edges[e.second].insert(e);
-  }
-
-  void add_node(N const &n) {
-    nodes.insert(n);
-  }
-
-  void add_nodes(std::vector<N> const &nodes) {
-    for (auto const &n : nodes) {
-      this->add_node(n);
-    }
-  }
-
-  void add_edges(std::vector<E> const &edges) {
-    for (auto const &e : edges) {
-      this->add_edge(e);
-    }
-  }
-};
-
-namespace flexflow::dominators {
-  template <typename T>
-  struct GraphStructure<BasicGraph<T>> {
-    using graph_type = BasicGraph<T>;
-    using vertex_type = T;
-    using edge_type = std::pair<T, T>;
-
-    std::unordered_set<vertex_type> get_nodes(graph_type const &g) const {
-      std::unordered_set<vertex_type> nodes(g.nodes);
-      return nodes;
-    }
-
-    std::unordered_set<edge_type> get_incoming_edges(graph_type const &g, vertex_type const &n) const {
-      std::unordered_set<edge_type> edges;
-      if (g.in_edges.find(n) != g.in_edges.end()) {
-        edges.insert(g.in_edges.at(n).begin(), g.in_edges.at(n).end());
-      }
-      return edges;
-    }
-
-    std::unordered_set<edge_type> get_outgoing_edges(graph_type const &g, vertex_type const &n) const {
-      std::unordered_set<edge_type> edges;
-      if (g.out_edges.find(n) != g.out_edges.end()) {
-        edges.insert(g.out_edges.at(n).begin(), g.out_edges.at(n).end());
-      }
-      return edges;
-    }
-
-    vertex_type get_src(graph_type const &g, edge_type const &e) const {
-      return e.first;
-    }
-
-    vertex_type get_dst(graph_type const &g, edge_type const &e) const {
-      return e.second;
-    }
-
-    void set_src(graph_type const &g, edge_type &e, vertex_type const &n) const {
-      e.first = n;
-    }
-
-    void set_dst(graph_type const &g, edge_type &e, vertex_type const &n) const {
-      e.second = n;
-    }
-  };
-
+namespace flexflow::graph {
   template <>
   struct invalid_node<::BasicGraph<int>, GraphStructure<::BasicGraph<int>>> {
     int operator()() const {
@@ -284,5 +201,130 @@ TEST(imm_post_dominators, multisource) {
   };
 
   auto result = imm_post_dominators<decltype(g), MultisourceGraphStructure<decltype(g)>>(g);
+  EXPECT_EQ(result, answer);
+}
+
+TEST(transitive_reduction, basic) {
+  BasicGraph<int> g(
+    {1, 2, 3},
+    {
+      {1, 2},
+      {2, 3},
+      {1, 3}
+    }
+  );
+
+  BasicGraph<int> answer(
+    {1, 2, 3},
+    {
+      {1, 2},
+      {2, 3}
+    }
+  );
+
+  auto result = transitive_reduction(g);
+
+  EXPECT_EQ(result, answer);
+}
+
+TEST(transitive_reduction, medium) {
+  BasicGraph<int> g(
+    { 1, 2, 3, 4, 5, 6, 7 },
+    {
+      {1, 4},
+      {1, 5},
+      {2, 3},
+      {2, 4},
+      {2, 6},
+      {3, 4},
+      {4, 5},
+      {4, 6},
+      {5, 6},
+    }
+  );
+
+  BasicGraph<int> answer(
+    { 1, 2, 3, 4, 5, 6, 7 },
+    {
+      {1, 4},
+      {2, 3},
+      {3, 4},
+      {4, 5},
+      {5, 6},
+    }
+  );
+
+  auto result = transitive_reduction(g);
+
+  EXPECT_EQ(result, answer);
+}
+
+TEST(inplace_transitive_reduction, basic) {
+  BasicGraph<int> g(
+    { 1, 2, 3, 4, 5, 6, 7 },
+    {
+      {1, 4},
+      {1, 5},
+      {2, 3},
+      {2, 4},
+      {2, 6},
+      {3, 4},
+      {4, 5},
+      {4, 6},
+      {5, 6},
+    }
+  );
+
+  BasicGraph<int> answer(
+    { 1, 2, 3, 4, 5, 6, 7 },
+    {
+      {1, 4},
+      {2, 3},
+      {3, 4},
+      {4, 5},
+      {5, 6},
+    }
+  );
+
+  inplace_transitive_reduction(g);
+
+  EXPECT_EQ(g, answer);
+}
+
+TEST(roots, basic) {
+  BasicGraph<int> g(
+    {1, 2, 3, 4, 5, 6},
+    {
+      {1, 3},
+      {2, 3},
+      {3, 4},
+      {3, 5},
+      {3, 6},
+    }
+  );
+
+  std::unordered_set<int> answer { 1, 2 };
+
+  auto result = roots(g);
+
+  EXPECT_EQ(result, answer);
+}
+
+TEST(leaves, basic) {
+  BasicGraph<int> g(
+    {1, 2, 3, 4, 5, 6},
+    {
+      {1, 3},
+      {2, 3},
+      {3, 4},
+      {3, 5},
+      {3, 6}
+    }
+  );
+
+  std::unordered_set<int> answer { 4, 5, 6 };
+
+  auto result = leaves(g);
+
   EXPECT_EQ(result, answer);
 }

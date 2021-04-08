@@ -1204,6 +1204,8 @@ FFModel::FFModel(FFConfig& _config)
   config(_config),
   optimizer(NULL), loss_op(NULL), metrics_op(NULL), simulator(NULL)
 {
+  this->search = new SearchHelper(this);
+
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
   // Register machine views
@@ -2527,7 +2529,7 @@ void FFModel::compile(LossType loss_type,
       // Output tensor
       map_tensor(op->outputs[i], op);
     }
-    if (op->is_parallel_op()) 
+    if (op->is_parallel_op())
       ((ParallelOp*)op)->create_input_partition(*this);
     // op->map_output_tensors(*this);
   }

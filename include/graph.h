@@ -19,7 +19,8 @@
 #include "model.h"
 #include <unordered_set>
 #include "dot_file.h"
-#include "dominators.h"
+#include "basic_graph.h"
+#include "graph_structures.h"
 
 struct Edge {
   Edge(void);
@@ -56,6 +57,7 @@ namespace std {
       return res;
     }
   };
+
   template <>
   struct hash<Node>
   {
@@ -83,6 +85,92 @@ struct GraphOptimalViewSerialized {
   char data[buffer_size];
 };
 
+struct NodeAssignment {
+  Node node;
+  MachineView view;
+};
+
+struct GraphCostResult {
+  float cost;
+  std::unordered_map<Node, MachineView> views;
+
+  static GraphCostResult invalid();
+
+  bool operator<(GraphCostResult const &other) const;
+};
+
+template <typename T>
+T sequence_cost(T const &first, T const &second);
+
+template <typename T>
+T parallel_cost(T const &first, T const &second);
+
+size_t dp_state_hash(const Graph* graph,
+                     const Node& sink_node,
+                     const MachineView& sink_view,
+                     const Node& source_node,
+                     const MachineView& source_view,
+                     const MachineResource& resource);
+
+class SearchHelper {
+public:
+  SearchHelper(FFModel *model);
+
+  template <typename T>
+  T graph_cost(const Graph* graph,
+                   const NodeAssignment& source,
+                   const NodeAssignment& sink,
+                   const MachineResource& resources,
+                   bool include_sink_compute_time) const;
+  template <typename T>
+  T find_optimal_sequence_graph_time(Graph const *g,
+                                         Node const &bottleneck_node,
+                                         NodeAssignment const &source,
+                                         NodeAssignment const &sink,
+                                         MachineResource const &resources) const;
+  template <typename T>
+  T find_optimal_nonsequence_graph_time(Graph const *g,
+                                            NodeAssignment const &source,
+                                            NodeAssignment const &sink,
+                                            MachineResource const &resources) const;
+  /* void find_optimal_nonsequence_graph_views(Graph const *g, */
+  /*                                           NodeAssignment const &source, */
+  /*                                           NodeAssignment const &sink, */
+  /*                                           MachineResource const &resources, */
+  /*                                           float optimal_cost, */
+  /*                                           std::unordered_map<Node, MachineView>& optimal_views) const; */
+  std::vector<MachineView> get_valid_machine_views(const Op* op, const MachineResource& resource) const;
+
+  template <typename T>
+  std::pair<bool, T> try_get_cost_from_cache(size_t hash) const;
+
+  template <typename T>
+  void try_cache_result(size_t hash, T const &value) const;
+
+  template <typename T>
+  T infinity() const;
+
+  template <typename T>
+  T empty() const;
+
+  template <typename T>
+  bool is_invalid(T const &) const;
+
+  template <typename T>
+  T estimate_xfer_cost(Graph const *g, NodeAssignment const &source, NodeAssignment const &sink) const;
+
+  template <typename T>
+  void add_operator_cost(NodeAssignment const &, float, T *) const;
+
+  template <typename T>
+  void check_matches_graph(Graph const *, T const &, Node const &) const;
+private:
+  FFModel *model;
+
+  mutable std::unordered_map<size_t, float> cached_graph_costs;
+  mutable std::unordered_map<size_t, std::unique_ptr<const std::vector<MachineView>>> cached_operator_valid_views;
+};
+
 class Graph {
 public:
   Graph(FFModel* model);
@@ -97,9 +185,10 @@ public:
                 int srcIdx,
                 int dstIdx);
   bool has_edge(const Edge& e);
-  float total_cost();
-  void construct_optimal_view(float optimal_cost,
-                              std::unordered_map<Node, MachineView>& optimal_views);
+  float optimal_cost() const;
+  std::unordered_map<Node, MachineView> optimal_views() const;
+
+
   size_t hash(void) const;
   void print(void) const;
   bool check_correctness(void);
@@ -108,21 +197,29 @@ public:
   static GraphOptimalViewSerialized graph_optimize_task(const Legion::Task *task,
              const std::vector<Legion::PhysicalRegion> &regions,
              Legion::Context ctx, Legion::Runtime *runtime);
-  Node find_bottleneck_node(const Node& sink_node,
-                              const Node& source_node,
-                              std::unordered_set<Node>& used_nodes) const;
+  Node find_bottleneck_node(const Node& sink_node, const Node& source_node) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::unique_ptr<std::ostream> out) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::string const &out_filename) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const;
+
+  std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_at_node(Node const &bottleneck) const;
+  std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_horizontal(Node const &source_node, Node const &sink_node) const;
+
+  Graph reduced() const;
 public:
   FFModel* model;
+  SearchHelper* search;
   std::unordered_map<Node, std::unordered_set<Edge> > inEdges, outEdges;
+private:
+  template <typename T>
+  T generic_optimal_cost() const;
 };
 
-namespace flexflow::dominators {
+namespace flexflow::graph {
   template <>
   struct GraphStructure<::Graph> {
     using G = ::Graph;
+    using graph_type = ::Graph;
     using vertex_type = ::Node;
     using edge_type = ::Edge;
 
@@ -171,12 +268,6 @@ namespace flexflow::dominators {
     }
   };
 
-  template <
-    typename G,
-    typename Structure = GraphStructure<G>
-  >
-  struct invalid_node;
-
   template <>
   struct invalid_node<::Graph, GraphStructure<::Graph>> {
     using G = ::Graph;
@@ -188,74 +279,11 @@ namespace flexflow::dominators {
     }
   };
 
-  template <
-    typename G,
-    typename BaseStructure = GraphStructure<G>,
-    typename Invalid = invalid_node<G, BaseStructure>
-  >
-  struct MultisourceGraphStructure {
-    using vertex_type = typename BaseStructure::vertex_type;
-    using edge_type = typename BaseStructure::edge_type;
-
-    std::unordered_set<vertex_type> get_nodes(G const &g) const {
-      Invalid invalid;
-
-      std::unordered_set<vertex_type> nodes = this->base.get_nodes(g);
-      nodes.insert(invalid());
-      return nodes;
+  template <>
+  struct invalid_node<::flexflow::graph::BasicGraph<Node>, GraphStructure<::flexflow::graph::BasicGraph<Node>>> {
+    Node operator()() const {
+      return Node::INVALID_NODE;
     }
-
-    std::unordered_set<edge_type> get_incoming_edges(G const &g, vertex_type const &n) const {
-      Invalid invalid;
-
-      std::unordered_set<edge_type> edges = this->base.get_incoming_edges(g, n);
-      if (edges.empty()) {
-        edge_type e;
-        this->base.set_src(g, e, invalid());
-        this->base.set_dst(g, e, n);
-        return {e};
-      }
-
-      return edges;
-    }
-
-    std::unordered_set<edge_type> get_outgoing_edges(G const &g, vertex_type const &n) const {
-      Invalid invalid;
-
-      if (n == invalid()) {
-        std::unordered_set<edge_type> edges;
-        for (auto const &node : this->base.get_nodes(g)) {
-          if (this->base.get_incoming_edges(g, node).empty()) {
-            edge_type e;
-            this->base.set_src(g, e, invalid());
-            this->base.set_dst(g, e, node);
-            edges.insert(e);
-          }
-        }
-        return edges;
-      } else {
-        return this->base.get_outgoing_edges(g, n);
-      }
-    }
-
-    vertex_type get_src(G const &g, edge_type const &e) const {
-      return this->base.get_src(g, e);
-    }
-
-    vertex_type get_dst(G const &g, edge_type const &e) const {
-      return this->base.get_dst(g, e);
-    }
-
-    void set_src(G const &g, edge_type &e, vertex_type const &n) const {
-      this->base.set_src(g, e, n);
-    }
-
-    void set_dst(G const &g, edge_type &e, vertex_type const &n) const {
-      this->base.set_dst(g, e, n);
-    }
-
-    BaseStructure base;
   };
-
 }
 #endif
