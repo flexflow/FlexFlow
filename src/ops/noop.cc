@@ -40,7 +40,7 @@ void NoOp::init(const FFModel& ff)
   parallel_is = outputs[0]->parallel_is;
   // For OP_INPUT, initialize tensor to zero
   if (op_type == OP_INPUT) {
-    ConstantInitializer* initializer;
+    ConstantInitializer* initializer = NULL;
     if (outputs[0]->data_type == DT_FLOAT) {
       initializer = new ConstantInitializer(0.0f);
     } else if (outputs[0]->data_type == DT_INT64) {
