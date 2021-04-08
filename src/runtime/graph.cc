@@ -571,15 +571,10 @@ std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> Graph::split_at_node(N
   auto first_graph = std::unique_ptr<Graph>(new Graph(this->model));
   auto second_graph = std::unique_ptr<Graph>(new Graph(this->model));
 
-  /* SequenceGraph sequence = this->get_sequence_graph(); */
-  /* Graph transed = this->apply_sequence_graph(sequence); */
-  // TODO FIXME @lockshaw   
-Graph const &transed = *this;
-
   std::unordered_set<Node> used_nodes;
   {
     std::vector<Node> topo_sorted;
-    topo_sort(transed, &topo_sorted);
+    topo_sort(*this, &topo_sorted);
 
     for (auto const &node : topo_sorted) {
       if (node == bottleneck) {
@@ -593,7 +588,7 @@ Graph const &transed = *this;
     assert (used_nodes.size() < topo_sorted.size());
   }
 
-  for (const auto& it : transed.inEdges) {
+  for (const auto& it : this->inEdges) {
     const auto& inList = it.second;
     if (used_nodes.find(it.first) != used_nodes.end()) {
       // Add all in-edges of used_nodes in to the first_graph
@@ -861,7 +856,6 @@ T SearchHelper::estimate_xfer_cost(
       assert(it2.srcOp == source.node);
       assert(sink.node.ptr->inputs[it2.dstIdx]->is_valid_machine_view(source.view));
 
-      // TODO @lockshaw Shouldn't this include the source node cost?
       op_cost += this->model->simulator->estimate_xfer_cost(source.node.ptr->outputs[it2.srcIdx], source.view, sink.view);
     }
     this->add_operator_cost<T>(source, op_cost, &result);
