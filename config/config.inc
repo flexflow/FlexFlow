@@ -52,15 +52,6 @@ else
   SET_PYTHON="-DFF_USE_PYTHON=ON"
 fi
 
-# enable Python PyBind11
-if [ "$FF_USE_PYBIND" = "ON" ]; then
-  SET_PYBIND11="-DFF_USE_PYBIND=ON"
-elif [ "$FF_USE_PYBIND" = "OFF" ]; then
-  SET_PYBIND11="-DFF_USE_PYBIND=OFF"
-else
-  SET_PYBIND11="-DFF_USE_PYBIND=OFF"
-fi
-
 # enable NCCL
 if [ "$FF_USE_NCCL" = "ON" ]; then
   SET_NCCL="-DFF_USE_NCCL=ON"
