@@ -280,6 +280,13 @@ def parse_batchmatmul(op_str,node):
   op_str = op_str + enum_to_str(OpType, OpType.BATCH_MATMUL) + "\n"
   return op_str
 
+def parse_parameter(op_str,parameter):
+  op_str = op_str + enum_to_str(OpType, OpType.INIT_PARAM) + ", "
+  for dim in parameter.shape[:-1]:
+      op_str = op_str + str(dim)+", "
+  op_str = op_str + str(parameter.shape[-1])+"\n"
+  return op_str
+
 def parse_permute(op_str,node):
     assert len(node.inedges) >= 1
     op_str = op_str + enum_to_str(OpType, OpType.PERMUTE) + ", "
@@ -338,6 +345,16 @@ def torch_to_flexflow(model, filename):
 def torch_to_flexflow_str(model):
   graph = __symbolic_trace(model)
   lines = []
+
+  for name,parameter in model.named_parameters():
+      splitted_name = name.split(".")
+      if not (splitted_name[-1] in ["weight","bias"]):
+          fx_name = "_"+"_".join(splitted_name)
+          print(fx_name)
+          op_str = fx_name+", "
+          op_str = parse_inoutedge(op_str,(),())
+          op_str = parse_parameter(op_str,parameter)
+          lines.append(op_str)
   
   for node in graph:
     # op name
