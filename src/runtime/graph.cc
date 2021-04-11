@@ -1188,6 +1188,14 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
         sez.serialize(combine->combine_degree);
         break;
       }
+      case OP_FUSED_PARALLEL:
+      {
+        FusedParallelOp* fused = (FusedParallelOp*) op;
+        sez.serialize(fused->num_parallel_ops);
+        for (int i = 0; i < fused->num_parallel_ops; i++)
+          sez.serialize(fused->parallel_ops[i]);
+        break;
+      }
       default:
       {
         fprintf(stderr, "The following operator type is currently not supported"
@@ -1358,6 +1366,20 @@ void FFModel::deserialize_graph_optimal_view(Deserializer& dez,
         dez.deserialize(reduction_degree);
         node = get_or_create_reduction_node(inputs[0], reduction_dim,
                                             reduction_degree);
+        break;
+      }
+      case OP_FUSED_PARALLEL:
+      {
+        assert(num_inputs == 1);
+        std::vector<ParallelOpInfo> parallel_ops;
+        int num_parallel_ops;
+        dez.deserialize(num_parallel_ops);
+        for (int i = 0; i < num_parallel_ops; i++) {
+          ParallelOpInfo info;
+          dez.deserialize(info);
+          parallel_ops.push_back(info);
+        }
+        node = get_or_create_fused_parallel_node(inputs[0], parallel_ops);
         break;
       }
       default:

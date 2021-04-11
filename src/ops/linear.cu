@@ -1106,6 +1106,9 @@ Node FFModel::get_or_create_linear_node(const Tensor input,
                                         ActiMode activation,
                                         bool use_bias)
 {
+  // replica degree cannot be larger than workersPerNode
+  //if (input->dims[input->num_dims-1].degree > config.workersPerNode)
+  //  return Node::INVALID_NODE;
   // out_dim must be divisble by replicate_degree
   if (out_dim % input->dims[input->num_dims-1].degree != 0)
     return Node::INVALID_NODE;

@@ -778,21 +778,26 @@ void FFModel::graph_optimize(size_t budget,
   }
   // Construct graph substitutions
   std::vector<GraphXfer*> xfers;
-  xfers.push_back(create_replicate_linear_combine(this, 3, 4, AC_MODE_RELU, false));
-  xfers.push_back(create_replicate_linear_combine(this, 3, 4, AC_MODE_NONE, false));
-  xfers.push_back(create_partition_linear_combine(this, 3, 4, AC_MODE_RELU, false));
-  xfers.push_back(create_partition_linear_combine(this, 3, 4, AC_MODE_NONE, false));
-  xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, 4/*num_parts*/));
-  xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, 4/*num_parts*/));
-  //xfers.push_back(eliminate_combine_partition(this, 1/*parallel_dims*/, 4/*num_parts*/));
-
-  xfers.push_back(create_replicate_linear_combine(this, 3, 2, AC_MODE_RELU, false));
-  xfers.push_back(create_replicate_linear_combine(this, 3, 2, AC_MODE_NONE, false));
-  xfers.push_back(create_partition_linear_combine(this, 3, 2, AC_MODE_RELU, false));
-  xfers.push_back(create_partition_linear_combine(this, 3, 2, AC_MODE_NONE, false));
-  xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, 2/*num_parts*/));
-  xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, 2/*num_parts*/));
-  //xfers.push_back(eliminate_combine_partition(this, 1/*parallel_dims*/, 2/*num_parts*/));
+  std::vector<int> all_parallel_degrees, single_node_parallel_degrees;
+  for (int i = 2; i <= config.workersPerNode; i++)
+    if (config.workersPerNode % i == 0) {
+      single_node_parallel_degrees.push_back(i);
+      all_parallel_degrees.push_back(i);
+    }
+  for (int i = 2; i <= config.numNodes; i++)
+    if (config.numNodes % i == 0) 
+      all_parallel_degrees.push_back(i * config.workersPerNode);
+  //for (const auto& it : single_node_parallel_degrees) {
+  //  xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_RELU, false));
+  //  xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_NONE, false));
+  //}
+  for (const auto& it : all_parallel_degrees) {
+    if (it != config.numNodes * config.workersPerNode) continue;
+    xfers.push_back(create_partition_linear_combine(this, 3, it, AC_MODE_RELU, false));
+    xfers.push_back(create_partition_linear_combine(this, 3, it, AC_MODE_NONE, false));
+    xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, it/*num_parts*/));
+    xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
+  }
 
   std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
   std::unordered_set<size_t> hashmap;
