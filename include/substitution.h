@@ -76,6 +76,10 @@ public:
       const TensorX& input2 = TensorX::NO_TX,
       const TensorX& input3 = TensorX::NO_TX,
       const TensorX& input4 = TensorX::NO_TX);
+  OpX(OperatorType type,
+      int num_inputs,
+      int num_outputs,
+      const TensorX* inputs);
   bool add_pm_constraint(Compare, PMParameter para, int value);
   bool add_input_constraint(Compare, TNParameter, DIMParameter, int);
   bool add_input_constraint(Compare, TNParameter, DIMParameter, TNParameter, DIMParameter);
@@ -105,6 +109,10 @@ public:
   void unmatch(OpX* srcOp, const Node& op, Graph* graph);
   // Compute Ops
   OpX* create_noop(const TensorX& input);
+  OpX* create_concat(const TensorX* inputs,
+                     int num_inputs,
+                     const OpX* match_opx,
+                     int concat_dim);
   OpX* create_element_binary(const TensorX& input1,
                              const TensorX& input2,
                              OperatorType op_type);

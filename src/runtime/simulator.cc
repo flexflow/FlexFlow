@@ -373,6 +373,11 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const ParallelConfig&
 
 CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& view)
 {
+  CostMetrics cost_metrics;
+  // First, estimate operator sync cost
+  // We don't care about cache since the estimate is cheap
+  op->estimate_sync_cost(this, view, cost_metrics);
+  // Second, measure operator compute cost
   size_t hash = 17 * 31 + std::hash<size_t>()(op->op_guid);
   hash = hash * 31 + std::hash<int>()(view.device_type);
   // start_device_id does not affect operator_cost
@@ -387,7 +392,6 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& vi
   std::unordered_map<size_t, CostMetrics>::const_iterator iter =
     hash_to_operator_cost.find(hash);
   if (iter == hash_to_operator_cost.end()) {
-    CostMetrics cost_metrics;
     ParallelConfig config;
     config.device_type = (ParallelConfig::DeviceType) view.device_type;
     const Tensor output = op->outputs[0];
@@ -403,20 +407,122 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& vi
       handle_measure_operator_cost_unimplemented(op);
     }
     hash_to_operator_cost[hash] = cost_metrics;
-    return cost_metrics;
   } else {
-    return iter->second;
+    CostMetrics comp_metrics = iter->second;
+    cost_metrics.forward_time = comp_metrics.forward_time;
+    cost_metrics.backward_time = comp_metrics.backward_time;
   }
+  return cost_metrics;
 }
 
-float Simulator::estimate_xfer_cost(const Tensor tensor,
+float Simulator::estimate_xfer_cost(const Op* op,
+                                    int input_idx,
                                     const MachineView& source_view,
                                     const MachineView& sink_view)
 {
-  // TODO: to be implemented
   //assert(tensor->is_valid_machine_view(source_view));
   //assert(tensor->is_valid_machine_view(sink_view));
-  return 0.0f;
+  if (op->is_parallel_op()) {
+    // TODO: implement parallel op xfer cost
+    return 0.0f;
+  } else {
+    // No cost if source_view == sink_view
+    if (source_view == sink_view)
+      return 0.0f;
+    assert(source_view.ndims == sink_view.ndims);
+    Domain d;
+    d.dim = source_view.ndims;
+    for (int i = 0; i < d.dim; i++) {
+      assert(source_view.dim[i] == sink_view.dim[i]);
+      d.rect_data[i] = 0;
+      d.rect_data[i+d.dim] = source_view.dim[i]-1;
+    }
+    const Tensor input_tensor = op->inputs[input_idx];
+    size_t total_size = 1;
+    switch (input_tensor->data_type) {
+      case DT_FLOAT:
+      {
+        total_size = sizeof(float);
+        break;
+      }
+      case DT_INT64:
+      {
+        total_size = sizeof(int64_t);
+        break;
+      }
+      case DT_INT32:
+      {
+        total_size = sizeof(int32_t);
+        break;
+      }
+      default:
+        assert(false);
+    }
+    for (int i = 0; i < input_tensor->num_dims; i++)
+      total_size *= input_tensor->dims[i].size / input_tensor->dims[i].degree;
+    float max_xfer_cost = 0.0f;
+    for (Domain::DomainPointIterator it(d); it; it++) {
+      int source_device = source_view.get_device_id(*it);
+      int sink_device = sink_view.get_device_id(*it);
+      float bandwidth = 0.0f;
+      if (machine->get_gpu(source_device)->node_id==machine->get_gpu(sink_device)->node_id) {
+        bandwidth = machine->get_intra_node_gpu_bandwidth();
+      } else {
+        bandwidth = machine->get_inter_node_gpu_bandwidth();
+      }
+      max_xfer_cost = std::max(max_xfer_cost, 2 * total_size / bandwidth);
+    }
+    return max_xfer_cost;
+  }
+}
+
+bool Op::estimate_sync_cost(Simulator* sim,
+                            const MachineView& view,
+                            CostMetrics& cost_metrics) const
+{
+  // By default we assume an operator does not have sync cost
+  // Implement a derived method for operators with parameters
+  return true;
+}
+
+float Simulator::default_estimate_sync_cost(const Tensor tensor,
+                                            const MachineView& view,
+                                            int num_replicate_dims)
+{
+  // Currently only support 1 replicate_dim
+  assert(num_replicate_dims == 1);
+  if (tensor->dims[tensor->num_dims-1].degree == 1) {
+    // No replications
+    return 0.0f;
+  } else {
+    int replicate_dim = tensor->dims[tensor->num_dims-1].parallel_idx;
+    assert(replicate_dim >= 0);
+    int replicate_stride = view.stride[replicate_dim];
+    bool inter_node_sync = false;
+    Domain d;
+    d.dim = view.ndims;
+    for (int i = 0; i < d.dim; i++) {
+      d.rect_data[i] = 0;
+      d.rect_data[i+d.dim] = view.dim[i]-1;
+    }
+    for (Domain::DomainPointIterator it(d); it; it++) {
+      int my_device = view.get_device_id(*it);
+      if ((*it)[replicate_dim] > 0) {
+        int last_device = my_device - replicate_stride;
+        if (machine->get_gpu(my_device)->node_id!=machine->get_gpu(last_device)->node_id)
+          inter_node_sync = true;
+      }
+    }
+    float bandwidth = 0.0f;
+    if (!inter_node_sync) {
+      bandwidth = machine->get_intra_node_gpu_bandwidth();
+    } else {
+      bandwidth = machine->get_inter_node_gpu_bandwidth();
+    }
+    size_t total_size = sizeof(float) * tensor->get_volume() / tensor->get_total_num_parts();
+    return 2*total_size / bandwidth;
+  }
+
 }
 
 float Simulator::simulate_runtime(const FFModel* model,

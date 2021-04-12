@@ -860,7 +860,7 @@ T SearchHelper::estimate_xfer_cost(
       assert(it2.srcOp == source.node);
       assert(sink.node.ptr->inputs[it2.dstIdx]->is_valid_machine_view(source.view));
 
-      op_cost += this->model->simulator->estimate_xfer_cost(source.node.ptr->outputs[it2.srcIdx], source.view, sink.view);
+      op_cost += this->model->simulator->estimate_xfer_cost(sink.node.ptr, it2.srcIdx, source.view, sink.view);
     }
     this->add_operator_cost<T>(source, op_cost, &result);
   }
@@ -944,7 +944,7 @@ T SearchHelper::graph_cost(const Graph* graph,
 
   if (include_sink_compute_time) {
     CostMetrics metrics = this->model->simulator->measure_operator_cost(sink.node.ptr, sink.view);
-    this->add_operator_cost<T>(sink, metrics.forward_time + metrics.backward_time, &result);
+    this->add_operator_cost<T>(sink, metrics.forward_time + metrics.backward_time + metrics.sync_time, &result);
   }
 
   return result;

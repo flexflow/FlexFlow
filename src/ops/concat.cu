@@ -472,6 +472,17 @@ bool Concat::measure_operator_cost(Simulator* sim,
   return true;
 }
 
+bool Concat::get_int_parameter(PMParameter para, int* value) const
+{
+  switch (para) {
+    case PM_AXIS:
+      *value = axis;
+      return true;
+    default:
+      return Op::get_int_parameter(para, value);
+  }
+}
+
 Node FFModel::get_or_create_concat_node(int num_inputs,
                                         const Tensor* inputs,
                                         int axis)

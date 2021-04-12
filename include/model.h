@@ -266,8 +266,11 @@ public:
   //virtual void create_input_partition(FFModel& model);
   virtual void print_layer(const FFModel& model) = 0;
   virtual bool measure_operator_cost(Simulator* sim,
-      const ParallelConfig& pc,
-      CostMetrics& cost_metrics) const = 0;
+                                     const ParallelConfig& pc,
+                                     CostMetrics& cost_metrics) const = 0;
+  virtual bool estimate_sync_cost(Simulator* sim,
+                                  const MachineView& pc,
+                                  CostMetrics& cost_metrics) const;
   // Other virtual functions that can be optionally overwritten
   virtual ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   virtual ParallelConfig get_data_parallel_config(const FFModel& ff) const;
@@ -1306,6 +1309,9 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
+  bool estimate_sync_cost(Simulator* sim,
+                          const MachineView& pc,
+                          CostMetrics& cost_metrics) const;
   ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
 private:
@@ -1923,6 +1929,7 @@ public:
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
+  bool get_int_parameter(PMParameter, int*) const;
   //void update(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
   //Parameter* get_parameter(int index) {assert(0); return NULL;}

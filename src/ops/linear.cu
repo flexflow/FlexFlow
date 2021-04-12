@@ -1056,6 +1056,23 @@ bool Linear::measure_operator_cost(Simulator* sim,
   return true;
 }
 
+bool Linear::estimate_sync_cost(Simulator* sim,
+                                const MachineView& view,
+                                CostMetrics& cost_metrics) const
+{
+  // Estimate the cost of sync weights
+  TensorBase tensor_base;
+  tensor_base.num_dims = 3;
+  tensor_base.dims[0] = inputs[0]->dims[0];
+  tensor_base.dims[1] = inputs[0]->dims[inputs[0]->num_dims-1];
+  tensor_base.dims[2] = inputs[0]->dims[inputs[0]->num_dims-2];
+  tensor_base.dims[1].size = out_channels;
+  tensor_base.dims[2].size = tensor_base.dims[0].degree;
+  cost_metrics.sync_time = sim->default_estimate_sync_cost(&tensor_base, view, 1);
+  //printf("[Estimate Linear] name(%s) sync_time(%.4lf)\n", name, cost_metrics.sync_time);
+  return true;
+}
+
 ParallelConfig Linear::get_random_parallel_config(const FFModel& ff) const
 {
   if (!ff.config.enable_parameter_parallel)

@@ -37,7 +37,9 @@ class Op;
 class FFModel;
 
 struct CostMetrics {
+  CostMetrics(): forward_time(0.0f), backward_time(0.0f), sync_time(0.0f), memory_requirement(0) {}
   float forward_time, backward_time;
+  float sync_time;
   size_t memory_requirement;
 };
 
@@ -299,9 +301,13 @@ public:
       SimTask* src_task, SimTask* dst_task, size_t message_size);
   CostMetrics measure_operator_cost(const Op* op, const ParallelConfig& config);
   CostMetrics measure_operator_cost(const Op* op, const MachineView& view);
-  float estimate_xfer_cost(const Tensor tensor,
+  float estimate_xfer_cost(const Op* op,
+                           int input_idx,
                            const MachineView& source_view,
                            const MachineView& sink_view);
+  float default_estimate_sync_cost(const Tensor tensor,
+                                   const MachineView& view,
+                                   int num_replicate_dims);
   float simulate_runtime(const FFModel* model,
       const std::map<const Op*, ParallelConfig>& global,
       CompMode comp_mode);

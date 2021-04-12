@@ -38,6 +38,12 @@ GraphXfer* create_partition_add_combine(FFModel* model,
                                         int parallel_dim,
                                         int num_parts);
 
+GraphXfer* create_partition_concat_combine(FFModel* model,
+                                           int num_inputs,
+                                           int concat_dim,
+                                           int parallel_dim,
+                                           int num_parts);
+
 GraphXfer* create_partition_softmax_combine(FFModel* model,
                                             int softmax_dim,
                                             int part_dim,
@@ -87,6 +93,21 @@ OpX::OpX(const OperatorType _type,
   all_inputs[3] = input3;
   for (int i = 0; i < num_inputs; i++) {
     inputs.push_back(all_inputs[i]);
+  }
+  for (int i = 0; i < num_outputs; i++) {
+    TensorX out(this, i);
+    outputs.push_back(out);
+  }
+}
+
+OpX::OpX(const OperatorType _type,
+         int num_inputs,
+         int num_outputs,
+         const TensorX* input_array)
+: type(_type), mapOp(Node::INVALID_NODE), matchOpX(NULL)
+{
+  for (int i = 0; i < num_inputs; i++) {
+    inputs.push_back(input_array[i]);
   }
   for (int i = 0; i < num_outputs; i++) {
     TensorX out(this, i);
@@ -522,6 +543,13 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
       op = model->get_or_create_noop_node(inputs[0]);
       break;
     }
+    case OP_CONCAT:
+    {
+      int axis;
+      assert(opx->get_pm_constraint(PM_AXIS, axis));
+      op = model->get_or_create_concat_node(opx->inputs.size(), inputs, axis);
+      break;
+    }
     case OP_EW_ADD:
     {
       op = model->get_or_create_element_binary_node(inputs[0], inputs[1], opx->type);
@@ -632,6 +660,17 @@ OpX* GraphXfer::create_noop(const TensorX& input)
 {
   OpX* noop = new OpX(OP_NOOP, 1, 1, input);
   return noop;
+}
+
+OpX* GraphXfer::create_concat(const TensorX* inputs,
+                              int num_inputs,
+                              const OpX* _matchOpX,
+                              int concat_dim)
+{
+  OpX* concat = new OpX(OP_CONCAT, num_inputs, 1/*outputs*/, inputs);
+  concat->matchOpX = _matchOpX;
+  concat->add_pm_constraint(COMPARE_EQ, PM_AXIS, concat_dim);
+  return concat;
 }
 
 OpX* GraphXfer::create_element_binary(const TensorX& input1,
@@ -787,16 +826,24 @@ void FFModel::graph_optimize(size_t budget,
   for (int i = 2; i <= config.numNodes; i++)
     if (config.numNodes % i == 0) 
       all_parallel_degrees.push_back(i * config.workersPerNode);
-  //for (const auto& it : single_node_parallel_degrees) {
-  //  xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_RELU, false));
-  //  xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_NONE, false));
-  //}
+  for (const auto& it : single_node_parallel_degrees) {
+    xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_RELU, false));
+    xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_NONE, false));
+  }
   for (const auto& it : all_parallel_degrees) {
     if (it != config.numNodes * config.workersPerNode) continue;
     xfers.push_back(create_partition_linear_combine(this, 3, it, AC_MODE_RELU, false));
     xfers.push_back(create_partition_linear_combine(this, 3, it, AC_MODE_NONE, false));
     xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, it/*num_parts*/));
     xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
+    {
+      std::unordered_set<int> concat_num_inputs;
+      for (size_t i = 0; i < layers.size(); i++)
+        if (layers[i]->op_type == OP_CONCAT)
+          concat_num_inputs.insert(layers[i]->numInputs);
+      for (const auto& it2 : concat_num_inputs)
+        xfers.push_back(create_partition_concat_combine(this, it2/*num_inputs*/, 0/*concat_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
+    }
   }
 
   std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
@@ -1153,6 +1200,34 @@ GraphXfer* create_partition_add_combine(FFModel* model,
   subst->dstOps.push_back(repartition2);
   subst->dstOps.push_back(add2);
   subst->dstOps.push_back(combine);
+  return subst;
+}
+
+GraphXfer* create_partition_concat_combine(FFModel* model,
+                                           int num_inputs,
+                                           int concat_dim,
+                                           int parallel_dim,
+                                           int num_parts)
+{
+  GraphXfer* subst = new GraphXfer(model);
+  assert(num_inputs <= MAX_NUM_INPUTS);
+  TensorX inputs[MAX_NUM_INPUTS];
+  for (int i = 0; i < num_inputs; i++)
+    inputs[i] = subst->new_tensor();
+  OpX* concat = subst->create_concat(inputs, num_inputs, NULL/*matchOpX*/, concat_dim);
+  subst->srcOps.push_back(concat);
+  TensorX new_inputs[MAX_NUM_INPUTS];
+  for (int i = 0; i < num_inputs; i++) {
+    OpX* repartition = subst->create_repartition(inputs[i], parallel_dim, num_parts);
+    new_inputs[i] = repartition->outputs[0];
+    subst->dstOps.push_back(repartition);
+  }
+  OpX* concat2 = subst->create_concat(new_inputs, num_inputs, concat/*matchOpX*/,
+                                      concat_dim);
+  subst->dstOps.push_back(concat2);
+  OpX* combine = subst->create_combine(concat2->outputs[0], parallel_dim, num_parts);
+  subst->dstOps.push_back(combine);
+  subst->map_output(concat->outputs[0], combine->outputs[0]);
   return subst;
 }
 
