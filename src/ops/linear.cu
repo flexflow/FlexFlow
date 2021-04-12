@@ -47,12 +47,12 @@ Tensor FFModel::dense(const Tensor input,
 #endif
   Tensor kernel, bias;
   {
-    const int dims[3] = {1, outDim, input->dims[0].size};
+    const int dims[3] = {input->dims[input->num_dims-2].degree, outDim, input->dims[0].size};
     kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
         true/*create_grad*/, kernel_initializer, comm_type);
   }
   if (use_bias) {
-    const int dims[3] = {1, 1, outDim};
+    const int dims[3] = {input->dims[input->num_dims-2].degree, input->dims[0].degree, outDim};
     bias = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
         true/*create_grad*/, bias_initializer, comm_type);
   } else {
