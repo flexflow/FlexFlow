@@ -828,11 +828,13 @@ void FFModel::graph_optimize(size_t budget,
       all_parallel_degrees.push_back(i * config.workersPerNode);
   for (const auto& it : single_node_parallel_degrees) {
     xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_RELU, false));
+    xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_SIGMOID, false));
     xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_NONE, false));
   }
   for (const auto& it : all_parallel_degrees) {
     if (it != config.numNodes * config.workersPerNode) continue;
     xfers.push_back(create_partition_linear_combine(this, 3, it, AC_MODE_RELU, false));
+    xfers.push_back(create_partition_linear_combine(this, 3, it, AC_MODE_SIGMOID, false));
     xfers.push_back(create_partition_linear_combine(this, 3, it, AC_MODE_NONE, false));
     xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, it/*num_parts*/));
     xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
@@ -865,7 +867,7 @@ void FFModel::graph_optimize(size_t budget,
            counter, cur_graph->optimal_cost(), best_cost, candidates.size());
     counter ++;
     for (size_t i = 0; i < xfers.size(); i++) {
-      xfers[i]->run(0, cur_graph, candidates, hashmap, best_cost * 1.05, 100000);
+      xfers[i]->run(0, cur_graph, candidates, hashmap, best_cost * 2, 100000);
     }
     if (best_graph != cur_graph) {
       delete cur_graph;

@@ -239,6 +239,29 @@ T SearchHelper::find_optimal_sequence_graph_time(
   T optimal = this->infinity<T>();
 
   std::vector<MachineView> valid_views = this->get_valid_machine_views(bn_node.ptr, resources);
+  // A Corner Case:
+  // If bn_node is a parallel_op and an input to sink_node,
+  // Add sink_node's view to the list, since sink_node's view
+  // may not be a valid view for resources, but UniFlow support
+  // this case since parallel_op does not trigger computation
+  {
+    bool found = false;
+    const auto& inList = g->inEdges.find(sink.node)->second;
+    for (const auto& e : inList) {
+      if (e.srcOp == bn_node) {
+        found = true;
+        break;
+      }
+    }
+    if (found) {
+      for (int j = 0; j < bn_node.ptr->numOutputs; j++)
+        if (!bn_node.ptr->outputs[j]->is_valid_machine_view(sink.view))
+          found = false;
+    }
+    if (found) {
+      valid_views.push_back(sink.view);
+    }
+  }
   if (valid_views.empty()) {
     return optimal;
   }
@@ -282,7 +305,7 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
 
   // Consider run the two in parallel
   // Split resources vertically
-  for (int i = 1; i < resources.num_nodes - 1; i++) {
+  for (int i = 1; i < resources.num_nodes; i++) {
     MachineResource firstRes = resources, secondRes = resources;
     firstRes.num_nodes = i;
     secondRes.num_nodes = resources.num_nodes - i;
@@ -512,9 +535,8 @@ std::vector<MachineView> SearchHelper::get_valid_machine_views(const Op* op, con
       view.start_device_id = resource.start_cpu_id;
     else
       assert(false);
-    if (!resource.is_valid_machine_view(view))
-      continue;
-    valid_views.push_back(view);
+    if (resource.is_valid_machine_view(view))
+      valid_views.push_back(view);
   }
   return valid_views;
 }
