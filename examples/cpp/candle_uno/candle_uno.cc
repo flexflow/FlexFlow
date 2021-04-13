@@ -104,8 +104,8 @@ void top_level_task(const Task* task,
   {
     assert(feature_shapes.find(it->second) != feature_shapes.end());
     int shape = feature_shapes[it->second];
-    const int dims[] = {ff_config.batchSize, shape};
-    Tensor input = ff.create_tensor<2>(dims, DT_FLOAT);
+    const int dims[] = {1, ff_config.batchSize, shape};
+    Tensor input = ff.create_tensor<3>(dims, DT_FLOAT);
     all_inputs.push_back(input);
     if (input_models.find(it->second) != input_models.end()) {
       Tensor encoded = build_feature_model(&ff, input, candle_config.dense_feature_layers);
@@ -114,7 +114,7 @@ void top_level_task(const Task* task,
       encoded_inputs[n++] = input;
     }
   }
-  Tensor output = ff.concat(n, encoded_inputs, 1/*axis*/);
+  Tensor output = ff.concat(n, encoded_inputs, -1/*axis*/);
   for (size_t i = 0; i < candle_config.dense_layers.size(); i++) {
     int out_dim = candle_config.dense_layers[i];
     output = ff.dense(output, out_dim, AC_MODE_RELU);
@@ -122,8 +122,8 @@ void top_level_task(const Task* task,
   output = ff.dense(output, 1);
   Tensor label;
   {
-    const int dims[] = {ff_config.batchSize, 1};
-    label = ff.create_tensor<2>(dims, DT_FLOAT);
+    const int dims[] = {1, ff_config.batchSize, 1};
+    label = ff.create_tensor<3>(dims, DT_FLOAT);
   }
   //ff.mse_loss("mse_loss", output, label, "average"/*reduction*/);
   // Use SGD Optimizer

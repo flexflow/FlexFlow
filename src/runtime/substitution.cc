@@ -455,7 +455,7 @@ Graph* GraphXfer::create_new_graph(Graph* graph)
         newGraph->add_edge(srcOp->mapOp, dstOp->mapOp, srcIdx, i);
       }
   }
-  // Simplify the graph my eliminating reverse parallel ops
+  // Simplify the graph by eliminating reverse parallel ops
   // and fusing multiple parallel ops
   // old graph: e1->n1->e2->n2->en
   // new graph: e1->new_node->en
@@ -496,6 +496,24 @@ Graph* GraphXfer::create_new_graph(Graph* graph)
       if (simplify) break;
     }
   }
+  // Remove final parallel ops
+  std::vector<Node> candidates;
+  for (const auto& it : newGraph->outEdges) {
+    if (it.second.size() == 0 && it.first.ptr->is_parallel_op()) {
+      candidates.push_back(it.first);
+    }
+  }
+  size_t index = 0;
+  while (index < candidates.size()) {
+    Node parallel_op = candidates[index++];
+    const auto& inList = newGraph->inEdges.find(parallel_op)->second;
+    assert(inList.size() == 1);
+    Edge e = *inList.begin();
+    newGraph->remove_edge(e);
+    if (newGraph->outEdges.find(e.srcOp)->second.size() == 0 && e.srcOp.ptr->is_parallel_op()) {
+      candidates.push_back(e.srcOp);
+    }
+  }
   // Remove NoOps
   std::vector<Node> noop_nodes;
   for (const auto& it : newGraph->inEdges) {
@@ -504,7 +522,7 @@ Graph* GraphXfer::create_new_graph(Graph* graph)
       noop_nodes.push_back(it.first);
     }
   }
-  size_t index = 0;
+  index = 0;
   while (index < noop_nodes.size()) {
     Node noop = noop_nodes[index++];
     const auto& inList = newGraph->inEdges.find(noop)->second;
@@ -862,12 +880,14 @@ void FFModel::graph_optimize(size_t budget,
       delete best_graph;
       best_graph = cur_graph;
       best_cost = cur_graph->optimal_cost();
+    } else if (cur_graph->optimal_cost() > best_cost * 1.2) {
+      break;
     }
     printf("    [%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)\n",
            counter, cur_graph->optimal_cost(), best_cost, candidates.size());
     counter ++;
     for (size_t i = 0; i < xfers.size(); i++) {
-      xfers[i]->run(0, cur_graph, candidates, hashmap, best_cost * 2, 100000);
+      xfers[i]->run(0, cur_graph, candidates, hashmap, best_cost * 1.2, 1000);
     }
     if (best_graph != cur_graph) {
       delete cur_graph;
