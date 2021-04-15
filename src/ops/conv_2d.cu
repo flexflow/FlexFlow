@@ -31,37 +31,60 @@ Tensor FFModel::conv2d(const Tensor input,
                        Initializer* bias_initializer,
                        char const *name)
 {
-  assert(input->num_dims == 4); /*NCHW*/
-  if (kernel_initializer == NULL) {
-    int seed = std::rand();
-    kernel_initializer = new GlorotUniform(seed);
-  }
-  if (bias_initializer == NULL && use_bias) {
-    bias_initializer = new ZeroInitializer();
-  }
-#ifdef FF_USE_NCCL
-  ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-  ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-  Tensor kernel, bias;
-  {
-    const int dims[4] = {outChannels, input->dims[2].size / groups, kernelH, kernelW};
-    kernel = create_weight<4>(dims, DT_FLOAT, NULL/*owner_op*/,
-        true/*create_grad*/, kernel_initializer, comm_type);
-  }
-  if (use_bias) {
-    const int dims[1] = {outChannels};
-    bias = create_weight<1>(dims, DT_FLOAT, NULL/*owner_op*/,
-        true/*create_grad*/, bias_initializer, comm_type);
-  } else {
-    bias = NULL;
-  }
-  Conv2D *conv = new Conv2D(*this, input, kernel, bias,
-      strideH, strideW, paddingH, paddingW, activation, name);
+  assert(input->num_dims == 5); /*RNCHW*/
+
+  Conv2D *conv = new Conv2D(
+      *this, 
+      input, 
+      outChannels,
+      kernelH, kernelW,
+      strideH, strideW, 
+      paddingH, paddingW, 
+      activation,
+      groups,
+      use_bias,
+      name
+  );
   layers.push_back(conv);
   return conv->outputs[0];
 }
+
+/* void Conv2D::output_size(ParallelDim[] output_size, Tensor input) const { */
+/*   int input_w = inputs[0]->dims[0].size; */
+/*   int input_h = inputs[0]->dims[1].size; */
+
+/*   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w; */
+/*   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h; */
+/*   int output_c = out_channels; */
+/*   int output_n = inputs[0]->dims[3].size; */
+
+Conv2D::Conv2D(FFModel& model,
+               const Tensor input,
+               int outChannels,
+               int kernelH, int kernelW,
+               int strideH, int strideW, 
+               int paddingH, int paddingW,
+               ActiMode activation,
+               int groups,
+               bool use_bias,
+               const char* name)
+: Op(model, OP_LINEAR, name, 1/*inputs*/, 0/*weights*/, 1 /*outputs*/, input),
+  kernel_h(kernelH), kernel_w(kernelW),
+  stride_h(strideH), stride_w(strideW),
+  padding_h(paddingH), padding_w(paddingW),
+  activation(activation),
+  groups(groups),
+  use_bias(use_bias)
+{
+  int numdim = input->num_dims;
+
+  ParallelDim output_dims[MAX_TENSOR_DIM];
+  /* std::copy(input->dims, input->dims + numdim, output_dims); */
+
+  /* output_dims[numdim-1].size = input->dims[0].degree; */
+}
+
+
 
 /*
 locals[0] = kernel
@@ -75,7 +98,7 @@ Conv2D::Conv2D(FFModel& model,
                int _padding_h, int _padding_w,
                ActiMode _activation,
                const char* name)
-: Op(model, OP_CONV2D, name, 1/*numInputs*/, _bias == NULL ? 1 : 2/*numWeights*/, _input, _kernel, _bias),
+: Op(model, OP_CONV2D, name, 1/*numInputs*/, _bias == NULL ? 1 : 2/*numWeights*/, 1/*outputs*/, _input, _kernel, _bias),
   in_channels(_input->dims[2].size), out_channels(_kernel->dims[3].size),
   kernel_h(_kernel->dims[1].size), kernel_w(_kernel->dims[0].size),
   stride_h(_stride_h), stride_w(_stride_w),
@@ -107,77 +130,6 @@ Conv2D::Conv2D(FFModel& model,
   // Require input channels is divisible by groups
   assert(in_channels % groups == 0);
 }
-
-#ifdef DEADCODE
-void Conv2D::create_weights(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  task_is = (IndexSpaceT<4>)model.get_or_create_task_is(4, name);
-
-  // TODO: temp work, will let users to pick either NCCL or PS
-#ifdef FF_USE_NCCL
-  ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-  ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-
-  // Create kernel
-  {
-    const int dims[4] = {out_channels, in_channels / groups, kernel_h, kernel_w};
-    weights[0] = model.create_conv_weight<4>(this, dims, DT_FLOAT,
-        kernel_initializer, true/*create_grad*/, comm_type);
-  }
-  // Create bias tensor
-  if (use_bias) {
-    const int dims[1] = {out_channels};
-    weights[1] = model.create_conv_weight<1>(this, dims, DT_FLOAT,
-        bias_initializer, true/*create_grad*/, comm_type);
-    assert(numWeights == 2);
-  } else {
-    assert(numWeights == 1);
-  }
-}
-
-void Conv2D::map_output_tensors(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
-
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  // Create output tensor
-  int input_w = inputs[0].dims[0].size;
-  int input_h = inputs[0].dims[1].size;
-  int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
-  int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  int output_c = out_channels;
-  int output_n = inputs[0].dims[3].size;
-  int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
-  int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
-  int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
-  int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
-  {
-    const int dims[4] = {output_n, output_c, output_h, output_w};
-    outputs[0] = model.create_tensor<4>(dims, DT_FLOAT, this);
-    outputs[0].owner_op = this;
-    outputs[0].owner_idx = 0;
-  }
-  // Compute partition bound for input
-  Rect<4> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0]->part.get_index_partition());
-  // Currently assume we didn't split across the channel dimension
-  assert(num_par_c == 1);
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0]->part;
-    input_grad_lps[0] = inputs[0]->part_grad;
-  } else {
-    model.create_disjoint_partition(
-        inputs[0], (IndexSpaceT<4>)task_is, input_lps[0], input_grad_lps[0]);
-  }
-}
-#endif
 
 cudnnConvolutionFwdAlgo_t
 selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
@@ -661,97 +613,6 @@ void Conv2D::backward(const FFModel& ff)
   //if (first_layer)
     //fm.wait_all_results();
 }
-
-#ifdef DEADCODE
-/*
-  regions[0](I/O): filter
-  regions[1](I): filter_grad
-  regions[2](I/O): bias
-  regions[3](I): bias_grad
-*/
-__host__
-void Conv2D::update_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
-                         Context ctx, Runtime *runtime)
-{
-  assert(regions.size() == 4);
-  assert(task->regions.size() == 4);
-  const Conv2D* conv = (Conv2D*) task->args;
-  const AccessorRW<float, 1> acc_filter(regions[0], FID_DATA);
-  const AccessorRO<float, 1> acc_filter_grad(regions[1], FID_DATA);
-  const AccessorRW<float, 1> acc_bias(regions[2], FID_DATA);
-  const AccessorRO<float, 1> acc_bias_grad(regions[3], FID_DATA);
-  Rect<1> rect_filter, rect_filter_grad, rect_bias, rect_bias_grad;
-  rect_filter =
-    runtime->get_index_space_domain(ctx, task->regions[0]->region.get_index_space());
-  rect_filter_grad =
-    runtime->get_index_space_domain(ctx, task->regions[1]->region.get_index_space());
-  rect_bias =
-    runtime->get_index_space_domain(ctx, task->regions[2]->region.get_index_space());
-  rect_bias_grad =
-    runtime->get_index_space_domain(ctx, task->regions[3]->region.get_index_space());
-  size_t filter_size = rect_filter.volume();
-  size_t bias_size = rect_bias.volume();
-  assert(filter_size == conv->in_channels * conv->out_channels
-                        * conv->kernel_w * conv->kernel_h);
-  assert(bias_size == conv->out_channels);
-  assert(filter_size * conv->num_replica == rect_filter_grad.volume());
-  assert(bias_size * conv->num_replica == rect_bias_grad.volume());
-  assert(acc_filter.accessor.is_dense_arbitrary(rect_filter));
-  assert(acc_filter_grad.accessor.is_dense_arbitrary(rect_filter_grad));
-  assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
-  assert(acc_bias_grad.accessor.is_dense_arbitrary(rect_bias_grad));
-  float *filter_ptr = acc_filter.ptr(rect_filter.lo);
-  const float *filter_grad_ptr = acc_filter_grad.ptr(rect_filter_grad.lo);
-  float *bias_ptr = acc_bias.ptr(rect_bias.lo);
-  const float *bias_grad_ptr = acc_bias_grad.ptr(rect_bias_grad.lo);
-  updateGAS(filter_ptr, filter_grad_ptr, filter_size,
-            conv->num_replica, conv->learning_rate);
-  updateGAS(bias_ptr, bias_grad_ptr, bias_size,
-            conv->num_replica, conv->learning_rate);
-}
-
-__host__
-void Conv2D::update(const FFModel& ff)
-{
-  // Synchronize the learning rate
-  learning_rate = ff.config.learningRate;
-  assert(num_replica > 0);
-  // Only aggregate parameters if more than one replica
-  if (num_replica > 1) {
-    Context ctx = ff.config.lg_ctx;
-    Runtime* runtime = ff.config.lg_hlr;
-    TaskLauncher launcher(CONV2D_UPD_TASK_ID, TaskArgument(this, sizeof(Conv2D)));
-    launcher.add_region_requirement(
-      RegionRequirement(locals[0]->region, READ_WRITE, EXCLUSIVE, locals[0]->region));
-    launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(
-      RegionRequirement(locals[0]->region_grad, READ_ONLY, EXCLUSIVE, locals[0]->region_grad));
-    launcher.add_field(1, FID_DATA);
-    launcher.add_region_requirement(
-      RegionRequirement(locals[1]->region, READ_WRITE, EXCLUSIVE, locals[1]->region));
-    launcher.add_field(2, FID_DATA);
-    launcher.add_region_requirement(
-      RegionRequirement(locals[1]->region_grad, READ_ONLY, EXCLUSIVE, locals[1]->region_grad));
-    launcher.add_field(3, FID_DATA);
-    runtime->execute_task(ctx, launcher);
-  }
-}
-#endif
-
-/*
-__host__
-Parameter* Conv2D::get_parameter(int index)
-{
-  if (index == 0) {
-    return &weights[0];
-  } else if (index == 1) {
-    return &weights[1];
-  } else {
-    assert(0);
-    return NULL;
-  }
-}*/
 
 __host__
 void Conv2D::print_layer(const FFModel& ff)

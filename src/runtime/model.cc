@@ -403,12 +403,13 @@ Op::Op(FFModel& model,
        const char* _name,
        int _numInputs,
        int _numWeights,
+       int _numOutputs,
        const Tensor _input1,
        const Tensor _input2,
        const Tensor _input3,
        const Tensor _input4)
 : op_type(_op_type), op_guid(model.op_global_guid++),
-  numInputs(_numInputs), numWeights(_numWeights), numOutputs(1),
+  numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
   profiling(model.config.profiling)
 {
   for (int i = 0; i < MAX_NUM_INPUTS; i++)
@@ -454,9 +455,10 @@ Op::Op(FFModel& model,
        const char* _name,
        int _numInputs,
        int _numWeights,
+       int _numOutputs,
        const Tensor* _inputs)
 : op_type(_op_type), op_guid(model.op_global_guid++),
-  numInputs(_numInputs), numWeights(_numWeights), numOutputs(1),
+  numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
   profiling(model.config.profiling)
 {
   std::string pcname;
@@ -495,7 +497,7 @@ ParallelOp::ParallelOp(FFModel& model,
                        OperatorType op_type,
                        const char* name,
                        const Tensor input)
-: Op(model, op_type, name, 1/*num_inputs*/, 0/*num_weights*/, input)
+: Op(model, op_type, name, 1/*num_inputs*/, 0/*num_weights*/, 1/*num_ouputs*/, input)
 {}
 
 bool ParallelOp::is_parallel_op() const
@@ -803,6 +805,72 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
   return d;
 }
 
+void Op::resolve_output_degrees_and_indices(
+    ParallelDim inputs [][MAX_TENSOR_DIM], 
+    ParallelDim weights[][MAX_TENSOR_DIM], 
+    ParallelDim outputs[][MAX_TENSOR_DIM], 
+    int outputs_num_dims[]) const 
+{
+  for (int idx = 0; idx < this->numOutputs; idx++) {
+    for (int dim = 0; dim < outputs_num_dims[idx]; dim++) {
+      outputs[idx][dim].degree = ParallelDim::UNKNOWN_DEGREE;
+      outputs[idx][dim].parallel_idx = ParallelDim::UNKNOWN_INDEX;
+    }
+  }
+
+  for (ParallelDimMappingRecord const &record : *this->parallel_dims_mapping) {
+    int &output_degree = outputs[record.output_idx][record.output_dim].degree;
+    int &output_parallel_idx = outputs[record.output_idx][record.output_dim].parallel_idx;
+    bool output_is_assigned;
+    {
+      bool output_degree_is_assigned = (output_degree != ParallelDim::UNKNOWN_DEGREE);
+      bool output_parallel_idx_is_assigned = (output_parallel_idx != ParallelDim::UNKNOWN_INDEX);
+      assert (output_degree_is_assigned == output_parallel_idx_is_assigned);
+      output_is_assigned = output_degree_is_assigned;
+    }
+
+    switch (record.get_type()) {
+      case MappingRecordType::INPUT_OUTPUT:
+        {
+          const int input_degree = inputs[record.input_idx][record.input_dim].degree;
+          const int input_parallel_idx = inputs[record.input_idx][record.input_dim].parallel_idx;
+
+          if (output_is_assigned) {
+            // if a value has already been assigned, make sure we agree
+            assert (input_degree == output_degree);
+            assert (input_parallel_idx == output_parallel_idx);
+          } else {
+            output_degree = input_degree;
+            output_parallel_idx = input_parallel_idx;
+          }
+        }
+        break;
+      case MappingRecordType::WEIGHT_OUTPUT:
+        {
+          const int weight_degree = weights[record.weight_idx][record.weight_dim].degree;
+          const int weight_parallel_idx = weights[record.weight_idx][record.weight_dim].parallel_idx;
+
+          if (output_is_assigned) {
+            // if a value has already been assigned, make sure we agree
+            assert (weight_degree == output_degree);
+            assert (weight_parallel_idx == output_parallel_idx);
+          } else {
+            output_degree = weight_degree;
+            output_parallel_idx = weight_parallel_idx;
+          }
+        }
+        break;
+    }
+  }
+
+  for (int idx = 0; idx < this->numOutputs; idx++) {
+    for (int dim = 0; dim < outputs_num_dims[idx]; dim++) {
+      assert (outputs[idx][dim].degree != ParallelDim::UNKNOWN_DEGREE);
+      assert (outputs[idx][dim].parallel_idx != ParallelDim::UNKNOWN_INDEX);
+    }
+  }
+}
+
 #ifdef FF_USE_NCCL
 #ifdef DEADCODE
 void Op::get_nccl_unique_id(const FFModel& ff)
@@ -853,49 +921,146 @@ ncclComm_t Op::init_nccl_comms_task(const Task* task,
 }
 #endif
 
-ParallelDimMappingRecord::ParallelDimMappingRecord(void)
-: output_dim(-1), input_dim(-1), weight_dim(-1),
+ParallelDimMappingRecord::ParallelDimMappingRecord(MappingRecordType ttype)
+: type(type),
+  output_dim(-1), input_dim(-1), weight_dim(-1),
   output_idx(-1), input_idx(-1), weight_idx(-1)
 {}
+
+/*static*/
+ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
+    int output_idx, int output_dim,
+    int input_idx, int input_dim) 
+{
+  ParallelDimMappingRecord r(MappingRecordType::INPUT_OUTPUT);  
+
+  assert (output_idx >= 0);
+  assert (output_dim >= 0);
+  assert (input_idx >= 0);
+  assert (input_dim >= 0);
+
+  r.output_idx = output_idx;
+  r.output_dim = output_dim;
+  r.input_idx = input_idx;
+  r.input_dim = input_dim;
+  
+  return r;
+}
+
+/*static*/
+ParallelDimMappingRecord ParallelDimMappingRecord::weight_output_record(
+    int output_idx, int output_dim,
+    int weight_idx, int weight_dim) 
+{
+  ParallelDimMappingRecord r(MappingRecordType::WEIGHT_OUTPUT);
+
+  assert (output_idx >= 0);
+  assert (output_dim >= 0);
+  assert (weight_idx >= 0);
+  assert (weight_dim >= 0);
+
+  r.output_idx = output_idx;
+  r.output_dim = output_dim;
+  r.weight_idx = weight_idx;
+  r.weight_dim = weight_dim;
+
+  return r;
+}
+
+MappingRecordType ParallelDimMappingRecord::get_type() const {
+  return this->type;
+}
 
 void Op::register_output_input_parallel_dims(
     const Tensor output, int output_dim,
     const Tensor input, int input_dim)
 {
-  ParallelDimMappingRecord record;
-  record.output_dim = output_dim;
-  record.input_dim = input_dim;
+  int output_idx = -1;
+  int input_idx = -1;
+
   for (int i = 0; i < numOutputs; i++) {
     if (output == outputs[i])
-      record.output_idx = i;
+      output_idx = i;
   }
-  assert(record.output_idx >= 0);
+  assert(output_idx >= 0);
   for (int i = 0; i < numInputs; i++) {
     if (input == inputs[i])
-      record.input_idx = i;
+      input_idx = i;
   }
-  assert(record.input_idx >= 0);
-  parallel_dims_mapping->push_back(record);
+  assert(input_idx >= 0);
+
+  this->register_output_input_parallel_dims(
+      output_idx, output_dim,
+      input_idx, input_dim
+  );
+}
+
+void Op::register_output_input_parallel_dims(
+    std::pair<int, int> output,
+    std::pair<int, int> input)
+{
+  this->register_output_input_parallel_dims(
+      output.first, output.second,
+      input.first, input.second
+  );
+}
+
+void Op::register_output_input_parallel_dims(
+    int output_idx, int output_dim,
+    int input_idx, int input_dim)
+{
+  this->parallel_dims_mapping->push_back(
+    ParallelDimMappingRecord::input_output_record(
+      output_dim, output_idx, 
+      input_dim, input_idx
+    )
+  );
 }
 
 void Op::register_output_weight_parallel_dims(
     const Tensor output, int output_dim,
     const Tensor weight, int weight_dim)
 {
-  ParallelDimMappingRecord record;
-  record.output_dim = output_dim;
-  record.weight_dim = weight_dim;
+  int output_idx = -1;
+  int weight_idx = -1;
+
   for (int i = 0; i < numOutputs; i++) {
     if (output == outputs[i])
-      record.output_idx = i;
+      output_idx = i;
   }
-  assert(record.output_idx >= 0);
+  assert (output_idx >= 0);
   for (int i = 0; i < numWeights; i++) {
     if (weight == weights[i])
-      record.weight_idx = i;
+      weight_idx = i;
   }
-  assert(record.weight_idx >= 0);
-  parallel_dims_mapping->push_back(record);
+  assert (weight_idx >= 0);
+  
+  this->register_output_weight_parallel_dims(
+      output_idx, output_dim,
+      weight_idx, weight_dim
+  );
+}
+
+void Op::register_output_weight_parallel_dims(
+    std::pair<int, int> output,
+    std::pair<int, int> weight)
+{
+  this->register_output_weight_parallel_dims(
+      output.first, output.second,
+      weight.first, weight.second
+  );
+}
+
+void Op::register_output_weight_parallel_dims(
+    int output_idx, int output_dim,
+    int weight_idx, int weight_dim)
+{
+  this->parallel_dims_mapping->push_back(
+    ParallelDimMappingRecord::weight_output_record(
+      output_idx, output_dim,
+      weight_idx, weight_dim
+    )
+  );
 }
 
 int Op::get_output_to_input_dim_mapping(
@@ -3605,14 +3770,6 @@ void register_flexflow_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<Linear::backward_task>(
         registrar, "Linear Backward Task");
-  }
-  {
-    TaskVariantRegistrar registrar(LINEAR_BWD2_TASK_ID,
-                                   "Linear Backward (Aggregate replica)");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<Linear::backward2_task>(
-        registrar, "Linear Backward Task (Aggregate replica)");
   }
   // Flat task
   {

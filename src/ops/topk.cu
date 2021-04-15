@@ -38,7 +38,7 @@ TopK::TopK(FFModel& model,
            const Tensor _input,
            int _k, bool _sorted,
            const char* name)
-: Op(model, OP_TOPK, name, 1/*inputs*/, 0/*weights*/, _input),
+: Op(model, OP_TOPK, name, 1/*inputs*/, 0/*weights*/, 2/*outputs*/, _input),
   k(_k), sorted(_sorted)
 {
   int numdim = inputs[0]->num_dims;

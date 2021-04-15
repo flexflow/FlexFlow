@@ -26,7 +26,10 @@ class FFModel;
 class Initializer;
 
 struct ParallelDim {
-  ParallelDim(): size(0), degree(1), parallel_idx(-1) {}
+  static constexpr int UNKNOWN_DEGREE = -1;
+  static constexpr int UNKNOWN_INDEX = -1;
+
+  ParallelDim(): size(0), degree(UNKNOWN_DEGREE), parallel_idx(UNKNOWN_INDEX) {}
   bool operator==(const ParallelDim &rhs) const
   {
     if (size != rhs.size) return false;

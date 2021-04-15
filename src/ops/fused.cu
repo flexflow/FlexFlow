@@ -19,7 +19,7 @@
 using namespace Legion;
 
 FusedOp::FusedOp(FFModel& model, Op* op)
-: Op(model, OP_FUSED, op->name, 0/*weights*/, 0/*weights*/)
+: Op(model, OP_FUSED, op->name, 0/*weights*/, 0/*weights*/, 0/*outputs*/)
 {
   numInputs = op->numInputs;
   for (int i = 0; i < numInputs; i++) {

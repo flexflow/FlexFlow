@@ -32,7 +32,7 @@ Tensor FFModel::flat(const Tensor input,
 Flat::Flat(FFModel& model,
            const Tensor _input,
            const char* name)
-: Op(model, OP_FLAT, name, 1/*inputs*/, 0/*weights*/, _input)
+: Op(model, OP_FLAT, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, _input)
 {
   assert(_input->num_dims == 4);
   ParallelDim dims[2];
