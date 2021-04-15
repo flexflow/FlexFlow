@@ -207,25 +207,10 @@ public:
   bool profiling; // Measure the run time of the task
 };
 
-enum class MappingRecordType {
-  INPUT_OUTPUT,
-  WEIGHT_OUTPUT,
-};
-
 class ParallelDimMappingRecord {
-private:
-  ParallelDimMappingRecord(MappingRecordType);
 public:
-  ParallelDimMappingRecord() = delete;
-
-  static ParallelDimMappingRecord input_output_record(int output_idx, int output_dim,
-                                                      int input_idx, int input_dim);
-  static ParallelDimMappingRecord weight_output_record(int output_idx, int output_dim,
-                                                       int weight_idx, int weight_dim);
-  MappingRecordType get_type() const;
+  ParallelDimMappingRecord();
 public:
-  MappingRecordType type;
-
   int output_dim, input_dim, weight_dim;
   int output_idx, input_idx, weight_idx;
 };
@@ -239,21 +224,9 @@ protected:
   void register_output_input_parallel_dims(
       const Tensor output, int output_dim,
       const Tensor input, int input_dim);
-  void register_output_input_parallel_dims(
-      std::pair<int, int> output,
-      std::pair<int, int> input);
-  void register_output_input_parallel_dims(
-      int output_idx, int output_dim,
-      int input_idx, int input_dim);
   void register_output_weight_parallel_dims(
       const Tensor output, int output_dim,
       const Tensor input, int input_dim);
-  void register_output_weight_parallel_dims(
-      std::pair<int, int> output,
-      std::pair<int, int> weight);
-  void register_output_weight_parallel_dims(
-      int output_idx, int output_dim,
-      int weight_idx, int weight_dim);
   int get_output_to_input_dim_mapping(
       const Tensor output, int output_dim,
       const Tensor input);
@@ -269,7 +242,6 @@ public:
      const char* _name,
      int numInputs,
      int numWeights,
-     int numOutputs,
      const Tensor input1 = NULL,
      const Tensor input2 = NULL,
      const Tensor input3 = NULL,
@@ -279,7 +251,6 @@ public:
      const char* _name,
      int numInputs,
      int numWeights,
-     int numOutputs,
      const Tensor* tensors);
   // graph substitution related methods
   virtual bool get_int_parameter(PMParameter, int*) const;
@@ -316,10 +287,6 @@ public:
   virtual bool has_inplace_output();
   virtual void do_inplace_output();
   virtual bool is_parallel_op() const;
-  void resolve_output_degrees_and_indices(ParallelDim inputs[][MAX_TENSOR_DIM],
-                                          ParallelDim weights[][MAX_TENSOR_DIM],
-                                          ParallelDim outputs[][MAX_TENSOR_DIM],
-                                          int outputs_num_dims[]) const;
 
   int get_dimension() const;
 #ifdef FF_USE_NCCL
@@ -1049,16 +1016,6 @@ class Conv2D : public Op {
 public:
   Conv2D(FFModel& model,
          const Tensor input,
-         int outChannels,
-         int kernelH, int kernelW,
-         int strideH, int strideW,
-         int paddingH, int paddingW,
-         ActiMode activation,
-         int groups,
-         bool use_bias,
-         const char* name);
-  Conv2D(FFModel& model,
-         const Tensor input,
          const Tensor kernel,
          const Tensor bias,
          int strideH, int strideW,
@@ -1331,6 +1288,9 @@ public:
   static void backward_task(const Legion::Task *task,
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward2_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(const LinearMeta* m,
                       const float* input_ptr,
                       float* output_ptr,
@@ -1371,6 +1331,10 @@ private:
   static void backward_task_with_dim(const Legion::Task *task,
                                      const std::vector<Legion::PhysicalRegion> &regions,
                                      Legion::Context ctx, Legion::Runtime *runtime);
+  template<int NDIM>
+  static void backward2_task_with_dim(const Legion::Task *task,
+                                      const std::vector<Legion::PhysicalRegion> &regions,
+                                      Legion::Context ctx, Legion::Runtime *runtime);
   static bool use_cudnn_activation(ActiMode mode);
 public:
   int in_channels, out_channels;

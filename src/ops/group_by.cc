@@ -36,7 +36,7 @@ Group_by::Group_by(FFModel& model,
                   const Tensor _assign,
                   int _n, float _alpha,
                   const char* name)
-: Op(model, OP_GROUP_BY, name, 2/*inputs*/, 0/*weights*/, _n/*outputs*/, _input, _assign),
+: Op(model, OP_GROUP_BY, name, 2/*inputs*/, 0/*weights*/, _input, _assign),
   n(_n),
   alpha(_alpha)
   //profiling(model.config.profiling)

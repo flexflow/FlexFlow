@@ -60,7 +60,7 @@ Embedding::Embedding(FFModel& model,
                      int _out_channels,
                      AggrMode _aggr,
                      const char* name)
-: Op(model, OP_EMBEDDING, name, 1/*inputs*/, 0/*weighs*/, 1/*outputs*/, _input),
+: Op(model, OP_EMBEDDING, name, 1/*inputs*/, 0/*weighs*/, _input),
   num_entries(_num_entries), out_channels(_out_channels), aggr(_aggr)
 {
   numOutputs = 1;
@@ -87,7 +87,7 @@ Embedding::Embedding(FFModel& model,
                      const Tensor _weight,
                      AggrMode _aggr,
                      const char* name)
-: Op(model, OP_EMBEDDING, name, 1/*inputs*/, 1/*weights*/, 1/*outputs*/, _input, _weight),
+: Op(model, OP_EMBEDDING, name, 1/*inputs*/, 1/*weights*/, _input, _weight),
   num_entries(_weight->dims[1].size), out_channels(_weight->dims[0].size), aggr(_aggr)
 {
   numOutputs = 1;

@@ -56,7 +56,7 @@ BatchNorm::BatchNorm(FFModel& model,
                      const Tensor _bias,
                      bool _relu,
                      const char* name)
-: Op(model, OP_BATCHNORM, name, 1/*inputs*/, 2/*weights*/, 1/*outputs*/, _input, _scale, _bias),
+: Op(model, OP_BATCHNORM, name, 1/*inputs*/, 2/*weights*/, _input, _scale, _bias),
   relu(_relu)
 {
   assert(_input->num_dims == 4);

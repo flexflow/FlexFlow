@@ -106,7 +106,7 @@ Tensor FFModel::aggregate(const Tensor* inputs, /* gate_preds, gate_assign, n * 
 Aggregate::Aggregate(FFModel& model,
                     const Tensor* _inputs,
                     int _n, const char* name)
-: Op(model, OP_AGGREGATE, name, _n+2/*num_inputs*/, 0/*num_weights*/, 1/*outputs*/, _inputs),
+: Op(model, OP_AGGREGATE, name, _n+2/*num_inputs*/, 0/*num_weights*/, _inputs),
   n(_n)
   //profiling(model.config.profiling)
 {
