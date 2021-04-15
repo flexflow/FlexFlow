@@ -474,12 +474,18 @@ bool Embedding::measure_operator_cost(Simulator* sim,
   }
 
   sim->free_all();
+  bool out_of_memory = false;
   int64_t *input_ptr = (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
-  assert (input_ptr != NULL);
+  out_of_memory = out_of_memory || (input_ptr == NULL);
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert (output_ptr != NULL);
+  out_of_memory = out_of_memory || (output_ptr == NULL);
   float *weight_ptr = (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
-  assert (weight_ptr != NULL);
+  out_of_memory = out_of_memory || (weight_ptr == NULL);
+  if (out_of_memory) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
   int in_dim = sub_input.dims[0].size;
   int out_dim = sub_input.dims[0].size;
   assert (sub_input.dims[1] == sub_output.dims[1]);
@@ -491,12 +497,16 @@ bool Embedding::measure_operator_cost(Simulator* sim,
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *weight_grad_ptr = (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
-    assert (weight_grad_ptr != NULL);
+    out_of_memory = out_of_memory || (weight_grad_ptr == NULL);
     float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-    assert (output_grad_ptr != NULL);
+    out_of_memory = out_of_memory || (output_grad_ptr == NULL);
     int64_t *input_grad_ptr = (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
-    assert (input_grad_ptr != NULL);
-
+    out_of_memory = out_of_memory || (input_grad_ptr == NULL);
+    if (out_of_memory) {
+      cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+      cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+      return true;
+    }
     backward = [&] {
       backward_kernel(input_grad_ptr, output_grad_ptr, weight_grad_ptr, in_dim, out_dim, batch_size,
         this->aggr, sub_output.get_volume());

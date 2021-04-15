@@ -290,6 +290,7 @@ public:
 
 class Simulator {
 public:
+  static constexpr float MAXIMUM_TASK_RUN_TIME = 1e7;
   Simulator(const FFModel* model,
             FFHandler handler,
             Legion::Memory memory,

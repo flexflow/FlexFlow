@@ -2508,22 +2508,11 @@ void FFModel::compile(LossType loss_type,
   for (size_t l = 0; l < layers.size(); l++) {
     Op* op = layers[l];
     for (int i = 0; i < op->numInputs; i++) {
-      if (op->inputs[i]->owner_op == NULL) {
-        assert(false);
-        // Input tensor
-        //assert(op->inputs[i]->sync_type == ParameterSyncType::NONE);
-        map_tensor(op->inputs[i], op);
-      } else {
-        // No need to do anything else otherwise
-      }
+      assert(op->inputs[i]->owner_op != NULL);
     }
     for (int i = 0; i < op->numWeights; i++) {
-      if (op->weights[i]->owner_op == NULL) {
-        // Weight tensor
-        assert(op->weights[i]->owner_op == NULL);
-        map_tensor(op->weights[i], op);
-        parameters.push_back(op->weights[i]);
-      }
+      assert(op->weights[i]->owner_op != NULL);
+      parameters.push_back(op->weights[i]);
     }
     for (int i = 0; i < op->numOutputs; i++) {
       // Output tensor

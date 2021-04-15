@@ -883,6 +883,8 @@ void FFModel::graph_optimize(size_t budget,
     } else if (cur_graph->optimal_cost() > best_cost * 1.2) {
       break;
     }
+    if (counter > 1000)
+      break;
     printf("    [%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)\n",
            counter, cur_graph->optimal_cost(), best_cost, candidates.size());
     counter ++;

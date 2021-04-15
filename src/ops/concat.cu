@@ -427,12 +427,18 @@ bool Concat::measure_operator_cost(Simulator* sim,
   sim->free_all();
   float *input_ptrs[MAX_NUM_INPUTS];
   float *input_grad_ptrs[MAX_NUM_INPUTS];
+  bool out_of_memory = false;
   for (int i = 0; i < numInputs; i++) {
     input_ptrs[i] = (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
-    assert (input_ptrs[i] != NULL);
+    out_of_memory = out_of_memory || (input_ptrs[i] == NULL);
   }
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert (output_ptr != NULL);
+  out_of_memory = out_of_memory || (output_ptr == NULL);
+  if (out_of_memory) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
 
   Domain out_domain = sub_output.get_domain();
   Domain in_domains[MAX_NUM_INPUTS];
@@ -447,10 +453,15 @@ bool Concat::measure_operator_cost(Simulator* sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     for (int i = 0; i < numInputs; i++) {
       input_grad_ptrs[i] = (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
-      assert (input_grad_ptrs[i] != NULL);
+      out_of_memory = out_of_memory || (input_grad_ptrs[i] == NULL);
     }
     float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-    assert (output_grad_ptr != NULL);
+    out_of_memory = out_of_memory || (output_grad_ptr == NULL);
+    if (out_of_memory) {
+      cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+      cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+      return true;
+    }
     backward = [&] {
       backward_kernel(output_grad_ptr, input_grad_ptrs,
         numInputs, axis, out_domain, in_domains);
