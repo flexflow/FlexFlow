@@ -170,9 +170,7 @@ endif()
 
 # Python
 if(FF_USE_PYTHON)
-  if(FF_USE_PYBIND)
-    add_subdirectory(deps/pybind11)
-  endif()
+  add_subdirectory(deps/pybind11)
   add_subdirectory(python)
 endif()
 

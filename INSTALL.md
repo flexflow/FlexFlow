@@ -30,7 +30,6 @@ The `config.linux` is an example of how to set the varibles required for CMake b
 * `CUDNN_DIR` is only required when CUDNN is not installed in the CUDA directory.
 * `FF_CUDA_ARCH` is used to set the architecture of targeted GPUs, for example, the value can be 60 if the GPU architecture is Pascal. If it is not sepecified, FlexFlow is compiled for all architectures.
 * `FF_USE_PYTHON` is used to enable the Python support for the FlexFlow.
-* `FF_USE_PYBIND` is used to enable the PyBind11 for the Python Support. If it is turnd off (by default), then CFFI is used.  
 * `FF_USE_NCCL` is used to enable the NCCL support for the FlexFlow, by default it is set to ON.
 * `FF_USE_GASNET` is used to enable distributed run of the FlexFlow.
 * `FF_BUILD_EXAMPLES` is used to enable all C++ examples.

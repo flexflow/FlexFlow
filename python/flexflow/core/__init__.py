@@ -21,10 +21,11 @@ import atexit
 import os
 import sys
 
-if 'FF_USE_PYBIND' not in os.environ:
-  use_pybind = 0
+if 'FF_USE_CFFI' in os.environ:
+  use_pybind = not int(os.environ['FF_USE_CFFI'])
 else:
-  use_pybind = int(os.environ['FF_USE_PYBIND'])
+  use_pybind = True
+
 if use_pybind:
   if 'FLEXFLOW_PYTHON' not in os.environ:
     use_flexflow_python = 0
