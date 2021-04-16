@@ -31,8 +31,9 @@ Reverse::Reverse(FFModel& model,
                  const Tensor input,
                  int _axis,
                  const char* name)
-: Op(model, OP_REVERSE, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, input), axis(_axis)
+: Op(model, OP_REVERSE, name, 1/*inputs*/, 0/*weights*/, input), axis(_axis)
 {
+  numOutputs = 1;
   int numdim = input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++)

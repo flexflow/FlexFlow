@@ -917,9 +917,9 @@ ncclComm_t Op::init_nccl_comms_task(const Task* task,
   }
   ncclComm_t ncclComm;
   checkNCCL(ncclCommInitRank(&ncclComm, allRanks, ncclId, myRank));
-  return ncclComm;
   //fprintf(stderr, "ncclComm(%p) allRanks(%d) myRank(%d) ncclId(%p)\n",
   //    ncclComm, allRanks, myRank, ncclId);
+  return ncclComm;
 }
 #endif
 
@@ -1139,13 +1139,11 @@ void Op::set_argumentmap_for_init(const FFModel& ff,
       Rect<DIM> rect = domain; \
       MachineView view = outputs[0]->machine_view; \
       ncclComm_t* nccl_comms = NULL; \
-      if (numWeights > 0) \
-        nccl_comms = ff.find_nccl_comms(view); \
+      nccl_comms = ff.find_nccl_comms(view); \
       int idx = 0; \
       for (PointInRectIterator<DIM> it(rect); it(); it++) { \
         FFHandler handle = ff.handlers[view.get_device_id(*it)]; \
-        if (numWeights > 0) \
-          handle.ncclComm = nccl_comms[idx-1]; \
+        handle.ncclComm = nccl_comms[idx++]; \
         argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
       } \
       break; \
@@ -2624,22 +2622,11 @@ void FFModel::compile(LossType loss_type,
   for (size_t l = 0; l < layers.size(); l++) {
     Op* op = layers[l];
     for (int i = 0; i < op->numInputs; i++) {
-      if (op->inputs[i]->owner_op == NULL) {
-        assert(false);
-        // Input tensor
-        //assert(op->inputs[i]->sync_type == ParameterSyncType::NONE);
-        map_tensor(op->inputs[i], op);
-      } else {
-        // No need to do anything else otherwise
-      }
+      assert(op->inputs[i]->owner_op != NULL);
     }
     for (int i = 0; i < op->numWeights; i++) {
-      if (op->weights[i]->owner_op == NULL) {
-        // Weight tensor
-        assert(op->weights[i]->owner_op == NULL);
-        map_tensor(op->weights[i], op);
-        parameters.push_back(op->weights[i]);
-      }
+      assert(op->weights[i]->owner_op != NULL);
+      parameters.push_back(op->weights[i]);
     }
     for (int i = 0; i < op->numOutputs; i++) {
       // Output tensor

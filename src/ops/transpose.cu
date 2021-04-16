@@ -31,7 +31,7 @@ Transpose::Transpose(FFModel& model,
                      const Tensor input,
                      const std::vector<int>& _perm,
                      const char* name)
-: Op(model, OP_TRANSPOSE, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, input)
+: Op(model, OP_TRANSPOSE, name, 1/*inputs*/, 0/*weights*/, input)
 {
   assert(_perm.size() == input->num_dims);
   // Use Legion indexing to store perm

@@ -109,6 +109,7 @@ enum TaskIDs {
   FUSEDOP_INIT_TASK_ID,
   FUSEDOP_FWD_TASK_ID,
   FUSEDOP_BWD_TASK_ID,
+  NOOP_INIT_TASK_ID,
   //Metrics tasks
   METRICS_COMP_TASK_ID,
   UPDATE_METRICS_TASK_ID,
@@ -919,6 +920,9 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
 };
 
 class ElementBinary : public Op {

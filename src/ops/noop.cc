@@ -21,7 +21,7 @@ NoOp::NoOp(FFModel& model,
            OperatorType _type,
            const Tensor _output,
            const char* _name)
-: Op(model, _type, name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/)
+: Op(model, _type, name, 0/*inputs*/, 0/*weights*/)
 {
   // NOOP takes one input and has one output
   // both of them are _output
@@ -33,6 +33,15 @@ NoOp::NoOp(FFModel& model,
   outputs[0] = _output;
   outputs[0]->owner_op = this;
   outputs[0]->owner_idx = 0;
+}
+
+OpMeta* NoOp::init_task(const Task *task,
+                        const std::vector<PhysicalRegion> &regions,
+                        Context ctx, Runtime* runtime)
+{
+  FFHandler handle = *((const FFHandler*) task->local_args);
+  OpMeta* m = new OpMeta(handle);
+  return m;
 }
 
 void NoOp::init(const FFModel& ff)
@@ -60,6 +69,18 @@ void NoOp::init(const FFModel& ff)
                           WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
+  } else if (op_type == OP_WEIGHT) {
+    ArgumentMap argmap;
+    Context ctx = ff.config.lg_ctx;
+    Runtime* runtime = ff.config.lg_hlr;
+    set_argumentmap_for_init(ff, argmap);
+    IndexLauncher launcher(NOOP_INIT_TASK_ID, parallel_is,
+                           TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           outputs[0]->machine_view.hash());
+    FutureMap fm = runtime->execute_index_space(ctx, launcher);
+    fm.wait_all_results();
+    set_opmeta_from_futuremap(ff, fm);
   }
 }
 

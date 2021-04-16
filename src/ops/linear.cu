@@ -822,13 +822,16 @@ bool Linear::measure_operator_cost(Simulator* sim,
   // allocate tensors in simulator
   sim->free_all();
   float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert(input_ptr != NULL);
   float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert(output_ptr != NULL);
   float* kernel_ptr = (float*)sim->allocate((size_t)output_c * input_c, DT_FLOAT);
-  assert(kernel_ptr != NULL);
   float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
-  assert(bias_ptr != NULL);
+  bool out_of_memory = (input_ptr == NULL) || (output_ptr == NULL)
+                       || (kernel_ptr == NULL) || (bias_ptr == NULL);
+  if (out_of_memory) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, kernel_ptr, bias_ptr,
@@ -839,7 +842,13 @@ bool Linear::measure_operator_cost(Simulator* sim,
     float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     float* kernel_grad_ptr = (float*)sim->allocate((size_t)output_c * input_c, DT_FLOAT);
     float* bias_grad_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
-    assert(bias_grad_ptr != NULL);
+    out_of_memory = (input_grad_ptr == NULL) || (output_grad_ptr == NULL)
+                    || (kernel_grad_ptr == NULL) || (bias_grad_ptr == NULL);
+    if (out_of_memory) {
+      cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+      cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+      return true;
+    }
     backward = [&] {
       backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr,
           kernel_ptr, kernel_grad_ptr, bias_grad_ptr, input_c, output_c, input_n);

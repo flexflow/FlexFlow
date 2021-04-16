@@ -52,6 +52,7 @@ ShardID FFShardingFunctor::shard(const DomainPoint &point,
     assert(false && "Unsupported device type");
   }
   assert(shard_id < (size_t)num_nodes);
+  //fprintf(stderr, "view.hash(%zu) shard_id(%zu)\n", machine_view.hash(), shard_id);
   return shard_id;
 }
 
@@ -221,7 +222,7 @@ void FFMapper::register_sharding_functor(int argc, char** argv)
       for (int i = 0; i < num_nodes * gpus_per_node; i++) {
         view.start_device_id = i;
         FFShardingFunctor* functor = new FFShardingFunctor(
-            gpus_per_node, cpus_per_node, num_nodes, it);
+            gpus_per_node, cpus_per_node, num_nodes, view);
         Runtime::preregister_sharding_functor(view.hash(), functor);
       }
     } else {
@@ -229,7 +230,7 @@ void FFMapper::register_sharding_functor(int argc, char** argv)
       for (int i = 0; i < num_nodes * cpus_per_node; i++) {
         view.start_device_id = i;
         FFShardingFunctor* functor = new FFShardingFunctor(
-            gpus_per_node, cpus_per_node, num_nodes, it);
+            gpus_per_node, cpus_per_node, num_nodes, view);
         Runtime::preregister_sharding_functor(view.hash(), functor);
       }
     }
@@ -312,6 +313,10 @@ void FFMapper::select_task_options(const MapperContext ctx,
     }
     return;
   }
+
+  // We don't set initla_proc for index_space tasks
+  if (task.is_index_space)
+    return;
 
   if (is_parameter_server_update_task(task.task_id)
   || is_initializer_task(task.task_id)) {
@@ -501,6 +506,7 @@ void FFMapper::map_task(const MapperContext ctx,
   output.task_priority = 0;
   output.postmap_task = false;
   if (task.target_proc.address_space() != node_id) {
+    assert(false);
     output.target_procs.push_back(task.target_proc);
   } else if (task.target_proc.kind() == Processor::TOC_PROC) {
     output.target_procs.push_back(task.target_proc);
@@ -531,6 +537,7 @@ void FFMapper::map_task(const MapperContext ctx,
   // Violation of this assertion may result in severe runtime
   // overheads to Legion
   if (enable_control_replication) {
+    assert(output.target_procs.size() > 0);
     for (size_t i = 0; i < output.target_procs.size(); i++)
       assert(output.target_procs[i].address_space() == node_id);
   }
