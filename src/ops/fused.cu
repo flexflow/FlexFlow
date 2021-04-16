@@ -15,6 +15,8 @@
 
 #include "model.h"
 #include "cuda_helper.h"
+#include "ops/conv_2d.h"
+#include "ops/linear.h"
 
 using namespace Legion;
 

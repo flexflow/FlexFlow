@@ -209,7 +209,7 @@ public:
 
 enum class MappingRecordType {
   INPUT_OUTPUT,
-  WEIGHT_OUTPUT,
+  INPUT_WEIGHT
 };
 
 class ParallelDimMappingRecord {
@@ -220,8 +220,8 @@ public:
 
   static ParallelDimMappingRecord input_output_record(int output_idx, int output_dim,
                                                       int input_idx, int input_dim);
-  static ParallelDimMappingRecord weight_output_record(int output_idx, int output_dim,
-                                                       int weight_idx, int weight_dim);
+  static ParallelDimMappingRecord input_weight_record(int input_idx, int input_dim,
+                                                      int weight_idx, int weight_dim);
   MappingRecordType get_type() const;
 public:
   MappingRecordType type;
@@ -236,34 +236,38 @@ protected:
                                    std::function<void()> const &forward,
                                    std::function<void()> const &backward,
                                    CostMetrics& cost_metrics) const;
-  void register_output_input_parallel_dims(
-      const Tensor output, int output_dim,
-      const Tensor input, int input_dim);
-  void register_output_input_parallel_dims(
-      std::pair<int, int> output,
-      std::pair<int, int> input);
-  void register_output_input_parallel_dims(
-      int output_idx, int output_dim,
-      int input_idx, int input_dim);
-  void register_output_weight_parallel_dims(
-      const Tensor output, int output_dim,
-      const Tensor input, int input_dim);
-  void register_output_weight_parallel_dims(
-      std::pair<int, int> output,
-      std::pair<int, int> weight);
-  void register_output_weight_parallel_dims(
-      int output_idx, int output_dim,
-      int weight_idx, int weight_dim);
+
+  void register_weight_parallel_dims(
+      std::vector<std::pair<int, int>> mappings, int input_idx = 0, int weight_idx = 0);
+  void register_weight_parallel_dims(
+      int input_dim, int weight_dim, int input_idx = 0, int weight_idx = 0);
+  void register_output_parallel_dims(
+      std::vector<std::pair<int, int>> mappings, int input_idx = 0, int output_idx = 0);
+  void register_output_parallel_dims(
+      int input_dim, int output_dim, int input_idx = 0, int output_idx = 0);
+
   int get_output_to_input_dim_mapping(
       const Tensor output, int output_dim,
       const Tensor input);
   int get_output_to_weight_dim_mapping(
       const Tensor output, int output_dim,
       const Tensor weight);
+
   bool check_output_input_weight_parallel_dims() const;
   bool check_output_input_weight_same_parallel_is() const;
   bool check_output_input_weight_same_machine_view() const;
 public:
+  Op(FFModel& model,
+     OperatorType type,
+     const char* _name,
+     int numInputs,
+     int numWeights,
+     bool allocate_weights,
+     int numOutputs,
+     const Tensor input1 = NULL,
+     const Tensor input2 = NULL,
+     const Tensor input3 = NULL,
+     const Tensor input4 = NULL);
   Op(FFModel& model,
      OperatorType type,
      const char* _name,
@@ -316,10 +320,6 @@ public:
   virtual bool has_inplace_output();
   virtual void do_inplace_output();
   virtual bool is_parallel_op() const;
-  void resolve_output_degrees_and_indices(ParallelDim inputs[][MAX_TENSOR_DIM],
-                                          ParallelDim weights[][MAX_TENSOR_DIM],
-                                          ParallelDim outputs[][MAX_TENSOR_DIM],
-                                          int outputs_num_dims[]) const;
 
   int get_dimension() const;
 #ifdef FF_USE_NCCL
@@ -335,6 +335,9 @@ protected:
   void set_argumentmap_for_forward(const FFModel& ff, Legion::ArgumentMap& argmap);
   void set_argumentmap_for_backward(const FFModel& ff, Legion::ArgumentMap& argmap);
   void set_opmeta_from_futuremap(const FFModel& ff, const Legion::FutureMap& fm);
+  void solve_parallel_dim_mappings(const std::vector<ParallelDim const *> &inputs,
+                                   const std::vector<ParallelDim *> &weights, 
+                                   const std::vector<ParallelDim *> &outputs) const;
 private:
   //template<int NDIM>
   //void create_input_partition_with_dim(FFModel& model);
@@ -531,11 +534,6 @@ public:
                const Op* shared_op = NULL,
                Initializer* kernel_initializer = NULL,
                Initializer* bias_initializer = NULL,
-               const char *name = NULL);
-  Tensor dense(const Tensor input,
-               const Tensor kernel,
-               const Tensor bias = NULL,
-               ActiMode activation = AC_MODE_NONE,
                const char *name = NULL);
   // Add a concat layer
   Tensor concat(int n,
@@ -1031,81 +1029,6 @@ public:
   bool inplace;
 };
 
-class Conv2DMeta : public OpMeta {
-public:
-  Conv2DMeta(FFHandler handler);
-  cudnnTensorDescriptor_t inputTensor, biasTensor, outputTensor;
-  cudnnFilterDescriptor_t filterDesc;
-  cudnnActivationDescriptor_t actiDesc;
-  cudnnConvolutionDescriptor_t convDesc;
-  cudnnConvolutionFwdAlgo_t fwdAlgo;
-  cudnnConvolutionBwdFilterAlgo_t bwdFilterAlgo;
-  cudnnConvolutionBwdDataAlgo_t bwdDataAlgo;
-  bool relu, use_bias;
-  char op_name[MAX_OPNAME];
-};
-
-class Conv2D : public Op {
-public:
-  Conv2D(FFModel& model,
-         const Tensor input,
-         int outChannels,
-         int kernelH, int kernelW,
-         int strideH, int strideW,
-         int paddingH, int paddingW,
-         ActiMode activation,
-         int groups,
-         bool use_bias,
-         const char* name);
-  Conv2D(FFModel& model,
-         const Tensor input,
-         const Tensor kernel,
-         const Tensor bias,
-         int strideH, int strideW,
-         int paddingH, int paddingW,
-         ActiMode activation,
-         const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  //void update(const FFModel&);
-  void print_layer(const FFModel& model);
-  //Parameter* get_parameter(int index);
-  //void create_weights(FFModel& model);
-  //void create_input_partition(FFModel& model);
-
-  static OpMeta* init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
-                            Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_kernel(const Conv2DMeta* m,
-                      const float* input_ptr,
-                      float* output_ptr,
-                      const float* filter_ptr,
-                      const float* bias_ptr);
-  static void backward_kernel(const Conv2DMeta* m,
-                       const float* input_ptr,
-                       float* input_grad_ptr,
-                       const float* output_ptr,
-                       float* output_grad_ptr,
-                       const float* kernel_ptr,
-                       float* kernel_grad_ptr,
-                       float* bias_ptr);
-  bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
-public:
-  //Legion::IndexSpaceT<4> task_is;
-  int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
-  bool use_bias;
-  ActiMode activation;
-};
-
 class DropoutMeta;
 class Dropout : public Op {
 public:
@@ -1287,97 +1210,6 @@ public:
   bool relu;
 };
 
-class LinearMeta : public OpMeta {
-public:
-  LinearMeta(FFHandler handle, int batch_size);
-  cudnnTensorDescriptor_t outputTensor;
-  cudnnActivationDescriptor_t actiDesc;
-  const float *one_ptr;
-  ActiMode activation;
-  bool use_bias;
-  char op_name[MAX_OPNAME];
-};
-
-class Linear : public Op {
-public:
-  Linear(FFModel& model,
-         const Tensor input,
-         int out_dim,
-         ActiMode activation,
-         bool _use_bias,
-         const char* name);
-  Linear(FFModel& model,
-         const Tensor input,
-         const Tensor kernel,
-         const Tensor bias,
-         ActiMode activation,
-         const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  //void update(const FFModel&);
-  void print_layer(const FFModel& model);
-  bool get_int_parameter(PMParameter, int*) const;
-  //Parameter* get_parameter(int index);
-  //void create_weights(FFModel& model);
-  //void create_input_partition(FFModel& model);
-
-  static OpMeta* init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
-                            Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_kernel(const LinearMeta* m,
-                      const float* input_ptr,
-                      float* output_ptr,
-                      const float* filter_ptr,
-                      const float* bias_ptr,
-                      int in_dim, int out_dim, int batch_size);
-  static void backward_kernel(const LinearMeta* m,
-                       const float* input_ptr,
-                       float* input_grad_ptr,
-                       const float* output_ptr,
-                       float* output_grad_ptr,
-                       const float* kernel_ptr,
-                       float* kernel_grad_ptr,
-                       float* bias_ptr,
-                       int in_dim, int out_dim, int batch_size);
-  bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
-  bool estimate_sync_cost(Simulator* sim,
-                          const MachineView& pc,
-                          CostMetrics& cost_metrics) const;
-  ParallelConfig get_random_parallel_config(const FFModel& ff) const;
-  bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
-private:
-  //template<int NDIM>
-  //void create_input_partition_with_dim(FFModel& model);
-  //template<int NDIM>
-  //void create_weights_with_dim(FFModel& model);
-  template<int NDIM>
-  static OpMeta* init_task_with_dim(const Legion::Task *task,
-                                    const std::vector<Legion::PhysicalRegion> &regions,
-                                    Legion::Context ctx, Legion::Runtime *runtime);
-  template<int NDIM>
-  static void forward_task_with_dim(const Legion::Task *task,
-                                    const std::vector<Legion::PhysicalRegion> &regions,
-                                    Legion::Context ctx, Legion::Runtime *runtime);
-  template<int NDIM>
-  static void backward_task_with_dim(const Legion::Task *task,
-                                     const std::vector<Legion::PhysicalRegion> &regions,
-                                     Legion::Context ctx, Legion::Runtime *runtime);
-  static bool use_cudnn_activation(ActiMode mode);
-public:
-  int in_channels, out_channels;
-  Tensor replica;
-  bool use_bias;
-  ActiMode activation;
-};
 
 class BatchMatmulMeta : public OpMeta {
 public:
@@ -1442,82 +1274,6 @@ private:
 public:
   int a_seq_length_dim, b_seq_length_dim;
   //bool profiling;
-};
-
-class Embedding : public Op {
-public:
-  Embedding(FFModel& model,
-            const Tensor _input,
-            int _num_entries,
-            int _out_channels,
-            AggrMode _aggr,
-            const char* name);
-  Embedding(FFModel& model,
-            const Tensor input,
-            const Tensor weight,
-            AggrMode _aggr,
-            const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  //void update(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
-  //Parameter* get_parameter(int index);
-  //void create_weights(FFModel& model);
-  //void create_input_partition(FFModel& model);
-
-  static OpMeta* init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
-                            Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_task_cpu(const Legion::Task *task,
-                               const std::vector<Legion::PhysicalRegion> &regions,
-                               Legion::Context ctx, Legion::Runtime *runtime);
-  static void backward_task_cpu(const Legion::Task *task,
-                                const std::vector<Legion::PhysicalRegion> &regions,
-                                Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_kernel(int64_t const *input_ptr,
-                             float *output_ptr,
-                             float const *weight_ptr,
-                             int in_dim,
-                             int out_dim,
-                             int batch_size,
-                             AggrMode aggr,
-                             int outputSize);
-  static void backward_kernel(int64_t const *input_ptr,
-                              float const *output_ptr,
-                              float *weight_grad_ptr,
-                              int in_dim,
-                              int out_dim,
-                              int batch_size,
-                              AggrMode aggr,
-                              int outputSize);
-  bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
-private:
-  template<int NDIM>
-  static void forward_task_with_dim(const Legion::Task *task,
-                                    const std::vector<Legion::PhysicalRegion> &regions,
-                                    Legion::Context ctx, Legion::Runtime *runtime);
-  template<int NDIM>
-  static void backward_task_with_dim(const Legion::Task *task,
-                                     const std::vector<Legion::PhysicalRegion> &regions,
-                                     Legion::Context ctx, Legion::Runtime *runtime);
-public:
-  int num_entries, out_channels;
-  AggrMode aggr;
-};
-
-class EmbeddingMeta : public OpMeta {
-public:
-  EmbeddingMeta(FFHandler handle): OpMeta(handle) {}
-  AggrMode aggr;
 };
 
 class Group_byMeta : public OpMeta {

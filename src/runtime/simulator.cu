@@ -18,6 +18,8 @@
 //#include "realm/runtime_impl.h"
 //#include "realm/cuda/cuda_module.h"
 #include "cuda_helper.h"
+#include "ops/linear.h"
+#include "ops/conv_2d.h"
 
 using namespace Legion;
 

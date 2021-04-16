@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/linear.h"
 #include "cuda_helper.h"
 
 using namespace Legion;
@@ -27,20 +27,118 @@ Tensor FFModel::dense(const Tensor input,
                       Initializer* bias_initializer,
                       const char *name)
 {
-  Linear* li = new Linear(*this, input, outDim, activation, use_bias, name);
+  Linear* li = new Linear(*this, input, outDim, activation, use_bias, false, name);
   layers.push_back(li);
   return li->outputs[0];
 }
 
-Tensor FFModel::dense(const Tensor input,
-                      const Tensor weight,
-                      const Tensor bias,
-                      ActiMode activation,
-                      const char *name)
-{
-  Linear *li = new Linear(*this, input, weight, bias, activation, name);
-  layers.push_back(li);
-  return li->outputs[0];
+int Linear::output_replica_dim() const {
+  return this->inputs[0]->num_dims - 1;
+}
+
+int Linear::output_channel_dim() const {
+  return 0;
+}
+
+int Linear::input_replica_dim() const {
+  return this->inputs[0]->num_dims - 1;
+}
+
+int Linear::input_channel_dim() const {
+  return 0;
+}
+
+namespace Kernel {
+  constexpr int INDEX = 0;
+
+  enum {
+    CHANNEL_IN = 0,
+    CHANNEL_OUT = 1,
+  };
+};
+
+namespace Bias {
+  constexpr int INDEX = 1;
+
+  enum {
+    CHANNEL_OUT = 0  
+  };
+};
+
+int Linear::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
+  Tensor const &input = this->inputs[0];
+
+  const int REPLICA = this->output_replica_dim();
+  const int CHANNEL = this->output_channel_dim();
+
+  output_dims[REPLICA].is_replica_dim = true;
+  for (int i = 1; i < input->num_dims - 1; i++) {
+    output_dims[i].size = input->dims[i].size;
+  }
+  output_dims[CHANNEL].size = this->out_channels;
+
+  return input->num_dims;
+}
+
+int Linear::kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) {
+  Tensor const &input = this->inputs[0];
+
+  kernel_dims[Kernel::CHANNEL_IN].size = this->in_channels;
+  kernel_dims[Kernel::CHANNEL_OUT].size = this->out_channels;
+  for (int i = 2; i < input->num_dims; i++) {
+    kernel_dims[i].is_replica_dim = true;
+  }
+
+  return input->num_dims;
+}
+
+int Linear::bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]) {
+  Tensor const &input = this->inputs[0];
+
+  bias_dims[Bias::CHANNEL_OUT].size = this->out_channels;
+  for (int i = 1; i < input->num_dims; i++) {
+    bias_dims[i].is_replica_dim = true;
+  }
+
+  return input->num_dims;
+}
+
+void Linear::register_mappings() {
+  this->register_output_mappings();
+  this->register_weight_mappings();
+}
+
+void Linear::register_output_mappings() {
+  this->register_output_parallel_dims({
+      { this->input_channel_dim(), this->output_replica_dim() },
+      { this->input_replica_dim(), this->output_channel_dim() }
+  });
+
+  for (int i = 1; i < this->inputs[0]->num_dims - 1; i++) {
+    this->register_output_parallel_dims(i, i);
+  }
+}
+
+void Linear::register_weight_mappings() {
+  const int INPUT_IDX = 0;
+
+  this->register_weight_parallel_dims({
+      { this->input_channel_dim(), Kernel::CHANNEL_IN },
+      { this->input_replica_dim(), Kernel::CHANNEL_OUT },
+  }, INPUT_IDX, Kernel::INDEX);
+
+  for (int i = 1; i < this->inputs[0]->num_dims - 1; i++) {
+    this->register_weight_parallel_dims(i, i+1, INPUT_IDX, Kernel::INDEX);
+  }
+
+  if (this->use_bias) {
+    this->register_weight_parallel_dims(
+      this->input_replica_dim(), Bias::CHANNEL_OUT,
+      INPUT_IDX, Bias::INDEX);
+    for (int i = 0; i < this->inputs[0]->num_dims - 1; i++) {
+      this->register_weight_parallel_dims(i, i+1, INPUT_IDX, Bias::INDEX);
+    }
+  }
 }
 
 Linear::Linear(FFModel& model,
@@ -48,95 +146,59 @@ Linear::Linear(FFModel& model,
                int out_dim,
                ActiMode _activation,
                bool _use_bias,
+               bool allocate_weights,
                const char* name)
-: Op(model, OP_LINEAR, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, _input),
+: Op(
+    model, 
+    OP_LINEAR, 
+    name, 
+    1/*inputs*/, 
+    _use_bias ? 2 : 1 /*weights*/, 
+    allocate_weights,
+    1/*outputs*/, 
+    _input),
   in_channels(_input->dims[0].size),
   out_channels(out_dim),
   activation(_activation),
   use_bias(_use_bias)
 {
-  int numdim = _input->num_dims;
+  this->register_mappings();
 
-  // register parallelizable dims
-  this->register_output_input_parallel_dims({0, 0}, {0, numdim-1});
-  this->register_output_input_parallel_dims({0, numdim-1}, {0, 0});
-  for (int i = 1; i < numdim-1; i++) {
-    this->register_output_input_parallel_dims({0, i}, {0, i});
-  }
-  // Check correctness
-  assert(check_output_input_weight_parallel_dims());
+  std::vector<ParallelDim *> weight_dim_sets;
 
-  // Assign sizes
-  ParallelDim dims[MAX_TENSOR_DIM];
-  dims[numdim-1].size = _input->dims[0].degree;
-  dims[0].size = out_channels;
-  for (int i = 1; i < numdim-1; i++) {
-    dims[i].size = _input->dims[i].size;
-  }
+  int kernel_ndim, bias_ndim;
+  ParallelDim kernel_dims[MAX_TENSOR_DIM], 
+              bias_dims[MAX_TENSOR_DIM];
+  if (allocate_weights) {
+    kernel_ndim = this->kernel_size(kernel_dims);
+    weight_dim_sets.push_back(kernel_dims);
 
-  // Resolve everything else through the parallelizable dims
-  this->resolve_output_degrees_and_indices(
-      &_input->dims, 
-      nullptr,
-      &dims,
-      &numdim
-  );
-
-  // Create the output tensor
-  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, DT_FLOAT, this);
-}
-
-Linear::Linear(FFModel& model,
-               const Tensor _input,
-               const Tensor _kernel,
-               const Tensor _bias,
-               ActiMode _activation,
-               const char* name)
-: Op(model, OP_LINEAR, name, 1/*inputs*/, _bias == NULL ? 1 : 2/*weights*/, 1/*outputs*/, _input,_kernel, _bias),
-  in_channels(_input->dims[0].size),
-  out_channels(_kernel->dims[1].size),
-  activation(_activation)
-{
-  if (_bias == NULL) {
-    assert(numWeights = 1);
-    use_bias = false;
-  } else {
-    assert(numWeights == 2);
-    use_bias = true;
-  }
-  assert(numOutputs == 1);
-  int numdim = _input->num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++) {
-    dims[i] = _input->dims[i];
-  }
-  dims[numdim-1].size = _input->dims[0].degree;
-  dims[numdim-1].parallel_idx = _input->dims[0].parallel_idx;
-  dims[numdim-1].degree = dims[numdim-1].size;
-  dims[0] = _kernel->dims[1];
-  outputs[0] = model.create_tensor_legion_ordering(
-      numdim, dims, DT_FLOAT, this);
-
-  //replica = new TensorBase();
-  // register parallelizable dims
-  for (int i = 0; i < numdim; i++) {
-    if (i == 0) {
-      register_output_input_parallel_dims(outputs[0], i, inputs[0], numdim-1);
-    } else if (i == numdim-1) {
-      register_output_input_parallel_dims(outputs[0], i, inputs[0], 0);
-    } else {
-      register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
+    if (use_bias) {
+      bias_ndim = this->bias_size(bias_dims);
+      weight_dim_sets.push_back(bias_dims);
     }
   }
-  register_output_weight_parallel_dims(outputs[0], numdim-2, weights[0], 2);
-  register_output_weight_parallel_dims(outputs[0], 0, weights[0], 1);
-  register_output_weight_parallel_dims(outputs[0], numdim-1, weights[0], 0);
-  if (use_bias) {
-    register_output_weight_parallel_dims(outputs[0], numdim-2, weights[1], 2);
-    register_output_weight_parallel_dims(outputs[0], 0, weights[1], 0);
-    register_output_weight_parallel_dims(outputs[0], numdim-1, weights[1], 1);
+
+  ParallelDim output_dims[MAX_TENSOR_DIM];
+  int output_ndim = this->output_size(output_dims);
+
+  this->solve_parallel_dim_mappings(
+      { _input->dims },
+      weight_dim_sets,
+      { output_dims }
+  );
+
+  if (allocate_weights) {
+    weights[Kernel::INDEX] = model.create_tensor_legion_ordering(kernel_ndim, kernel_dims, DT_FLOAT, this);
+
+    if (use_bias) {
+      weights[Bias::INDEX] = model.create_tensor_legion_ordering(bias_ndim, bias_dims, DT_FLOAT, this);
+    }
   }
-  // Check correctness
+
+  // Create the output tensor
+  outputs[0] = model.create_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
+
   assert(check_output_input_weight_parallel_dims());
 }
 
@@ -880,7 +942,7 @@ Node FFModel::get_or_create_linear_node(const Tensor input,
   if (it != cached_linear_ops.end()) {
     li = it->second;
   } else {
-    li = new Linear(*this, input, out_dim, activation, use_bias, NULL);
+    li = new Linear(*this, input, out_dim, activation, use_bias, false, NULL);
     cached_linear_ops[hash] = li;
   }
   Node ret;

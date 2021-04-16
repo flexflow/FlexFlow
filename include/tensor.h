@@ -29,7 +29,6 @@ struct ParallelDim {
   static constexpr int UNKNOWN_DEGREE = -1;
   static constexpr int UNKNOWN_INDEX = -1;
 
-  ParallelDim(): size(0), degree(UNKNOWN_DEGREE), parallel_idx(UNKNOWN_INDEX) {}
   bool operator==(const ParallelDim &rhs) const
   {
     if (size != rhs.size) return false;
@@ -37,9 +36,11 @@ struct ParallelDim {
     if (parallel_idx != rhs.parallel_idx) return false;
     return true;
   }
-  int size;
-  int degree;
-  int parallel_idx;
+
+  int size = 0;
+  int degree = UNKNOWN_DEGREE;
+  int parallel_idx = UNKNOWN_INDEX;
+  bool is_replica_dim = false;
 };
 
 struct TensorBase {

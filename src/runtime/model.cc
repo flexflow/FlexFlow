@@ -21,6 +21,8 @@
 #include "random_utils.h"
 #include "graph.h"
 #include "legion/legion_utilities.h"
+#include "ops/linear.h"
+#include "ops/conv_2d.h"
 
 using namespace std;
 using namespace Legion;
@@ -398,6 +400,29 @@ bool TensorBase::is_valid_machine_view(const MachineView& view) const
   return true;
 }
 
+Op::Op(FFModel& model,
+       OperatorType op_type,
+       const char* name,
+       int numInputs,
+       int numWeights,
+       int numOutputs,
+       bool allocate_weights,
+       const Tensor input1,
+       const Tensor input2,
+       const Tensor input3,
+       const Tensor input4)
+: Op(model, 
+     op_type, 
+     name, 
+     numInputs,
+     allocate_weights ? numWeights : 0,
+     numOutputs,
+     input1,
+     input2,
+     input3,
+     input4)
+{ }
+     
 Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,
@@ -805,68 +830,45 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
   return d;
 }
 
-void Op::resolve_output_degrees_and_indices(
-    ParallelDim inputs [][MAX_TENSOR_DIM], 
-    ParallelDim weights[][MAX_TENSOR_DIM], 
-    ParallelDim outputs[][MAX_TENSOR_DIM], 
-    int outputs_num_dims[]) const 
+void Op::solve_parallel_dim_mappings(
+    const std::vector<ParallelDim const *> &inputs, 
+    const std::vector<ParallelDim *> &weights,
+    const std::vector<ParallelDim *> &outputs
 {
-  for (int idx = 0; idx < this->numOutputs; idx++) {
-    for (int dim = 0; dim < outputs_num_dims[idx]; dim++) {
-      outputs[idx][dim].degree = ParallelDim::UNKNOWN_DEGREE;
-      outputs[idx][dim].parallel_idx = ParallelDim::UNKNOWN_INDEX;
-    }
-  }
-
   for (ParallelDimMappingRecord const &record : *this->parallel_dims_mapping) {
-    int &output_degree = outputs[record.output_idx][record.output_dim].degree;
-    int &output_parallel_idx = outputs[record.output_idx][record.output_dim].parallel_idx;
-    bool output_is_assigned;
-    {
-      bool output_degree_is_assigned = (output_degree != ParallelDim::UNKNOWN_DEGREE);
-      bool output_parallel_idx_is_assigned = (output_parallel_idx != ParallelDim::UNKNOWN_INDEX);
-      assert (output_degree_is_assigned == output_parallel_idx_is_assigned);
-      output_is_assigned = output_degree_is_assigned;
-    }
+    ParallelDim const &input_dim = inputs[record.input_idx][record.input_dim];
 
     switch (record.get_type()) {
       case MappingRecordType::INPUT_OUTPUT:
         {
-          const int input_degree = inputs[record.input_idx][record.input_dim].degree;
-          const int input_parallel_idx = inputs[record.input_idx][record.input_dim].parallel_idx;
+          if (record.output_idx >= outputs.size()) {
+            continue;
+          }
 
-          if (output_is_assigned) {
-            // if a value has already been assigned, make sure we agree
-            assert (input_degree == output_degree);
-            assert (input_parallel_idx == output_parallel_idx);
-          } else {
-            output_degree = input_degree;
-            output_parallel_idx = input_parallel_idx;
+          ParallelDim &output_dim = outputs[record.output_idx][record.output_dim];
+          output_dim.degree = input_dim.degree;
+          output_dim.parallel_idx = input_dim.parallel_idx;
+
+          if (output_dim.is_replica_dim) {
+            output_dim.size = input_dim.degree;
           }
         }
         break;
-      case MappingRecordType::WEIGHT_OUTPUT:
+      case MappingRecordType::INPUT_WEIGHT:
         {
-          const int weight_degree = weights[record.weight_idx][record.weight_dim].degree;
-          const int weight_parallel_idx = weights[record.weight_idx][record.weight_dim].parallel_idx;
+          if (record.weight_idx >= weights.size()) {
+            continue;
+          }
 
-          if (output_is_assigned) {
-            // if a value has already been assigned, make sure we agree
-            assert (weight_degree == output_degree);
-            assert (weight_parallel_idx == output_parallel_idx);
-          } else {
-            output_degree = weight_degree;
-            output_parallel_idx = weight_parallel_idx;
+          ParallelDim &weight_dim = weights[record.weight_idx][record.weight_dim];
+          weight_dim.degree = input_dim.degree;
+          weight_dim.parallel_idx = input_dim.parallel_idx;
+
+          if (weight_dim.is_replica_dim) {
+            weight_dim.size = input_dim.degree;
           }
         }
         break;
-    }
-  }
-
-  for (int idx = 0; idx < this->numOutputs; idx++) {
-    for (int dim = 0; dim < outputs_num_dims[idx]; dim++) {
-      assert (outputs[idx][dim].degree != ParallelDim::UNKNOWN_DEGREE);
-      assert (outputs[idx][dim].parallel_idx != ParallelDim::UNKNOWN_INDEX);
     }
   }
 }
@@ -948,19 +950,19 @@ ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
 }
 
 /*static*/
-ParallelDimMappingRecord ParallelDimMappingRecord::weight_output_record(
-    int output_idx, int output_dim,
-    int weight_idx, int weight_dim) 
+ParallelDimMappingRecord ParallelDimMappingRecord::input_weight_record(
+    int input_idx, int input_dim,
+    int weight_idx, int weight_dim)
 {
-  ParallelDimMappingRecord r(MappingRecordType::WEIGHT_OUTPUT);
+  ParallelDimMappingRecord r(MappingRecordType::INPUT_WEIGHT);
 
-  assert (output_idx >= 0);
-  assert (output_dim >= 0);
+  assert (input_idx >= 0);
+  assert (input_dim >= 0);
   assert (weight_idx >= 0);
   assert (weight_dim >= 0);
 
-  r.output_idx = output_idx;
-  r.output_dim = output_dim;
+  r.input_idx = input_idx;
+  r.input_dim = input_dim;
   r.weight_idx = weight_idx;
   r.weight_dim = weight_dim;
 
@@ -971,94 +973,43 @@ MappingRecordType ParallelDimMappingRecord::get_type() const {
   return this->type;
 }
 
-void Op::register_output_input_parallel_dims(
-    const Tensor output, int output_dim,
-    const Tensor input, int input_dim)
+
+void Op::register_weight_parallel_dims(
+    std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx)
 {
-  int output_idx = -1;
-  int input_idx = -1;
-
-  for (int i = 0; i < numOutputs; i++) {
-    if (output == outputs[i])
-      output_idx = i;
+  for (std::pair<int, int> const &mapping : mappings) {
+    this->register_weight_parallel_dims(
+      mapping.first, mapping.second, input_idx, weight_idx)
   }
-  assert(output_idx >= 0);
-  for (int i = 0; i < numInputs; i++) {
-    if (input == inputs[i])
-      input_idx = i;
-  }
-  assert(input_idx >= 0);
-
-  this->register_output_input_parallel_dims(
-      output_idx, output_dim,
-      input_idx, input_dim
-  );
 }
 
-void Op::register_output_input_parallel_dims(
-    std::pair<int, int> output,
-    std::pair<int, int> input)
-{
-  this->register_output_input_parallel_dims(
-      output.first, output.second,
-      input.first, input.second
-  );
-}
-
-void Op::register_output_input_parallel_dims(
-    int output_idx, int output_dim,
-    int input_idx, int input_dim)
+void Op::register_weight_parallel_dims(
+    int input_dim, int weight_dim, int input_idx, int weight_idx)
 {
   this->parallel_dims_mapping->push_back(
-    ParallelDimMappingRecord::input_output_record(
-      output_dim, output_idx, 
-      input_dim, input_idx
+    ParallelDimMappingRecord::input_weight_record(
+      input_idx, input_dim,
+      weight_idx, weight_dim
     )
   );
 }
 
-void Op::register_output_weight_parallel_dims(
-    const Tensor output, int output_dim,
-    const Tensor weight, int weight_dim)
+void Op::register_output_parallel_dims(
+    std::vector<std::pair<int, int>> mappings, int input_idx, int output_idx)
 {
-  int output_idx = -1;
-  int weight_idx = -1;
-
-  for (int i = 0; i < numOutputs; i++) {
-    if (output == outputs[i])
-      output_idx = i;
+  for (std::pair<int, int> const &mapping : mappings) {
+    this->register_output_parallel_dims(
+        mapping.first, mapping.second, input_idx, output_idx);
   }
-  assert (output_idx >= 0);
-  for (int i = 0; i < numWeights; i++) {
-    if (weight == weights[i])
-      weight_idx = i;
-  }
-  assert (weight_idx >= 0);
-  
-  this->register_output_weight_parallel_dims(
-      output_idx, output_dim,
-      weight_idx, weight_dim
-  );
 }
 
-void Op::register_output_weight_parallel_dims(
-    std::pair<int, int> output,
-    std::pair<int, int> weight)
-{
-  this->register_output_weight_parallel_dims(
-      output.first, output.second,
-      weight.first, weight.second
-  );
-}
-
-void Op::register_output_weight_parallel_dims(
-    int output_idx, int output_dim,
-    int weight_idx, int weight_dim)
+void Op::register_output_parallel_dims(
+    int input_dim, int weight_dim, int input_idx, int weight_idx) 
 {
   this->parallel_dims_mapping->push_back(
-    ParallelDimMappingRecord::weight_output_record(
-      output_idx, output_dim,
-      weight_idx, weight_dim
+    ParallelDimMappingRecord::input_output_record(
+      input_idx, input_dim,
+      output_idx, output_dim
     )
   );
 }

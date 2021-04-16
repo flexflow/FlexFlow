@@ -119,6 +119,9 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/mapper.h
   ${FLEXFLOW_ROOT}/include/metrics_functions.h
   ${FLEXFLOW_ROOT}/include/model.h
+  ${FLEXFLOW_ROOT}/include/ops/linear.h
+  ${FLEXFLOW_ROOT}/include/ops/conv_2d.h
+  ${FLEXFLOW_ROOT}/include/ops/embedding.h
   ${FLEXFLOW_ROOT}/include/optimizer.h
   ${FLEXFLOW_ROOT}/include/simulator.h
   ${FLEXFLOW_ROOT}/include/hash_utils.h

@@ -252,7 +252,7 @@ void Reverse::backward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   IndexLauncher launcher(REVERSE_BWD_TASK_ID, parallel_is,
-                         TaskArgument(this, sizeof(Linear)), argmap,
+                         TaskArgument(this, sizeof(Reverse)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          outputs[0]->machine_view.hash());
   // regions[0](I): output_grad

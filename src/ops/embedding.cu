@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/embedding.h"
 #include "cuda_helper.h"
 
 using namespace Legion;
@@ -32,26 +32,6 @@ Tensor FFModel::embedding(const Tensor input,
     layers.push_back(embed);
     return embed->outputs[0];
   }
-#ifdef OLD_LAYER_CREATION
-  if (kernel_initializer == NULL) {
-    int seed = std::rand();
-    kernel_initializer = new GlorotUniform(seed);
-  }
-#ifdef FF_USE_NCCL
-  ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-  ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-  Tensor weight;
-  {
-    const int dims[2] = {num_entries, out_dim};
-    weight = create_weight<2>(dims, DT_FLOAT, NULL/*owner_op*/,
-        true/*create_grad*/, kernel_initializer, comm_type);
-  }
-  Embedding* embed = new Embedding(*this, input, weight, aggr, name);
-  layers.push_back(embed);
-  return embed->outputs[0];
-#endif
 }
 
 Embedding::Embedding(FFModel& model,
@@ -110,59 +90,6 @@ Embedding::Embedding(FFModel& model,
   // Check correctness
   assert(check_output_input_weight_parallel_dims());
 }
-
-#ifdef DEADCODE
-void Embedding::create_weights(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-#ifdef FF_USE_NCCL
-  ParameterSyncType comm_type = ParameterSyncType::NCCL;  
-#else
-  ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-  {
-    const int dims[2] = {out_channels, num_entries};
-    // Embeddding weights and linear weights can be partitioned in the same way
-    weights[0] = model.create_linear_weight<2, 2>(this, dims, DT_FLOAT, kernel_initializer, true/*create_grad*/, comm_type);
-    assert(numWeights == 1);
-  }
-}
-#endif
-
-#ifdef DEADCODE
-void Embedding::create_input_partition(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  // Currently assume we can only partition over the sample dim
-  assert(part_rect.hi[0] == part_rect.lo[0]);
-  return Op::create_input_partition(model);
-#ifdef DEADCODE
-  {
-    const int dims[2] = {inputs[0].adim[1], out_channels};
-    outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
-    outputs[0].owner_op = this;
-    outputs[0].owner_idx = 0;
-  }
-  // Compute partition bound for input
-  Rect<2> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0]->part.get_index_partition());
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0]->part;
-    input_grad_lps[0] = inputs[0]->part_grad;
-  } else {
-    model.create_disjoint_partition<2>(
-      inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
-  }
-#endif
-}
-#endif
 
 __host__
 OpMeta* Embedding::init_task(const Task *task,

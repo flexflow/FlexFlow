@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/embedding.h"
 
 using namespace Legion;
 

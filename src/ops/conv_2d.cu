@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/conv_2d.h"
 #include "cuda_helper.h"
 
 using namespace Legion;
@@ -43,20 +43,128 @@ Tensor FFModel::conv2d(const Tensor input,
       activation,
       groups,
       use_bias,
+      false,
       name
   );
   layers.push_back(conv);
   return conv->outputs[0];
 }
 
-/* void Conv2D::output_size(ParallelDim[] output_size, Tensor input) const { */
-/*   int input_w = inputs[0]->dims[0].size; */
-/*   int input_h = inputs[0]->dims[1].size; */
+namespace Input {
+  enum {
+    WIDTH = 0,
+    HEIGHT = 1,
+    CHANNEL = 2,
+    SAMPLE = 3,
+    REPLICA = 4,
+    NUMDIM
+  };
+};
 
-/*   int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w; */
-/*   int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h; */
-/*   int output_c = out_channels; */
-/*   int output_n = inputs[0]->dims[3].size; */
+namespace Output {
+  enum {
+    WIDTH = 0,
+    HEIGHT = 1,
+    CHANNEL = 2,
+    SAMPLE = 3,
+    REPLICA = 4,
+    NUMDIM
+  };
+};
+
+namespace Kernel {
+  constexpr int INDEX = 0;
+
+  enum {
+    WIDTH = 0,
+    HEIGHT = 1,
+    CHANNEL_IN = 2,
+    CHANNEL_OUT = 3,
+    REPLICA = 4,
+    NUMDIM
+  };
+};
+
+namespace Bias {
+  constexpr int INDEX = 1;
+
+  enum {
+    CHANNEL = 0,
+    REPLICA_1 = 1,
+    REPLICA_2 = 2,
+    REPLICA_3 = 3,
+    REPLICA_4 = 4,
+    NUMDIM
+  };
+};
+
+int Conv2D::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
+  int input_w = inputs[0]->dims[Input::WIDTH].size;
+  int input_h = inputs[0]->dims[Input::HEIGHT].size;
+
+  output_dims[Output::REPLICA].is_replica_dim = true;
+  output_dims[Output::SAMPLE].size = inputs[0]->dims[Input::SAMPLE].size;
+  output_dims[Output::CHANNEL].size = out_channels;
+  output_dims[Output::HEIGHT].size = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
+  output_dims[Output::WIDTH].size = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
+
+  return inputs[0]->num_dims;
+};
+
+int Conv2D::kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) {
+  kernel_dims[Kernel::REPLICA].is_replica_dim = true;
+  kernel_dims[Kernel::CHANNEL_OUT].size = this->out_channels;
+  kernel_dims[Kernel::CHANNEL_IN].size = inputs[0]->dims[Input::CHANNEL].size / this->groups;
+  kernel_dims[Kernel::HEIGHT].size = this->kernel_h * kernel_dims[Kernel::HEIGHT].degree;
+  kernel_dims[Kernel::WIDTH].size = this->kernel_w * kernel_dims[Kernel::WIDTH].degree;
+
+  return inputs[0]->num_dims;
+}
+
+int Conv2D::bias_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) {
+  kernel_dims[Bias::REPLICA_1].is_replica_dim = true;
+  kernel_dims[Bias::REPLICA_2].is_replica_dim = true;
+  kernel_dims[Bias::REPLICA_3].is_replica_dim = true;
+  kernel_dims[Bias::REPLICA_4].is_replica_dim = true;
+  kernel_dims[Kernel::CHANNEL_OUT].size = this->out_channels;
+
+  return (int)Kernel::NUMDIM;
+};
+
+void Conv2D::register_mappings() {
+  this->register_output_mappings();
+  this->register_output_mappings();
+}
+
+void Conv2D::register_output_mappings() {
+  this->register_output_parallel_dims({
+    {Input::CHANNEL, Output::REPLICA},
+    {Input::SAMPLE, Output::SAMPLE},
+    {Input::REPLICA, Output::CHANNEL},
+    {Input::HEIGHT, Output::HEIGHT},
+    {Input::WIDTH, Output::WIDTH}
+  });
+}
+
+void Conv2D::register_weight_mappings() {
+  this->register_weight_parallel_dims({
+    {Input::REPLICA, Kernel::CHANNEL_OUT},
+    {Input::SAMPLE, Kernel::REPLICA},
+    {Input::CHANNEL, Kernel::CHANNEL_IN}, 
+    {Input::HEIGHT, Kernel::HEIGHT}, // Kernel::{HEIGHT, WEIGHT} would both work here
+    {Input::WIDTH, Kernel::WIDTH}, // same as above
+  }, 0, 0);
+
+  if (this->use_bias) {
+    this->register_weight_parallel_dims({
+      {Output::REPLICA, Bias::REPLICA_1},
+      {Output::SAMPLE, Bias::REPLICA_2},
+      {Output::CHANNEL, Bias::CHANNEL},
+      {Output::HEIGHT, Bias::REPLICA_3},
+      {Output::WIDTH, Bias::REPLICA_4}
+    }, 0, 1);
+  }
+}
 
 Conv2D::Conv2D(FFModel& model,
                const Tensor input,
@@ -66,9 +174,12 @@ Conv2D::Conv2D(FFModel& model,
                int paddingH, int paddingW,
                ActiMode activation,
                int groups,
+               bool allocate_weights,
                bool use_bias,
                const char* name)
-: Op(model, OP_LINEAR, name, 1/*inputs*/, 0/*weights*/, 1 /*outputs*/, input),
+: Op(model, OP_LINEAR, name, 1/*inputs*/, use_bias ? 2 : 1/*weights*/, allocate_weights, 1/*outputs*/, input),
+  in_channels(input->dims[Input::CHANNEL].size),
+  out_channels(outChannels),
   kernel_h(kernelH), kernel_w(kernelW),
   stride_h(strideH), stride_w(strideW),
   padding_h(paddingH), padding_w(paddingW),
@@ -76,59 +187,45 @@ Conv2D::Conv2D(FFModel& model,
   groups(groups),
   use_bias(use_bias)
 {
-  int numdim = input->num_dims;
+  assert (input->num_dims == Input::NUMDIM);
+
+  this->register_mappings();
+
+  std::vector<ParallelDim *> weight_dim_sets;
 
   ParallelDim output_dims[MAX_TENSOR_DIM];
-  /* std::copy(input->dims, input->dims + numdim, output_dims); */
+  int output_ndim = this->output_size(output_dims);
 
-  /* output_dims[numdim-1].size = input->dims[0].degree; */
-}
+  int kernel_ndim, bias_ndim;
+  ParallelDim kernel_dims[MAX_TENSOR_DIM], 
+              bias_dims[MAX_TENSOR_DIM];
+  if (allocate_weights) {
+    kernel_ndim = this->kernel_size(kernel_dims);
+    weight_dim_sets.push_back(kernel_dims);
 
-
-
-/*
-locals[0] = kernel
-locals[1] = bias
-*/
-Conv2D::Conv2D(FFModel& model,
-               const Tensor _input,
-               const Tensor _kernel,
-               const Tensor _bias,
-               int _stride_h, int _stride_w,
-               int _padding_h, int _padding_w,
-               ActiMode _activation,
-               const char* name)
-: Op(model, OP_CONV2D, name, 1/*numInputs*/, _bias == NULL ? 1 : 2/*numWeights*/, 1/*outputs*/, _input, _kernel, _bias),
-  in_channels(_input->dims[2].size), out_channels(_kernel->dims[3].size),
-  kernel_h(_kernel->dims[1].size), kernel_w(_kernel->dims[0].size),
-  stride_h(_stride_h), stride_w(_stride_w),
-  padding_h(_padding_h), padding_w(_padding_w),
-  groups(_input->dims[2].size/_kernel->dims[2].size), activation(_activation)
-{
-  assert(_input->num_dims == 4);
-  if (_bias == NULL) {
-    assert(numInputs == 1);
-    assert(numWeights == 1);
-    use_bias = false;
-  } else {
-    assert(numInputs == 1);
-    assert(numWeights == 2);
-    use_bias = true;
+    if (use_bias) {
+      bias_ndim = this->bias_size(bias_dims);
+      weight_dim_sets.push_back(bias_dims);
+    }
   }
-  // Set output shape
-  int input_w = inputs[0]->dims[0].size;
-  int input_h = inputs[0]->dims[1].size;
-  int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
-  int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  int output_c = out_channels;
-  int output_n = inputs[0]->dims[3].size;
-  numOutputs = 1;
-  {
-    const int dims[4] = {output_n, output_c, output_h, output_w};
-    outputs[0] = model.create_tensor<4>(dims, DT_FLOAT, this);
+    
+  this->solve_parallel_dim_mappings(
+      {inputs[0]->dims},
+      weight_dim_sets,
+      {output_dims}
+  );
+
+  if (allocate_weights) {
+    weights[Kernel::INDEX] = model.create_tensor_legion_ordering(kernel_ndim, kernel_dims, DT_FLOAT, this);
+    
+    if (use_bias) {
+      weights[Bias::INDEX] = model.create_tensor_legion_ordering(bias_ndim, bias_dims, DT_FLOAT, this);
+    }
   }
-  // Require input channels is divisible by groups
-  assert(in_channels % groups == 0);
+
+  outputs[0] = model.create_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
+
+  assert(check_output_input_weight_parallel_dims());
 }
 
 cudnnConvolutionFwdAlgo_t
