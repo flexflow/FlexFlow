@@ -225,6 +225,21 @@ SearchHelper::SearchHelper(FFModel *model)
 { }
 
 template <typename T>
+T SearchHelper::execute_sequence_split(
+    std::unique_ptr<Graph> const &pre_graph,
+    std::unique_ptr<Graph> const &post_graph,
+    NodeAssignment const &source,
+    NodeAssignment const &sink,
+    MachineResource const &resources,
+    SequenceSplit const &bn) const 
+{
+  return sequence_cost<T>(
+      this->graph_cost<T>(pre_graph.get(), source, bn, resources, true),
+      this->graph_cost<T>(post_graph.get(), bn, sink, resources, false)
+  );
+}
+
+template <typename T>
 T SearchHelper::find_optimal_sequence_graph_time(
   Graph const *g,
   Node const &bn_node,
@@ -262,28 +277,116 @@ T SearchHelper::find_optimal_sequence_graph_time(
       valid_views.push_back(sink.view);
     }
   }
+
   if (valid_views.empty()) {
     return optimal;
   }
 
-  T pre_cost, post_cost, total_cost;
+  float optimal_cost = std::numeric_limits<float>::infinity();
+  MachineView best_view;
+
   for (MachineView const &bn_view : valid_views) {
-    log_dp.debug("    explore view(%d %d)", bn_view.ndims, bn_view.dim[0]);
-    log_dp.debug("    First Graph...");
-    pre_cost = this->graph_cost<T>(pre_graph.get(), source, {bn_node, bn_view}, resources, true);
-    log_dp.debug("    Second Graph...");
-    post_cost = this->graph_cost<T>(post_graph.get(), {bn_node, bn_view}, sink, resources, false);
+    float cost = this->execute_sequence_split<float>(
+        pre_graph,
+        post_graph,
+        source,
+        sink,
+        resources,
+        {bn_node, bn_view}
+    );
 
-    total_cost = sequence_cost<T>(pre_cost, post_cost);
-
-    if (total_cost < optimal) {
-      optimal = total_cost;
+    if (cost < optimal_cost) {
+      best_view = bn_view;
+      optimal_cost = cost;
     }
+  }
+
+  if (optimal_cost != std::numeric_limits<float>::infinity()) {
+    optimal = this->execute_sequence_split<T>(
+        pre_graph,
+        post_graph,
+        source,
+        sink,
+        resources,
+        {bn_node, best_view}
+    );
   }
 
   check_matches_graph<T>(g, optimal, sink.node);
 
   return optimal;
+}
+
+template <typename T>
+T SearchHelper::execute_nonsequence_split(
+  std::unique_ptr<Graph> const &first_graph,
+  std::unique_ptr<Graph> const &second_graph,
+  NodeAssignment const &source,
+  NodeAssignment const &sink,
+  MachineResource const &resources,
+  NonsequenceSplit const &split) const 
+{
+  switch (split.type) {
+    case SplitType::SEQUENTIAL:
+      return sequence_cost<T>(
+          this->graph_cost<T>(first_graph.get(), source, sink, resources, false),
+          this->graph_cost<T>(second_graph.get(), source, sink, resources, false)
+      );
+    case SplitType::VERTICAL:
+    {
+      MachineResource firstRes = resources, 
+                      secondRes = resources;
+      firstRes.num_nodes = split.param;
+      secondRes.num_nodes = resources.num_nodes - split.param;
+      secondRes.start_gpu_id = resources.start_gpu_id + resources.all_gpus_per_node * split.param;
+
+      return parallel_cost<T>(
+          this->graph_cost<T>(first_graph.get(), source, sink, firstRes, false),
+          this->graph_cost<T>(second_graph.get(), source, sink, secondRes, false)
+      );
+    }
+    case SplitType::HORIZONTAL: 
+    {
+      MachineResource firstRes = resources, 
+                      secondRes = resources;
+      firstRes.available_gpus_per_node = split.param;
+      secondRes.available_gpus_per_node = resources.available_gpus_per_node - split.param;
+      secondRes.start_gpu_id = resources.start_gpu_id + split.param;
+
+      return parallel_cost<T>(
+          this->graph_cost<T>(first_graph.get(), source, sink, firstRes, false),
+          this->graph_cost<T>(second_graph.get(), source, sink, secondRes, false)
+      );
+    }
+    default:
+      assert(false);
+  }
+}
+
+/*static*/
+NonsequenceSplit NonsequenceSplit::sequential() {
+  NonsequenceSplit s;
+  s.type = SplitType::SEQUENTIAL;
+
+  return s;
+}
+
+/*static*/
+NonsequenceSplit NonsequenceSplit::vertical(int param) {
+  NonsequenceSplit s;
+  s.type = SplitType::VERTICAL;
+  s.param = param;
+
+  return s;
+}
+
+/*static*/
+NonsequenceSplit NonsequenceSplit::horizontal(int param) {
+  NonsequenceSplit s;
+  s.type = SplitType::HORIZONTAL;
+  s.param = param;
+
+  return s;
 }
 
 template <typename T>
@@ -297,43 +400,41 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
   std::unique_ptr<Graph> second_graph;
   std::tie(first_graph, second_graph) = g->split_horizontal(source.node, sink.node);
 
-  // Run the two in sequence
-  T optimal = sequence_cost<T>(
-      this->graph_cost<T>(first_graph.get(), source, sink, resources, false),
-      this->graph_cost<T>(second_graph.get(), source, sink, resources, false)
-  );
+  std::vector<NonsequenceSplit> potential_splits; 
 
-  // Consider run the two in parallel
-  // Split resources vertically
   for (int i = 1; i < resources.num_nodes; i++) {
-    MachineResource firstRes = resources, secondRes = resources;
-    firstRes.num_nodes = i;
-    secondRes.num_nodes = resources.num_nodes - i;
-    secondRes.start_gpu_id = resources.start_gpu_id + resources.all_gpus_per_node * i;
-
-    T new_cost = parallel_cost<T>(
-        this->graph_cost<T>(first_graph.get(), source, sink, firstRes, false),
-        this->graph_cost<T>(second_graph.get(), source, sink, secondRes, false)
-    );
-    if (new_cost < optimal) {
-      optimal = new_cost;
-    }
+    potential_splits.push_back(NonsequenceSplit::vertical(i));
   }
-  // Split resources horizontally
   for (int i = 1; i < resources.available_gpus_per_node; i++) {
-    MachineResource firstRes = resources, secondRes = resources;
-    firstRes.available_gpus_per_node = i;
-    secondRes.available_gpus_per_node = resources.available_gpus_per_node - i;
-    secondRes.start_gpu_id = resources.start_gpu_id + i;
-
-    T new_cost = parallel_cost<T>(
-        this->graph_cost<T>(first_graph.get(), source, sink, firstRes, false),
-        this->graph_cost<T>(second_graph.get(), source, sink, secondRes, false)
+    potential_splits.push_back(NonsequenceSplit::horizontal(i));
+  }
+  
+  float best_cost = std::numeric_limits<float>::infinity();
+  NonsequenceSplit best_split = NonsequenceSplit::sequential();
+  for (NonsequenceSplit const &split : potential_splits) {
+    float cost = this->execute_nonsequence_split<float>(
+        first_graph,
+        second_graph,
+        source, 
+        sink,
+        resources,
+        split
     );
-    if (new_cost < optimal) {
-      optimal = new_cost;
+
+    if (cost < best_cost) { 
+      best_cost = cost;
+      best_split = split;
     }
   }
+  
+  T optimal = this->execute_nonsequence_split<T>(
+      first_graph,
+      second_graph,
+      source, 
+      sink,
+      resources,
+      best_split
+  );
 
   check_matches_graph<T>(g, optimal, sink.node);
 

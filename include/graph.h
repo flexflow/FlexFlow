@@ -112,6 +112,23 @@ size_t dp_state_hash(const Graph* graph,
                      const MachineView& source_view,
                      const MachineResource& resource);
 
+enum class SplitType {
+  SEQUENTIAL, 
+  VERTICAL,
+  HORIZONTAL
+};
+
+struct NonsequenceSplit {
+  SplitType type;
+  int param;
+
+  static NonsequenceSplit sequential();
+  static NonsequenceSplit vertical(int param);
+  static NonsequenceSplit horizontal(int param);
+};
+
+using SequenceSplit = NodeAssignment;
+
 class SearchHelper {
 public:
   SearchHelper(FFModel *model);
@@ -164,6 +181,22 @@ public:
 
   template <typename T>
   void check_matches_graph(Graph const *, T const &, Node const &) const;
+private:
+  template <typename T>
+  T execute_nonsequence_split(std::unique_ptr<Graph> const &first_graph, 
+                              std::unique_ptr<Graph> const &second_graph,
+                              NodeAssignment const &source,
+                              NodeAssignment const &sink,
+                              MachineResource const &resources,
+                              NonsequenceSplit const &split) const;
+
+  template <typename T>
+  T execute_sequence_split(std::unique_ptr<Graph> const &first_graph,
+                           std::unique_ptr<Graph> const &second_graph,
+                           NodeAssignment const &source,
+                           NodeAssignment const &sink,
+                           MachineResource const &resources,
+                           SequenceSplit const &split) const;
 private:
   FFModel *model;
 
