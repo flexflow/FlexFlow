@@ -49,7 +49,6 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/runtime/optimizer.cc\
 		${FF_HOME}/src/ops/embedding.cc\
 		${FF_HOME}/src/ops/group_by.cc\
-		${FF_HOME}/src/ops/aggregate.cc\
 		${FF_HOME}/src/ops/aggregate_spec.cc\
 		${FF_HOME}/src/runtime/strategy.cc\
 		${FF_HOME}/src/runtime/simulator.cc\
@@ -63,6 +62,7 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/linear.cu\
 		${FF_HOME}/src/ops/softmax.cu\
 		${FF_HOME}/src/ops/concat.cu\
+		${FF_HOME}/src/ops/aggregate.cu\
 		${FF_HOME}/src/ops/split.cu\
 		${FF_HOME}/src/ops/dropout.cu\
 		${FF_HOME}/src/ops/flat.cu\

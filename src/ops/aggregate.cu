@@ -13,55 +13,13 @@
  * limitations under the License.
  */
 
-
 #include "model.h"
+#include "cuda_helper.h"
+#include <stdio.h>
 
-
-// Multiply exp preds with gate weights (first loss in '91 Jacobs)
-void f_mm(float* output,
-          const float* gate_net_preds,
-          float** exp_preds,
-          int k,
-          int out_dim) {
-  // set output tensor to 0
-  for(int i = 0; i < out_dim; i++) {
-    output[i] = 0.0f;
-  }
-
-  // Multiply exp preds with weights
-  for(int i = 0; i < k; i++) {
-    if(exp_preds[i] == 0) continue; // dropped sample
-    for(int j = 0; j < out_dim; j++) {
-      output[j] += exp_preds[i][j]*gate_net_preds[i];
-    }
-  }
-}
-
-
-void f_mm_back(const float* output_grad,
-              const float* gate_preds,
-              float** exp_preds,
-              float* gate_grads,
-              float** exp_grads,
-              int k,
-              int out_dim)
-{
-  // gating net gradient
-  for(int i = 0; i < k; i++) {
-    if(exp_preds[i] == 0) continue; // dropped sample
-    for(int j = 0; j < out_dim; j++) {
-      gate_grads[i] += output_grad[j]*exp_preds[i][j];
-    }
-  }
-
-  // expert gradients
-  for(int i = 0; i < k; i++) {
-    if(exp_preds[i] == 0) continue; // dropped sample
-    for(int j = 0; j < out_dim; j++) {
-      exp_grads[i][j] += gate_preds[i]*output_grad[j];
-    }
-  }
-}
+#define MAX_K 4
+#define MAX_BATCH_SIZE 32
+#define MAX_N 12
 
 
 Tensor FFModel::aggregate(const Tensor* inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
@@ -80,6 +38,13 @@ Aggregate::Aggregate(FFModel& model,
   n(_n), lambda_bal(_lambda_bal)
   //profiling(model.config.profiling)
 {
+  // FIXME: For now, set upper limits Better: Do as follows, but memory is
+  // assigned per block, so requires to check that
+  // https://stackoverflow.com/questions/5531247/allocating-shared-memory/5531640#5531640
+  assert(n <= MAX_N && "Increase MAX_N in #define");
+  assert(inputs[0].adim[0] <= MAX_K && "Increase MAX_K in #define");
+  assert(inputs[0].adim[1] <= MAX_BATCH_SIZE && "Increase MAX_BATCH_SIZE in #define");
+
   assert(n+3 == numInputs);
   assert(n > 0);
   assert(inputs[0].numDim == 2);
@@ -154,7 +119,11 @@ OpMeta* Aggregate::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
 {
-  return NULL;
+  Aggregate* agg = (Aggregate*) task->args;
+  FFHandler handle = *((FFHandler*)task->local_args);
+  AggregateMeta* m = new AggregateMeta(handle);
+  m->profiling = agg->profiling;
+  return m;
 }
 
 
@@ -184,7 +153,7 @@ void Aggregate::init(const FFModel& ff)
     default:
       assert(false);
   }
-  IndexLauncher launcher(Aggregate_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(AGGREGATE_INIT_TASK_ID, task_is,
     TaskArgument(this, sizeof(Aggregate)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
@@ -225,73 +194,118 @@ void Aggregate::init(const FFModel& ff)
 }
 
 
-void aggregate_forward(float** exp_preds,
+__global__
+void forward_kernel(float** exp_preds,
         const int* exp_assign,
-        const float* gating_net_preds,
+        const float* gate_net_preds,
         float* output,
-        int n, // num experts
-        int k, // num chosen experts
+        int n,
+        const int k, // num chosen experts
         int exp_samples, // max samples per expert
-        int batch_size,
+        const int batch_size,
         int out_dim)
 {
-  std::vector<int> expert_idx(n, 0);
-  float* chosen_exp_preds[k];
-  for(int i = 0; i < batch_size; i++) {
-    for(int j = 0; j < k; j++) {
-      // Get pointer to chosen expert predictions
-      int expert = exp_assign[k*i + j];
-      if(expert_idx[expert] >= exp_samples) {
-        // dropped sample
-        chosen_exp_preds[j] = 0;
-        continue;
+  __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
+
+  // Get pred pointers, single thread
+  if(blockIdx.x * blockDim.x + threadIdx.x == 0) {
+    int expert_idx[MAX_N] = {0};
+    for(int i = 0; i < batch_size; i++) {
+      for(int j = 0; j < k; j++) {
+        // Get pointer to chosen expert predictions
+        int expert = exp_assign[i*k+j];
+        if(expert_idx[expert] >= exp_samples) {
+          // dropped sample
+          chosen_exp_preds[i*k+j] = 0;
+          continue;
+        }
+        chosen_exp_preds[i*k+j] = exp_preds[expert] + expert_idx[expert]*out_dim;
+        expert_idx[expert]++;
       }
-      chosen_exp_preds[j] = exp_preds[expert] + expert_idx[expert]*out_dim;
-      expert_idx[expert]++;
     }
-    f_mm(output+i*out_dim, gating_net_preds+i*k, chosen_exp_preds,
-      k, out_dim);
+  }
+
+  // set output tensor to 0
+  CUDA_KERNEL_LOOP(i, batch_size*out_dim)
+  {
+    output[i] = 0.0f;
+  }
+
+  __syncthreads();
+
+  // compute output
+  CUDA_KERNEL_LOOP(i, k*out_dim*batch_size)
+  {
+    if(chosen_exp_preds[i/out_dim] != 0) {
+      float res = gate_net_preds[i/out_dim] * chosen_exp_preds[i/out_dim][i%(out_dim)];
+      int out_id = (i/(k*out_dim))*out_dim + (i%out_dim);
+      atomicAdd(output+out_id, res);
+    }
   }
 }
 
 
-void aggregate_backward(float** exp_preds,
-        float** exp_grads,
-        const int* exp_assign,
-        const float* gating_net_preds,
-        float* gating_net_grads,
-        float* output_grads,
-        int n, // num experts
-        int k, // num chosen experts
-        int exp_samples, // max samples per expert
-        int batch_size,
-        int out_dim)
+__device__
+void backward_kernel_gate(const float* output_grad,
+              float* full_gate_grads,
+              float** exp_preds,
+              const int* expert_assign,
+              int* expert_bal, float lambda_bal,
+              int batch_size, int k, int n, int out_dim)
 {
-  std::vector<int> expert_idx(n, 0);
-  float* chosen_exp_preds[k];
-  float* chosen_exp_grads[k];
-  for(int i = 0; i < batch_size; i++) {
-    for(int j = 0; j < k; j++) {
-      // Get pointer to chosen expert predictions
-      int expert = exp_assign[k*i + j];
-      if(expert_idx[expert] >= exp_samples) {
-        // dropped sample
-        chosen_exp_preds[j] = 0;
-        chosen_exp_grads[j] = 0;
-        continue;
-      }
-      chosen_exp_preds[j] = exp_preds[expert] + expert_idx[expert]*out_dim;
-      chosen_exp_grads[j] = exp_grads[expert] + expert_idx[expert]*out_dim;
-      expert_idx[expert]++;
-    }
+  // gate gradient
+  CUDA_KERNEL_LOOP(i, batch_size*k*out_dim)
+  {
+    if (exp_preds[i/out_dim] != 0) {
+      int out_id = (i/(k*out_dim))*out_dim + (i%out_dim);
+      float res = output_grad[out_id] * exp_preds[i/out_dim][i%out_dim];
 
-    f_mm_back(output_grads+i*out_dim, gating_net_preds+i*k, chosen_exp_preds,
-      gating_net_grads+i*k, chosen_exp_grads, k, out_dim);
+      float* gate_grad_idx = full_gate_grads + (i/(out_dim*k))*n
+        + expert_assign[(i/(out_dim*k))*k+(i/out_dim)%k];
+      atomicAdd(gate_grad_idx, res);
+    }
+  }
+
+  // loss term
+  CUDA_KERNEL_LOOP(i, n*batch_size)
+  {
+    atomicAdd(full_gate_grads+i, lambda_bal*expert_bal[i%batch_size]);
+  }
+
+  __syncthreads();
+
+  // make 0 mean
+  CUDA_KERNEL_LOOP(i, batch_size*n)
+  {
+    int start = (i/n)*n;
+    float sub = -full_gate_grads[i]/n;
+    for(int j = 0; j < n; j++) {
+      atomicAdd(full_gate_grads+start+j, sub);
+    }
   }
 }
 
 
-void aggregate_backward_bal(float** exp_preds,
+__device__
+void backward_kernel_exp(const float* output_grad,
+              const float* gate_preds,
+              float** exp_grads,
+              int batch_size,
+              int k,
+              int out_dim) {
+  // compute expert gradients
+  CUDA_KERNEL_LOOP(i, k*out_dim*batch_size)
+  {
+    if (exp_grads[i/out_dim] != 0) {
+      int out_id = (i/(k*out_dim))*out_dim + (i%out_dim);
+      exp_grads[i/out_dim][i%out_dim] = gate_preds[i/out_dim] * output_grad[out_id];
+    }
+  }
+}
+
+
+__global__
+void backward_kernel(float** exp_preds,
         float** exp_grads,
         const int* exp_assign,
         const float* gating_net_preds,
@@ -304,50 +318,44 @@ void aggregate_backward_bal(float** exp_preds,
         int batch_size,
         int out_dim)
 {
-  std::vector<int> expert_idx(n, 0);
-  for(int i = 0; i < batch_size; i++) {
-    const float* sample_gating_weights = gating_net_preds + i*k;
-    const float* sample_output_grads = output_grads + i*out_dim;
-    float* sample_full_gate_grads = full_gating_grads + i*n;
+  __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
+  __shared__ float* chosen_exp_grads[MAX_K*MAX_BATCH_SIZE];
+  __shared__ int expert_bal[MAX_N];
 
-    std::vector<float> sq_exp_errors(k, 0.0f);
-    for(int j = 0; j < k; j++) {
-      int expert = exp_assign[k*i + j];
+  // Get pred pointers, single thread
+  if(blockIdx.x * blockDim.x + threadIdx.x == 0) {
+    // init expert_bal to 0
+    for(int i = 0; i < n; i++) expert_bal[i] = 0;
 
-      if(expert_idx[expert] < exp_samples) { // sample not dropped
-        // expert gradient
-        float* chosen_exp_grad = exp_grads[expert] + expert_idx[expert]*out_dim;
-        for(int l = 0; l < out_dim; l++) {
-          chosen_exp_grad[l] += sample_gating_weights[j] * sample_output_grads[l];
+    // Get pointer to chosen expert predictions and expert counts
+    for(int i = 0; i < batch_size; i++) {
+      for(int j = 0; j < k; j++) {
+        int expert = exp_assign[k*i + j];
+        if(expert_bal[expert] >= exp_samples) {
+          // dropped sample
+          chosen_exp_preds[i*k+j] = 0;
+          chosen_exp_grads[i*k+j] = 0;
+          expert_bal[expert]++;
+          continue;
         }
-
-        // gating net gradient
-        float* chosen_exp_pred = exp_preds[expert] + expert_idx[expert]*out_dim;
-        for(int l = 0; l < out_dim; l++) {
-          sample_full_gate_grads[expert] += sample_output_grads[l]*chosen_exp_pred[l];
-        }
-
-        expert_idx[expert]++;
+        chosen_exp_preds[i*k+j] = exp_preds[expert] + expert_bal[expert]*out_dim;
+        chosen_exp_grads[i*k+j] = exp_grads[expert] + expert_bal[expert]*out_dim;
+        expert_bal[expert]++;
       }
     }
   }
 
-  // gating grads: balance term and enforce zero mean
-  lambda_bal *= ((float)n)/batch_size;
-  for(int i = 0; i < batch_size; i++) {
-    float* sample_full_gate_grads = full_gating_grads + i*n;
-    float grad_sum = 0.0f;
-    for(int j = 0; j < n; j++) {
-      sample_full_gate_grads[j] += lambda_bal*expert_idx[j];
-      grad_sum += sample_full_gate_grads[j];
-    }
-    grad_sum /= n;
-    for(int j = 0; j < n; j++) {
-      sample_full_gate_grads[j] -= grad_sum;
-    }
-  }
-}
+  __syncthreads();
 
+  // NOTE: These 2 functions could execute independently in parallel
+  // get expert gradients
+  backward_kernel_exp(output_grads, gating_net_preds, chosen_exp_grads,
+    batch_size, k, out_dim);
+
+  // get gating net gradients
+  backward_kernel_gate(output_grads, full_gating_grads, chosen_exp_preds,
+    exp_assign, expert_bal, (lambda_bal*n)/batch_size, batch_size, k, n, out_dim);
+}
 
 
 void Aggregate::forward_task(const Task *task,
@@ -358,6 +366,8 @@ void Aggregate::forward_task(const Task *task,
 
   assert((int)regions.size() == n+3);
   assert((int)task->regions.size() == n+3);
+
+  const AggregateMeta* m = *((AggregateMeta**)task->local_args);
 
   // get gate_pred, gate_assign, output
   const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
@@ -399,15 +409,30 @@ void Aggregate::forward_task(const Task *task,
 
   int k = (int)(rect_gate_assign.hi[0] - rect_gate_assign.lo[0] + 1);
 
-  aggregate_forward(exp_preds, acc_gate_assign.ptr(rect_gate_assign),
-    acc_gate_pred.ptr(rect_gate_pred), acc_output.ptr(rect_output), n, k, rows,
-    batch_size, out_dim);
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+#endif
+
+  // call forward_kernel
+  float** dev_exp_preds;
+  cudaMalloc(&dev_exp_preds, n*sizeof(float*));
+  cudaMemcpy(dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
+
+  forward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
+    dev_exp_preds, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
+    acc_output.ptr(rect_output), n, k, rows, batch_size, out_dim);
 }
+
+
 
 void Aggregate::backward_task(const Task *task,
                               const std::vector<PhysicalRegion>& regions,
                               Context ctx, Runtime* runtime)
 {
+  const AggregateMeta* m = *((AggregateMeta**)task->local_args);
   int n = ((Aggregate*)task->args)->n;
   float lambda_bal = ((Aggregate*)task->args)->lambda_bal;
 
@@ -423,7 +448,7 @@ void Aggregate::backward_task(const Task *task,
   Rect<2> rect_gate_pred = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<2> rect_gate_assign = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
+       ctx, task->regions[1].region.get_index_space());
   Rect<2> rect_full_gate_grad = runtime->get_index_space_domain(
       ctx, task->regions[2].region.get_index_space());
   Rect<2> rect_out_grad = runtime->get_index_space_domain(
@@ -468,7 +493,23 @@ void Aggregate::backward_task(const Task *task,
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
 
-  aggregate_backward_bal(exp_preds, exp_grads, acc_gate_assign.ptr(rect_gate_assign),
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+#endif
+
+  // call backward kernel
+  float** dev_exp_preds;
+  float** dev_exp_grads;
+  cudaMalloc(&dev_exp_preds, n*sizeof(float*));
+  cudaMalloc(&dev_exp_grads, n*sizeof(float*));
+  cudaMemcpy(dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
+  cudaMemcpy(dev_exp_grads, exp_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
+
+  backward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
+    dev_exp_preds, dev_exp_grads, acc_gate_assign.ptr(rect_gate_assign),
     acc_gate_pred.ptr(rect_gate_pred), full_acc_gate_grad.ptr(rect_full_gate_grad),
     acc_output_grad.ptr(rect_out_grad), n, k, rows, lambda_bal, batch_size, out_dim);
 }
@@ -479,11 +520,28 @@ void Aggregate::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
   IndexLauncher launcher(AGGREGATE_FWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Aggregate)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
-
   // gate_preds
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
@@ -516,6 +574,25 @@ void Aggregate::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+
   IndexLauncher launcher(AGGREGATE_BWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Aggregate)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -562,6 +639,12 @@ void Aggregate::backward(const FFModel& ff)
   launcher.add_field(2*n+3, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
+}
+
+
+AggregateMeta::AggregateMeta(FFHandler handler)
+: OpMeta(handler)
+{
 }
 
 

@@ -34,24 +34,6 @@ Loss::Loss(LossType _loss_type, bool _repl_labels)
 : loss_type(_loss_type), repl_labels(_repl_labels)
 {}
 
-Loss::Loss(const std::string& loss)
-{
-  repl_labels = false;
-  if (loss == "categorical_crossentropy")
-    loss_type = LOSS_CATEGORICAL_CROSSENTROPY;
-  else if (loss == "sparse_categorical_crossentropy")
-    loss_type = LOSS_SPARSE_CATEGORICAL_CROSSENTROPY;
-  else if (loss == "mean_squared_error")
-    loss_type = LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE;
-  else
-    // Unrecognized loss type
-    assert(false);
-}
-
-Loss::Loss(LossType _loss_type)
-: loss_type(_loss_type), repl_labels(false)
-{}
-
 __global__
 void sparse_categorical_crossentropy_loss_backward(
     float *logit_grad,

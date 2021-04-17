@@ -19,6 +19,15 @@
 #include <fstream>
 #include <string>
 
+#define NUM_SAMPLES 60000
+#define TRAIN_SAMPLES 60000
+#define TEST_SAMPLES 0
+#define MNIST_DIMS 28*28
+#define CIFAR_DIMS 3*32*32
+#define DATA_DIMS MNIST_DIMS
+#define OUT_DIM 10
+
+
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("MoE");
@@ -52,7 +61,7 @@ void top_level_task(const Task* task,
 
   Tensor input;
   {
-    const int dims[] = {ffConfig.batchSize, 28*28};
+    const int dims[] = {ffConfig.batchSize, DATA_DIMS};
     input = ff.create_tensor<2>(dims, DT_FLOAT);
   }
   //Tensor label;
@@ -63,15 +72,14 @@ void top_level_task(const Task* task,
 
 //-----------------------------------------------------------------
 
-  int out_dim = 10;
   int num_exp = 5;
   int num_select = 2;
   float alpha = 2.0f; // factor overhead tensor size for imbalance
   float lambda = 0.16f; // multiplier for load balance term
 
-
   // MoE model
   Tensor gate_preds = ff.dense(input, num_exp, AC_MODE_RELU);
+
   Tensor topK_output[2];
   ff.top_k(gate_preds, topK_output, num_select, false);
 
@@ -79,17 +87,18 @@ void top_level_task(const Task* task,
   ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
 
   Tensor agg_inputs[num_exp+3];
-  agg_inputs[0] = ff.softmax(topK_output[0]); /* gate preds */
-  agg_inputs[1] = topK_output[1]; /* gate assign */
-  agg_inputs[2] = gate_preds; /* full gate preds */
+  agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
+  agg_inputs[1] = topK_output[1]; // gate assign
+  agg_inputs[2] = gate_preds; // full gate preds
   for(int i = 0; i < num_exp; i++) {
-    agg_inputs[i+3] = ff.dense(exp_tensors[i], out_dim, AC_MODE_RELU);
+    agg_inputs[i+3] = ff.dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
     agg_inputs[i+3] = ff.softmax(agg_inputs[i+3]);
   }
 
   Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
-  ff.get_metrics();
-  Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
+  // ff.get_metrics();
+  // Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
+
 
 //-----------------------------------------------------------------
 
@@ -113,19 +122,28 @@ void top_level_task(const Task* task,
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     data_loader.reset();
     ff.reset_metrics();
-    int iterations = data_loader.num_samples / ffConfig.batchSize;
+    int iterations = TRAIN_SAMPLES / ffConfig.batchSize;
 
     for (int iter = 0; iter < iterations; iter++) {
       data_loader.next_batch(ff);
-      if (epoch > 0)
-        runtime->begin_trace(ctx, 111/*trace_id*/);
+      // if (epoch > 0)
+      //   runtime->begin_trace(ctx, 111/*trace_id*/); // TODO: because CPU. disable until then
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      if (epoch > 0)
-        runtime->end_trace(ctx, 111/*trace_id*/);
+      // if (epoch > 0)
+      //   runtime->end_trace(ctx, 111/*trace_id*/); // TODO: warning: this time graph different
     }
+
+    ff.reset_metrics();
+    iterations = TEST_SAMPLES / ffConfig.batchSize;
+    for (int iter = 0; iter < iterations; iter++) {
+      data_loader.next_batch(ff);
+      ff.forward();
+      ff.backward();
+    }
+
   }
   // End timer
   {
@@ -137,27 +155,28 @@ void top_level_task(const Task* task,
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
-         60000 * ffConfig.epochs / run_time);
+         TRAIN_SAMPLES * ffConfig.epochs / run_time);
 }
 
 
 DataLoader::DataLoader(FFModel& ff, const MoeConfig& moe,
                        Tensor input, Tensor label)
 {
-  num_samples = 60000;
+  num_samples = NUM_SAMPLES;
+
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
 
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {num_samples, input.adim[0]};
+    const int dims[] = {NUM_SAMPLES, input.adim[0]};
     full_input = ff.create_tensor<2>(dims, DT_FLOAT);
   }
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {num_samples, label.adim[0]};
+    const int dims[] = {NUM_SAMPLES, label.adim[0]};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
   }
 
@@ -198,6 +217,34 @@ int calc_offset(int c, int y, int x, int yscale, int xscale)
 /* NOTE: Download files from http://yann.lecun.com/exdb/mnist/, unpack to
 this directory (Flexflow/examples/cpp/try_out) */
 
+
+void read_cifar100(float* input_ptr, int* label_ptr) {
+  std::ifstream file;
+  file.open("train.bin", std::ios::in | std::ios::binary | std::ios::ate);
+  if (!file) {
+      std::cout << "Error opening CIFAR100 train data file" << std::endl;
+      return;
+  }
+
+  file.seekg(0, std::ios::beg);
+
+  // each sample: <1 x coarse label><1 x fine label><3072 x pixel>
+  for(std::size_t i = 0; i < NUM_SAMPLES; i++) {
+    unsigned char temp = 0;
+    file.read((char*)&temp, sizeof(temp)); // coarse label, skip
+    file.read((char*)&temp, sizeof(temp));
+    label_ptr[i] = temp;
+    for(std::size_t j = 0; j < 3072; ++j) {
+      file.read((char*)&temp, sizeof(temp));
+      input_ptr[i*3072 + j] = (float)temp/255.0f;
+    }
+  }
+
+  file.close();
+}
+
+
+
 int reverseInt (int i)
 {
     unsigned char c1, c2, c3, c4;
@@ -224,7 +271,7 @@ void read_mnist(float* input_ptr, int* label_ptr)
     input.read((char*)&magic_number,sizeof(magic_number));
     magic_number= reverseInt(magic_number);
     input.read((char*)&number_of_images,sizeof(number_of_images));
-    number_of_images= reverseInt(number_of_images);
+    number_of_images = reverseInt(number_of_images);
     input.read((char*)&n_rows,sizeof(n_rows));
     n_rows= reverseInt(n_rows);
     input.read((char*)&n_cols,sizeof(n_cols));
@@ -253,7 +300,7 @@ void read_mnist(float* input_ptr, int* label_ptr)
     labels.read((char*)&magic_number,sizeof(magic_number));
     magic_number= reverseInt(magic_number);
     labels.read((char*)&number_of_images,sizeof(number_of_images));
-    number_of_images= reverseInt(number_of_images);
+    number_of_images = reverseInt(number_of_images);
 
     for(int i = 0; i < number_of_images; i++) {
       unsigned char temp = 0;
@@ -288,9 +335,9 @@ void DataLoader::load_entire_dataset(const Task *task,
   int* label_ptr = acc_label.ptr(rect_label.lo);
 
   read_mnist(input_ptr, label_ptr);
-  log_app.print("finish loading MNIST\n");
-
+  log_app.print("finish loading data\n");
 }
+
 
 void DataLoader::next_batch(FFModel& ff)
 {
