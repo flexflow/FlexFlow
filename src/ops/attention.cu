@@ -32,6 +32,16 @@ Tensor FFModel::multihead_attention(const Tensor query,
                                     Initializer* kernel_initializer,
                                     const char* name)
 {
+  {
+    MultiHeadAttention* attn = new MultiHeadAttention(*this, query, key, value,
+                                                      embed_dim, num_heads,
+                                                      kdim, vdim, dropout, bias,
+                                                      add_bias_kv, add_zero_attn,
+                                                      name);
+    layers.push_back(attn);
+    return attn->outputs[0];
+  }
+#ifdef OLD_LAYER_CREATION
   if (kernel_initializer == NULL) {
     int seed = std::rand();
     kernel_initializer = new GlorotUniform(seed);
@@ -67,25 +77,22 @@ Tensor FFModel::multihead_attention(const Tensor query,
       add_bias_kv, add_zero_attn, name);
   layers.push_back(attn);
   return attn->outputs[0];
+#endif
 }
 
-MultiHeadAttention::MultiHeadAttention(
-    FFModel& model,
-    const Tensor _query,
-    const Tensor _key,
-    const Tensor _value,
-    const Tensor _weight,
-    int _embed_dim, int _num_heads,
-    int _kdim, int _vdim,
-    float _dropout, bool _bias,
-    bool _add_bias_kv, bool _add_zero_attn,
-    const char* name)
-//    Initializer* _bias_initializer)
-: Op(model,
-     OP_MULTIHEAD_ATTENTION,
-     name, 3/*inputs*/, 1/*weights*/,
-     _query, _key, _value, _weight),
-  dropout(_dropout), bias(_bias),
+MultiHeadAttention::MultiHeadAttention(FFModel& model,
+                                       const Tensor _query,
+                                       const Tensor _key,
+                                       const Tensor _value,
+                                       int _embed_dim, int _num_heads,
+                                       int _kdim, int _vdim,
+                                       float _dropout, bool _bias,
+                                       bool _add_bias_kv, bool _add_zero_attn,
+                                       const char* name)
+                                       //Initializer* _bias_initializer)
+: Op(model, OP_MULTIHEAD_ATTENTION, name, 3/*inputs*/, 0/*weights*/,
+     _query, _key, _value),
+  num_heads(_num_heads), dropout(_dropout), bias(_bias),
   add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
   qSize(_query->dims[0].size), kSize(_key->dims[0].size), vSize(_value->dims[0].size),
   qProjSize(_kdim), kProjSize(_kdim), vProjSize(_vdim), oProjSize(_embed_dim),
@@ -95,68 +102,67 @@ MultiHeadAttention::MultiHeadAttention(
   // assert key and value have the same sequence length
   assert(_key->dims[1] == _value->dims[1]);
   numOutputs = 1;
+  int numdim = _query->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < _query->num_dims; i++)
-    dims[i] = _query->dims[_query->num_dims-1-i];
-  dims[_query->num_dims-1].size = _embed_dim;
-  outputs[0] = model.create_tensor(_query->num_dims, dims, DT_FLOAT, this);
-}
+  for (int i = 0; i < numdim; i++)
+    dims[i] = _query->dims[i];
+  dims[0].size = _embed_dim;
+  // Currently require no parallelism along this dim
+  assert(dims[0].degree == 1);
 
-#ifdef DEADCODE
-void MultiHeadAttention::create_weights(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = model.get_or_create_task_is(3, pcname);
-#ifdef FF_USE_NCCL
-  ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-  ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-  {
-    const int dims[2] = {weights[0].dims[1].size, weights[0].dims[0].size};
-    weights[0] = model.create_linear_weight<2, 3>(this, dims, DT_FLOAT,
-        kernel_initializer, true/*create_grad*/, comm_type);
+  outputs[0] = model.create_tensor_legion_ordering(_query->num_dims,
+                                                   dims, DT_FLOAT, this);
+  for (int i = 0; i < numdim; i++) {
+    register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
   }
+  // Check correctness
+  assert(check_output_input_weight_parallel_dims());
 }
-#endif
 
-#ifdef DEADCODE
-void MultiHeadAttention::create_input_partition(FFModel& model)
+MultiHeadAttention::MultiHeadAttention(FFModel& model,
+                                       const Tensor _query,
+                                       const Tensor _key,
+                                       const Tensor _value,
+                                       const Tensor _weight,
+                                       int _embed_dim, int _num_heads,
+                                       int _kdim, int _vdim,
+                                       float _dropout, bool _bias,
+                                       bool _add_bias_kv, bool _add_zero_attn,
+                                       const char* name)
+                                       //Initializer* _bias_initializer)
+: Op(model, OP_MULTIHEAD_ATTENTION, name, 3/*inputs*/, 1/*weights*/,
+     _query, _key, _value, _weight),
+  num_heads(_num_heads), dropout(_dropout), bias(_bias),
+  add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
+  qSize(_query->dims[0].size), kSize(_key->dims[0].size), vSize(_value->dims[0].size),
+  qProjSize(_kdim), kProjSize(_kdim), vProjSize(_vdim), oProjSize(_embed_dim),
+  qoSeqLength(_query->dims[1].size), kvSeqLength(_key->dims[1].size)
+  //bias_initializer(_bias_initializer)
 {
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = model.get_or_create_task_is(3, pcname);
+  // assert key and value have the same sequence length
+  assert(_key->dims[1] == _value->dims[1]);
+  numOutputs = 1;
+  int numdim = _query->num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++)
+    dims[i] = _query->dims[i];
+  // assert key and value have the same sequence length
+  assert(_key->dims[1] == _value->dims[1]);
+  dims[0].size = _embed_dim;
+  // Currently require no parallelism along this dim
+  assert(dims[0].degree == 1);
 
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<3> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  int num_part_n = part_rect.hi[2] - part_rect.lo[2] + 1;
-  int num_part_v = part_rect.hi[1] - part_rect.lo[1] + 1;
-  int num_part_c = part_rect.hi[0] - part_rect.lo[0] + 1;
-  // Currently assume only partition over the batch dim
-  assert(num_part_v == 1);
-  assert(num_part_c == 1);
-  return Op::create_input_partition(model);
-  //{
-  //  const int dims[3] = {outputs[0].dims[2].size, outputs[0].dims[1].size, outputs[0].dims[0].size};
-  //  outputs[0] = model.create_tensor<3>(dims, DT_FLOAT, this);
-  //  outputs[0].owner_op = this;
-  //  outputs[0].owner_idx = 0;
-  //}
-  //for (int i = 0; i < 3; i++) {
-  //  Rect<3> input_rect = runtime->get_index_partition_color_space(
-  //      ctx, inputs[i]->part.get_index_partition());
-  //  if (input_rect == part_rect) {
-  //    input_lps[i] = inputs[i]->part;
-  //    input_grad_lps[i] = inputs[i]->part_grad;
-  //  } else {
-  //    model.create_disjoint_partition(
-  //        inputs[i], (IndexSpaceT<3>)task_is, input_lps[i], input_grad_lps[i]);
-  //  }
-  //}
+  outputs[0] = model.create_tensor_legion_ordering(_query->num_dims,
+                                                   dims, DT_FLOAT, this);
+  for (int i = 0; i < numdim; i++) {
+    register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
+  }
+  assert(_weight->num_dims == 3);
+  register_output_weight_parallel_dims(outputs[0], numdim-1, _weight, 1);
+  register_output_weight_parallel_dims(outputs[0], numdim-2, _weight, 2);
+  // Check correctness
+  assert(check_output_input_weight_parallel_dims());
 }
-#endif
 
 /*
   regions[0](I): query
@@ -172,15 +178,15 @@ OpMeta* MultiHeadAttention::init_task(
 {
   const MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
-  TensorAccessorR<float, 3> acc_query(
+  TensorAccessorR<float, 4> acc_query(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 3> acc_key(
+  TensorAccessorR<float, 4> acc_key(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 3> acc_value(
+  TensorAccessorR<float, 4> acc_value(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 2> acc_weight(
+  TensorAccessorR<float, 3> acc_weight(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 3> acc_output(
+  TensorAccessorW<float, 4> acc_output(
       regions[4], task->regions[4], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   int num_samples = acc_query.rect.hi[2] - acc_query.rect.lo[2] + 1;
@@ -278,15 +284,15 @@ void MultiHeadAttention::forward_task(
   assert(task->regions.size() == regions.size());
   //const MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
   const MultiHeadAttentionMeta* m = *((MultiHeadAttentionMeta**) task->local_args);
-  TensorAccessorR<float, 3> acc_query(
+  TensorAccessorR<float, 4> acc_query(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 3> acc_key(
+  TensorAccessorR<float, 4> acc_key(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 3> acc_value(
+  TensorAccessorR<float, 4> acc_value(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 2> acc_weight(
+  TensorAccessorR<float, 3> acc_weight(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 3> acc_output(
+  TensorAccessorW<float, 4> acc_output(
       regions[4], task->regions[4], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   cudaEvent_t t_start, t_end;
@@ -398,20 +404,20 @@ void MultiHeadAttention::backward_task(
   assert(task->regions.size() == regions.size());
   //MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
   const MultiHeadAttentionMeta* m = *((MultiHeadAttentionMeta**) task->local_args);
-  TensorAccessorR<float, 3> acc_query(
+  TensorAccessorR<float, 4> acc_query(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 3> acc_key(
+  TensorAccessorR<float, 4> acc_key(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 3> acc_value(
+  TensorAccessorR<float, 4> acc_value(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 2> acc_weight(
+  TensorAccessorR<float, 3> acc_weight(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 3> acc_output_grad(
+  TensorAccessorR<float, 4> acc_output_grad(
       regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_weight_grad(
+  TensorAccessorW<float, 3> acc_weight_grad(
       regions[5], task->regions[5], FID_DATA, ctx, runtime,
       true/*readOutput*/);
-  TensorAccessorW<float, 3> acc_query_grad(
+  TensorAccessorW<float, 4> acc_query_grad(
       regions[6], task->regions[6], FID_DATA, ctx, runtime,
       true/*readOutput*/);
   float *key_grad_ptr, *value_grad_ptr;
@@ -426,7 +432,7 @@ void MultiHeadAttention::backward_task(
   } else if (regions.size() == 8) {
     // assert query == key
     assert(regions[0].get_logical_region() == regions[1].get_logical_region());
-    TensorAccessorW<float, 3> acc_value_grad(
+    TensorAccessorW<float, 4> acc_value_grad(
         regions[7], task->regions[7], FID_DATA, ctx, runtime,
         true/*readOutput*/);
     assert(acc_value_grad.rect == acc_value.rect);
@@ -434,10 +440,10 @@ void MultiHeadAttention::backward_task(
     value_grad_ptr = acc_value_grad.ptr;
   } else {
     assert(regions.size() == 10);
-    TensorAccessorW<float, 3> acc_key_grad(
+    TensorAccessorW<float, 4> acc_key_grad(
         regions[7], task->regions[7], FID_DATA, ctx, runtime,
         true/*readOutput*/);
-    TensorAccessorW<float, 3> acc_value_grad(
+    TensorAccessorW<float, 4> acc_value_grad(
         regions[8], task->regions[8], FID_DATA, ctx, runtime,
         true/*readOutput*/);
     assert(acc_key.rect == acc_key_grad.rect);
@@ -679,11 +685,21 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
   if (!outputs[0]->get_input_sub_tensor(pc, sub_output, OP_MULTIHEAD_ATTENTION))
     return false;
   // Currently assume only data parallel
-  Tensor sub_weight = weights[0];
-  assert(sub_weight->num_dims == 2);
-  int num_heads = sub_weight->dims[1].size;
-  assert(sub_query.num_dims == 3);
+  size_t num_weights = 0;
+  {
+    // Compute weight size
+    int qSize = sub_query.dims[0].size;
+    int kSize = sub_key.dims[0].size;
+    int vSize = sub_value.dims[0].size;
+    int qParas = qProjSize * qSize;
+    int kParas = kProjSize * kSize;
+    int vParas = vProjSize * vSize;
+    int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
+    num_weights = num_heads * (qParas + kParas + vParas + oParas);
+  }
+  assert(sub_query.num_dims == 4);
   int num_samples = sub_query.dims[2].size;
+
   MultiHeadAttentionMeta* m = new MultiHeadAttentionMeta(sim->handler,
       this, sim->memory, num_samples, num_heads);
 
@@ -696,7 +712,7 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
   const float* value_ptr =
       (const float*)sim->allocate(sub_value.get_volume(), DT_FLOAT);
   const float* weight_ptr =
-      (const float*)sim->allocate(sub_weight->get_volume(), DT_FLOAT);
+      (const float*)sim->allocate(num_weights, DT_FLOAT);
   float* output_ptr =
       (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
@@ -713,7 +729,7 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
     float* value_grad_ptr =
         (float*)sim->allocate(sub_value.get_volume(), DT_FLOAT);
     float* weight_grad_ptr =
-        (float*)sim->allocate(sub_weight->get_volume(), DT_FLOAT);
+        (float*)sim->allocate(num_weights, DT_FLOAT);
     float* output_grad_ptr =
         (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert(output_grad_ptr != NULL);
@@ -747,3 +763,5 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
   delete m;
   return true;
 }
+
+

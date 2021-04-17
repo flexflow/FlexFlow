@@ -1602,6 +1602,15 @@ public:
                      const Tensor _query,
                      const Tensor _key,
                      const Tensor _value,
+                     int _embed_dim, int _num_heads,
+                     int _kdim, int _vdim,
+                     float _dropout, bool _bias,
+                     bool _add_bias_kv, bool _add_zero_attn,
+                     const char* name);
+  MultiHeadAttention(FFModel& model,
+                     const Tensor _query,
+                     const Tensor _key,
+                     const Tensor _value,
                      const Tensor _weight,
                      int _embed_dim, int _num_heads,
                      int _kdim, int _vdim,
@@ -1645,7 +1654,7 @@ public:
                        float* weight_grad_ptr,
                        const float* output_grad_ptr);
 public:
-  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+  int num_heads, qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
   float dropout;
   bool bias, add_bias_kv, add_zero_attn;

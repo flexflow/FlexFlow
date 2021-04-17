@@ -112,8 +112,8 @@ void top_level_task(const Task* task,
   FFModel ff(ffConfig);
   Tensor input;
   {
-    const int dims[] = {ffConfig.batchSize, tfConfig.sequence_length, tfConfig.hidden_size};
-    input = ff.create_tensor<3>(dims, DT_FLOAT);
+    const int dims[] = {1, ffConfig.batchSize, tfConfig.sequence_length, tfConfig.hidden_size};
+    input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
   //Tensor t = create_emb(&ff, input, tfConfig.embedding_size, tfConfig.hidden_size);
   Tensor input1 = input, input2 = input;
@@ -192,6 +192,7 @@ DataLoader::DataLoader(FFModel& ff,
   log_app.print("Use random dataset...");
   num_samples = ff.config.batchSize * ff.config.workersPerNode * ff.config.numNodes;
   log_app.print("Number of random samples = %d\n", num_samples);
+  return;
   {
     batch_input = _input;
     const int dims[] = {num_samples, tf.sequence_length, tf.hidden_size};
@@ -208,14 +209,14 @@ DataLoader::DataLoader(FFModel& ff,
       TaskArgument(NULL, 0));
   // regions[0]: full_sparse_input
   launcher.add_region_requirement(
-      RegionRequirement(full_input.region,
-                        WRITE_ONLY, EXCLUSIVE, full_input.region,
+      RegionRequirement(full_input->region,
+                        WRITE_ONLY, EXCLUSIVE, full_input->region,
                         MAP_TO_FB_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_label
   launcher.add_region_requirement(
-      RegionRequirement(full_label.region,
-                        WRITE_ONLY, EXCLUSIVE, full_label.region,
+      RegionRequirement(full_label->region,
+                        WRITE_ONLY, EXCLUSIVE, full_label->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   runtime->execute_task(ctx, launcher);
@@ -254,63 +255,59 @@ void DataLoader::next_batch(FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   // Load Input
   {
-    std::string pc_name = "";
-    IndexSpaceT<3> task_is = IndexSpaceT<3>(ff.get_or_create_task_is(3, pc_name));
-    Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain = runtime->get_index_space_domain(ctx, batch_input->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<3> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[2] - rect.lo[2] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[2] - rect.lo[2] + 1);
+      assert(ff.config.batchSize % batch_input->dims[2].size == 0);
+      meta.num_samples = ff.config.batchSize / batch_input->dims[2].size;
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(pc_name)));
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, batch_input->parallel_is,
+                           TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           batch_input->machine_view.hash());
     // Full dataset in ZCM
     launcher.add_region_requirement(
-        RegionRequirement(full_input.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_input.region,
+        RegionRequirement(full_input->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_input.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_input.region));
+        RegionRequirement(batch_input->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
   // Load Labels
   {
-    std::string pc_name = "";
-    IndexSpaceT<3> task_is = IndexSpaceT<3>(ff.get_or_create_task_is(3, pc_name));
-    Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain = runtime->get_index_space_domain(ctx, batch_label->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<3> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[2] - rect.lo[2] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[2] - rect.lo[2] + 1);
+      assert(ff.config.batchSize % batch_label->dims[2].size == 0);
+      meta.num_samples = ff.config.batchSize / batch_label->dims[2].size;
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(pc_name)));
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, batch_label->parallel_is,
+                           TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           batch_label->machine_view.hash());
     // Full dataset in ZCM
     launcher.add_region_requirement(
-        RegionRequirement(full_label.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_label.region,
+        RegionRequirement(full_label->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_label->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_label.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_label.region));
+        RegionRequirement(batch_label->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_label->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
