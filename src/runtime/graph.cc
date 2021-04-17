@@ -301,14 +301,16 @@ T SearchHelper::find_optimal_sequence_graph_time(
     }
   }
 
-  optimal = this->execute_sequence_split<T>(
-      pre_graph,
-      post_graph,
-      source,
-      sink,
-      resources,
-      {bn_node, best_view}
-  );
+  if (optimal_cost != std::numeric_limits<float>::infinity()) {
+    optimal = this->execute_sequence_split<T>(
+        pre_graph,
+        post_graph,
+        source,
+        sink,
+        resources,
+        {bn_node, best_view}
+    );
+  }
 
   check_matches_graph<T>(g, optimal, sink.node);
 
