@@ -1167,9 +1167,9 @@ public:
   AggrMode aggr;
 };
 
-class Group_byMeta : public OpMeta {
+class GroupByMeta : public OpMeta {
 public:
-  Group_byMeta(FFHandler handle);
+  GroupByMeta(FFHandler handle);
 };
 
 class Group_by : public Op {

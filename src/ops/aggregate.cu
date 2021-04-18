@@ -206,8 +206,8 @@ void agg_forward_kernel(float** exp_preds,
 {
   __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
 
-  // Get pred pointers, single thread
-  if(blockIdx.x * blockDim.x + threadIdx.x == 0) {
+  // Get pred pointers, single thread pre block
+  if(threadIdx.x == 0) {
     int expert_idx[MAX_N] = {0};
     for(int i = 0; i < batch_size; i++) {
       for(int j = 0; j < k; j++) {
@@ -297,7 +297,7 @@ void agg_backward_kernel_exp(const float* output_grad,
   {
     if (exp_grads[i/out_dim] != 0) {
       int out_id = (i/(k*out_dim))*out_dim + (i%out_dim);
-      exp_grads[i/out_dim][i%out_dim] = gate_preds[i/out_dim] * output_grad[out_id];
+      exp_grads[i/out_dim][i%out_dim] += gate_preds[i/out_dim] * output_grad[out_id];
     }
   }
 }
@@ -321,8 +321,8 @@ void agg_backward_kernel(float** exp_preds,
   __shared__ float* chosen_exp_grads[MAX_K*MAX_BATCH_SIZE];
   __shared__ int expert_bal[MAX_N];
 
-  // Get pred pointers, single thread
-  if(blockIdx.x * blockDim.x + threadIdx.x == 0) {
+  // Get pred pointers, single thread per block
+  if(threadIdx.x == 0) {
     // init expert_bal to 0
     for(int i = 0; i < n; i++) expert_bal[i] = 0;
 

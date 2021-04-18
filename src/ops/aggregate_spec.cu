@@ -206,8 +206,8 @@ void aggspec_forward_kernel(float** exp_preds,
 {
   __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
 
-  // Get pred pointers, single thread
-  if(blockIdx.x * blockDim.x + threadIdx.x == 0) {
+  // Get pred pointers, single thread per block
+  if(threadIdx.x == 0) {
     int expert_idx[MAX_N] = {0};
     for(int i = 0; i < batch_size; i++) {
       for(int j = 0; j < k; j++) {
@@ -287,7 +287,7 @@ void aggspec_backward_kernel_exp(const float* output_grad,
   CUDA_KERNEL_LOOP(i, k*out_dim*batch_size)
   {
     if (exp_grads[i/out_dim] != 0) {
-      exp_grads[i/out_dim][i%out_dim] = gate_preds[i/out_dim] * output_grad[i];
+      exp_grads[i/out_dim][i%out_dim] += gate_preds[i/out_dim] * output_grad[i];
     }
   }
 }
@@ -309,8 +309,8 @@ void aggspec_backward_kernel(float** exp_grads,
   __shared__ float* chosen_exp_grads[MAX_K*MAX_BATCH_SIZE];
   __shared__ int expert_bal[MAX_N];
 
-  // Get pred pointers, single thread
-  if(blockIdx.x * blockDim.x + threadIdx.x == 0) {
+  // Get pred pointers, single thread per block
+  if(threadIdx.x == 0) {
     // init expert_bal to 0
     for(int i = 0; i < n; i++) expert_bal[i] = 0;
 
@@ -405,7 +405,7 @@ void AggregateSpec::forward_task(const Task *task,
   cudaMalloc(&dev_exp_preds, n*sizeof(float*));
   cudaMemcpy(dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
 
-  aggspec_forward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k))>>>(
+  aggspec_forward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
     dev_exp_preds, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     acc_output.ptr(rect_output), n, k, rows, batch_size, out_dim);
 }
