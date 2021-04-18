@@ -97,16 +97,4 @@ struct TensorBase {
 typedef TensorBase* Tensor;
 typedef TensorBase* Parameter;
 
-/*
-struct Parameter : TensorBase {
-  template <typename T>
-  bool set_weights(const FFModel* model,
-                   const std::vector<int>& dims,
-                   const T* data);
-  template <typename T>
-  bool get_weights(const FFModel* model,
-                   T* data);
-};
-*/
-
 #endif

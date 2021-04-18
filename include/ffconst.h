@@ -47,6 +47,12 @@ enum ParameterSyncType {
   NCCL = 82,
 };
 
+#ifdef FF_USE_NCCL
+constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::NCCL;
+#else 
+constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
+#endif
+
 enum MetricsType {
   METRICS_ACCURACY = 1001,
   METRICS_CATEGORICAL_CROSSENTROPY = 1002,

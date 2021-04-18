@@ -56,7 +56,7 @@ BatchNorm::BatchNorm(FFModel& model,
                      const Tensor _bias,
                      bool _relu,
                      const char* name)
-: Op(model, OP_BATCHNORM, name, 1/*inputs*/, 2/*weights*/, _input, _scale, _bias),
+: Op(model, OP_BATCHNORM, name, 1/*inputs*/, 2/*weights*/, 1/*outputs*/, _input, _scale, _bias),
   relu(_relu)
 {
   assert(_input->num_dims == 4);
@@ -67,66 +67,6 @@ BatchNorm::BatchNorm(FFModel& model,
   outputs[0] = model.create_tensor(_input->num_dims, dims, DT_FLOAT, this);
   return;
 }
-
-#ifdef DEADCODE
-void BatchNorm::create_weights(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
-  // Create scale and bias
-  Initializer* scale_initializer = new ConstantInitializer(1.0f);
-  Initializer* bias_initializer = new ConstantInitializer(0.0f);
-  const int dims[1] = {outputs[0].adim[2]};
-  weights[0] = model.create_conv_weight<1>(this, dims, DT_FLOAT, scale_initializer);
-  weights[1] = model.create_conv_weight<1>(this, dims, DT_FLOAT, bias_initializer);
-}
-#endif
-
-#ifdef DEADCODE
-void BatchNorm::create_input_partition(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
-
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<4> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  int num_par_w = part_rect.hi[0] - part_rect.lo[0] + 1;
-  int num_par_h = part_rect.hi[1] - part_rect.lo[1] + 1;
-  int num_par_c = part_rect.hi[2] - part_rect.lo[2] + 1;
-  int num_par_n = part_rect.hi[3] - part_rect.lo[3] + 1;
-  // Currently assume data parallelism for batch norm
-  assert(num_par_w == 1);
-  assert(num_par_h == 1);
-  assert(num_par_c == 1);
-  return Op::create_input_partition(model);
-#ifdef DEADCODE
-  // Create output tensor
-  int output_w = outputs[0].dims[0].size;
-  int output_h = outputs[0].dims[1].size;
-  int output_c = outputs[0].dims[2].size;
-  int output_n = outputs[0].dims[3].size;
-  {
-    const int dims[4] = {output_n, output_c, output_h, output_w};
-    outputs[0] = model.create_tensor<4>(dims, DT_FLOAT, this);
-    outputs[0].owner_op = this;
-    outputs[0].owner_idx = 0;
-  }
-  // Compute partition bound for input
-  Rect<4> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0]->part.get_index_partition());
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0]->part;
-    input_grad_lps[0] = inputs[0]->part_grad;
-  } else {
-    model.create_disjoint_partition(
-        inputs[0], (IndexSpaceT<4>)task_is, input_lps[0], input_grad_lps[0]);
-  }
-#endif
-}
-#endif
 
 /*
   regions[0]: input

@@ -122,6 +122,11 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/ops/linear.h
   ${FLEXFLOW_ROOT}/include/ops/conv_2d.h
   ${FLEXFLOW_ROOT}/include/ops/embedding.h
+  ${FLEXFLOW_ROOT}/include/parallel_ops/combine.h
+  ${FLEXFLOW_ROOT}/include/parallel_ops/fused_parallel_op.h
+  ${FLEXFLOW_ROOT}/include/parallel_ops/partition.h
+  ${FLEXFLOW_ROOT}/include/parallel_ops/reduction.h
+  ${FLEXFLOW_ROOT}/include/parallel_ops/replicate.h
   ${FLEXFLOW_ROOT}/include/optimizer.h
   ${FLEXFLOW_ROOT}/include/simulator.h
   ${FLEXFLOW_ROOT}/include/hash_utils.h

@@ -43,7 +43,7 @@ Softmax::Softmax(FFModel& model,
                  const Tensor _input,
                  int _dim,
                  const char* name)
-: Op(model, OP_SOFTMAX, name, 1/*inputs*/, 0/*weights*/, _input),
+: Op(model, OP_SOFTMAX, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, _input),
   dim(_dim)
 {
   // Currently assume we always perform softmax along the inner most dim

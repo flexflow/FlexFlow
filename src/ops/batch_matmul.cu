@@ -35,7 +35,7 @@ BatchMatmul::BatchMatmul(FFModel& model,
                          const Tensor B,
                          int _a_seq_length_dim,
                          int _b_seq_length_dim)
-: Op(model, OP_BATCHMATMUL, "BatchMatmul_", 2/*inputs*/, 0/*weights*/, A, B),
+: Op(model, OP_BATCHMATMUL, "BatchMatmul_", 2/*inputs*/, 0/*weights*/, 1/*outputs*/, A, B),
   a_seq_length_dim(A->num_dims-1-_a_seq_length_dim),
   b_seq_length_dim(B->num_dims-1-_b_seq_length_dim)
 {

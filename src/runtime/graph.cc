@@ -16,6 +16,13 @@
 #include "dominators.h"
 #include "legion.h"
 #include "legion/legion_utilities.h"
+#include "ops/linear.h"
+#include "ops/embedding.h"
+#include "parallel_ops/partition.h"
+#include "parallel_ops/replicate.h"
+#include "parallel_ops/reduction.h"
+#include "parallel_ops/fused_parallel_op.h"
+#include "parallel_ops/combine.h"
 
 using namespace Legion;
 

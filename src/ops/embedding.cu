@@ -28,10 +28,89 @@ Tensor FFModel::embedding(const Tensor input,
 {
   {
     Embedding* embed = new Embedding(*this, input, num_entries, out_dim,
-                                     aggr, name);
+                                     aggr, false/*allocate_weights*/, name);
     layers.push_back(embed);
     return embed->outputs[0];
   }
+}
+
+namespace Weight {
+  enum {
+    OUT_CHANNELS = 0,
+    VOCAB_SIZE = 1,
+  };
+};
+
+namespace Output {
+  enum {
+    OUT_CHANNELS = 0
+  };
+};
+
+int Embedding::input_vocab_size_replica_dim() const {
+  return this->inputs[0]->num_dims - 1;
+}
+
+int Embedding::input_channel_out_replica_dim() const {
+  return this->inputs[0]->num_dims - 2;
+}
+
+int Embedding::output_vocab_size_replica_dim() const {
+  return this->inputs[0]->num_dims - 1;
+}
+
+int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
+  Tensor const &input = this->inputs[0];
+
+  const int REPLICA = this->output_vocab_size_replica_dim();
+  const int OUT_CHANNELS = Output::OUT_CHANNELS;
+
+  output_dims[OUT_CHANNELS].size = this->out_channels;
+  for (int i = 1; i < input->num_dims - 1; i++) {
+    output_dims[i].size = input->dims[i-1].size; 
+  }
+  output_dims[REPLICA].is_replica_dim = true;
+
+  return input->num_dims;
+}
+
+int Embedding::weight_size(ParallelDim weight_dims[MAX_TENSOR_DIM]) {
+  Tensor const &input = this->inputs[0];
+
+  weight_dims[Weight::OUT_CHANNELS].size = this->out_channels;
+  weight_dims[Weight::VOCAB_SIZE].size = this->num_entries;
+  for (int i = 2; i < input->num_dims; i++) {
+    weight_dims[i].is_replica_dim = true;     
+  }
+
+  return input->num_dims;
+}
+
+void Embedding::register_output_mappings() {
+  this->register_output_parallel_dims({
+    { this->input_vocab_size_replica_dim(), this->output_vocab_size_replica_dim() },
+    { this->input_channel_out_replica_dim(), Output::OUT_CHANNELS },
+  });
+
+  for (int i = 1; i < this->inputs[0]->num_dims - 1; i++) {
+    this->register_output_parallel_dims(i - 1, i);
+  }
+}
+
+void Embedding::register_weight_mappings() {
+  this->register_weight_parallel_dims({
+    { this->input_vocab_size_replica_dim(), Weight::VOCAB_SIZE },
+    { this->input_channel_out_replica_dim(), Weight::OUT_CHANNELS },
+  });
+
+  for (int i = 2; i < this->inputs[0]->num_dims; i++) {
+    this->register_weight_parallel_dims(i - 2, i);
+  }
+}
+
+void Embedding::register_mappings() {
+  this->register_output_mappings();
+  this->register_weight_mappings();
 }
 
 Embedding::Embedding(FFModel& model,
@@ -39,56 +118,41 @@ Embedding::Embedding(FFModel& model,
                      int _num_entries,
                      int _out_channels,
                      AggrMode _aggr,
+                     bool allocate_weights,
                      const char* name)
-: Op(model, OP_EMBEDDING, name, 1/*inputs*/, 0/*weighs*/, _input),
+: Op(model, OP_EMBEDDING, name, 1/*inputs*/, 1/*weights*/, allocate_weights, 1/*outputs*/, _input),
   num_entries(_num_entries), out_channels(_out_channels), aggr(_aggr)
 {
-  numOutputs = 1;
-  int numdim = _input->num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 1; i < numdim; i++) {
-    dims[i] = _input->dims[i];
-    assert(i == 1 || dims[i].degree == 1);
-  }
-  dims[0].size = out_channels;
-  dims[0].degree = 1;
-  dims[0].parallel_idx = -1;
-  outputs[0] = model.create_tensor_legion_ordering(
-      numdim, dims, DT_FLOAT, this);
-  for (int i = 1; i < numdim; i++) {
-    register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
-  }
-  // Check correctness
-  assert(check_output_input_weight_parallel_dims());
-}
+  this->register_mappings();
 
-Embedding::Embedding(FFModel& model,
-                     const Tensor _input,
-                     const Tensor _weight,
-                     AggrMode _aggr,
-                     const char* name)
-: Op(model, OP_EMBEDDING, name, 1/*inputs*/, 1/*weights*/, _input, _weight),
-  num_entries(_weight->dims[1].size), out_channels(_weight->dims[0].size), aggr(_aggr)
-{
-  numOutputs = 1;
-  int numdim = _input->num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 1; i < numdim; i++) {
-    dims[i] = _input->dims[i];
-    assert(i == 1 || dims[i].degree == 1);
+  std::vector<ParallelDim *> weight_dim_sets;
+
+  int weight_ndim;
+  ParallelDim weight_dims[MAX_TENSOR_DIM];
+  if (allocate_weights) {
+    weight_ndim = this->weight_size(weight_dims);
+    weight_dim_sets.push_back(weight_dims);
   }
-  dims[0].size = out_channels;
-  // Assert no parallelism along the first dim
-  assert(inputs[0]->dims[0].degree == 1);
-  assert(inputs[0]->dims[0].parallel_idx == -1);
-  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, DT_FLOAT, this);
-  for (int i = 1; i < numdim; i++) {
-    register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
+
+  ParallelDim output_dims[MAX_TENSOR_DIM];
+  int output_ndim = this->output_size(output_dims);
+
+  this->solve_parallel_dim_mappings(
+    { _input->dims },
+    weight_dim_sets,
+    { output_dims }
+  );
+
+  if (allocate_weights) {
+    Initializer *weight_initializer = new GlorotUniform(std::rand()/*seed*/);
+
+    weights[0] = model.create_weight_legion_ordering(
+        weight_ndim, weight_dims, DT_FLOAT, nullptr/*owner_op*/, true/*create_grad*/, weight_initializer, CHOSEN_SYNC_TYPE);
   }
-  // sample dim and replica dim
-  register_output_weight_parallel_dims(outputs[0], 1, weights[0], 2);
-  // Check correctness
-  assert(check_output_input_weight_parallel_dims());
+
+  outputs[0] = model.create_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
+
+  assert (check_output_input_weight_parallel_dims(allocate_weights));
 }
 
 __host__
@@ -471,7 +535,7 @@ Node FFModel::get_or_create_embedding_node(const Tensor input,
     embed = it->second;
   } else {
     embed = new Embedding(*this, input, num_entries, out_channels,
-                          aggr, NULL);
+                          aggr, false/*allocate_weights*/, NULL);
     cached_embedding_ops[hash] = embed;
   }
   Node ret;

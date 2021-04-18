@@ -36,7 +36,7 @@ Group_by::Group_by(FFModel& model,
                   const Tensor _assign,
                   int _n, float _alpha,
                   const char* name)
-: Op(model, OP_GROUP_BY, name, 2/*inputs*/, 0/*weights*/, _input, _assign),
+: Op(model, OP_GROUP_BY, name, 2/*inputs*/, 0/*weights*/, _n/*outputs*/, _input, _assign),
   n(_n),
   alpha(_alpha)
   //profiling(model.config.profiling)
@@ -57,57 +57,12 @@ Group_by::Group_by(FFModel& model,
   numWeights = 0;
 }
 
-#ifdef DEADCODE
-void Group_by::create_output_and_partition(FFModel& model)
-{
-  // Retrieve the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
-
-  // Can only partition over the sample dim
-  assert(part_rect.hi[0] == part_rect.lo[0]);
-
-  int k = inputs[1]->adim[0];
-  const int dims[2] = {(int)ceil(alpha*k/n*inputs[0].adim[1]), inputs[0].adim[0]};
-  for(int i = 0; i < n; i++) {
-    outputs[i] = model.create_tensor<2>(dims, DT_FLOAT, this);
-    outputs[i].owner_op = this;
-    outputs[i].owner_idx = i;
-  }
-
-  // Compute partition bound for input
-  Rect<2> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0]->part.get_index_partition());
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0]->part;
-    input_grad_lps[0] = inputs[0]->part_grad;
-  } else {
-    model.create_disjoint_partition<2>(
-      inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
-  }
-  input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[1]->part.get_index_partition());
-  if (input_rect == part_rect) {
-    input_lps[1] = inputs[1]->part;
-    input_grad_lps[1] = inputs[1]->part_grad;
-  } else {
-    model.create_disjoint_partition<2>(
-      inputs[1], (IndexSpaceT<2>)task_is, input_lps[1], input_grad_lps[1]);
-  }
-}
-#endif
-
-
 OpMeta* Group_by::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
 {
   return NULL;
 }
-
 
 void Group_by::init(const FFModel& ff)
 {

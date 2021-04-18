@@ -216,16 +216,22 @@ Conv2D::Conv2D(FFModel& model,
   );
 
   if (allocate_weights) {
-    weights[Kernel::INDEX] = model.create_tensor_legion_ordering(kernel_ndim, kernel_dims, DT_FLOAT, this);
+    Initializer *kernel_initializer = new GlorotUniform(std::rand()/*seed*/);
+
+    weights[Kernel::INDEX] = model.create_weight_legion_ordering(
+        kernel_ndim, kernel_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
     
     if (use_bias) {
-      weights[Bias::INDEX] = model.create_tensor_legion_ordering(bias_ndim, bias_dims, DT_FLOAT, this);
+      Initializer *bias_initializer = new ZeroInitializer();
+
+      weights[Bias::INDEX] = model.create_weight_legion_ordering(
+          bias_ndim, bias_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
     }
   }
 
   outputs[0] = model.create_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
 
-  assert(check_output_input_weight_parallel_dims());
+  assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
 
 cudnnConvolutionFwdAlgo_t

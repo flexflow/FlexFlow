@@ -17,6 +17,13 @@
 #include <chrono>
 #include "dot_file.h"
 #include "dominators.h"
+#include "ops/embedding.h"
+#include "ops/linear.h"
+#include "parallel_ops/combine.h"
+#include "parallel_ops/partition.h"
+#include "parallel_ops/replicate.h"
+#include "parallel_ops/fused_parallel_op.h"
+#include "parallel_ops/reduction.h"
 
 using namespace Legion;
 
@@ -958,34 +965,7 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
       }
       case OP_EMBEDDING:
       {
-        assert(inList.size() == 1);
-        Embedding* embed = (Embedding*) node.ptr;
-        Tensor kernel = NULL;
-        // Create kernel tensor
-        {
-          ParallelDim dims[3];
-          dims[2].size = embed->out_channels;
-          dims[1].size = embed->num_entries;
-          dims[1].degree = 1;
-          dims[1].parallel_idx = -1;
-          dims[0].size = inputs[0]->dims[1].degree;
-          dims[0].degree = dims[0].size;
-          if (dims[0].degree > 1)
-            dims[0].parallel_idx = 0;
-          else
-            dims[0].parallel_idx = -1;
-          int seed = std::rand();
-          Initializer* initializer = new GlorotUniform(seed);
-#ifdef FF_USE_NCCL
-          ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-          ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-          kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
-                                    true/*create_grad*/, initializer,
-                                    comm_type);
-        }
-        new_op = new Embedding(*this, inputs[0], kernel, embed->aggr, NULL);
+        new_op = new Embedding(*(Embedding*)node.ptr);
         break;
       }
       case OP_EW_ADD:
@@ -1041,8 +1021,9 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
                                     true/*create_grad*/, initializer,
                                     comm_type);
         }
-        new_op = new Linear(*this, inputs[0], kernel, bias,
-                            linear->activation, NULL);
+        new_op = new Linear(*linear);
+        /* new_op = new Linear(*this, inputs[0], kernel, bias, */
+        /*                     linear->activation, NULL); */
         break;
       }
       case OP_SOFTMAX:

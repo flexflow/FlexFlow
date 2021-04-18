@@ -78,7 +78,7 @@ ElementUnary::ElementUnary(FFModel& model,
                            bool _inplace,
                            const char* name,
                            float _scalar)
-: Op(model, _op_type, name, 1/*inputs*/, 0/*weights*/, x), inplace(_inplace), scalar(_scalar)
+: Op(model, _op_type, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, x), inplace(_inplace), scalar(_scalar)
 {
   numOutputs = 1;
   int numdim = x->num_dims;

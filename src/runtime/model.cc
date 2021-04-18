@@ -18,11 +18,19 @@
 #include "test_utils.h"
 #include "dirent.h"
 #include <unordered_set>
+#include <queue>
 #include "random_utils.h"
 #include "graph.h"
 #include "legion/legion_utilities.h"
 #include "ops/linear.h"
 #include "ops/conv_2d.h"
+#include "ops/embedding.h"
+#include "parallel_ops/combine.h"
+#include "parallel_ops/fused_parallel_op.h"
+#include "parallel_ops/partition.h"
+#include "parallel_ops/reduction.h"
+#include "parallel_ops/replicate.h"
+
 
 using namespace std;
 using namespace Legion;
@@ -353,29 +361,50 @@ bool TensorBase::update_parallel_ids(
     int numdim,
     ParallelDim* dims)
 {
+  // remove indices from any dims that no longer need a legion task space index
   for (int i = 0; i < numdim; i++) {
-    if (dims[i].degree == 1)
+    if (dims[i].degree == 1) {
       dims[i].parallel_idx = -1;
+    }
   }
-  bool used[MAX_TENSOR_DIM];
-  for (int i = 0; i < MAX_TENSOR_DIM; i++)
-    used[i] = false;
-  for (int i = 0; i < numdim; i++)
+
+  // start with all marked as false
+  bool idx_is_used[MAX_TENSOR_DIM]{false};
+
+  // mark all currently used parallel_idxs as used
+  for (int i = 0; i < numdim; i++) {
     if (dims[i].parallel_idx != -1) {
-      assert(!used[dims[i].parallel_idx]);
-      used[dims[i].parallel_idx] = true;
+      assert (!idx_is_used[ dims[i].parallel_idx ]);
+      idx_is_used[dims[i].parallel_idx] = true;
     }
-  for (int i = 0; i < numdim; i++)
+  }
+
+  // create list of all free indices
+  std::queue<int> parallel_idx_free_list;
+  for (int i = 0; i < MAX_TENSOR_DIM; i++) {
+    if (!idx_is_used[i]) {
+      parallel_idx_free_list.push(i);
+    }
+  }
+
+  // allocate free indicies to indices in need
+  for (int i = 0; i < numdim; i++) {
     if (dims[i].parallel_idx == -1 && dims[i].degree > 1) {
-      int idx = 0;
-      while (used[idx]) idx++;
-      dims[i].parallel_idx = idx;
-      used[idx] = true;
+      int index_to_use = parallel_idx_free_list.front();
+      parallel_idx_free_list.pop();
+
+      dims[i].parallel_idx = index_to_use;
+      idx_is_used[index_to_use] = true;
     }
+  }
+
+  // check that indicies were allocated from lowest to highest
   int idx = 0;
-  while (used[idx]) idx++;
-  for (int i = idx; i < MAX_TENSOR_DIM; i++)
-    assert(!used[idx]);
+  while (idx_is_used[idx]) idx++;
+  for (int i = idx; i < MAX_TENSOR_DIM; i++) {
+    assert(!idx_is_used[idx]);
+  }
+
   return true;
 }
 
@@ -405,8 +434,8 @@ Op::Op(FFModel& model,
        const char* name,
        int numInputs,
        int numWeights,
-       int numOutputs,
        bool allocate_weights,
+       int numOutputs,
        const Tensor input1,
        const Tensor input2,
        const Tensor input3,
@@ -833,7 +862,7 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
 void Op::solve_parallel_dim_mappings(
     const std::vector<ParallelDim const *> &inputs, 
     const std::vector<ParallelDim *> &weights,
-    const std::vector<ParallelDim *> &outputs
+    const std::vector<ParallelDim *> &outputs) const
 {
   for (ParallelDimMappingRecord const &record : *this->parallel_dims_mapping) {
     ParallelDim const &input_dim = inputs[record.input_idx][record.input_dim];
@@ -923,7 +952,7 @@ ncclComm_t Op::init_nccl_comms_task(const Task* task,
 }
 #endif
 
-ParallelDimMappingRecord::ParallelDimMappingRecord(MappingRecordType ttype)
+ParallelDimMappingRecord::ParallelDimMappingRecord(MappingRecordType type)
 : type(type),
   output_dim(-1), input_dim(-1), weight_dim(-1),
   output_idx(-1), input_idx(-1), weight_idx(-1)
@@ -979,7 +1008,7 @@ void Op::register_weight_parallel_dims(
 {
   for (std::pair<int, int> const &mapping : mappings) {
     this->register_weight_parallel_dims(
-      mapping.first, mapping.second, input_idx, weight_idx)
+      mapping.first, mapping.second, input_idx, weight_idx);
   }
 }
 
@@ -1004,7 +1033,7 @@ void Op::register_output_parallel_dims(
 }
 
 void Op::register_output_parallel_dims(
-    int input_dim, int weight_dim, int input_idx, int weight_idx) 
+    int input_dim, int output_dim, int input_idx, int output_idx) 
 {
   this->parallel_dims_mapping->push_back(
     ParallelDimMappingRecord::input_output_record(
@@ -1066,30 +1095,38 @@ int Op::get_output_to_weight_dim_mapping(
   return -1;
 }
 
-bool Op::check_output_input_weight_parallel_dims() const
+bool Op::check_output_input_weight_parallel_dims(bool allocate_weights) const
 {
-  for (size_t i = 0; i < parallel_dims_mapping->size(); i++) {
-    ParallelDimMappingRecord record = (*parallel_dims_mapping)[i];
-    assert(record.input_idx == -1 || record.weight_idx == -1);
-    int output_idx = record.output_idx;
-    int output_dim = record.output_dim;
-    if (record.weight_idx != -1) {
-      int weight_idx = record.weight_idx;
-      int weight_dim = record.weight_dim;
-      assert(outputs[output_idx]->dims[output_dim].degree
-          == weights[weight_idx]->dims[weight_dim].degree);
-      assert(outputs[output_idx]->dims[output_dim].parallel_idx
-          == weights[weight_idx]->dims[weight_dim].parallel_idx);
-    } else if (record.input_idx != -1) {
-      int input_idx = record.input_idx;
-      int input_dim = record.input_dim;
-      assert(outputs[output_idx]->dims[output_dim].degree
-          == inputs[input_idx]->dims[input_dim].degree);
-      assert(outputs[output_idx]->dims[output_dim].parallel_idx
-          == inputs[input_idx]->dims[input_dim].parallel_idx);
-    } else {
-      assert(false);
+  if (!allocate_weights) {
+    assert (this->numWeights == 0);
+  }
+
+  for (ParallelDimMappingRecord const &record : *parallel_dims_mapping) {
+    assert (record.input_idx < this->numInputs);
+    assert (record.input_dim < this->inputs[record.input_idx]->num_dims);
+    ParallelDim const &input_dim = inputs[record.input_idx]->dims[record.input_dim];
+    /* assert (input_dim.degree != ParallelDim::UNKNOWN_DEGREE); */
+    /* assert (input_dim.parallel_idx != ParallelDim::UNKNOWN_INDEX); */
+
+    ParallelDim other_dim;
+    switch (record.get_type()) {
+      case MappingRecordType::INPUT_OUTPUT: 
+        assert (record.output_idx < this->numOutputs);
+        assert (record.output_dim < this->outputs[record.output_idx]->num_dims);
+        other_dim = outputs[record.output_idx]->dims[record.output_dim];  
+        break;
+      case MappingRecordType::INPUT_WEIGHT: 
+        if (!allocate_weights) {
+          continue;
+        }
+        assert (record.weight_idx < this->numWeights);
+        assert (record.weight_dim < this->weights[record.weight_idx]->num_dims);
+        other_dim = weights[record.weight_idx]->dims[record.weight_dim];
+        break;
     }
+
+    assert (other_dim.degree == input_dim.degree);
+    assert (other_dim.parallel_idx == input_dim.parallel_idx);
   }
   return true;
 }
@@ -1604,6 +1641,41 @@ Parameter FFModel::create_weight(
   assert(p->get_volume() > 0);
   assert(p->check_valid());
   return p;
+}
+
+Parameter FFModel::create_weight(
+    int numdim,
+    const ParallelDim dims[],
+    DataType data_type,
+    const Op* owner_op,
+    bool create_grad,
+    Initializer* initializer,
+    ParameterSyncType sync_type)
+{
+  switch (numdim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return create_weight<DIM>(dims, data_type, owner_op, create_grad, initializer, sync_type);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false && "Unsupported dim!");
+  }
+}
+
+Parameter FFModel::create_weight_legion_ordering(
+    int numdim,
+    const ParallelDim dims[],
+    DataType data_type,
+    const Op* owner_op,
+    bool create_grad,
+    Initializer* initializer,
+    ParameterSyncType sync_type)
+{
+  ParallelDim c_dims[MAX_TENSOR_DIM];
+  std::reverse_copy(dims, dims+numdim, c_dims);
+
+  return this->create_weight(numdim, c_dims, data_type, owner_op, create_grad, initializer, sync_type);
 }
 
 void FFModel::map_tensor(Tensor tensor, const Op* op)
