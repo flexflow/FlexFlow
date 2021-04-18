@@ -15,7 +15,6 @@
 
 #include "model.h"
 #include "cuda_helper.h"
-#include <stdio.h>
 
 #define MAX_K 4
 #define MAX_BATCH_SIZE 32
@@ -195,7 +194,7 @@ void Aggregate::init(const FFModel& ff)
 
 
 __global__
-void forward_kernel(float** exp_preds,
+void agg_forward_kernel(float** exp_preds,
         const int* exp_assign,
         const float* gate_net_preds,
         float* output,
@@ -246,7 +245,7 @@ void forward_kernel(float** exp_preds,
 
 
 __device__
-void backward_kernel_gate(const float* output_grad,
+void agg_backward_kernel_gate(const float* output_grad,
               float* full_gate_grads,
               float** exp_preds,
               const int* expert_assign,
@@ -287,7 +286,7 @@ void backward_kernel_gate(const float* output_grad,
 
 
 __device__
-void backward_kernel_exp(const float* output_grad,
+void agg_backward_kernel_exp(const float* output_grad,
               const float* gate_preds,
               float** exp_grads,
               int batch_size,
@@ -305,7 +304,7 @@ void backward_kernel_exp(const float* output_grad,
 
 
 __global__
-void backward_kernel(float** exp_preds,
+void agg_backward_kernel(float** exp_preds,
         float** exp_grads,
         const int* exp_assign,
         const float* gating_net_preds,
@@ -349,11 +348,11 @@ void backward_kernel(float** exp_preds,
 
   // NOTE: These 2 functions could execute independently in parallel
   // get expert gradients
-  backward_kernel_exp(output_grads, gating_net_preds, chosen_exp_grads,
+  agg_backward_kernel_exp(output_grads, gating_net_preds, chosen_exp_grads,
     batch_size, k, out_dim);
 
   // get gating net gradients
-  backward_kernel_gate(output_grads, full_gating_grads, chosen_exp_preds,
+  agg_backward_kernel_gate(output_grads, full_gating_grads, chosen_exp_preds,
     exp_assign, expert_bal, (lambda_bal*n)/batch_size, batch_size, k, n, out_dim);
 }
 
@@ -421,7 +420,7 @@ void Aggregate::forward_task(const Task *task,
   cudaMalloc(&dev_exp_preds, n*sizeof(float*));
   cudaMemcpy(dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
 
-  forward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
+  agg_forward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
     dev_exp_preds, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     acc_output.ptr(rect_output), n, k, rows, batch_size, out_dim);
 }
@@ -442,7 +441,7 @@ void Aggregate::backward_task(const Task *task,
   // get gate_pred, gate_grad, gate_assign, output_grad
   const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
   const AccessorRO<int, 2> acc_gate_assign(regions[1], FID_DATA);
-  const AccessorRW<float, 2> full_acc_gate_grad(regions[2], FID_DATA);
+  const AccessorWO<float, 2> full_acc_gate_grad(regions[2], FID_DATA);
   const AccessorRO<float, 2> acc_output_grad(regions[2*n+3], FID_DATA);
 
   Rect<2> rect_gate_pred = runtime->get_index_space_domain(
@@ -508,7 +507,7 @@ void Aggregate::backward_task(const Task *task,
   cudaMemcpy(dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
   cudaMemcpy(dev_exp_grads, exp_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
 
-  backward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
+  agg_backward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
     dev_exp_preds, dev_exp_grads, acc_gate_assign.ptr(rect_gate_assign),
     acc_gate_pred.ptr(rect_gate_pred), full_acc_gate_grad.ptr(rect_full_gate_grad),
     acc_output_grad.ptr(rect_out_grad), n, k, rows, lambda_bal, batch_size, out_dim);

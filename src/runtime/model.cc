@@ -1455,6 +1455,7 @@ void FFModel::backward(int seq_length)
         layers[l]->resetInputGrads[i] = false;
       }
 #endif
+    if(l == metrics_input && metrics_input < (int)layers.size()-1) continue;
     layers[l]->backward(*this);
   }
 }
@@ -2561,21 +2562,21 @@ void register_flexflow_internal_tasks()
   // Aggregate task CPU
   {
     TaskVariantRegistrar registrar(AGGREGATE_INIT_TASK_ID, "Aggregate Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta*, Aggregate::init_task>(
         registrar, "Aggregate Init Task");
   }
   {
     TaskVariantRegistrar registrar(AGGREGATE_FWD_TASK_ID, "Aggregate Forward");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Aggregate::forward_task>(
         registrar, "Aggregate Forward Task");
   }
   {
     TaskVariantRegistrar registrar(AGGREGATE_BWD_TASK_ID, "Aggregate Backward");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Aggregate::backward_task>(
         registrar, "Aggregate Backward Task");
@@ -2584,21 +2585,21 @@ void register_flexflow_internal_tasks()
   // AggregateSpec task CPU
   {
     TaskVariantRegistrar registrar(AGG_SPEC_INIT_TASK_ID, "Aggregate specification Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta*, AggregateSpec::init_task>(
         registrar, "Aggregate specification Init Task");
   }
   {
     TaskVariantRegistrar registrar(AGG_SPEC_FWD_TASK_ID, "Aggregate specification Forward");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<AggregateSpec::forward_task>(
         registrar, "Aggregate specification Forward Task");
   }
   {
     TaskVariantRegistrar registrar(AGG_SPEC_BWD_TASK_ID, "Aggregate specification Backward");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<AggregateSpec::backward_task>(
         registrar, "Aggregate specification Backward Task");

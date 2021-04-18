@@ -14,13 +14,14 @@
  */
 
 #include "model.h"
+#include "cuda_helper.h"
+
+#define MAX_K 4
+#define MAX_BATCH_SIZE 32
+#define MAX_N 12
 
 
-/* NOTE: This is the very, very un-performant.
-- You should at least use Eigen or uBlas or so for matrix multiplications.
-  Preferably implement on GPU */
-
-Tensor FFModel::aggregate_spec(const Tensor* inputs, /* gate_preds, gate_assign, whole_gate_preds, n * exp_pred */
+Tensor FFModel::aggregate_spec(const Tensor* inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
                           int n, float lambda_bal, const char* name)
 {
   AggregateSpec* aggr = new AggregateSpec(*this, inputs, n, lambda_bal, name);
@@ -36,6 +37,13 @@ AggregateSpec::AggregateSpec(FFModel& model,
   n(_n), lambda_bal(_lambda_bal)
   //profiling(model.config.profiling)
 {
+  // FIXME: For now, set upper limits Better: Do as follows, but memory is
+  // assigned per block, so requires to check that
+  // https://stackoverflow.com/questions/5531247/allocating-shared-memory/5531640#5531640
+  assert(n <= MAX_N && "Increase MAX_N in #define");
+  assert(inputs[0].adim[0] <= MAX_K && "Increase MAX_K in #define");
+  assert(inputs[0].adim[1] <= MAX_BATCH_SIZE && "Increase MAX_BATCH_SIZE in #define");
+
   assert(n+3 == numInputs);
   assert(n > 0);
   assert(inputs[0].numDim == 2);
@@ -110,7 +118,11 @@ OpMeta* AggregateSpec::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
 {
-  return NULL;
+  AggregateSpec* agg = (AggregateSpec*) task->args;
+  FFHandler handle = *((FFHandler*)task->local_args);
+  AggregateSpecMeta* m = new AggregateSpecMeta(handle);
+  m->profiling = agg->profiling;
+  return m;
 }
 
 
@@ -140,8 +152,8 @@ void AggregateSpec::init(const FFModel& ff)
     default:
       assert(false);
   }
-  IndexLauncher launcher(CONCAT_INIT_TASK_ID, task_is,
-    TaskArgument(this, sizeof(Concat)), argmap,
+  IndexLauncher launcher(AGG_SPEC_INIT_TASK_ID, task_is,
+    TaskArgument(this, sizeof(AggregateSpec)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -181,32 +193,108 @@ void AggregateSpec::init(const FFModel& ff)
 }
 
 
-void agg_spec_forward(float** exp_preds,
+__global__
+void aggspec_forward_kernel(float** exp_preds,
         const int* exp_assign,
-        const float* gating_net_preds,
+        const float* gate_net_preds,
         float* output,
         int n, // num experts
-        int k, // num chosen experts
+        const int k, // num chosen experts
         int exp_samples, // max samples per expert
-        int batch_size,
+        const int batch_size,
         int out_dim)
 {
-  std::vector<int> expert_idx(n, 0);
-  for(int i = 0; i < batch_size; i++) {
-    for(int j = 0; j < k; j++) {
-      // Get pointer to chosen expert predictions
-      int expert = exp_assign[k*i + j];
-      if(expert_idx[expert] < exp_samples) { // sample not dropped
-        float* chosen_exp_preds = exp_preds[expert] + expert_idx[expert]*out_dim;
-        memcpy(output + i*k*out_dim + j*out_dim, chosen_exp_preds, out_dim*sizeof(float));
+  __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
+
+  // Get pred pointers, single thread
+  if(blockIdx.x * blockDim.x + threadIdx.x == 0) {
+    int expert_idx[MAX_N] = {0};
+    for(int i = 0; i < batch_size; i++) {
+      for(int j = 0; j < k; j++) {
+        // Get pointer to chosen expert predictions
+        int expert = exp_assign[i*k+j];
+        if(expert_idx[expert] >= exp_samples) {
+          // dropped sample
+          chosen_exp_preds[i*k+j] = 0;
+          continue;
+        }
+        chosen_exp_preds[i*k+j] = exp_preds[expert] + expert_idx[expert]*out_dim;
+        expert_idx[expert]++;
       }
-      expert_idx[expert]++;
+    }
+  }
+
+  __syncthreads();
+
+  // compute output
+  CUDA_KERNEL_LOOP(i, k*batch_size*out_dim)
+  {
+    if(chosen_exp_preds[i/out_dim] != 0) {
+      //memcpy(output + i*out_dim, chosen_exp_preds[i], out_dim*sizeof(float));
+      output[i] = chosen_exp_preds[i/out_dim][i%out_dim];
     }
   }
 }
 
 
-void agg_spec_backward(float** exp_grads,
+__device__
+void aggspec_backward_kernel_gate(const float* output_grad,
+              float* full_gate_grads,
+              float** exp_grads,
+              const int* expert_assign,
+              int* expert_bal, float lambda_bal,
+              int batch_size, int k, int n, int out_dim)
+{
+  // gate gradient
+  CUDA_KERNEL_LOOP(i, batch_size*k*out_dim)
+  {
+    if (exp_grads[i/out_dim] != 0) {
+      float res = output_grad[i] * output_grad[i] * batch_size;
+      float* gate_grad_idx = full_gate_grads + (i/(out_dim*k))*n
+        + expert_assign[(i/(out_dim*k))*k+(i/out_dim)%k];
+      atomicAdd(gate_grad_idx, res);
+    }
+  }
+
+  // loss term
+  CUDA_KERNEL_LOOP(i, n*batch_size)
+  {
+    atomicAdd(full_gate_grads+i, lambda_bal*expert_bal[i%batch_size]);
+  }
+
+  __syncthreads();
+
+  // make 0 mean
+  CUDA_KERNEL_LOOP(i, n*batch_size)
+  {
+    int start = (i/n)*n;
+    float sub = -full_gate_grads[i]/n;
+    for(int j = 0; j < n; j++) {
+      atomicAdd(full_gate_grads+start+j, sub);
+    }
+  }
+}
+
+
+__device__
+void aggspec_backward_kernel_exp(const float* output_grad,
+              const float* gate_preds,
+              float** exp_grads,
+              int batch_size,
+              int k,
+              int out_dim) {
+  // compute expert gradients
+  CUDA_KERNEL_LOOP(i, k*out_dim*batch_size)
+  {
+    if (exp_grads[i/out_dim] != 0) {
+      exp_grads[i/out_dim][i%out_dim] = gate_preds[i/out_dim] * output_grad[i];
+    }
+  }
+}
+
+
+__global__
+void aggspec_backward_kernel(float** exp_grads,
         const int* exp_assign,
         const float* gating_net_preds,
         float* full_gating_grads,
@@ -218,51 +306,40 @@ void agg_spec_backward(float** exp_grads,
         int batch_size,
         int out_dim)
 {
-  std::vector<int> expert_idx(n, 0);
-  std::vector<int> expert_bal(n, 0);
-  for(int i = 0; i < batch_size; i++) {
-    const float* sample_gating_weights = gating_net_preds + i*k;
-    const float* sample_output_grads = output_grads + i*k*out_dim;
-    float* sample_full_gate_grads = full_gating_grads + i*n;
+  __shared__ float* chosen_exp_grads[MAX_K*MAX_BATCH_SIZE];
+  __shared__ int expert_bal[MAX_N];
 
-    for(int j = 0; j < k; j++) {
-      int expert = exp_assign[k*i + j];
-      expert_bal[expert]++;
+  // Get pred pointers, single thread
+  if(blockIdx.x * blockDim.x + threadIdx.x == 0) {
+    // init expert_bal to 0
+    for(int i = 0; i < n; i++) expert_bal[i] = 0;
 
-      if(expert_idx[expert] < exp_samples) { // sample not dropped
-        // expert gradient
-        float* chosen_exp_grad = exp_grads[expert] + expert_idx[expert]*out_dim;
-        for(int l = 0; l < out_dim; l++) {
-          chosen_exp_grad[l] += sample_gating_weights[j] * sample_output_grads[j*out_dim+l];
+    // Get pointer to chosen expert grads and expert counts
+    for(int i = 0; i < batch_size; i++) {
+      for(int j = 0; j < k; j++) {
+        int expert = exp_assign[k*i + j];
+        if(expert_bal[expert] >= exp_samples) {
+          // dropped sample
+          chosen_exp_grads[i*k+j] = 0;
+          expert_bal[expert]++;
+          continue;
         }
-
-        // get expert errors (squared L2 norm of gradient)
-        for(int l = 0; l < out_dim; l++) {
-          /* NOTE: sample output grads are per default normalized by 1/batch_size.
-          So in the default case, multiplying *batch_size will make gating net
-          grads normalized by 1/batchsize (and not 1/batch_size^2).*/
-          sample_full_gate_grads[expert] += batch_size * sample_output_grads[j*out_dim+l] * sample_output_grads[j*out_dim+l];
-        }
-
-        expert_idx[expert]++;
+        chosen_exp_grads[i*k+j] = exp_grads[expert] + expert_bal[expert]*out_dim;
+        expert_bal[expert]++;
       }
     }
   }
 
-  // gating grads: balance term and enforce zero mean
-  lambda_bal *= ((float)n)/batch_size;
-  for(int i = 0; i < batch_size; i++) {
-    float* sample_full_gate_grads = full_gating_grads + i*n;
-    float grad_sum = 0.0f;
-    for(int j = 0; j < n; j++) {
-      sample_full_gate_grads[j] += lambda_bal*expert_bal[j];
-      grad_sum += sample_full_gate_grads[j];
-    }
-    grad_sum /= n;
-    for(int j = 0; j < n; j++) {
-      sample_full_gate_grads[j] -= grad_sum;
-    }
-  }
+  __syncthreads();
+
+  // NOTE: These 2 functions could execute independently in parallel
+  // get expert gradients
+  aggspec_backward_kernel_exp(output_grads, gating_net_preds, chosen_exp_grads,
+    batch_size, k, out_dim);
+
+  // get gating net gradients
+  aggspec_backward_kernel_gate(output_grads, full_gating_grads, chosen_exp_grads,
+    exp_assign, expert_bal, (lambda_bal*n)/batch_size, batch_size, k, n, out_dim);
 }
 
 
@@ -274,6 +351,8 @@ void AggregateSpec::forward_task(const Task *task,
 
   assert((int)regions.size() == n+3);
   assert((int)task->regions.size() == n+3);
+
+  const AggregateSpecMeta* m = *((AggregateSpecMeta**)task->local_args);
 
   // get gate_pred, gate_assign, output
   const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
@@ -314,15 +393,29 @@ void AggregateSpec::forward_task(const Task *task,
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
 
-  agg_spec_forward(exp_preds, acc_gate_assign.ptr(rect_gate_assign),
-    acc_gate_pred.ptr(rect_gate_pred), acc_output.ptr(rect_output), n, (int)k,
-    rows, batch_size, out_dim);
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+#endif
+
+  // call forward kernel
+  float** dev_exp_preds;
+  cudaMalloc(&dev_exp_preds, n*sizeof(float*));
+  cudaMemcpy(dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
+
+  aggspec_forward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k))>>>(
+    dev_exp_preds, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
+    acc_output.ptr(rect_output), n, k, rows, batch_size, out_dim);
 }
+
 
 void AggregateSpec::backward_task(const Task *task,
                               const std::vector<PhysicalRegion>& regions,
                               Context ctx, Runtime* runtime)
 {
+  const AggregateSpecMeta* m = *((AggregateSpecMeta**)task->local_args);
   int n = ((AggregateSpec*)task->args)->n;
   float lambda_bal = ((AggregateSpec*)task->args)->lambda_bal;
 
@@ -332,7 +425,7 @@ void AggregateSpec::backward_task(const Task *task,
   // get gate_pred, gate_assin, full_gate_grad, output_grad
   const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
   const AccessorRO<int, 2> acc_gate_assign(regions[1], FID_DATA);
-  const AccessorWO<float, 2> acc_full_gate_grad(regions[2], FID_DATA);
+  const AccessorRW<float, 2> acc_full_gate_grad(regions[2], FID_DATA);
   const AccessorRO<float, 2> acc_output_grad(regions[n+3], FID_DATA);
 
   Rect<2> rect_gate_pred = runtime->get_index_space_domain(
@@ -372,9 +465,22 @@ void AggregateSpec::backward_task(const Task *task,
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
 
-  agg_spec_backward(exp_grads, acc_gate_assign.ptr(rect_gate_assign),
-    acc_gate_pred.ptr(rect_gate_pred), acc_full_gate_grad.ptr(rect_full_gate_grad),
-    acc_output_grad.ptr(rect_out_grad), n, k, rows, lambda_bal, batch_size, out_dim);
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+#endif
+
+  // call backward kernel
+  float** dev_exp_grads;
+  cudaMalloc(&dev_exp_grads, n*sizeof(float*));
+  cudaMemcpy(dev_exp_grads, exp_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
+
+  aggspec_backward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
+    dev_exp_grads, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
+    acc_full_gate_grad.ptr(rect_full_gate_grad), acc_output_grad.ptr(rect_out_grad),
+    n, k, rows, lambda_bal, batch_size, out_dim);
 }
 
 
@@ -383,6 +489,24 @@ void AggregateSpec::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
   IndexLauncher launcher(AGG_SPEC_FWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(AggregateSpec)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -421,6 +545,25 @@ void AggregateSpec::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        OpMeta* mp = meta[idx++]; \
+        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+
   IndexLauncher launcher(AGG_SPEC_BWD_TASK_ID, task_is,
                          TaskArgument(this, sizeof(AggregateSpec)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -459,6 +602,12 @@ void AggregateSpec::backward(const FFModel& ff)
   launcher.add_field(n+3, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
+}
+
+
+AggregateSpecMeta::AggregateSpecMeta(FFHandler handler)
+: OpMeta(handler)
+{
 }
 
 
