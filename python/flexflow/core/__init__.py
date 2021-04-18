@@ -21,14 +21,20 @@ import atexit
 import os
 import sys
 
-if 'FF_USE_PYBIND' not in os.environ:
-  use_pybind = 0
+if 'FF_USE_CFFI' in os.environ:
+  use_pybind = not int(os.environ['FF_USE_CFFI'])
 else:
-  use_pybind = int(os.environ['FF_USE_PYBIND'])
+  use_pybind = True
+
 if use_pybind:
+  if 'FLEXFLOW_PYTHON' not in os.environ:
+    use_flexflow_python = 0
+  else:
+    use_flexflow_python = int(os.environ['FLEXFLOW_PYTHON'])
   print("Using pybind11 flexflow bindings.")
   from flexflow.core.flexflow_bindings import *
-  if not "FLEXFLOW_PYTHON" in os.environ:
+  if use_flexflow_python == 0:
+    print("Using native python")
     begin_flexflow_task(sys.argv)
     atexit.register(finish_flexflow_task)
 else:

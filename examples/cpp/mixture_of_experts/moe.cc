@@ -77,9 +77,9 @@ void top_level_task(const Task* task,
   float alpha = 2.0f; // factor overhead tensor size for imbalance
   float lambda = 0.16f; // multiplier for load balance term
 
+
   // MoE model
   Tensor gate_preds = ff.dense(input, num_exp, AC_MODE_RELU);
-
   Tensor topK_output[2];
   ff.top_k(gate_preds, topK_output, num_select, false);
 
@@ -96,9 +96,8 @@ void top_level_task(const Task* task,
   }
 
   Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
-  // ff.get_metrics();
-  // Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
-
+  ff.get_metrics();
+  Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
 
 //-----------------------------------------------------------------
 

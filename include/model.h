@@ -315,10 +315,6 @@ public:
 		  const float scalar,
 		  bool inplace = true,
 		  const char *name = NULL);
-  Tensor scalar_floordiv(const Tensor& x,
-		  const float scalar,
-		  bool inplace = true,
-		  const char *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor& x,
               bool inplace = true,

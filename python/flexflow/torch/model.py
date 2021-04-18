@@ -135,7 +135,7 @@ class PyTorchModel(object):
         if type(input_tensor) is float or type(input_tensor) is int:
             output = input_tensor // float(items[4])
         else:
-            output = ffmodel.scalar_floor_divide(input=input_tensor, scalar=float(items[4]), name=op_name)
+            assert 0, "Tensor floor division is not supported."
         output = FXTensor(output)
     
       elif op_type == OpType.SCALAR_ADD:
@@ -180,13 +180,27 @@ class PyTorchModel(object):
         output = ffmodel.identity(input=input_tensor, name=op_name)
         output = FXTensor(output)
       
+      elif op_type == OpType.LAYER_NORM:
+        assert len(items) == 4, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        output = ffmodel.identity(input=input_tensor, name=op_name)
+        output = FXTensor(output)
+
+      elif op_type == OpType.EXPAND:
+        assert len(items) >= 4, "wrong format"
+        assert len(self.input_ops_list) == 1, "wrong format"
+        input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
+        output = ffmodel.identity(input=input_tensor, name=op_name)
+        output = FXTensor(output)
+
       elif op_type == OpType.TRANSPOSE:
         assert len(items) >= 6
         assert len(self.input_ops_list) == 1, "wrong format"
         input_tensor = self.tensor_dict[self._get_input_key(op_name, 0)].fftensor
-        perm = list(range(0,len(input_tensor.dims)))
+        perm = list(range(1,len(input_tensor.dims)+1))
         a,b = int(items[4]),int(items[5])
-        perm[a],perm[b] = perm[b],perm[a]
+        perm[a-1],perm[b-1] = perm[b-1],perm[a-1]
         output = ffmodel.transpose(input=input_tensor,perm=perm,name=op_name)
         output = FXTensor(output)
       

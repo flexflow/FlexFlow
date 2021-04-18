@@ -349,7 +349,6 @@ void aggregate_backward_bal(float** exp_preds,
 }
 
 
-
 void Aggregate::forward_task(const Task *task,
                              const std::vector<PhysicalRegion>& regions,
                              Context ctx, Runtime* runtime)
