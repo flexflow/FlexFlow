@@ -30,6 +30,10 @@ public:
          bool use_bias,
          bool allocate_weights,
          const char* name);
+  Conv2D(FFModel& model,
+         Conv2D const &other, 
+         const Tensor input,
+         bool allocate_weights);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -64,6 +68,11 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
+
+/* #ifndef __CUDACC__ */
+  void serialize(Legion::Serializer& s) const override;
+  static Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
+/* #endif */ 
 private:
   int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]); 
   int kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]); 
@@ -73,10 +82,11 @@ private:
   void register_output_mappings();
   void register_weight_mappings();
 public:
-  //Legion::IndexSpaceT<4> task_is;
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
   bool use_bias;
   ActiMode activation;
+
+  friend struct Conv2DModelCacheHash;
 };
 
 #endif // _FLEXFLOW_CONV_2D_H

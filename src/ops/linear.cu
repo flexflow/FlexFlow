@@ -32,6 +32,33 @@ Tensor FFModel::dense(const Tensor input,
   return li->outputs[0];
 }
 
+Node FFModel::get_or_create_linear_node(const Tensor input,
+                                        int out_dim,
+                                        ActiMode activation,
+                                        bool use_bias)
+{
+  // replica degree cannot be larger than workersPerNode
+  //if (input->dims[input->num_dims-1].degree > config.workersPerNode)
+  //  return Node::INVALID_NODE;
+  // out_dim must be divisble by replicate_degree
+  if (out_dim % input->dims[input->num_dims-1].degree != 0)
+    return Node::INVALID_NODE;
+  size_t hash = input->get_owner_independent_hash();
+  hash = hash * 31 + std::hash<int>()(out_dim);
+  hash = hash * 31 + std::hash<int>()(activation);
+  hash = hash * 31 + std::hash<int>()(use_bias);
+  const auto& it = cached_linear_ops.find(hash);
+  Linear* li = NULL;
+  if (it != cached_linear_ops.end()) {
+    li = it->second;
+  } else {
+    li = new Linear(*this, input, out_dim, activation, use_bias, false/*allocate_weights*/, NULL);
+    cached_linear_ops[hash] = li;
+  }
+
+  return this->new_node(li);
+}
+
 int Linear::output_replica_dim() const {
   return this->inputs[0]->num_dims - 1;
 }
@@ -140,6 +167,13 @@ void Linear::register_weight_mappings() {
     }
   }
 }
+
+Linear::Linear(FFModel& model,
+               Linear const &other, 
+               const Tensor input,
+               bool allocate_weights)
+: Linear(model, input, other.out_channels, other.activation, other.use_bias, allocate_weights, other.name)
+{ }
 
 Linear::Linear(FFModel& model,
                const Tensor _input,
@@ -937,35 +971,6 @@ bool Linear::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
-Node FFModel::get_or_create_linear_node(const Tensor input,
-                                        int out_dim,
-                                        ActiMode activation,
-                                        bool use_bias)
-{
-  // replica degree cannot be larger than workersPerNode
-  //if (input->dims[input->num_dims-1].degree > config.workersPerNode)
-  //  return Node::INVALID_NODE;
-  // out_dim must be divisble by replicate_degree
-  if (out_dim % input->dims[input->num_dims-1].degree != 0)
-    return Node::INVALID_NODE;
-  size_t hash = input->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(out_dim);
-  hash = hash * 31 + std::hash<int>()(activation);
-  hash = hash * 31 + std::hash<int>()(use_bias);
-  const auto& it = cached_linear_ops.find(hash);
-  Linear* li = NULL;
-  if (it != cached_linear_ops.end()) {
-    li = it->second;
-  } else {
-    li = new Linear(*this, input, out_dim, activation, use_bias, false, NULL);
-    cached_linear_ops[hash] = li;
-  }
-  Node ret;
-  ret.guid = node_global_guid ++;
-  ret.ptr = li;
-  return ret;
-}
-
 bool Linear::is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const
 {
   if (!ff.config.enable_parameter_parallel)
@@ -978,4 +983,3 @@ bool Linear::is_valid_parallel_config(const FFModel& ff, const ParallelConfig& p
       return false;
   return true;
 }
-

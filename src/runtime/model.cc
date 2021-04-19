@@ -24,6 +24,7 @@
 #include "legion/legion_utilities.h"
 #include "ops/linear.h"
 #include "ops/conv_2d.h"
+#include "ops/pool_2d.h"
 #include "ops/embedding.h"
 #include "parallel_ops/combine.h"
 #include "parallel_ops/fused_parallel_op.h"
@@ -583,6 +584,15 @@ Tensor Op::get_parameter(int index)
 {
   assert(index < numWeights);
   return weights[index];
+}
+
+void Op::serialize(Legion::Serializer& serializer) const
+{
+  fprintf(stderr, "The following operator type is currently not supported"
+          " for graph serialization: %s\n"
+          "Report the issue to the FlexFlow developers",
+          optype_to_string(this->op_type).c_str());
+  assert (false && "This op does not support serialization");
 }
 
 void Op::zero_grad(const FFModel& ff)
@@ -1168,7 +1178,7 @@ void Op::set_argumentmap_for_init(const FFModel& ff,
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  Domain domain = runtime->get_index_space_domain(ctx, this->parallel_is);
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -1446,20 +1456,6 @@ ncclComm_t* FFModel::find_nccl_comms(const MachineView& view) const
 }
 #endif
 
-/*
-template<int NDIM>
-Tensor FFModel::create_tensor(const int dims[],
-                              DataType data_type,
-                              Op* owner_op,
-                              bool create_grad)
-{
-  ParallelConfig pc;
-  assert(config.find_parallel_config(NDIM, pc_name, pc));
-  IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(get_or_create_task_is(pc));
-  return create_tensor<NDIM>(dims, task_is, data_type, create_grad);
-}
-*/
-
 template<int NDIM>
 Tensor FFModel::create_constant(const int dims[],
                                 float value,
@@ -1483,6 +1479,14 @@ Tensor FFModel::create_constant(const int dims[],
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   return tensor;
+}
+
+Node FFModel::new_node(Op *op) {
+  Node ret;
+  ret.guid = this->node_global_guid++;
+  ret.ptr = op;
+
+  return ret;
 }
 
 Tensor FFModel::create_tensor(
@@ -1562,6 +1566,8 @@ Tensor FFModel::create_tensor(
   ParallelDim pdims[NDIM];
   for (int i = 0; i < NDIM; i++) {
     pdims[i].size = dims[i];
+    pdims[i].degree = 1;
+    pdims[i].parallel_idx = -1;
   }
   return create_tensor<NDIM>(pdims, data_type, owner_op, owner_idx, create_grad);
 }
@@ -1697,7 +1703,7 @@ void FFModel::map_tensor(Tensor tensor, const Op* op)
   }
 }
 
-// Map tensor using parallelization strategies described in paralell_op
+// Map tensor using parallelization strategies described in parallel_op
 template<int NDIM>
 void FFModel::map_tensor_with_dim(Tensor tensor, const Op* parallel_op)
 {
@@ -1756,6 +1762,7 @@ void FFModel::map_tensor_with_dim2(Tensor tensor, const Op* parallel_op)
     default:
       assert(false);
   }
+
   Point<NDIM> hi;
   for (int i = 0; i < NDIM; i++)
     hi[i] = tensor->dims[i].size - 1;
@@ -1765,6 +1772,7 @@ void FFModel::map_tensor_with_dim2(Tensor tensor, const Op* parallel_op)
   if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
     tensor->region_grad = runtime->create_logical_region(ctx, is, fs);
   }
+  
   // Step 2: create partitions if parallel_op != NULL
   if (parallel_op != NULL) {
     IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
@@ -2851,6 +2859,7 @@ void FFModel::compile(LossType loss_type,
   // init optimizer
   assert(optimizer != NULL);
   optimizer->init();
+
 #ifdef FF_USE_NCCL
   if (config.computationMode == COMP_MODE_TRAINING) {
     // init all nccl communicators
@@ -2879,42 +2888,6 @@ void FFModel::compile(LossType loss_type,
         view_hash_to_nccl_comms[view.hash()] = nccl_comms;
       }
     }
-#ifdef DEADCODE
-    std::map<MappingTagID, ParallelConfig>::iterator iter;
-    for (iter = config.strategies.begin(); iter != config.strategies.end(); iter++) {
-      // only init nccl for GPU parallel configurations
-      if (iter->second.device_type != ParallelConfig::GPU) continue;
-      std::map<MappingTagID, ParallelConfig>::const_iterator it2;
-      bool found = false;
-      // Reuse nccl comms for same parallel config
-      for (it2 = config.strategies.begin(); it2 != iter; it2++) {
-        if (it2->second == iter->second) {
-          found = true;
-          for (int i = 0; i < it2->second.num_parts(); i++)
-            iter->second.nccl_comms[i] = it2->second.nccl_comms[i];
-        }
-      }
-      // Create new nccl comms
-      if (!found) {
-        TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));
-        Future future = runtime->execute_task(ctx, launcher);
-        ncclUniqueId ncclId = future.get_result<ncclUniqueId>();
-        IndexSpace task_is = get_or_create_task_is(iter->second);
-        ArgumentMap argmap;
-        IndexLauncher index_launcher(NCCL_INIT_COMMS_TASK_ID, task_is,
-            TaskArgument(&ncclId, sizeof(ncclUniqueId)), argmap,
-            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-            iter->first/*MappingTagID*/);
-        FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
-        fm.wait_all_results();
-        int idx = 0;
-        Domain task_domain = runtime->get_index_space_domain(ctx, task_is);
-        for (Domain::DomainPointIterator it(task_domain); it; it++, idx++) {
-          iter->second.nccl_comms[idx] = fm.get_result<ncclComm_t>(*it);
-        }
-      }
-    }
-#endif
   }
 #endif
 }

@@ -15,6 +15,7 @@
 
 #include "ops/conv_2d.h"
 #include "cuda_helper.h"
+#include "hash_utils.h"
 
 using namespace Legion;
 
@@ -98,6 +99,54 @@ namespace Bias {
   };
 };
 
+Node FFModel::get_or_create_conv2d_node(const Tensor input,
+                                        int outChannels,
+                                        int kernelH, int kernelW,
+                                        int strideH, int strideW,
+                                        int paddingH, int paddingW,
+                                        ActiMode activation,
+                                        int groups,
+                                        bool use_bias) 
+{
+  if (outChannels % input->dims[Input::REPLICA].degree != 0) {
+    return Node::INVALID_NODE;
+  }
+
+  size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, outChannels);
+  hash_combine(hash, kernelH);
+  hash_combine(hash, kernelW);
+  hash_combine(hash, strideH);
+  hash_combine(hash, strideW);
+  hash_combine(hash, paddingH);
+  hash_combine(hash, paddingW);
+  hash_combine(hash, activation);
+  hash_combine(hash, groups);
+  hash_combine(hash, use_bias);
+
+  Conv2D *conv = NULL;
+
+  const auto &it = this->cached_conv2d_ops.find(hash);
+  if (it != cached_conv2d_ops.end()) {
+    conv = it->second;
+  } else {
+    conv = new Conv2D(*this, 
+                      input, 
+                      outChannels, 
+                      kernelH, kernelW, 
+                      strideH, strideW,
+                      paddingH, paddingW,
+                      activation, 
+                      groups, 
+                      use_bias,
+                      false/*allocate_weights*/,
+                      NULL);
+    cached_conv2d_ops[hash] = conv;
+  }
+
+  return this->new_node(conv);
+}
+
 int Conv2D::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
   int input_w = inputs[0]->dims[Input::WIDTH].size;
   int input_h = inputs[0]->dims[Input::HEIGHT].size;
@@ -165,6 +214,26 @@ void Conv2D::register_weight_mappings() {
     }, 0, 1);
   }
 }
+
+Conv2D::Conv2D(FFModel& model,
+               Conv2D const &other,
+               const Tensor input,
+               bool allocate_weights)
+: Conv2D(model, 
+         input, 
+         other.out_channels, 
+         other.kernel_h,
+         other.kernel_w,
+         other.stride_h,
+         other.stride_w,
+         other.padding_h,
+         other.padding_w,
+         other.activation,
+         other.groups,
+         allocate_weights,
+         other.use_bias,
+         other.name) 
+{ }
 
 Conv2D::Conv2D(FFModel& model,
                const Tensor input,
@@ -272,16 +341,16 @@ OpMeta* Conv2D::init_task(const Task *task,
   assert(task->regions.size() == 4);
   const Conv2D* conv = (Conv2D*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
-  TensorAccessorR<float, 4> acc_input(
+  TensorAccessorR<float, Input::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_output(
+  TensorAccessorW<float, Output::NUMDIM> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
-  TensorAccessorR<float, 4> acc_kernel(
+  TensorAccessorR<float, Kernel::NUMDIM> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   // TensorAccessorR<float, 1> acc_bias(
   //     regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_kernel_grad(
+  TensorAccessorW<float, Kernel::NUMDIM> acc_kernel_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   //TensorAccessorW<float, 4> acc_input_grad(
@@ -302,6 +371,7 @@ OpMeta* Conv2D::init_task(const Task *task,
   int output_h = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
   int output_c = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
   int output_n = acc_output.rect.hi[3] - acc_output.rect.lo[3] + 1;
+
   printf("init conv (input): n(%d) c(%d) h(%d) w(%d)\n",
          input_n, input_c, input_h, input_w);
   printf("init conv (output): n(%d) c(%d) h(%d) w(%d)\n",
@@ -471,16 +541,16 @@ void Conv2D::forward_task(const Task *task,
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
   assert(regions.size() == (3 + int(m->use_bias)));
   assert(task->regions.size() == (3 + int(m->use_bias)));
-  TensorAccessorR<float, 4> acc_input(
+  TensorAccessorR<float, Input::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_output(
+  TensorAccessorW<float, Output::NUMDIM> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
-  TensorAccessorR<float, 4> acc_kernel(
+  TensorAccessorR<float, Kernel::NUMDIM> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   const float* acc_bias_ptr = NULL;
   if (m->use_bias) { 
-    TensorAccessorR<float, 1> acc_bias(
+    TensorAccessorR<float, Bias::NUMDIM> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
     acc_bias_ptr = acc_bias.ptr;
   }
@@ -608,24 +678,24 @@ void Conv2D::backward_task(const Task *task,
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
   assert(regions.size() == (6 + int(m->use_bias)));
   assert(task->regions.size() == (6 + int(m->use_bias)));
-  TensorAccessorR<float, 4> acc_input(
+  TensorAccessorR<float, Input::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_input_grad(
+  TensorAccessorW<float, Input::NUMDIM> acc_input_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       true/*readOutput*/);
-  TensorAccessorR<float, 4> acc_output(
+  TensorAccessorR<float, Output::NUMDIM> acc_output(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_output_grad(
+  TensorAccessorW<float, Output::NUMDIM> acc_output_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime,
       true/*readOutput*/);
-  TensorAccessorR<float, 4> acc_kernel(
+  TensorAccessorR<float, Kernel::NUMDIM> acc_kernel(
       regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_kernel_grad(
+  TensorAccessorW<float, Kernel::NUMDIM> acc_kernel_grad(
       regions[5], task->regions[5], FID_DATA, ctx, runtime,
       true/*readOutput*/);
   float* acc_bias_grad_ptr = NULL;
   if (m->use_bias) { 
-    TensorAccessorW<float, 1> acc_bias_grad(
+    TensorAccessorW<float, Bias::NUMDIM> acc_bias_grad(
         regions[6], task->regions[6], FID_DATA, ctx, runtime,
         true/*readOutput*/);
     acc_bias_grad_ptr = static_cast<float*>(acc_bias_grad.ptr);
@@ -759,9 +829,9 @@ void Conv2D::print_layer(const FFModel& ff)
   PhysicalRegion bias_grad_region = runtime->map_region(ctx, bias_grad_launcher);
   bias_grad_region.wait_until_valid();
   */
-  TensorAccessorW<float, 4> acc_kernel(kernel_region, kernel_req, FID_DATA, ctx, runtime, true);
+  TensorAccessorW<float, Kernel::NUMDIM> acc_kernel(kernel_region, kernel_req, FID_DATA, ctx, runtime, true);
 //  const AccessorRW<float, 1> acc_kernel_grad(kernel_grad_region, FID_DATA);
-  TensorAccessorW<float, 1> acc_bias(bias_region, bias_req, FID_DATA, ctx, runtime, true);
+  TensorAccessorW<float, Bias::NUMDIM> acc_bias(bias_region, bias_req, FID_DATA, ctx, runtime, true);
   //const AccessorRW<float, 1> acc_bias_grad(bias_grad_region, FID_DATA);
 
   const float *kernel_ptr = acc_kernel.ptr;

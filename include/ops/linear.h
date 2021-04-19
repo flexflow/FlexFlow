@@ -23,16 +23,16 @@ public:
          bool _use_bias,
          bool allocate_weights,
          const char* name);
+  Linear(FFModel& model, 
+         Linear const &other, 
+         Tensor const input, 
+         bool allocate_weights);
 
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
-  //void update(const FFModel&);
   void print_layer(const FFModel& model);
   bool get_int_parameter(PMParameter, int*) const;
-  //Parameter* get_parameter(int index);
-  //void create_weights(FFModel& model);
-  //void create_input_partition(FFModel& model);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -66,6 +66,11 @@ public:
                           CostMetrics& cost_metrics) const;
   ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
+
+/* #ifndef __CUDACC__ */
+  void serialize(Legion::Serializer&) const override;
+  static Node deserialize(FFModel &ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
+/* #endif */
 private:
   template<int NDIM>
   static OpMeta* init_task_with_dim(const Legion::Task *task,

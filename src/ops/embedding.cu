@@ -114,6 +114,13 @@ void Embedding::register_mappings() {
 }
 
 Embedding::Embedding(FFModel& model,
+                     Embedding const &other,
+                     const Tensor input,
+                     bool allocate_weights) 
+: Embedding(model, input, other.num_entries, other.out_channels, other.aggr, allocate_weights, other.name) 
+{ }
+
+Embedding::Embedding(FFModel& model,
                      const Tensor _input,
                      int _num_entries,
                      int _out_channels,

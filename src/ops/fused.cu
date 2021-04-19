@@ -17,6 +17,7 @@
 #include "cuda_helper.h"
 #include "ops/conv_2d.h"
 #include "ops/linear.h"
+#include "ops/pool_2d.h"
 
 using namespace Legion;
 

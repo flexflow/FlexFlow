@@ -17,6 +17,8 @@
 #include "legion.h"
 #include "legion/legion_utilities.h"
 #include "ops/linear.h"
+#include "ops/conv_2d.h"
+#include "ops/pool_2d.h"
 #include "ops/embedding.h"
 #include "parallel_ops/partition.h"
 #include "parallel_ops/replicate.h"
@@ -1176,13 +1178,6 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
         sez.serialize(op->op_type);
         break;
       }
-      case OP_LINEAR:
-      {
-        Linear* linear = (Linear*) op;
-        sez.serialize(linear->out_channels);
-        sez.serialize(linear->activation);
-        break;
-      }
       case OP_SOFTMAX:
       {
         Softmax* softmax = (Softmax*) op;
@@ -1227,11 +1222,7 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
       }
       default:
       {
-        fprintf(stderr, "The following operator type is currently not supported"
-                " for graph serialization: %s\n"
-                "Report the issue to the FlexFlow developers",
-                optype_to_string(op->op_type).c_str());
-        assert(false && "Unsupported operator type");
+        op->serialize(sez);
       }
     }
     sez.serialize((size_t)12345678); // safe guard for the end of an op
@@ -1339,14 +1330,19 @@ void FFModel::deserialize_graph_optimal_view(Deserializer& dez,
         node = get_or_create_element_binary_node(inputs[0], inputs[1], op_type);
         break;
       }
+      case OP_CONV2D:
+      { 
+        node = Conv2D::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_POOL2D:
+      {
+        node = Pool2D::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
       case OP_LINEAR:
       {
-        assert(num_inputs == 1);
-        int out_channels;
-        ActiMode activation;
-        dez.deserialize(out_channels);
-        dez.deserialize(activation);
-        node = get_or_create_linear_node(inputs[0], out_channels, activation, false);
+        node = Linear::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_SOFTMAX:

@@ -15,6 +15,7 @@
 #ifndef _FLEXFLOW_MODEL_H_
 #define _FLEXFLOW_MODEL_H_
 #include "legion.h"
+
 #include "config.h"
 #include "tensor.h"
 #include "initializer.h"
@@ -193,6 +194,10 @@ enum FieldIDs {
   FID_DATA,
 };
 
+namespace Legion {
+  class Serializer;
+}
+
 class SearchHelper;
 class FFModel;
 class Op;
@@ -228,6 +233,8 @@ public:
   int output_dim, input_dim, weight_dim;
   int output_idx, input_idx, weight_idx;
 };
+
+std::string optype_to_string(OperatorType);
 
 class Op {
 protected:
@@ -316,6 +323,7 @@ public:
   virtual bool has_inplace_output();
   virtual void do_inplace_output();
   virtual bool is_parallel_op() const;
+  virtual void serialize(Legion::Serializer&) const;
 
   int get_dimension() const;
 #ifdef FF_USE_NCCL
@@ -728,6 +736,20 @@ public:
                                   int combine_degree);
   Node get_or_create_fused_parallel_node(const Tensor input,
                                          const std::vector<ParallelOpInfo>& parallel_ops);
+  Node get_or_create_conv2d_node(const Tensor input, 
+                                 int out_channels,
+                                 int kernel_h, int kernel_w,
+                                 int stride_h, int stride_w, 
+                                 int padding_h, int padding_w,
+                                 ActiMode activation, 
+                                 int groups,
+                                 bool use_bias);
+  Node get_or_create_pool2d_node(const Tensor input,
+                                 int kernelH, int kernelW,
+                                 int strideH, int strideW,
+                                 int paddingH, int paddingW,
+                                 PoolType type,
+                                 ActiMode activation);
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
@@ -854,6 +876,8 @@ public:
   std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
   std::unordered_map<size_t, Embedding*> cached_embedding_ops;
   std::unordered_map<size_t, Linear*> cached_linear_ops;
+  std::unordered_map<size_t, Conv2D*> cached_conv2d_ops;
+  std::unordered_map<size_t, Pool2D*> cached_pool2d_ops;
   std::unordered_map<size_t, Softmax*> cached_softmax_ops;
   std::unordered_map<size_t, Repartition*> cached_repartition_ops;
   std::unordered_map<size_t, Replicate*> cached_replicate_ops;
@@ -891,6 +915,7 @@ private:
   ElementUnary * unary(OperatorType op,
                        char const *name = NULL,
 		       float scalar = 0.0);
+  Node new_node(Op *);
 };
 
 class ElementBinaryMeta : public OpMeta {
@@ -1066,57 +1091,6 @@ public:
   size_t reserveSpaceSize, dropoutStateSize;
 };
 
-
-class Pool2D : public Op {
-public:
-  Pool2D(FFModel& model,
-         const Tensor input,
-         int kernelH, int kernelW,
-         int strideH, int strideW,
-         int paddingH, int paddingW,
-         PoolType type, ActiMode _activation,
-         const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void update(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
-
-  static OpMeta* init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
-                            Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_kernel(const Pool2DMeta* m,
-                             const float* input_ptr,
-                             float* output_ptr);
-  static void backward_kernel(const Pool2DMeta* m,
-                              const float* input_ptr,
-                              float* input_grad_ptr,
-                              const float* output_ptr,
-                              const float* output_grad_ptr);
-  bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
-public:
-  int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
-  PoolType pool_type;
-  ActiMode activation;
-};
-
-class Pool2DMeta : public OpMeta {
-public:
-  Pool2DMeta(FFHandler handle);
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
-  cudnnActivationDescriptor_t actiDesc;
-  cudnnPoolingDescriptor_t poolDesc;
-  bool relu;
-  char op_name[MAX_OPNAME];
-};
 
 class BatchNormMeta;
 class BatchNorm : public Op {

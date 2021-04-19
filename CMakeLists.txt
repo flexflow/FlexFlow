@@ -48,7 +48,7 @@ set(CC_FLAGS $ENV{CC_FLAGS})
 set(NVCC_FLAGS $ENV{NVCC_FLAGS})
 set(LD_FLAGS $ENV{LD_FLAGS})
 
-set(FF_MAX_DIM 4)
+set(FF_MAX_DIM 5)
 
 # ZLIB
 include(zlib)
@@ -122,6 +122,7 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/ops/linear.h
   ${FLEXFLOW_ROOT}/include/ops/conv_2d.h
   ${FLEXFLOW_ROOT}/include/ops/embedding.h
+  ${FLEXFLOW_ROOT}/include/ops/pool_2d.h
   ${FLEXFLOW_ROOT}/include/parallel_ops/combine.h
   ${FLEXFLOW_ROOT}/include/parallel_ops/fused_parallel_op.h
   ${FLEXFLOW_ROOT}/include/parallel_ops/partition.h
@@ -141,6 +142,9 @@ set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/ops/group_by.cc
   ${FLEXFLOW_ROOT}/src/ops/aggregate.cc
   ${FLEXFLOW_ROOT}/src/ops/noop.cc
+  ${FLEXFLOW_ROOT}/src/ops/pool_2d.cc
+  ${FLEXFLOW_ROOT}/src/ops/conv_2d.cc
+  ${FLEXFLOW_ROOT}/src/ops/linear.cc
   ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cc
   ${FLEXFLOW_ROOT}/src/runtime/initializer.cc
   ${FLEXFLOW_ROOT}/src/runtime/model.cc

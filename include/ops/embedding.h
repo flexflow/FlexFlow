@@ -18,6 +18,10 @@ public:
             AggrMode _aggr,
             bool allocate_weights,
             const char* name);
+  Embedding(FFModel& model,
+            Embedding const &other,
+            const Tensor input,
+            bool allocate_weights);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);

@@ -19,6 +19,8 @@
 #include "dominators.h"
 #include "ops/embedding.h"
 #include "ops/linear.h"
+#include "ops/conv_2d.h"
+#include "ops/pool_2d.h"
 #include "parallel_ops/combine.h"
 #include "parallel_ops/partition.h"
 #include "parallel_ops/replicate.h"
@@ -965,7 +967,7 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
       }
       case OP_EMBEDDING:
       {
-        new_op = new Embedding(*(Embedding*)node.ptr);
+        new_op = new Embedding(*this, *(Embedding*)node.ptr, inputs[0], true);
         break;
       }
       case OP_EW_ADD:
@@ -976,54 +978,19 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
                                    eb->inplace_a, NULL);
         break;
       }
+      case OP_POOL2D:
+      {
+        new_op = new Pool2D(*this, *(Pool2D*)node.ptr, inputs[0]);
+        break;
+      }
+      case OP_CONV2D:
+      {
+        new_op = new Conv2D(*this, *(Conv2D*)node.ptr, inputs[0], true);
+        break;
+      }
       case OP_LINEAR:
       {
-        assert(inList.size() == 1);
-        Linear* linear = (Linear*) node.ptr;
-        Tensor kernel = NULL, bias = NULL;
-        // Create kernel tensor
-        {
-          int num_dims = inputs[0]->num_dims;
-          ParallelDim dims[3];
-          dims[0] = inputs[0]->dims[num_dims-2];
-          dims[1] = inputs[0]->dims[num_dims-1];
-          dims[2] = inputs[0]->dims[0];
-          dims[0].size = dims[0].degree;
-          dims[1].size = linear->out_channels;
-          int seed = std::rand();
-          Initializer* initializer = new GlorotUniform(seed);
-#ifdef FF_USE_NCCL
-          ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-          ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-          kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
-                                    true/*create_grad*/, initializer,
-                                    comm_type);
-        }
-        // Create bias tensor
-        if (linear->use_bias)
-        {
-          int num_dims = inputs[0]->num_dims;
-          ParallelDim dims[3];
-          dims[0] = inputs[0]->dims[num_dims-2];
-          dims[1] = inputs[0]->dims[0];
-          dims[2] = inputs[0]->dims[num_dims-1];
-          dims[0].size = dims[0].degree;
-          dims[2].size = linear->out_channels;
-          Initializer* initializer = new ZeroInitializer();
-#ifdef FF_USE_NCCL
-          ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-          ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-          bias = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
-                                    true/*create_grad*/, initializer,
-                                    comm_type);
-        }
-        new_op = new Linear(*linear);
-        /* new_op = new Linear(*this, inputs[0], kernel, bias, */
-        /*                     linear->activation, NULL); */
+        new_op = new Linear(*this, *(Linear*)node.ptr, inputs[0], true);
         break;
       }
       case OP_SOFTMAX:

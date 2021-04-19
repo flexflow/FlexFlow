@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/pool_2d.h"
 #include "cuda_helper.h"
+#include "hash_utils.h"
 
 using namespace Legion;
 
@@ -25,13 +26,118 @@ Tensor FFModel::pool2d(const Tensor input,
                        PoolType type, ActiMode activation,
                        char const *name)
 {
-  assert(input->num_dims == 4); /*NCHW*/
   Pool2D *pool = new Pool2D(*this, input, kernelH, kernelW,
                       strideH, strideW, paddingH, paddingW,
                       type, activation, name);
   layers.push_back(pool);
   return pool->outputs[0];
 }
+
+namespace Input {
+  constexpr int NUMDIM = 5,
+                WIDTH = 0,
+                HEIGHT = 1,
+                CHANNEL = 2,
+                SAMPLE = 3,
+                REPLICA = 4;
+};
+
+namespace Output {
+  constexpr int NUMDIM = 5,
+                WIDTH = 0,
+                HEIGHT = 1,
+                CHANNEL = 2,
+                SAMPLE = 3,
+                REPLICA = 4;
+};
+
+Node FFModel::get_or_create_pool2d_node(const Tensor input,
+                                        int kernelH, int kernelW,
+                                        int strideH, int strideW,
+                                        int paddingH, int paddingW,
+                                        PoolType type,
+                                        ActiMode activation) 
+{
+  if (input->dims[Input::REPLICA].degree != 1) {
+    return Node::INVALID_NODE;
+  }
+
+  size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, kernelH);
+  hash_combine(hash, kernelW);
+  hash_combine(hash, strideH);
+  hash_combine(hash, strideW);
+  hash_combine(hash, paddingH);
+  hash_combine(hash, paddingW);
+  hash_combine(hash, type);
+  hash_combine(hash, activation);
+
+  Pool2D *pool = NULL;
+
+  const auto &it = this->cached_pool2d_ops.find(hash);
+  if (it != cached_pool2d_ops.end()) {
+    pool = it->second;
+  } else {
+    pool = new Pool2D(*this, 
+                      input, 
+                      kernelH, kernelW, 
+                      strideH, strideW,
+                      paddingH, paddingW,
+                      type,
+                      activation, 
+                      NULL);
+    cached_pool2d_ops[hash] = pool;
+  }
+
+  return this->new_node(pool);
+}
+
+int Pool2D::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) { 
+  Tensor const &input = this->inputs[0];
+
+  int input_w = input->dims[Input::WIDTH].size;
+  int input_h = input->dims[Input::HEIGHT].size;
+  int input_c = input->dims[Input::CHANNEL].size;
+  int input_n = input->dims[Input::SAMPLE].size;
+
+  output_dims[Output::WIDTH].size = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
+  output_dims[Output::HEIGHT].size = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
+  output_dims[Output::CHANNEL].size = input_c;
+  output_dims[Output::SAMPLE].size = input_n;
+  output_dims[Output::REPLICA].is_replica_dim = true;
+
+  return Output::NUMDIM;
+}
+
+void Pool2D::register_output_mappings() {
+  this->register_output_parallel_dims({
+    {Input::REPLICA, Output::REPLICA},
+    {Input::SAMPLE, Output::SAMPLE},
+    {Input::CHANNEL, Output::CHANNEL},
+    {Input::HEIGHT, Output::HEIGHT},
+    {Input::WIDTH, Output::WIDTH},
+  });
+}
+
+void Pool2D::register_mappings() {
+  this->register_output_mappings();
+}
+
+Pool2D::Pool2D(FFModel& model,
+               Pool2D const &other,
+               Tensor const input) 
+: Pool2D(model,
+         input,
+         other.kernel_h,
+         other.kernel_w,
+         other.stride_h,
+         other.stride_w,
+         other.padding_h,
+         other.padding_w,
+         other.pool_type,
+         other.activation,
+         other.name) 
+{ }
 
 Pool2D::Pool2D(FFModel& model,
                const Tensor _input,
@@ -46,14 +152,20 @@ Pool2D::Pool2D(FFModel& model,
   padding_h(_padding_h), padding_w(_padding_w),
   pool_type(_type), activation(_activation)
 {
-  int input_w = inputs[0]->dims[0].size;
-  int input_h = inputs[0]->dims[1].size;
-  int output_w = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
-  int output_h = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  int output_c = inputs[0]->dims[2].size;
-  int output_n = inputs[0]->dims[3].size;
-  const int dims[4] = {output_n, output_c, output_h, output_w};
-  outputs[0] = model.create_tensor<4>(dims, DT_FLOAT, this);
+  assert (_input->num_dims == Input::NUMDIM);
+
+  this->register_mappings();
+
+  ParallelDim output_dims[MAX_TENSOR_DIM];
+  int output_ndim = this->output_size(output_dims);
+
+  this->solve_parallel_dim_mappings(
+      {inputs[0]->dims},
+      {},
+      {output_dims}
+  );
+
+  outputs[0] = model.create_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
 }
 
 /*
@@ -71,9 +183,9 @@ OpMeta* Pool2D::init_task(const Task *task,
   Pool2DMeta* m = new Pool2DMeta(handle);
   m->profiling = pool->profiling;
   std::strcpy(m->op_name, pool->name);
-  TensorAccessorR<float, 4> acc_input(
+  TensorAccessorR<float, Input::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_output(
+  TensorAccessorW<float, Output::NUMDIM> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
 
@@ -184,9 +296,9 @@ void Pool2D::forward_task(const Task *task,
   assert(task->regions.size() == 2);
   //const Pool2D* pool = (Pool2D*) task->args;
   const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
-  TensorAccessorR<float, 4> acc_input(
+  TensorAccessorR<float, Input::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_output(
+  TensorAccessorW<float, Output::NUMDIM> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   cudaEvent_t t_start, t_end;
@@ -265,14 +377,14 @@ void Pool2D::backward_task(const Task *task,
   assert(task->regions.size() == 4);
   //const Pool2D* pool = (Pool2D*) task->args;
   const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
-  TensorAccessorR<float, 4> acc_input(
+  TensorAccessorR<float, Input::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_input_grad(
+  TensorAccessorW<float, Input::NUMDIM> acc_input_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       true/*readOutput*/);
-  TensorAccessorR<float, 4> acc_output(
+  TensorAccessorR<float, Output::NUMDIM> acc_output(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 4> acc_output_grad(
+  TensorAccessorR<float, Output::NUMDIM> acc_output_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
   cudaEvent_t t_start, t_end;

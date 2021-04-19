@@ -27,7 +27,7 @@ class Initializer;
 
 struct ParallelDim {
   static constexpr int UNKNOWN_DEGREE = -1;
-  static constexpr int UNKNOWN_INDEX = -1;
+  static constexpr int UNKNOWN_INDEX = -2;
 
   bool operator==(const ParallelDim &rhs) const
   {
@@ -86,6 +86,7 @@ struct TensorBase {
   const Op* owner_op;
   int owner_idx;
   bool create_gradients;
+  
   // The following fields are initialized after model.compile
   MachineView machine_view;
   Legion::IndexSpace parallel_is;
