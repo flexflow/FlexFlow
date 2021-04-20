@@ -49,6 +49,7 @@ set(NVCC_FLAGS $ENV{NVCC_FLAGS})
 set(LD_FLAGS $ENV{LD_FLAGS})
 
 set(FF_MAX_DIM 5)
+set(FF_MAX_RETURN_SIZE 16384)
 
 # ZLIB
 include(zlib)
@@ -88,12 +89,14 @@ endif()
 
 list(APPEND CC_FLAGS
   -std=c++11
-  -DMAX_TENSOR_DIM=${FF_MAX_DIM})
+  -DMAX_TENSOR_DIM=${FF_MAX_DIM}
+  -DLEGION_MAX_RETURN_SIZE=${FF_MAX_RETURN_SIZE})
 
 list(APPEND NVCC_FLAGS
   -Wno-deprecated-gpu-targets
   -std=c++11
-  -DMAX_TENSOR_DIM=${FF_MAX_DIM})
+  -DMAX_TENSOR_DIM=${FF_MAX_DIM}
+  -DLEGION_MAX_RETURN_SIZE=${FF_MAX_RETURN_SIZE})
 
 list(APPEND LD_FLAGS
   -lrt
@@ -123,6 +126,8 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/ops/conv_2d.h
   ${FLEXFLOW_ROOT}/include/ops/embedding.h
   ${FLEXFLOW_ROOT}/include/ops/pool_2d.h
+  ${FLEXFLOW_ROOT}/include/ops/flat.h
+  ${FLEXFLOW_ROOT}/include/ops/element_unary.h
   ${FLEXFLOW_ROOT}/include/parallel_ops/combine.h
   ${FLEXFLOW_ROOT}/include/parallel_ops/fused_parallel_op.h
   ${FLEXFLOW_ROOT}/include/parallel_ops/partition.h
@@ -145,6 +150,8 @@ set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/ops/pool_2d.cc
   ${FLEXFLOW_ROOT}/src/ops/conv_2d.cc
   ${FLEXFLOW_ROOT}/src/ops/linear.cc
+  ${FLEXFLOW_ROOT}/src/ops/flat.cc
+  ${FLEXFLOW_ROOT}/src/ops/element_unary.cc
   ${FLEXFLOW_ROOT}/src/metrics_functions/metrics_functions.cc
   ${FLEXFLOW_ROOT}/src/runtime/initializer.cc
   ${FLEXFLOW_ROOT}/src/runtime/model.cc

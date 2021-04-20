@@ -948,9 +948,11 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
     assert(node.ptr != NULL);
     const auto& inList = graph->inEdges.find(node)->second;
     Tensor inputs[MAX_NUM_INPUTS];
+    int num_inputs = 0;
     for (const auto& e : inList) {
       inputs[e.dstIdx] = node_to_op[e.srcOp]->outputs[e.srcIdx];
       assert(e.dstIdx < (int)inList.size());
+      num_inputs++;
     }
     Op* new_op = NULL;
     switch (node.ptr->op_type) {
@@ -1043,11 +1045,10 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
         break;
       }
       default:
-        fprintf(stderr, "The following operator type is currently not supported"
-                " for graph serialization: %s\n"
-                "Report the issue to the FlexFlow developers",
-                node.to_string().c_str());
-        assert(false && "Unsupported Operator Type");
+      {
+        new_op = node.ptr->materialize(*this, inputs, num_inputs);
+        break;
+      }
     }
     // Set machine view for the output tensors of this operator
     assert(optimal_views.find(node) != optimal_views.end());

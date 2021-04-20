@@ -74,6 +74,9 @@ public:
   static Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
 /* #endif */ 
 private:
+  void mark_replica_dims(ParallelDim output_dims[MAX_TENSOR_DIM],
+                         ParallelDim kernel_dims[MAX_TENSOR_DIM],
+                         ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
   int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]); 
   int kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]); 
   int bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]); 

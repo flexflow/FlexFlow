@@ -172,6 +172,9 @@ Node FFModel::get_or_create_repartition_node(const Tensor input,
   if (degree > config.workersPerNode * config.numNodes
   && (degree > config.cpusPerNode * config.numNodes))
     return Node::INVALID_NODE;
+  if (input->dims[repartition_dim].size % (repartition_degree * input->dims[repartition_dim].degree) != 0) {
+    return Node::INVALID_NODE;
+  }
 
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(repartition_dim);

@@ -26,6 +26,8 @@
 #include "ops/conv_2d.h"
 #include "ops/pool_2d.h"
 #include "ops/embedding.h"
+#include "ops/flat.h"
+#include "ops/element_unary.h"
 #include "parallel_ops/combine.h"
 #include "parallel_ops/fused_parallel_op.h"
 #include "parallel_ops/partition.h"
@@ -185,18 +187,13 @@ bool TensorBase::get_input_sub_tensor(
   switch (type) {
     case OP_FLAT:
       {
-        assert (pc.nDims == 2 && "Invalid dimension for parallel config of OP_FLAT");
-        int nonBatchDim = pc.dim[0];
-        int batchDim = pc.dim[1];
-        tensor.num_dims = num_dims;
-        assert (nonBatchDim == 1 && "I'm not sure this is correct otherwise");
-        if (dims[num_dims-1].size % batchDim != 0) {
-          printf("Could not get input subtensor because the dimension is not divisiable: %d %% %d != 0\n", dims[num_dims-1].size, batchDim);
+        assert (pc.nDims == 3 && "Invalid dimension for parallel config of OP_FLAT");
+
+        tensor.num_dims = this->num_dims;
+        for (int i = 0; i < 3; i++) {
+          assert (tensor.dims[i].size % pc.dim[i] == 0);
+          tensor.dims[i].size = tensor.dims[i].size / pc.dim[i];
         }
-        for (int i = num_dims - 2; i >= 0; i--) {
-          tensor.dims[i].size = dims[i].size;
-        }
-        tensor.dims[num_dims-1].size = dims[num_dims-1].size / batchDim;
         break;
       }
     case OP_RESHAPE:
@@ -324,6 +321,8 @@ bool TensorBase::check_valid() const
   for (int i = 0; i < MAX_TENSOR_DIM; i++)
     used[i] = false;
   for (int i = 0; i < num_dims; i++) {
+    if (dims[i].size < 0) 
+      return false;
     if (dims[i].size % dims[i].degree != 0)
       return false;
     if (dims[i].parallel_idx > MAX_TENSOR_DIM)
@@ -483,15 +482,9 @@ Op::Op(FFModel& model,
   pcname = pcname + "_" + std::to_string(op_guid);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
-  for (int i = 0; i < numInputs + numWeights; i++) {
+  for (int i = 0; i < numInputs; i++) {
     assert(tensors[i] != NULL);
-    if (i < numInputs) {
-      // Activation
-      inputs[i] = tensors[i];
-    } else {
-      // Weight
-      weights[i - numInputs] = tensors[i];
-    }
+    inputs[i] = tensors[i];
   }
   //for (int i = 0; i < numInputs; i++) {
   //  trainableInputs[i] = true;
@@ -593,6 +586,14 @@ void Op::serialize(Legion::Serializer& serializer) const
           "Report the issue to the FlexFlow developers",
           optype_to_string(this->op_type).c_str());
   assert (false && "This op does not support serialization");
+}
+
+Op *Op::materialize(FFModel& ff, Tensor inputs[], int num_inputs) const {
+  fprintf(stderr, "The following operator type is currently not supported"
+          " for layer materialization: %s\n"
+          "Report the issue to the FlexFlow developers",
+          optype_to_string(this->op_type).c_str());
+  assert (false && "This op does not support materialization");
 }
 
 void Op::zero_grad(const FFModel& ff)
@@ -913,25 +914,6 @@ void Op::solve_parallel_dim_mappings(
 }
 
 #ifdef FF_USE_NCCL
-#ifdef DEADCODE
-void Op::get_nccl_unique_id(const FFModel& ff)
-{
-  // Init NCCL id
-  //int my_rank = -1, all_ranks = -1;
-  //MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-  //MPI_Comm_size(MPI_COMM_WORLD, &all_ranks);
-  //if (my_rank == 0) ncclGetUniqueId(&ncclId);
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));
-  Future future = runtime->execute_task(ctx, launcher);
-  ncclId = future.get_result<ncclUniqueId>();
-  //MPI_Bcast((void *)&ncclId, sizeof(ncclId), MPI_BYTE, 0, MPI_COMM_WORLD);
-  //fprintf(stderr, "In Op(%p): MPImyrank(%d) MPIallranks(%d) ncclID(%p)\n",
-  //    this, my_rank, all_ranks, ncclId);
-}
-#endif
-
 ncclUniqueId Op::get_nccl_unique_id_task(const Task *task,
     const std::vector<PhysicalRegion> &regions,
     Context ctx, Runtime *runtime)
@@ -970,8 +952,8 @@ ParallelDimMappingRecord::ParallelDimMappingRecord(MappingRecordType type)
 
 /*static*/
 ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
-    int output_idx, int output_dim,
-    int input_idx, int input_dim) 
+    int input_idx, int input_dim,
+    int output_idx, int output_dim)
 {
   ParallelDimMappingRecord r(MappingRecordType::INPUT_OUTPUT);  
 
@@ -3983,6 +3965,14 @@ void register_flexflow_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<MultiHeadAttention::backward_task>(
         registrar, "MultiHeadAttention Backward Task");
+  }
+  // NoOp
+  {
+    TaskVariantRegistrar registrar(NOOP_INIT_TASK_ID, "Weight NCCL Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, NoOp::init_task>(
+        registrar, "Weight NCCL Init Task");
   }
   // FusedOp Task
   {

@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/element_unary.h"
+#include "hash_utils.h"
 #include "cuda_helper.h"
 
 using namespace Legion;
@@ -29,13 +30,41 @@ Tensor FFModel::unary(OperatorType op,
   return ele->outputs[0];
 }
 
+Node FFModel::get_or_create_element_unary_node(const Tensor input,
+                                               OperatorType op,
+                                               bool inplace,
+                                               float scalar)
+{
+  if (input->dims[input->num_dims-1].degree != 1) {
+    return Node::INVALID_NODE;
+  }
+
+  size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, op);
+  hash_combine(hash, inplace);
+  if (op == OP_SCALAR_MULTIPLY) {
+    hash_combine(hash, scalar);
+  }
+
+  ElementUnary *unary;
+  const auto &it = this->cached_element_unary_ops.find(hash);
+  if (it != cached_element_unary_ops.end()) { 
+    unary = it->second;
+  } else {
+    unary = new ElementUnary(*this, op, input, inplace, NULL, scalar);
+    cached_element_unary_ops[hash] = unary;
+  }
+
+  return this->new_node(unary);
+}
+
 Tensor FFModel::exp(const Tensor x,
                     const char *name)
 {
   return this->unary(OP_EXP, x, false/*inplace*/, name);
 }
 
-Tensor FFModel::scalar_multiply(const Tensor x,const float scalar ,bool inplace, const char *name)
+Tensor FFModel::scalar_multiply(const Tensor x, const float scalar, bool inplace, const char *name)
 {
   return this->unary(OP_SCALAR_MULTIPLY, x, inplace, name, scalar);
 }

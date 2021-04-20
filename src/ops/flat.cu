@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/flat.h"
 #include "cuda_helper.h"
 
 using namespace Legion;
@@ -21,7 +21,6 @@ using namespace Legion;
 Tensor FFModel::flat(const Tensor input,
                      const char* name)
 {
-  assert(input->num_dims == 4);
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
   Flat *flat = new Flat(*this, input, name);
@@ -29,48 +28,89 @@ Tensor FFModel::flat(const Tensor input,
   return flat->outputs[0];
 }
 
+namespace Input {
+  constexpr int NUMDIM = 5,
+                WIDTH = 0,
+                HEIGHT = 1,
+                CHANNEL = 2,
+                SAMPLE = 3,
+                REPLICA = 4;
+}
+
+namespace Output {
+  constexpr int NUMDIM = 3,
+                CHANNEL = 0,
+                SAMPLE = 1,
+                REPLICA = 2;
+}
+
+Node FFModel::get_or_create_flat_node(const Tensor input) 
+{
+  if (input->dims[Input::WIDTH].degree != 1 || input->dims[Input::HEIGHT].degree != 1) {
+    return Node::INVALID_NODE;
+  }
+
+  size_t hash = input->get_owner_independent_hash();
+
+  Flat *flat;
+
+  const auto &it = this->cached_flat_ops.find(hash);
+  if (it != cached_flat_ops.end()) {
+    flat = it->second;
+  } else {
+    flat = new Flat(*this, input, NULL);
+    cached_flat_ops[hash] = flat;
+  }
+
+  return this->new_node(flat);
+}
+
+int Flat::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) const {
+  Tensor const &input = this->inputs[0];
+
+  output_dims[Output::REPLICA].is_replica_dim = true;
+  output_dims[Output::SAMPLE].size = input->dims[Input::SAMPLE].size;
+  output_dims[Output::CHANNEL].size = (
+      input->dims[Input::CHANNEL].size * input->dims[Input::HEIGHT].size * input->dims[Input::WIDTH].size 
+  );
+
+  return Output::NUMDIM;
+}
+
+void Flat::register_output_mappings() {
+  this->register_output_parallel_dims({
+    { Input::REPLICA, Output::REPLICA },
+    { Input::SAMPLE, Output::SAMPLE },
+    { Input::CHANNEL, Output::CHANNEL }
+  });
+}
+
+void Flat::register_mappings() {
+  this->register_output_mappings();
+}
+
 Flat::Flat(FFModel& model,
            const Tensor _input,
            const char* name)
 : Op(model, OP_FLAT, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, _input)
 {
-  assert(_input->num_dims == 4);
-  ParallelDim dims[2];
-  dims[1] = _input->dims[3];
-  dims[0].size = _input->dims[0].size * _input->dims[1].size * _input->dims[2].size;
-  for (int i = 0; i < 3; i++) {
-    assert(_input->dims[0].degree == 1);
-    assert(_input->dims[0].parallel_idx == -1);
-  }
-  numOutputs = 1;
-  outputs[0] = model.create_tensor_legion_ordering(2, dims, _input->data_type, this);
-}
+  assert(_input->num_dims == Input::NUMDIM);
 
-#ifdef DEADCODE
-void Flat::create_input_partition(FFModel& model)
-{
-  std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
-  int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
-  // Assert data parallelism for operators with dim changes
-  assert(num_par_c == 1);
-  //int out_dim = inputs[0].adim[0] * inputs[0].adim[1] * inputs[0].adim[2];
-  //int batch_size = inputs[0].adim[3];
-  // Create output tensor
-  //{
-  //  const int dims[2] = {batch_size, out_dim};
-  //  outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
-  //  outputs[0].owner_op = this;
-  //  outputs[0].owner_idx = 0;
-  //}
-  model.create_data_parallel_partition_with_diff_dims<4, 2>(
-      inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
+  this->register_mappings();
+
+  ParallelDim output_dims[MAX_TENSOR_DIM];
+  int output_dim = this->output_size(output_dims);
+
+  this->solve_parallel_dim_mappings(
+      {inputs[0]->dims},
+      {},
+      {output_dims}
+  );
+
+  outputs[0] = model.create_tensor_legion_ordering(output_dim, output_dims, _input->data_type, this);
+
+  assert(check_output_input_weight_parallel_dims());
 }
-#endif
 
 OpMeta* Flat::init_task(const Task *task,
                         const std::vector<PhysicalRegion> &regions,
@@ -126,9 +166,9 @@ void Flat::forward_task(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  TensorAccessorR<float, 4> acc_input(
+  TensorAccessorR<float, Input::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_output(
+  TensorAccessorW<float, Output::NUMDIM> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   assert(acc_input.rect.volume() == acc_output.rect.volume());
@@ -175,10 +215,10 @@ void Flat::backward_task(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  TensorAccessorW<float, 4> acc_input_grad(
+  TensorAccessorW<float, Input::NUMDIM> acc_input_grad(
     regions[0], task->regions[0], FID_DATA, ctx, runtime,
     true/*readOutput*/);
-  TensorAccessorR<float, 2> acc_output_grad(
+  TensorAccessorR<float, Output::NUMDIM> acc_output_grad(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
   backward_kernel(acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());

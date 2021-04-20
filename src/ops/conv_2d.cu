@@ -147,11 +147,22 @@ Node FFModel::get_or_create_conv2d_node(const Tensor input,
   return this->new_node(conv);
 }
 
+void Conv2D::mark_replica_dims(ParallelDim output_dims[MAX_TENSOR_DIM], 
+                               ParallelDim kernel_dims[MAX_TENSOR_DIM], 
+                               ParallelDim bias_dims[MAX_TENSOR_DIM]) const 
+{
+  output_dims[Output::REPLICA].is_replica_dim = true;
+  kernel_dims[Output::REPLICA].is_replica_dim = true;
+  bias_dims[Bias::REPLICA_1].is_replica_dim = true;
+  bias_dims[Bias::REPLICA_2].is_replica_dim = true;
+  bias_dims[Bias::REPLICA_3].is_replica_dim = true;
+  bias_dims[Bias::REPLICA_4].is_replica_dim = true;
+}
+
 int Conv2D::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
   int input_w = inputs[0]->dims[Input::WIDTH].size;
   int input_h = inputs[0]->dims[Input::HEIGHT].size;
 
-  output_dims[Output::REPLICA].is_replica_dim = true;
   output_dims[Output::SAMPLE].size = inputs[0]->dims[Input::SAMPLE].size;
   output_dims[Output::CHANNEL].size = out_channels;
   output_dims[Output::HEIGHT].size = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
@@ -161,7 +172,6 @@ int Conv2D::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
 };
 
 int Conv2D::kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) {
-  kernel_dims[Kernel::REPLICA].is_replica_dim = true;
   kernel_dims[Kernel::CHANNEL_OUT].size = this->out_channels;
   kernel_dims[Kernel::CHANNEL_IN].size = inputs[0]->dims[Input::CHANNEL].size / this->groups;
   kernel_dims[Kernel::HEIGHT].size = this->kernel_h * kernel_dims[Kernel::HEIGHT].degree;
@@ -170,19 +180,15 @@ int Conv2D::kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) {
   return inputs[0]->num_dims;
 }
 
-int Conv2D::bias_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) {
-  kernel_dims[Bias::REPLICA_1].is_replica_dim = true;
-  kernel_dims[Bias::REPLICA_2].is_replica_dim = true;
-  kernel_dims[Bias::REPLICA_3].is_replica_dim = true;
-  kernel_dims[Bias::REPLICA_4].is_replica_dim = true;
-  kernel_dims[Kernel::CHANNEL_OUT].size = this->out_channels;
+int Conv2D::bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]) {
+  bias_dims[Bias::CHANNEL].size = this->out_channels;
 
-  return (int)Kernel::NUMDIM;
+  return Bias::NUMDIM;
 };
 
 void Conv2D::register_mappings() {
   this->register_output_mappings();
-  this->register_output_mappings();
+  this->register_weight_mappings();
 }
 
 void Conv2D::register_output_mappings() {
@@ -246,7 +252,7 @@ Conv2D::Conv2D(FFModel& model,
                bool allocate_weights,
                bool use_bias,
                const char* name)
-: Op(model, OP_LINEAR, name, 1/*inputs*/, use_bias ? 2 : 1/*weights*/, allocate_weights, 1/*outputs*/, input),
+: Op(model, OP_CONV2D, name, 1/*inputs*/, use_bias ? 2 : 1/*weights*/, allocate_weights, 1/*outputs*/, input),
   in_channels(input->dims[Input::CHANNEL].size),
   out_channels(outChannels),
   kernel_h(kernelH), kernel_w(kernelW),
@@ -262,21 +268,19 @@ Conv2D::Conv2D(FFModel& model,
 
   std::vector<ParallelDim *> weight_dim_sets;
 
-  ParallelDim output_dims[MAX_TENSOR_DIM];
-  int output_ndim = this->output_size(output_dims);
-
-  int kernel_ndim, bias_ndim;
-  ParallelDim kernel_dims[MAX_TENSOR_DIM], 
+  ParallelDim output_dims[MAX_TENSOR_DIM],
+              kernel_dims[MAX_TENSOR_DIM], 
               bias_dims[MAX_TENSOR_DIM];
+  this->mark_replica_dims(output_dims, kernel_dims, bias_dims);
+
   if (allocate_weights) {
-    kernel_ndim = this->kernel_size(kernel_dims);
     weight_dim_sets.push_back(kernel_dims);
 
     if (use_bias) {
-      bias_ndim = this->bias_size(bias_dims);
       weight_dim_sets.push_back(bias_dims);
     }
   }
+
     
   this->solve_parallel_dim_mappings(
       {inputs[0]->dims},
@@ -284,13 +288,16 @@ Conv2D::Conv2D(FFModel& model,
       {output_dims}
   );
 
+
   if (allocate_weights) {
+    int kernel_ndim = this->kernel_size(kernel_dims);
     Initializer *kernel_initializer = new GlorotUniform(std::rand()/*seed*/);
 
     weights[Kernel::INDEX] = model.create_weight_legion_ordering(
         kernel_ndim, kernel_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
     
     if (use_bias) {
+      int bias_ndim = this->bias_size(bias_dims);
       Initializer *bias_initializer = new ZeroInitializer();
 
       weights[Bias::INDEX] = model.create_weight_legion_ordering(
@@ -298,6 +305,7 @@ Conv2D::Conv2D(FFModel& model,
     }
   }
 
+  int output_ndim = this->output_size(output_dims);
   outputs[0] = model.create_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
 
   assert(check_output_input_weight_parallel_dims(allocate_weights));

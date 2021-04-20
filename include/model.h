@@ -222,8 +222,8 @@ private:
 public:
   ParallelDimMappingRecord() = delete;
 
-  static ParallelDimMappingRecord input_output_record(int output_idx, int output_dim,
-                                                      int input_idx, int input_dim);
+  static ParallelDimMappingRecord input_output_record(int input_idx, int input_dim, 
+                                                      int output_idx, int output_dim);
   static ParallelDimMappingRecord input_weight_record(int input_idx, int input_dim,
                                                       int weight_idx, int weight_dim);
   MappingRecordType get_type() const;
@@ -259,7 +259,7 @@ protected:
       const Tensor output, int output_dim,
       const Tensor weight);
 
-  bool check_output_input_weight_parallel_dims(bool allocate_weights) const;
+  bool check_output_input_weight_parallel_dims(bool allocate_weights = true) const;
   bool check_output_input_weight_same_parallel_is() const;
   bool check_output_input_weight_same_machine_view() const;
 public:
@@ -324,6 +324,7 @@ public:
   virtual void do_inplace_output();
   virtual bool is_parallel_op() const;
   virtual void serialize(Legion::Serializer&) const;
+  virtual Op *materialize(FFModel& ff, Tensor inputs[], int num_inputs) const;
 
   int get_dimension() const;
 #ifdef FF_USE_NCCL
@@ -750,6 +751,11 @@ public:
                                  int paddingH, int paddingW,
                                  PoolType type,
                                  ActiMode activation);
+  Node get_or_create_flat_node(const Tensor input);
+  Node get_or_create_element_unary_node(const Tensor input,
+                                        OperatorType type,
+                                        bool inplace, 
+                                        float scalar);
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
@@ -874,10 +880,12 @@ public:
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
   std::unordered_map<size_t, Concat*> cached_concat_ops;
   std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
+  std::unordered_map<size_t, ElementUnary*> cached_element_unary_ops;
   std::unordered_map<size_t, Embedding*> cached_embedding_ops;
   std::unordered_map<size_t, Linear*> cached_linear_ops;
   std::unordered_map<size_t, Conv2D*> cached_conv2d_ops;
   std::unordered_map<size_t, Pool2D*> cached_pool2d_ops;
+  std::unordered_map<size_t, Flat*> cached_flat_ops;
   std::unordered_map<size_t, Softmax*> cached_softmax_ops;
   std::unordered_map<size_t, Repartition*> cached_repartition_ops;
   std::unordered_map<size_t, Replicate*> cached_replicate_ops;
@@ -985,60 +993,6 @@ public:
                        float* in2_grad_ptr);
 public:
   bool inplace_a;
-};
-
-class ElementUnaryMeta : public OpMeta {
-public:
-  ElementUnaryMeta(FFHandler handle);
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
-  cudnnActivationDescriptor_t actiDesc;
-  OperatorType op_type;
-  bool inplace;
-  float scalar;
-};
-
-class ElementUnary : public Op {
-public:
-  ElementUnary(FFModel& model,
-               OperatorType type,
-               const Tensor x,
-               bool inplace,
-               const char* name,
-	       float scalar);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
-  bool can_inplace_output();
-  bool has_inplace_output();
-  void do_inplace_output();
-
-  static OpMeta* init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
-                            Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_kernel(const ElementUnaryMeta* m,
-                      const float* in_ptr,
-                      float* out_ptr,
-                      size_t num_elements);
-  static void backward_kernel(const ElementUnaryMeta* m,
-                       const float* in_ptr,
-                       float* in_grad_ptr,
-                       const float* out_ptr,
-                       const float* out_grad_ptr,
-                       size_t num_elements);
-  bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
-  static bool use_cudnn(OperatorType type);
-public:
-  float scalar;
-  bool inplace;
 };
 
 class DropoutMeta;
@@ -1280,43 +1234,6 @@ public:
   int n;
 };
 
-
-class Flat : public Op {
-public:
-  Flat(FFModel& model,
-       const Tensor input,
-       const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
-
-  static OpMeta* init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
-                            Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_kernel(const float* input_ptr,
-                             float* output_ptr,
-                             size_t num_elements);
-  static void backward_kernel(float* input_grad_ptr,
-                              const float* output_grad_ptr,
-                              size_t num_elements);
-  bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
-  Legion::Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const;
-public:
-};
-
-class FlatMeta : public OpMeta {
-public:
-  FlatMeta(FFHandler handle) : OpMeta(handle) {};
-};
 
 class MultiHeadAttentionMeta;
 

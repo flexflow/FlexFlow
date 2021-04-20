@@ -72,7 +72,7 @@ Node FFModel::get_or_create_pool2d_node(const Tensor input,
   hash_combine(hash, type);
   hash_combine(hash, activation);
 
-  Pool2D *pool = NULL;
+  Pool2D *pool;
 
   const auto &it = this->cached_pool2d_ops.find(hash);
   if (it != cached_pool2d_ops.end()) {

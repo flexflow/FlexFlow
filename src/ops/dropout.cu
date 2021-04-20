@@ -124,7 +124,7 @@ void Dropout::init(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
   IndexLauncher init_launcher(DROPOUT_INIT_TASK_ID, parallel_is,
-                              TaskArgument(this, sizeof(ElementUnary)), argmap,
+                              TaskArgument(this, sizeof(Dropout)), argmap,
                               Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                               outputs[0]->machine_view.hash());
   init_launcher.add_region_requirement(

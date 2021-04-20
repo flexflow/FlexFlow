@@ -67,10 +67,8 @@ public:
   ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
 
-/* #ifndef __CUDACC__ */
   void serialize(Legion::Serializer&) const override;
   static Node deserialize(FFModel &ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
-/* #endif */
 private:
   template<int NDIM>
   static OpMeta* init_task_with_dim(const Legion::Task *task,
@@ -91,9 +89,9 @@ private:
   int input_replica_dim() const;
   int input_channel_dim() const;
 
-  int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]);
-  int kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]);
-  int bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]);
+  int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) const;
+  int kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) const;
+  int bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
 
   void register_mappings();
   void register_output_mappings();

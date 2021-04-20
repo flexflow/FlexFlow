@@ -92,7 +92,7 @@ namespace Bias {
   };
 };
 
-int Linear::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
+int Linear::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) const {
   Tensor const &input = this->inputs[0];
 
   const int REPLICA = this->output_replica_dim();
@@ -107,7 +107,7 @@ int Linear::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
   return input->num_dims;
 }
 
-int Linear::kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) {
+int Linear::kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) const {
   Tensor const &input = this->inputs[0];
 
   kernel_dims[Kernel::CHANNEL_IN].size = this->in_channels;
@@ -119,7 +119,7 @@ int Linear::kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) {
   return input->num_dims;
 }
 
-int Linear::bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]) {
+int Linear::bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]) const {
   Tensor const &input = this->inputs[0];
 
   bias_dims[Bias::CHANNEL_OUT].size = this->out_channels;

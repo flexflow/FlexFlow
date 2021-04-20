@@ -20,6 +20,8 @@
 #include "ops/conv_2d.h"
 #include "ops/pool_2d.h"
 #include "ops/embedding.h"
+#include "ops/element_unary.h"
+#include "ops/flat.h"
 #include "parallel_ops/partition.h"
 #include "parallel_ops/replicate.h"
 #include "parallel_ops/reduction.h"
@@ -80,7 +82,6 @@ Node::Node(void)
 : guid(0), ptr(NULL)
 {}
 
-/*static*/
 std::string optype_to_string(OperatorType op_type)
 {
   switch (op_type) {
@@ -1343,6 +1344,23 @@ void FFModel::deserialize_graph_optimal_view(Deserializer& dez,
       case OP_LINEAR:
       {
         node = Linear::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_FLAT:
+      {
+        node = Flat::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_EXP:
+      case OP_SCALAR_MULTIPLY:
+      case OP_RELU:
+      case OP_SIGMOID:
+      case OP_TANH:
+      case OP_IDENTITY:
+      case OP_GELU:
+      case OP_ELU:
+      {
+        node = ElementUnary::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_SOFTMAX:
