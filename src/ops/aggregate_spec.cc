@@ -36,25 +36,28 @@ AggregateSpec::AggregateSpec(FFModel& model,
   n(_n), lambda_bal(_lambda_bal)
   //profiling(model.config.profiling)
 {
-  assert(inputs[0].numDim == 2); // TODO: More flexible. pass in images etc.
-  assert(inputs[1].numDim == 2);
-  assert(inputs[0].adim[0] == inputs[1].adim[0]);
-  assert(n == inputs[2].adim[0]);
-  assert(inputs[0].adim[1] == inputs[1].adim[1]);
-  assert(inputs[0].adim[1] == inputs[2].adim[1]);
   assert(n+3 == numInputs);
   assert(n > 0);
-
+  assert(inputs[0].numDim == 2);
+  assert(inputs[1].numDim == 2);
+  assert(inputs[2].numDim == 2);
+  assert(inputs[0].adim[0] == inputs[1].adim[0]);
+  assert(inputs[2].adim[1] == inputs[0].adim[1]);
+  assert(inputs[0].adim[0] == inputs[1].adim[0]);
+  assert(inputs[2].adim[0] == n);
+  // expert inputs
+  int num_dim = inputs[3].numDim;
   int out_dim = inputs[3].adim[0];
-  int batch_size = inputs[0].adim[1];
-  int k = inputs[0].adim[0];
-  outputs[0].numDim = 2;
-  outputs[0].adim[0] = out_dim;
-  outputs[0].adim[1] = k*batch_size;
-
   for(int i = 1; i < n; i++) {
+    assert(inputs[i+3].numDim == num_dim);
     assert(inputs[i+3].adim[0] == out_dim);
   }
+  // output
+  outputs[0].numDim = num_dim;
+  int k = inputs[0].adim[0];
+  for(int i = 0; i < num_dim-1; i++)
+    outputs[0].adim[i] = inputs[3].adim[i];
+  outputs[0].adim[num_dim-1] = k*inputs[0].adim[num_dim-1];
 
   numWeights = 0;
 }
@@ -111,47 +114,70 @@ OpMeta* AggregateSpec::init_task(const Task* task,
 }
 
 
-/* TODO: ?? . Also produces warning [warning 1071] LEGION WARNING: Region
-requirement 7 of operation Aggregate Init Task (UID 140) in parent task
-top_level (UID 1) is using uninitialized data for field(s) 0 of logical
-region (81,28,53) */
 void AggregateSpec::init(const FFModel& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  IndexLauncher launcher(AGG_SPEC_INIT_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(AggregateSpec)), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
-  // gate_preds
-  launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region));
-  launcher.add_field(0, FID_DATA);
-  // gate_assign
-  launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[1].region));
-  launcher.add_field(1, FID_DATA);
-  // gate_assign_whole
-  launcher.add_region_requirement(
-    RegionRequirement(input_lps[2], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[2].region));
-  launcher.add_field(2, FID_DATA);
-  // exp_preds
-  for(int i = 0; i < n; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(input_lps[i+3], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i+3].region));
-    launcher.add_field(i+3, FID_DATA);
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      ParallelConfig pc; \
+      std::string pcname = name; \
+      ff.config.find_parallel_config(DIM, pcname, pc); \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        FFHandler handle = ff.handlers[pc.device_ids[idx++]]; \
+        argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
   }
-  // output
+  IndexLauncher launcher(CONCAT_INIT_TASK_ID, task_is,
+    TaskArgument(this, sizeof(Concat)), argmap,
+    Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+    FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
     RegionRequirement(outputs[0].part, 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, outputs[0].region));
-  launcher.add_field(n+3, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+  launcher.add_field(0, FID_DATA);
+  for (int i = 0; i < numInputs; i++) {
+    launcher.add_region_requirement(
+      RegionRequirement(input_lps[i], 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, inputs[i].region));
+    launcher.add_field(i + 1, FID_DATA);
+  }
+  for (int i = 0; i < numInputs; i++) {
+    launcher.add_region_requirement(
+      RegionRequirement(input_grad_lps[i], 0/*projection id*/,
+        WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
+    launcher.add_field(i + numInputs + 1, FID_DATA);
+  }
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        meta[idx++] = fm.get_result<OpMeta*>(*it); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
 }
 
 
@@ -193,16 +219,15 @@ void agg_spec_backward(float** exp_grads,
         int out_dim)
 {
   std::vector<int> expert_idx(n, 0);
-  std::vector<int> expert_assign(n, 0);
+  std::vector<int> expert_bal(n, 0);
   for(int i = 0; i < batch_size; i++) {
     const float* sample_gating_weights = gating_net_preds + i*k;
     const float* sample_output_grads = output_grads + i*k*out_dim;
     float* sample_full_gate_grads = full_gating_grads + i*n;
 
-    std::vector<float> sq_exp_errors(k, 0.0f);
     for(int j = 0; j < k; j++) {
       int expert = exp_assign[k*i + j];
-      expert_assign[expert]++;
+      expert_bal[expert]++;
 
       if(expert_idx[expert] < exp_samples) { // sample not dropped
         // expert gradient
@@ -230,7 +255,7 @@ void agg_spec_backward(float** exp_grads,
     float* sample_full_gate_grads = full_gating_grads + i*n;
     float grad_sum = 0.0f;
     for(int j = 0; j < n; j++) {
-      sample_full_gate_grads[j] += lambda_bal*exp_assign[j];
+      sample_full_gate_grads[j] += lambda_bal*expert_bal[j];
       grad_sum += sample_full_gate_grads[j];
     }
     grad_sum /= n;

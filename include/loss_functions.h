@@ -27,10 +27,9 @@ class FFModel;
 class Loss
 {
 public:
-  Loss(const std::string& loss, bool _repl_labels);
-  Loss(LossType _loss_type, bool _repl_labels);
-  Loss(const std::string& loss);
-  Loss(LossType _loss_type);
+  Loss(const std::string& loss, bool _repl_labels=false);
+  Loss(LossType _loss_type, bool _repl_labels=false);
+
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
