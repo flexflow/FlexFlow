@@ -160,25 +160,6 @@ void Group_by::init(const FFModel& ff)
                          TaskArgument(this, sizeof(Group_by)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
-  // data
-  launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
-  launcher.add_field(0, FID_DATA);
-  // assign
-  launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[1].region));
-  launcher.add_field(1, FID_DATA);
-
-  // output
-  for(int i = 0; i < n; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(outputs[i].part, 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, outputs[i].region));
-    launcher.add_field(i+2, FID_DATA);
-  }
-
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   switch (domain.get_dim()) {

@@ -131,7 +131,6 @@ void Aggregate::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  //printf("HEEEERE %d\n", task_is.task_id);
   Domain domain = runtime->get_index_space_domain(ctx, task_is);
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
@@ -157,23 +156,6 @@ void Aggregate::init(const FFModel& ff)
     TaskArgument(this, sizeof(Aggregate)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
-    /*
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
-  launcher.add_field(0, FID_DATA);
-  for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(input_lps[i], 0/*projection id/,
-        READ_ONLY, EXCLUSIVE, inputs[i].region));
-    launcher.add_field(i + 1, FID_DATA);
-  }
-  for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[i], 0/*projection id/,
-        WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
-    launcher.add_field(i + numInputs + 1, FID_DATA);
-  }*/
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   switch (domain.get_dim()) {
@@ -368,7 +350,7 @@ void Aggregate::forward_task(const Task *task,
   assert((int)regions.size() == n+3);
   assert((int)task->regions.size() == n+3);
 
-  AggregateMeta* m = *((AggregateMeta**)task->local_args);
+  const AggregateMeta* m = *((AggregateMeta**)task->local_args);
 
   // get gate_pred, gate_assign, output
   const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
