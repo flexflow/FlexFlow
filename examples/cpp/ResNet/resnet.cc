@@ -51,7 +51,7 @@ Tensor BottleneckBlock(FFModel& ff,
     //input = ff.batch_norm(input, false);
   }
   t = ff.add(input, t);
-  return ff.relu(t);
+  return ff.relu(t, false);
 }
 
 void top_level_task(const Task* task,

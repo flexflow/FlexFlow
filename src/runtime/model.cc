@@ -2651,30 +2651,32 @@ void FFModel::compile(LossType loss_type,
   current_metrics = runtime->execute_task(ctx, launcher);
 
   // Perform inplace optimizations
-  for (size_t l = 1; l < layers.size(); l++) {
-    if (layers[l]->can_inplace_output()) {
-      // Assume outputs[0] is inplace with inputs[0]
-      assert(layers[l]->numOutputs == 1);
-      if (layers[l]->inputs[0]->owner_op != NULL) {
-        //int dim1 = layers[l]->outputs[0]->num_dims;
-        //int dim2 = layers[l]->inputs[0]->num_dims;
-        MachineView view1 = layers[l]->outputs[0]->machine_view;
-        MachineView view2 = layers[l]->inputs[0]->machine_view;
-        if (view1 == view2) {
-          // Check no others also need layers[l]->inputs[0]
-          bool found = false;
-          for (size_t i = 0; i < layers.size(); i++) {
-            if (i == l) continue;
-            for (int j = 0; j < layers[i]->numInputs; j++) {
-              if ((layers[i]->inputs[j]->owner_op == layers[l]->inputs[0]->owner_op)
-              &&(layers[i]->inputs[j]->owner_idx == layers[l]->inputs[0]->owner_idx)) {
-                found = true;
+  if (config.enable_inplace_optimizations) {
+    for (size_t l = 1; l < layers.size(); l++) {
+      if (layers[l]->can_inplace_output()) {
+        // Assume outputs[0] is inplace with inputs[0]
+        assert(layers[l]->numOutputs == 1);
+        if (layers[l]->inputs[0]->owner_op != NULL) {
+          //int dim1 = layers[l]->outputs[0]->num_dims;
+          //int dim2 = layers[l]->inputs[0]->num_dims;
+          MachineView view1 = layers[l]->outputs[0]->machine_view;
+          MachineView view2 = layers[l]->inputs[0]->machine_view;
+          if (view1 == view2) {
+            // Check no others also need layers[l]->inputs[0]
+            bool found = false;
+            for (size_t i = 0; i < layers.size(); i++) {
+              if (i == l) continue;
+              for (int j = 0; j < layers[i]->numInputs; j++) {
+                if ((layers[i]->inputs[j]->owner_op == layers[l]->inputs[0]->owner_op)
+                &&(layers[i]->inputs[j]->owner_idx == layers[l]->inputs[0]->owner_idx)) {
+                  found = true;
+                }
               }
             }
-          }
-          if (!found) {
-            // Perform inplace
-            layers[l]->do_inplace_output();
+            if (!found) {
+              // Perform inplace
+              layers[l]->do_inplace_output();
+            }
           }
         }
       }
@@ -2767,7 +2769,7 @@ void FFModel::compile(LossType loss_type,
     fprintf(stderr, "%zu layers after fusion...\n", layers.size());
     for (size_t i = 0; i < layers.size(); i++) {
         Op* op = layers[i];
-        printf("layer[%zu]: type(%d)\n", i, layers[i]->op_type);
+        printf("layer[%zu]: type(%s) guid(%lu)\n", i, optype_to_string(layers[i]->op_type).c_str(), layers[i]->op_guid);
         for (int j = 0; j < op->numInputs; j++) {
           LogicalRegion handle = op->inputs[j]->region;
           printf("inputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
@@ -3274,6 +3276,7 @@ struct DefaultConfig {
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
+  const static bool enableInplaceOptimizations = false;
   const static bool allowTensorOpMathConversion = false;
   const static int machine_model_version = 0;
   const static int simulator_segment_size = 16777216; // 16 MB
@@ -3301,6 +3304,7 @@ FFConfig::FFConfig()
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
+  enable_inplace_optimizations = DefaultConfig::enableInplaceOptimizations;
   allow_tensor_op_math_conversion = DefaultConfig::allowTensorOpMathConversion;
   machine_model_version = DefaultConfig::machine_model_version;
   simulator_segment_size = DefaultConfig::simulator_segment_size;
@@ -3454,6 +3458,10 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if (!strcmp(argv[i], "--enable-propagation")) {
       enable_propagation = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--enable-inplace-optimizations")) {
+      enable_inplace_optimizations = true;
       continue;
     }
   }
