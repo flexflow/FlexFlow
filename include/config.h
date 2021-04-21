@@ -44,6 +44,12 @@
 
 //using namespace Legion;
 
+#ifdef FF_USE_NCCL
+constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::NCCL;
+#else 
+constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
+#endif
+
 struct MachineView {
   static const MachineView NO_VIEW;
   MachineView();

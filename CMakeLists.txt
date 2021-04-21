@@ -223,6 +223,7 @@ if(FF_USE_NCCL)
 
 # build binary
 option(FF_BUILD_RESNET "build resnet example" OFF)
+option(FF_BUILD_RESNEXT "build resnext example" OFF)
 option(FF_BUILD_ALEXNET "build alexnet example" OFF)
 option(FF_BUILD_DLRM "build DLRM example" OFF)
 option(FF_BUILD_INCEPTION "build inception example" OFF)
@@ -249,6 +250,10 @@ endif()
 
 if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/ResNet)
+endif()
+
+if(FF_BUILD_RESNEXT OR FF_BUILD_ALL_EXAMPLES) 
+  add_subdirectory(examples/cpp/resnext50)
 endif()
 
 if(FF_BUILD_ALEXNET OR FF_BUILD_ALL_EXAMPLES)
