@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "parallel_ops/reduction.h"
 #include "cuda_helper.h"
 
 using namespace Legion;

@@ -18,9 +18,23 @@
 #include "test_utils.h"
 #include "dirent.h"
 #include <unordered_set>
+#include <queue>
 #include "random_utils.h"
 #include "graph.h"
 #include "legion/legion_utilities.h"
+#include "ops/linear.h"
+#include "ops/conv_2d.h"
+#include "ops/pool_2d.h"
+#include "ops/embedding.h"
+#include "ops/flat.h"
+#include "ops/element_unary.h"
+#include "ops/attention.h"
+#include "parallel_ops/combine.h"
+#include "parallel_ops/fused_parallel_op.h"
+#include "parallel_ops/partition.h"
+#include "parallel_ops/reduction.h"
+#include "parallel_ops/replicate.h"
+
 
 using namespace std;
 using namespace Legion;
@@ -174,18 +188,13 @@ bool TensorBase::get_input_sub_tensor(
   switch (type) {
     case OP_FLAT:
       {
-        assert (pc.nDims == 2 && "Invalid dimension for parallel config of OP_FLAT");
-        int nonBatchDim = pc.dim[0];
-        int batchDim = pc.dim[1];
-        tensor.num_dims = num_dims;
-        assert (nonBatchDim == 1 && "I'm not sure this is correct otherwise");
-        if (dims[num_dims-1].size % batchDim != 0) {
-          printf("Could not get input subtensor because the dimension is not divisiable: %d %% %d != 0\n", dims[num_dims-1].size, batchDim);
+        assert (pc.nDims == 3 && "Invalid dimension for parallel config of OP_FLAT");
+
+        tensor.num_dims = this->num_dims;
+        for (int i = 0; i < 3; i++) {
+          assert (tensor.dims[i].size % pc.dim[i] == 0);
+          tensor.dims[i].size = tensor.dims[i].size / pc.dim[i];
         }
-        for (int i = num_dims - 2; i >= 0; i--) {
-          tensor.dims[i].size = dims[i].size;
-        }
-        tensor.dims[num_dims-1].size = dims[num_dims-1].size / batchDim;
         break;
       }
     case OP_RESHAPE:
@@ -313,6 +322,8 @@ bool TensorBase::check_valid() const
   for (int i = 0; i < MAX_TENSOR_DIM; i++)
     used[i] = false;
   for (int i = 0; i < num_dims; i++) {
+    if (dims[i].size < 0) 
+      return false;
     if (dims[i].size % dims[i].degree != 0)
       return false;
     if (dims[i].parallel_idx > MAX_TENSOR_DIM)
@@ -351,29 +362,50 @@ bool TensorBase::update_parallel_ids(
     int numdim,
     ParallelDim* dims)
 {
+  // remove indices from any dims that no longer need a legion task space index
   for (int i = 0; i < numdim; i++) {
-    if (dims[i].degree == 1)
+    if (dims[i].degree == 1) {
       dims[i].parallel_idx = -1;
+    }
   }
-  bool used[MAX_TENSOR_DIM];
-  for (int i = 0; i < MAX_TENSOR_DIM; i++)
-    used[i] = false;
-  for (int i = 0; i < numdim; i++)
+
+  // start with all marked as false
+  bool idx_is_used[MAX_TENSOR_DIM]{false};
+
+  // mark all currently used parallel_idxs as used
+  for (int i = 0; i < numdim; i++) {
     if (dims[i].parallel_idx != -1) {
-      assert(!used[dims[i].parallel_idx]);
-      used[dims[i].parallel_idx] = true;
+      assert (!idx_is_used[ dims[i].parallel_idx ]);
+      idx_is_used[dims[i].parallel_idx] = true;
     }
-  for (int i = 0; i < numdim; i++)
+  }
+
+  // create list of all free indices
+  std::queue<int> parallel_idx_free_list;
+  for (int i = 0; i < MAX_TENSOR_DIM; i++) {
+    if (!idx_is_used[i]) {
+      parallel_idx_free_list.push(i);
+    }
+  }
+
+  // allocate free indicies to indices in need
+  for (int i = 0; i < numdim; i++) {
     if (dims[i].parallel_idx == -1 && dims[i].degree > 1) {
-      int idx = 0;
-      while (used[idx]) idx++;
-      dims[i].parallel_idx = idx;
-      used[idx] = true;
+      int index_to_use = parallel_idx_free_list.front();
+      parallel_idx_free_list.pop();
+
+      dims[i].parallel_idx = index_to_use;
+      idx_is_used[index_to_use] = true;
     }
+  }
+
+  // check that indicies were allocated from lowest to highest
   int idx = 0;
-  while (used[idx]) idx++;
-  for (int i = idx; i < MAX_TENSOR_DIM; i++)
-    assert(!used[idx]);
+  while (idx_is_used[idx]) idx++;
+  for (int i = idx; i < MAX_TENSOR_DIM; i++) {
+    assert(!idx_is_used[idx]);
+  }
+
   return true;
 }
 
@@ -399,16 +431,40 @@ bool TensorBase::is_valid_machine_view(const MachineView& view) const
 }
 
 Op::Op(FFModel& model,
+       OperatorType op_type,
+       const char* name,
+       int numInputs,
+       int numWeights,
+       bool allocate_weights,
+       int numOutputs,
+       const Tensor input1,
+       const Tensor input2,
+       const Tensor input3,
+       const Tensor input4)
+: Op(model, 
+     op_type, 
+     name, 
+     numInputs,
+     allocate_weights ? numWeights : 0,
+     numOutputs,
+     input1,
+     input2,
+     input3,
+     input4)
+{ }
+     
+Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,
        int _numInputs,
        int _numWeights,
+       int _numOutputs,
        const Tensor _input1,
        const Tensor _input2,
        const Tensor _input3,
        const Tensor _input4)
 : op_type(_op_type), op_guid(model.op_global_guid++),
-  numInputs(_numInputs), numWeights(_numWeights), numOutputs(1),
+  numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
   profiling(model.config.profiling)
 {
   for (int i = 0; i < MAX_NUM_INPUTS; i++)
@@ -427,15 +483,9 @@ Op::Op(FFModel& model,
   pcname = pcname + "_" + std::to_string(op_guid);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
-  for (int i = 0; i < numInputs + numWeights; i++) {
+  for (int i = 0; i < numInputs; i++) {
     assert(tensors[i] != NULL);
-    if (i < numInputs) {
-      // Activation
-      inputs[i] = tensors[i];
-    } else {
-      // Weight
-      weights[i - numInputs] = tensors[i];
-    }
+    inputs[i] = tensors[i];
   }
   //for (int i = 0; i < numInputs; i++) {
   //  trainableInputs[i] = true;
@@ -454,9 +504,10 @@ Op::Op(FFModel& model,
        const char* _name,
        int _numInputs,
        int _numWeights,
+       int _numOutputs,
        const Tensor* _inputs)
 : op_type(_op_type), op_guid(model.op_global_guid++),
-  numInputs(_numInputs), numWeights(_numWeights), numOutputs(1),
+  numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
   profiling(model.config.profiling)
 {
   std::string pcname;
@@ -495,7 +546,7 @@ ParallelOp::ParallelOp(FFModel& model,
                        OperatorType op_type,
                        const char* name,
                        const Tensor input)
-: Op(model, op_type, name, 1/*num_inputs*/, 0/*num_weights*/, input)
+: Op(model, op_type, name, 1/*num_inputs*/, 0/*num_weights*/, 1/*num_ouputs*/, input)
 {}
 
 bool ParallelOp::is_parallel_op() const
@@ -527,6 +578,23 @@ Tensor Op::get_parameter(int index)
 {
   assert(index < numWeights);
   return weights[index];
+}
+
+void Op::serialize(Legion::Serializer& serializer) const
+{
+  fprintf(stderr, "The following operator type is currently not supported"
+          " for graph serialization: %s\n"
+          "Report the issue to the FlexFlow developers",
+          optype_to_string(this->op_type).c_str());
+  assert (false && "This op does not support serialization");
+}
+
+Op *Op::materialize(FFModel& ff, Tensor inputs[], int num_inputs) const {
+  fprintf(stderr, "The following operator type is currently not supported"
+          " for layer materialization: %s\n"
+          "Report the issue to the FlexFlow developers",
+          optype_to_string(this->op_type).c_str());
+  assert (false && "This op does not support materialization");
 }
 
 void Op::zero_grad(const FFModel& ff)
@@ -803,26 +871,50 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
   return d;
 }
 
-#ifdef FF_USE_NCCL
-#ifdef DEADCODE
-void Op::get_nccl_unique_id(const FFModel& ff)
+void Op::solve_parallel_dim_mappings(
+    const std::vector<ParallelDim const *> &inputs, 
+    const std::vector<ParallelDim *> &weights,
+    const std::vector<ParallelDim *> &outputs) const
 {
-  // Init NCCL id
-  //int my_rank = -1, all_ranks = -1;
-  //MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-  //MPI_Comm_size(MPI_COMM_WORLD, &all_ranks);
-  //if (my_rank == 0) ncclGetUniqueId(&ncclId);
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));
-  Future future = runtime->execute_task(ctx, launcher);
-  ncclId = future.get_result<ncclUniqueId>();
-  //MPI_Bcast((void *)&ncclId, sizeof(ncclId), MPI_BYTE, 0, MPI_COMM_WORLD);
-  //fprintf(stderr, "In Op(%p): MPImyrank(%d) MPIallranks(%d) ncclID(%p)\n",
-  //    this, my_rank, all_ranks, ncclId);
-}
-#endif
+  for (ParallelDimMappingRecord const &record : *this->parallel_dims_mapping) {
+    ParallelDim const &input_dim = inputs[record.input_idx][record.input_dim];
 
+    switch (record.get_type()) {
+      case MappingRecordType::INPUT_OUTPUT:
+        {
+          if (record.output_idx >= outputs.size()) {
+            continue;
+          }
+
+          ParallelDim &output_dim = outputs[record.output_idx][record.output_dim];
+          output_dim.degree = input_dim.degree;
+          output_dim.parallel_idx = input_dim.parallel_idx;
+
+          if (output_dim.is_replica_dim) {
+            output_dim.size = input_dim.degree;
+          }
+        }
+        break;
+      case MappingRecordType::INPUT_WEIGHT:
+        {
+          if (record.weight_idx >= weights.size()) {
+            continue;
+          }
+
+          ParallelDim &weight_dim = weights[record.weight_idx][record.weight_dim];
+          weight_dim.degree = input_dim.degree;
+          weight_dim.parallel_idx = input_dim.parallel_idx;
+
+          if (weight_dim.is_replica_dim) {
+            weight_dim.size = input_dim.degree;
+          }
+        }
+        break;
+    }
+  }
+}
+
+#ifdef FF_USE_NCCL
 ncclUniqueId Op::get_nccl_unique_id_task(const Task *task,
     const std::vector<PhysicalRegion> &regions,
     Context ctx, Runtime *runtime)
@@ -853,49 +945,95 @@ ncclComm_t Op::init_nccl_comms_task(const Task* task,
 }
 #endif
 
-ParallelDimMappingRecord::ParallelDimMappingRecord(void)
-: output_dim(-1), input_dim(-1), weight_dim(-1),
+ParallelDimMappingRecord::ParallelDimMappingRecord(MappingRecordType type)
+: type(type),
+  output_dim(-1), input_dim(-1), weight_dim(-1),
   output_idx(-1), input_idx(-1), weight_idx(-1)
 {}
 
-void Op::register_output_input_parallel_dims(
-    const Tensor output, int output_dim,
-    const Tensor input, int input_dim)
+/*static*/
+ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
+    int input_idx, int input_dim,
+    int output_idx, int output_dim)
 {
-  ParallelDimMappingRecord record;
-  record.output_dim = output_dim;
-  record.input_dim = input_dim;
-  for (int i = 0; i < numOutputs; i++) {
-    if (output == outputs[i])
-      record.output_idx = i;
-  }
-  assert(record.output_idx >= 0);
-  for (int i = 0; i < numInputs; i++) {
-    if (input == inputs[i])
-      record.input_idx = i;
-  }
-  assert(record.input_idx >= 0);
-  parallel_dims_mapping->push_back(record);
+  ParallelDimMappingRecord r(MappingRecordType::INPUT_OUTPUT);  
+
+  assert (output_idx >= 0);
+  assert (output_dim >= 0);
+  assert (input_idx >= 0);
+  assert (input_dim >= 0);
+
+  r.output_idx = output_idx;
+  r.output_dim = output_dim;
+  r.input_idx = input_idx;
+  r.input_dim = input_dim;
+  
+  return r;
 }
 
-void Op::register_output_weight_parallel_dims(
-    const Tensor output, int output_dim,
-    const Tensor weight, int weight_dim)
+/*static*/
+ParallelDimMappingRecord ParallelDimMappingRecord::input_weight_record(
+    int input_idx, int input_dim,
+    int weight_idx, int weight_dim)
 {
-  ParallelDimMappingRecord record;
-  record.output_dim = output_dim;
-  record.weight_dim = weight_dim;
-  for (int i = 0; i < numOutputs; i++) {
-    if (output == outputs[i])
-      record.output_idx = i;
+  ParallelDimMappingRecord r(MappingRecordType::INPUT_WEIGHT);
+
+  assert (input_idx >= 0);
+  assert (input_dim >= 0);
+  assert (weight_idx >= 0);
+  assert (weight_dim >= 0);
+
+  r.input_idx = input_idx;
+  r.input_dim = input_dim;
+  r.weight_idx = weight_idx;
+  r.weight_dim = weight_dim;
+
+  return r;
+}
+
+MappingRecordType ParallelDimMappingRecord::get_type() const {
+  return this->type;
+}
+
+
+void Op::register_weight_parallel_dims(
+    std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx)
+{
+  for (std::pair<int, int> const &mapping : mappings) {
+    this->register_weight_parallel_dims(
+      mapping.first, mapping.second, input_idx, weight_idx);
   }
-  assert(record.output_idx >= 0);
-  for (int i = 0; i < numWeights; i++) {
-    if (weight == weights[i])
-      record.weight_idx = i;
+}
+
+void Op::register_weight_parallel_dims(
+    int input_dim, int weight_dim, int input_idx, int weight_idx)
+{
+  this->parallel_dims_mapping->push_back(
+    ParallelDimMappingRecord::input_weight_record(
+      input_idx, input_dim,
+      weight_idx, weight_dim
+    )
+  );
+}
+
+void Op::register_output_parallel_dims(
+    std::vector<std::pair<int, int>> mappings, int input_idx, int output_idx)
+{
+  for (std::pair<int, int> const &mapping : mappings) {
+    this->register_output_parallel_dims(
+        mapping.first, mapping.second, input_idx, output_idx);
   }
-  assert(record.weight_idx >= 0);
-  parallel_dims_mapping->push_back(record);
+}
+
+void Op::register_output_parallel_dims(
+    int input_dim, int output_dim, int input_idx, int output_idx) 
+{
+  this->parallel_dims_mapping->push_back(
+    ParallelDimMappingRecord::input_output_record(
+      input_idx, input_dim,
+      output_idx, output_dim
+    )
+  );
 }
 
 int Op::get_output_to_input_dim_mapping(
@@ -950,30 +1088,38 @@ int Op::get_output_to_weight_dim_mapping(
   return -1;
 }
 
-bool Op::check_output_input_weight_parallel_dims() const
+bool Op::check_output_input_weight_parallel_dims(bool allocate_weights) const
 {
-  for (size_t i = 0; i < parallel_dims_mapping->size(); i++) {
-    ParallelDimMappingRecord record = (*parallel_dims_mapping)[i];
-    assert(record.input_idx == -1 || record.weight_idx == -1);
-    int output_idx = record.output_idx;
-    int output_dim = record.output_dim;
-    if (record.weight_idx != -1) {
-      int weight_idx = record.weight_idx;
-      int weight_dim = record.weight_dim;
-      assert(outputs[output_idx]->dims[output_dim].degree
-          == weights[weight_idx]->dims[weight_dim].degree);
-      assert(outputs[output_idx]->dims[output_dim].parallel_idx
-          == weights[weight_idx]->dims[weight_dim].parallel_idx);
-    } else if (record.input_idx != -1) {
-      int input_idx = record.input_idx;
-      int input_dim = record.input_dim;
-      assert(outputs[output_idx]->dims[output_dim].degree
-          == inputs[input_idx]->dims[input_dim].degree);
-      assert(outputs[output_idx]->dims[output_dim].parallel_idx
-          == inputs[input_idx]->dims[input_dim].parallel_idx);
-    } else {
-      assert(false);
+  if (!allocate_weights) {
+    assert (this->numWeights == 0);
+  }
+
+  for (ParallelDimMappingRecord const &record : *parallel_dims_mapping) {
+    assert (record.input_idx < this->numInputs);
+    assert (record.input_dim < this->inputs[record.input_idx]->num_dims);
+    ParallelDim const &input_dim = inputs[record.input_idx]->dims[record.input_dim];
+    /* assert (input_dim.degree != ParallelDim::UNKNOWN_DEGREE); */
+    /* assert (input_dim.parallel_idx != ParallelDim::UNKNOWN_INDEX); */
+
+    ParallelDim other_dim;
+    switch (record.get_type()) {
+      case MappingRecordType::INPUT_OUTPUT: 
+        assert (record.output_idx < this->numOutputs);
+        assert (record.output_dim < this->outputs[record.output_idx]->num_dims);
+        other_dim = outputs[record.output_idx]->dims[record.output_dim];  
+        break;
+      case MappingRecordType::INPUT_WEIGHT: 
+        if (!allocate_weights) {
+          continue;
+        }
+        assert (record.weight_idx < this->numWeights);
+        assert (record.weight_dim < this->weights[record.weight_idx]->num_dims);
+        other_dim = weights[record.weight_idx]->dims[record.weight_dim];
+        break;
     }
+
+    assert (other_dim.degree == input_dim.degree);
+    assert (other_dim.parallel_idx == input_dim.parallel_idx);
   }
   return true;
 }
@@ -1015,7 +1161,7 @@ void Op::set_argumentmap_for_init(const FFModel& ff,
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  Domain domain = runtime->get_index_space_domain(ctx, this->parallel_is);
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -1294,20 +1440,6 @@ ncclComm_t* FFModel::find_nccl_comms(const MachineView& view) const
 }
 #endif
 
-/*
-template<int NDIM>
-Tensor FFModel::create_tensor(const int dims[],
-                              DataType data_type,
-                              Op* owner_op,
-                              bool create_grad)
-{
-  ParallelConfig pc;
-  assert(config.find_parallel_config(NDIM, pc_name, pc));
-  IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(get_or_create_task_is(pc));
-  return create_tensor<NDIM>(dims, task_is, data_type, create_grad);
-}
-*/
-
 template<int NDIM>
 Tensor FFModel::create_constant(const int dims[],
                                 float value,
@@ -1331,6 +1463,14 @@ Tensor FFModel::create_constant(const int dims[],
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   return tensor;
+}
+
+Node FFModel::new_node(Op *op) {
+  Node ret;
+  ret.guid = this->node_global_guid++;
+  ret.ptr = op;
+
+  return ret;
 }
 
 Tensor FFModel::create_tensor(
@@ -1410,6 +1550,8 @@ Tensor FFModel::create_tensor(
   ParallelDim pdims[NDIM];
   for (int i = 0; i < NDIM; i++) {
     pdims[i].size = dims[i];
+    pdims[i].degree = 1;
+    pdims[i].parallel_idx = -1;
   }
   return create_tensor<NDIM>(pdims, data_type, owner_op, owner_idx, create_grad);
 }
@@ -1491,6 +1633,41 @@ Parameter FFModel::create_weight(
   return p;
 }
 
+Parameter FFModel::create_weight(
+    int numdim,
+    const ParallelDim dims[],
+    DataType data_type,
+    const Op* owner_op,
+    bool create_grad,
+    Initializer* initializer,
+    ParameterSyncType sync_type)
+{
+  switch (numdim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return create_weight<DIM>(dims, data_type, owner_op, create_grad, initializer, sync_type);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false && "Unsupported dim!");
+  }
+}
+
+Parameter FFModel::create_weight_legion_ordering(
+    int numdim,
+    const ParallelDim dims[],
+    DataType data_type,
+    const Op* owner_op,
+    bool create_grad,
+    Initializer* initializer,
+    ParameterSyncType sync_type)
+{
+  ParallelDim c_dims[MAX_TENSOR_DIM];
+  std::reverse_copy(dims, dims+numdim, c_dims);
+
+  return this->create_weight(numdim, c_dims, data_type, owner_op, create_grad, initializer, sync_type);
+}
+
 void FFModel::map_tensor(Tensor tensor, const Op* op)
 {
   switch (tensor->num_dims) {
@@ -1510,7 +1687,7 @@ void FFModel::map_tensor(Tensor tensor, const Op* op)
   }
 }
 
-// Map tensor using parallelization strategies described in paralell_op
+// Map tensor using parallelization strategies described in parallel_op
 template<int NDIM>
 void FFModel::map_tensor_with_dim(Tensor tensor, const Op* parallel_op)
 {
@@ -1569,6 +1746,7 @@ void FFModel::map_tensor_with_dim2(Tensor tensor, const Op* parallel_op)
     default:
       assert(false);
   }
+
   Point<NDIM> hi;
   for (int i = 0; i < NDIM; i++)
     hi[i] = tensor->dims[i].size - 1;
@@ -1578,6 +1756,7 @@ void FFModel::map_tensor_with_dim2(Tensor tensor, const Op* parallel_op)
   if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
     tensor->region_grad = runtime->create_logical_region(ctx, is, fs);
   }
+  
   // Step 2: create partitions if parallel_op != NULL
   if (parallel_op != NULL) {
     IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
@@ -2474,30 +2653,32 @@ void FFModel::compile(LossType loss_type,
   current_metrics = runtime->execute_task(ctx, launcher);
 
   // Perform inplace optimizations
-  for (size_t l = 1; l < layers.size(); l++) {
-    if (layers[l]->can_inplace_output()) {
-      // Assume outputs[0] is inplace with inputs[0]
-      assert(layers[l]->numOutputs == 1);
-      if (layers[l]->inputs[0]->owner_op != NULL) {
-        //int dim1 = layers[l]->outputs[0]->num_dims;
-        //int dim2 = layers[l]->inputs[0]->num_dims;
-        MachineView view1 = layers[l]->outputs[0]->machine_view;
-        MachineView view2 = layers[l]->inputs[0]->machine_view;
-        if (view1 == view2) {
-          // Check no others also need layers[l]->inputs[0]
-          bool found = false;
-          for (size_t i = 0; i < layers.size(); i++) {
-            if (i == l) continue;
-            for (int j = 0; j < layers[i]->numInputs; j++) {
-              if ((layers[i]->inputs[j]->owner_op == layers[l]->inputs[0]->owner_op)
-              &&(layers[i]->inputs[j]->owner_idx == layers[l]->inputs[0]->owner_idx)) {
-                found = true;
+  if (config.enable_inplace_optimizations) {
+    for (size_t l = 1; l < layers.size(); l++) {
+      if (layers[l]->can_inplace_output()) {
+        // Assume outputs[0] is inplace with inputs[0]
+        assert(layers[l]->numOutputs == 1);
+        if (layers[l]->inputs[0]->owner_op != NULL) {
+          //int dim1 = layers[l]->outputs[0]->num_dims;
+          //int dim2 = layers[l]->inputs[0]->num_dims;
+          MachineView view1 = layers[l]->outputs[0]->machine_view;
+          MachineView view2 = layers[l]->inputs[0]->machine_view;
+          if (view1 == view2) {
+            // Check no others also need layers[l]->inputs[0]
+            bool found = false;
+            for (size_t i = 0; i < layers.size(); i++) {
+              if (i == l) continue;
+              for (int j = 0; j < layers[i]->numInputs; j++) {
+                if ((layers[i]->inputs[j]->owner_op == layers[l]->inputs[0]->owner_op)
+                &&(layers[i]->inputs[j]->owner_idx == layers[l]->inputs[0]->owner_idx)) {
+                  found = true;
+                }
               }
             }
-          }
-          if (!found) {
-            // Perform inplace
-            layers[l]->do_inplace_output();
+            if (!found) {
+              // Perform inplace
+              layers[l]->do_inplace_output();
+            }
           }
         }
       }
@@ -2590,7 +2771,7 @@ void FFModel::compile(LossType loss_type,
     fprintf(stderr, "%zu layers after fusion...\n", layers.size());
     for (size_t i = 0; i < layers.size(); i++) {
         Op* op = layers[i];
-        printf("layer[%zu]: type(%d)\n", i, layers[i]->op_type);
+        printf("layer[%zu]: type(%s) guid(%lu)\n", i, optype_to_string(layers[i]->op_type).c_str(), layers[i]->op_guid);
         for (int j = 0; j < op->numInputs; j++) {
           LogicalRegion handle = op->inputs[j]->region;
           printf("inputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
@@ -2664,6 +2845,7 @@ void FFModel::compile(LossType loss_type,
   // init optimizer
   assert(optimizer != NULL);
   optimizer->init();
+
 #ifdef FF_USE_NCCL
   if (config.computationMode == COMP_MODE_TRAINING) {
     // init all nccl communicators
@@ -2692,42 +2874,6 @@ void FFModel::compile(LossType loss_type,
         view_hash_to_nccl_comms[view.hash()] = nccl_comms;
       }
     }
-#ifdef DEADCODE
-    std::map<MappingTagID, ParallelConfig>::iterator iter;
-    for (iter = config.strategies.begin(); iter != config.strategies.end(); iter++) {
-      // only init nccl for GPU parallel configurations
-      if (iter->second.device_type != ParallelConfig::GPU) continue;
-      std::map<MappingTagID, ParallelConfig>::const_iterator it2;
-      bool found = false;
-      // Reuse nccl comms for same parallel config
-      for (it2 = config.strategies.begin(); it2 != iter; it2++) {
-        if (it2->second == iter->second) {
-          found = true;
-          for (int i = 0; i < it2->second.num_parts(); i++)
-            iter->second.nccl_comms[i] = it2->second.nccl_comms[i];
-        }
-      }
-      // Create new nccl comms
-      if (!found) {
-        TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));
-        Future future = runtime->execute_task(ctx, launcher);
-        ncclUniqueId ncclId = future.get_result<ncclUniqueId>();
-        IndexSpace task_is = get_or_create_task_is(iter->second);
-        ArgumentMap argmap;
-        IndexLauncher index_launcher(NCCL_INIT_COMMS_TASK_ID, task_is,
-            TaskArgument(&ncclId, sizeof(ncclUniqueId)), argmap,
-            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-            iter->first/*MappingTagID*/);
-        FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
-        fm.wait_all_results();
-        int idx = 0;
-        Domain task_domain = runtime->get_index_space_domain(ctx, task_is);
-        for (Domain::DomainPointIterator it(task_domain); it; it++, idx++) {
-          iter->second.nccl_comms[idx] = fm.get_result<ncclComm_t>(*it);
-        }
-      }
-    }
-#endif
   }
 #endif
 }
@@ -3132,6 +3278,7 @@ struct DefaultConfig {
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
+  const static bool enableInplaceOptimizations = false;
   const static bool allowTensorOpMathConversion = false;
   const static int machine_model_version = 0;
   const static int simulator_segment_size = 16777216; // 16 MB
@@ -3159,6 +3306,7 @@ FFConfig::FFConfig()
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
+  enable_inplace_optimizations = DefaultConfig::enableInplaceOptimizations;
   allow_tensor_op_math_conversion = DefaultConfig::allowTensorOpMathConversion;
   machine_model_version = DefaultConfig::machine_model_version;
   simulator_segment_size = DefaultConfig::simulator_segment_size;
@@ -3312,6 +3460,10 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if (!strcmp(argv[i], "--enable-propagation")) {
       enable_propagation = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--enable-inplace-optimizations")) {
+      enable_inplace_optimizations = true;
       continue;
     }
   }
@@ -3593,14 +3745,6 @@ void register_flexflow_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<Linear::backward_task>(
         registrar, "Linear Backward Task");
-  }
-  {
-    TaskVariantRegistrar registrar(LINEAR_BWD2_TASK_ID,
-                                   "Linear Backward (Aggregate replica)");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<Linear::backward2_task>(
-        registrar, "Linear Backward Task (Aggregate replica)");
   }
   // Flat task
   {

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/embedding.h"
 #include "cuda_helper.h"
 
 using namespace Legion;
@@ -28,141 +28,139 @@ Tensor FFModel::embedding(const Tensor input,
 {
   {
     Embedding* embed = new Embedding(*this, input, num_entries, out_dim,
-                                     aggr, name);
+                                     aggr, false/*allocate_weights*/, name);
     layers.push_back(embed);
     return embed->outputs[0];
   }
-#ifdef OLD_LAYER_CREATION
-  if (kernel_initializer == NULL) {
-    int seed = std::rand();
-    kernel_initializer = new GlorotUniform(seed);
-  }
-#ifdef FF_USE_NCCL
-  ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-  ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-  Tensor weight;
-  {
-    const int dims[2] = {num_entries, out_dim};
-    weight = create_weight<2>(dims, DT_FLOAT, NULL/*owner_op*/,
-        true/*create_grad*/, kernel_initializer, comm_type);
-  }
-  Embedding* embed = new Embedding(*this, input, weight, aggr, name);
-  layers.push_back(embed);
-  return embed->outputs[0];
-#endif
 }
+
+namespace Weight {
+  enum {
+    OUT_CHANNELS = 0,
+    VOCAB_SIZE = 1,
+  };
+};
+
+namespace Output {
+  enum {
+    OUT_CHANNELS = 0
+  };
+};
+
+int Embedding::input_vocab_size_replica_dim() const {
+  return this->inputs[0]->num_dims - 1;
+}
+
+int Embedding::input_channel_out_replica_dim() const {
+  return this->inputs[0]->num_dims - 2;
+}
+
+int Embedding::output_vocab_size_replica_dim() const {
+  return this->inputs[0]->num_dims - 1;
+}
+
+int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
+  Tensor const &input = this->inputs[0];
+
+  const int REPLICA = this->output_vocab_size_replica_dim();
+  const int OUT_CHANNELS = Output::OUT_CHANNELS;
+
+  output_dims[OUT_CHANNELS].size = this->out_channels;
+  for (int i = 1; i < input->num_dims - 1; i++) {
+    output_dims[i].size = input->dims[i-1].size; 
+  }
+  output_dims[REPLICA].is_replica_dim = true;
+
+  return input->num_dims;
+}
+
+int Embedding::weight_size(ParallelDim weight_dims[MAX_TENSOR_DIM]) {
+  Tensor const &input = this->inputs[0];
+
+  weight_dims[Weight::OUT_CHANNELS].size = this->out_channels;
+  weight_dims[Weight::VOCAB_SIZE].size = this->num_entries;
+  for (int i = 2; i < input->num_dims; i++) {
+    weight_dims[i].is_replica_dim = true;     
+  }
+
+  return input->num_dims;
+}
+
+void Embedding::register_output_mappings() {
+  this->register_output_parallel_dims({
+    { this->input_vocab_size_replica_dim(), this->output_vocab_size_replica_dim() },
+    { this->input_channel_out_replica_dim(), Output::OUT_CHANNELS },
+  });
+
+  for (int i = 1; i < this->inputs[0]->num_dims - 1; i++) {
+    this->register_output_parallel_dims(i - 1, i);
+  }
+}
+
+void Embedding::register_weight_mappings() {
+  this->register_weight_parallel_dims({
+    { this->input_vocab_size_replica_dim(), Weight::VOCAB_SIZE },
+    { this->input_channel_out_replica_dim(), Weight::OUT_CHANNELS },
+  });
+
+  for (int i = 2; i < this->inputs[0]->num_dims; i++) {
+    this->register_weight_parallel_dims(i - 2, i);
+  }
+}
+
+void Embedding::register_mappings() {
+  this->register_output_mappings();
+  this->register_weight_mappings();
+}
+
+Embedding::Embedding(FFModel& model,
+                     Embedding const &other,
+                     const Tensor input,
+                     bool allocate_weights) 
+: Embedding(model, input, other.num_entries, other.out_channels, other.aggr, allocate_weights, other.name) 
+{ }
 
 Embedding::Embedding(FFModel& model,
                      const Tensor _input,
                      int _num_entries,
                      int _out_channels,
                      AggrMode _aggr,
+                     bool allocate_weights,
                      const char* name)
-: Op(model, OP_EMBEDDING, name, 1/*inputs*/, 0/*weighs*/, _input),
+: Op(model, OP_EMBEDDING, name, 1/*inputs*/, 1/*weights*/, allocate_weights, 1/*outputs*/, _input),
   num_entries(_num_entries), out_channels(_out_channels), aggr(_aggr)
 {
-  numOutputs = 1;
-  int numdim = _input->num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 1; i < numdim; i++) {
-    dims[i] = _input->dims[i];
-    assert(i == 1 || dims[i].degree == 1);
-  }
-  dims[0].size = out_channels;
-  dims[0].degree = 1;
-  dims[0].parallel_idx = -1;
-  outputs[0] = model.create_tensor_legion_ordering(
-      numdim, dims, DT_FLOAT, this);
-  for (int i = 1; i < numdim; i++) {
-    register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
-  }
-  // Check correctness
-  assert(check_output_input_weight_parallel_dims());
-}
+  this->register_mappings();
 
-Embedding::Embedding(FFModel& model,
-                     const Tensor _input,
-                     const Tensor _weight,
-                     AggrMode _aggr,
-                     const char* name)
-: Op(model, OP_EMBEDDING, name, 1/*inputs*/, 1/*weights*/, _input, _weight),
-  num_entries(_weight->dims[1].size), out_channels(_weight->dims[0].size), aggr(_aggr)
-{
-  numOutputs = 1;
-  int numdim = _input->num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 1; i < numdim; i++) {
-    dims[i] = _input->dims[i];
-    assert(i == 1 || dims[i].degree == 1);
-  }
-  dims[0].size = out_channels;
-  // Assert no parallelism along the first dim
-  assert(inputs[0]->dims[0].degree == 1);
-  assert(inputs[0]->dims[0].parallel_idx == -1);
-  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, DT_FLOAT, this);
-  for (int i = 1; i < numdim; i++) {
-    register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
-  }
-  // sample dim and replica dim
-  register_output_weight_parallel_dims(outputs[0], 1, weights[0], 2);
-  // Check correctness
-  assert(check_output_input_weight_parallel_dims());
-}
+  std::vector<ParallelDim *> weight_dim_sets;
 
-#ifdef DEADCODE
-void Embedding::create_weights(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-#ifdef FF_USE_NCCL
-  ParameterSyncType comm_type = ParameterSyncType::NCCL;  
-#else
-  ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-  {
-    const int dims[2] = {out_channels, num_entries};
-    // Embeddding weights and linear weights can be partitioned in the same way
-    weights[0] = model.create_linear_weight<2, 2>(this, dims, DT_FLOAT, kernel_initializer, true/*create_grad*/, comm_type);
-    assert(numWeights == 1);
+  int weight_ndim;
+  ParallelDim weight_dims[MAX_TENSOR_DIM];
+  if (allocate_weights) {
+    weight_ndim = this->weight_size(weight_dims);
+    weight_dim_sets.push_back(weight_dims);
   }
-}
-#endif
 
-#ifdef DEADCODE
-void Embedding::create_input_partition(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  // Currently assume we can only partition over the sample dim
-  assert(part_rect.hi[0] == part_rect.lo[0]);
-  return Op::create_input_partition(model);
-#ifdef DEADCODE
-  {
-    const int dims[2] = {inputs[0].adim[1], out_channels};
-    outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
-    outputs[0].owner_op = this;
-    outputs[0].owner_idx = 0;
+  ParallelDim output_dims[MAX_TENSOR_DIM];
+  int output_ndim = this->output_size(output_dims);
+
+  this->solve_parallel_dim_mappings(
+    { _input->dims },
+    weight_dim_sets,
+    { output_dims }
+  );
+
+  if (allocate_weights) {
+    Initializer *weight_initializer = new GlorotUniform(std::rand()/*seed*/);
+
+    weights[0] = model.create_weight_legion_ordering(
+        weight_ndim, weight_dims, DT_FLOAT, nullptr/*owner_op*/, true/*create_grad*/, weight_initializer, CHOSEN_SYNC_TYPE);
   }
-  // Compute partition bound for input
-  Rect<2> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0]->part.get_index_partition());
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0]->part;
-    input_grad_lps[0] = inputs[0]->part_grad;
-  } else {
-    model.create_disjoint_partition<2>(
-      inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
-  }
-#endif
+
+  outputs[0] = model.create_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
+
+  assert (check_output_input_weight_parallel_dims(allocate_weights));
 }
-#endif
 
 __host__
 OpMeta* Embedding::init_task(const Task *task,
@@ -544,7 +542,7 @@ Node FFModel::get_or_create_embedding_node(const Tensor input,
     embed = it->second;
   } else {
     embed = new Embedding(*this, input, num_entries, out_channels,
-                          aggr, NULL);
+                          aggr, false/*allocate_weights*/, NULL);
     cached_embedding_ops[hash] = embed;
   }
   Node ret;

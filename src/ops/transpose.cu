@@ -31,7 +31,7 @@ Transpose::Transpose(FFModel& model,
                      const Tensor input,
                      const std::vector<int>& _perm,
                      const char* name)
-: Op(model, OP_TRANSPOSE, name, 1/*inputs*/, 0/*weights*/, input)
+: Op(model, OP_TRANSPOSE, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, input)
 {
   assert(_perm.size() == input->num_dims);
   // Use Legion indexing to store perm
@@ -43,62 +43,6 @@ Transpose::Transpose(FFModel& model,
     dims[i] = input->dims[perm[i]];
   outputs[0] = model.create_tensor_legion_ordering(numdim, dims, input->data_type, this);
 }
-
-#ifdef DEADCODE
-void Transpose::create_input_partition(FFModel& model)
-{
-  int dim = inputs[0]->num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      task_is = model.get_or_create_task_is(DIM, name); \
-      create_input_partition_with_dim<DIM>(model); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      // Unsupported dim for Transpose operator
-      assert(false);
-    }
-  }
-}
-
-template<int NDIM>
-void Transpose::create_input_partition_with_dim(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  // Current require all dimensions being transposed should not be partitioned
-  for (int i = 0; i < NDIM; i++)
-    if (i != perm[i])
-      assert(part_rect.hi[i] == part_rect.lo[i]);
-  return Op::create_input_partition(model);
-#ifdef DEADCODE
-  int dims[NDIM];
-  for (int i = 0; i < NDIM; i++)
-    dims[i] = outputs[0].adim[NDIM-1-i];
-  outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
-  outputs[0].owner_op = this;
-  outputs[0].owner_idx = 0;
-  Rect<NDIM> input_rect;
-  input_rect = runtime->get_index_partition_color_space(
-        ctx, inputs[0]->part.get_index_partition());
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0]->part;
-    input_grad_lps[0] = inputs[0]->part_grad;
-  } else {
-    model.create_disjoint_partition<NDIM>(
-        inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
-  }
-#endif
-}
-#endif
 
 void Transpose::init_meta(TransposeMeta *m, Domain const &in_domain, Domain const &out_domain) const
 {

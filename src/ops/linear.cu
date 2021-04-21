@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/linear.h"
 #include "cuda_helper.h"
 
 using namespace Legion;
@@ -27,298 +27,220 @@ Tensor FFModel::dense(const Tensor input,
                       Initializer* bias_initializer,
                       const char *name)
 {
-  {
-    Linear* li = new Linear(*this, input, outDim, activation, use_bias, name);
-    layers.push_back(li);
-    return li->outputs[0];
-  }
-#ifdef OLD_LAYER_CREATION
-  if (kernel_initializer == NULL) {
-    int seed = std::rand();
-    kernel_initializer = new GlorotUniform(seed);
-  }
-  if (bias_initializer == NULL) {
-    bias_initializer = new ZeroInitializer();
-  }
-#ifdef FF_USE_NCCL
-  ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-  ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-  Tensor kernel, bias;
-  {
-    const int dims[3] = {input->dims[input->num_dims-2].degree, outDim, input->dims[0].size};
-    kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
-        true/*create_grad*/, kernel_initializer, comm_type);
-  }
-  if (use_bias) {
-    const int dims[3] = {input->dims[input->num_dims-2].degree, input->dims[0].degree, outDim};
-    bias = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
-        true/*create_grad*/, bias_initializer, comm_type);
-  } else {
-    bias = NULL;
-  }
-  Linear *li = new Linear(*this, input, kernel, bias, activation, name);
+  Linear* li = new Linear(*this, input, outDim, activation, use_bias, false, name);
   layers.push_back(li);
   return li->outputs[0];
-#endif
 }
 
-Tensor FFModel::dense(const Tensor input,
-                      const Tensor weight,
-                      const Tensor bias,
-                      ActiMode activation,
-                      const char *name)
+Node FFModel::get_or_create_linear_node(const Tensor input,
+                                        int out_dim,
+                                        ActiMode activation,
+                                        bool use_bias)
 {
-  Linear *li = new Linear(*this, input, weight, bias, activation, name);
-  layers.push_back(li);
-  return li->outputs[0];
+  // replica degree cannot be larger than workersPerNode
+  //if (input->dims[input->num_dims-1].degree > config.workersPerNode)
+  //  return Node::INVALID_NODE;
+  // out_dim must be divisble by replicate_degree
+  if (out_dim % input->dims[input->num_dims-1].degree != 0)
+    return Node::INVALID_NODE;
+  size_t hash = input->get_owner_independent_hash();
+  hash = hash * 31 + std::hash<int>()(out_dim);
+  hash = hash * 31 + std::hash<int>()(activation);
+  hash = hash * 31 + std::hash<int>()(use_bias);
+  const auto& it = cached_linear_ops.find(hash);
+  Linear* li = NULL;
+  if (it != cached_linear_ops.end()) {
+    li = it->second;
+  } else {
+    li = new Linear(*this, input, out_dim, activation, use_bias, false/*allocate_weights*/, NULL);
+    cached_linear_ops[hash] = li;
+  }
+
+  return this->new_node(li);
 }
+
+int Linear::output_replica_dim() const {
+  return this->inputs[0]->num_dims - 1;
+}
+
+int Linear::output_channel_dim() const {
+  return 0;
+}
+
+int Linear::input_replica_dim() const {
+  return this->inputs[0]->num_dims - 1;
+}
+
+int Linear::input_channel_dim() const {
+  return 0;
+}
+
+namespace Kernel {
+  constexpr int INDEX = 0;
+
+  enum {
+    CHANNEL_IN = 0,
+    CHANNEL_OUT = 1,
+  };
+};
+
+namespace Bias {
+  constexpr int INDEX = 1;
+
+  enum {
+    CHANNEL_OUT = 0  
+  };
+};
+
+int Linear::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) const {
+  Tensor const &input = this->inputs[0];
+
+  const int REPLICA = this->output_replica_dim();
+  const int CHANNEL = this->output_channel_dim();
+
+  output_dims[REPLICA].is_replica_dim = true;
+  for (int i = 1; i < input->num_dims - 1; i++) {
+    output_dims[i].size = input->dims[i].size;
+  }
+  output_dims[CHANNEL].size = this->out_channels;
+
+  return input->num_dims;
+}
+
+int Linear::kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) const {
+  Tensor const &input = this->inputs[0];
+
+  kernel_dims[Kernel::CHANNEL_IN].size = this->in_channels;
+  kernel_dims[Kernel::CHANNEL_OUT].size = this->out_channels;
+  for (int i = 2; i < input->num_dims; i++) {
+    kernel_dims[i].is_replica_dim = true;
+  }
+
+  return input->num_dims;
+}
+
+int Linear::bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]) const {
+  Tensor const &input = this->inputs[0];
+
+  bias_dims[Bias::CHANNEL_OUT].size = this->out_channels;
+  for (int i = 1; i < input->num_dims; i++) {
+    bias_dims[i].is_replica_dim = true;
+  }
+
+  return input->num_dims;
+}
+
+void Linear::register_mappings() {
+  this->register_output_mappings();
+  this->register_weight_mappings();
+}
+
+void Linear::register_output_mappings() {
+  this->register_output_parallel_dims({
+      { this->input_channel_dim(), this->output_replica_dim() },
+      { this->input_replica_dim(), this->output_channel_dim() }
+  });
+
+  for (int i = 1; i < this->inputs[0]->num_dims - 1; i++) {
+    this->register_output_parallel_dims(i, i);
+  }
+}
+
+void Linear::register_weight_mappings() {
+  const int INPUT_IDX = 0;
+
+  this->register_weight_parallel_dims({
+      { this->input_channel_dim(), Kernel::CHANNEL_IN },
+      { this->input_replica_dim(), Kernel::CHANNEL_OUT },
+  }, INPUT_IDX, Kernel::INDEX);
+
+  for (int i = 1; i < this->inputs[0]->num_dims - 1; i++) {
+    this->register_weight_parallel_dims(i, i+1, INPUT_IDX, Kernel::INDEX);
+  }
+
+  if (this->use_bias) {
+    this->register_weight_parallel_dims(
+      this->input_replica_dim(), Bias::CHANNEL_OUT,
+      INPUT_IDX, Bias::INDEX);
+    for (int i = 0; i < this->inputs[0]->num_dims - 1; i++) {
+      this->register_weight_parallel_dims(i, i+1, INPUT_IDX, Bias::INDEX);
+    }
+  }
+}
+
+Linear::Linear(FFModel& model,
+               Linear const &other, 
+               const Tensor input,
+               bool allocate_weights)
+: Linear(model, input, other.out_channels, other.activation, other.use_bias, allocate_weights, other.name)
+{ }
 
 Linear::Linear(FFModel& model,
                const Tensor _input,
                int out_dim,
                ActiMode _activation,
                bool _use_bias,
+               bool allocate_weights,
                const char* name)
-: Op(model, OP_LINEAR, name, 1/*inputs*/, 0/*weights*/, _input),
+: Op(
+    model, 
+    OP_LINEAR, 
+    name, 
+    1/*inputs*/, 
+    _use_bias ? 2 : 1 /*weights*/, 
+    allocate_weights,
+    1/*outputs*/, 
+    _input),
   in_channels(_input->dims[0].size),
   out_channels(out_dim),
   activation(_activation),
   use_bias(_use_bias)
 {
-  numOutputs = 1;
-  int numdim = _input->num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++) {
-    dims[i] = _input->dims[i];
-  }
-  dims[numdim-1].size = _input->dims[0].degree;
-  dims[numdim-1].parallel_idx = _input->dims[0].parallel_idx;
-  dims[numdim-1].degree = dims[numdim-1].size;
-  dims[0].size = out_channels;
-  dims[0].degree = _input->dims[numdim-1].degree;
-  dims[0].parallel_idx = _input->dims[numdim-1].parallel_idx;
-  outputs[0] = model.create_tensor_legion_ordering(
-      numdim, dims, DT_FLOAT, this);
+  this->register_mappings();
 
-  //replica = new TensorBase();
-  // register parallelizable dims
-  for (int i = 0; i < numdim; i++) {
-    if (i == 0) {
-      register_output_input_parallel_dims(outputs[0], i, inputs[0], numdim-1);
-    } else if (i == numdim-1) {
-      register_output_input_parallel_dims(outputs[0], i, inputs[0], 0);
-    } else {
-      register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
+  std::vector<ParallelDim *> weight_dim_sets;
+
+  int kernel_ndim, bias_ndim;
+  ParallelDim kernel_dims[MAX_TENSOR_DIM], 
+              bias_dims[MAX_TENSOR_DIM];
+  if (allocate_weights) {
+    kernel_ndim = this->kernel_size(kernel_dims);
+    weight_dim_sets.push_back(kernel_dims);
+
+    if (use_bias) {
+      bias_ndim = this->bias_size(bias_dims);
+      weight_dim_sets.push_back(bias_dims);
     }
   }
-  // Check correctness
-  assert(check_output_input_weight_parallel_dims());
+
+  ParallelDim output_dims[MAX_TENSOR_DIM];
+  int output_ndim = this->output_size(output_dims);
+
+  this->solve_parallel_dim_mappings(
+      { _input->dims },
+      weight_dim_sets,
+      { output_dims }
+  );
+
+  if (allocate_weights) {
+    Initializer *kernel_initializer = new GlorotUniform(std::rand()/*seed*/);
+
+    weights[Kernel::INDEX] = model.create_weight_legion_ordering(
+        kernel_ndim, kernel_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
+
+    if (use_bias) {
+      Initializer *bias_initializer = new ZeroInitializer();
+
+      weights[Bias::INDEX] = model.create_weight_legion_ordering(
+          bias_ndim, bias_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
+    }
+  }
+
+  // Create the output tensor
+  outputs[0] = model.create_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
+
+  assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
-
-Linear::Linear(FFModel& model,
-               const Tensor _input,
-               const Tensor _kernel,
-               const Tensor _bias,
-               ActiMode _activation,
-               const char* name)
-: Op(model, OP_LINEAR, name, 1/*inputs*/, _bias == NULL ? 1 : 2/*weights*/, _input,_kernel, _bias),
-  in_channels(_input->dims[0].size),
-  out_channels(_kernel->dims[1].size),
-  activation(_activation)
-{
-  if (_bias == NULL) {
-    assert(numWeights = 1);
-    use_bias = false;
-  } else {
-    assert(numWeights == 2);
-    use_bias = true;
-  }
-  assert(numOutputs == 1);
-  int numdim = _input->num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++) {
-    dims[i] = _input->dims[i];
-  }
-  dims[numdim-1].size = _input->dims[0].degree;
-  dims[numdim-1].parallel_idx = _input->dims[0].parallel_idx;
-  dims[numdim-1].degree = dims[numdim-1].size;
-  dims[0] = _kernel->dims[1];
-  outputs[0] = model.create_tensor_legion_ordering(
-      numdim, dims, DT_FLOAT, this);
-
-  //replica = new TensorBase();
-  // register parallelizable dims
-  for (int i = 0; i < numdim; i++) {
-    if (i == 0) {
-      register_output_input_parallel_dims(outputs[0], i, inputs[0], numdim-1);
-    } else if (i == numdim-1) {
-      register_output_input_parallel_dims(outputs[0], i, inputs[0], 0);
-    } else {
-      register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
-    }
-  }
-  register_output_weight_parallel_dims(outputs[0], numdim-2, weights[0], 2);
-  register_output_weight_parallel_dims(outputs[0], 0, weights[0], 1);
-  register_output_weight_parallel_dims(outputs[0], numdim-1, weights[0], 0);
-  if (use_bias) {
-    register_output_weight_parallel_dims(outputs[0], numdim-2, weights[1], 2);
-    register_output_weight_parallel_dims(outputs[0], 0, weights[1], 0);
-    register_output_weight_parallel_dims(outputs[0], numdim-1, weights[1], 1);
-  }
-  // Check correctness
-  assert(check_output_input_weight_parallel_dims());
-}
-
-#ifdef DEADCODE
-void Linear::create_input_partition(FFModel& model)
-{
-  int dim = inputs[0]->num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      create_input_partition_with_dim<DIM>(model); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      // Unsupported dim for Linear operator
-      assert(false);
-    }
-  }
-}
-
-template<int NDIM>
-void Linear::create_input_partition_with_dim(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
-
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
-  int num_par_n = part_rect.hi[NDIM-1] - part_rect.lo[NDIM-1] + 1;
-  int in_dim = inputs[0]->dims[0].size;
-  assert(in_dim == in_channels);
-  int batch_size = inputs[0]->dims[NDIM-1].size;
-  //{
-  //  int dims[NDIM];
-  //  for (int i = 0; i < NDIM; i++)
-  //    dims[i] = outputs[0].adim[NDIM-1-i];
-  //  outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
-  //  outputs[0].owner_op = this;
-  //  outputs[0].owner_idx = 0;
-  //}
-  // Compute partition bound for input
-  Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0]->part.get_index_partition());
-  // Create replica tensor
-  if (num_par_c > 1) {
-    {
-      Rect<NDIM> extent;
-      for (int i = 1; i < NDIM; i++) {
-        extent.lo[i] = 0;
-        assert(outputs[0]->dims[i].size % (part_rect.hi[i] - part_rect.lo[i] + 1) == 0);
-        extent.hi[i] = outputs[0]->dims[i].size / (part_rect.hi[i] - part_rect.lo[i] + 1) - 1;
-      }
-      extent.lo[0] = 0;
-      extent.hi[0] = in_dim-1;
-      Transform<NDIM, NDIM> transform;
-      for (int i = 0; i < NDIM; i++)
-        for (int j = 0; j < NDIM; j++)
-          transform[i][j] = 0;
-      for (int i = 1; i < NDIM; i++)
-        transform[i][i] = extent.hi[i] + 1;
-      IndexPartition ip = runtime->create_partition_by_restriction(
-          ctx, inputs[0]->region.get_index_space(), task_is, transform, extent);
-      assert(runtime->is_index_partition_complete(ctx, ip));
-      input_lps[0] = runtime->get_logical_partition(
-          ctx, inputs[0]->region, ip);
-    }
-    if (model.config.computationMode == COMP_MODE_TRAINING) {
-      if (NDIM==1) {
-        const int dims[2] = {num_par_c, in_dim};
-        replica = model.create_linear_replica<2>(dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT);
-      } else if (NDIM==2) {
-        const int dims[3] = {num_par_c, batch_size, in_dim};
-        replica = model.create_linear_replica<3>(dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT);
-      } else if (NDIM==3) {
-        const int dims[4] = {num_par_c, batch_size, inputs[0]->dims[1].size, in_dim};
-        replica = model.create_linear_replica<4>(dims, (IndexSpaceT<NDIM>)task_is, DT_FLOAT);
-      } else {
-        assert(false && "Unsupported dimension for parallelizing Linear operators"
-            " using the parameter dim.");
-      }
-      // Backward use the same ip as inputs[0]
-      input_grad_lps[0] = inputs[0]->part_grad;
-      {
-        IndexSpaceT<NDIM> input_task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(input_rect));
-        Rect<NDIM+1> extent;
-        for (int i = 0; i < NDIM; i++) {
-          extent.lo[i] = 0;
-          assert(inputs[0]->dims[i].size % (input_rect.hi[i] - input_rect.lo[i] + 1) == 0);
-          extent.hi[i] = inputs[0]->dims[i].size / (input_rect.hi[i] - input_rect.lo[i] + 1) - 1;
-        }
-        extent.lo[NDIM] = 0;
-        extent.hi[NDIM] = num_par_c - 1;
-        Transform<NDIM+1, NDIM> transform;
-        for (int i = 0; i < NDIM+1; i++)
-          for (int j = 0; j < NDIM; j++)
-            transform[i][j] = 0;
-        for (int i = 0; i < NDIM; i++)
-          transform[i][i] = inputs[0]->dims[i].size / (input_rect.hi[i] - input_rect.lo[i] + 1);
-        IndexPartition ip = runtime->create_partition_by_restriction(
-            ctx, replica->region_grad.get_index_space(), input_task_is,
-            transform, extent);
-        assert(runtime->is_index_partition_disjoint(ctx, ip));
-        assert(runtime->is_index_partition_complete(ctx, ip));
-        // Note we use replica->part to save how to partition the replica
-        // to compute input_grad_lps
-        replica->part = runtime->get_logical_partition(
-            ctx, replica->region_grad, ip);
-      }
-    } // if COMP_MODE_TRAINING
-  } else {
-    // when num_par_c == 1
-    if (input_rect == part_rect) {
-      input_lps[0] = inputs[0]->part;
-      if (model.config.computationMode == COMP_MODE_TRAINING) {
-        input_grad_lps[0] = inputs[0]->part_grad;
-      }
-    } else {
-      Rect<NDIM> extent;
-      for (int i = 0; i < NDIM; i++) {
-        extent.lo[i] = 0;
-        assert(inputs[0]->dims[i].size % (part_rect.hi[i] - part_rect.lo[i] + 1) == 0);
-        extent.hi[i] = inputs[0]->dims[i].size / (part_rect.hi[i] - part_rect.lo[i] + 1) - 1;
-      }
-      Transform<NDIM, NDIM> transform;
-      for (int i = 0; i < NDIM; i++)
-        for (int j = 0; j < NDIM; j++) {
-          transform[i][j] = 0;
-          if (i==j)
-            transform[i][j] = extent.hi[i] + 1;
-        }
-      IndexPartition ip = runtime->create_partition_by_restriction(
-          ctx, inputs[0]->region.get_index_space(), task_is, transform, extent);
-      assert(runtime->is_index_partition_disjoint(ctx, ip));
-      assert(runtime->is_index_partition_complete(ctx, ip));
-      input_lps[0] = runtime->get_logical_partition(
-          ctx, inputs[0]->region, ip);
-      if (model.config.computationMode == COMP_MODE_TRAINING) {
-        input_grad_lps[0] = runtime->get_logical_partition(
-            ctx, inputs[0]->region_grad, ip);
-      }
-    }
-  }
-}
-#endif
 
 /*
   regions[0](O): output
@@ -771,60 +693,6 @@ void Linear::backward_task_with_dim(const Task *task,
   }
 }
 
-void Linear::backward2_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime)
-{
-  Domain in_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  switch (in_domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-      return backward2_task_with_dim<DIM>(task, regions, ctx, runtime);
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-}
-
-
-/*
-  regions[0](I/O): input_grad
-  regions[1](I): replicas
-*/
-template<int NDIM>
-__host__
-void Linear::backward2_task_with_dim(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
-                                     Context ctx, Runtime *runtime)
-{
-  //const LinearMeta* m = *((LinearMeta**) task->local_args);
-  TensorAccessorW<float, NDIM> acc_input_grad(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime,
-      true/*readOutput*/);
-  TensorAccessorR<float, 3> acc_replica(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  assert(acc_input_grad.rect.hi[0] == acc_replica.rect.hi[0]);
-  assert(acc_input_grad.rect.lo[0] == acc_replica.rect.lo[0]);
-  assert(acc_input_grad.rect.hi[1] == acc_replica.rect.hi[1]);
-  assert(acc_input_grad.rect.lo[1] == acc_replica.rect.lo[1]);
-//#ifndef DISABLE_LEGION_CUDA_HIJACK
-//  cudaStream_t stream;
-//  checkCUDA(cudaStreamCreate(&stream));
-//  checkCUDA(cublasSetStream(m->handle.blas, stream));
-//  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-//#endif
-  int num_replica = acc_replica.rect.hi[NDIM] - acc_replica.rect.lo[NDIM] + 1;
-  const float *replica_ptr = acc_replica.ptr;
-  for (int i = 0; i < num_replica; i++) {
-    size_t num_elements = acc_input_grad.rect.volume();
-    apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
-        acc_input_grad.ptr, replica_ptr, num_elements, 1.0f);
-    replica_ptr += acc_input_grad.rect.volume();
-  }
-}
-
 void Linear::backward(const FFModel& ff)
 {
   Context ctx = ff.config.lg_ctx;
@@ -877,30 +745,6 @@ void Linear::backward(const FFModel& ff)
     runtime->execute_index_space(ctx, launcher);
   }
   assert(replica == NULL);
-#ifdef DEADCODE
-  if (replica->region_grad != LogicalRegion::NO_REGION) {
-    // We aggregate parameters from replica tensor to input tensor
-    // Note we use input's task_is to reduce extra data transfers
-    ArgumentMap argmap;
-    Rect<2> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0]->part_grad.get_index_partition());
-    IndexSpaceT<2> input_task_is = IndexSpaceT<2>(ff.get_task_is(input_rect));
-    IndexLauncher launcher(LINEAR_BWD2_TASK_ID, input_task_is,
-                           TaskArgument(this, sizeof(Linear)), argmap,
-                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(std::string(inputs[0]->owner_op->name)));
-    launcher.add_region_requirement(
-        RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
-    launcher.add_field(0, FID_DATA);
-    // Note that replica->part save's a partition of replica->region_grad
-    launcher.add_region_requirement(
-        RegionRequirement(replica->part, 0/*partition id*/,
-                          READ_ONLY, EXCLUSIVE, replica->region_grad));
-    launcher.add_field(1, FID_DATA);
-    runtime->execute_index_space(ctx, launcher);
-  }
-#endif
 }
 
 /*
@@ -1127,35 +971,6 @@ bool Linear::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
-Node FFModel::get_or_create_linear_node(const Tensor input,
-                                        int out_dim,
-                                        ActiMode activation,
-                                        bool use_bias)
-{
-  // replica degree cannot be larger than workersPerNode
-  //if (input->dims[input->num_dims-1].degree > config.workersPerNode)
-  //  return Node::INVALID_NODE;
-  // out_dim must be divisble by replicate_degree
-  if (out_dim % input->dims[input->num_dims-1].degree != 0)
-    return Node::INVALID_NODE;
-  size_t hash = input->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(out_dim);
-  hash = hash * 31 + std::hash<int>()(activation);
-  hash = hash * 31 + std::hash<int>()(use_bias);
-  const auto& it = cached_linear_ops.find(hash);
-  Linear* li = NULL;
-  if (it != cached_linear_ops.end()) {
-    li = it->second;
-  } else {
-    li = new Linear(*this, input, out_dim, activation, use_bias, NULL);
-    cached_linear_ops[hash] = li;
-  }
-  Node ret;
-  ret.guid = node_global_guid ++;
-  ret.ptr = li;
-  return ret;
-}
-
 bool Linear::is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const
 {
   if (!ff.config.enable_parameter_parallel)
@@ -1168,4 +983,3 @@ bool Linear::is_valid_parallel_config(const FFModel& ff, const ParallelConfig& p
       return false;
   return true;
 }
-

@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/element_unary.h"
+#include "hash_utils.h"
 #include "cuda_helper.h"
 
 using namespace Legion;
@@ -29,13 +30,41 @@ Tensor FFModel::unary(OperatorType op,
   return ele->outputs[0];
 }
 
+Node FFModel::get_or_create_element_unary_node(const Tensor input,
+                                               OperatorType op,
+                                               bool inplace,
+                                               float scalar)
+{
+  if (input->dims[input->num_dims-1].degree != 1) {
+    return Node::INVALID_NODE;
+  }
+
+  size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, op);
+  hash_combine(hash, inplace);
+  if (op == OP_SCALAR_MULTIPLY) {
+    hash_combine(hash, scalar);
+  }
+
+  ElementUnary *unary;
+  const auto &it = this->cached_element_unary_ops.find(hash);
+  if (it != cached_element_unary_ops.end()) { 
+    unary = it->second;
+  } else {
+    unary = new ElementUnary(*this, op, input, inplace, NULL, scalar);
+    cached_element_unary_ops[hash] = unary;
+  }
+
+  return this->new_node(unary);
+}
+
 Tensor FFModel::exp(const Tensor x,
                     const char *name)
 {
   return this->unary(OP_EXP, x, false/*inplace*/, name);
 }
 
-Tensor FFModel::scalar_multiply(const Tensor x,const float scalar ,bool inplace, const char *name)
+Tensor FFModel::scalar_multiply(const Tensor x, const float scalar, bool inplace, const char *name)
 {
   return this->unary(OP_SCALAR_MULTIPLY, x, inplace, name, scalar);
 }
@@ -78,7 +107,7 @@ ElementUnary::ElementUnary(FFModel& model,
                            bool _inplace,
                            const char* name,
                            float _scalar)
-: Op(model, _op_type, name, 1/*inputs*/, 0/*weights*/, x), inplace(_inplace), scalar(_scalar)
+: Op(model, _op_type, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, x), inplace(_inplace), scalar(_scalar)
 {
   numOutputs = 1;
   int numdim = x->num_dims;
@@ -116,64 +145,6 @@ bool ElementUnary::use_cudnn(OperatorType type)
     return true;
   return false;
 }
-
-#ifdef DEADCODE
-void ElementUnary::map_output_tensors(FFModel& model)
-{
-  int dim = inputs[0].num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      task_is = model.get_or_create_task_is(DIM, name); \
-      map_output_tensors_with_dim<DIM>(model); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      // Unsupported dim for ElementWiseUnary operator
-      assert(false);
-    }
-  }
-}
-
-template<int NDIM>
-void ElementUnary::map_output_tensors_with_dim(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0]->part.get_index_partition());
-  if (inplace) {
-    // output reuse input tensor
-    outputs[0] = inputs[0];
-    outputs[0].owner_op = this;
-    outputs[0].owner_idx = 0;
-    assert(input_rect == part_rect && "Inplace require the same partitioning");
-    input_lps[0] = inputs[0]->part;
-    input_grad_lps[0] = inputs[0]->part_grad;
-    return; 
-  }
-  int dims[NDIM];
-  for (int i = 0; i < NDIM; i++)
-    dims[i] = inputs[0].adim[NDIM-1-i];
-  outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
-  outputs[0].owner_op = this;
-  outputs[0].owner_idx = 0;
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0]->part;
-    input_grad_lps[0] = inputs[0]->part_grad;
-  } else {
-    model.create_disjoint_partition<NDIM>(
-        inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
-  }
-}
-#endif
 
 OpMeta* ElementUnary::init_task(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
@@ -218,7 +189,7 @@ OpMeta* ElementUnary::init_task(const Task *task,
     Domain input_domain = runtime->get_index_space_domain(
         ctx, task->regions[0].region.get_index_space());
     checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
-      checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, input_domain));
+    checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, input_domain));
   }
   return m;
 }
@@ -239,6 +210,7 @@ void ElementUnary::init(const FFModel& ff)
       RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
   init_launcher.add_field(0, FID_DATA);
+  assert (!inplace);
   if (!inplace) {
     init_launcher.add_region_requirement(
         RegionRequirement(outputs[0]->part, 0/*projection id*/,

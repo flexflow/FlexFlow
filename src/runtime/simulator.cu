@@ -15,9 +15,11 @@
 
 #include "simulator.h"
 #include "model.h"
-//#include "realm/runtime_impl.h"
-//#include "realm/cuda/cuda_module.h"
 #include "cuda_helper.h"
+#include "ops/linear.h"
+#include "ops/conv_2d.h"
+#include "ops/pool_2d.h"
+#include "ops/element_unary.h"
 
 using namespace Legion;
 
@@ -87,11 +89,6 @@ void Simulator::strategy_search_task(const Task *task,
   FFModel* model = *((FFModel**) task->args);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
          .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
-  // Realm::MemoryImpl* memImpl =
-  //     Realm::get_runtime()->get_memory_impl(gpu_mem);
-  // Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
-  // off_t offset = memFBImpl->alloc_bytes_local(model->config.simulator_work_space_size);
-  // void* base_ptr = memFBImpl->get_direct_ptr(offset, 0);
   MachineModel *machine;
   if (model->config.machine_model_version == 0) {
     machine = (MachineModel *) new SimpleMachineModel(model->config.numNodes, model->config.workersPerNode, gpu_mem.capacity());
@@ -112,28 +109,6 @@ void Simulator::strategy_search_task(const Task *task,
   checkCUDA(cublasSetStream(simulator->handler.blas, stream));
   checkCUDNN(cudnnSetStream(simulator->handler.dnn, stream));
 #endif
-#ifdef DEADCODE
-  std::map<const Op*, ParallelConfig> strategies;
-  if (model->config.import_strategy_file.length() > 0) {
-    // Load the strategy from config.strategies
-    for (size_t l = 0; l < model->layers.size(); l++) {
-      MappingTagID key = FFConfig::get_hash_id(std::string(model->layers[l]->name));
-      std::map<MappingTagID, ParallelConfig>::const_iterator iter;
-      iter = model->config.strategies.find(key);
-      if (iter == model->config.strategies.end()) {
-        fprintf(stderr, "ERROR: Cannot find strategy for operator %s in "
-                "strategy file %s\n", model->layers[l]->name,
-                model->config.import_strategy_file.c_str());
-      }
-      strategies[model->layers[l]] = iter->second;
-    }
-  } else {
-    // Start from data parallel
-    for (size_t l = 0; l < model->layers.size(); l++) {
-      strategies[model->layers[l]] = model->layers[l]->get_data_parallel_config(*model);
-    }
-  }
-#endif
   if (model->config.computationMode == COMP_MODE_TRAINING) {
     fprintf(stderr, "MCMC search configuration: budget(%zu) alpha(%.8lf) mode(TRAINING)\n",
         model->config.search_budget, model->config.search_alpha);
@@ -141,28 +116,6 @@ void Simulator::strategy_search_task(const Task *task,
     fprintf(stderr, "MCMC search configuration: budget(%zu) alpha(%.8lf) mode(INFERENCE)\n",
         model->config.search_budget, model->config.search_alpha);
   }
-  //model->mcmc_optimize(strategies, model->config.search_budget,
-  //    model->config.search_alpha, model->config.computationMode, model->config.enable_propagation);
-#ifdef DEADCODE
-  if (model->config.export_strategy_file.length() > 0) {
-    fprintf(stderr, "Exporting the best discovered strategy to %s.\n",
-        model->config.export_strategy_file.c_str());
-    std::map<const Op*, ParallelConfig>::const_iterator iter;
-    std::map<std::string, ParallelConfig> strategy_output;
-    for (iter = strategies.begin(); iter != strategies.end(); iter++) {
-      strategy_output[iter->first->name] = iter->second;
-    }
-    save_strategies_to_file(model->config.export_strategy_file, strategy_output);
-    fprintf(stderr, "To use the strategy for distributed training, restart"
-        " FlexFlow and import the strategy (i.e., --import %s)\n",
-        model->config.export_strategy_file.c_str());
-    //exit(0);
-  }  else {
-    fprintf(stderr, "The best discovered strategy is not exported.\n"
-        "Please set a path to export the strategy using --export or --export-strategy.\n");
-    //exit(0);
-  }
-#endif
   // Start from data
   // memFBImpl->free_bytes_local(offset, model->config.simulator_work_space_size);
   delete(simulator);

@@ -26,7 +26,9 @@ class FFModel;
 class Initializer;
 
 struct ParallelDim {
-  ParallelDim(): size(0), degree(1), parallel_idx(-1) {}
+  static constexpr int UNKNOWN_DEGREE = -1;
+  static constexpr int UNKNOWN_INDEX = -2;
+
   bool operator==(const ParallelDim &rhs) const
   {
     if (size != rhs.size) return false;
@@ -34,9 +36,11 @@ struct ParallelDim {
     if (parallel_idx != rhs.parallel_idx) return false;
     return true;
   }
-  int size;
-  int degree;
-  int parallel_idx;
+
+  int size = 0;
+  int degree = UNKNOWN_DEGREE;
+  int parallel_idx = UNKNOWN_INDEX;
+  bool is_replica_dim = false;
 };
 
 struct TensorBase {
@@ -82,6 +86,7 @@ struct TensorBase {
   const Op* owner_op;
   int owner_idx;
   bool create_gradients;
+  
   // The following fields are initialized after model.compile
   MachineView machine_view;
   Legion::IndexSpace parallel_is;
@@ -92,17 +97,5 @@ struct TensorBase {
 
 typedef TensorBase* Tensor;
 typedef TensorBase* Parameter;
-
-/*
-struct Parameter : TensorBase {
-  template <typename T>
-  bool set_weights(const FFModel* model,
-                   const std::vector<int>& dims,
-                   const T* data);
-  template <typename T>
-  bool get_weights(const FFModel* model,
-                   T* data);
-};
-*/
 
 #endif

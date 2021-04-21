@@ -17,6 +17,16 @@
 #include <chrono>
 #include "dot_file.h"
 #include "dominators.h"
+#include "ops/embedding.h"
+#include "ops/linear.h"
+#include "ops/conv_2d.h"
+#include "ops/pool_2d.h"
+#include "ops/attention.h"
+#include "parallel_ops/combine.h"
+#include "parallel_ops/partition.h"
+#include "parallel_ops/replicate.h"
+#include "parallel_ops/fused_parallel_op.h"
+#include "parallel_ops/reduction.h"
 
 using namespace Legion;
 
@@ -931,7 +941,7 @@ void FFModel::graph_optimize(size_t budget,
     } else if (cur_graph->optimal_cost() > best_cost * 1.2) {
       break;
     }
-    if (counter > 1000)
+    if (counter > config.search_budget)
       break;
     printf("    [%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)\n",
            counter, cur_graph->optimal_cost(), best_cost, candidates.size());
@@ -987,9 +997,11 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
     assert(node.ptr != NULL);
     const auto& inList = graph->inEdges.find(node)->second;
     Tensor inputs[MAX_NUM_INPUTS];
+    int num_inputs = 0;
     for (const auto& e : inList) {
       inputs[e.dstIdx] = node_to_op[e.srcOp]->outputs[e.srcIdx];
       assert(e.dstIdx < (int)inList.size());
+      num_inputs++;
     }
     Op* new_op = NULL;
     switch (node.ptr->op_type) {
@@ -1006,34 +1018,7 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
       }
       case OP_EMBEDDING:
       {
-        assert(inList.size() == 1);
-        Embedding* embed = (Embedding*) node.ptr;
-        Tensor kernel = NULL;
-        // Create kernel tensor
-        {
-          ParallelDim dims[3];
-          dims[2].size = embed->out_channels;
-          dims[1].size = embed->num_entries;
-          dims[1].degree = 1;
-          dims[1].parallel_idx = -1;
-          dims[0].size = inputs[0]->dims[1].degree;
-          dims[0].degree = dims[0].size;
-          if (dims[0].degree > 1)
-            dims[0].parallel_idx = 0;
-          else
-            dims[0].parallel_idx = -1;
-          int seed = std::rand();
-          Initializer* initializer = new GlorotUniform(seed);
-#ifdef FF_USE_NCCL
-          ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-          ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-          kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
-                                    true/*create_grad*/, initializer,
-                                    comm_type);
-        }
-        new_op = new Embedding(*this, inputs[0], kernel, embed->aggr, NULL);
+        new_op = new Embedding(*this, *(Embedding*)node.ptr, inputs[0], true);
         break;
       }
       case OP_EW_ADD:
@@ -1044,53 +1029,19 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
                                    eb->inplace_a, NULL);
         break;
       }
+      case OP_POOL2D:
+      {
+        new_op = new Pool2D(*this, *(Pool2D*)node.ptr, inputs[0]);
+        break;
+      }
+      case OP_CONV2D:
+      {
+        new_op = new Conv2D(*this, *(Conv2D*)node.ptr, inputs[0], true);
+        break;
+      }
       case OP_LINEAR:
       {
-        assert(inList.size() == 1);
-        Linear* linear = (Linear*) node.ptr;
-        Tensor kernel = NULL, bias = NULL;
-        // Create kernel tensor
-        {
-          int num_dims = inputs[0]->num_dims;
-          ParallelDim dims[3];
-          dims[0] = inputs[0]->dims[num_dims-2];
-          dims[1] = inputs[0]->dims[num_dims-1];
-          dims[2] = inputs[0]->dims[0];
-          dims[0].size = dims[0].degree;
-          dims[1].size = linear->out_channels;
-          int seed = std::rand();
-          Initializer* initializer = new GlorotUniform(seed);
-#ifdef FF_USE_NCCL
-          ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-          ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-          kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
-                                    true/*create_grad*/, initializer,
-                                    comm_type);
-        }
-        // Create bias tensor
-        if (linear->use_bias)
-        {
-          int num_dims = inputs[0]->num_dims;
-          ParallelDim dims[3];
-          dims[0] = inputs[0]->dims[num_dims-2];
-          dims[1] = inputs[0]->dims[0];
-          dims[2] = inputs[0]->dims[num_dims-1];
-          dims[0].size = dims[0].degree;
-          dims[2].size = linear->out_channels;
-          Initializer* initializer = new ZeroInitializer();
-#ifdef FF_USE_NCCL
-          ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-          ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-          bias = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
-                                    true/*create_grad*/, initializer,
-                                    comm_type);
-        }
-        new_op = new Linear(*this, inputs[0], kernel, bias,
-                            linear->activation, NULL);
+        new_op = new Linear(*this, *(Linear*)node.ptr, inputs[0], true);
         break;
       }
       case OP_MULTIHEAD_ATTENTION:
@@ -1180,11 +1131,10 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
         break;
       }
       default:
-        fprintf(stderr, "The following operator type is currently not supported"
-                " for graph serialization: %s\n"
-                "Report the issue to the FlexFlow developers",
-                node.to_string().c_str());
-        assert(false && "Unsupported Operator Type");
+      {
+        new_op = node.ptr->materialize(*this, inputs, num_inputs);
+        break;
+      }
     }
     // Set machine view for the output tensors of this operator
     assert(optimal_views.find(node) != optimal_views.end());

@@ -392,6 +392,7 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& vi
   std::unordered_map<size_t, CostMetrics>::const_iterator iter =
     hash_to_operator_cost.find(hash);
   if (iter == hash_to_operator_cost.end()) {
+
     ParallelConfig config;
     config.device_type = (ParallelConfig::DeviceType) view.device_type;
     const Tensor output = op->outputs[0];
@@ -402,6 +403,7 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& vi
       else
         config.dim[i] = view.dim[output->dims[i].parallel_idx];
     }
+
     bool is_implemented = op->measure_operator_cost(this, config, cost_metrics);
     if (! is_implemented) {
       handle_measure_operator_cost_unimplemented(op);

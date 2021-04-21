@@ -31,7 +31,7 @@ Reverse::Reverse(FFModel& model,
                  const Tensor input,
                  int _axis,
                  const char* name)
-: Op(model, OP_REVERSE, name, 1/*inputs*/, 0/*weights*/, input), axis(_axis)
+: Op(model, OP_REVERSE, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, input), axis(_axis)
 {
   numOutputs = 1;
   int numdim = input->num_dims;
@@ -253,7 +253,7 @@ void Reverse::backward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   IndexLauncher launcher(REVERSE_BWD_TASK_ID, parallel_is,
-                         TaskArgument(this, sizeof(Linear)), argmap,
+                         TaskArgument(this, sizeof(Reverse)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          outputs[0]->machine_view.hash());
   // regions[0](I): output_grad

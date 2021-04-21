@@ -35,7 +35,7 @@ Split::Split(FFModel& model,
              const std::vector<int>& splits,
              int _axis,
              const char* name)
-: Op(model, OP_SPLIT, name, 1/*inputs*/, 0/*weights*/, input),
+: Op(model, OP_SPLIT, name, 1/*inputs*/, 0/*weights*/, splits.size()/*outputs*/, input),
   axis(input->num_dims-1-_axis)
 {
   numOutputs = splits.size();

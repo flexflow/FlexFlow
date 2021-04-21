@@ -37,7 +37,7 @@ Dropout::Dropout(FFModel& model,
                  float _rate,
                  unsigned long long _seed,
                  const char* name)
-: Op(model, OP_DROPOUT, name, 1/*inputs*/, 0/*weights*/, _input),
+: Op(model, OP_DROPOUT, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, _input),
   rate(_rate), seed(_seed)
 {
   // Set output shape
@@ -124,7 +124,7 @@ void Dropout::init(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
   IndexLauncher init_launcher(DROPOUT_INIT_TASK_ID, parallel_is,
-                              TaskArgument(this, sizeof(ElementUnary)), argmap,
+                              TaskArgument(this, sizeof(Dropout)), argmap,
                               Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                               outputs[0]->machine_view.hash());
   init_launcher.add_region_requirement(

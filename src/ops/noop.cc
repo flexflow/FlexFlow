@@ -21,7 +21,7 @@ NoOp::NoOp(FFModel& model,
            OperatorType _type,
            const Tensor _output,
            const char* _name)
-: Op(model, _type, name, 0/*inputs*/, 0/*weights*/)
+: Op(model, _type, name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/)
 {
   // NOOP takes one input and has one output
   // both of them are _output
@@ -29,7 +29,6 @@ NoOp::NoOp(FFModel& model,
     numInputs = 1;
     inputs[0] = _output;
   }
-  numOutputs = 1;
   outputs[0] = _output;
   outputs[0]->owner_op = this;
   outputs[0]->owner_idx = 0;

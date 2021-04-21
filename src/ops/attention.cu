@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/attention.h"
 #include "cuda_helper.h"
 
 using namespace Legion;
@@ -41,43 +41,6 @@ Tensor FFModel::multihead_attention(const Tensor query,
     layers.push_back(attn);
     return attn->outputs[0];
   }
-#ifdef OLD_LAYER_CREATION
-  if (kernel_initializer == NULL) {
-    int seed = std::rand();
-    kernel_initializer = new GlorotUniform(seed);
-  }
-  //if (bias_initializer == NULL) {
-  //  bias_initializer = new ZeroInitializer();
-  //}
-#ifdef FF_USE_NCCL
-  ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-  ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-  Tensor kernel;
-  {
-    // Compute weight size
-    int qSize = query->dims[0].size;
-    int kSize = key->dims[0].size;
-    int vSize = value->dims[0].size;
-    int qProjSize = kdim;
-    int kProjSize = kdim;
-    int vProjSize = vdim;
-    int oProjSize = embed_dim;
-    int qParas = qProjSize * qSize;
-    int kParas = kProjSize * kSize;
-    int vParas = vProjSize * vSize;
-    int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-    const int dims[2] = {num_heads, qParas + kParas + vParas + oParas};
-    kernel = create_weight<2>(dims, DT_FLOAT, NULL/*owner_op*/,
-        true/*create_grad*/, kernel_initializer, comm_type);
-  }
-  MultiHeadAttention* attn = new MultiHeadAttention(*this, query, key, value,
-      kernel, embed_dim, num_heads, kdim, vdim, dropout, bias,
-      add_bias_kv, add_zero_attn, name);
-  layers.push_back(attn);
-  return attn->outputs[0];
-#endif
 }
 
 MultiHeadAttention::MultiHeadAttention(FFModel& model,
@@ -90,7 +53,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
                                        bool _add_bias_kv, bool _add_zero_attn,
                                        const char* name)
                                        //Initializer* _bias_initializer)
-: Op(model, OP_MULTIHEAD_ATTENTION, name, 3/*inputs*/, 0/*weights*/,
+: Op(model, OP_MULTIHEAD_ATTENTION, name, 3/*inputs*/, 0/*weights*/, 1/*outputs*/,
      _query, _key, _value),
   num_heads(_num_heads), dropout(_dropout), bias(_bias),
   add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
@@ -112,11 +75,11 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
 
   outputs[0] = model.create_tensor_legion_ordering(_query->num_dims,
                                                    dims, DT_FLOAT, this);
-  for (int i = 0; i < numdim; i++) {
-    register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
-  }
-  // Check correctness
-  assert(check_output_input_weight_parallel_dims());
+  /* for (int i = 0; i < numdim; i++) { */
+  /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
+  /* } */
+  /* // Check correctness */
+  /* assert(check_output_input_weight_parallel_dims()); */
 }
 
 MultiHeadAttention::MultiHeadAttention(FFModel& model,
@@ -130,7 +93,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
                                        bool _add_bias_kv, bool _add_zero_attn,
                                        const char* name)
                                        //Initializer* _bias_initializer)
-: Op(model, OP_MULTIHEAD_ATTENTION, name, 3/*inputs*/, 1/*weights*/,
+: Op(model, OP_MULTIHEAD_ATTENTION, name, 3/*inputs*/, 1/*weights*/, 1/*outputs*/,
      _query, _key, _value, _weight),
   num_heads(_num_heads), dropout(_dropout), bias(_bias),
   add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
@@ -154,14 +117,14 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
 
   outputs[0] = model.create_tensor_legion_ordering(_query->num_dims,
                                                    dims, DT_FLOAT, this);
-  for (int i = 0; i < numdim; i++) {
-    register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
-  }
+  /* for (int i = 0; i < numdim; i++) { */
+  /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
+  /* } */
   assert(_weight->num_dims == 3);
-  register_output_weight_parallel_dims(outputs[0], numdim-1, _weight, 1);
-  register_output_weight_parallel_dims(outputs[0], numdim-2, _weight, 2);
+  /* register_output_weight_parallel_dims(outputs[0], numdim-1, _weight, 1); */
+  /* register_output_weight_parallel_dims(outputs[0], numdim-2, _weight, 2); */
   // Check correctness
-  assert(check_output_input_weight_parallel_dims());
+  /* assert(check_output_input_weight_parallel_dims()); */
 }
 
 /*

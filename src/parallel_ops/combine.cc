@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "parallel_ops/combine.h"
 
 using namespace Legion;
 
@@ -50,13 +50,8 @@ Combine::Combine(
   TensorBase::update_parallel_ids(numdim, dims);
   outputs[0] = model.create_tensor_legion_ordering(
       numdim, dims, DT_FLOAT, this);
-  for (int i = 0; i < numdim; i++) {
-    register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
-  }
   inputs[0]->print("Combine::input");
   outputs[0]->print("Combine::output");
-  // Check correctness
-  //assert(check_output_input_weight_parallel_dims());
 }
 
 void Combine::init(const FFModel& ff)

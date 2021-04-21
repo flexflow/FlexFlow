@@ -38,7 +38,7 @@ TopK::TopK(FFModel& model,
            const Tensor _input,
            int _k, bool _sorted,
            const char* name)
-: Op(model, OP_TOPK, name, 1/*inputs*/, 0/*weights*/, _input),
+: Op(model, OP_TOPK, name, 1/*inputs*/, 0/*weights*/, 2/*outputs*/, _input),
   k(_k), sorted(_sorted)
 {
   int numdim = inputs[0]->num_dims;
@@ -55,58 +55,6 @@ TopK::TopK(FFModel& model,
       numdim, dims, DT_INT32,
       this, 1/*owner_idx*/);
 }
-
-#ifdef DEADCODE
-void TopK::create_input_partition(FFModel& model)
-{
-  int dim = inputs[0]->num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      create_input_partition_with_dim<DIM>(model); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      // Unsupported dim for ElementWiseBinary operator
-      assert(false);
-    }
-  }
-}
-
-template<int NDIM>
-void TopK::create_input_partition_with_dim(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  int dims[NDIM];
-  dims[NDIM-1] = k;
-  for (int i = 0; i < NDIM-1; i++)
-    dims[i] = inputs[0].adim[NDIM-1-i];
-  outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
-  outputs[0].owner_op = this;
-  outputs[0].owner_idx = 0;
-  outputs[1] = model.create_tensor<NDIM>(dims, DT_INT32, this);
-  outputs[1].owner_op = this;
-  outputs[1].owner_idx = 1;
-  Rect<NDIM> input_rect;
-  input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0]->part.get_index_partition());
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0]->part;
-    input_grad_lps[0] = inputs[0]->part_grad;
-  } else {
-    model.create_disjoint_partition<NDIM>(
-        inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
-  }
-}
-#endif
 
 OpMeta* TopK::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,

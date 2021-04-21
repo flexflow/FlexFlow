@@ -15,11 +15,16 @@
 
 #include "model.h"
 #include "cuda_helper.h"
+#include "ops/conv_2d.h"
+#include "ops/linear.h"
+#include "ops/pool_2d.h"
+#include "ops/flat.h"
+#include "ops/element_unary.h"
 
 using namespace Legion;
 
 FusedOp::FusedOp(FFModel& model, Op* op)
-: Op(model, OP_FUSED, op->name, 0/*weights*/, 0/*weights*/)
+: Op(model, OP_FUSED, op->name, 0/*weights*/, 0/*weights*/, 0/*outputs*/)
 {
   numInputs = op->numInputs;
   for (int i = 0; i < numInputs; i++) {

@@ -44,6 +44,12 @@
 
 //using namespace Legion;
 
+#ifdef FF_USE_NCCL
+constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::NCCL;
+#else 
+constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
+#endif
+
 struct MachineView {
   static const MachineView NO_VIEW;
   MachineView();
@@ -197,6 +203,7 @@ public:
   bool enable_sample_parallel;
   bool enable_parameter_parallel;
   bool enable_attribute_parallel;
+  bool enable_inplace_optimizations;
   //Control Tensor Op Math Conversion
   bool allow_tensor_op_math_conversion;
   std::string dataset_path;

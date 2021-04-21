@@ -224,6 +224,17 @@ cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
       dims[3] = rect.hi[3] - rect.lo[3] + 1;
       return cudnnSetTensor4dDescriptor(tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[3], dims[2], dims[1], dims[0]);
     }
+    case 5:
+    {
+      Rect<5> rect = domain;
+      int leading_dim_size = rect.hi[4] - rect.lo[4] + 1;
+      assert (leading_dim_size == 1);
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      dims[3] = rect.hi[3] - rect.lo[3] + 1;
+      return cudnnSetTensor4dDescriptor(tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[3], dims[2], dims[1], dims[0]);
+    }
     default:
       assert(false && "Unsupported dim number");
   }

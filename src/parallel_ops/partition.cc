@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "parallel_ops/partition.h"
 
 using namespace Legion;
 
@@ -46,16 +46,10 @@ Repartition::Repartition(
   }
   dims[repartition_dim].degree *= repartition_degree;
   TensorBase::update_parallel_ids(numdim, dims);
-  for (int i = 0; i < numdim; i++)
-    if (i != repartition_dim) {
-      register_output_input_parallel_dims(outputs[0], i, inputs[0], i);
-    }
   outputs[0] = model.create_tensor_legion_ordering(
       numdim, dims, inputs[0]->data_type, this);
   inputs[0]->print("Repartition::input");
   outputs[0]->print("Repartition::output");
-  // Check correctness
-  // assert(check_output_input_weight_parallel_dims());
 }
 
 void Repartition::init(const FFModel& ff)
@@ -178,6 +172,9 @@ Node FFModel::get_or_create_repartition_node(const Tensor input,
   if (degree > config.workersPerNode * config.numNodes
   && (degree > config.cpusPerNode * config.numNodes))
     return Node::INVALID_NODE;
+  if (input->dims[repartition_dim].size % (repartition_degree * input->dims[repartition_dim].degree) != 0) {
+    return Node::INVALID_NODE;
+  }
 
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(repartition_dim);
