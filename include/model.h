@@ -1165,7 +1165,9 @@ public:
 
 class GroupByMeta : public OpMeta {
 public:
-  GroupByMeta(FFHandler handle);
+  GroupByMeta(FFHandler handle, int n);
+  ~GroupByMeta(void);
+  float** dev_region_ptrs;
 };
 
 class Group_by : public Op {
@@ -1200,10 +1202,12 @@ public:
   bool profiling;
 };
 
-
 class AggregateMeta : public OpMeta {
 public:
-  AggregateMeta(FFHandler handle);
+  AggregateMeta(FFHandler handle, int n);
+  ~AggregateMeta(void);
+  float** dev_exp_preds;
+  float** dev_exp_grads;
 };
 
 class Aggregate : public Op {
@@ -1239,7 +1243,9 @@ public:
 
 class AggregateSpecMeta : public OpMeta {
 public:
-  AggregateSpecMeta(FFHandler handle);
+  AggregateSpecMeta(FFHandler handle, int n);
+  ~AggregateSpecMeta(void);
+  float** dev_region_ptrs;
 };
 
 class AggregateSpec : public Op {

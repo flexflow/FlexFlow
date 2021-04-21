@@ -120,7 +120,7 @@ OpMeta* AggregateSpec::init_task(const Task* task,
 {
   AggregateSpec* agg = (AggregateSpec*) task->args;
   FFHandler handle = *((FFHandler*)task->local_args);
-  AggregateSpecMeta* m = new AggregateSpecMeta(handle);
+  AggregateSpecMeta* m = new AggregateSpecMeta(handle, agg->n);
   m->profiling = agg->profiling;
   return m;
 }
@@ -401,12 +401,10 @@ void AggregateSpec::forward_task(const Task *task,
 #endif
 
   // call forward kernel
-  float** dev_exp_preds;
-  cudaMalloc(&dev_exp_preds, n*sizeof(float*));
-  cudaMemcpy(dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
+  cudaMemcpy(m->dev_region_ptrs, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
 
   aggspec_forward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
-    dev_exp_preds, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
+    m->dev_region_ptrs, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     acc_output.ptr(rect_output), n, k, rows, batch_size, out_dim);
 }
 
@@ -473,12 +471,10 @@ void AggregateSpec::backward_task(const Task *task,
 #endif
 
   // call backward kernel
-  float** dev_exp_grads;
-  cudaMalloc(&dev_exp_grads, n*sizeof(float*));
-  cudaMemcpy(dev_exp_grads, exp_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
+  cudaMemcpy(m->dev_region_ptrs, exp_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
 
   aggspec_backward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
-    dev_exp_grads, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
+    m->dev_region_ptrs, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     acc_full_gate_grad.ptr(rect_full_gate_grad), acc_output_grad.ptr(rect_out_grad),
     n, k, rows, lambda_bal, batch_size, out_dim);
 }
@@ -605,9 +601,14 @@ void AggregateSpec::backward(const FFModel& ff)
 }
 
 
-AggregateSpecMeta::AggregateSpecMeta(FFHandler handler)
+AggregateSpecMeta::AggregateSpecMeta(FFHandler handler, int n)
 : OpMeta(handler)
 {
+  checkCUDA(cudaMalloc(&dev_region_ptrs, n*sizeof(float*)));
+}
+AggregateSpecMeta::~AggregateSpecMeta(void)
+{
+  checkCUDA(cudaFree(&dev_region_ptrs));
 }
 
 

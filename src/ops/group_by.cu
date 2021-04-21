@@ -124,7 +124,7 @@ OpMeta* Group_by::init_task(const Task* task,
 {
   Group_by* gb = (Group_by*) task->args;
   FFHandler handle = *((FFHandler*)task->local_args);
-  GroupByMeta* m = new GroupByMeta(handle);
+  GroupByMeta* m = new GroupByMeta(handle, gb->n);
   m->profiling = gb->profiling;
   return m;
 }
@@ -336,12 +336,10 @@ void Group_by::forward_task(const Task *task,
 #endif
 
   // call forward kernel
-  float** dev_outputs;
-  cudaMalloc(&dev_outputs, n*sizeof(float*));
-  cudaMemcpy(dev_outputs, outputs, n*sizeof(float*), cudaMemcpyHostToDevice);
+  cudaMemcpy(m->dev_region_ptrs, outputs, n*sizeof(float*), cudaMemcpyHostToDevice);
 
   gb_forward_kernel<<<GET_BLOCKS(batch_size*k*data_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim))>>>(
-    acc_input.ptr(rect_input), acc_assign.ptr(rect_assign), dev_outputs, n, k,
+    acc_input.ptr(rect_input), acc_assign.ptr(rect_assign), m->dev_region_ptrs, n, k,
     alpha, batch_size, data_dim);
 }
 
@@ -398,12 +396,10 @@ void Group_by::backward_task(const Task *task,
 #endif
 
   // call forward kernel
-  float** dev_output_grads;
-  cudaMalloc(&dev_output_grads, n*sizeof(float*));
-  cudaMemcpy(dev_output_grads, output_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
+  cudaMemcpy(m->dev_region_ptrs, output_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
 
   gb_backward_kernel<<<GET_BLOCKS(batch_size*k*data_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim))>>>(
-    acc_input_grad.ptr(rect_input_grad), acc_assign.ptr(rect_assign),dev_output_grads,
+    acc_input_grad.ptr(rect_input_grad), acc_assign.ptr(rect_assign), m->dev_region_ptrs,
     n, k, alpha, batch_size, data_dim);
 }
 
@@ -510,9 +506,14 @@ void Group_by::backward(const FFModel& ff)
 }
 
 
-GroupByMeta::GroupByMeta(FFHandler handler)
+GroupByMeta::GroupByMeta(FFHandler handler, int n)
 : OpMeta(handler)
 {
+  checkCUDA(cudaMalloc(&dev_region_ptrs, n*sizeof(float*)));
+}
+GroupByMeta::~GroupByMeta(void)
+{
+  checkCUDA(cudaFree(&dev_region_ptrs));
 }
 
 

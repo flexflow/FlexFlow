@@ -120,7 +120,7 @@ OpMeta* Aggregate::init_task(const Task* task,
 {
   Aggregate* agg = (Aggregate*) task->args;
   FFHandler handle = *((FFHandler*)task->local_args);
-  AggregateMeta* m = new AggregateMeta(handle);
+  AggregateMeta* m = new AggregateMeta(handle, agg->n);
   m->profiling = agg->profiling;
   return m;
 }
@@ -131,6 +131,7 @@ void Aggregate::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  //printf("HEEEERE %d\n", task_is.task_id);
   Domain domain = runtime->get_index_space_domain(ctx, task_is);
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
@@ -156,22 +157,23 @@ void Aggregate::init(const FFModel& ff)
     TaskArgument(this, sizeof(Aggregate)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
+    /*
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
+    RegionRequirement(outputs[0].part, 0/*projection id/,
       WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i], 0/*projection id*/,
+      RegionRequirement(input_lps[i], 0/*projection id/,
         READ_ONLY, EXCLUSIVE, inputs[i].region));
     launcher.add_field(i + 1, FID_DATA);
   }
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[i], 0/*projection id*/,
+      RegionRequirement(input_grad_lps[i], 0/*projection id/,
         WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
     launcher.add_field(i + numInputs + 1, FID_DATA);
-  }
+  }*/
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   switch (domain.get_dim()) {
@@ -366,7 +368,7 @@ void Aggregate::forward_task(const Task *task,
   assert((int)regions.size() == n+3);
   assert((int)task->regions.size() == n+3);
 
-  const AggregateMeta* m = *((AggregateMeta**)task->local_args);
+  AggregateMeta* m = *((AggregateMeta**)task->local_args);
 
   // get gate_pred, gate_assign, output
   const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
@@ -416,12 +418,10 @@ void Aggregate::forward_task(const Task *task,
 #endif
 
   // call forward_kernel
-  float** dev_exp_preds;
-  cudaMalloc(&dev_exp_preds, n*sizeof(float*));
-  cudaMemcpy(dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
+  cudaMemcpy(m->dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
 
   agg_forward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
-    dev_exp_preds, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
+    m->dev_exp_preds, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     acc_output.ptr(rect_output), n, k, rows, batch_size, out_dim);
 }
 
@@ -500,15 +500,11 @@ void Aggregate::backward_task(const Task *task,
 #endif
 
   // call backward kernel
-  float** dev_exp_preds;
-  float** dev_exp_grads;
-  cudaMalloc(&dev_exp_preds, n*sizeof(float*));
-  cudaMalloc(&dev_exp_grads, n*sizeof(float*));
-  cudaMemcpy(dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
-  cudaMemcpy(dev_exp_grads, exp_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
+  cudaMemcpy(m->dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
+  cudaMemcpy(m->dev_exp_grads, exp_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
 
   agg_backward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
-    dev_exp_preds, dev_exp_grads, acc_gate_assign.ptr(rect_gate_assign),
+    m->dev_exp_preds, m->dev_exp_grads, acc_gate_assign.ptr(rect_gate_assign),
     acc_gate_pred.ptr(rect_gate_pred), full_acc_gate_grad.ptr(rect_full_gate_grad),
     acc_output_grad.ptr(rect_out_grad), n, k, rows, lambda_bal, batch_size, out_dim);
 }
@@ -641,9 +637,16 @@ void Aggregate::backward(const FFModel& ff)
 }
 
 
-AggregateMeta::AggregateMeta(FFHandler handler)
+AggregateMeta::AggregateMeta(FFHandler handler, int n)
 : OpMeta(handler)
 {
+  checkCUDA(cudaMalloc(&dev_exp_preds, n*sizeof(float*)));
+  checkCUDA(cudaMalloc(&dev_exp_grads, n*sizeof(float*)));
+}
+AggregateMeta::~AggregateMeta(void)
+{
+  checkCUDA(cudaFree(&dev_exp_preds));
+  checkCUDA(cudaFree(&dev_exp_grads));
 }
 
 
