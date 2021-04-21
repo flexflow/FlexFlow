@@ -28,6 +28,7 @@
 #include "ops/embedding.h"
 #include "ops/flat.h"
 #include "ops/element_unary.h"
+#include "ops/attention.h"
 #include "parallel_ops/combine.h"
 #include "parallel_ops/fused_parallel_op.h"
 #include "parallel_ops/partition.h"

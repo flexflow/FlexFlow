@@ -21,6 +21,7 @@
 #include "ops/linear.h"
 #include "ops/conv_2d.h"
 #include "ops/pool_2d.h"
+#include "ops/attention.h"
 #include "parallel_ops/combine.h"
 #include "parallel_ops/partition.h"
 #include "parallel_ops/replicate.h"
@@ -940,7 +941,7 @@ void FFModel::graph_optimize(size_t budget,
     } else if (cur_graph->optimal_cost() > best_cost * 1.2) {
       break;
     }
-    if (counter > 1000)
+    if (counter > config.search_budget)
       break;
     printf("    [%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)\n",
            counter, cur_graph->optimal_cost(), best_cost, candidates.size());

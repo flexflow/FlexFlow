@@ -128,6 +128,7 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/ops/pool_2d.h
   ${FLEXFLOW_ROOT}/include/ops/flat.h
   ${FLEXFLOW_ROOT}/include/ops/element_unary.h
+  ${FLEXFLOW_ROOT}/include/ops/attention.h
   ${FLEXFLOW_ROOT}/include/parallel_ops/combine.h
   ${FLEXFLOW_ROOT}/include/parallel_ops/fused_parallel_op.h
   ${FLEXFLOW_ROOT}/include/parallel_ops/partition.h
