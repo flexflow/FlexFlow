@@ -87,7 +87,7 @@ void Reduction::forward(const FFModel& ff)
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0/*projection id*/,
+      RegionRequirement(input_lp, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -109,12 +109,12 @@ void Reduction::backward(const FFModel& ff)
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       inputs[0]->machine_view.hash());
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
+      RegionRequirement(output_grad_lp, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, outputs[0]->region));
+      RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
+                        READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }

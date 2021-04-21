@@ -181,6 +181,8 @@ std::string optype_to_string(OperatorType op_type)
       return "Resize";
     case OP_SOFTMAX:
       return "Softmax";
+    case OP_MULTIHEAD_ATTENTION:
+      return "MultiHeadAttn";
     case OP_REPARTITION:
       return "Partition";
     case OP_REPLICATE:
@@ -1277,6 +1279,19 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
         sez.serialize(linear->activation);
         break;
       }
+      case OP_MULTIHEAD_ATTENTION:
+      {
+        MultiHeadAttention* attn = (MultiHeadAttention*) op;
+        sez.serialize(attn->oProjSize);
+        sez.serialize(attn->num_heads);
+        sez.serialize(attn->qProjSize);
+        sez.serialize(attn->vProjSize);
+        sez.serialize(attn->dropout);
+        sez.serialize(attn->bias);
+        sez.serialize(attn->add_bias_kv);
+        sez.serialize(attn->add_zero_attn);
+        break;
+      }
       case OP_SOFTMAX:
       {
         Softmax* softmax = (Softmax*) op;
@@ -1441,6 +1456,26 @@ void FFModel::deserialize_graph_optimal_view(Deserializer& dez,
         dez.deserialize(out_channels);
         dez.deserialize(activation);
         node = get_or_create_linear_node(inputs[0], out_channels, activation, false);
+        break;
+      }
+      case OP_MULTIHEAD_ATTENTION:
+      {
+        assert(num_inputs == 3);
+        int embed_dim, num_heads, k_dim, v_dim;
+        float dropout;
+        bool bias, add_bias_kv, add_zero_attn;
+        dez.deserialize(embed_dim);
+        dez.deserialize(num_heads);
+        dez.deserialize(k_dim);
+        dez.deserialize(v_dim);
+        dez.deserialize(dropout);
+        dez.deserialize(bias);
+        dez.deserialize(add_bias_kv);
+        dez.deserialize(add_zero_attn);
+        node = get_or_create_multihead_attn_node(inputs[0], inputs[1], inputs[2],
+                                                 embed_dim, num_heads,
+                                                 k_dim, v_dim, dropout,
+                                                 bias, add_bias_kv, add_zero_attn);
         break;
       }
       case OP_SOFTMAX:

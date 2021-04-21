@@ -378,6 +378,7 @@ class ElementUnary;
 class Embedding;
 class Flat;
 class Linear;
+class MultiHeadAttention;
 class Pool2D;
 class Softmax;
 class Combine;
@@ -676,6 +677,17 @@ public:
                                  int out_dim,
                                  ActiMode activation,
                                  bool use_bias);
+  Node get_or_create_multihead_attn_node(const Tensor query,
+                                         const Tensor key,
+                                         const Tensor value,
+                                         int embed_dim,
+                                         int num_heads,
+                                         int kdim,
+                                         int vdim,
+                                         float dropout,
+                                         bool bias,
+                                         bool add_bias_kv,
+                                         bool add_zero_attn);
   Node get_or_create_softmax_node(const Tensor input,
                                   int softmax_dim);
   Node get_or_create_repartition_node(const Tensor input,
@@ -827,6 +839,7 @@ public:
   std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
   std::unordered_map<size_t, Embedding*> cached_embedding_ops;
   std::unordered_map<size_t, Linear*> cached_linear_ops;
+  std::unordered_map<size_t, MultiHeadAttention*> cached_multihead_attn_ops;
   std::unordered_map<size_t, Softmax*> cached_softmax_ops;
   std::unordered_map<size_t, Repartition*> cached_repartition_ops;
   std::unordered_map<size_t, Replicate*> cached_replicate_ops;
@@ -1621,6 +1634,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
+  bool get_int_parameter(PMParameter, int*) const;
   //void create_input_partition(FFModel& model);
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);

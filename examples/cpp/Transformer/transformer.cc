@@ -54,14 +54,13 @@ void create_attention_encoder_decoder(
   output2 = t2;
 }
 
-
 TransformerConfig::TransformerConfig(void)
 {
-  hidden_size = 512;
-  embedding_size = 512;
+  hidden_size = 1024;
+  embedding_size = 1024;
   num_heads = 16;
-  num_layers = 12;
-  sequence_length = 128;
+  num_layers = 24;
+  sequence_length = 512;
 }
 
 void parse_input_args(char **argv, int argc, TransformerConfig& config)
@@ -116,22 +115,25 @@ void top_level_task(const Task* task,
     input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
   //Tensor t = create_emb(&ff, input, tfConfig.embedding_size, tfConfig.hidden_size);
-  Tensor input1 = input, input2 = input;
-  Tensor t1, t2;
+  //Tensor input1 = input, input2 = input;
+  //Tensor t1, t2;
+  Tensor t = input;
   for (int i = 0; i < tfConfig.num_layers; i++) {
-    //t = create_attention_encoder(&ff, t, tfConfig.hidden_size, tfConfig.num_heads, tfConfig.hidden_size, tfConfig.hidden_size);
-    create_attention_encoder_decoder(&ff, input1, input2, t1, t2,
-        tfConfig.hidden_size, tfConfig.num_heads,
-        tfConfig.hidden_size / tfConfig.num_heads,
-        tfConfig.hidden_size / tfConfig.num_heads);
-    input1 = t1;
-    input2 = t2;
+    t = create_attention_encoder(&ff, t, tfConfig.hidden_size, tfConfig.num_heads,
+                                 tfConfig.hidden_size / tfConfig.num_heads,
+                                 tfConfig.hidden_size / tfConfig.num_heads);
+    //create_attention_encoder_decoder(&ff, input1, input2, t1, t2,
+    //    tfConfig.hidden_size, tfConfig.num_heads,
+    //    tfConfig.hidden_size / tfConfig.num_heads,
+    //    tfConfig.hidden_size / tfConfig.num_heads);
+    //input1 = t1;
+    //input2 = t2;
   }
-  t2 = ff.dense(t2, 1);
+  t = ff.dense(t, 1);
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.01f);
   std::vector<MetricsType> metrics;
   //metrics.push_back(METRICS_ACCURACY);
-  metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
+  //metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
   ff.compile(optimizer, LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics);
   // Data Loader
   DataLoader loader(ff, tfConfig, input, ff.label_tensor);
@@ -251,6 +253,7 @@ void DataLoader::load_entire_dataset(const Task *task,
 
 void DataLoader::next_batch(FFModel& ff)
 {
+  return;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   // Load Input

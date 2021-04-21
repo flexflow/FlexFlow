@@ -764,4 +764,52 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
   return true;
 }
 
+bool MultiHeadAttention::get_int_parameter(PMParameter para, int* value) const
+{
+  switch (para) {
+    case PM_NUM_HEADS:
+      *value = num_heads;
+      return true;
+    default:
+      return Op::get_int_parameter(para, value);
+  }
+}
+
+Node FFModel::get_or_create_multihead_attn_node(const Tensor query,
+                                                const Tensor key,
+                                                const Tensor value,
+                                                int embed_dim,
+                                                int num_heads,
+                                                int kdim,
+                                                int vdim,
+                                                float dropout,
+                                                bool bias,
+                                                bool add_bias_kv,
+                                                bool add_zero_attn)
+{
+  size_t hash = query->get_owner_independent_hash();
+  hash = hash * 31 + key->get_owner_independent_hash();
+  hash = hash * 31 + value->get_owner_independent_hash();
+  hash = hash * 31 + std::hash<int>()(embed_dim);
+  hash = hash * 31 + std::hash<int>()(num_heads);
+  hash = hash * 31 + std::hash<int>()(kdim);
+  hash = hash * 31 + std::hash<int>()(vdim);
+  hash = hash * 31 + std::hash<int>()((int)bias);
+  hash = hash * 31 + std::hash<int>()((int)add_bias_kv);
+  hash = hash * 31 + std::hash<int>()((int)add_zero_attn);
+  const auto& it = cached_multihead_attn_ops.find(hash);
+  MultiHeadAttention* attn = NULL;
+  if (it != cached_multihead_attn_ops.end()) {
+    attn = it->second;
+  } else {
+    attn = new MultiHeadAttention(*this, query, key, value, embed_dim, num_heads,
+                                  kdim, vdim, dropout, bias,
+                                  add_bias_kv, add_zero_attn, NULL);
+    cached_multihead_attn_ops[hash] = attn;
+  }
+  Node ret;
+  ret.guid = node_global_guid ++;
+  ret.ptr = attn;
+  return ret;
+}
 

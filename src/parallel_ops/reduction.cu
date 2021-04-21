@@ -101,7 +101,7 @@ void Reduction::backward_task(
     ctx, task->regions[0].region.get_index_space());
   Domain input_grad_domain = runtime->get_index_space_domain(
     ctx, task->regions[1].region.get_index_space());
-  assert(input_grad_domain == output_grad_domain);
+  assert(input_grad_domain.get_volume() == output_grad_domain.get_volume());
   const float* output_grad_ptr = helperGetTensorPointerRO<float>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float* input_grad_ptr = helperGetTensorPointerWO<float>(
