@@ -121,6 +121,11 @@ public:
                      int num_dims,
                      ActiMode acti_mode,
                      bool use_bias);
+  OpX* create_attention(const TensorX& query,
+                        const TensorX& key,
+                        const TensorX& value,
+                        const OpX* match_opx,
+                        int num_heads);
   OpX* create_softmax(const TensorX& input,
                       int softmax_dim);
   // Parallel Ops

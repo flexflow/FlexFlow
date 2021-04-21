@@ -1167,12 +1167,13 @@ void Op::set_argumentmap_for_init(const FFModel& ff,
     { \
       Rect<DIM> rect = domain; \
       MachineView view = outputs[0]->machine_view; \
-      ncclComm_t* nccl_comms = NULL; \
-      nccl_comms = ff.find_nccl_comms(view); \
       int idx = 0; \
       for (PointInRectIterator<DIM> it(rect); it(); it++) { \
         FFHandler handle = ff.handlers[view.get_device_id(*it)]; \
-        handle.ncclComm = nccl_comms[idx++]; \
+        if (ff.config.computationMode == COMP_MODE_TRAINING && op_type == OP_WEIGHT) {\
+          ncclComm_t* nccl_comms = ff.find_nccl_comms(view); \
+          handle.ncclComm = nccl_comms[idx++]; \
+        } \
         argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
       } \
       break; \
@@ -1430,7 +1431,7 @@ ncclComm_t* FFModel::find_nccl_comms(const MachineView& view) const
 {
   const auto& it = view_hash_to_nccl_comms.find(view.hash());
   if (it == view_hash_to_nccl_comms.end()) {
-    assert(false);
+    assert(config.computationMode == COMP_MODE_INFERENCE);
     return NULL;
   } else {
     return it->second;

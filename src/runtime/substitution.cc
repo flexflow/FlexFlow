@@ -43,6 +43,14 @@ GraphXfer* create_partition_linear_combine(FFModel* model,
                                            ActiMode activation,
                                            bool use_bias);
 
+GraphXfer* create_partition_attention_combine(FFModel* model,
+                                              int num_heads,
+                                              int num_parts);
+
+GraphXfer* create_replicate_attention_reduce(FFModel* model,
+                                             int num_heads,
+                                             int num_parts);
+
 GraphXfer* create_partition_add_combine(FFModel* model,
                                         int parallel_dim,
                                         int num_parts);
@@ -468,7 +476,8 @@ Graph* GraphXfer::create_new_graph(Graph* graph)
   // and fusing multiple parallel ops
   // old graph: e1->n1->e2->n2->en
   // new graph: e1->new_node->en
-  bool simplify = true;
+  // TODO: temporarily disabled graph simplification
+  bool simplify = false;
   while (simplify) {
     simplify = false;
     for (const auto& it : newGraph->inEdges) {
@@ -477,8 +486,10 @@ Graph* GraphXfer::create_new_graph(Graph* graph)
         Node n2 = it.first;
         assert(it.second.size() == 1);
         Edge e2 = *it.second.begin();
-        if (e2.srcOp.ptr != NULL && e2.srcOp.ptr->is_parallel_op()) {
-          Node n1 = e2.srcOp;
+        Node n1 = e2.srcOp;
+        // Check that n1 is a parallel op
+        // Check that n1 must have a single out edge
+        if (n1.ptr->is_parallel_op() && newGraph->outEdges.find(n1)->second.size() == 1) {
           // merge n1 and n2
           std::vector<ParallelOpInfo> parallel_ops;
           ((ParallelOp*)n1.ptr)->append_parallel_op_info(parallel_ops);
@@ -592,6 +603,20 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
       assert(opx->get_pm_constraint(PM_ACTI, activation));
       op = model->get_or_create_linear_node(inputs[0], linear->out_channels,
                                             (ActiMode)activation, false);
+      break;
+    }
+    case OP_MULTIHEAD_ATTENTION:
+    {
+      int num_heads;
+      assert(opx->matchOpX != NULL);
+      assert(opx->matchOpX->mapOp.ptr != NULL);
+      MultiHeadAttention* attn = (MultiHeadAttention*) opx->matchOpX->mapOp.ptr;
+      assert(opx->get_pm_constraint(PM_NUM_HEADS, num_heads));
+      op = model->get_or_create_multihead_attn_node(inputs[0], inputs[1], inputs[2],
+                                                    attn->oProjSize, num_heads,
+                                                    attn->qProjSize, attn->vProjSize,
+                                                    attn->dropout, attn->bias,
+                                                    attn->add_bias_kv, attn->add_zero_attn);
       break;
     }
     case OP_SOFTMAX:
@@ -720,6 +745,21 @@ OpX* GraphXfer::create_linear(const TensorX& input,
   li->add_pm_constraint(COMPARE_EQ, PM_ACTI, acti_mode);
   li->add_input_constraint(COMPARE_EQ, INPUT_0, DIM_ND, num_dims);
   return li;
+}
+
+OpX* GraphXfer::create_attention(const TensorX& query,
+                                 const TensorX& key,
+                                 const TensorX& value,
+                                 const OpX* _matchOpX,
+                                 int num_heads)
+{
+  OpX* attn = new OpX(OP_MULTIHEAD_ATTENTION, 3, 1, query, key, value);
+  attn->matchOpX = _matchOpX;
+  attn->add_pm_constraint(COMPARE_EQ, PM_NUM_HEADS, num_heads);
+  attn->add_input_constraint(COMPARE_EQ, INPUT_0, DIM_ND, 4);
+  attn->add_input_constraint(COMPARE_EQ, INPUT_1, DIM_ND, 4);
+  attn->add_input_constraint(COMPARE_EQ, INPUT_2, DIM_ND, 4);
+  return attn;
 }
 
 OpX* GraphXfer::create_softmax(const TensorX& input,
@@ -857,12 +897,20 @@ void FFModel::graph_optimize(size_t budget,
     xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_RELU, false));
     xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_SIGMOID, false));
     xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_NONE, false));
+    if (16 % it == 0) {
+      xfers.push_back(create_replicate_attention_reduce(this, 16/*num_heads*/, it));
+    }
   }
   for (const auto& it : all_parallel_degrees) {
     if (it != config.numNodes * config.workersPerNode) continue;
-    xfers.push_back(create_partition_linear_combine(this, 3, it, AC_MODE_RELU, false));
-    xfers.push_back(create_partition_linear_combine(this, 3, it, AC_MODE_SIGMOID, false));
-    xfers.push_back(create_partition_linear_combine(this, 3, it, AC_MODE_NONE, false));
+    xfers.push_back(create_partition_attention_combine(this, 16/*num_heads*/, it));
+    xfers.push_back(create_partition_linear_combine(this, 3/*num_dims*/, it, AC_MODE_RELU, false));
+    xfers.push_back(create_partition_linear_combine(this, 3/*num_dims*/, it, AC_MODE_SIGMOID, false));
+    xfers.push_back(create_partition_linear_combine(this, 3/*num_dims*/, it, AC_MODE_NONE, false));
+    xfers.push_back(create_partition_linear_combine(this, 4/*num_dims*/, it, AC_MODE_RELU, false));
+    xfers.push_back(create_partition_linear_combine(this, 4/*num_dims*/, it, AC_MODE_SIGMOID, false));
+    xfers.push_back(create_partition_linear_combine(this, 4/*num_dims*/, it, AC_MODE_NONE, false));
+    xfers.push_back(create_partition_add_combine(this, 2/*parallel_dims*/, it/*num_parts*/));
     xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, it/*num_parts*/));
     xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
     {
@@ -995,6 +1043,43 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
         new_op = new Linear(*this, *(Linear*)node.ptr, inputs[0], true);
         break;
       }
+      case OP_MULTIHEAD_ATTENTION:
+      {
+        assert(inList.size() == 3);
+        MultiHeadAttention* attn = (MultiHeadAttention*) node.ptr;
+        // Create weight tensor
+        Tensor kernel;
+        {
+          int num_dims = inputs[0]->num_dims;
+          // Compute weight size
+          int qParas = attn->qProjSize * attn->qSize;
+          int kParas = attn->kProjSize * attn->kSize;
+          int vParas = attn->vProjSize * attn->vSize;
+          int oParas = attn->oProjSize * (attn->vProjSize > 0 ? attn->vProjSize : attn->vSize);
+          ParallelDim dims[3];
+          dims[0] = inputs[0]->dims[num_dims-2];
+          dims[0].size = dims[0].degree;
+          dims[1] = inputs[0]->dims[num_dims-1];
+          dims[1].size = attn->num_heads;
+          dims[2].size = qParas + kParas + vParas + oParas;
+          int seed = std::rand();
+          Initializer* initializer = new GlorotUniform(seed);
+#ifdef FF_USE_NCCL
+          ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+          ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+          kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
+                                    true/*create_grad*/, initializer,
+                                    comm_type);
+        }
+        new_op = new MultiHeadAttention(*this, inputs[0], inputs[1], inputs[2], kernel,
+                                        attn->oProjSize, attn->num_heads,
+                                        attn->qProjSize, attn->vProjSize,
+                                        attn->dropout, attn->bias,
+                                        attn->add_bias_kv, attn->add_zero_attn, NULL);
+        break;
+      }
       case OP_SOFTMAX:
       {
         assert(inList.size() == 1);
@@ -1111,6 +1196,45 @@ GraphXfer* create_partition_linear_combine(FFModel* model,
   subst->dstOps.push_back(repartition);
   subst->dstOps.push_back(linear2);
   subst->dstOps.push_back(combine);
+  return subst;
+}
+
+GraphXfer* create_partition_attention_combine(FFModel* model,
+                                              int num_heads,
+                                              int num_parts)
+{
+  GraphXfer* subst = new GraphXfer(model);
+  TensorX input = subst->new_tensor();
+  OpX* attn1 = subst->create_attention(input, input, input, NULL/*matchOpX*/, num_heads);
+  OpX* repart = subst->create_repartition(input, 2, num_parts);
+  OpX* attn2 = subst->create_attention(repart->outputs[0], repart->outputs[0], repart->outputs[0],
+                                       attn1/*matchOpX*/, num_heads);
+  OpX* combine = subst->create_combine(attn2->outputs[0], 2, num_parts);
+  subst->map_output(attn1->outputs[0], combine->outputs[0]);
+  subst->srcOps.push_back(attn1);
+  subst->dstOps.push_back(repart);
+  subst->dstOps.push_back(attn2);
+  subst->dstOps.push_back(combine);
+  return subst;
+}
+
+GraphXfer* create_replicate_attention_reduce(FFModel* model,
+                                             int num_heads,
+                                             int num_parts)
+{
+  assert(num_heads % num_parts == 0);
+  GraphXfer* subst = new GraphXfer(model);
+  TensorX input = subst->new_tensor();
+  OpX* attn1 = subst->create_attention(input, input, input, NULL/*matchOpX*/, num_heads);
+  OpX* repl = subst->create_replicate(input, 3, num_parts);
+  OpX* attn2 = subst->create_attention(repl->outputs[0], repl->outputs[0], repl->outputs[0],
+                                       attn1/*matchOpX*/, num_heads / num_parts);
+  OpX* reduce = subst->create_reduction(attn2->outputs[0], 3, num_parts);
+  subst->map_output(attn1->outputs[0], reduce->outputs[0]);
+  subst->srcOps.push_back(attn1);
+  subst->dstOps.push_back(repl);
+  subst->dstOps.push_back(attn2);
+  subst->dstOps.push_back(reduce);
   return subst;
 }
 

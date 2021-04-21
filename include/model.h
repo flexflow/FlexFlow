@@ -15,7 +15,6 @@
 #ifndef _FLEXFLOW_MODEL_H_
 #define _FLEXFLOW_MODEL_H_
 #include "legion.h"
-
 #include "config.h"
 #include "tensor.h"
 #include "initializer.h"
@@ -411,6 +410,7 @@ class ElementUnary;
 class Embedding;
 class Flat;
 class Linear;
+class MultiHeadAttention;
 class Pool2D;
 class Softmax;
 class Combine;
@@ -721,6 +721,17 @@ public:
                                  int out_dim,
                                  ActiMode activation,
                                  bool use_bias);
+  Node get_or_create_multihead_attn_node(const Tensor query,
+                                         const Tensor key,
+                                         const Tensor value,
+                                         int embed_dim,
+                                         int num_heads,
+                                         int kdim,
+                                         int vdim,
+                                         float dropout,
+                                         bool bias,
+                                         bool add_bias_kv,
+                                         bool add_zero_attn);
   Node get_or_create_softmax_node(const Tensor input,
                                   int softmax_dim);
   Node get_or_create_repartition_node(const Tensor input,
@@ -886,6 +897,7 @@ public:
   std::unordered_map<size_t, Conv2D*> cached_conv2d_ops;
   std::unordered_map<size_t, Pool2D*> cached_pool2d_ops;
   std::unordered_map<size_t, Flat*> cached_flat_ops;
+  std::unordered_map<size_t, MultiHeadAttention*> cached_multihead_attn_ops;
   std::unordered_map<size_t, Softmax*> cached_softmax_ops;
   std::unordered_map<size_t, Repartition*> cached_repartition_ops;
   std::unordered_map<size_t, Replicate*> cached_replicate_ops;
@@ -1243,6 +1255,15 @@ public:
                      const Tensor _query,
                      const Tensor _key,
                      const Tensor _value,
+                     int _embed_dim, int _num_heads,
+                     int _kdim, int _vdim,
+                     float _dropout, bool _bias,
+                     bool _add_bias_kv, bool _add_zero_attn,
+                     const char* name);
+  MultiHeadAttention(FFModel& model,
+                     const Tensor _query,
+                     const Tensor _key,
+                     const Tensor _value,
                      const Tensor _weight,
                      int _embed_dim, int _num_heads,
                      int _kdim, int _vdim,
@@ -1253,6 +1274,7 @@ public:
   void forward(const FFModel&);
   void backward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
+  bool get_int_parameter(PMParameter, int*) const;
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -1283,7 +1305,7 @@ public:
                        float* weight_grad_ptr,
                        const float* output_grad_ptr);
 public:
-  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+  int num_heads, qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
   float dropout;
   bool bias, add_bias_kv, add_zero_attn;

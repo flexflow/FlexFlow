@@ -175,6 +175,7 @@ enum PMParameter {
   PM_REDUCTION_DIM,     // Reduction
   PM_REDUCTION_DEGREE,  // Reduction
   PM_SOFTMAX_DIM,       // Softmax
+  PM_NUM_HEADS,         // MultiHeadAttention
 };
 
 enum TNParameter {
