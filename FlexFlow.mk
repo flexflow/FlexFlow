@@ -49,7 +49,6 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/runtime/optimizer.cc\
 		${FF_HOME}/src/runtime/graph.cc\
 		${FF_HOME}/src/runtime/substitution.cc\
-		${FF_HOME}/src/ops/embedding.cc\
 		${FF_HOME}/src/ops/group_by.cc\
 		${FF_HOME}/src/ops/aggregate.cc\
 		${FF_HOME}/src/ops/noop.cc\
