@@ -22,6 +22,7 @@
 #include "ops/conv_2d.h"
 #include "ops/pool_2d.h"
 #include "ops/attention.h"
+#include "ops/flat.h"
 #include "parallel_ops/combine.h"
 #include "parallel_ops/partition.h"
 #include "parallel_ops/replicate.h"
@@ -594,6 +595,25 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
       op = model->get_or_create_element_binary_node(inputs[0], inputs[1], opx->type);
       break;
     }
+    case OP_CONV2D:
+    {
+      Conv2D* conv = (Conv2D*)opx->matchOpX->mapOp.ptr;
+      Conv2DParams params = conv->get_params();
+      op = model->get_or_create_conv2d_node(inputs[0], params);
+      break;
+    }
+    case OP_POOL2D:
+    {
+      Pool2D* pool = (Pool2D*)opx->matchOpX->mapOp.ptr;
+      Pool2DParams params = pool->get_params();
+      op = model->get_or_create_pool2d_node(inputs[0], params);
+      break;
+    }
+    case OP_FLAT:
+    {
+      op = model->get_or_create_flat_node(inputs[0]);
+      break;
+    }
     case OP_LINEAR:
     {
       int activation;
@@ -748,6 +768,14 @@ OpX* GraphXfer::create_linear(const TensorX& input,
   return li;
 }
 
+OpX* GraphXfer::create_conv2d(const TensorX& input,
+                              const OpX* matchOpX) 
+{
+  OpX* conv = new OpX(OP_CONV2D, 1, 1, input);
+  conv->matchOpX = matchOpX;
+  return conv;
+}
+
 OpX* GraphXfer::create_attention(const TensorX& query,
                                  const TensorX& key,
                                  const TensorX& value,
@@ -860,6 +888,67 @@ void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineVi
   dot.close();
 }
 
+template <typename T>
+void create_mapping_xfers(FFModel *model, int degree, std::vector<GraphXfer*> &xfers, tl::optional<std::unordered_set<int>> dims = tl::nullopt)
+{
+  std::vector<ParallelDimMappingRecord> records; 
+  T::construct_output_mappings(records);
+  std::unordered_map<int, ParallelDimMappingRecord> output_mappings;
+
+  std::unordered_set<int> all_dims;
+  for (ParallelDimMappingRecord const &record : records) {
+    assert (record.input_idx == 0);
+    assert (record.get_type() == MappingRecordType::INPUT_OUTPUT);
+    assert (record.output_idx == 0);
+    assert (record.operation.has_value());
+
+    all_dims.insert(record.input_dim);
+    output_mappings.insert({record.input_dim, record});
+  }
+
+  if (dims.has_value()) {
+    all_dims = dims.value();
+  } 
+
+  for (int const input_dim : all_dims) {
+    int output_dim = output_mappings.at(input_dim).output_dim;
+    GraphXfer *subst = new GraphXfer(model); 
+    TensorX input = subst->new_tensor();
+
+    OpX* original_op = subst->create_opx<T>(input, NULL/*matchOpX*/);
+    subst->srcOps.push_back(original_op);
+
+    OpX *pre;
+    switch (output_mappings.at(input_dim).operation.value()) {
+      case MappingOperation::PARTITION: 
+        pre = subst->create_repartition(input, input_dim, degree);
+        break;
+      case MappingOperation::REPLICATE:
+        pre = subst->create_replicate(input, input_dim, degree);
+        break;
+    }
+    subst->dstOps.push_back(pre);
+
+    OpX* new_op = subst->create_conv2d(pre->outputs[0], original_op/*matchOpX*/);
+    subst->dstOps.push_back(new_op);
+
+    OpX *post;
+    switch (output_mappings.at(input_dim).operation.value()) {
+      case MappingOperation::PARTITION: 
+        post = subst->create_combine(new_op->outputs[0], output_dim, degree);
+        break;
+      case MappingOperation::REPLICATE:
+        post = subst->create_reduction(new_op->outputs[0], output_dim, degree);
+        break;
+    }
+    subst->dstOps.push_back(post);
+
+    subst->map_output(original_op->outputs[0], post->outputs[0]);
+
+    xfers.push_back(subst);
+  }
+}
+
 void FFModel::graph_optimize(size_t budget,
                              bool only_data_parallel,
                              Graph*& best_graph,
@@ -901,6 +990,11 @@ void FFModel::graph_optimize(size_t budget,
     if (16 % it == 0) {
       xfers.push_back(create_replicate_attention_reduce(this, 16/*num_heads*/, it));
     }
+  }
+  for (const int degree : all_parallel_degrees) {
+    create_mapping_xfers<Conv2D>(this, degree, xfers);
+    create_mapping_xfers<Pool2D>(this, degree, xfers);
+    create_mapping_xfers<Flat>(this, degree, xfers);
   }
   for (const auto& it : all_parallel_degrees) {
     if (it != config.numNodes * config.workersPerNode) continue;
@@ -1178,6 +1272,25 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
   return true;
 }
 
+template <>
+OpX* GraphXfer::create_opx<Conv2D>(const TensorX& input, const OpX* matchOpX) {
+  return this->create_conv2d(input, matchOpX);
+}
+
+template <>
+OpX* GraphXfer::create_opx<Pool2D>(const TensorX& input, const OpX* matchOpX) {
+  OpX* pool = new OpX(OP_POOL2D, 1, 1, input);
+  pool->matchOpX = matchOpX;
+  return pool;
+}
+
+template <>
+OpX* GraphXfer::create_opx<Flat>(const TensorX& input, const OpX* matchOpX) {
+  OpX* flat = new OpX(OP_FLAT, 1, 1, input);
+  flat->matchOpX = matchOpX;
+  return flat;
+}
+
 GraphXfer* create_partition_linear_combine(FFModel* model,
                                            int num_dims,
                                            int num_parts,
@@ -1348,4 +1461,3 @@ GraphXfer* create_partition_softmax_combine(FFModel* model,
   subst->dstOps.push_back(combine);
   return subst;
 }
-

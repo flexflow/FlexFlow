@@ -3,6 +3,12 @@
 
 #include "model.h"
 
+struct Conv2DParams {
+  int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
+  ActiMode activation;
+  bool use_bias;
+};
+
 class Conv2DMeta : public OpMeta {
 public:
   Conv2DMeta(FFHandler handler);
@@ -69,10 +75,12 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
 
-/* #ifndef __CUDACC__ */
   void serialize(Legion::Serializer& s) const override;
   static Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
-/* #endif */ 
+
+  static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
+  static void construct_mappings(std::vector<ParallelDimMappingRecord> &, bool use_bias);
+  static void construct_weight_mappings(std::vector<ParallelDimMappingRecord> &, bool use_bias);
 private:
   void mark_replica_dims(ParallelDim output_dims[MAX_TENSOR_DIM],
                          ParallelDim kernel_dims[MAX_TENSOR_DIM],
@@ -82,14 +90,64 @@ private:
   int bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]); 
 
   void register_mappings();
-  void register_output_mappings();
-  void register_weight_mappings();
 public:
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
   bool use_bias;
   ActiMode activation;
 
   friend struct Conv2DModelCacheHash;
+
+  Conv2DParams get_params() const;
+
+  struct Input {
+    static constexpr int INDEX = 0;
+
+    enum {
+      WIDTH = 0,
+      HEIGHT = 1,
+      CHANNEL = 2,
+      SAMPLE = 3,
+      REPLICA = 4,
+      NUMDIM
+    };
+  };
+
+  struct Output {
+    enum {
+      WIDTH = 0,
+      HEIGHT = 1,
+      CHANNEL = 2,
+      SAMPLE = 3,
+      REPLICA = 4,
+      NUMDIM
+    };
+  };
+
+  struct Kernel {
+    static constexpr int INDEX = 0;
+
+    enum {
+      WIDTH = 0,
+      HEIGHT = 1,
+      CHANNEL_IN = 2,
+      CHANNEL_OUT = 3,
+      REPLICA = 4,
+      NUMDIM
+    };
+  };
+
+  struct Bias {
+    static constexpr int INDEX = 1;
+
+    enum {
+      CHANNEL = 0,
+      REPLICA_1 = 1,
+      REPLICA_2 = 2,
+      REPLICA_3 = 3,
+      REPLICA_4 = 4,
+      NUMDIM
+    };
+  };
 };
 
 #endif // _FLEXFLOW_CONV_2D_H

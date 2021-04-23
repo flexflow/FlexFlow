@@ -51,6 +51,33 @@ namespace Output {
                 REPLICA = 4;
 };
 
+Pool2DParams Pool2D::get_params() const {
+  Pool2DParams params;
+  params.kernel_h = this->kernel_h;
+  params.kernel_w = this->kernel_w;
+  params.stride_h = this->stride_h;
+  params.stride_w = this->stride_w;
+  params.padding_h = this->padding_h;
+  params.padding_w = this->padding_w;
+  params.pool_type = this->pool_type;
+  params.activation = this->activation;
+
+  return params;
+}
+
+Node FFModel::get_or_create_pool2d_node(const Tensor input,
+                                        const Pool2DParams& params)
+{
+  return this->get_or_create_pool2d_node(
+      input, 
+      params.kernel_h, params.kernel_w,
+      params.stride_h, params.stride_w,
+      params.padding_h, params.padding_w,
+      params.pool_type,
+      params.activation
+  );
+}
+
 Node FFModel::get_or_create_pool2d_node(const Tensor input,
                                         int kernelH, int kernelW,
                                         int strideH, int strideW,
@@ -109,14 +136,22 @@ int Pool2D::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
   return Output::NUMDIM;
 }
 
+/*static*/
+void Pool2D::construct_output_mappings(std::vector<ParallelDimMappingRecord>& mappings) {
+  Op::construct_output_parallel_dims(
+    mappings,
+    {
+      {Input::REPLICA, MappingOperation::PARTITION, Output::REPLICA},
+      {Input::SAMPLE, MappingOperation::PARTITION, Output::SAMPLE},
+      {Input::CHANNEL, MappingOperation::PARTITION, Output::CHANNEL},
+      {Input::HEIGHT, MappingOperation::PARTITION, Output::HEIGHT},
+      {Input::WIDTH, MappingOperation::PARTITION, Output::WIDTH},
+    }
+  );
+}
+
 void Pool2D::register_output_mappings() {
-  this->register_output_parallel_dims({
-    {Input::REPLICA, Output::REPLICA},
-    {Input::SAMPLE, Output::SAMPLE},
-    {Input::CHANNEL, Output::CHANNEL},
-    {Input::HEIGHT, Output::HEIGHT},
-    {Input::WIDTH, Output::WIDTH},
-  });
+  Pool2D::construct_output_mappings(*this->parallel_dims_mapping);
 }
 
 void Pool2D::register_mappings() {

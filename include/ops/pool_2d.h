@@ -3,6 +3,12 @@
 
 #include "model.h"
 
+struct Pool2DParams {
+  int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
+  PoolType pool_type;
+  ActiMode activation;
+};
+
 class Pool2DMeta : public OpMeta {
 public:
   Pool2DMeta(FFHandler handle);
@@ -53,10 +59,10 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
 
-/* #ifndef __CUDACC__ */
   void serialize(Legion::Serializer &) const override;
   static Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
-/* #endif */
+  static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
+  Pool2DParams get_params() const;
 private:
   int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]); 
 

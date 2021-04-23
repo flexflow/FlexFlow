@@ -77,12 +77,20 @@ int Flat::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) const {
   return Output::NUMDIM;
 }
 
+/*static*/
+void Flat::construct_output_mappings(std::vector<ParallelDimMappingRecord>& mappings) {
+  Op::construct_output_parallel_dims(
+    mappings,
+    {
+      { Input::REPLICA, MappingOperation::PARTITION, Output::REPLICA },
+      { Input::SAMPLE, MappingOperation::PARTITION, Output::SAMPLE },
+      { Input::CHANNEL, MappingOperation::PARTITION, Output::CHANNEL }
+    }
+  );
+}
+
 void Flat::register_output_mappings() {
-  this->register_output_parallel_dims({
-    { Input::REPLICA, Output::REPLICA },
-    { Input::SAMPLE, Output::SAMPLE },
-    { Input::CHANNEL, Output::CHANNEL }
-  });
+  Flat::construct_output_mappings(*this->parallel_dims_mapping);
 }
 
 void Flat::register_mappings() {

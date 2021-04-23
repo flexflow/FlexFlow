@@ -328,6 +328,8 @@ bool TensorBase::check_valid() const
       return false;
     if (dims[i].parallel_idx > MAX_TENSOR_DIM)
       return false;
+    assert (dims[i].parallel_idx >= -1);
+    assert (dims[i].degree >= 1);
     if (dims[i].parallel_idx >= 0) {
       if (used[dims[i].parallel_idx])
         return false;
@@ -954,9 +956,11 @@ ParallelDimMappingRecord::ParallelDimMappingRecord(MappingRecordType type)
 /*static*/
 ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
     int input_idx, int input_dim,
-    int output_idx, int output_dim)
+    int output_idx, int output_dim,
+    tl::optional<MappingOperation> operation)
 {
   ParallelDimMappingRecord r(MappingRecordType::INPUT_OUTPUT);  
+  r.operation = operation;
 
   assert (output_idx >= 0);
   assert (output_dim >= 0);
@@ -974,9 +978,11 @@ ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
 /*static*/
 ParallelDimMappingRecord ParallelDimMappingRecord::input_weight_record(
     int input_idx, int input_dim,
-    int weight_idx, int weight_dim)
+    int weight_idx, int weight_dim,
+    tl::optional<MappingOperation> operation)
 {
   ParallelDimMappingRecord r(MappingRecordType::INPUT_WEIGHT);
+  r.operation = operation;
 
   assert (input_idx >= 0);
   assert (input_dim >= 0);
@@ -996,22 +1002,104 @@ MappingRecordType ParallelDimMappingRecord::get_type() const {
 }
 
 
-void Op::register_weight_parallel_dims(
+/*static*/
+void Op::construct_weight_parallel_dims(
+    std::vector<ParallelDimMappingRecord>& records,
+    std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx, int weight_idx)
+{
+  for (std::tuple<int, MappingOperation, int> const &mapping : mappings) {
+    Op::construct_weight_parallel_dims(
+        records,
+        std::get<0>(mapping), std::get<2>(mapping), input_idx, weight_idx, std::get<1>(mapping));
+  }
+}
+
+/*static*/
+void Op::construct_weight_parallel_dims(
+    std::vector<ParallelDimMappingRecord>& records,
     std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx)
 {
   for (std::pair<int, int> const &mapping : mappings) {
-    this->register_weight_parallel_dims(
+    Op::construct_weight_parallel_dims(
+      records,
       mapping.first, mapping.second, input_idx, weight_idx);
   }
 }
 
-void Op::register_weight_parallel_dims(
-    int input_dim, int weight_dim, int input_idx, int weight_idx)
+/*static*/
+void Op::construct_weight_parallel_dims(
+    std::vector<ParallelDimMappingRecord>& records,
+    int input_dim, int weight_dim, int input_idx, int weight_idx, tl::optional<MappingOperation> operation)
 {
-  this->parallel_dims_mapping->push_back(
+  records.push_back(
     ParallelDimMappingRecord::input_weight_record(
       input_idx, input_dim,
-      weight_idx, weight_dim
+      weight_idx, weight_dim,
+      operation
+    )
+  );
+}
+
+void Op::register_weight_parallel_dims(
+    std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx) 
+{
+  Op::construct_weight_parallel_dims(
+      *this->parallel_dims_mapping,
+      mappings, input_idx, weight_idx); 
+}
+
+void Op::register_weight_parallel_dims(
+    std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx, int weight_idx) 
+{
+  Op::construct_weight_parallel_dims(
+      *this->parallel_dims_mapping, 
+      mappings, input_idx, weight_idx);
+}
+
+void Op::register_weight_parallel_dims(
+    int input_dim, int weight_dim, 
+    int input_idx, int weight_idx, 
+    tl::optional<MappingOperation> operation) 
+{
+  Op::construct_weight_parallel_dims(
+      *this->parallel_dims_mapping,
+      input_dim, weight_dim, input_idx, weight_idx, operation);
+}
+
+/*static*/
+void Op::construct_output_parallel_dims(
+    std::vector<ParallelDimMappingRecord>& records,
+    std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx, int output_idx)
+{
+  for (std::tuple<int, MappingOperation, int> const &mapping : mappings) {
+    Op::construct_output_parallel_dims(
+        records,
+        std::get<0>(mapping), std::get<2>(mapping), input_idx, output_idx, std::get<1>(mapping));
+  }
+}
+
+/*static*/
+void Op::construct_output_parallel_dims(
+    std::vector<ParallelDimMappingRecord>& records,
+    std::vector<std::pair<int, int>> mappings, int input_idx, int output_idx)
+{
+  for (std::pair<int, int> const &mapping : mappings) {
+    Op::construct_output_parallel_dims(
+        records,
+        mapping.first, mapping.second, input_idx, output_idx);
+  }
+}
+
+/*static*/
+void Op::construct_output_parallel_dims(
+    std::vector<ParallelDimMappingRecord>& records,
+    int input_dim, int output_dim, int input_idx, int output_idx, tl::optional<MappingOperation> operation) 
+{
+  records.push_back(
+    ParallelDimMappingRecord::input_output_record(
+      input_idx, input_dim,
+      output_idx, output_dim, 
+      operation
     )
   );
 }
@@ -1019,21 +1107,27 @@ void Op::register_weight_parallel_dims(
 void Op::register_output_parallel_dims(
     std::vector<std::pair<int, int>> mappings, int input_idx, int output_idx)
 {
-  for (std::pair<int, int> const &mapping : mappings) {
-    this->register_output_parallel_dims(
-        mapping.first, mapping.second, input_idx, output_idx);
-  }
+  Op::construct_output_parallel_dims(
+      *this->parallel_dims_mapping,
+      mappings, input_idx, output_idx);
 }
 
 void Op::register_output_parallel_dims(
-    int input_dim, int output_dim, int input_idx, int output_idx) 
+    std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx, int output_idx)
 {
-  this->parallel_dims_mapping->push_back(
-    ParallelDimMappingRecord::input_output_record(
-      input_idx, input_dim,
-      output_idx, output_dim
-    )
-  );
+  Op::construct_output_parallel_dims(
+      *this->parallel_dims_mapping,
+      mappings, input_idx, output_idx);
+}
+
+void Op::register_output_parallel_dims(
+    int input_dim, int output_dim, 
+    int input_idx, int output_idx, 
+    tl::optional<MappingOperation> operation)
+{
+  Op::construct_output_parallel_dims(  
+      *this->parallel_dims_mapping, 
+      input_dim, output_dim, input_idx, output_idx, operation);
 }
 
 int Op::get_output_to_input_dim_mapping(

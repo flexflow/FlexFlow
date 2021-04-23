@@ -18,6 +18,10 @@
 #include "hash_utils.h"
 
 using namespace Legion;
+using Input = Conv2D::Input;
+using Output = Conv2D::Output;
+using Bias = Conv2D::Bias;
+using Kernel = Conv2D::Kernel;
 
 Tensor FFModel::conv2d(const Tensor input,
                        int outChannels,
@@ -51,53 +55,35 @@ Tensor FFModel::conv2d(const Tensor input,
   return conv->outputs[0];
 }
 
-namespace Input {
-  enum {
-    WIDTH = 0,
-    HEIGHT = 1,
-    CHANNEL = 2,
-    SAMPLE = 3,
-    REPLICA = 4,
-    NUMDIM
-  };
-};
+Conv2DParams Conv2D::get_params() const {
+  Conv2DParams params;
+  params.out_channels = this->out_channels;
+  params.kernel_h = this->kernel_h;
+  params.stride_h = this->stride_h;
+  params.stride_w = this->stride_w;
+  params.padding_h = this->padding_h;
+  params.padding_w = this->padding_w;
+  params.activation = this->activation;
+  params.groups = this->groups;
+  params.use_bias = this->use_bias;
 
-namespace Output {
-  enum {
-    WIDTH = 0,
-    HEIGHT = 1,
-    CHANNEL = 2,
-    SAMPLE = 3,
-    REPLICA = 4,
-    NUMDIM
-  };
-};
+  return params;
+}
 
-namespace Kernel {
-  constexpr int INDEX = 0;
-
-  enum {
-    WIDTH = 0,
-    HEIGHT = 1,
-    CHANNEL_IN = 2,
-    CHANNEL_OUT = 3,
-    REPLICA = 4,
-    NUMDIM
-  };
-};
-
-namespace Bias {
-  constexpr int INDEX = 1;
-
-  enum {
-    CHANNEL = 0,
-    REPLICA_1 = 1,
-    REPLICA_2 = 2,
-    REPLICA_3 = 3,
-    REPLICA_4 = 4,
-    NUMDIM
-  };
-};
+Node FFModel::get_or_create_conv2d_node(const Tensor input,
+                                        const Conv2DParams& params) 
+{
+  return this->get_or_create_conv2d_node(
+      input,
+      params.out_channels,
+      params.kernel_h, params.kernel_w,
+      params.stride_h, params.stride_w,
+      params.padding_h, params.padding_w,
+      params.activation,
+      params.groups,
+      params.use_bias
+  );
+}
 
 Node FFModel::get_or_create_conv2d_node(const Tensor input,
                                         int outChannels,
@@ -187,37 +173,55 @@ int Conv2D::bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]) {
 };
 
 void Conv2D::register_mappings() {
-  this->register_output_mappings();
-  this->register_weight_mappings();
+  Conv2D::construct_mappings(*this->parallel_dims_mapping, this->use_bias);
 }
 
-void Conv2D::register_output_mappings() {
-  this->register_output_parallel_dims({
-    {Input::CHANNEL, Output::REPLICA},
-    {Input::SAMPLE, Output::SAMPLE},
-    {Input::REPLICA, Output::CHANNEL},
-    {Input::HEIGHT, Output::HEIGHT},
-    {Input::WIDTH, Output::WIDTH}
-  });
+/*static*/
+void Conv2D::construct_mappings(std::vector<ParallelDimMappingRecord>& out, bool use_bias) {
+  Conv2D::construct_output_mappings(out);
+  Conv2D::construct_weight_mappings(out, use_bias);
 }
 
-void Conv2D::register_weight_mappings() {
-  this->register_weight_parallel_dims({
-    {Input::REPLICA, Kernel::CHANNEL_OUT},
-    {Input::SAMPLE, Kernel::REPLICA},
-    {Input::CHANNEL, Kernel::CHANNEL_IN}, 
-    {Input::HEIGHT, Kernel::HEIGHT}, // Kernel::{HEIGHT, WEIGHT} would both work here
-    {Input::WIDTH, Kernel::WIDTH}, // same as above
-  }, 0, 0);
+/*static*/
+void Conv2D::construct_output_mappings(std::vector<ParallelDimMappingRecord>& out) {
+  Op::construct_output_parallel_dims(
+    out, 
+    {
+      {Input::CHANNEL, MappingOperation::REPLICATE, Output::REPLICA},
+      {Input::SAMPLE, MappingOperation::PARTITION, Output::SAMPLE},
+      {Input::REPLICA, MappingOperation::PARTITION, Output::CHANNEL},
+      {Input::HEIGHT, MappingOperation::PARTITION, Output::HEIGHT},
+      {Input::WIDTH, MappingOperation::PARTITION, Output::WIDTH}
+    }
+  );
+}
 
-  if (this->use_bias) {
-    this->register_weight_parallel_dims({
-      {Output::REPLICA, Bias::REPLICA_1},
-      {Output::SAMPLE, Bias::REPLICA_2},
-      {Output::CHANNEL, Bias::CHANNEL},
-      {Output::HEIGHT, Bias::REPLICA_3},
-      {Output::WIDTH, Bias::REPLICA_4}
-    }, 0, 1);
+/*static*/
+void Conv2D::construct_weight_mappings(std::vector<ParallelDimMappingRecord>& out, bool use_bias) {
+  Op::construct_weight_parallel_dims(
+    out,
+    {
+      {Input::REPLICA, MappingOperation::PARTITION, Kernel::CHANNEL_OUT},
+      {Input::SAMPLE, MappingOperation::REPLICATE, Kernel::REPLICA},
+      {Input::CHANNEL, MappingOperation::PARTITION, Kernel::CHANNEL_IN}, 
+      {Input::HEIGHT, MappingOperation::REPLICATE, Kernel::HEIGHT}, // Kernel::{HEIGHT, WEIGHT} would both work here
+      {Input::WIDTH, MappingOperation::REPLICATE, Kernel::WIDTH}, // same as above
+    }, 
+    Input::INDEX, Kernel::INDEX
+  );
+
+  if (use_bias) {
+    Op::construct_weight_parallel_dims(
+      out,
+      {
+        {Input::REPLICA, Bias::REPLICA_1},
+        {Input::SAMPLE, Bias::REPLICA_2},
+        {Input::CHANNEL, Bias::CHANNEL},
+        {Input::HEIGHT, Bias::REPLICA_3},
+        {Input::WIDTH, Bias::REPLICA_4}
+      }, 
+      Input::INDEX, Bias::INDEX
+    );
   }
 }
 
