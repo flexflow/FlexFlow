@@ -184,7 +184,7 @@ void Aggregate::init(const FFModel& ff)
     default:
       assert(false);
   }
-  IndexLauncher launcher(Aggregate_INIT_TASK_ID, task_is,
+  IndexLauncher launcher(AGGREGATE_INIT_TASK_ID, task_is,
     TaskArgument(this, sizeof(Aggregate)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));

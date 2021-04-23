@@ -82,6 +82,8 @@ void top_level_task(const Task* task,
   Tensor gate_preds = ff.dense(input, num_exp, AC_MODE_RELU);
   Tensor topK_output[2];
   ff.top_k(gate_preds, topK_output, num_select, false);
+  ff.cache(topK_output[1], TRAIN_SAMPLES / ffConfig.batchSize);
+
 
   Tensor exp_tensors[num_exp];
   ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
@@ -125,14 +127,14 @@ void top_level_task(const Task* task,
 
     for (int iter = 0; iter < iterations; iter++) {
       data_loader.next_batch(ff);
-      if (epoch > 0)
-         runtime->begin_trace(ctx, 111/*trace_id*/);
+      // if (epoch > 0)
+      //    runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      if (epoch > 0)
-         runtime->end_trace(ctx, 111/*trace_id*/);
+      // if (epoch > 0)
+      //    runtime->end_trace(ctx, 111/*trace_id*/);
     }
 
     ff.reset_metrics();
@@ -214,7 +216,7 @@ int calc_offset(int c, int y, int x, int yscale, int xscale)
 // =================================================
 
 /* NOTE: Download files from http://yann.lecun.com/exdb/mnist/, unpack to
-this directory (Flexflow/examples/cpp/try_out) */
+this directory (Flexflow/examples/cpp/mixture_of_experts) */
 
 
 void read_cifar100(float* input_ptr, int* label_ptr) {

@@ -361,6 +361,10 @@ public:
                 Tensor* outputs,
                 int n, float alpha,
                 const char* name = NULL);
+  // Add a cache layer
+  Tensor cache(const Tensor& input,
+              int num_batches,
+              const char* name = NULL);
   // Add aggregate layer
   Tensor aggregate(const Tensor* inputs,
                   int n, float lambda_bal,
@@ -1201,6 +1205,48 @@ public:
   float alpha;
   bool profiling;
 };
+
+
+class CacheMeta : public OpMeta {
+public:
+  CacheMeta(FFHandler handle);
+};
+
+class Cache : public Op {
+public:
+  Cache(FFModel& model,
+      const Tensor& _input,
+      int _num_batches,
+      const char* name);
+  ~Cache(void);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+  void use_cached(bool cached);
+public:
+  void** batch_ptrs;
+  bool load_cached;
+  int num_batches;
+  int batch_ctr;
+  bool profiling;
+};
+
 
 class AggregateMeta : public OpMeta {
 public:

@@ -84,6 +84,7 @@ enum OperatorType {
   OP_SPLIT,
   OP_EMBEDDING,
   OP_GROUP_BY,
+  OP_CACHE,
   OP_AGGREGATE,
   OP_AGG_SPEC,
   //OP_ELEMENTWISE,

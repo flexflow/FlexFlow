@@ -2037,6 +2037,7 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_SPLIT: return "Split";
     case OP_EMBEDDING: return "Embedding";
     case OP_GROUP_BY: return "Group_by";
+    case OP_CACHE: return "Cache";
     case OP_AGGREGATE: return "Aggregate cooperation";
     case OP_AGG_SPEC: return "Aggregate specification";
     case OP_RESHAPE: return "Reshape";
@@ -2535,6 +2536,30 @@ void register_flexflow_internal_tasks()
     Runtime::preregister_task_variant<Embedding::backward_task_cpu>(
         registrar, "Embedding Backward Task");
   }*/
+
+
+  // Cache task CPU
+  // {
+  //   TaskVariantRegistrar registrar(CACHE_INIT_TASK_ID, "Cache Init");
+  //   registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+  //   registrar.set_leaf();
+  //   Runtime::preregister_task_variant<OpMeta*, Cache::init_task>(
+  //       registrar, "Cache Init Task");
+  // }
+  // {
+  //   TaskVariantRegistrar registrar(CACHE_FWD_TASK_ID, "Cache Forward");
+  //   registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+  //   registrar.set_leaf();
+  //   Runtime::preregister_task_variant<Cache::forward_task>(
+  //       registrar, "Cache Forward Task");
+  // }
+  // {
+  //   TaskVariantRegistrar registrar(CACHE_BWD_TASK_ID, "Cache Backward");
+  //   registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+  //   registrar.set_leaf();
+  //   Runtime::preregister_task_variant<Cache::backward_task>(
+  //       registrar, "Cache Backward Task");
+  // }
 
   // Group by task CPU
   {
