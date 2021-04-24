@@ -75,6 +75,12 @@ struct TensorBase {
   template <typename T>
   bool get_tensor(const FFModel* model,
                   T* data);
+
+private:
+  template <typename T>
+  bool get_input_sub_tensor_via_mappings(const ParallelConfig& pc, TensorBase& tensor) const;
+public:
+
   size_t ts_guid;
   int num_dims;
   //int adim[MAX_TENSOR_DIM];

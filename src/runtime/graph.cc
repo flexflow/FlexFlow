@@ -46,6 +46,26 @@ MachineView::MachineView()
   }
 }
 
+std::vector<int> MachineView::device_ids() const {
+  std::vector<int> device_ids_list;
+
+  if (this->ndims == 0) {
+    return { this->start_device_id };
+  }
+
+  Domain d;
+  d.dim = this->ndims;
+  for (int i = 0; i < d.dim; i++) {
+    d.rect_data[i] = 0;
+    d.rect_data[i+d.dim] = this->dim[i]-1;
+  }
+  for (Domain::DomainPointIterator it(d); it; it++) {
+    device_ids_list.push_back(this->get_device_id(*it));
+  }
+
+  return device_ids_list;
+}
+
 size_t MachineView::num_parts() const
 {
   size_t parts = 1;

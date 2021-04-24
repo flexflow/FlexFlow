@@ -8,6 +8,7 @@
     _where << __FILE__ << ':' << __LINE__;                             \
     _message << std::string(s) + "\n" << __FILE__ << ':' << __LINE__;  \
     std::cerr << _message.str() << "\nAborting...\n";                  \
+    assert(false);                                                     \
     exit(1);                                                           \
 } while(0)
 

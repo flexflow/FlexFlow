@@ -179,6 +179,25 @@ void TensorBase::detach_raw_ptr(FFConfig &config)
   runtime->detach_external_resource(ctx, physical_region);
 }
 
+template <typename T>
+bool TensorBase::get_input_sub_tensor_via_mappings(const ParallelConfig& pc, TensorBase& tensor) const
+{
+  if (pc.nDims != num_dims) {
+    printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, num_dims);
+    return false;
+  }
+  std::vector<ParallelDimMappingRecord> mapping;
+  T::construct_output_mappings(mapping);
+  std::unordered_map<int, int> dim_mapping = input_to_output_mapping(mapping);
+
+  for (int i = 0; i < this->num_dims; i++) {
+    assert(pc.dim[dim_mapping.at(i)] == dims[i].degree);
+    tensor.dims[i].size = dims[i].size / dims[i].degree;
+  }
+
+  return true;
+}
+
 bool TensorBase::get_input_sub_tensor(
     const ParallelConfig& pc,
     TensorBase& tensor,
@@ -213,14 +232,13 @@ bool TensorBase::get_input_sub_tensor(
         break;
       }
     case OP_LINEAR:
-    case OP_CONV2D:
       {
         if (pc.nDims != num_dims) {
           printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, num_dims);
           return false;
         }
         tensor.num_dims = num_dims;
-        for (int i = 1; i < num_dims; i++) {
+        for (int i = 0; i < num_dims; i++) {
           if (dims[i].size % pc.dim[i] != 0) {
             printf("Could not get input subtensor because the given dimension is not divisible: %d %% %d != 0\n", dims[i].size, pc.dim[i]);
             return false;
@@ -231,6 +249,16 @@ bool TensorBase::get_input_sub_tensor(
         tensor.data_type = data_type;
 	break;
       }
+    case OP_CONV2D:
+      if (!this->get_input_sub_tensor_via_mappings<Conv2D>(pc, tensor)) {
+        return false;
+      }
+      break;
+    case OP_POOL2D:
+      if (!this->get_input_sub_tensor_via_mappings<Pool2D>(pc, tensor)) {
+        return false;
+      }
+      break;
     default:
       {
         if (pc.nDims != num_dims) {
@@ -873,12 +901,22 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
   return d;
 }
 
+
 void Op::solve_parallel_dim_mappings(
     const std::vector<ParallelDim const *> &inputs, 
     const std::vector<ParallelDim *> &weights,
     const std::vector<ParallelDim *> &outputs) const
 {
-  for (ParallelDimMappingRecord const &record : *this->parallel_dims_mapping) {
+  ::solve_parallel_dim_mappings(*this->parallel_dims_mapping, inputs, weights, outputs);
+}
+
+void solve_parallel_dim_mappings(
+    const std::vector<ParallelDimMappingRecord>& mapping,
+    const std::vector<ParallelDim const *> &inputs, 
+    const std::vector<ParallelDim *> &weights,
+    const std::vector<ParallelDim *> &outputs)
+{
+  for (ParallelDimMappingRecord const &record : mapping) {
     ParallelDim const &input_dim = inputs[record.input_idx][record.input_dim];
 
     switch (record.get_type()) {
@@ -914,6 +952,28 @@ void Op::solve_parallel_dim_mappings(
         break;
     }
   }
+}
+
+std::unordered_map<int, int> output_to_input_mapping(const std::vector<ParallelDimMappingRecord>& mapping) {
+  std::unordered_map<int, int> dim_mapping;
+  for (ParallelDimMappingRecord const &record : mapping) {
+    if (record.get_type() == MappingRecordType::INPUT_OUTPUT) {
+      dim_mapping[record.output_dim] = record.input_dim;
+    }
+  }
+
+  return dim_mapping;
+}
+
+std::unordered_map<int, int> input_to_output_mapping(const std::vector<ParallelDimMappingRecord>& mapping) {
+  std::unordered_map<int, int> dim_mapping;
+  for (ParallelDimMappingRecord const &record : mapping) {
+    if (record.get_type() == MappingRecordType::INPUT_OUTPUT) {
+      dim_mapping[record.input_dim] = record.output_dim;
+    }
+  }
+
+  return dim_mapping;
 }
 
 #ifdef FF_USE_NCCL

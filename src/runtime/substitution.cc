@@ -866,17 +866,49 @@ void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineVi
     if (strategy.find(node) == strategy.end()) {
       dot.add_node(node, {{"label", node.to_string()}});
     } else {
-      RecordFormatter rf, machine_view_row;
+      RecordFormatter rf, meta_row, machine_view_row;
       MachineView mv = strategy.at(node);
       std::ostringstream oss;
-      if (mv.ndims == 0) {
-        machine_view_row << "N/A";
-      } else {
-        for (int i = 0; i < mv.ndims; i++) {
-          machine_view_row << std::to_string(mv.dim[i]);
+      switch (node.ptr->op_type) {
+        case OP_REPARTITION:
+        {
+          Repartition *rp = (Repartition*)node.ptr;
+          meta_row << std::to_string(rp->repartition_dim) << std::to_string(rp->repartition_degree);
+          break;
+        }
+        case OP_COMBINE:
+        {
+          Combine *c = (Combine*)node.ptr;
+          meta_row << std::to_string(c->combine_dim) << std::to_string(c->combine_degree);
+          break;
+        }
+        case OP_REPLICATE:
+        {
+          Replicate *r = (Replicate*)node.ptr;
+          meta_row << std::to_string(r->replicate_dim) << std::to_string(r->replicate_degree);
+          break;
+        }
+        case OP_REDUCTION:
+        {
+          Reduction *r = (Reduction*)node.ptr;
+          meta_row << std::to_string(r->reduction_dim) << std::to_string(r->reduction_degree);
+          break;
+        }
+        default:
+        {
+          if (mv.ndims == 0) {
+            meta_row << "N/A";
+          } else {
+            for (int i = 0; i < mv.ndims; i++) {
+              meta_row << std::to_string(mv.dim[i]);
+            }
+          }
         }
       }
-      rf << node.to_string() << std::to_string(node.guid) << machine_view_row;
+      for (int device_id : mv.device_ids()) {
+        machine_view_row << std::to_string(device_id);
+      }
+      rf << node.to_string() << std::to_string(node.guid) << meta_row << machine_view_row;
       dot.add_record_node(node, rf);
     }
 
@@ -929,7 +961,7 @@ void create_mapping_xfers(FFModel *model, int degree, std::vector<GraphXfer*> &x
     }
     subst->dstOps.push_back(pre);
 
-    OpX* new_op = subst->create_conv2d(pre->outputs[0], original_op/*matchOpX*/);
+    OpX* new_op = subst->create_opx<T>(pre->outputs[0], original_op/*matchOpX*/);
     subst->dstOps.push_back(new_op);
 
     OpX *post;

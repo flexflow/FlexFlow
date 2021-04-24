@@ -59,6 +59,7 @@ Conv2DParams Conv2D::get_params() const {
   Conv2DParams params;
   params.out_channels = this->out_channels;
   params.kernel_h = this->kernel_h;
+  params.kernel_w = this->kernel_w;
   params.stride_h = this->stride_h;
   params.stride_w = this->stride_w;
   params.padding_h = this->padding_h;
@@ -73,16 +74,43 @@ Conv2DParams Conv2D::get_params() const {
 Node FFModel::get_or_create_conv2d_node(const Tensor input,
                                         const Conv2DParams& params) 
 {
-  return this->get_or_create_conv2d_node(
-      input,
-      params.out_channels,
-      params.kernel_h, params.kernel_w,
-      params.stride_h, params.stride_w,
-      params.padding_h, params.padding_w,
-      params.activation,
-      params.groups,
-      params.use_bias
-  );
+  if (!params.is_valid(input)) {
+    return Node::INVALID_NODE;
+  }
+
+  size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, params.out_channels);
+  hash_combine(hash, params.kernel_h);
+  hash_combine(hash, params.kernel_w);
+  hash_combine(hash, params.stride_h);
+  hash_combine(hash, params.stride_w);
+  hash_combine(hash, params.padding_h);
+  hash_combine(hash, params.padding_w);
+  hash_combine(hash, params.activation);
+  hash_combine(hash, params.groups);
+  hash_combine(hash, params.use_bias);
+
+  Conv2D *conv = NULL;
+
+  const auto &it = this->cached_conv2d_ops.find(hash);
+  if (it != cached_conv2d_ops.end()) {
+    conv = it->second;
+  } else {
+    conv = new Conv2D(*this, 
+                      input, 
+                      params.out_channels, 
+                      params.kernel_h, params.kernel_w, 
+                      params.stride_h, params.stride_w,
+                      params.padding_h, params.padding_w,
+                      params.activation, 
+                      params.groups, 
+                      params.use_bias,
+                      false/*allocate_weights*/,
+                      NULL);
+    cached_conv2d_ops[hash] = conv;
+  }
+
+  return this->new_node(conv);
 }
 
 Node FFModel::get_or_create_conv2d_node(const Tensor input,
@@ -94,83 +122,113 @@ Node FFModel::get_or_create_conv2d_node(const Tensor input,
                                         int groups,
                                         bool use_bias) 
 {
-  if (outChannels % input->dims[Input::REPLICA].degree != 0) {
-    return Node::INVALID_NODE;
-  }
+  Conv2DParams params;
+  params.out_channels = outChannels;
+  params.kernel_h = kernelH;
+  params.kernel_w = kernelW;
+  params.stride_h = strideH;
+  params.stride_w = strideW;
+  params.padding_h = paddingH;
+  params.padding_w = paddingW;
+  params.activation = activation;
+  params.groups = groups;
+  params.use_bias = use_bias;
 
-  size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, outChannels);
-  hash_combine(hash, kernelH);
-  hash_combine(hash, kernelW);
-  hash_combine(hash, strideH);
-  hash_combine(hash, strideW);
-  hash_combine(hash, paddingH);
-  hash_combine(hash, paddingW);
-  hash_combine(hash, activation);
-  hash_combine(hash, groups);
-  hash_combine(hash, use_bias);
-
-  Conv2D *conv = NULL;
-
-  const auto &it = this->cached_conv2d_ops.find(hash);
-  if (it != cached_conv2d_ops.end()) {
-    conv = it->second;
-  } else {
-    conv = new Conv2D(*this, 
-                      input, 
-                      outChannels, 
-                      kernelH, kernelW, 
-                      strideH, strideW,
-                      paddingH, paddingW,
-                      activation, 
-                      groups, 
-                      use_bias,
-                      false/*allocate_weights*/,
-                      NULL);
-    cached_conv2d_ops[hash] = conv;
-  }
-
-  return this->new_node(conv);
+  return this->get_or_create_conv2d_node(input, params);
 }
 
+void Conv2DParams::mark_replica_dims(const Tensor input,
+                               ParallelDim output_dims[MAX_TENSOR_DIM], 
+                               ParallelDim kernel_dims[MAX_TENSOR_DIM], 
+                               ParallelDim bias_dims[MAX_TENSOR_DIM]) const 
+{
+  if (output_dims != nullptr) {
+    output_dims[Output::REPLICA].is_replica_dim = true;
+  }
+  if (kernel_dims != nullptr) {
+    kernel_dims[Output::REPLICA].is_replica_dim = true;
+  }
+  if (bias_dims != nullptr) {
+    bias_dims[Bias::REPLICA_1].is_replica_dim = true;
+    bias_dims[Bias::REPLICA_2].is_replica_dim = true;
+    bias_dims[Bias::REPLICA_3].is_replica_dim = true;
+    bias_dims[Bias::REPLICA_4].is_replica_dim = true;
+  }
+}
 void Conv2D::mark_replica_dims(ParallelDim output_dims[MAX_TENSOR_DIM], 
                                ParallelDim kernel_dims[MAX_TENSOR_DIM], 
                                ParallelDim bias_dims[MAX_TENSOR_DIM]) const 
 {
-  output_dims[Output::REPLICA].is_replica_dim = true;
-  kernel_dims[Output::REPLICA].is_replica_dim = true;
-  bias_dims[Bias::REPLICA_1].is_replica_dim = true;
-  bias_dims[Bias::REPLICA_2].is_replica_dim = true;
-  bias_dims[Bias::REPLICA_3].is_replica_dim = true;
-  bias_dims[Bias::REPLICA_4].is_replica_dim = true;
+  this->get_params().mark_replica_dims(this->inputs[0], output_dims, kernel_dims, bias_dims);
 }
 
-int Conv2D::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
-  int input_w = inputs[0]->dims[Input::WIDTH].size;
-  int input_h = inputs[0]->dims[Input::HEIGHT].size;
+int Conv2DParams::output_size(const Tensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) const {
+  int input_w = input->dims[Input::WIDTH].size;
+  int input_h = input->dims[Input::HEIGHT].size;
 
-  output_dims[Output::SAMPLE].size = inputs[0]->dims[Input::SAMPLE].size;
+  output_dims[Output::SAMPLE].size = input->dims[Input::SAMPLE].size;
   output_dims[Output::CHANNEL].size = out_channels;
   output_dims[Output::HEIGHT].size = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
   output_dims[Output::WIDTH].size = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
 
-  return inputs[0]->num_dims;
+  return input->num_dims;
 };
 
-int Conv2D::kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) {
-  kernel_dims[Kernel::CHANNEL_OUT].size = this->out_channels;
-  kernel_dims[Kernel::CHANNEL_IN].size = inputs[0]->dims[Input::CHANNEL].size / this->groups;
-  kernel_dims[Kernel::HEIGHT].size = this->kernel_h * kernel_dims[Kernel::HEIGHT].degree;
-  kernel_dims[Kernel::WIDTH].size = this->kernel_w * kernel_dims[Kernel::WIDTH].degree;
-
-  return inputs[0]->num_dims;
+int Conv2D::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
+  return this->get_params().output_size(this->inputs[0], output_dims);
 }
 
-int Conv2D::bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]) {
+int Conv2DParams::kernel_size(const Tensor input, ParallelDim kernel_dims[MAX_TENSOR_DIM]) const {
+  kernel_dims[Kernel::CHANNEL_OUT].size = this->out_channels;
+  kernel_dims[Kernel::CHANNEL_IN].size = input->dims[Input::CHANNEL].size / this->groups;
+  kernel_dims[Kernel::HEIGHT].size = this->kernel_h * input->dims[Input::HEIGHT].degree;
+  kernel_dims[Kernel::WIDTH].size = this->kernel_w * input->dims[Input::WIDTH].degree;
+
+  return Kernel::NUMDIM;
+}
+
+void Conv2DParams::solve_weight_dims(const Tensor input, 
+                                     ParallelDim kernel_dims[MAX_TENSOR_DIM], int& kernel_ndims,  
+                                     ParallelDim bias_dims[MAX_TENSOR_DIM], int& bias_ndims) const 
+{
+  std::vector<ParallelDimMappingRecord> mapping;
+  Conv2D::construct_mappings(mapping, this->use_bias);
+
+  this->mark_replica_dims(input, nullptr, kernel_dims, nullptr);
+
+  std::vector<ParallelDim *> weight_dim_sets;
+  weight_dim_sets.push_back(kernel_dims);
+
+  if (this->use_bias) {
+    weight_dim_sets.push_back(bias_dims);
+  }
+
+  solve_parallel_dim_mappings(
+      mapping, 
+      {input->dims},
+      weight_dim_sets,
+      {}
+  );
+
+  kernel_ndims = this->kernel_size(input, kernel_dims);
+  if (this->use_bias) {
+    bias_ndims = this->bias_size(input, bias_dims);
+  }
+}
+
+int Conv2D::kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) {
+  return this->get_params().kernel_size(this->inputs[0], kernel_dims);
+}
+
+int Conv2DParams::bias_size(const Tensor input, ParallelDim bias_dims[MAX_TENSOR_DIM]) const {
   bias_dims[Bias::CHANNEL].size = this->out_channels;
 
   return Bias::NUMDIM;
 };
+
+int Conv2D::bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]) {
+  return this->get_params().bias_size(this->inputs[0], bias_dims);
+}
 
 void Conv2D::register_mappings() {
   Conv2D::construct_mappings(*this->parallel_dims_mapping, this->use_bias);
@@ -245,6 +303,56 @@ Conv2D::Conv2D(FFModel& model,
          other.name) 
 { }
 
+bool check_dims(ParallelDim dims[MAX_TENSOR_DIM], int ndims) {
+  for (int i = 0; i < ndims; i++) {
+    assert (dims[i].size > 0);
+    assert (dims[i].degree != ParallelDim::UNKNOWN_DEGREE);
+    assert (dims[i].parallel_idx != ParallelDim::UNKNOWN_INDEX);
+    if (dims[i].size % dims[i].degree != 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool Conv2DParams::is_valid(const Tensor input) const {
+  std::vector<ParallelDimMappingRecord> mapping;
+  Conv2D::construct_mappings(mapping, this->use_bias);
+
+  ParallelDim output_dims[MAX_TENSOR_DIM],
+              kernel_dims[MAX_TENSOR_DIM],
+              bias_dims[MAX_TENSOR_DIM];
+
+  this->mark_replica_dims(input, output_dims, kernel_dims, bias_dims);
+
+  std::vector<ParallelDim *> weight_dim_sets;
+  weight_dim_sets.push_back(kernel_dims);
+  if (use_bias) {
+    weight_dim_sets.push_back(bias_dims);
+  }
+
+  solve_parallel_dim_mappings(
+      mapping, 
+      {input->dims},
+      weight_dim_sets,
+      {output_dims}
+  );
+
+  bool is_valid = true;
+  is_valid &= input->check_valid();
+  int output_ndim = this->output_size(input, output_dims);
+  is_valid &= check_dims(output_dims, output_ndim);
+  int kernel_ndim = this->kernel_size(input, kernel_dims);
+  is_valid &= check_dims(kernel_dims, kernel_ndim);
+  if (use_bias) { 
+    int bias_ndim = this->bias_size(input, bias_dims);
+    is_valid &= check_dims(bias_dims, bias_ndim);
+  }
+
+  return is_valid;
+}
+
 Conv2D::Conv2D(FFModel& model,
                const Tensor input,
                int outChannels,
@@ -267,10 +375,13 @@ Conv2D::Conv2D(FFModel& model,
   use_bias(use_bias)
 {
   assert (input->num_dims == Input::NUMDIM);
+  assert (this->stride_h > 0);
+  assert (this->stride_w > 0);
 
   this->register_mappings();
 
   std::vector<ParallelDim *> weight_dim_sets;
+  Conv2DParams params = this->get_params();
 
   ParallelDim output_dims[MAX_TENSOR_DIM],
               kernel_dims[MAX_TENSOR_DIM], 
@@ -285,13 +396,11 @@ Conv2D::Conv2D(FFModel& model,
     }
   }
 
-    
   this->solve_parallel_dim_mappings(
       {inputs[0]->dims},
       weight_dim_sets,
       {output_dims}
   );
-
 
   if (allocate_weights) {
     int kernel_ndim = this->kernel_size(kernel_dims);
@@ -1087,5 +1196,47 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
          stride_h, stride_w,
          padding_h, padding_w,
          cost_metrics.forward_time, cost_metrics.backward_time);
+  return true;
+}
+
+bool Conv2D::estimate_sync_cost(Simulator* sim, 
+                                const MachineView& view,
+                                CostMetrics& cost_metrics) const 
+{
+  ParallelDim kernel_dims[MAX_TENSOR_DIM],
+              bias_dims[MAX_TENSOR_DIM];
+  int kernel_ndims,
+      bias_ndims;
+  
+
+  this->get_params().solve_weight_dims(this->inputs[0], 
+                                       kernel_dims, kernel_ndims,
+                                       bias_dims, bias_ndims);
+
+  TensorBase kernel_tensor_base;
+  kernel_tensor_base.num_dims = kernel_ndims;
+  int kernel_num_replica_dims = 0;
+  for (int i = 0; i < kernel_ndims; i++) {
+    kernel_tensor_base.dims[i] = kernel_dims[i];
+    if (kernel_dims[i].is_replica_dim) {
+      kernel_num_replica_dims++;
+    }
+  }
+  cost_metrics.sync_time = sim->default_estimate_sync_cost(&kernel_tensor_base, view, kernel_num_replica_dims);
+
+  if (this->use_bias) {
+    TensorBase bias_tensor_base;
+    bias_tensor_base.num_dims = bias_ndims;
+    int bias_num_replica_dims = 0;
+    for (int i = 0; i < bias_ndims; i++) {
+      bias_tensor_base.dims[i] = bias_dims[i];
+      if (bias_dims[i].is_replica_dim) {
+        bias_num_replica_dims++;
+      }
+    }
+    cost_metrics.sync_time += sim->default_estimate_sync_cost(&bias_tensor_base, view, bias_num_replica_dims);
+  }
+
+  /* printf("[Estimate Conv2D] name(%s) sync_time(%.4lf) volume(%lu)\n", this->name, cost_metrics.sync_time, kernel_tensor_base.get_volume()); */
   return true;
 }

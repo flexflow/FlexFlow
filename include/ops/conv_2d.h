@@ -7,6 +7,23 @@ struct Conv2DParams {
   int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
   ActiMode activation;
   bool use_bias;
+
+  bool is_valid(const Tensor input) const;
+  void mark_replica_dims(const Tensor input, 
+                         ParallelDim output_dims[MAX_TENSOR_DIM],
+                         ParallelDim kernel_dims[MAX_TENSOR_DIM],
+                         ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
+  int output_size(const Tensor input,
+                  ParallelDim output_dims[MAX_TENSOR_DIM]) const; 
+  int kernel_size(const Tensor input,
+                  ParallelDim kernel_dims[MAX_TENSOR_DIM]) const; 
+  int bias_size(const Tensor input,
+                ParallelDim bias_dims[MAX_TENSOR_DIM]) const; 
+  void solve_weight_dims(const Tensor input,
+                         ParallelDim kernel_dims[MAX_TENSOR_DIM], int& kernel_ndims,
+                         ParallelDim bias_dims[MAX_TENSOR_DIM], int& bias_ndims) const;
+
+  size_t get_hash(const Tensor input) const;
 };
 
 class Conv2DMeta : public OpMeta {
@@ -74,6 +91,9 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
+  bool estimate_sync_cost(Simulator* sim,
+                          const MachineView& pc,
+                          CostMetrics& cost_metrics) const override;
 
   void serialize(Legion::Serializer& s) const override;
   static Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
@@ -85,17 +105,15 @@ private:
   void mark_replica_dims(ParallelDim output_dims[MAX_TENSOR_DIM],
                          ParallelDim kernel_dims[MAX_TENSOR_DIM],
                          ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
+
   int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]); 
   int kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]); 
   int bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]); 
-
   void register_mappings();
 public:
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
   bool use_bias;
   ActiMode activation;
-
-  friend struct Conv2DModelCacheHash;
 
   Conv2DParams get_params() const;
 

@@ -398,10 +398,11 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& vi
     const Tensor output = op->outputs[0];
     config.nDims = output->num_dims;
     for (int i = 0; i < config.nDims; i++) {
-      if (output->dims[i].parallel_idx == -1)
+      if (output->dims[i].parallel_idx == -1) {
         config.dim[i] = 1;
-      else
+      } else {
         config.dim[i] = view.dim[output->dims[i].parallel_idx];
+      }
     }
 
     bool is_implemented = op->measure_operator_cost(this, config, cost_metrics);

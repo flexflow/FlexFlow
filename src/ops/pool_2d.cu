@@ -492,9 +492,9 @@ bool Pool2D::measure_operator_cost(Simulator* sim,
                                    CostMetrics& cost_metrics) const
 {
   TensorBase sub_output, sub_input;
-  if(!outputs[0]->get_output_sub_tensor(pc, sub_output, OP_CONV2D))
+  if(!outputs[0]->get_output_sub_tensor(pc, sub_output, OP_POOL2D))
     return false;
-  if(!inputs[0]->get_input_sub_tensor(pc, sub_input, OP_CONV2D))
+  if(!inputs[0]->get_input_sub_tensor(pc, sub_input, OP_POOL2D))
     return false;
   int input_w = sub_input.dims[0].size;
   int input_h = sub_input.dims[1].size;

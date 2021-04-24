@@ -244,6 +244,13 @@ public:
 
 std::string optype_to_string(OperatorType);
 
+void solve_parallel_dim_mappings(const std::vector<ParallelDimMappingRecord>& mapping,
+                                 const std::vector<ParallelDim const *> &inputs,
+                                 const std::vector<ParallelDim *> &weights, 
+                                 const std::vector<ParallelDim *> &outputs);
+std::unordered_map<int, int> output_to_input_mapping(const std::vector<ParallelDimMappingRecord>& mapping);
+std::unordered_map<int, int> input_to_output_mapping(const std::vector<ParallelDimMappingRecord>& mapping);
+
 class Op {
 public:
   static void construct_weight_parallel_dims(
