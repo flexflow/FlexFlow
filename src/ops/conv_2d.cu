@@ -18,11 +18,6 @@
 #include "hash_utils.h"
 
 using namespace Legion;
-using Input = Conv2D::Input;
-using Output = Conv2D::Output;
-using Bias = Conv2D::Bias;
-using Kernel = Conv2D::Kernel;
-
 Tensor FFModel::conv2d(const Tensor input,
                        int outChannels,
                        int kernelH, int kernelW,
@@ -54,6 +49,57 @@ Tensor FFModel::conv2d(const Tensor input,
   layers.push_back(conv);
   return conv->outputs[0];
 }
+
+namespace Input {
+  static constexpr int INDEX = 0;
+
+  enum {
+    WIDTH = 0,
+    HEIGHT = 1,
+    CHANNEL = 2,
+    SAMPLE = 3,
+    REPLICA = 4,
+    NUMDIM
+  };
+}
+
+namespace Output {
+  enum {
+    WIDTH = 0,
+    HEIGHT = 1,
+    CHANNEL = 2,
+    SAMPLE = 3,
+    REPLICA = 4,
+    NUMDIM
+  };
+}
+
+namespace Kernel {
+  static constexpr int INDEX = 0;
+
+  enum {
+    WIDTH = 0,
+    HEIGHT = 1,
+    CHANNEL_IN = 2,
+    CHANNEL_OUT = 3,
+    REPLICA = 4,
+    NUMDIM
+  };
+}
+
+namespace Bias {
+  static constexpr int INDEX = 1;
+
+  enum {
+    CHANNEL = 0,
+    REPLICA_1 = 1,
+    REPLICA_2 = 2,
+    REPLICA_3 = 3,
+    REPLICA_4 = 4,
+    NUMDIM
+  };
+}
+
 
 Conv2DParams Conv2D::get_params() const {
   Conv2DParams params;
@@ -155,12 +201,6 @@ void Conv2DParams::mark_replica_dims(const Tensor input,
     bias_dims[Bias::REPLICA_4].is_replica_dim = true;
   }
 }
-void Conv2D::mark_replica_dims(ParallelDim output_dims[MAX_TENSOR_DIM], 
-                               ParallelDim kernel_dims[MAX_TENSOR_DIM], 
-                               ParallelDim bias_dims[MAX_TENSOR_DIM]) const 
-{
-  this->get_params().mark_replica_dims(this->inputs[0], output_dims, kernel_dims, bias_dims);
-}
 
 int Conv2DParams::output_size(const Tensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) const {
   int input_w = input->dims[Input::WIDTH].size;
@@ -174,10 +214,6 @@ int Conv2DParams::output_size(const Tensor input, ParallelDim output_dims[MAX_TE
   return input->num_dims;
 };
 
-int Conv2D::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
-  return this->get_params().output_size(this->inputs[0], output_dims);
-}
-
 int Conv2DParams::kernel_size(const Tensor input, ParallelDim kernel_dims[MAX_TENSOR_DIM]) const {
   kernel_dims[Kernel::CHANNEL_OUT].size = this->out_channels;
   kernel_dims[Kernel::CHANNEL_IN].size = input->dims[Input::CHANNEL].size / this->groups;
@@ -187,19 +223,36 @@ int Conv2DParams::kernel_size(const Tensor input, ParallelDim kernel_dims[MAX_TE
   return Kernel::NUMDIM;
 }
 
-void Conv2DParams::solve_weight_dims(const Tensor input, 
-                                     ParallelDim kernel_dims[MAX_TENSOR_DIM], int& kernel_ndims,  
-                                     ParallelDim bias_dims[MAX_TENSOR_DIM], int& bias_ndims) const 
+int Conv2DParams::bias_size(const Tensor input, ParallelDim bias_dims[MAX_TENSOR_DIM]) const {
+  bias_dims[Bias::CHANNEL].size = this->out_channels;
+
+  return Bias::NUMDIM;
+};
+
+void Conv2DParams::solve_dims(const Tensor input, 
+                              ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
+                              ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,  
+                              ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const 
 {
+  assert ((output_dims == nullptr) == (output_ndims == nullptr));
+  assert ((kernel_dims == nullptr) == (kernel_ndims == nullptr));
+  assert ((bias_dims == nullptr) == (bias_ndims == nullptr));
+
   std::vector<ParallelDimMappingRecord> mapping;
   Conv2D::construct_mappings(mapping, this->use_bias);
 
-  this->mark_replica_dims(input, nullptr, kernel_dims, nullptr);
+  this->mark_replica_dims(input, output_dims, kernel_dims, bias_dims);
+
+  std::vector<ParallelDim *> output_dim_sets;
+  if (output_dims != nullptr) {
+    output_dim_sets.push_back(output_dims);
+  }
 
   std::vector<ParallelDim *> weight_dim_sets;
-  weight_dim_sets.push_back(kernel_dims);
-
-  if (this->use_bias) {
+  if (kernel_dims != nullptr) {
+    weight_dim_sets.push_back(kernel_dims);
+  }
+  if (bias_dims != nullptr && this->use_bias) {
     weight_dim_sets.push_back(bias_dims);
   }
 
@@ -207,31 +260,18 @@ void Conv2DParams::solve_weight_dims(const Tensor input,
       mapping, 
       {input->dims},
       weight_dim_sets,
-      {}
+      output_dim_sets
   );
 
-  kernel_ndims = this->kernel_size(input, kernel_dims);
-  if (this->use_bias) {
-    bias_ndims = this->bias_size(input, bias_dims);
+  if (output_dims != nullptr) {
+    *output_ndims = this->output_size(input, output_dims);
   }
-}
-
-int Conv2D::kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) {
-  return this->get_params().kernel_size(this->inputs[0], kernel_dims);
-}
-
-int Conv2DParams::bias_size(const Tensor input, ParallelDim bias_dims[MAX_TENSOR_DIM]) const {
-  bias_dims[Bias::CHANNEL].size = this->out_channels;
-
-  return Bias::NUMDIM;
-};
-
-int Conv2D::bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]) {
-  return this->get_params().bias_size(this->inputs[0], bias_dims);
-}
-
-void Conv2D::register_mappings() {
-  Conv2D::construct_mappings(*this->parallel_dims_mapping, this->use_bias);
+  if (kernel_dims != nullptr) {
+    *kernel_ndims = this->kernel_size(input, kernel_dims);
+  }
+  if (bias_dims != nullptr && this->use_bias) {
+    *bias_ndims = this->bias_size(input, bias_dims);
+  }
 }
 
 /*static*/
@@ -303,51 +343,27 @@ Conv2D::Conv2D(FFModel& model,
          other.name) 
 { }
 
-bool check_dims(ParallelDim dims[MAX_TENSOR_DIM], int ndims) {
-  for (int i = 0; i < ndims; i++) {
-    assert (dims[i].size > 0);
-    assert (dims[i].degree != ParallelDim::UNKNOWN_DEGREE);
-    assert (dims[i].parallel_idx != ParallelDim::UNKNOWN_INDEX);
-    if (dims[i].size % dims[i].degree != 0) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 bool Conv2DParams::is_valid(const Tensor input) const {
-  std::vector<ParallelDimMappingRecord> mapping;
-  Conv2D::construct_mappings(mapping, this->use_bias);
-
   ParallelDim output_dims[MAX_TENSOR_DIM],
               kernel_dims[MAX_TENSOR_DIM],
               bias_dims[MAX_TENSOR_DIM];
+  int output_ndims, 
+      kernel_ndims,
+      bias_ndims;
 
-  this->mark_replica_dims(input, output_dims, kernel_dims, bias_dims);
-
-  std::vector<ParallelDim *> weight_dim_sets;
-  weight_dim_sets.push_back(kernel_dims);
-  if (use_bias) {
-    weight_dim_sets.push_back(bias_dims);
-  }
-
-  solve_parallel_dim_mappings(
-      mapping, 
-      {input->dims},
-      weight_dim_sets,
-      {output_dims}
+  this->solve_dims(
+      input, 
+      output_dims, &output_ndims, 
+      kernel_dims, &kernel_ndims,
+      bias_dims, &bias_ndims
   );
 
   bool is_valid = true;
   is_valid &= input->check_valid();
-  int output_ndim = this->output_size(input, output_dims);
-  is_valid &= check_dims(output_dims, output_ndim);
-  int kernel_ndim = this->kernel_size(input, kernel_dims);
-  is_valid &= check_dims(kernel_dims, kernel_ndim);
+  is_valid &= ParallelDim::dims_are_valid(output_dims, output_ndims);
+  is_valid &= ParallelDim::dims_are_valid(kernel_dims, kernel_ndims);
   if (use_bias) { 
-    int bias_ndim = this->bias_size(input, bias_dims);
-    is_valid &= check_dims(bias_dims, bias_ndim);
+    is_valid &= ParallelDim::dims_are_valid(bias_dims, bias_ndims);
   }
 
   return is_valid;
@@ -378,48 +394,36 @@ Conv2D::Conv2D(FFModel& model,
   assert (this->stride_h > 0);
   assert (this->stride_w > 0);
 
-  this->register_mappings();
-
-  std::vector<ParallelDim *> weight_dim_sets;
-  Conv2DParams params = this->get_params();
-
   ParallelDim output_dims[MAX_TENSOR_DIM],
               kernel_dims[MAX_TENSOR_DIM], 
               bias_dims[MAX_TENSOR_DIM];
-  this->mark_replica_dims(output_dims, kernel_dims, bias_dims);
+  int output_ndims,
+      kernel_ndims,
+      bias_ndims;
+
+  this->construct_mappings(
+      *this->parallel_dims_mapping, this->use_bias);
+  this->get_params().solve_dims(
+      this->inputs[0],
+      output_dims, &output_ndims,
+      kernel_dims, &kernel_ndims,
+      bias_dims, &bias_ndims);
 
   if (allocate_weights) {
-    weight_dim_sets.push_back(kernel_dims);
-
-    if (use_bias) {
-      weight_dim_sets.push_back(bias_dims);
-    }
-  }
-
-  this->solve_parallel_dim_mappings(
-      {inputs[0]->dims},
-      weight_dim_sets,
-      {output_dims}
-  );
-
-  if (allocate_weights) {
-    int kernel_ndim = this->kernel_size(kernel_dims);
     Initializer *kernel_initializer = new GlorotUniform(std::rand()/*seed*/);
 
     weights[Kernel::INDEX] = model.create_weight_legion_ordering(
-        kernel_ndim, kernel_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
+        kernel_ndims, kernel_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
     
     if (use_bias) {
-      int bias_ndim = this->bias_size(bias_dims);
       Initializer *bias_initializer = new ZeroInitializer();
 
       weights[Bias::INDEX] = model.create_weight_legion_ordering(
-          bias_ndim, bias_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
+          bias_ndims, bias_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
     }
   }
 
-  int output_ndim = this->output_size(output_dims);
-  outputs[0] = model.create_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
+  outputs[0] = model.create_tensor_legion_ordering(output_ndims, output_dims, DT_FLOAT, this);
 
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
@@ -1208,35 +1212,16 @@ bool Conv2D::estimate_sync_cost(Simulator* sim,
   int kernel_ndims,
       bias_ndims;
   
+  this->get_params().solve_dims(this->inputs[0], 
+                                nullptr, nullptr,
+                                kernel_dims, &kernel_ndims,
+                                bias_dims, &bias_ndims);
 
-  this->get_params().solve_weight_dims(this->inputs[0], 
-                                       kernel_dims, kernel_ndims,
-                                       bias_dims, bias_ndims);
-
-  TensorBase kernel_tensor_base;
-  kernel_tensor_base.num_dims = kernel_ndims;
-  int kernel_num_replica_dims = 0;
-  for (int i = 0; i < kernel_ndims; i++) {
-    kernel_tensor_base.dims[i] = kernel_dims[i];
-    if (kernel_dims[i].is_replica_dim) {
-      kernel_num_replica_dims++;
-    }
-  }
-  cost_metrics.sync_time = sim->default_estimate_sync_cost(&kernel_tensor_base, view, kernel_num_replica_dims);
+  cost_metrics.sync_time = sim->default_estimate_sync_cost(kernel_dims, kernel_ndims, view);
 
   if (this->use_bias) {
-    TensorBase bias_tensor_base;
-    bias_tensor_base.num_dims = bias_ndims;
-    int bias_num_replica_dims = 0;
-    for (int i = 0; i < bias_ndims; i++) {
-      bias_tensor_base.dims[i] = bias_dims[i];
-      if (bias_dims[i].is_replica_dim) {
-        bias_num_replica_dims++;
-      }
-    }
-    cost_metrics.sync_time += sim->default_estimate_sync_cost(&bias_tensor_base, view, bias_num_replica_dims);
+    cost_metrics.sync_time += sim->default_estimate_sync_cost(bias_dims, bias_ndims, view);
   }
 
-  /* printf("[Estimate Conv2D] name(%s) sync_time(%.4lf) volume(%lu)\n", this->name, cost_metrics.sync_time, kernel_tensor_base.get_volume()); */
   return true;
 }

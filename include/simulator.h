@@ -306,6 +306,9 @@ public:
                            int input_idx,
                            const MachineView& source_view,
                            const MachineView& sink_view);
+  float default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TENSOR_DIM],
+                                   int tensor_ndims,
+                                   const MachineView& view);
   float default_estimate_sync_cost(const Tensor tensor,
                                    const MachineView& view,
                                    int num_replicate_dims);

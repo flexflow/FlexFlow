@@ -44,9 +44,61 @@ namespace Output {
                 REPLICA = 2;
 }
 
+int output_size(const Tensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) {
+  output_dims[Output::REPLICA].is_replica_dim = true;
+  output_dims[Output::SAMPLE].size = input->dims[Input::SAMPLE].size;
+  output_dims[Output::CHANNEL].size = (
+      input->dims[Input::CHANNEL].size * input->dims[Input::HEIGHT].size * input->dims[Input::WIDTH].size 
+  );
+
+  return Output::NUMDIM;
+}
+
+
+void solve_dims(const Tensor input, 
+                ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims) 
+{
+  assert ((output_dims == nullptr) == (output_ndims == nullptr));
+
+  std::vector<ParallelDimMappingRecord> mapping;
+  Flat::construct_output_mappings(mapping);
+
+  std::vector<ParallelDim *> output_dim_sets;
+  if (output_dims != nullptr) {
+    *output_ndims = output_size(input, output_dims);
+    output_dim_sets.push_back(output_dims);
+  }
+
+  solve_parallel_dim_mappings(
+      mapping,
+      {input->dims},
+      {},
+      output_dim_sets
+  );
+}
+
+bool is_valid(const Tensor input) 
+{
+  ParallelDim output_dims[MAX_TENSOR_DIM];
+  int output_ndims;
+
+  solve_dims(
+      input,
+      output_dims, &output_ndims
+  );
+
+  bool is_valid = true;
+  is_valid &= input->check_valid();
+  is_valid &= ParallelDim::dims_are_valid(output_dims, output_ndims);
+  is_valid &= (input->dims[Input::WIDTH].degree == 1);
+  is_valid &= (input->dims[Input::WIDTH].degree == 1);
+
+  return is_valid;
+}
+
 Node FFModel::get_or_create_flat_node(const Tensor input) 
 {
-  if (input->dims[Input::WIDTH].degree != 1 || input->dims[Input::HEIGHT].degree != 1) {
+  if (!is_valid(input)) {
     return Node::INVALID_NODE;
   }
 
@@ -65,18 +117,6 @@ Node FFModel::get_or_create_flat_node(const Tensor input)
   return this->new_node(flat);
 }
 
-int Flat::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) const {
-  Tensor const &input = this->inputs[0];
-
-  output_dims[Output::REPLICA].is_replica_dim = true;
-  output_dims[Output::SAMPLE].size = input->dims[Input::SAMPLE].size;
-  output_dims[Output::CHANNEL].size = (
-      input->dims[Input::CHANNEL].size * input->dims[Input::HEIGHT].size * input->dims[Input::WIDTH].size 
-  );
-
-  return Output::NUMDIM;
-}
-
 /*static*/
 void Flat::construct_output_mappings(std::vector<ParallelDimMappingRecord>& mappings) {
   Op::construct_output_parallel_dims(
@@ -89,14 +129,6 @@ void Flat::construct_output_mappings(std::vector<ParallelDimMappingRecord>& mapp
   );
 }
 
-void Flat::register_output_mappings() {
-  Flat::construct_output_mappings(*this->parallel_dims_mapping);
-}
-
-void Flat::register_mappings() {
-  this->register_output_mappings();
-}
-
 Flat::Flat(FFModel& model,
            const Tensor _input,
            const char* name)
@@ -104,18 +136,16 @@ Flat::Flat(FFModel& model,
 {
   assert(_input->num_dims == Input::NUMDIM);
 
-  this->register_mappings();
+  Flat::construct_output_mappings(*this->parallel_dims_mapping);
 
   ParallelDim output_dims[MAX_TENSOR_DIM];
-  int output_dim = this->output_size(output_dims);
-
-  this->solve_parallel_dim_mappings(
-      {inputs[0]->dims},
-      {},
-      {output_dims}
+  int output_ndims;
+  solve_dims(
+      this->inputs[0],
+      output_dims, &output_ndims
   );
 
-  outputs[0] = model.create_tensor_legion_ordering(output_dim, output_dims, _input->data_type, this);
+  outputs[0] = model.create_tensor_legion_ordering(output_ndims, output_dims, _input->data_type, this);
 
   assert(check_output_input_weight_parallel_dims());
 }

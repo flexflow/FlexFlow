@@ -65,39 +65,39 @@ Pool2DParams Pool2D::get_params() const {
   return params;
 }
 
-Node FFModel::get_or_create_pool2d_node(const Tensor input,
-                                        const Pool2DParams& params)
-{
-  return this->get_or_create_pool2d_node(
+bool Pool2DParams::is_valid(const Tensor input) const {
+  ParallelDim output_dims[MAX_TENSOR_DIM];
+  int output_ndims;
+
+  this->solve_dims(
       input, 
-      params.kernel_h, params.kernel_w,
-      params.stride_h, params.stride_w,
-      params.padding_h, params.padding_w,
-      params.pool_type,
-      params.activation
+      output_dims, &output_ndims
   );
+
+  bool is_valid = true;
+  is_valid &= input->check_valid();
+  is_valid &= ParallelDim::dims_are_valid(output_dims, output_ndims);
+  is_valid &= (input->dims[Input::REPLICA].degree == 1);
+
+  return is_valid;
 }
 
 Node FFModel::get_or_create_pool2d_node(const Tensor input,
-                                        int kernelH, int kernelW,
-                                        int strideH, int strideW,
-                                        int paddingH, int paddingW,
-                                        PoolType type,
-                                        ActiMode activation) 
+                                        const Pool2DParams& params)
 {
-  if (input->dims[Input::REPLICA].degree != 1) {
+  if (!params.is_valid(input)) {
     return Node::INVALID_NODE;
   }
 
   size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, kernelH);
-  hash_combine(hash, kernelW);
-  hash_combine(hash, strideH);
-  hash_combine(hash, strideW);
-  hash_combine(hash, paddingH);
-  hash_combine(hash, paddingW);
-  hash_combine(hash, type);
-  hash_combine(hash, activation);
+  hash_combine(hash, params.kernel_h);
+  hash_combine(hash, params.kernel_w);
+  hash_combine(hash, params.stride_h);
+  hash_combine(hash, params.stride_w);
+  hash_combine(hash, params.padding_h);
+  hash_combine(hash, params.padding_w);
+  hash_combine(hash, params.pool_type);
+  hash_combine(hash, params.activation);
 
   Pool2D *pool;
 
@@ -107,11 +107,11 @@ Node FFModel::get_or_create_pool2d_node(const Tensor input,
   } else {
     pool = new Pool2D(*this, 
                       input, 
-                      kernelH, kernelW, 
-                      strideH, strideW,
-                      paddingH, paddingW,
-                      type,
-                      activation, 
+                      params.kernel_h, params.kernel_w, 
+                      params.stride_h, params.stride_w,
+                      params.padding_h, params.padding_w,
+                      params.pool_type,
+                      params.activation, 
                       NULL);
     cached_pool2d_ops[hash] = pool;
   }
@@ -119,9 +119,27 @@ Node FFModel::get_or_create_pool2d_node(const Tensor input,
   return this->new_node(pool);
 }
 
-int Pool2D::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) { 
-  Tensor const &input = this->inputs[0];
+Node FFModel::get_or_create_pool2d_node(const Tensor input,
+                                        int kernelH, int kernelW,
+                                        int strideH, int strideW,
+                                        int paddingH, int paddingW,
+                                        PoolType type,
+                                        ActiMode activation) 
+{
+  Pool2DParams params;
+  params.kernel_h = kernelH;
+  params.kernel_w = kernelW;
+  params.stride_h = strideH;
+  params.stride_w = strideW;
+  params.padding_h = paddingH;
+  params.padding_w = paddingW;
+  params.pool_type = type;
+  params.activation = activation;
 
+  return this->get_or_create_pool2d_node(input, params);
+}
+
+int Pool2DParams::output_size(const Tensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) const { 
   int input_w = input->dims[Input::WIDTH].size;
   int input_h = input->dims[Input::HEIGHT].size;
   int input_c = input->dims[Input::CHANNEL].size;
@@ -136,6 +154,28 @@ int Pool2D::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
   return Output::NUMDIM;
 }
 
+void Pool2DParams::solve_dims(const Tensor input, 
+                ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims) const 
+{
+  assert ((output_dims == nullptr) == (output_ndims == nullptr));
+
+  std::vector<ParallelDimMappingRecord> mapping;
+  Pool2D::construct_output_mappings(mapping);
+
+  std::vector<ParallelDim *> output_dim_sets;
+  if (output_dims != nullptr) {
+    *output_ndims = this->output_size(input, output_dims);
+    output_dim_sets.push_back(output_dims);
+  }
+
+  solve_parallel_dim_mappings(
+      mapping,
+      {input->dims},
+      {},
+      output_dim_sets
+  );
+}
+
 /*static*/
 void Pool2D::construct_output_mappings(std::vector<ParallelDimMappingRecord>& mappings) {
   Op::construct_output_parallel_dims(
@@ -148,14 +188,6 @@ void Pool2D::construct_output_mappings(std::vector<ParallelDimMappingRecord>& ma
       {Input::WIDTH, MappingOperation::PARTITION, Output::WIDTH},
     }
   );
-}
-
-void Pool2D::register_output_mappings() {
-  Pool2D::construct_output_mappings(*this->parallel_dims_mapping);
-}
-
-void Pool2D::register_mappings() {
-  this->register_output_mappings();
 }
 
 Pool2D::Pool2D(FFModel& model,
@@ -189,18 +221,17 @@ Pool2D::Pool2D(FFModel& model,
 {
   assert (_input->num_dims == Input::NUMDIM);
 
-  this->register_mappings();
+  Pool2D::construct_output_mappings(*this->parallel_dims_mapping);
 
   ParallelDim output_dims[MAX_TENSOR_DIM];
-  int output_ndim = this->output_size(output_dims);
-
-  this->solve_parallel_dim_mappings(
-      {inputs[0]->dims},
-      {},
-      {output_dims}
+  int output_ndims;
+  this->get_params().solve_dims(
+      this->inputs[0],
+      output_dims,
+      &output_ndims
   );
 
-  outputs[0] = model.create_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
+  outputs[0] = model.create_tensor_legion_ordering(output_ndims, output_dims, DT_FLOAT, this);
 }
 
 /*

@@ -488,6 +488,23 @@ bool Op::estimate_sync_cost(Simulator* sim,
   return true;
 }
 
+float Simulator::default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TENSOR_DIM],
+                                            int tensor_ndims, 
+                                            const MachineView& view) 
+{
+  TensorBase tensor_base;
+  tensor_base.num_dims = tensor_ndims;
+  int num_replica_dims = 0;
+  for (int i = 0; i < tensor_ndims; i++) {
+    tensor_base.dims[i] = tensor_dims[i];
+    if (tensor_dims[i].is_replica_dim) {
+      num_replica_dims++;
+    }
+  }
+
+  return this->default_estimate_sync_cost(&tensor_base, view, num_replica_dims);
+}
+
 float Simulator::default_estimate_sync_cost(const Tensor tensor,
                                             const MachineView& view,
                                             int num_replicate_dims)

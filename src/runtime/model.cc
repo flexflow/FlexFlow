@@ -80,6 +80,21 @@ TensorBase::TensorBase(const TensorBase& rhs)
   create_gradients = rhs.create_gradients;
 }
 
+/*static*/
+bool ParallelDim::dims_are_valid(const ParallelDim dims[MAX_TENSOR_DIM], int ndims) {
+  for (int i = 0; i < ndims; i++) {
+    assert (dims[i].size > 0);
+    assert (dims[i].degree != ParallelDim::UNKNOWN_DEGREE);
+    assert (dims[i].parallel_idx != ParallelDim::UNKNOWN_INDEX);
+    if (dims[i].size % dims[i].degree != 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+
 /*
 Tensor& Tensor::operator=(const Tensor& rhs)
 {

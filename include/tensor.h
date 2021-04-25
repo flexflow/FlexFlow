@@ -41,7 +41,10 @@ struct ParallelDim {
   int degree = UNKNOWN_DEGREE;
   int parallel_idx = UNKNOWN_INDEX;
   bool is_replica_dim = false;
+
+  static bool dims_are_valid(const ParallelDim dims[MAX_TENSOR_DIM], int ndims);
 };
+
 
 struct TensorBase {
   TensorBase(void);
@@ -75,6 +78,7 @@ struct TensorBase {
   template <typename T>
   bool get_tensor(const FFModel* model,
                   T* data);
+
 
 private:
   template <typename T>

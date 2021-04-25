@@ -479,7 +479,7 @@ Graph* GraphXfer::create_new_graph(Graph* graph)
   // old graph: e1->n1->e2->n2->en
   // new graph: e1->new_node->en
   // TODO: temporarily disabled graph simplification
-  bool simplify = false;
+  bool simplify = true;
   while (simplify) {
     simplify = false;
     for (const auto& it : newGraph->inEdges) {

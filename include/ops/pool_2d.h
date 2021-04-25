@@ -7,6 +7,13 @@ struct Pool2DParams {
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
   ActiMode activation;
+
+  bool is_valid(const Tensor input) const;
+  void solve_dims(const Tensor input, 
+                  ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims) const;
+private:
+  int output_size(const Tensor input,
+                  ParallelDim output_dims[MAX_TENSOR_DIM]) const; 
 };
 
 class Pool2DMeta : public OpMeta {
@@ -61,7 +68,9 @@ public:
 
   void serialize(Legion::Serializer &) const override;
   static Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
+
   static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
+
   Pool2DParams get_params() const;
 private:
   int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]); 
