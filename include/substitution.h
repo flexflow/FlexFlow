@@ -19,6 +19,7 @@
 #include "tensor.h"
 #include "graph.h"
 #include <queue>
+#include "tl/optional.h"
 
 enum Compare {
   COMPARE_EQ,
@@ -108,6 +109,9 @@ public:
   void match(OpX* srcOp, const Node& op, Graph* graph);
   void unmatch(OpX* srcOp, const Node& op, Graph* graph);
   // Compute Ops
+  template <typename T> 
+  OpX* create_opx(const TensorX& input, const OpX* matchOpX);
+
   OpX* create_noop(const TensorX& input);
   OpX* create_concat(const TensorX* inputs,
                      int num_inputs,
@@ -121,6 +125,8 @@ public:
                      int num_dims,
                      ActiMode acti_mode,
                      bool use_bias);
+  OpX* create_conv2d(const TensorX& input,
+                     const OpX* match_opx);
   OpX* create_attention(const TensorX& query,
                         const TensorX& key,
                         const TensorX& value,

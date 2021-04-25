@@ -3,6 +3,30 @@
 
 #include "model.h"
 
+struct Conv2DParams {
+  int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
+  ActiMode activation;
+  bool use_bias;
+
+  bool is_valid(const Tensor input) const;
+  void solve_dims(const Tensor input,
+                  ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
+                  ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
+                  ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const;
+  size_t get_hash(const Tensor input) const;
+private:
+  void mark_replica_dims(const Tensor input, 
+                         ParallelDim output_dims[MAX_TENSOR_DIM],
+                         ParallelDim kernel_dims[MAX_TENSOR_DIM],
+                         ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
+  int output_size(const Tensor input,
+                  ParallelDim output_dims[MAX_TENSOR_DIM]) const; 
+  int kernel_size(const Tensor input,
+                  ParallelDim kernel_dims[MAX_TENSOR_DIM]) const; 
+  int bias_size(const Tensor input,
+                ParallelDim bias_dims[MAX_TENSOR_DIM]) const; 
+};
+
 class Conv2DMeta : public OpMeta {
 public:
   Conv2DMeta(FFHandler handler);
@@ -68,28 +92,22 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
+  bool estimate_sync_cost(Simulator* sim,
+                          const MachineView& pc,
+                          CostMetrics& cost_metrics) const override;
 
-/* #ifndef __CUDACC__ */
   void serialize(Legion::Serializer& s) const override;
   static Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
-/* #endif */ 
-private:
-  void mark_replica_dims(ParallelDim output_dims[MAX_TENSOR_DIM],
-                         ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                         ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
-  int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]); 
-  int kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]); 
-  int bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]); 
 
-  void register_mappings();
-  void register_output_mappings();
-  void register_weight_mappings();
+  static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
+  static void construct_mappings(std::vector<ParallelDimMappingRecord> &, bool use_bias);
+  static void construct_weight_mappings(std::vector<ParallelDimMappingRecord> &, bool use_bias);
+
+  Conv2DParams get_params() const;
 public:
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
   bool use_bias;
   ActiMode activation;
-
-  friend struct Conv2DModelCacheHash;
 };
 
 #endif // _FLEXFLOW_CONV_2D_H

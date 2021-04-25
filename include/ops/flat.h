@@ -42,11 +42,7 @@ public:
   void serialize(Legion::Serializer&) const override;
   static Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
   Op *materialize(FFModel& ff, Tensor inputs[], int num_inputs) const override;
-private:
-  int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) const;
-
-  void register_mappings();
-  void register_output_mappings();
+  static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
 };
 
 #endif // _FLEXFLOW_FLAT_H

@@ -80,6 +80,21 @@ TensorBase::TensorBase(const TensorBase& rhs)
   create_gradients = rhs.create_gradients;
 }
 
+/*static*/
+bool ParallelDim::dims_are_valid(const ParallelDim dims[MAX_TENSOR_DIM], int ndims) {
+  for (int i = 0; i < ndims; i++) {
+    assert (dims[i].size > 0);
+    assert (dims[i].degree != ParallelDim::UNKNOWN_DEGREE);
+    assert (dims[i].parallel_idx != ParallelDim::UNKNOWN_INDEX);
+    if (dims[i].size % dims[i].degree != 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+
 /*
 Tensor& Tensor::operator=(const Tensor& rhs)
 {
@@ -179,6 +194,25 @@ void TensorBase::detach_raw_ptr(FFConfig &config)
   runtime->detach_external_resource(ctx, physical_region);
 }
 
+template <typename T>
+bool TensorBase::get_input_sub_tensor_via_mappings(const ParallelConfig& pc, TensorBase& tensor) const
+{
+  if (pc.nDims != num_dims) {
+    printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, num_dims);
+    return false;
+  }
+  std::vector<ParallelDimMappingRecord> mapping;
+  T::construct_output_mappings(mapping);
+  std::unordered_map<int, int> dim_mapping = input_to_output_mapping(mapping);
+
+  for (int i = 0; i < this->num_dims; i++) {
+    assert(pc.dim[dim_mapping.at(i)] == dims[i].degree);
+    tensor.dims[i].size = dims[i].size / dims[i].degree;
+  }
+
+  return true;
+}
+
 bool TensorBase::get_input_sub_tensor(
     const ParallelConfig& pc,
     TensorBase& tensor,
@@ -213,14 +247,13 @@ bool TensorBase::get_input_sub_tensor(
         break;
       }
     case OP_LINEAR:
-    case OP_CONV2D:
       {
         if (pc.nDims != num_dims) {
           printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, num_dims);
           return false;
         }
         tensor.num_dims = num_dims;
-        for (int i = 1; i < num_dims; i++) {
+        for (int i = 0; i < num_dims; i++) {
           if (dims[i].size % pc.dim[i] != 0) {
             printf("Could not get input subtensor because the given dimension is not divisible: %d %% %d != 0\n", dims[i].size, pc.dim[i]);
             return false;
@@ -231,6 +264,16 @@ bool TensorBase::get_input_sub_tensor(
         tensor.data_type = data_type;
 	break;
       }
+    case OP_CONV2D:
+      if (!this->get_input_sub_tensor_via_mappings<Conv2D>(pc, tensor)) {
+        return false;
+      }
+      break;
+    case OP_POOL2D:
+      if (!this->get_input_sub_tensor_via_mappings<Pool2D>(pc, tensor)) {
+        return false;
+      }
+      break;
     default:
       {
         if (pc.nDims != num_dims) {
@@ -328,6 +371,8 @@ bool TensorBase::check_valid() const
       return false;
     if (dims[i].parallel_idx > MAX_TENSOR_DIM)
       return false;
+    assert (dims[i].parallel_idx >= -1);
+    assert (dims[i].degree >= 1);
     if (dims[i].parallel_idx >= 0) {
       if (used[dims[i].parallel_idx])
         return false;
@@ -871,12 +916,22 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
   return d;
 }
 
+
 void Op::solve_parallel_dim_mappings(
     const std::vector<ParallelDim const *> &inputs, 
     const std::vector<ParallelDim *> &weights,
     const std::vector<ParallelDim *> &outputs) const
 {
-  for (ParallelDimMappingRecord const &record : *this->parallel_dims_mapping) {
+  ::solve_parallel_dim_mappings(*this->parallel_dims_mapping, inputs, weights, outputs);
+}
+
+void solve_parallel_dim_mappings(
+    const std::vector<ParallelDimMappingRecord>& mapping,
+    const std::vector<ParallelDim const *> &inputs, 
+    const std::vector<ParallelDim *> &weights,
+    const std::vector<ParallelDim *> &outputs)
+{
+  for (ParallelDimMappingRecord const &record : mapping) {
     ParallelDim const &input_dim = inputs[record.input_idx][record.input_dim];
 
     switch (record.get_type()) {
@@ -912,6 +967,28 @@ void Op::solve_parallel_dim_mappings(
         break;
     }
   }
+}
+
+std::unordered_map<int, int> output_to_input_mapping(const std::vector<ParallelDimMappingRecord>& mapping) {
+  std::unordered_map<int, int> dim_mapping;
+  for (ParallelDimMappingRecord const &record : mapping) {
+    if (record.get_type() == MappingRecordType::INPUT_OUTPUT) {
+      dim_mapping[record.output_dim] = record.input_dim;
+    }
+  }
+
+  return dim_mapping;
+}
+
+std::unordered_map<int, int> input_to_output_mapping(const std::vector<ParallelDimMappingRecord>& mapping) {
+  std::unordered_map<int, int> dim_mapping;
+  for (ParallelDimMappingRecord const &record : mapping) {
+    if (record.get_type() == MappingRecordType::INPUT_OUTPUT) {
+      dim_mapping[record.input_dim] = record.output_dim;
+    }
+  }
+
+  return dim_mapping;
 }
 
 #ifdef FF_USE_NCCL
@@ -954,9 +1031,11 @@ ParallelDimMappingRecord::ParallelDimMappingRecord(MappingRecordType type)
 /*static*/
 ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
     int input_idx, int input_dim,
-    int output_idx, int output_dim)
+    int output_idx, int output_dim,
+    tl::optional<MappingOperation> operation)
 {
   ParallelDimMappingRecord r(MappingRecordType::INPUT_OUTPUT);  
+  r.operation = operation;
 
   assert (output_idx >= 0);
   assert (output_dim >= 0);
@@ -974,9 +1053,11 @@ ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
 /*static*/
 ParallelDimMappingRecord ParallelDimMappingRecord::input_weight_record(
     int input_idx, int input_dim,
-    int weight_idx, int weight_dim)
+    int weight_idx, int weight_dim,
+    tl::optional<MappingOperation> operation)
 {
   ParallelDimMappingRecord r(MappingRecordType::INPUT_WEIGHT);
+  r.operation = operation;
 
   assert (input_idx >= 0);
   assert (input_dim >= 0);
@@ -996,22 +1077,104 @@ MappingRecordType ParallelDimMappingRecord::get_type() const {
 }
 
 
-void Op::register_weight_parallel_dims(
+/*static*/
+void Op::construct_weight_parallel_dims(
+    std::vector<ParallelDimMappingRecord>& records,
+    std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx, int weight_idx)
+{
+  for (std::tuple<int, MappingOperation, int> const &mapping : mappings) {
+    Op::construct_weight_parallel_dims(
+        records,
+        std::get<0>(mapping), std::get<2>(mapping), input_idx, weight_idx, std::get<1>(mapping));
+  }
+}
+
+/*static*/
+void Op::construct_weight_parallel_dims(
+    std::vector<ParallelDimMappingRecord>& records,
     std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx)
 {
   for (std::pair<int, int> const &mapping : mappings) {
-    this->register_weight_parallel_dims(
+    Op::construct_weight_parallel_dims(
+      records,
       mapping.first, mapping.second, input_idx, weight_idx);
   }
 }
 
-void Op::register_weight_parallel_dims(
-    int input_dim, int weight_dim, int input_idx, int weight_idx)
+/*static*/
+void Op::construct_weight_parallel_dims(
+    std::vector<ParallelDimMappingRecord>& records,
+    int input_dim, int weight_dim, int input_idx, int weight_idx, tl::optional<MappingOperation> operation)
 {
-  this->parallel_dims_mapping->push_back(
+  records.push_back(
     ParallelDimMappingRecord::input_weight_record(
       input_idx, input_dim,
-      weight_idx, weight_dim
+      weight_idx, weight_dim,
+      operation
+    )
+  );
+}
+
+void Op::register_weight_parallel_dims(
+    std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx) 
+{
+  Op::construct_weight_parallel_dims(
+      *this->parallel_dims_mapping,
+      mappings, input_idx, weight_idx); 
+}
+
+void Op::register_weight_parallel_dims(
+    std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx, int weight_idx) 
+{
+  Op::construct_weight_parallel_dims(
+      *this->parallel_dims_mapping, 
+      mappings, input_idx, weight_idx);
+}
+
+void Op::register_weight_parallel_dims(
+    int input_dim, int weight_dim, 
+    int input_idx, int weight_idx, 
+    tl::optional<MappingOperation> operation) 
+{
+  Op::construct_weight_parallel_dims(
+      *this->parallel_dims_mapping,
+      input_dim, weight_dim, input_idx, weight_idx, operation);
+}
+
+/*static*/
+void Op::construct_output_parallel_dims(
+    std::vector<ParallelDimMappingRecord>& records,
+    std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx, int output_idx)
+{
+  for (std::tuple<int, MappingOperation, int> const &mapping : mappings) {
+    Op::construct_output_parallel_dims(
+        records,
+        std::get<0>(mapping), std::get<2>(mapping), input_idx, output_idx, std::get<1>(mapping));
+  }
+}
+
+/*static*/
+void Op::construct_output_parallel_dims(
+    std::vector<ParallelDimMappingRecord>& records,
+    std::vector<std::pair<int, int>> mappings, int input_idx, int output_idx)
+{
+  for (std::pair<int, int> const &mapping : mappings) {
+    Op::construct_output_parallel_dims(
+        records,
+        mapping.first, mapping.second, input_idx, output_idx);
+  }
+}
+
+/*static*/
+void Op::construct_output_parallel_dims(
+    std::vector<ParallelDimMappingRecord>& records,
+    int input_dim, int output_dim, int input_idx, int output_idx, tl::optional<MappingOperation> operation) 
+{
+  records.push_back(
+    ParallelDimMappingRecord::input_output_record(
+      input_idx, input_dim,
+      output_idx, output_dim, 
+      operation
     )
   );
 }
@@ -1019,21 +1182,27 @@ void Op::register_weight_parallel_dims(
 void Op::register_output_parallel_dims(
     std::vector<std::pair<int, int>> mappings, int input_idx, int output_idx)
 {
-  for (std::pair<int, int> const &mapping : mappings) {
-    this->register_output_parallel_dims(
-        mapping.first, mapping.second, input_idx, output_idx);
-  }
+  Op::construct_output_parallel_dims(
+      *this->parallel_dims_mapping,
+      mappings, input_idx, output_idx);
 }
 
 void Op::register_output_parallel_dims(
-    int input_dim, int output_dim, int input_idx, int output_idx) 
+    std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx, int output_idx)
 {
-  this->parallel_dims_mapping->push_back(
-    ParallelDimMappingRecord::input_output_record(
-      input_idx, input_dim,
-      output_idx, output_dim
-    )
-  );
+  Op::construct_output_parallel_dims(
+      *this->parallel_dims_mapping,
+      mappings, input_idx, output_idx);
+}
+
+void Op::register_output_parallel_dims(
+    int input_dim, int output_dim, 
+    int input_idx, int output_idx, 
+    tl::optional<MappingOperation> operation)
+{
+  Op::construct_output_parallel_dims(  
+      *this->parallel_dims_mapping, 
+      input_dim, output_dim, input_idx, output_idx, operation);
 }
 
 int Op::get_output_to_input_dim_mapping(

@@ -140,7 +140,8 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/dominators.h
   ${FLEXFLOW_ROOT}/include/basic_graph.h
   ${FLEXFLOW_ROOT}/include/graph_structures.h
-  ${FLEXFLOW_ROOT}/include/dot_file.h)
+  ${FLEXFLOW_ROOT}/include/dot_file.h
+  ${FLEXFLOW_ROOT}/include/tl/optional.h)
 
 set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/mapper/mapper.cc

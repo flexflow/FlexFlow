@@ -91,6 +91,7 @@ struct MachineView {
   };
   DeviceType device_type;
   int ndims, start_device_id, dim[MAX_TENSOR_DIM], stride[MAX_TENSOR_DIM];
+  std::vector<int> device_ids() const;
 };
 
 struct MachineResource {

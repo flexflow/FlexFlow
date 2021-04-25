@@ -398,10 +398,11 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& vi
     const Tensor output = op->outputs[0];
     config.nDims = output->num_dims;
     for (int i = 0; i < config.nDims; i++) {
-      if (output->dims[i].parallel_idx == -1)
+      if (output->dims[i].parallel_idx == -1) {
         config.dim[i] = 1;
-      else
+      } else {
         config.dim[i] = view.dim[output->dims[i].parallel_idx];
+      }
     }
 
     bool is_implemented = op->measure_operator_cost(this, config, cost_metrics);
@@ -485,6 +486,23 @@ bool Op::estimate_sync_cost(Simulator* sim,
   // By default we assume an operator does not have sync cost
   // Implement a derived method for operators with parameters
   return true;
+}
+
+float Simulator::default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TENSOR_DIM],
+                                            int tensor_ndims, 
+                                            const MachineView& view) 
+{
+  TensorBase tensor_base;
+  tensor_base.num_dims = tensor_ndims;
+  int num_replica_dims = 0;
+  for (int i = 0; i < tensor_ndims; i++) {
+    tensor_base.dims[i] = tensor_dims[i];
+    if (tensor_dims[i].is_replica_dim) {
+      num_replica_dims++;
+    }
+  }
+
+  return this->default_estimate_sync_cost(&tensor_base, view, num_replica_dims);
 }
 
 float Simulator::default_estimate_sync_cost(const Tensor tensor,

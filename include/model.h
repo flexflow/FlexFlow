@@ -27,6 +27,7 @@
 #include <curand.h>
 #include <unistd.h>
 #include <functional>
+#include "tl/optional.h"
 
 #include "ffconst.h"
 
@@ -215,6 +216,11 @@ enum class MappingRecordType {
   INPUT_WEIGHT
 };
 
+enum class MappingOperation {
+  PARTITION,
+  REPLICATE
+};
+
 class ParallelDimMappingRecord {
 private:
   ParallelDimMappingRecord(MappingRecordType);
@@ -222,12 +228,15 @@ public:
   ParallelDimMappingRecord() = delete;
 
   static ParallelDimMappingRecord input_output_record(int input_idx, int input_dim, 
-                                                      int output_idx, int output_dim);
+                                                      int output_idx, int output_dim,
+                                                      tl::optional<MappingOperation> operation = tl::nullopt);
   static ParallelDimMappingRecord input_weight_record(int input_idx, int input_dim,
-                                                      int weight_idx, int weight_dim);
+                                                      int weight_idx, int weight_dim,
+                                                      tl::optional<MappingOperation> operation = tl::nullopt);
   MappingRecordType get_type() const;
 public:
   MappingRecordType type;
+  tl::optional<MappingOperation> operation;
 
   int output_dim, input_dim, weight_dim;
   int output_idx, input_idx, weight_idx;
@@ -235,21 +244,56 @@ public:
 
 std::string optype_to_string(OperatorType);
 
-class Op {
-protected:
-  void inner_measure_operator_cost(Simulator *sim,
-                                   std::function<void()> const &forward,
-                                   std::function<void()> const &backward,
-                                   CostMetrics& cost_metrics) const;
+void solve_parallel_dim_mappings(const std::vector<ParallelDimMappingRecord>& mapping,
+                                 const std::vector<ParallelDim const *> &inputs,
+                                 const std::vector<ParallelDim *> &weights, 
+                                 const std::vector<ParallelDim *> &outputs);
+std::unordered_map<int, int> output_to_input_mapping(const std::vector<ParallelDimMappingRecord>& mapping);
+std::unordered_map<int, int> input_to_output_mapping(const std::vector<ParallelDimMappingRecord>& mapping);
 
+class Op {
+public:
+  static void construct_weight_parallel_dims(
+      std::vector<ParallelDimMappingRecord>& records, 
+      std::vector<std::pair<int, int>> mappings, int input_idx = 0, int weight_idx = 0);
+  static void construct_weight_parallel_dims(
+      std::vector<ParallelDimMappingRecord>& records, 
+      std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx = 0, int weight_idx = 0);
+  static void construct_weight_parallel_dims(
+      std::vector<ParallelDimMappingRecord>& records,
+      int input_dim, int weight_dim, 
+      int input_idx = 0, int weight_idx = 0, 
+      tl::optional<MappingOperation> operation = tl::nullopt);
+
+  static void construct_output_parallel_dims(
+      std::vector<ParallelDimMappingRecord>& records, 
+      std::vector<std::pair<int, int>> mappings, int input_idx = 0, int output_idx = 0);
+  static void construct_output_parallel_dims(
+      std::vector<ParallelDimMappingRecord>& records, 
+      std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx = 0, int output_idx = 0);
+  static void construct_output_parallel_dims(
+      std::vector<ParallelDimMappingRecord>& records,
+      int input_dim, int output_dim, 
+      int input_idx = 0, int output_idx = 0, 
+      tl::optional<MappingOperation> operation = tl::nullopt);
+protected:
   void register_weight_parallel_dims(
       std::vector<std::pair<int, int>> mappings, int input_idx = 0, int weight_idx = 0);
   void register_weight_parallel_dims(
-      int input_dim, int weight_dim, int input_idx = 0, int weight_idx = 0);
+      std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx = 0, int weight_idx = 0);
+  void register_weight_parallel_dims(
+      int input_dim, int weight_dim, 
+      int input_idx = 0, int weight_idx = 0, 
+      tl::optional<MappingOperation> operation = tl::nullopt);
+
   void register_output_parallel_dims(
       std::vector<std::pair<int, int>> mappings, int input_idx = 0, int output_idx = 0);
   void register_output_parallel_dims(
-      int input_dim, int output_dim, int input_idx = 0, int output_idx = 0);
+      std::vector<std::tuple<int, MappingOperation, int>> mappings, int input_idx = 0, int output_idx = 0);
+  void register_output_parallel_dims(
+      int input_dim, int output_dim, 
+      int input_idx = 0, int output_idx = 0, 
+      tl::optional<MappingOperation> operation = tl::nullopt);
 
   int get_output_to_input_dim_mapping(
       const Tensor output, int output_dim,
@@ -257,6 +301,11 @@ protected:
   int get_output_to_weight_dim_mapping(
       const Tensor output, int output_dim,
       const Tensor weight);
+
+  void inner_measure_operator_cost(Simulator *sim,
+                                   std::function<void()> const &forward,
+                                   std::function<void()> const &backward,
+                                   CostMetrics& cost_metrics) const;
 
   bool check_output_input_weight_parallel_dims(bool allocate_weights = true) const;
   bool check_output_input_weight_same_parallel_is() const;
@@ -405,6 +454,7 @@ ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
 
 class Concat;
 class Conv2D;
+class Conv2DParams;
 class ElementBinary;
 class ElementUnary;
 class Embedding;
@@ -412,6 +462,7 @@ class Flat;
 class Linear;
 class MultiHeadAttention;
 class Pool2D;
+class Pool2DParams;
 class Softmax;
 class Combine;
 class Repartition;
@@ -756,12 +807,16 @@ public:
                                  ActiMode activation, 
                                  int groups,
                                  bool use_bias);
+  Node get_or_create_conv2d_node(const Tensor input,
+                                 const Conv2DParams& params);
   Node get_or_create_pool2d_node(const Tensor input,
                                  int kernelH, int kernelW,
                                  int strideH, int strideW,
                                  int paddingH, int paddingW,
                                  PoolType type,
                                  ActiMode activation);
+  Node get_or_create_pool2d_node(const Tensor input,
+                                 const Pool2DParams& params);
   Node get_or_create_flat_node(const Tensor input);
   Node get_or_create_element_unary_node(const Tensor input,
                                         OperatorType type,

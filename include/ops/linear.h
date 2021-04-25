@@ -63,7 +63,7 @@ public:
                              CostMetrics& cost_metrics) const;
   bool estimate_sync_cost(Simulator* sim,
                           const MachineView& pc,
-                          CostMetrics& cost_metrics) const;
+                          CostMetrics& cost_metrics) const override;
   ParallelConfig get_random_parallel_config(const FFModel& ff) const;
   bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
 
