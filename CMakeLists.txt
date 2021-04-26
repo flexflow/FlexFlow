@@ -128,6 +128,9 @@ file(GLOB_RECURSE FLEXFLOW_SRC
   LIST_DIRECTORIES False 
   ${FLEXFLOW_ROOT}/src/*.cc)
 list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc")
+list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/ops/aggregate.cc")
+list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/ops/aggregate_spec.cc")
+list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/ops/group_by.cc")
 
 file(GLOB_RECURSE FLEXFLOW_GPU_SRC 
   LIST_DIRECTORIES False 
