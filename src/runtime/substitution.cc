@@ -23,6 +23,10 @@
 #include "ops/pool_2d.h"
 #include "ops/attention.h"
 #include "ops/flat.h"
+#include "ops/element_binary.h"
+#include "ops/split.h"
+#include "ops/noop.h"
+#include "ops/softmax.h"
 #include "parallel_ops/combine.h"
 #include "parallel_ops/partition.h"
 #include "parallel_ops/replicate.h"
@@ -1056,6 +1060,7 @@ void FFModel::graph_optimize(size_t budget,
   hashmap.insert(graph->hash());
   best_graph = new Graph(*graph);
   float best_cost = graph->optimal_cost();
+  std::vector<float> best_costs;
   int counter = 0;
   while (!candidates.empty()) {
     Graph *cur_graph = candidates.top();
@@ -1064,6 +1069,10 @@ void FFModel::graph_optimize(size_t budget,
       delete best_graph;
       best_graph = cur_graph;
       best_cost = cur_graph->optimal_cost();
+      optimal_views = best_graph->optimal_views();
+      this->convert_graph_to_layers(best_graph, optimal_views);
+      float simulated_time = this->simulator->simulate_runtime(this, COMP_MODE_TRAINING, "");
+      printf("  New best time: %fms\n", simulated_time);
     } else if (cur_graph->optimal_cost() > best_cost * 1.2) {
       break;
     }
@@ -1074,7 +1083,9 @@ void FFModel::graph_optimize(size_t budget,
     counter ++;
     for (size_t i = 0; i < xfers.size(); i++) {
       xfers[i]->run(0, cur_graph, candidates, hashmap, best_cost * 1.2, 1000);
+      std::cout << "." << std::flush;
     }
+    std::cout << std::endl;
     if (best_graph != cur_graph) {
       delete cur_graph;
     }
@@ -1118,6 +1129,10 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
     }
   }
   size_t index = 0;
+  /* for (Op *op : layers) { */
+  /*   delete op; */
+  /* } */
+  layers.clear();
   while (index < queue.size()) {
     Node node = queue[index++];
     assert(node.ptr != NULL);

@@ -351,7 +351,7 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
 
 CostMetrics Simulator::measure_operator_cost(const Op* op, const ParallelConfig& config)
 {
-  size_t hash = 17 * 31 + (size_t)(op);
+  size_t hash = 17 * 31 + op->get_untyped_params_hash();
   hash = hash * 31 + std::hash<int>()(config.device_type);
   hash = hash * 31 + std::hash<int>()(config.nDims);
   for (int i = 0; i < config.nDims; i++)
@@ -371,50 +371,41 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const ParallelConfig&
   }
 }
 
+ParallelConfig Op::view_to_pc(MachineView const &view) const {
+  ParallelConfig config;
+  config.device_type = (ParallelConfig::DeviceType) view.device_type;
+  const Tensor output = this->outputs[0];
+  config.nDims = output->num_dims;
+  for (int i = 0; i < config.nDims; i++) {
+    if (output->dims[i].parallel_idx == -1) {
+      config.dim[i] = 1;
+    } else {
+      config.dim[i] = view.dim[output->dims[i].parallel_idx];
+    }
+  }
+
+  std::vector<int> device_ids = view.device_ids();
+  assert (device_ids.size() <= MAX_NUM_WORKERS);
+  for (int i = 0; i < device_ids.size(); i++) {
+    config.device_ids[i] = device_ids[i];
+  }
+
+  /* std::vector<Legion::Domain> domains = view.domains(); */
+  /* assert (domains.size() == device_ids.size()); */
+  /* for (int i = 0; i < domains.size(); i++) { */
+  /*   config.domains[i] = domains[i]; */
+  /* } */
+
+  return config;
+}
+
 CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& view)
 {
-  CostMetrics cost_metrics;
+  ParallelConfig config = op->view_to_pc(view);
+  CostMetrics cost_metrics = this->measure_operator_cost(op, config);
   // First, estimate operator sync cost
   // We don't care about cache since the estimate is cheap
   op->estimate_sync_cost(this, view, cost_metrics);
-  // Second, measure operator compute cost
-  size_t hash = 17 * 31 + std::hash<size_t>()(op->op_guid);
-  hash = hash * 31 + std::hash<int>()(view.device_type);
-  // start_device_id does not affect operator_cost
-  //hash = hash * 31 + std::hash<int>()(view.start_device_id);
-  for (int i = 0; i < view.ndims; i++) {
-    hash = hash * 31 + std::hash<int>()(view.dim[i]);
-  }
-  // strides does not affect operator's cost
-  //for (int i = 0; i < view.ndims; i++) {
-  //  hash = hash * 31 + std::hash<int>()(view.stride[i]);
-  //}
-  std::unordered_map<size_t, CostMetrics>::const_iterator iter =
-    hash_to_operator_cost.find(hash);
-  if (iter == hash_to_operator_cost.end()) {
-
-    ParallelConfig config;
-    config.device_type = (ParallelConfig::DeviceType) view.device_type;
-    const Tensor output = op->outputs[0];
-    config.nDims = output->num_dims;
-    for (int i = 0; i < config.nDims; i++) {
-      if (output->dims[i].parallel_idx == -1) {
-        config.dim[i] = 1;
-      } else {
-        config.dim[i] = view.dim[output->dims[i].parallel_idx];
-      }
-    }
-
-    bool is_implemented = op->measure_operator_cost(this, config, cost_metrics);
-    if (! is_implemented) {
-      handle_measure_operator_cost_unimplemented(op);
-    }
-    hash_to_operator_cost[hash] = cost_metrics;
-  } else {
-    CostMetrics comp_metrics = iter->second;
-    cost_metrics.forward_time = comp_metrics.forward_time;
-    cost_metrics.backward_time = comp_metrics.backward_time;
-  }
   return cost_metrics;
 }
 
@@ -553,6 +544,33 @@ float Simulator::simulate_runtime(const FFModel* model,
 }
 
 float Simulator::simulate_runtime(const FFModel* model,
+                                  CompMode comp_mode,
+                                  std::string const &export_file_name)
+{
+  std::map<const Op*, MachineView> global;
+  for (Op *op : model->layers) {
+    assert (op->numOutputs == 1);
+    global[op] = op->outputs[0]->machine_view;
+  }
+
+  return this->simulate_runtime(model, global, comp_mode, export_file_name);
+}
+
+float Simulator::simulate_runtime(const FFModel* model,
+                                  const std::map<const Op*, MachineView>& global,
+                                  CompMode comp_mode,
+                                  std::string const &export_file_name) 
+{
+  std::map<const Op*, ParallelConfig> converted_map;
+
+  for (auto const &kv : global) {
+    converted_map[kv.first] = kv.first->view_to_pc(kv.second);
+  }
+
+  return this->simulate_runtime(model, converted_map, comp_mode, export_file_name);
+}
+
+float Simulator::simulate_runtime(const FFModel* model,
                                   const std::map<const Op*, ParallelConfig>& global,
                                   CompMode comp_mode,
                                   std::string const &export_file_name)
@@ -560,8 +578,7 @@ float Simulator::simulate_runtime(const FFModel* model,
   // printf("%s\n", machine->to_string().c_str());
   task_manager->reset();
   // Step 1: register forward and backward tasks
-  for (size_t l = 0; l < model->layers.size(); l++) {
-    Op* op = model->layers[l];
+  for (Op *op : model->layers) {
     ParallelConfig config = global.find(op)->second;
     CostMetrics cost_metrics = measure_operator_cost(op, config);
     float forward_time = cost_metrics.forward_time;
@@ -581,8 +598,7 @@ float Simulator::simulate_runtime(const FFModel* model,
     }
   }
   // Step 2: insert dependencies and comm. tasks before compute tasks
-  for (size_t l = 0; l < model->layers.size(); l++) {
-    Op* op = model->layers[l];
+  for (Op *op : model->layers) {
     ParallelConfig config = global.find(op)->second;
     for (int j = 0; j < op->numInputs; j++) {
       Tensor t = op->inputs[j];

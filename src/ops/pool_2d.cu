@@ -82,6 +82,24 @@ bool Pool2DParams::is_valid(const Tensor input) const {
   return is_valid;
 }
 
+size_t Pool2DParams::get_hash(const Tensor input) const {
+  size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, this->kernel_h);
+  hash_combine(hash, this->kernel_w);
+  hash_combine(hash, this->stride_h);
+  hash_combine(hash, this->stride_w);
+  hash_combine(hash, this->padding_h);
+  hash_combine(hash, this->padding_w);
+  hash_combine(hash, this->pool_type);
+  hash_combine(hash, this->activation);
+
+  return hash;
+}
+
+size_t Pool2D::get_params_hash() const {
+  return this->get_params().get_hash(this->inputs[0]);
+}
+
 Node FFModel::get_or_create_pool2d_node(const Tensor input,
                                         const Pool2DParams& params)
 {
@@ -89,17 +107,10 @@ Node FFModel::get_or_create_pool2d_node(const Tensor input,
     return Node::INVALID_NODE;
   }
 
-  size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, params.kernel_h);
-  hash_combine(hash, params.kernel_w);
-  hash_combine(hash, params.stride_h);
-  hash_combine(hash, params.stride_w);
-  hash_combine(hash, params.padding_h);
-  hash_combine(hash, params.padding_w);
-  hash_combine(hash, params.pool_type);
-  hash_combine(hash, params.activation);
 
   Pool2D *pool;
+
+  size_t hash = params.get_hash(input);
 
   const auto &it = this->cached_pool2d_ops.find(hash);
   if (it != cached_pool2d_ops.end()) {

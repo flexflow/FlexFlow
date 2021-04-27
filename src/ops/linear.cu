@@ -32,6 +32,14 @@ Tensor FFModel::dense(const Tensor input,
   return li->outputs[0];
 }
 
+size_t Linear::get_params_hash() const {
+  size_t hash = this->inputs[0]->get_owner_independent_hash();
+  hash = hash * 31 + std::hash<int>()(this->out_channels);
+  hash = hash * 31 + std::hash<int>()(this->activation);
+  hash = hash * 31 + std::hash<int>()(this->use_bias);
+  return hash;
+}
+
 Node FFModel::get_or_create_linear_node(const Tensor input,
                                         int out_dim,
                                         ActiMode activation,

@@ -11,6 +11,7 @@ struct Pool2DParams {
   bool is_valid(const Tensor input) const;
   void solve_dims(const Tensor input, 
                   ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims) const;
+  size_t get_hash(const Tensor input) const;
 private:
   int output_size(const Tensor input,
                   ParallelDim output_dims[MAX_TENSOR_DIM]) const; 
@@ -72,6 +73,7 @@ public:
   static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
 
   Pool2DParams get_params() const;
+  size_t get_params_hash() const override;
 private:
   int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]); 
 

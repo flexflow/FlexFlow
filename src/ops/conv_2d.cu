@@ -117,6 +117,26 @@ Conv2DParams Conv2D::get_params() const {
   return params;
 }
 
+size_t Conv2DParams::get_hash(const Tensor input) const {
+  size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, this->out_channels);
+  hash_combine(hash, this->kernel_h);
+  hash_combine(hash, this->kernel_w);
+  hash_combine(hash, this->stride_h);
+  hash_combine(hash, this->stride_w);
+  hash_combine(hash, this->padding_h);
+  hash_combine(hash, this->padding_w);
+  hash_combine(hash, this->activation);
+  hash_combine(hash, this->groups);
+  hash_combine(hash, this->use_bias);
+
+  return hash;
+}
+
+size_t Conv2D::get_params_hash() const {
+  return this->get_params().get_hash(this->inputs[0]);
+}
+
 Node FFModel::get_or_create_conv2d_node(const Tensor input,
                                         const Conv2DParams& params) 
 {
@@ -124,17 +144,7 @@ Node FFModel::get_or_create_conv2d_node(const Tensor input,
     return Node::INVALID_NODE;
   }
 
-  size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, params.out_channels);
-  hash_combine(hash, params.kernel_h);
-  hash_combine(hash, params.kernel_w);
-  hash_combine(hash, params.stride_h);
-  hash_combine(hash, params.stride_w);
-  hash_combine(hash, params.padding_h);
-  hash_combine(hash, params.padding_w);
-  hash_combine(hash, params.activation);
-  hash_combine(hash, params.groups);
-  hash_combine(hash, params.use_bias);
+  size_t hash = params.get_hash(input);
 
   Conv2D *conv = NULL;
 

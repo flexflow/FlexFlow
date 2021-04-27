@@ -276,6 +276,8 @@ public:
       int input_dim, int output_dim, 
       int input_idx = 0, int output_idx = 0, 
       tl::optional<MappingOperation> operation = tl::nullopt);
+
+  ParallelConfig view_to_pc(MachineView const &view) const;
 protected:
   void register_weight_parallel_dims(
       std::vector<std::pair<int, int>> mappings, int input_idx = 0, int weight_idx = 0);
@@ -373,6 +375,8 @@ public:
   virtual bool is_parallel_op() const;
   virtual void serialize(Legion::Serializer&) const;
   virtual Op *materialize(FFModel& ff, Tensor inputs[], int num_inputs) const;
+  size_t get_untyped_params_hash() const;
+  virtual size_t get_params_hash() const;
 
   int get_dimension() const;
 #ifdef FF_USE_NCCL
@@ -993,75 +997,6 @@ private:
   Node new_node(Op *);
 };
 
-class ElementBinaryMeta : public OpMeta {
-public:
-  ElementBinaryMeta(FFHandler handle);
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
-  cudnnOpTensorDescriptor_t opDesc;
-  OperatorType op_type;
-  bool inplace_a;
-};
-
-class NoOp : public Op {
-public:
-  NoOp(FFModel& model,
-       OperatorType type,
-       const Tensor output,
-       const char* name = NULL);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
-  bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
-  static OpMeta* init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-};
-
-class ElementBinary : public Op {
-public:
-  ElementBinary(FFModel& model,
-                OperatorType type,
-                const Tensor x,
-                const Tensor y,
-                bool inplace_a,
-                const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
-  bool can_inplace_output();
-  bool has_inplace_output();
-  void do_inplace_output();
-
-  static OpMeta* init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
-                            Legion::Context ctx, Legion::Runtime *runtime);
-  bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
-  static void forward_kernel(const ElementBinaryMeta* m,
-                      const float* in1_ptr,
-                      const float* in2_ptr,
-                      float* out_ptr);
-  static void backward_kernel(const ElementBinaryMeta* m,
-                       const float* out_grad_ptr,
-                       const float* in1_ptr,
-                       const float* in2_ptr,
-                       float* in1_grad_ptr,
-                       float* in2_grad_ptr);
-public:
-  bool inplace_a;
-};
-
 class DropoutMeta;
 class Dropout : public Op {
 public:
@@ -1301,63 +1236,6 @@ public:
   int n;
 };
 
-class SoftmaxMeta;
-class Softmax : public Op {
-public:
-  Softmax(FFModel& model,
-          const Tensor logit,
-          int dim,
-          const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  bool get_int_parameter(PMParameter, int*) const;
-  void print_layer(const FFModel& model) {assert(0);}
-
-  static OpMeta* init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
-                            Legion::Context ctx, Legion::Runtime *runtime);
-  void init_meta(SoftmaxMeta *m,
-                 Legion::Rect<2> const &input,
-                 Legion::Rect<2> const &output) const;
-  bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
-  static void forward_kernel(SoftmaxMeta const *m,
-                             float const *input_ptr,
-                             float *output_ptr);
-  static void backward_kernel(float *input_grad_ptr,
-                              float const *output_grad_ptr,
-                              size_t num_elements);
-private:
-  template<int NDIM>
-  static void forward_task_with_dim(const Legion::Task *task,
-                                    const std::vector<Legion::PhysicalRegion> &regions,
-                                    Legion::Context ctx, Legion::Runtime *runtime);
-  template<int NDIM>
-  static void backward_task_with_dim(const Legion::Task *task,
-                                     const std::vector<Legion::PhysicalRegion> &regions,
-                                     Legion::Context ctx, Legion::Runtime *runtime);
-public:
-  int dim;
-};
-
-class SoftmaxMeta : public OpMeta {
-public:
-  SoftmaxMeta(FFHandler handle,
-              const Softmax* softmax,
-              const Legion::Domain& input_domain);
-  cudnnTensorDescriptor_t inputTensor;
-  bool profiling;
-  int dim;
-  char op_name[MAX_OPNAME];
-};
 
 class TransposeMeta : public OpMeta {
 public:
@@ -1562,40 +1440,6 @@ public:
                               int axis,
                               const Legion::Domain& out_grad_domain,
                               const Legion::Domain* in_grad_domain);
-  bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
-public:
-  int axis;
-};
-
-class Split : public Op {
-public:
-  Split(FFModel& model,
-        const Tensor input,
-        const std::vector<int>& split,
-        int axis,
-        const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
-
-  static OpMeta* init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
-                            Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_kernel(float **out_ptrs,
-                             float const *in_ptr,
-                             Legion::coord_t const *out_blk_sizes,
-                             Legion::coord_t in_blk_size,
-                             Legion::coord_t num_blks,
-                             int numOutputs);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;

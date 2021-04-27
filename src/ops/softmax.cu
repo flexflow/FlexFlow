@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/softmax.h"
 #include "cuda_helper.h"
+#include "hash_utils.h"
 
 using namespace Legion;
 
@@ -54,64 +55,6 @@ Softmax::Softmax(FFModel& model,
     dims[i] = _input->dims[numdim-1-i];
   outputs[0] = model.create_tensor(numdim, dims, DT_FLOAT, this);
 }
-
-#ifdef DEADCODE
-void Softmax::create_input_partition(FFModel& model)
-{
-  int dim = outputs[0]->num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      create_output_and_partition_with_dim<DIM>(model); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      // Unsupported dim
-      assert(false);
-    }
-  }
-}
-
-template<int NDIM>
-void Softmax::create_output_and_partition_with_dim(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  int num_par_c = part_rect.hi[0] - part_rect.lo[0] + 1;
-  //int num_par_n = part_rect.hi[1] - part_rect.lo[1] + 1;
-  // Current require data parallelism for Softmax
-  assert(num_par_c == 1);
-  return Op::create_input_partition(model);
-#ifdef DEADCODE
-  {
-    int dims[NDIM];
-    for (int i = 0; i < NDIM; i++)
-      dims[i] = outputs[0].adim[NDIM-1-i];
-    outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
-    outputs[0].owner_op = this;
-    outputs[0].owner_idx = 0;
-  }
-  // Compute partition bound for input
-  Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0].part.get_index_partition());
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0]->part;
-    input_grad_lps[0] = inputs[0]->part_grad;
-  } else {
-    model.create_disjoint_partition<NDIM>(
-        inputs[0], (IndexSpaceT<NDIM>)task_is, input_lps[0], input_grad_lps[0]);
-  }
-#endif
-}
-#endif
 
 /*
   regions[0]: input
@@ -420,6 +363,13 @@ bool Softmax::get_int_parameter(PMParameter para, int* value) const
     default:
       return Op::get_int_parameter(para, value);
   }
+}
+
+size_t Softmax::get_params_hash() const {
+  size_t hash = this->inputs[0]->get_owner_independent_hash();
+  hash_combine(hash, this->dim);
+
+  return hash;
 }
 
 Node FFModel::get_or_create_softmax_node(const Tensor input,

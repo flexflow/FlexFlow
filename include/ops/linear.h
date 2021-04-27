@@ -69,6 +69,8 @@ public:
 
   void serialize(Legion::Serializer&) const override;
   static Node deserialize(FFModel &ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
+
+  size_t get_params_hash() const override;
 private:
   template<int NDIM>
   static OpMeta* init_task_with_dim(const Legion::Task *task,

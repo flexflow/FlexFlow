@@ -14,6 +14,7 @@
  */
 
 #include "parallel_ops/replicate.h"
+#include "hash_utils.h"
 
 using namespace Legion;
 
@@ -49,8 +50,8 @@ Replicate::Replicate(
   TensorBase::update_parallel_ids(numdim, dims);
   outputs[0] = model.create_tensor_legion_ordering(
       numdim, dims, DT_FLOAT, this);
-  inputs[0]->print("Replicate::input");
-  outputs[0]->print("Replicate::output");
+  /* inputs[0]->print("Replicate::input"); */
+  /* outputs[0]->print("Replicate::output"); */
 }
 
 void Replicate::create_input_partition(FFModel& ff)
@@ -166,6 +167,13 @@ bool Replicate::append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_op
   return true;
 }
 
+size_t Replicate::get_params_hash() const { 
+  size_t hash = this->inputs[0]->get_owner_independent_hash();
+  hash_combine(hash, this->replicate_dim);
+  hash_combine(hash, this->replicate_degree);
+
+  return hash;
+}
 
 Node FFModel::get_or_create_replicate_node(const Tensor input,
                                            int replicate_dim,

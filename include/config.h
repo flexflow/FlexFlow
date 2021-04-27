@@ -92,6 +92,8 @@ struct MachineView {
   DeviceType device_type;
   int ndims, start_device_id, dim[MAX_TENSOR_DIM], stride[MAX_TENSOR_DIM];
   std::vector<int> device_ids() const;
+  std::vector<Legion::Domain> domains() const;
+  Legion::Domain domain_from_point(Legion::DomainPoint const &) const;
 };
 
 struct MachineResource {
@@ -132,6 +134,7 @@ struct ParallelConfig {
   DeviceType device_type;
   int nDims, dim[MAX_TENSOR_DIM];
   int device_ids[MAX_NUM_WORKERS];
+  Legion::Domain domains[MAX_TENSOR_DIM]; // for use in view to pc conversion
 #ifdef FF_USE_NCCL
   ncclComm_t nccl_comms[MAX_NUM_WORKERS];
 #endif

@@ -20,6 +20,7 @@
 #include "ops/conv_2d.h"
 #include "ops/pool_2d.h"
 #include "ops/element_unary.h"
+#include "ops/element_binary.h"
 
 using namespace Legion;
 

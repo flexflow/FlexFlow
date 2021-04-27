@@ -37,12 +37,14 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
-  Legion::Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const;
+  /* Legion::Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const; */
 
   void serialize(Legion::Serializer&) const override;
   static Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
   Op *materialize(FFModel& ff, Tensor inputs[], int num_inputs) const override;
   static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
+
+  size_t get_params_hash() const override;
 };
 
 #endif // _FLEXFLOW_FLAT_H

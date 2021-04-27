@@ -14,6 +14,7 @@
  */
 
 #include "parallel_ops/fused_parallel_op.h"
+#include "hash_utils.h"
 
 using namespace Legion;
 
@@ -195,6 +196,18 @@ bool FusedParallelOp::append_parallel_op_info(std::vector<ParallelOpInfo>& _para
     _parallel_ops.push_back(parallel_ops[i]);
   }
   return true;
+}
+
+size_t FusedParallelOp::get_params_hash() const {
+  size_t hash = this->inputs[0]->get_owner_independent_hash();
+  hash_combine(hash, this->num_parallel_ops);
+  for (ParallelOpInfo const &p : this->parallel_ops) {
+    hash_combine(hash, p.op_type);
+    hash_combine(hash, p.parallel_dim);
+    hash_combine(hash, p.parallel_degree);
+  }
+
+  return hash;
 }
 
 Node FFModel::get_or_create_fused_parallel_node(const Tensor input,

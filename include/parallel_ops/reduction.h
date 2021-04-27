@@ -40,6 +40,8 @@ public:
       Simulator* sim,
       const ParallelConfig& pc,
       CostMetrics& cost_metrics) const;
+
+  size_t get_params_hash() const override;
 public:
   int reduction_dim, reduction_degree;
 };

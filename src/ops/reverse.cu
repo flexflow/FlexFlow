@@ -191,7 +191,7 @@ void Reverse::forward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   IndexLauncher launcher(REVERSE_FWD_TASK_ID, parallel_is,
-                         TaskArgument(this, sizeof(ElementBinary)), argmap,
+                         TaskArgument(this, sizeof(Reverse)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(

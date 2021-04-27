@@ -23,6 +23,7 @@
 #include "ops/element_unary.h"
 #include "ops/flat.h"
 #include "ops/attention.h"
+#include "ops/softmax.h"
 #include "parallel_ops/partition.h"
 #include "parallel_ops/replicate.h"
 #include "parallel_ops/reduction.h"
@@ -64,6 +65,35 @@ std::vector<int> MachineView::device_ids() const {
   }
 
   return device_ids_list;
+}
+
+/* std::vector<Legion::DomainPoint> MachineView::points() const { */
+/*   std::vector<Legion::DomainPoint> domains_list; */
+
+/*   Domain d; */
+/*   d.dim = this->ndims; */
+/*   for (int i = 0; i < d.dim; i++) { */
+/*     d.rect_data[i] = 0; */
+/*     d.rect_data[i+d.dim] = this->dim[i]-1; */
+/*   } */
+
+/*   for (Domain::DomainPointIterator it(d); it; it++) { */
+/*     domains_list.push_back(this->domain_from_point(*it)); */
+/*   } */
+
+/*   return domains_list; */
+/* } */
+
+Legion::Domain MachineView::domain_from_point(Legion::DomainPoint const &p) const {
+  Domain d;
+  assert (p.dim == this->ndims);
+  d.dim = p.dim;
+  for (int i = 0; i < d.dim; i++) {
+    d.rect_data[i] = p[i] * this->dim[i];
+    d.rect_data[i+d.dim] = (p[i] + 1) * this->dim[i] - 1;
+  }
+
+  return d;
 }
 
 size_t MachineView::num_parts() const

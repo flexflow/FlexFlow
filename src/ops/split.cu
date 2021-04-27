@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/split.h"
 #include "cuda_helper.h"
+#include "hash_utils.h"
 
 using namespace Legion;
 
@@ -28,6 +29,16 @@ void FFModel::split(const Tensor input,
   layers.push_back(split);
   for (size_t i = 0; i < splits.size(); i++)
     outputs[i] = split->outputs[i];
+}
+
+size_t Split::get_params_hash() const {
+  size_t hash = 0;
+  for (int i = 0; i < this->numInputs; i++) {
+    hash_combine(hash, this->inputs[i]->get_owner_independent_hash()); 
+  }
+  hash_combine(hash, this->axis);
+
+  return hash;
 }
 
 Split::Split(FFModel& model,
@@ -61,60 +72,6 @@ Split::Split(FFModel& model,
   // Check split sizes
   assert(split_size == input->dims[axis].size);
 }
-
-#ifdef DEADCODE
-void Split::create_input_partition(FFModel& model)
-{
-  // Retrive the task indexspace
-  int dim = inputs[0]->num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      task_is = model.get_or_create_task_is(DIM, name); \
-      create_input_partition_with_dim<DIM>(model); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      // Unsupported dim for Split operator
-      assert(false);
-    }
-  }
-}
-
-template<int NDIM>
-void Split::create_input_partition_with_dim(FFModel& model)
-{
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  // cannot parallelize along the axis dim
-  assert(part_rect.hi[axis] == part_rect.lo[axis]);
-  return Op::create_input_partition(model);
-#ifdef DEADCODE
-  for (int i = 0; i < numOutputs; i++) {
-    int dims[NDIM];
-    for (int j = 0; j < NDIM; j++)
-      dims[j] = outputs[i].adim[NDIM-1-j];
-    outputs[i] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
-    outputs[i].owner_op = this;
-    outputs[i].owner_idx = i;
-  }
-  Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0]->part.get_index_partition());
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0]->part;
-    input_grad_lps[0] = inputs[0]->part_grad;
-  } else {
-    model.create_disjoint_partition<NDIM>(
-        inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
-  }
-#endif
-}
-#endif
 
 __host__
 OpMeta* Split::init_task(const Task* task,

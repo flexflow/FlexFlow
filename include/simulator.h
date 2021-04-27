@@ -316,6 +316,13 @@ public:
       const std::map<const Op*, ParallelConfig>& global,
       CompMode comp_mode);
   float simulate_runtime(const FFModel* model,
+      CompMode comp_mode,
+      std::string const &export_file_name);
+  float simulate_runtime(const FFModel* model,
+      const std::map<const Op*, MachineView>& global,
+      CompMode comp_mode,
+      std::string const &export_file_name);
+  float simulate_runtime(const FFModel* model,
       const std::map<const Op*, ParallelConfig>& global,
       CompMode comp_mode,
       std::string const &export_file_name);
