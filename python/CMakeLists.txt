@@ -12,6 +12,7 @@ set(GPU_SRC
 
 cuda_add_library(flexflow_dataloader SHARED ${GPU_SRC} ${CPU_SRC} OPTIONS ${CUDA_GENCODE})
 target_include_directories(flexflow_dataloader PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
+add_dependencies(flexflow_dataloader flexflow)
 
 cuda_add_executable(${project_target} main.cc)
 set_target_properties(${project_target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
