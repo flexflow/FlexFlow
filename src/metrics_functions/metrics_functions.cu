@@ -247,31 +247,6 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
 void Metrics::compute(FFModel* model,
                       const Tensor logit,
                       const Tensor label)
-#ifdef DEADCODE
-{
-  assert(logit->num_dims == label->num_dims);
-  int dim = logit->num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      compute_with_dim<DIM>(model, logit, label); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      assert(false);
-    }
-  }
-}
-
-template<int NDIM>
-void Metrics::compute_with_dim(FFModel* model,
-                               const Tensor logit,
-                               const Tensor label)
-#endif
 {
   // Use the same parallel strategy as the owner of logit
   Context ctx = model->config.lg_ctx;

@@ -66,8 +66,8 @@ int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
   const int OUT_CHANNELS = Output::OUT_CHANNELS;
 
   output_dims[OUT_CHANNELS].size = this->out_channels;
-  for (int i = 1; i < input->num_dims - 1; i++) {
-    output_dims[i].size = input->dims[i-1].size; 
+  for (int i = 1; i < input->num_dims; i++) {
+    output_dims[i] = input->dims[i]; 
   }
   output_dims[REPLICA].is_replica_dim = true;
 

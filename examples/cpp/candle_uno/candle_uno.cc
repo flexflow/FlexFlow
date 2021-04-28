@@ -28,9 +28,9 @@ void parse_input_args(char **argv, int argc, CandleConfig& apConfig);
 CandleConfig::CandleConfig(void)
 {
   // Set default configurations here
-  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 4; i++)
     dense_layers.push_back(4192);
-  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 8; i++)
     dense_feature_layers.push_back(4192);
   feature_shapes["dose"] = 1;
   feature_shapes["cell.rnaseq"] = 942;
@@ -223,7 +223,7 @@ DataLoader::DataLoader(FFModel& ff,
   num_samples = 0;
   if (candle.dataset_path == "") {
     log_app.print("Use random dataset...");
-    num_samples = 8192;
+    num_samples = 256 * ff.config.workersPerNode * ff.config.numNodes;
   } else {
     log_app.print("Start loading dataset from %s", candle.dataset_path.c_str());
     assert(_inputs.size() == candle.input_features.size());
