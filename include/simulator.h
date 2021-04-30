@@ -337,6 +337,8 @@ public:
   std::map<size_t, SimTask*> hash_to_forward_task, hash_to_backward_task;
 };
 
+size_t data_type_size(DataType);
+
 class Simulator {
 public:
   Simulator(const FFModel* model,
