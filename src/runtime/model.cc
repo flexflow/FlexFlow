@@ -1455,7 +1455,7 @@ void FFModel::backward(int seq_length)
         layers[l]->resetInputGrads[i] = false;
       }
 #endif
-    if(l == metrics_input && metrics_input < (int)layers.size()-1) continue;
+    //if(l == metrics_input && metrics_input < (int)layers.size()-1) continue;
     layers[l]->backward(*this);
   }
 }
@@ -2539,27 +2539,27 @@ void register_flexflow_internal_tasks()
 
 
   // Cache task CPU
-  // {
-  //   TaskVariantRegistrar registrar(CACHE_INIT_TASK_ID, "Cache Init");
-  //   registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-  //   registrar.set_leaf();
-  //   Runtime::preregister_task_variant<OpMeta*, Cache::init_task>(
-  //       registrar, "Cache Init Task");
-  // }
-  // {
-  //   TaskVariantRegistrar registrar(CACHE_FWD_TASK_ID, "Cache Forward");
-  //   registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-  //   registrar.set_leaf();
-  //   Runtime::preregister_task_variant<Cache::forward_task>(
-  //       registrar, "Cache Forward Task");
-  // }
-  // {
-  //   TaskVariantRegistrar registrar(CACHE_BWD_TASK_ID, "Cache Backward");
-  //   registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-  //   registrar.set_leaf();
-  //   Runtime::preregister_task_variant<Cache::backward_task>(
-  //       registrar, "Cache Backward Task");
-  // }
+  {
+    TaskVariantRegistrar registrar(CACHE_INIT_TASK_ID, "Cache Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Cache::init_task>(
+        registrar, "Cache Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CACHE_FWD_TASK_ID, "Cache Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Cache::forward_task>(
+        registrar, "Cache Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CACHE_SCORE_TASK_ID, "Cache Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Cache::score_task>(
+        registrar, "Cache Score Task");
+  }
 
   // Group by task CPU
   {

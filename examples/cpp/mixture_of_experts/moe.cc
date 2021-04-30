@@ -82,8 +82,8 @@ void top_level_task(const Task* task,
   Tensor gate_preds = ff.dense(input, num_exp, AC_MODE_RELU);
   Tensor topK_output[2];
   ff.top_k(gate_preds, topK_output, num_select, false);
+  topK_output[1].data_type = DT_INT32;
   ff.cache(topK_output[1], TRAIN_SAMPLES / ffConfig.batchSize);
-
 
   Tensor exp_tensors[num_exp];
   ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);

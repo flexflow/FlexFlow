@@ -59,6 +59,9 @@ enum TaskIDs {
   GROUP_BY_INIT_TASK_ID,
   GROUP_BY_FWD_TASK_ID,
   GROUP_BY_BWD_TASK_ID,
+  CACHE_INIT_TASK_ID,
+  CACHE_FWD_TASK_ID,
+  CACHE_SCORE_TASK_ID,
   AGGREGATE_INIT_TASK_ID,
   AGGREGATE_FWD_TASK_ID,
   AGGREGATE_BWD_TASK_ID,
@@ -364,6 +367,7 @@ public:
   // Add a cache layer
   Tensor cache(const Tensor& input,
               int num_batches,
+              std::function<bool(float*,const void*,const void*,int)> trigger = {}, // TODO: &
               const char* name = NULL);
   // Add aggregate layer
   Tensor aggregate(const Tensor* inputs,
@@ -1210,6 +1214,7 @@ public:
 class CacheMeta : public OpMeta {
 public:
   CacheMeta(FFHandler handle);
+  float cached_score;
 };
 
 class Cache : public Op {
@@ -1217,6 +1222,7 @@ public:
   Cache(FFModel& model,
       const Tensor& _input,
       int _num_batches,
+      std::function<bool(float*,const void*,const void*,int)> &_trigger,
       const char* name);
   ~Cache(void);
   void init(const FFModel&);
@@ -1229,10 +1235,10 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
+  static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
+  static void score_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
@@ -1243,8 +1249,9 @@ public:
   void** batch_ptrs;
   bool load_cached;
   int num_batches;
-  int batch_ctr;
+  std::function<bool(float*,const void*,const void*,int)> trigger;
   bool profiling;
+  int batch_ctr;
 };
 
 
