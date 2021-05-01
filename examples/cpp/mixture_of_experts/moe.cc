@@ -20,7 +20,7 @@
 #include <string>
 
 #define NUM_SAMPLES 60000
-#define TRAIN_SAMPLES 60000
+#define TRAIN_SAMPLES 10000
 #define TEST_SAMPLES 0
 #define MNIST_DIMS 28*28
 #define CIFAR_DIMS 3*32*32
@@ -127,14 +127,14 @@ void top_level_task(const Task* task,
 
     for (int iter = 0; iter < iterations; iter++) {
       data_loader.next_batch(ff);
-      // if (epoch > 0)
-      //    runtime->begin_trace(ctx, 111/*trace_id*/);
+      if (epoch > 0)
+         runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      // if (epoch > 0)
-      //    runtime->end_trace(ctx, 111/*trace_id*/);
+      if (epoch > 0)
+         runtime->end_trace(ctx, 111/*trace_id*/);
     }
 
     ff.reset_metrics();
@@ -243,35 +243,6 @@ void read_cifar100(float* input_ptr, int* label_ptr) {
 
   file.close();
 }
-
-
-
-
-void read_cifar100(float* input_ptr, int* label_ptr) {
-  std::ifstream file;
-  file.open("train.bin", std::ios::in | std::ios::binary | std::ios::ate);
-  if (!file) {
-      std::cout << "Error opening CIFAR100 train data file" << std::endl;
-      return;
-  }
-
-  file.seekg(0, std::ios::beg);
-
-  // each sample: <1 x coarse label><1 x fine label><3072 x pixel>
-  for(std::size_t i = 0; i < NUM_SAMPLES; i++) {
-    unsigned char temp = 0;
-    file.read((char*)&temp, sizeof(temp)); // coarse label, skip
-    file.read((char*)&temp, sizeof(temp));
-    label_ptr[i] = temp;
-    for(std::size_t j = 0; j < 3072; ++j) {
-      file.read((char*)&temp, sizeof(temp));
-      input_ptr[i*3072 + j] = (float)temp/255.0f;
-    }
-  }
-
-  file.close();
-}
-
 
 
 int reverseInt (int i)

@@ -367,7 +367,7 @@ public:
   // Add a cache layer
   Tensor cache(const Tensor& input,
               int num_batches,
-              std::function<bool(float*,const void*,const void*,int)> trigger = {}, // TODO: &
+              std::function<bool(float*,const void*,const void*,int)> trigger = {},
               const char* name = NULL);
   // Add aggregate layer
   Tensor aggregate(const Tensor* inputs,
