@@ -1210,7 +1210,6 @@ public:
   bool profiling;
 };
 
-
 class CacheMeta : public OpMeta {
 public:
   CacheMeta(FFHandler handle);
@@ -1253,7 +1252,6 @@ public:
   bool profiling;
   int batch_ctr;
 };
-
 
 class AggregateMeta : public OpMeta {
 public:

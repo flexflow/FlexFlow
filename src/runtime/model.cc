@@ -1455,7 +1455,7 @@ void FFModel::backward(int seq_length)
         layers[l]->resetInputGrads[i] = false;
       }
 #endif
-    //if(l == metrics_input && metrics_input < (int)layers.size()-1) continue;
+    if(l == metrics_input && metrics_input < (int)layers.size()-1) continue;
     layers[l]->backward(*this);
   }
 }
