@@ -644,8 +644,6 @@ void TopK::backward_kernel(const TopKMeta* m,
                            float* in_grad_ptr,
                            size_t batch_size, int length, int k)
 {
-  assign_kernel<<<GET_BLOCKS(batch_size*length), CUDA_NUM_THREADS>>>(
-    in_grad_ptr, batch_size * length, 0.0f);
   topk_backward_kernel<<<GET_BLOCKS(batch_size*k), CUDA_NUM_THREADS>>>(
     value_grad_ptr, indices_ptr, in_grad_ptr, batch_size, length, k);
 }
