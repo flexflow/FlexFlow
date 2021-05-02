@@ -1054,28 +1054,57 @@ void FFModel::graph_optimize(size_t budget,
     }
   }
 
+  auto started = std::chrono::high_resolution_clock::now();
+  bool export_search_curve = !this->config.search_curve_file.empty();
+  std::ofstream search_curve_stream;
+  if (export_search_curve) {
+    search_curve_stream.open(this->config.search_curve_file);
+    search_curve_stream << "ms,iteration,best" << std::endl;
+  }
+
   std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
   std::unordered_set<size_t> hashmap;
   candidates.push(graph);
   hashmap.insert(graph->hash());
   best_graph = new Graph(*graph);
-  float best_cost = graph->optimal_cost();
-  std::vector<float> best_costs;
+  float best_cost = best_graph->optimal_cost();
+  optimal_views = best_graph->optimal_views();
+  this->convert_graph_to_layers(best_graph, optimal_views);
+  float best_sim_time = this->simulator->simulate_runtime(this, COMP_MODE_TRAINING, "simulated_thing.dot");
+  printf("   First best time: %fms\n", best_sim_time);
+  int iter = 0;
+  if (export_search_curve) {
+    auto done = std::chrono::high_resolution_clock::now();
+    auto num_millis = std::chrono::duration_cast<std::chrono::milliseconds>(done - started).count();
+    search_curve_stream << num_millis << ","
+                        << iter << ","
+                        << best_sim_time << std::endl;
+  }
   int counter = 0;
-  while (!candidates.empty()) {
+  while (false && !candidates.empty()) {
     Graph *cur_graph = candidates.top();
     candidates.pop();
+    iter++;
     if (cur_graph->optimal_cost() < best_graph->optimal_cost()) {
       delete best_graph;
       best_graph = cur_graph;
       best_cost = cur_graph->optimal_cost();
       optimal_views = best_graph->optimal_views();
       this->convert_graph_to_layers(best_graph, optimal_views);
-      float simulated_time = this->simulator->simulate_runtime(this, COMP_MODE_TRAINING, "");
-      printf("  New best time: %fms\n", simulated_time);
-    } else if (cur_graph->optimal_cost() > best_cost * 1.2) {
+      best_sim_time = this->simulator->simulate_runtime(this, COMP_MODE_TRAINING, "");
+      printf("  New best time: %fms\n", best_sim_time);
+    }     
+    if (export_search_curve && (counter % this->config.search_curve_interval == 0)) {
+      auto done = std::chrono::high_resolution_clock::now();
+      auto num_millis = std::chrono::duration_cast<std::chrono::milliseconds>(done - started).count();
+      search_curve_stream << num_millis << ","
+                          << iter << ","
+                          << best_sim_time << std::endl;
+    }
+    if (cur_graph->optimal_cost() > best_cost * 1.2) {
       break;
     }
+
     if (counter > config.search_budget)
       break;
     printf("    [%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)\n",
@@ -1092,7 +1121,7 @@ void FFModel::graph_optimize(size_t budget,
   }
   // Run DP
   printf("best_cost = %.4lf\n", best_cost);
-  best_graph->print();
+  //best_graph->print();
   optimal_views = best_graph->optimal_views();
   // Export results
   if (!this->config.export_strategy_computation_graph_file.empty()) {
@@ -1112,6 +1141,7 @@ void FFModel::graph_optimize(size_t budget,
     }
     printf("\n");
   }
+  std::abort();
 }
 
 bool FFModel::convert_graph_to_layers(const Graph* graph,

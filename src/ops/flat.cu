@@ -340,35 +340,26 @@ bool Flat::measure_operator_cost(Simulator* sim,
   return true;
 }
 
-/* Domain Flat::get_input_tensor_shape(const ParallelConfig& pc, */
-/*     int input_idx, int part_idx) const */
-/* { */
-/*   assert(input_idx < numInputs); */
-/*   assert(pc.nDims == 3); */
-/*   /1* // Currently assume data parallelism for Flat *1/ */
-/*   /1* assert(pc.dim[0] == 1); *1/ */
+Domain Flat::get_input_tensor_shape(const ParallelConfig& pc,
+    int input_idx, int part_idx) const
+{
+  assert(input_idx < numInputs);
+  assert(pc.nDims == 3);
+  assert(pc.dim[0] == 1);
+  assert(pc.dim[2] == 1);
+
+  /* // Currently assume data parallelism for Flat */
+  /* assert(pc.dim[0] == 1); */
   
-/*   /1* Tensor const &input = this->inputs[input_idx] *1/ */
-
-/*   /1* std::unordered_map<int, int> io_map = input_to_output_mapping(*this->parallel_dims_mapping); *1/ */
-/*   /1* int sizes[MAX_TENSOR_DIM]; *1/ */
-/*   /1* for (int i = 0; i < input->num_dims; i++) { *1/ */
-/*   /1*   assert (pc.dim[io_map.at(i)] == input->dims[i].degree); *1/ */
-/*   /1*   sizes[i] = input->dims[i].size / input->dims[i].degree; *1/ */
-/*   /1* } *1/ */
-
-/*   return pc.domains[part_idx]; */
-
-
-/* /1*   Domain d; *1/ */
-/* /1*   d.dim = inputs[input_idx]->num_dims; *1/ */
-/* /1*   for (int i = 0; i < d.dim-1; i++) { *1/ */
-/* /1*     d.rect_data[i] = 0; *1/ */
-/* /1*     d.rect_data[i+d.dim] = inputs[input_idx]->dims[i].size - 1; *1/ */
-/* /1*   } *1/ */
-/* /1*   assert(inputs[input_idx]->dims[d.dim-1].size % pc.num_parts() == 0); *1/ */
-/* /1*   int dim_size = inputs[input_idx]->dims[d.dim-1].size / pc.num_parts(); *1/ */
-/* /1*   d.rect_data[d.dim-1] = part_idx * dim_size; *1/ */
-/* /1*   d.rect_data[2*d.dim-1] = d.rect_data[d.dim-1] + dim_size - 1; *1/ */
-/* /1*   return d; *1/ */
-/* } */
+  Domain d;
+  d.dim = inputs[input_idx]->num_dims;
+  for (int i = 0; i < d.dim-1; i++) {
+    d.rect_data[i] = 0;
+    d.rect_data[i+d.dim] = inputs[input_idx]->dims[i].size - 1;
+  }
+  assert(inputs[input_idx]->dims[d.dim-2].size % pc.num_parts() == 0);
+  int dim_size = inputs[input_idx]->dims[d.dim-2].size / pc.num_parts();
+  d.rect_data[d.dim-2] = part_idx * dim_size;
+  d.rect_data[2*d.dim-2] = d.rect_data[d.dim-2] + dim_size - 1;
+  return d;
+}

@@ -1245,6 +1245,11 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     Context ctx, Runtime *runtime)
 {
   FFModel* model = *((FFModel**) task->args);
+  model->config.numNodes = 4;
+  model->config.workersPerNode = 4;
+  model->all_valid_views.clear();
+  FFModel::register_all_machine_views(model->config.numNodes, model->config.workersPerNode, 
+                                      model->config.cpusPerNode, model->all_valid_views);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
          .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
   MachineModel *machine;

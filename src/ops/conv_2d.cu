@@ -423,13 +423,13 @@ Conv2D::Conv2D(FFModel& model,
     Initializer *kernel_initializer = new GlorotUniform(std::rand()/*seed*/);
 
     weights[Kernel::INDEX] = model.create_weight_legion_ordering(
-        kernel_ndims, kernel_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
+        kernel_ndims, kernel_dims, DT_FLOAT, this/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
     
     if (use_bias) {
       Initializer *bias_initializer = new ZeroInitializer();
 
       weights[Bias::INDEX] = model.create_weight_legion_ordering(
-          bias_ndims, bias_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
+          bias_ndims, bias_dims, DT_FLOAT, this/*owner_op*/, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
     }
   }
 
@@ -1172,8 +1172,8 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
     assert(cnt > 0);
     checkCUDNN(perfResults[0].status);
     cost_metrics.forward_time = perfResults[0].time;
-    //for (int i = 0; i < cnt; i++)
-    //  printf("conv forward: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time);
+    for (int i = 0; i < cnt; i++)
+      printf("conv forward: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time);
   }
   // select forward algorithm
   {
@@ -1188,6 +1188,8 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
     assert(cnt > 0);
     checkCUDNN(perfResults[0].status);
     cost_metrics.backward_time = perfResults[0].time;
+    for (int i = 0; i < cnt; i++)
+      printf("conv backward filter: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time);
   }
   {
     const int reqAlgCnt = 8;
@@ -1201,6 +1203,8 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
     assert(cnt > 0);
     checkCUDNN(perfResults[0].status);
     cost_metrics.backward_time += perfResults[0].time;
+    for (int i = 0; i < cnt; i++)
+      printf("conv backward data: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time);
   }
   printf("[Measure Conv2D] name(%s) input(%d %d %d %d) weight(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
          name,
