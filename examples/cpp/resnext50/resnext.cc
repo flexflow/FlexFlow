@@ -96,7 +96,7 @@ void top_level_task(const Task* task,
     t = resnext_block(ff, t, stride, stride, 128, 32);
   }
   stride = 2;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 4; i++) {
     t = resnext_block(ff, t, stride, stride, 256, 32);
     stride = 1;
   }
@@ -111,6 +111,7 @@ void top_level_task(const Task* task,
     stride = 1;
   }
 
+  t = ff.relu(t, false);
   t = ff.pool2d(
       t, 
       t->dims[0].size, t->dims[1].size, 
