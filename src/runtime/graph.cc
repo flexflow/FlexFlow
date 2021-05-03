@@ -292,7 +292,7 @@ T SearchHelper::find_optimal_sequence_graph_time(
   // Add sink_node's view to the list, since sink_node's view
   // may not be a valid view for resources, but UniFlow support
   // this case since parallel_op does not trigger computation
-  {
+  if (bn_node.ptr->is_parallel_op()) {
     bool found = false;
     const auto& inList = g->inEdges.find(sink.node)->second;
     for (const auto& e : inList) {
@@ -361,12 +361,14 @@ T SearchHelper::execute_nonsequence_split(
 {
   switch (split.type) {
     case SplitType::SEQUENTIAL:
+      log_dp.debug("Exploring sequential nonsequence split");
       return sequence_cost<T>(
           this->graph_cost<T>(first_graph.get(), source, sink, resources, false),
           this->graph_cost<T>(second_graph.get(), source, sink, resources, false)
       );
     case SplitType::VERTICAL:
     {
+      log_dp.debug("Exploring vertical nonsequence split (%d)", split.param);
       MachineResource firstRes = resources, 
                       secondRes = resources;
       firstRes.num_nodes = split.param;
@@ -380,6 +382,7 @@ T SearchHelper::execute_nonsequence_split(
     }
     case SplitType::HORIZONTAL: 
     {
+      log_dp.debug("Exploring horizontal nonsequence split (%d)", split.param);
       MachineResource firstRes = resources, 
                       secondRes = resources;
       firstRes.available_gpus_per_node = split.param;
@@ -442,8 +445,15 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
     potential_splits.push_back(NonsequenceSplit::horizontal(i));
   }
   
-  float best_cost = std::numeric_limits<float>::infinity();
   NonsequenceSplit best_split = NonsequenceSplit::sequential();
+  float best_cost = this->execute_nonsequence_split<float>(
+      first_graph, 
+      second_graph, 
+      source, 
+      sink, 
+      resources, 
+      best_split
+  );
   for (NonsequenceSplit const &split : potential_splits) {
     float cost = this->execute_nonsequence_split<float>(
         first_graph,
@@ -453,6 +463,7 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
         resources,
         split
     );
+    log_dp.debug("Found cost: %f", cost);
 
     if (cost < best_cost) { 
       best_cost = cost;
@@ -460,6 +471,17 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
     }
   }
   
+  switch (best_split.type) {
+    case SplitType::SEQUENTIAL:
+      log_dp.debug("Best split: SEQUENTIAL");
+      break;
+    case SplitType::VERTICAL:
+      log_dp.debug("best split: VERTICAL(%d)", best_split.param);
+      break;
+    case SplitType::HORIZONTAL:
+      log_dp.debug("Best split: HORIZONTAL(%d)", best_split.param);
+      break;
+  }
   T optimal = this->execute_nonsequence_split<T>(
       first_graph,
       second_graph,
@@ -1042,10 +1064,10 @@ T SearchHelper::graph_cost(const Graph* graph,
                           const MachineResource& resources,
                           bool include_sink_compute_time) const
 {
-  log_dp.debug("sink(%zu) sink.view(%d %d) source(%zu) source.view(%d %d) resources(%d %d)",
+  log_dp.debug("sink(%zu) sink.view(%d %d) source(%zu) source.view(%d %d) resources(%d %d %d)",
                sink.node.guid, sink.view.ndims, sink.view.dim[0],
                source.node.guid, source.view.ndims, source.view.dim[0],
-               resources.num_nodes, resources.available_gpus_per_node);
+               resources.num_nodes, resources.start_gpu_id, resources.available_gpus_per_node);
   if (this->model->config.profiling) {
     graph->print();
   }
