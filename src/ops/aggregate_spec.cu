@@ -180,7 +180,6 @@ void AggregateSpec::init(const FFModel& ff)
 __global__
 void aggspec_forward_kernel(float** exp_preds,
         const int* exp_assign,
-        const float* gate_net_preds,
         float* output,
         int n, // num experts
         const int k, // num chosen experts
@@ -214,8 +213,10 @@ void aggspec_forward_kernel(float** exp_preds,
   CUDA_KERNEL_LOOP(i, k*batch_size*out_dim)
   {
     if(chosen_exp_preds[i/out_dim] != 0) {
-      //memcpy(output + i*out_dim, chosen_exp_preds[i], out_dim*sizeof(float));
       output[i] = chosen_exp_preds[i/out_dim][i%out_dim];
+    }
+    else {
+      output[i] = 0.0f;
     }
   }
 }
@@ -224,26 +225,48 @@ void aggspec_forward_kernel(float** exp_preds,
 __device__
 void aggspec_backward_kernel_gate(const float* output_grad,
               float* full_gate_grads,
-              float** exp_grads,
               const int* expert_assign,
+              const float* gate_pred,
               int* expert_bal, float lambda_bal,
               int batch_size, int k, int n, int out_dim)
 {
-  // gate gradient
-  CUDA_KERNEL_LOOP(i, batch_size*k*out_dim)
+
+  __shared__ float gate_grad_sum[MAX_BATCH_SIZE];
+
+  // init gate_grad_sum to 0
+  CUDA_KERNEL_LOOP(i, batch_size)
   {
-    if (exp_grads[i/out_dim] != 0) {
-      float res = output_grad[i] * output_grad[i] * batch_size;
-      float* gate_grad_idx = full_gate_grads + (i/(out_dim*k))*n
-        + expert_assign[(i/(out_dim*k))*k+(i/out_dim)%k];
-      atomicAdd(gate_grad_idx, res);
-    }
+    gate_grad_sum[i] = 0.0f;
   }
 
-  // loss term
+  __syncthreads();
+
+  // get sum of expert errors
+  /* NOTE: Errors just squared L2 norm of gradients. * batch_size because the
+  expert gradients are /= batch_size and then it would be /= batch_size^2 here */
+  CUDA_KERNEL_LOOP(i, batch_size*k*out_dim)
+  {
+    float res = output_grad[i] * output_grad[i] * batch_size;
+    float* gate_grad_idx = full_gate_grads + (i/(out_dim*k))*n
+      + expert_assign[(i/(out_dim*k))*k+(i/out_dim)%k];
+    atomicAdd(gate_grad_idx, res);
+    atomicAdd(gate_grad_sum+i/(k*out_dim), res);
+  }
+
+  // Compute gate gradients:
+  // Assigned expert i, sample j: pred(i,j) - err_(i,j)/sum_l err(l,j)
+  __syncthreads();
+  CUDA_KERNEL_LOOP(i, k*batch_size)
+  {
+    full_gate_grads[i/k*n + expert_assign[i]] /= gate_grad_sum[i/k];
+    full_gate_grads[i/k*n + expert_assign[i]] -= (1.0f - gate_pred[i]);
+  }
+
+  // balance term
+  __syncthreads();
   CUDA_KERNEL_LOOP(i, n*batch_size)
   {
-    atomicAdd(full_gate_grads+i, lambda_bal*expert_bal[i%batch_size]);
+    full_gate_grads[i] += lambda_bal*expert_bal[i%n];
   }
 
   __syncthreads();
@@ -322,8 +345,9 @@ void aggspec_backward_kernel(float** exp_grads,
     batch_size, k, out_dim);
 
   // get gating net gradients
-  aggspec_backward_kernel_gate(output_grads, full_gating_grads, chosen_exp_grads,
-    exp_assign, expert_bal, (lambda_bal*n)/batch_size, batch_size, k, n, out_dim);
+  aggspec_backward_kernel_gate(output_grads, full_gating_grads, exp_assign,
+    gating_net_preds, expert_bal, (lambda_bal*n)/batch_size, batch_size, k, n,
+    out_dim);
 }
 
 
@@ -387,9 +411,10 @@ void AggregateSpec::forward_task(const Task *task,
   // call forward kernel
   cudaMemcpy(m->dev_region_ptrs, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
 
-  aggspec_forward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
-    m->dev_region_ptrs, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
-    acc_output.ptr(rect_output), n, k, rows, batch_size, out_dim);
+  aggspec_forward_kernel<<<GET_BLOCKS(batch_size*k*out_dim),
+    min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(m->dev_region_ptrs,
+    acc_gate_assign.ptr(rect_gate_assign), acc_output.ptr(rect_output), n, k,
+    rows, batch_size, out_dim);
 }
 
 

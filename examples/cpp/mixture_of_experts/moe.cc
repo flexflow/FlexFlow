@@ -20,8 +20,8 @@
 #include <string>
 
 #define NUM_SAMPLES 60000
-#define TRAIN_SAMPLES 10000
-#define TEST_SAMPLES 0
+#define TRAIN_SAMPLES 60000
+#define TEST_SAMPLES 00000
 #define MNIST_DIMS 28*28
 #define CIFAR_DIMS 3*32*32
 #define DATA_DIMS MNIST_DIMS
@@ -75,7 +75,7 @@ void top_level_task(const Task* task,
   int num_exp = 5;
   int num_select = 2;
   float alpha = 2.0f; // factor overhead tensor size for imbalance
-  float lambda = 0.16f; // multiplier for load balance term
+  float lambda = 0.01f; // multiplier for load balance term
 
 
   // MoE model
@@ -91,7 +91,7 @@ void top_level_task(const Task* task,
   Tensor agg_inputs[num_exp+3];
   agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
   agg_inputs[1] = topK_output[1]; // gate assign
-  agg_inputs[2] = gate_preds; // full gate preds
+  agg_inputs[2] = gate_preds; // full gate preds TODO softmax?
   for(int i = 0; i < num_exp; i++) {
     agg_inputs[i+3] = ff.dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
     agg_inputs[i+3] = ff.softmax(agg_inputs[i+3]);
@@ -224,7 +224,7 @@ void read_cifar100(float* input_ptr, int* label_ptr) {
   file.open("train.bin", std::ios::in | std::ios::binary | std::ios::ate);
   if (!file) {
       std::cout << "Error opening CIFAR100 train data file" << std::endl;
-      return;
+      assert(false);
   }
 
   file.seekg(0, std::ios::beg);
@@ -288,6 +288,7 @@ void read_mnist(float* input_ptr, int* label_ptr)
     }
   }
   else {
+    std::cout << "Error opening MNIST input data file" << std::endl;
     assert(false);
   }
 
@@ -309,6 +310,7 @@ void read_mnist(float* input_ptr, int* label_ptr)
     }
   }
   else {
+    std::cout << "Error opening MNIST label data file" << std::endl;
     assert(false);
   }
 }

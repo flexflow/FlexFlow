@@ -249,10 +249,10 @@ void agg_backward_kernel_gate(const float* output_grad,
     }
   }
 
-  // loss term
+  // balance term
   CUDA_KERNEL_LOOP(i, n*batch_size)
   {
-    atomicAdd(full_gate_grads+i, lambda_bal*expert_bal[i%batch_size]);
+    atomicAdd(full_gate_grads+i, lambda_bal*expert_bal[i%n]);
   }
 
   __syncthreads();
@@ -330,7 +330,7 @@ void agg_backward_kernel(float** exp_preds,
 
   __syncthreads();
 
-  // NOTE: These 2 functions could execute independently in parallel
+  // FIXME: These 2 functions could execute independently in parallel
   // get expert gradients
   agg_backward_kernel_exp(output_grads, gating_net_preds, chosen_exp_grads,
     batch_size, k, out_dim);
