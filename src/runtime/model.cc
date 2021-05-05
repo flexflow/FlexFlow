@@ -33,6 +33,7 @@
 #include "ops/softmax.h"
 #include "ops/split.h"
 #include "ops/noop.h"
+#include "ops/concat.h"
 #include "parallel_ops/combine.h"
 #include "parallel_ops/fused_parallel_op.h"
 #include "parallel_ops/partition.h"
@@ -929,7 +930,7 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
   d.dim = weights[weight_idx]->num_dims;
   for (int i = 0; i < d.dim; i++) {
     d.rect_data[i] = 0;
-    d.rect_data[i+d.dim] = weights[weight_idx]->dims[i].size - 1;
+    d.rect_data[i+d.dim] = weights[weight_idx]->dims[i].size / weights[weight_idx]->dims[i].degree - 1;
   }
   return d;
 }

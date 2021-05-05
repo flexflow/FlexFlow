@@ -133,6 +133,7 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/ops/element_binary.h
   ${FLEXFLOW_ROOT}/include/ops/attention.h
   ${FLEXFLOW_ROOT}/include/ops/softmax.h
+  ${FLEXFLOW_ROOT}/include/ops/concat.h
   ${FLEXFLOW_ROOT}/include/ops/split.h
   ${FLEXFLOW_ROOT}/include/ops/noop.h
   ${FLEXFLOW_ROOT}/include/parallel_ops/combine.h

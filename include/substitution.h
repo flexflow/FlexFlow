@@ -120,6 +120,8 @@ public:
   OpX* create_element_binary(const TensorX& input1,
                              const TensorX& input2,
                              OperatorType op_type);
+  OpX* create_element_unary(const TensorX& input,
+                            OperatorType op_type);
   OpX* create_linear(const TensorX& input,
                      const OpX* match_opx,
                      int num_dims,
@@ -151,11 +153,15 @@ public:
                   const TensorX& dst);
   void run(int depth, Graph* graph,
            std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>&,
-           std::unordered_set<size_t>&, float threshold, int maxNumOps);
+           std::unordered_set<size_t>&, float threshold, int maxNumOps, 
+           int& num_matches_found, int& num_matches_rejected);
            Graph* create_new_graph(Graph* graph);
   bool create_new_operator(const OpX* opx, Node& op);
+
+  std::string get_name() const;
 public:
   FFModel* model;
+  tl::optional<std::string> name = tl::nullopt;
   int tensorId;
   std::map<Node, OpX*, NodeCompare> mappedOps;
   std::multimap<int, std::pair<Node, int> > mappedInputs;

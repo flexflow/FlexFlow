@@ -161,6 +161,10 @@ Node FFModel::get_or_create_combine_node(const Tensor input,
                                          int combine_dim,
                                          int combine_degree)
 {
+  if (input->dims[combine_dim].degree % combine_degree != 0) {
+    return Node::INVALID_NODE;
+  }
+
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(combine_dim);
   hash = hash * 31 + std::hash<int>()(combine_degree);

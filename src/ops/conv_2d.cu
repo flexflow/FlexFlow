@@ -348,8 +348,8 @@ Conv2D::Conv2D(FFModel& model,
          other.padding_w,
          other.activation,
          other.groups,
-         allocate_weights,
          other.use_bias,
+         allocate_weights,
          other.name) 
 { }
 
@@ -387,8 +387,8 @@ Conv2D::Conv2D(FFModel& model,
                int paddingH, int paddingW,
                ActiMode activation,
                int groups,
-               bool allocate_weights,
                bool use_bias,
+               bool allocate_weights,
                const char* name)
 : Op(model, OP_CONV2D, name, 1/*inputs*/, use_bias ? 2 : 1/*weights*/, allocate_weights, 1/*outputs*/, input),
   in_channels(input->dims[Input::CHANNEL].size),

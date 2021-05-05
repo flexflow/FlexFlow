@@ -238,6 +238,19 @@ private:
     void add_comm_path(std::vector<CommDevice::CommDevType> const &comm_device_list, MemDevice *src_mem, MemDevice *tar_mem, std::vector<CommDevice *> &ret) const;
 };
 
+struct OpSyncTask {
+  Op const *op;
+  int unsatisfied_dependencies;
+  float finish_time;
+};
+
+struct OpSyncTaskEarliestFirst {
+  // earliest finish time is first
+  bool operator()(OpSyncTask const *lhs, OpSyncTask const *rhs) const {
+    return lhs->finish_time > rhs->finish_time;
+  }
+};
+
 class SimTask {
 public:
   enum SimTaskType {
