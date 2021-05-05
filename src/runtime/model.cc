@@ -29,6 +29,11 @@
 #include "ops/flat.h"
 #include "ops/element_unary.h"
 #include "ops/attention.h"
+#include "ops/element_binary.h"
+#include "ops/softmax.h"
+#include "ops/split.h"
+#include "ops/noop.h"
+#include "ops/concat.h"
 #include "parallel_ops/combine.h"
 #include "parallel_ops/fused_parallel_op.h"
 #include "parallel_ops/partition.h"
@@ -834,6 +839,16 @@ bool Op::is_adoptable_parallel_config(FFModel const &ff, ParallelConfig const &p
   return false;
 }
 
+size_t Op::get_untyped_params_hash() const {
+  size_t hash = this->get_params_hash();
+  hash_combine(hash, this->op_type);
+  return hash;
+}
+
+size_t Op::get_params_hash() const {
+  assert (false);
+}
+
 bool Op::is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const
 {
   // By default only data parallelism is allowed
@@ -883,17 +898,19 @@ Domain Op::get_input_tensor_shape(const ParallelConfig& pc,
     }
   } else {
     // Require data parallel when dims mismatch
-    for (int i = 0; i < pc.nDims-1; i++)
-      assert(pc.dim[i] == 1);
+    for (int i = 0; i < pc.nDims; i++)
+      if (i != pc.nDims - 2) {
+        assert(pc.dim[i] == 1);
+      }
     for (int i = 0; i < d.dim-1; i++) {
       int dim_size = inputs[input_idx]->dims[i].size;
       d.rect_data[i] = 0;
       d.rect_data[i + d.dim] = d.rect_data[i] + dim_size - 1;
     }
     // Assume an equal partitioning
-    assert(inputs[input_idx]->dims[d.dim-1].size % pc.dim[pc.nDims-1] == 0);
-    assert(part_idx < pc.dim[pc.nDims-1]);
-    int dim_size = inputs[input_idx]->dims[d.dim-1].size / pc.dim[pc.nDims-1];
+    assert(inputs[input_idx]->dims[d.dim-2].size % pc.dim[pc.nDims-2] == 0);
+    assert(part_idx < pc.dim[pc.nDims-2]);
+    int dim_size = inputs[input_idx]->dims[d.dim-2].size / pc.dim[pc.nDims-2];
     d.rect_data[d.dim - 1] = part_idx * dim_size;
     d.rect_data[2*d.dim - 1] = d.rect_data[d.dim-1] + dim_size - 1;
     part_idx = part_idx / pc.dim[pc.nDims-1];
@@ -911,7 +928,7 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig& pc,
   d.dim = weights[weight_idx]->num_dims;
   for (int i = 0; i < d.dim; i++) {
     d.rect_data[i] = 0;
-    d.rect_data[i+d.dim] = weights[weight_idx]->dims[i].size - 1;
+    d.rect_data[i+d.dim] = weights[weight_idx]->dims[i].size / weights[weight_idx]->dims[i].degree - 1;
   }
   return d;
 }
@@ -1526,35 +1543,6 @@ FFModel::FFModel(FFConfig& _config)
   register_all_machine_views(config.numNodes, config.workersPerNode,
                              config.cpusPerNode, all_valid_views);
   // Load strategy file
-#ifdef DEADCODE
-  int start_dim = 1, end_dim = 4;
-#if MAX_TENSOR_DIM >= 5
-  end_dim = 5;
-#endif
-  for (int i = start_dim; i <= end_dim; i++) {
-    ParallelConfig pc;
-    pc.device_type = ParallelConfig::GPU;
-    pc.nDims = i;
-    for (int j = 0; j < pc.nDims; j++)
-      pc.dim[j] = 1;
-    pc.dim[pc.nDims-1] = config.workersPerNode * config.numNodes;
-    for (int j = 0; j < pc.dim[pc.nDims-1]; j++)
-      pc.device_ids[j] = j;
-    config.strategies[FFConfig::DataParallelism_GPU_1D+i-1] = pc;
-  }
-  for (int i = start_dim; i <= end_dim; i++) {
-    ParallelConfig pc;
-    pc.device_type = ParallelConfig::CPU;
-    pc.nDims = i;
-    for (int j = 0; j < pc.nDims; j++)
-      pc.dim[j] = 1;
-    pc.dim[pc.nDims-1] = config.cpusPerNode * config.numNodes;
-    for (int j = 0; j < pc.dim[pc.nDims-1]; j++)
-      pc.device_ids[j] = j;
-    config.strategies[FFConfig::DataParallelism_CPU_1D+i-1] = pc;
-  }
-#endif
-
   // Create field space
   {
     FieldAllocator allocator =
@@ -1783,6 +1771,7 @@ Parameter FFModel::create_weight(
   p->ts_guid = tensor_global_guid ++;
   p->data_type = data_type;
   if (owner_op == NULL) {
+    assert(false);
     NoOp* weight_op = new NoOp(*this, OP_WEIGHT, p);
     layers.push_back(weight_op);
     p->owner_op = weight_op;
@@ -3300,6 +3289,9 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_RESIZE: return "Resize";
     case OP_PRELU: return "PReLU";
     case OP_MULTIHEAD_ATTENTION: return "MultiHeadAttention";
+    case OP_INPUT: return "Input";
+    case OP_WEIGHT: return "Weight";
+    case OP_NOOP: return "NoOp";
     case OP_FUSED: return "FusedOp";
     // Parallel Ops
     case OP_REPARTITION: return "Repartition";

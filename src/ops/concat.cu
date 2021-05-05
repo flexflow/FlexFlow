@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/concat.h"
+#include "hash_utils.h"
 #include "cuda_helper.h"
 
 using namespace Legion;
@@ -58,61 +59,6 @@ Concat::Concat(FFModel& model,
   numOutputs = 1;
   outputs[0] = model.create_tensor(num_dim, dims, inputs[0]->data_type, this);
 }
-
-#ifdef DEADCODE
-void Concat::map_output_tensors(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = model.get_or_create_task_is(inputs[0].num_dims, pcname);
-
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  int dims[MAX_TENSOR_DIM], num_dim = inputs[0].num_dims;
-  assert(num_dim == domain.get_dim());
-  for (int i = 0; i < num_dim; i++)
-    dims[i] = inputs[0].adim[num_dim-1-i];
-  for (int i = 1; i < numInputs; i++)
-    for (int j = 0; j < num_dim; j++) {
-      if (j != axis)
-        assert(inputs[i].adim[j] == dims[num_dim-1-j]);
-      else
-        dims[j] += inputs[i].adim[j];
-    }
-  //for (int i = 0; i < num_dim; i++)
-    //printf("concat: dim[%d] = %d\n", i, dims[i]);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> part_rect = domain; \
-      outputs[0] = model.create_tensor<DIM>(dims, DT_FLOAT, this); \
-      outputs[0].owner_op = this; \
-      outputs[0].owner_idx = 0; \
-      for (int i = 0; i < numInputs; i++) { \
-        Rect<DIM> input_rect = runtime->get_index_partition_color_space( \
-            ctx, inputs[i]->part.get_index_partition()); \
-        if (input_rect == part_rect) { \
-          input_lps[i] = inputs[i]->part; \
-          input_grad_lps[i] = inputs[i]->part_grad; \
-        } else { \
-          model.create_disjoint_partition<DIM>(inputs[i], \
-              IndexSpaceT<DIM>(task_is), input_lps[i], input_grad_lps[i]); \
-        } \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      fprintf(stderr, "Unsupported concat dimension number");
-      assert(false);
-    }
-  }
-}
-#endif
 
 void Concat::init_meta(ConcatMeta *m) const
 {
@@ -514,4 +460,14 @@ Node FFModel::get_or_create_concat_node(int num_inputs,
   ret.guid = node_global_guid ++;
   ret.ptr = concat;
   return ret;
+}
+
+size_t Concat::get_params_hash() const {
+  size_t hash = std::hash<int>()(this->numInputs);
+  hash_combine(hash, this->axis);
+  for (int i = 0; i < this->numInputs; i++) {
+    hash_combine(hash, inputs[0]->get_owner_independent_hash());
+  }
+
+  return hash;
 }

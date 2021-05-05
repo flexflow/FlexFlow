@@ -19,6 +19,7 @@
 #include "ops/linear.h"
 #include "ops/conv_2d.h"
 #include "ops/pool_2d.h"
+#include "ops/concat.h"
 #include "ops/element_unary.h"
 
 using namespace Legion;
