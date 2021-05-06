@@ -423,13 +423,13 @@ Conv2D::Conv2D(FFModel& model,
     Initializer *kernel_initializer = new GlorotUniform(std::rand()/*seed*/);
 
     weights[Kernel::INDEX] = model.create_weight_legion_ordering(
-        kernel_ndims, kernel_dims, DT_FLOAT, this/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
+        kernel_ndims, kernel_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
     
     if (use_bias) {
       Initializer *bias_initializer = new ZeroInitializer();
 
       weights[Bias::INDEX] = model.create_weight_legion_ordering(
-          bias_ndims, bias_dims, DT_FLOAT, this/*owner_op*/, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
+          bias_ndims, bias_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
     }
   }
 

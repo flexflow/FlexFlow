@@ -1771,7 +1771,6 @@ Parameter FFModel::create_weight(
   p->ts_guid = tensor_global_guid ++;
   p->data_type = data_type;
   if (owner_op == NULL) {
-    assert(false);
     NoOp* weight_op = new NoOp(*this, OP_WEIGHT, p);
     layers.push_back(weight_op);
     p->owner_op = weight_op;
@@ -2850,6 +2849,7 @@ void FFModel::compile(LossType loss_type,
     }
     for (int i = 0; i < op->numWeights; i++) {
       assert(op->weights[i]->owner_op != NULL);
+      assert(op->weights[i]->region != LogicalRegion::NO_REGION);
       parameters.push_back(op->weights[i]);
     }
     for (int i = 0; i < op->numOutputs; i++) {
