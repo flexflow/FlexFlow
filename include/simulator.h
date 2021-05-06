@@ -238,6 +238,19 @@ private:
     void add_comm_path(std::vector<CommDevice::CommDevType> const &comm_device_list, MemDevice *src_mem, MemDevice *tar_mem, std::vector<CommDevice *> &ret) const;
 };
 
+struct OpSyncTask {
+  Op const *op;
+  int unsatisfied_dependencies;
+  float finish_time;
+};
+
+struct OpSyncTaskEarliestFirst {
+  // earliest finish time is first
+  bool operator()(OpSyncTask const *lhs, OpSyncTask const *rhs) const {
+    return lhs->finish_time > rhs->finish_time;
+  }
+};
+
 class SimTask {
 public:
   enum SimTaskType {
@@ -288,6 +301,8 @@ public:
   std::map<size_t, SimTask*> hash_to_forward_task, hash_to_backward_task;
 };
 
+size_t data_type_size(DataType);
+
 class Simulator {
 public:
   static constexpr float MAXIMUM_TASK_RUN_TIME = 1e7;
@@ -299,7 +314,7 @@ public:
   void free_all();
   void* allocate(size_t num_elements, DataType type);
   void add_task_dependencies_with_xfer(
-      SimTask* src_task, SimTask* dst_task, size_t message_size);
+      SimTask* src_task, SimTask* dst_task, size_t message_size, bool force_zero_cost);
   CostMetrics measure_operator_cost(const Op* op, const ParallelConfig& config);
   CostMetrics measure_operator_cost(const Op* op, const MachineView& view);
   float estimate_xfer_cost(const Op* op,

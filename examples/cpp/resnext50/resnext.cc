@@ -70,18 +70,18 @@ void top_level_task(const Task* task,
 
   Tensor t = input;
   t = ff.conv2d(
-      input, 
+      t, 
       64, 
       7, 7,
       2, 2, 
-      0, 0,
+      3, 3,
       AC_MODE_RELU
   );
   t = ff.pool2d(
       t, 
       3, 3, 
       2, 2, 
-      0, 0, 
+      1, 1, 
       POOL_MAX
   );
 
@@ -110,13 +110,13 @@ void top_level_task(const Task* task,
   t = ff.relu(t, false);
   t = ff.pool2d(
       t, 
-      3, 3, 
-      2, 2, 
+      t->dims[0].size, t->dims[1].size, 
+      1, 1, 
       0, 0, 
       POOL_AVG
   );
   t = ff.flat(t);
-  t = ff.dense(t, 10 /*1000*/);
+  t = ff.dense(t, 1000 /*1000*/);
   t = ff.softmax(t);
 
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);

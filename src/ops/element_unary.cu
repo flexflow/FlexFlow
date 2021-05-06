@@ -30,6 +30,17 @@ Tensor FFModel::unary(OperatorType op,
   return ele->outputs[0];
 }
 
+size_t ElementUnary::get_params_hash() const {
+  size_t hash = this->inputs[0]->get_owner_independent_hash();
+  hash_combine(hash, this->op_type);
+  hash_combine(hash, this->inplace);
+  if (this->op_type == OP_SCALAR_MULTIPLY) {
+    hash_combine(hash, this->scalar);
+  }
+
+  return hash;
+}
+
 Node FFModel::get_or_create_element_unary_node(const Tensor input,
                                                OperatorType op,
                                                bool inplace,

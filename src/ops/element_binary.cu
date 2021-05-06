@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/element_binary.h"
 #include "cuda_helper.h"
+#include "hash_utils.h"
 
 using namespace Legion;
 
@@ -729,6 +730,14 @@ bool ElementBinary::measure_operator_cost(Simulator* sim,
   }
 
   return true;
+}
+
+size_t ElementBinary::get_params_hash() const {
+  size_t hash = this->inputs[0]->get_owner_independent_hash();
+  hash_combine(hash, this->inputs[1]->get_owner_independent_hash());
+  hash_combine(hash, this->op_type);
+
+  return hash;
 }
 
 Node FFModel::get_or_create_element_binary_node(const Tensor input1,

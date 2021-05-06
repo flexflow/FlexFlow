@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/noop.h"
+#include "hash_utils.h"
 
 using namespace Legion;
 
@@ -21,7 +22,7 @@ NoOp::NoOp(FFModel& model,
            OperatorType _type,
            const Tensor _output,
            const char* _name)
-: Op(model, _type, name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/)
+: Op(model, _type, _name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/)
 {
   // NOOP takes one input and has one output
   // both of them are _output
@@ -98,6 +99,16 @@ bool NoOp::measure_operator_cost(
   cost_metrics.backward_time = 0.0f;
   cost_metrics.memory_requirement = 0;
   return true;
+}
+
+size_t NoOp::get_params_hash() const {
+  size_t hash = 0;
+  for (int i = 0; i < this->numInputs; i++) {
+    hash_combine(hash, this->inputs[i]);
+  }
+  hash_combine(hash, this->op_type);
+
+  return hash;
 }
 
 Node FFModel::get_or_create_noop_node(const Tensor input)

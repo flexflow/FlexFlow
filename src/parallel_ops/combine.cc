@@ -14,6 +14,7 @@
  */
 
 #include "parallel_ops/combine.h"
+#include "hash_utils.h"
 
 using namespace Legion;
 
@@ -50,8 +51,8 @@ Combine::Combine(
   TensorBase::update_parallel_ids(numdim, dims);
   outputs[0] = model.create_tensor_legion_ordering(
       numdim, dims, DT_FLOAT, this);
-  inputs[0]->print("Combine::input");
-  outputs[0]->print("Combine::output");
+  //inputs[0]->print("Combine::input");
+  //outputs[0]->print("Combine::output");
 }
 
 void Combine::init(const FFModel& ff)
@@ -148,10 +149,22 @@ bool Combine::append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops)
   return true;
 }
 
+size_t Combine::get_params_hash() const {
+  size_t hash = this->inputs[0]->get_owner_independent_hash();
+  hash_combine(hash, this->combine_dim);
+  hash_combine(hash, this->combine_degree);
+
+  return hash;
+}
+
 Node FFModel::get_or_create_combine_node(const Tensor input,
                                          int combine_dim,
                                          int combine_degree)
 {
+  if (input->dims[combine_dim].degree % combine_degree != 0) {
+    return Node::INVALID_NODE;
+  }
+
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(combine_dim);
   hash = hash * 31 + std::hash<int>()(combine_degree);

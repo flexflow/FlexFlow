@@ -23,6 +23,8 @@
 #include "ops/element_unary.h"
 #include "ops/flat.h"
 #include "ops/attention.h"
+#include "ops/softmax.h"
+#include "ops/concat.h"
 #include "parallel_ops/partition.h"
 #include "parallel_ops/replicate.h"
 #include "parallel_ops/reduction.h"
@@ -350,6 +352,16 @@ T SearchHelper::find_optimal_sequence_graph_time(
   return optimal;
 }
 
+Realm::LoggerMessage SearchHelper::debug() const {
+  Realm::LoggerMessage msg = log_dp.debug();
+  msg << this->depth;
+  for (int i = 0; i < this->depth; i++) {
+    msg << "  ";
+  }
+
+  return msg;
+}
+
 template <typename T>
 T SearchHelper::execute_nonsequence_split(
   std::unique_ptr<Graph> const &first_graph,
@@ -359,16 +371,21 @@ T SearchHelper::execute_nonsequence_split(
   MachineResource const &resources,
   NonsequenceSplit const &split) const 
 {
+  Graph const *first = first_graph.get();
+  Graph const *second = second_graph.get();
+  if (split.flip_graphs) {
+    std::swap(first, second);
+  }
   switch (split.type) {
     case SplitType::SEQUENTIAL:
-      log_dp.debug("Exploring sequential nonsequence split");
+      this->debug() << "Exploring sequential nonsequence split";
       return sequence_cost<T>(
-          this->graph_cost<T>(first_graph.get(), source, sink, resources, false),
-          this->graph_cost<T>(second_graph.get(), source, sink, resources, false)
+          this->graph_cost<T>(first, source, sink, resources, false),
+          this->graph_cost<T>(second, source, sink, resources, false)
       );
     case SplitType::VERTICAL:
     {
-      log_dp.debug("Exploring vertical nonsequence split (%d)", split.param);
+      this->debug() << "Exploring vertical nonsequence split (" << split.param << ", " << split.flip_graphs << ")";
       MachineResource firstRes = resources, 
                       secondRes = resources;
       firstRes.num_nodes = split.param;
@@ -376,13 +393,13 @@ T SearchHelper::execute_nonsequence_split(
       secondRes.start_gpu_id = resources.start_gpu_id + resources.all_gpus_per_node * split.param;
 
       return parallel_cost<T>(
-          this->graph_cost<T>(first_graph.get(), source, sink, firstRes, false),
-          this->graph_cost<T>(second_graph.get(), source, sink, secondRes, false)
+          this->graph_cost<T>(first, source, sink, firstRes, false),
+          this->graph_cost<T>(second, source, sink, secondRes, false)
       );
     }
     case SplitType::HORIZONTAL: 
     {
-      log_dp.debug("Exploring horizontal nonsequence split (%d)", split.param);
+      this->debug() << "Exploring horizontal nonsequence split (" << split.param << ", " << split.flip_graphs << ")";
       MachineResource firstRes = resources, 
                       secondRes = resources;
       firstRes.available_gpus_per_node = split.param;
@@ -390,8 +407,8 @@ T SearchHelper::execute_nonsequence_split(
       secondRes.start_gpu_id = resources.start_gpu_id + split.param;
 
       return parallel_cost<T>(
-          this->graph_cost<T>(first_graph.get(), source, sink, firstRes, false),
-          this->graph_cost<T>(second_graph.get(), source, sink, secondRes, false)
+          this->graph_cost<T>(first, source, sink, firstRes, false),
+          this->graph_cost<T>(second, source, sink, secondRes, false)
       );
     }
     default:
@@ -403,24 +420,27 @@ T SearchHelper::execute_nonsequence_split(
 NonsequenceSplit NonsequenceSplit::sequential() {
   NonsequenceSplit s;
   s.type = SplitType::SEQUENTIAL;
+  s.flip_graphs = false;
 
   return s;
 }
 
 /*static*/
-NonsequenceSplit NonsequenceSplit::vertical(int param) {
+NonsequenceSplit NonsequenceSplit::vertical(int param, bool flip_graphs) {
   NonsequenceSplit s;
   s.type = SplitType::VERTICAL;
   s.param = param;
+  s.flip_graphs = flip_graphs;
 
   return s;
 }
 
 /*static*/
-NonsequenceSplit NonsequenceSplit::horizontal(int param) {
+NonsequenceSplit NonsequenceSplit::horizontal(int param, bool flip_graphs) {
   NonsequenceSplit s;
   s.type = SplitType::HORIZONTAL;
   s.param = param;
+  s.flip_graphs = flip_graphs;
 
   return s;
 }
@@ -439,10 +459,12 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
   std::vector<NonsequenceSplit> potential_splits; 
 
   for (int i = 1; i < resources.num_nodes; i++) {
-    potential_splits.push_back(NonsequenceSplit::vertical(i));
+    potential_splits.push_back(NonsequenceSplit::vertical(i, false));
+    potential_splits.push_back(NonsequenceSplit::vertical(i, true));
   }
   for (int i = 1; i < resources.available_gpus_per_node; i++) {
-    potential_splits.push_back(NonsequenceSplit::horizontal(i));
+    potential_splits.push_back(NonsequenceSplit::horizontal(i, false));
+    potential_splits.push_back(NonsequenceSplit::horizontal(i, true));
   }
   
   NonsequenceSplit best_split = NonsequenceSplit::sequential();
@@ -463,7 +485,7 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
         resources,
         split
     );
-    log_dp.debug("Found cost: %f", cost);
+    this->debug() << "Found cost: " << cost;
 
     if (cost < best_cost) { 
       best_cost = cost;
@@ -473,13 +495,13 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
   
   switch (best_split.type) {
     case SplitType::SEQUENTIAL:
-      log_dp.debug("Best split: SEQUENTIAL");
+      this->debug() << "Best split: SEQUENTIAL";
       break;
     case SplitType::VERTICAL:
-      log_dp.debug("best split: VERTICAL(%d)", best_split.param);
+      this->debug() << "Best split: VERTICAL(" << best_split.param << ", " << best_split.flip_graphs << ")";
       break;
     case SplitType::HORIZONTAL:
-      log_dp.debug("Best split: HORIZONTAL(%d)", best_split.param);
+      this->debug() << "Best split: HORIZONTAL(" << best_split.param << ", " << best_split.flip_graphs << ")";
       break;
   }
   T optimal = this->execute_nonsequence_split<T>(
@@ -982,13 +1004,13 @@ std::pair<bool, GraphCostResult> SearchHelper::try_get_cost_from_cache<GraphCost
 
 template <>
 void SearchHelper::try_cache_result<float>(size_t hash, float const &value) const {
-  log_dp.debug("  cached_graph_costs[%zu]=%.4lf", hash, value);
+  this->debug() << "cached_graph_costs[" << hash << "=" << value << "]";
   this->cached_graph_costs[hash] = value;
 }
 
 template <>
 void SearchHelper::try_cache_result<GraphCostResult>(size_t hash, GraphCostResult const &value) const {
-  log_dp.debug("  cached_graph_costs[%zu]=%.4lf", hash, value.cost);
+  this->debug() << "cached_graph_costs[" << hash << "=" << value.cost << "]";
   this->cached_graph_costs[hash] = value.cost;
 }
 
@@ -1038,7 +1060,9 @@ T SearchHelper::estimate_xfer_cost(
       assert(it2.srcOp == source.node);
       assert(sink.node.ptr->inputs[it2.dstIdx]->is_valid_machine_view(source.view));
 
-      op_cost += this->model->simulator->estimate_xfer_cost(sink.node.ptr, it2.srcIdx, source.view, sink.view);
+      float estimated_xfer_cost = this->model->simulator->estimate_xfer_cost(sink.node.ptr, it2.srcIdx, source.view, sink.view);
+      //printf("Estimated xfer cost from %s to %s: %fms\n", source.node.ptr->name, sink.node.ptr->name, estimated_xfer_cost);
+      op_cost += estimated_xfer_cost;
     }
     this->add_operator_cost<T>(source, op_cost, &result);
   }
@@ -1064,10 +1088,12 @@ T SearchHelper::graph_cost(const Graph* graph,
                           const MachineResource& resources,
                           bool include_sink_compute_time) const
 {
-  log_dp.debug("sink(%zu) sink.view(%d %d) source(%zu) source.view(%d %d) resources(%d %d %d)",
-               sink.node.guid, sink.view.ndims, sink.view.dim[0],
-               source.node.guid, source.view.ndims, source.view.dim[0],
-               resources.num_nodes, resources.start_gpu_id, resources.available_gpus_per_node);
+  this->depth++;
+  this->debug() << "sink(" << sink.node.guid << ") "
+                 << "sink.view(" << sink.view.ndims << " " << sink.view.start_device_id << " " << sink.view.dim[0] << ") "
+                 << "source(" << source.node.guid << ") "
+                 << "source.view(" << source.view.ndims << " " << source.view.start_device_id << " " << source.view.dim[0] << ") "
+                 << "resources(" << resources.num_nodes << " " << resources.start_gpu_id << " " << resources.available_gpus_per_node << ")";
   if (this->model->config.profiling) {
     graph->print();
   }
@@ -1077,7 +1103,7 @@ T SearchHelper::graph_cost(const Graph* graph,
     assert(graph->outEdges.find(source.node) != graph->outEdges.end());
 
   size_t hash = dp_state_hash(graph, sink.node, sink.view, source.node, source.view, resources);
-  log_dp.debug("hash = %zu", hash);
+  log_dp.spew("hash = %zu", hash);
 
   T result;
 
@@ -1092,7 +1118,7 @@ T SearchHelper::graph_cost(const Graph* graph,
       Node bn_node = graph->find_bottleneck_node(sink.node, source.node);
       if (bn_node != Node::INVALID_NODE) {
         // We found a bottleneck node
-        log_dp.debug("  Found bn_node = %zu", bn_node.guid);
+        this->debug() << "Found bn_node = " << bn_node.guid;
 
         result = this->find_optimal_sequence_graph_time<T>(
           graph,
@@ -1125,6 +1151,7 @@ T SearchHelper::graph_cost(const Graph* graph,
     this->add_operator_cost<T>(sink, metrics.forward_time + metrics.backward_time + metrics.sync_time, &result);
   }
 
+  this->depth--;
   return result;
 }
 

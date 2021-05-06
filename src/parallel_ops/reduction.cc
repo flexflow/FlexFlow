@@ -14,6 +14,7 @@
  */
 
 #include "parallel_ops/reduction.h"
+#include "hash_utils.h"
 
 using namespace Legion;
 
@@ -146,6 +147,14 @@ bool Reduction::append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_op
   ret.parallel_degree = reduction_degree;
   parallel_ops.push_back(ret);
   return true;
+}
+
+size_t Reduction::get_params_hash() const {
+  size_t hash = this->inputs[0]->get_owner_independent_hash();
+  hash_combine(hash, this->reduction_dim);
+  hash_combine(hash, this->reduction_degree);
+
+  return hash;
 }
 
 Node FFModel::get_or_create_reduction_node(const Tensor input,

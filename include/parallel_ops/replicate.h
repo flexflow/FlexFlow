@@ -39,6 +39,8 @@ public:
       Simulator* sim,
       const ParallelConfig& pc,
       CostMetrics& cost_metrics) const;
+
+  size_t get_params_hash() const override;
 public:
   int replicate_dim, replicate_degree;
 };

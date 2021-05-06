@@ -21,6 +21,9 @@
 #include "dot_file.h"
 #include "basic_graph.h"
 #include "graph_structures.h"
+#include "legion/legion_utilities.h"
+
+extern LegionRuntime::Logger::Category log_dp;
 
 struct Edge {
   Edge(void);
@@ -121,10 +124,11 @@ enum class SplitType {
 struct NonsequenceSplit {
   SplitType type;
   int param;
+  bool flip_graphs;
 
   static NonsequenceSplit sequential();
-  static NonsequenceSplit vertical(int param);
-  static NonsequenceSplit horizontal(int param);
+  static NonsequenceSplit vertical(int param, bool flip_graphs);
+  static NonsequenceSplit horizontal(int param, bool flip_graphs);
 };
 
 using SequenceSplit = NodeAssignment;
@@ -199,6 +203,10 @@ private:
                            SequenceSplit const &split) const;
 private:
   FFModel *model;
+
+  Realm::LoggerMessage debug() const;
+
+  mutable int depth = 0;
 
   mutable std::unordered_map<size_t, float> cached_graph_costs;
   mutable std::unordered_map<size_t, std::unique_ptr<const std::vector<MachineView>>> cached_operator_valid_views;

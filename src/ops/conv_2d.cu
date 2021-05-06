@@ -117,6 +117,26 @@ Conv2DParams Conv2D::get_params() const {
   return params;
 }
 
+size_t Conv2DParams::get_hash(const Tensor input) const {
+  size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, this->out_channels);
+  hash_combine(hash, this->kernel_h);
+  hash_combine(hash, this->kernel_w);
+  hash_combine(hash, this->stride_h);
+  hash_combine(hash, this->stride_w);
+  hash_combine(hash, this->padding_h);
+  hash_combine(hash, this->padding_w);
+  hash_combine(hash, this->activation);
+  hash_combine(hash, this->groups);
+  hash_combine(hash, this->use_bias);
+
+  return hash;
+}
+
+size_t Conv2D::get_params_hash() const {
+  return this->get_params().get_hash(this->inputs[0]);
+}
+
 Node FFModel::get_or_create_conv2d_node(const Tensor input,
                                         const Conv2DParams& params) 
 {
@@ -124,17 +144,7 @@ Node FFModel::get_or_create_conv2d_node(const Tensor input,
     return Node::INVALID_NODE;
   }
 
-  size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, params.out_channels);
-  hash_combine(hash, params.kernel_h);
-  hash_combine(hash, params.kernel_w);
-  hash_combine(hash, params.stride_h);
-  hash_combine(hash, params.stride_w);
-  hash_combine(hash, params.padding_h);
-  hash_combine(hash, params.padding_w);
-  hash_combine(hash, params.activation);
-  hash_combine(hash, params.groups);
-  hash_combine(hash, params.use_bias);
+  size_t hash = params.get_hash(input);
 
   Conv2D *conv = NULL;
 
@@ -338,8 +348,8 @@ Conv2D::Conv2D(FFModel& model,
          other.padding_w,
          other.activation,
          other.groups,
-         allocate_weights,
          other.use_bias,
+         allocate_weights,
          other.name) 
 { }
 
@@ -377,8 +387,8 @@ Conv2D::Conv2D(FFModel& model,
                int paddingH, int paddingW,
                ActiMode activation,
                int groups,
-               bool allocate_weights,
                bool use_bias,
+               bool allocate_weights,
                const char* name)
 : Op(model, OP_CONV2D, name, 1/*inputs*/, use_bias ? 2 : 1/*weights*/, allocate_weights, 1/*outputs*/, input),
   in_channels(input->dims[Input::CHANNEL].size),
@@ -413,13 +423,13 @@ Conv2D::Conv2D(FFModel& model,
     Initializer *kernel_initializer = new GlorotUniform(std::rand()/*seed*/);
 
     weights[Kernel::INDEX] = model.create_weight_legion_ordering(
-        kernel_ndims, kernel_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
+        kernel_ndims, kernel_dims, DT_FLOAT, this/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
     
     if (use_bias) {
       Initializer *bias_initializer = new ZeroInitializer();
 
       weights[Bias::INDEX] = model.create_weight_legion_ordering(
-          bias_ndims, bias_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
+          bias_ndims, bias_dims, DT_FLOAT, this/*owner_op*/, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
     }
   }
 
@@ -1178,6 +1188,8 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
     assert(cnt > 0);
     checkCUDNN(perfResults[0].status);
     cost_metrics.backward_time = perfResults[0].time;
+    //for (int i = 0; i < cnt; i++)
+    //  printf("conv backward filter: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time);
   }
   {
     const int reqAlgCnt = 8;
@@ -1191,6 +1203,8 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
     assert(cnt > 0);
     checkCUDNN(perfResults[0].status);
     cost_metrics.backward_time += perfResults[0].time;
+    //for (int i = 0; i < cnt; i++)
+    //  printf("conv backward data: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time);
   }
   printf("[Measure Conv2D] name(%s) input(%d %d %d %d) weight(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
          name,
