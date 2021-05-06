@@ -1089,7 +1089,9 @@ T SearchHelper::estimate_xfer_cost(
       assert(it2.srcOp == source.node);
       assert(sink.node.ptr->inputs[it2.dstIdx]->is_valid_machine_view(source.view));
 
-      op_cost += this->model->simulator->estimate_xfer_cost(sink.node.ptr, it2.srcIdx, source.view, sink.view);
+      float estimated_xfer_cost = this->model->simulator->estimate_xfer_cost(sink.node.ptr, it2.srcIdx, source.view, sink.view);
+      /* printf("Estimated xfer cost from %s to %s: %fms\n", source.node.ptr->name, sink.node.ptr->name, estimated_xfer_cost); */
+      op_cost += estimated_xfer_cost;
     }
     this->add_operator_cost<T>(source, op_cost, &result);
   }
@@ -1176,6 +1178,7 @@ T SearchHelper::graph_cost(const Graph* graph,
   if (include_sink_compute_time) {
     CostMetrics metrics = this->model->simulator->measure_operator_cost(sink.node.ptr, sink.view);
     this->add_operator_cost<T>(sink, metrics.forward_time + metrics.backward_time + metrics.sync_time, &result);
+    //this->add_operator_cost<T>(sink, metrics.forward_time + metrics.backward_time, &result);
   }
 
   this->depth--;
@@ -1257,10 +1260,10 @@ size_t Graph::hash(void) const
   size_t total_hash = 0;
   for (const auto& it : inEdges) {
     const auto& inList = it.second;
-    size_t node_hash = std::hash<size_t>()((size_t)it.first.ptr);
+    size_t node_hash = std::hash<size_t>()(it.first.ptr->get_untyped_params_hash());
     for (const auto& e : inList) {
       size_t edge_hash = 17;
-      edge_hash = edge_hash * 31 + std::hash<size_t>()((size_t)e.srcOp.ptr);
+      edge_hash = edge_hash * 31 + std::hash<size_t>()(e.srcOp.ptr->get_untyped_params_hash());
       edge_hash = edge_hash * 31 + std::hash<int>()(e.srcIdx);
       edge_hash = edge_hash * 31 + std::hash<int>()(e.dstIdx);
       node_hash *= edge_hash;
@@ -1291,8 +1294,8 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     Context ctx, Runtime *runtime)
 {
   FFModel* model = *((FFModel**) task->args);
-  model->config.numNodes = 4;
-  model->config.workersPerNode = 4;
+  model->config.numNodes = 8;
+  model->config.workersPerNode = 8;
   model->all_valid_views.clear();
   FFModel::register_all_machine_views(model->config.numNodes, model->config.workersPerNode, 
                                       model->config.cpusPerNode, model->all_valid_views);

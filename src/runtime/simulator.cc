@@ -281,7 +281,8 @@ void* Simulator::allocate(size_t num_elements, DataType type)
 
 void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
                                                 SimTask* dst_task,
-                                                size_t message_size)
+                                                size_t message_size,
+                                                bool zero_cost)
 {
   std::vector<CommDevice *> path = machine->get_comm_path(src_task->mem, dst_task->mem);
   // print the communication path
@@ -291,7 +292,10 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
   // }
   // printf("\n");
 
-  if (path.empty()) {
+  // TODO FIXME @lockshaw
+  /* zero_cost = true; */
+  if (path.empty() || zero_cost) {
+    log_xfer_sim.spew("Simulated xfer cost from %s to %s: 0ms", src_task->name.c_str(), dst_task->name.c_str());
     src_task->add_next_task(dst_task);
     return;
   }
@@ -431,6 +435,8 @@ float Simulator::estimate_xfer_cost(const Op* op,
 {
   //assert(tensor->is_valid_machine_view(source_view));
   //assert(tensor->is_valid_machine_view(sink_view));
+  // TODO FIXME @lockshaw
+  /* return 0.0f; */
   if (op->is_parallel_op()) {
     // TODO: implement parallel op xfer cost
     switch (op->op_type) {
@@ -543,6 +549,7 @@ float Simulator::estimate_xfer_cost(const Op* op,
     size_t total_size = data_type_size(input_tensor->data_type);
     for (int i = 0; i < input_tensor->num_dims; i++)
       total_size *= input_tensor->dims[i].size / input_tensor->dims[i].degree;
+    /* printf("Estimated volume: %zu\n", total_size); */
     float max_xfer_cost = 0.0f;
     for (Domain::DomainPointIterator it(d); it; it++) {
       int source_device = source_view.get_device_id(*it);
@@ -731,6 +738,8 @@ float Simulator::simulate_runtime(const FFModel* model,
 #ifdef FF_USE_NCCL
   // Do nothing since we will calculate NCCL cost at the end
 #else
+  assert (false);
+
   // Step 2.5: add finals tasks for each compute device to capture the returning comm tasks
   // from parameter servers
   std::vector<SimTask*> finals;
@@ -770,10 +779,10 @@ float Simulator::simulate_runtime(const FFModel* model,
                 synched.insert(nextId);
                 // Add comm. tasks from backT to updateT
                 SimTask* backT = task_manager->get_backward_task(op, nextId);
-                add_task_dependencies_with_xfer(backT, updateT, firstR.get_volume() * element_size);
+                add_task_dependencies_with_xfer(backT, updateT, firstR.get_volume() * element_size * 0);
                 // Add comm. tasks from updateT to finalT
                 SimTask* finalT = finals[backT->device->device_id];
-                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume() * element_size);
+                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume() * element_size * 0);
               }
             }
           }
@@ -827,10 +836,10 @@ float Simulator::simulate_runtime(const FFModel* model,
                 assert(backT->device->device_id == pc.device_ids[nextId]);
                 SimTask* barrierT = barriers[backT->device->device_id];
                 // Add comm. tasks from barrierT to updateT
-                add_task_dependencies_with_xfer(barrierT, updateT, firstR.get_volume() * element_size);
+                add_task_dependencies_with_xfer(barrierT, updateT, firstR.get_volume() * element_size * 0);
                 // Add comm. tasks from updateT to finalT
                 SimTask* finalT = finals[backT->device->device_id];
-                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume() * element_size);
+                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume() * element_size * 0);
               }
             }
           }

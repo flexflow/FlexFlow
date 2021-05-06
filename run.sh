@@ -20,25 +20,27 @@ for d in "$OUTPUT_DIR" "$SEARCH_CURVE_DIR" "$COMPGRAPH_DIR"; do
 done
 
 export BUDGET=0
-export BATCH_SIZE=16
-export NUM_GPUS=4
-export NUM_NODES=4
+export BATCH_SIZE=32
+export NUM_GPUS=8
+export NUM_NODES=8
 export BANDWIDTH=20
-export BASENAME="resnext50_n${NUM_NODES}_g${NUM_GPUS}_b${BATCH_SIZE}_bw${BANDWIDTH}_bu${BUDGET}"
+export BASENAME="inception_n${NUM_NODES}_g${NUM_GPUS}_b${BATCH_SIZE}_bw${BANDWIDTH}_bu${BUDGET}"
 echo "$BASENAME"
 
-./examples/cpp/resnext50/resnext50 \
-  -ll:gpu 4 \
+./examples/cpp/InceptionV3/inception \
+  -ll:gpu 1 \
   -ll:fsize 13000 \
   -ll:zsize 16384 \
   -ll:csize 40000 \
   --budget "$BUDGET" \
+  -level xfers=warn,xfer_sim=warn,DP=debug \
   --batch-size "$BATCH_SIZE" \
   --compgraph "$COMPGRAPH_DIR/${BASENAME}_found.dot" \
   --search-curve "$SEARCH_CURVE_DIR/${BASENAME}_found.csv" \
+  --simulator-workspace-size 2717908992 \
   --search-curve-interval 1 
   # | tee "$OUTPUT_DIR/${BASENAME}_found.txt"
-  
+  #-level DP=spew
 
 # COMMAND="$PWD/../python/flexflow_python" 
 # COMMAND="gdb --args ${COMMAND}"

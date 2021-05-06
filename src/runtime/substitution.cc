@@ -435,6 +435,15 @@ void GraphXfer::run(int depth, Graph* graph,
       delete newGraph;
       return;
     }
+    if (this->name == "partition_relu_combine[parallel_dim=3,num_parts=2]") {
+      log_xfers.debug() << "Applied xfer to get graph with cost " << newGraph->optimal_cost() 
+                        << " (old " << graph->optimal_cost() << ", threshold " << threshold << ")";
+      std::ostringstream oss;
+      for (auto const &kv : this->mappedOps) {
+        oss << kv.first.to_string() << "_" << kv.first.guid << " ";
+      }
+      log_xfers.debug() << oss.str();
+    }
     // TODO: remove me for better performance
     assert(newGraph->check_correctness());
     if (newGraph->optimal_cost() < threshold && (int)newGraph->inEdges.size() < maxNumOps) {
@@ -998,6 +1007,7 @@ void create_mapping_xfers(FFModel *model, int degree, std::vector<GraphXfer*> &x
         pre = subst->create_repartition(input, input_dim, degree);
         break;
       case MappingOperation::REPLICATE:
+        continue;
         pre = subst->create_replicate(input, input_dim, degree);
         break;
     }
@@ -1012,6 +1022,7 @@ void create_mapping_xfers(FFModel *model, int degree, std::vector<GraphXfer*> &x
         post = subst->create_combine(new_op->outputs[0], output_dim, degree);
         break;
       case MappingOperation::REPLICATE:
+        assert(false);
         post = subst->create_reduction(new_op->outputs[0], output_dim, degree);
         break;
     }
@@ -1131,9 +1142,9 @@ void FFModel::graph_optimize(size_t budget,
     }
   }
   for (const auto& it : single_node_parallel_degrees) {
-    xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_RELU, false));
-    xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_SIGMOID, false));
-    xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_NONE, false));
+    //xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_RELU, false));
+    //xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_SIGMOID, false));
+    //xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_NONE, false));
     if (16 % it == 0) {
       xfers.push_back(create_replicate_attention_reduce(this, 16/*num_heads*/, it));
     }
@@ -1150,11 +1161,12 @@ void FFModel::graph_optimize(size_t budget,
   }
 
   for (const int degree : all_parallel_degrees) {
-    create_mapping_xfers<Conv2D>(this, degree, xfers);
-    create_mapping_xfers<Pool2D>(this, degree, xfers);
-    create_mapping_xfers<Flat>(this, degree, xfers);
+    create_mapping_xfers<Conv2D>(this, degree, xfers, {{3}});
+    create_mapping_xfers<Pool2D>(this, degree, xfers, {{3}});
+    create_mapping_xfers<Flat>(this, degree, xfers, {{3}});
   }
   for (const auto& it : all_parallel_degrees) {
+    /* if (it != config.numNodes * config.workersPerNode) continue; */
     xfers.push_back(create_partition_attention_combine(this, 16/*num_heads*/, it));
     xfers.push_back(create_partition_linear_combine(this, 3/*num_dims*/, it, AC_MODE_RELU, false));
     xfers.push_back(create_partition_linear_combine(this, 3/*num_dims*/, it, AC_MODE_SIGMOID, false));
@@ -1162,8 +1174,8 @@ void FFModel::graph_optimize(size_t budget,
     xfers.push_back(create_partition_linear_combine(this, 4/*num_dims*/, it, AC_MODE_RELU, false));
     xfers.push_back(create_partition_linear_combine(this, 4/*num_dims*/, it, AC_MODE_SIGMOID, false));
     xfers.push_back(create_partition_linear_combine(this, 4/*num_dims*/, it, AC_MODE_NONE, false));
-    xfers.push_back(create_partition_add_combine(this, 2/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, it/*num_parts*/));
+    //xfers.push_back(create_partition_add_combine(this, 2/*parallel_dims*/, it/*num_parts*/));
+    //xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, it/*num_parts*/));
     xfers.push_back(create_partition_add_combine(this, 3/*parallel_dims*/, it/*num_parts*/));
     xfers.push_back(create_combine_add_partition(this, 3/*parallel_dims*/, it/*num_parts*/));
     xfers.push_back(create_partition_relu_combine(this, 3/*parallel_dims*/, it/*num_parts*/));
@@ -1180,7 +1192,7 @@ void FFModel::graph_optimize(size_t budget,
         if (layers[i]->op_type == OP_CONCAT)
           concat_num_inputs.insert(layers[i]->numInputs);
       for (const auto& it2 : concat_num_inputs) {
-        xfers.push_back(create_partition_concat_combine(this, it2/*num_inputs*/, 0/*concat_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
+        //xfers.push_back(create_partition_concat_combine(this, it2/*num_inputs*/, 0/*concat_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
         xfers.push_back(create_partition_concat_combine(this, it2/*num_inputs*/, 2/*concat_dim*/, 3/*parallel_dims*/, it/*num_parts*/));
       }
     }

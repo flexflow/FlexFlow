@@ -42,7 +42,7 @@ Tensor FFModel::conv2d(const Tensor input,
       paddingH, paddingW, 
       activation,
       groups,
-      use_bias,
+      false,//use_bias,
       false,
       name
   );
@@ -1172,8 +1172,8 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
     assert(cnt > 0);
     checkCUDNN(perfResults[0].status);
     cost_metrics.forward_time = perfResults[0].time;
-    for (int i = 0; i < cnt; i++)
-      printf("conv forward: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time);
+    /* for (int i = 0; i < cnt; i++) */
+    /*   printf("conv forward: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time); */
   }
   // select forward algorithm
   {
@@ -1188,8 +1188,8 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
     assert(cnt > 0);
     checkCUDNN(perfResults[0].status);
     cost_metrics.backward_time = perfResults[0].time;
-    for (int i = 0; i < cnt; i++)
-      printf("conv backward filter: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time);
+    /* for (int i = 0; i < cnt; i++) */
+    /*   printf("conv backward filter: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time); */
   }
   {
     const int reqAlgCnt = 8;
@@ -1203,8 +1203,8 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
     assert(cnt > 0);
     checkCUDNN(perfResults[0].status);
     cost_metrics.backward_time += perfResults[0].time;
-    for (int i = 0; i < cnt; i++)
-      printf("conv backward data: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time);
+    /* for (int i = 0; i < cnt; i++) */
+    /*   printf("conv backward data: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time); */
   }
   printf("[Measure Conv2D] name(%s) input(%d %d %d %d) weight(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
          name,

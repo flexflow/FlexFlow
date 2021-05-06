@@ -18,14 +18,19 @@ fi
 
 echo "Using build type: $BUILD_TYPE"
 
+CUDA="$(dirname $(dirname $(which nvcc)))"
+
 # rm CMakeCache.txt
 cmake -DFF_BUILD_TESTS=OFF \
       -DFF_USE_GASNET=OFF \
       -DFF_USE_NCCL=ON \
-      -DFF_CUDA_ARCH=60 \
+      -DFF_CUDA_ARCH=70 \
       -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
       -DFF_BUILD_MLP_UNIFY=ON \
       -DFF_BUILD_RESNET=ON \
       -DFF_BUILD_RESNEXT=ON \
+      -DFF_BUILD_INCEPTION=ON \
       -DFF_USE_PYTHON=ON \
+      -DCUDA_PATH="$CUDA" \
+      -DCUDNN_PATH="$CUDA" \
       ..

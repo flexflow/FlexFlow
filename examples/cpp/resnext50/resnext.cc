@@ -4,9 +4,14 @@ using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("resnext");
 
-Tensor resnext_block(FFModel &ff, Tensor input, int stride_h, int stride_w, int out_channels, int groups) {
-  Tensor t = ff.conv2d(
-      input, 
+Tensor resnext_block(FFModel &ff, Tensor input, int stride_h, int stride_w, int out_channels, int groups, bool is_last) {
+  Tensor t = input;
+  if (is_last) {
+    t = ff.combine(t, 3, 8);
+  }
+
+  t = ff.conv2d(
+      t, 
       out_channels,
       1, 1,
       1, 1,
@@ -44,7 +49,16 @@ Tensor resnext_block(FFModel &ff, Tensor input, int stride_h, int stride_w, int 
     );
   }
 
-  return ff.relu(ff.add(input, t), false);
+  if (is_last) {
+    /* t = ff.repartition(t, 3, 8); */
+    input = ff.combine(input, 3, 8);
+  }
+  t = ff.add(input, t);
+  if (is_last) {
+    t = ff.repartition(t, 3, 8);
+  }
+  t = ff.relu(t, false);
+  return t;
 }
 
 void top_level_task(const Task* task,
@@ -69,7 +83,7 @@ void top_level_task(const Task* task,
   }
 
   Tensor t = input;
-  int degree = 16;
+  int degree = 64;
   t = ff.repartition(
       input, 
       3, degree);
@@ -81,6 +95,9 @@ void top_level_task(const Task* task,
       3, 3,
       AC_MODE_RELU
   );
+  /* t = ff.combine( */
+  /*     t, */ 
+  /*     3, 8); */
   t = ff.pool2d(
       t, 
       3, 3, 
@@ -88,26 +105,29 @@ void top_level_task(const Task* task,
       1, 1, 
       POOL_MAX
   );
+  /* t = ff.repartition( */
+  /*     t, */
+  /*     3, 8); */
 
   int stride;
 
   stride = 1;
   for (int i = 0; i < 3; i++) {
-    t = resnext_block(ff, t, stride, stride, 128, 32);
+    t = resnext_block(ff, t, stride, stride, 128, 32, false);
   }
   stride = 2;
   for (int i = 0; i < 4; i++) {
-    t = resnext_block(ff, t, stride, stride, 256, 32);
+    t = resnext_block(ff, t, stride, stride, 256, 32, false);
     stride = 1;
   }
   stride = 2;
   for (int i = 0; i < 6; i++) {
-    t = resnext_block(ff, t, stride, stride, 512, 32);
+    t = resnext_block(ff, t, stride, stride, 512, 32, false);
     stride = 1;
   }
   stride = 2;
   for (int i = 0; i < 3; i++) {
-    t = resnext_block(ff, t, stride, stride, 1024, 32);
+    t = resnext_block(ff, t, stride, stride, 1024, 32, false);
     stride = 1;
   }
 
