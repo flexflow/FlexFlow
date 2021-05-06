@@ -96,6 +96,10 @@ bool is_valid(const Tensor input)
   return is_valid;
 }
 
+size_t Flat::get_params_hash() const {
+  return this->inputs[0]->get_owner_independent_hash();
+}
+
 Node FFModel::get_or_create_flat_node(const Tensor input) 
 {
   if (!is_valid(input)) {
@@ -340,18 +344,19 @@ Domain Flat::get_input_tensor_shape(const ParallelConfig& pc,
     int input_idx, int part_idx) const
 {
   assert(input_idx < numInputs);
-  assert(pc.nDims == 2);
-  // Currently assume data parallelism for Flat
+  assert(pc.nDims == 3);
   assert(pc.dim[0] == 1);
+  assert(pc.dim[2] == 1);
+
   Domain d;
   d.dim = inputs[input_idx]->num_dims;
   for (int i = 0; i < d.dim-1; i++) {
     d.rect_data[i] = 0;
     d.rect_data[i+d.dim] = inputs[input_idx]->dims[i].size - 1;
   }
-  assert(inputs[input_idx]->dims[d.dim-1].size % pc.num_parts() == 0);
-  int dim_size = inputs[input_idx]->dims[d.dim-1].size / pc.num_parts();
-  d.rect_data[d.dim-1] = part_idx * dim_size;
-  d.rect_data[2*d.dim-1] = d.rect_data[d.dim-1] + dim_size - 1;
+  assert(inputs[input_idx]->dims[d.dim-2].size % pc.num_parts() == 0);
+  int dim_size = inputs[input_idx]->dims[d.dim-2].size / pc.num_parts();
+  d.rect_data[d.dim-2] = part_idx * dim_size;
+  d.rect_data[2*d.dim-2] = d.rect_data[d.dim-2] + dim_size - 1;
   return d;
 }

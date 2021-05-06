@@ -8,7 +8,7 @@ cmake_policy(SET CMP0074 NEW)
 cmake_policy(SET CMP0077 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -UNDEBUG")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -UNDEBUG")
 
 # Set a default build type if none was specified
 set(default_build_type "Debug")
@@ -90,13 +90,15 @@ endif()
 list(APPEND CC_FLAGS
   -std=c++11
   -DMAX_TENSOR_DIM=${FF_MAX_DIM}
-  -DLEGION_MAX_RETURN_SIZE=${FF_MAX_RETURN_SIZE})
+  -DLEGION_MAX_RETURN_SIZE=${FF_MAX_RETURN_SIZE}
+  -UNDEBUG)
 
 list(APPEND NVCC_FLAGS
   -Wno-deprecated-gpu-targets
   -std=c++11
   -DMAX_TENSOR_DIM=${FF_MAX_DIM}
-  -DLEGION_MAX_RETURN_SIZE=${FF_MAX_RETURN_SIZE})
+  -DLEGION_MAX_RETURN_SIZE=${FF_MAX_RETURN_SIZE}
+  -UNDEBUG)
 
 list(APPEND LD_FLAGS
   -lrt
@@ -105,7 +107,7 @@ list(APPEND LD_FLAGS
 
 # Set FLAGS
 add_compile_options(${CC_FLAGS})
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS} -UNDEBUG)
 link_libraries(${LD_FLAGS})
 
 list(APPEND FLEXFLOW_INCLUDE_DIRS
@@ -128,7 +130,12 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/ops/pool_2d.h
   ${FLEXFLOW_ROOT}/include/ops/flat.h
   ${FLEXFLOW_ROOT}/include/ops/element_unary.h
+  ${FLEXFLOW_ROOT}/include/ops/element_binary.h
   ${FLEXFLOW_ROOT}/include/ops/attention.h
+  ${FLEXFLOW_ROOT}/include/ops/softmax.h
+  ${FLEXFLOW_ROOT}/include/ops/concat.h
+  ${FLEXFLOW_ROOT}/include/ops/split.h
+  ${FLEXFLOW_ROOT}/include/ops/noop.h
   ${FLEXFLOW_ROOT}/include/parallel_ops/combine.h
   ${FLEXFLOW_ROOT}/include/parallel_ops/fused_parallel_op.h
   ${FLEXFLOW_ROOT}/include/parallel_ops/partition.h

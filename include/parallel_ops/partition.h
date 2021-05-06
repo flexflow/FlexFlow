@@ -37,6 +37,8 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
+
+  size_t get_params_hash() const override;
 public:
   int repartition_dim, repartition_degree;
 };

@@ -17,8 +17,21 @@
 #include "model.h"
 #include "queue"
 #include "dot_file.h"
+#include "parallel_ops/partition.h"
+#include "parallel_ops/combine.h"
+#include <unordered_set>
+#include <memory>
+#include "hash_utils.h"
 
 using namespace Legion;
+
+LegionRuntime::Logger::Category log_sim("sim");
+LegionRuntime::Logger::Category log_ps_sim("ps_sim");
+LegionRuntime::Logger::Category log_xfer_sim("xfer_sim");
+LegionRuntime::Logger::Category log_xfer_est("xfer_est");
+
+// template class std::map<const Op*, ParallelConfig>; // for debugging in gdb
+// template class std::map<const Op*, MachineView>; // for debugging in gdb
 
 int ParallelConfig::num_parts() const
 {
@@ -236,28 +249,26 @@ void Simulator::free_all()
   offset = 0;
 }
 
-void* Simulator::allocate(size_t num_elements, DataType type)
-{
-  size_t element_size = 0;
+size_t data_type_size(DataType type) {
   switch (type) {
     case DT_FLOAT:
-      element_size = sizeof(float);
-      break;
+      return sizeof(float);
     case DT_DOUBLE:
-      element_size = sizeof(double);
-      break;
+      return sizeof(double);
     case DT_INT32:
-      element_size = sizeof(int32_t);
-      break;
+      return sizeof(int32_t);
     case DT_INT64:
-      element_size = sizeof(int64_t);
-      break;
+      return sizeof(int64_t);
     case DT_BOOLEAN:
-      element_size = sizeof(bool);
-      break;
+      return sizeof(bool);
     default:
       assert(false);
   }
+}
+
+void* Simulator::allocate(size_t num_elements, DataType type)
+{
+  size_t element_size = data_type_size(type);
   void* ret_ptr = base_ptr + offset;
   offset += element_size * num_elements;
   if ((size_t)offset > capacity) {
@@ -270,7 +281,8 @@ void* Simulator::allocate(size_t num_elements, DataType type)
 
 void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
                                                 SimTask* dst_task,
-                                                size_t message_size)
+                                                size_t message_size,
+                                                bool zero_cost)
 {
   std::vector<CommDevice *> path = machine->get_comm_path(src_task->mem, dst_task->mem);
   // print the communication path
@@ -280,7 +292,8 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
   // }
   // printf("\n");
 
-  if (path.empty()) {
+  if (path.empty() || zero_cost) {
+    log_xfer_sim.spew("Simulated xfer cost from %s to %s: 0ms", src_task->name.c_str(), dst_task->name.c_str());
     src_task->add_next_task(dst_task);
     return;
   }
@@ -308,6 +321,10 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
       std::string name = "seg " + std::to_string(j) + " from " + src_task->name + " to " + dst_task->name;
       SimTask *cur_task = task_manager->new_comm_task(name, path[i], cur_seg_size);
       all_tasks[i].push_back(cur_task);
+      if (j == 0) {
+        log_xfer_sim.debug("Simulated xfer cost from %s to %s: %fms (%d)", 
+            src_task->name.c_str(), dst_task->name.c_str(), cur_task->run_time, cur_seg_size);
+      }
     }
   }
 
@@ -351,7 +368,7 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
 
 CostMetrics Simulator::measure_operator_cost(const Op* op, const ParallelConfig& config)
 {
-  size_t hash = 17 * 31 + (size_t)(op);
+  size_t hash = 17 * 31 + op->get_untyped_params_hash();
   hash = hash * 31 + std::hash<int>()(config.device_type);
   hash = hash * 31 + std::hash<int>()(config.nDims);
   for (int i = 0; i < config.nDims; i++)
@@ -371,50 +388,35 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const ParallelConfig&
   }
 }
 
+ParallelConfig Op::view_to_pc(MachineView const &view) const {
+  ParallelConfig config;
+  config.device_type = (ParallelConfig::DeviceType) view.device_type;
+  const Tensor output = this->outputs[0];
+  config.nDims = output->num_dims;
+  for (int i = 0; i < config.nDims; i++) {
+    if (output->dims[i].parallel_idx == -1) {
+      config.dim[i] = 1;
+    } else {
+      config.dim[i] = view.dim[output->dims[i].parallel_idx];
+    }
+  }
+
+  std::vector<int> device_ids = view.device_ids();
+  assert (device_ids.size() <= MAX_NUM_WORKERS);
+  for (int i = 0; i < device_ids.size(); i++) {
+    config.device_ids[i] = device_ids[i];
+  }
+
+  return config;
+}
+
 CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& view)
 {
-  CostMetrics cost_metrics;
+  ParallelConfig config = op->view_to_pc(view);
+  CostMetrics cost_metrics = this->measure_operator_cost(op, config);
   // First, estimate operator sync cost
   // We don't care about cache since the estimate is cheap
   op->estimate_sync_cost(this, view, cost_metrics);
-  // Second, measure operator compute cost
-  size_t hash = 17 * 31 + std::hash<size_t>()(op->op_guid);
-  hash = hash * 31 + std::hash<int>()(view.device_type);
-  // start_device_id does not affect operator_cost
-  //hash = hash * 31 + std::hash<int>()(view.start_device_id);
-  for (int i = 0; i < view.ndims; i++) {
-    hash = hash * 31 + std::hash<int>()(view.dim[i]);
-  }
-  // strides does not affect operator's cost
-  //for (int i = 0; i < view.ndims; i++) {
-  //  hash = hash * 31 + std::hash<int>()(view.stride[i]);
-  //}
-  std::unordered_map<size_t, CostMetrics>::const_iterator iter =
-    hash_to_operator_cost.find(hash);
-  if (iter == hash_to_operator_cost.end()) {
-
-    ParallelConfig config;
-    config.device_type = (ParallelConfig::DeviceType) view.device_type;
-    const Tensor output = op->outputs[0];
-    config.nDims = output->num_dims;
-    for (int i = 0; i < config.nDims; i++) {
-      if (output->dims[i].parallel_idx == -1) {
-        config.dim[i] = 1;
-      } else {
-        config.dim[i] = view.dim[output->dims[i].parallel_idx];
-      }
-    }
-
-    bool is_implemented = op->measure_operator_cost(this, config, cost_metrics);
-    if (! is_implemented) {
-      handle_measure_operator_cost_unimplemented(op);
-    }
-    hash_to_operator_cost[hash] = cost_metrics;
-  } else {
-    CostMetrics comp_metrics = iter->second;
-    cost_metrics.forward_time = comp_metrics.forward_time;
-    cost_metrics.backward_time = comp_metrics.backward_time;
-  }
   return cost_metrics;
 }
 
@@ -427,7 +429,100 @@ float Simulator::estimate_xfer_cost(const Op* op,
   //assert(tensor->is_valid_machine_view(sink_view));
   if (op->is_parallel_op()) {
     // TODO: implement parallel op xfer cost
-    return 0.0f;
+    switch (op->op_type) {
+      case OP_REPARTITION:
+      {
+        Repartition *rp = (Repartition*)op;
+        assert (source_view != sink_view);
+
+        const Tensor input_tensor = op->inputs[input_idx];
+        if (input_tensor->owner_op->op_type == OP_INPUT) {
+          return 0.0f;
+        }
+        assert (rp->repartition_dim == input_tensor->num_dims - 2); // assert data parallel for now
+        int degree_before = input_tensor->dims[input_tensor->num_dims - 2].degree;
+        std::vector<int> source_ids = source_view.device_ids();
+        std::vector<int> sink_ids = sink_view.device_ids();
+        float max_xfer_cost = 0.0f;
+        size_t total_size = data_type_size(input_tensor->data_type);
+        for (int i = 0; i < input_tensor->num_dims; i++) {
+          total_size *= input_tensor->dims[i].size / input_tensor->dims[i].degree;
+        }
+        total_size /= rp->repartition_degree;
+        /* printf("Estimated volume: %zu\n", total_size); */
+        std::unordered_map<std::pair<int, int>, int> internode_transfers;
+        for (int srcId = 0; srcId < degree_before; srcId++) {
+          for (int dstId = srcId * rp->repartition_degree; dstId < (srcId+1) * rp->repartition_degree; dstId++) {
+            int source_device = source_ids[srcId];
+            int sink_device = sink_ids[dstId];
+            float bandwidth = 0.0f;
+            int src_node_id = machine->get_gpu(source_device)->node_id;
+            int dst_node_id = machine->get_gpu(sink_device)->node_id;
+            if (src_node_id == dst_node_id) {
+              bandwidth = machine->get_intra_node_gpu_bandwidth();
+              max_xfer_cost = std::max(max_xfer_cost, 2 * total_size / bandwidth);
+            } else {
+              internode_transfers[{src_node_id, dst_node_id}] += 2 * total_size;
+            }
+          }
+        }
+
+        for (auto const &kv : internode_transfers) {
+          max_xfer_cost = std::max(max_xfer_cost, kv.second / machine->get_inter_node_gpu_bandwidth());
+        }
+
+/*         log_xfer_est.debug() << "Estimated xfer cost from " */ 
+/*                              << input_tensor->owner_op->name */
+/*                              << " to " */
+/*                              << op->name << ": " */
+/*                              << max_xfer_cost << std:: */
+        return max_xfer_cost;
+      }
+      case OP_COMBINE:
+      {
+        Combine *combine = (Combine*)op;
+        assert (source_view != sink_view);
+
+        const Tensor input_tensor = op->inputs[input_idx];
+        if (input_tensor->owner_op->op_type == OP_INPUT) {
+          return 0.0f;
+        }
+        assert (combine->combine_dim == input_tensor->num_dims - 2); // assert data parallel for now
+        int degree_before = input_tensor->dims[input_tensor->num_dims - 2].degree;
+        int degree_after = degree_before / combine->combine_degree;
+        std::vector<int> source_ids = source_view.device_ids();
+        std::vector<int> sink_ids = sink_view.device_ids();
+        float max_xfer_cost = 0.0f;
+        size_t total_size = data_type_size(input_tensor->data_type);
+        for (int i = 0; i < input_tensor->num_dims; i++) {
+          total_size *= input_tensor->dims[i].size / input_tensor->dims[i].degree;
+        }
+        /* printf("Estimated volume: %zu\n", total_size); */
+        std::unordered_map<std::pair<int, int>, int> internode_transfers;
+        for (int dstId = 0; dstId < degree_after; dstId++) {
+          for (int srcId = dstId * combine->combine_degree; srcId < (dstId+1) * combine->combine_degree; srcId++) {
+            int source_device = source_ids[srcId];
+            int sink_device = sink_ids[dstId];
+            float bandwidth = 0.0f;
+            int src_node_id = machine->get_gpu(source_device)->node_id;
+            int dst_node_id = machine->get_gpu(sink_device)->node_id;
+            if (src_node_id == dst_node_id) {
+              bandwidth = machine->get_intra_node_gpu_bandwidth();
+              max_xfer_cost = std::max(max_xfer_cost, 2 * total_size / bandwidth);
+            } else {
+              internode_transfers[{src_node_id, dst_node_id}] += 2 * total_size;
+            }
+          }
+        }
+        
+        for (auto const &kv : internode_transfers) {
+          max_xfer_cost = std::max(max_xfer_cost, kv.second / machine->get_inter_node_gpu_bandwidth());
+        }
+        return max_xfer_cost;
+      }
+      default:
+        assert(false);
+    }
   } else {
     // No cost if source_view == sink_view
     if (source_view == sink_view)
@@ -441,26 +536,7 @@ float Simulator::estimate_xfer_cost(const Op* op,
       d.rect_data[i+d.dim] = source_view.dim[i]-1;
     }
     const Tensor input_tensor = op->inputs[input_idx];
-    size_t total_size = 1;
-    switch (input_tensor->data_type) {
-      case DT_FLOAT:
-      {
-        total_size = sizeof(float);
-        break;
-      }
-      case DT_INT64:
-      {
-        total_size = sizeof(int64_t);
-        break;
-      }
-      case DT_INT32:
-      {
-        total_size = sizeof(int32_t);
-        break;
-      }
-      default:
-        assert(false);
-    }
+    size_t total_size = data_type_size(input_tensor->data_type);
     for (int i = 0; i < input_tensor->num_dims; i++)
       total_size *= input_tensor->dims[i].size / input_tensor->dims[i].degree;
     float max_xfer_cost = 0.0f;
@@ -468,7 +544,7 @@ float Simulator::estimate_xfer_cost(const Op* op,
       int source_device = source_view.get_device_id(*it);
       int sink_device = sink_view.get_device_id(*it);
       float bandwidth = 0.0f;
-      if (machine->get_gpu(source_device)->node_id==machine->get_gpu(sink_device)->node_id) {
+      if (machine->get_gpu(source_device)->node_id == machine->get_gpu(sink_device)->node_id) {
         bandwidth = machine->get_intra_node_gpu_bandwidth();
       } else {
         bandwidth = machine->get_inter_node_gpu_bandwidth();
@@ -529,8 +605,9 @@ float Simulator::default_estimate_sync_cost(const Tensor tensor,
       int my_device = view.get_device_id(*it);
       if ((*it)[replicate_dim] > 0) {
         int last_device = my_device - replicate_stride;
-        if (machine->get_gpu(my_device)->node_id!=machine->get_gpu(last_device)->node_id)
+        if (machine->get_gpu(my_device)->node_id != machine->get_gpu(last_device)->node_id) {
           inter_node_sync = true;
+        }
       }
     }
     float bandwidth = 0.0f;
@@ -560,8 +637,7 @@ float Simulator::simulate_runtime(const FFModel* model,
   // printf("%s\n", machine->to_string().c_str());
   task_manager->reset();
   // Step 1: register forward and backward tasks
-  for (size_t l = 0; l < model->layers.size(); l++) {
-    Op* op = model->layers[l];
+  for (Op *op : model->layers) {
     ParallelConfig config = global.find(op)->second;
     CostMetrics cost_metrics = measure_operator_cost(op, config);
     float forward_time = cost_metrics.forward_time;
@@ -581,8 +657,7 @@ float Simulator::simulate_runtime(const FFModel* model,
     }
   }
   // Step 2: insert dependencies and comm. tasks before compute tasks
-  for (size_t l = 0; l < model->layers.size(); l++) {
-    Op* op = model->layers[l];
+  for (Op *op : model->layers) {
     ParallelConfig config = global.find(op)->second;
     for (int j = 0; j < op->numInputs; j++) {
       Tensor t = op->inputs[j];
@@ -590,22 +665,32 @@ float Simulator::simulate_runtime(const FFModel* model,
       if (pre_op == NULL)
         continue;
       ParallelConfig pre_config = global.find(pre_op)->second;
+      size_t element_size = data_type_size(t->data_type);
       for (int dstId = 0; dstId < config.num_parts(); dstId ++) {
         Domain dstR = op->get_input_tensor_shape(config, j, dstId);
         for (int srcId = 0; srcId < pre_config.num_parts(); srcId ++) {
           Domain srcR = pre_op->get_output_tensor_shape(pre_config, t->owner_idx, srcId);
+          bool force_zero_cost = pre_op->op_type == OP_INPUT;
           if (dstR.intersection(srcR).get_volume() > 0) {
             // Forward dependency
             {
               SimTask* dstT = task_manager->get_forward_task(op, dstId);
               SimTask* srcT = task_manager->get_forward_task(pre_op, srcId);
-              add_task_dependencies_with_xfer(srcT, dstT, dstR.intersection(srcR).get_volume());
+              size_t xfer_size = dstR.intersection(srcR).get_volume() * element_size;
+              if (dstId == 0 && srcId == 0) {
+                log_sim.debug("fwd xfer from %s to %s: %zu", srcT->name.c_str(), dstT->name.c_str(), xfer_size);
+              }
+              add_task_dependencies_with_xfer(srcT, dstT, xfer_size, force_zero_cost);
             }
             // Backward dependency
             if (comp_mode == COMP_MODE_TRAINING) {
               SimTask* dstT = task_manager->get_backward_task(op, dstId);
               SimTask* srcT = task_manager->get_backward_task(pre_op, srcId);
-              add_task_dependencies_with_xfer(dstT, srcT, dstR.intersection(srcR).get_volume());
+              size_t xfer_size = dstR.intersection(srcR).get_volume() * element_size;
+              if (dstId == 0 && srcId == 0) {
+                log_sim.debug("bwd xfer from %s to %s: %zu", dstT->name.c_str(), srcT->name.c_str(), xfer_size);
+              }
+              add_task_dependencies_with_xfer(dstT, srcT, xfer_size, force_zero_cost);
             }
           }
         }
@@ -631,9 +716,10 @@ float Simulator::simulate_runtime(const FFModel* model,
     for (int l = model->layers.size()-1; l >= 0; l--) {
       Op* op = model->layers[l];
       ParallelConfig pc = global.find(op)->second;
+      size_t element_size = data_type_size(DT_FLOAT); // assume all weights have float elements
       for (int j = 0; j < op->numWeights; j++) {
         std::set<int> synched;
-        for (int firstId = 0; firstId < pc.num_parts(); firstId++)
+        for (int firstId = 0; firstId < pc.num_parts(); firstId++) {
           if (synched.find(firstId) == synched.end()) {
             synched.insert(firstId);
             Domain firstR = op->get_weight_tensor_shape(pc, j, firstId);
@@ -653,13 +739,14 @@ float Simulator::simulate_runtime(const FFModel* model,
                 synched.insert(nextId);
                 // Add comm. tasks from backT to updateT
                 SimTask* backT = task_manager->get_backward_task(op, nextId);
-                add_task_dependencies_with_xfer(backT, updateT, firstR.get_volume());
+                add_task_dependencies_with_xfer(backT, updateT, firstR.get_volume() * element_size);
                 // Add comm. tasks from updateT to finalT
                 SimTask* finalT = finals[backT->device->device_id];
-                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume());
+                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume() * element_size);
               }
             }
           }
+        }
       }
     }
   } else if (comp_mode == COMP_MODE_TRAINING) {
@@ -684,6 +771,7 @@ float Simulator::simulate_runtime(const FFModel* model,
     for (size_t l = 0; l < model->layers.size(); l++) {
       Op* op = model->layers[l];
       ParallelConfig pc = global.find(op)->second;
+      size_t element_size = data_type_size(DT_FLOAT); // assume all weights have float elements
       for (int j = 0; j < op->numWeights; j++) {
         std::set<int> synched;
         for (int firstId = 0; firstId < pc.num_parts(); firstId++)
@@ -708,10 +796,10 @@ float Simulator::simulate_runtime(const FFModel* model,
                 assert(backT->device->device_id == pc.device_ids[nextId]);
                 SimTask* barrierT = barriers[backT->device->device_id];
                 // Add comm. tasks from barrierT to updateT
-                add_task_dependencies_with_xfer(barrierT, updateT, firstR.get_volume());
+                add_task_dependencies_with_xfer(barrierT, updateT, firstR.get_volume() * element_size);
                 // Add comm. tasks from updateT to finalT
                 SimTask* finalT = finals[backT->device->device_id];
-                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume());
+                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume() * element_size);
               }
             }
           }
@@ -784,43 +872,118 @@ float Simulator::simulate_runtime(const FFModel* model,
   assert(idx == task_manager->global_task_id);
 #ifdef FF_USE_NCCL
   if (comp_mode == COMP_MODE_TRAINING) {
-    for (size_t l = 0; l < model->layers.size(); l++) {
-      Op* op = model->layers[l];
-      ParallelConfig pc = global.find(op)->second;
-      // Since all NCCL calls are blocking, we can add the NCCL cost
-      // sequentially 
-      for (int j = 0; j < op->numWeights; j++) {
-        std::set<int> synched;
-        for (int firstId = 0; firstId < pc.num_parts(); firstId++)
-          if (synched.find(firstId) == synched.end()) {
-            synched.insert(firstId);
-            Domain firstR = op->get_weight_tensor_shape(pc, j, firstId);
-            Device* firstDevice = machine->get_gpu(pc.device_ids[firstId]);
-            float nccl_time = 0.0f;
-            for (int nextId = firstId+1; nextId < pc.num_parts(); nextId++) {
-              Domain nextR = op->get_weight_tensor_shape(pc, j, nextId);
-              if (firstR.intersection(nextR).get_volume() > 0) {
-                // Assert all or nothing:
-                // The two weights must be fully overlapped or not at all
-                assert(firstR == nextR);
-                assert(synched.find(nextId) == synched.end());
-                synched.insert(nextId);
-                Device* nextDevice = machine->get_gpu(pc.device_ids[nextId]);
-                // Compute the bandwidth between firstDevice/nextDevice
-                float bandwidth = 0.0f;
-                if (firstDevice->node_id == nextDevice->node_id) {
-                  bandwidth = machine->get_intra_node_gpu_bandwidth();
-                } else {
-                  bandwidth = machine->get_inter_node_gpu_bandwidth();
-                }
-                nccl_time = std::max(nccl_time, (float)firstR.get_volume() * sizeof(float) / bandwidth);
-              }
-            }
-            // Add ncclTime to sim_time given nccl calls are blocking
-            sim_time += nccl_time;
-          }
+    std::unordered_set<Op const *> possible_syncs(model->layers.begin(), model->layers.end());
+    std::unordered_map<Op const *, std::unique_ptr<OpSyncTask>> tasks;
+    assert (std::numeric_limits<float>::has_quiet_NaN);
+    for (Op const *op : model->layers) {
+      tasks[op] = std::unique_ptr<OpSyncTask>(new OpSyncTask{op, 0, std::numeric_limits<float>::quiet_NaN()});
+    }
+    for (Op const *op : model->layers) {
+      for (int i = 0; i < op->numInputs; i++) {
+        Op const *src = op->inputs[i]->owner_op;
+        possible_syncs.erase(src);
+
+        tasks[src]->unsatisfied_dependencies++;
       }
     }
+    assert (possible_syncs.size() == 1);
+
+    std::vector<bool> available_devices(this->machine->get_num_gpus(), true);
+
+    std::priority_queue<OpSyncTask*, std::vector<OpSyncTask*>, OpSyncTaskEarliestFirst> sync_ready_queue;
+
+    float sync_sim_time = 0.0f;
+
+
+    int syncs_processed = 0;
+    while (possible_syncs.size() > 0 || !sync_ready_queue.empty()) {
+      Op const *to_run = nullptr;
+      for (Op const *op : possible_syncs) {
+        bool can_be_run = true;
+        ParallelConfig config = global.find(op)->second;
+        for (int j = 0; j < config.num_parts(); j++) {
+          can_be_run &= available_devices[config.device_ids[j]]; 
+        }
+        if (can_be_run) {
+          to_run = op;
+          break;
+        }
+      }
+      if (to_run != nullptr) {
+        possible_syncs.erase(to_run);
+        float sync_run_time = 0.0f;
+        OpSyncTask *task = tasks.at(to_run).get();
+        Op const *op = to_run;
+        ParallelConfig pc = global.find(op)->second;
+        size_t element_size = data_type_size(DT_FLOAT); // assume all weights have float elements
+
+        for (int j = 0; j < pc.num_parts(); j++) {
+          available_devices[pc.device_ids[j]] = false;
+        }
+
+        for (int j = 0; j < op->numWeights; j++) {
+          std::set<int> synched;
+          for (int firstId = 0; firstId < pc.num_parts(); firstId++) {
+            if (synched.find(firstId) == synched.end()) {
+              synched.insert(firstId);
+              Domain firstR = op->get_weight_tensor_shape(pc, j, firstId);
+              Device* firstDevice = machine->get_gpu(pc.device_ids[firstId]);
+              float nccl_time = 0.0f;
+              for (int nextId = firstId+1; nextId < pc.num_parts(); nextId++) {
+                Domain nextR = op->get_weight_tensor_shape(pc, j, nextId);
+                if (firstR.intersection(nextR).get_volume() > 0) {
+                  // Assert all or nothing:
+                  // The two weights must be fully overlapped or not at all
+                  assert(firstR == nextR);
+                  assert(synched.find(nextId) == synched.end());
+                  synched.insert(nextId);
+                  Device* nextDevice = machine->get_gpu(pc.device_ids[nextId]);
+                  // Compute the bandwidth between firstDevice/nextDevice
+                  float bandwidth = 0.0f;
+                  if (firstDevice->node_id == nextDevice->node_id) {
+                    bandwidth = machine->get_intra_node_gpu_bandwidth();
+                  } else {
+                    bandwidth = machine->get_inter_node_gpu_bandwidth();
+                  }
+                  //printf("[NCCL Time] Op(%s) Weight(%d) firstId(%d) nextId(%d): volume is %f\n", op->name, j, firstId, nextId, (float)firstR.get_volume());
+                  nccl_time = std::max(nccl_time, 2 * (float)firstR.get_volume() * element_size / bandwidth);
+                }
+              }
+              sync_run_time += nccl_time;
+            }
+          }
+        }
+
+        task->finish_time = sync_sim_time + sync_run_time;
+        sync_ready_queue.push(task);
+        log_ps_sim.debug("Push sync task for %s\n", task->op->name);
+        log_ps_sim.debug("  Time: %fms\n", sync_sim_time);
+      } else {
+        OpSyncTask *completed = sync_ready_queue.top();
+        sync_ready_queue.pop();
+        syncs_processed++;
+        sync_sim_time = completed->finish_time;
+        log_ps_sim.debug("Pop sync task for %s", completed->op->name);
+        log_ps_sim.debug("  Time: %fms", sync_sim_time);
+        ParallelConfig config = global.find(completed->op)->second;
+        for (int j = 0; j < config.num_parts(); j++) {
+          assert (!available_devices[config.device_ids[j]]);
+          available_devices[config.device_ids[j]] = true;
+        }
+        for (int i = 0; i < completed->op->numInputs; i++) { 
+          OpSyncTask *dependent_task = tasks.at(completed->op->inputs[i]->owner_op).get();
+          assert (dependent_task->unsatisfied_dependencies > 0);
+          assert (std::isnan(dependent_task->finish_time));
+          dependent_task->unsatisfied_dependencies--;
+          if (dependent_task->unsatisfied_dependencies == 0) {
+            possible_syncs.insert(dependent_task->op);
+          }
+        }
+      }
+    }
+    assert (syncs_processed == model->layers.size());
+    log_ps_sim.debug("Sync sim time: %fms", sync_sim_time);
+    sim_time += sync_sim_time;
   } else {
     assert(comp_mode == COMP_MODE_INFERENCE);
   }

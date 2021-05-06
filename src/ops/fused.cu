@@ -19,7 +19,9 @@
 #include "ops/linear.h"
 #include "ops/pool_2d.h"
 #include "ops/flat.h"
+#include "ops/concat.h"
 #include "ops/element_unary.h"
+#include "ops/element_binary.h"
 
 using namespace Legion;
 

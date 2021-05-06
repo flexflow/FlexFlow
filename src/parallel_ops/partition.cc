@@ -14,6 +14,7 @@
  */
 
 #include "parallel_ops/partition.h"
+#include "hash_utils.h"
 
 using namespace Legion;
 
@@ -48,8 +49,8 @@ Repartition::Repartition(
   TensorBase::update_parallel_ids(numdim, dims);
   outputs[0] = model.create_tensor_legion_ordering(
       numdim, dims, inputs[0]->data_type, this);
-  inputs[0]->print("Repartition::input");
-  outputs[0]->print("Repartition::output");
+  //inputs[0]->print("Repartition::input");
+  //outputs[0]->print("Repartition::output");
 }
 
 void Repartition::init(const FFModel& ff)
@@ -161,6 +162,14 @@ bool Repartition::append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_
   ret.parallel_degree = repartition_degree;
   parallel_ops.push_back(ret);
   return true;
+}
+
+size_t Repartition::get_params_hash() const {
+  size_t hash = this->inputs[0]->get_owner_independent_hash();
+  hash_combine(hash, this->repartition_dim);
+  hash_combine(hash, this->repartition_degree);
+
+  return hash;
 }
 
 Node FFModel::get_or_create_repartition_node(const Tensor input,

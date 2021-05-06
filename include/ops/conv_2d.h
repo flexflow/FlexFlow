@@ -103,6 +103,8 @@ public:
   static void construct_mappings(std::vector<ParallelDimMappingRecord> &, bool use_bias);
   static void construct_weight_mappings(std::vector<ParallelDimMappingRecord> &, bool use_bias);
 
+  size_t get_params_hash() const override;
+
   Conv2DParams get_params() const;
 public:
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;

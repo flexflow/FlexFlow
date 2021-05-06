@@ -1,19 +1,15 @@
-#ifndef _FLEXFLOW_FLAT_H
-#define _FLEXFLOW_FLAT_H
+#ifndef _FLEXFLOW_SPLIT_H
+#define _FLEXFLOW_SPLIT_H
 
 #include "model.h"
 
-class FlatMeta : public OpMeta {
+class Split : public Op {
 public:
-  FlatMeta(FFHandler handle) : OpMeta(handle) {};
-};
-
-class Flat : public Op {
-public:
-  Flat(FFModel& model,
-       const Tensor input,
-       const char* name);
-
+  Split(FFModel& model,
+        const Tensor input,
+        const std::vector<int>& split,
+        int axis,
+        const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -28,23 +24,19 @@ public:
   static void backward_task(const Legion::Task *task,
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_kernel(const float* input_ptr,
-                             float* output_ptr,
-                             size_t num_elements);
-  static void backward_kernel(float* input_grad_ptr,
-                              const float* output_grad_ptr,
-                              size_t num_elements);
+  static void forward_kernel(float **out_ptrs,
+                             float const *in_ptr,
+                             Legion::coord_t const *out_blk_sizes,
+                             Legion::coord_t in_blk_size,
+                             Legion::coord_t num_blks,
+                             int numOutputs);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
-  Legion::Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const;
-
-  void serialize(Legion::Serializer&) const override;
-  static Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
-  Op *materialize(FFModel& ff, Tensor inputs[], int num_inputs) const override;
-  static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
 
   size_t get_params_hash() const override;
+public:
+  int axis;
 };
 
-#endif // _FLEXFLOW_FLAT_H
+#endif // _FLEXFLOW_SPLIT_H

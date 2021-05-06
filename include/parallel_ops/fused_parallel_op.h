@@ -37,6 +37,8 @@ public:
       CostMetrics& cost_metrics) const;
   void set_parallel_ops(const std::vector<ParallelOpInfo>& _parallel_ops);
   bool check_no_redundant_parallel_ops(void) const;
+
+  size_t get_params_hash() const override;
 public:
   int num_parallel_ops;
   ParallelOpInfo parallel_ops[MAX_NUM_FUSED_OPERATORS];
