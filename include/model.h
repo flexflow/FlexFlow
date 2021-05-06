@@ -1687,7 +1687,7 @@ private:
 public:
   int k;
   bool sorted;
-  //bool profiling;
+  bool profiling;
 };
 
 class ConcatMeta : public OpMeta {

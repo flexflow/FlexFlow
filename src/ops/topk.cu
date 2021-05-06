@@ -37,7 +37,7 @@ TopK::TopK(FFModel& model,
            int _k, bool _sorted,
            const char* name)
 : Op(model, OP_TOPK, name, _input),
-  k(_k), sorted(_sorted)
+  k(_k), sorted(_sorted), profiling(model.config.profiling)
 {
   numOutputs = 2;
   outputs[0].numDim = inputs[0].numDim;
