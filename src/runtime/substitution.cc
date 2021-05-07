@@ -98,6 +98,15 @@ GraphXfer* leading_relu_branch_partition(FFModel* model,
                                         int parallel_dim, 
                                         int num_parts, 
                                         int num_partitions);
+GraphXfer* create_partition_add_relu_combine(FFModel *model, 
+                               int parallel_dim,
+                               int num_parts);
+GraphXfer* create_combine_add_relu_partition(FFModel *model, 
+                               int parallel_dim,
+                               int num_parts);
+GraphXfer* create_chained_conv_sub(FFModel* model,
+                                   int parallel_dim,
+                                   int num_parts) ;
 
 PMConstraint::PMConstraint(Compare c, PMParameter p, int v)
 : comp(c), para(p), value(v) {}
@@ -1182,7 +1191,10 @@ void FFModel::graph_optimize(size_t budget,
     xfers.push_back(create_combine_relu_partition(this, 3/*parallel_dims*/, it/*num_parts*/));
     xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
     xfers.push_back(create_combine_softmax_partition(this, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
-    for (int num_combines = 1; num_combines < 5; num_combines++) {
+    xfers.push_back(create_combine_add_relu_partition(this, 3/*parallel_dim*/, it/*num_parts*/));
+    xfers.push_back(create_partition_add_relu_combine(this, 3/*parallel_dim*/, it/*num_parts*/));
+    xfers.push_back(create_chained_conv_sub(this, 3/*parallel_dim*/, it/*num_parts*/));
+    for (int num_combines = 1; num_combines < 3; num_combines++) {
       xfers.push_back(leading_relu_branch_combine(this, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
       xfers.push_back(leading_relu_branch_partition(this, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
     }
@@ -1225,19 +1237,20 @@ void FFModel::graph_optimize(size_t budget,
                         << best_sim_time << std::endl;
   }
   int counter = 0;
-  while (budget != 0 && !candidates.empty()) {
-    Graph *cur_graph = candidates.top();
+  Graph *cur_graph = graph;
+  while (budget != 0) {// && !candidates.empty()) {
+    cur_graph = candidates.top();
     candidates.pop();
     iter++;
-    if (cur_graph->optimal_cost() < best_graph->optimal_cost()) {
-      delete best_graph;
-      best_graph = cur_graph;
-      best_cost = cur_graph->optimal_cost();
-      optimal_views = best_graph->optimal_views();
-      this->convert_graph_to_layers(best_graph, optimal_views);
-      best_sim_time = this->simulator->simulate_runtime(this, COMP_MODE_TRAINING, "");
-      printf("  New best time: %fms\n", best_sim_time);
-    }     
+    /* if (cur_graph->optimal_cost() < best_graph->optimal_cost()) { */
+    /*   delete best_graph; */
+    /*   best_graph = cur_graph; */
+    /*   best_cost = cur_graph->optimal_cost(); */
+    /*   optimal_views = best_graph->optimal_views(); */
+    /*   this->convert_graph_to_layers(best_graph, optimal_views); */
+    /*   best_sim_time = this->simulator->simulate_runtime(this, COMP_MODE_TRAINING, ""); */
+    /*   printf("  New best time: %fms\n", best_sim_time); */
+    /* } */     
     if (export_search_curve && (counter % this->config.search_curve_interval == 0)) {
       auto done = std::chrono::high_resolution_clock::now();
       auto num_millis = std::chrono::duration_cast<std::chrono::milliseconds>(done - started).count();
@@ -1246,35 +1259,41 @@ void FFModel::graph_optimize(size_t budget,
                           << best_sim_time << std::endl;
     }
     float alpha = 1.2;
-    if (cur_graph->optimal_cost() > best_cost * alpha) {
-      break;
-    }
+    float cur_cost = cur_graph->optimal_cost();
+    /* if (curr_cost > best_cost * alpha) { */
+    /*   break; */
+    /* } */
 
     if (counter > config.search_budget)
       break;
     printf("    [%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)\n",
-           counter, cur_graph->optimal_cost(), best_cost, candidates.size());
+           counter, cur_cost, best_cost, candidates.size());
     counter ++;
     for (size_t i = 0; i < xfers.size(); i++) {
+      while (!candidates.empty()) {
+        candidates.pop();
+      }
+      candidates.push(cur_graph);
       int num_matches_found = 0,
           num_matches_rejected = 0;
       log_xfers.debug() << "Considering xfer: " << xfers[i]->get_name();
       xfers[i]->run(0, cur_graph, candidates, hashmap, best_cost * alpha, 1000, num_matches_found, num_matches_rejected);
       log_xfers.debug() << "Rejected [ " << num_matches_rejected << " / " << num_matches_found << " ] matches";
       std::cout << "." << std::flush;
+      cur_graph = candidates.top();
     }
     std::cout << std::endl;
-    if (best_graph != cur_graph) {
-      delete cur_graph;
-    }
+    /* if (best_graph != cur_graph) { */
+    /*   delete cur_graph; */
+    /* } */
   }
   // Run DP
-  printf("best_cost = %.4lf\n", best_cost);
+  printf("best_cost = %.4lf\n", cur_graph->optimal_cost());
   //best_graph->print();
-  optimal_views = best_graph->optimal_views();
+  optimal_views = cur_graph->optimal_views();
   // Export results
   if (!this->config.export_strategy_computation_graph_file.empty()) {
-    best_graph->export_strategy_computation_graph(optimal_views, this->config.export_strategy_computation_graph_file);
+    cur_graph->export_strategy_computation_graph(optimal_views, this->config.export_strategy_computation_graph_file);
   }
   printf("Optimal Views...\n");
   for (const auto& it : optimal_views) {
@@ -1847,6 +1866,115 @@ GraphXfer* create_combine_softmax_partition(FFModel* model,
   std::ostringstream oss;
   oss << "combine_softmax_partition["
       << "softmax_dim=" << softmax_dim
+      << ",parallel_dim=" << parallel_dim
+      << ",num_parts=" << num_parts
+      << "]";
+  subst->name = oss.str();
+
+  return subst;
+}
+
+GraphXfer* create_chained_conv_sub(FFModel* model,
+                                   int parallel_dim,
+                                   int num_parts) 
+{
+  GraphXfer* subst = new GraphXfer(model);
+  TensorX input = subst->new_tensor();
+  OpX* conv1 = subst->create_conv2d(input, NULL);
+  OpX* conv2 = subst->create_conv2d(conv1->outputs[0], NULL);
+  OpX* conv3 = subst->create_conv2d(conv2->outputs[0], NULL);
+
+  OpX* new_partition = subst->create_repartition(input, parallel_dim, num_parts);
+  OpX* new_conv1 = subst->create_conv2d(new_partition->outputs[0], conv1);
+  OpX* new_conv2 = subst->create_conv2d(new_conv1->outputs[0], conv2);
+  OpX* new_conv3 = subst->create_conv2d(new_conv2->outputs[0], conv3);
+  OpX* new_combine = subst->create_combine(new_conv3->outputs[0], parallel_dim, num_parts);
+
+  subst->map_output(conv3->outputs[0], new_combine->outputs[0]);
+  subst->srcOps.push_back(conv1);
+  subst->srcOps.push_back(conv2);
+  subst->srcOps.push_back(conv3);
+  subst->dstOps.push_back(new_partition);
+  subst->dstOps.push_back(new_conv1);
+  subst->dstOps.push_back(new_conv2);
+  subst->dstOps.push_back(new_conv3);
+  subst->dstOps.push_back(new_combine);
+
+  std::ostringstream oss;
+  oss << "chained_conv_sub["
+      << "parallel_dim=" << parallel_dim
+      << ",num_parts=" << num_parts
+      << "]";
+
+  return subst;
+}
+
+GraphXfer* create_combine_add_relu_partition(FFModel *model, 
+                               int parallel_dim,
+                               int num_parts) 
+{
+  GraphXfer* subst = new GraphXfer(model);
+  TensorX input1 = subst->new_tensor();
+  TensorX input2 = subst->new_tensor();
+  OpX* old_add = subst->create_element_binary(input1, input2, OP_EW_ADD);
+  OpX* old_relu = subst->create_element_unary(old_add->outputs[0], OP_RELU);
+
+  OpX* new_combine1 = subst->create_combine(input1, parallel_dim, num_parts);
+  OpX* new_combine2 = subst->create_combine(input2, parallel_dim, num_parts);
+  OpX* new_add = subst->create_element_binary(new_combine1->outputs[0], new_combine2->outputs[0], OP_EW_ADD);
+  OpX* new_relu = subst->create_element_unary(new_add->outputs[0], OP_RELU);
+  OpX* new_partition = subst->create_repartition(new_relu->outputs[0], parallel_dim, num_parts);
+
+  subst->map_output(old_relu->outputs[0], new_partition->outputs[0]);
+
+  subst->srcOps.push_back(old_add);
+  subst->srcOps.push_back(old_relu);
+
+  subst->dstOps.push_back(new_combine1);
+  subst->dstOps.push_back(new_combine2);
+  subst->dstOps.push_back(new_add);
+  subst->dstOps.push_back(new_relu);
+  subst->dstOps.push_back(new_partition);
+
+  std::ostringstream oss;
+  oss << "combine_add_relu_partition["
+      << ",parallel_dim=" << parallel_dim
+      << ",num_parts=" << num_parts
+      << "]";
+  subst->name = oss.str();
+
+  return subst;
+}
+
+GraphXfer* create_partition_add_relu_combine(FFModel *model, 
+                               int parallel_dim,
+                               int num_parts) 
+{
+  GraphXfer* subst = new GraphXfer(model);
+  TensorX input1 = subst->new_tensor();
+  TensorX input2 = subst->new_tensor();
+  OpX* old_add = subst->create_element_binary(input1, input2, OP_EW_ADD);
+  OpX* old_relu = subst->create_element_unary(old_add->outputs[0], OP_RELU);
+
+  OpX* new_combine1 = subst->create_repartition(input1, parallel_dim, num_parts);
+  OpX* new_combine2 = subst->create_repartition(input2, parallel_dim, num_parts);
+  OpX* new_add = subst->create_element_binary(new_combine1->outputs[0], new_combine2->outputs[0], OP_EW_ADD);
+  OpX* new_relu = subst->create_element_unary(new_add->outputs[0], OP_RELU);
+  OpX* new_partition = subst->create_combine(new_relu->outputs[0], parallel_dim, num_parts);
+
+  subst->map_output(old_relu->outputs[0], new_partition->outputs[0]);
+
+  subst->srcOps.push_back(old_add);
+  subst->srcOps.push_back(old_relu);
+
+  subst->dstOps.push_back(new_combine1);
+  subst->dstOps.push_back(new_combine2);
+  subst->dstOps.push_back(new_add);
+  subst->dstOps.push_back(new_relu);
+  subst->dstOps.push_back(new_partition);
+
+  std::ostringstream oss;
+  oss << "partition_add_relu_combine["
       << ",parallel_dim=" << parallel_dim
       << ",num_parts=" << num_parts
       << "]";
