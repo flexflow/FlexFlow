@@ -17,7 +17,6 @@ using py::literals::operator""_a;
 namespace {
 
 static Context ctx;
-static int global_tracing_id = 200;
 
 void begin_flexflow_task(std::vector<std::string> args) {
   // This needs to be set, otherwise NCCL will try to use group kernel launches,
@@ -105,51 +104,9 @@ SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::a
   return new SingleDataLoader(model, batch_tensor, info.ptr, num_samples, dtype);
 }
 
-void fit(FFModel &model, SingleDataLoader &x, SingleDataLoader &y, int epochs)
-{
-  int num_samples = y.num_samples;
-  int batch_size = model.config.batchSize;
-  int tracing_id = global_tracing_id++;
-  for (int epoch = 0; epoch < epochs; epoch++) {
-    x.reset();
-    y.reset();
-    model.reset_metrics();
-    int iterations = num_samples / batch_size;
-    for (int iter = 0; iter < iterations; iter++) {
-      x.next_batch(model);
-      y.next_batch(model);
-      model.config.lg_hlr->begin_trace(model.config.lg_ctx, tracing_id);
-      model.forward();
-      model.zero_gradients();
-      model.backward();
-      model.update();
-      model.config.lg_hlr->end_trace(model.config.lg_ctx, tracing_id);
-    }
-  }
 }
 
-void eval(FFModel &model, SingleDataLoader &x, SingleDataLoader &y)
-{
-  int num_samples = y.num_samples;
-  int batch_size = model.config.batchSize;
-  int tracing_id = global_tracing_id++;
-  x.reset();
-  y.reset();
-  model.reset_metrics();
-  int iterations = num_samples / batch_size;
-  for (int iter = 0; iter < iterations; iter++) {
-    x.next_batch(model);
-    y.next_batch(model);
-    model.config.lg_hlr->begin_trace(model.config.lg_ctx, tracing_id);
-    model.forward();
-    model.compute_metrics();
-    model.config.lg_hlr->end_trace(model.config.lg_ctx, tracing_id);
-  }
-}
-
-}
-
-PYBIND11_MODULE(flexflow_bindings, m) {
+PYBIND11_MODULE(flexflow_pybind11_internal, m) {
   m.attr("cuda_enabled") =
       true;
 
@@ -246,8 +203,6 @@ PYBIND11_MODULE(flexflow_bindings, m) {
       .def("init_layers", &FFModel::init_layers)
       .def("reset_metrics", &FFModel::reset_metrics)
       // Training
-      .def("eval", &eval, "x"_a, "y"_a)
-      .def("fit", &fit, "x"_a, "y"_a, "epochs"_a = 1)
       .def("forward", &FFModel::forward, "seq_length"_a = -1)
       .def("zero_gradients", &FFModel::zero_gradients)
       .def("backward", &FFModel::backward, "seq_length"_a = -1)

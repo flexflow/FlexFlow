@@ -20,9 +20,9 @@ target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${
 target_link_libraries(${project_target} -Wl,--whole-archive flexflow -Wl,--no-whole-archive flexflow_dataloader ${FLEXFLOW_EXT_LIBRARIES})
 
 # create pybind bindings
-pybind11_add_module(flexflow_bindings bindings.cc)
-set_target_properties(flexflow_bindings PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/flexflow/core)
-target_link_libraries(flexflow_bindings PRIVATE flexflow flexflow_dataloader ${FLEXFLOW_EXT_LIBRARIES})
+pybind11_add_module(flexflow_pybind11_internal bindings.cc)
+set_target_properties(flexflow_pybind11_internal PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/flexflow/core)
+target_link_libraries(flexflow_pybind11_internal PRIVATE flexflow flexflow_dataloader ${FLEXFLOW_EXT_LIBRARIES})
 
 # create legion_cffi.py
 add_custom_command(TARGET ${project_target} 
