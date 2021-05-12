@@ -199,6 +199,7 @@ namespace Legion {
 }
 
 class SearchHelper;
+class GraphSearchHelper;
 class FFModel;
 class Op;
 class DataLoader;
@@ -937,6 +938,7 @@ public:
   FFIterationConfig iter_config;
   Optimizer* optimizer;
   SearchHelper *search;
+  GraphSearchHelper *graph_search;
   Loss* loss_op;
   Metrics* metrics_op;
   Simulator* simulator;

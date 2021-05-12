@@ -266,11 +266,12 @@ T SearchHelper::execute_sequence_split(
     NodeAssignment const &source,
     NodeAssignment const &sink,
     MachineResource const &resources,
+    bool include_input_xfer_cost,
     SequenceSplit const &bn) const 
 {
   return sequence_cost<T>(
-      this->graph_cost<T>(pre_graph.get(), source, bn, resources, true),
-      this->graph_cost<T>(post_graph.get(), bn, sink, resources, false)
+      this->graph_cost<T>(pre_graph.get(), source, bn, resources, true, include_input_xfer_cost),
+      this->graph_cost<T>(post_graph.get(), bn, sink, resources, false, include_input_xfer_cost)
   );
 }
 
@@ -280,7 +281,8 @@ T SearchHelper::find_optimal_sequence_graph_time(
   Node const &bn_node,
   NodeAssignment const &source,
   NodeAssignment const &sink,
-  MachineResource const &resources
+  MachineResource const &resources,
+  bool include_input_xfer_cost
 ) const {
   std::unique_ptr<Graph> pre_graph;
   std::unique_ptr<Graph> post_graph;
@@ -327,6 +329,7 @@ T SearchHelper::find_optimal_sequence_graph_time(
         source,
         sink,
         resources,
+        include_input_xfer_cost,
         {bn_node, bn_view}
     );
 
@@ -343,6 +346,7 @@ T SearchHelper::find_optimal_sequence_graph_time(
         source,
         sink,
         resources,
+        include_input_xfer_cost,
         {bn_node, best_view}
     );
   }
@@ -369,6 +373,7 @@ T SearchHelper::execute_nonsequence_split(
   NodeAssignment const &source,
   NodeAssignment const &sink,
   MachineResource const &resources,
+  bool include_input_xfer_cost,
   NonsequenceSplit const &split) const 
 {
   Graph const *first = first_graph.get();
@@ -380,8 +385,8 @@ T SearchHelper::execute_nonsequence_split(
     case SplitType::SEQUENTIAL:
       this->debug() << "Exploring sequential nonsequence split";
       return sequence_cost<T>(
-          this->graph_cost<T>(first, source, sink, resources, false),
-          this->graph_cost<T>(second, source, sink, resources, false)
+          this->graph_cost<T>(first, source, sink, resources, false, include_input_xfer_cost),
+          this->graph_cost<T>(second, source, sink, resources, false, include_input_xfer_cost)
       );
     case SplitType::VERTICAL:
     {
@@ -393,8 +398,8 @@ T SearchHelper::execute_nonsequence_split(
       secondRes.start_gpu_id = resources.start_gpu_id + resources.all_gpus_per_node * split.param;
 
       return parallel_cost<T>(
-          this->graph_cost<T>(first, source, sink, firstRes, false),
-          this->graph_cost<T>(second, source, sink, secondRes, false)
+          this->graph_cost<T>(first, source, sink, firstRes, false, include_input_xfer_cost),
+          this->graph_cost<T>(second, source, sink, secondRes, false, include_input_xfer_cost)
       );
     }
     case SplitType::HORIZONTAL: 
@@ -407,8 +412,8 @@ T SearchHelper::execute_nonsequence_split(
       secondRes.start_gpu_id = resources.start_gpu_id + split.param;
 
       return parallel_cost<T>(
-          this->graph_cost<T>(first, source, sink, firstRes, false),
-          this->graph_cost<T>(second, source, sink, secondRes, false)
+          this->graph_cost<T>(first, source, sink, firstRes, false, include_input_xfer_cost),
+          this->graph_cost<T>(second, source, sink, secondRes, false, include_input_xfer_cost)
       );
     }
     default:
@@ -450,7 +455,8 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
   Graph const *g,
   NodeAssignment const &source,
   NodeAssignment const &sink,
-  MachineResource const &resources
+  MachineResource const &resources,
+  bool include_input_xfer_cost
 ) const {
   std::unique_ptr<Graph> first_graph;
   std::unique_ptr<Graph> second_graph;
@@ -474,6 +480,7 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
       source, 
       sink, 
       resources, 
+      include_input_xfer_cost,
       best_split
   );
   for (NonsequenceSplit const &split : potential_splits) {
@@ -483,6 +490,7 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
         source, 
         sink,
         resources,
+        include_input_xfer_cost,
         split
     );
     this->debug() << "Found cost: " << cost;
@@ -510,6 +518,7 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
       source, 
       sink,
       resources,
+      include_input_xfer_cost,
       best_split
   );
 
@@ -892,7 +901,8 @@ float FFModel::graph_cost(const Graph* graph,
       { source_node, source_view },
       { sink_node, sink_view },
       resources,
-      include_sink_compute_time
+      include_sink_compute_time,
+      false
   );
 }
 
@@ -911,7 +921,8 @@ void FFModel::construct_optimal_view(const Graph *graph,
       { source_node, source_view },
       { sink_node, sink_view },
       resources,
-      include_sink_compute_time
+      include_sink_compute_time,
+      false
   );
 
   optimal_views.insert(result.views.begin(), result.views.end());
@@ -1036,31 +1047,18 @@ GraphCostResult SearchHelper::empty<GraphCostResult>() const {
 
 template <typename T>
 T SearchHelper::estimate_xfer_cost(
-    Graph const *graph, NodeAssignment const &source, NodeAssignment const &sink) const {
+    Graph const *graph, NodeAssignment const &source, NodeAssignment const &sink, bool include_input_xfer_cost) const {
   T result = this->empty<T>();
 
-  if (source.node == Node::INVALID_NODE) {
-    // if source is an invalid node, then the source node of the graph is an input node
-    Node real_source = Node::INVALID_NODE;
-    for (auto const &kv : graph->inEdges) {
-      if (kv.first != sink.node) {
-        real_source = kv.first;
-        break;
-      }
-    }
-    this->add_operator_cost<T>(
-        {real_source, MachineView::NO_VIEW}, // the machine view of an input node is currently ignored
-        0.0f,
-        &result
-    );
-  } else {
+  if (source.node != Node::INVALID_NODE) {
     const auto& inList = graph->inEdges.find(sink.node)->second;
     float op_cost = 0.0f;
     for (const auto& it2 : inList) {
       assert(it2.srcOp == source.node);
       assert(sink.node.ptr->inputs[it2.dstIdx]->is_valid_machine_view(source.view));
 
-      float estimated_xfer_cost = this->model->simulator->estimate_xfer_cost(sink.node.ptr, it2.srcIdx, source.view, sink.view);
+      float estimated_xfer_cost = this->model->simulator->estimate_xfer_cost(
+          sink.node.ptr, it2.srcIdx, source.view, sink.view, include_input_xfer_cost);
       //printf("Estimated xfer cost from %s to %s: %fms\n", source.node.ptr->name, sink.node.ptr->name, estimated_xfer_cost);
       op_cost += estimated_xfer_cost;
     }
@@ -1086,7 +1084,8 @@ T SearchHelper::graph_cost(const Graph* graph,
                           const NodeAssignment& source,
                           const NodeAssignment& sink,
                           const MachineResource& resources,
-                          bool include_sink_compute_time) const
+                          bool include_sink_compute_time,
+                          bool include_input_xfer_cost) const
 {
   this->depth++;
   this->debug() << "sink(" << sink.node.guid << ") "
@@ -1102,7 +1101,7 @@ T SearchHelper::graph_cost(const Graph* graph,
   if (source.node != Node::INVALID_NODE)
     assert(graph->outEdges.find(source.node) != graph->outEdges.end());
 
-  size_t hash = dp_state_hash(graph, sink.node, sink.view, source.node, source.view, resources);
+  size_t hash = dp_state_hash(graph, sink.node, sink.view, source.node, source.view, resources, include_input_xfer_cost);
   log_dp.spew("hash = %zu", hash);
 
   T result;
@@ -1113,7 +1112,7 @@ T SearchHelper::graph_cost(const Graph* graph,
     result = from_cache.second;
   } else {
     if (graph->inEdges.size() <= 2) {
-      result = this->estimate_xfer_cost<T>(graph, source, sink);
+      result = this->estimate_xfer_cost<T>(graph, source, sink, include_sink_compute_time);
     } else {
       Node bn_node = graph->find_bottleneck_node(sink.node, source.node);
       if (bn_node != Node::INVALID_NODE) {
@@ -1125,7 +1124,8 @@ T SearchHelper::graph_cost(const Graph* graph,
           bn_node,
           { source.node, source.view },
           { sink.node, sink.view },
-          resources
+          resources,
+          include_input_xfer_cost
         );
       } else {
         // sink node must have multiple branches
@@ -1136,7 +1136,8 @@ T SearchHelper::graph_cost(const Graph* graph,
           graph,
           { source.node, source.view },
           { sink.node, sink.view },
-          resources
+          resources,
+          include_input_xfer_cost
         );
       }
     }
@@ -1155,12 +1156,12 @@ T SearchHelper::graph_cost(const Graph* graph,
   return result;
 }
 
-float Graph::optimal_cost() const {
-  return this->generic_optimal_cost<float>();
+float Graph::optimal_cost(bool include_input_xfer_cost) const {
+  return this->generic_optimal_cost<float>(include_input_xfer_cost);
 }
 
-std::unordered_map<Node, MachineView> Graph::optimal_views() const {
-  return this->generic_optimal_cost<GraphCostResult>().views;
+std::unordered_map<Node, MachineView> Graph::optimal_views(bool include_input_xfer_cost) const {
+  return this->generic_optimal_cost<GraphCostResult>(include_input_xfer_cost).views;
 }
 
 Graph Graph::reduced() const {
@@ -1181,28 +1182,22 @@ Graph Graph::reduced() const {
   return reduced_graph;
 }
 
-template <typename T>
-T Graph::generic_optimal_cost() const
-{
-  using ::flexflow::graph::leaves;
+MachineResource::MachineResource(FFConfig const &config)
+  : num_nodes(config.numNodes),
+    all_cpus_per_node(config.cpusPerNode),
+    all_gpus_per_node(config.workersPerNode),
+    available_cpus_per_node(config.cpusPerNode),
+    available_gpus_per_node(config.workersPerNode)
+{ }
 
+template <typename T>
+T Graph::generic_optimal_cost(bool include_input_xfer_cost) const
+{
   Graph reduced_graph = this->reduced();
 
-  // Find sink_nodes
-  // i.e., nodes with no out edge
-  std::unordered_set<Node> sink_nodes = leaves(reduced_graph);
-  assert (sink_nodes.size() == 1);
+  Node sink_node = reduced_graph.find_sink_node();
 
-  Node sink_node = *sink_nodes.cbegin();
-
-  MachineResource resource;
-  resource.num_nodes = model->config.numNodes;
-  resource.all_cpus_per_node = model->config.cpusPerNode;
-  resource.all_gpus_per_node = model->config.workersPerNode;
-  resource.available_cpus_per_node = resource.all_cpus_per_node;
-  resource.available_gpus_per_node = resource.all_gpus_per_node;
-  resource.start_gpu_id = 0;
-  resource.start_cpu_id = 0;
+  MachineResource resource(model->config);
 
   std::vector<MachineView> valid_views = search->get_valid_machine_views(sink_node.ptr, resource);
 
@@ -1214,7 +1209,8 @@ T Graph::generic_optimal_cost() const
         {Node::INVALID_NODE, MachineView::NO_VIEW},
         {sink_node, sink_view},
         resource,
-        true
+        true,
+        include_input_xfer_cost
     );
     if (new_cost < optimal) {
       optimal = new_cost;
@@ -1248,14 +1244,15 @@ size_t dp_state_hash(const Graph* graph,
                      const MachineView& sink_view,
                      const Node& source_node,
                      const MachineView& source_view,
-                     const MachineResource& resource)
+                     const MachineResource& resource,
+                     bool include_input_xfer_cost)
 {
   size_t key = graph->hash();
-  key = key * 31 + std::hash<size_t>()((size_t)sink_node.ptr);
-  key = key * 31 + sink_view.hash();
-  key = key * 31 + std::hash<size_t>()((size_t)source_node.ptr);
-  key = key * 31 + source_view.hash();
-  key = key * 31 + resource.hash();
+  hash_combine(key, sink_node.ptr);
+  hash_combine(key, sink_view.hash());
+  hash_combine(key, source_node.ptr);
+  hash_combine(key, resource.hash());
+  hash_combine(key, include_input_xfer_cost);
   return key;
 }
 

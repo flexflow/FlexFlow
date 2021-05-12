@@ -94,10 +94,11 @@ public:
   std::vector<TNConstraint> tnConstraints;
 };
 
+template <bool include_input_xfer_cost>
 class GraphCompare {
 public:
   bool operator() (Graph* lhs, Graph* rhs) {
-    return lhs->optimal_cost() > rhs->optimal_cost();
+    return lhs->optimal_cost(include_input_xfer_cost) > rhs->optimal_cost(include_input_xfer_cost);
   }
 };
 
@@ -151,14 +152,18 @@ public:
                       int num_parts);
   bool map_output(const TensorX& src,
                   const TensorX& dst);
-  void run(int depth, Graph* graph,
-           std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>&,
-           std::unordered_set<size_t>&, float threshold, int maxNumOps, 
-           int& num_matches_found, int& num_matches_rejected);
-           Graph* create_new_graph(Graph* graph);
+
+  
+  Graph* create_new_graph(Graph* graph);
   bool create_new_operator(const OpX* opx, Node& op);
 
   std::string get_name() const;
+
+  template <bool include_input_xfer_cost>
+  void run(int depth, Graph* graph,
+           std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare<include_input_xfer_cost>>&,
+           std::unordered_set<size_t>&, float threshold, int maxNumOps, 
+           int& num_matches_found, int& num_matches_rejected);
 public:
   FFModel* model;
   tl::optional<std::string> name = tl::nullopt;
@@ -169,4 +174,34 @@ public:
   std::vector<OpX*> srcOps;
   std::vector<OpX*> dstOps;
 };
+
+class GraphSearchHelper {
+public:
+  GraphSearchHelper(FFModel *model);
+  void graph_optimize(size_t budget, 
+                      bool only_data_parallel,
+                      Graph*& best_graph,
+                      std::unordered_map<Node, MachineView>& optimal_views);
+private:
+  float sequence_optimize(Graph const *graph, 
+                          Node const &sink_node, 
+                          tl::optional<TensorShape> const &output_shape, 
+                          tl::optional<TensorShape> const &input_shape);
+  void load_graph_substitutions(std::vector<GraphXfer*> &xfers) const;
+  Graph *construct_graph();
+  void subgraph_optimize(Graph *subgraph);
+
+  std::unique_ptr<Graph> base_optimize(Graph const *, bool include_input_xfer_cost);
+
+  template <bool include_input_xfer_cost>
+  std::unique_ptr<Graph> base_optimize(Graph const *);
+
+  std::vector<TensorShape> possible_output_tensor_shapes(Node const &);
+private:
+  std::unordered_map<size_t, std::vector<std::unique_ptr<Graph>>> cached_optimized_graphs;
+
+  FFModel* model;
+  FFConfig const &config;
+};
+
 #endif

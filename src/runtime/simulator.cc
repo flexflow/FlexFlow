@@ -423,10 +423,16 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& vi
 float Simulator::estimate_xfer_cost(const Op* op,
                                     int input_idx,
                                     const MachineView& source_view,
-                                    const MachineView& sink_view)
+                                    const MachineView& sink_view,
+                                    bool include_input_xfer_cost)
 {
   //assert(tensor->is_valid_machine_view(source_view));
   //assert(tensor->is_valid_machine_view(sink_view));
+  const Tensor input_tensor = op->inputs[input_idx];
+  if ((!include_input_xfer_cost) && input_tensor->owner_op->op_type == OP_INPUT) {
+    return 0.0f;
+  }
+
   if (op->is_parallel_op()) {
     // TODO: implement parallel op xfer cost
     switch (op->op_type) {
@@ -435,10 +441,6 @@ float Simulator::estimate_xfer_cost(const Op* op,
         Repartition *rp = (Repartition*)op;
         assert (source_view != sink_view);
 
-        const Tensor input_tensor = op->inputs[input_idx];
-        if (input_tensor->owner_op->op_type == OP_INPUT) {
-          return 0.0f;
-        }
         assert (rp->repartition_dim == input_tensor->num_dims - 2); // assert data parallel for now
         int degree_before = input_tensor->dims[input_tensor->num_dims - 2].degree;
         std::vector<int> source_ids = source_view.device_ids();

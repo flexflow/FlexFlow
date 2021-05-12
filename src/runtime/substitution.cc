@@ -391,8 +391,9 @@ void GraphXfer::unmatch(OpX* srcOp, const Node& op, Graph* graph)
   srcOp->mapOp.ptr = NULL;
 }
 
+template <bool include_input_xfer_cost>
 void GraphXfer::run(int depth, Graph* graph,
-                    std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>& candidates,
+                    std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare<include_input_xfer_cost>>& candidates,
                     std::unordered_set<size_t>& hashmap, float threshold, int maxNumOps, int& num_matches_found, int& num_matches_rejected)
 {
   //printf("run: depth(%d) srcOps.size(%zu) graph.size(%zu) candidates(%zu)\n", depth, srcOps.size(), graph->inEdges.size(), candidates.size());
@@ -424,7 +425,7 @@ void GraphXfer::run(int depth, Graph* graph,
     // Generate a new graph by applying xfer rule
     log_xfers.spew() << "Found a match for xfer: " << this->get_name();
     num_matches_found++;
-    Graph* newGraph = create_new_graph(graph);
+    Graph* newGraph = this->create_new_graph(graph);
     // Check that the new graph should not have any loop
     if (newGraph->has_loop()) {
       printf("Found a new graph with LOOP!!!!\n");
@@ -434,7 +435,7 @@ void GraphXfer::run(int depth, Graph* graph,
     }
     // TODO: remove me for better performance
     assert(newGraph->check_correctness());
-    if (newGraph->optimal_cost() < threshold && (int)newGraph->inEdges.size() < maxNumOps) {
+    if (newGraph->optimal_cost(include_input_xfer_cost) < threshold && (int)newGraph->inEdges.size() < maxNumOps) {
       if (hashmap.find(newGraph->hash()) == hashmap.end()) {
         hashmap.insert(newGraph->hash());
         candidates.push(newGraph);
@@ -458,6 +459,128 @@ void GraphXfer::run(int depth, Graph* graph,
     }
   }
 }
+
+Node Graph::find_source_node() const {
+  using ::flexflow::graph::roots;
+
+  std::unordered_set<Node> source_nodes = roots(*this);
+  assert (source_nodes.size() == 1);
+  
+  return *source_nodes.begin();
+}
+
+Node Graph::find_sink_node() const {
+  using ::flexflow::graph::leaves;
+
+  std::unordered_set<Node> sink_nodes = leaves(*this);
+  assert (sink_nodes.size() == 1);
+
+  return *sink_nodes.begin();
+}
+
+void Graph::reshape_output_tensor(TensorShape const &desired_shape) {
+  Node output_node = this->find_sink_node();
+
+  assert (output_node.ptr->numOutputs == 1);
+  Tensor output_tensor = output_node.ptr->outputs[0];
+
+  assert (output_tensor->num_dims == desired_shape.num_dims);
+
+  for (int i = 0; i < output_tensor->num_dims; i++) {
+    int current_size = output_tensor->dims[i].size;
+    int current_degree = output_tensor->dims[i].degree;
+
+    int desired_size = desired_shape.dims[i].size;
+    int desired_degree = desired_shape.dims[i].degree;
+
+    if (current_size < desired_size) { 
+      // we need to replicate
+      assert (desired_size % current_size == 0);
+      int replicate_factor = desired_size / current_size;
+
+      Node replicate_node = model->get_or_create_replicate_node(output_tensor, i, replicate_factor);
+      this->add_edge(output_node, replicate_node, 0, 0);
+
+      output_node = replicate_node;
+      output_tensor = replicate_node.ptr->outputs[0];
+      current_degree *= replicate_factor;
+      current_size *= replicate_factor;
+
+    } else if (current_size > desired_size) {
+      // we need to reduce
+      assert (desired_size % current_size == 0);
+      int reduction_factor = current_size / desired_size;
+      assert (current_degree % reduction_factor == 0);
+      
+      Node reduction_node = model->get_or_create_reduction_node(output_tensor, i, reduction_factor);
+      this->add_edge(output_node, reduction_node, 0, 0);
+
+      output_node = reduction_node;
+      output_tensor = reduction_node.ptr->outputs[0];
+      current_degree /= reduction_factor;
+      current_size /= reduction_factor;
+    }
+
+    assert (current_size == desired_size);
+
+    if (current_degree < desired_degree) {
+      // we need to partition
+      assert (desired_degree % current_degree == 0);
+      int partition_factor = desired_degree / current_degree;
+
+      Node partition_node = model->get_or_create_repartition_node(output_tensor, i, partition_factor);
+      this->add_edge(output_node, partition_node, 0, 0);
+
+      output_node = partition_node;
+      output_tensor = partition_node.ptr->outputs[0];
+      current_degree *= partition_factor;
+
+    } else if (current_degree > desired_degree) {
+      // we need to combine
+      assert (current_degree % desired_degree == 0);
+      int combine_factor = current_degree / desired_degree;
+
+      Node combine_node = model->get_or_create_combine_node(output_tensor, i, combine_factor);
+      this->add_edge(output_node, combine_node, 0, 0);
+
+      output_node = combine_node;
+      output_tensor = combine_node.ptr->outputs[0];
+      current_degree /= combine_factor;
+    }
+
+    assert (current_degree == desired_degree);
+  }
+
+  assert (output_tensor == output_node.ptr->outputs[0]);
+  assert (output_tensor->num_dims == desired_shape.num_dims);
+  for (int i = 0; i < desired_shape.num_dims; i++) {
+    assert (output_tensor->dims[i].size == desired_shape.dims[i].size);
+    assert (output_tensor->dims[i].degree == desired_shape.dims[i].degree);
+  }
+}
+
+std::unique_ptr<Graph> Graph::with_output_tensor_reshaped_to(TensorShape const &shape) const {
+  auto g = std::unique_ptr<Graph>(new Graph(*this));
+  g->reshape_output_tensor(shape);
+  return g;
+}
+
+/* Graph::Graph(Graph const &graph) */
+/*   : Graph(&graph) */
+/* { } */
+
+/* Graph::Graph(Graph const *graph) */ 
+/*   : Graph(graph->model) */
+/* { */
+/*   for (auto const &kv : graph->inEdges) { */
+/*     Node const &node = kv.first; */
+/*     std::unordered_set<Edge> const &edge_set = kv.second; */
+    
+/*     for (auto const &edge : edge_set) { */
+/*       this->add_edge(edge.srcOp, edge.dstOp, edge.srcIdx) */
+/*     } */
+/*   } */
+/* } */
 
 Graph* GraphXfer::create_new_graph(Graph* graph)
 {
@@ -1088,49 +1211,30 @@ std::string GraphXfer::get_name() const {
   }
 }
 
-void FFModel::graph_optimize(size_t budget,
-                             bool only_data_parallel,
-                             Graph*& best_graph,
-                             std::unordered_map<Node, MachineView>& optimal_views)
+GraphSearchHelper::GraphSearchHelper(FFModel *model) 
+  : model(model), config(model->config)
+{ }
+
+void GraphSearchHelper::load_graph_substitutions(std::vector<GraphXfer*> &xfers) const 
 {
-  // Construct graph structure
-  Graph* graph = new Graph(this);
-  {
-    std::unordered_map<const Op*, Node> op_to_node_map;
-    for (size_t l = 0; l < layers.size(); l++) {
-      const Op* dstOp = layers[l];
-      Node dstNode;
-      dstNode.ptr = dstOp;
-      dstNode.guid = node_global_guid++;
-      op_to_node_map[dstOp] = dstNode;
-      for (int j = 0; j < dstOp->numInputs; j++) {
-        const Op* srcOp = dstOp->inputs[j]->owner_op;
-        assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
-        Node srcNode = op_to_node_map[srcOp];
-        graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
-      }
-    }
-  }
-  // Construct graph substitutions
-  std::vector<GraphXfer*> xfers;
   std::vector<int> all_parallel_degrees, single_node_parallel_degrees;
-  for (int i = 2; i <= config.workersPerNode; i++) {
-    if (config.workersPerNode % i == 0) {
+  for (int i = 2; i <= this->model->config.workersPerNode; i++) {
+    if (this->model->config.workersPerNode % i == 0) {
       single_node_parallel_degrees.push_back(i);
       all_parallel_degrees.push_back(i);
     }
   }
-  for (int i = 2; i <= config.numNodes; i++) {
-    if (config.numNodes % i == 0) {
-      all_parallel_degrees.push_back(i * config.workersPerNode);
+  for (int i = 2; i <= this->model->config.numNodes; i++) {
+    if (this->model->config.numNodes % i == 0) {
+      all_parallel_degrees.push_back(i * this->model->config.workersPerNode);
     }
   }
   for (const auto& it : single_node_parallel_degrees) {
-    xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_RELU, false));
-    xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_SIGMOID, false));
-    xfers.push_back(create_replicate_linear_combine(this, 3, it, AC_MODE_NONE, false));
+    xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_RELU, false));
+    xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_SIGMOID, false));
+    xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_NONE, false));
     if (16 % it == 0) {
-      xfers.push_back(create_replicate_attention_reduce(this, 16/*num_heads*/, it));
+      xfers.push_back(create_replicate_attention_reduce(this->model, 16/*num_heads*/, it));
     }
   }
 
@@ -1145,66 +1249,128 @@ void FFModel::graph_optimize(size_t budget,
   }
 
   for (const int degree : all_parallel_degrees) {
-    create_mapping_xfers<Conv2D>(this, degree, xfers);
-    create_mapping_xfers<Pool2D>(this, degree, xfers);
-    create_mapping_xfers<Flat>(this, degree, xfers);
+    create_mapping_xfers<Conv2D>(this->model, degree, xfers);
+    create_mapping_xfers<Pool2D>(this->model, degree, xfers);
+    create_mapping_xfers<Flat>(this->model, degree, xfers);
   }
   for (const auto& it : all_parallel_degrees) {
-    xfers.push_back(create_partition_attention_combine(this, 16/*num_heads*/, it));
-    xfers.push_back(create_partition_linear_combine(this, 3/*num_dims*/, it, AC_MODE_RELU, false));
-    xfers.push_back(create_partition_linear_combine(this, 3/*num_dims*/, it, AC_MODE_SIGMOID, false));
-    xfers.push_back(create_partition_linear_combine(this, 3/*num_dims*/, it, AC_MODE_NONE, false));
-    xfers.push_back(create_partition_linear_combine(this, 4/*num_dims*/, it, AC_MODE_RELU, false));
-    xfers.push_back(create_partition_linear_combine(this, 4/*num_dims*/, it, AC_MODE_SIGMOID, false));
-    xfers.push_back(create_partition_linear_combine(this, 4/*num_dims*/, it, AC_MODE_NONE, false));
-    xfers.push_back(create_partition_add_combine(this, 2/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_partition_add_combine(this, 1/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_partition_add_combine(this, 3/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_combine_add_partition(this, 3/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_partition_relu_combine(this, 3/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_combine_relu_partition(this, 3/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_partition_softmax_combine(this, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_combine_softmax_partition(this, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
+    xfers.push_back(create_partition_attention_combine(this->model, 16/*num_heads*/, it));
+    xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_RELU, false));
+    xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_SIGMOID, false));
+    xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_NONE, false));
+    xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_RELU, false));
+    xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_SIGMOID, false));
+    xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_NONE, false));
+    xfers.push_back(create_partition_add_combine(this->model, 2/*parallel_dims*/, it/*num_parts*/));
+    xfers.push_back(create_partition_add_combine(this->model, 1/*parallel_dims*/, it/*num_parts*/));
+    xfers.push_back(create_partition_add_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
+    xfers.push_back(create_combine_add_partition(this->model, 3/*parallel_dims*/, it/*num_parts*/));
+    xfers.push_back(create_partition_relu_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
+    xfers.push_back(create_combine_relu_partition(this->model, 3/*parallel_dims*/, it/*num_parts*/));
+    xfers.push_back(create_partition_softmax_combine(this->model, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
+    xfers.push_back(create_combine_softmax_partition(this->model, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
     for (int num_combines = 1; num_combines < 5; num_combines++) {
-      xfers.push_back(leading_relu_branch_combine(this, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
-      xfers.push_back(leading_relu_branch_partition(this, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
+      xfers.push_back(leading_relu_branch_combine(this->model, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
+      xfers.push_back(leading_relu_branch_partition(this->model, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
     }
     {
       std::unordered_set<int> concat_num_inputs;
-      for (size_t i = 0; i < layers.size(); i++)
-        if (layers[i]->op_type == OP_CONCAT)
-          concat_num_inputs.insert(layers[i]->numInputs);
+      for (size_t i = 0; i < this->model->layers.size(); i++)
+        if (this->model->layers[i]->op_type == OP_CONCAT)
+          concat_num_inputs.insert(this->model->layers[i]->numInputs);
       for (const auto& it2 : concat_num_inputs) {
-        xfers.push_back(create_partition_concat_combine(this, it2/*num_inputs*/, 0/*concat_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
-        xfers.push_back(create_partition_concat_combine(this, it2/*num_inputs*/, 2/*concat_dim*/, 3/*parallel_dims*/, it/*num_parts*/));
+        xfers.push_back(create_partition_concat_combine(this->model, it2/*num_inputs*/, 0/*concat_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
+        xfers.push_back(create_partition_concat_combine(this->model, it2/*num_inputs*/, 2/*concat_dim*/, 3/*parallel_dims*/, it/*num_parts*/));
       }
     }
   }
+}
 
-  std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
+Graph *GraphSearchHelper::construct_graph() {
+  Graph* graph = new Graph(this->model);
+  std::unordered_map<const Op*, Node> op_to_node_map;
+  for (const Op* dstOp : this->model->layers) {
+    Node dstNode;
+    dstNode.ptr = dstOp;
+    dstNode.guid = this->model->node_global_guid++;
+    op_to_node_map[dstOp] = dstNode;
+    for (int j = 0; j < dstOp->numInputs; j++) {
+      const Op* srcOp = dstOp->inputs[j]->owner_op;
+      assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
+      Node srcNode = op_to_node_map[srcOp];
+      graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
+    }
+  }
+
+  return graph;
+}
+
+void FFModel::graph_optimize(size_t budget,
+                             bool only_data_parallel,
+                             Graph*& best_graph,
+                             std::unordered_map<Node, MachineView>& optimal_views)
+{
+  this->graph_search->graph_optimize(budget, only_data_parallel, best_graph, optimal_views);
+}
+
+void GraphSearchHelper::graph_optimize(size_t budget,
+                             bool only_data_parallel,
+                             Graph*& best_graph,
+                             std::unordered_map<Node, MachineView>& optimal_views)
+{
+  // Construct graph structure
+  Graph *graph = this->construct_graph();
+  
+  Node sink_node = graph->find_sink_node();
+  float optimal_cost = this->sequence_optimize(graph, sink_node, tl::nullopt/*output_shape*/, tl::nullopt/*input_shape*/);
+  std::cout << "Optimal cost: " << optimal_cost << std::endl;
+  std::exit(1);
+}
+
+std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *graph, bool include_input_xfer_cost) {
+  if (include_input_xfer_cost) {
+    return this->base_optimize<true>(graph);
+  } else {
+    return this->base_optimize<false>(graph);
+  }
+}
+
+template <bool include_input_xfer_cost>
+std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph) {
+  // Construct graph substitutions
+  std::vector<GraphXfer*> xfers;
+  this->load_graph_substitutions(xfers);
+
+  Graph *graph = new Graph(*r_graph);
+
+  std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare<include_input_xfer_cost>> candidates;
   std::unordered_set<size_t> hashmap;
   candidates.push(graph);
   hashmap.insert(graph->hash());
-  best_graph = new Graph(*graph);
-  float best_cost = best_graph->optimal_cost();
+  Graph *best_graph = new Graph(*graph);
+  float best_cost = best_graph->optimal_cost(include_input_xfer_cost);
   int counter = 0;
-  const float alpha = 1.2;
-  while (budget != 0 && !candidates.empty()) {
-    Graph *cur_graph = candidates.top();
-    candidates.pop();
-    if (cur_graph->optimal_cost() < best_graph->optimal_cost()) {
-      delete best_graph;
-      best_graph = cur_graph;
-      best_cost = cur_graph->optimal_cost();
-    } else if (cur_graph->optimal_cost() > best_cost * alpha) {
+  const float alpha = this->model->config.search_alpha;
+
+  int budget = model->config.search_budget;
+  for (int iter = 0; iter < budget; iter++) {
+    if (candidates.empty()) {
       break;
     }
 
-    if (counter > config.search_budget)
-      break;
+    Graph *cur_graph = candidates.top();
+    candidates.pop();
+    if (cur_graph->optimal_cost(include_input_xfer_cost) < best_graph->optimal_cost(include_input_xfer_cost)) {
+      delete best_graph;
+      best_graph = cur_graph;
+      best_cost = cur_graph->optimal_cost(include_input_xfer_cost);
+    } else if (cur_graph->optimal_cost(include_input_xfer_cost) > best_cost * alpha) {
+      continue;
+    }
+
     printf("    [%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)\n",
-           counter, cur_graph->optimal_cost(), best_cost, candidates.size());
-    counter ++;
+           counter, cur_graph->optimal_cost(include_input_xfer_cost), best_cost, candidates.size());
+
     for (size_t i = 0; i < xfers.size(); i++) {
       int num_matches_found = 0,
           num_matches_rejected = 0;
@@ -1218,28 +1384,117 @@ void FFModel::graph_optimize(size_t budget,
       delete cur_graph;
     }
   }
-  // Run DP
-  printf("best_cost = %.4lf\n", best_cost);
-  best_graph->print();
-  optimal_views = best_graph->optimal_views();
-  // Export results
-  if (!this->config.export_strategy_computation_graph_file.empty()) {
-    best_graph->export_strategy_computation_graph(optimal_views, this->config.export_strategy_computation_graph_file);
-  }
-  printf("Optimal Views...\n");
-  for (const auto& it : optimal_views) {
-    printf("node[%zu]: type(%s) view(%d %d %d) ", it.first.guid,
-           it.first.to_string().c_str(),
-           it.second.ndims,
-           it.second.dim[0],
-           it.second.start_device_id);
-    const auto& list = best_graph->inEdges.at(it.first);
-    for (const auto& it2 : list) {
-      Edge e = it2;
-      printf(" inEdge(node(%zu) idx(%d))", e.srcOp.guid, e.srcIdx);
+
+  return std::unique_ptr<Graph>(best_graph);
+}
+template std::unique_ptr<Graph> GraphSearchHelper::base_optimize<true>(Graph const *);
+template std::unique_ptr<Graph> GraphSearchHelper::base_optimize<false>(Graph const *);
+
+float GraphSearchHelper::sequence_optimize(
+    Graph const *graph, 
+    Node const &sink_node, 
+    tl::optional<TensorShape> const &output_shape, 
+    tl::optional<TensorShape> const &input_shape)
+{
+  Node source_node = graph->find_source_node();
+  Node bottleneck = graph->find_bottleneck_node(sink_node, source_node);
+
+  if (bottleneck == Node::INVALID_NODE) {
+    bool include_input_xfer_cost = input_shape.has_value();
+    std::unique_ptr<Graph> optimized = this->base_optimize(graph, include_input_xfer_cost);
+    if (output_shape.has_value()) {
+      optimized->reshape_output_tensor(output_shape.value());
     }
-    printf("\n");
+    return optimized->optimal_cost(include_input_xfer_cost);
+  } else {
+    std::unique_ptr<Graph> pre_graph, post_graph;
+    std::tie(pre_graph, post_graph) = graph->split_at_node(bottleneck);
+
+    MachineResource resources(this->model->config);
+    std::vector<MachineView> valid_machine_views = this->model->search->get_valid_machine_views(bottleneck.ptr, resources);
+
+    float best_cost = std::numeric_limits<float>::infinity();
+    for (TensorShape const &bottleneck_output_shape : this->possible_output_tensor_shapes(bottleneck)) {
+      // TODO @lockshaw we really should create the merged graph here since it's possible though unlikely for there 
+      // to be hidden transfer costs between modules due to device assignment changes across the boundaries
+      float current_cost = this->sequence_optimize(pre_graph.get(), bottleneck, bottleneck_output_shape, input_shape)
+        + this->sequence_optimize(post_graph.get(), sink_node, output_shape, bottleneck_output_shape);
+
+      best_cost = std::min(best_cost, current_cost);
+    }
+
+    return best_cost;
   }
+}
+
+std::vector<TensorShape> GraphSearchHelper::possible_output_tensor_shapes(Node const &source_node) {
+  assert (source_node.ptr->numOutputs == 1);
+  Tensor output_tensor = source_node.ptr->outputs[0];
+  for (int i = 0; i < output_tensor->num_dims; i++) {
+    assert (output_tensor->dims[i].degree == 1);
+  }
+
+  std::vector<TensorShape> without_replicas;
+
+  int num_devices = this->config.numNodes * this->config.workersPerNode;
+  int degrees[MAX_TENSOR_DIM]{1};
+
+  TensorShape base_shape;
+  base_shape.num_dims = output_tensor->num_dims;
+  for (int i = 0; i < output_tensor->num_dims; i++) {
+    base_shape.dims[i].degree = 1;
+    base_shape.dims[i].size = output_tensor->dims[i].size;
+  }
+
+  while (degrees[output_tensor->num_dims - 1] <= num_devices) {
+    for (int i = 0; i < output_tensor->num_dims; i++) {
+      degrees[i] *= 2;
+      if (degrees[i] > num_devices) {
+        degrees[i] = 1;
+      } else {
+        break;
+      }
+    }
+
+    int total_degree = 1;
+    TensorShape shape;
+    shape.num_dims = output_tensor->num_dims;
+    for (int i = 0; i < output_tensor->num_dims; i++) {
+      total_degree *= degrees[i];
+      shape.dims[i].degree = degrees[i];
+      shape.dims[i].size = output_tensor->dims[i].size;
+    }
+    if (total_degree <= num_devices) {
+      without_replicas.push_back(shape);
+    }
+  }
+
+  std::vector<TensorShape> with_replicas;
+  for (TensorShape const &shape : without_replicas) {
+    with_replicas.push_back(shape);
+    int replicas[MAX_TENSOR_DIM]{1};
+    for (int i = 0; i < output_tensor->num_dims; i++) { 
+      replicas[i] *= 2;
+      if (replicas[i] > shape.dims[i].degree) {
+        replicas[i] = 1;
+      } else {
+        break;
+      }
+    }
+
+    TensorShape shape_with_replicas(shape);
+    for (int i = 0; i < shape.num_dims; i++) {
+      shape_with_replicas.dims[i].size *= replicas[i];
+    }
+    without_replicas.push_back(shape_with_replicas);
+  }
+
+  return with_replicas;
+}
+
+void GraphSearchHelper::subgraph_optimize(Graph *subgraph) 
+{
+  
 }
 
 bool FFModel::convert_graph_to_layers(const Graph* graph,

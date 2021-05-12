@@ -113,7 +113,8 @@ size_t dp_state_hash(const Graph* graph,
                      const MachineView& sink_view,
                      const Node& source_node,
                      const MachineView& source_view,
-                     const MachineResource& resource);
+                     const MachineResource& resource, 
+                     bool include_input_xfer_cost);
 
 enum class SplitType {
   SEQUENTIAL, 
@@ -142,18 +143,21 @@ public:
                    const NodeAssignment& source,
                    const NodeAssignment& sink,
                    const MachineResource& resources,
-                   bool include_sink_compute_time) const;
+                   bool include_sink_compute_time,
+                   bool include_input_xfer_cost) const;
   template <typename T>
   T find_optimal_sequence_graph_time(Graph const *g,
                                          Node const &bottleneck_node,
                                          NodeAssignment const &source,
                                          NodeAssignment const &sink,
-                                         MachineResource const &resources) const;
+                                         MachineResource const &resources,
+                                         bool include_input_xfer_cost) const;
   template <typename T>
   T find_optimal_nonsequence_graph_time(Graph const *g,
                                             NodeAssignment const &source,
                                             NodeAssignment const &sink,
-                                            MachineResource const &resources) const;
+                                            MachineResource const &resources, 
+                                            bool include_input_xfer_cost) const;
   /* void find_optimal_nonsequence_graph_views(Graph const *g, */
   /*                                           NodeAssignment const &source, */
   /*                                           NodeAssignment const &sink, */
@@ -178,7 +182,10 @@ public:
   bool is_invalid(T const &) const;
 
   template <typename T>
-  T estimate_xfer_cost(Graph const *g, NodeAssignment const &source, NodeAssignment const &sink) const;
+  T estimate_xfer_cost(Graph const *g, 
+                       NodeAssignment const &source, 
+                       NodeAssignment const &sink, 
+                       bool include_input_xfer_cost) const;
 
   template <typename T>
   void add_operator_cost(NodeAssignment const &, float, T *) const;
@@ -192,6 +199,7 @@ private:
                               NodeAssignment const &source,
                               NodeAssignment const &sink,
                               MachineResource const &resources,
+                              bool include_input_xfer_cost,
                               NonsequenceSplit const &split) const;
 
   template <typename T>
@@ -200,6 +208,7 @@ private:
                            NodeAssignment const &source,
                            NodeAssignment const &sink,
                            MachineResource const &resources,
+                           bool include_input_xfer_cost,
                            SequenceSplit const &split) const;
 private:
   FFModel *model;
@@ -210,6 +219,11 @@ private:
 
   mutable std::unordered_map<size_t, float> cached_graph_costs;
   mutable std::unordered_map<size_t, std::unique_ptr<const std::vector<MachineView>>> cached_operator_valid_views;
+};
+
+struct TensorShape {
+  int num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
 };
 
 class Graph {
@@ -226,8 +240,8 @@ public:
                 int srcIdx,
                 int dstIdx);
   bool has_edge(const Edge& e);
-  float optimal_cost() const;
-  std::unordered_map<Node, MachineView> optimal_views() const;
+  float optimal_cost(bool include_input_xfer_cost) const;
+  std::unordered_map<Node, MachineView> optimal_views(bool include_input_xfer_cost) const;
 
 
   size_t hash(void) const;
@@ -247,13 +261,18 @@ public:
   std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_horizontal(Node const &source_node, Node const &sink_node) const;
 
   Graph reduced() const;
+
+  Node find_sink_node() const;
+  Node find_source_node() const;
+  void reshape_output_tensor(TensorShape const &shape);
+  std::unique_ptr<Graph> with_output_tensor_reshaped_to(TensorShape const &shape) const;
 public:
   FFModel* model;
   SearchHelper* search;
   std::unordered_map<Node, std::unordered_set<Edge> > inEdges, outEdges;
 private:
   template <typename T>
-  T generic_optimal_cost() const;
+  T generic_optimal_cost(bool include_input_xfer_cost) const;
 };
 
 namespace flexflow::graph {

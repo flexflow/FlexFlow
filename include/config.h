@@ -50,6 +50,8 @@ constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::NCCL;
 constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
 #endif
 
+class FFConfig;
+
 struct MachineView {
   static const MachineView NO_VIEW;
   MachineView();
@@ -95,12 +97,14 @@ struct MachineView {
 };
 
 struct MachineResource {
+  MachineResource(FFConfig const &);
+
   bool is_valid_machine_view(const MachineView& view) const;
   size_t hash() const;
   int num_nodes;
   int all_gpus_per_node, available_gpus_per_node;
   int all_cpus_per_node, available_cpus_per_node;
-  int start_gpu_id, start_cpu_id;
+  int start_gpu_id = 0, start_cpu_id = 0;
 };
 
 struct ParallelOpInfo {

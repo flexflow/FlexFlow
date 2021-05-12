@@ -21,6 +21,7 @@
 #include <queue>
 #include "random_utils.h"
 #include "graph.h"
+#include "substitution.h"
 #include "legion/legion_utilities.h"
 #include "ops/linear.h"
 #include "ops/conv_2d.h"
@@ -1536,6 +1537,7 @@ FFModel::FFModel(FFConfig& _config)
   optimizer(NULL), loss_op(NULL), metrics_op(NULL), simulator(NULL)
 {
   this->search = new SearchHelper(this);
+  this->graph_search = new GraphSearchHelper(this);
 
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
@@ -3433,7 +3435,7 @@ struct DefaultConfig {
   const static int cpusPerNode = 0;
   const static size_t searchBudget = 0;
   const static size_t simulatorWorkSpaceSize = (size_t)2 * 1024 * 1024 * 1024; //2GB
-  constexpr static float searchAlpha = 1.0f;
+  constexpr static float searchAlpha = 1.2f;
   const static bool searchOverlapBackwardUpdate = false;
   const static bool onlyDataParallel = false;
   const static bool enableSampleParallel = true;
