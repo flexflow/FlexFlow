@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <iomanip>
 #include "substitution.h"
 #include <chrono>
 #include "dot_file.h"
@@ -63,13 +64,7 @@ GraphXfer* create_replicate_attention_reduce(FFModel* model,
 GraphXfer* create_partition_add_combine(FFModel* model,
                                         int parallel_dim,
                                         int num_parts);
-GraphXfer* create_combine_add_partition(FFModel* model,
-                                        int parallel_dim,
-                                        int num_parts);
 GraphXfer* create_partition_relu_combine(FFModel* model,
-                                         int parallel_dim,
-                                         int num_parts);
-GraphXfer* create_combine_relu_partition(FFModel* model,
                                          int parallel_dim,
                                          int num_parts);
 
@@ -82,10 +77,6 @@ GraphXfer* create_partition_concat_combine(FFModel* model,
 GraphXfer* create_partition_softmax_combine(FFModel* model,
                                             int softmax_dim,
                                             int part_dim,
-                                            int num_parts);
-GraphXfer* create_combine_softmax_partition(FFModel* model,
-                                            int softmax_dim,
-                                            int parallel_dim,
                                             int num_parts);
 GraphXfer* leading_relu_branch_combine(FFModel* model, 
                                        int parallel_dim, 
@@ -492,34 +483,6 @@ void Graph::reshape_output_tensor(TensorShape const &desired_shape) {
 
     int desired_size = desired_shape.dims[i].size;
     int desired_degree = desired_shape.dims[i].degree;
-
-    if (current_size < desired_size) { 
-      // we need to replicate
-      assert (desired_size % current_size == 0);
-      int replicate_factor = desired_size / current_size;
-
-      Node replicate_node = model->get_or_create_replicate_node(output_tensor, i, replicate_factor);
-      this->add_edge(output_node, replicate_node, 0, 0);
-
-      output_node = replicate_node;
-      output_tensor = replicate_node.ptr->outputs[0];
-      current_degree *= replicate_factor;
-      current_size *= replicate_factor;
-
-    } else if (current_size > desired_size) {
-      // we need to reduce
-      assert (desired_size % current_size == 0);
-      int reduction_factor = current_size / desired_size;
-      assert (current_degree % reduction_factor == 0);
-      
-      Node reduction_node = model->get_or_create_reduction_node(output_tensor, i, reduction_factor);
-      this->add_edge(output_node, reduction_node, 0, 0);
-
-      output_node = reduction_node;
-      output_tensor = reduction_node.ptr->outputs[0];
-      current_degree /= reduction_factor;
-      current_size /= reduction_factor;
-    }
 
     assert (current_size == desired_size);
 
@@ -1151,54 +1114,6 @@ void create_mapping_xfers(FFModel *model, int degree, std::vector<GraphXfer*> &x
 
     xfers.push_back(subst);
   }
-
-  for (int const input_dim : all_dims) {
-    int output_dim = output_mappings.at(input_dim).output_dim;
-    GraphXfer *subst = new GraphXfer(model); 
-    TensorX input = subst->new_tensor();
-
-    OpX* original_op = subst->create_opx<T>(input, NULL/*matchOpX*/);
-    subst->srcOps.push_back(original_op);
-
-    OpX *pre;
-    switch (output_mappings.at(input_dim).operation.value()) {
-      case MappingOperation::PARTITION: 
-        pre = subst->create_combine(input, input_dim, degree);
-        break;
-      case MappingOperation::REPLICATE:
-        pre = subst->create_reduction(input, input_dim, degree);
-        break;
-    }
-    subst->dstOps.push_back(pre);
-
-    OpX* new_op = subst->create_opx<T>(pre->outputs[0], original_op/*matchOpX*/);
-    subst->dstOps.push_back(new_op);
-
-    OpX *post;
-    switch (output_mappings.at(input_dim).operation.value()) {
-      case MappingOperation::PARTITION: 
-        post = subst->create_repartition(new_op->outputs[0], output_dim, degree);
-        break;
-      case MappingOperation::REPLICATE:
-        post = subst->create_replicate(new_op->outputs[0], output_dim, degree);
-        break;
-    }
-    subst->dstOps.push_back(post);
-
-    subst->map_output(original_op->outputs[0], post->outputs[0]);
-
-    std::ostringstream oss;
-    std::string op_type_name = model->get_operator_type_name(new_op->type);
-    std::transform(op_type_name.begin(), op_type_name.end(), op_type_name.begin(),
-        [](unsigned char c) { return std::tolower(c); });
-    oss << "combine_" << op_type_name << "_partition["
-        << "input_dim=" << input_dim
-        << ",degree=" << degree
-        << "]";
-    subst->name = oss.str();
-
-    xfers.push_back(subst);
-  }
 }
 
 std::string GraphXfer::get_name() const {
@@ -1213,7 +1128,9 @@ std::string GraphXfer::get_name() const {
 
 GraphSearchHelper::GraphSearchHelper(FFModel *model) 
   : model(model), config(model->config)
-{ }
+{ 
+  this->logger = std::unique_ptr<RecursiveLogger>(new RecursiveLogger("gs"));
+}
 
 void GraphSearchHelper::load_graph_substitutions(std::vector<GraphXfer*> &xfers) const 
 {
@@ -1264,11 +1181,8 @@ void GraphSearchHelper::load_graph_substitutions(std::vector<GraphXfer*> &xfers)
     xfers.push_back(create_partition_add_combine(this->model, 2/*parallel_dims*/, it/*num_parts*/));
     xfers.push_back(create_partition_add_combine(this->model, 1/*parallel_dims*/, it/*num_parts*/));
     xfers.push_back(create_partition_add_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_combine_add_partition(this->model, 3/*parallel_dims*/, it/*num_parts*/));
     xfers.push_back(create_partition_relu_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_combine_relu_partition(this->model, 3/*parallel_dims*/, it/*num_parts*/));
     xfers.push_back(create_partition_softmax_combine(this->model, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_combine_softmax_partition(this->model, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
     for (int num_combines = 1; num_combines < 5; num_combines++) {
       xfers.push_back(leading_relu_branch_combine(this->model, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
       xfers.push_back(leading_relu_branch_partition(this->model, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
@@ -1319,10 +1233,17 @@ void GraphSearchHelper::graph_optimize(size_t budget,
                              std::unordered_map<Node, MachineView>& optimal_views)
 {
   // Construct graph structure
+  this->logger->debug() << "Starting graph optimization";
+
   Graph *graph = this->construct_graph();
+  std::unordered_map<Node, MachineView> empty_strategy;
+  if (!this->config.export_strategy_computation_graph_file.empty()) {
+    graph->export_strategy_computation_graph(empty_strategy, this->config.export_strategy_computation_graph_file);
+  }
   
   Node sink_node = graph->find_sink_node();
   float optimal_cost = this->sequence_optimize(graph, sink_node, tl::nullopt/*output_shape*/, tl::nullopt/*input_shape*/);
+  this->logger->debug() << "Total cache size: " << this->cached_optimized_graphs.size();
   std::cout << "Optimal cost: " << optimal_cost << std::endl;
   std::exit(1);
 }
@@ -1335,9 +1256,25 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *graph, bool
   }
 }
 
+static std::string graph_log_representation(Graph const *graph) {
+  using ::flexflow::graph::topo_sort;
+
+  std::vector<Node> topo_sorted;
+  topo_sort(*graph, &topo_sorted);
+  std::ostringstream oss;
+  for (Node const &n : topo_sorted) {
+    oss << n.to_string() << " ";
+  }
+  return oss.str();
+}
+
 template <bool include_input_xfer_cost>
 std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph) {
   // Construct graph substitutions
+  this->logger->enter();
+
+  this->logger->debug() << "Optimizing base graph: " << graph_log_representation(r_graph);
+
   std::vector<GraphXfer*> xfers;
   this->load_graph_substitutions(xfers);
 
@@ -1368,7 +1305,7 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph) {
       continue;
     }
 
-    printf("    [%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)\n",
+    log_xfers.info("[%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)",
            counter, cur_graph->optimal_cost(include_input_xfer_cost), best_cost, candidates.size());
 
     for (size_t i = 0; i < xfers.size(); i++) {
@@ -1385,10 +1322,55 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph) {
     }
   }
 
+  this->logger->leave();
   return std::unique_ptr<Graph>(best_graph);
 }
 template std::unique_ptr<Graph> GraphSearchHelper::base_optimize<true>(Graph const *);
 template std::unique_ptr<Graph> GraphSearchHelper::base_optimize<false>(Graph const *);
+
+std::ostream& operator<<(std::ostream &s, TensorShape const &shape) {
+  s << "[ ";
+  for (int i = 0; i < shape.num_dims; i++) {
+    s << shape.dims[i].size << "/" << shape.dims[i].degree << " ";
+  }
+  s << "]";
+
+  return s;
+}
+
+namespace std {
+  size_t hash<TensorShape>::operator()(TensorShape const &shape) const {
+    size_t key = 0;
+    hash_combine(key, shape.num_dims);
+    for (int i = 0; i < shape.num_dims; i++) {
+      hash_combine(key, shape.dims[i].size);
+      hash_combine(key, shape.dims[i].degree);
+    }
+    return key;
+  }
+}
+
+size_t gs_dp_state_hash(Graph const *graph, 
+                        Node const &sink_node,
+                        tl::optional<TensorShape> const &output_shape,
+                        tl::optional<TensorShape> const &input_shape)
+{
+  size_t key = graph->hash();
+  hash_combine(key, sink_node.ptr);
+  hash_combine(key, output_shape);
+  hash_combine(key, input_shape);
+  return key;
+}
+
+TensorShape TensorBase::get_shape() const {
+  TensorShape shape;
+  shape.num_dims = this->num_dims;
+  for (int i = 0; i < this->num_dims; i++) {
+    shape.dims[i] = this->dims[i];
+  }
+
+  return shape;
+}
 
 float GraphSearchHelper::sequence_optimize(
     Graph const *graph, 
@@ -1396,17 +1378,66 @@ float GraphSearchHelper::sequence_optimize(
     tl::optional<TensorShape> const &output_shape, 
     tl::optional<TensorShape> const &input_shape)
 {
-  Node source_node = graph->find_source_node();
-  Node bottleneck = graph->find_bottleneck_node(sink_node, source_node);
+  this->logger->enter();
 
-  if (bottleneck == Node::INVALID_NODE) {
-    bool include_input_xfer_cost = input_shape.has_value();
-    std::unique_ptr<Graph> optimized = this->base_optimize(graph, include_input_xfer_cost);
-    if (output_shape.has_value()) {
-      optimized->reshape_output_tensor(output_shape.value());
-    }
-    return optimized->optimal_cost(include_input_xfer_cost);
+  size_t hash = gs_dp_state_hash(graph, sink_node, output_shape, input_shape);
+  if (this->cached_optimized_graphs.find(hash) != this->cached_optimized_graphs.end()) {
+    this->logger->spew() << "Optimizing graph with " << graph->inEdges.size() << " nodes";
+    this->logger->enter();
+    this->logger->spew() << "Nodes: " << graph_log_representation(graph);
+    float cached_value = this->cached_optimized_graphs.at(hash);
+    this->logger->spew() << "Retrived value from cache: " << cached_value;
+    this->logger->leave();
+    this->logger->leave();
+    return cached_value;
+  }
+
+  this->logger->debug() << "Optimizing graph with " << graph->inEdges.size() << " nodes";
+  this->logger->enter();
+  this->logger->spew() << "Nodes: " << graph_log_representation(graph);
+  this->logger->debug() << "Graph hash: " << std::setw(32) << std::setfill('0') << graph->hash();
+  if (input_shape.has_value()) {
+    this->logger->debug() << "Input shape: " << input_shape.value();
   } else {
+    this->logger->debug() << "Input shape: <none>";
+  }
+  if (output_shape.has_value()) {
+    this->logger->debug() << "Output shape: " << output_shape.value();
+  } else {
+    this->logger->debug() << "Output shape: <none>";
+  }
+
+  Node source_node = graph->find_source_node();
+  Node bottleneck = graph->find_nontrivial_bottleneck_node(sink_node, source_node);
+
+  float return_value;
+  if (bottleneck == Node::INVALID_NODE) {
+    this->logger->debug() << "Applying base case";
+    Graph to_optimize(*graph);
+    if (input_shape.has_value()) {
+      Node input_node = this->model->get_or_create_input_node(input_shape.value());
+      Node noop_node = this->model->get_or_create_noop_node(input_node.ptr->outputs[0]);
+      Graph input_graph(this->model);
+      Edge e(input_node, noop_node, 0, 0);
+      input_graph.add_edge(e);
+
+      Node old_source_node = graph->find_source_node();
+      TensorShape old_source_output_shape = old_source_node.ptr->outputs[0]->get_shape();
+      input_graph.reshape_output_tensor(old_source_output_shape);
+
+      Node new_sink_node = input_graph.find_sink_node();
+      assert (new_sink_node.ptr->numOutputs == 1);
+      assert (new_sink_node.ptr->outputs[0]->get_shape() == old_source_output_shape);
+
+      to_optimize.replace_node(old_source_node, input_graph);
+    }
+    if (output_shape.has_value()) {
+      to_optimize.reshape_output_tensor(output_shape.value());
+    }
+    std::unique_ptr<Graph> optimized = this->base_optimize(&to_optimize, input_shape.has_value());
+    return_value = optimized->optimal_cost(false);
+  } else {
+    this->logger->debug() << "Applying recursive case on bottleneck " << bottleneck.guid;
     std::unique_ptr<Graph> pre_graph, post_graph;
     std::tie(pre_graph, post_graph) = graph->split_at_node(bottleneck);
 
@@ -1414,20 +1445,52 @@ float GraphSearchHelper::sequence_optimize(
     std::vector<MachineView> valid_machine_views = this->model->search->get_valid_machine_views(bottleneck.ptr, resources);
 
     float best_cost = std::numeric_limits<float>::infinity();
-    for (TensorShape const &bottleneck_output_shape : this->possible_output_tensor_shapes(bottleneck)) {
+    tl::optional<TensorShape> best_shape = tl::nullopt;
+    this->logger->enter();
+    for (TensorShape const &bottleneck_output_shape : this->possible_split_output_tensor_shapes(bottleneck)) {
       // TODO @lockshaw we really should create the merged graph here since it's possible though unlikely for there 
       // to be hidden transfer costs between modules due to device assignment changes across the boundaries
-      float current_cost = this->sequence_optimize(pre_graph.get(), bottleneck, bottleneck_output_shape, input_shape)
-        + this->sequence_optimize(post_graph.get(), sink_node, output_shape, bottleneck_output_shape);
+      
+      // We wait to add the communication nodes between boundaries so we don't accidentally split on them 
+      // and keep processing the pure computation graph
+      // The bottleneck node is kept in the postgraph purely as a placeholder and will be replaced with an Input/NoOp
+      // sequence before any rewrites are actually performed
+      this->logger->debug() << "Finding cost of pre_graph";
+      float pre_cost = this->sequence_optimize(pre_graph.get(), bottleneck, bottleneck_output_shape, input_shape);
+      this->logger->debug() << "Cost of pre_graph: " << pre_cost;
+      this->logger->debug() << "Finding cost of post_graph";
+      float post_cost = this->sequence_optimize(post_graph.get(), sink_node, output_shape, bottleneck_output_shape);
+      this->logger->debug() << "Cost of post_graph: " << post_cost;
+      float current_cost = pre_cost + post_cost;
 
-      best_cost = std::min(best_cost, current_cost);
+      if (current_cost < best_cost) {
+        best_cost = current_cost;
+        best_shape = bottleneck_output_shape;
+      }
+    }
+    this->logger->leave();
+
+    if (best_shape.has_value()) {
+      this->logger->debug() << "Best intermediate shape found: " << best_shape.value();
+    } else {
+      this->logger->debug() << "No valid intermediate shapes found";
     }
 
-    return best_cost;
+
+
+    return_value = best_cost;
   }
+
+  this->cached_optimized_graphs[hash] = return_value;
+  this->logger->leave();
+  this->logger->leave();
+  return return_value;
 }
 
-std::vector<TensorShape> GraphSearchHelper::possible_output_tensor_shapes(Node const &source_node) {
+std::vector<TensorShape> GraphSearchHelper::possible_split_output_tensor_shapes(Node const &source_node) const {
+  this->logger->enter();
+
+  this->logger->debug() << "Finding possible output tensor shapes for node " << source_node.guid;
   assert (source_node.ptr->numOutputs == 1);
   Tensor output_tensor = source_node.ptr->outputs[0];
   for (int i = 0; i < output_tensor->num_dims; i++) {
@@ -1437,7 +1500,8 @@ std::vector<TensorShape> GraphSearchHelper::possible_output_tensor_shapes(Node c
   std::vector<TensorShape> without_replicas;
 
   int num_devices = this->config.numNodes * this->config.workersPerNode;
-  int degrees[MAX_TENSOR_DIM]{1};
+  int degrees[MAX_TENSOR_DIM];
+  std::fill_n(degrees, MAX_TENSOR_DIM, 1);
 
   TensorShape base_shape;
   base_shape.num_dims = output_tensor->num_dims;
@@ -1445,17 +1509,30 @@ std::vector<TensorShape> GraphSearchHelper::possible_output_tensor_shapes(Node c
     base_shape.dims[i].degree = 1;
     base_shape.dims[i].size = output_tensor->dims[i].size;
   }
+  without_replicas.push_back(base_shape);
 
-  while (degrees[output_tensor->num_dims - 1] <= num_devices) {
+  this->logger->enter();
+  while (true) {
+    bool is_done = true;
     for (int i = 0; i < output_tensor->num_dims; i++) {
       degrees[i] *= 2;
       if (degrees[i] > num_devices) {
         degrees[i] = 1;
       } else {
+        is_done = false;
         break;
       }
     }
+    std::ostringstream oss;
+    for (int i = 0; i < output_tensor->num_dims; i++) {
+      oss << degrees[i] << " ";
+    }
+    this->logger->spew() << "Considering: " << oss.str();
+    if (is_done) {
+      break;
+    }
 
+    bool is_valid = true;
     int total_degree = 1;
     TensorShape shape;
     shape.num_dims = output_tensor->num_dims;
@@ -1463,33 +1540,25 @@ std::vector<TensorShape> GraphSearchHelper::possible_output_tensor_shapes(Node c
       total_degree *= degrees[i];
       shape.dims[i].degree = degrees[i];
       shape.dims[i].size = output_tensor->dims[i].size;
+      if (shape.dims[i].size % shape.dims[i].degree != 0) {
+        is_valid = false;
+      }
     }
-    if (total_degree <= num_devices) {
+    if (total_degree <= num_devices && is_valid) {
       without_replicas.push_back(shape);
     }
   }
+  this->logger->leave();
 
-  std::vector<TensorShape> with_replicas;
-  for (TensorShape const &shape : without_replicas) {
-    with_replicas.push_back(shape);
-    int replicas[MAX_TENSOR_DIM]{1};
-    for (int i = 0; i < output_tensor->num_dims; i++) { 
-      replicas[i] *= 2;
-      if (replicas[i] > shape.dims[i].degree) {
-        replicas[i] = 1;
-      } else {
-        break;
-      }
-    }
-
-    TensorShape shape_with_replicas(shape);
-    for (int i = 0; i < shape.num_dims; i++) {
-      shape_with_replicas.dims[i].size *= replicas[i];
-    }
-    without_replicas.push_back(shape_with_replicas);
+  this->logger->debug() << "Found " << without_replicas.size() << " possible tensor output shapes without replicas";
+  this->logger->debug() << "They are:";
+  this->logger->enter();
+  for (auto const & shape : without_replicas) {
+    this->logger->debug() << shape;
   }
-
-  return with_replicas;
+  this->logger->leave();
+  this->logger->leave();
+  return without_replicas;
 }
 
 void GraphSearchHelper::subgraph_optimize(Graph *subgraph) 

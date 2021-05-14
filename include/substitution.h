@@ -20,6 +20,7 @@
 #include "graph.h"
 #include <queue>
 #include "tl/optional.h"
+#include "recursive_logger.h"
 
 enum Compare {
   COMPARE_EQ,
@@ -196,12 +197,13 @@ private:
   template <bool include_input_xfer_cost>
   std::unique_ptr<Graph> base_optimize(Graph const *);
 
-  std::vector<TensorShape> possible_output_tensor_shapes(Node const &);
+  std::vector<TensorShape> possible_split_output_tensor_shapes(Node const &) const;
 private:
-  std::unordered_map<size_t, std::vector<std::unique_ptr<Graph>>> cached_optimized_graphs;
+  std::unordered_map<size_t, float> cached_optimized_graphs;
 
   FFModel* model;
   FFConfig const &config;
+  std::unique_ptr<RecursiveLogger> logger;
 };
 
 #endif

@@ -148,6 +148,7 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/basic_graph.h
   ${FLEXFLOW_ROOT}/include/graph_structures.h
   ${FLEXFLOW_ROOT}/include/dot_file.h
+  ${FLEXFLOW_ROOT}/include/recursive_logger.h
   ${FLEXFLOW_ROOT}/include/tl/optional.h)
 
 set(FLEXFLOW_SRC
@@ -170,6 +171,8 @@ set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/runtime/machine_model.cc
   ${FLEXFLOW_ROOT}/src/runtime/graph.cc
   ${FLEXFLOW_ROOT}/src/runtime/substitution.cc
+  ${FLEXFLOW_ROOT}/src/runtime/recursive_logger.cc
+  ${FLEXFLOW_ROOT}/src/runtime/tensor.cc
   ${FLEXFLOW_ROOT}/src/parallel_ops/combine.cc
   ${FLEXFLOW_ROOT}/src/parallel_ops/partition.cc
   ${FLEXFLOW_ROOT}/src/parallel_ops/reduction.cc
@@ -238,6 +241,7 @@ option(FF_BUILD_INCEPTION "build inception example" OFF)
 option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
 option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
 option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
+option(FF_BUILD_SPLIT_TEST "build split test example" OFF)
 option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
 option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
 
@@ -270,6 +274,10 @@ endif()
 
 if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/MLP_Unify)
+endif()
+
+if(FF_BUILD_SPLIT_TEST OR FF_BUILD_ALL_EXAMPLES) 
+  add_subdirectory(examples/cpp/split_test)
 endif()
 
 if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)

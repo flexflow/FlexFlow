@@ -441,6 +441,10 @@ float Simulator::estimate_xfer_cost(const Op* op,
         Repartition *rp = (Repartition*)op;
         assert (source_view != sink_view);
 
+        const Tensor input_tensor = op->inputs[input_idx];
+        if (include_input_xfer_cost && input_tensor->owner_op->op_type == OP_INPUT) {
+          return 0.0f;
+        }
         assert (rp->repartition_dim == input_tensor->num_dims - 2); // assert data parallel for now
         int degree_before = input_tensor->dims[input_tensor->num_dims - 2].degree;
         std::vector<int> source_ids = source_view.device_ids();

@@ -42,7 +42,7 @@ Tensor FFModel::conv2d(const Tensor input,
       paddingH, paddingW, 
       activation,
       groups,
-      use_bias,
+      false, // use_bias, // TODO FIXME @lockshaw
       false,
       name
   );

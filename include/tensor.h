@@ -46,6 +46,20 @@ struct ParallelDim {
 };
 
 
+struct TensorShape {
+  int num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
+
+  bool operator==(const TensorShape& other) const;
+};
+
+namespace std {
+  template <>
+  struct hash<TensorShape> {
+    size_t operator()(TensorShape const &) const;
+  };
+}
+
 struct TensorBase {
   TensorBase(void);
   TensorBase(const TensorBase& rhs);
@@ -78,7 +92,7 @@ struct TensorBase {
   template <typename T>
   bool get_tensor(const FFModel* model,
                   T* data);
-
+  TensorShape get_shape() const;
 
 private:
   template <typename T>

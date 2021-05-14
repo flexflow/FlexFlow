@@ -31,6 +31,8 @@
 
 #include "ffconst.h"
 
+extern LegionRuntime::Logger::Category log_measure;
+
 enum TaskIDs {
   TOP_LEVEL_TASK_ID,
   FF_INIT_TASK_ID,
@@ -185,6 +187,8 @@ enum TaskIDs {
   // consistent with python/main.cc
   PYTHON_TOP_LEVEL_TASK_ID = 11111,
 };
+
+
 
 enum ShardingID {
   DataParallelShardingID = 135,
@@ -442,7 +446,7 @@ struct Node {
   std::string to_string(void) const
   {
     if (ptr != NULL) {
-      return op_to_string(ptr);
+      return op_to_string(ptr) + "_" + std::to_string(guid);
     }
     else {
       return "UnmappedOp_" + std::to_string(guid);
@@ -763,6 +767,7 @@ public:
   // Internal Node creation APIs
   // ========================================
   Node get_or_create_noop_node(const Tensor input);
+  Node get_or_create_input_node(const TensorShape&);
   Node get_or_create_concat_node(int num_inputs,
                                  const Tensor* inputs,
                                  int axis);
@@ -950,6 +955,7 @@ public:
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
+  std::unordered_map<size_t, NoOp*> cached_input_ops;
   std::unordered_map<size_t, Concat*> cached_concat_ops;
   std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
   std::unordered_map<size_t, ElementUnary*> cached_element_unary_ops;

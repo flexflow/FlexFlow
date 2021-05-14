@@ -46,6 +46,7 @@ using namespace std;
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_model("Model");
+LegionRuntime::Logger::Category log_measure("measure");
 
 TensorBase::TensorBase(void)
 {
@@ -3627,6 +3628,14 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if (!strcmp(argv[i], "--enable-inplace-optimizations")) {
       enable_inplace_optimizations = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--search-num-nodes")) {
+      search_num_nodes = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--search-num-workers")) {
+      search_num_workers = atoi(argv[++i]);
       continue;
     }
   }

@@ -20,6 +20,7 @@
 #include "ffconst.h"
 #include <cudnn.h>
 #include <cublas_v2.h>
+#include "tl/optional.h"
 #ifdef FF_USE_NCCL
 #include <nccl.h>
 #endif
@@ -223,6 +224,8 @@ public:
   int simulator_segment_size;
   int simulator_max_num_segments;
   bool enable_propagation;
+  tl::optional<int> search_num_nodes = tl::nullopt;
+  tl::optional<int> search_num_workers = tl::nullopt;
 };
 
 class FFIterationConfig {

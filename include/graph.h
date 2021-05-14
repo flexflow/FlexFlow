@@ -34,6 +34,8 @@ struct Edge {
   bool operator==(const Edge &rhs) const;
   Node srcOp, dstOp;
   int srcIdx, dstIdx;
+
+  void replace_node(const Node& currentOp, const Node& replaceWith);
 };
 
 struct EdgeCompare {
@@ -221,11 +223,6 @@ private:
   mutable std::unordered_map<size_t, std::unique_ptr<const std::vector<MachineView>>> cached_operator_valid_views;
 };
 
-struct TensorShape {
-  int num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-};
-
 class Graph {
 public:
   Graph(FFModel* model);
@@ -233,6 +230,7 @@ public:
                 const Node& dstOp,
                 int srcIdx,
                 int dstIdx);
+  void add_node(const Node&);
   void add_edge(const Edge& e);
   void remove_edge(const Edge& e);
   bool has_edge(const Node& srcOp,
@@ -240,6 +238,8 @@ public:
                 int srcIdx,
                 int dstIdx);
   bool has_edge(const Edge& e);
+  void replace_node(const Node& currentOp, const Node& replaceWith);
+  void replace_node(const Node& currentOp, const Graph& replaceWith);
   float optimal_cost(bool include_input_xfer_cost) const;
   std::unordered_map<Node, MachineView> optimal_views(bool include_input_xfer_cost) const;
 
@@ -253,6 +253,7 @@ public:
              const std::vector<Legion::PhysicalRegion> &regions,
              Legion::Context ctx, Legion::Runtime *runtime);
   Node find_bottleneck_node(const Node& sink_node, const Node& source_node) const;
+  Node find_nontrivial_bottleneck_node(const Node& sink_node, const Node& source_node) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::unique_ptr<std::ostream> out) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::string const &out_filename) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const;

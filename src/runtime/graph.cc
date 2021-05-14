@@ -550,6 +550,12 @@ void Graph::add_edge(const Node& srcOp,
   outEdges[srcOp].insert(e);
 }
 
+void Graph::add_node(const Node& node) 
+{
+  inEdges[node];
+  outEdges[node];
+}
+
 void Graph::add_edge(const Edge& e)
 {
   inEdges[e.srcOp];
@@ -682,6 +688,7 @@ bool Graph::check_correctness(void)
       Edge e = *it2;
       if (!has_edge(e)) assert(false);
       if (e.srcOp.ptr == NULL) continue;
+      assert (e.srcOp != e.dstOp);
       Tensor srcTensor = e.srcOp.ptr->outputs[e.srcIdx];
       Tensor dstTensor = e.dstOp.ptr->inputs[e.dstIdx];
       if (srcTensor->num_dims != dstTensor->num_dims) assert(false);
@@ -772,6 +779,109 @@ Node Graph::find_bottleneck_node(const Node& sink_node, const Node& source_node)
   }
 
   return bn_node;
+}
+
+Node Graph::find_nontrivial_bottleneck_node(const Node& sink_node, const Node& source_node) const {
+  using ::flexflow::graph::imm_post_dominators;
+
+  std::unordered_map<Node, Node> ipd = imm_post_dominators(*this);
+
+  Node source(source_node);
+  Node bn_node;
+  bool should_continue = true;
+  while (should_continue) {
+    bn_node = ipd.at(source);
+    if (bn_node == sink_node) {
+      return Node::INVALID_NODE;
+    }
+    should_continue = false;
+    for (Edge const &e : this->outEdges.at(source)) {
+      if (e.dstOp == bn_node) {
+        source = bn_node;
+        should_continue = true;
+        break;
+      }
+    }
+  }
+
+  return bn_node;
+}
+
+void Edge::replace_node(const Node& currentOp, const Node& replaceWith) {
+  if (this->srcOp == currentOp) {
+    this->srcOp = replaceWith;
+  } 
+  if (this->dstOp == currentOp) {
+    this->dstOp = replaceWith;
+  }
+}
+
+void Graph::replace_node(const Node& currentOp, Graph const &replaceWith) {
+  Node sink_node = replaceWith.find_sink_node();
+  Node source_node = replaceWith.find_source_node();
+
+  std::unordered_set<Node> all_nodes;
+  for (auto const &kv : this->inEdges) {
+    all_nodes.insert(kv.first);
+  }
+
+  // replace for the source side
+  for (Node const &node : all_nodes) {
+    auto updateEdge = [&](Edge const &edge) {
+      Edge newEdge(edge);
+      if (newEdge.dstOp == currentOp) {
+        newEdge.dstOp = source_node;
+      }
+      if (newEdge.srcOp == currentOp) {
+        newEdge.srcOp = sink_node;
+      }
+      return newEdge;
+    };
+
+    std::unordered_set<Edge> const &old_in_edges = this->inEdges.at(node);
+    std::unordered_set<Edge> new_in_edges;
+    std::transform(old_in_edges.cbegin(), old_in_edges.cend(), std::inserter(new_in_edges, new_in_edges.begin()), updateEdge);
+    std::unordered_set<Edge> const &old_out_edges = this->outEdges.at(node);
+    std::unordered_set<Edge> new_out_edges;
+    std::transform(old_out_edges.cbegin(), old_out_edges.cend(), std::inserter(new_out_edges, new_out_edges.begin()), updateEdge);
+
+    this->inEdges[node] = new_in_edges;
+    this->outEdges[node] = new_out_edges;
+  }
+  
+  for (auto const &kv : this->inEdges) {
+    for (Edge const &e : kv.second) {
+      assert (e.srcOp != currentOp);
+      assert (e.dstOp != currentOp);
+    }
+  }
+  for (auto const &kv : this->outEdges) {
+    for (Edge const &e : kv.second) {
+      assert (e.srcOp != currentOp);
+      assert (e.dstOp != currentOp);
+    }
+  }
+
+  this->inEdges[source_node] = this->inEdges.at(currentOp);
+  this->inEdges.erase(currentOp);
+
+  this->outEdges[sink_node] = this->outEdges.at(currentOp);
+  this->outEdges.erase(currentOp);
+
+  for (auto const &kv : replaceWith.inEdges) {
+    for (Edge const& e : kv.second) {
+      this->add_edge(e);
+    }
+  }
+
+  assert (this->check_correctness());
+}
+
+void Graph::replace_node(const Node& currentOp, const Node& replaceWith) {
+  Graph g(this->model);
+  g.add_node(replaceWith);
+
+  this->replace_node(currentOp, g);
 }
 
 std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> Graph::split_at_node(Node const &bottleneck) const {
@@ -1261,6 +1371,12 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     Context ctx, Runtime *runtime)
 {
   FFModel* model = *((FFModel**) task->args);
+  if (model->config.search_num_nodes.has_value()) {
+    model->config.numNodes = model->config.search_num_nodes.value();
+  }
+  if (model->config.search_num_workers.has_value()) {
+    model->config.workersPerNode = model->config.search_num_workers.value();
+  }
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
          .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
   MachineModel *machine;
