@@ -266,12 +266,11 @@ T SearchHelper::execute_sequence_split(
     NodeAssignment const &source,
     NodeAssignment const &sink,
     MachineResource const &resources,
-    bool include_input_xfer_cost,
     SequenceSplit const &bn) const 
 {
   return sequence_cost<T>(
-      this->graph_cost<T>(pre_graph.get(), source, bn, resources, true, include_input_xfer_cost),
-      this->graph_cost<T>(post_graph.get(), bn, sink, resources, false, include_input_xfer_cost)
+      this->graph_cost<T>(pre_graph.get(), source, bn, resources, true),
+      this->graph_cost<T>(post_graph.get(), bn, sink, resources, false)
   );
 }
 
@@ -281,8 +280,7 @@ T SearchHelper::find_optimal_sequence_graph_time(
   Node const &bn_node,
   NodeAssignment const &source,
   NodeAssignment const &sink,
-  MachineResource const &resources,
-  bool include_input_xfer_cost
+  MachineResource const &resources
 ) const {
   std::unique_ptr<Graph> pre_graph;
   std::unique_ptr<Graph> post_graph;
@@ -329,7 +327,6 @@ T SearchHelper::find_optimal_sequence_graph_time(
         source,
         sink,
         resources,
-        include_input_xfer_cost,
         {bn_node, bn_view}
     );
 
@@ -346,7 +343,6 @@ T SearchHelper::find_optimal_sequence_graph_time(
         source,
         sink,
         resources,
-        include_input_xfer_cost,
         {bn_node, best_view}
     );
   }
@@ -373,7 +369,6 @@ T SearchHelper::execute_nonsequence_split(
   NodeAssignment const &source,
   NodeAssignment const &sink,
   MachineResource const &resources,
-  bool include_input_xfer_cost,
   NonsequenceSplit const &split) const 
 {
   Graph const *first = first_graph.get();
@@ -385,8 +380,8 @@ T SearchHelper::execute_nonsequence_split(
     case SplitType::SEQUENTIAL:
       this->debug() << "Exploring sequential nonsequence split";
       return sequence_cost<T>(
-          this->graph_cost<T>(first, source, sink, resources, false, include_input_xfer_cost),
-          this->graph_cost<T>(second, source, sink, resources, false, include_input_xfer_cost)
+          this->graph_cost<T>(first, source, sink, resources, false),
+          this->graph_cost<T>(second, source, sink, resources, false)
       );
     case SplitType::VERTICAL:
     {
@@ -398,8 +393,8 @@ T SearchHelper::execute_nonsequence_split(
       secondRes.start_gpu_id = resources.start_gpu_id + resources.all_gpus_per_node * split.param;
 
       return parallel_cost<T>(
-          this->graph_cost<T>(first, source, sink, firstRes, false, include_input_xfer_cost),
-          this->graph_cost<T>(second, source, sink, secondRes, false, include_input_xfer_cost)
+          this->graph_cost<T>(first, source, sink, firstRes, false),
+          this->graph_cost<T>(second, source, sink, secondRes, false)
       );
     }
     case SplitType::HORIZONTAL: 
@@ -412,8 +407,8 @@ T SearchHelper::execute_nonsequence_split(
       secondRes.start_gpu_id = resources.start_gpu_id + split.param;
 
       return parallel_cost<T>(
-          this->graph_cost<T>(first, source, sink, firstRes, false, include_input_xfer_cost),
-          this->graph_cost<T>(second, source, sink, secondRes, false, include_input_xfer_cost)
+          this->graph_cost<T>(first, source, sink, firstRes, false),
+          this->graph_cost<T>(second, source, sink, secondRes, false)
       );
     }
     default:
@@ -455,8 +450,7 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
   Graph const *g,
   NodeAssignment const &source,
   NodeAssignment const &sink,
-  MachineResource const &resources,
-  bool include_input_xfer_cost
+  MachineResource const &resources
 ) const {
   std::unique_ptr<Graph> first_graph;
   std::unique_ptr<Graph> second_graph;
@@ -479,8 +473,7 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
       second_graph, 
       source, 
       sink, 
-      resources, 
-      include_input_xfer_cost,
+      resources,
       best_split
   );
   for (NonsequenceSplit const &split : potential_splits) {
@@ -490,7 +483,6 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
         source, 
         sink,
         resources,
-        include_input_xfer_cost,
         split
     );
     this->debug() << "Found cost: " << cost;
@@ -518,7 +510,6 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
       source, 
       sink,
       resources,
-      include_input_xfer_cost,
       best_split
   );
 
@@ -584,15 +575,21 @@ void Graph::remove_edge(const Edge& e)
 bool Graph::has_edge(const Node& srcOp,
                      const Node& dstOp,
                      int srcIdx,
-                     int dstIdx)
+                     int dstIdx) const
 {
   Edge e(srcOp, dstOp, srcIdx, dstIdx);
-  return (inEdges[dstOp].find(e) != inEdges[dstOp].end());
+  return this->has_edge(e);
 }
 
-bool Graph::has_edge(const Edge& e)
+bool Graph::has_edge(const Edge& e) const
 {
-  return (inEdges[e.dstOp].find(e) != inEdges[e.dstOp].end());
+  if (inEdges.find(e.dstOp) == inEdges.end()) {
+    return false;
+  }
+  if (inEdges.at(e.dstOp).find(e) == inEdges.at(e.dstOp).end()) {
+    return false;
+  }
+  return true;
 }
 
 void Graph::print(void) const
@@ -700,7 +697,13 @@ bool Graph::check_correctness(void)
   return okay;
 }
 
-std::vector<MachineView> SearchHelper::get_valid_machine_views(const Op* op, const MachineResource& resource) const
+std::vector<MachineView> SearchHelper::get_valid_machine_views(Node const &node, const MachineResource& resource, bool log) const
+{
+  log_dp.info() << "Getting valid machine views for " << node.to_string();
+  return this->get_valid_machine_views(node.ptr, resource, log);
+}
+
+std::vector<MachineView> SearchHelper::get_valid_machine_views(const Op* op, const MachineResource& resource, bool log) const
 {
   std::vector<MachineView> const *cached_op_views = NULL;
   std::vector<MachineView> valid_views;
@@ -710,17 +713,53 @@ std::vector<MachineView> SearchHelper::get_valid_machine_views(const Op* op, con
     cached_op_views = iter->second.get();
   } else {
     auto to_cache = std::unique_ptr<std::vector<MachineView>>(new std::vector<MachineView>());
+    if (log) 
+      log_dp.info() << "Considering a total of " << this->model->all_valid_views.size() << " potential valid views";
     for (size_t i = 0; i < this->model->all_valid_views.size(); i++) {
       bool valid = true;
-      for (int j = 0; j < op->numOutputs; j++)
-        if (!op->outputs[j]->is_valid_machine_view(this->model->all_valid_views[i]))
+      for (int j = 0; j < op->numOutputs; j++) {
+        if (!op->outputs[j]->is_valid_machine_view(this->model->all_valid_views[i])) {
           valid = false;
-      if (valid)
+          {
+            MachineView const &view = this->model->all_valid_views[i];
+            std::ostringstream oss;
+            oss << "[" << view.ndims << "](";
+            for (int i = 0; i < view.ndims; i++) {
+              oss << view.dim[i] << "/" << view.stride[i];
+              if (i != view.ndims - 1) {
+                oss << " ";
+              }
+            }
+            oss << ")";
+            if (log)
+              log_dp.info() << "Rejecting machine view: " << oss.str();
+          }
+          break; 
+        }
+      }
+      if (valid) {
+        {
+          MachineView const &view = this->model->all_valid_views[i];
+          std::ostringstream oss;
+          oss << "[" << view.ndims << "](";
+          for (int i = 0; i < view.ndims; i++) {
+            oss << view.dim[i] << "/" << view.stride[i];
+            if (i != view.ndims - 1) {
+              oss << " ";
+            }
+          }
+          oss << ")";
+          if (log)
+            log_dp.info() << "Accepting machine view: " << oss.str();
+        }
         to_cache->push_back(this->model->all_valid_views[i]);
+      }
     }
     cached_operator_valid_views[op->op_guid] = std::move(to_cache);
     cached_op_views = cached_operator_valid_views.at(op->op_guid).get();
   }
+  if (log)
+    log_dp.info() << "Found " << cached_op_views->size() << " cached op views";
   for (size_t i = 0; i < cached_op_views->size(); i++) {
     MachineView view = (*cached_op_views)[i];
     if (view.device_type == MachineView::GPU)
@@ -1011,8 +1050,7 @@ float FFModel::graph_cost(const Graph* graph,
       { source_node, source_view },
       { sink_node, sink_view },
       resources,
-      include_sink_compute_time,
-      false
+      include_sink_compute_time
   );
 }
 
@@ -1031,8 +1069,7 @@ void FFModel::construct_optimal_view(const Graph *graph,
       { source_node, source_view },
       { sink_node, sink_view },
       resources,
-      include_sink_compute_time,
-      false
+      include_sink_compute_time
   );
 
   optimal_views.insert(result.views.begin(), result.views.end());
@@ -1157,7 +1194,7 @@ GraphCostResult SearchHelper::empty<GraphCostResult>() const {
 
 template <typename T>
 T SearchHelper::estimate_xfer_cost(
-    Graph const *graph, NodeAssignment const &source, NodeAssignment const &sink, bool include_input_xfer_cost) const {
+    Graph const *graph, NodeAssignment const &source, NodeAssignment const &sink) const {
   T result = this->empty<T>();
 
   if (source.node != Node::INVALID_NODE) {
@@ -1168,7 +1205,7 @@ T SearchHelper::estimate_xfer_cost(
       assert(sink.node.ptr->inputs[it2.dstIdx]->is_valid_machine_view(source.view));
 
       float estimated_xfer_cost = this->model->simulator->estimate_xfer_cost(
-          sink.node.ptr, it2.srcIdx, source.view, sink.view, include_input_xfer_cost);
+          sink.node.ptr, it2.srcIdx, source.view, sink.view);
       //printf("Estimated xfer cost from %s to %s: %fms\n", source.node.ptr->name, sink.node.ptr->name, estimated_xfer_cost);
       op_cost += estimated_xfer_cost;
     }
@@ -1194,8 +1231,7 @@ T SearchHelper::graph_cost(const Graph* graph,
                           const NodeAssignment& source,
                           const NodeAssignment& sink,
                           const MachineResource& resources,
-                          bool include_sink_compute_time,
-                          bool include_input_xfer_cost) const
+                          bool include_sink_compute_time) const
 {
   this->depth++;
   this->debug() << "sink(" << sink.node.guid << ") "
@@ -1211,7 +1247,7 @@ T SearchHelper::graph_cost(const Graph* graph,
   if (source.node != Node::INVALID_NODE)
     assert(graph->outEdges.find(source.node) != graph->outEdges.end());
 
-  size_t hash = dp_state_hash(graph, sink.node, sink.view, source.node, source.view, resources, include_input_xfer_cost);
+  size_t hash = dp_state_hash(graph, sink.node, sink.view, source.node, source.view, resources);
   log_dp.spew("hash = %zu", hash);
 
   T result;
@@ -1222,7 +1258,7 @@ T SearchHelper::graph_cost(const Graph* graph,
     result = from_cache.second;
   } else {
     if (graph->inEdges.size() <= 2) {
-      result = this->estimate_xfer_cost<T>(graph, source, sink, include_sink_compute_time);
+      result = this->estimate_xfer_cost<T>(graph, source, sink);
     } else {
       Node bn_node = graph->find_bottleneck_node(sink.node, source.node);
       if (bn_node != Node::INVALID_NODE) {
@@ -1234,8 +1270,7 @@ T SearchHelper::graph_cost(const Graph* graph,
           bn_node,
           { source.node, source.view },
           { sink.node, sink.view },
-          resources,
-          include_input_xfer_cost
+          resources
         );
       } else {
         // sink node must have multiple branches
@@ -1246,8 +1281,7 @@ T SearchHelper::graph_cost(const Graph* graph,
           graph,
           { source.node, source.view },
           { sink.node, sink.view },
-          resources,
-          include_input_xfer_cost
+          resources
         );
       }
     }
@@ -1266,12 +1300,12 @@ T SearchHelper::graph_cost(const Graph* graph,
   return result;
 }
 
-float Graph::optimal_cost(bool include_input_xfer_cost) const {
-  return this->generic_optimal_cost<float>(include_input_xfer_cost);
+float Graph::optimal_cost() const {
+  return this->generic_optimal_cost<float>();
 }
 
-std::unordered_map<Node, MachineView> Graph::optimal_views(bool include_input_xfer_cost) const {
-  return this->generic_optimal_cost<GraphCostResult>(include_input_xfer_cost).views;
+std::unordered_map<Node, MachineView> Graph::optimal_views() const {
+  return this->generic_optimal_cost<GraphCostResult>().views;
 }
 
 Graph Graph::reduced() const {
@@ -1301,26 +1335,27 @@ MachineResource::MachineResource(FFConfig const &config)
 { }
 
 template <typename T>
-T Graph::generic_optimal_cost(bool include_input_xfer_cost) const
+T Graph::generic_optimal_cost() const
 {
   Graph reduced_graph = this->reduced();
 
   Node sink_node = reduced_graph.find_sink_node();
+  log_dp.info() << "Found sink node: " << sink_node.to_string();
 
   MachineResource resource(model->config);
 
-  std::vector<MachineView> valid_views = search->get_valid_machine_views(sink_node.ptr, resource);
+  std::vector<MachineView> valid_views = search->get_valid_machine_views(sink_node, resource, true);
 
   T optimal = search->infinity<T>();
 
+  log_dp.info() << "Exploring " << valid_views.size() << " valid views";
   for (MachineView const &sink_view : valid_views) {
     T new_cost = search->graph_cost<T>(
         &reduced_graph,
         {Node::INVALID_NODE, MachineView::NO_VIEW},
         {sink_node, sink_view},
         resource,
-        true,
-        include_input_xfer_cost
+        true
     );
     if (new_cost < optimal) {
       optimal = new_cost;
@@ -1354,15 +1389,13 @@ size_t dp_state_hash(const Graph* graph,
                      const MachineView& sink_view,
                      const Node& source_node,
                      const MachineView& source_view,
-                     const MachineResource& resource,
-                     bool include_input_xfer_cost)
+                     const MachineResource& resource)
 {
   size_t key = graph->hash();
   hash_combine(key, sink_node.ptr);
   hash_combine(key, sink_view.hash());
   hash_combine(key, source_node.ptr);
   hash_combine(key, resource.hash());
-  hash_combine(key, include_input_xfer_cost);
   return key;
 }
 
@@ -1377,6 +1410,9 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
   if (model->config.search_num_workers.has_value()) {
     model->config.workersPerNode = model->config.search_num_workers.value();
   }
+  model->all_valid_views.clear();
+  model->register_all_machine_views(
+      model->config.numNodes, model->config.workersPerNode, model->config.cpusPerNode, model->all_valid_views);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
          .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
   MachineModel *machine;

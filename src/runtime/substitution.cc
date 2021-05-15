@@ -86,6 +86,7 @@ GraphXfer* leading_relu_branch_partition(FFModel* model,
                                         int parallel_dim, 
                                         int num_parts, 
                                         int num_partitions);
+GraphXfer* create_linear_relu_merge(FFModel* model, int num_dims, bool use_bias);
 
 PMConstraint::PMConstraint(Compare c, PMParameter p, int v)
 : comp(c), para(p), value(v) {}
@@ -202,7 +203,7 @@ bool GraphXfer::map_output(const TensorX& src, const TensorX& dst)
   return true;
 }
 
-bool GraphXfer::can_match(OpX* srcOp, const Node& op, Graph* graph)
+bool GraphXfer::can_match(OpX* srcOp, const Node& op, Graph const *graph)
 {
   if (srcOp->type != op.ptr->op_type) return false;
   // check num input tensors
@@ -345,7 +346,7 @@ bool GraphXfer::can_match(OpX* srcOp, const Node& op, Graph* graph)
   return true;
 }
 
-void GraphXfer::match(OpX* srcOp, const Node& op, Graph* graph)
+void GraphXfer::match(OpX* srcOp, const Node& op, Graph const *graph) 
 {
   for (size_t i = 0; i < srcOp->inputs.size(); i++) {
     TensorX in = srcOp->inputs[i];
@@ -365,7 +366,7 @@ void GraphXfer::match(OpX* srcOp, const Node& op, Graph* graph)
   mappedOps[op] = srcOp;
 }
 
-void GraphXfer::unmatch(OpX* srcOp, const Node& op, Graph* graph)
+void GraphXfer::unmatch(OpX* srcOp, const Node& op, Graph const *graph)
 {
   for (size_t i = 0; i < srcOp->inputs.size(); i++) {
     TensorX in = srcOp->inputs[i];
@@ -382,26 +383,97 @@ void GraphXfer::unmatch(OpX* srcOp, const Node& op, Graph* graph)
   srcOp->mapOp.ptr = NULL;
 }
 
-template <bool include_input_xfer_cost>
-void GraphXfer::run(int depth, Graph* graph,
-                    std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare<include_input_xfer_cost>>& candidates,
-                    std::unordered_set<size_t>& hashmap, float threshold, int maxNumOps, int& num_matches_found, int& num_matches_rejected)
-{
-  //printf("run: depth(%d) srcOps.size(%zu) graph.size(%zu) candidates(%zu)\n", depth, srcOps.size(), graph->inEdges.size(), candidates.size());
+GraphXferMatch::GraphXferMatch(GraphXfer const *xfer) 
+  : xfer(xfer) 
+{ }
+
+void GraphXferMatch::add_mapping(Node const &node, OpX* opx) {
+  this->nodeToOpX[node] = opx;
+  this->opXToNode[opx] = node;
+}
+
+void GraphXferMatch::add_mapping(OpX* opx, Node const &node) {
+  this->add_mapping(node, opx);
+}
+
+void GraphXferMatch::add_output_mapping(TensorX const &src, TensorX const &dst) {
+  this->mappedOutputs[src] = dst;
+}
+
+OpX* GraphXferMatch::at(Node const &n) const {
+  return this->nodeToOpX.at(n);
+}
+
+Node GraphXferMatch::at(OpX *opx) const {
+  return this->opXToNode.at(opx);
+}
+
+void GraphXferMatch::set_graph(Graph const *g) {
+  this->graph_hash = g->hash();
+}
+
+bool GraphXferMatch::containsNode(Graph const *g, Node const &n) const {
+  assert (g->hash() == this->graph_hash);
+
+  return this->nodeToOpX.find(n) != this->nodeToOpX.end();
+}
+
+bool GraphXferMatch::containsEdge(Graph const *g, Edge const &e) const {
+  assert (g->hash() == this->graph_hash);
+
+  bool contains_src = this->containsNode(g, e.srcOp);
+  bool contains_dst = this->containsNode(g, e.dstOp);
+
+  return contains_src && contains_dst;
+}
+
+GraphXfer const *GraphXferMatch::get_xfer() const {
+  return this->xfer;
+}
+
+std::unordered_set<Node> GraphXferMatch::get_nodes() const {
+  std::unordered_set<Node> nodes;
+  for (auto const &kv : nodeToOpX) {
+    nodes.insert(kv.first);
+  }
+
+  return nodes;
+}
+
+GraphXferMatch GraphXfer::get_match_record(Graph const *g) const {
+  GraphXferMatch match(this);
+
+  for (auto const &kv : this->mappedOps) {
+    match.add_mapping(kv.first, kv.second);
+  }
+
+  for (auto const &kv : this->mappedOutputs) {
+    match.add_output_mapping(kv.first, kv.second);
+  }
+
+  match.set_graph(g);
+
+  return match;
+}
+
+void GraphXfer::find_matches(Graph const *graph, std::vector<GraphXferMatch>& matches) {
+  this->find_matches(0, graph, matches);
+}
+
+void GraphXfer::find_matches(int depth, Graph const *graph, std::vector<GraphXferMatch>& matches) {
   if (depth >= (int)srcOps.size()) {
     // Create dst operators
     bool pass = true;
-    std::vector<OpX*>::const_iterator dstIt;
-    for (dstIt = dstOps.begin(); dstIt != dstOps.end(); dstIt++)
+    for (OpX *dstOp : this->dstOps) {
       if (pass) {
-        OpX* dstOp = *dstIt;
-        pass = (pass & create_new_operator(dstOp, dstOp->mapOp));
+        pass &= create_new_operator(dstOp, dstOp->mapOp);
       }
+    }
     if (!pass) return;
     // Check that output tensors with external edges are mapped
     for (const auto& opIt : mappedOps) {
-      const auto& list = graph->outEdges[opIt.first];
-      for (const auto& e : list)
+      const auto& list = graph->outEdges.at(opIt.first);
+      for (const auto& e : list) {
         if (mappedOps.find(e.dstOp) == mappedOps.end()) {
           // dstOp is external, (srcOp, srcIdx) must be in mappedOutputs
           TensorX srcTen;
@@ -412,11 +484,12 @@ void GraphXfer::run(int depth, Graph* graph,
             return;
           }
         }
+      }
     }
     // Generate a new graph by applying xfer rule
-    log_xfers.spew() << "Found a match for xfer: " << this->get_name();
-    num_matches_found++;
-    Graph* newGraph = this->create_new_graph(graph);
+    SimplificationSettings settings; // leave everything disabeld since we don't care about cost
+    Graph* newGraph = this->create_new_graph(graph, settings);
+
     // Check that the new graph should not have any loop
     if (newGraph->has_loop()) {
       printf("Found a new graph with LOOP!!!!\n");
@@ -426,7 +499,69 @@ void GraphXfer::run(int depth, Graph* graph,
     }
     // TODO: remove me for better performance
     assert(newGraph->check_correctness());
-    if (newGraph->optimal_cost(include_input_xfer_cost) < threshold && (int)newGraph->inEdges.size() < maxNumOps) {
+    matches.push_back(this->get_match_record(graph));
+  } else {
+    OpX* srcOp = srcOps[depth];
+    for (const auto& it : graph->inEdges) {
+      //printf("can_match(%d)\n", can_match(srcOp, it->first, graph));
+      if (can_match(srcOp, it.first, graph)
+      && (mappedOps.find(it.first) == mappedOps.end())) {
+        Node op = it.first;
+        // Check mapOutput
+        this->match(srcOp, op, graph);
+        this->find_matches(depth + 1, graph, matches);
+        this->unmatch(srcOp, op, graph);
+      }
+    }
+  }
+}
+
+void GraphXfer::run(int depth, Graph* graph,
+                    std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>& candidates,
+                    std::unordered_set<size_t>& hashmap, float threshold, int maxNumOps, 
+                    SimplificationSettings const &simplification_settings,
+                    int& num_matches_found, int& num_matches_rejected)
+{
+  //printf("run: depth(%d) srcOps.size(%zu) graph.size(%zu) candidates(%zu)\n", depth, srcOps.size(), graph->inEdges.size(), candidates.size());
+  if (depth >= (int)srcOps.size()) {
+    // Create dst operators
+    bool pass = true;
+    for (OpX *dstOp : this->dstOps) {
+      if (pass) {
+        pass &= create_new_operator(dstOp, dstOp->mapOp);
+      }
+    }
+    if (!pass) return;
+    // Check that output tensors with external edges are mapped
+    for (const auto& opIt : mappedOps) {
+      const auto& list = graph->outEdges[opIt.first];
+      for (const auto& e : list) {
+        if (mappedOps.find(e.dstOp) == mappedOps.end()) {
+          // dstOp is external, (srcOp, srcIdx) must be in mappedOutputs
+          TensorX srcTen;
+          srcTen.op = opIt.second;
+          srcTen.idx = e.srcIdx;
+          if (mappedOutputs.find(srcTen) == mappedOutputs.end()) {
+            pass = false;
+            return;
+          }
+        }
+      }
+    }
+    // Generate a new graph by applying xfer rule
+    log_xfers.spew() << "Found a match for xfer: " << this->get_name();
+    num_matches_found++;
+    Graph* newGraph = this->create_new_graph(graph, simplification_settings);
+    // Check that the new graph should not have any loop
+    if (newGraph->has_loop()) {
+      printf("Found a new graph with LOOP!!!!\n");
+      newGraph->print();
+      delete newGraph;
+      return;
+    }
+    // TODO: remove me for better performance
+    assert(newGraph->check_correctness());
+    if (newGraph->optimal_cost() < threshold && (int)newGraph->inEdges.size() < maxNumOps) {
       if (hashmap.find(newGraph->hash()) == hashmap.end()) {
         hashmap.insert(newGraph->hash());
         candidates.push(newGraph);
@@ -444,7 +579,7 @@ void GraphXfer::run(int depth, Graph* graph,
         Node op = it.first;
         // Check mapOutput
         match(srcOp, op, graph);
-        run(depth + 1, graph, candidates, hashmap, threshold, maxNumOps, num_matches_found, num_matches_rejected);
+        run(depth + 1, graph, candidates, hashmap, threshold, maxNumOps, simplification_settings, num_matches_found, num_matches_rejected);
         unmatch(srcOp, op, graph);
       }
     }
@@ -545,7 +680,104 @@ std::unique_ptr<Graph> Graph::with_output_tensor_reshaped_to(TensorShape const &
 /*   } */
 /* } */
 
-Graph* GraphXfer::create_new_graph(Graph* graph)
+void Graph::simplify(SimplificationSettings const &settings) {
+  // Simplify the graph by eliminating reverse parallel ops
+  // and fusing multiple parallel ops
+  // old graph: e1->n1->e2->n2->en
+  // new graph: e1->new_node->en
+  // TODO: temporarily disabled graph simplification
+  if (settings.fuse_parallel_ops) {
+    bool simplify = true;
+    while (simplify) {
+      simplify = false;
+      for (const auto& it : this->inEdges) {
+        if (it.first.ptr == NULL) continue;
+        if (it.first.ptr->is_parallel_op()) {
+          Node n2 = it.first;
+          assert(it.second.size() == 1);
+          Edge e2 = *it.second.begin();
+          Node n1 = e2.srcOp;
+          // Check that n1 is a parallel op
+          // Check that n1 must have a single out edge
+          if (n1.ptr->is_parallel_op() && this->outEdges.find(n1)->second.size() == 1) {
+            // merge n1 and n2
+            std::vector<ParallelOpInfo> parallel_ops;
+            ((ParallelOp*)n1.ptr)->append_parallel_op_info(parallel_ops);
+            ((ParallelOp*)n2.ptr)->append_parallel_op_info(parallel_ops);
+            Node new_node = model->get_or_create_fused_parallel_node(n1.ptr->inputs[0], parallel_ops);
+            const auto& inList = this->inEdges.find(n1)->second;
+            assert(inList.size() == 1);
+            Edge e1 = *inList.begin();
+            // Update graph by adding edges
+            this->add_edge(e1.srcOp, new_node, e1.srcIdx, 0);
+            this->remove_edge(e1);
+            this->remove_edge(e2);
+            // make a copy of outList
+            if (this->outEdges.find(n2) != this->outEdges.end()) {
+              const auto outList = this->outEdges.find(n2)->second;
+              for (const auto& e : outList) {
+                this->add_edge(new_node, e.dstOp, 0, e.dstIdx);
+                this->remove_edge(e);
+              }
+            }
+            simplify = true;
+          }
+        }
+        if (simplify) break;
+      }
+    }
+  }
+
+  if (settings.remove_trailing_parallel_ops) {
+    // Remove final parallel ops
+    std::vector<Node> candidates;
+    for (const auto& it : this->outEdges) {
+      if (it.second.size() == 0 && it.first.ptr->is_parallel_op()) {
+        candidates.push_back(it.first);
+      }
+    }
+    size_t index = 0;
+    while (index < candidates.size()) {
+      Node parallel_op = candidates[index++];
+      const auto& inList = this->inEdges.find(parallel_op)->second;
+      assert(inList.size() == 1);
+      Edge e = *inList.begin();
+      this->remove_edge(e);
+      if (this->outEdges.find(e.srcOp)->second.size() == 0 && e.srcOp.ptr->is_parallel_op()) {
+        candidates.push_back(e.srcOp);
+      }
+    }
+  }
+
+  if (settings.remove_noops) {
+    // Remove NoOps
+    std::vector<Node> noop_nodes;
+    for (const auto& it : this->inEdges) {
+      if (it.first.ptr == NULL) continue;
+      if (it.first.ptr->op_type == OP_NOOP) {
+        noop_nodes.push_back(it.first);
+      }
+    }
+    size_t index = 0;
+    while (index < noop_nodes.size()) {
+      Node noop = noop_nodes[index++];
+      const auto& inList = this->inEdges.find(noop)->second;
+      assert(inList.size() == 1);
+      Edge in_edge = *inList.begin();
+      // make a copy of outList
+      if (this->outEdges.find(noop) != this->outEdges.end()) {
+        const auto outList = this->outEdges.find(noop)->second;
+        for (const auto& e : outList) {
+          this->add_edge(in_edge.srcOp, e.dstOp, in_edge.srcIdx, e.dstIdx);
+          this->remove_edge(e);
+        }
+      }
+      this->remove_edge(in_edge);
+    }
+  }
+}
+
+Graph* GraphXfer::create_new_graph(Graph const *graph, SimplificationSettings const &simplification_settings)
 {
   Graph* newGraph = new Graph(model);
   // Step 1: map dst ops
@@ -587,92 +819,8 @@ Graph* GraphXfer::create_new_graph(Graph* graph)
         newGraph->add_edge(srcOp->mapOp, dstOp->mapOp, srcIdx, i);
       }
   }
-  // Simplify the graph by eliminating reverse parallel ops
-  // and fusing multiple parallel ops
-  // old graph: e1->n1->e2->n2->en
-  // new graph: e1->new_node->en
-  // TODO: temporarily disabled graph simplification
-  bool simplify = true;
-  while (simplify) {
-    simplify = false;
-    for (const auto& it : newGraph->inEdges) {
-      if (it.first.ptr == NULL) continue;
-      if (it.first.ptr->is_parallel_op()) {
-        Node n2 = it.first;
-        assert(it.second.size() == 1);
-        Edge e2 = *it.second.begin();
-        Node n1 = e2.srcOp;
-        // Check that n1 is a parallel op
-        // Check that n1 must have a single out edge
-        if (n1.ptr->is_parallel_op() && newGraph->outEdges.find(n1)->second.size() == 1) {
-          // merge n1 and n2
-          std::vector<ParallelOpInfo> parallel_ops;
-          ((ParallelOp*)n1.ptr)->append_parallel_op_info(parallel_ops);
-          ((ParallelOp*)n2.ptr)->append_parallel_op_info(parallel_ops);
-          Node new_node = model->get_or_create_fused_parallel_node(n1.ptr->inputs[0], parallel_ops);
-          const auto& inList = newGraph->inEdges.find(n1)->second;
-          assert(inList.size() == 1);
-          Edge e1 = *inList.begin();
-          // Update graph by adding edges
-          newGraph->add_edge(e1.srcOp, new_node, e1.srcIdx, 0);
-          newGraph->remove_edge(e1);
-          newGraph->remove_edge(e2);
-          // make a copy of outList
-          if (newGraph->outEdges.find(n2) != newGraph->outEdges.end()) {
-            const auto outList = newGraph->outEdges.find(n2)->second;
-            for (const auto& e : outList) {
-              newGraph->add_edge(new_node, e.dstOp, 0, e.dstIdx);
-              newGraph->remove_edge(e);
-            }
-          }
-          simplify = true;
-        }
-      }
-      if (simplify) break;
-    }
-  }
-  // Remove final parallel ops
-  std::vector<Node> candidates;
-  for (const auto& it : newGraph->outEdges) {
-    if (it.second.size() == 0 && it.first.ptr->is_parallel_op()) {
-      candidates.push_back(it.first);
-    }
-  }
-  size_t index = 0;
-  while (index < candidates.size()) {
-    Node parallel_op = candidates[index++];
-    const auto& inList = newGraph->inEdges.find(parallel_op)->second;
-    assert(inList.size() == 1);
-    Edge e = *inList.begin();
-    newGraph->remove_edge(e);
-    if (newGraph->outEdges.find(e.srcOp)->second.size() == 0 && e.srcOp.ptr->is_parallel_op()) {
-      candidates.push_back(e.srcOp);
-    }
-  }
-  // Remove NoOps
-  std::vector<Node> noop_nodes;
-  for (const auto& it : newGraph->inEdges) {
-    if (it.first.ptr == NULL) continue;
-    if (it.first.ptr->op_type == OP_NOOP) {
-      noop_nodes.push_back(it.first);
-    }
-  }
-  index = 0;
-  while (index < noop_nodes.size()) {
-    Node noop = noop_nodes[index++];
-    const auto& inList = newGraph->inEdges.find(noop)->second;
-    assert(inList.size() == 1);
-    Edge in_edge = *inList.begin();
-    // make a copy of outList
-    if (newGraph->outEdges.find(noop) != newGraph->outEdges.end()) {
-      const auto outList = newGraph->outEdges.find(noop)->second;
-      for (const auto& e : outList) {
-        newGraph->add_edge(in_edge.srcOp, e.dstOp, in_edge.srcIdx, e.dstIdx);
-        newGraph->remove_edge(e);
-      }
-    }
-    newGraph->remove_edge(in_edge);
-  }
+  newGraph->simplify(simplification_settings);
+
   return newGraph;
 }
 
@@ -871,6 +1019,11 @@ OpX* GraphXfer::create_element_unary(const TensorX& input,
   return eu;
 }
 
+OpX* GraphXfer::create_relu(const TensorX& input) 
+{
+  return this->create_element_unary(input, OP_RELU);
+}
+
 OpX* GraphXfer::create_element_binary(const TensorX& input1,
                                       const TensorX& input2,
                                       OperatorType op_type)
@@ -885,6 +1038,7 @@ OpX* GraphXfer::create_linear(const TensorX& input,
                               ActiMode acti_mode,
                               bool use_bias)
 {
+  // TODO FIXME @lockshaw @zhihao use_bias is completely unused
   OpX* li = new OpX(OP_LINEAR, 1, 1, input);
   li->matchOpX = _matchOpX;
   //li->add_pm_constraint(COMPARE_EQ, PM_OUTPUT_CHANNELS, out_channels);
@@ -1165,6 +1319,10 @@ void GraphSearchHelper::load_graph_substitutions(std::vector<GraphXfer*> &xfers)
     log_xfers.debug() << oss.str();
   }
 
+  for (int num_dims = 3; num_dims <=4; num_dims++) {
+    xfers.push_back(create_linear_relu_merge(this->model, num_dims, true));
+    xfers.push_back(create_linear_relu_merge(this->model, num_dims, false));
+  }
   for (const int degree : all_parallel_degrees) {
     create_mapping_xfers<Conv2D>(this->model, degree, xfers);
     create_mapping_xfers<Pool2D>(this->model, degree, xfers);
@@ -1248,44 +1406,150 @@ void GraphSearchHelper::graph_optimize(size_t budget,
   std::exit(1);
 }
 
-std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *graph, bool include_input_xfer_cost) {
-  if (include_input_xfer_cost) {
-    return this->base_optimize<true>(graph);
-  } else {
-    return this->base_optimize<false>(graph);
-  }
-}
-
-static std::string graph_log_representation(Graph const *graph) {
+static void graph_log_representation(Graph const *graph, RecursiveLogger &logger) {
   using ::flexflow::graph::topo_sort;
 
   std::vector<Node> topo_sorted;
   topo_sort(*graph, &topo_sorted);
   std::ostringstream oss;
   for (Node const &n : topo_sorted) {
-    oss << n.to_string() << " ";
+    logger.spew() << n.to_string();
   }
-  return oss.str();
 }
 
-template <bool include_input_xfer_cost>
-std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph) {
+void GraphSearchHelper::find_rewrite_matches(Graph const *graph, std::vector<GraphXferMatch>& matches) const {
+  std::vector<GraphXfer*> xfers;
+  this->load_graph_substitutions(xfers);
+
+  for (GraphXfer *xfer : xfers) {
+    xfer->find_matches(graph, matches);
+  }
+}
+
+tl::optional<Node> GraphSearchHelper::find_split_node(Graph const *graph, int base_optimize_threshold) const {
+  using ::flexflow::graph::get_edges;
+  using ::flexflow::graph::nodes;
+  using ::flexflow::graph::post_dominators;
+
+  this->logger->enter();
+
+  int graph_size = nodes(*graph).size();
+  this->logger->debug() << "Finding split node for graph (size " << graph_size 
+                        << ") with threshold " << base_optimize_threshold;
+
+  if (graph_size <= base_optimize_threshold) {
+    this->logger->debug() << "Graph size underneath threshold. Returning nullopt";
+    return tl::nullopt;
+  }
+
+  std::vector<Edge> edges = get_edges(*graph);
+  std::unordered_map<Edge, int>  edge_scores;
+
+  for (Edge const &e : edges) {
+    edge_scores[e] = 0;
+  }
+
+  std::vector<GraphXferMatch> matches;
+  this->find_rewrite_matches(graph, matches);
+  this->logger->debug() << "Found " << matches.size() << " rewrite matches";
+  this->logger->enter();
+  for (GraphXferMatch const &match : matches) {
+    auto msg = this->logger->spew();
+    msg << match.get_xfer()->get_name() << " : ";
+    std::unordered_set<Node> nodes = match.get_nodes();
+    for (Node const &node : nodes) { 
+      msg << node.to_string() << " ";
+    }
+  }
+  this->logger->leave();
+
+  for (GraphXferMatch const &match : matches) { 
+    for (Edge const &e : edges) {
+      if (match.containsEdge(graph, e)) {
+        edge_scores[e]++;
+      }
+    }
+  }
+
+  this->logger->debug() << "Edge weights: ";
+  this->logger->enter();
+  for (Edge const &e : edges) {
+    this->logger->debug() << e.srcOp.to_string() << "/" << e.srcIdx << " -> " 
+                          << e.dstOp.to_string() << "/" << e.dstIdx << " : " 
+                          << edge_scores.at(e);
+  }
+  this->logger->leave();
+
+  std::unordered_map<Node, std::unordered_set<Node>> post_dominator_map = post_dominators(*graph);
+  Node source_node = graph->find_source_node();
+  std::unordered_set<Node> possible_bottlenecks = post_dominator_map.at(source_node);
+  Node sink_node = graph->find_sink_node();
+
+  int best_weight = 0;
+  tl::optional<Node> best = tl::nullopt;
+  int best_size = graph_size;
+  this->logger->enter();
+  for (Node const &possible_bottleneck : possible_bottlenecks) {
+    if (possible_bottleneck == sink_node || possible_bottleneck == source_node) {
+      continue;
+    }
+
+    int weight = 0; 
+    for (Edge const &e : graph->outEdges.at(possible_bottleneck)) {
+      weight += edge_scores.at(e);
+    }
+    this->logger->debug() << "Potential bottleneck node " << possible_bottleneck.to_string() << " has weight " << weight;
+    if (weight < best_weight) {
+      best_weight = weight;
+      best = possible_bottleneck;
+    } else if (weight == best_weight) {
+      // break ties by trying to choosing the split that produces the pre_graph with size closest to the threshold, 
+      // favoring everything with smaller size over everything with larger size
+      std::unique_ptr<Graph> pre_graph, post_graph;
+      std::tie(pre_graph, post_graph) = graph->split_at_node(possible_bottleneck);
+      int current_size = nodes(*pre_graph).size();
+
+      bool best_is_under = best_size <= base_optimize_threshold;
+      bool current_is_under = current_size <= base_optimize_threshold;
+
+      bool condition1 = current_is_under && !best_is_under;
+      bool condition2 = current_is_under && best_is_under && current_size > best_size;
+      bool condition3 = !current_is_under && !best_is_under && current_size < best_size;
+
+      if (condition1 || condition2 || condition3) {
+        best_weight = weight;
+        best = possible_bottleneck;
+        best_size = current_size;
+      }
+    }
+  }
+  this->logger->leave();
+  this->logger->leave();
+
+  return best;
+}
+
+std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph, SimplificationSettings const &simplification_settings) {
   // Construct graph substitutions
   this->logger->enter();
 
-  this->logger->debug() << "Optimizing base graph: " << graph_log_representation(r_graph);
+  this->logger->debug() << "Optimizing base graph: ";
+  this->logger->enter();
+  graph_log_representation(r_graph, *this->logger);
+  this->logger->leave();
+  this->logger->debug() << "Starting cost: " << r_graph->optimal_cost();
 
   std::vector<GraphXfer*> xfers;
   this->load_graph_substitutions(xfers);
 
   Graph *graph = new Graph(*r_graph);
 
-  std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare<include_input_xfer_cost>> candidates;
+  std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
   std::unordered_set<size_t> hashmap;
   candidates.push(graph);
   hashmap.insert(graph->hash());
   Graph *best_graph = new Graph(*graph);
-  float best_cost = best_graph->optimal_cost(include_input_xfer_cost);
+  float best_cost = best_graph->optimal_cost();
   int counter = 0;
   const float alpha = this->model->config.search_alpha;
 
@@ -1297,24 +1561,24 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph) {
 
     Graph *cur_graph = candidates.top();
     candidates.pop();
-    if (cur_graph->optimal_cost(include_input_xfer_cost) < best_graph->optimal_cost(include_input_xfer_cost)) {
+    if (cur_graph->optimal_cost() < best_graph->optimal_cost()) {
       delete best_graph;
       best_graph = cur_graph;
-      best_cost = cur_graph->optimal_cost(include_input_xfer_cost);
-    } else if (cur_graph->optimal_cost(include_input_xfer_cost) > best_cost * alpha) {
+      best_cost = cur_graph->optimal_cost();
+    } else if (cur_graph->optimal_cost() > best_cost * alpha) {
       continue;
     }
 
     log_xfers.info("[%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)",
-           counter, cur_graph->optimal_cost(include_input_xfer_cost), best_cost, candidates.size());
+           counter, cur_graph->optimal_cost(), best_cost, candidates.size());
 
     for (size_t i = 0; i < xfers.size(); i++) {
       int num_matches_found = 0,
           num_matches_rejected = 0;
       log_xfers.debug() << "Considering xfer: " << xfers[i]->get_name();
-      xfers[i]->run(0, cur_graph, candidates, hashmap, best_cost * alpha, 1000, num_matches_found, num_matches_rejected);
+      xfers[i]->run(0, cur_graph, candidates, hashmap, best_cost * alpha, 1000, simplification_settings, num_matches_found, num_matches_rejected);
       log_xfers.debug() << "Rejected [ " << num_matches_rejected << " / " << num_matches_found << " ] matches";
-      std::cout << "." << std::flush;
+      /* std::cout << "." << std::flush; */
     }
     std::cout << std::endl;
     if (best_graph != cur_graph) {
@@ -1322,11 +1586,10 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph) {
     }
   }
 
+  this->logger->debug() << "Optimized cost: " << best_graph->optimal_cost();
   this->logger->leave();
   return std::unique_ptr<Graph>(best_graph);
 }
-template std::unique_ptr<Graph> GraphSearchHelper::base_optimize<true>(Graph const *);
-template std::unique_ptr<Graph> GraphSearchHelper::base_optimize<false>(Graph const *);
 
 std::ostream& operator<<(std::ostream &s, TensorShape const &shape) {
   s << "[ ";
@@ -1378,23 +1641,33 @@ float GraphSearchHelper::sequence_optimize(
     tl::optional<TensorShape> const &output_shape, 
     tl::optional<TensorShape> const &input_shape)
 {
+  /* int starting_depth = this->logger->get_depth(); */
+
   this->logger->enter();
 
   size_t hash = gs_dp_state_hash(graph, sink_node, output_shape, input_shape);
   if (this->cached_optimized_graphs.find(hash) != this->cached_optimized_graphs.end()) {
     this->logger->spew() << "Optimizing graph with " << graph->inEdges.size() << " nodes";
     this->logger->enter();
-    this->logger->spew() << "Nodes: " << graph_log_representation(graph);
+    this->logger->spew() << "Nodes: ";
+    this->logger->enter();
+    graph_log_representation(graph, *this->logger);
+    this->logger->leave();
     float cached_value = this->cached_optimized_graphs.at(hash);
     this->logger->spew() << "Retrived value from cache: " << cached_value;
     this->logger->leave();
     this->logger->leave();
+
+    /* this->logger->check_same_as(starting_depth); */
     return cached_value;
   }
 
   this->logger->debug() << "Optimizing graph with " << graph->inEdges.size() << " nodes";
   this->logger->enter();
-  this->logger->spew() << "Nodes: " << graph_log_representation(graph);
+  this->logger->spew() << "Nodes: ";
+  this->logger->enter();
+  graph_log_representation(graph, *this->logger);
+  this->logger->leave();
   this->logger->debug() << "Graph hash: " << std::setw(32) << std::setfill('0') << graph->hash();
   if (input_shape.has_value()) {
     this->logger->debug() << "Input shape: " << input_shape.value();
@@ -1408,10 +1681,11 @@ float GraphSearchHelper::sequence_optimize(
   }
 
   Node source_node = graph->find_source_node();
-  Node bottleneck = graph->find_nontrivial_bottleneck_node(sink_node, source_node);
+  tl::optional<Node> bottleneck = this->find_split_node(graph, this->config.base_optimize_threshold);
+  /* Node bottleneck = graph->find_nontrivial_bottleneck_node(sink_node, source_node); */
 
   float return_value;
-  if (bottleneck == Node::INVALID_NODE) {
+  if (!bottleneck.has_value()) {
     this->logger->debug() << "Applying base case";
     Graph to_optimize(*graph);
     if (input_shape.has_value()) {
@@ -1433,21 +1707,27 @@ float GraphSearchHelper::sequence_optimize(
     }
     if (output_shape.has_value()) {
       to_optimize.reshape_output_tensor(output_shape.value());
+      Node sink_node = to_optimize.find_sink_node();
+      Node noop_node = this->model->get_or_create_noop_node(sink_node.ptr->outputs[0]);
+      to_optimize.add_edge(sink_node, noop_node, 0, 0);
     }
-    std::unique_ptr<Graph> optimized = this->base_optimize(&to_optimize, input_shape.has_value());
-    return_value = optimized->optimal_cost(false);
+    SimplificationSettings settings;
+    settings.fuse_parallel_ops = true;
+    std::unique_ptr<Graph> optimized = this->base_optimize(&to_optimize, settings);
+    this->logger->leave();
+    return_value = optimized->optimal_cost();
   } else {
-    this->logger->debug() << "Applying recursive case on bottleneck " << bottleneck.guid;
+    this->logger->debug() << "Applying recursive case on bottleneck " << bottleneck.value().guid;
     std::unique_ptr<Graph> pre_graph, post_graph;
-    std::tie(pre_graph, post_graph) = graph->split_at_node(bottleneck);
+    std::tie(pre_graph, post_graph) = graph->split_at_node(bottleneck.value());
 
     MachineResource resources(this->model->config);
-    std::vector<MachineView> valid_machine_views = this->model->search->get_valid_machine_views(bottleneck.ptr, resources);
+    std::vector<MachineView> valid_machine_views = this->model->search->get_valid_machine_views(bottleneck.value().ptr, resources);
 
     float best_cost = std::numeric_limits<float>::infinity();
     tl::optional<TensorShape> best_shape = tl::nullopt;
     this->logger->enter();
-    for (TensorShape const &bottleneck_output_shape : this->possible_split_output_tensor_shapes(bottleneck)) {
+    for (TensorShape const &bottleneck_output_shape : this->possible_split_output_tensor_shapes(bottleneck.value())) {
       // TODO @lockshaw we really should create the merged graph here since it's possible though unlikely for there 
       // to be hidden transfer costs between modules due to device assignment changes across the boundaries
       
@@ -1455,12 +1735,12 @@ float GraphSearchHelper::sequence_optimize(
       // and keep processing the pure computation graph
       // The bottleneck node is kept in the postgraph purely as a placeholder and will be replaced with an Input/NoOp
       // sequence before any rewrites are actually performed
-      this->logger->debug() << "Finding cost of pre_graph";
-      float pre_cost = this->sequence_optimize(pre_graph.get(), bottleneck, bottleneck_output_shape, input_shape);
-      this->logger->debug() << "Cost of pre_graph: " << pre_cost;
-      this->logger->debug() << "Finding cost of post_graph";
+      this->logger->debug() << "Finding cost of pre_graph (" << bottleneck_output_shape << ")";
+      float pre_cost = this->sequence_optimize(pre_graph.get(), bottleneck.value(), bottleneck_output_shape, input_shape);
+      this->logger->debug() << "Cost of pre_graph (" << bottleneck_output_shape << "): " << pre_cost;
+      this->logger->debug() << "Finding cost of post_graph (" << bottleneck_output_shape << ")";
       float post_cost = this->sequence_optimize(post_graph.get(), sink_node, output_shape, bottleneck_output_shape);
-      this->logger->debug() << "Cost of post_graph: " << post_cost;
+      this->logger->debug() << "Cost of post_graph (" << bottleneck_output_shape << "): " << post_cost;
       float current_cost = pre_cost + post_cost;
 
       if (current_cost < best_cost) {
@@ -1475,8 +1755,6 @@ float GraphSearchHelper::sequence_optimize(
     } else {
       this->logger->debug() << "No valid intermediate shapes found";
     }
-
-
 
     return_value = best_cost;
   }
@@ -2193,6 +2471,29 @@ GraphXfer* leading_relu_branch_partition(FFModel* model, int parallel_dim, int n
       << "parallel_dim=" << parallel_dim
       << ",num_parts=" << num_parts
       << ",num_partitions=" << num_partitions
+      << "]";
+  subst->name = oss.str();
+
+  return subst;
+}
+
+GraphXfer* create_linear_relu_merge(FFModel* model, int num_dims, bool use_bias) {
+  GraphXfer* subst = new GraphXfer(model);
+  TensorX input = subst->new_tensor();
+  OpX* old_linear = subst->create_linear(input, nullptr, num_dims, AC_MODE_NONE, use_bias);
+  OpX* old_relu = subst->create_relu(old_linear->outputs[0]);
+
+  OpX* new_linear = subst->create_linear(input, old_linear, num_dims, AC_MODE_RELU, use_bias);
+
+  subst->map_output(old_relu->outputs[0], new_linear->outputs[0]);
+  subst->srcOps.push_back(old_linear);
+  subst->srcOps.push_back(old_relu);
+  subst->dstOps.push_back(new_linear);
+
+  std::ostringstream oss;
+  oss << "linear_relu_merge["
+      << "num_dims=" << num_dims
+      << ",use_bias=" << use_bias 
       << "]";
   subst->name = oss.str();
 

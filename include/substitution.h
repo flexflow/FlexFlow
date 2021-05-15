@@ -95,21 +95,45 @@ public:
   std::vector<TNConstraint> tnConstraints;
 };
 
-template <bool include_input_xfer_cost>
 class GraphCompare {
 public:
   bool operator() (Graph* lhs, Graph* rhs) {
-    return lhs->optimal_cost(include_input_xfer_cost) > rhs->optimal_cost(include_input_xfer_cost);
+    return lhs->optimal_cost() > rhs->optimal_cost();
   }
+};
+
+class GraphXferMatch {
+public:
+  GraphXferMatch(GraphXfer const *);
+
+  void add_mapping(Node const &, OpX*);
+  void add_mapping(OpX*, Node const &);
+  void add_input_mapping(int, std::pair<Node, int> const &);
+  void add_output_mapping(TensorX const &, TensorX const &);
+  OpX *at(Node const &) const;
+  Node at(OpX *) const;
+  void set_graph(Graph const *);
+
+  bool containsNode(Graph const *, Node const &) const;
+  bool containsEdge(Graph const *, Edge const &) const;
+
+  GraphXfer const *get_xfer() const;
+  std::unordered_set<Node> get_nodes() const;
+private:
+  std::map<Node, OpX*, NodeCompare> nodeToOpX;
+  std::map<OpX*, Node> opXToNode;
+  std::map<TensorX, TensorX, TensorXCompare> mappedOutputs;
+  size_t graph_hash;
+  GraphXfer const *xfer;
 };
 
 class GraphXfer {
 public:
   GraphXfer(FFModel* _model);
   TensorX new_tensor(void);
-  bool can_match(OpX* srcOp, const Node& op, Graph* graph);
-  void match(OpX* srcOp, const Node& op, Graph* graph);
-  void unmatch(OpX* srcOp, const Node& op, Graph* graph);
+  bool can_match(OpX* srcOp, const Node& op, Graph const *graph);
+  void match(OpX* srcOp, const Node& op, Graph const *graph);
+  void unmatch(OpX* srcOp, const Node& op, Graph const *graph);
   // Compute Ops
   template <typename T> 
   OpX* create_opx(const TensorX& input, const OpX* matchOpX);
@@ -124,6 +148,7 @@ public:
                              OperatorType op_type);
   OpX* create_element_unary(const TensorX& input,
                             OperatorType op_type);
+  OpX* create_relu(const TensorX& input);
   OpX* create_linear(const TensorX& input,
                      const OpX* match_opx,
                      int num_dims,
@@ -155,22 +180,27 @@ public:
                   const TensorX& dst);
 
   
-  Graph* create_new_graph(Graph* graph);
+  Graph* create_new_graph(Graph const *graph, SimplificationSettings const &settings);
   bool create_new_operator(const OpX* opx, Node& op);
 
   std::string get_name() const;
 
-  template <bool include_input_xfer_cost>
   void run(int depth, Graph* graph,
-           std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare<include_input_xfer_cost>>&,
+           std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>&,
            std::unordered_set<size_t>&, float threshold, int maxNumOps, 
+           SimplificationSettings const &simplification_settings,
            int& num_matches_found, int& num_matches_rejected);
+
+  void find_matches(Graph const *, std::vector<GraphXferMatch>& matches);
+  GraphXferMatch get_match_record(Graph const *) const;
+private:
+  void find_matches(int depth, Graph const *graph, std::vector<GraphXferMatch>& matches);
 public:
   FFModel* model;
   tl::optional<std::string> name = tl::nullopt;
   int tensorId;
   std::map<Node, OpX*, NodeCompare> mappedOps;
-  std::multimap<int, std::pair<Node, int> > mappedInputs;
+  std::multimap<int, std::pair<Node, int>> mappedInputs;
   std::map<TensorX, TensorX, TensorXCompare> mappedOutputs;
   std::vector<OpX*> srcOps;
   std::vector<OpX*> dstOps;
@@ -192,12 +222,12 @@ private:
   Graph *construct_graph();
   void subgraph_optimize(Graph *subgraph);
 
-  std::unique_ptr<Graph> base_optimize(Graph const *, bool include_input_xfer_cost);
-
-  template <bool include_input_xfer_cost>
-  std::unique_ptr<Graph> base_optimize(Graph const *);
+  std::unique_ptr<Graph> base_optimize(Graph const *, SimplificationSettings const &simplification_settings);
 
   std::vector<TensorShape> possible_split_output_tensor_shapes(Node const &) const;
+  
+  void find_rewrite_matches(Graph const *graph, std::vector<GraphXferMatch>& matches) const;
+  tl::optional<Node> find_split_node(Graph const *graph, int base_optimize_threshold) const;
 private:
   std::unordered_map<size_t, float> cached_optimized_graphs;
 

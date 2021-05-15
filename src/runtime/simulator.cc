@@ -423,13 +423,12 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& vi
 float Simulator::estimate_xfer_cost(const Op* op,
                                     int input_idx,
                                     const MachineView& source_view,
-                                    const MachineView& sink_view,
-                                    bool include_input_xfer_cost)
+                                    const MachineView& sink_view)
 {
   //assert(tensor->is_valid_machine_view(source_view));
   //assert(tensor->is_valid_machine_view(sink_view));
   const Tensor input_tensor = op->inputs[input_idx];
-  if ((!include_input_xfer_cost) && input_tensor->owner_op->op_type == OP_INPUT) {
+  if (input_tensor->owner_op->op_type == OP_INPUT) {
     return 0.0f;
   }
 
@@ -442,7 +441,7 @@ float Simulator::estimate_xfer_cost(const Op* op,
         assert (source_view != sink_view);
 
         const Tensor input_tensor = op->inputs[input_idx];
-        if (include_input_xfer_cost && input_tensor->owner_op->op_type == OP_INPUT) {
+        if (input_tensor->owner_op->op_type == OP_INPUT) {
           return 0.0f;
         }
         assert (rp->repartition_dim == input_tensor->num_dims - 2); // assert data parallel for now

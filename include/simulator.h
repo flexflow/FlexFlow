@@ -320,8 +320,7 @@ public:
   float estimate_xfer_cost(const Op* op,
                            int input_idx,
                            const MachineView& source_view,
-                           const MachineView& sink_view,
-                           bool include_input_xfer_cost);
+                           const MachineView& sink_view);
   float default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TENSOR_DIM],
                                    int tensor_ndims,
                                    const MachineView& view);
