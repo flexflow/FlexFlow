@@ -36,59 +36,7 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_dp("DP");
 LegionRuntime::Logger::Category log_graph("graph");
 
-const MachineView MachineView::NO_VIEW = MachineView();
-
 const Node Node::INVALID_NODE = Node();
-
-MachineView::MachineView()
-: device_type(MachineView::GPU), ndims(0), start_device_id(0)
-{
-  for (int i = 0; i < MAX_TENSOR_DIM; i++) {
-    dim[i] = stride[i] = 0;
-  }
-}
-
-std::vector<int> MachineView::device_ids() const {
-  std::vector<int> device_ids_list;
-
-  if (this->ndims == 0) {
-    return { this->start_device_id };
-  }
-
-  Domain d;
-  d.dim = this->ndims;
-  for (int i = 0; i < d.dim; i++) {
-    d.rect_data[i] = 0;
-    d.rect_data[i+d.dim] = this->dim[i]-1;
-  }
-  for (Domain::DomainPointIterator it(d); it; it++) {
-    device_ids_list.push_back(this->get_device_id(*it));
-  }
-
-  return device_ids_list;
-}
-
-size_t MachineView::num_parts() const
-{
-  size_t parts = 1;
-  for (int i = 0; i < ndims; i++) {
-    parts *= dim[i];
-  }
-  return parts;
-}
-
-size_t MachineView::hash() const
-{
-  size_t ret = 17;
-  ret = ret * 31 + std::hash<int>()(device_type);
-  ret = ret * 31 + std::hash<int>()(ndims);
-  ret = ret * 31 + std::hash<int>()(start_device_id);
-  for (int i = 0; i < ndims; i++) {
-    ret = ret * 31 + std::hash<int>()(dim[i]);
-    ret = ret * 31 + std::hash<int>()(stride[i]);
-  }
-  return ret;
-}
 
 size_t MachineResource::hash() const
 {
@@ -643,6 +591,11 @@ void Graph::print(void) const
     // }
   }
 
+}
+
+void Graph::print_dot() const {
+  /* std::unique_ptr<std::ostringstream> oss = std::unique_ptr<std::ostringstream>(new std::ostringstream()); */
+  DotFile dot(std::cout);
 }
 
 bool Graph::has_loop(void)

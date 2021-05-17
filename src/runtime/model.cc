@@ -48,19 +48,6 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_model("Model");
 LegionRuntime::Logger::Category log_measure("measure");
 
-/*static*/
-bool ParallelDim::dims_are_valid(const ParallelDim dims[MAX_TENSOR_DIM], int ndims) {
-  for (int i = 0; i < ndims; i++) {
-    assert (dims[i].size > 0);
-    assert (dims[i].degree != ParallelDim::UNKNOWN_DEGREE);
-    assert (dims[i].parallel_idx != ParallelDim::UNKNOWN_INDEX);
-    if (dims[i].size % dims[i].degree != 0) {
-      return false;
-    }
-  }
-
-  return true;
-}
 
 Op::Op(FFModel& model,
        OperatorType op_type,
@@ -536,7 +523,7 @@ void solve_parallel_dim_mappings(
     switch (record.get_type()) {
       case MappingRecordType::INPUT_OUTPUT:
         {
-          if (record.output_idx >= outputs.size()) {
+          if (record.output_idx >= outputs.size() || outputs[record.output_idx] == nullptr) {
             continue;
           }
 
@@ -551,7 +538,7 @@ void solve_parallel_dim_mappings(
         break;
       case MappingRecordType::INPUT_WEIGHT:
         {
-          if (record.weight_idx >= weights.size()) {
+          if (record.weight_idx >= weights.size() || weights[record.weight_idx] == nullptr) {
             continue;
           }
 

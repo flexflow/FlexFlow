@@ -16,7 +16,7 @@
 #ifndef _FLEXFLOW_TENSOR_H_
 #define _FLEXFLOW_TENSOR_H_
 #include "legion.h"
-#include "config.h"
+#include "machine_view.h"
 #include "ffconst.h"
 
 //using namespace Legion;
@@ -41,16 +41,19 @@ struct ParallelDim {
   int degree = UNKNOWN_DEGREE;
   int parallel_idx = UNKNOWN_INDEX;
   bool is_replica_dim = false;
-
-  static bool dims_are_valid(const ParallelDim dims[MAX_TENSOR_DIM], int ndims);
 };
 
 
 struct TensorShape {
   int num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
+  DataType data_type;
 
   bool operator==(const TensorShape& other) const;
+  bool operator!=(const TensorShape& other) const;
+
+  size_t get_piece_size() const;
+  bool is_valid() const;
 };
 
 namespace std {
@@ -59,6 +62,8 @@ namespace std {
     size_t operator()(TensorShape const &) const;
   };
 }
+
+class FFConfig;
 
 struct TensorBase {
   TensorBase(void);

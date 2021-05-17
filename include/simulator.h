@@ -364,5 +364,11 @@ public:
   TransposeMeta *transpose_meta;
   int segment_size;
   int max_num_segments; //simulation could be slow if the number of segments are too large
+private:
+  float estimate_repartition_xfer_cost(int repartition_dim,
+                                       int repartition_degree,
+                                       const TensorShape& input_tensor_shape,
+                                       const MachineView& source_view,
+                                       const MachineView& target_view) const;
 };
 #endif

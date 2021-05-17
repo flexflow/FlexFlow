@@ -354,26 +354,17 @@ Conv2D::Conv2D(FFModel& model,
 { }
 
 bool Conv2DParams::is_valid(const Tensor input) const {
-  ParallelDim output_dims[MAX_TENSOR_DIM],
-              kernel_dims[MAX_TENSOR_DIM],
-              bias_dims[MAX_TENSOR_DIM];
-  int output_ndims, 
-      kernel_ndims,
-      bias_ndims;
-
-  this->solve_dims(
-      input, 
-      output_dims, &output_ndims, 
-      kernel_dims, &kernel_ndims,
-      bias_dims, &bias_ndims
-  );
-
+  TensorShape output_shape, kernel_shape, bias_shape;
+  this->solve_dims(input, 
+                   output_shape.dims, &output_shape.num_dims,
+                   kernel_shape.dims, &kernel_shape.num_dims,
+                   bias_shape.dims, &bias_shape.num_dims);
   bool is_valid = true;
   is_valid &= input->check_valid();
-  is_valid &= ParallelDim::dims_are_valid(output_dims, output_ndims);
-  is_valid &= ParallelDim::dims_are_valid(kernel_dims, kernel_ndims);
+  is_valid &= output_shape.is_valid();
+  is_valid &= kernel_shape.is_valid();
   if (use_bias) { 
-    is_valid &= ParallelDim::dims_are_valid(bias_dims, bias_ndims);
+    is_valid &= bias_shape.is_valid();
   }
 
   return is_valid;

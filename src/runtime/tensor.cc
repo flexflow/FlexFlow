@@ -16,8 +16,39 @@
 
 using namespace Legion;
 
+bool TensorShape::is_valid() const {
+  bool used[MAX_TENSOR_DIM];
+  std::fill_n(used, MAX_TENSOR_DIM, false);
+
+  for (int i = 0; i < this->num_dims; i++) {
+    ParallelDim const &dim = this->dims[i];
+    assert (dim.size > 0);
+    assert (dim.degree != ParallelDim::UNKNOWN_DEGREE);
+    assert (dim.degree >= 1);
+    assert (dim.parallel_idx != ParallelDim::UNKNOWN_INDEX);
+    assert (dim.parallel_idx < MAX_TENSOR_DIM);
+    used[dims[i].parallel_idx] = true;
+    if (dim.size % dim.degree != 0) {
+      return false;
+    }
+  }
+  int idx = 0;
+  while (used[idx]) {
+    idx++;
+  }
+  for (int i = idx; i < MAX_TENSOR_DIM; i++) {
+    assert (!used[i]);
+  }
+
+  return true;
+}
+
 bool TensorShape::operator==(const TensorShape& other) const {
   if (this->num_dims != other.num_dims) {
+    return false;
+  }
+
+  if (this->data_type != other.data_type) {
     return false;
   }
 
@@ -31,7 +62,20 @@ bool TensorShape::operator==(const TensorShape& other) const {
     }
   }
 
+
   return true;
+}
+
+bool TensorShape::operator!=(const TensorShape& other) const {
+  return !(*this == other);
+}
+
+size_t TensorShape::get_piece_size() const {
+  size_t piece_size = data_type_size(this->data_type);
+  for (int i = 0; i < this->num_dims; i++) {
+    piece_size *= this->dims[i].size / this->dims[i].degree;
+  }
+  return piece_size;
 }
 
 bool TensorBase::update_parallel_ids(
@@ -368,6 +412,17 @@ void TensorBase::print(const std::string& name) const
     printf("%d ", dims[i].parallel_idx);
   printf("]\n");
 
+}
+
+TensorShape TensorBase::get_shape() const {
+  TensorShape shape;
+  shape.num_dims = this->num_dims;
+  shape.data_type = this->data_type;
+  for (int i = 0; i < this->num_dims; i++) {
+    shape.dims[i] = this->dims[i];
+  }
+
+  return shape;
 }
 
 bool TensorBase::is_valid_machine_view(const MachineView& view) const

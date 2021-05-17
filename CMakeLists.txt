@@ -149,6 +149,7 @@ set(FLEXFLOW_HDR
   ${FLEXFLOW_ROOT}/include/graph_structures.h
   ${FLEXFLOW_ROOT}/include/dot_file.h
   ${FLEXFLOW_ROOT}/include/recursive_logger.h
+  ${FLEXFLOW_ROOT}/include/machine_view.h
   ${FLEXFLOW_ROOT}/include/tl/optional.h)
 
 set(FLEXFLOW_SRC
@@ -173,6 +174,7 @@ set(FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/runtime/substitution.cc
   ${FLEXFLOW_ROOT}/src/runtime/recursive_logger.cc
   ${FLEXFLOW_ROOT}/src/runtime/tensor.cc
+  ${FLEXFLOW_ROOT}/src/runtime/machine_view.cc
   ${FLEXFLOW_ROOT}/src/parallel_ops/combine.cc
   ${FLEXFLOW_ROOT}/src/parallel_ops/partition.cc
   ${FLEXFLOW_ROOT}/src/parallel_ops/reduction.cc
@@ -207,6 +209,7 @@ set(FLEXFLOW_GPU_SRC
   ${FLEXFLOW_ROOT}/src/runtime/model.cu
   ${FLEXFLOW_ROOT}/src/runtime/optimizer_kernel.cu
   ${FLEXFLOW_ROOT}/src/runtime/simulator.cu
+  ${FLEXFLOW_ROOT}/src/runtime/tensor.cu
   ${FLEXFLOW_ROOT}/src/parallel_ops/combine.cu
   ${FLEXFLOW_ROOT}/src/parallel_ops/partition.cu
   ${FLEXFLOW_ROOT}/src/parallel_ops/reduction.cu

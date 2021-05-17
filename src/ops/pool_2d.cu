@@ -66,17 +66,16 @@ Pool2DParams Pool2D::get_params() const {
 }
 
 bool Pool2DParams::is_valid(const Tensor input) const {
-  ParallelDim output_dims[MAX_TENSOR_DIM];
-  int output_ndims;
+  TensorShape output_shape;
 
   this->solve_dims(
       input, 
-      output_dims, &output_ndims
+      output_shape.dims, &output_shape.num_dims
   );
 
   bool is_valid = true;
   is_valid &= input->check_valid();
-  is_valid &= ParallelDim::dims_are_valid(output_dims, output_ndims);
+  is_valid &= output_shape.is_valid();
   is_valid &= (input->dims[Input::REPLICA].degree == 1);
 
   return is_valid;

@@ -14,6 +14,52 @@ public:
   char op_name[MAX_OPNAME];
 };
 
+class LinearParams {
+public:
+  int in_channels, out_channels;
+  bool use_bias;
+  ActiMode activation;
+
+  bool is_valid(TensorShape const &input_shape) const;
+  void solve_dims(const Tensor input,
+                  ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
+                  ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
+                  ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const;
+  void solve_dims(TensorShape const &input_shape, 
+                  TensorShape& output_shape,
+                  TensorShape& kernel_shape,
+                  TensorShape& bias_shape) const;
+  void solve_dims(TensorShape const &input_shape,
+                  ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
+                  ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
+                  ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const;
+  void construct_mappings(std::vector<ParallelDimMappingRecord>&, TensorShape const &) const;
+  size_t get_hash(const Tensor input) const;
+
+  enum NamedDimensions {
+    INPUT_CHANNEL,
+    INPUT_SAMPLE,
+    INPUT_REPLICA,
+    OUTPUT_CHANNEL,
+    OUTPUT_SAMPLE,
+    OUTPUT_REPLICA,
+    KERNEL_CHANNEL_IN,
+    KERNEL_CHANNEL_OUT,
+    BIAS_CHANNEL_OUT 
+  };
+
+  std::unordered_map<NamedDimensions, int> get_dimension_names(TensorShape const &input_name) const;
+private:
+  void mark_replica_dims(TensorShape const &input_shape,
+                         ParallelDim output_dims[MAX_TENSOR_DIM],
+                         ParallelDim kernel_dims[MAX_TENSOR_DIM],
+                         ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
+  void calculate_nonreplica_dim_sizes(TensorShape const &input_shape,
+                                      ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
+                                      ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
+                                      ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const;
+};
+
 class Linear : public Op {
 public:
   Linear(FFModel& model,
@@ -86,18 +132,12 @@ private:
                                      Legion::Context ctx, Legion::Runtime *runtime);
   static bool use_cudnn_activation(ActiMode mode);
 
-  int output_replica_dim() const;
-  int output_channel_dim() const;
-  int input_replica_dim() const;
-  int input_channel_dim() const;
-
-  int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) const;
-  int kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) const;
-  int bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
-
   void register_mappings();
   void register_output_mappings();
   void register_weight_mappings();
+
+
+  LinearParams get_params() const;
 public:
   int in_channels, out_channels;
   Tensor replica;

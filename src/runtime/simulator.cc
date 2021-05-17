@@ -19,6 +19,8 @@
 #include "dot_file.h"
 #include "parallel_ops/partition.h"
 #include "parallel_ops/combine.h"
+#include "parallel_ops/replicate.h"
+#include "parallel_ops/reduction.h"
 #include <unordered_set>
 #include <memory>
 #include "hash_utils.h"
@@ -420,6 +422,43 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& vi
   return cost_metrics;
 }
 
+float Simulator::estimate_repartition_xfer_cost(int repartition_dim,
+                                                int repartition_degree,
+                                                const TensorShape& input_tensor_shape, 
+                                                const MachineView& source_view,
+                                                const MachineView& sink_view) const
+{
+  assert (source_view != sink_view);
+
+  size_t piece_size = input_tensor_shape.get_piece_size();
+  piece_size /= repartition_degree;
+  float max_xfer_cost = 0.0f;
+  std::unordered_map<std::pair<int, int>, int> internode_transfers;
+  for (Domain::DomainPointIterator it(sink_view.get_domain()); it; it++) {
+    int sink_device = sink_view.get_device_id(*it);
+    DomainPoint source_dp(*it);
+    source_dp.point_data[repartition_dim] /= repartition_degree;
+    int source_device = source_view.get_device_id(source_dp);
+
+    float bandwidth = 0.0f;
+    int src_node_id = machine->get_gpu(source_device)->node_id;
+    int dst_node_id = machine->get_gpu(sink_device)->node_id;
+    if (src_node_id == dst_node_id) {
+      bandwidth = machine->get_intra_node_gpu_bandwidth();
+      max_xfer_cost = std::max(max_xfer_cost, piece_size / bandwidth);
+    } else {
+      internode_transfers[{src_node_id, dst_node_id}] += piece_size;
+    }
+  }
+
+  for (auto const &kv : internode_transfers) {
+    max_xfer_cost = std::max(max_xfer_cost, kv.second / machine->get_inter_node_gpu_bandwidth());
+  }
+
+  return 2 * max_xfer_cost;
+}
+
+// estimate the data transfer costs from some op with view source_view to Op op with view sink_view
 float Simulator::estimate_xfer_cost(const Op* op,
                                     int input_idx,
                                     const MachineView& source_view,
@@ -433,97 +472,41 @@ float Simulator::estimate_xfer_cost(const Op* op,
   }
 
   if (op->is_parallel_op()) {
-    // TODO: implement parallel op xfer cost
+    assert (input_idx == 0);
+    const Tensor input_tensor = op->inputs[input_idx];
+    if (input_tensor->owner_op->op_type == OP_INPUT) {
+      return 0.0f;
+    }
     switch (op->op_type) {
       case OP_REPARTITION:
       {
         Repartition *rp = (Repartition*)op;
-        assert (source_view != sink_view);
-
-        const Tensor input_tensor = op->inputs[input_idx];
-        if (input_tensor->owner_op->op_type == OP_INPUT) {
-          return 0.0f;
-        }
-        assert (rp->repartition_dim == input_tensor->num_dims - 2); // assert data parallel for now
-        int degree_before = input_tensor->dims[input_tensor->num_dims - 2].degree;
-        std::vector<int> source_ids = source_view.device_ids();
-        std::vector<int> sink_ids = sink_view.device_ids();
-        float max_xfer_cost = 0.0f;
-        size_t total_size = data_type_size(input_tensor->data_type);
-        for (int i = 0; i < input_tensor->num_dims; i++) {
-          total_size *= input_tensor->dims[i].size / input_tensor->dims[i].degree;
-        }
-        total_size /= rp->repartition_degree;
-        /* printf("Estimated volume: %zu\n", total_size); */
-        std::unordered_map<std::pair<int, int>, int> internode_transfers;
-        for (int srcId = 0; srcId < degree_before; srcId++) {
-          for (int dstId = srcId * rp->repartition_degree; dstId < (srcId+1) * rp->repartition_degree; dstId++) {
-            int source_device = source_ids[srcId];
-            int sink_device = sink_ids[dstId];
-            float bandwidth = 0.0f;
-            int src_node_id = machine->get_gpu(source_device)->node_id;
-            int dst_node_id = machine->get_gpu(sink_device)->node_id;
-            if (src_node_id == dst_node_id) {
-              bandwidth = machine->get_intra_node_gpu_bandwidth();
-              max_xfer_cost = std::max(max_xfer_cost, 2 * total_size / bandwidth);
-            } else {
-              internode_transfers[{src_node_id, dst_node_id}] += 2 * total_size;
-            }
-          }
-        }
-
-        for (auto const &kv : internode_transfers) {
-          max_xfer_cost = std::max(max_xfer_cost, kv.second / machine->get_inter_node_gpu_bandwidth());
-        }
-
-/*         log_xfer_est.debug() << "Estimated xfer cost from " */ 
-/*                              << input_tensor->owner_op->name */
-/*                              << " to " */
-/*                              << op->name << ": " */
-/*                              << max_xfer_cost << std:: */
-        return max_xfer_cost;
+        return this->estimate_repartition_xfer_cost(rp->repartition_dim, rp->repartition_degree, 
+                                                    input_tensor->get_shape(), source_view, sink_view);
       }
       case OP_COMBINE:
       {
         Combine *combine = (Combine*)op;
-        assert (source_view != sink_view);
-
-        const Tensor input_tensor = op->inputs[input_idx];
-        if (input_tensor->owner_op->op_type == OP_INPUT) {
-          return 0.0f;
-        }
-        assert (combine->combine_dim == input_tensor->num_dims - 2); // assert data parallel for now
-        int degree_before = input_tensor->dims[input_tensor->num_dims - 2].degree;
-        int degree_after = degree_before / combine->combine_degree;
-        std::vector<int> source_ids = source_view.device_ids();
-        std::vector<int> sink_ids = sink_view.device_ids();
-        float max_xfer_cost = 0.0f;
-        size_t total_size = data_type_size(input_tensor->data_type);
-        for (int i = 0; i < input_tensor->num_dims; i++) {
-          total_size *= input_tensor->dims[i].size / input_tensor->dims[i].degree;
-        }
-        /* printf("Estimated volume: %zu\n", total_size); */
-        std::unordered_map<std::pair<int, int>, int> internode_transfers;
-        for (int dstId = 0; dstId < degree_after; dstId++) {
-          for (int srcId = dstId * combine->combine_degree; srcId < (dstId+1) * combine->combine_degree; srcId++) {
-            int source_device = source_ids[srcId];
-            int sink_device = sink_ids[dstId];
-            float bandwidth = 0.0f;
-            int src_node_id = machine->get_gpu(source_device)->node_id;
-            int dst_node_id = machine->get_gpu(sink_device)->node_id;
-            if (src_node_id == dst_node_id) {
-              bandwidth = machine->get_intra_node_gpu_bandwidth();
-              max_xfer_cost = std::max(max_xfer_cost, 2 * total_size / bandwidth);
-            } else {
-              internode_transfers[{src_node_id, dst_node_id}] += 2 * total_size;
-            }
-          }
-        }
-        
-        for (auto const &kv : internode_transfers) {
-          max_xfer_cost = std::max(max_xfer_cost, kv.second / machine->get_inter_node_gpu_bandwidth());
-        }
-        return max_xfer_cost;
+        const Tensor output_tensor = op->outputs[0];
+        return this->estimate_repartition_xfer_cost(combine->combine_dim, combine->combine_degree,
+                                                    output_tensor->get_shape(), sink_view, source_view);
+      }
+      case OP_REPLICATE:
+      {
+        Replicate *replicate = (Replicate*)op;
+        TensorShape fake_input_shape = input_tensor->get_shape();
+        fake_input_shape.dims[replicate->replicate_dim].size *= replicate->replicate_degree;
+        return this->estimate_repartition_xfer_cost(replicate->replicate_dim, replicate->replicate_degree,
+                                                    fake_input_shape, source_view, sink_view);
+      }
+      case OP_REDUCTION:
+      {
+        Reduction *reduction = (Reduction*)op;
+        const Tensor output_tensor = op->outputs[0];
+        TensorShape fake_output_shape = output_tensor->get_shape();
+        fake_output_shape.dims[reduction->reduction_dim].size *= reduction->reduction_degree;
+        return this->estimate_repartition_xfer_cost(reduction->reduction_dim, reduction->reduction_degree,
+                                                    fake_output_shape, sink_view, source_view);
       }
       default:
         assert(false);

@@ -246,6 +246,8 @@ public:
 
   size_t hash(void) const;
   void print(void) const;
+  void print_dot() const;
+
   bool check_correctness(void);
   bool has_loop(void);
   bool map_operators_to_layers(std::vector<Op*>& layers) const;
@@ -257,6 +259,7 @@ public:
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::unique_ptr<std::ostream> out) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::string const &out_filename) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const;
+
 
   std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_at_node(Node const &bottleneck) const;
   std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_horizontal(Node const &source_node, Node const &sink_node) const;

@@ -194,10 +194,6 @@ enum ShardingID {
   DataParallelShardingID = 135,
 };
 
-enum FieldIDs {
-  FID_DATA,
-};
-
 namespace Legion {
   class Serializer;
 }
@@ -469,6 +465,7 @@ class ElementUnary;
 class Embedding;
 class Flat;
 class Linear;
+class LinearParams;
 class MultiHeadAttention;
 class Pool2D;
 class Pool2DParams;
@@ -782,6 +779,8 @@ public:
                                  int out_dim,
                                  ActiMode activation,
                                  bool use_bias);
+  Node get_or_create_linear_node(const Tensor input,
+                                 const LinearParams& params);
   Node get_or_create_multihead_attn_node(const Tensor query,
                                          const Tensor key,
                                          const Tensor value,

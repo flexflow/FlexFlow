@@ -1625,16 +1625,6 @@ size_t gs_dp_state_hash(Graph const *graph,
   return key;
 }
 
-TensorShape TensorBase::get_shape() const {
-  TensorShape shape;
-  shape.num_dims = this->num_dims;
-  for (int i = 0; i < this->num_dims; i++) {
-    shape.dims[i] = this->dims[i];
-  }
-
-  return shape;
-}
-
 float GraphSearchHelper::sequence_optimize(
     Graph const *graph, 
     Node const &sink_node, 
