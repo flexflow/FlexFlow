@@ -185,28 +185,26 @@ void Simulator::free_all()
   offset = 0;
 }
 
-void* Simulator::allocate(size_t num_elements, DataType type)
-{
-  size_t element_size = 0;
+size_t data_type_size(DataType type) {
   switch (type) {
     case DT_FLOAT:
-      element_size = sizeof(float);
-      break;
+      return sizeof(float);
     case DT_DOUBLE:
-      element_size = sizeof(double);
-      break;
+      return sizeof(double);
     case DT_INT32:
-      element_size = sizeof(int32_t);
-      break;
+      return sizeof(int32_t);
     case DT_INT64:
-      element_size = sizeof(int64_t);
-      break;
+      return sizeof(int64_t);
     case DT_BOOLEAN:
-      element_size = sizeof(bool);
-      break;
+      return sizeof(bool);
     default:
       assert(false);
   }
+}
+
+void* Simulator::allocate(size_t num_elements, DataType type)
+{
+  size_t element_size = data_type_size(type);
   void* ret_ptr = base_ptr + offset;
   offset += element_size * num_elements;
   if ((size_t)offset > capacity) {
@@ -365,6 +363,7 @@ float Simulator::simulate_runtime(const FFModel* model,
       if (pre_op == NULL)
         continue;
       ParallelConfig pre_config = global.find(pre_op)->second;
+      size_t element_size = data_type_size(t.data_type);
       for (int dstId = 0; dstId < config.num_parts(); dstId ++) {
         Domain dstR = op->get_input_tensor_shape(config, j, dstId);
         for (int srcId = 0; srcId < pre_config.num_parts(); srcId ++) {
@@ -374,13 +373,13 @@ float Simulator::simulate_runtime(const FFModel* model,
             {
               SimTask* dstT = task_manager->get_forward_task(op, dstId);
               SimTask* srcT = task_manager->get_forward_task(pre_op, srcId);
-              add_task_dependencies_with_xfer(srcT, dstT, dstR.intersection(srcR).get_volume());
+              add_task_dependencies_with_xfer(srcT, dstT, dstR.intersection(srcR).get_volume() * element_size);
             }
             // Backward dependency
             if (comp_mode == COMP_MODE_TRAINING) {
               SimTask* dstT = task_manager->get_backward_task(op, dstId);
               SimTask* srcT = task_manager->get_backward_task(pre_op, srcId);
-              add_task_dependencies_with_xfer(dstT, srcT, dstR.intersection(srcR).get_volume());
+              add_task_dependencies_with_xfer(dstT, srcT, dstR.intersection(srcR).get_volume() * element_size);
             }
           }
         }
@@ -405,6 +404,7 @@ float Simulator::simulate_runtime(const FFModel* model,
     // Step 3a: consider backpropagation and weight update are overlapped
     for (int l = model->layers.size()-1; l >= 0; l--) {
       Op* op = model->layers[l];
+      size_t element_size = data_type_size(DT_FLOAT); // assume all weights have float elements
       ParallelConfig pc = global.find(op)->second;
       for (int j = 0; j < op->numWeights; j++) {
         std::set<int> synched;
@@ -428,10 +428,10 @@ float Simulator::simulate_runtime(const FFModel* model,
                 synched.insert(nextId);
                 // Add comm. tasks from backT to updateT
                 SimTask* backT = task_manager->get_backward_task(op, nextId);
-                add_task_dependencies_with_xfer(backT, updateT, firstR.get_volume());
+                add_task_dependencies_with_xfer(backT, updateT, firstR.get_volume() * element_size);
                 // Add comm. tasks from updateT to finalT
                 SimTask* finalT = finals[backT->device->device_id];
-                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume());
+                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume() * element_size);
               }
             }
           }
@@ -459,6 +459,7 @@ float Simulator::simulate_runtime(const FFModel* model,
     for (size_t l = 0; l < model->layers.size(); l++) {
       Op* op = model->layers[l];
       ParallelConfig pc = global.find(op)->second;
+      size_t element_size = data_type_size(DT_FLOAT); // assume all weights have float elements
       for (int j = 0; j < op->numWeights; j++) {
         std::set<int> synched;
         for (int firstId = 0; firstId < pc.num_parts(); firstId++)
@@ -483,10 +484,10 @@ float Simulator::simulate_runtime(const FFModel* model,
                 assert(backT->device->device_id == pc.device_ids[nextId]);
                 SimTask* barrierT = barriers[backT->device->device_id];
                 // Add comm. tasks from barrierT to updateT
-                add_task_dependencies_with_xfer(barrierT, updateT, firstR.get_volume());
+                add_task_dependencies_with_xfer(barrierT, updateT, firstR.get_volume() * element_size);
                 // Add comm. tasks from updateT to finalT
                 SimTask* finalT = finals[backT->device->device_id];
-                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume());
+                add_task_dependencies_with_xfer(updateT, finalT, firstR.get_volume() * element_size);
               }
             }
           }
@@ -561,6 +562,7 @@ float Simulator::simulate_runtime(const FFModel* model,
   if (comp_mode == COMP_MODE_TRAINING) {
     for (size_t l = 0; l < model->layers.size(); l++) {
       Op* op = model->layers[l];
+      size_t element_size = data_type_size(DT_FLOAT); // assume all weights have float elements
       ParallelConfig pc = global.find(op)->second;
       // Since all NCCL calls are blocking, we can add the NCCL cost
       // sequentially 
@@ -588,7 +590,7 @@ float Simulator::simulate_runtime(const FFModel* model,
                 } else {
                   bandwidth = machine->get_inter_node_gpu_bandwidth();
                 }
-                nccl_time = std::max(nccl_time, (float)firstR.get_volume() * sizeof(float) / bandwidth);
+                nccl_time = std::max(nccl_time, (float)firstR.get_volume() * element_size / bandwidth);
               }
             }
             // Add ncclTime to sim_time given nccl calls are blocking
