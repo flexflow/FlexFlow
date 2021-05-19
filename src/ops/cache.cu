@@ -14,57 +14,52 @@
  */
 
 #include "model.h"
+#include "cuda_helper.h"
 
-// default functions cache trigger
+// Moving average over batches: 1 if batch is perfectly cached, 0 else.
 template <typename T>
-bool default_trigger(float* cached_score,
+float default_score(float* cached_score,
                     const void* input,
                     const void* cached,
                     int vol) {
-  float gamma = 0.99f; // TODO
-  float thresh = 0.95f; // TODO
+  float gamma = 0.99f;
   *cached_score *= gamma;
   float w = 1.0f-gamma;
   T* cast_input = (T*)input;
   T* cast_cached = (T*)cached;
-
   for(int i = 0; i < vol; i++) {
     if(cast_input[i] != cast_cached[i]) {
-      return *cached_score >= thresh;
+      return *cached_score;
     }
   }
   *cached_score += w;
-  return *cached_score >= thresh;
+  return *cached_score;
 }
 
 
-// pass Cache instance and FFModel to Legion task
-class Arg {
-public:
-  const FFModel* ff;
+struct Arg {
   Cache* cache;
   int batch_ctr;
 };
 
 
 Tensor FFModel::cache(const Tensor& input, int num_batches,
-  std::function<bool(float*,const void*,const void*,int)> trigger, const char* name)
+  std::function<float(float*,const void*,const void*,int)> score_f, const char* name)
 {
-  if(!trigger) {
+  if(!score_f) {
     switch(input.data_type) {
       case DT_FLOAT:
-        trigger = default_trigger<float>;
-        assert(false);
+        score_f = default_score<float>;
         break;
       case DT_INT32:
-        trigger = default_trigger<int32_t>;
+        score_f = default_score<int32_t>;
         break;
       default:
         assert(false && "unsupported data type");
         break;
     }
   }
-  Cache* cache = new Cache(*this, input, num_batches, trigger, name);
+  Cache* cache = new Cache(*this, input, num_batches, score_f, name);
   layers.push_back(cache);
   return cache->outputs[0];
 }
@@ -73,11 +68,11 @@ Tensor FFModel::cache(const Tensor& input, int num_batches,
 Cache::Cache(FFModel& model,
             const Tensor& _input,
             int _num_batches,
-            std::function<bool(float*,const void*,const void*,int)> &_trigger,
+            std::function<float(float*,const void*,const void*,int)> &_score_f,
             const char* name)
 : Op(model, OP_CACHE, name, _input),
   num_batches(_num_batches),
-  trigger(_trigger),
+  score_f(_score_f),
   profiling(model.config.profiling)
 {
   load_cached = false;
@@ -95,6 +90,7 @@ Cache::Cache(FFModel& model,
 Cache::~Cache() {
   for(int i = 0; i < num_batches; i++) free(batch_ptrs[i]);
   free(batch_ptrs);
+  free(batch_cmp);
 }
 
 
@@ -157,7 +153,7 @@ OpMeta* Cache::init_task(const Task* task,
   Cache* c = (Cache*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   CacheMeta* m = new CacheMeta(handle);
-  m->cached_score = 0.0f;
+  m->cache_score = 0.0f;
   m->profiling = c->profiling;
   return m;
 }
@@ -169,6 +165,7 @@ void cache_init(Cache* cache, size_t vol) {
   cache->batch_ptrs = (void**)malloc(cache->num_batches*sizeof(T*));
   for(int i = 0; i < cache->num_batches; i++)
     cache->batch_ptrs[i] = malloc(vol*sizeof(T));
+  cache->batch_cmp = malloc(vol*sizeof(T));
 }
 
 
@@ -179,7 +176,6 @@ void Cache::init(const FFModel& ff)
   {
     case DT_FLOAT:
       cache_init<float>(this, vol);
-      assert(false);
       break;
     case DT_INT32:
       cache_init<int32_t>(this, vol);
@@ -188,7 +184,6 @@ void Cache::init(const FFModel& ff)
       assert(false && "unsupported data type");
       break;
   }
-
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -244,19 +239,20 @@ void cache_forward(const Task *task,
                   Context ctx, Runtime* runtime)
 {
   Cache* c = ((Arg*)(task->args))->cache;
+  const CacheMeta* m = *((CacheMeta**)task->local_args);
   int batch_ctr = ((Arg*)(task->args))->batch_ctr;
   T** batch_ptrs = (T**)c->batch_ptrs;
+  T* output_ptr = helperGetTensorPointerWO<T>(regions[0], task->regions[0],
+    FID_DATA, ctx, runtime);
 
-  if(c->load_cached) {
-    T* output_ptr = helperGetTensorPointerWO<T>(regions[0], task->regions[0],
-      FID_DATA, ctx, runtime);
-    memcpy(output_ptr, batch_ptrs[batch_ctr], c->inputs[0].get_volume()*sizeof(T));
-  }
-  else {
-    const T* input_ptr = helperGetTensorPointerRO<T>(regions[0], task->regions[0],
-      FID_DATA, ctx, runtime);
-    memcpy(batch_ptrs[batch_ctr], input_ptr, c->inputs[0].get_volume()*sizeof(T));
-  }
+#ifndef DISABLE_LEGION_CUDA_HIJACK
+  cudaStream_t stream;
+  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+#endif
+
+  cudaMemcpy(output_ptr, batch_ptrs[batch_ctr], c->inputs[0].get_volume()*sizeof(T), cudaMemcpyHostToDevice);
 }
 
 
@@ -284,23 +280,31 @@ void Cache::forward_task(const Task *task,
 
 
 template <typename T>
-void cache_score(const Task *task,
-                const std::vector<PhysicalRegion>& regions,
-                Context ctx, Runtime* runtime) 
+float cache_update(const Task *task,
+                  const std::vector<PhysicalRegion>& regions,
+                  Context ctx, Runtime* runtime)
 {
   Cache* c = ((Arg*)(task->args))->cache;
   int batch_ctr = ((Arg*)(task->args))->batch_ctr;
   CacheMeta* m = *((CacheMeta**)task->local_args);
-  
+
   const T* input_ptr = helperGetTensorPointerRW<T>(regions[0], task->regions[0],
     FID_DATA, ctx, runtime);
-  // FIXME: Like this, could imm switch back. Introduce some margin in trigger
-  c->load_cached = c->trigger(&m->cached_score, input_ptr,
+  T* host_input = (T*) c->batch_cmp;
+  cudaMemcpy(host_input, input_ptr, c->inputs[0].get_volume()*sizeof(T), cudaMemcpyDeviceToHost);
+  float cache_score = c->score_f(&m->cache_score, host_input,
     c->batch_ptrs[batch_ctr], c->inputs[0].get_volume());
+  memcpy(c->batch_ptrs[batch_ctr], host_input, c->inputs[0].get_volume()*sizeof(T));
+  return cache_score;
 }
 
 
-void Cache::score_task(const Task *task,
+void Cache::use_cached(bool c) {
+  load_cached = c;
+}
+
+
+float Cache::update_task(const Task *task,
                       const std::vector<PhysicalRegion>& regions,
                       Context ctx, Runtime* runtime)
 {
@@ -308,14 +312,12 @@ void Cache::score_task(const Task *task,
   switch(c->inputs[0].data_type)
   {
     case DT_FLOAT:
-      cache_score<float>(task, regions, ctx, runtime);
-      break;
+      return cache_update<float>(task, regions, ctx, runtime);
     case DT_INT32:
-      cache_score<int32_t>(task, regions, ctx, runtime);
-      break;
+      return cache_update<int32_t>(task, regions, ctx, runtime);
     default:
       assert(false && "unsupported data type");
-      break;
+      return -1.0f;
   }
 }
 
@@ -344,34 +346,45 @@ void Cache::forward(const FFModel& ff)
       assert(false);
   }
 
-  Arg arg = {&ff, this, batch_ctr};
-  // Launch score task
-  IndexLauncher launcher_score(CACHE_SCORE_TASK_ID, task_is,
+  Arg arg = {this, batch_ctr};
+  // Launch update task
+  IndexLauncher launcher_update(CACHE_UPDATE_TASK_ID, task_is,
                          TaskArgument(&arg, sizeof(Arg)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
-  launcher_score.add_region_requirement(
+  launcher_update.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[0].region));
-  launcher_score.add_field(0, FID_DATA);
-  runtime->execute_index_space(ctx, launcher_score);
+  launcher_update.add_field(0, FID_DATA);
+  FutureMap score_fm = runtime->execute_index_space(ctx, launcher_update);
+  // add score futures to Cache future vector attribute
+  score_futures.clear();
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) \
+        score_futures.push_back(score_fm[*it]); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
   // Launch forward task
-  IndexLauncher launcher_fwd(CACHE_FWD_TASK_ID, task_is,
-                         TaskArgument(&arg, sizeof(Arg)), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
   if(load_cached) {
+    IndexLauncher launcher_fwd(CACHE_FWD_TASK_ID, task_is,
+                           TaskArgument(&arg, sizeof(Arg)), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           FFConfig::get_hash_id(std::string(name)));
     launcher_fwd.add_region_requirement(
       RegionRequirement(outputs[0].part, 0/*projection id*/,
         WRITE_ONLY, EXCLUSIVE, outputs[0].region));
     launcher_fwd.add_field(0, FID_DATA);
-  } else {
-    launcher_fwd.add_region_requirement(
-      RegionRequirement(input_lps[0], 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[0].region));
-    launcher_fwd.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher_fwd);
   }
-  runtime->execute_index_space(ctx, launcher_fwd);
   batch_ctr = (batch_ctr+1)%num_batches;
 }
 

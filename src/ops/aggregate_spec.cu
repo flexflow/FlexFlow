@@ -33,7 +33,7 @@ Tensor FFModel::aggregate_spec(const Tensor* inputs, /* gate_preds, gate_assign,
 AggregateSpec::AggregateSpec(FFModel& model,
                     const Tensor* _inputs,
                     int _n, float _lambda_bal, const char* name)
-: Op(model, OP_AGG_SPEC, name, _n+3, _inputs),
+: Op(model, OP_AGG_SPEC, name, _n+4, _inputs),
   n(_n), lambda_bal(_lambda_bal),
   profiling(model.config.profiling)
 {
@@ -44,27 +44,32 @@ AggregateSpec::AggregateSpec(FFModel& model,
   assert(inputs[0].adim[0] <= MAX_K && "Increase MAX_K in #define");
   assert(inputs[0].adim[1] <= MAX_BATCH_SIZE && "Increase MAX_BATCH_SIZE in #define");
 
-  assert(n+3 == numInputs);
+  assert(n+4 == numInputs);
   assert(n > 0);
   assert(inputs[0].numDim == 2);
   assert(inputs[1].numDim == 2);
   assert(inputs[2].numDim == 2);
-  assert(inputs[0].adim[0] == inputs[1].adim[0]);
-  assert(inputs[2].adim[1] == inputs[0].adim[1]);
-  assert(inputs[0].adim[0] == inputs[1].adim[0]);
-  assert(inputs[2].adim[0] == n);
+  assert(inputs[3].numDim == 2);
+
+  for(int i = 0; i < inputs[0].numDim; i++) {
+    assert(inputs[0].adim[i] == inputs[1].adim[i]);
+    assert(inputs[0].adim[i] == inputs[2].adim[i]);
+  }
+  assert(inputs[0].adim[1] == inputs[3].adim[1]);
+  assert(inputs[3].adim[0] == n);
+
   // expert inputs
-  int num_dim = inputs[3].numDim;
-  int out_dim = inputs[3].adim[0];
+  int num_dim = inputs[4].numDim;
+  int out_dim = inputs[4].adim[0];
   for(int i = 1; i < n; i++) {
-    assert(inputs[i+3].numDim == num_dim);
-    assert(inputs[i+3].adim[0] == out_dim);
+    assert(inputs[i+4].numDim == num_dim);
+    assert(inputs[i+4].adim[0] == out_dim);
   }
   // output
   outputs[0].numDim = num_dim;
   int k = inputs[0].adim[0];
   for(int i = 0; i < num_dim-1; i++)
-    outputs[0].adim[i] = inputs[3].adim[i];
+    outputs[0].adim[i] = inputs[4].adim[i];
   outputs[0].adim[num_dim-1] = k*inputs[0].adim[num_dim-1];
 
   numWeights = 0;
@@ -90,7 +95,7 @@ void AggregateSpec::create_output_and_partition(FFModel& model)
   assert(part_rect.hi[0] == part_rect.lo[0]);
 
   int batch_size = inputs[0].adim[1];
-  int out_dim = inputs[3].adim[0];
+  int out_dim = inputs[4].adim[0];
   int k = inputs[0].adim[0];
 
   const int dims[2] = {k*batch_size, out_dim};
@@ -100,7 +105,7 @@ void AggregateSpec::create_output_and_partition(FFModel& model)
 
 
   // Compute partition bound for input
-  for(int i = 0; i < n+3; i++) {
+  for(int i = 0; i < n+4; i++) {
     Rect<2> input_rect = runtime->get_index_partition_color_space(
         ctx, inputs[i].part.get_index_partition());
     if (input_rect == part_rect) {
@@ -226,6 +231,7 @@ __device__
 void aggspec_backward_kernel_gate(const float* output_grad,
               float* full_gate_grads,
               const int* expert_assign,
+              const bool* cache_corr,
               const float* gate_pred,
               int* expert_bal, float lambda_bal,
               int batch_size, int k, int n, int out_dim)
@@ -246,11 +252,13 @@ void aggspec_backward_kernel_gate(const float* output_grad,
   expert gradients are /= batch_size and then it would be /= batch_size^2 here */
   CUDA_KERNEL_LOOP(i, batch_size*k*out_dim)
   {
-    float res = output_grad[i] * output_grad[i] * batch_size;
-    float* gate_grad_idx = full_gate_grads + (i/(out_dim*k))*n
-      + expert_assign[(i/(out_dim*k))*k+(i/out_dim)%k];
-    atomicAdd(gate_grad_idx, res);
-    atomicAdd(gate_grad_sum+i/(k*out_dim), res);
+    if(cache_corr[i/(k*out_dim)]) {
+      float res = output_grad[i] * output_grad[i] * batch_size;
+      float* gate_grad_idx = full_gate_grads + (i/(out_dim*k))*n
+        + expert_assign[(i/(out_dim*k))*k+(i/out_dim)%k];
+      atomicAdd(gate_grad_idx, res);
+      atomicAdd(gate_grad_sum+i/(k*out_dim), res);
+    }
   }
 
   // Compute gate gradients:
@@ -258,8 +266,10 @@ void aggspec_backward_kernel_gate(const float* output_grad,
   __syncthreads();
   CUDA_KERNEL_LOOP(i, k*batch_size)
   {
-    full_gate_grads[i/k*n + expert_assign[i]] /= gate_grad_sum[i/k];
-    full_gate_grads[i/k*n + expert_assign[i]] -= (1.0f - gate_pred[i]);
+    if(cache_corr[i/k]) {
+      full_gate_grads[i/k*n + expert_assign[i]] /= gate_grad_sum[i/k];
+      full_gate_grads[i/k*n + expert_assign[i]] -= (1.0f - gate_pred[i]);
+    }
   }
 
   // balance term
@@ -303,6 +313,7 @@ void aggspec_backward_kernel_exp(const float* output_grad,
 __global__
 void aggspec_backward_kernel(float** exp_grads,
         const int* exp_assign,
+        const int* true_exp_assign,
         const float* gating_net_preds,
         float* full_gating_grads,
         const float* output_grads,
@@ -315,16 +326,20 @@ void aggspec_backward_kernel(float** exp_grads,
 {
   __shared__ float* chosen_exp_grads[MAX_K*MAX_BATCH_SIZE];
   __shared__ int expert_bal[MAX_N];
+  __shared__ bool cache_corr[MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread per block
   if(threadIdx.x == 0) {
-    // init expert_bal to 0
+    // init arrays
     for(int i = 0; i < n; i++) expert_bal[i] = 0;
+    for(int i = 0; i < batch_size; i++) cache_corr[i] = true;
 
     // Get pointer to chosen expert grads and expert counts
     for(int i = 0; i < batch_size; i++) {
       for(int j = 0; j < k; j++) {
-        int expert = exp_assign[k*i + j];
+        int expert = true_exp_assign[k*i + j];
+        if(expert != exp_assign[k*i + j])
+          cache_corr[i] = false;
         if(expert_bal[expert] >= exp_samples) {
           // dropped sample
           chosen_exp_grads[i*k+j] = 0;
@@ -346,8 +361,8 @@ void aggspec_backward_kernel(float** exp_grads,
 
   // get gating net gradients
   aggspec_backward_kernel_gate(output_grads, full_gating_grads, exp_assign,
-    gating_net_preds, expert_bal, (lambda_bal*n)/batch_size, batch_size, k, n,
-    out_dim);
+    cache_corr, gating_net_preds, expert_bal, (lambda_bal*n)/batch_size,
+    batch_size, k, n, out_dim);
 }
 
 
@@ -426,26 +441,30 @@ void AggregateSpec::backward_task(const Task *task,
   int n = ((AggregateSpec*)task->args)->n;
   float lambda_bal = ((AggregateSpec*)task->args)->lambda_bal;
 
-  assert((int)regions.size() == n+4);
-  assert((int)task->regions.size() == n+4);
+  assert((int)regions.size() == n+5);
+  assert((int)task->regions.size() == n+5);
 
   // get gate_pred, gate_assin, full_gate_grad, output_grad
   const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
   const AccessorRO<int, 2> acc_gate_assign(regions[1], FID_DATA);
-  const AccessorRW<float, 2> acc_full_gate_grad(regions[2], FID_DATA);
-  const AccessorRO<float, 2> acc_output_grad(regions[n+3], FID_DATA);
+  const AccessorRO<int, 2> acc_true_gate_assign(regions[2], FID_DATA);
+  const AccessorWO<float, 2> acc_full_gate_grad(regions[3], FID_DATA);
+  const AccessorRO<float, 2> acc_output_grad(regions[n+4], FID_DATA);
 
   Rect<2> rect_gate_pred = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<2> rect_gate_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
+  Rect<2> rect_true_gate_assign = runtime->get_index_space_domain(
+      ctx, task->regions[2].region.get_index_space());
   Rect<2> rect_full_gate_grad = runtime->get_index_space_domain(
-          ctx, task->regions[2].region.get_index_space());
+          ctx, task->regions[3].region.get_index_space());
   Rect<2> rect_out_grad = runtime->get_index_space_domain(
-      ctx, task->regions[n+3].region.get_index_space());
+      ctx, task->regions[n+4].region.get_index_space());
 
   coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;
   assert(batch_size == rect_gate_assign.hi[1] - rect_gate_assign.lo[1] + 1);
+  assert(rect_gate_assign == rect_true_gate_assign);
   assert(batch_size == rect_full_gate_grad.hi[1] - rect_full_gate_grad.lo[1] + 1);
   coord_t k = rect_gate_assign.hi[0] - rect_gate_assign.lo[0] + 1;
   assert(k*batch_size == rect_out_grad.hi[1] - rect_out_grad.lo[1] + 1);
@@ -457,17 +476,17 @@ void AggregateSpec::backward_task(const Task *task,
   float* exp_grads[n];
   // get first exp_pred and row
   Domain exp_domain = runtime->get_index_space_domain(
-    ctx, task->regions[3].region.get_index_space());
+    ctx, task->regions[4].region.get_index_space());
   exp_grads[0] = helperGetTensorPointerRW<float>(
-    regions[3], task->regions[3], FID_DATA, ctx, runtime);
+    regions[4], task->regions[4], FID_DATA, ctx, runtime);
   coord_t rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
   assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
 
   for(int i = 1; i < n; i++) {
     exp_domain = runtime->get_index_space_domain(
-      ctx, task->regions[i+3].region.get_index_space());
+      ctx, task->regions[i+4].region.get_index_space());
     exp_grads[i] = helperGetTensorPointerRW<float>(
-      regions[i+3], task->regions[i+3], FID_DATA, ctx, runtime);
+      regions[i+4], task->regions[i+4], FID_DATA, ctx, runtime);
     assert(rows == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
@@ -483,7 +502,8 @@ void AggregateSpec::backward_task(const Task *task,
   cudaMemcpy(m->dev_region_ptrs, exp_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
 
   aggspec_backward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
-    m->dev_region_ptrs, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
+    m->dev_region_ptrs, acc_gate_assign.ptr(rect_gate_assign),
+    acc_true_gate_assign.ptr(rect_true_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     acc_full_gate_grad.ptr(rect_full_gate_grad), acc_output_grad.ptr(rect_out_grad),
     n, k, rows, lambda_bal, batch_size, out_dim);
 }
@@ -531,8 +551,8 @@ void AggregateSpec::forward(const FFModel& ff)
   // exp_preds
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i+3], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i+3].region));
+      RegionRequirement(input_lps[i+4], 0/*projection id*/,
+        READ_WRITE, EXCLUSIVE, inputs[i+4].region));
     launcher.add_field(i+2, FID_DATA);
   }
   // output
@@ -583,28 +603,34 @@ void AggregateSpec::backward(const FFModel& ff)
   // gate_assign
   launcher.add_region_requirement(
     RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[1].region));
+      READ_ONLY, EXCLUSIVE, inputs[1].region));
   launcher.add_field(1, FID_DATA);
+
+  // true gate_assign
+  launcher.add_region_requirement(
+    RegionRequirement(input_lps[2], 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[2].region));
+  launcher.add_field(2, FID_DATA);
 
   // gate gradients full
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[2], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[2].region_grad));
-  launcher.add_field(2, FID_DATA);
+    RegionRequirement(input_grad_lps[3], 0/*projection id*/,
+      READ_WRITE, EXCLUSIVE, inputs[3].region_grad));
+  launcher.add_field(3, FID_DATA);
 
   // exp gradients
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[i+3], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i+3].region_grad));
-    launcher.add_field(i+3, FID_DATA);
+      RegionRequirement(input_grad_lps[i+4], 0/*projection id*/,
+        READ_WRITE, EXCLUSIVE, inputs[i+4].region_grad));
+    launcher.add_field(i+4, FID_DATA);
   }
 
   // output
   launcher.add_region_requirement(
     RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, outputs[0].region_grad));
-  launcher.add_field(n+3, FID_DATA);
+  launcher.add_field(n+4, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
 }

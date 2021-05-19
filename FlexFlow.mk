@@ -48,10 +48,10 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/runtime/initializer.cc\
 		${FF_HOME}/src/runtime/optimizer.cc\
 		${FF_HOME}/src/ops/embedding.cc\
-		${FF_HOME}/src/ops/cache.cc\
 		${FF_HOME}/src/runtime/strategy.cc\
 		${FF_HOME}/src/runtime/simulator.cc\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cc\
+		${FF_HOME}/src/recompile/recompile_state.cc\
 		${FF_HOME}/src/runtime/machine_model.cc
 
 GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
@@ -61,9 +61,6 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/linear.cu\
 		${FF_HOME}/src/ops/softmax.cu\
 		${FF_HOME}/src/ops/concat.cu\
-		${FF_HOME}/src/ops/group_by.cu\
-		${FF_HOME}/src/ops/aggregate.cu\
-		${FF_HOME}/src/ops/aggregate_spec.cu\
 		${FF_HOME}/src/ops/split.cu\
 		${FF_HOME}/src/ops/dropout.cu\
 		${FF_HOME}/src/ops/flat.cu\
@@ -74,6 +71,10 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/reshape.cu\
 		${FF_HOME}/src/ops/reverse.cu\
 		${FF_HOME}/src/ops/topk.cu\
+		${FF_HOME}/src/ops/cache.cu\
+		${FF_HOME}/src/ops/group_by.cu\
+		${FF_HOME}/src/ops/aggregate.cu\
+		${FF_HOME}/src/ops/aggregate_spec.cu\
 		${FF_HOME}/src/ops/transpose.cu\
 		${FF_HOME}/src/ops/attention.cu\
 		${FF_HOME}/src/ops/fused.cu\

@@ -1420,6 +1420,14 @@ void FFModel::forward(int seq_length)
     layers[i]->forward(*this);
 }
 
+
+void FFModel::recompile_on_condition(RecompileState &r)
+{
+  if(r.trigger())
+    r.alter();
+}
+
+
 void FFModel::compute_metrics()
 {
   Op* metrics_layer = layers[metrics_input];
@@ -2541,26 +2549,25 @@ void register_flexflow_internal_tasks()
   // Cache task CPU
   {
     TaskVariantRegistrar registrar(CACHE_INIT_TASK_ID, "Cache Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta*, Cache::init_task>(
         registrar, "Cache Init Task");
   }
   {
     TaskVariantRegistrar registrar(CACHE_FWD_TASK_ID, "Cache Forward");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Cache::forward_task>(
         registrar, "Cache Forward Task");
   }
   {
-    TaskVariantRegistrar registrar(CACHE_SCORE_TASK_ID, "Cache Backward");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    TaskVariantRegistrar registrar(CACHE_UPDATE_TASK_ID, "Cache Update");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Cache::score_task>(
-        registrar, "Cache Score Task");
+    Runtime::preregister_task_variant<float, Cache::update_task>(
+        registrar, "Cache Update Task");
   }
-
   // Group by task CPU
   {
     TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "Group_by Init");
