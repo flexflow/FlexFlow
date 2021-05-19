@@ -57,7 +57,7 @@ struct TensorX {
   static const TensorX NO_TX;
   TensorX(void): op(NULL), idx(0) {}
   TensorX(OpX* _op, int _idx): op(_op), idx(_idx) {}
-  Tensor to_tensor(const GraphXfer* xfer) const;
+  tl::optional<Tensor> to_tensor(const GraphXfer* xfer) const;
   OpX* op;
   int idx;
 };

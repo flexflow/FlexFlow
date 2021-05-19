@@ -161,18 +161,6 @@ Op::Op(FFModel& model,
   parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
 
-ParallelOp::ParallelOp(FFModel& model,
-                       OperatorType op_type,
-                       const char* name,
-                       const Tensor input)
-: Op(model, op_type, name, 1/*num_inputs*/, 0/*num_weights*/, 1/*num_ouputs*/, input)
-{}
-
-bool ParallelOp::is_parallel_op() const
-{
-  return true;
-}
-
 bool Op::is_parallel_op() const
 {
   return false;
@@ -191,6 +179,10 @@ bool Op::has_inplace_output()
 void Op::do_inplace_output()
 {
   assert(false);
+}
+
+tl::optional<RecordFormatter> Op::as_dot() const {
+  return tl::nullopt;
 }
 
 Tensor Op::get_parameter(int index)
@@ -264,84 +256,6 @@ ParallelConfig get_basic_data_parallel_config(int num_parts, int dims)
     pc.device_ids[i] = i;
   return pc;
 }
-
-#ifdef DEADCODE
-void Op::create_input_partition(FFModel& model)
-{
-  int dim = outputs[0]->num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      create_input_partition_with_dim<DIM>(model); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      assert(false && "Unsupported dim");
-    }
-  }
-}
-
-template<int NDIM>
-void Op::create_input_partition_with_dim(FFModel& model)
-{
-  std::string pcname = name;
-  assert(numOutputs > 0);
-  task_is = model.get_or_create_task_is(outputs[0]);
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  //Rect<NDIM> my_part_rect = runtime->get_index_space_domain(ctx, task_is);
-  for (int i = 0; i < numInputs; i++) {
-    input_lps[i] = inputs[i]->part;
-    input_grad_lps[i] = inputs[i]->part_grad;
-    switch (op_type) {
-      case OP_REPARTITION:
-      case OP_COMBINE:
-      case OP_REPLICATE:
-      case OP_REDUCTION:
-      case OP_PIPELINE:
-        break;
-      default:
-      {
-        Domain my_domain = runtime->get_index_space_domain(ctx, task_is);
-        Domain in_domain = runtime->get_index_space_domain(ctx, inputs[i]->parallel_is);
-        assert(task_is == inputs[i]->parallel_is);
-        assert(my_domain == in_domain);
-      }
-    }
-#ifdef DEADCODE
-    Rect<NDIM> input_part_rect = runtime->get_index_partition_color_space(
-        ctx, inputs[i]->part.get_index_partition());
-    // sanity check
-    // inputs and outputs should have the same ndim in the default case
-    if (inputs[i]->owner_op != NULL) {
-      std::string input_pcname = inputs[i]->owner_op->name;
-      IndexSpaceT<NDIM> input_task_is;
-      input_task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(
-          NDIM, input_pcname));
-      Rect<NDIM> input_part_rect2 = runtime->get_index_space_domain(
-          ctx, input_task_is);
-      assert(input_part_rect == input_part_rect2);
-    }
-    assert(my_part_rect == input_part_rect);
-    if (my_part_rect == input_part_rect) {
-      input_lps[i] = inputs[i]->part;
-      input_grad_lps[i] = inputs[i]->part_grad;
-    }
-    else {
-      // Assert that this input must be activations
-      assert(inputs[i]->sync_type == ParameterSyncType::NONE);
-      model.create_disjoint_partition(
-          inputs[i], (IndexSpaceT<NDIM>)task_is,
-          input_lps[i], input_grad_lps[i]);
-    }
-#endif
-  }
-}
-#endif
 
 ParallelConfig Op::get_random_parallel_config(const FFModel& ff) const
 {

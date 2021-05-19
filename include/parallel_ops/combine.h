@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_COMBINE_H
 #define _FLEXFLOW_COMBINE_H
 
-#include "model.h"
+#include "parallel_op.h"
 
 class Combine : public ParallelOp {
 public:
@@ -40,6 +40,7 @@ public:
       CostMetrics& cost_metrics) const;
 
   size_t get_params_hash() const override;
+  tl::optional<RecordFormatter> as_dot() const override;
 public:
   int combine_dim, combine_degree;
 };

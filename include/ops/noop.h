@@ -21,6 +21,7 @@ public:
                            Legion::Context ctx, Legion::Runtime *runtime);
   
   size_t get_params_hash() const override;
+  tl::optional<RecordFormatter> as_dot() const override;
 };
 
 #endif // _FLEXFLOW_NOOP_H

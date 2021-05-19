@@ -157,3 +157,13 @@ Node FFModel::get_or_create_input_node(const TensorShape& output_shape)
 
   return this->new_node(input);
 }
+
+tl::optional<RecordFormatter> NoOp::as_dot() const { 
+  RecordFormatter rf;
+  { 
+    std::ostringstream oss;
+    oss << "shape(" << this->outputs[0]->get_shape() << ")";
+    rf << oss.str();
+  }
+  return rf;
+}

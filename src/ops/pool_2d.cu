@@ -608,7 +608,8 @@ bool Pool2D::measure_operator_cost(Simulator* sim,
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf("[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+    log_measure.debug(
+        "[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
         name,
         input_n, input_c, input_h, input_w,
         output_n, output_c, output_h, output_w,
@@ -616,7 +617,8 @@ bool Pool2D::measure_operator_cost(Simulator* sim,
         padding_h, padding_w,
         cost_metrics.forward_time, cost_metrics.backward_time);
   } else {
-    printf("[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf)\n",
+    log_measure.debug(
+        "[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf)\n",
         name,
         input_n, input_c, input_h, input_w,
         output_n, output_c, output_h, output_w,

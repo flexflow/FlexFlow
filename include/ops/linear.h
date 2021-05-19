@@ -2,6 +2,7 @@
 #define _FLEXFLOW_LINEAR_H
 
 #include "model.h"
+#include "node_cache.h"
 
 class LinearMeta : public OpMeta {
 public:
@@ -69,6 +70,13 @@ public:
          bool _use_bias,
          bool allocate_weights,
          const char* name);
+  Linear(NodeCache& node_cache,
+         const Tensor input,
+         int out_dim,
+         ActiMode activation,
+         bool use_bias,
+         bool allocate_weights,
+         const char* name);
   Linear(FFModel& model, 
          Linear const &other, 
          Tensor const input, 
@@ -118,6 +126,15 @@ public:
 
   size_t get_params_hash() const override;
 private:
+  Linear(int guid,
+         bool profiling,
+         const Tensor input,
+         int out_dim,
+         ActiMode activation,
+         bool use_bias,
+         bool allocate_weights,
+         const char* name);
+
   template<int NDIM>
   static OpMeta* init_task_with_dim(const Legion::Task *task,
                                     const std::vector<Legion::PhysicalRegion> &regions,

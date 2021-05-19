@@ -63,7 +63,8 @@ size_t MachineView::hash() const
 int MachineView::get_device_id(const DomainPoint& p) const
 {
   assert(p.get_dim() == ndims);
-  int idx = start_device_id;
+  assert(this->get_domain().contains(p));
+  int idx = this->start_device_id;
   for (int i = 0; i < ndims; i++)
     idx += p[i] * stride[i];
   return idx;
@@ -84,4 +85,31 @@ bool MachineView::operator==(const MachineView& rhs) const
 bool MachineView::operator!=(const MachineView& rhs) const
 {
   return !(*this == rhs);
+}
+
+std::ostream& operator<<(std::ostream &s, MachineView const &view) {
+  s << "MachineView<";
+  for (int i = 0; i < view.ndims; i++) {
+    int lo = view.start_device_id;
+    int hi = view.start_device_id + view.dim[i];
+    int stride = view.stride[i];
+    s << i << "=[" << lo << ":" << hi << ":" << stride << "]";
+    if (i != view.ndims - 1) {
+      s << " ";
+    }
+  }
+  s << ">";
+
+  return s;
+}
+
+size_t MachineResource::hash() const
+{
+  size_t ret = 17;
+  ret = ret * 31 + std::hash<int>()(num_nodes);
+  ret = ret * 31 + std::hash<int>()(available_gpus_per_node);
+  ret = ret * 31 + std::hash<int>()(available_cpus_per_node);
+  ret = ret * 31 + std::hash<int>()(start_gpu_id);
+  ret = ret * 31 + std::hash<int>()(start_cpu_id);
+  return ret;
 }

@@ -28,11 +28,13 @@ Linear::Linear(FFModel& model,
     allocate_weights,
     1/*outputs*/, 
     _input),
-  in_channels(_input->dims[0].size),
   out_channels(out_dim),
   activation(_activation),
   use_bias(_use_bias)
 {
+  auto dimension_names = this->get_params().get_dimension_names(_input->get_shape());
+  this->in_channels = _input->dims[dimension_names.at(LinearParams::INPUT_CHANNEL)].size;
+    
   TensorShape input_shape = this->inputs[0]->get_shape();
   TensorShape output_shape, kernel_shape, bias_shape;
   LinearParams params = this->get_params();
@@ -64,7 +66,7 @@ Linear::Linear(FFModel& model,
   }
 
   // Create the output tensor
-  outputs[0] = model.create_tensor_legion_ordering(output_shape.num_dims, output_shape.dims, DT_FLOAT);
+  outputs[0] = model.create_tensor_legion_ordering(output_shape.num_dims, output_shape.dims, DT_FLOAT, this);
 
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }

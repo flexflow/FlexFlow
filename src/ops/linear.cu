@@ -708,16 +708,17 @@ bool Linear::estimate_sync_cost(Simulator* sim,
                                 CostMetrics& cost_metrics) const
 {
   // Estimate the cost of sync weights
-  TensorBase tensor_base;
-  tensor_base.num_dims = 3;
-  tensor_base.dims[0] = inputs[0]->dims[0];
-  tensor_base.dims[1] = inputs[0]->dims[inputs[0]->num_dims-1];
-  tensor_base.dims[2] = inputs[0]->dims[inputs[0]->num_dims-2];
-  tensor_base.dims[1].size = out_channels;
-  tensor_base.dims[1].degree = 1;
-  tensor_base.dims[2].degree = inputs[0]->dims[1].degree * inputs[0]->dims[2].degree;
-  tensor_base.dims[2].size = inputs[0]->dims[1].degree * inputs[0]->dims[2].degree;
-  cost_metrics.sync_time = sim->default_estimate_sync_cost(&tensor_base, view, 1);
+  TensorShape tensor_shape;
+  tensor_shape.num_dims = 3;
+  tensor_shape.data_type = DT_FLOAT;
+  tensor_shape.dims[0] = inputs[0]->dims[0];
+  tensor_shape.dims[1] = inputs[0]->dims[inputs[0]->num_dims-1];
+  tensor_shape.dims[2] = inputs[0]->dims[inputs[0]->num_dims-2];
+  tensor_shape.dims[1].size = out_channels;
+  tensor_shape.dims[1].degree = 1;
+  tensor_shape.dims[2].degree = inputs[0]->dims[1].degree * inputs[0]->dims[2].degree;
+  tensor_shape.dims[2].size = inputs[0]->dims[1].degree * inputs[0]->dims[2].degree;
+  cost_metrics.sync_time = sim->default_estimate_sync_cost(tensor_shape, view, 1);
   //printf("[Estimate Linear] name(%s) sync_time(%.4lf)\n", name, cost_metrics.sync_time);
   return true;
 }

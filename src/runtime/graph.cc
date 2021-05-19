@@ -30,24 +30,15 @@
 #include "parallel_ops/reduction.h"
 #include "parallel_ops/fused_parallel_op.h"
 #include "parallel_ops/combine.h"
+#include "disjoint_set.h"
 
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_dp("DP");
 LegionRuntime::Logger::Category log_graph("graph");
+LegionRuntime::Logger::Category log_simplify("graph_simplify");
 
 const Node Node::INVALID_NODE = Node();
-
-size_t MachineResource::hash() const
-{
-  size_t ret = 17;
-  ret = ret * 31 + std::hash<int>()(num_nodes);
-  ret = ret * 31 + std::hash<int>()(available_gpus_per_node);
-  ret = ret * 31 + std::hash<int>()(available_cpus_per_node);
-  ret = ret * 31 + std::hash<int>()(start_gpu_id);
-  ret = ret * 31 + std::hash<int>()(start_cpu_id);
-  return ret;
-}
 
 Node::Node(void)
 : guid(0), ptr(NULL)
@@ -174,6 +165,8 @@ std::string optype_to_string(OperatorType op_type)
       return "Combine";
     case OP_FUSED_PARALLEL:
       return "FusedParallel";
+    case OP_FLAT:
+      return "Flat";
     default:
       return "Unknown_" + std::to_string(op_type);
   }
@@ -504,19 +497,21 @@ void Graph::add_edge(const Edge& e)
   outEdges[e.srcOp].insert(e);
 }
 
-void Graph::remove_edge(const Edge& e)
+void Graph::remove_edge(const Edge& e, bool remove_node_if_unused)
 {
   assert(outEdges[e.srcOp].find(e) != outEdges[e.srcOp].end());
   assert(inEdges[e.dstOp].find(e) != inEdges[e.dstOp].end());
   assert(outEdges[e.srcOp].erase(e) == 1);
   assert(inEdges[e.dstOp].erase(e) == 1);
-  if ((outEdges[e.srcOp].size() == 0) && (inEdges[e.srcOp].size() == 0)) {
-    outEdges.erase(e.srcOp);
-    inEdges.erase(e.srcOp);
-  }
-  if ((outEdges[e.dstOp].size() == 0) && (inEdges[e.dstOp].size() == 0)) {
-    outEdges.erase(e.dstOp);
-    inEdges.erase(e.dstOp);
+  if (remove_node_if_unused) {
+    if ((outEdges[e.srcOp].size() == 0) && (inEdges[e.srcOp].size() == 0)) {
+      outEdges.erase(e.srcOp);
+      inEdges.erase(e.srcOp);
+    }
+    if ((outEdges[e.dstOp].size() == 0) && (inEdges[e.dstOp].size() == 0)) {
+      outEdges.erase(e.dstOp);
+      inEdges.erase(e.dstOp);
+    }
   }
 }
 
@@ -594,8 +589,25 @@ void Graph::print(void) const
 }
 
 void Graph::print_dot() const {
-  /* std::unique_ptr<std::ostringstream> oss = std::unique_ptr<std::ostringstream>(new std::ostringstream()); */
-  DotFile dot(std::cout);
+  this->print_dot(std::cout);
+}
+
+void Graph::print_dot(std::ostream &s) const {
+  using ::flexflow::graph::export_as_dot;
+
+  DotFile<Node> dot(s);
+
+  export_as_dot(dot, *this, [](Node const &node) -> RecordFormatter {
+      RecordFormatter rf;
+      rf << node.to_string();
+      tl::optional<RecordFormatter> sub_rf = node.ptr->as_dot();
+      if (sub_rf.has_value()) {
+        rf << sub_rf.value();
+      }
+
+      return rf;
+  });
+  s << std::endl;
 }
 
 bool Graph::has_loop(void)
@@ -732,8 +744,8 @@ void FFModel::register_all_machine_views(int num_nodes,
                                          int cpus_per_node,
                                          std::vector<MachineView>& valid_views)
 {
-  // Data parallel views
-  for (int i = 1; i <= num_nodes * gpus_per_node; i++)
+  // Single-parallelism-dimension views
+  for (int i = 1; i <= num_nodes * gpus_per_node; i++) {
     if (num_nodes * gpus_per_node % i == 0) {
       MachineView view;
       view.device_type = MachineView::GPU;
@@ -743,6 +755,21 @@ void FFModel::register_all_machine_views(int num_nodes,
       view.start_device_id = 0;
       valid_views.push_back(view);
     }
+  }
+  // Two-dimensional views
+  /* for (int i = 1; i <= num_nodes; i++) { */
+  /*   for (int j = 1; j <= gpus_per_node; j++) { */
+  /*     MachineView view; */
+  /*     view.device_type = MachineView::GPU; */
+  /*     view.ndims = 2; */
+  /*     view.dim[0] = i; */
+  /*     view.stride[0] = 1; */
+  /*     view.dim[1] = j; */
+  /*     view.stride[1] = 1; */
+  /*     view.start_device_id = 0; */
+  /*     valid_views.push_back(view); */
+  /*   } */
+  /* } */
 }
 
 Node Graph::find_bottleneck_node(const Node& sink_node, const Node& source_node) const
@@ -808,72 +835,283 @@ void Edge::replace_node(const Node& currentOp, const Node& replaceWith) {
   }
 }
 
-void Graph::replace_node(const Node& currentOp, Graph const &replaceWith) {
-  Node sink_node = replaceWith.find_sink_node();
-  Node source_node = replaceWith.find_source_node();
+Graph Graph::subgraph(std::unordered_set<Node> const &ns) const {
+  using ::flexflow::graph::nodes;
 
-  std::unordered_set<Node> all_nodes;
-  for (auto const &kv : this->inEdges) {
-    all_nodes.insert(kv.first);
-  }
-
-  // replace for the source side
-  for (Node const &node : all_nodes) {
-    auto updateEdge = [&](Edge const &edge) {
-      Edge newEdge(edge);
-      if (newEdge.dstOp == currentOp) {
-        newEdge.dstOp = source_node;
-      }
-      if (newEdge.srcOp == currentOp) {
-        newEdge.srcOp = sink_node;
-      }
-      return newEdge;
-    };
-
-    std::unordered_set<Edge> const &old_in_edges = this->inEdges.at(node);
-    std::unordered_set<Edge> new_in_edges;
-    std::transform(old_in_edges.cbegin(), old_in_edges.cend(), std::inserter(new_in_edges, new_in_edges.begin()), updateEdge);
-    std::unordered_set<Edge> const &old_out_edges = this->outEdges.at(node);
-    std::unordered_set<Edge> new_out_edges;
-    std::transform(old_out_edges.cbegin(), old_out_edges.cend(), std::inserter(new_out_edges, new_out_edges.begin()), updateEdge);
-
-    this->inEdges[node] = new_in_edges;
-    this->outEdges[node] = new_out_edges;
-  }
+  Graph sub(this->model);
   
+  std::unordered_set<Node> all_nodes = nodes(*this);
+
+  for (Node const &node : ns) {
+    assert (all_nodes.find(node) != all_nodes.end());
+    sub.add_node(node);
+  }
   for (auto const &kv : this->inEdges) {
-    for (Edge const &e : kv.second) {
-      assert (e.srcOp != currentOp);
-      assert (e.dstOp != currentOp);
-    }
-  }
-  for (auto const &kv : this->outEdges) {
-    for (Edge const &e : kv.second) {
-      assert (e.srcOp != currentOp);
-      assert (e.dstOp != currentOp);
+    for (Edge const &in_edge : kv.second) {
+      if (ns.find(in_edge.srcOp) != ns.end() && ns.find(in_edge.dstOp) != ns.end()) {
+        sub.add_edge(in_edge);
+      }
     }
   }
 
-  this->inEdges[source_node] = this->inEdges.at(currentOp);
-  this->inEdges.erase(currentOp);
+  return sub;
+}
 
-  this->outEdges[sink_node] = this->outEdges.at(currentOp);
-  this->outEdges.erase(currentOp);
+void Graph::remove_node(Node const &node) {
+  assert (this->inEdges.at(node).empty());
+  assert (this->outEdges.at(node).empty());
+  this->inEdges.erase(node);
+  this->outEdges.erase(node);
+}
 
-  for (auto const &kv : replaceWith.inEdges) {
-    for (Edge const& e : kv.second) {
-      this->add_edge(e);
-    }
+/*static*/ 
+Graph Graph::singleton(FFModel *model, Node const &node) {
+  Graph g(model);
+  g.add_node(node);
+  return g;
+}
+
+bool Graph::empty() const {
+  bool inEdges_empty = this->inEdges.empty();
+  bool outEdges_empty = this->outEdges.empty();
+  assert (inEdges_empty == outEdges_empty);
+  return inEdges_empty;
+}
+
+void Graph::replace_subgraph(std::unordered_set<Node> const &currentNodes, Graph const &replaceWith) {
+  assert (currentNodes.size() > 0);
+  if (replaceWith.empty()) {
+    Graph subgraph = this->subgraph(currentNodes);
+    assert (!subgraph.empty());
+    Node source_node = subgraph.find_source_node();
+    Node noop = this->model->get_or_create_noop_node(source_node.ptr->inputs[0]);
+    this->replace_subgraph_with_nonempty(currentNodes, Graph::singleton(this->model, noop));
+    this->contract_out_node(noop);
+  } else {
+    this->replace_subgraph_with_nonempty(currentNodes, replaceWith);
+  }
+}
+
+void Graph::replace_subgraph_with_nonempty(std::unordered_set<Node> const &currentNodes, Graph const &replaceWith) {
+  using ::flexflow::graph::nodes;
+  using ::flexflow::graph::get_edges;
+
+  Node new_sink_node = replaceWith.find_sink_node();
+  Node new_source_node = replaceWith.find_source_node();
+
+  Graph old_subgraph = this->subgraph(currentNodes);
+  Node old_sink_node = old_subgraph.find_sink_node();
+  Node old_source_node = old_subgraph.find_source_node();
+
+  std::unordered_set<Node> all_nodes = nodes(*this);
+
+  for (Edge const &old_inner_edge : get_edges(old_subgraph)) {
+    this->remove_edge(old_inner_edge, false);
+  }
+  for (Edge const &new_inner_edge : get_edges(replaceWith)) {
+    this->add_edge(new_inner_edge);
+  }
+
+  std::unordered_set<Edge> old_in_edges = this->inEdges.at(old_source_node);
+  for (Edge const &old_in_edge : old_in_edges) {
+    Edge new_in_edge(old_in_edge);
+    new_in_edge.dstOp = new_source_node;
+    this->remove_edge(old_in_edge, false);
+    this->add_edge(new_in_edge);
+  }
+
+  std::unordered_set<Edge> old_out_edges = this->outEdges.at(old_sink_node);
+  for (Edge const &old_out_edge : old_out_edges) {
+    Edge new_out_edge(old_out_edge);
+    new_out_edge.srcOp = new_sink_node;
+    this->remove_edge(old_out_edge, false);
+    this->add_edge(new_out_edge);
+  }
+
+  for (Node const &node : currentNodes) {
+    this->remove_node(node);
   }
 
   assert (this->check_correctness());
 }
 
-void Graph::replace_node(const Node& currentOp, const Node& replaceWith) {
-  Graph g(this->model);
-  g.add_node(replaceWith);
+void Graph::contract_out_node(Node const &node) {
+  using ::flexflow::graph::successors;
 
-  this->replace_node(currentOp, g);
+  assert (node.ptr->numOutputs == 1);
+  assert (node.ptr->numInputs == 1);
+
+  std::unordered_set<Edge> in_edges = this->inEdges.at(node);
+  assert (in_edges.size() == 1);
+  std::unordered_set<Edge> out_edges = this->outEdges.at(node);
+
+  for (auto const &in_edge : in_edges) {
+    this->remove_edge(in_edge);
+    for (auto const &out_edge : out_edges) { 
+      this->remove_edge(out_edge);
+      this->add_edge(in_edge.srcOp, out_edge.dstOp, in_edge.srcIdx, out_edge.dstIdx);
+    }
+  }
+}
+
+void Graph::simplify_parallel_ops() {
+  log_simplify.debug() << "Trying to simplify parallel ops";
+  using ::flexflow::graph::nodes;
+  using ::flexflow::graph::successor;
+  using ::flexflow::graph::predecessor;
+  using ::flexflow::graph::predecessors;
+
+  std::queue<Node> work_queue;
+  for (Node const &node : nodes(*this)) {
+    if (node.ptr->is_parallel_op()) {
+      work_queue.push(node);
+    }
+  }
+
+  while (!work_queue.empty()) {
+    Node node = work_queue.front();
+    log_simplify.debug() << "Trying to simplify starting from " << node.to_string();
+    work_queue.pop();
+
+    auto opt_succ = successor(*this, node);
+    if (!opt_succ.has_value()) {
+      log_simplify.debug() << "Skipping because does not have single successor";
+      continue;
+    }
+    Node succ = opt_succ.value();
+    if (!succ.ptr->is_parallel_op()) {
+      log_simplify.debug() << "Skipping because successor is not a parallel op";
+      continue;
+    }
+
+    std::vector<ParallelOpInfo> node_parallel_op_info, successor_parallel_op_info;
+    ((ParallelOp*)node.ptr)->append_parallel_op_info(node_parallel_op_info);
+    ((ParallelOp*)succ.ptr)->append_parallel_op_info(successor_parallel_op_info);
+    ParallelOpJoinResult result = try_join_parallel_ops(node_parallel_op_info.front(), successor_parallel_op_info.front());
+
+    if (!result.join_did_succeed) {
+      log_simplify.debug() << "Skipping because join did not succeed";
+      continue; 
+    }
+    log_simplify.debug() << "Did join nodes";
+    log_simplify.debug() << "  " << node.to_string();
+    log_simplify.debug() << "  " << succ.to_string();
+
+    for (Node const &p : predecessors(*this, node)) {
+      if (p.ptr->is_parallel_op()) {
+        work_queue.push(p); 
+      }
+    }
+
+    Graph new_g(this->model);
+    if (result.op.has_value()) {
+      Node new_op = this->model->get_or_create_parallel_op_node(node.ptr->inputs[0], result.op.value());
+      work_queue.push(new_op);
+      new_g.add_node(new_op);
+    } 
+    this->replace_subgraph({node, succ}, new_g);
+  }
+  log_simplify.debug() << "Finished simplifying parallel ops";
+}
+
+void Graph::simplify(SimplificationSettings const &settings) {
+  // Simplify the graph by eliminating reverse parallel ops
+  // and fusing multiple parallel ops
+  // old graph: e1->n1->e2->n2->en
+  // new graph: e1->new_node->en
+  // TODO: temporarily disabled graph simplification
+  if (settings.simplify_parallel_ops) {
+    this->simplify_parallel_ops();
+  }
+  if (settings.fuse_parallel_ops) {
+    bool simplify = true;
+    while (simplify) {
+      simplify = false;
+      for (const auto& it : this->inEdges) {
+        if (it.first.ptr == NULL) continue;
+        if (it.first.ptr->is_parallel_op()) {
+          Node n2 = it.first;
+          assert(it.second.size() == 1);
+          Edge e2 = *it.second.begin();
+          Node n1 = e2.srcOp;
+          // Check that n1 is a parallel op
+          // Check that n1 must have a single out edge
+          if (n1.ptr->is_parallel_op() && this->outEdges.find(n1)->second.size() == 1) {
+            // merge n1 and n2
+            std::vector<ParallelOpInfo> parallel_ops;
+            ((ParallelOp*)n1.ptr)->append_parallel_op_info(parallel_ops);
+            ((ParallelOp*)n2.ptr)->append_parallel_op_info(parallel_ops);
+            Node new_node = model->get_or_create_fused_parallel_node(n1.ptr->inputs[0], parallel_ops);
+            const auto& inList = this->inEdges.find(n1)->second;
+            assert(inList.size() == 1);
+            Edge e1 = *inList.begin();
+            // Update graph by adding edges
+            this->add_edge(e1.srcOp, new_node, e1.srcIdx, 0);
+            this->remove_edge(e1);
+            this->remove_edge(e2);
+            // make a copy of outList
+            if (this->outEdges.find(n2) != this->outEdges.end()) {
+              const auto outList = this->outEdges.find(n2)->second;
+              for (const auto& e : outList) {
+                this->add_edge(new_node, e.dstOp, 0, e.dstIdx);
+                this->remove_edge(e);
+              }
+            }
+            simplify = true;
+          }
+        }
+        if (simplify) break;
+      }
+    }
+  }
+
+  if (settings.remove_trailing_parallel_ops) {
+    // Remove final parallel ops
+    std::vector<Node> candidates;
+    for (const auto& it : this->outEdges) {
+      if (it.second.size() == 0 && it.first.ptr->is_parallel_op()) {
+        candidates.push_back(it.first);
+      }
+    }
+    size_t index = 0;
+    while (index < candidates.size()) {
+      Node parallel_op = candidates[index++];
+      const auto& inList = this->inEdges.find(parallel_op)->second;
+      assert(inList.size() == 1);
+      Edge e = *inList.begin();
+      this->remove_edge(e);
+      if (this->outEdges.find(e.srcOp)->second.size() == 0 && e.srcOp.ptr->is_parallel_op()) {
+        candidates.push_back(e.srcOp);
+      }
+    }
+  }
+
+  if (settings.remove_noops) {
+    // Remove NoOps
+    std::vector<Node> noop_nodes;
+    for (const auto& it : this->inEdges) {
+      if (it.first.ptr == NULL) continue;
+      if (it.first.ptr->op_type == OP_NOOP) {
+        noop_nodes.push_back(it.first);
+      }
+    }
+    size_t index = 0;
+    while (index < noop_nodes.size()) {
+      Node noop = noop_nodes[index++];
+      const auto& inList = this->inEdges.find(noop)->second;
+      assert(inList.size() == 1);
+      Edge in_edge = *inList.begin();
+      // make a copy of outList
+      if (this->outEdges.find(noop) != this->outEdges.end()) {
+        const auto outList = this->outEdges.find(noop)->second;
+        for (const auto& e : outList) {
+          this->add_edge(in_edge.srcOp, e.dstOp, in_edge.srcIdx, e.dstIdx);
+          this->remove_edge(e);
+        }
+      }
+      this->remove_edge(in_edge);
+    }
+  }
 }
 
 std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> Graph::split_at_node(Node const &bottleneck) const {
@@ -1303,6 +1541,7 @@ T Graph::generic_optimal_cost() const
 
   log_dp.info() << "Exploring " << valid_views.size() << " valid views";
   for (MachineView const &sink_view : valid_views) {
+    log_dp.info() << "  Exploring valid view " << sink_view;
     T new_cost = search->graph_cost<T>(
         &reduced_graph,
         {Node::INVALID_NODE, MachineView::NO_VIEW},
@@ -1387,7 +1626,7 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
                         model->config.only_data_parallel,
                         best_graph, optimal_views);
   Serializer sez;
-  // FIrst serialize graph
+  // First serialize graph
   sez.serialize(best_graph->inEdges.size());
   std::unordered_map<Node, int> todos;
   std::vector<Node> opList;

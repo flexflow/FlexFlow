@@ -48,25 +48,46 @@ private:
   size_t node_id;
   std::map<T,size_t> node_ids;
   tl::optional<std::ofstream> owned_fstream = tl::nullopt;
-  std::ostream& out;
+  tl::optional<std::ostream&> out = tl::nullopt;
   std::string get_node_name(size_t node_id) const {
     std::ostringstream s;
     s << "node" << node_id;
     return s.str();
   }
+  bool has_ostream() const {
+    return this->owned_fstream.has_value() || this->out.has_value();
+  }
+  std::ostream& get_ostream() {
+    bool has_owned_stream = this->owned_fstream.has_value();
+    bool has_stream_ref = this->out.has_value();
+    assert (has_owned_stream != has_stream_ref);
+    if (has_owned_stream) {
+      return this->owned_fstream.value();
+    } else if (has_stream_ref) {
+      return this->out.value();
+    } else {
+      throw std::runtime_error("No ostream value set");
+    }
+  }
+  void start_output() {
+    this->get_ostream() << "digraph taskgraph {" << std::endl;
+  }
 public:
   DotFile() : node_id(0) {}
-  DotFile(std::string const &filename) : node_id(0), owned_fstream(filename), out(this->owned_fstream) { 
+  DotFile(std::string const &filename) 
+    : node_id(0), owned_fstream(filename) 
+  { 
+    this->start_output();
   }
   DotFile(std::ostream& s)
     : node_id(0), out(s)
   {
-    out << "digraph taskgraph {";
+    this->start_output();
   }
 
   void set_filename(std::string filename) {
-    this->out = std::unique_ptr<std::ostream>(new std::ofstream(filename));
-    out << "digraph taskgraph {";
+    this->owned_fstream = std::ofstream(filename);
+    this->start_output();
   }
   void reserve_node(T const &t) {
     if (this->node_ids.find(t) == this->node_ids.end()) {
@@ -75,14 +96,14 @@ public:
   }
   void add_node(T const &t, std::map<std::string, std::string> const &params) {
     this->reserve_node(t);
-    out << "  " << this->get_node_name(this->node_ids.at(t)) << " [";
+    this->get_ostream() << "  " << this->get_node_name(this->node_ids.at(t)) << " [";
     for (auto it = params.begin(); it != params.end(); ++it)  {
-      out << it->first << "=" << it->second;
+      this->get_ostream() << it->first << "=" << it->second;
       if (std::next(it) != params.end()) {
-        out << ",";
+        this->get_ostream() << ",";
       }
     }
-    out << "];" << std::endl;
+    this->get_ostream() << "];" << std::endl;
   }
   void add_record_node(T const &t, RecordFormatter const &rf) {
     std::ostringstream oss;
@@ -99,11 +120,11 @@ public:
     this->reserve_node(dst);
     auto src_name = this->get_node_name(this->node_ids.at(src));
     auto dst_name = this->get_node_name(this->node_ids.at(dst));
-    out << "  " << src_name << " -> " << dst_name << ";" << std::endl;
+    this->get_ostream() << "  " << src_name << " -> " << dst_name << ";" << std::endl;
   }
   void close() {
-    out << "}";
-    out.flush();
+    this->get_ostream() << "}";
+    this->get_ostream().flush();
   }
 };
 

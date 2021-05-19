@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_FUSED_PARALLEL_OP_H
 #define _FLEXFLOW_FUSED_PARALLEL_OP_H
 
-#include "model.h"
+#include "parallel_op.h"
 
 class FusedParallelOp : public ParallelOp {
 public:

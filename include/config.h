@@ -53,12 +53,6 @@ constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
 
 class FFConfig;
 
-struct ParallelOpInfo {
-  OperatorType op_type;
-  int parallel_dim;
-  int parallel_degree;
-};
-
 struct FFHandler {
   cudnnHandle_t dnn;
   cublasHandle_t blas;

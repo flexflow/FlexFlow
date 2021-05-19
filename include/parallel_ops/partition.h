@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_PARTITION_H
 #define _FLEXFLOW_PARTITION_H
 
-#include "model.h"
+#include "parallel_op.h"
 
 class Repartition : public ParallelOp {
 public:
@@ -39,6 +39,7 @@ public:
                              CostMetrics& cost_metrics) const;
 
   size_t get_params_hash() const override;
+  tl::optional<RecordFormatter> as_dot() const override;
 public:
   int repartition_dim, repartition_degree;
 };

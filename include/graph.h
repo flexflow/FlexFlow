@@ -218,6 +218,7 @@ private:
 };
 
 struct SimplificationSettings {
+  bool simplify_parallel_ops = false;
   bool fuse_parallel_ops = false;
   bool remove_trailing_parallel_ops = false;
   bool remove_noops = false;
@@ -232,14 +233,16 @@ public:
                 int dstIdx);
   void add_node(const Node&);
   void add_edge(const Edge& e);
-  void remove_edge(const Edge& e);
+  void remove_node(const Node&);
+  void remove_edge(const Edge& e, bool remove_node_if_unused = true);
   bool has_edge(const Node& srcOp,
                 const Node& dstOp,
                 int srcIdx,
                 int dstIdx) const;
   bool has_edge(const Edge& e) const;
-  void replace_node(const Node& currentOp, const Node& replaceWith);
-  void replace_node(const Node& currentOp, const Graph& replaceWith);
+  void replace_subgraph(std::unordered_set<Node> const &currentNodes, const Graph& replaceWith);
+  Graph subgraph(std::unordered_set<Node> const &nodes) const;
+  void contract_out_node(const Node&);
   float optimal_cost() const;
   std::unordered_map<Node, MachineView> optimal_views() const;
 
@@ -247,6 +250,7 @@ public:
   size_t hash(void) const;
   void print(void) const;
   void print_dot() const;
+  void print_dot(std::ostream &) const;
 
   bool check_correctness(void);
   bool has_loop(void);
@@ -256,7 +260,6 @@ public:
              Legion::Context ctx, Legion::Runtime *runtime);
   Node find_bottleneck_node(const Node& sink_node, const Node& source_node) const;
   Node find_nontrivial_bottleneck_node(const Node& sink_node, const Node& source_node) const;
-  void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::unique_ptr<std::ostream> out) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::string const &out_filename) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const;
 
@@ -272,6 +275,10 @@ public:
   std::unique_ptr<Graph> with_output_tensor_reshaped_to(TensorShape const &shape) const;
 
   void simplify(SimplificationSettings const &);
+  void simplify_parallel_ops();
+
+  static Graph singleton(FFModel *, Node const &);
+  bool empty() const;
 public:
   FFModel* model;
   SearchHelper* search;
@@ -279,6 +286,9 @@ public:
 private:
   template <typename T>
   T generic_optimal_cost() const;
+
+  void remove_inverse_parallel_ops();
+  void replace_subgraph_with_nonempty(std::unordered_set<Node> const &currentNodes, const Graph& replaceWith);
 };
 
 namespace flexflow::graph {

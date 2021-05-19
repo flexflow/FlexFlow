@@ -2,14 +2,12 @@
 
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_app("split_test");
+LegionRuntime::Logger::Category log_app("split_test_2");
 
 void top_level_task(const Task* task, 
                     const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime) 
 {
-  int layer_dims[4] = { 256, 128, 64, 32 };
-
   FFConfig ffConfig;
   log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
       ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
@@ -17,23 +15,24 @@ void top_level_task(const Task* task,
 
   Tensor input;
   { 
-    const int dims[] = {1, ffConfig.batchSize, layer_dims[0] };
-    input = ff.create_tensor<3>(dims, DT_FLOAT);
-    log_app.print("input size: %d %d %d", dims[0], dims[1], dims[2]);
+    const int dims[] = {1, ffConfig.batchSize, 4, 512, 512};
+    input = ff.create_tensor<5>(dims, DT_FLOAT);
+    log_app.print("input size: %d %d %d %d %d", dims[0], dims[1], dims[2], dims[3], dims[4]);
   }
   
   Tensor t, t1, t2;
 
+  int channels[] = { 4, 8, 16, 32, 64, 128, 256, 512  };
+
   t = input;
-  t = ff.dense(input, layer_dims[1]);
-  t = ff.relu(t);
-  t1 = ff.dense(t, layer_dims[2]);
-  t2 = ff.dense(t, layer_dims[2]);
-  t = ff.add(t1, t2);
-  t = ff.relu(t);
-  t1 = ff.dense(t, layer_dims[3]);
-  t2 = ff.dense(t, layer_dims[3]);
-  t = ff.add(t1, t2);
+  for (int i = 0; i < sizeof(channels) / sizeof(int); i++) {
+    t = ff.conv2d(t, channels[1], 3, 3, 2, 2, 0, 0);
+    std::ostringstream oss;
+    oss << "Iteration " << i;
+    t->print(oss.str());
+  }
+  t->print("Post-conv shape");
+  t = ff.flat(t);
   t = ff.relu(t);
   t = ff.softmax(t);
 

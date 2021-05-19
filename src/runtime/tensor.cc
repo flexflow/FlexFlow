@@ -13,6 +13,7 @@
 #include "ops/split.h"
 #include "ops/noop.h"
 #include "ops/concat.h"
+#include "hash_utils.h"
 
 using namespace Legion;
 
@@ -78,6 +79,27 @@ size_t TensorShape::get_piece_size() const {
   return piece_size;
 }
 
+std::unordered_map<int, int> TensorShape::get_mv_dim_to_tensor_dim_mapping() const {
+  std::unordered_map<int, int> result;
+  for (int i = 0; i < this->num_dims; i++) {
+    int machine_view_dim = this->dims[i].parallel_idx;
+    if (machine_view_dim != -1) {
+      assert (result.find(machine_view_dim) == result.end());
+      result[machine_view_dim] = i;
+    }
+  }
+  return result;
+}
+
+std::unordered_map<int, int> TensorShape::get_tensor_dim_to_mv_dim_mapping() const {
+  std::unordered_map<int, int> result;
+  for (auto const &kv : this->get_mv_dim_to_tensor_dim_mapping()) {
+    assert (result.find(kv.second) == result.end());
+    result[kv.second] = kv.first;
+  }
+  return result;
+}
+
 bool TensorBase::update_parallel_ids(
     int numdim,
     ParallelDim* dims)
@@ -93,25 +115,6 @@ bool TensorBase::update_parallel_ids(
   }
   
   return true;
-}
-
-TensorBase::TensorBase(void)
-{
-  ts_guid = 0;
-  num_dims = 0;
-  machine_view = MachineView::NO_VIEW;
-  parallel_is = IndexSpace::NO_SPACE;
-  region = LogicalRegion::NO_REGION;
-  region_grad = LogicalRegion::NO_REGION;
-  part = LogicalPartition::NO_PART;
-  part_grad = LogicalPartition::NO_PART;
-  owner_op = NULL;
-  owner_idx = 0;
-  data_type = DataType::DT_NONE;
-  sync_type = ParameterSyncType::NONE;
-  initializer = NULL;
-  create_gradients = false;
-  //physical_region.impl = NULL;
 }
 
 TensorBase::TensorBase(const TensorBase& rhs)
@@ -390,6 +393,7 @@ bool TensorBase::check_valid() const
       used[dims[i].parallel_idx] = true;
     }
   }
+  assert (this->data_type != DT_NONE);
   int idx = 0;
   while (used[idx]) idx++;
   for (int i = idx; i < MAX_TENSOR_DIM; i++)
@@ -423,6 +427,28 @@ TensorShape TensorBase::get_shape() const {
   }
 
   return shape;
+}
+
+std::ostream& operator<<(std::ostream &s, TensorShape const &shape) {
+  s << "[ ";
+  for (int i = 0; i < shape.num_dims; i++) {
+    s << shape.dims[i].size << "/" << shape.dims[i].degree << " ";
+  }
+  s << "]";
+
+  return s;
+}
+
+namespace std {
+  size_t hash<TensorShape>::operator()(TensorShape const &shape) const {
+    size_t key = 0;
+    hash_combine(key, shape.num_dims);
+    for (int i = 0; i < shape.num_dims; i++) {
+      hash_combine(key, shape.dims[i].size);
+      hash_combine(key, shape.dims[i].degree);
+    }
+    return key;
+  }
 }
 
 bool TensorBase::is_valid_machine_view(const MachineView& view) const

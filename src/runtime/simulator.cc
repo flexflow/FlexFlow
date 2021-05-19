@@ -425,11 +425,13 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& vi
 float Simulator::estimate_repartition_xfer_cost(int repartition_dim,
                                                 int repartition_degree,
                                                 const TensorShape& input_tensor_shape, 
+                                                const TensorShape& output_tensor_shape,
                                                 const MachineView& source_view,
                                                 const MachineView& sink_view) const
 {
   assert (source_view != sink_view);
 
+  auto tensor_dim_to_mv_dim_mapping = output_tensor_shape.get_tensor_dim_to_mv_dim_mapping();
   size_t piece_size = input_tensor_shape.get_piece_size();
   piece_size /= repartition_degree;
   float max_xfer_cost = 0.0f;
@@ -437,7 +439,7 @@ float Simulator::estimate_repartition_xfer_cost(int repartition_dim,
   for (Domain::DomainPointIterator it(sink_view.get_domain()); it; it++) {
     int sink_device = sink_view.get_device_id(*it);
     DomainPoint source_dp(*it);
-    source_dp.point_data[repartition_dim] /= repartition_degree;
+    source_dp.point_data[tensor_dim_to_mv_dim_mapping.at(repartition_dim)] /= repartition_degree;
     int source_device = source_view.get_device_id(source_dp);
 
     float bandwidth = 0.0f;
@@ -473,23 +475,22 @@ float Simulator::estimate_xfer_cost(const Op* op,
 
   if (op->is_parallel_op()) {
     assert (input_idx == 0);
-    const Tensor input_tensor = op->inputs[input_idx];
-    if (input_tensor->owner_op->op_type == OP_INPUT) {
-      return 0.0f;
-    }
+    const Tensor output_tensor = op->outputs[0];
     switch (op->op_type) {
       case OP_REPARTITION:
       {
         Repartition *rp = (Repartition*)op;
         return this->estimate_repartition_xfer_cost(rp->repartition_dim, rp->repartition_degree, 
-                                                    input_tensor->get_shape(), source_view, sink_view);
+                                                    input_tensor->get_shape(), output_tensor->get_shape(),
+                                                    source_view, sink_view);
       }
       case OP_COMBINE:
       {
         Combine *combine = (Combine*)op;
         const Tensor output_tensor = op->outputs[0];
         return this->estimate_repartition_xfer_cost(combine->combine_dim, combine->combine_degree,
-                                                    output_tensor->get_shape(), sink_view, source_view);
+                                                    output_tensor->get_shape(), input_tensor->get_shape(),
+                                                    sink_view, source_view);
       }
       case OP_REPLICATE:
       {
@@ -497,7 +498,8 @@ float Simulator::estimate_xfer_cost(const Op* op,
         TensorShape fake_input_shape = input_tensor->get_shape();
         fake_input_shape.dims[replicate->replicate_dim].size *= replicate->replicate_degree;
         return this->estimate_repartition_xfer_cost(replicate->replicate_dim, replicate->replicate_degree,
-                                                    fake_input_shape, source_view, sink_view);
+                                                    fake_input_shape, output_tensor->get_shape(),
+                                                    source_view, sink_view);
       }
       case OP_REDUCTION:
       {
@@ -506,7 +508,8 @@ float Simulator::estimate_xfer_cost(const Op* op,
         TensorShape fake_output_shape = output_tensor->get_shape();
         fake_output_shape.dims[reduction->reduction_dim].size *= reduction->reduction_degree;
         return this->estimate_repartition_xfer_cost(reduction->reduction_dim, reduction->reduction_degree,
-                                                    fake_output_shape, sink_view, source_view);
+                                                    fake_output_shape, input_tensor->get_shape(),
+                                                    sink_view, source_view);
       }
       default:
         assert(false);
@@ -558,6 +561,7 @@ float Simulator::default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TE
 {
   TensorBase tensor_base;
   tensor_base.num_dims = tensor_ndims;
+  tensor_base.data_type = DT_FLOAT;
   int num_replica_dims = 0;
   for (int i = 0; i < tensor_ndims; i++) {
     tensor_base.dims[i] = tensor_dims[i];
@@ -571,43 +575,38 @@ float Simulator::default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TE
 
 float Simulator::default_estimate_sync_cost(const Tensor tensor,
                                             const MachineView& view,
+                                            int num_replica_dims)
+{
+  return this->default_estimate_sync_cost(tensor->get_shape(), view, num_replica_dims);
+}
+
+float Simulator::default_estimate_sync_cost(TensorShape const& tensor_shape,
+                                            const MachineView& view,
                                             int num_replicate_dims)
 {
   // Currently only support 1 replicate_dim
   assert(num_replicate_dims == 1);
-  if (tensor->dims[tensor->num_dims-1].degree == 1) {
+  if (tensor_shape.dims[tensor_shape.num_dims-1].degree == 1) {
     // No replications
     return 0.0f;
   } else {
-    int replicate_dim = tensor->dims[tensor->num_dims-1].parallel_idx;
-    assert(replicate_dim >= 0);
-    int replicate_stride = view.stride[replicate_dim];
     bool inter_node_sync = false;
-    Domain d;
-    d.dim = view.ndims;
-    for (int i = 0; i < d.dim; i++) {
-      d.rect_data[i] = 0;
-      d.rect_data[i+d.dim] = view.dim[i]-1;
-    }
-    for (Domain::DomainPointIterator it(d); it; it++) {
+    tl::optional<int> node = tl::nullopt;
+    for (Domain::DomainPointIterator it(view.get_domain()); it; it++) {
       int my_device = view.get_device_id(*it);
-      if ((*it)[replicate_dim] > 0) {
-        int last_device = my_device - replicate_stride;
-        if (machine->get_gpu(my_device)->node_id != machine->get_gpu(last_device)->node_id) {
-          inter_node_sync = true;
-        }
+      int my_node = machine->get_gpu(my_device)->node_id;
+      if (node == tl::nullopt) {
+        node = my_node;
       }
+      if (my_node != node.value()) {
+        inter_node_sync = true;
+        break;
+      } 
     }
-    float bandwidth = 0.0f;
-    if (!inter_node_sync) {
-      bandwidth = machine->get_intra_node_gpu_bandwidth();
-    } else {
-      bandwidth = machine->get_inter_node_gpu_bandwidth();
-    }
-    size_t total_size = sizeof(float) * tensor->get_volume() / tensor->get_total_num_parts();
-    return 2*total_size / bandwidth;
+    float bandwidth = inter_node_sync ? this->machine->get_inter_node_gpu_bandwidth()
+                                      : this->machine->get_intra_node_gpu_bandwidth();
+    return 2 * tensor_shape.get_piece_size() / bandwidth;
   }
-
 }
 
 float Simulator::simulate_runtime(const FFModel* model,

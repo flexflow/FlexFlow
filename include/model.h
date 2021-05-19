@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <functional>
 #include "tl/optional.h"
+#include "dot_file.h"
 
 #include "ffconst.h"
 
@@ -335,6 +336,17 @@ public:
      const Tensor input2 = NULL,
      const Tensor input3 = NULL,
      const Tensor input4 = NULL);
+  Op(int guid, 
+     bool profiling,
+     OperatorType type,
+     const char* name,
+     int numInputs,
+     int numWeights,
+     int numOutputs,
+     const Tensor input1 = NULL,
+     const Tensor input2 = NULL,
+     const Tensor input3 = NULL,
+     const Tensor input4 = NULL);
   Op(FFModel& model,
      OperatorType type,
      const char* _name,
@@ -378,6 +390,8 @@ public:
   virtual Op *materialize(FFModel& ff, Tensor inputs[], int num_inputs) const;
   size_t get_untyped_params_hash() const;
   virtual size_t get_params_hash() const;
+
+  virtual tl::optional<RecordFormatter> as_dot() const;
 
   int get_dimension() const;
 #ifdef FF_USE_NCCL
@@ -475,6 +489,7 @@ class Repartition;
 class Reduction;
 class Replicate;
 class FusedParallelOp;
+class ParallelOpInfo;
 class Graph;
 
 class FFModel {
@@ -831,6 +846,8 @@ public:
                                         OperatorType type,
                                         bool inplace, 
                                         float scalar);
+  Node get_or_create_parallel_op_node(const Tensor input, 
+                                      ParallelOpInfo const &);
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
@@ -1459,27 +1476,6 @@ public:
   FusedOpMeta fused_meta[MAX_NUM_WORKERS];
   int numOperators;
 };
-
-class ParallelOp : public Op {
-public:
-  ParallelOp(FFModel& model,
-             OperatorType type,
-             const char* _name,
-             const Tensor input);
-  virtual void init(const FFModel&) = 0;
-  virtual void forward(const FFModel&) = 0;
-  virtual void backward(const FFModel&) = 0;
-  virtual void create_input_partition(FFModel& model) = 0;
-  void print_layer(const FFModel& model) {};
-  virtual bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const = 0;
-  virtual bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const = 0;
-  virtual bool is_parallel_op() const;
-public:
-  Legion::LogicalPartition input_lp, output_grad_lp;
-};
-
 
 class UtilityTasks {
 public:

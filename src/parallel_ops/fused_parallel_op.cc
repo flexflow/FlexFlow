@@ -211,116 +211,13 @@ size_t FusedParallelOp::get_params_hash() const {
 }
 
 Node FFModel::get_or_create_fused_parallel_node(const Tensor input,
-                                                const std::vector<ParallelOpInfo>& _parallel_ops)
+                                                const std::vector<ParallelOpInfo>& parallel_ops)
 {
   // Try to combine _parallel_ops's dimensions
-  std::vector<ParallelOpInfo> parallel_ops;
-  for (size_t i = 0; i < _parallel_ops.size(); i++) {
-    ParallelOpInfo new_op = _parallel_ops[i];
-    if (parallel_ops.size() == 0) {
-      parallel_ops.push_back(new_op);
-    } else {
-      ParallelOpInfo old_op = parallel_ops[parallel_ops.size()-1];
-      switch (new_op.op_type) {
-        case OP_REPARTITION:
-        {
-          if (old_op.op_type == OP_COMBINE
-          && old_op.parallel_dim == new_op.parallel_dim) {
-            // Eliminate repartition/combine
-            if (old_op.parallel_degree == new_op.parallel_degree) {
-              parallel_ops.pop_back();
-            } else if (old_op.parallel_degree > new_op.parallel_degree) {
-              assert(old_op.parallel_degree % new_op.parallel_degree == 0);
-              old_op.parallel_degree /= new_op.parallel_degree;
-              parallel_ops.pop_back();
-              parallel_ops.push_back(old_op);
-            } else {
-              assert(new_op.parallel_degree % old_op.parallel_degree == 0);
-              new_op.parallel_degree /= old_op.parallel_degree;
-              parallel_ops.pop_back();
-              parallel_ops.push_back(new_op);
-            }
-          } else if (old_op.op_type == OP_REPARTITION && old_op.parallel_dim == new_op.parallel_dim) {
-            old_op.parallel_degree *= new_op.parallel_degree;
-            parallel_ops.pop_back();
-            parallel_ops.push_back(old_op);
-          } else {
-            parallel_ops.push_back(new_op);
-          }
-          break;
-        }
-        case OP_COMBINE:
-        {
-          if (old_op.op_type == OP_REPARTITION
-          && old_op.parallel_dim == new_op.parallel_dim) {
-            // Eliminate repartition/combine
-            if (old_op.parallel_degree == new_op.parallel_degree) {
-              parallel_ops.pop_back();
-            } else if (old_op.parallel_degree > new_op.parallel_degree) {
-              assert(old_op.parallel_degree % new_op.parallel_degree == 0);
-              old_op.parallel_degree /= new_op.parallel_degree;
-              parallel_ops.pop_back();
-              parallel_ops.push_back(old_op);
-            } else {
-              assert(new_op.parallel_degree % old_op.parallel_degree == 0);
-              new_op.parallel_degree /= old_op.parallel_degree;
-              parallel_ops.pop_back();
-              parallel_ops.push_back(new_op);
-            }
-          } else if (old_op.op_type == OP_COMBINE && old_op.parallel_dim == new_op.parallel_dim) {
-            old_op.parallel_degree *= new_op.parallel_degree;
-            parallel_ops.pop_back();
-            parallel_ops.push_back(old_op);
-          } else {
-            parallel_ops.push_back(new_op);
-          }
-          break;
-        }
-        case OP_REPLICATE:
-        {
-          if (old_op.op_type == OP_REPLICATE && old_op.parallel_dim == new_op.parallel_dim) {
-            old_op.parallel_degree *= new_op.parallel_degree;
-            parallel_ops.pop_back();
-            parallel_ops.push_back(old_op);
-          } else {
-            parallel_ops.push_back(new_op);
-          }
-          break;
-        }
-        case OP_REDUCTION:
-        {
-          if (old_op.op_type == OP_REDUCTION && old_op.parallel_dim == new_op.parallel_dim) {
-            old_op.parallel_degree *= new_op.parallel_degree;
-            parallel_ops.pop_back();
-            parallel_ops.push_back(old_op);
-          }
-          parallel_ops.push_back(new_op);
-          break;
-        }
-        default:
-          assert(false);
-      }
-    }
-  }
   if (parallel_ops.size() == 0) {
     return get_or_create_noop_node(input);
   } else if (parallel_ops.size() == 1) {
-    switch (parallel_ops[0].op_type) {
-      case OP_COMBINE:
-        return get_or_create_combine_node(input, parallel_ops[0].parallel_dim,
-                                          parallel_ops[0].parallel_degree);
-      case OP_REPARTITION:
-        return get_or_create_repartition_node(input, parallel_ops[0].parallel_dim,
-                                              parallel_ops[0].parallel_degree);
-      case OP_REPLICATE:
-        return get_or_create_replicate_node(input, parallel_ops[0].parallel_dim,
-                                            parallel_ops[0].parallel_degree);
-      case OP_REDUCTION:
-        return get_or_create_reduction_node(input, parallel_ops[0].parallel_dim,
-                                            parallel_ops[0].parallel_degree);
-      default:
-        assert(false && "Unsupported Parallel Op");
-    }
+    return this->get_or_create_parallel_op_node(input, parallel_ops[0]);
   }
   size_t hash = input->get_owner_independent_hash();
   for (size_t i = 0; i < parallel_ops.size(); i++) {
