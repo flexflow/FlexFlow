@@ -276,7 +276,7 @@ void Concat::forward_task(const Task *task,
         regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
   
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   
   cudaEvent_t t_start, t_end;
   if (cc->profiling) {
@@ -394,7 +394,7 @@ void Concat::backward_task(const Task *task,
         regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   
   cudaEvent_t t_start, t_end;
   if (cc->profiling) {
@@ -477,7 +477,7 @@ bool Concat::measure_operator_cost(Simulator* sim,
   }
   
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
 
   std::function<void()> forward, backward;
   forward = [&] {

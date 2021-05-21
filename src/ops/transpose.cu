@@ -257,7 +257,7 @@ void Transpose::forward_task(const Task* task,
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   forward_kernel(m, in_ptr, out_ptr, in_domain, out_domain, stream);
 }
 
@@ -344,7 +344,7 @@ void Transpose::backward_task(const Task* task,
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   backward_kernel(m, in_grad_ptr, out_grad_ptr, in_grad_domain, out_grad_domain, stream);
 }
 
@@ -411,7 +411,7 @@ bool Transpose::measure_operator_cost(Simulator* sim,
   assert (output_ptr != NULL);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, sub_input.get_domain(), sub_output.get_domain(), stream);

@@ -103,7 +103,7 @@ void Loss::backward_task_with_dim(const Task *task,
   assert(task->regions.size() == 3);
   const Loss* loss = (Loss*) task->args;
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   if (loss->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     //sparse_categorical_crossentropy has label of dim: (batch_size, 1)
     TensorAccessorW<float, NDIM> acc_logit_grad(

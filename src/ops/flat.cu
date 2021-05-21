@@ -142,7 +142,7 @@ void Flat::forward_task(const Task *task,
   assert(acc_input.rect.volume() == acc_output.rect.volume());
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   forward_kernel(acc_input.ptr, acc_output.ptr, acc_input.rect.volume(), stream);
   //checkCUDA(cudaDeviceSynchronize());
 }
@@ -201,7 +201,7 @@ void Flat::backward_task(const Task *task,
   assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   backward_kernel(acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume(), stream);
   //checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
   //                          acc_input_grad.rect.volume() * sizeof(float),
@@ -255,7 +255,7 @@ bool Flat::measure_operator_cost(Simulator* sim,
   size_t num_elements = sub_output.get_volume();
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel(input_ptr, output_ptr, num_elements, stream);

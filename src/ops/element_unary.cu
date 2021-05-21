@@ -402,7 +402,7 @@ void ElementUnary::forward_task(const Task* task,
   }
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   forward_kernel(m, input_ptr, output_ptr, input_domain.get_volume(), stream);
 }
 
@@ -582,7 +582,7 @@ void ElementUnary::backward_task(const Task* task,
   }
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr, input_domain.get_volume(), stream);
 }
 
@@ -718,7 +718,7 @@ bool ElementUnary::measure_operator_cost(Simulator* sim,
   assert(output_ptr != NULL);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, sub_output.get_volume(), stream);

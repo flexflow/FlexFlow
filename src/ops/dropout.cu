@@ -199,7 +199,7 @@ void Dropout::forward_task(const Task* task,
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   forward_kernel(m, input_ptr, output_ptr, stream);
 }
 
@@ -273,7 +273,7 @@ void Dropout::backward_task(const Task* task,
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   backward_kernel(m, output_grad_ptr, input_grad_ptr, stream);
 }
 
@@ -378,7 +378,7 @@ bool Dropout::measure_operator_cost(Simulator* sim,
   assert (output_ptr != NULL);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
 
   std::function<void()> forward, backward;
   forward = [&] {

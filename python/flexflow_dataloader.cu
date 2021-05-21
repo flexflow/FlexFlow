@@ -35,7 +35,7 @@ void ImgDataLoader::load_label(const Task *task,
     assert(meta->idxs[i] == meta->idxs[0] + i);
   const int* input_zc = acc_full_label.ptr + meta->idxs[0];
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   copy_kernel<<<GET_BLOCKS(acc_batch_label.rect.volume()), CUDA_NUM_THREADS, 0, stream>>>(
     acc_batch_label.ptr, input_zc, acc_batch_label.rect.volume());
   checkCUDA(cudaDeviceSynchronize());
@@ -65,7 +65,7 @@ void ImgDataLoader4D::load_input(const Task *task,
   const float* input_zc = acc_full_input.ptr + start_idx * channels * height * width;
   //printf("load input %d %d %d %d\n", meta->idxs[0], channels, height, width);
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   copy_kernel<<<GET_BLOCKS(acc_batch_input.rect.volume()), CUDA_NUM_THREADS, 0, stream>>>(
       acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());
   checkCUDA(cudaDeviceSynchronize());
@@ -93,7 +93,7 @@ void ImgDataLoader2D::load_input(const Task *task,
   const float* input_zc = acc_full_input.ptr + start_idx * width;
   //printf("load input %d %d %d %d\n", meta->idxs[0], channels, height, width);
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   copy_kernel<<<GET_BLOCKS(acc_batch_input.rect.volume()), CUDA_NUM_THREADS, 0, stream>>>(
       acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());
   checkCUDA(cudaDeviceSynchronize());
@@ -141,7 +141,7 @@ void SingleDataLoader::load_input_with_dim(const Task *task,
   coord_t start_idx = meta->idxs[0];
   const DT* input_zc = acc_full_input.ptr + start_idx * num_elements_per_batch;
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   //printf("ptr(%p, %p), idx0 %d nb_elements_per_batch %d, batch_size %d, %d\n", acc_full_input.ptr, input_zc, start_idx, num_elements_per_batch, batch_size, start_idx * num_elements_per_batch);
   copy_kernel<DT><<<GET_BLOCKS(acc_batch_input.rect.volume()), CUDA_NUM_THREADS, 0, stream>>>(
       acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());

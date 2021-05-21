@@ -553,7 +553,7 @@ void TopK::forward_task(const Task* task,
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
   
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -679,7 +679,7 @@ void TopK::backward_task(const Task *task,
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
   
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {

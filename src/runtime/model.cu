@@ -23,7 +23,7 @@ void Op::inner_measure_operator_cost(Simulator *sim,
                                      CostMetrics& cost_metrics)
 {
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   // measure forward time
   checkCUDA(cudaDeviceSynchronize());
   for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
@@ -262,7 +262,7 @@ void UtilityTasks::normalize_images_task(
   float *tensor_ptr = acc_tensor.ptr(rect_tensor.lo);
   const unsigned char *rgb_ptr = acc_rgb.ptr(rect_rgb.lo);
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   apply_normalize<<<GET_BLOCKS(rect_tensor.volume()), CUDA_NUM_THREADS, 0, stream>>>(
       tensor_ptr, rgb_ptr, rect_tensor.volume(), h * w);
 }
@@ -297,7 +297,7 @@ void UtilityTasks::init_images_task(const Task *task,
   float *image_ptr = acc_image.ptr(rect_image.lo);
   int num_blocks = (rect_image.volume() + BLKSIZE - 1) / BLKSIZE;
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   init_image_kernel<<<num_blocks, BLKSIZE, 0, stream>>>(image_ptr, rect_image.volume());
 }
 
@@ -313,7 +313,7 @@ void UtilityTasks::init_labels_task(const Task *task,
   int *label_ptr = acc_label.ptr(rect_label.lo);
   int num_blocks = (rect_label.volume() + BLKSIZE - 1) / BLKSIZE;
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   init_label_kernel<<<num_blocks, BLKSIZE, 0, stream>>>(label_ptr, rect_label.volume());
 }
 

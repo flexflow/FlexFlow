@@ -95,7 +95,7 @@ void SGDOptimizer::ps_update_task(const Task* task,
   }
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   // Step 1: Gather gradients in the first replica
   for (int i = 1; i < num_replicas; i++) {
     const float* src = w_grad_ptr + i * size;
@@ -166,7 +166,7 @@ void SGDOptimizer::nccl_update_task(
   // Use NCCL to sync gradients
   //fprintf(stderr, "weight(%p) Before ncclAllReduce...\n", w_grad_ptr);
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*) w_grad_ptr, size, ncclFloat,
       ncclSum, meta->handle.ncclComm, stream));
   //fprintf(stderr, "weight(%p) After ncclAllReduce...\n", w_grad_ptr);
@@ -272,7 +272,7 @@ void AdamOptimizer::ps_update_task(const Task* task,
   }
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   // Step 1: Gather gradients in the first replica
   for (int i = 1; i < num_replicas; i++) {
     const float* src = w_grad_ptr + i * size;
@@ -341,7 +341,7 @@ void AdamOptimizer::nccl_update_task(const Task* task,
   }
   // Use NCCL to sync gradients
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*)w_grad_ptr, size, ncclFloat,
       ncclSum, meta->handle.ncclComm, stream));
   //fprintf(stderr, "alpha = %.8lf alpha_t = %.8lf decay = %.8lf\n",

@@ -520,7 +520,7 @@ void Linear::forward_task_with_dim(const Task *task,
   }
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -739,7 +739,7 @@ void Linear::backward_task_with_dim(const Task *task,
   }
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -806,7 +806,7 @@ void Linear::backward2_task_with_dim(const Task *task,
   assert(acc_input_grad.rect.lo[1] == acc_replica.rect.lo[1]);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   int num_replica = acc_replica.rect.hi[NDIM] - acc_replica.rect.lo[NDIM] + 1;
   const float *replica_ptr = acc_replica.ptr;
   for (int i = 0; i < num_replica; i++) {
@@ -1042,7 +1042,7 @@ bool Linear::measure_operator_cost(Simulator* sim,
   assert(bias_ptr != NULL);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, kernel_ptr, bias_ptr,

@@ -284,7 +284,7 @@ void MultiHeadAttention::forward_task(
       false/*readOutput*/);
       
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
       
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -447,7 +447,7 @@ void MultiHeadAttention::backward_task(
   }
   
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -542,7 +542,7 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
 : OpMeta(handler)
 {
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
   checkCUDNN(cudnnCreateAttnDescriptor(&attnDesc));
@@ -705,7 +705,7 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
   assert(output_ptr != NULL);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   
   std::function<void()> forward, backward;
   forward = [&] {

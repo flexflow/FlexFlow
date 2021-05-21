@@ -241,7 +241,7 @@ void BatchNorm::init_para_task(const Task *task,
   float *bias_ptr = acc_bias.ptr(rect_bias.lo);
   // init kernel and bias
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
 #ifdef PARAMETER_ALL_ONES
   ones_kernel<<<GET_BLOCKS(rect_scale.volume()), CUDA_NUM_THREADS, 0, stream>>>(
       scale_ptr, rect_scale.volume());
@@ -351,7 +351,7 @@ void BatchNorm::forward_task(const Task *task,
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -472,7 +472,7 @@ void BatchNorm::backward_task(const Task *task,
       true/*readOutput*/);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
       
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -595,7 +595,7 @@ BatchNormMeta::BatchNormMeta(FFHandler handler,
     saveMean = (float*) runningVar + output_c;
     saveVar = (float*) saveMean + output_c;
     cudaStream_t stream;
-    checkCUDA(create_stream(&stream));
+    checkCUDA(get_legion_stream(&stream));
     assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
       runningMean, output_c, 0.0f);
     assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
@@ -649,7 +649,7 @@ bool BatchNorm::measure_operator_cost(Simulator* sim,
   assert (scale_ptr != NULL);
   
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   
   std::function<void()> forward, backward;
   forward = [&] {

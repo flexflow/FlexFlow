@@ -95,7 +95,7 @@ void Simulator::strategy_search_task(const Task *task,
   // Set cublas/cudnn streams to allow Realm catch the events
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(simulator->handler.blas, stream));
   checkCUDNN(cudnnSetStream(simulator->handler.dnn, stream));
 

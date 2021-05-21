@@ -437,7 +437,7 @@ void Conv2D::forward_task(const Task *task,
 
   //printf("fwdAlgo(%d), bwdFilterALgo(%d), bwdDataAlgo(%d)\n", (int)m->fwdAlgo,(int) m->bwdFilterAlgo,(int) m->bwdDataAlgo);
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -588,7 +588,7 @@ void Conv2D::backward_task(const Task *task,
   }
  
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream)); 
+  checkCUDA(get_legion_stream(&stream)); 
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {

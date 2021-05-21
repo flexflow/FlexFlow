@@ -207,7 +207,7 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
   checkCUDA(cudaMemcpy(perf, &perf_zc, sizeof(PerfMetrics), cudaMemcpyHostToDevice));
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   if (me->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     TensorAccessorR<float, NDIM> acc_logit(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);

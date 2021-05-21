@@ -8,7 +8,7 @@ extern "C" {
 cudaStream_t hipGetTaskStream();
 }
 
-cudaError_t create_stream(cudaStream_t *stream)
+cudaError_t get_legion_stream(cudaStream_t *stream)
 {
 #ifdef DISABLE_LEGION_CUDA_HIJACK
   *stream = (cudaStream_t)0;
@@ -19,7 +19,7 @@ cudaError_t create_stream(cudaStream_t *stream)
 }
 #endif
 #else
-cudaError_t create_stream(cudaStream_t *stream)
+cudaError_t get_legion_stream(cudaStream_t *stream)
 {
 #ifdef DISABLE_LEGION_CUDA_HIJACK
   *stream = (cudaStream_t)0;
@@ -150,7 +150,7 @@ void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
                int num_replica, float learning_rate)
 {
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   // Step 1: gater gradients to the first replica
   for (int i = 1; i < num_replica; i++) {
     const float *replica = grad_ptr + i * replica_size;

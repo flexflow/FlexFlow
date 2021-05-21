@@ -227,7 +227,7 @@ void Reshape::forward_task(const Task *task,
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
   
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   forward_kernel(in_ptr, out_ptr, in_domain.get_volume(), stream);
 }
 
@@ -281,7 +281,7 @@ void Reshape::backward_task(const Task *task,
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   backward_kernel(in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume(), stream);
 }
 
@@ -328,7 +328,7 @@ bool Reshape::measure_operator_cost(Simulator* sim,
   size_t num_elements = sub_input.get_volume();
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel(input_ptr, output_ptr, num_elements, stream);

@@ -180,7 +180,7 @@ void Reverse::forward_task(const Task* task,
   int output_size = out_domain.get_volume();
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   forward_kernel(in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size, output_size, stream);
 }
 
@@ -246,7 +246,7 @@ void Reverse::backward_task(const Task* task,
   }
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   backward_kernel(out_grad_ptr, in_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, in_grad_domain.get_volume(), stream);
 }
 
@@ -302,7 +302,7 @@ bool Reverse::measure_operator_cost(Simulator* sim,
   }
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
      forward_kernel(input_ptr, output_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_output.get_volume(), stream);

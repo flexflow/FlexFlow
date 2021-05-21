@@ -297,7 +297,7 @@ void BatchMatmul::forward_task(const Task* task,
   }
   
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   
   cudaEvent_t t_start, t_end;
   if (meta->profiling) {
@@ -469,7 +469,7 @@ void BatchMatmul::backward_task(const Task *task,
     regions[5], task->regions[5], FID_DATA, ctx, runtime);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
 
   float* c_grad_ptr = NULL;
   cudaEvent_t t_start, t_end;
@@ -633,7 +633,7 @@ bool BatchMatmul::measure_operator_cost(Simulator* sim,
   int k = input0_c;
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
 
   std::function<void()> forward, backward;
   forward = [&] {

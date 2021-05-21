@@ -261,7 +261,7 @@ void Embedding::forward_task(const Task *task,
   int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   forward_kernel(accInput.ptr, accOutput.ptr, accWeight.ptr, in_dim, out_dim, batch_size,  m->aggr, accOutput.rect.volume(), stream);
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
@@ -343,7 +343,7 @@ void Embedding::backward_task(const Task *task,
   int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   backward_kernel(accInput.ptr, accOutput.ptr, accWeightGrad.ptr, in_dim, out_dim, batch_size, m->aggr, accOutput.rect.volume(), stream);
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
@@ -412,7 +412,7 @@ bool Embedding::measure_operator_cost(Simulator* sim,
   int batch_size = sub_input.adim[1];
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel(input_ptr, output_ptr, weight_ptr, in_dim, out_dim, batch_size, this->aggr, sub_output.get_volume(), stream);

@@ -199,7 +199,7 @@ void Split::forward_task(const Task *task,
   assert(total_volume == in_domain.get_volume());
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   forward_kernel(out_ptr, in_ptr, out_blk_size, in_blk_size, num_blks, split->numOutputs, stream);
 }
 
@@ -257,7 +257,7 @@ void Split::backward_task(const Task *task,
   }
   assert(total_volume == in_grad_domain.get_volume());
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   for (int i = 0; i < split->numOutputs; i++) {
     add_with_stride<<<GET_BLOCKS(out_blk_size[i]*num_blks), CUDA_NUM_THREADS, 0, stream>>>(
         in_grad_ptr, out_grad_ptr[i], num_blks, in_blk_size, out_blk_size[i]);

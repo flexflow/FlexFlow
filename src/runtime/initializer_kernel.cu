@@ -31,7 +31,7 @@ void UniformInitializer::init_task(const Task* task,
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   curandSetStream(gen, stream);
   //fprintf(stderr, "seed = %d\n", initializer->seed);
 
@@ -136,7 +136,7 @@ void GlorotUniform::init_task(const Task* task,
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCURAND(curandSetStream(gen, stream));
 
   GlorotUniform* initializer = (GlorotUniform*) task->args;
@@ -177,7 +177,7 @@ void NormInitializer::init_task(const Task* task,
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCURAND(curandSetStream(gen, stream));
 
   NormInitializer* initializer = (NormInitializer*) task->args;
@@ -212,7 +212,7 @@ void ZeroInitializer::init_task(const Task* task,
 {
   assert(regions.size() == task->regions.size());
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   for (size_t i = 0; i < regions.size(); i++) {
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
@@ -247,7 +247,7 @@ void ConstantInitializer::init_task(const Task* task,
   ConstantInitializer* initializer = (ConstantInitializer*) task->args;
   assert(regions.size() == task->regions.size());
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   for (size_t i = 0; i < regions.size(); i++) {
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());

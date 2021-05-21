@@ -247,7 +247,7 @@ void cache_forward(const Task *task,
 
   // TODO: Check why cublas/cudnn stream is needed here
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 

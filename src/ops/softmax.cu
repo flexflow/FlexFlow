@@ -223,7 +223,7 @@ void Softmax::forward_task_with_dim(
       false/*readOutput*/);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -339,7 +339,7 @@ void Softmax::backward_task_with_dim(
   assert(acc_input_grad.rect == acc_output_grad.rect);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -421,7 +421,7 @@ bool Softmax::measure_operator_cost(Simulator* sim,
   assert (output_ptr != NULL);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, stream);

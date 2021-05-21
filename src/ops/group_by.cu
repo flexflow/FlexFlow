@@ -311,9 +311,7 @@ void Group_by::forward_task(const Task *task,
 
   // TODO: why cublas/cudnn stream is needed here?
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDA(get_legion_stream(&stream));
 
   // call forward kernel
   cudaMemcpy(m->dev_region_ptrs, outputs, n*sizeof(float*), cudaMemcpyHostToDevice);
@@ -370,9 +368,7 @@ void Group_by::backward_task(const Task *task,
 
   // TODO: why cublas/cudnn stream is needed here
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  checkCUDA(get_legion_stream(&stream));
 
   // call forward kernel
   cudaMemcpy(m->dev_region_ptrs, output_grads, n*sizeof(float*), cudaMemcpyHostToDevice);

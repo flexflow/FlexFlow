@@ -421,7 +421,7 @@ void ElementBinary::forward_task(const Task* task,
   }
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -692,7 +692,7 @@ void ElementBinary::backward_task(const Task *task,
   }
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   backward_kernel(m, out_grad_ptr, in0_ptr, in1_ptr, in0_grad_ptr, in1_grad_ptr, stream);
   //elewise_binary_backward_kernel<<<GET_BLOCKS(out_grad_domain.get_volume()), CUDA_NUM_THREADS>>>(
     //out_grad_domain.get_volume(), alpha, alpha, ele->op_type, out_grad_ptr, in1_ptr, in2_ptr,
@@ -836,7 +836,7 @@ bool ElementBinary::measure_operator_cost(Simulator* sim,
   assert(output_ptr != NULL);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel(m, input0_ptr, input1_ptr, output_ptr, stream);

@@ -182,12 +182,12 @@ enum FieldIDs {
 
 #ifdef LEGION_USE_HIP
 #ifdef __HIP_PLATFORM_NVCC__
-cudaError_t create_stream(cudaStream_t *stream);
+cudaError_t get_legion_stream(cudaStream_t *stream);
 #else
-hipError_t create_stream(hipStream_t *stream);
+hipError_t get_legion_stream(hipStream_t *stream);
 #endif
 #else
-cudaError_t create_stream(cudaStream_t *stream);
+cudaError_t get_legion_stream(cudaStream_t *stream);
 #endif
 
 class FFModel;

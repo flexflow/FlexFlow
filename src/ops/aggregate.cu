@@ -405,7 +405,7 @@ void Aggregate::forward_task(const Task *task,
   int k = (int)(rect_gate_assign.hi[0] - rect_gate_assign.lo[0] + 1);
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
@@ -488,7 +488,7 @@ void Aggregate::backward_task(const Task *task,
   }
 
   cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
