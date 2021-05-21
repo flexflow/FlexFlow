@@ -1420,6 +1420,14 @@ void FFModel::forward(int seq_length)
     layers[i]->forward(*this);
 }
 
+
+void FFModel::recompile_on_condition(RecompileState &r)
+{
+  if(r.trigger())
+    r.alter();
+}
+
+
 void FFModel::compute_metrics()
 {
   Op* metrics_layer = layers[metrics_input];
@@ -1455,7 +1463,7 @@ void FFModel::backward(int seq_length)
         layers[l]->resetInputGrads[i] = false;
       }
 #endif
-    if(l == metrics_input && metrics_input < (int)layers.size()-1) continue;
+    if(l == metrics_input && metrics_input < (int)layers.size()-1) continue; // TODO: If layer serves for metrics and for further prop
     layers[l]->backward(*this);
   }
 }
@@ -2037,6 +2045,7 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_SPLIT: return "Split";
     case OP_EMBEDDING: return "Embedding";
     case OP_GROUP_BY: return "Group_by";
+    case OP_CACHE: return "Cache";
     case OP_AGGREGATE: return "Aggregate cooperation";
     case OP_AGG_SPEC: return "Aggregate specification";
     case OP_RESHAPE: return "Reshape";
@@ -2536,6 +2545,29 @@ void register_flexflow_internal_tasks()
         registrar, "Embedding Backward Task");
   }*/
 
+
+  // Cache task CPU
+  {
+    TaskVariantRegistrar registrar(CACHE_INIT_TASK_ID, "Cache Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Cache::init_task>(
+        registrar, "Cache Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CACHE_FWD_TASK_ID, "Cache Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Cache::forward_task>(
+        registrar, "Cache Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CACHE_UPDATE_TASK_ID, "Cache Update");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<float, Cache::update_task>(
+        registrar, "Cache Update Task");
+  }
   // Group by task CPU
   {
     TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "Group_by Init");

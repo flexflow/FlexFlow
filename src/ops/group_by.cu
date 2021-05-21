@@ -43,8 +43,8 @@ Group_by::Group_by(FFModel& model,
                   const char* name)
 : Op(model, OP_GROUP_BY, name, _input, _assign),
   n(_n),
-  alpha(_alpha)
-  //profiling(model.config.profiling)
+  alpha(_alpha),
+  profiling(model.config.profiling)
 {
   // FIXME: For now, set upper limits Better: Do as follows, but memory is
   // assigned per block, so requires to check that
