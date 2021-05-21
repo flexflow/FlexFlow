@@ -23,6 +23,7 @@
 #include "accessor.h"
 #include "loss_functions.h"
 #include "metrics_functions.h"
+#include "recompile.h"
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <unistd.h>
@@ -59,6 +60,9 @@ enum TaskIDs {
   GROUP_BY_INIT_TASK_ID,
   GROUP_BY_FWD_TASK_ID,
   GROUP_BY_BWD_TASK_ID,
+  CACHE_INIT_TASK_ID,
+  CACHE_FWD_TASK_ID,
+  CACHE_UPDATE_TASK_ID,
   AGGREGATE_INIT_TASK_ID,
   AGGREGATE_FWD_TASK_ID,
   AGGREGATE_BWD_TASK_ID,
@@ -361,6 +365,11 @@ public:
                 Tensor* outputs,
                 int n, float alpha,
                 const char* name = NULL);
+  // Add a cache layer
+  Tensor cache(const Tensor& input,
+              int num_batches,
+              std::function<float(float*,const void*,const void*,int)> score_f = {},
+              const char* name = NULL);
   // Add aggregate layer
   Tensor aggregate(const Tensor* inputs,
                   int n, float lambda_bal,
@@ -512,6 +521,7 @@ public:
   void rewrite(const std::map<Op*, ParallelConfig>& current,
                std::map<Op*, ParallelConfig>& next,
                bool use_propagation) const;
+  void recompile_on_condition(RecompileState& r);
   void zero_gradients();
   void print_layers(int id);
   std::string get_operator_type_name(OperatorType type) const;
@@ -1202,6 +1212,51 @@ public:
   bool profiling;
 };
 
+class CacheMeta : public OpMeta {
+public:
+  CacheMeta(FFHandler handle);
+  float cache_score;
+};
+
+class Cache : public Op {
+public:
+  Cache(FFModel& model,
+      const Tensor& _input,
+      int _num_batches,
+      std::function<float(float*,const void*,const void*,int)> &_score_f,
+      const char* name);
+  ~Cache(void);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static float update_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+  void use_cached(bool cached);
+public:
+  void** batch_ptrs;
+  void* batch_cmp;
+  bool load_cached;
+  int num_batches;
+  std::function<float(float*,const void*,const void*,int)> score_f;
+  std::vector<Future> score_futures;
+  bool profiling;
+  int batch_ctr;
+};
+
 class AggregateMeta : public OpMeta {
 public:
   AggregateMeta(FFHandler handle, int n);
@@ -1636,7 +1691,7 @@ private:
 public:
   int k;
   bool sorted;
-  //bool profiling;
+  bool profiling;
 };
 
 class ConcatMeta : public OpMeta {

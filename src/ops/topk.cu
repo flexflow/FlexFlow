@@ -37,7 +37,7 @@ TopK::TopK(FFModel& model,
            int _k, bool _sorted,
            const char* name)
 : Op(model, OP_TOPK, name, _input),
-  k(_k), sorted(_sorted)
+  k(_k), sorted(_sorted), profiling(model.config.profiling)
 {
   numOutputs = 2;
   outputs[0].numDim = inputs[0].numDim;
@@ -644,8 +644,6 @@ void TopK::backward_kernel(const TopKMeta* m,
                            float* in_grad_ptr,
                            size_t batch_size, int length, int k)
 {
-  assign_kernel<<<GET_BLOCKS(batch_size*length), CUDA_NUM_THREADS>>>(
-    in_grad_ptr, batch_size * length, 0.0f);
   topk_backward_kernel<<<GET_BLOCKS(batch_size*k), CUDA_NUM_THREADS>>>(
     value_grad_ptr, indices_ptr, in_grad_ptr, batch_size, length, k);
 }

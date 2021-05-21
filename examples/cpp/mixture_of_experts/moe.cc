@@ -21,7 +21,7 @@
 
 #define NUM_SAMPLES 60000
 #define TRAIN_SAMPLES 60000
-#define TEST_SAMPLES 0
+#define TEST_SAMPLES 00000
 #define MNIST_DIMS 28*28
 #define CIFAR_DIMS 3*32*32
 #define DATA_DIMS MNIST_DIMS
@@ -31,7 +31,8 @@
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("MoE");
-
+int num_exp = 5;
+int num_select = 2;
 
 void parse_input_args(char **argv, int argc, MoeConfig& config)
 {
@@ -42,6 +43,69 @@ void parse_input_args(char **argv, int argc, MoeConfig& config)
     }
   }
 }
+
+
+// =============================================================================
+//  User-defined functions on using cached expert assignments
+// =============================================================================
+
+// Score: Running average over sample ratio of which experts are corr. cached
+float moe_score(float* cached_score,
+                const void* input,
+                const void* cached,
+                int vol) {
+  float gamma = 0.99f;
+  *cached_score *= gamma;
+  int* cast_input = (int*)input;
+  int* cast_cached = (int*)cached;
+  int batch_size = vol/num_select;
+  float frac = (1.0f-gamma)/batch_size;
+  for(int i = 0; i < batch_size; i++) {
+    std::set<int, std::greater<int>> cached;
+    std::set<int, std::greater<int>> input;
+    for(int j = 0; j < num_select; j++) {
+      cached.insert(cast_input[i*num_select+j]);
+      input.insert(cast_cached[i*num_select+j]);
+    }
+    if(cached == input) *cached_score += frac;
+  }
+  return *cached_score;
+}
+
+// Trigger: If average score of all cache layers is above thresh
+bool moe_trigger(FFModel* ff) {
+  float thresh = 0.9f;
+
+  int num_futures = 0;
+  float score = 0.0f;
+  for(size_t i = 0; i < ff->layers.size(); i++) {
+    if(ff->layers[i]->op_type == OP_CACHE) {
+      int num_futures_i = ((Cache*)ff->layers[i])->score_futures.size();
+      num_futures += num_futures_i;
+      for(int j = 0; j < num_futures_i; j++)
+        score += ((Cache*)ff->layers[i])->score_futures[j].get_result<float>();
+    }
+  }
+  return score >= thresh;
+}
+
+// Alter: GroupBy, Aggregate, AggregateSpec use cached values for expert assign.
+void moe_alter(FFModel* ff) {
+  ((Cache*)ff->layers[3])->use_cached(true);
+  // Group by input
+  ff->layers[4]->inputs[1] = ff->layers[3]->outputs[0];
+  ff->layers[4]->input_lps[1] = ff->layers[3]->outputs[0].part;
+  ff->layers[4]->input_grad_lps[1] = ff->layers[3]->outputs[0].part_grad;
+  // Aggregate input
+  ff->layers[16]->inputs[1] = ff->layers[3]->outputs[0];
+  ff->layers[16]->input_lps[1] = ff->layers[3]->outputs[0].part;
+  ff->layers[16]->input_grad_lps[1] = ff->layers[3]->outputs[0].part_grad;
+  // AggregateSpec input
+  ff->layers[17]->inputs[1] = ff->layers[3]->outputs[0];
+  ff->layers[17]->input_lps[1] = ff->layers[3]->outputs[0].part;
+  ff->layers[17]->input_grad_lps[1] = ff->layers[3]->outputs[0].part_grad;
+}
+
 
 void top_level_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
@@ -64,35 +128,31 @@ void top_level_task(const Task* task,
     const int dims[] = {ffConfig.batchSize, DATA_DIMS};
     input = ff.create_tensor<2>(dims, DT_FLOAT);
   }
-  //Tensor label;
-  //{
-  //  const int dims[] = {ffConfig.batchSize, 1};
-  //  label = ff.create_tensor<2>(dims, DT_INT32);
-  //}
+
 
 //-----------------------------------------------------------------
 
-  int num_exp = 5;
-  int num_select = 2;
   float alpha = 2.0f; // factor overhead tensor size for imbalance
-  float lambda = 0.16f; // multiplier for load balance term
-
+  float lambda = 0.04f; // multiplier for load balance term
 
   // MoE model
-  Tensor gate_preds = ff.dense(input, num_exp, AC_MODE_RELU);
+  Tensor gate_preds = ff.dense(input, 64, AC_MODE_RELU);
+  gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_RELU);
   Tensor topK_output[2];
   ff.top_k(gate_preds, topK_output, num_select, false);
+  ff.cache(topK_output[1], TRAIN_SAMPLES / ffConfig.batchSize, moe_score);
 
   Tensor exp_tensors[num_exp];
   ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
 
-  Tensor agg_inputs[num_exp+3];
+  Tensor agg_inputs[num_exp+4];
   agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
   agg_inputs[1] = topK_output[1]; // gate assign
-  agg_inputs[2] = gate_preds; // full gate preds
+  agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
+  agg_inputs[3] = gate_preds; // full gate preds
   for(int i = 0; i < num_exp; i++) {
-    agg_inputs[i+3] = ff.dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
-    agg_inputs[i+3] = ff.softmax(agg_inputs[i+3]);
+    Tensor exp_pred = ff.dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
+    agg_inputs[i+4] = ff.softmax(exp_pred);
   }
 
   Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
@@ -100,6 +160,7 @@ void top_level_task(const Task* task,
   Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
 
 //-----------------------------------------------------------------
+
 
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;
@@ -109,6 +170,7 @@ void top_level_task(const Task* task,
 
   // Data Loader
   DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
+  RecompileState r(&moe_trigger, &moe_alter, &ff);
   ff.init_layers();
   //Start timer
   {
@@ -125,16 +187,18 @@ void top_level_task(const Task* task,
 
     for (int iter = 0; iter < iterations; iter++) {
       data_loader.next_batch(ff);
-      if (epoch > 0)
-         runtime->begin_trace(ctx, 111/*trace_id*/);
+      // if (epoch > 0)
+      //    runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      if (epoch > 0)
-         runtime->end_trace(ctx, 111/*trace_id*/);
+      ff.recompile_on_condition(r);
+      // if (epoch > 0)
+      //    runtime->end_trace(ctx, 111/*trace_id*/);
     }
 
+    // TODO: Do properly
     ff.reset_metrics();
     iterations = TEST_SAMPLES / ffConfig.batchSize;
     for (int iter = 0; iter < iterations; iter++) {
@@ -210,11 +274,11 @@ int calc_offset(int c, int y, int x, int yscale, int xscale)
 
 
 // =================================================
-//                    Load MNIST
+//                    Load data
 // =================================================
 
 /* NOTE: Download files from http://yann.lecun.com/exdb/mnist/, unpack to
-this directory (Flexflow/examples/cpp/try_out) */
+this directory (Flexflow/examples/cpp/mixture_of_experts) */
 
 
 void read_cifar100(float* input_ptr, int* label_ptr) {
@@ -222,7 +286,7 @@ void read_cifar100(float* input_ptr, int* label_ptr) {
   file.open("train.bin", std::ios::in | std::ios::binary | std::ios::ate);
   if (!file) {
       std::cout << "Error opening CIFAR100 train data file" << std::endl;
-      return;
+      assert(false);
   }
 
   file.seekg(0, std::ios::beg);
@@ -241,7 +305,6 @@ void read_cifar100(float* input_ptr, int* label_ptr) {
 
   file.close();
 }
-
 
 
 int reverseInt (int i)
@@ -287,6 +350,7 @@ void read_mnist(float* input_ptr, int* label_ptr)
     }
   }
   else {
+    std::cout << "Error opening MNIST input data file" << std::endl;
     assert(false);
   }
 
@@ -308,6 +372,7 @@ void read_mnist(float* input_ptr, int* label_ptr)
     }
   }
   else {
+    std::cout << "Error opening MNIST label data file" << std::endl;
     assert(false);
   }
 }
