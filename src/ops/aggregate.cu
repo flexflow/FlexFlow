@@ -406,10 +406,8 @@ void Aggregate::forward_task(const Task *task,
 
   cudaStream_t stream;
   checkCUDA(create_stream(&stream));
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
 
   // call forward_kernel
   cudaMemcpy(m->dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
@@ -491,10 +489,8 @@ void Aggregate::backward_task(const Task *task,
 
   cudaStream_t stream;
   checkCUDA(create_stream(&stream));
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
 
   // call backward kernel
   cudaMemcpy(m->dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);

@@ -315,9 +315,8 @@ void BatchNorm::forward_kernel(BatchNormMeta *m,
                                float const *bias_ptr,
                                cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   float alpha = 1.0f, beta = 0.0f;
   //coord_t numChannels = m->numChannels;
   checkCUDNN(cudnnBatchNormalizationForwardTraining(
@@ -420,9 +419,8 @@ void BatchNorm::backward_kernel(BatchNormMeta *m,
                                 size_t numElements,
                                 cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   float alpha = 1.0f;
   if (m->relu) {
     reluBackward<<<GET_BLOCKS(numElements), CUDA_NUM_THREADS, 0, stream>>>(output_grad_ptr, output_ptr, numElements);

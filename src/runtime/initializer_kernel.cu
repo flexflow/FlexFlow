@@ -137,9 +137,8 @@ void GlorotUniform::init_task(const Task* task,
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
   cudaStream_t stream;
   checkCUDA(create_stream(&stream));
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCURAND(curandSetStream(gen, stream));
-#endif
+
   GlorotUniform* initializer = (GlorotUniform*) task->args;
   curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
   fprintf(stderr, "seed = %d scale = %.4lf\n", initializer->seed, scale);
@@ -176,11 +175,11 @@ void NormInitializer::init_task(const Task* task,
   }
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
-#ifndef DISABLE_LEGION_CUDA_HIJACK
+
   cudaStream_t stream;
   checkCUDA(create_stream(&stream));
   checkCURAND(curandSetStream(gen, stream));
-#endif
+
   NormInitializer* initializer = (NormInitializer*) task->args;
   //fprintf(stderr, "seed = %d\n", initializer->seed);
   curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);

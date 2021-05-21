@@ -430,10 +430,9 @@ void Linear::forward_kernel(const LinearMeta* m,
                             int in_dim, int out_dim, int batch_size,
                             cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   float alpha = 1.0f, beta = 0.0f;
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
                         out_dim, batch_size, in_dim,
@@ -619,10 +618,9 @@ void Linear::backward_kernel(const LinearMeta* m,
                              int in_dim, int out_dim, int batch_size,
                              cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   float alpha = 1.0f;
   int output_size = out_dim * batch_size;
   if (m->activation == AC_MODE_RELU) {
@@ -806,12 +804,7 @@ void Linear::backward2_task_with_dim(const Task *task,
   assert(acc_input_grad.rect.lo[0] == acc_replica.rect.lo[0]);
   assert(acc_input_grad.rect.hi[1] == acc_replica.rect.hi[1]);
   assert(acc_input_grad.rect.lo[1] == acc_replica.rect.lo[1]);
-//#ifndef DISABLE_LEGION_CUDA_HIJACK
-//  cudaStream_t stream;
-//  checkCUDA(cudaStreamCreate(&stream));
-//  checkCUDA(cublasSetStream(m->handle.blas, stream));
-//  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-//#endif
+
   cudaStream_t stream;
   checkCUDA(create_stream(&stream));
   int num_replica = acc_replica.rect.hi[NDIM] - acc_replica.rect.lo[NDIM] + 1;

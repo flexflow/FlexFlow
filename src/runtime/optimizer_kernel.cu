@@ -167,13 +167,8 @@ void SGDOptimizer::nccl_update_task(
   //fprintf(stderr, "weight(%p) Before ncclAllReduce...\n", w_grad_ptr);
   cudaStream_t stream;
   checkCUDA(create_stream(&stream));
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*) w_grad_ptr, size, ncclFloat,
       ncclSum, meta->handle.ncclComm, stream));
-#else
-  checkNCCL(ncclAllReduce(w_grad_ptr, (float*) w_grad_ptr, size, ncclFloat,
-      ncclSum, meta->handle.ncclComm, 0));
-#endif
   //fprintf(stderr, "weight(%p) After ncclAllReduce...\n", w_grad_ptr);
 
   // Step 2: SGD update
@@ -347,13 +342,8 @@ void AdamOptimizer::nccl_update_task(const Task* task,
   // Use NCCL to sync gradients
   cudaStream_t stream;
   checkCUDA(create_stream(&stream));
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*)w_grad_ptr, size, ncclFloat,
       ncclSum, meta->handle.ncclComm, stream));
-#else
-  checkNCCL(ncclAllReduce(w_grad_ptr, (float*)w_grad_ptr, size, ncclFloat,
-      ncclSum, meta->handle.ncclComm, 0));
-#endif
   //fprintf(stderr, "alpha = %.8lf alpha_t = %.8lf decay = %.8lf\n",
   //        op->alpha, op->alpha_t, op->weight_decay);
   // Step 2: Adam update

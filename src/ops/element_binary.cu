@@ -359,10 +359,9 @@ void ElementBinary::forward_kernel(const ElementBinaryMeta* m,
                                    float* out_ptr,
                                    cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 0.0f;
   switch (m->op_type) {
     case OP_EW_SUB:
@@ -570,10 +569,9 @@ void ElementBinary::backward_kernel(const ElementBinaryMeta* m,
                                     float* in2_grad_ptr,
                                     cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f;
   switch (m->op_type) {
     case OP_EW_ADD:

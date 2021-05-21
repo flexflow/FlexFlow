@@ -355,9 +355,8 @@ void ElementUnary::forward_kernel(const ElementUnaryMeta* m,
                                   size_t num_elements, 
                                   cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   float alpha = 1.0f, beta = 0.0f;
   if (use_cudnn(m->op_type)) {
     checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
@@ -518,9 +517,8 @@ void ElementUnary::backward_kernel(const ElementUnaryMeta* m,
                                    size_t num_elements,
                                    cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   float alpha = 1.0f;
   if (use_cudnn(m->op_type)) {
     checkCUDNN(cudnnActivationBackward(m->handle.dnn, m->actiDesc,

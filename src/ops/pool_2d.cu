@@ -216,9 +216,8 @@ void Pool2D::forward_kernel(const Pool2DMeta* m,
                             float* output_ptr,
                             cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(cudnnPoolingForward(m->handle.dnn, m->poolDesc,
                                  &alpha, m->inputTensor, input_ptr,
@@ -301,9 +300,8 @@ void Pool2D::backward_kernel(const Pool2DMeta* m,
                              const float* output_grad_ptr,
                              cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   float alpha = 1.0f;
   checkCUDNN(cudnnPoolingBackward(m->handle.dnn, m->poolDesc,
                                   &alpha, m->outputTensor, output_ptr,

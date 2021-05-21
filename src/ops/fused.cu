@@ -680,9 +680,7 @@ void FusedOp::backward_task(const Task* task,
     }
 
   cudaStream_t stream;
-  if (start < fused->numOperators) {
-    checkCUDA(create_stream(&stream));
-  }
+  checkCUDA(create_stream(&stream));
 
   int ioff = 0, woff = 0, ooff = 0;
   Domain my_id[MAX_NUM_INPUTS], my_grad_id[MAX_NUM_INPUTS];

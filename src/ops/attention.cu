@@ -243,9 +243,8 @@ void MultiHeadAttention::forward_kernel(
     float* output_ptr,
     cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   checkCUDNN(cudnnMultiHeadAttnForward(m->handle.dnn,
       m->attnDesc, -1, m->loWinIdx, m->hiWinIdx,
       m->devQoSeqArray, m->devKvSeqArray, m->qDesc,
@@ -361,9 +360,8 @@ void MultiHeadAttention::backward_kernel(
     const float* output_grad_ptr,
     cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   checkCUDNN(cudnnMultiHeadAttnBackwardData(m->handle.dnn,
       m->attnDesc, m->loWinIdx, m->hiWinIdx, m->devQoSeqArray,
       m->devKvSeqArray, m->oDesc, output_grad_ptr, m->qDesc,
@@ -543,11 +541,10 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
                                                int num_heads)
 : OpMeta(handler)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
   checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
-#endif
+
   checkCUDNN(cudnnCreateAttnDescriptor(&attnDesc));
   checkCUDNN(cudnnCreateSeqDataDescriptor(&qDesc));
   checkCUDNN(cudnnCreateSeqDataDescriptor(&kDesc));

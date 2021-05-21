@@ -176,9 +176,8 @@ void Dropout::forward_kernel(DropoutMeta *m,
                              float *output_ptr,
                              cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   checkCUDNN(cudnnDropoutForward(m->handle.dnn, m->dropoutDesc,
       m->inputTensor, input_ptr, m->outputTensor, output_ptr,
       m->reserveSpace, m->reserveSpaceSize));
@@ -247,9 +246,8 @@ void Dropout::backward_kernel(DropoutMeta *m,
                               float *input_grad_ptr,
                               cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   checkCUDNN(cudnnDropoutBackward(m->handle.dnn, m->dropoutDesc,
       m->outputTensor, output_grad_ptr, m->inputTensor, input_grad_ptr,
       m->reserveSpace, m->reserveSpaceSize));

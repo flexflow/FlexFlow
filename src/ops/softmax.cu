@@ -174,9 +174,8 @@ void Softmax::forward_kernel(SoftmaxMeta const *m,
                              float *output_ptr,
                              cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
                                  CUDNN_SOFTMAX_ACCURATE,

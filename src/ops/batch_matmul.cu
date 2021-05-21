@@ -203,10 +203,9 @@ void BatchMatmul::forward_kernel(const BatchMatmulMeta* meta,
                                  int b_seq_length_dim,
                                  int seq_length)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDA(cublasSetStream(meta->handle.blas, stream));
   checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
-#endif
+
   //int a_stride = n * k;
   //int b_stride = m * k;
   //int o_stride = n * m;
@@ -384,10 +383,9 @@ void BatchMatmul::backward_kernel(const BatchMatmulMeta* meta,
                                   int m, int n, int k, int batch,
                                   cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDA(cublasSetStream(meta->handle.blas, stream));
   checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
-#endif
+
   int a_stride = n * k;
   int b_stride = m * k;
   int o_stride = n * m;

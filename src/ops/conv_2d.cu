@@ -384,9 +384,8 @@ void Conv2D::forward_kernel(const Conv2DMeta* m,
                             const float* bias_ptr,
                             cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(cudnnConvolutionForward(m->handle.dnn, &alpha,
                                      m->inputTensor, input_ptr,
@@ -511,9 +510,8 @@ void Conv2D::backward_kernel(const Conv2DMeta* m,
                              float* bias_grad_ptr,
                              cudaStream_t stream)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+
   float alpha = 1.0f;
   //float beta = 0.0f;
   if (m->relu) {
