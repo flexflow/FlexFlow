@@ -202,10 +202,9 @@ void Reshape::init(const FFModel& ff)
 /*static*/
 void Reshape::forward_kernel(const float* input_ptr,
                              float* output_ptr,
-                             size_t num_elements)
+                             size_t num_elements,
+                             cudaStream_t stream)
 {
-  cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
   checkCUDA(cudaMemcpyAsync(output_ptr, input_ptr,
       num_elements * sizeof(float), cudaMemcpyDeviceToDevice, stream));
 }
@@ -226,7 +225,10 @@ void Reshape::forward_task(const Task *task,
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float* out_ptr = helperGetTensorPointerWO<float>(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  forward_kernel(in_ptr, out_ptr, in_domain.get_volume());
+  
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+  forward_kernel(in_ptr, out_ptr, in_domain.get_volume(), stream);
 }
 
 void Reshape::forward(const FFModel& ff)
@@ -251,11 +253,10 @@ void Reshape::forward(const FFModel& ff)
 
 void Reshape::backward_kernel(float* input_grad_ptr,
                               const float* output_grad_ptr,
-                              size_t num_elements)
+                              size_t num_elements,
+                              cudaStream_t stream)
 {
   float alpha = 1.0f;
-  cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
   apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
       input_grad_ptr, output_grad_ptr, num_elements, alpha);
 
@@ -278,7 +279,10 @@ void Reshape::backward_task(const Task *task,
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float* in_grad_ptr = helperGetTensorPointerRW<float>(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  backward_kernel(in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume());
+
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+  backward_kernel(in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume(), stream);
 }
 
 void Reshape::backward(const FFModel& ff)
@@ -323,9 +327,11 @@ bool Reshape::measure_operator_cost(Simulator* sim,
   assert (sub_output.get_volume() == sub_input.get_volume());
   size_t num_elements = sub_input.get_volume();
 
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(input_ptr, output_ptr, num_elements);
+    forward_kernel(input_ptr, output_ptr, num_elements, stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -334,7 +340,7 @@ bool Reshape::measure_operator_cost(Simulator* sim,
     assert (output_grad_ptr != NULL);
 
     backward = [&] {
-      backward_kernel(input_grad_ptr, output_grad_ptr, num_elements);
+      backward_kernel(input_grad_ptr, output_grad_ptr, num_elements, stream);
     };
   }
 

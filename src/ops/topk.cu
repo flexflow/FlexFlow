@@ -493,7 +493,8 @@ void TopK::forward_kernel(const TopKMeta* m,
                           float* output_ptr,
                           int* indices_ptr,
                           size_t batch_size, int length, int k,
-                          bool sorted)
+                          bool sorted,
+                          cudaStream_t stream)
 {
   // Adopted from TensorFlow's TopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
@@ -513,7 +514,7 @@ void TopK::forward_kernel(const TopKMeta* m,
   size_t num_blocks = batch_size;
   assert(num_shards >= (size_t)k);
   num_shards = k;
-  topk_forward_kernel<<<num_blocks, num_shards>>>(
+  topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(
     input_ptr, shared_memory_size, length, k, sorted,
     output_ptr, indices_ptr);
 }
@@ -550,27 +551,25 @@ void TopK::forward_task(const Task* task,
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
   int* index_ptr = helperGetTensorPointerWO<int>(
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
   int length = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
   int k = out1_domain.hi()[0] - out1_domain.lo()[0] + 1; /*TODO: This prints to 5*/
   size_t batch_size = in1_domain.get_volume() / length;
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
 
   forward_kernel(m, in_ptr, value_ptr, index_ptr,
-      batch_size, length, k, m->sorted);
+      batch_size, length, k, m->sorted, stream);
 
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
@@ -642,9 +641,10 @@ void TopK::backward_kernel(const TopKMeta* m,
                            const float* value_grad_ptr,
                            const int* indices_ptr,
                            float* in_grad_ptr,
-                           size_t batch_size, int length, int k)
+                           size_t batch_size, int length, int k,
+                           cudaStream_t stream)
 {
-  topk_backward_kernel<<<GET_BLOCKS(batch_size*k), CUDA_NUM_THREADS>>>(
+  topk_backward_kernel<<<GET_BLOCKS(batch_size*k), CUDA_NUM_THREADS, 0, stream>>>(
     value_grad_ptr, indices_ptr, in_grad_ptr, batch_size, length, k);
 }
 
@@ -677,23 +677,23 @@ void TopK::backward_task(const Task *task,
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
   float* in_grad_ptr = helperGetTensorPointerRW<float>(
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
   int length = in_domain.hi()[0] - in_domain.lo()[0] + 1;
   int k = out1_domain.hi()[0] - out1_domain.lo()[0] + 1;
   size_t batch_size = in_domain.get_volume() / length;
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
   backward_kernel(m, value_grad_ptr, indices_ptr, in_grad_ptr,
-      batch_size, length, k);
+      batch_size, length, k, stream);
+  
+  // TODO: missing profiling here
 }
 
 void TopK::backward(const FFModel& ff)

@@ -156,10 +156,9 @@ void Split::forward_kernel(float **out_ptrs,
                            coord_t const *out_blk_sizes,
                            coord_t in_blk_size,
                            coord_t num_blks,
-                           int numOutputs)
+                           int numOutputs,
+                           cudaStream_t stream)
 {
-  cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
   for (int i = 0; i < numOutputs; i++) {
     copy_with_stride<<<GET_BLOCKS(out_blk_sizes[i]*num_blks), CUDA_NUM_THREADS, 0, stream>>>(
         out_ptrs[i], in_ptr, num_blks, out_blk_sizes[i], in_blk_size);
@@ -198,7 +197,10 @@ void Split::forward_task(const Task *task,
     total_volume += out_domain.get_volume();
   }
   assert(total_volume == in_domain.get_volume());
-  forward_kernel(out_ptr, in_ptr, out_blk_size, in_blk_size, num_blks, split->numOutputs);
+
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+  forward_kernel(out_ptr, in_ptr, out_blk_size, in_blk_size, num_blks, split->numOutputs, stream);
 }
 
 void Split::forward(const FFModel& ff)

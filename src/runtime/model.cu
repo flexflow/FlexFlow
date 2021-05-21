@@ -22,15 +22,17 @@ void Op::inner_measure_operator_cost(Simulator *sim,
                                      std::function<void()> const &backward,
                                      CostMetrics& cost_metrics)
 {
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
   // measure forward time
   checkCUDA(cudaDeviceSynchronize());
   for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
     if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
+      checkCUDA(cudaEventRecord(sim->start_event), stream);
     }
     forward();
   }
-  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventRecord(sim->end_event), stream);
   checkCUDA(cudaEventSynchronize(sim->end_event));
   float milliseconds;
   cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
@@ -41,11 +43,11 @@ void Op::inner_measure_operator_cost(Simulator *sim,
     checkCUDA(cudaDeviceSynchronize());
     for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
       if (i == sim->warmup_times) {
-        checkCUDA(cudaEventRecord(sim->start_event));
+        checkCUDA(cudaEventRecord(sim->start_event), stream);
       }
       backward();
     }
-    checkCUDA(cudaEventRecord(sim->end_event));
+    checkCUDA(cudaEventRecord(sim->end_event), stream);
     checkCUDA(cudaEventSynchronize(sim->end_event));
     cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
     cost_metrics.backward_time = milliseconds / sim->repeat_times;
