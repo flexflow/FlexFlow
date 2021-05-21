@@ -347,20 +347,21 @@ void BatchNorm::forward_task(const Task *task,
   TensorAccessorR<float, 1> acc_bias(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+  
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_scale.ptr, acc_bias.ptr);
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
@@ -415,12 +416,11 @@ void BatchNorm::backward_kernel(BatchNormMeta *m,
                                 float const *scale_ptr,
                                 float *scale_grad_ptr,
                                 float *bias_grad_ptr,
-                                size_t numElements)
+                                size_t numElements,
+                                cudaStream_t stream)
 {
   float alpha = 1.0f;
   if (m->relu) {
-    cudaStream_t stream;
-    checkCUDA(create_stream(&stream));
     reluBackward<<<GET_BLOCKS(numElements), CUDA_NUM_THREADS, 0, stream>>>(output_grad_ptr, output_ptr, numElements);
   }
   checkCUDNN(cudnnBatchNormalizationBackward(
@@ -469,20 +469,21 @@ void BatchNorm::backward_task(const Task *task,
       regions[6], task->regions[6], FID_DATA, ctx, runtime,
       true/*readOutput*/);
 
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+      
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-  backward_kernel(m, acc_input.ptr, acc_output_grad.ptr, acc_output.ptr, acc_input_grad.ptr, acc_scale.ptr, acc_scale_grad.ptr, acc_bias_grad.ptr, acc_output.rect.volume());
+  backward_kernel(m, acc_input.ptr, acc_output_grad.ptr, acc_output.ptr, acc_input_grad.ptr, acc_scale.ptr, acc_scale_grad.ptr, acc_bias_grad.ptr, acc_output.rect.volume(), stream);
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
