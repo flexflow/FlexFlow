@@ -204,8 +204,10 @@ void Reshape::forward_kernel(const float* input_ptr,
                              float* output_ptr,
                              size_t num_elements)
 {
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
   checkCUDA(cudaMemcpyAsync(output_ptr, input_ptr,
-      num_elements * sizeof(float), cudaMemcpyDeviceToDevice));
+      num_elements * sizeof(float), cudaMemcpyDeviceToDevice, stream));
 }
 
 void Reshape::forward_task(const Task *task,
@@ -252,7 +254,9 @@ void Reshape::backward_kernel(float* input_grad_ptr,
                               size_t num_elements)
 {
   float alpha = 1.0f;
-  apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+  apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
       input_grad_ptr, output_grad_ptr, num_elements, alpha);
 
 }

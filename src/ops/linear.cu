@@ -523,7 +523,7 @@ void Linear::forward_task_with_dim(const Task *task,
   }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
@@ -618,11 +618,13 @@ void Linear::backward_kernel(const LinearMeta* m,
 {
   float alpha = 1.0f;
   int output_size = out_dim * batch_size;
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
   if (m->activation == AC_MODE_RELU) {
-    reluBackward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS>>>(
+    reluBackward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
         output_grad_ptr, output_ptr, output_size);
   } else if (m->activation == AC_MODE_SIGMOID) {
-    sigmoid_backward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS>>>(
+    sigmoid_backward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
         output_grad_ptr, output_ptr, output_size);
   } else {
     // TODO: only support relu and sigmoid for now
@@ -740,7 +742,7 @@ void Linear::backward_task_with_dim(const Task *task,
   }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
@@ -807,11 +809,13 @@ void Linear::backward2_task_with_dim(const Task *task,
 //  checkCUDA(cublasSetStream(m->handle.blas, stream));
 //  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 //#endif
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
   int num_replica = acc_replica.rect.hi[NDIM] - acc_replica.rect.lo[NDIM] + 1;
   const float *replica_ptr = acc_replica.ptr;
   for (int i = 0; i < num_replica; i++) {
     size_t num_elements = acc_input_grad.rect.volume();
-    apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
+    apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
         acc_input_grad.ptr, replica_ptr, num_elements, 1.0f);
     replica_ptr += acc_input_grad.rect.volume();
   }

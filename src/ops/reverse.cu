@@ -144,7 +144,9 @@ void Reverse::forward_kernel(float const *in_ptr,
                              coord_t in_blk_size,
                              coord_t output_size)
 {
-  reverse_forward_kernel<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS>>>(
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+  reverse_forward_kernel<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
       in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size);
 }
 
@@ -207,7 +209,9 @@ void Reverse::backward_kernel(float const *out_grad_ptr,
                               coord_t in_blk_size,
                               coord_t input_size)
 {
-  reverse_forward_kernel<<<GET_BLOCKS(input_size), CUDA_NUM_THREADS>>>(
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+  reverse_forward_kernel<<<GET_BLOCKS(input_size), CUDA_NUM_THREADS, 0, stream>>>(
       out_grad_ptr, in_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size);
 }
 

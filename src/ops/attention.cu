@@ -287,7 +287,7 @@ void MultiHeadAttention::forward_task(
   }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   MultiHeadAttention::forward_kernel(m,
@@ -449,7 +449,7 @@ void MultiHeadAttention::backward_task(
 
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   MultiHeadAttention::backward_kernel(m,
@@ -539,7 +539,7 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
 {
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 #endif
   checkCUDNN(cudnnCreateAttnDescriptor(&attnDesc));

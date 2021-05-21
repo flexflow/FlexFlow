@@ -225,7 +225,9 @@ void Embedding::forward_kernel(int64_t const *input_ptr,
                                AggrMode aggr,
                                int outputSize)
 {
-  embed_forward<<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS>>>(
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+  embed_forward<<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
       input_ptr, output_ptr, weight_ptr, out_dim, in_dim, batch_size, aggr);
 }
 
@@ -310,7 +312,9 @@ void Embedding::backward_kernel(int64_t const *input_ptr,
                                 AggrMode aggr,
                                 int outputSize)
 {
-  embed_backward<<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS>>>(
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+  embed_backward<<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
       input_ptr, output_ptr, weight_grad_ptr, out_dim, in_dim, batch_size, aggr);
 }
 

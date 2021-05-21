@@ -360,7 +360,9 @@ void ElementUnary::forward_kernel(const ElementUnaryMeta* m,
         &alpha, m->inputTensor, input_ptr,
         &beta, m->outputTensor, output_ptr));
   } else {
-    elewise_unary_forward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
+    cudaStream_t stream;
+    checkCUDA(create_stream(&stream));
+    elewise_unary_forward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
         num_elements, alpha, beta,m->scalar, m->op_type, input_ptr, output_ptr);
   }
 }
@@ -399,7 +401,7 @@ void ElementUnary::forward_task(const Task* task,
   }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   forward_kernel(m, input_ptr, output_ptr, input_domain.get_volume());
@@ -521,7 +523,9 @@ void ElementUnary::backward_kernel(const ElementUnaryMeta* m,
         &alpha, m->outputTensor, output_ptr, m->outputTensor, output_grad_ptr,
         m->inputTensor, input_ptr, &alpha, m->inputTensor, input_grad_ptr));
   } else {
-    elewise_unary_backward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
+    cudaStream_t stream;
+    checkCUDA(create_stream(&stream));
+    elewise_unary_backward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
         num_elements, alpha, alpha, m->scalar, m->op_type, output_grad_ptr, input_ptr, input_grad_ptr);
   }
 }
@@ -578,7 +582,7 @@ void ElementUnary::backward_task(const Task* task,
   }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr, input_domain.get_volume());

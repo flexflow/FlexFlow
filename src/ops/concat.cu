@@ -238,8 +238,10 @@ void Concat::forward_kernel(float* output,
       assert(false);
   }
 
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
   for (int i = 0; i < num_inputs; i++) {
-    copy_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS>>>(
+    copy_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS, 0, stream>>>(
         output, inputs[i], num_blocks, output_blk_size, input_blk_sizes[i]);
     //printf("output = %x num_blocks=%d output_blk_size=%d input_blk_size[%d]=%d\n",
     //       output, num_blocks, output_blk_size, i, input_blk_sizes[i]);
@@ -347,8 +349,10 @@ void Concat::backward_kernel(const float* output_grad,
       assert(false);
   }
 
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
   for (int i = 0; i < num_inputs; i++) {
-    add_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS>>>(
+    add_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS, 0, stream>>>(
         input_grads[i], output_grad, num_blocks, input_blk_sizes[i], output_blk_size);
     output_grad += input_blk_sizes[i];
   }

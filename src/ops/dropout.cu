@@ -196,7 +196,7 @@ void Dropout::forward_task(const Task* task,
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   forward_kernel(m, input_ptr, output_ptr);
@@ -270,7 +270,7 @@ void Dropout::backward_task(const Task* task,
 
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   backward_kernel(m, output_grad_ptr, input_grad_ptr);

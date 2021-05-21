@@ -227,7 +227,7 @@ void Softmax::forward_task_with_dim(
   }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   forward_kernel(m, acc_input.ptr, acc_output.ptr);
@@ -288,9 +288,11 @@ void Softmax::backward_kernel(float *input_grad_ptr,
                               float const *output_grad_ptr,
                               size_t num_elements)
 {
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
   checkCUDA(cudaMemcpyAsync(input_grad_ptr, output_grad_ptr,
                             num_elements * sizeof(float),
-                            cudaMemcpyDeviceToDevice));
+                            cudaMemcpyDeviceToDevice, stream));
 }
 
 void Softmax::backward_task(const Task *task,
@@ -343,7 +345,7 @@ void Softmax::backward_task_with_dim(
   }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   //checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif

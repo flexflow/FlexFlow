@@ -158,8 +158,10 @@ void Split::forward_kernel(float **out_ptrs,
                            coord_t num_blks,
                            int numOutputs)
 {
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
   for (int i = 0; i < numOutputs; i++) {
-    copy_with_stride<<<GET_BLOCKS(out_blk_sizes[i]*num_blks), CUDA_NUM_THREADS>>>(
+    copy_with_stride<<<GET_BLOCKS(out_blk_sizes[i]*num_blks), CUDA_NUM_THREADS, 0, stream>>>(
         out_ptrs[i], in_ptr, num_blks, out_blk_sizes[i], in_blk_size);
     in_ptr += out_blk_sizes[i];
   }
@@ -252,8 +254,10 @@ void Split::backward_task(const Task *task,
     total_volume += out_grad_domain.get_volume();
   }
   assert(total_volume == in_grad_domain.get_volume());
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
   for (int i = 0; i < split->numOutputs; i++) {
-    add_with_stride<<<GET_BLOCKS(out_blk_size[i]*num_blks), CUDA_NUM_THREADS>>>(
+    add_with_stride<<<GET_BLOCKS(out_blk_size[i]*num_blks), CUDA_NUM_THREADS, 0, stream>>>(
         in_grad_ptr, out_grad_ptr[i], num_blks, in_blk_size, out_blk_size[i]);
     in_grad_ptr += out_blk_size[i];
   }

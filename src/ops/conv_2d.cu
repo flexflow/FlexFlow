@@ -442,7 +442,7 @@ void Conv2D::forward_task(const Task *task,
 
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   Conv2D::forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias_ptr);
@@ -515,7 +515,9 @@ void Conv2D::backward_kernel(const Conv2DMeta* m,
     int n, c, h, w, nStride, cStride, hStride, wStride;
     checkCUDNN(cudnnGetTensor4dDescriptor(m->outputTensor, &dataType,
         &n, &c, &h, &w, &nStride, &cStride, &hStride, &wStride));
-    reluBackward<<<GET_BLOCKS(n*c*h*w), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, n*c*h*w);
+    cudaStream_t stream;
+    checkCUDA(create_stream(&stream));
+    reluBackward<<<GET_BLOCKS(n*c*h*w), CUDA_NUM_THREADS, 0, stream>>>(output_grad_ptr, output_ptr, n*c*h*w);
   }
   // Compute filter gradiant
   // NOTE: we use alpha for kernel_grad to accumulate gradients
@@ -593,7 +595,7 @@ void Conv2D::backward_task(const Task *task,
 
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   Conv2D::backward_kernel(m, acc_input.ptr, acc_input_grad.ptr,

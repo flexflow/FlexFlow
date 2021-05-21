@@ -229,7 +229,9 @@ void Transpose::forward_kernel(const TransposeMeta* m,
     info.out_strides[i] = (i == 0) ? 1 : info.out_strides[i-1] * out_dim_size;
     info.perm[i] = m->perm[i];
   }
-  transpose_simple_kernel<<<GET_BLOCKS(out_domain.get_volume()), CUDA_NUM_THREADS>>>(
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+  transpose_simple_kernel<<<GET_BLOCKS(out_domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
       out_domain.get_volume(), input_ptr, output_ptr, info, 0.0f/*beta*/);
 }
 
@@ -312,7 +314,9 @@ void Transpose::backward_kernel(const TransposeMeta* m,
     info.out_strides[i] = (i == 0) ? 1 : info.out_strides[i-1] * out_dim_size;
     info.perm[m->perm[i]] = i;
   }
-  transpose_simple_kernel<<<GET_BLOCKS(in_grad_domain.get_volume()), CUDA_NUM_THREADS>>>(
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
+  transpose_simple_kernel<<<GET_BLOCKS(in_grad_domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
       in_grad_domain.get_volume(), output_grad_ptr, input_grad_ptr, info, 1.0f/*beta*/);
 }
 

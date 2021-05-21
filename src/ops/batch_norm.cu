@@ -240,10 +240,12 @@ void BatchNorm::init_para_task(const Task *task,
   float *scale_ptr = acc_scale.ptr(rect_scale.lo);
   float *bias_ptr = acc_bias.ptr(rect_bias.lo);
   // init kernel and bias
+  cudaStream_t stream;
+  checkCUDA(create_stream(&stream));
 #ifdef PARAMETER_ALL_ONES
-  ones_kernel<<<GET_BLOCKS(rect_scale.volume()), CUDA_NUM_THREADS>>>(
+  ones_kernel<<<GET_BLOCKS(rect_scale.volume()), CUDA_NUM_THREADS, 0, stream>>>(
       scale_ptr, rect_scale.volume());
-  ones_kernel<<<GET_BLOCKS(rect_bias.volume()), CUDA_NUM_THREADS>>>(
+  ones_kernel<<<GET_BLOCKS(rect_bias.volume()), CUDA_NUM_THREADS, 0, stream>>>(
       bias_ptr, rect_bias.volume());
 #else
   //cudaStream_t stream;
@@ -253,9 +255,9 @@ void BatchNorm::init_para_task(const Task *task,
   //curandSetStream(genGPU, stream);
   //curandSetPseudoRandomGeneratorSeed(genGPU, 1234ULL);
   //curandGenerateUniform(genGPU, scale_ptr, rect_scale.volume());
-  assign_kernel<<<GET_BLOCKS(rect_scale.volume()), CUDA_NUM_THREADS>>>(
+  assign_kernel<<<GET_BLOCKS(rect_scale.volume()), CUDA_NUM_THREADS, 0, stream>>>(
       scale_ptr, rect_scale.volume(), 1.0f);
-  assign_kernel<<<GET_BLOCKS(rect_bias.volume()), CUDA_NUM_THREADS>>>(
+  assign_kernel<<<GET_BLOCKS(rect_bias.volume()), CUDA_NUM_THREADS, 0, stream>>>(
       bias_ptr, rect_bias.volume(), 0.0f);
   //curandDestroyGenerator(genGPU);
 #endif
@@ -353,7 +355,7 @@ void BatchNorm::forward_task(const Task *task,
   }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_scale.ptr, acc_bias.ptr);
@@ -417,7 +419,9 @@ void BatchNorm::backward_kernel(BatchNormMeta *m,
 {
   float alpha = 1.0f;
   if (m->relu) {
-    reluBackward<<<GET_BLOCKS(numElements), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, numElements);
+    cudaStream_t stream;
+    checkCUDA(create_stream(&stream));
+    reluBackward<<<GET_BLOCKS(numElements), CUDA_NUM_THREADS, 0, stream>>>(output_grad_ptr, output_ptr, numElements);
   }
   checkCUDNN(cudnnBatchNormalizationBackward(
              m->handle.dnn, m->mode, &alpha, &alpha, &alpha, &alpha,
@@ -473,7 +477,7 @@ void BatchNorm::backward_task(const Task *task,
   }
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(create_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
   backward_kernel(m, acc_input.ptr, acc_output_grad.ptr, acc_output.ptr, acc_input_grad.ptr, acc_scale.ptr, acc_scale_grad.ptr, acc_bias_grad.ptr, acc_output.rect.volume());
@@ -590,9 +594,11 @@ BatchNormMeta::BatchNormMeta(FFHandler handler,
     runningVar = (float*) runningMean + output_c;
     saveMean = (float*) runningVar + output_c;
     saveVar = (float*) saveMean + output_c;
-    assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS>>>(
+    cudaStream_t stream;
+    checkCUDA(create_stream(&stream));
+    assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
       runningMean, output_c, 0.0f);
-    assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS>>>(
+    assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
       runningVar, output_c, 0.0f);
   }
   if (relu) {
