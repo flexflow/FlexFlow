@@ -245,12 +245,11 @@ void cache_forward(const Task *task,
   T* output_ptr = helperGetTensorPointerWO<T>(regions[0], task->regions[0],
     FID_DATA, ctx, runtime);
 
-#ifndef DISABLE_LEGION_CUDA_HIJACK
+  // TODO: Check why cublas/cudnn stream is needed here
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
 
   cudaMemcpy(output_ptr, batch_ptrs[batch_ctr], c->inputs[0].get_volume()*sizeof(T), cudaMemcpyHostToDevice);
 }

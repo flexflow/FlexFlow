@@ -142,9 +142,10 @@ void Reverse::forward_kernel(float const *in_ptr,
                              coord_t num_out_blks,
                              coord_t reverse_dim_size,
                              coord_t in_blk_size,
-                             coord_t output_size)
+                             coord_t output_size,
+                             cudaStream_t stream)
 {
-  reverse_forward_kernel<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS>>>(
+  reverse_forward_kernel<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
       in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size);
 }
 
@@ -177,7 +178,10 @@ void Reverse::forward_task(const Task* task,
       num_out_blks *= out_domain.hi()[i] - out_domain.lo()[i] + 1;
   }
   int output_size = out_domain.get_volume();
-  forward_kernel(in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size, output_size);
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  forward_kernel(in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size, output_size, stream);
 }
 
 void Reverse::forward(const FFModel& ff)
@@ -205,9 +209,10 @@ void Reverse::backward_kernel(float const *out_grad_ptr,
                               coord_t num_out_blks,
                               coord_t reverse_dim_size,
                               coord_t in_blk_size,
-                              coord_t input_size)
+                              coord_t input_size,
+                              cudaStream_t stream)
 {
-  reverse_forward_kernel<<<GET_BLOCKS(input_size), CUDA_NUM_THREADS>>>(
+  reverse_forward_kernel<<<GET_BLOCKS(input_size), CUDA_NUM_THREADS, 0, stream>>>(
       out_grad_ptr, in_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size);
 }
 
@@ -239,7 +244,10 @@ void Reverse::backward_task(const Task* task,
     else
       num_out_blks *= in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
   }
-  backward_kernel(out_grad_ptr, in_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, in_grad_domain.get_volume());
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  backward_kernel(out_grad_ptr, in_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, in_grad_domain.get_volume(), stream);
 }
 
 void Reverse::backward(const FFModel& ff)
@@ -293,9 +301,11 @@ bool Reverse::measure_operator_cost(Simulator* sim,
     }
   }
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
-     forward_kernel(input_ptr, output_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_output.get_volume());
+     forward_kernel(input_ptr, output_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_output.get_volume(), stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -303,7 +313,7 @@ bool Reverse::measure_operator_cost(Simulator* sim,
     float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert (output_grad_ptr != NULL);
     backward = [&] {
-      backward_kernel(output_grad_ptr, input_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_input.get_volume());
+      backward_kernel(output_grad_ptr, input_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_input.get_volume(), stream);
     };
   }
 

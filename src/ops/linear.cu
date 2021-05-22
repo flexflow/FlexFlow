@@ -427,8 +427,12 @@ void Linear::forward_kernel(const LinearMeta* m,
                             float* output_ptr,
                             const float* kernel_ptr,
                             const float* bias_ptr,
-                            int in_dim, int out_dim, int batch_size)
+                            int in_dim, int out_dim, int batch_size,
+                            cudaStream_t stream)
 {
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   float alpha = 1.0f, beta = 0.0f;
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
                         out_dim, batch_size, in_dim,
@@ -515,23 +519,20 @@ void Linear::forward_task_with_dim(const Task *task,
     acc_bias_ptr = acc_bias.ptr;
   }
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
   Linear::forward_kernel(m, acc_input.ptr, acc_output.ptr,
-      acc_kernel.ptr, acc_bias_ptr, in_dim, out_dim, batch_size);
+      acc_kernel.ptr, acc_bias_ptr, in_dim, out_dim, batch_size, stream);
 
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
@@ -614,15 +615,19 @@ void Linear::backward_kernel(const LinearMeta* m,
                              const float* kernel_ptr,
                              float* kernel_grad_ptr,
                              float* bias_grad_ptr,
-                             int in_dim, int out_dim, int batch_size)
+                             int in_dim, int out_dim, int batch_size,
+                             cudaStream_t stream)
 {
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   float alpha = 1.0f;
   int output_size = out_dim * batch_size;
   if (m->activation == AC_MODE_RELU) {
-    reluBackward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS>>>(
+    reluBackward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
         output_grad_ptr, output_ptr, output_size);
   } else if (m->activation == AC_MODE_SIGMOID) {
-    sigmoid_backward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS>>>(
+    sigmoid_backward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
         output_grad_ptr, output_ptr, output_size);
   } else {
     // TODO: only support relu and sigmoid for now
@@ -732,24 +737,22 @@ void Linear::backward_task_with_dim(const Task *task,
     assert(acc_bias_grad.rect.volume() == out_dim);
     acc_bias_grad_ptr = static_cast<float*>(acc_bias_grad.ptr);
   }
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
   Linear::backward_kernel(m, acc_input.ptr, input_grad,
       acc_output.ptr, acc_output_grad.ptr,
       acc_kernel.ptr, acc_kernel_grad.ptr,
-      acc_bias_grad_ptr, in_dim, out_dim, batch_size);
+      acc_bias_grad_ptr, in_dim, out_dim, batch_size, stream);
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
@@ -801,17 +804,14 @@ void Linear::backward2_task_with_dim(const Task *task,
   assert(acc_input_grad.rect.lo[0] == acc_replica.rect.lo[0]);
   assert(acc_input_grad.rect.hi[1] == acc_replica.rect.hi[1]);
   assert(acc_input_grad.rect.lo[1] == acc_replica.rect.lo[1]);
-//#ifndef DISABLE_LEGION_CUDA_HIJACK
-//  cudaStream_t stream;
-//  checkCUDA(cudaStreamCreate(&stream));
-//  checkCUDA(cublasSetStream(m->handle.blas, stream));
-//  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-//#endif
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   int num_replica = acc_replica.rect.hi[NDIM] - acc_replica.rect.lo[NDIM] + 1;
   const float *replica_ptr = acc_replica.ptr;
   for (int i = 0; i < num_replica; i++) {
     size_t num_elements = acc_input_grad.rect.volume();
-    apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
+    apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
         acc_input_grad.ptr, replica_ptr, num_elements, 1.0f);
     replica_ptr += acc_input_grad.rect.volume();
   }
@@ -1040,10 +1040,13 @@ bool Linear::measure_operator_cost(Simulator* sim,
   assert(kernel_ptr != NULL);
   float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
   assert(bias_ptr != NULL);
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel(m, input_ptr, output_ptr, kernel_ptr, bias_ptr,
-        input_c, output_c, input_n);
+        input_c, output_c, input_n, stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -1053,7 +1056,7 @@ bool Linear::measure_operator_cost(Simulator* sim,
     assert(bias_grad_ptr != NULL);
     backward = [&] {
       backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr,
-          kernel_ptr, kernel_grad_ptr, bias_grad_ptr, input_c, output_c, input_n);
+          kernel_ptr, kernel_grad_ptr, bias_grad_ptr, input_c, output_c, input_n, stream);
     };
   }
 

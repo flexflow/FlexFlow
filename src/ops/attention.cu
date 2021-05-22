@@ -240,8 +240,11 @@ void MultiHeadAttention::forward_kernel(
     const float* key_ptr,
     const float* value_ptr,
     const float* weight_ptr,
-    float* output_ptr)
+    float* output_ptr,
+    cudaStream_t stream)
 {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   checkCUDNN(cudnnMultiHeadAttnForward(m->handle.dnn,
       m->attnDesc, -1, m->loWinIdx, m->hiWinIdx,
       m->devQoSeqArray, m->devKvSeqArray, m->qDesc,
@@ -279,22 +282,21 @@ void MultiHeadAttention::forward_task(
   TensorAccessorW<float, 3> acc_output(
       regions[4], task->regions[4], FID_DATA, ctx, runtime,
       false/*readOutput*/);
+      
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+      
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
   MultiHeadAttention::forward_kernel(m,
       acc_query.ptr, acc_key.ptr, acc_value.ptr,
-      acc_weight.ptr, acc_output.ptr);
+      acc_weight.ptr, acc_output.ptr, stream);
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
@@ -355,8 +357,11 @@ void MultiHeadAttention::backward_kernel(
     float* value_grad_ptr,
     const float* weight_ptr,
     float* weight_grad_ptr,
-    const float* output_grad_ptr)
+    const float* output_grad_ptr,
+    cudaStream_t stream)
 {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   checkCUDNN(cudnnMultiHeadAttnBackwardData(m->handle.dnn,
       m->attnDesc, m->loWinIdx, m->hiWinIdx, m->devQoSeqArray,
       m->devKvSeqArray, m->oDesc, output_grad_ptr, m->qDesc,
@@ -440,25 +445,24 @@ void MultiHeadAttention::backward_task(
     value_grad_ptr = acc_value_grad.ptr;
     key_grad_ptr = acc_key_grad.ptr;
   }
+  
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
 
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
   MultiHeadAttention::backward_kernel(m,
       acc_query.ptr, acc_query_grad.ptr,
       acc_key.ptr, key_grad_ptr, acc_value.ptr, value_grad_ptr,
       acc_weight.ptr, acc_weight_grad.ptr,
-      acc_output_grad.ptr);
+      acc_output_grad.ptr, stream);
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
@@ -537,11 +541,10 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
                                                int num_heads)
 : OpMeta(handler)
 {
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
-#endif
+
   checkCUDNN(cudnnCreateAttnDescriptor(&attnDesc));
   checkCUDNN(cudnnCreateSeqDataDescriptor(&qDesc));
   checkCUDNN(cudnnCreateSeqDataDescriptor(&kDesc));
@@ -701,9 +704,12 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
       (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(m, query_ptr, key_ptr, value_ptr, weight_ptr, output_ptr);
+    forward_kernel(m, query_ptr, key_ptr, value_ptr, weight_ptr, output_ptr, stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float* query_grad_ptr =
@@ -720,7 +726,7 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
 
     backward = [&] {
       backward_kernel(m, query_ptr, query_grad_ptr, key_ptr, key_grad_ptr,
-        value_ptr, value_grad_ptr, weight_ptr, weight_grad_ptr, output_grad_ptr);
+        value_ptr, value_grad_ptr, weight_ptr, weight_grad_ptr, output_grad_ptr, stream);
     };
   }
 

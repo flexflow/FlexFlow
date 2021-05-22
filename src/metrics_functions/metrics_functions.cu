@@ -206,6 +206,8 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
   checkCUDA(cudaMalloc(&perf, sizeof(PerfMetrics)));
   checkCUDA(cudaMemcpy(perf, &perf_zc, sizeof(PerfMetrics), cudaMemcpyHostToDevice));
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   if (me->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     TensorAccessorR<float, NDIM> acc_logit(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -221,7 +223,7 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
     // Cannot measure categorical_crossentropy w/ sparse labels
     // Use measure_sparse_categorical_crossentropy instead
     assert(!me->measure_categorical_crossentropy);
-    update_metrics_sparse_label_kernel<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS>>>(
+    update_metrics_sparse_label_kernel<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS, 0, stream>>>(
         acc_logit.ptr, acc_label.ptr, perf, *me, num_samples, num_classes);
   } else {
     TensorAccessorR<float, NDIM> acc_logit(
@@ -233,9 +235,10 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
     int num_samples = acc_logit.rect.hi[NDIM-1] - acc_logit.rect.lo[NDIM-1] + 1;
     int num_classes = acc_logit.rect.volume() / num_samples;
     // Use CUDA_NUM_THREADS may result in out of resources so we set #threads=256
-    update_metrics_label_kernel<<<GET_BLOCKS(num_samples), 256>>>(
+    update_metrics_label_kernel<<<GET_BLOCKS(num_samples), 256, 0, stream>>>(
       acc_logit.ptr, acc_label.ptr, perf, *me, num_samples, num_classes);
   }
+  checkCUDA(cudaStreamSynchronize(stream));
   checkCUDA(cudaMemcpy(&perf_zc, perf, sizeof(PerfMetrics), cudaMemcpyDeviceToHost));
   checkCUDA(cudaFree(perf));
   return perf_zc;

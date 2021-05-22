@@ -381,8 +381,11 @@ void Conv2D::forward_kernel(const Conv2DMeta* m,
                             const float* input_ptr,
                             float* output_ptr,
                             const float* filter_ptr,
-                            const float* bias_ptr)
+                            const float* bias_ptr,
+                            cudaStream_t stream)
 {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(cudnnConvolutionForward(m->handle.dnn, &alpha,
                                      m->inputTensor, input_ptr,
@@ -433,21 +436,19 @@ void Conv2D::forward_task(const Task *task,
   }
 
   //printf("fwdAlgo(%d), bwdFilterALgo(%d), bwdDataAlgo(%d)\n", (int)m->fwdAlgo,(int) m->bwdFilterAlgo,(int) m->bwdDataAlgo);
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
 
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  Conv2D::forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias_ptr);
+  Conv2D::forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias_ptr, stream);
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     //print_tensor<4, float>(acc_input.ptr, acc_input.rect, "[Conv2D:forward:input]");
     //print_tensor<4, float>(acc_kernel.ptr, acc_kernel.rect, "[Conv2D:forward:kernel]");
@@ -506,8 +507,11 @@ void Conv2D::backward_kernel(const Conv2DMeta* m,
                              float* output_grad_ptr,
                              const float* kernel_ptr,
                              float* kernel_grad_ptr,
-                             float* bias_grad_ptr)
+                             float* bias_grad_ptr,
+                             cudaStream_t stream)
 {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   float alpha = 1.0f;
   //float beta = 0.0f;
   if (m->relu) {
@@ -515,7 +519,7 @@ void Conv2D::backward_kernel(const Conv2DMeta* m,
     int n, c, h, w, nStride, cStride, hStride, wStride;
     checkCUDNN(cudnnGetTensor4dDescriptor(m->outputTensor, &dataType,
         &n, &c, &h, &w, &nStride, &cStride, &hStride, &wStride));
-    reluBackward<<<GET_BLOCKS(n*c*h*w), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, n*c*h*w);
+    reluBackward<<<GET_BLOCKS(n*c*h*w), CUDA_NUM_THREADS, 0, stream>>>(output_grad_ptr, output_ptr, n*c*h*w);
   }
   // Compute filter gradiant
   // NOTE: we use alpha for kernel_grad to accumulate gradients
@@ -582,26 +586,23 @@ void Conv2D::backward_task(const Task *task,
         true/*readOutput*/);
     acc_bias_grad_ptr = static_cast<float*>(acc_bias_grad.ptr);
   }
-  
+ 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream)); 
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
 
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
   Conv2D::backward_kernel(m, acc_input.ptr, acc_input_grad.ptr,
                           acc_output.ptr, acc_output_grad.ptr,
                           acc_kernel.ptr, acc_kernel_grad.ptr,
-                          acc_bias_grad_ptr);
+                          acc_bias_grad_ptr, stream);
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));

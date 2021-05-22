@@ -116,11 +116,12 @@ void Flat::init(const FFModel& ff)
 /*static*/
 void Flat::forward_kernel(const float* input_ptr,
                           float* output_ptr,
-                          size_t num_elements)
+                          size_t num_elements,
+                          cudaStream_t stream)
 {
   checkCUDA(cudaMemcpyAsync(output_ptr, input_ptr,
                             num_elements * sizeof(float),
-                            cudaMemcpyDeviceToDevice));
+                            cudaMemcpyDeviceToDevice, stream));
 }
 
 /*
@@ -139,7 +140,10 @@ void Flat::forward_task(const Task *task,
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   assert(acc_input.rect.volume() == acc_output.rect.volume());
-  forward_kernel(acc_input.ptr, acc_output.ptr, acc_input.rect.volume());
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  forward_kernel(acc_input.ptr, acc_output.ptr, acc_input.rect.volume(), stream);
   //checkCUDA(cudaDeviceSynchronize());
 }
 
@@ -171,10 +175,11 @@ void Flat::forward(const FFModel& ff)
 
 void Flat::backward_kernel(float* input_grad_ptr,
                            const float* output_grad_ptr,
-                           size_t num_elements)
+                           size_t num_elements,
+                           cudaStream_t stream)
 {
   float alpha = 1.0f;
-  apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
+  apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
       input_grad_ptr, output_grad_ptr, num_elements, alpha);
 }
 
@@ -194,7 +199,10 @@ void Flat::backward_task(const Task *task,
   TensorAccessorR<float, 2> acc_output_grad(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
-  backward_kernel(acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  backward_kernel(acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume(), stream);
   //checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
   //                          acc_input_grad.rect.volume() * sizeof(float),
   //                          cudaMemcpyDeviceToDevice));
@@ -246,9 +254,11 @@ bool Flat::measure_operator_cost(Simulator* sim,
   assert (output_ptr != NULL);
   size_t num_elements = sub_output.get_volume();
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(input_ptr, output_ptr, num_elements);
+    forward_kernel(input_ptr, output_ptr, num_elements, stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -256,7 +266,7 @@ bool Flat::measure_operator_cost(Simulator* sim,
     assert (output_grad_ptr != NULL);
     assert (input_grad_ptr != NULL);
     backward = [&] {
-      backward_kernel(input_grad_ptr, output_grad_ptr, num_elements);
+      backward_kernel(input_grad_ptr, output_grad_ptr, num_elements, stream);
     };
   }
 

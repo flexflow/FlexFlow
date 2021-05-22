@@ -31,7 +31,7 @@ void UniformInitializer::init_task(const Task* task,
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(get_legion_stream(&stream));
   curandSetStream(gen, stream);
   //fprintf(stderr, "seed = %d\n", initializer->seed);
 
@@ -66,7 +66,7 @@ void UniformInitializer::init_task(const Task* task,
     }
     curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
     checkCUDA(curandGenerateUniform(gen, w, domain.get_volume()));
-    scale_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
+    scale_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
         w, domain.get_volume(), initializer->min_val, initializer->max_val);
   }
   checkCUDA(cudaDeviceSynchronize());
@@ -135,16 +135,15 @@ void GlorotUniform::init_task(const Task* task,
   }
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCURAND(curandSetStream(gen, stream));
-#endif
+
   GlorotUniform* initializer = (GlorotUniform*) task->args;
   curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
   fprintf(stderr, "seed = %d scale = %.4lf\n", initializer->seed, scale);
   checkCUDA(curandGenerateUniform(gen, w, domain.get_volume()));
-  scale_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
+  scale_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
       w, domain.get_volume(), -scale, scale);
   checkCUDA(cudaDeviceSynchronize());
   curandDestroyGenerator(gen);
@@ -176,11 +175,11 @@ void NormInitializer::init_task(const Task* task,
   }
   curandGenerator_t gen;
   curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
-#ifndef DISABLE_LEGION_CUDA_HIJACK
+
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCURAND(curandSetStream(gen, stream));
-#endif
+
   NormInitializer* initializer = (NormInitializer*) task->args;
   //fprintf(stderr, "seed = %d\n", initializer->seed);
   curandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
@@ -212,6 +211,8 @@ void ZeroInitializer::init_task(const Task* task,
                                 Context ctx, Runtime* runtime)
 {
   assert(regions.size() == task->regions.size());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   for (size_t i = 0; i < regions.size(); i++) {
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
@@ -233,7 +234,7 @@ void ZeroInitializer::init_task(const Task* task,
          break;
       }
     }
-    assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
+    assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
         w, domain.get_volume(), 0.0f);
   }
   checkCUDA(cudaDeviceSynchronize());
@@ -245,6 +246,8 @@ void ConstantInitializer::init_task(const Task* task,
 {
   ConstantInitializer* initializer = (ConstantInitializer*) task->args;
   assert(regions.size() == task->regions.size());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   for (size_t i = 0; i < regions.size(); i++) {
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
@@ -266,7 +269,7 @@ void ConstantInitializer::init_task(const Task* task,
          break;
       }
     }
-    assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
+    assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
         w, domain.get_volume(), initializer->value);
   }
   checkCUDA(cudaDeviceSynchronize());

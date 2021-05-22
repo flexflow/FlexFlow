@@ -171,8 +171,11 @@ void Softmax::init(const FFModel& ff)
 /* static */
 void Softmax::forward_kernel(SoftmaxMeta const *m,
                              float const *input_ptr,
-                             float *output_ptr)
+                             float *output_ptr,
+                             cudaStream_t stream)
 {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
                                  CUDNN_SOFTMAX_ACCURATE,
@@ -219,20 +222,18 @@ void Softmax::forward_task_with_dim(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  forward_kernel(m, acc_input.ptr, acc_output.ptr);
+  forward_kernel(m, acc_input.ptr, acc_output.ptr, stream);
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     //print_tensor<2, float>(acc_input.ptr, acc_input.rect, "[Softmax:forward:input]");
     //print_tensor<2, float>(acc_output.ptr, acc_output.rect, "[Softmax:forward:output]");
@@ -286,11 +287,12 @@ void Softmax::forward(const FFModel& ff)
 /* static */
 void Softmax::backward_kernel(float *input_grad_ptr,
                               float const *output_grad_ptr,
-                              size_t num_elements)
+                              size_t num_elements,
+                              cudaStream_t stream)
 {
   checkCUDA(cudaMemcpyAsync(input_grad_ptr, output_grad_ptr,
                             num_elements * sizeof(float),
-                            cudaMemcpyDeviceToDevice));
+                            cudaMemcpyDeviceToDevice, stream));
 }
 
 void Softmax::backward_task(const Task *task,
@@ -335,21 +337,19 @@ void Softmax::backward_task_with_dim(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   // make sure the image indices match!
   assert(acc_input_grad.rect == acc_output_grad.rect);
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  //checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  backward_kernel(acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
+  backward_kernel(acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume(), stream);
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     //print_tensor<2, float>(acc_output_grad.ptr, acc_output_grad.rect, "[Softmax:backward:output_grad]");
     //print_tensor<2, float>(acc_input_grad.ptr, acc_input_grad.rect, "[Softmax:backward:input_grad]");
@@ -420,9 +420,11 @@ bool Softmax::measure_operator_cost(Simulator* sim,
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert (output_ptr != NULL);
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(m, input_ptr, output_ptr);
+    forward_kernel(m, input_ptr, output_ptr, stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -430,7 +432,7 @@ bool Softmax::measure_operator_cost(Simulator* sim,
     float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert (output_grad_ptr != NULL);
     backward = [&] {
-      backward_kernel(input_grad_ptr, output_grad_ptr, sub_output.get_volume());
+      backward_kernel(input_grad_ptr, output_grad_ptr, sub_output.get_volume(), stream);
     };
   }
 

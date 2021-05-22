@@ -198,10 +198,14 @@ void BatchMatmul::forward_kernel(const BatchMatmulMeta* meta,
                                  const float* c_ptr,
                                  int m, int n, int k,
                                  int batch,
+                                 cudaStream_t stream,
                                  int a_seq_length_dim,
                                  int b_seq_length_dim,
                                  int seq_length)
 {
+  checkCUDA(cublasSetStream(meta->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
+
   //int a_stride = n * k;
   //int b_stride = m * k;
   //int o_stride = n * m;
@@ -291,23 +295,21 @@ void BatchMatmul::forward_task(const Task* task,
     c_ptr = helperGetTensorPointerRO<float>(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
   }
+  
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  
   cudaEvent_t t_start, t_end;
   if (meta->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(meta->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
-#endif
   forward_kernel(meta, out_ptr, a_ptr, b_ptr, c_ptr,
-    m, n, k, batch, meta->a_seq_length_dim, meta->b_seq_length_dim,
+    m, n, k, batch, stream, meta->a_seq_length_dim, meta->b_seq_length_dim,
     iter_config->seq_length);
   if (meta->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
@@ -378,8 +380,12 @@ void BatchMatmul::backward_kernel(const BatchMatmulMeta* meta,
                                   const float* b_ptr,
                                   float* b_grad_ptr,
                                   float* c_grad_ptr,
-                                  int m, int n, int k, int batch)
+                                  int m, int n, int k, int batch,
+                                  cudaStream_t stream)
 {
+  checkCUDA(cublasSetStream(meta->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
+
   int a_stride = n * k;
   int b_stride = m * k;
   int o_stride = n * m;
@@ -462,27 +468,24 @@ void BatchMatmul::backward_task(const Task *task,
   float* b_grad_ptr = helperGetTensorPointerRW<float>(
     regions[5], task->regions[5], FID_DATA, ctx, runtime);
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
   float* c_grad_ptr = NULL;
   cudaEvent_t t_start, t_end;
   if (meta->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(meta->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
-#endif
   // TODO: add support for meta->a_seq_length_dim >= 0
   // or meta->b_seq_length_dim >= 0
   assert((meta->a_seq_length_dim<0)||(iter_config->seq_length==0));
   assert((meta->b_seq_length_dim<0)||(iter_config->seq_length==0));
   backward_kernel(meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr,
-    b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch);
+    b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch, stream);
   if (meta->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
@@ -629,9 +632,12 @@ bool BatchMatmul::measure_operator_cost(Simulator* sim,
   int n = input0_r;
   int k = input0_c;
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(meta, out_ptr, a_ptr, b_ptr, c_ptr, m, n, k, batch);
+    forward_kernel(meta, out_ptr, a_ptr, b_ptr, c_ptr, m, n, k, batch, stream);
   };
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
@@ -642,7 +648,7 @@ bool BatchMatmul::measure_operator_cost(Simulator* sim,
     assert (out_grad_ptr != NULL);
 
     backward = [&] {
-      backward_kernel(meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr, b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch);
+      backward_kernel(meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr, b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch, stream);
     };
   }
 
