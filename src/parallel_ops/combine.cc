@@ -182,3 +182,18 @@ Node FFModel::get_or_create_combine_node(const Tensor input,
   ret.guid = node_global_guid ++;
   return ret;
 }
+
+tl::optional<RecordFormatter> Combine::as_dot() const {
+  RecordFormatter rf;
+  {
+    std::ostringstream oss;
+    oss << "dim(" << this->combine_dim << ")";
+    rf << oss.str();
+  }
+  {
+    std::ostringstream oss;
+    oss << "deg(" << this->combine_degree << ")";
+    rf << oss.str();
+  }
+  return rf;
+}

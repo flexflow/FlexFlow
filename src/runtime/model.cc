@@ -21,6 +21,7 @@
 #include <queue>
 #include "random_utils.h"
 #include "graph.h"
+#include "substitution.h"
 #include "legion/legion_utilities.h"
 #include "ops/linear.h"
 #include "ops/conv_2d.h"
@@ -45,440 +46,8 @@ using namespace std;
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_model("Model");
+LegionRuntime::Logger::Category log_measure("measure");
 
-TensorBase::TensorBase(void)
-{
-  ts_guid = 0;
-  num_dims = 0;
-  machine_view = MachineView::NO_VIEW;
-  parallel_is = IndexSpace::NO_SPACE;
-  region = LogicalRegion::NO_REGION;
-  region_grad = LogicalRegion::NO_REGION;
-  part = LogicalPartition::NO_PART;
-  part_grad = LogicalPartition::NO_PART;
-  owner_op = NULL;
-  owner_idx = 0;
-  data_type = DataType::DT_NONE;
-  sync_type = ParameterSyncType::NONE;
-  initializer = NULL;
-  create_gradients = false;
-  //physical_region.impl = NULL;
-}
-
-TensorBase::TensorBase(const TensorBase& rhs)
-{
-  ts_guid = rhs.ts_guid;
-  num_dims = rhs.num_dims;
-  for (int i = 0; i < num_dims; i++)
-    dims[i] = rhs.dims[i];
-  machine_view = rhs.machine_view;
-  parallel_is = rhs.parallel_is;
-  region = rhs.region;
-  region_grad = rhs.region_grad;
-  part = rhs.part;
-  part_grad = rhs.part_grad;
-  owner_op = rhs.owner_op;
-  owner_idx = rhs.owner_idx;
-  data_type = rhs.data_type;
-  sync_type = rhs.sync_type;
-  initializer = rhs.initializer;
-  create_gradients = rhs.create_gradients;
-}
-
-/*static*/
-bool ParallelDim::dims_are_valid(const ParallelDim dims[MAX_TENSOR_DIM], int ndims) {
-  for (int i = 0; i < ndims; i++) {
-    assert (dims[i].size > 0);
-    assert (dims[i].degree != ParallelDim::UNKNOWN_DEGREE);
-    assert (dims[i].parallel_idx != ParallelDim::UNKNOWN_INDEX);
-    if (dims[i].size % dims[i].degree != 0) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-
-/*
-Tensor& Tensor::operator=(const Tensor& rhs)
-{
-  guid = rhs.guid;
-  num_dims = rhs.num_dims;
-  for (int i = 0; i < num_dims; i++)
-    dims[i].size = rhs.dims[i].size;
-  data_type = rhs.data_type;
-  sync_type = rhs.sync_type;
-  initializer = rhs.initializer;
-  owner_op = rhs->owner_op;
-  owner_idx = rhs->owner_idx;
-  create_gradients = rhs.create_gradients;
-  region = rhs->region;
-  region_grad = rhs->region_grad;
-  part = rhs->part;
-  part_grad = rhs->part_grad;
-  physical_region = rhs.physical_region;
-  return *this;
-}
-
-bool Tensor::operator==(const Tensor &rhs) const
-{
-  // We use guid to examine tensor equivalence
-  return guid == rhs.guid;
-}
-*/
-
-void TensorBase::inline_map(FFConfig &config)
-{
-  printf("inline map tensor\n");
-  Context ctx = config.lg_ctx;
-  Runtime* runtime = config.lg_hlr;
-
-  RegionRequirement region_req(region, READ_WRITE, EXCLUSIVE, region);
-  region_req.add_field(FID_DATA);
-  InlineLauncher inline_launcher(region_req);
-  physical_region = runtime->map_region(ctx, inline_launcher);
-  physical_region.wait_until_valid();
-}
-
-void TensorBase::inline_unmap(FFConfig &config)
-{
-  printf("inline unmap tensor\n");
-  Context ctx = config.lg_ctx;
-  Runtime* runtime = config.lg_hlr;
-  assert(physical_region.is_valid() == true);
-  runtime->unmap_region(ctx, physical_region);
-}
-
-template<typename T>
-T* TensorBase::get_raw_ptr(FFConfig &config)
-{
-  Context ctx = config.lg_ctx;
-  Runtime* runtime = config.lg_hlr;
-  RegionRequirement region_req(region, READ_WRITE, EXCLUSIVE, region);
-  region_req.add_field(FID_DATA);
-  T *raw_ptr = NULL;
-  if (num_dims == 1) {
-    TensorAccessorW<T, 1> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
-    raw_ptr = (T*)acc.ptr;
-  } else if (num_dims == 2) {
-    TensorAccessorW<T, 2> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
-    raw_ptr = (T*)acc.ptr;
-  } else if (num_dims == 3) {
-    TensorAccessorW<T, 3> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
-    raw_ptr = (T*)acc.ptr;
-  } else if (num_dims == 4) {
-    TensorAccessorW<T, 4> acc(physical_region, region_req, FID_DATA, ctx, runtime, true);
-    raw_ptr = (T*)acc.ptr;
-  } else {
-    printf("wrong num_dims %d", num_dims);
-    assert(0);
-  }
-  return raw_ptr;
-}
-
-void TensorBase::attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major)
-{
-  Context ctx = config.lg_ctx;
-  Runtime* runtime = config.lg_hlr;
-  AttachLauncher launcher(EXTERNAL_INSTANCE, region, region);
-  std::vector<FieldID> fields(1, FID_DATA);
-  const Memory local_sysmem = Machine::MemoryQuery(Machine::get_machine())
-       .has_affinity_to(runtime->get_executing_processor(ctx))
-       .only_kind(Memory::SYSTEM_MEM)
-       .first();
-  launcher.attach_array_soa(raw_ptr, column_major,
-                            fields, local_sysmem);
-  physical_region = runtime->attach_external_resource(ctx, launcher);
-}
-
-void TensorBase::detach_raw_ptr(FFConfig &config)
-{
-  Context ctx = config.lg_ctx;
-  Runtime* runtime = config.lg_hlr;
-  runtime->detach_external_resource(ctx, physical_region);
-}
-
-template <typename T>
-bool TensorBase::get_input_sub_tensor_via_mappings(const ParallelConfig& pc, TensorBase& tensor) const
-{
-  if (pc.nDims != num_dims) {
-    printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, num_dims);
-    return false;
-  }
-  std::vector<ParallelDimMappingRecord> mapping;
-  T::construct_output_mappings(mapping);
-  std::unordered_map<int, int> dim_mapping = input_to_output_mapping(mapping);
-
-  for (int i = 0; i < this->num_dims; i++) {
-    assert(pc.dim[dim_mapping.at(i)] == dims[i].degree);
-    tensor.dims[i].size = dims[i].size / dims[i].degree;
-  }
-
-  return true;
-}
-
-bool TensorBase::get_input_sub_tensor(
-    const ParallelConfig& pc,
-    TensorBase& tensor,
-    OperatorType type)
-{
-  //TODO: consider reduction dim for conv2d and linear
-  switch (type) {
-    case OP_FLAT:
-      {
-        assert (pc.nDims == 3 && "Invalid dimension for parallel config of OP_FLAT");
-
-        tensor.num_dims = this->num_dims;
-        for (int i = 0; i < 3; i++) {
-          assert (tensor.dims[i].size % pc.dim[i] == 0);
-          tensor.dims[i].size = tensor.dims[i].size / pc.dim[i];
-        }
-        break;
-      }
-    case OP_RESHAPE:
-      {
-        for (int i = 0; i < pc.nDims - 1; i ++)
-          assert(pc.dim[i] == 1 && "Assuming data parallel for RESHAPE");
-        int batchDim = pc.dim[pc.nDims-1];
-        if (dims[num_dims-1].size % batchDim != 0) {
-          printf("Could not get input subtensor because the dimension is not divisiable: %d %% %d != 0\n", dims[num_dims-1].size, batchDim);
-        }
-        tensor.num_dims = num_dims;
-        for (int i = num_dims-2; i >= 0; i--) {
-          tensor.dims[i].size = dims[i].size;
-        }
-        tensor.dims[num_dims-1].size = dims[num_dims-1].size / batchDim;
-        break;
-      }
-    case OP_LINEAR:
-      {
-        if (pc.nDims != num_dims) {
-          printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, num_dims);
-          return false;
-        }
-        tensor.num_dims = num_dims;
-        for (int i = 0; i < num_dims; i++) {
-          if (dims[i].size % pc.dim[i] != 0) {
-            printf("Could not get input subtensor because the given dimension is not divisible: %d %% %d != 0\n", dims[i].size, pc.dim[i]);
-            return false;
-          }
-          tensor.dims[i].size = dims[i].size / pc.dim[i];
-        }
-        tensor.dims[0].size = dims[0].size;
-        tensor.data_type = data_type;
-	break;
-      }
-    case OP_CONV2D:
-      if (!this->get_input_sub_tensor_via_mappings<Conv2D>(pc, tensor)) {
-        return false;
-      }
-      break;
-    case OP_POOL2D:
-      if (!this->get_input_sub_tensor_via_mappings<Pool2D>(pc, tensor)) {
-        return false;
-      }
-      break;
-    default:
-      {
-        if (pc.nDims != num_dims) {
-          printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, num_dims);
-          return false;
-        }
-        for (int i = 0; i < num_dims; i++) {
-          if (dims[i].size % pc.dim[i] != 0) {
-            printf("Could not get input subtensor because the given dimension is not divisible: %d %% %d != 0\n", dims[i].size, pc.dim[i]);
-            return false;
-          }
-        }
-        tensor.num_dims = num_dims;
-        for (int i = 0; i < num_dims; i++) {
-          tensor.dims[i].size = dims[i].size / pc.dim[i];
-        }
-        tensor.data_type = data_type;
-      }
-      break;
-  }
-  return true;
-}
-
-bool TensorBase::get_output_sub_tensor(
-    const ParallelConfig& pc,
-    TensorBase& tensor,
-    OperatorType type)
-{
-  if (pc.nDims != num_dims) {
-    printf("Could not get output subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, num_dims);
-    return false;
-  }
-  for (int i = 0; i < num_dims; i++) {
-    if (dims[i].size % pc.dim[i] != 0) {
-      printf("Could not get output subtensor because the given dimension is not divisible: %d %% %d != 0\n", dims[i].size, pc.dim[i]);
-      return false;
-    }
-  }
-  tensor.num_dims = num_dims;
-  for (int i = 0; i < num_dims; i++)
-    tensor.dims[i].size = dims[i].size / pc.dim[i];
-  tensor.data_type = data_type;
-  return true;
-}
-
-size_t TensorBase::get_owner_independent_hash() const
-{
-  size_t hash = 17 * 31 + std::hash<int>()((int)data_type);
-  hash = hash * 31 + std::hash<int>()((int)sync_type);
-  hash = hash * 31 + std::hash<int>()(num_dims);
-  for (int i = 0; i < num_dims; i++) {
-    hash = hash * 31 + std::hash<int>()(dims[i].size);
-    hash = hash * 31 + std::hash<int>()(dims[i].degree);
-    hash = hash * 31 + std::hash<int>()(dims[i].parallel_idx);
-  }
-  return hash;
-}
-
-size_t TensorBase::get_volume() const
-{
-  size_t volume = 1;
-  for (int i = 0; i < num_dims; i++)
-    volume *= dims[i].size;
-  return volume;
-}
-
-size_t TensorBase::get_total_num_parts() const
-{
-  size_t parts = 1;
-  for (int i = 0; i < num_dims; i++)
-    parts *= dims[i].degree;
-  return parts;
-}
-
-Domain TensorBase::get_domain() const
-{
-  Domain d;
-  d.dim = this->num_dims;
-  for (int i = 0; i < this->num_dims; i++) {
-    d.rect_data[i] = 0;
-    d.rect_data[i+d.dim] = this->dims[i].size - 1;
-  }
-  return d;
-}
-
-bool TensorBase::check_valid() const
-{
-  bool used[MAX_TENSOR_DIM];
-  for (int i = 0; i < MAX_TENSOR_DIM; i++)
-    used[i] = false;
-  for (int i = 0; i < num_dims; i++) {
-    if (dims[i].size < 0) 
-      return false;
-    if (dims[i].size % dims[i].degree != 0)
-      return false;
-    if (dims[i].parallel_idx > MAX_TENSOR_DIM)
-      return false;
-    assert (dims[i].parallel_idx >= -1);
-    assert (dims[i].degree >= 1);
-    if (dims[i].parallel_idx >= 0) {
-      if (used[dims[i].parallel_idx])
-        return false;
-      used[dims[i].parallel_idx] = true;
-    }
-  }
-  int idx = 0;
-  while (used[idx]) idx++;
-  for (int i = idx; i < MAX_TENSOR_DIM; i++)
-    if (used[i]) return false;
-  return true;
-}
-
-void TensorBase::print(const std::string& name) const
-{
-  printf("%s: sizes[", name.c_str());
-
-  for (int i = 0; i < num_dims; i++) {
-    printf("%d ", dims[i].size);
-  }
-  printf("] degree[");
-  for (int i = 0; i < num_dims; i++)
-    printf("%d ", dims[i].degree);
-  printf("] parallel_ids[");
-  for (int i = 0; i < num_dims; i++)
-    printf("%d ", dims[i].parallel_idx);
-  printf("]\n");
-
-}
-
-bool TensorBase::update_parallel_ids(
-    int numdim,
-    ParallelDim* dims)
-{
-  // remove indices from any dims that no longer need a legion task space index
-  for (int i = 0; i < numdim; i++) {
-    if (dims[i].degree == 1) {
-      dims[i].parallel_idx = -1;
-    }
-  }
-
-  // start with all marked as false
-  bool idx_is_used[MAX_TENSOR_DIM]{false};
-
-  // mark all currently used parallel_idxs as used
-  for (int i = 0; i < numdim; i++) {
-    if (dims[i].parallel_idx != -1) {
-      assert (!idx_is_used[ dims[i].parallel_idx ]);
-      idx_is_used[dims[i].parallel_idx] = true;
-    }
-  }
-
-  // create list of all free indices
-  std::queue<int> parallel_idx_free_list;
-  for (int i = 0; i < MAX_TENSOR_DIM; i++) {
-    if (!idx_is_used[i]) {
-      parallel_idx_free_list.push(i);
-    }
-  }
-
-  // allocate free indicies to indices in need
-  for (int i = 0; i < numdim; i++) {
-    if (dims[i].parallel_idx == -1 && dims[i].degree > 1) {
-      int index_to_use = parallel_idx_free_list.front();
-      parallel_idx_free_list.pop();
-
-      dims[i].parallel_idx = index_to_use;
-      idx_is_used[index_to_use] = true;
-    }
-  }
-
-  // check that indicies were allocated from lowest to highest
-  int idx = 0;
-  while (idx_is_used[idx]) idx++;
-  for (int i = idx; i < MAX_TENSOR_DIM; i++) {
-    assert(!idx_is_used[idx]);
-  }
-
-  return true;
-}
-
-bool TensorBase::is_valid_machine_view(const MachineView& view) const
-{
-  int is_dim = 0;
-  for (int i = 0; i < num_dims; i++)
-    if (dims[i].parallel_idx != -1) {
-      is_dim++;
-      if (dims[i].parallel_idx > view.ndims)
-        return false;
-      if (view.dim[dims[i].parallel_idx] != dims[i].degree)
-        return false;
-    }
-  if (is_dim == 0) {
-    is_dim = 1;
-  }
-  if (is_dim != view.ndims)
-    return false;
-  if (get_total_num_parts() != view.num_parts())
-    return false;
-  return true;
-}
 
 Op::Op(FFModel& model,
        OperatorType op_type,
@@ -592,18 +161,6 @@ Op::Op(FFModel& model,
   parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
 
-ParallelOp::ParallelOp(FFModel& model,
-                       OperatorType op_type,
-                       const char* name,
-                       const Tensor input)
-: Op(model, op_type, name, 1/*num_inputs*/, 0/*num_weights*/, 1/*num_ouputs*/, input)
-{}
-
-bool ParallelOp::is_parallel_op() const
-{
-  return true;
-}
-
 bool Op::is_parallel_op() const
 {
   return false;
@@ -622,6 +179,10 @@ bool Op::has_inplace_output()
 void Op::do_inplace_output()
 {
   assert(false);
+}
+
+tl::optional<RecordFormatter> Op::as_dot() const {
+  return tl::nullopt;
 }
 
 Tensor Op::get_parameter(int index)
@@ -695,84 +256,6 @@ ParallelConfig get_basic_data_parallel_config(int num_parts, int dims)
     pc.device_ids[i] = i;
   return pc;
 }
-
-#ifdef DEADCODE
-void Op::create_input_partition(FFModel& model)
-{
-  int dim = outputs[0]->num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      create_input_partition_with_dim<DIM>(model); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      assert(false && "Unsupported dim");
-    }
-  }
-}
-
-template<int NDIM>
-void Op::create_input_partition_with_dim(FFModel& model)
-{
-  std::string pcname = name;
-  assert(numOutputs > 0);
-  task_is = model.get_or_create_task_is(outputs[0]);
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  //Rect<NDIM> my_part_rect = runtime->get_index_space_domain(ctx, task_is);
-  for (int i = 0; i < numInputs; i++) {
-    input_lps[i] = inputs[i]->part;
-    input_grad_lps[i] = inputs[i]->part_grad;
-    switch (op_type) {
-      case OP_REPARTITION:
-      case OP_COMBINE:
-      case OP_REPLICATE:
-      case OP_REDUCTION:
-      case OP_PIPELINE:
-        break;
-      default:
-      {
-        Domain my_domain = runtime->get_index_space_domain(ctx, task_is);
-        Domain in_domain = runtime->get_index_space_domain(ctx, inputs[i]->parallel_is);
-        assert(task_is == inputs[i]->parallel_is);
-        assert(my_domain == in_domain);
-      }
-    }
-#ifdef DEADCODE
-    Rect<NDIM> input_part_rect = runtime->get_index_partition_color_space(
-        ctx, inputs[i]->part.get_index_partition());
-    // sanity check
-    // inputs and outputs should have the same ndim in the default case
-    if (inputs[i]->owner_op != NULL) {
-      std::string input_pcname = inputs[i]->owner_op->name;
-      IndexSpaceT<NDIM> input_task_is;
-      input_task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(
-          NDIM, input_pcname));
-      Rect<NDIM> input_part_rect2 = runtime->get_index_space_domain(
-          ctx, input_task_is);
-      assert(input_part_rect == input_part_rect2);
-    }
-    assert(my_part_rect == input_part_rect);
-    if (my_part_rect == input_part_rect) {
-      input_lps[i] = inputs[i]->part;
-      input_grad_lps[i] = inputs[i]->part_grad;
-    }
-    else {
-      // Assert that this input must be activations
-      assert(inputs[i]->sync_type == ParameterSyncType::NONE);
-      model.create_disjoint_partition(
-          inputs[i], (IndexSpaceT<NDIM>)task_is,
-          input_lps[i], input_grad_lps[i]);
-    }
-#endif
-  }
-}
-#endif
 
 ParallelConfig Op::get_random_parallel_config(const FFModel& ff) const
 {
@@ -954,7 +437,7 @@ void solve_parallel_dim_mappings(
     switch (record.get_type()) {
       case MappingRecordType::INPUT_OUTPUT:
         {
-          if (record.output_idx >= outputs.size()) {
+          if (record.output_idx >= outputs.size() || outputs[record.output_idx] == nullptr) {
             continue;
           }
 
@@ -969,7 +452,7 @@ void solve_parallel_dim_mappings(
         break;
       case MappingRecordType::INPUT_WEIGHT:
         {
-          if (record.weight_idx >= weights.size()) {
+          if (record.weight_idx >= weights.size() || weights[record.weight_idx] == nullptr) {
             continue;
           }
 
@@ -1536,6 +1019,7 @@ FFModel::FFModel(FFConfig& _config)
   optimizer(NULL), loss_op(NULL), metrics_op(NULL), simulator(NULL)
 {
   this->search = new SearchHelper(this);
+  this->graph_search = new GraphSearchHelper(this);
 
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
@@ -3433,7 +2917,7 @@ struct DefaultConfig {
   const static int cpusPerNode = 0;
   const static size_t searchBudget = 0;
   const static size_t simulatorWorkSpaceSize = (size_t)2 * 1024 * 1024 * 1024; //2GB
-  constexpr static float searchAlpha = 1.0f;
+  constexpr static float searchAlpha = 1.2f;
   const static bool searchOverlapBackwardUpdate = false;
   const static bool onlyDataParallel = false;
   const static bool enableSampleParallel = true;
@@ -3444,6 +2928,7 @@ struct DefaultConfig {
   const static int machine_model_version = 0;
   const static int simulator_segment_size = 16777216; // 16 MB
   const static int simulator_max_num_segments = 1;
+  const static int base_optimize_threshold = 10;
 };
 
 FFConfig::FFConfig()
@@ -3480,6 +2965,7 @@ FFConfig::FFConfig()
   dataset_path = "";
   syntheticInput = false;
   perform_fusion = false;
+  base_optimize_threshold = DefaultConfig::base_optimize_threshold;
 
   // Parse input arguments
   {
@@ -3625,6 +3111,18 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if (!strcmp(argv[i], "--enable-inplace-optimizations")) {
       enable_inplace_optimizations = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--search-num-nodes")) {
+      search_num_nodes = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--search-num-workers")) {
+      search_num_workers = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--base-optimize-threshold")) {
+      base_optimize_threshold = atoi(argv[++i]);
       continue;
     }
   }
@@ -4416,6 +3914,3 @@ template void FFModel::map_conv_weight<1>(Tensor weight, const Op* parallel_op);
   template Tensor FFModel::create_linear_replica<D1>(const int* dims, const IndexSpaceT<D2>& part_is, DataType data_type);
   LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
-
-template float* TensorBase::get_raw_ptr<float>(FFConfig &config);
-template int32_t* TensorBase::get_raw_ptr<int32_t>(FFConfig &config);

@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_REDUCTION_H
 #define _FLEXFLOW_REDUCTION_H
 
-#include "model.h"
+#include "parallel_op.h"
 
 class Reduction : public ParallelOp {
 public:

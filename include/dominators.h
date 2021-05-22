@@ -3,6 +3,8 @@
 
 #include "basic_graph.h"
 #include "graph_structures.h"
+#include "dot_file.h"
+#include "tl/optional.h"
 #include <queue>
 #include <algorithm>
 #include <functional>
@@ -86,6 +88,16 @@ namespace flexflow::graph {
   }
 
   template <typename G, typename Structure = GraphStructure<G>>
+  tl::optional<typename Structure::vertex_type> successor(G const &g, typename Structure::vertex_type const &node) {
+    auto succs = successors<G, Structure>(g, node);
+    if (succs.size() == 1) {
+      return *succs.begin();
+    } else {
+      return tl::nullopt;
+    }
+  }
+
+  template <typename G, typename Structure = GraphStructure<G>>
   void predecessors(
       G const &g,
       typename Structure::vertex_type const &node,
@@ -108,6 +120,16 @@ namespace flexflow::graph {
     predecessors<G, Structure>(g, node, &pred);
 
     return pred;
+  }
+
+  template <typename G, typename Structure = GraphStructure<G>>
+  tl::optional<typename Structure::vertex_type> predecessor(G const &g, typename Structure::vertex_type const &node) {
+    auto preds = predecessors<G, Structure>(g, node);
+    if (preds.size() == 1) {
+      return *preds.begin();
+    } else {
+      return tl::nullopt;
+    }
   }
 
   template <typename G, typename Structure = GraphStructure<G>>
@@ -382,6 +404,26 @@ namespace flexflow::graph {
       g.remove_edge(e);
     }
   };
+
+  template <typename G, typename Structure = GraphStructure<G>>
+  void export_as_dot(DotFile<typename Structure::vertex_type> &dotfile, 
+                     G const &g, 
+                     std::function<RecordFormatter(typename Structure::vertex_type)> const &pretty) {
+    using N = typename Structure::vertex_type;
+    using E = typename Structure::edge_type;
+
+    GraphStructure<G> s;
+
+    for (N const &n : s.get_nodes(g)) {
+      dotfile.add_record_node(n, pretty(n));
+       
+      for (E const &edge : s.get_incoming_edges(g, n)) {
+        dotfile.add_edge(s.get_src(g, edge), s.get_dst(g, edge));
+      }
+    }
+
+    dotfile.close();
+  }
 }
 
 #endif // _DOMINATORS_H

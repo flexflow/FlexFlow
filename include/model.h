@@ -28,8 +28,11 @@
 #include <unistd.h>
 #include <functional>
 #include "tl/optional.h"
+#include "dot_file.h"
 
 #include "ffconst.h"
+
+extern LegionRuntime::Logger::Category log_measure;
 
 enum TaskIDs {
   TOP_LEVEL_TASK_ID,
@@ -186,12 +189,10 @@ enum TaskIDs {
   PYTHON_TOP_LEVEL_TASK_ID = 11111,
 };
 
+
+
 enum ShardingID {
   DataParallelShardingID = 135,
-};
-
-enum FieldIDs {
-  FID_DATA,
 };
 
 namespace Legion {
@@ -199,6 +200,7 @@ namespace Legion {
 }
 
 class SearchHelper;
+class GraphSearchHelper;
 class FFModel;
 class Op;
 class DataLoader;
@@ -334,6 +336,17 @@ public:
      const Tensor input2 = NULL,
      const Tensor input3 = NULL,
      const Tensor input4 = NULL);
+  Op(int guid, 
+     bool profiling,
+     OperatorType type,
+     const char* name,
+     int numInputs,
+     int numWeights,
+     int numOutputs,
+     const Tensor input1 = NULL,
+     const Tensor input2 = NULL,
+     const Tensor input3 = NULL,
+     const Tensor input4 = NULL);
   Op(FFModel& model,
      OperatorType type,
      const char* _name,
@@ -377,6 +390,8 @@ public:
   virtual Op *materialize(FFModel& ff, Tensor inputs[], int num_inputs) const;
   size_t get_untyped_params_hash() const;
   virtual size_t get_params_hash() const;
+
+  virtual tl::optional<RecordFormatter> as_dot() const;
 
   int get_dimension() const;
 #ifdef FF_USE_NCCL
@@ -441,7 +456,7 @@ struct Node {
   std::string to_string(void) const
   {
     if (ptr != NULL) {
-      return op_to_string(ptr);
+      return op_to_string(ptr) + "_" + std::to_string(guid);
     }
     else {
       return "UnmappedOp_" + std::to_string(guid);
@@ -464,6 +479,7 @@ class ElementUnary;
 class Embedding;
 class Flat;
 class Linear;
+class LinearParams;
 class MultiHeadAttention;
 class Pool2D;
 class Pool2DParams;
@@ -473,6 +489,7 @@ class Repartition;
 class Reduction;
 class Replicate;
 class FusedParallelOp;
+class ParallelOpInfo;
 class Graph;
 
 class FFModel {
@@ -762,6 +779,7 @@ public:
   // Internal Node creation APIs
   // ========================================
   Node get_or_create_noop_node(const Tensor input);
+  Node get_or_create_input_node(const TensorShape&);
   Node get_or_create_concat_node(int num_inputs,
                                  const Tensor* inputs,
                                  int axis);
@@ -776,6 +794,8 @@ public:
                                  int out_dim,
                                  ActiMode activation,
                                  bool use_bias);
+  Node get_or_create_linear_node(const Tensor input,
+                                 const LinearParams& params);
   Node get_or_create_multihead_attn_node(const Tensor query,
                                          const Tensor key,
                                          const Tensor value,
@@ -826,6 +846,8 @@ public:
                                         OperatorType type,
                                         bool inplace, 
                                         float scalar);
+  Node get_or_create_parallel_op_node(const Tensor input, 
+                                      ParallelOpInfo const &);
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
@@ -937,6 +959,7 @@ public:
   FFIterationConfig iter_config;
   Optimizer* optimizer;
   SearchHelper *search;
+  GraphSearchHelper *graph_search;
   Loss* loss_op;
   Metrics* metrics_op;
   Simulator* simulator;
@@ -948,6 +971,7 @@ public:
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
+  std::unordered_map<size_t, NoOp*> cached_input_ops;
   std::unordered_map<size_t, Concat*> cached_concat_ops;
   std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
   std::unordered_map<size_t, ElementUnary*> cached_element_unary_ops;
@@ -1452,27 +1476,6 @@ public:
   FusedOpMeta fused_meta[MAX_NUM_WORKERS];
   int numOperators;
 };
-
-class ParallelOp : public Op {
-public:
-  ParallelOp(FFModel& model,
-             OperatorType type,
-             const char* _name,
-             const Tensor input);
-  virtual void init(const FFModel&) = 0;
-  virtual void forward(const FFModel&) = 0;
-  virtual void backward(const FFModel&) = 0;
-  virtual void create_input_partition(FFModel& model) = 0;
-  void print_layer(const FFModel& model) {};
-  virtual bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const = 0;
-  virtual bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const = 0;
-  virtual bool is_parallel_op() const;
-public:
-  Legion::LogicalPartition input_lp, output_grad_lp;
-};
-
 
 class UtilityTasks {
 public:

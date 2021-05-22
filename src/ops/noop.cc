@@ -127,3 +127,43 @@ Node FFModel::get_or_create_noop_node(const Tensor input)
   ret.ptr = noop;
   return ret;
 }
+
+Node FFModel::get_or_create_input_node(const TensorShape& output_shape)
+{
+  size_t hash = std::hash<TensorShape>{}(output_shape); 
+  NoOp* input = NULL;
+  const auto& it = cached_input_ops.find(hash);
+  if (it != cached_input_ops.end()) {
+    input = it->second;
+  } else {
+    Tensor tensor = new TensorBase();
+    tensor->ts_guid = tensor_global_guid++;
+    tensor->data_type = DT_FLOAT; // TODO FIXME @lockshaw
+    tensor->num_dims = output_shape.num_dims;
+    int parallel_idx = 0;
+    for (int i = 0; i < output_shape.num_dims; i++) {
+      tensor->dims[i].size = output_shape.dims[i].size;
+      tensor->dims[i].degree = output_shape.dims[i].degree;
+      if (tensor->dims[i].degree > 1) {
+        tensor->dims[i].parallel_idx = parallel_idx;
+        parallel_idx++;
+      } else {
+        tensor->dims[i].parallel_idx = -1;
+      }
+    }
+    assert (tensor->check_valid());
+    input = new NoOp(*this, OP_INPUT, tensor, NULL);
+  }
+
+  return this->new_node(input);
+}
+
+tl::optional<RecordFormatter> NoOp::as_dot() const { 
+  RecordFormatter rf;
+  { 
+    std::ostringstream oss;
+    oss << "shape(" << this->outputs[0]->get_shape() << ")";
+    rf << oss.str();
+  }
+  return rf;
+}

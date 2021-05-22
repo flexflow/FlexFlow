@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_REPLICATE_H
 #define _FLEXFLOW_REPLICATE_H
 
-#include "model.h"
+#include "parallel_op.h"
 
 class Replicate : public ParallelOp {
 public:

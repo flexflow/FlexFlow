@@ -31,12 +31,42 @@ class MachineViewPrinter:
             toks.append(f'{i}=[{start_device_id}:{start_device_id+dim}:{stride}]')
         return f'MachineView<{" ".join(toks)}>'
 
+class DomainPrinter:
+    def __init__(self, val):
+        self.val = val
+
+    def to_string(self):
+        toks = []
+        ndim = self.val['dim']
+        for i in range(ndim):
+            lo = self.val['rect_data'][i]
+            hi = self.val['rect_data'][i + ndim]
+            toks.append(f'{i}=[{lo}:{hi}]')
+        return f'Domain<{" ".join(toks)}>'
+
+class TensorShapePrinter:
+    def __init__(self, val):
+        self.val = val
+
+    def to_string(self):
+        toks = []
+        ndim = self.val['num_dims']
+        for i in range(ndim):
+            dim = self.val['dims'][i]
+            size = dim['size']
+            degree = dim['degree']
+            parallel_idx = dim['parallel_idx']
+            toks.append(f'{i}=[s={size} d={degree} pi={parallel_idx}]')
+        return f'TensorShape<{" ".join(toks)}>'
+
 def build_pretty_printer():
     pp = gdb.printing.RegexpCollectionPrettyPrinter(
         "flexflow")
     pp.add_printer('Node', '^Node$', NodePrinter)
     pp.add_printer('Edge', '^Edge$', EdgePrinter)
     pp.add_printer('MachineView', '^MachineView$', MachineViewPrinter)
+    pp.add_printer('Domain', '^Legion::Domain$', DomainPrinter)
+    pp.add_printer('TensorShape', '^TensorShape$', TensorShapePrinter)
     return pp
 
 gdb.printing.register_pretty_printer(

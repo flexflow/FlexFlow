@@ -33,221 +33,7 @@ Tensor FFModel::dense(const Tensor input,
 }
 
 size_t Linear::get_params_hash() const {
-  size_t hash = this->inputs[0]->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(this->out_channels);
-  hash = hash * 31 + std::hash<int>()(this->activation);
-  hash = hash * 31 + std::hash<int>()(this->use_bias);
-  return hash;
-}
-
-Node FFModel::get_or_create_linear_node(const Tensor input,
-                                        int out_dim,
-                                        ActiMode activation,
-                                        bool use_bias)
-{
-  // replica degree cannot be larger than workersPerNode
-  //if (input->dims[input->num_dims-1].degree > config.workersPerNode)
-  //  return Node::INVALID_NODE;
-  // out_dim must be divisble by replicate_degree
-  if (out_dim % input->dims[input->num_dims-1].degree != 0)
-    return Node::INVALID_NODE;
-  size_t hash = input->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(out_dim);
-  hash = hash * 31 + std::hash<int>()(activation);
-  hash = hash * 31 + std::hash<int>()(use_bias);
-  const auto& it = cached_linear_ops.find(hash);
-  Linear* li = NULL;
-  if (it != cached_linear_ops.end()) {
-    li = it->second;
-  } else {
-    li = new Linear(*this, input, out_dim, activation, use_bias, false/*allocate_weights*/, NULL);
-    cached_linear_ops[hash] = li;
-  }
-
-  return this->new_node(li);
-}
-
-int Linear::output_replica_dim() const {
-  return this->inputs[0]->num_dims - 1;
-}
-
-int Linear::output_channel_dim() const {
-  return 0;
-}
-
-int Linear::input_replica_dim() const {
-  return this->inputs[0]->num_dims - 1;
-}
-
-int Linear::input_channel_dim() const {
-  return 0;
-}
-
-namespace Kernel {
-  constexpr int INDEX = 0;
-
-  enum {
-    CHANNEL_IN = 0,
-    CHANNEL_OUT = 1,
-  };
-};
-
-namespace Bias {
-  constexpr int INDEX = 1;
-
-  enum {
-    CHANNEL_OUT = 0  
-  };
-};
-
-int Linear::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) const {
-  Tensor const &input = this->inputs[0];
-
-  const int REPLICA = this->output_replica_dim();
-  const int CHANNEL = this->output_channel_dim();
-
-  output_dims[REPLICA].is_replica_dim = true;
-  for (int i = 1; i < input->num_dims - 1; i++) {
-    output_dims[i].size = input->dims[i].size;
-  }
-  output_dims[CHANNEL].size = this->out_channels;
-
-  return input->num_dims;
-}
-
-int Linear::kernel_size(ParallelDim kernel_dims[MAX_TENSOR_DIM]) const {
-  Tensor const &input = this->inputs[0];
-
-  kernel_dims[Kernel::CHANNEL_IN].size = this->in_channels;
-  kernel_dims[Kernel::CHANNEL_OUT].size = this->out_channels;
-  for (int i = 2; i < input->num_dims; i++) {
-    kernel_dims[i].is_replica_dim = true;
-  }
-
-  return input->num_dims;
-}
-
-int Linear::bias_size(ParallelDim bias_dims[MAX_TENSOR_DIM]) const {
-  Tensor const &input = this->inputs[0];
-
-  bias_dims[Bias::CHANNEL_OUT].size = this->out_channels;
-  for (int i = 1; i < input->num_dims; i++) {
-    bias_dims[i].is_replica_dim = true;
-  }
-
-  return input->num_dims;
-}
-
-void Linear::register_mappings() {
-  this->register_output_mappings();
-  this->register_weight_mappings();
-}
-
-void Linear::register_output_mappings() {
-  this->register_output_parallel_dims({
-      { this->input_channel_dim(), this->output_replica_dim() },
-      { this->input_replica_dim(), this->output_channel_dim() }
-  });
-
-  for (int i = 1; i < this->inputs[0]->num_dims - 1; i++) {
-    this->register_output_parallel_dims(i, i);
-  }
-}
-
-void Linear::register_weight_mappings() {
-  const int INPUT_IDX = 0;
-
-  this->register_weight_parallel_dims({
-      { this->input_channel_dim(), Kernel::CHANNEL_IN },
-      { this->input_replica_dim(), Kernel::CHANNEL_OUT },
-  }, INPUT_IDX, Kernel::INDEX);
-
-  for (int i = 1; i < this->inputs[0]->num_dims - 1; i++) {
-    this->register_weight_parallel_dims(i, i+1, INPUT_IDX, Kernel::INDEX);
-  }
-
-  if (this->use_bias) {
-    this->register_weight_parallel_dims(
-      this->input_replica_dim(), Bias::CHANNEL_OUT,
-      INPUT_IDX, Bias::INDEX);
-    for (int i = 0; i < this->inputs[0]->num_dims - 1; i++) {
-      this->register_weight_parallel_dims(i, i+1, INPUT_IDX, Bias::INDEX);
-    }
-  }
-}
-
-Linear::Linear(FFModel& model,
-               Linear const &other, 
-               const Tensor input,
-               bool allocate_weights)
-: Linear(model, input, other.out_channels, other.activation, other.use_bias, allocate_weights, other.name)
-{ }
-
-Linear::Linear(FFModel& model,
-               const Tensor _input,
-               int out_dim,
-               ActiMode _activation,
-               bool _use_bias,
-               bool allocate_weights,
-               const char* name)
-: Op(
-    model, 
-    OP_LINEAR, 
-    name, 
-    1/*inputs*/, 
-    _use_bias ? 2 : 1 /*weights*/, 
-    allocate_weights,
-    1/*outputs*/, 
-    _input),
-  in_channels(_input->dims[0].size),
-  out_channels(out_dim),
-  activation(_activation),
-  use_bias(_use_bias)
-{
-  this->register_mappings();
-
-  std::vector<ParallelDim *> weight_dim_sets;
-
-  int kernel_ndim, bias_ndim;
-  ParallelDim kernel_dims[MAX_TENSOR_DIM], 
-              bias_dims[MAX_TENSOR_DIM];
-  if (allocate_weights) {
-    kernel_ndim = this->kernel_size(kernel_dims);
-    weight_dim_sets.push_back(kernel_dims);
-
-    if (use_bias) {
-      bias_ndim = this->bias_size(bias_dims);
-      weight_dim_sets.push_back(bias_dims);
-    }
-  }
-
-  ParallelDim output_dims[MAX_TENSOR_DIM];
-  int output_ndim = this->output_size(output_dims);
-
-  this->solve_parallel_dim_mappings(
-      { _input->dims },
-      weight_dim_sets,
-      { output_dims }
-  );
-
-  if (allocate_weights) {
-    Initializer *kernel_initializer = new GlorotUniform(std::rand()/*seed*/);
-
-    weights[Kernel::INDEX] = model.create_weight_legion_ordering(
-        kernel_ndim, kernel_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
-
-    if (use_bias) {
-      Initializer *bias_initializer = new ZeroInitializer();
-
-      weights[Bias::INDEX] = model.create_weight_legion_ordering(
-          bias_ndim, bias_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
-    }
-  }
-
-  // Create the output tensor
-  outputs[0] = model.create_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
-
-  assert(check_output_input_weight_parallel_dims(allocate_weights));
+  return this->get_params().get_hash(this->inputs[0]);
 }
 
 /*
@@ -906,11 +692,11 @@ bool Linear::measure_operator_cost(Simulator* sim,
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf("[Measure Linear] name(%s) in(%d %d) out(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+    log_measure.debug("[Measure Linear] name(%s) in(%d %d) out(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
            name, input_n, input_c, output_n, output_c,
            cost_metrics.forward_time, cost_metrics.backward_time);
   } else {
-    printf("[Measure Linear] name(%s) in(%d %d) out(%d %d) forward_time(%.4lf)\n",
+    log_measure.debug("[Measure Linear] name(%s) in(%d %d) out(%d %d) forward_time(%.4lf)\n",
            name, input_n, input_c, output_n, output_c,
            cost_metrics.forward_time);
   }
@@ -922,16 +708,17 @@ bool Linear::estimate_sync_cost(Simulator* sim,
                                 CostMetrics& cost_metrics) const
 {
   // Estimate the cost of sync weights
-  TensorBase tensor_base;
-  tensor_base.num_dims = 3;
-  tensor_base.dims[0] = inputs[0]->dims[0];
-  tensor_base.dims[1] = inputs[0]->dims[inputs[0]->num_dims-1];
-  tensor_base.dims[2] = inputs[0]->dims[inputs[0]->num_dims-2];
-  tensor_base.dims[1].size = out_channels;
-  tensor_base.dims[1].degree = 1;
-  tensor_base.dims[2].degree = inputs[0]->dims[1].degree * inputs[0]->dims[2].degree;
-  tensor_base.dims[2].size = inputs[0]->dims[1].degree * inputs[0]->dims[2].degree;
-  cost_metrics.sync_time = sim->default_estimate_sync_cost(&tensor_base, view, 1);
+  TensorShape tensor_shape;
+  tensor_shape.num_dims = 3;
+  tensor_shape.data_type = DT_FLOAT;
+  tensor_shape.dims[0] = inputs[0]->dims[0];
+  tensor_shape.dims[1] = inputs[0]->dims[inputs[0]->num_dims-1];
+  tensor_shape.dims[2] = inputs[0]->dims[inputs[0]->num_dims-2];
+  tensor_shape.dims[1].size = out_channels;
+  tensor_shape.dims[1].degree = 1;
+  tensor_shape.dims[2].degree = inputs[0]->dims[1].degree * inputs[0]->dims[2].degree;
+  tensor_shape.dims[2].size = inputs[0]->dims[1].degree * inputs[0]->dims[2].degree;
+  cost_metrics.sync_time = sim->default_estimate_sync_cost(tensor_shape, view, 1);
   //printf("[Estimate Linear] name(%s) sync_time(%.4lf)\n", name, cost_metrics.sync_time);
   return true;
 }

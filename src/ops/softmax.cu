@@ -176,7 +176,7 @@ void Softmax::forward_task_with_dim(
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("%s [Softmax] forward time = %.2fms\n", m->op_name, elapsed);
+    log_measure.debug("%s [Softmax] forward time = %.2fms\n", m->op_name, elapsed);
   }
 }
 
@@ -277,7 +277,7 @@ void Softmax::backward_task_with_dim(
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    printf("Softmax backward time = %.2fms\n", elapsed);
+    log_measure.debug("Softmax backward time = %.2fms\n", elapsed);
   }
 }
 
@@ -340,12 +340,12 @@ bool Softmax::measure_operator_cost(Simulator* sim,
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf("[Measure Softmax] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
+    log_measure.debug("[Measure Softmax] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
         name, sub_output.get_volume(),
         cost_metrics.forward_time,
         cost_metrics.backward_time);
   } else {
-    printf("[Measure Softmax] name(%s) num_elements(%zu) forward_time(%.4lf)\n",
+    log_measure.debug("[Measure Softmax] name(%s) num_elements(%zu) forward_time(%.4lf)\n",
         name, sub_output.get_volume(),
         cost_metrics.forward_time);
   }

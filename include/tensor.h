@@ -16,10 +16,10 @@
 #ifndef _FLEXFLOW_TENSOR_H_
 #define _FLEXFLOW_TENSOR_H_
 #include "legion.h"
-#include "config.h"
+#include "machine_view.h"
 #include "ffconst.h"
+#include <unordered_map>
 
-//using namespace Legion;
 
 class Op;
 class FFModel;
@@ -41,13 +41,36 @@ struct ParallelDim {
   int degree = UNKNOWN_DEGREE;
   int parallel_idx = UNKNOWN_INDEX;
   bool is_replica_dim = false;
-
-  static bool dims_are_valid(const ParallelDim dims[MAX_TENSOR_DIM], int ndims);
 };
 
 
+struct TensorShape {
+  int num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
+  DataType data_type;
+
+  bool operator==(const TensorShape& other) const;
+  bool operator!=(const TensorShape& other) const;
+
+  size_t get_piece_size() const;
+  bool is_valid() const;
+  
+  std::unordered_map<int, int> get_mv_dim_to_tensor_dim_mapping() const;
+  std::unordered_map<int, int> get_tensor_dim_to_mv_dim_mapping() const;
+};
+std::ostream& operator<<(std::ostream&, TensorShape const &);
+
+namespace std {
+  template <>
+  struct hash<TensorShape> {
+    size_t operator()(TensorShape const &) const;
+  };
+}
+
+class FFConfig;
+
 struct TensorBase {
-  TensorBase(void);
+  TensorBase(void) = default;
   TensorBase(const TensorBase& rhs);
   //Tensor& operator=(const Tensor& rhs);
   //bool operator==(const Tensor& rhs) const;
@@ -78,30 +101,32 @@ struct TensorBase {
   template <typename T>
   bool get_tensor(const FFModel* model,
                   T* data);
-
+  TensorShape get_shape() const;
 
 private:
   template <typename T>
   bool get_input_sub_tensor_via_mappings(const ParallelConfig& pc, TensorBase& tensor) const;
 public:
 
-  size_t ts_guid;
-  int num_dims;
+  size_t ts_guid = 0;
+  int num_dims = 0;
   //int adim[MAX_TENSOR_DIM];
   ParallelDim dims[MAX_TENSOR_DIM];
-  DataType data_type;
-  ParameterSyncType sync_type;
-  Initializer* initializer;
+  DataType data_type = DT_NONE;
+  ParameterSyncType sync_type = ParameterSyncType::NONE;
+  Initializer* initializer = nullptr;
   // Describes the ownership of this tensor
-  const Op* owner_op;
-  int owner_idx;
-  bool create_gradients;
+  const Op* owner_op = nullptr;
+  int owner_idx = 0;
+  bool create_gradients = false;
   
   // The following fields are initialized after model.compile
-  MachineView machine_view;
-  Legion::IndexSpace parallel_is;
-  Legion::LogicalRegion region, region_grad;
-  Legion::LogicalPartition part, part_grad;
+  MachineView machine_view = MachineView::NO_VIEW;
+  Legion::IndexSpace parallel_is = Legion::IndexSpace::NO_SPACE;
+  Legion::LogicalRegion region = Legion::LogicalRegion::NO_REGION, 
+                        region_grad = Legion::LogicalRegion::NO_REGION;
+  Legion::LogicalPartition part = Legion::LogicalPartition::NO_PART, 
+                           part_grad = Legion::LogicalPartition::NO_PART;
   Legion::PhysicalRegion physical_region;
 };
 

@@ -19,6 +19,8 @@
 #include "dot_file.h"
 #include "parallel_ops/partition.h"
 #include "parallel_ops/combine.h"
+#include "parallel_ops/replicate.h"
+#include "parallel_ops/reduction.h"
 #include <unordered_set>
 #include <memory>
 #include "hash_utils.h"
@@ -420,6 +422,45 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& vi
   return cost_metrics;
 }
 
+float Simulator::estimate_repartition_xfer_cost(int repartition_dim,
+                                                int repartition_degree,
+                                                const TensorShape& input_tensor_shape, 
+                                                const TensorShape& output_tensor_shape,
+                                                const MachineView& source_view,
+                                                const MachineView& sink_view) const
+{
+  assert (source_view != sink_view);
+
+  auto tensor_dim_to_mv_dim_mapping = output_tensor_shape.get_tensor_dim_to_mv_dim_mapping();
+  size_t piece_size = input_tensor_shape.get_piece_size();
+  piece_size /= repartition_degree;
+  float max_xfer_cost = 0.0f;
+  std::unordered_map<std::pair<int, int>, int> internode_transfers;
+  for (Domain::DomainPointIterator it(sink_view.get_domain()); it; it++) {
+    int sink_device = sink_view.get_device_id(*it);
+    DomainPoint source_dp(*it);
+    source_dp.point_data[tensor_dim_to_mv_dim_mapping.at(repartition_dim)] /= repartition_degree;
+    int source_device = source_view.get_device_id(source_dp);
+
+    float bandwidth = 0.0f;
+    int src_node_id = machine->get_gpu(source_device)->node_id;
+    int dst_node_id = machine->get_gpu(sink_device)->node_id;
+    if (src_node_id == dst_node_id) {
+      bandwidth = machine->get_intra_node_gpu_bandwidth();
+      max_xfer_cost = std::max(max_xfer_cost, piece_size / bandwidth);
+    } else {
+      internode_transfers[{src_node_id, dst_node_id}] += piece_size;
+    }
+  }
+
+  for (auto const &kv : internode_transfers) {
+    max_xfer_cost = std::max(max_xfer_cost, kv.second / machine->get_inter_node_gpu_bandwidth());
+  }
+
+  return 2 * max_xfer_cost;
+}
+
+// estimate the data transfer costs from some op with view source_view to Op op with view sink_view
 float Simulator::estimate_xfer_cost(const Op* op,
                                     int input_idx,
                                     const MachineView& source_view,
@@ -427,98 +468,48 @@ float Simulator::estimate_xfer_cost(const Op* op,
 {
   //assert(tensor->is_valid_machine_view(source_view));
   //assert(tensor->is_valid_machine_view(sink_view));
+  const Tensor input_tensor = op->inputs[input_idx];
+  if (input_tensor->owner_op->op_type == OP_INPUT) {
+    return 0.0f;
+  }
+
   if (op->is_parallel_op()) {
-    // TODO: implement parallel op xfer cost
+    assert (input_idx == 0);
+    const Tensor output_tensor = op->outputs[0];
     switch (op->op_type) {
       case OP_REPARTITION:
       {
         Repartition *rp = (Repartition*)op;
-        assert (source_view != sink_view);
-
-        const Tensor input_tensor = op->inputs[input_idx];
-        if (input_tensor->owner_op->op_type == OP_INPUT) {
-          return 0.0f;
-        }
-        assert (rp->repartition_dim == input_tensor->num_dims - 2); // assert data parallel for now
-        int degree_before = input_tensor->dims[input_tensor->num_dims - 2].degree;
-        std::vector<int> source_ids = source_view.device_ids();
-        std::vector<int> sink_ids = sink_view.device_ids();
-        float max_xfer_cost = 0.0f;
-        size_t total_size = data_type_size(input_tensor->data_type);
-        for (int i = 0; i < input_tensor->num_dims; i++) {
-          total_size *= input_tensor->dims[i].size / input_tensor->dims[i].degree;
-        }
-        total_size /= rp->repartition_degree;
-        /* printf("Estimated volume: %zu\n", total_size); */
-        std::unordered_map<std::pair<int, int>, int> internode_transfers;
-        for (int srcId = 0; srcId < degree_before; srcId++) {
-          for (int dstId = srcId * rp->repartition_degree; dstId < (srcId+1) * rp->repartition_degree; dstId++) {
-            int source_device = source_ids[srcId];
-            int sink_device = sink_ids[dstId];
-            float bandwidth = 0.0f;
-            int src_node_id = machine->get_gpu(source_device)->node_id;
-            int dst_node_id = machine->get_gpu(sink_device)->node_id;
-            if (src_node_id == dst_node_id) {
-              bandwidth = machine->get_intra_node_gpu_bandwidth();
-              max_xfer_cost = std::max(max_xfer_cost, 2 * total_size / bandwidth);
-            } else {
-              internode_transfers[{src_node_id, dst_node_id}] += 2 * total_size;
-            }
-          }
-        }
-
-        for (auto const &kv : internode_transfers) {
-          max_xfer_cost = std::max(max_xfer_cost, kv.second / machine->get_inter_node_gpu_bandwidth());
-        }
-
-/*         log_xfer_est.debug() << "Estimated xfer cost from " */ 
-/*                              << input_tensor->owner_op->name */
-/*                              << " to " */
-/*                              << op->name << ": " */
-/*                              << max_xfer_cost << std:: */
-        return max_xfer_cost;
+        return this->estimate_repartition_xfer_cost(rp->repartition_dim, rp->repartition_degree, 
+                                                    input_tensor->get_shape(), output_tensor->get_shape(),
+                                                    source_view, sink_view);
       }
       case OP_COMBINE:
       {
         Combine *combine = (Combine*)op;
-        assert (source_view != sink_view);
-
-        const Tensor input_tensor = op->inputs[input_idx];
-        if (input_tensor->owner_op->op_type == OP_INPUT) {
-          return 0.0f;
-        }
-        assert (combine->combine_dim == input_tensor->num_dims - 2); // assert data parallel for now
-        int degree_before = input_tensor->dims[input_tensor->num_dims - 2].degree;
-        int degree_after = degree_before / combine->combine_degree;
-        std::vector<int> source_ids = source_view.device_ids();
-        std::vector<int> sink_ids = sink_view.device_ids();
-        float max_xfer_cost = 0.0f;
-        size_t total_size = data_type_size(input_tensor->data_type);
-        for (int i = 0; i < input_tensor->num_dims; i++) {
-          total_size *= input_tensor->dims[i].size / input_tensor->dims[i].degree;
-        }
-        /* printf("Estimated volume: %zu\n", total_size); */
-        std::unordered_map<std::pair<int, int>, int> internode_transfers;
-        for (int dstId = 0; dstId < degree_after; dstId++) {
-          for (int srcId = dstId * combine->combine_degree; srcId < (dstId+1) * combine->combine_degree; srcId++) {
-            int source_device = source_ids[srcId];
-            int sink_device = sink_ids[dstId];
-            float bandwidth = 0.0f;
-            int src_node_id = machine->get_gpu(source_device)->node_id;
-            int dst_node_id = machine->get_gpu(sink_device)->node_id;
-            if (src_node_id == dst_node_id) {
-              bandwidth = machine->get_intra_node_gpu_bandwidth();
-              max_xfer_cost = std::max(max_xfer_cost, 2 * total_size / bandwidth);
-            } else {
-              internode_transfers[{src_node_id, dst_node_id}] += 2 * total_size;
-            }
-          }
-        }
-        
-        for (auto const &kv : internode_transfers) {
-          max_xfer_cost = std::max(max_xfer_cost, kv.second / machine->get_inter_node_gpu_bandwidth());
-        }
-        return max_xfer_cost;
+        const Tensor output_tensor = op->outputs[0];
+        return this->estimate_repartition_xfer_cost(combine->combine_dim, combine->combine_degree,
+                                                    output_tensor->get_shape(), input_tensor->get_shape(),
+                                                    sink_view, source_view);
+      }
+      case OP_REPLICATE:
+      {
+        Replicate *replicate = (Replicate*)op;
+        TensorShape fake_input_shape = input_tensor->get_shape();
+        fake_input_shape.dims[replicate->replicate_dim].size *= replicate->replicate_degree;
+        return this->estimate_repartition_xfer_cost(replicate->replicate_dim, replicate->replicate_degree,
+                                                    fake_input_shape, output_tensor->get_shape(),
+                                                    source_view, sink_view);
+      }
+      case OP_REDUCTION:
+      {
+        Reduction *reduction = (Reduction*)op;
+        const Tensor output_tensor = op->outputs[0];
+        TensorShape fake_output_shape = output_tensor->get_shape();
+        fake_output_shape.dims[reduction->reduction_dim].size *= reduction->reduction_degree;
+        return this->estimate_repartition_xfer_cost(reduction->reduction_dim, reduction->reduction_degree,
+                                                    fake_output_shape, input_tensor->get_shape(),
+                                                    sink_view, source_view);
       }
       default:
         assert(false);
@@ -570,6 +561,7 @@ float Simulator::default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TE
 {
   TensorBase tensor_base;
   tensor_base.num_dims = tensor_ndims;
+  tensor_base.data_type = DT_FLOAT;
   int num_replica_dims = 0;
   for (int i = 0; i < tensor_ndims; i++) {
     tensor_base.dims[i] = tensor_dims[i];
@@ -583,43 +575,38 @@ float Simulator::default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TE
 
 float Simulator::default_estimate_sync_cost(const Tensor tensor,
                                             const MachineView& view,
+                                            int num_replica_dims)
+{
+  return this->default_estimate_sync_cost(tensor->get_shape(), view, num_replica_dims);
+}
+
+float Simulator::default_estimate_sync_cost(TensorShape const& tensor_shape,
+                                            const MachineView& view,
                                             int num_replicate_dims)
 {
   // Currently only support 1 replicate_dim
   assert(num_replicate_dims == 1);
-  if (tensor->dims[tensor->num_dims-1].degree == 1) {
+  if (tensor_shape.dims[tensor_shape.num_dims-1].degree == 1) {
     // No replications
     return 0.0f;
   } else {
-    int replicate_dim = tensor->dims[tensor->num_dims-1].parallel_idx;
-    assert(replicate_dim >= 0);
-    int replicate_stride = view.stride[replicate_dim];
     bool inter_node_sync = false;
-    Domain d;
-    d.dim = view.ndims;
-    for (int i = 0; i < d.dim; i++) {
-      d.rect_data[i] = 0;
-      d.rect_data[i+d.dim] = view.dim[i]-1;
-    }
-    for (Domain::DomainPointIterator it(d); it; it++) {
+    tl::optional<int> node = tl::nullopt;
+    for (Domain::DomainPointIterator it(view.get_domain()); it; it++) {
       int my_device = view.get_device_id(*it);
-      if ((*it)[replicate_dim] > 0) {
-        int last_device = my_device - replicate_stride;
-        if (machine->get_gpu(my_device)->node_id != machine->get_gpu(last_device)->node_id) {
-          inter_node_sync = true;
-        }
+      int my_node = machine->get_gpu(my_device)->node_id;
+      if (node == tl::nullopt) {
+        node = my_node;
       }
+      if (my_node != node.value()) {
+        inter_node_sync = true;
+        break;
+      } 
     }
-    float bandwidth = 0.0f;
-    if (!inter_node_sync) {
-      bandwidth = machine->get_intra_node_gpu_bandwidth();
-    } else {
-      bandwidth = machine->get_inter_node_gpu_bandwidth();
-    }
-    size_t total_size = sizeof(float) * tensor->get_volume() / tensor->get_total_num_parts();
-    return 2*total_size / bandwidth;
+    float bandwidth = inter_node_sync ? this->machine->get_inter_node_gpu_bandwidth()
+                                      : this->machine->get_intra_node_gpu_bandwidth();
+    return 2 * tensor_shape.get_piece_size() / bandwidth;
   }
-
 }
 
 float Simulator::simulate_runtime(const FFModel* model,

@@ -20,6 +20,7 @@
 #include "ffconst.h"
 #include <cudnn.h>
 #include <cublas_v2.h>
+#include "tl/optional.h"
 #ifdef FF_USE_NCCL
 #include <nccl.h>
 #endif
@@ -50,92 +51,7 @@ constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::NCCL;
 constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
 #endif
 
-struct MachineView {
-  static const MachineView NO_VIEW;
-  MachineView();
-  inline int get_device_id(const Legion::DomainPoint& p) const
-  {
-    assert(p.get_dim() == ndims);
-    int idx = start_device_id;
-    for (int i = 0; i < ndims; i++)
-      idx += p[i] * stride[i];
-    return idx;
-  }
-  inline bool operator==(const MachineView& rhs) const
-  {
-    if (device_type != rhs.device_type) return false;
-    if (ndims != rhs.ndims) return false;
-    if (start_device_id != rhs.start_device_id) return false;
-    for (int i = 0; i < ndims; i++) {
-      if (dim[i] != rhs.dim[i]) return false;
-      if (stride[i] != rhs.stride[i]) return false;
-    }
-    return true;
-  }
-  inline bool operator!=(const MachineView& rhs) const
-  {
-    if (device_type != rhs.device_type) return true;
-    if (ndims != rhs.ndims) return true;
-    if (start_device_id != rhs.start_device_id) return true;
-    for (int i = 0; i < ndims; i++) {
-      if (dim[i] != rhs.dim[i]) return true;
-      if (stride[i] != rhs.stride[i]) return true;
-    }
-    return false;
-  }
-  size_t hash() const;
-  size_t num_parts() const;
-  enum DeviceType {
-    GPU = 0,
-    CPU = 1,
-  };
-  DeviceType device_type;
-  int ndims, start_device_id, dim[MAX_TENSOR_DIM], stride[MAX_TENSOR_DIM];
-  std::vector<int> device_ids() const;
-};
-
-struct MachineResource {
-  bool is_valid_machine_view(const MachineView& view) const;
-  size_t hash() const;
-  int num_nodes;
-  int all_gpus_per_node, available_gpus_per_node;
-  int all_cpus_per_node, available_cpus_per_node;
-  int start_gpu_id, start_cpu_id;
-};
-
-struct ParallelOpInfo {
-  OperatorType op_type;
-  int parallel_dim;
-  int parallel_degree;
-};
-
-struct ParallelConfig {
-  enum DeviceType {
-    GPU = 0,
-    CPU = 1,
-  };
-  bool operator==(const ParallelConfig &rhs) const
-  {
-    if (nDims != rhs.nDims) return false;
-    if (device_type != rhs.device_type) return false;
-    for (int i = 0; i < nDims; i++)
-      if (dim[i] != rhs.dim[i])
-        return false;
-    for (int i = 0; i < num_parts(); i++)
-      if (device_ids[i] != rhs.device_ids[i])
-        return false;
-    return true;
-  }
-  int num_parts() const;
-  bool is_data_parallel() const;
-  ParallelConfig change_data_parallel_dimensionality(int new_dimensionality) const;
-  DeviceType device_type;
-  int nDims, dim[MAX_TENSOR_DIM];
-  int device_ids[MAX_NUM_WORKERS];
-#ifdef FF_USE_NCCL
-  ncclComm_t nccl_comms[MAX_NUM_WORKERS];
-#endif
-};
+class FFConfig;
 
 struct FFHandler {
   cudnnHandle_t dnn;
@@ -219,6 +135,9 @@ public:
   int simulator_segment_size;
   int simulator_max_num_segments;
   bool enable_propagation;
+  tl::optional<int> search_num_nodes = tl::nullopt;
+  tl::optional<int> search_num_workers = tl::nullopt;
+  int base_optimize_threshold;
 };
 
 class FFIterationConfig {
@@ -228,14 +147,9 @@ public:
   int seq_length;
 };
 
-struct MachineViewDimCompare {
-  bool operator()(const MachineView& a, const MachineView& b) const {
-    if (a.ndims != b.ndims)
-      return a.ndims < b.ndims;
-    for (int i = 0; i < a.ndims; i++)
-      if (a.dim[i] != b.dim[i])
-        return a.dim[i] < b.dim[i];
-    return false;
-  }
+enum FieldIDs {
+  FID_DATA,
 };
+
+
 #endif//_FLEXFLOW_CONFIG_H_

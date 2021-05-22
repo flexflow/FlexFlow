@@ -34,6 +34,8 @@ struct Edge {
   bool operator==(const Edge &rhs) const;
   Node srcOp, dstOp;
   int srcIdx, dstIdx;
+
+  void replace_node(const Node& currentOp, const Node& replaceWith);
 };
 
 struct EdgeCompare {
@@ -160,7 +162,8 @@ public:
   /*                                           MachineResource const &resources, */
   /*                                           float optimal_cost, */
   /*                                           std::unordered_map<Node, MachineView>& optimal_views) const; */
-  std::vector<MachineView> get_valid_machine_views(const Op* op, const MachineResource& resource) const;
+  std::vector<MachineView> get_valid_machine_views(Node const &node, const MachineResource& resource, bool log = false) const;
+  std::vector<MachineView> get_valid_machine_views(const Op* op, const MachineResource& resource, bool log = false) const;
 
   template <typename T>
   std::pair<bool, T> try_get_cost_from_cache(size_t hash) const;
@@ -178,7 +181,9 @@ public:
   bool is_invalid(T const &) const;
 
   template <typename T>
-  T estimate_xfer_cost(Graph const *g, NodeAssignment const &source, NodeAssignment const &sink) const;
+  T estimate_xfer_cost(Graph const *g, 
+                       NodeAssignment const &source, 
+                       NodeAssignment const &sink) const;
 
   template <typename T>
   void add_operator_cost(NodeAssignment const &, float, T *) const;
@@ -212,6 +217,13 @@ private:
   mutable std::unordered_map<size_t, std::unique_ptr<const std::vector<MachineView>>> cached_operator_valid_views;
 };
 
+struct SimplificationSettings {
+  bool simplify_parallel_ops = false;
+  bool fuse_parallel_ops = false;
+  bool remove_trailing_parallel_ops = false;
+  bool remove_noops = false;
+};
+
 class Graph {
 public:
   Graph(FFModel* model);
@@ -219,19 +231,27 @@ public:
                 const Node& dstOp,
                 int srcIdx,
                 int dstIdx);
+  void add_node(const Node&);
   void add_edge(const Edge& e);
-  void remove_edge(const Edge& e);
+  void remove_node(const Node&);
+  void remove_edge(const Edge& e, bool remove_node_if_unused = true);
   bool has_edge(const Node& srcOp,
                 const Node& dstOp,
                 int srcIdx,
-                int dstIdx);
-  bool has_edge(const Edge& e);
+                int dstIdx) const;
+  bool has_edge(const Edge& e) const;
+  void replace_subgraph(std::unordered_set<Node> const &currentNodes, const Graph& replaceWith);
+  Graph subgraph(std::unordered_set<Node> const &nodes) const;
+  void contract_out_node(const Node&);
   float optimal_cost() const;
   std::unordered_map<Node, MachineView> optimal_views() const;
 
 
   size_t hash(void) const;
   void print(void) const;
+  void print_dot() const;
+  void print_dot(std::ostream &) const;
+
   bool check_correctness(void);
   bool has_loop(void);
   bool map_operators_to_layers(std::vector<Op*>& layers) const;
@@ -239,14 +259,26 @@ public:
              const std::vector<Legion::PhysicalRegion> &regions,
              Legion::Context ctx, Legion::Runtime *runtime);
   Node find_bottleneck_node(const Node& sink_node, const Node& source_node) const;
-  void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::unique_ptr<std::ostream> out) const;
+  Node find_nontrivial_bottleneck_node(const Node& sink_node, const Node& source_node) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::string const &out_filename) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const;
+
 
   std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_at_node(Node const &bottleneck) const;
   std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> split_horizontal(Node const &source_node, Node const &sink_node) const;
 
   Graph reduced() const;
+
+  Node find_sink_node() const;
+  Node find_source_node() const;
+  void reshape_output_tensor(TensorShape const &shape);
+  std::unique_ptr<Graph> with_output_tensor_reshaped_to(TensorShape const &shape) const;
+
+  void simplify(SimplificationSettings const &);
+  void simplify_parallel_ops();
+
+  static Graph singleton(FFModel *, Node const &);
+  bool empty() const;
 public:
   FFModel* model;
   SearchHelper* search;
@@ -254,6 +286,9 @@ public:
 private:
   template <typename T>
   T generic_optimal_cost() const;
+
+  void remove_inverse_parallel_ops();
+  void replace_subgraph_with_nonempty(std::unordered_set<Node> const &currentNodes, const Graph& replaceWith);
 };
 
 namespace flexflow::graph {

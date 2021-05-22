@@ -324,6 +324,9 @@ public:
   float default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TENSOR_DIM],
                                    int tensor_ndims,
                                    const MachineView& view);
+  float default_estimate_sync_cost(TensorShape const &tensor_shape,
+                                   const MachineView& view,
+                                   int num_replicate_dims);
   float default_estimate_sync_cost(const Tensor tensor,
                                    const MachineView& view,
                                    int num_replicate_dims);
@@ -364,5 +367,12 @@ public:
   TransposeMeta *transpose_meta;
   int segment_size;
   int max_num_segments; //simulation could be slow if the number of segments are too large
+private:
+  float estimate_repartition_xfer_cost(int repartition_dim,
+                                       int repartition_degree,
+                                       const TensorShape& input_tensor_shape,
+                                       const TensorShape& output_tensor_shape,
+                                       const MachineView& source_view,
+                                       const MachineView& target_view) const;
 };
 #endif

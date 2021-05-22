@@ -354,7 +354,7 @@ void ElementBinary::forward_task(const Task* task,
       default:
         assert(false);
     }
-    printf("[%s] forward time (CF) = %.2fms\n", opName, elapsed);
+    log_measure.debug("[%s] forward time (CF) = %.2fms\n", opName, elapsed);
   }
 }
 
@@ -719,12 +719,12 @@ bool ElementBinary::measure_operator_cost(Simulator* sim,
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf("[Measure Elewise Binary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
+    log_measure.debug("[Measure Elewise Binary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
         name, sub_output.get_volume(),
         cost_metrics.forward_time,
         cost_metrics.backward_time);
   } else {
-    printf("[Measure Elewise Binary] name(%s) num_elements(%zu) forward_time(%.4lf)\n",
+    log_measure.debug("[Measure Elewise Binary] name(%s) num_elements(%zu) forward_time(%.4lf)\n",
         name, sub_output.get_volume(),
         cost_metrics.forward_time);
   }

@@ -202,3 +202,18 @@ Node FFModel::get_or_create_repartition_node(const Tensor input,
   ret.guid = node_global_guid++;
   return ret;
 }
+
+tl::optional<RecordFormatter> Repartition::as_dot() const {
+  RecordFormatter rf;
+  {
+    std::ostringstream oss;
+    oss << "dim(" << this->repartition_dim << ")";
+    rf << oss.str();
+  }
+  {
+    std::ostringstream oss;
+    oss << "deg(" << this->repartition_degree << ")";
+    rf << oss.str();
+  }
+  return rf;
+}
