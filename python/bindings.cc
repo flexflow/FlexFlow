@@ -202,6 +202,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def("get_perf_metrics", [](FFModel &m) { return m.current_metrics.get_result<PerfMetrics>(); })
       .def("init_layers", &FFModel::init_layers)
       .def("reset_metrics", &FFModel::reset_metrics)
+      .def("compute_metrics", &FFModel::compute_metrics)
       // Training
       .def("forward", &FFModel::forward, "seq_length"_a = -1)
       .def("zero_gradients", &FFModel::zero_gradients)
