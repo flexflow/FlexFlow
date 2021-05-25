@@ -134,6 +134,9 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
 
   py::class_<SGDOptimizer, Optimizer>(m, "SGDOptimizer")
       .def(py::init<const FFModel*, double, double, bool, double>(), "model"_a, "lr"_a = 0.01f, "momentum"_a = 0.0f, "nesterov"_a = false, "weight_decay"_a = 0.0f);
+  
+  py::class_<AdamOptimizer, Optimizer>(m, "AdamOptimizer")
+      .def(py::init<const FFModel*, double, double, double, double, double>(), "model"_a, "alpha"_a = 0.001f, "beta1"_a = 0.9f, "beta2"_a = 0.999f, "weight_decay"_a = 0.0f, "epsilon"_a = 1e-8);
 
   py::class_<NetConfig>(m, "NetConfig")
       .def(py::init())

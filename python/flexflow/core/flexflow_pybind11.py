@@ -20,7 +20,7 @@ from .flexflow_logger import fflogger
 from .flexflow_pybind11_internal import ActiMode, CompMode, DataType, LossType, MetricsType, PoolType
 from .flexflow_pybind11_internal import begin_flexflow_task, finish_flexflow_task
 from .flexflow_pybind11_internal import Initializer, GlorotUniformInitializer, UniformInitializer, ZeroInitializer
-from .flexflow_pybind11_internal import Optimizer, SGDOptimizer
+from .flexflow_pybind11_internal import Optimizer, SGDOptimizer, AdamOptimizer
 from .flexflow_pybind11_internal import Op, NetConfig, SingleDataLoader, Tensor, FFConfig, PerfMetrics
 from .flexflow_pybind11_internal import FFModel as _FFModel
 
