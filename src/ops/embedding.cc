@@ -16,7 +16,9 @@
 #include "model.h"
 #include <assert.h>
 #include <iostream>
+#ifdef FF_USE_AVX2
 #include <immintrin.h>
+#endif
 
 void EmbeddingLookup_int64_t_float_float__avx2_fma(
     const int block_size,
