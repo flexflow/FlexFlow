@@ -104,6 +104,26 @@ SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::a
   return new SingleDataLoader(model, batch_tensor, info.ptr, num_samples, dtype);
 }
 
+bool get_weights(Parameter &parameter, FFModel &model, py::array full_array) {
+  py::buffer_info info = full_array.request();
+  if (info.format == "f") {
+    return parameter.get_weights<float>(&model, static_cast<float*>(info.ptr));
+  } else {
+    assert(0);
+    return false;
+  }
+}
+
+bool set_weights(Parameter &parameter, FFModel &model, const std::vector<int>& dims, py::array full_array) {
+  py::buffer_info info = full_array.request();
+  if (info.format == "f") {
+    return parameter.set_weights<float>(&model, dims, static_cast<float*>(info.ptr));
+  } else {
+    assert(0);
+    return false;
+  }
+}
+
 }
 
 PYBIND11_MODULE(flexflow_pybind11_internal, m) {
@@ -128,7 +148,9 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
   py::class_<ZeroInitializer, Initializer>(m, "ZeroInitializer")
       .def(py::init());
 
-  py::class_<Op>(m, "Op");
+  py::class_<Op>(m, "Op")
+      .def_readonly("num_weights", &Op::numWeights)
+      .def("get_parameter_by_id", [](Op &op, int id) { return op.weights[id] ; });
 
   py::class_<Optimizer>(m, "Optimizer");
 
@@ -151,6 +173,10 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def_readonly("data_type", &Tensor::data_type)
       .def_property_readonly("dims", [](Tensor &t) { std::vector<int> dims(t.adim, &t.adim[t.numDim]); std::reverse(dims.begin(), dims.end()); return dims; })
       .def_readonly("num_dims", &Tensor::numDim);
+  
+  py::class_<Parameter, Tensor>(m, "Parameter")
+      .def("get_weights", &get_weights, "ffmodel"_a, "full_array"_a)
+      .def("set_weights", &set_weights, "ffmodel"_a, "dims"_a, "full_array"_a);
 
   py::class_<FFConfig>(m, "FFConfig")
       .def(py::init())

@@ -21,10 +21,63 @@ from .flexflow_pybind11_internal import ActiMode, CompMode, DataType, LossType, 
 from .flexflow_pybind11_internal import begin_flexflow_task, finish_flexflow_task
 from .flexflow_pybind11_internal import Initializer, GlorotUniformInitializer, UniformInitializer, ZeroInitializer
 from .flexflow_pybind11_internal import Optimizer, SGDOptimizer, AdamOptimizer
-from .flexflow_pybind11_internal import Op, NetConfig, SingleDataLoader, Tensor, FFConfig, PerfMetrics
+from .flexflow_pybind11_internal import NetConfig, SingleDataLoader, Tensor, FFConfig, PerfMetrics
+
+from .flexflow_pybind11_internal import Op as _Op
+from .flexflow_pybind11_internal import Parameter as _Parameter
 from .flexflow_pybind11_internal import FFModel as _FFModel
 
 ff_tracing_id = 200
+
+# -----------------------------------------------------------------------
+# Op
+# -----------------------------------------------------------------------
+class Op(object):
+  def __init__(self, op):
+    self.op = op
+  
+  @property  
+  def num_parameters():
+    return self.op.num_weights
+    
+  def get_weight_tensor(self):
+    _parameter = self.op.get_parameter_by_id(0)
+    parameter = Parameter(_parameter)
+    return parameter
+
+  def get_bias_tensor(self):
+    _parameter = self.op.get_parameter_by_id(1)
+    parameter = Parameter(_parameter)
+    return parameter
+    
+# -----------------------------------------------------------------------
+# Parameter
+# -----------------------------------------------------------------------
+
+class Parameter(object):
+  def __init__(self, parameter):
+    self.parameter = parameter
+      
+  def get_weights(self, ffmodel):
+    shape = self.parameter.dims
+    np_array = np.empty(shape, dtype=np.float32)
+    np_raw_ptr = np_array.__array_interface__['data']
+    fflogger.debug("get weights raw_ptr: %s, %s, %s" %( str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    ret_val = self.parameter.get_weights(ffmodel, np_array)
+    assert ret_val == True
+    return np_array
+    
+  def set_weights(self, ffmodel, np_array):
+    assert np_array.__array_interface__['strides'] == None, "Parameter set_weights, numpy array strides is not None"
+    np_shape = np_array.shape
+    num_dims = len(np_shape)
+    assert num_dims == self.parameter.num_dims, "please check dims (%d == %d)" %(num_dims, self.parameter.num_dims)
+    for i in range(0, num_dims):
+      assert np_shape[i] == self.parameter.dims[i], "please check shape dim %d (%d == %d)" %(i, np_shape[i], self.parameter.dims[i])
+    np_raw_ptr = np_array.__array_interface__['data']
+    fflogger.debug("set weights raw_ptr: %s, %s, %s" %( str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(np_shape)))
+    ret_val = self.parameter.set_weights(ffmodel, self.parameter.dims, np_array)
+    assert ret_val == True, ret_val
 
 # -----------------------------------------------------------------------
 # FFModel
@@ -34,12 +87,15 @@ class FFModel(_FFModel):
   
   def __init__(self, ffconfig):
     super(FFModel, self).__init__(ffconfig)
-    self._layers = dict()
-    self._nb_layers = 0
     self._ffconfig = ffconfig
     global ff_tracing_id
     self._tracing_id = ff_tracing_id
     ff_tracing_id += 1
+    
+  def get_layer_by_id(self, layer_id):
+    _op = _FFModel.get_layer_by_id(self, layer_id)
+    op = Op(_op)
+    return op
   
   def fit(self, x=None, y=None, batch_size=None, epochs=1):
     if (isinstance(x, list) == False):
