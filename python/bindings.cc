@@ -70,6 +70,31 @@ double get_current_time(FFConfig &config)
   return ts_start;
 }
 
+//-------- Parameter --------
+
+bool get_weights(Parameter &parameter, FFModel &model, py::array full_array) 
+{
+  py::buffer_info info = full_array.request();
+  if (info.format == "f") {
+    return parameter.get_weights<float>(&model, static_cast<float*>(info.ptr));
+  } else {
+    assert(0);
+    return false;
+  }
+}
+
+bool set_weights(Parameter &parameter, FFModel &model, const std::vector<int>& dims, py::array full_array) 
+{
+  py::buffer_info info = full_array.request();
+  if (info.format == "f") {
+    return parameter.set_weights<float>(&model, dims, static_cast<float*>(info.ptr));
+  } else {
+    assert(0);
+    return false;
+  }
+}
+
+//-------- FFModel --------
 
 Tensor *create_tensor(FFModel &model, const std::vector<int> &dims, DataType data_type, bool create_grad)
 {
@@ -91,7 +116,8 @@ Tensor *create_tensor(FFModel &model, const std::vector<int> &dims, DataType dat
   return tensor;
 }
 
-SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::array full_array) {
+SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::array full_array) 
+{
   py::buffer_info info = full_array.request();
   DataType dtype;
   if (info.format == "f") {
@@ -104,24 +130,10 @@ SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::a
   return new SingleDataLoader(model, batch_tensor, info.ptr, num_samples, dtype);
 }
 
-bool get_weights(Parameter &parameter, FFModel &model, py::array full_array) {
-  py::buffer_info info = full_array.request();
-  if (info.format == "f") {
-    return parameter.get_weights<float>(&model, static_cast<float*>(info.ptr));
-  } else {
-    assert(0);
-    return false;
-  }
-}
-
-bool set_weights(Parameter &parameter, FFModel &model, const std::vector<int>& dims, py::array full_array) {
-  py::buffer_info info = full_array.request();
-  if (info.format == "f") {
-    return parameter.set_weights<float>(&model, dims, static_cast<float*>(info.ptr));
-  } else {
-    assert(0);
-    return false;
-  }
+Tensor concat(FFModel &model, const std::vector<Tensor> &tensors, int axis, const char *name) 
+{
+  int size = tensors.size();
+  return model.concat(size, tensors.data(), axis, name);
 }
 
 }
@@ -269,6 +281,6 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def("transpose", &FFModel::transpose, "input"_a, "perm"_a, "name"_a = nullptr)
       .def("reshape", &FFModel::reshape, "input"_a, "shape"_a, "name"_a = nullptr)
       .def("reverse", &FFModel::reverse, "input"_a, "axis"_a, "name"_a = nullptr)
-      .def("multihead_attention", &FFModel::multihead_attention, "query"_a, "key"_a, "value"_a, "embed_dim"_a, "num_heads"_a, "kdim"_a = 0, "vdim"_a = 0, "dropout"_a = 0.0f, "bias"_a = true, "add_bias_k"_a = false, "add_zero_attn"_a = false, "kernel_initializer"_a = nullptr, "name"_a = nullptr);
-
+      .def("multihead_attention", &FFModel::multihead_attention, "query"_a, "key"_a, "value"_a, "embed_dim"_a, "num_heads"_a, "kdim"_a = 0, "vdim"_a = 0, "dropout"_a = 0.0f, "bias"_a = true, "add_bias_k"_a = false, "add_zero_attn"_a = false, "kernel_initializer"_a = nullptr, "name"_a = nullptr)
+      .def("concat", &concat, "tensors"_a, "axis"_a, "name"_a = nullptr);
 }
