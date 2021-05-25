@@ -70,7 +70,7 @@ endif
 
 PYBIND_INC    = $(shell $$PYTHON_EXE -m pybind11 --includes)
 PYBIND_EXT    = $(shell $$PYTHON_EXE-config --extension-suffix)
-FF_BYBIND_LIB = flexflow/core/flexflow_bindings$(PYBIND_EXT)
+FF_BYBIND_LIB = flexflow/core/flexflow_pybind11_internal$(PYBIND_EXT)
 INC_FLAGS     += -I${FF_HOME}
 CC_FLAGS      += -fPIC
 NVCC_FLAGS    += -Xcompiler -fPIC

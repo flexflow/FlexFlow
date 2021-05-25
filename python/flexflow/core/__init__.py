@@ -32,14 +32,14 @@ if use_pybind:
   else:
     use_flexflow_python = int(os.environ['FLEXFLOW_PYTHON'])
   print("Using pybind11 flexflow bindings.")
-  from flexflow.core.flexflow_bindings import *
+  from flexflow.core.flexflow_pybind11 import *
   if use_flexflow_python == 0:
     print("Using native python")
     begin_flexflow_task(sys.argv)
     atexit.register(finish_flexflow_task)
 else:
   print("Using cffi flexflow bindings.")
-  from flexflow.core.flexflow_cbinding import *
+  from flexflow.core.flexflow_cffi import *
   from flexflow.core.flexflow_type import *
 
 #from flexflow.core.flexflow_logger import *
