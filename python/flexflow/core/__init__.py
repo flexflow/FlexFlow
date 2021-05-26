@@ -21,12 +21,15 @@ import atexit
 import os
 import sys
 
+_FF_PYTHON_BINDING = 'pybind11'
+
 if 'FF_USE_CFFI' in os.environ:
   use_pybind = not int(os.environ['FF_USE_CFFI'])
 else:
   use_pybind = True
 
 if use_pybind:
+  _FF_PYTHON_BINDING = 'pybind11'
   if 'FLEXFLOW_PYTHON' not in os.environ:
     use_flexflow_python = 0
   else:
@@ -38,9 +41,13 @@ if use_pybind:
     begin_flexflow_task(sys.argv)
     atexit.register(finish_flexflow_task)
 else:
+  _FF_PYTHON_BINDING = 'cffi'
   print("Using cffi flexflow bindings.")
   from flexflow.core.flexflow_cffi import *
   from flexflow.core.flexflow_type import *
+  
+def flexflow_python_binding():
+  return _FF_PYTHON_BINDING
 
 #from flexflow.core.flexflow_logger import *
 if 'FF_BUILD_DOCS' not in os.environ:
