@@ -96,6 +96,11 @@ class FFModel(_FFModel):
     _op = _FFModel.get_layer_by_id(self, layer_id)
     op = Op(_op)
     return op
+    
+  def compile(self, optimizer=None, loss_type=None, metrics=None, comp_mode=CompMode.TRAINING):
+    if optimizer != None:
+      self.optimizer = optimizer
+    _FFModel.compile(self, loss_type, metrics, comp_mode)
   
   def fit(self, x=None, y=None, batch_size=None, epochs=1):
     if (isinstance(x, list) == False):

@@ -136,6 +136,11 @@ Tensor concat(FFModel &model, const std::vector<Tensor> &tensors, int axis, cons
   return model.concat(size, tensors.data(), axis, name);
 }
 
+// std::vector<Tensor> split(FFModel &model, const Tensor &input, int size, int axis, const char *name)
+// {
+//   std::vector<Tensor> outputs;
+//   outputs.resize(size)
+// }
 }
 
 PYBIND11_MODULE(flexflow_pybind11_internal, m) {
@@ -238,7 +243,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def(py::init<FFConfig &>())
       .def_readonly("label_tensor", &FFModel::label_tensor)
       .def_readwrite("optimizer", &FFModel::optimizer)
-      .def("compile", static_cast<void (FFModel::*)(LossType, const std::vector<MetricsType>&, CompMode)>(&FFModel::compile), "loss_type"_a, "metrics"_a, "comp_mode"_a = CompMode::COMP_MODE_TRAINING)
+      .def("compile", static_cast<void (FFModel::*)(LossType, const std::vector<MetricsType>&, CompMode)>(&FFModel::compile), "loss_type"_a, "metrics"_a, "comp_mode"_a)
       .def("create_data_loader", &create_data_loader, "batch_tensor"_a, "full_array"_a)
       .def("create_tensor", &create_tensor, "dims"_a, "data_type"_a, "create_grad"_a = true)
       .def("get_layer_by_id", [](FFModel &m, int id) { return m.layers[id] ; })
