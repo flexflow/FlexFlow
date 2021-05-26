@@ -97,6 +97,14 @@ class FFModel(_FFModel):
     op = Op(_op)
     return op
     
+  def split(self, input, sizes, axis, name=None):
+    if type(sizes) is list:
+      split = sizes
+    else:
+      assert input.dims[axis] % sizes == 0, "Split dimension is not divisible"
+      split = [input.dims[axis] // sizes for i in range(sizes)]
+    return _FFModel.split(self, input, split, axis, name)
+    
   def compile(self, optimizer=None, loss_type=None, metrics=None, comp_mode=CompMode.TRAINING):
     if optimizer != None:
       self.optimizer = optimizer

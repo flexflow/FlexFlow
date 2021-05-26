@@ -136,11 +136,14 @@ Tensor concat(FFModel &model, const std::vector<Tensor> &tensors, int axis, cons
   return model.concat(size, tensors.data(), axis, name);
 }
 
-// std::vector<Tensor> split(FFModel &model, const Tensor &input, int size, int axis, const char *name)
-// {
-//   std::vector<Tensor> outputs;
-//   outputs.resize(size)
-// }
+std::vector<Tensor> split(FFModel &model, const Tensor &input, const std::vector<int>& split, int axis, const char *name)
+{
+  std::vector<Tensor> outputs;
+  outputs.resize(split.size());
+  model.split(input, outputs.data(), split, axis, name);
+  return outputs;
+}
+
 }
 
 PYBIND11_MODULE(flexflow_pybind11_internal, m) {
@@ -287,5 +290,6 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def("reshape", &FFModel::reshape, "input"_a, "shape"_a, "name"_a = nullptr)
       .def("reverse", &FFModel::reverse, "input"_a, "axis"_a, "name"_a = nullptr)
       .def("multihead_attention", &FFModel::multihead_attention, "query"_a, "key"_a, "value"_a, "embed_dim"_a, "num_heads"_a, "kdim"_a = 0, "vdim"_a = 0, "dropout"_a = 0.0f, "bias"_a = true, "add_bias_k"_a = false, "add_zero_attn"_a = false, "kernel_initializer"_a = nullptr, "name"_a = nullptr)
-      .def("concat", &concat, "tensors"_a, "axis"_a, "name"_a = nullptr);
+      .def("concat", &concat, "tensors"_a, "axis"_a, "name"_a = nullptr)
+      .def("split", &split, "input"_a, "split"_a, "axis"_a, "name"_a = nullptr);
 }

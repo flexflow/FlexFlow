@@ -48,13 +48,15 @@ if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests
 ./flexflow_python $FF_HOME/examples/python/keras/func_cifar10_cnn_net2net.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 4096 -ll:zsize 12192
 
 #Python
-#./flexflow_python $FF_HOME/examples/python/native/print_layers.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5
 ./flexflow_python $FF_HOME/examples/python/native/split.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192
 ./flexflow_python $FF_HOME/examples/python/native/alexnet.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 40
 ./flexflow_python $FF_HOME/examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5 --search-budget 10000 --export-strategy strategy.txt
 ./flexflow_python $FF_HOME/examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5 --import-strategy strategy.txt
 ./flexflow_python $FF_HOME/examples/python/native/mnist_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5
 ./flexflow_python $FF_HOME/examples/python/native/cifar10_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 40
+
+#Only work with CFFI
+./flexflow_python $FF_HOME/examples/python/native/print_layers.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5
 ./flexflow_python $FF_HOME/examples/python/native/cifar10_cnn_attach.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5
 ./flexflow_python $FF_HOME/examples/python/native/mnist_mlp_attach.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 2048 -ll:zsize 12192 --epochs 5
 
