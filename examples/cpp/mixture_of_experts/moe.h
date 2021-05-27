@@ -16,6 +16,30 @@
 #include "model.h"
 #define MAX_NUM_SAMPLES 60000
 
+// data set defines
+#define USE_CIFAR100
+
+#ifdef USE_MNIST
+  #define NUM_SAMPLES 60000
+  #define TRAIN_SAMPLES 60000
+  #define TEST_SAMPLES 0
+  #define INPUT_DIM 28*28
+  #define D_DIM 2
+  #define OUT_DIM 10
+  #define READ_DATA read_mnist
+  #define USE_MLP
+#elif defined(USE_CIFAR100)
+  #define NUM_SAMPLES 50000
+  #define TRAIN_SAMPLES 50000
+  #define TEST_SAMPLES 0
+  #define INPUT_DIM 3,32,32
+  #define D_DIM 4
+  #define OUT_DIM 100
+  #define READ_DATA read_cifar100
+  #define USE_CNN
+#endif
+
+
 using namespace Legion;
 using namespace std;
 

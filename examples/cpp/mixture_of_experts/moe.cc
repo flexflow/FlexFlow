@@ -19,19 +19,10 @@
 #include <fstream>
 #include <string>
 
-#define NUM_SAMPLES 60000
-#define TRAIN_SAMPLES 60000
-#define TEST_SAMPLES 00000
-#define MNIST_DIMS 28*28
-#define CIFAR_DIMS 3*32*32
-#define DATA_DIMS MNIST_DIMS
-#define OUT_DIM 10
-
-
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("MoE");
-int num_exp = 5;
+int num_exp = 10;
 int num_select = 2;
 
 void parse_input_args(char **argv, int argc, MoeConfig& config)
@@ -74,7 +65,7 @@ float moe_score(float* cached_score,
 
 // Trigger: If average score of all cache layers is above thresh
 bool moe_trigger(FFModel* ff) {
-  float thresh = 0.9f;
+  float thresh = 1.0f;
 
   int num_futures = 0;
   float score = 0.0f;
@@ -89,21 +80,46 @@ bool moe_trigger(FFModel* ff) {
   return score >= thresh;
 }
 
+// 0: Dense_100
+// 1: Dense_101
+// 2: Dense_102
+// 3: TopK_103
+// 4: Cache_104
+// 5: GroupBy_105
+// 6: Softmax_106
+// 7: Dense_107
+// 8: Dense_108
+// 9: Softmax_109
+// 10: Dense_110
+// 11: Dense_111
+// 12: Softmax_112
+// 13: Dense_113
+// 14: Dense_114
+// 15: Softmax_115
+// 16: Dense_116
+// 17: Dense_117
+// 18: Softmax_118
+// 19: Dense_119
+// 20: Dense_120
+// 21: Softmax_121
+// 22: Aggregate cooperation_122
+// 23: Aggregate specification_123
 // Alter: GroupBy, Aggregate, AggregateSpec use cached values for expert assign.
 void moe_alter(FFModel* ff) {
-  ((Cache*)ff->layers[3])->use_cached(true);
+  printf("alter!!\n");
+  ((Cache*)ff->layers[4])->use_cached(true);
   // Group by input
-  ff->layers[4]->inputs[1] = ff->layers[3]->outputs[0];
-  ff->layers[4]->input_lps[1] = ff->layers[3]->outputs[0].part;
-  ff->layers[4]->input_grad_lps[1] = ff->layers[3]->outputs[0].part_grad;
+  ff->layers[5]->inputs[1] = ff->layers[4]->outputs[0];
+  ff->layers[5]->input_lps[1] = ff->layers[4]->outputs[0].part;
+  ff->layers[5]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
   // Aggregate input
-  ff->layers[16]->inputs[1] = ff->layers[3]->outputs[0];
-  ff->layers[16]->input_lps[1] = ff->layers[3]->outputs[0].part;
-  ff->layers[16]->input_grad_lps[1] = ff->layers[3]->outputs[0].part_grad;
+  ff->layers[22]->inputs[1] = ff->layers[4]->outputs[0];
+  ff->layers[22]->input_lps[1] = ff->layers[4]->outputs[0].part;
+  ff->layers[22]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
   // AggregateSpec input
-  ff->layers[17]->inputs[1] = ff->layers[3]->outputs[0];
-  ff->layers[17]->input_lps[1] = ff->layers[3]->outputs[0].part;
-  ff->layers[17]->input_grad_lps[1] = ff->layers[3]->outputs[0].part_grad;
+  ff->layers[23]->inputs[1] = ff->layers[4]->outputs[0];
+  ff->layers[23]->input_lps[1] = ff->layers[4]->outputs[0].part;
+  ff->layers[23]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
 }
 
 
@@ -125,19 +141,30 @@ void top_level_task(const Task* task,
 
   Tensor input;
   {
-    const int dims[] = {ffConfig.batchSize, DATA_DIMS};
-    input = ff.create_tensor<2>(dims, DT_FLOAT);
+    const int dims[] = {ffConfig.batchSize, INPUT_DIM};
+    input = ff.create_tensor<D_DIM>(dims, DT_FLOAT);
   }
 
 
 //-----------------------------------------------------------------
 
   float alpha = 2.0f; // factor overhead tensor size for imbalance
-  float lambda = 0.04f; // multiplier for load balance term
+  float lambda = 0.01f; // multiplier for load balance term
 
   // MoE model
-  Tensor gate_preds = ff.dense(input, 64, AC_MODE_RELU);
+#ifdef USE_CNN
+  Tensor t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
+  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+  t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
+  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+  Tensor gate_preds = ff.flat(t);
+  gate_preds = ff.dense(gate_preds, 64, AC_MODE_RELU);
+#else
+  Tensor gate_preds = ff.dense(input, 128, AC_MODE_RELU);
+  gate_preds = ff.dense(input, 64, AC_MODE_RELU);
+#endif
   gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_RELU);
+
   Tensor topK_output[2];
   ff.top_k(gate_preds, topK_output, num_select, false);
   ff.cache(topK_output[1], TRAIN_SAMPLES / ffConfig.batchSize, moe_score);
@@ -151,7 +178,18 @@ void top_level_task(const Task* task,
   agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
   agg_inputs[3] = gate_preds; // full gate preds
   for(int i = 0; i < num_exp; i++) {
-    Tensor exp_pred = ff.dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
+#ifdef USE_CNN
+    Tensor t = ff.conv2d(exp_tensors[i], 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
+    t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+    t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
+    t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+    t = ff.flat(t);
+    t = ff.dense(t, 128, AC_MODE_RELU/*relu*/);
+    Tensor exp_pred = ff.dense(t, OUT_DIM);
+#else
+    Tensor exp_pred = ff.dense(exp_tensors[i], 64, AC_MODE_RELU);
+    exp_pred = ff.dense(exp_pred, OUT_DIM, AC_MODE_RELU);
+#endif
     agg_inputs[i+4] = ff.softmax(exp_pred);
   }
 
@@ -233,8 +271,8 @@ DataLoader::DataLoader(FFModel& ff, const MoeConfig& moe,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {NUM_SAMPLES, input.adim[0]};
-    full_input = ff.create_tensor<2>(dims, DT_FLOAT);
+    const int dims[] = {NUM_SAMPLES, INPUT_DIM};
+    full_input = ff.create_tensor<D_DIM>(dims, DT_FLOAT);
   }
   // Create full label
   {
@@ -387,9 +425,9 @@ void DataLoader::load_entire_dataset(const Task *task,
   assert(task->regions.size() == regions.size());
 
   // get input and label pointer
-  const AccessorWO<float, 2> acc_input(regions[0], FID_DATA);
+  const AccessorWO<float, D_DIM> acc_input(regions[0], FID_DATA);
   const AccessorWO<int, 2> acc_label(regions[1], FID_DATA);
-  Rect<2> rect_input = runtime->get_index_space_domain(
+  Rect<D_DIM> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
   Rect<2> rect_label = runtime->get_index_space_domain(
@@ -398,7 +436,7 @@ void DataLoader::load_entire_dataset(const Task *task,
   float* input_ptr = acc_input.ptr(rect_input.lo);
   int* label_ptr = acc_label.ptr(rect_label.lo);
 
-  read_mnist(input_ptr, label_ptr);
+  READ_DATA(input_ptr, label_ptr);
   log_app.print("finish loading data\n");
 }
 
@@ -409,14 +447,14 @@ void DataLoader::next_batch(FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   // Load input
   {
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
-    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    IndexSpaceT<D_DIM> task_is = IndexSpaceT<D_DIM>(ff.get_or_create_task_is(D_DIM, ""));
+    Rect<D_DIM> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<2> it(rect); it(); it++) {
+    for (PointInRectIterator<D_DIM> it(rect); it(); it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      assert(ff.config.batchSize % (rect.hi[D_DIM-1] - rect.lo[D_DIM-1] + 1) == 0);
+      meta.num_samples = ff.config.batchSize / (rect.hi[D_DIM-1] - rect.lo[D_DIM-1] + 1);
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));

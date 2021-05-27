@@ -16,9 +16,9 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-#define MAX_K 4
-#define MAX_BATCH_SIZE 32
-#define MAX_N 12
+#define MAX_K 2
+#define MAX_BATCH_SIZE 64
+#define MAX_N 10
 
 
 Tensor FFModel::aggregate(const Tensor* inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
@@ -414,8 +414,13 @@ void Aggregate::forward_task(const Task *task,
   // call forward_kernel
   cudaMemcpy(m->dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
 
-  agg_forward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
-    m->dev_exp_preds, acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
+  // FIXME: For now, enforce that only 1 thread block.
+  int num_threads = min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim));
+  int num_blocks = GET_BLOCKS(num_threads);
+  assert(num_blocks == 1);
+
+  agg_forward_kernel<<<num_blocks, num_threads>>>(m->dev_exp_preds,
+    acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     acc_output.ptr(rect_output), n, k, rows, batch_size, out_dim);
 }
 
@@ -500,8 +505,13 @@ void Aggregate::backward_task(const Task *task,
   cudaMemcpy(m->dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
   cudaMemcpy(m->dev_exp_grads, exp_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
 
-  agg_backward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
-    m->dev_exp_preds, m->dev_exp_grads, acc_gate_assign.ptr(rect_gate_assign),
+  // FIXME: For now, enforce that only 1 thread block.
+  int num_threads = min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim));
+  int num_blocks = GET_BLOCKS(num_threads);
+  assert(num_blocks == 1);
+
+  agg_backward_kernel<<<num_blocks, num_threads>>>(m->dev_exp_preds,
+    m->dev_exp_grads, acc_gate_assign.ptr(rect_gate_assign),
     acc_true_gate_assign.ptr(rect_true_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     full_acc_gate_grad.ptr(rect_full_gate_grad), acc_output_grad.ptr(rect_out_grad),
     n, k, rows, lambda_bal, batch_size, out_dim);
@@ -627,7 +637,7 @@ void Aggregate::backward(const FFModel& ff)
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[i+4], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i+4].region_grad));
+        WRITE_ONLY, EXCLUSIVE, inputs[i+4].region_grad));
     launcher.add_field(i+n+4, FID_DATA);
   }
 

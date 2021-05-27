@@ -16,9 +16,9 @@
 #include "model.h"
 #include "cuda_helper.h"
 
-#define MAX_K 4
-#define MAX_BATCH_SIZE 32
-#define MAX_N 12
+#define MAX_K 2
+#define MAX_BATCH_SIZE 64
+#define MAX_N 10
 
 
 Tensor FFModel::aggregate_spec(const Tensor* inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
@@ -280,7 +280,6 @@ void aggspec_backward_kernel_gate(const float* output_grad,
   }
 
   __syncthreads();
-
   // make 0 mean
   CUDA_KERNEL_LOOP(i, n*batch_size)
   {
@@ -426,8 +425,12 @@ void AggregateSpec::forward_task(const Task *task,
   // call forward kernel
   cudaMemcpy(m->dev_region_ptrs, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
 
-  aggspec_forward_kernel<<<GET_BLOCKS(batch_size*k*out_dim),
-    min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(m->dev_region_ptrs,
+  // FIXME: For now, enforce that only 1 thread block.
+  int num_threads = min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim));
+  int num_blocks = GET_BLOCKS(num_threads);
+  assert(num_blocks == 1);
+
+  aggspec_forward_kernel<<<num_blocks, num_threads>>>(m->dev_region_ptrs,
     acc_gate_assign.ptr(rect_gate_assign), acc_output.ptr(rect_output), n, k,
     rows, batch_size, out_dim);
 }
@@ -501,11 +504,15 @@ void AggregateSpec::backward_task(const Task *task,
   // call backward kernel
   cudaMemcpy(m->dev_region_ptrs, exp_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
 
-  aggspec_backward_kernel<<<GET_BLOCKS(batch_size*k*out_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim))>>>(
-    m->dev_region_ptrs, acc_gate_assign.ptr(rect_gate_assign),
-    acc_true_gate_assign.ptr(rect_true_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
-    acc_full_gate_grad.ptr(rect_full_gate_grad), acc_output_grad.ptr(rect_out_grad),
-    n, k, rows, lambda_bal, batch_size, out_dim);
+  // FIXME: For now, enforce that only 1 thread block
+  int num_threads = min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim));
+  int num_blocks = GET_BLOCKS(num_threads);
+  assert(num_blocks == 1);
+
+  aggspec_backward_kernel<<<num_blocks, num_threads>>>(m->dev_region_ptrs,
+    acc_gate_assign.ptr(rect_gate_assign), acc_true_gate_assign.ptr(rect_true_gate_assign),
+    acc_gate_pred.ptr(rect_gate_pred), acc_full_gate_grad.ptr(rect_full_gate_grad),
+    acc_output_grad.ptr(rect_out_grad), n, k, rows, lambda_bal, batch_size, out_dim);
 }
 
 
@@ -622,14 +629,14 @@ void AggregateSpec::backward(const FFModel& ff)
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[i+4], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i+4].region_grad));
+        WRITE_ONLY, EXCLUSIVE, inputs[i+4].region_grad));
     launcher.add_field(i+4, FID_DATA);
   }
 
   // output
   launcher.add_region_requirement(
     RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, outputs[0].region_grad));
+      READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
   launcher.add_field(n+4, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);

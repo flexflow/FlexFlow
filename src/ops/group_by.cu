@@ -18,9 +18,9 @@
 #include <math.h>
 #include <stdio.h>
 
-#define MAX_K 4
-#define MAX_BATCH_SIZE 32
-#define MAX_N 12
+#define MAX_K 2
+#define MAX_BATCH_SIZE 64
+#define MAX_N 10
 
 
 void FFModel::group_by(const Tensor& input,
@@ -29,14 +29,14 @@ void FFModel::group_by(const Tensor& input,
                         int n, float alpha,
                         const char* name)
 {
-  Group_by* group_by = new Group_by(*this, input, assign, n, alpha, name);
+  GroupBy* group_by = new GroupBy(*this, input, assign, n, alpha, name);
   layers.push_back(group_by);
   for (int i = 0; i < n; i++)
     outputs[i] = group_by->outputs[i];
 }
 
 
-Group_by::Group_by(FFModel& model,
+GroupBy::GroupBy(FFModel& model,
                   const Tensor& _input,
                   const Tensor& _assign,
                   int _n, float _alpha,
@@ -53,76 +53,97 @@ Group_by::Group_by(FFModel& model,
   assert(inputs[1].adim[0] <= MAX_K && "Increase MAX_K in #define");
   assert(inputs[0].adim[1] <= MAX_BATCH_SIZE && "Increase MAX_BATCH_SIZE in #define");
 
-  assert(_input.numDim == 2); // TODO: support dims > 2
-  assert(_input.numDim == 2);
-  assert(_input.adim[1] == _assign.adim[1]);
+  int num_dim = _input.numDim;
+  assert(_assign.numDim == 2);
+  assert(_input.adim[num_dim-1] == _assign.adim[1]);
   assert(n > 0);
 
-  // List of outputs
+  // output dims
   int k = _assign.adim[0];
+  int batch_size = inputs[1].adim[1];
   for(int i = 0; i < n; i++) {
-    outputs[i].numDim = 2;
-    outputs[i].adim[0] = inputs[0].adim[0];
-    outputs[i].adim[1] = (int)ceil(alpha*k/n*inputs[0].adim[1]);
+    outputs[i].numDim = num_dim;
+    for(int j = 0; j < num_dim-1; j++) {
+      outputs[i].adim[j] = inputs[0].adim[j];
+    }
+    outputs[i].adim[num_dim-1] = (int)ceil(alpha*k/n*batch_size);
   }
 
   numWeights = 0;
 }
 
 
-void Group_by::create_weights(FFModel& model)
+void GroupBy::create_weights(FFModel& model)
 {
   // Do nothing
 }
 
-
-void Group_by::create_output_and_partition(FFModel& model)
+template<int NDIM>
+void GroupBy::create_output_and_partition_with_dim(FFModel& model)
 {
   // Retrieve the task indexspace for the op
   std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
 
   // Can only partition over the sample dim
   assert(part_rect.hi[0] == part_rect.lo[0]);
 
   int k = inputs[1].adim[0];
-  const int dims[2] = {(int)ceil(alpha*k/n*inputs[0].adim[1]), inputs[0].adim[0]};
+  int dims[NDIM];
+  dims[0] = (int)ceil(alpha*k/n*inputs[1].adim[1]);
+  for(int i = 1; i < NDIM; i++) {
+    dims[i] = inputs[0].adim[NDIM-i-1];
+  }
   for(int i = 0; i < n; i++) {
-    outputs[i] = model.create_tensor<2>(dims, DT_FLOAT, this);
+    outputs[i] = model.create_tensor<NDIM>(dims, inputs[0].data_type, this);
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
   }
 
   // Compute partition bound for input
-  Rect<2> input_rect = runtime->get_index_partition_color_space(
+  model.create_data_parallel_partition_with_diff_dims<2, NDIM>(
+      inputs[1], (IndexSpaceT<NDIM>)task_is, input_lps[1], input_grad_lps[1]);
+  Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
       ctx, inputs[0].part.get_index_partition());
   if (input_rect == part_rect) {
     input_lps[0] = inputs[0].part;
     input_grad_lps[0] = inputs[0].part_grad;
   } else {
-    model.create_disjoint_partition<2>(
-      inputs[0], (IndexSpaceT<2>)task_is, input_lps[0], input_grad_lps[0]);
-  }
-  input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[1].part.get_index_partition());
-  if (input_rect == part_rect) {
-    input_lps[1] = inputs[1].part;
-    input_grad_lps[1] = inputs[1].part_grad;
-  } else {
-    model.create_disjoint_partition<2>(
-      inputs[1], (IndexSpaceT<2>)task_is, input_lps[1], input_grad_lps[1]);
+    model.create_disjoint_partition<NDIM>(
+      inputs[0], (IndexSpaceT<NDIM>)task_is, input_lps[0], input_grad_lps[0]);
   }
 }
 
 
-OpMeta* Group_by::init_task(const Task* task,
+void GroupBy::create_output_and_partition(FFModel& model)
+{
+  int dim = inputs[0].numDim;
+  switch (dim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      create_output_and_partition_with_dim<DIM>(model); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dim for ElementWiseBinary operator
+      assert(false);
+    }
+  }
+}
+
+
+OpMeta* GroupBy::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
 {
-  Group_by* gb = (Group_by*) task->args;
+  GroupBy* gb = (GroupBy*) task->args;
   FFHandler handle = *((FFHandler*)task->local_args);
   GroupByMeta* m = new GroupByMeta(handle, gb->n);
   m->profiling = gb->profiling;
@@ -130,7 +151,7 @@ OpMeta* Group_by::init_task(const Task* task,
 }
 
 
-void Group_by::init(const FFModel& ff)
+void GroupBy::init(const FFModel& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -156,10 +177,28 @@ void Group_by::init(const FFModel& ff)
     default:
       assert(false);
   }
+
   IndexLauncher launcher(GROUP_BY_INIT_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Group_by)), argmap,
+                         TaskArgument(this, sizeof(GroupBy)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
+  // data
+  launcher.add_region_requirement(
+    RegionRequirement(input_lps[0], 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[0].region));
+  launcher.add_field(0, FID_DATA);
+  // assign
+  launcher.add_region_requirement(
+    RegionRequirement(input_lps[1], 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[1].region));
+  launcher.add_field(1, FID_DATA);
+  // output
+  for(int i = 0; i < n; i++) {
+    launcher.add_region_requirement(
+      RegionRequirement(outputs[i].part, 0/*projection id*/,
+        WRITE_ONLY, EXCLUSIVE, outputs[i].region));
+    launcher.add_field(i+2, FID_DATA);
+  }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   switch (domain.get_dim()) {
@@ -264,12 +303,13 @@ void gb_backward_kernel(float* input_grad,
 }
 
 
-void Group_by::forward_task(const Task *task,
+template<int NDIM>
+void GroupBy::forward_task_with_dim(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
   // Get n, alpha
-  const Group_by* gb = (Group_by*) task->args;
+  const GroupBy* gb = (GroupBy*) task->args;
   int n = gb->n;
   float alpha = gb->alpha;
 
@@ -279,20 +319,18 @@ void Group_by::forward_task(const Task *task,
   const GroupByMeta* m = *((GroupByMeta**)task->local_args);
 
   // get input and assign regions
-  const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
+  const AccessorRO<float, NDIM> acc_input(regions[0], FID_DATA);
   const AccessorRO<int, 2> acc_assign(regions[1], FID_DATA);
 
-  Rect<2> rect_input = runtime->get_index_space_domain(
+  Rect<NDIM> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<2> rect_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
 
-  coord_t input_rows = rect_input.hi[1] - rect_input.lo[1] + 1;
-  coord_t input_cols = rect_input.hi[0] - rect_input.lo[0] + 1;
-  assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
+  int batch_size = rect_assign.hi[1] - rect_assign.lo[1] + 1;
+  int data_dim = rect_input.volume()/batch_size;
+  assert(batch_size == rect_input.hi[NDIM-1] - rect_input.lo[NDIM-1] + 1);
   int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
-  int batch_size = input_rows;
-  int data_dim = input_cols;
 
   // get output
   float* outputs[n];
@@ -304,9 +342,9 @@ void Group_by::forward_task(const Task *task,
       regions[i+2], task->regions[i+2], FID_DATA, ctx, runtime);
 
     //coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
-    coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
+    // coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
     //assert((int)output_rows == exp_output_rows);
-    assert(output_cols == input_cols);
+    // assert(output_cols == input_cols);
   }
 
 #ifndef DISABLE_LEGION_CUDA_HIJACK
@@ -325,13 +363,32 @@ void Group_by::forward_task(const Task *task,
 }
 
 
-void Group_by::backward_task(const Task *task,
+void GroupBy::forward_task(const Task *task,
+                          const std::vector<PhysicalRegion> &regions,
+                          Context ctx, Runtime *runtime)
+{
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (in_domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return forward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+
+void GroupBy::backward_task(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
+  return;
   // Get n, alpha
   const GroupByMeta* m = *((GroupByMeta**)task->local_args);
-  const Group_by* gb = (Group_by*) task->args;
+  const GroupBy* gb = (GroupBy*) task->args;
   int n = gb->n;
   float alpha = gb->alpha;
 
@@ -385,7 +442,7 @@ void Group_by::backward_task(const Task *task,
 }
 
 
-void Group_by::forward(const FFModel& ff)
+void GroupBy::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -409,7 +466,7 @@ void Group_by::forward(const FFModel& ff)
       assert(false);
   }
   IndexLauncher launcher(GROUP_BY_FWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Group_by)), argmap,
+                         TaskArgument(this, sizeof(GroupBy)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // data
@@ -435,8 +492,14 @@ void Group_by::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Group_by::backward(const FFModel& ff)
+void GroupBy::backward(const FFModel& ff)
 {
+  // TODO: That GroupBy needs to propagate gradients is unusual.
+  // We could check if needs to be propagated and only do if inputs[0] is
+  // the output of anyother operator. Else, don't propagate.
+  // TODO: backward_task only supports 2D input for now.
+
+
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -459,7 +522,7 @@ void Group_by::backward(const FFModel& ff)
       assert(false);
   }
   IndexLauncher launcher(GROUP_BY_BWD_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Group_by)), argmap,
+                         TaskArgument(this, sizeof(GroupBy)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
 
@@ -498,7 +561,7 @@ GroupByMeta::~GroupByMeta(void)
 }
 
 
-bool Group_by::measure_operator_cost(Simulator* sim,
+bool GroupBy::measure_operator_cost(Simulator* sim,
                                  const ParallelConfig& pc,
                                  CostMetrics& cost_metrics)
 {

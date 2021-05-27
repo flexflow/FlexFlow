@@ -1180,9 +1180,9 @@ public:
   float** dev_region_ptrs;
 };
 
-class Group_by : public Op {
+class GroupBy : public Op {
 public:
-  Group_by(FFModel& model,
+  GroupBy(FFModel& model,
           const Tensor& _input,
           const Tensor& _assign,
           int _n, float _alpha,
@@ -1206,6 +1206,13 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
+private:
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
+  template<int NDIM>
+  static void forward_task_with_dim(const Task *task,
+                                    const std::vector<PhysicalRegion> &regions,
+                                    Context ctx, Runtime *runtime);
 public:
   int n;
   float alpha;

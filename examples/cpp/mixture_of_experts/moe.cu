@@ -24,22 +24,25 @@ void DataLoader::load_input(const Task *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs* meta = (SampleIdxs*) task->local_args;
-  TensorAccessorR<float, 2> acc_full_input(
+  TensorAccessorR<float, D_DIM> acc_full_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_batch_input(
+  TensorAccessorW<float, D_DIM> acc_batch_input(
       regions[1], task->regions[1], FID_DATA, ctx, runtime, false/*readOutput*/);
 
-  coord_t batch_size = acc_batch_input.rect.hi[1] - acc_batch_input.rect.lo[1] + 1;
-  coord_t sample_dim = acc_batch_input.rect.hi[0] - acc_batch_input.rect.lo[0] + 1;
+  coord_t batch_size = acc_batch_input.rect.hi[D_DIM-1] - acc_batch_input.rect.lo[D_DIM-1] + 1;
+  coord_t sample_vol = 1;
+  for(int i = 0; i < D_DIM-1; i++)
+    sample_vol *= acc_batch_input.rect.hi[i] - acc_batch_input.rect.lo[i] + 1;
 
   //FIXME: currently assume continous indices
   assert(batch_size == meta->num_samples);
   for (int i = 1; i < batch_size; i++)
     assert(meta->idxs[i] == meta->idxs[0] + i);
   coord_t start_idx = meta->idxs[0];
-  const float* input_zc = acc_full_input.ptr + start_idx * sample_dim;
+  const float* input_zc = acc_full_input.ptr + start_idx * sample_vol;
   copy_kernel<<<GET_BLOCKS(acc_batch_input.rect.volume()), CUDA_NUM_THREADS>>>(
       acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());
+
   checkCUDA(cudaDeviceSynchronize());
 }
 

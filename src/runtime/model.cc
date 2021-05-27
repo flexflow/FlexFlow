@@ -2044,7 +2044,7 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_CONCAT: return "Concat";
     case OP_SPLIT: return "Split";
     case OP_EMBEDDING: return "Embedding";
-    case OP_GROUP_BY: return "Group_by";
+    case OP_GROUP_BY: return "GroupBy";
     case OP_CACHE: return "Cache";
     case OP_AGGREGATE: return "Aggregate cooperation";
     case OP_AGG_SPEC: return "Aggregate specification";
@@ -2570,25 +2570,25 @@ void register_flexflow_internal_tasks()
   }
   // Group by task CPU
   {
-    TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "Group_by Init");
+    TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "GroupBy Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta*, Group_by::init_task>(
-        registrar, "Group_by Init Task");
+    Runtime::preregister_task_variant<OpMeta*, GroupBy::init_task>(
+        registrar, "GroupBy Init Task");
   }
   {
-    TaskVariantRegistrar registrar(GROUP_BY_FWD_TASK_ID, "Group_by Forward");
+    TaskVariantRegistrar registrar(GROUP_BY_FWD_TASK_ID, "GroupBy Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Group_by::forward_task>(
-        registrar, "Group_by Forward Task");
+    Runtime::preregister_task_variant<GroupBy::forward_task>(
+        registrar, "GroupBy Forward Task");
   }
   {
-    TaskVariantRegistrar registrar(GROUP_BY_BWD_TASK_ID, "Group_by Backward");
+    TaskVariantRegistrar registrar(GROUP_BY_BWD_TASK_ID, "GroupBy Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Group_by::backward_task>(
-        registrar, "Group_by Backward Task");
+    Runtime::preregister_task_variant<GroupBy::backward_task>(
+        registrar, "GroupBy Backward Task");
   }
 
   // Aggregate task CPU
