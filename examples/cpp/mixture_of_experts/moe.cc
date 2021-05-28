@@ -148,54 +148,59 @@ void top_level_task(const Task* task,
 
 //-----------------------------------------------------------------
 
-  float alpha = 2.0f; // factor overhead tensor size for imbalance
-  float lambda = 0.01f; // multiplier for load balance term
+Tensor t = ff.dense(input, 64, AC_MODE_RELU);
+t = ff.dense(t, 10, AC_MODE_RELU);
+t = ff.softmax(t);
 
-  // MoE model
-#ifdef USE_CNN
-  Tensor t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
-  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
-  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-  Tensor gate_preds = ff.flat(t);
-  gate_preds = ff.dense(gate_preds, 64, AC_MODE_RELU);
-#else
-  Tensor gate_preds = ff.dense(input, 128, AC_MODE_RELU);
-  gate_preds = ff.dense(input, 64, AC_MODE_RELU);
-#endif
-  gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_RELU);
-
-  Tensor topK_output[2];
-  ff.top_k(gate_preds, topK_output, num_select, false);
-  ff.cache(topK_output[1], TRAIN_SAMPLES / ffConfig.batchSize, moe_score);
-
-  Tensor exp_tensors[num_exp];
-  ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
-
-  Tensor agg_inputs[num_exp+4];
-  agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
-  agg_inputs[1] = topK_output[1]; // gate assign
-  agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
-  agg_inputs[3] = gate_preds; // full gate preds
-  for(int i = 0; i < num_exp; i++) {
-#ifdef USE_CNN
-    Tensor t = ff.conv2d(exp_tensors[i], 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
-    t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-    t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
-    t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-    t = ff.flat(t);
-    t = ff.dense(t, 128, AC_MODE_RELU/*relu*/);
-    Tensor exp_pred = ff.dense(t, OUT_DIM);
-#else
-    Tensor exp_pred = ff.dense(exp_tensors[i], 64, AC_MODE_RELU);
-    exp_pred = ff.dense(exp_pred, OUT_DIM, AC_MODE_RELU);
-#endif
-    agg_inputs[i+4] = ff.softmax(exp_pred);
-  }
-
-  Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
-  ff.get_metrics();
-  Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
+//
+//   float alpha = 2.0f; // factor overhead tensor size for imbalance
+//   float lambda = 0.01f; // multiplier for load balance term
+//
+//   // MoE model
+// #ifdef USE_CNN
+//   Tensor t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
+//   t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+//   t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
+//   t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+//   Tensor gate_preds = ff.flat(t);
+//   gate_preds = ff.dense(gate_preds, 64, AC_MODE_RELU);
+// #else
+//   Tensor gate_preds = ff.dense(input, 128, AC_MODE_RELU);
+//   gate_preds = ff.dense(input, 64, AC_MODE_RELU);
+// #endif
+//   gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_RELU);
+//
+//   Tensor topK_output[2];
+//   ff.top_k(gate_preds, topK_output, num_select, false);
+//   ff.cache(topK_output[1], TRAIN_SAMPLES / ffConfig.batchSize, moe_score);
+//
+//   Tensor exp_tensors[num_exp];
+//   ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
+//
+//   Tensor agg_inputs[num_exp+4];
+//   agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
+//   agg_inputs[1] = topK_output[1]; // gate assign
+//   agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
+//   agg_inputs[3] = gate_preds; // full gate preds
+//   for(int i = 0; i < num_exp; i++) {
+// #ifdef USE_CNN
+//     Tensor t = ff.conv2d(exp_tensors[i], 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
+//     t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+//     t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
+//     t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+//     t = ff.flat(t);
+//     t = ff.dense(t, 128, AC_MODE_RELU/*relu*/);
+//     Tensor exp_pred = ff.dense(t, OUT_DIM);
+// #else
+//     Tensor exp_pred = ff.dense(exp_tensors[i], 64, AC_MODE_RELU);
+//     exp_pred = ff.dense(exp_pred, OUT_DIM, AC_MODE_RELU);
+// #endif
+//     agg_inputs[i+4] = ff.softmax(exp_pred);
+//   }
+//
+//   Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
+//   ff.get_metrics();
+//   Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
 
 //-----------------------------------------------------------------
 
@@ -217,6 +222,7 @@ void top_level_task(const Task* task,
     Future future = runtime->issue_timing_measurement(ctx, timer);
     future.get_void_result();
   }
+  ff.load("my_checkpoint.ff");
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     data_loader.reset();
@@ -231,7 +237,7 @@ void top_level_task(const Task* task,
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      ff.recompile_on_condition(r);
+      //ff.recompile_on_condition(r);
       // if (epoch > 0)
       //    runtime->end_trace(ctx, 111/*trace_id*/);
     }
@@ -246,6 +252,7 @@ void top_level_task(const Task* task,
     }
 
   }
+
   // End timer
   {
     runtime->issue_execution_fence(ctx);
@@ -257,6 +264,8 @@ void top_level_task(const Task* task,
   double run_time = 1e-6 * (ts_end - ts_start);
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
          TRAIN_SAMPLES * ffConfig.epochs / run_time);
+
+  ff.store("my_checkpoint.ff");
 }
 
 

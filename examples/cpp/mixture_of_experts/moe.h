@@ -17,7 +17,7 @@
 #define MAX_NUM_SAMPLES 60000
 
 // data set defines
-#define USE_CIFAR100
+#define USE_MNIST
 
 #ifdef USE_MNIST
   #define NUM_SAMPLES 60000
