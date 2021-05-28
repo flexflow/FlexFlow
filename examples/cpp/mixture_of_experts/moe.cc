@@ -215,6 +215,7 @@ t = ff.softmax(t);
   DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
   RecompileState r(&moe_trigger, &moe_alter, &ff);
   ff.init_layers();
+  ff.load("my_checkpoint.ff");
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -222,7 +223,6 @@ t = ff.softmax(t);
     Future future = runtime->issue_timing_measurement(ctx, timer);
     future.get_void_result();
   }
-  ff.load("my_checkpoint.ff");
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     data_loader.reset();

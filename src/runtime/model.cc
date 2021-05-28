@@ -804,6 +804,10 @@ Tensor FFModel::create_tensor(const int dims[],
 
 void FFModel::store(std::string filename, std::vector<int> layer_idx)
 {
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  runtime->issue_execution_fence(ctx);
+
   // default: checkpoint all layers
   if(layer_idx.size() == 0)
     for(size_t i = 0; i < layers.size(); i++)
@@ -812,6 +816,7 @@ void FFModel::store(std::string filename, std::vector<int> layer_idx)
   std::ofstream stream(filename, std::ofstream::binary);
   if(!stream.is_open()) {
     fprintf(stderr, "Error opening file for checkpoint. Checkpoint is NOT stored\n");
+    stream.close();
     return;
   }
 
@@ -853,6 +858,10 @@ void FFModel::store(std::string filename, std::vector<int> layer_idx)
 
 void FFModel::load(std::string filename, std::vector<int> layer_idx)
 {
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  runtime->issue_execution_fence(ctx);
+
   // default: checkpoint all layers
   if(layer_idx.size() == 0)
     for(size_t i = 0; i < layers.size(); i++)
@@ -861,6 +870,7 @@ void FFModel::load(std::string filename, std::vector<int> layer_idx)
   std::ifstream stream(filename, std::ifstream::binary);
   if(!stream.is_open()) {
     fprintf(stderr, "Checkpoint cannot be loaded.\n");
+    stream.close();
     return;
   }
 
@@ -896,6 +906,7 @@ void FFModel::load(std::string filename, std::vector<int> layer_idx)
 
     if(line != expected.str()) {
       fprintf(stderr, "Layer %d of the defined FFModel does not match layer %ld of the checkpoint file.\n", l, l_i);
+      stream.close();
       assert(false);
     }
     n++;
@@ -914,6 +925,7 @@ void FFModel::load(std::string filename, std::vector<int> layer_idx)
       getline(stream, line);
       if(line != expected.str()) {
         fprintf(stderr, "Checkpoint has bad format: Expected \"layer %ld weights %d:\"\n", i, j);
+        stream.close();
         assert(false);
       }
 
