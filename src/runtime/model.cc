@@ -819,7 +819,7 @@ void FFModel::store(const std::string filename,
   stream << "FlexFlow Checkpoint_v1.0, " << std::ctime(&now);
 
 	// num layers
-	stream << layers.size() << "\n";
+	stream << layer_idx.size() << "\n";
 
 	// print layers
 	for(size_t i = 0; i < layer_idx.size(); i++) {
@@ -877,7 +877,13 @@ void FFModel::load(const std::string filename,
   getline(stream, line);
   assert(line.substr(0, 24) == "FlexFlow Checkpoint_v1.0");
   getline(stream, line);
-  assert(line == std::to_string(layers.size()));
+  if(line.compare(std::to_string(layer_idx.size()))) {
+    std::cout << line << " " << std::to_string(layer_idx.size()) << "\n";
+    fprintf(stderr, "Requested to load %ld layers, but checkpoint has %s layers.\n",
+      layer_idx.size(), line.c_str());
+    stream.close();
+    assert(false);
+  }
 
   // check that same layers
   size_t l_i = 0; int n = 0;
