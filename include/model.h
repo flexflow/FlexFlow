@@ -527,11 +527,15 @@ public:
   void recompile_on_condition(RecompileState& r);
   void zero_gradients();
   void print_layers(int id);
-  void store(std::string filename, std::vector<int> layer_idx = std::vector<int>());
-  void load(std::string filename, std::vector<int> layer_idx = std::vector<int>());
   std::string get_operator_type_name(OperatorType type) const;
 
   std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> get_bwd_edge_map() const;
+
+  // model checkpoints
+  void store(const std::string filename);
+  void load(const std::string filename);
+  void store(const std::string filename, const std::vector<int>& layer_idx);
+  void load(const std::string filename, const std::vector<int>& layer_idx);
 
   // Internal funcitons
   Tensor get_tensor_from_guid(int guid);

@@ -801,22 +801,16 @@ Tensor FFModel::create_tensor(const int dims[],
 }
 */
 
-
-void FFModel::store(std::string filename, std::vector<int> layer_idx)
+void FFModel::store(const std::string filename,
+                    const std::vector<int>& layer_idx)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   runtime->issue_execution_fence(ctx);
 
-  // default: checkpoint all layers
-  if(layer_idx.size() == 0)
-    for(size_t i = 0; i < layers.size(); i++)
-      layer_idx.push_back(i);
-
   std::ofstream stream(filename, std::ofstream::binary);
   if(!stream.is_open()) {
     fprintf(stderr, "Error opening file for checkpoint. Checkpoint is NOT stored\n");
-    stream.close();
     return;
   }
 
@@ -855,22 +849,25 @@ void FFModel::store(std::string filename, std::vector<int> layer_idx)
   stream.close();
 }
 
+void FFModel::store(const std::string filename)
+{
+  // default: checkpoint all layers
+  std::vector<int> layer_idx(layers.size());
+  for(size_t i = 0; i < layers.size(); i++)
+    layer_idx[i] = i;
+  store(filename, layer_idx);
+}
 
-void FFModel::load(std::string filename, std::vector<int> layer_idx)
+void FFModel::load(const std::string filename,
+                   const std::vector<int>& layer_idx)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   runtime->issue_execution_fence(ctx);
 
-  // default: checkpoint all layers
-  if(layer_idx.size() == 0)
-    for(size_t i = 0; i < layers.size(); i++)
-      layer_idx.push_back(i);
-
   std::ifstream stream(filename, std::ifstream::binary);
   if(!stream.is_open()) {
     fprintf(stderr, "Checkpoint cannot be loaded.\n");
-    stream.close();
     return;
   }
 
@@ -943,6 +940,14 @@ void FFModel::load(std::string filename, std::vector<int> layer_idx)
   stream.close();
 }
 
+void FFModel::load(const std::string filename)
+{
+  // default: checkpoint all layers
+  std::vector<int> layer_idx(layers.size());
+  for(size_t i = 0; i < layers.size(); i++)
+    layer_idx[i] = i;
+  load(filename, layer_idx);
+}
 
 template<int NDIM>
 Tensor FFModel::create_constant(const int dims[],
