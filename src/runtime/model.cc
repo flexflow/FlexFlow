@@ -801,6 +801,160 @@ Tensor FFModel::create_tensor(const int dims[],
 }
 */
 
+void FFModel::store(const std::string filename,
+                    const std::vector<int>& layer_idx)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  runtime->issue_execution_fence(ctx);
+
+  std::ofstream stream(filename, std::ofstream::binary);
+  if(!stream.is_open()) {
+    fprintf(stderr, "Error opening file for checkpoint. Checkpoint is NOT stored\n");
+    return;
+  }
+
+  // Header line
+  std::time_t now = std::time(0);
+  stream << "FlexFlow Checkpoint_v1.0, " << std::ctime(&now);
+
+	// num layers
+	stream << layer_idx.size() << "\n";
+
+	// print layers
+	for(size_t i = 0; i < layer_idx.size(); i++) {
+    int l = layer_idx[i];
+    stream << "layer " << i << ":\n";
+    stream << " " << get_operator_type_name(layers[l]->op_type) << "\n";
+    stream << " " << layers[l]->numWeights << "\n";
+    for(int j = 0; j < layers[l]->numWeights; j++) {
+      for(int k = 0; k < layers[l]->weights[j].numDim; k++)
+        stream << " " << layers[l]->weights[j].adim[k];
+      stream << "\n";
+    }
+  }
+
+	// print weights
+	for(size_t i = 0; i < layer_idx.size(); i++) {
+    int l = layer_idx[i];
+    for(int j = 0; j < layers[l]->numWeights; j++) {
+      stream << "layer " << i << " weights " << j << ":\n";
+      float* tmp_weights = new float[layers[l]->weights[j].get_volume()];
+      layers[l]->weights[j].get_weights<float>(this, tmp_weights);
+      stream.write((const char*)tmp_weights, sizeof(float)*layers[l]->weights[j].get_volume());
+      delete[] tmp_weights;
+    }
+  }
+
+  stream.close();
+}
+
+void FFModel::store(const std::string filename)
+{
+  // default: checkpoint all layers
+  std::vector<int> layer_idx(layers.size());
+  for(size_t i = 0; i < layers.size(); i++)
+    layer_idx[i] = i;
+  store(filename, layer_idx);
+}
+
+void FFModel::load(const std::string filename,
+                   const std::vector<int>& layer_idx)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  runtime->issue_execution_fence(ctx);
+
+  std::ifstream stream(filename, std::ifstream::binary);
+  if(!stream.is_open()) {
+    fprintf(stderr, "Checkpoint cannot be loaded.\n");
+    return;
+  }
+
+  std::string line;
+
+  // check header line and num_layers
+  getline(stream, line);
+  assert(line.substr(0, 24) == "FlexFlow Checkpoint_v1.0");
+  getline(stream, line);
+  if(line.compare(std::to_string(layer_idx.size()))) {
+    std::cout << line << " " << std::to_string(layer_idx.size()) << "\n";
+    fprintf(stderr, "Requested to load %ld layers, but checkpoint has %s layers.\n",
+      layer_idx.size(), line.c_str());
+    stream.close();
+    assert(false);
+  }
+
+  // check that same layers
+  size_t l_i = 0; int n = 0;
+  while(l_i < layer_idx.size()) {
+    getline(stream, line);
+    std::stringstream expected;
+    int l = layer_idx[l_i];
+    switch(n) {
+      case 0:
+        expected << "layer " << l_i <<":";
+        break;
+      case 1:
+        expected << " " << get_operator_type_name(layers[l]->op_type);
+        break;
+      case 2:
+        expected << " " << layers[l]->numWeights;
+        break;
+      default:
+        for(int i = 0; i < layers[l]->weights[n-3].numDim; i++)
+          expected << " " << layers[l]->weights[n-3].adim[i];
+        break;
+    }
+
+    if(line != expected.str()) {
+      fprintf(stderr, "Layer %d of the defined FFModel does not match layer %ld of the checkpoint file.\n", l, l_i);
+      stream.close();
+      assert(false);
+    }
+    n++;
+    if(n == 3+layers[l]->numWeights) {
+      l_i++;
+      n = 0;
+    }
+  }
+
+  // load weights
+	for(size_t i = 0; i < layer_idx.size(); i++) {
+    int l = layer_idx[i];
+    for(int j = 0; j < layers[l]->numWeights; j++) {
+      std::stringstream expected;
+      expected << "layer " << i << " weights " << j << ":";
+      getline(stream, line);
+      if(line != expected.str()) {
+        fprintf(stderr, "Checkpoint has bad format: Expected \"layer %ld weights %d:\"\n", i, j);
+        stream.close();
+        assert(false);
+      }
+
+      float* tmp_weights = new float[layers[l]->weights[j].get_volume()];
+      stream.read((char*)tmp_weights, sizeof(float)*layers[l]->weights[j].get_volume());
+      std::vector<int> dims;
+      dims.assign(layers[l]->weights[j].adim, layers[l]->weights[j].adim +
+        layers[l]->weights[j].numDim);
+      std::reverse(dims.begin(), dims.end());
+      layers[l]->weights[j].set_weights<float>(this, dims, tmp_weights);
+      delete[] tmp_weights;
+    }
+  }
+
+  stream.close();
+}
+
+void FFModel::load(const std::string filename)
+{
+  // default: checkpoint all layers
+  std::vector<int> layer_idx(layers.size());
+  for(size_t i = 0; i < layers.size(); i++)
+    layer_idx[i] = i;
+  load(filename, layer_idx);
+}
+
 template<int NDIM>
 Tensor FFModel::create_constant(const int dims[],
                                 float value,

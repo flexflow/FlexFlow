@@ -28,6 +28,9 @@
 #include <curand.h>
 #include <unistd.h>
 #include <functional>
+#include <fstream>
+#include <sstream>
+#include <ctime>
 
 using namespace Legion;
 
@@ -537,6 +540,12 @@ public:
   std::string get_operator_type_name(OperatorType type) const;
 
   std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> get_bwd_edge_map() const;
+
+  // model checkpoints
+  void store(const std::string filename);
+  void load(const std::string filename);
+  void store(const std::string filename, const std::vector<int>& layer_idx);
+  void load(const std::string filename, const std::vector<int>& layer_idx);
 
   // Internal funcitons
   Tensor get_tensor_from_guid(int guid);
