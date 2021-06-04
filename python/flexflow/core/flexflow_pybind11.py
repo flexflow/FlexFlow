@@ -50,10 +50,13 @@ class Op(object):
     parameter = Parameter(_parameter)
     return parameter
     
+  def get_input_tensor_by_id(self, id):
+    return self.op.get_input_tensor_by_id(id)
+    
 # -----------------------------------------------------------------------
 # Parameter
 # -----------------------------------------------------------------------
-
+# TODO: need to revisit it
 class Parameter(object):
   def __init__(self, parameter):
     self.parameter = parameter
@@ -78,6 +81,15 @@ class Parameter(object):
     fflogger.debug("set weights raw_ptr: %s, %s, %s" %( str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(np_shape)))
     ret_val = self.parameter.set_weights(ffmodel, self.parameter.dims, np_array)
     assert ret_val == True, ret_val
+    
+  def inline_map(self, ffconfig):
+    self.parameter.inline_map(ffconfig)
+    
+  def inline_unmap(self, ffconfig):
+    self.parameter.inline_unmap(ffconfig)
+    
+  def get_array(self, ffconfig):
+    return self.parameter.get_array(ffconfig)
 
 # -----------------------------------------------------------------------
 # FFModel

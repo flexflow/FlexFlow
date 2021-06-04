@@ -505,9 +505,9 @@ class Tensor(object):
     ffc.flexflow_tensor_inline_unmap(self.handle, ffconfig.handle);
     self.mapped = False
 
-  def get_array(self, ffconfig, data_type):
+  def get_array(self, ffconfig):
     assert self.mapped == True, "Tensor is not mapped."
-    raw_ptr = self.__get_raw_ptr(ffconfig, data_type)
+    raw_ptr = self.__get_raw_ptr(ffconfig, self.data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     fflogger.debug("raw_ptr: %s, %d" %( str(raw_ptr), raw_ptr_int))
     strides = None
@@ -515,13 +515,14 @@ class Tensor(object):
       shape = self.dims
     else:
       assert 0, "unknow num_dims"
-    initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
+    initializer = RegionNdarray(shape, self.data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
+    # print("stride", array.__array_interface__['strides'])
     return array
 
-  def get_flat_array(self, ffconfig, data_type):
+  def get_flat_array(self, ffconfig):
     assert self.mapped == True, "Tensor is not mapped."
-    raw_ptr = self.__get_raw_ptr(ffconfig, data_type)
+    raw_ptr = self.__get_raw_ptr(ffconfig, self.data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     fflogger.debug("raw_ptr: %s, %d" %( str(raw_ptr), raw_ptr_int))
     strides = None
@@ -530,7 +531,7 @@ class Tensor(object):
       shape = (shape_prod,)
     else:
       assert 0, "unknown num_dims"
-    initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
+    initializer = RegionNdarray(shape, self.data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
     return array
 

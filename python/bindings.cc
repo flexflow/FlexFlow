@@ -70,6 +70,32 @@ double get_current_time(FFConfig &config)
   return ts_start;
 }
 
+//-------- Tensor --------
+py::array get_array(Tensor &t, FFConfig &config) 
+{
+  std::vector<int> dims(t.adim, &t.adim[t.numDim]); 
+  std::reverse(dims.begin(), dims.end()); 
+  if (t.data_type == DataType::DT_FLOAT) {
+    printf("raw_ptr = %p\n", t.get_raw_ptr<float>(config));
+    return py::array(
+        py::dtype("f"),
+        {dims}, // shape
+        {},     // stride
+        t.get_raw_ptr<float>(config), // the data pointer
+        NULL); 
+  } else if (t.data_type == DataType::DT_INT32) {
+    return py::array(
+        py::dtype("i"),
+        {dims}, // shape
+        {},     // stride
+        t.get_raw_ptr<int32_t>(config), // the data pointer
+        NULL); 
+  } else {
+    assert(0);
+  }
+}
+
+
 //-------- Parameter --------
 
 bool get_weights(Parameter &parameter, FFModel &model, py::array full_array) 
@@ -170,7 +196,8 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
 
   py::class_<Op>(m, "Op")
       .def_readonly("num_weights", &Op::numWeights)
-      .def("get_parameter_by_id", [](Op &op, int id) { return op.weights[id] ; });
+      .def("get_parameter_by_id", [](Op &op, int id) { return op.weights[id] ; })
+      .def("get_input_tensor_by_id", [](Op &op, int id) { return op.inputs[id] ; });
 
   py::class_<Optimizer>(m, "Optimizer");
 
@@ -194,7 +221,10 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
   py::class_<Tensor>(m, "Tensor")
       .def_readonly("data_type", &Tensor::data_type)
       .def_property_readonly("dims", [](Tensor &t) { std::vector<int> dims(t.adim, &t.adim[t.numDim]); std::reverse(dims.begin(), dims.end()); return dims; })
-      .def_readonly("num_dims", &Tensor::numDim);
+      .def_readonly("num_dims", &Tensor::numDim)
+      .def("inline_map", [](Tensor &t, FFConfig &config) { t.inline_map(config); })
+      .def("inline_unmap", [](Tensor &t, FFConfig &config) { t.inline_unmap(config); })
+      .def("get_array", &get_array, py::return_value_policy::move);
   
   py::class_<Parameter, Tensor>(m, "Parameter")
       .def("get_weights", &get_weights, "ffmodel"_a, "full_array"_a)
@@ -291,5 +321,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def("reverse", &FFModel::reverse, "input"_a, "axis"_a, "name"_a = nullptr)
       .def("multihead_attention", &FFModel::multihead_attention, "query"_a, "key"_a, "value"_a, "embed_dim"_a, "num_heads"_a, "kdim"_a = 0, "vdim"_a = 0, "dropout"_a = 0.0f, "bias"_a = true, "add_bias_k"_a = false, "add_zero_attn"_a = false, "kernel_initializer"_a = nullptr, "name"_a = nullptr)
       .def("concat", &concat, "tensors"_a, "axis"_a, "name"_a = nullptr)
-      .def("split", &split, "input"_a, "split"_a, "axis"_a, "name"_a = nullptr);
+      .def("split", &split, "input"_a, "split"_a, "axis"_a, "name"_a = nullptr)
+      // Others
+      .def("print_layers", &FFModel::print_layers, "id"_a = -1);
 }
