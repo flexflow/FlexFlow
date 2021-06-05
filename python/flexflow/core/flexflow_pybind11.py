@@ -168,3 +168,27 @@ class FFModel(_FFModel):
       self.forward()
       self.compute_metrics()
       self._ffconfig.end_trace(self._tracing_id)
+      
+  def create_data_loader_test(self, batch_tensor, full_array):
+      full_array_shape = full_array.shape
+      num_samples = full_array_shape[0]
+      num_dim = len(full_array_shape)
+      if (full_array.dtype == "float32"):
+        datatype = DataType.DT_FLOAT
+      elif (full_array.dtype == "int32"):
+        datatype = DataType.DT_INT32
+      else:
+        assert 0, "unsupported datatype"
+
+      if (num_dim == 2):
+        full_tensor = self.create_tensor([num_samples, full_array_shape[1]], datatype)
+      elif (num_dim == 4):
+        full_tensor = self.create_tensor([num_samples, full_array_shape[1], full_array_shape[2], full_array_shape[3]], datatype)
+      else:
+        assert 0, "unsupported dims"
+
+      full_tensor.attach_numpy_array(self._ffconfig, full_array)
+      dataloader = SingleDataLoader(self, batch_tensor, full_tensor, num_samples, datatype)
+      full_tensor.detach_numpy_array(self._ffconfig)
+
+      return dataloader

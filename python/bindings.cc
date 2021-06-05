@@ -114,6 +114,25 @@ void set_tensor(Tensor &t, FFModel &model, py::array &np_array, ParameterSyncTyp
   assert(retval == true);
 }
 
+void attach_numpy_array(Tensor &t, FFConfig &config, py::array &np_array)
+{
+  py::buffer_info info = np_array.request();
+  assert(info.ndim == t.numDim);
+  if (info.format == "f") {
+    assert(t.data_type == DataType::DT_FLOAT);
+  } else if (info.format == "i") {
+    assert(t.data_type == DataType::DT_INT32);
+  } else {
+    assert(0);
+  }
+  t.attach_raw_ptr(config, info.ptr, true);
+}
+
+void detach_numpy_array(Tensor &t, FFConfig &config)
+{
+  t.detach_raw_ptr(config);
+}
+
 //-------- Parameter --------
 
 bool get_weights(Parameter &parameter, FFModel &model, py::array &full_array) 
@@ -200,6 +219,17 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
   py::enum_<ActiMode>(m, "ActiMode")
       .value("AC_MODE_NONE", ActiMode::AC_MODE_NONE)
       .value("AC_MODE_RELU", ActiMode::AC_MODE_RELU);
+  
+  py::enum_<CompMode>(m, "CompMode")
+      .value("TRAINING", CompMode::COMP_MODE_TRAINING)
+      .value("INFERENCE", CompMode::COMP_MODE_INFERENCE);
+
+  py::enum_<DataType>(m, "DataType")
+      .value("DT_FLOAT", DataType::DT_FLOAT)
+      .value("DT_DOUBLE", DataType::DT_DOUBLE)
+      .value("DT_INT32", DataType::DT_INT32)
+      .value("DT_INT64", DataType::DT_INT64)
+      .value("DT_BOOLEAN", DataType::DT_BOOLEAN);
 
   py::class_<Initializer>(m, "Initializer");
 
@@ -232,6 +262,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def_readonly("dataset_path", &NetConfig::dataset_path);
 
   py::class_<SingleDataLoader>(m, "SingleDataLoader")
+      .def(py::init<FFModel &, Tensor, Tensor, int, DataType>(), "ffmodel"_a, "input"_a, "full_input"_a, "num_samples"_a, "data_type"_a)
       .def_readonly("num_samples", &SingleDataLoader::num_samples)
       .def("reset", &SingleDataLoader::reset)
       .def("next_batch", &SingleDataLoader::next_batch);
@@ -243,7 +274,9 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def("inline_map", [](Tensor &t, FFConfig &config) { t.inline_map(config); })
       .def("inline_unmap", [](Tensor &t, FFConfig &config) { t.inline_unmap(config); })
       .def("get_array", &get_array, py::return_value_policy::move)
-      .def("set_tensor", &set_tensor, "ffmodel"_a, "np_array"_a, "comm_type"_a);
+      .def("set_tensor", &set_tensor, "ffmodel"_a, "np_array"_a, "comm_type"_a)
+      .def("attach_numpy_array", &attach_numpy_array, "ffconfig"_a, "np_array"_a)
+      .def("detach_numpy_array", &detach_numpy_array, "ffconfig"_a);
   
   py::class_<Parameter, Tensor>(m, "Parameter")
       .def("get_weights", &get_weights, "ffmodel"_a, "full_array"_a)
@@ -258,17 +291,6 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def("begin_trace", [](FFConfig &config, int trace_id) { config.lg_hlr->begin_trace(config.lg_ctx, trace_id); })
       .def("end_trace", [](FFConfig &config, int trace_id) { config.lg_hlr->end_trace(config.lg_ctx, trace_id); })
       .def("get_current_time", &get_current_time);
-
-  py::enum_<CompMode>(m, "CompMode")
-      .value("TRAINING", CompMode::COMP_MODE_TRAINING)
-      .value("INFERENCE", CompMode::COMP_MODE_INFERENCE);
-
-  py::enum_<DataType>(m, "DataType")
-      .value("DT_FLOAT", DataType::DT_FLOAT)
-      .value("DT_DOUBLE", DataType::DT_DOUBLE)
-      .value("DT_INT32", DataType::DT_INT32)
-      .value("DT_INT64", DataType::DT_INT64)
-      .value("DT_BOOLEAN", DataType::DT_BOOLEAN);
 
   py::enum_<LossType>(m, "LossType")
       .value("LOSS_CATEGORICAL_CROSSENTROPY", LossType::LOSS_CATEGORICAL_CROSSENTROPY)
