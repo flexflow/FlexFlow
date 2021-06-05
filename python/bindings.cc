@@ -95,10 +95,28 @@ py::array get_array(Tensor &t, FFConfig &config)
   }
 }
 
+void set_tensor(Tensor &t, FFModel &model, py::array &np_array, ParameterSyncType comm_type)
+{
+  py::buffer_info info = np_array.request();
+  bool retval = false;
+  assert(info.ndim == t.numDim);
+  std::vector<int> dims(t.adim, &t.adim[t.numDim]);
+  std::reverse(dims.begin(), dims.end());
+  if (info.format == "f") {
+    assert(t.data_type == DataType::DT_FLOAT);
+    retval = t.set_tensor<float>(&model, dims, static_cast<float*>(info.ptr), comm_type);
+  } else if (info.format == "i") {
+    assert(t.data_type == DataType::DT_INT32);
+    retval = t.set_tensor<int32_t>(&model, dims, static_cast<int32_t*>(info.ptr), comm_type);
+  } else {
+    assert(0);
+  }
+  assert(retval == true);
+}
 
 //-------- Parameter --------
 
-bool get_weights(Parameter &parameter, FFModel &model, py::array full_array) 
+bool get_weights(Parameter &parameter, FFModel &model, py::array &full_array) 
 {
   py::buffer_info info = full_array.request();
   if (info.format == "f") {
@@ -109,7 +127,7 @@ bool get_weights(Parameter &parameter, FFModel &model, py::array full_array)
   }
 }
 
-bool set_weights(Parameter &parameter, FFModel &model, const std::vector<int>& dims, py::array full_array) 
+bool set_weights(Parameter &parameter, FFModel &model, const std::vector<int>& dims, py::array &full_array) 
 {
   py::buffer_info info = full_array.request();
   if (info.format == "f") {
@@ -142,7 +160,7 @@ Tensor *create_tensor(FFModel &model, const std::vector<int> &dims, DataType dat
   return tensor;
 }
 
-SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::array full_array) 
+SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::array &full_array) 
 {
   py::buffer_info info = full_array.request();
   DataType dtype;
@@ -224,7 +242,8 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def_readonly("num_dims", &Tensor::numDim)
       .def("inline_map", [](Tensor &t, FFConfig &config) { t.inline_map(config); })
       .def("inline_unmap", [](Tensor &t, FFConfig &config) { t.inline_unmap(config); })
-      .def("get_array", &get_array, py::return_value_policy::move);
+      .def("get_array", &get_array, py::return_value_policy::move)
+      .def("set_tensor", &set_tensor, "ffmodel"_a, "np_array"_a, "comm_type"_a);
   
   py::class_<Parameter, Tensor>(m, "Parameter")
       .def("get_weights", &get_weights, "ffmodel"_a, "full_array"_a)
@@ -268,6 +287,11 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
   py::enum_<PoolType>(m, "PoolType")
       .value("POOL_MAX", PoolType::POOL_MAX)
       .value("POOL_AVG", PoolType::POOL_AVG);
+  
+  py::enum_<ParameterSyncType>(m, "ParameterSyncType")
+      .value("NONE", ParameterSyncType::NONE)
+      .value("PS", ParameterSyncType::PS)
+      .value("NCCL", ParameterSyncType::NCCL);
 
   py::class_<PerfMetrics>(m, "PerfMetrics")
       .def("get_accuracy", [](PerfMetrics &m){ return m.train_correct * 100.0f / m.train_all; });
