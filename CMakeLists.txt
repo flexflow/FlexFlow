@@ -53,8 +53,6 @@ set(CC_FLAGS $ENV{CC_FLAGS})
 set(NVCC_FLAGS $ENV{NVCC_FLAGS})
 set(LD_FLAGS $ENV{LD_FLAGS})
 
-set(FF_MAX_DIM 4)
-
 # ZLIB
 include(zlib)
 

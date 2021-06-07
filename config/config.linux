@@ -13,7 +13,7 @@ echo " Defaults for Linux machine"
 #LD_FLAGS=${LD_FLAGS+=""}
 
 # set build type
-BUILD_TYPE=Debug
+BUILD_TYPE=Release
 
 # set CUDA Arch, replace xx with your GPU architecture
 #FF_CUDA_ARCH=xx
