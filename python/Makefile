@@ -111,12 +111,12 @@ DEFINE_HEADERS_DIR ?= ./
 flexflow/core/legion_cffi.py: legion_cffi.py.in legion_cffi_build.py
 	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
 
-ifeq ($(strip $(FLEXFLOW_PYTHON)), 1)
+ifeq ($(strip $(FF_USE_NATIVE_PYTHON)), 0)
 $(FF_BYBIND_LIB): bindings.cc
 	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -std=c++11 -fPIC $< -o $@
 else
 $(FF_BYBIND_LIB): bindings.cc $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM)
-	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -L$(FF_HOME)/python $(LD_FLAGS) $(LEGION_LD_FLAGS) bindings.cc $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM) -o $@
+	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -L$(FF_HOME)/python $(LD_FLAGS) $(LEGION_LD_FLAGS) $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM) $< -o $@
 endif
 
 clean::

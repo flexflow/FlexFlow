@@ -86,7 +86,7 @@ int main(int argc, char **argv)
   setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
 #endif
   // Used by python/flexflow/core/__init__.py to detect flexflow_python.
-  setenv("FLEXFLOW_PYTHON", "1", true);
+  setenv("FF_USE_NATIVE_PYTHON", "0", true);
 
   Runtime::set_top_level_task_id(PYTHON_TOP_LEVEL_TASK_ID);
   {
