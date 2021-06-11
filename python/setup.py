@@ -17,6 +17,7 @@ setup(
                     'qualname',
                     'keras_preprocessing',
                     'Pillow',
+                    'pybind11'
                     ],
 
   classifiers=[
