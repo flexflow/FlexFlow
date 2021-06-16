@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 from pathlib import Path
 from cmake_build_extension import BuildExtension, CMakeExtension
 
@@ -11,7 +11,8 @@ setup(
   description='FlexFlow Python package',
   url='https://github.com/flexflow/FlexFlow',
   license='Apache',
-  packages=['flexflow'],
+  packages=find_packages("python"),
+  package_dir={'': "python"},
   package_data={'flexflow': files},
   zip_safe= False,
   install_requires=['numpy>=1.16',
@@ -24,9 +25,16 @@ setup(
                     ],
   ext_modules=[
     CMakeExtension(name='flexflow',
-                   install_prefix='flexflow',
+                   install_prefix='/home/wwu/anaconda3/envs/flexflow/',
                    cmake_configure_options=[
-                       '-DCUDA_USE_STATIC_CUDA_RUNTIME=OFF -DCUDA_PATH=/projects/opt/centos7/cuda/10.1 -DCUDNN_PATH=/projects/opt/centos7/cuda/10.1 -DFF_USE_PYTHON=ON -DFF_USE_NCCL=OFF -DFF_USE_GASNET=OFF -DFF_BUILD_EXAMPLES=OFF -DFF_USE_AVX2=OFF -DFF_MAX_DIM=4',
+                       '-DCUDA_USE_STATIC_CUDA_RUNTIME=OFF',  
+                       '-DCUDNN_PATH=/projects/opt/centos7/cuda/10.1',
+                       '-DCUDA_PATH=/projects/opt/centos7/cuda/10.1', 
+                       '-DFF_USE_PYTHON=ON', 
+                       '-DFF_USE_NCCL=OFF', 
+                       '-DFF_USE_GASNET=OFF',
+                       '-DFF_USE_AVX2=OFF', 
+                       '-DFF_MAX_DIM=4',
                    ]),
   ],
   cmdclass=dict(build_ext=BuildExtension),

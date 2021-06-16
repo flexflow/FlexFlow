@@ -34,8 +34,8 @@ add_custom_command(TARGET ${project_target}
 
 set(BIN_DEST "bin")
 set(LIB_DEST "lib")
-set(PY_DEST "python/flexflow")
+#set(PY_DEST "python/flexflow")
 install(TARGETS ${project_target} DESTINATION ${BIN_DEST})
 install(TARGETS flexflow_dataloader DESTINATION ${LIB_DEST})
-#install(TARGETS flexflow_pybind11_internal DESTINATION ${PY_DEST}/flexflow/core)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/flexflow/ DESTINATION ${PY_DEST})
+install(TARGETS flexflow_pybind11_internal DESTINATION ${LIB_DEST})
+#install(DIRECTORY ${PROJECT_SOURCE_DIR}/flexflow/ DESTINATION ${PY_DEST})
