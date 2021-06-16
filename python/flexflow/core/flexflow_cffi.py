@@ -70,21 +70,21 @@ class Op(object):
   def get_number_parameters(self):
     return ffc.flexflow_op_get_num_parameters(self.handle)
 
-  def get_parameter_tensor_by_id(self, id):
+  def get_parameter_by_id(self, id):
     handle = ffc.flexflow_op_get_parameter_by_id(self.handle, id)
     return Parameter(handle)
 
   def get_number_inputs(self):
     return ffc.flexflow_op_get_num_inputs(self.handle)
 
-  def get_input_tensor_by_id(self, id):
+  def get_input_by_id(self, id):
     handle = ffc.flexflow_op_get_input_by_id(self.handle, id)
     return Tensor(handle, False)
 
   def get_number_outputs(self):
     return ffc.flexflow_op_get_num_outputs(self.handle)
 
-  def get_output_tensor_by_id(self, id):
+  def get_output_by_id(self, id):
     handle = ffc.flexflow_op_get_output_by_id(self.handle, id)
     return Tensor(handle, False)
 
@@ -141,16 +141,16 @@ class Conv2D(Op):
     super(Conv2D, self).__init__(handle, idx, name)
 
   def get_weight_tensor(self):
-    return self.get_parameter_tensor_by_id(0)
+    return self.get_parameter_by_id(0)
 
   def get_bias_tensor(self):
-    return self.get_parameter_tensor_by_id(1)
+    return self.get_parameter_by_id(1)
 
   def get_input_tensor(self):
-    return self.get_input_tensor_by_id(0)
+    return self.get_input_by_id(0)
 
   def get_output_tensor(self):
-    return self.get_output_tensor_by_id(0)
+    return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Pool2D
@@ -160,10 +160,10 @@ class Pool2D(Op):
     super(Pool2D, self).__init__(handle, idx, name)
 
   def get_input_tensor(self):
-    return self.get_input_tensor_by_id(0)
+    return self.get_input_by_id(0)
 
   def get_output_tensor(self):
-    return self.get_output_tensor_by_id(0)
+    return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Linear
@@ -173,16 +173,16 @@ class Linear(Op):
     super(Linear, self).__init__(handle, idx, name)
 
   def get_weight_tensor(self):
-    return self.get_parameter_tensor_by_id(0)
+    return self.get_parameter_by_id(0)
 
   def get_bias_tensor(self):
-    return self.get_parameter_tensor_by_id(1)
+    return self.get_parameter_by_id(1)
 
   def get_input_tensor(self):
-    return self.get_input_tensor_by_id(0)
+    return self.get_input_by_id(0)
 
   def get_output_tensor(self):
-    return self.get_output_tensor_by_id(0)
+    return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Flat
@@ -192,10 +192,10 @@ class Flat(Op):
     super(Flat, self).__init__(handle, idx, name)
 
   def get_input_tensor(self):
-    return self.get_input_tensor_by_id(0)
+    return self.get_input_by_id(0)
 
   def get_output_tensor(self):
-    return self.get_output_tensor_by_id(0)
+    return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Softmax
@@ -505,9 +505,9 @@ class Tensor(object):
     ffc.flexflow_tensor_inline_unmap(self.handle, ffconfig.handle);
     self.mapped = False
 
-  def get_array(self, ffconfig, data_type):
+  def get_array(self, ffconfig):
     assert self.mapped == True, "Tensor is not mapped."
-    raw_ptr = self.__get_raw_ptr(ffconfig, data_type)
+    raw_ptr = self.__get_raw_ptr(ffconfig, self.data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     fflogger.debug("raw_ptr: %s, %d" %( str(raw_ptr), raw_ptr_int))
     strides = None
@@ -515,13 +515,14 @@ class Tensor(object):
       shape = self.dims
     else:
       assert 0, "unknow num_dims"
-    initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
+    initializer = RegionNdarray(shape, self.data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
+    # print("stride", array.__array_interface__['strides'])
     return array
 
-  def get_flat_array(self, ffconfig, data_type):
+  def get_flat_array(self, ffconfig):
     assert self.mapped == True, "Tensor is not mapped."
-    raw_ptr = self.__get_raw_ptr(ffconfig, data_type)
+    raw_ptr = self.__get_raw_ptr(ffconfig, self.data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     fflogger.debug("raw_ptr: %s, %d" %( str(raw_ptr), raw_ptr_int))
     strides = None
@@ -530,7 +531,7 @@ class Tensor(object):
       shape = (shape_prod,)
     else:
       assert 0, "unknown num_dims"
-    initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
+    initializer = RegionNdarray(shape, self.data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
     return array
 

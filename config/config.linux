@@ -12,6 +12,9 @@ echo " Defaults for Linux machine"
 #NVCC_FLAGS=${NVCC_FLAGS+=""}
 #LD_FLAGS=${LD_FLAGS+=""}
 
+#set install dir
+#INSTALL_DIR=
+
 # set build type
 BUILD_TYPE=Release
 

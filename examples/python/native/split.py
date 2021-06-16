@@ -58,7 +58,8 @@ def top_level_task():
 
   ffmodel.init_layers()
 
-  print("end init model", ts[0].handle.impl)
+  if flexflow_python_binding() == 'cffi':
+    print("end init model", ts[0].handle.impl)
 
   epochs = ffconfig.epochs
   #epochs = 10

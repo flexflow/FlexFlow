@@ -70,6 +70,94 @@ double get_current_time(FFConfig &config)
   return ts_start;
 }
 
+//-------- Tensor --------
+py::array get_array(Tensor &t, FFConfig &config) 
+{
+  std::vector<int> dims(t.adim, &t.adim[t.numDim]); 
+  std::reverse(dims.begin(), dims.end()); 
+  if (t.data_type == DataType::DT_FLOAT) {
+    printf("raw_ptr = %p\n", t.get_raw_ptr<float>(config));
+    return py::array(
+        py::dtype("f"),
+        {dims}, // shape
+        {},     // stride
+        t.get_raw_ptr<float>(config), // the data pointer
+        NULL); 
+  } else if (t.data_type == DataType::DT_INT32) {
+    return py::array(
+        py::dtype("i"),
+        {dims}, // shape
+        {},     // stride
+        t.get_raw_ptr<int32_t>(config), // the data pointer
+        NULL); 
+  } else {
+    assert(0);
+  }
+}
+
+void set_tensor(Tensor &t, FFModel &model, py::array &np_array, ParameterSyncType comm_type)
+{
+  py::buffer_info info = np_array.request();
+  bool retval = false;
+  assert(info.ndim == t.numDim);
+  std::vector<int> dims(t.adim, &t.adim[t.numDim]);
+  std::reverse(dims.begin(), dims.end());
+  if (info.format == "f") {
+    assert(t.data_type == DataType::DT_FLOAT);
+    retval = t.set_tensor<float>(&model, dims, static_cast<float*>(info.ptr), comm_type);
+  } else if (info.format == "i") {
+    assert(t.data_type == DataType::DT_INT32);
+    retval = t.set_tensor<int32_t>(&model, dims, static_cast<int32_t*>(info.ptr), comm_type);
+  } else {
+    assert(0);
+  }
+  assert(retval == true);
+}
+
+void attach_numpy_array(Tensor &t, FFConfig &config, py::array &np_array)
+{
+  py::buffer_info info = np_array.request();
+  assert(info.ndim == t.numDim);
+  if (info.format == "f") {
+    assert(t.data_type == DataType::DT_FLOAT);
+  } else if (info.format == "i") {
+    assert(t.data_type == DataType::DT_INT32);
+  } else {
+    assert(0);
+  }
+  t.attach_raw_ptr(config, info.ptr, true);
+}
+
+void detach_numpy_array(Tensor &t, FFConfig &config)
+{
+  t.detach_raw_ptr(config);
+}
+
+//-------- Parameter --------
+
+bool get_weights(Parameter &parameter, FFModel &model, py::array &full_array) 
+{
+  py::buffer_info info = full_array.request();
+  if (info.format == "f") {
+    return parameter.get_weights<float>(&model, static_cast<float*>(info.ptr));
+  } else {
+    assert(0);
+    return false;
+  }
+}
+
+bool set_weights(Parameter &parameter, FFModel &model, const std::vector<int>& dims, py::array &full_array) 
+{
+  py::buffer_info info = full_array.request();
+  if (info.format == "f") {
+    return parameter.set_weights<float>(&model, dims, static_cast<float*>(info.ptr));
+  } else {
+    assert(0);
+    return false;
+  }
+}
+
+//-------- FFModel --------
 
 Tensor *create_tensor(FFModel &model, const std::vector<int> &dims, DataType data_type, bool create_grad)
 {
@@ -91,7 +179,8 @@ Tensor *create_tensor(FFModel &model, const std::vector<int> &dims, DataType dat
   return tensor;
 }
 
-SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::array full_array) {
+SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::array &full_array) 
+{
   py::buffer_info info = full_array.request();
   DataType dtype;
   if (info.format == "f") {
@@ -102,6 +191,20 @@ SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::a
 
   ssize_t num_samples = info.shape[0];
   return new SingleDataLoader(model, batch_tensor, info.ptr, num_samples, dtype);
+}
+
+Tensor concat(FFModel &model, const std::vector<Tensor> &tensors, int axis, const char *name) 
+{
+  int size = tensors.size();
+  return model.concat(size, tensors.data(), axis, name);
+}
+
+std::vector<Tensor> split(FFModel &model, const Tensor &input, const std::vector<int>& split, int axis, const char *name)
+{
+  std::vector<Tensor> outputs;
+  outputs.resize(split.size());
+  model.split(input, outputs.data(), split, axis, name);
+  return outputs;
 }
 
 }
@@ -116,6 +219,17 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
   py::enum_<ActiMode>(m, "ActiMode")
       .value("AC_MODE_NONE", ActiMode::AC_MODE_NONE)
       .value("AC_MODE_RELU", ActiMode::AC_MODE_RELU);
+  
+  py::enum_<CompMode>(m, "CompMode")
+      .value("TRAINING", CompMode::COMP_MODE_TRAINING)
+      .value("INFERENCE", CompMode::COMP_MODE_INFERENCE);
+
+  py::enum_<DataType>(m, "DataType")
+      .value("DT_FLOAT", DataType::DT_FLOAT)
+      .value("DT_DOUBLE", DataType::DT_DOUBLE)
+      .value("DT_INT32", DataType::DT_INT32)
+      .value("DT_INT64", DataType::DT_INT64)
+      .value("DT_BOOLEAN", DataType::DT_BOOLEAN);
 
   py::class_<Initializer>(m, "Initializer");
 
@@ -128,21 +242,27 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
   py::class_<ZeroInitializer, Initializer>(m, "ZeroInitializer")
       .def(py::init());
 
-  py::class_<Op>(m, "Op");
+  py::class_<Op>(m, "Op")
+      .def_readonly("num_weights", &Op::numWeights)
+      .def("get_parameter_by_id", [](Op &op, int id) { return op.weights[id] ; })
+      .def("get_input_tensor_by_id", [](Op &op, int id) { return op.inputs[id] ; });
 
   py::class_<Optimizer>(m, "Optimizer");
 
   py::class_<SGDOptimizer, Optimizer>(m, "SGDOptimizer")
-      .def(py::init<const FFModel*, double, double, bool, double>(), "model"_a, "lr"_a = 0.01f, "momentum"_a = 0.0f, "nesterov"_a = false, "weight_decay"_a = 0.0f);
+      .def(py::init<const FFModel*, double, double, bool, double>(), "model"_a, "lr"_a = 0.01f, "momentum"_a = 0.0f, "nesterov"_a = false, "weight_decay"_a = 0.0f)
+      .def("set_learning_rate", [](SGDOptimizer &optimizer, double lr) { optimizer.lr = lr; });
   
   py::class_<AdamOptimizer, Optimizer>(m, "AdamOptimizer")
-      .def(py::init<const FFModel*, double, double, double, double, double>(), "model"_a, "alpha"_a = 0.001f, "beta1"_a = 0.9f, "beta2"_a = 0.999f, "weight_decay"_a = 0.0f, "epsilon"_a = 1e-8);
+      .def(py::init<const FFModel*, double, double, double, double, double>(), "model"_a, "alpha"_a = 0.001f, "beta1"_a = 0.9f, "beta2"_a = 0.999f, "weight_decay"_a = 0.0f, "epsilon"_a = 1e-8)
+      .def("set_learning_rate", [](AdamOptimizer &optimizer, double lr) { optimizer.alpha = lr; });
 
   py::class_<NetConfig>(m, "NetConfig")
       .def(py::init())
       .def_readonly("dataset_path", &NetConfig::dataset_path);
 
   py::class_<SingleDataLoader>(m, "SingleDataLoader")
+      .def(py::init<FFModel &, Tensor, Tensor, int, DataType>(), "ffmodel"_a, "input"_a, "full_input"_a, "num_samples"_a, "data_type"_a)
       .def_readonly("num_samples", &SingleDataLoader::num_samples)
       .def("reset", &SingleDataLoader::reset)
       .def("next_batch", &SingleDataLoader::next_batch);
@@ -150,7 +270,17 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
   py::class_<Tensor>(m, "Tensor")
       .def_readonly("data_type", &Tensor::data_type)
       .def_property_readonly("dims", [](Tensor &t) { std::vector<int> dims(t.adim, &t.adim[t.numDim]); std::reverse(dims.begin(), dims.end()); return dims; })
-      .def_readonly("num_dims", &Tensor::numDim);
+      .def_readonly("num_dims", &Tensor::numDim)
+      .def("inline_map", [](Tensor &t, FFConfig &config) { t.inline_map(config); })
+      .def("inline_unmap", [](Tensor &t, FFConfig &config) { t.inline_unmap(config); })
+      .def("get_array", &get_array, py::return_value_policy::move)
+      .def("set_tensor", &set_tensor, "ffmodel"_a, "np_array"_a, "comm_type"_a)
+      .def("attach_numpy_array", &attach_numpy_array, "ffconfig"_a, "np_array"_a)
+      .def("detach_numpy_array", &detach_numpy_array, "ffconfig"_a);
+  
+  py::class_<Parameter, Tensor>(m, "Parameter")
+      .def("_get_weights", &get_weights, "ffmodel"_a, "full_array"_a)
+      .def("_set_weights", &set_weights, "ffmodel"_a, "dims"_a, "full_array"_a);
 
   py::class_<FFConfig>(m, "FFConfig")
       .def(py::init())
@@ -161,17 +291,6 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def("begin_trace", [](FFConfig &config, int trace_id) { config.lg_hlr->begin_trace(config.lg_ctx, trace_id); })
       .def("end_trace", [](FFConfig &config, int trace_id) { config.lg_hlr->end_trace(config.lg_ctx, trace_id); })
       .def("get_current_time", &get_current_time);
-
-  py::enum_<CompMode>(m, "CompMode")
-      .value("TRAINING", CompMode::COMP_MODE_TRAINING)
-      .value("INFERENCE", CompMode::COMP_MODE_INFERENCE);
-
-  py::enum_<DataType>(m, "DataType")
-      .value("DT_FLOAT", DataType::DT_FLOAT)
-      .value("DT_DOUBLE", DataType::DT_DOUBLE)
-      .value("DT_INT32", DataType::DT_INT32)
-      .value("DT_INT64", DataType::DT_INT64)
-      .value("DT_BOOLEAN", DataType::DT_BOOLEAN);
 
   py::enum_<LossType>(m, "LossType")
       .value("LOSS_CATEGORICAL_CROSSENTROPY", LossType::LOSS_CATEGORICAL_CROSSENTROPY)
@@ -190,6 +309,11 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
   py::enum_<PoolType>(m, "PoolType")
       .value("POOL_MAX", PoolType::POOL_MAX)
       .value("POOL_AVG", PoolType::POOL_AVG);
+  
+  py::enum_<ParameterSyncType>(m, "ParameterSyncType")
+      .value("NONE", ParameterSyncType::NONE)
+      .value("PS", ParameterSyncType::PS)
+      .value("NCCL", ParameterSyncType::NCCL);
 
   py::class_<PerfMetrics>(m, "PerfMetrics")
       .def("get_accuracy", [](PerfMetrics &m){ return m.train_correct * 100.0f / m.train_all; });
@@ -198,7 +322,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def(py::init<FFConfig &>())
       .def_readonly("label_tensor", &FFModel::label_tensor)
       .def_readwrite("optimizer", &FFModel::optimizer)
-      .def("compile", static_cast<void (FFModel::*)(LossType, const std::vector<MetricsType>&, CompMode)>(&FFModel::compile), "loss_type"_a, "metrics"_a, "comp_mode"_a = CompMode::COMP_MODE_TRAINING)
+      .def("_compile", static_cast<void (FFModel::*)(LossType, const std::vector<MetricsType>&, CompMode)>(&FFModel::compile), "loss_type"_a, "metrics"_a, "comp_mode"_a)
       .def("create_data_loader", &create_data_loader, "batch_tensor"_a, "full_array"_a)
       .def("create_tensor", &create_tensor, "dims"_a, "data_type"_a, "create_grad"_a = true)
       .def("get_layer_by_id", [](FFModel &m, int id) { return m.layers[id] ; })
@@ -241,6 +365,9 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def("transpose", &FFModel::transpose, "input"_a, "perm"_a, "name"_a = nullptr)
       .def("reshape", &FFModel::reshape, "input"_a, "shape"_a, "name"_a = nullptr)
       .def("reverse", &FFModel::reverse, "input"_a, "axis"_a, "name"_a = nullptr)
-      .def("multihead_attention", &FFModel::multihead_attention, "query"_a, "key"_a, "value"_a, "embed_dim"_a, "num_heads"_a, "kdim"_a = 0, "vdim"_a = 0, "dropout"_a = 0.0f, "bias"_a = true, "add_bias_k"_a = false, "add_zero_attn"_a = false, "kernel_initializer"_a = nullptr, "name"_a = nullptr);
-
+      .def("multihead_attention", &FFModel::multihead_attention, "query"_a, "key"_a, "value"_a, "embed_dim"_a, "num_heads"_a, "kdim"_a = 0, "vdim"_a = 0, "dropout"_a = 0.0f, "bias"_a = true, "add_bias_k"_a = false, "add_zero_attn"_a = false, "kernel_initializer"_a = nullptr, "name"_a = nullptr)
+      .def("concat", &concat, "tensors"_a, "axis"_a, "name"_a = nullptr)
+      .def("split", &split, "input"_a, "split"_a, "axis"_a, "name"_a = nullptr)
+      // Others
+      .def("print_layers", &FFModel::print_layers, "id"_a = -1);
 }
