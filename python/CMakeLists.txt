@@ -24,18 +24,26 @@ pybind11_add_module(flexflow_pybind11_internal bindings.cc)
 set_target_properties(flexflow_pybind11_internal PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/flexflow/core)
 target_link_libraries(flexflow_pybind11_internal PRIVATE flexflow flexflow_dataloader ${FLEXFLOW_EXT_LIBRARIES})
 
-# create legion_cffi.py
+# create legion_cffi_header.py
 add_custom_command(TARGET ${project_target} 
   PRE_BUILD	
   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/legion_cffi_build.py --runtime-dir ${LEGION_ROOT}/runtime  --defines-dir ${CMAKE_BINARY_DIR}/deps/legion/runtime --output-dir ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMENT "Creating legion_cffi.py..."
+  COMMENT "Creating legion_cffi_header.py..."
+)
+
+# create flexflow_cffi_header.py
+add_custom_command(TARGET ${project_target} 
+  PRE_BUILD	
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/flexflow_cffi_build.py --ffhome-dir ${FLEXFLOW_ROOT} --output-dir ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  COMMENT "Creating flexflow_cffi_header.py..."
 )
 
 set(BIN_DEST "bin")
 set(LIB_DEST "lib")
-#set(PY_DEST "python/flexflow")
+set(PY_DEST "flexflow")
 install(TARGETS ${project_target} DESTINATION ${BIN_DEST})
 install(TARGETS flexflow_dataloader DESTINATION ${LIB_DEST})
-install(TARGETS flexflow_pybind11_internal DESTINATION ${LIB_DEST})
-#install(DIRECTORY ${PROJECT_SOURCE_DIR}/flexflow/ DESTINATION ${PY_DEST})
+install(TARGETS flexflow_pybind11_internal DESTINATION ${PY_DEST}/core)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/flexflow/ DESTINATION ${PY_DEST})

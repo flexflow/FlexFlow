@@ -25,11 +25,9 @@ setup(
                     ],
   ext_modules=[
     CMakeExtension(name='flexflow',
-                   install_prefix='/home/wwu/anaconda3/envs/flexflow/',
+                   install_prefix='.',
                    cmake_configure_options=[
                        '-DCUDA_USE_STATIC_CUDA_RUNTIME=OFF',  
-                       '-DCUDNN_PATH=/projects/opt/centos7/cuda/10.1',
-                       '-DCUDA_PATH=/projects/opt/centos7/cuda/10.1', 
                        '-DFF_USE_PYTHON=ON', 
                        '-DFF_USE_NCCL=OFF', 
                        '-DFF_USE_GASNET=OFF',
