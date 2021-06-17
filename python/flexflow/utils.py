@@ -13,5 +13,9 @@
 # limitations under the License.
 #
 
-from .utils import flexflow_dir
-from .driver import flexflow_driver
+import os
+
+_FF_DIR = os.path.dirname(os.path.realpath(__file__))
+
+def flexflow_dir():
+  return _FF_DIR

@@ -24,6 +24,9 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(LIBEXT ".so")
 endif()
 
+# only used for pypi
+option(FF_BUILD_FROM_PYPI "Build from pypi" OFF)
+
 # build shared or static flexflow lib
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 

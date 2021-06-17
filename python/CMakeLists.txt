@@ -42,8 +42,18 @@ add_custom_command(TARGET ${project_target}
 
 set(BIN_DEST "bin")
 set(LIB_DEST "lib")
-set(PY_DEST "flexflow")
 install(TARGETS ${project_target} DESTINATION ${BIN_DEST})
 install(TARGETS flexflow_dataloader DESTINATION ${LIB_DEST})
-install(TARGETS flexflow_pybind11_internal DESTINATION ${PY_DEST}/core)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/flexflow/ DESTINATION ${PY_DEST})
+if(FF_BUILD_FROM_PYPI)
+  set(PY_DEST "./")
+	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core/legion_cffi_header.py ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core/flexflow_cffi_header.py 
+	  DESTINATION ${PY_DEST}/core)
+else()
+	set(PY_DEST "flexflow")
+	install(
+		DIRECTORY ${PROJECT_SOURCE_DIR}/flexflow/ 
+		DESTINATION ${PY_DEST}
+		FILES_MATCHING 
+		PATTERN "*.py")
+endif()
+ install(TARGETS flexflow_pybind11_internal DESTINATION ${PY_DEST}/core)

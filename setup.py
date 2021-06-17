@@ -1,6 +1,7 @@
 from setuptools import setup, find_packages
 from pathlib import Path
 from cmake_build_extension import BuildExtension, CMakeExtension
+import sys
 
 datadir = Path(__file__).parent / 'python/flexflow'
 files = [str(p.relative_to(datadir)) for p in datadir.rglob('*.py')]
@@ -23,15 +24,19 @@ setup(
                     'cmake-build-extension',
                     'pybind11'
                     ],
+  entry_points = {
+          'console_scripts': ['flexflow_python=flexflow.driver:flexflow_driver'],
+      },
   ext_modules=[
     CMakeExtension(name='flexflow',
-                   install_prefix='.',
+                   install_prefix='flexflow',
                    cmake_configure_options=[
-                       '-DCUDA_USE_STATIC_CUDA_RUNTIME=OFF',  
-                       '-DFF_USE_PYTHON=ON', 
-                       '-DFF_USE_NCCL=OFF', 
+                       '-DFF_BUILD_FROM_PYPI=ON',
+                       '-DCUDA_USE_STATIC_CUDA_RUNTIME=OFF',
+                       '-DFF_USE_PYTHON=ON',
+                       '-DFF_USE_NCCL=OFF',
                        '-DFF_USE_GASNET=OFF',
-                       '-DFF_USE_AVX2=OFF', 
+                       '-DFF_USE_AVX2=OFF',
                        '-DFF_MAX_DIM=4',
                    ]),
   ],
