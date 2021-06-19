@@ -79,3 +79,8 @@ If install from local:
 pip install .
 ```
 All Python depencies will be automatically installed. 
+The default installation is configurated with `FF_USE_NCCL=OFF` `FF_USE_GASNET=OFF`and `FF_MAX_DIM=4`.
+In order to change the configuration, please use the `--global-option` of the setuptools
+```
+pip install --global-option="build_ext" --global-option="CMake options" . 
+```
