@@ -44,7 +44,7 @@ if(CUDA_FOUND)
   message( STATUS "CUBLAS libraries : ${CUDA_CUBLAS_LIBRARIES}" )
   message( STATUS "CURAND libraries : ${CUDA_curand_LIBRARY}" )
   message( STATUS "CUDA Arch : ${FF_CUDA_ARCH}" )
-  message("CUDA_GENCODE: ${CUDA_GENCODE}")
+  message( STATUS "CUDA_GENCODE: ${CUDA_GENCODE}")
 
   list(APPEND FLEXFLOW_INCLUDE_DIRS
     ${CUDA_INCLUDE_DIRS})

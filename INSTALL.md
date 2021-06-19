@@ -76,12 +76,6 @@ make install
 2. Install the FlexFlow Python interface using pip
 If install from local:
 ```
-cd python
 pip install .
-```
-
-If installing from the PyPI repository
-```
-pip install flexflow
 ```
 All Python depencies will be automatically installed. 
