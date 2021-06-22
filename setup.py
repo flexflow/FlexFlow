@@ -51,7 +51,8 @@ setup(
                     'keras_preprocessing',
                     'Pillow',
                     'cmake-build-extension',
-                    'pybind11'
+                    'pybind11',
+                    'ninja'
                     ],
   entry_points = {
           'console_scripts': ['flexflow_python=flexflow.driver:flexflow_driver'],
