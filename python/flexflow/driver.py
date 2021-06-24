@@ -62,7 +62,7 @@ def find_flexflow_python_exe():
   else:
     raise Exception('Unable to locate flexflow_python')
 
-def run_flexflow(opts):
+def run_flexflow(freeze_on_error, backtrace, opts):
   flexflow_python_path, flexflow_lib_dir, flexflow_lib64_dir = find_flexflow_python_exe()
   # print(flexflow_python_path, flexflow_lib_dir, flexflow_lib64_dir)
   
@@ -72,7 +72,14 @@ def run_flexflow(opts):
     cmd_env['LD_LIBRARY_PATH'] += ':' + flexflow_lib_dir + ':' + flexflow_lib64_dir
   else:
     cmd_env['LD_LIBRARY_PATH'] = flexflow_lib_dir + ':' + flexflow_lib64_dir
-  # print(cmd_env['LD_LIBRARY_PATH'])
+    
+  # freeze on error
+  if freeze_on_error:
+      cmd_env["LEGION_FREEZE_ON_ERROR"] = str(1)
+      
+  # print backtrace
+  if backtrace:
+      cmd_env["LEGION_BACKTRACE"] = str(1)
 
   # Start building our command line for the subprocess invocation
   cmd = [str(flexflow_python_path)]
@@ -87,6 +94,20 @@ def run_flexflow(opts):
 
 def flexflow_driver():
   parser = argparse.ArgumentParser(description='FlexFlow Driver.')
+  parser.add_argument(
+    "--freeze-on-error",
+    dest="freeze_on_error",
+    action="store_true",
+    required=False,
+    help="if the program crashes, freeze execution right before exit so a debugger can be attached",
+  )
+  parser.add_argument(
+    "--backtrace",
+    dest="backtrace",
+    action="store_true",
+    required=False,
+    help="if the program crashes, print the backtrace where an error occurs",
+  )
   args, opts = parser.parse_known_args()
   # See if we have at least one script file to run
   console = True
@@ -95,4 +116,4 @@ def flexflow_driver():
       console = False
       break
   assert console == False, "Please provide a python file"
-  return run_flexflow(opts)
+  return run_flexflow(args.freeze_on_error, args.backtrace, opts)
