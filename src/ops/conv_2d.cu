@@ -640,7 +640,7 @@ void Conv2D::backward(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   // regions[1](I/O): input_grad
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0].part_grad, 0/*projection id*/,
+      RegionRequirement(input_grad_lps[0], 0/*projection id*/,
                         READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2](I): output
