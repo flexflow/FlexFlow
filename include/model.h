@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford
+/* Copyright 2021 Stanford, Facebook, LANL
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -200,6 +200,7 @@ public:
 public:
   FFHandler handle;
   bool profiling; // Measure the run time of the task
+  bool trainableInputs[MAX_NUM_INPUTS];
 };
 
 class Op {
@@ -258,7 +259,7 @@ public:
   Tensor outputs[MAX_NUM_OUTPUTS];
   Tensor inputs[MAX_NUM_INPUTS];
   Parameter weights[MAX_NUM_WEIGHTS];
-  //bool trainableInputs[MAX_NUM_INPUTS];
+  bool trainableInputs[MAX_NUM_INPUTS];
   //bool resetInputGrads[MAX_NUM_INPUTS];
   LogicalPartition input_lps[MAX_NUM_INPUTS], input_grad_lps[MAX_NUM_INPUTS];
   //Tensor locals[MAX_NUM_LOCALS];

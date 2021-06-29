@@ -267,10 +267,10 @@ Op::Op(FFModel& model,
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input;
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -302,10 +302,10 @@ Op::Op(FFModel& model,
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input;
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -334,10 +334,10 @@ Op::Op(FFModel& model,
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input1;
   inputs[1] = _input2;
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -368,10 +368,10 @@ Op::Op(FFModel& model,
   inputs[0] = _input1;
   inputs[1] = _input2;
   inputs[2] = _input3;
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -400,10 +400,10 @@ Op::Op(FFModel& model,
   std::strcpy(name, pcname.c_str());
   for (int i = 0; i < n; i++)
     inputs[i] = _inputs[i];
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -429,10 +429,10 @@ Op::Op(FFModel& model,
   pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -707,8 +707,11 @@ ncclComm_t Op::init_nccl_comms_task(const Task* task,
 #endif
 
 OpMeta::OpMeta(FFHandler _handle)
-: handle(_handle)
-{}
+: handle(_handle), profiling(false)
+{
+  for (int i = 0; i < MAX_NUM_INPUTS; i++)
+    trainableInputs[i] = true;
+}
 
 FFModel::FFModel(FFConfig& _config)
 : op_global_guid(100), config(_config),
@@ -1651,6 +1654,16 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i < op->numOutputs; i++) {
       assert(op->outputs[i].owner_op == op);
       assert(op->outputs[i].owner_idx == i);
+    }
+  }
+
+  // If an operator's input is training data
+  // No need to compute its gradients
+  for (size_t l = 0; l < layers.size(); l++) {
+    Op* op = layers[l];
+    for (int i = 0; i < op->numInputs; i++) {
+      if (op->inputs[i].owner_op == NULL)
+        op->trainableInputs[i] = false;
     }
   }
 
