@@ -408,10 +408,10 @@ void Linear::init_with_dim(const FFModel& ff)
   // launcher.add_field(3, FID_DATA);
   if (ff.config.computationMode == COMP_MODE_TRAINING) {
     // Add inputs[0].region_grad to avoid Legion warning
-    launcher.add_region_requirement(
-        RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-            WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
-    launcher.add_field(2, FID_DATA);
+    //launcher.add_region_requirement(
+    //    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+    //        WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+    //launcher.add_field(2, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -901,12 +901,17 @@ void Linear::backward_with_dim(const FFModel& ff)
     Rect<2> input_rect = runtime->get_index_partition_color_space(
       ctx, inputs[0].part_grad.get_index_partition());
     IndexSpaceT<2> input_task_is = IndexSpaceT<2>(ff.get_task_is(input_rect));
+    // If we are the first layer, our input uses data parallel and does
+    // not have an owner
+    std::string input_pcname = "";
+    if (inputs[0].owner_op != NULL)
+      input_pcname = std::string(inputs[0].owner_op->name);
     IndexLauncher launcher(LINEAR_BWD2_TASK_ID, input_task_is,
                            TaskArgument(this, sizeof(Linear)), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(std::string(inputs[0].owner_op->name)));
+                           FFConfig::get_hash_id(input_pcname));
     launcher.add_region_requirement(
-        RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+        RegionRequirement(inputs[0].part_grad, 0/*projection id*/,
                           READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
     launcher.add_field(0, FID_DATA);
     // Note that replica.part save's a partition of replica.region_grad
