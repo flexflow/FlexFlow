@@ -443,6 +443,14 @@ class FFConfig(object):
   @property
   def epochs(self):
     return ffc.flexflow_config_get_epochs(self.handle)
+    
+  @property
+  def enable_control_replication(self):
+    return ffc.flexflow_config_get_enable_control_replication(self.handle)
+    
+  @property
+  def python_data_loader_type(self):
+    return ffc.flexflow_config_get_python_data_loader_type(self.handle)
 
   def get_current_time(self):
     return ffc.flexflow_get_current_time(self.handle)
@@ -1771,7 +1779,7 @@ class FFModel(object):
   def get_perf_metrics(self):
     handle = ffc.flexflow_model_get_perf_metrics(self.handle)
     return PerfMetrics(handle)
-
+    
   def create_data_loader(self, batch_tensor, full_array):
     """Create a SingleDataloader instance. 
              
@@ -1783,6 +1791,17 @@ class FFModel(object):
              
     :returns:  SingleDataloader -- returns a dataloader instance.
     """
+
+    if (self._ffconfig.enable_control_replication):
+      assert self._ffconfig.python_data_loader_type != 1, 'To enable control replication, please set --python-data-loader-type 2'
+      return self.__create_data_loader_ptr(batch_tensor, full_array)
+    else:
+      if (self._ffconfig.python_data_loader_type == 1):
+        return self.__create_data_loader_attach(batch_tensor, full_array)
+      else:
+        return self.__create_data_loader_ptr(batch_tensor, full_array)
+
+  def __create_data_loader_attach(self, batch_tensor, full_array):
     full_array_shape = full_array.shape
     num_samples = full_array_shape[0]
     num_dim = len(full_array_shape)
@@ -1806,17 +1825,7 @@ class FFModel(object):
 
     return dataloader
     
-  def create_data_loader2(self, batch_tensor, full_array):
-    """Create a SingleDataloader instance. 
-             
-    :param batch_tensor: a batch-sized tensor. Usually it is a input tensor of the model.  
-    :type batch_tensor: Tensor
-    
-    :param full_array: the entire data.
-    :type full_array: Numpy Array
-             
-    :returns:  SingleDataloader -- returns a dataloader instance.
-    """
+  def __create_data_loader_ptr(self, batch_tensor, full_array):
     full_array_shape = full_array.shape
     num_samples = full_array_shape[0]
     if (full_array.dtype == "float32"):

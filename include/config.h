@@ -151,6 +151,8 @@ public:
   int simulator_segment_size;
   int simulator_max_num_segments;
   bool enable_propagation;
+  bool enable_control_replication;
+  int python_data_loader_type;
 };
 
 class FFIterationConfig {

@@ -111,10 +111,10 @@ all: $(OUTFILE) flexflow/core/legion_cffi_header.py flexflow/core/flexflow_cffi_
 
 DEFINE_HEADERS_DIR ?= ./
 
-flexflow/core/legion_cffi_header.py: legion_cffi_header.py.in legion_cffi_build.py
+flexflow/core/legion_cffi_header.py: legion_cffi_header.py.in legion_cffi_build.py $(LG_RT_DIR)/legion.h
 	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
 	
-flexflow/core/flexflow_cffi_header.py: flexflow_cffi_header.py.in flexflow_cffi_build.py
+flexflow/core/flexflow_cffi_header.py: flexflow_cffi_header.py.in flexflow_cffi_build.py flexflow_c.h
 	$(PYTHON_EXE) flexflow_cffi_build.py --ffhome-dir $(FF_HOME) --output-dir flexflow/core
 
 ifeq ($(strip $(FF_USE_NATIVE_PYTHON)), 0)

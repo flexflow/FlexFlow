@@ -179,7 +179,7 @@ Tensor *create_tensor(FFModel &model, const std::vector<int> &dims, DataType dat
   return tensor;
 }
 
-SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::array &full_array) 
+SingleDataLoader *create_data_loader_ptr(FFModel &model, Tensor &batch_tensor, py::array &full_array) 
 {
   py::buffer_info info = full_array.request();
   DataType dtype;
@@ -191,6 +191,56 @@ SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::a
 
   ssize_t num_samples = info.shape[0];
   return new SingleDataLoader(model, batch_tensor, info.ptr, num_samples, dtype);
+}
+
+SingleDataLoader *create_data_loader_attach(FFModel &model, Tensor &batch_tensor, py::array &full_array) 
+{
+  py::buffer_info info = full_array.request();
+  DataType dtype;
+  if (info.format == "f") {
+    dtype = DataType::DT_FLOAT;
+  } else if (info.format == "i") {
+    dtype = DataType::DT_INT32;
+  }
+
+  int num_dims = info.shape.size();
+  std::vector<int> dims(num_dims);
+  for (int i = 0; i < num_dims; i++) {
+    dims[i] = info.shape[i];
+  }
+  Tensor full_tensor;
+  if (num_dims == 2) {
+    full_tensor = model.create_tensor<2>(dims.data(), dtype);
+  } else if (num_dims == 3) {
+    full_tensor = model.create_tensor<3>(dims.data(), dtype);
+  } else if (num_dims == 4) {
+    full_tensor = model.create_tensor<4>(dims.data(), dtype);
+#if MAX_TENSOR_DIM >= 5
+  } else if (num_dims == 5) {
+    full_tensor = model.create_tensor<5>(dims.data(), dtype);
+#endif
+  } else {
+    assert(0);
+  }
+  ssize_t num_samples = info.shape[0];
+  full_tensor.attach_raw_ptr(model.config, info.ptr, true);
+  SingleDataLoader *dataloader = new SingleDataLoader(model, batch_tensor, full_tensor, num_samples, dtype);
+  full_tensor.detach_raw_ptr(model.config);
+  return dataloader;
+}
+
+SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::array &full_array) 
+{
+  if (model.config.enable_control_replication) {
+    assert(model.config.python_data_loader_type != 1);
+    return create_data_loader_ptr(model, batch_tensor, full_array); 
+  } else {
+    if (model.config.python_data_loader_type == 1) {
+      return create_data_loader_attach(model, batch_tensor, full_array); 
+    } else {
+      return create_data_loader_ptr(model, batch_tensor, full_array); 
+    }
+  }
 }
 
 Tensor concat(FFModel &model, const std::vector<Tensor> &tensors, int axis, const char *name) 

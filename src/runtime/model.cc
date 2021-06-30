@@ -2244,6 +2244,8 @@ struct DefaultConfig {
   const static int machine_model_version = 0;
   const static int simulator_segment_size = 16777216; // 16 MB
   const static int simulator_max_num_segments = 1;
+  const static bool enable_control_replication = false;
+  const static int python_data_loader_type = 1;
 };
 
 FFConfig::FFConfig()
@@ -2270,6 +2272,8 @@ FFConfig::FFConfig()
   machine_model_version = DefaultConfig::machine_model_version;
   simulator_segment_size = DefaultConfig::simulator_segment_size;
   simulator_max_num_segments = DefaultConfig::simulator_max_num_segments;
+  enable_control_replication = DefaultConfig::enable_control_replication;
+  python_data_loader_type = DefaultConfig::python_data_loader_type;
   machine_model_file = "";
   import_strategy_file = "";
   export_strategy_file = "";
@@ -2410,6 +2414,14 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if (!strcmp(argv[i], "--enable-propagation")) {
       enable_propagation = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--control-replication")) {
+      enable_control_replication = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--python-data-loader-type")) {
+      python_data_loader_type = atoi(argv[++i]);
       continue;
     }
   }
