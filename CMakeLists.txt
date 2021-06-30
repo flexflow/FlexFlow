@@ -24,6 +24,9 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(LIBEXT ".so")
 endif()
 
+# only used for pypi
+option(FF_BUILD_FROM_PYPI "Build from pypi" OFF)
+
 # build shared or static flexflow lib
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 
@@ -31,7 +34,7 @@ option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 option(FF_USE_PYTHON "Enable Python" ON)  
 
 # option for using Python
-option(FF_USE_GASNET "Run FlexFlow with GASNet" ON)
+option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)
 set(FF_GASNET_CONDUITS udp mpi ibv)
 set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select Gasnet conduit ${FF_GASNET_CONDUITS}")
 set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})  
@@ -40,10 +43,13 @@ set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})
 set(FF_CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
 
 # option for nccl
-option(FF_USE_NCCL "Run FlexFlow with NCCL" ON)
+option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)
 
 # option for avx2
 option(FF_USE_AVX2 "Run FlexFlow with AVX2" OFF)
+
+# option for max dim
+set(FF_MAX_DIM "4" CACHE STRING "Maximum dimention of tensors")
 
 set(FLEXFLOW_EXT_LIBRARIES "")
 set(FLEXFLOW_INCLUDE_DIRS "")
@@ -88,6 +94,8 @@ if (CMAKE_BUILD_TYPE EQUAL "Debug")
   list(APPEND NVCC_FLAGS
     -DFF_DEBUG)
 endif()
+
+message(STATUS "FlexFlow MAX_DIM: ${FF_MAX_DIM}")
 
 list(APPEND CC_FLAGS
   -std=c++11
@@ -138,16 +146,16 @@ set(FLEXFLOW_CPP_DRV_SRC
 
 # compile flexflow lib
 if(BUILD_SHARED_LIBS)
-   cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
- else()
-   cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
- endif()
+  cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
+else()
+  cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
+endif()
 
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
 
 if(FF_USE_NCCL)
-   add_dependencies(flexflow ${NCCL_NAME})
- endif()
+  add_dependencies(flexflow ${NCCL_NAME})
+endif()
 
 # build binary
 option(FF_BUILD_RESNET "build resnet example" OFF)

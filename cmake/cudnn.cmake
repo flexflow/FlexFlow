@@ -1,5 +1,10 @@
 # find cudnn in CUDNN_ROOT and CUDA_ROOT
-set(CUDNN_ROOT ${CUDNN_PATH})
+if(CUDNN_PATH)
+  set(CUDNN_ROOT ${CUDNN_PATH})
+else()
+	# if CUDNN_PATH is not set, let's try to find it in the CUDA root
+	set(CUDNN_ROOT ${CUDA_TOOLKIT_ROOT_DIR})
+endif()
 find_library(CUDNN_LIBRARY 
   NAMES libcudnn${LIBEXT}
   PATHS ${CUDNN_ROOT} ${CUDA_ROOT}

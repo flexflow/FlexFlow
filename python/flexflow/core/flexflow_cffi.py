@@ -23,15 +23,7 @@ import warnings
 import numpy as np
 from .flexflow_logger import fflogger
 from .flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
-
-assert 'FF_HOME' in os.environ
-_flexflow_cxxheader_dir= os.path.join(os.environ['FF_HOME'], 'include')
-_flexflow_cheader_file = os.path.join(os.path.join(os.environ['FF_HOME'], 'python'), 'flexflow_c.h')
-
-_flexflow_cheader = subprocess.check_output(['gcc', '-I', _flexflow_cxxheader_dir, '-E', '-P', _flexflow_cheader_file]).decode('utf-8')
-ffi = cffi.FFI()
-ffi.cdef(_flexflow_cheader)
-ffc = ffi.dlopen(None)
+from .flexflow_cffi_header import ffc, ffi
 
 ff_tracing_id = 200
 

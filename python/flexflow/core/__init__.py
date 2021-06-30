@@ -32,12 +32,12 @@ else:
 if use_pybind:
   _FF_PYTHON_BINDING = 'pybind11'
   print("Using pybind11 flexflow bindings.")
-  from flexflow.core.flexflow_pybind11 import *
+  from .flexflow_pybind11 import *
 else:
   _FF_PYTHON_BINDING = 'cffi'
   print("Using cffi flexflow bindings.")
-  from flexflow.core.flexflow_cffi import *
-  from flexflow.core.flexflow_type import *
+  from .flexflow_cffi import *
+  from .flexflow_type import *
 
 
 # check if use native python interpreter
@@ -62,4 +62,4 @@ else:
 if build_docs == 1:
   pass
 else:
-  from flexflow.core.flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context
+  from .flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context
