@@ -140,6 +140,8 @@ void SingleDataLoader::load_input_with_dim(const Task *task,
     assert(meta->idxs[i] == meta->idxs[0] + i);
   coord_t start_idx = meta->idxs[0];
   const DT* input_zc = acc_full_input.ptr + start_idx * num_elements_per_batch;
+  // const int point = task->index_point.point_data[0];
+  // printf("Load batch point %d, start_idx %ld, ptr %p\n", point, start_idx, input_zc);
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   //printf("ptr(%p, %p), idx0 %d nb_elements_per_batch %d, batch_size %d, %d\n", acc_full_input.ptr, input_zc, start_idx, num_elements_per_batch, batch_size, start_idx * num_elements_per_batch);
