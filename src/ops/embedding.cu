@@ -408,7 +408,7 @@ bool Embedding::measure_operator_cost(Simulator* sim,
   assert (weight_ptr != NULL);
   int in_dim = sub_input.adim[0];
   int out_dim = sub_input.adim[0];
-  assert (sub_input.adim[1] == sub_output.adim[2]);
+  assert (sub_input.adim[1] == sub_output.adim[1]);
   int batch_size = sub_input.adim[1];
 
   cudaStream_t stream;

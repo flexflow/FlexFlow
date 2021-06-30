@@ -200,11 +200,11 @@ endif()
 if(FF_BUILD_DLRM OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/DLRM)
 
-  add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)
-  target_include_directories(generate_dlrm_hetero_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+  #add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)
+  #target_include_directories(generate_dlrm_hetero_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
 
-  add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
-  target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+  #add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
+  #target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
 endif()
 
 if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)
