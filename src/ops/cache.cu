@@ -358,7 +358,6 @@ void Cache::forward(const FFModel& ff)
   launcher_update.add_field(0, FID_DATA);
   FutureMap score_fm = runtime->execute_index_space(ctx, launcher_update);
   // add score futures to Cache future vector attribute
-  score_futures.clear();
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
     case DIM: \

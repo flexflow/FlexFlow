@@ -15,11 +15,12 @@
 
 #include "model.h"
 #include "cuda_helper.h"
+#include "moe.h"
 
-#define MAX_K 2
-#define MAX_BATCH_SIZE 64
-#define MAX_N 10
+#define MOE_VERBOSE
+// #define MOE_DEBUG
 
+#include <cmath>
 
 Tensor FFModel::aggregate_spec(const Tensor* inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
                           int n, float lambda_bal, const char* name)
@@ -34,15 +35,15 @@ AggregateSpec::AggregateSpec(FFModel& model,
                     const Tensor* _inputs,
                     int _n, float _lambda_bal, const char* name)
 : Op(model, OP_AGG_SPEC, name, _n+4, _inputs),
-  n(_n), lambda_bal(_lambda_bal),
-  profiling(model.config.profiling)
+  n(_n), profiling(model.config.profiling)
 {
   // FIXME: For now, set upper limits Better: Do as follows, but memory is
   // assigned per block, so requires to check that
   // https://stackoverflow.com/questions/5531247/allocating-shared-memory/5531640#5531640
   assert(n <= MAX_N && "Increase MAX_N in #define");
   assert(inputs[0].adim[0] <= MAX_K && "Increase MAX_K in #define");
-  assert(inputs[0].adim[1] <= MAX_BATCH_SIZE && "Increase MAX_BATCH_SIZE in #define");
+  int batch_size = inputs[0].adim[1];
+  assert(batch_size <= MAX_BATCH_SIZE && "Increase MAX_BATCH_SIZE in #define");
 
   assert(n+4 == numInputs);
   assert(n > 0);
@@ -73,6 +74,8 @@ AggregateSpec::AggregateSpec(FFModel& model,
   outputs[0].adim[num_dim-1] = k*inputs[0].adim[num_dim-1];
 
   numWeights = 0;
+  numOutputs = 1;
+  lambda_bal = _lambda_bal/batch_size;
 }
 
 
@@ -204,9 +207,10 @@ void aggspec_forward_kernel(float** exp_preds,
         if(expert_idx[expert] >= exp_samples) {
           // dropped sample
           chosen_exp_preds[i*k+j] = 0;
-          continue;
         }
-        chosen_exp_preds[i*k+j] = exp_preds[expert] + expert_idx[expert]*out_dim;
+        else {
+          chosen_exp_preds[i*k+j] = exp_preds[expert] + expert_idx[expert]*out_dim;
+        }
         expert_idx[expert]++;
       }
     }
@@ -224,9 +228,26 @@ void aggspec_forward_kernel(float** exp_preds,
       output[i] = 0.0f;
     }
   }
+
+#ifdef MOE_DEBUG
+  __syncthreads();
+  if(threadIdx.x == 0) {
+    for(int i = 0; i < n; i++) {
+      printf("0. expert %d preds:\n", i);
+      for(int j = 0; j < exp_samples; j++) {
+        for(int l = 0; l < out_dim; l++) {
+          printf("%.2f ", exp_preds[i][j*out_dim + l]);
+        }
+        printf("\n");
+      }
+      printf("\n");
+    }
+  }
+#endif
 }
 
 
+// TODO: This is incompatible with other Ops writing to that area.
 __device__
 void aggspec_backward_kernel_gate(const float* output_grad,
               float* full_gate_grads,
@@ -236,59 +257,97 @@ void aggspec_backward_kernel_gate(const float* output_grad,
               int* expert_bal, float lambda_bal,
               int batch_size, int k, int n, int out_dim)
 {
-
-  __shared__ float gate_grad_sum[MAX_BATCH_SIZE];
-
-  // init gate_grad_sum to 0
-  CUDA_KERNEL_LOOP(i, batch_size)
-  {
-    gate_grad_sum[i] = 0.0f;
-  }
-
-  __syncthreads();
+  // TODO: Multiple blocks
+  __shared__ float shared_sum[1];
+  if(threadIdx.x == 0) *shared_sum = 0.0f;
+  float thread_sum = 0.0f;
 
   // get sum of expert errors
   /* NOTE: Errors just squared L2 norm of gradients. * batch_size because the
   expert gradients are /= batch_size and then it would be /= batch_size^2 here */
+
+  // CUDA_KERNEL_LOOP(i, n*batch_size)
+  // {
+  //   full_gate_grads[i] = 0.0f;
+  // }
+  // __syncthreads();
+
   CUDA_KERNEL_LOOP(i, batch_size*k*out_dim)
   {
     if(cache_corr[i/(k*out_dim)]) {
       float res = output_grad[i] * output_grad[i] * batch_size;
+      // printf("res: %.3f, out=%.3f, bs=%d \n", res, output_grad[i], batch_size);
       float* gate_grad_idx = full_gate_grads + (i/(out_dim*k))*n
         + expert_assign[(i/(out_dim*k))*k+(i/out_dim)%k];
       atomicAdd(gate_grad_idx, res);
-      atomicAdd(gate_grad_sum+i/(k*out_dim), res);
+      thread_sum += res;
     }
   }
 
-  // Compute gate gradients:
-  // Assigned expert i, sample j: pred(i,j) - err_(i,j)/sum_l err(l,j)
+  __syncthreads();
+  atomicAdd(shared_sum, thread_sum);
+  float normalizer = 1.0f/(k*batch_size);
+
+  // TODO: Parallelize bal factor and mean = 0 looop CUDA_LOOP(if i < x, else)
+  // make 0 mean
   __syncthreads();
   CUDA_KERNEL_LOOP(i, k*batch_size)
   {
-    if(cache_corr[i/k]) {
-      full_gate_grads[i/k*n + expert_assign[i]] /= gate_grad_sum[i/k];
-      full_gate_grads[i/k*n + expert_assign[i]] -= (1.0f - gate_pred[i]);
-    }
+    full_gate_grads[i/k*n + expert_assign[i]] -= *shared_sum*normalizer;
   }
+
+
+#ifdef MOE_DEBUG
+  __syncthreads();
+  if(threadIdx.x == 0) {
+    printf("1. out grad:\n");
+    for(int i = 0; i < k*batch_size; i++) {
+      for(int j = 0; j < out_dim; j++) {
+        printf("%.4f ", output_grad[i*out_dim+j]);
+      }
+      printf("\n");
+    }
+    printf("\n");
+
+    printf("2. gate grad no bal:\n");
+    for(int i = 0; i < batch_size; i++) {
+      for(int j = 0; j < n; j++) {
+        printf("%.4f ", full_gate_grads[i*n+j]);
+      }
+      printf("\n");
+    }
+    printf("\n");
+
+    float abs_gate_sum = 0.0f;
+    float gate_sum = 0.0f;
+    for(int j = 0; j < batch_size*n; j++) {
+      abs_gate_sum += std::abs(full_gate_grads[j]);
+      gate_sum += full_gate_grads[j];
+    }
+    printf("3. gate grad sum nobal: %.8f %.5f\n", gate_sum, abs_gate_sum);
+  }
+#endif
 
   // balance term
   __syncthreads();
   CUDA_KERNEL_LOOP(i, n*batch_size)
   {
-    full_gate_grads[i] += lambda_bal*expert_bal[i%n];
+    full_gate_grads[i] += lambda_bal*(expert_bal[i%n] - (float)k*batch_size/n);
   }
 
+#ifdef MOE_DEBUG
   __syncthreads();
-  // make 0 mean
-  CUDA_KERNEL_LOOP(i, n*batch_size)
-  {
-    int start = (i/n)*n;
-    float sub = -full_gate_grads[i]/n;
-    for(int j = 0; j < n; j++) {
-      atomicAdd(full_gate_grads+start+j, sub);
+  if(threadIdx.x == 0) {
+    printf("4. gate grads:\n");
+    for(int i = 0; i < batch_size; i++) {
+      for(int j = 0; j < n; j++) {
+        printf("%.3f ", full_gate_grads[i*n+j]);
+      }
+      printf("\n");
     }
+    printf("\n");
   }
+#endif
 }
 
 
@@ -298,7 +357,14 @@ void aggspec_backward_kernel_exp(const float* output_grad,
               float** exp_grads,
               int batch_size,
               int k,
-              int out_dim) {
+              int out_dim)
+{
+  // CUDA_KERNEL_LOOP(i, k*out_dim*batch_size)
+  // {
+  //   exp_grads[i/out_dim][i%out_dim] = 0.0f;
+  // }
+  // __syncthreads();
+
   // compute expert gradients
   CUDA_KERNEL_LOOP(i, k*out_dim*batch_size)
   {
@@ -342,13 +408,21 @@ void aggspec_backward_kernel(float** exp_grads,
         if(expert_bal[expert] >= exp_samples) {
           // dropped sample
           chosen_exp_grads[i*k+j] = 0;
-          expert_bal[expert]++;
-          continue;
         }
-        chosen_exp_grads[i*k+j] = exp_grads[expert] + expert_bal[expert]*out_dim;
+        else {
+          chosen_exp_grads[i*k+j] = exp_grads[expert] + expert_bal[expert]*out_dim;
+        }
         expert_bal[expert]++;
       }
     }
+
+#ifdef MOE_VERBOSE
+    printf("expert_bal:");
+    for(int i = 0; i < n; i++)
+      printf(" %d", expert_bal[i]);
+    printf("\n");
+#endif
+
   }
 
   __syncthreads();
@@ -362,6 +436,56 @@ void aggspec_backward_kernel(float** exp_grads,
   aggspec_backward_kernel_gate(output_grads, full_gating_grads, exp_assign,
     cache_corr, gating_net_preds, expert_bal, (lambda_bal*n)/batch_size,
     batch_size, k, n, out_dim);
+
+#ifdef MOE_DEBUG
+  __syncthreads();
+  if(threadIdx.x == 0) {
+    float abs_gate_sum = 0.0f;
+    float gate_sum = 0.0f;
+    for(int j = 0; j < batch_size*n; j++) {
+      abs_gate_sum += std::abs(full_gating_grads[j]);
+      gate_sum += full_gating_grads[j];
+    }
+    printf("5. gate grad sum: %.8f %.5f\n", gate_sum, abs_gate_sum);
+    printf("5. exp samples: %d\n", exp_samples);
+    float exp_sum = 0.0f;
+    for(int i = 0; i < n; i++)
+      for(int j = 0; j < exp_samples*out_dim; j++)
+        exp_sum += std::abs(exp_grads[i][j]);
+    printf("5. average exp grad sum: %.5f\n", exp_sum/n);
+
+    printf("6. gate preds\n");
+    for(int j = 0; j < batch_size; j++) {
+      for(int l = 0; l < k; l++) {
+        printf("%.4f ", gating_net_preds[j*k + l]);
+      }
+      printf("\n");
+    }
+    printf("\n");
+
+    printf("7. assign:\n");
+    for(int i = 0; i < batch_size; i++) {
+      for(int j = 0; j < k; j++) {
+        printf("%d ", exp_assign[i*k+j]);
+      }
+      printf("\n");
+    }
+    printf("\n");
+
+    for(int i = 0; i < n; i++) {
+      printf("8. exp grad %d\n", i);
+      for(int j = 0; j < exp_samples; j++) {
+        for(int l = 0; l < out_dim; l++) {
+          printf("%.4f ", exp_grads[i][j*out_dim + l]);
+        }
+        printf("\n");
+      }
+      printf("\n");
+    }
+
+    printf("\n===================================================================\n\n");
+  }
+#endif
 }
 
 
@@ -451,7 +575,7 @@ void AggregateSpec::backward_task(const Task *task,
   const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
   const AccessorRO<int, 2> acc_gate_assign(regions[1], FID_DATA);
   const AccessorRO<int, 2> acc_true_gate_assign(regions[2], FID_DATA);
-  const AccessorWO<float, 2> acc_full_gate_grad(regions[3], FID_DATA);
+  const AccessorRW<float, 2> acc_full_gate_grad(regions[3], FID_DATA); // TODO: WO, debug
   const AccessorRO<float, 2> acc_output_grad(regions[n+4], FID_DATA);
 
   Rect<2> rect_gate_pred = runtime->get_index_space_domain(

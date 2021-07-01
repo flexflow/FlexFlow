@@ -32,7 +32,7 @@ bool RecompileState::trigger() {
 }
 
 void RecompileState::alter() {
-  if(recompilations == 0)
-    alter_func(ff);
-  recompilations++;
+  // if(recompilations == 0)
+  alter_func(ff);
+  // recompilations++;
 }

@@ -17,11 +17,7 @@
 #include "cuda_helper.h"
 #include <math.h>
 #include <stdio.h>
-
-#define MAX_K 2
-#define MAX_BATCH_SIZE 64
-#define MAX_N 10
-
+#include "moe.h"
 
 void FFModel::group_by(const Tensor& input,
                         const Tensor& assign,
@@ -138,7 +134,6 @@ void GroupBy::create_output_and_partition(FFModel& model)
   }
 }
 
-
 OpMeta* GroupBy::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
@@ -147,6 +142,7 @@ OpMeta* GroupBy::init_task(const Task* task,
   FFHandler handle = *((FFHandler*)task->local_args);
   GroupByMeta* m = new GroupByMeta(handle, gb->n);
   m->profiling = gb->profiling;
+  cudaMemcpy(m->score, &gb->alpha, sizeof(float), cudaMemcpyHostToDevice);
   return m;
 }
 
@@ -228,7 +224,8 @@ void gb_forward_kernel(const float* input,
         int k, // chosen experts
         float alpha, // factor additional memory assigned
         int batch_size,
-        int data_dim)
+        int data_dim,
+        float* score)
 {
   __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
 
@@ -242,11 +239,19 @@ void gb_forward_kernel(const float* input,
       if(expert_idx[expert] >= exp_tensor_rows) {
         // dropped sample
         chosen_exp_preds[i] = 0;
-        continue;
       }
-      chosen_exp_preds[i] = outputs[expert] + expert_idx[expert]*data_dim;
+      else {
+        chosen_exp_preds[i] = outputs[expert] + expert_idx[expert]*data_dim;
+      }
       expert_idx[expert]++;
     }
+
+    // compute min alpha such that all samples fit
+    float min_alpha = -1.0f;
+    for(int i = 0; i < n; i++)
+      if(expert_idx[i] > min_alpha) min_alpha = expert_idx[i];
+    min_alpha *= (float)n/(k*batch_size);
+    *score = 0.999f*(*score) + 0.001f*min_alpha;
   }
 
   __syncthreads();
@@ -304,7 +309,7 @@ void gb_backward_kernel(float* input_grad,
 
 
 template<int NDIM>
-void GroupBy::forward_task_with_dim(const Task *task,
+float GroupBy::forward_task_with_dim(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
@@ -359,11 +364,15 @@ void GroupBy::forward_task_with_dim(const Task *task,
 
   gb_forward_kernel<<<GET_BLOCKS(batch_size*k*data_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim))>>>(
     acc_input.ptr(rect_input), acc_assign.ptr(rect_assign), m->dev_region_ptrs, n, k,
-    alpha, batch_size, data_dim);
+    alpha, batch_size, data_dim, m->score);
+
+  float score = -1.0f; // TODO
+  cudaMemcpy(&score, m->score, sizeof(float), cudaMemcpyDeviceToHost);
+  return score;
 }
 
 
-void GroupBy::forward_task(const Task *task,
+float GroupBy::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
@@ -378,14 +387,15 @@ void GroupBy::forward_task(const Task *task,
     default:
       assert(false);
   }
+  return -1.0f;
 }
 
 
-void GroupBy::backward_task(const Task *task,
+template<int NDIM>
+void GroupBy::backward_task_with_dim(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
-  return;
   // Get n, alpha
   const GroupByMeta* m = *((GroupByMeta**)task->local_args);
   const GroupBy* gb = (GroupBy*) task->args;
@@ -396,20 +406,18 @@ void GroupBy::backward_task(const Task *task,
   assert((int)task->regions.size() == n+2);
 
   // get input and assign regions
-  const AccessorWO<float, 2> acc_input_grad(regions[0], FID_DATA);
+  const AccessorWO<float, NDIM> acc_input_grad(regions[0], FID_DATA);
   const AccessorRO<int, 2> acc_assign(regions[1], FID_DATA);
 
-  Rect<2> rect_input_grad = runtime->get_index_space_domain(
+  Rect<NDIM> rect_input_grad = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<2> rect_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
 
-  coord_t input_rows = rect_input_grad.hi[1] - rect_input_grad.lo[1] + 1;
-  coord_t input_cols = rect_input_grad.hi[0] - rect_input_grad.lo[0] + 1;
-  assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
+  int exp_batch_size = rect_input_grad.hi[NDIM-1] - rect_input_grad.hi[NDIM-1] + 1;
+  int batch_size = rect_assign.hi[1] - rect_assign.lo[1] + 1;
+  int data_dim = rect_input_grad.volume()/exp_batch_size;
   int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
-  int batch_size = input_rows;
-  int data_dim = input_cols;
 
   // get output
   float* output_grads[n];
@@ -420,10 +428,10 @@ void GroupBy::backward_task(const Task *task,
     output_grads[i] = helperGetTensorPointerRW<float>(
       regions[i+2], task->regions[i+2], FID_DATA, ctx, runtime);
 
-    //coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
-    coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
-    //assert((int)output_rows == exp_output_rows);
-    assert(output_cols == input_cols);
+    // //coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
+    // coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
+    // //assert((int)output_rows == exp_output_rows);
+    // assert(output_cols == input_cols);
   }
 
 #ifndef DISABLE_LEGION_CUDA_HIJACK
@@ -439,6 +447,24 @@ void GroupBy::backward_task(const Task *task,
   gb_backward_kernel<<<GET_BLOCKS(batch_size*k*data_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim))>>>(
     acc_input_grad.ptr(rect_input_grad), acc_assign.ptr(rect_assign), m->dev_region_ptrs,
     n, k, alpha, batch_size, data_dim);
+}
+
+void GroupBy::backward_task(const Task *task,
+                          const std::vector<PhysicalRegion> &regions,
+                          Context ctx, Runtime *runtime)
+{
+  return;
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (in_domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
 }
 
 
@@ -489,7 +515,23 @@ void GroupBy::forward(const FFModel& ff)
     launcher.add_field(i+2, FID_DATA);
   }
 
-  runtime->execute_index_space(ctx, launcher);
+  FutureMap score_fm = runtime->execute_index_space(ctx, launcher);
+  // add score futures to Cache future vector attribute
+  // score_futures.clear();
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) \
+        score_futures.push_back(score_fm[*it]); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
 }
 
 void GroupBy::backward(const FFModel& ff)
@@ -554,10 +596,12 @@ GroupByMeta::GroupByMeta(FFHandler handler, int n)
 : OpMeta(handler)
 {
   checkCUDA(cudaMalloc(&dev_region_ptrs, n*sizeof(float*)));
+  checkCUDA(cudaMalloc(&score, sizeof(float)));
 }
 GroupByMeta::~GroupByMeta(void)
 {
   checkCUDA(cudaFree(&dev_region_ptrs));
+  checkCUDA(cudaFree(&score));
 }
 
 

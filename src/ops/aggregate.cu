@@ -15,11 +15,10 @@
 
 #include "model.h"
 #include "cuda_helper.h"
+#include "moe.h"
 
-#define MAX_K 2
-#define MAX_BATCH_SIZE 64
-#define MAX_N 10
-
+// #define MOE_DEBUG
+#define MOE_VERBOSE
 
 Tensor FFModel::aggregate(const Tensor* inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
                           int n, float lambda_bal, const char* name)
@@ -42,7 +41,8 @@ Aggregate::Aggregate(FFModel& model,
   // https://stackoverflow.com/questions/5531247/allocating-shared-memory/5531640#5531640
   assert(n <= MAX_N && "Increase MAX_N in #define");
   assert(inputs[0].adim[0] <= MAX_K && "Increase MAX_K in #define");
-  assert(inputs[0].adim[1] <= MAX_BATCH_SIZE && "Increase MAX_BATCH_SIZE in #define");
+  int batch_size = inputs[0].adim[1];
+  assert(batch_size <= MAX_BATCH_SIZE && "Increase MAX_BATCH_SIZE in #define");
 
   assert(n+4 == numInputs);
   assert(n > 0);
@@ -72,6 +72,8 @@ Aggregate::Aggregate(FFModel& model,
   outputs[0].adim[num_dim-1] = inputs[0].adim[num_dim-1];
 
   numWeights = 0;
+  numOutputs = 1;
+  lambda_bal = _lambda_bal/batch_size;
 }
 
 
@@ -205,9 +207,11 @@ void agg_forward_kernel(float** exp_preds,
         if(expert_idx[expert] >= exp_samples) {
           // dropped sample
           chosen_exp_preds[i*k+j] = 0;
-          continue;
+          // continue;
         }
-        chosen_exp_preds[i*k+j] = exp_preds[expert] + expert_idx[expert]*out_dim;
+        else {
+          chosen_exp_preds[i*k+j] = exp_preds[expert] + expert_idx[expert]*out_dim;
+        }
         expert_idx[expert]++;
       }
     }
@@ -230,6 +234,28 @@ void agg_forward_kernel(float** exp_preds,
       atomicAdd(output+out_id, res);
     }
   }
+
+#ifdef MOE_DEBUG
+  if(threadIdx.x == 0) {
+    for(int i = 0; i < n; i++) {
+      printf("expert preds %d:\n", i);
+      for(int j = 0; j < exp_samples; j++) {
+        for(int l = 0; l < out_dim; l++) {
+          printf("%.2f ", exp_preds[i][j*out_dim+l]);
+        }
+        printf("\n");
+      }
+    }
+    printf("agg output:\n");
+      for(int j = 0; j < batch_size; j++) {
+        for(int l = 0; l < out_dim; l++) {
+          printf("%.2f ", output[j*out_dim+l]);
+        }
+        printf("\n");
+      }
+  }
+#endif
+
 }
 
 
@@ -258,20 +284,40 @@ void agg_backward_kernel_gate(const float* output_grad,
   // balance term
   CUDA_KERNEL_LOOP(i, n*batch_size)
   {
-    atomicAdd(full_gate_grads+i, lambda_bal*expert_bal[i%n]);
+    atomicAdd(full_gate_grads+i, lambda_bal*(expert_bal[i%n] - (float)k*batch_size/n));
+  }
+
+  // make 0 mean
+  __shared__ float avg_sum[1];
+  if(threadIdx.x == 0) *avg_sum = 0.0f;
+  __syncthreads();
+
+  CUDA_KERNEL_LOOP(i, batch_size*n)
+  {
+    atomicAdd(avg_sum, full_gate_grads[i]);
   }
 
   __syncthreads();
 
-  // make 0 mean
   CUDA_KERNEL_LOOP(i, batch_size*n)
   {
-    int start = (i/n)*n;
-    float sub = -full_gate_grads[i]/n;
-    for(int j = 0; j < n; j++) {
-      atomicAdd(full_gate_grads+start+j, sub);
-    }
+    atomicAdd(full_gate_grads+i, -(*avg_sum/(batch_size*n)));
   }
+
+#ifdef MOE_DEBUG
+  __syncthreads();
+  if(threadIdx.x == 0) {
+    printf("gate grads:\n");
+    for(int i = 0; i < batch_size; i++) {
+      for(int j = 0; j < n; j++) {
+        printf("%.3f ", full_gate_grads[i*n+j]);
+      }
+      printf("\n");
+    }
+    printf("\n");
+  }
+#endif
+
 }
 
 
@@ -287,9 +333,24 @@ void agg_backward_kernel_exp(const float* output_grad,
   {
     if (exp_grads[i/out_dim] != 0) {
       int out_id = (i/(k*out_dim))*out_dim + (i%out_dim);
-      exp_grads[i/out_dim][i%out_dim] += gate_preds[i/out_dim] * output_grad[out_id];
+      exp_grads[i/out_dim][i%out_dim] += gate_preds[i/out_dim]/k * output_grad[out_id];
     }
   }
+
+#ifdef MOE_DEBUG
+  __syncthreads();
+  if(threadIdx.x == 0) {
+    printf("gate weights:\n");
+    for(int i = 0; i < batch_size; i++) {
+      for(int j = 0; j < k; j++) {
+        printf("%.3f ", gate_preds[i*k+j]);
+      }
+      printf("\n");
+    }
+    printf("\n");
+  }
+#endif
+
 }
 
 
@@ -329,14 +390,22 @@ void agg_backward_kernel(float** exp_preds,
           // dropped sample
           chosen_exp_preds[i*k+j] = 0;
           chosen_exp_grads[i*k+j] = 0;
-          expert_bal[expert]++;
-          continue;
         }
-        chosen_exp_preds[i*k+j] = exp_preds[expert] + expert_bal[expert]*out_dim;
-        chosen_exp_grads[i*k+j] = exp_grads[expert] + expert_bal[expert]*out_dim;
+        else {
+          chosen_exp_preds[i*k+j] = exp_preds[expert] + expert_bal[expert]*out_dim;
+          chosen_exp_grads[i*k+j] = exp_grads[expert] + expert_bal[expert]*out_dim;
+        }
         expert_bal[expert]++;
       }
     }
+
+#ifdef MOE_VERBOSE
+    printf("expert_bal:");
+    for(int i = 0; i < n; i++)
+      printf(" %d", expert_bal[i]);
+    printf("\n");
+#endif
+
   }
 
   __syncthreads();
@@ -350,6 +419,29 @@ void agg_backward_kernel(float** exp_preds,
   agg_backward_kernel_gate(output_grads, full_gating_grads, chosen_exp_preds,
     exp_assign, cache_corr, expert_bal, (lambda_bal*n)/batch_size, batch_size,
     k, n, out_dim);
+
+#ifdef MOE_DEBUG
+  __syncthreads();
+  if(threadIdx.x == 0) {
+    printf("output grads:\n");
+    for(int i = 0; i < 50; i++) {
+      for(int j = 0; j < out_dim; j++) {
+        printf("%.3f ", output_grads[i*out_dim+j]);
+      }
+      printf("\n");
+    }
+
+    for(int l = 0; l < 5; l++) {
+      printf("exp grads %d:\n", l);
+      for(int i = 0; i < 35; i++) {
+        for(int j = 0; j < out_dim; j++) {
+          printf("%.3f ", exp_grads[l][i*out_dim+j]);
+        }
+        printf("\n");
+      }
+    }
+  }
+#endif
 }
 
 

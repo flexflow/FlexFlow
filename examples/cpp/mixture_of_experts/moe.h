@@ -14,13 +14,21 @@
  */
 
 #include "model.h"
+
+#define MAX_K 2
+#define MAX_BATCH_SIZE 100
+#define MAX_N 8
+// #define MOE_VERBOSE
+// #define SPEC_SCORE
+// #define MOE_SPEC_SCORE
+
 #define MAX_NUM_SAMPLES 60000
 
 // data set defines
-#define USE_MNIST
+#define USE_CIFAR10
+#define NUM_SAMPLES (TRAIN_SAMPLES+TEST_SAMPLES)
 
 #ifdef USE_MNIST
-  #define NUM_SAMPLES 60000
   #define TRAIN_SAMPLES 60000
   #define TEST_SAMPLES 0
   #define INPUT_DIM 28*28
@@ -29,13 +37,28 @@
   #define READ_DATA read_mnist
   #define USE_MLP
 #elif defined(USE_CIFAR100)
-  #define NUM_SAMPLES 50000
   #define TRAIN_SAMPLES 50000
-  #define TEST_SAMPLES 0
+  #define TEST_SAMPLES 10000
   #define INPUT_DIM 3,32,32
   #define D_DIM 4
   #define OUT_DIM 100
   #define READ_DATA read_cifar100
+  #define USE_CNN
+#elif defined(USE_CIFAR100_C)
+  #define TRAIN_SAMPLES 50000
+  #define TEST_SAMPLES 0
+  #define INPUT_DIM 3,32,32
+  #define D_DIM 4
+  #define OUT_DIM 10
+  #define READ_DATA read_cifar100_c
+  #define USE_CNN
+#elif defined(USE_CIFAR10)
+  #define TRAIN_SAMPLES 50000
+  #define TEST_SAMPLES 10000
+  #define INPUT_DIM 3,32,32
+  #define D_DIM 4
+  #define OUT_DIM 10
+  #define READ_DATA read_cifar10
   #define USE_CNN
 #endif
 

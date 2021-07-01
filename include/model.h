@@ -31,6 +31,7 @@
 #include <fstream>
 #include <sstream>
 #include <ctime>
+// #include <deque> // TODO: Needed or incl elsewhere
 
 using namespace Legion;
 
@@ -502,6 +503,7 @@ public:
   void init_layers();
   void prefetch();
   void forward(int seq_length = -1);
+  void forward_test(int seq_length = -1);
   void compute_metrics();
   void get_metrics();
   void backward(int seq_length = -1);
@@ -514,6 +516,7 @@ public:
                LossType loss_type,
                const std::vector<MetricsType>& metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
+  void recompile(std::vector<int>& layers_changed);
   void optimize(Simulator* simulator,
                 std::map<Op*, ParallelConfig>& best,
                 size_t budget, float alpha,
@@ -1187,6 +1190,7 @@ public:
   GroupByMeta(FFHandler handle, int n);
   ~GroupByMeta(void);
   float** dev_region_ptrs;
+  float* score;
 };
 
 class GroupBy : public Op {
@@ -1196,9 +1200,11 @@ public:
           const Tensor& _assign,
           int _n, float _alpha,
           const char* name);
+  ~GroupBy(void);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
+  void resize_exp_batch(FFModel* model, float _alpha);
   void print_layer(const FFModel& model) {assert(0);}
   void create_weights(FFModel& model);
   void create_output_and_partition(FFModel& model);
@@ -1206,7 +1212,7 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
+  static float forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
   static void backward_task(const Task *task,
@@ -1219,12 +1225,18 @@ private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
   template<int NDIM>
-  static void forward_task_with_dim(const Task *task,
+  static float forward_task_with_dim(const Task *task,
                                     const std::vector<PhysicalRegion> &regions,
                                     Context ctx, Runtime *runtime);
+  template<int NDIM>
+  static void backward_task_with_dim(const Task *task,
+                                    const std::vector<PhysicalRegion> &regions,
+                                    Context ctx, Runtime *runtime);
+
 public:
   int n;
   float alpha;
+  std::deque<Future> score_futures;
   bool profiling;
 };
 
@@ -1268,7 +1280,7 @@ public:
   bool load_cached;
   int num_batches;
   std::function<float(float*,const void*,const void*,int)> score_f;
-  std::vector<Future> score_futures;
+  std::deque<Future> score_futures;
   bool profiling;
   int batch_ctr;
 };

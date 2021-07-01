@@ -15,6 +15,8 @@
 
 #include "model.h"
 #include "cuda_helper.h"
+// #define MOE_SPEC_SCORE
+
 
 const float LOG_MIN_VALUE = 0.00000001f;
 
@@ -77,8 +79,18 @@ void update_metrics_sparse_label_kernel(
       }
       assert(my_label >= 0);
       atomicAdd(&(perf->train_all), 1);
+#ifdef MOE_SPEC_SCORE
+      if (labels[(int)b/16] == my_label) { // TODO: /16
+        printf("co %d,1\n", b);
+        atomicAdd(&(perf->train_correct), 1);
+      }
+      else {
+         printf("co %d,0\n", (int)b);
+      }
+#else
       if (labels[b] == my_label)
         atomicAdd(&(perf->train_correct), 1);
+#endif
     }
     if (metrics.measure_sparse_categorical_crossentropy) {
       float my_logit = max(logits[b*num_classes+labels[b]], LOG_MIN_VALUE);
@@ -213,10 +225,15 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     int num_samples = acc_logit.rect.hi[NDIM-1] - acc_logit.rect.lo[NDIM-1] + 1;
     int num_classes = acc_logit.rect.volume() / num_samples;
+#ifdef MOE_SCORE_SPEC
+    assert(num_classes == 100);
+#endif
+#ifndef MOE_SCORE_SPEC
     for (int i = 1; i < NDIM; i++) {
       assert(acc_label.rect.hi[i] == acc_logit.rect.hi[i]);
       assert(acc_label.rect.lo[i] == acc_logit.rect.lo[i]);
     }
+#endif
     assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
     // Cannot measure categorical_crossentropy w/ sparse labels
     // Use measure_sparse_categorical_crossentropy instead

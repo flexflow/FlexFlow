@@ -15,14 +15,15 @@
 
 #include "model.h"
 #include "moe.h"
-#include <sstream>
 #include <fstream>
 #include <string>
+#include <cmath>
+#include <sstream>
 
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("MoE");
-int num_exp = 10;
+int num_exp = 8;
 int num_select = 2;
 
 void parse_input_args(char **argv, int argc, MoeConfig& config)
@@ -58,8 +59,10 @@ float moe_score(float* cached_score,
       cached.insert(cast_input[i*num_select+j]);
       input.insert(cast_cached[i*num_select+j]);
     }
-    if(cached == input) *cached_score += frac;
+    if(cached == input)
+      *cached_score += frac;
   }
+  printf("score: %.3f\n", *cached_score);
   return *cached_score;
 }
 
@@ -80,46 +83,75 @@ bool moe_trigger(FFModel* ff) {
   return score >= thresh;
 }
 
-// 0: Dense_100
-// 1: Dense_101
-// 2: Dense_102
-// 3: TopK_103
-// 4: Cache_104
-// 5: GroupBy_105
-// 6: Softmax_106
-// 7: Dense_107
-// 8: Dense_108
-// 9: Softmax_109
-// 10: Dense_110
-// 11: Dense_111
-// 12: Softmax_112
-// 13: Dense_113
-// 14: Dense_114
-// 15: Softmax_115
-// 16: Dense_116
-// 17: Dense_117
-// 18: Softmax_118
-// 19: Dense_119
-// 20: Dense_120
-// 21: Softmax_121
-// 22: Aggregate cooperation_122
-// 23: Aggregate specification_123
+
 // Alter: GroupBy, Aggregate, AggregateSpec use cached values for expert assign.
 void moe_alter(FFModel* ff) {
-  printf("alter!!\n");
-  ((Cache*)ff->layers[4])->use_cached(true);
-  // Group by input
-  ff->layers[5]->inputs[1] = ff->layers[4]->outputs[0];
-  ff->layers[5]->input_lps[1] = ff->layers[4]->outputs[0].part;
-  ff->layers[5]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
-  // Aggregate input
-  ff->layers[22]->inputs[1] = ff->layers[4]->outputs[0];
-  ff->layers[22]->input_lps[1] = ff->layers[4]->outputs[0].part;
-  ff->layers[22]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
-  // AggregateSpec input
-  ff->layers[23]->inputs[1] = ff->layers[4]->outputs[0];
-  ff->layers[23]->input_lps[1] = ff->layers[4]->outputs[0].part;
-  ff->layers[23]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
+  float cache_thresh = 1.0f;
+  float groupby_thresh = 0.5f;
+  float groupby_overhead = 1.3f;
+  float cache_score = 0.0f;
+  std::vector<int> groupby_idx;
+  std::vector<float> groupby_max;
+
+  // get cache score and groupby max
+  // TODO: normalize scores (divide by amt of futures)
+  for(size_t i = 0; i < ff->layers.size(); i++) {
+    if(ff->layers[i]->op_type == OP_CACHE) {
+      std::deque<Future>* futures = &((Cache*)ff->layers[i])->score_futures;
+      while(!futures->empty()) {
+        cache_score += futures->front().get_result<float>();
+        futures->pop_front();
+      }
+    }
+    else if(ff->layers[i]->op_type == OP_GROUP_BY) {
+      std::deque<Future>* futures = &((GroupBy*)ff->layers[i])->score_futures;
+      groupby_idx.push_back(i);
+      float max_i = 0.0f;
+      while(!futures->empty()) {
+        max_i += futures->front().get_result<float>();
+        futures->pop_front();
+      }
+      groupby_max.push_back(max_i);
+    }
+  }
+
+  // alter on condition
+  bool remap = false;
+  // determine if reallocate alpha
+  for(size_t i = 0; i < groupby_idx.size(); i++) {
+    printf("GB SCORE %d %.3f < %.3f\n", groupby_idx[i], groupby_max[i], ((GroupBy*)ff->layers[groupby_idx[i]])->alpha);
+    if(groupby_max[i] < groupby_thresh*((GroupBy*)ff->layers[groupby_idx[i]])->alpha) {
+      //((GroupBy*)ff->layers[groupby_idx[i]])->resize_exp_batch(ff, groupby_overhead*groupby_max[i]);
+      printf("alter alpha!!!\n");
+      ((GroupBy*)ff->layers[groupby_idx[i]])->alpha = groupby_overhead*groupby_max[i];
+      vector<int> changed_layers;
+      changed_layers.push_back(9);
+      for(int l = 11; l < 115; l++)
+        changed_layers.push_back(l);
+      ff->recompile(changed_layers);
+    }
+  }
+  // dermine if cache trigger
+  if(cache_score > cache_thresh && false) {
+    printf("alter cache!!\n");
+    ((Cache*)ff->layers[4])->use_cached(true);
+    // Group by input
+    ff->layers[5]->inputs[1] = ff->layers[4]->outputs[0];
+    ff->layers[5]->input_lps[1] = ff->layers[4]->outputs[0].part;
+    ff->layers[5]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
+    // Aggregate input
+    ff->layers[22]->inputs[1] = ff->layers[4]->outputs[0];
+    ff->layers[22]->input_lps[1] = ff->layers[4]->outputs[0].part;
+    ff->layers[22]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
+    // AggregateSpec input
+    ff->layers[23]->inputs[1] = ff->layers[4]->outputs[0];
+    ff->layers[23]->input_lps[1] = ff->layers[4]->outputs[0].part;
+    ff->layers[23]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
+
+    remap = true;
+  }
+
+  // return remap;
 }
 
 
@@ -146,66 +178,68 @@ void top_level_task(const Task* task,
   }
 
 
-//-----------------------------------------------------------------
-
-Tensor t = ff.dense(input, 64, AC_MODE_RELU);
-t = ff.dense(t, 10, AC_MODE_RELU);
-t = ff.softmax(t);
-
-//
-//   float alpha = 2.0f; // factor overhead tensor size for imbalance
-//   float lambda = 0.01f; // multiplier for load balance term
-//
-//   // MoE model
-// #ifdef USE_CNN
-//   Tensor t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
-//   t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-//   t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
-//   t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-//   Tensor gate_preds = ff.flat(t);
-//   gate_preds = ff.dense(gate_preds, 64, AC_MODE_RELU);
-// #else
-//   Tensor gate_preds = ff.dense(input, 128, AC_MODE_RELU);
-//   gate_preds = ff.dense(input, 64, AC_MODE_RELU);
-// #endif
-//   gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_RELU);
-//
-//   Tensor topK_output[2];
-//   ff.top_k(gate_preds, topK_output, num_select, false);
-//   ff.cache(topK_output[1], TRAIN_SAMPLES / ffConfig.batchSize, moe_score);
-//
-//   Tensor exp_tensors[num_exp];
-//   ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
-//
-//   Tensor agg_inputs[num_exp+4];
-//   agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
-//   agg_inputs[1] = topK_output[1]; // gate assign
-//   agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
-//   agg_inputs[3] = gate_preds; // full gate preds
-//   for(int i = 0; i < num_exp; i++) {
-// #ifdef USE_CNN
-//     Tensor t = ff.conv2d(exp_tensors[i], 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
-//     t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-//     t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
-//     t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-//     t = ff.flat(t);
-//     t = ff.dense(t, 128, AC_MODE_RELU/*relu*/);
-//     Tensor exp_pred = ff.dense(t, OUT_DIM);
-// #else
-//     Tensor exp_pred = ff.dense(exp_tensors[i], 64, AC_MODE_RELU);
-//     exp_pred = ff.dense(exp_pred, OUT_DIM, AC_MODE_RELU);
-// #endif
-//     agg_inputs[i+4] = ff.softmax(exp_pred);
-//   }
-//
-//   Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
-//   ff.get_metrics();
-//   Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
 
 //-----------------------------------------------------------------
 
+  float alpha = 4.0f;  // factor overhead tensor size for imbalance
+  float lambda = 0.08f; // 0.06f/250.0f;  // multiplier for load balance term
 
-  Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
+  // MoE model
+#ifdef USE_CNN
+  Tensor t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
+  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+  t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
+  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+  Tensor gate_preds  = ff.flat(t);
+  gate_preds = ff.dense(gate_preds, 65, AC_MODE_SIGMOID);
+#else
+  Tensor gate_preds = input;
+#endif
+  gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_SIGMOID);
+  gate_preds = ff.softmax(gate_preds);
+
+  Tensor topK_output[2];
+  ff.top_k(gate_preds, topK_output, num_select, false);
+  // ff.cache(topK_output[1], NUM_SAMPLES / ffConfig.batchSize, moe_score);
+
+  Tensor exp_tensors[num_exp];
+  ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
+
+  Tensor agg_inputs[num_exp+4];
+  agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
+  agg_inputs[1] = topK_output[1]; // gate assign
+  agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
+  agg_inputs[3] = gate_preds; // full gate preds
+  for(int i = 0; i < num_exp; i++) {
+#ifdef USE_CNN
+   Tensor t = ff.conv2d(exp_tensors[i], 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
+   t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
+    // Tensor t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
+    t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+    t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
+    t = ff.conv2d(t, 128, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+    t = ff.conv2d(t, 67, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
+    t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+    t = ff.flat(t);
+    t = ff.dense(t, 128, AC_MODE_RELU/*relu*/);
+    t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
+    t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
+#else
+    Tensor t = exp_tensors[i];
+#endif
+    Tensor exp_pred = ff.dense(t, OUT_DIM);
+    agg_inputs[i+4] = ff.softmax(exp_pred);
+    // exp_pred = ff.softmax(exp_pred);
+  }
+
+  Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
+  ff.get_metrics();
+  Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
+
+//-----------------------------------------------------------------
+
+
+  Optimizer* optimizer = new SGDOptimizer(&ff, 0.002f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
@@ -215,7 +249,33 @@ t = ff.softmax(t);
   DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
   RecompileState r(&moe_trigger, &moe_alter, &ff);
   ff.init_layers();
-  ff.load("my_checkpoint.ff");
+
+  ff.load("j22/dynalphadebug-iter.ff");
+  // // ff.load("j08/c10n5k2b50-fix.ff");
+  // vector<int> load_layers;
+  // load_layers.push_back(0);
+  // load_layers.push_back(1);
+  // load_layers.push_back(2);
+  // load_layers.push_back(3);
+  // ff.load("j15/c100n16k4-spectry.ff", load_layers);
+  // ff.load("better_raninit.ff", load_layers);
+  // // ff.load("c10n5k2b50-shared.ff");
+  //
+  // int l = 12;
+  // for(int i = 0; i < num_exp; i++) {
+  //   load_layers.clear();
+  //   for(int j = 0; j < 4; j++) {
+  //     load_layers.push_back(l);
+  //     l++;
+  //   }
+  //   ff.load("j15/cifar100_backbone_100.ff", load_layers);
+  //   // ff.load("j15/c100n16k4-coopbetterraninit.ff", load_layers); //"cifar10_backbone_100.ff"
+  //   l += 4;
+  // }
+
+  assert(TRAIN_SAMPLES % ffConfig.batchSize == 0 &&
+    TEST_SAMPLES % ffConfig.batchSize == 0);
+
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -233,24 +293,25 @@ t = ff.softmax(t);
       data_loader.next_batch(ff);
       // if (epoch > 0)
       //    runtime->begin_trace(ctx, 111/*trace_id*/);
-      ff.forward();
+      ff.forward_test();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      //ff.recompile_on_condition(r);
-      // if (epoch > 0)
-      //    runtime->end_trace(ctx, 111/*trace_id*/);
+      // if (epoch > 0) {
+      ff.recompile_on_condition(r);
+        // runtime->end_trace(ctx, 111/*trace_id*/);
+      // }
+      // if(iter % 200 == 0)
+      //   ff.store("j22/dynalphadebug-iter.ff");
     }
 
-    // TODO: Do properly
+    // // TODO: Do properly
     ff.reset_metrics();
-    iterations = TEST_SAMPLES / ffConfig.batchSize;
+    iterations = 0; TEST_SAMPLES / ffConfig.batchSize;
     for (int iter = 0; iter < iterations; iter++) {
       data_loader.next_batch(ff);
-      ff.forward();
-      ff.backward();
+      ff.forward_test();
     }
-
   }
 
   // End timer
@@ -262,12 +323,16 @@ t = ff.softmax(t);
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
-         TRAIN_SAMPLES * ffConfig.epochs / run_time);
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s (comb. train, test)\n", run_time,
+         NUM_SAMPLES * ffConfig.epochs / run_time);
 
-  ff.store("my_checkpoint.ff");
+  ff.reset_metrics();
+  int iterations = TEST_SAMPLES / ffConfig.batchSize;
+  for (int iter = 0; iter < iterations; iter++) {
+    data_loader.next_batch(ff);
+    ff.forward_test();
+  }
 }
-
 
 DataLoader::DataLoader(FFModel& ff, const MoeConfig& moe,
                        Tensor input, Tensor label)
@@ -329,6 +394,39 @@ this directory (Flexflow/examples/cpp/mixture_of_experts) */
 
 
 void read_cifar100(float* input_ptr, int* label_ptr) {
+  vector<std::string> files{ "train.bin", "test.bin" };
+  vector<int> sample_sizes = {50000, 10000};
+
+  int sample = 0;
+
+  for(int f = 0; f < files.size(); f++) {
+    std::ifstream file;
+    file.open(files[f], std::ios::in | std::ios::binary | std::ios::ate);
+    if (!file) {
+        std::cout << "Error opening CIFAR100 data file " << files[f] << std::endl;
+        assert(false);
+    }
+
+    file.seekg(0, std::ios::beg);
+
+    // each sample: <1 x coarse label><1 x fine label><3072 x pixel>
+    for(std::size_t i = 0; i < sample_sizes[f]; i++) {
+      unsigned char temp = 0;
+      file.read((char*)&temp, sizeof(temp)); // coarse label, skip
+      file.read((char*)&temp, sizeof(temp));
+      label_ptr[sample] = temp;
+      for(std::size_t j = 0; j < 3072; ++j) {
+        file.read((char*)&temp, sizeof(temp));
+        input_ptr[sample*3072 + j] = (float)temp/255.0f;
+      }
+      sample++;
+    }
+
+    file.close();
+  }
+}
+
+void read_cifar100_c(float* input_ptr, int* label_ptr) {
   std::ifstream file;
   file.open("train.bin", std::ios::in | std::ios::binary | std::ios::ate);
   if (!file) {
@@ -341,9 +439,9 @@ void read_cifar100(float* input_ptr, int* label_ptr) {
   // each sample: <1 x coarse label><1 x fine label><3072 x pixel>
   for(std::size_t i = 0; i < NUM_SAMPLES; i++) {
     unsigned char temp = 0;
-    file.read((char*)&temp, sizeof(temp)); // coarse label, skip
     file.read((char*)&temp, sizeof(temp));
     label_ptr[i] = temp;
+    file.read((char*)&temp, sizeof(temp)); // fine label, skip
     for(std::size_t j = 0; j < 3072; ++j) {
       file.read((char*)&temp, sizeof(temp));
       input_ptr[i*3072 + j] = (float)temp/255.0f;
@@ -351,6 +449,42 @@ void read_cifar100(float* input_ptr, int* label_ptr) {
   }
 
   file.close();
+}
+
+void read_cifar10(float* input_ptr, int* label_ptr) {
+  vector<std::string> files{ "data_batch_1.bin",
+                             "data_batch_2.bin",
+                             "data_batch_3.bin",
+                             "data_batch_4.bin",
+                             "data_batch_5.bin",
+                             "test_batch.bin" };
+
+  int sample = 0;
+
+  for(int f = 0; f < files.size(); f++) {
+    std::ifstream file;
+    file.open(files[f], std::ios::in | std::ios::binary | std::ios::ate);
+    if (!file) {
+        std::cout << "Error opening CIFAR10 data file " << files[f] << std::endl;
+        assert(false);
+    }
+
+    file.seekg(0, std::ios::beg);
+
+    // each sample: <1 x coarse label><1 x fine label><3072 x pixel>
+    for(std::size_t i = 0; i < 10000; i++) {
+      unsigned char temp = 0;
+      file.read((char*)&temp, sizeof(temp));
+      label_ptr[sample] = temp;
+      for(std::size_t j = 0; j < 3072; ++j) {
+        file.read((char*)&temp, sizeof(temp));
+        input_ptr[sample*3072 + j] = (float)temp/255.0f;
+      }
+      sample++;
+    }
+
+    file.close();
+  }
 }
 
 

@@ -909,6 +909,7 @@ void FFModel::load(const std::string filename,
 
     if(line != expected.str()) {
       fprintf(stderr, "Layer %d of the defined FFModel does not match layer %ld of the checkpoint file.\n", l, l_i);
+      std::cout << line << " --- " << expected.str() << "\n";
       stream.close();
       assert(false);
     }
@@ -920,6 +921,10 @@ void FFModel::load(const std::string filename,
   }
 
   // load weights
+
+  // int expert = 3; // ====================================================
+  // int num_expert = 5;
+
 	for(size_t i = 0; i < layer_idx.size(); i++) {
     int l = layer_idx[i];
     for(int j = 0; j < layers[l]->numWeights; j++) {
@@ -938,8 +943,20 @@ void FFModel::load(const std::string filename,
       dims.assign(layers[l]->weights[j].adim, layers[l]->weights[j].adim +
         layers[l]->weights[j].numDim);
       std::reverse(dims.begin(), dims.end());
-      layers[l]->weights[j].set_weights<float>(this, dims, tmp_weights);
+      // if(l >= 12+8*expert) {
+      //   for(int i_ex = l-8*expert; i_ex < l-8*expert+num_expert*8; i_ex+=8) {
+      //     layers[i_ex]->weights[j].set_weights<float>(this, dims, tmp_weights);
+      //   }
+      // }
+      // else {
+        layers[l]->weights[j].set_weights<float>(this, dims, tmp_weights);
+      // }
       delete[] tmp_weights;
+      // if(l == 18+8*expert) {
+      //   stream.close();
+      //   return;
+      // }
+      // if(l >= 18+8*expert) assert(false);
     }
   }
 
@@ -1570,15 +1587,27 @@ void FFModel::init_layers()
 void FFModel::forward(int seq_length)
 {
   iter_config.seq_length = seq_length;
-  for (size_t i = 0; i < layers.size(); i++)
+  for (size_t i = 0; i < layers.size(); i++) {
+    if(i != layers.size() -2)
+      layers[i]->forward(*this);
+    std::cout << i << ": " << layers[i]->name << "\n";
+  }
+}
+
+void FFModel::forward_test(int seq_length)
+{
+  iter_config.seq_length = seq_length;
+  for (size_t i = 0; i < layers.size(); i++) {
     layers[i]->forward(*this);
+    // std::cout << i << ": " << layers[i]->name << "\n";
+  }
+  compute_metrics();
 }
 
 
 void FFModel::recompile_on_condition(RecompileState &r)
 {
-  if(r.trigger())
-    r.alter();
+  r.alter();
 }
 
 
@@ -1599,7 +1628,7 @@ void FFModel::backward(int seq_length)
   iter_config.seq_length = seq_length;
   assert(config.computationMode == COMP_MODE_TRAINING);
   // Compute metrics
-  compute_metrics();
+  // compute_metrics();
   // Compute the gradients of the final layer wrt loss
   Op* final_layer = layers[layers.size()-1];
   assert(final_layer->numOutputs == 1);
@@ -1716,6 +1745,76 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
     }
   }
   return false;
+}
+
+void FFModel::recompile(std::vector<int>& layers_changed)
+{
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  // config.computationMode = comp_mode;
+  // if (config.import_strategy_file.length() > 0) {
+  //   load_strategies_from_file(config.import_strategy_file, config.strategies);
+  // }
+  // if (config.search_budget > 0) {
+  //   // Launch the search task
+  //   FFModel* model = this;
+  //   TaskLauncher launcher(STRATEGY_SEARCH_TASK_ID,
+  //       TaskArgument(&model, sizeof(FFModel*)));
+  //   Future future = runtime->execute_task(ctx, launcher);
+  //   future.get_void_result();
+  // } else {
+  //   // Do nothing
+  // }
+  runtime->issue_execution_fence(ctx);
+
+  for (size_t l = 0; l < layers.size(); l++) {
+    Op* op = layers[l];
+    for (int i = 0; i < op->numInputs; i++) {
+      if (op->inputs[i].owner_op == NULL) {
+        // User created tensor
+        op->inputs[i] = op->inputs[i];
+      } else {
+        // Refresh op's input tensor
+        int tsIdx = op->inputs[i].owner_idx;
+        op->inputs[i] = op->inputs[i].owner_op->outputs[tsIdx];
+      }
+    }
+    op->create_output_and_partition(*this);
+    // op->create_weights(*this);
+    // for (int i = 0; i < op->numWeights; i++) {
+    //   parameters.push_back(op->weights[i]);
+    // }
+  }
+
+  // Check correctness
+  for (size_t l = 0; l < layers.size(); l++) {
+    Op* op = layers[l];
+    for (int i = 0; i < op->numOutputs; i++) {
+      assert(op->outputs[i].owner_op == op);
+      assert(op->outputs[i].owner_idx == i);
+    }
+  }
+
+  Op* final_layer = layers[layers.size()-1];
+  // FIXME: currently assume the final layer has exactly one output
+  assert(final_layer->numOutputs == 1);
+  //assert(final_layer->outputs[0].numDim == 2);
+  int dims[MAX_TENSOR_DIM], num_dims;
+  num_dims = final_layer->outputs[0].numDim;
+  // Note that FlexFlow's runtim internally reverse the array ordering
+  Op* first_layer = layers[0];
+  int input_dims = first_layer->inputs[0].numDim;
+  // FIXME: Currently assume 1st input for 1st layer = batch_size
+  int batch_size = first_layer->inputs[0].adim[input_dims-1];
+  dims[0] = batch_size;
+  for (int i = 1; i < num_dims; i++)
+    dims[i] = final_layer->outputs[0].adim[num_dims-1-i];
+  DataType label_type = DT_FLOAT;
+  if (loss_op->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
+    // assign dims[num_dims-1] = 1 for sparse categorical labels
+    dims[num_dims-1] = 1;
+    label_type = DT_INT32;
+  }
 }
 
 void FFModel::compile(LossType loss_type,
@@ -2146,8 +2245,10 @@ void FFModel::optimize(Simulator* simulator,
 
 void FFModel::zero_gradients(void)
 {
-  for (int l = layers.size() - 1; l >= 0; l--)
+  for (int l = layers.size() - 1; l >= 0; l--) {
+    // if(l != layers.size()-2) TODO perf
     layers[l]->zero_grad(*this);
+  }
 #ifdef DEADCODE
   ArgumentMap arg_map;
   Context ctx = config.lg_ctx;
@@ -2734,7 +2835,7 @@ void register_flexflow_internal_tasks()
     TaskVariantRegistrar registrar(GROUP_BY_FWD_TASK_ID, "GroupBy Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<GroupBy::forward_task>(
+    Runtime::preregister_task_variant<float, GroupBy::forward_task>(
         registrar, "GroupBy Forward Task");
   }
   {

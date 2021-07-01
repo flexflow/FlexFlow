@@ -15,6 +15,8 @@
 
 #include "model.h"
 #include "cuda_helper.h"
+// #define MOE_SPEC_SCORE
+
 
 // For an input tensor, computes the top k entries in each row
 // (resp. vector along the last dimension). Thus,
@@ -468,6 +470,10 @@ topk_forward_kernel(const T* __restrict__ input,
                     T* __restrict__ output,
                     int* __restrict__ indices)
 {
+#ifdef MOE_SPEC_SCORE
+  k = 4;
+#endif
+
   __shared__ char shared_memory[48 << 10];
   const int batch_index = blockIdx.x;
   const T* batch_input = input + batch_index * length;
@@ -484,8 +490,24 @@ topk_forward_kernel(const T* __restrict__ input,
     Entry<T>* top_k_heap = shared_entries + thread_count * k;
      mergeShards(thread_count, k, shared_entries, top_k_heap, batch_output,
                 batch_indices);
+
+#ifdef MOE_SPEC_SCORE
+    printf("asg %d,%d,%d,%d,%d\n", batch_index, indices[batch_index*k+0], indices[batch_index*k+1], indices[batch_index*k+2], indices[batch_index*k+3]);
+#endif
   }
+
+#ifdef MOE_SPEC_SCORE
+  int n = 16;
+  k = 16;
+  int batch_size = 50;
+  CUDA_KERNEL_LOOP(i, k*batch_size) // batch_size * k (=n)
+  {
+    output[i] = input[i*length+(int)i%n];
+    indices[i] = ((int)i%n);
+  }
+#endif
 }
+
 
 /*static*/
 void TopK::forward_kernel(const TopKMeta* m,
@@ -518,12 +540,12 @@ void TopK::forward_kernel(const TopKMeta* m,
     output_ptr, indices_ptr);
 }
 
+
+
 void TopK::forward_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
 {
-
-
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   //const TopK* topk = (const TopK*) task->args;
@@ -557,7 +579,7 @@ void TopK::forward_task(const Task* task,
     cudaEventRecord(t_start);
   }
   int length = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
-  int k = out1_domain.hi()[0] - out1_domain.lo()[0] + 1; /*TODO: This prints to 5*/
+  int k = out1_domain.hi()[0] - out1_domain.lo()[0] + 1;
   size_t batch_size = in1_domain.get_volume() / length;
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
