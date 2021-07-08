@@ -28,6 +28,7 @@
 #include <curand.h>
 #include <unistd.h>
 #include <functional>
+#include <cmath>
 
 using namespace Legion;
 

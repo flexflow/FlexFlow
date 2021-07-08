@@ -59,6 +59,17 @@ set(CC_FLAGS $ENV{CC_FLAGS})
 set(NVCC_FLAGS $ENV{NVCC_FLAGS})
 set(LD_FLAGS $ENV{LD_FLAGS})
 
+# Set global FLAGS
+list(APPEND CC_FLAGS
+  -std=c++11)
+
+list(APPEND NVCC_FLAGS
+  -std=c++11)
+	
+add_compile_options(${CC_FLAGS})
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
+link_libraries(${LD_FLAGS})
+
 # ZLIB
 include(zlib)
 
@@ -71,9 +82,9 @@ include(cudnn)
 # NCCL
 if(FF_USE_NCCL)
   include(nccl)
-  list(APPEND CC_FLAGS
+  list(APPEND FF_CC_FLAGS
     -DFF_USE_NCCL)
-  list(APPEND NVCC_FLAGS
+  list(APPEND FF_NVCC_FLAGS
     -DFF_USE_NCCL)
 endif()
 
@@ -81,46 +92,44 @@ endif()
 include(legion)
 
 if(FF_USE_PYTHON)
-  list(APPEND CC_FLAGS
+  list(APPEND FF_CC_FLAGS
     -DBINDINGS_AUGMENT_PYTHONPATH)
-  list(APPEND NVCC_FLAGS
+  list(APPEND FF_NVCC_FLAGS
     -DBINDINGS_AUGMENT_PYTHONPATH)
 endif()
 
 # Start build FlexFlow
 if (CMAKE_BUILD_TYPE EQUAL "Debug")
-  list(APPEND CC_FLAGS
+  list(APPEND FF_CC_FLAGS
     -DFF_DEBUG)
-  list(APPEND NVCC_FLAGS
+  list(APPEND FF_NVCC_FLAGS
     -DFF_DEBUG)
 endif()
 
 message(STATUS "FlexFlow MAX_DIM: ${FF_MAX_DIM}")
 
-list(APPEND CC_FLAGS
-  -std=c++11
+list(APPEND FF_CC_FLAGS
   -DMAX_TENSOR_DIM=${FF_MAX_DIM})
 
 if(FF_USE_AVX2)
-  list(APPEND CC_FLAGS
+  list(APPEND FF_CC_FLAGS
     -DFF_USE_AVX2
     -mavx2)
 endif()
   
-list(APPEND NVCC_FLAGS
+list(APPEND FF_NVCC_FLAGS
   -Wno-deprecated-gpu-targets
-  -std=c++11
   -DMAX_TENSOR_DIM=${FF_MAX_DIM})
   
-list(APPEND LD_FLAGS
+list(APPEND FF_LD_FLAGS
   -lrt
   -ldl
   -rdynamic)
 
-# Set FLAGS
-add_compile_options(${CC_FLAGS})
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
-link_libraries(${LD_FLAGS})
+# Set FF FLAGS
+add_compile_options(${FF_CC_FLAGS})
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${FF_NVCC_FLAGS})
+link_libraries(${FF_LD_FLAGS})
 
 list(APPEND FLEXFLOW_INCLUDE_DIRS
   ${FLEXFLOW_ROOT}/include

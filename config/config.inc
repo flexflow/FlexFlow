@@ -76,9 +76,9 @@ else
 fi
 
 # build C++ examples
-if [ "$FF_BUILD_EXAMPLES" = "ON" ]; then
+if [ "$FF_BUILD_ALL_EXAMPLES" = "ON" ]; then
   SET_EXAMPLES="-DFF_BUILD_ALL_EXAMPLES=ON"
-elif [ "$FF_BUILD_EXAMPLES" = "OFF" ]; then
+elif [ "$FF_BUILD_ALL_EXAMPLES" = "OFF" ]; then
   SET_EXAMPLES="-DFF_BUILD_ALL_EXAMPLES=OFF"
 else
   SET_EXAMPLES="-DFF_BUILD_ALL_EXAMPLES=ON"
