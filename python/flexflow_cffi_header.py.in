@@ -23,8 +23,15 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import cffi
 
+from .flexflow_env import flexflow_python_interpreter
+
 header = {header}
+libname = {libname}
 
 ffi = cffi.FFI()
 ffi.cdef(header)
-ffc = ffi.dlopen(None)
+if flexflow_python_interpreter() == 'native':
+  flexflow_lib = 'flexflow/core/' + libname
+else:
+  flexflow_lib = None
+ffc = ffi.dlopen(flexflow_lib)

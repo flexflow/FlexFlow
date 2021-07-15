@@ -72,6 +72,7 @@ endif
 PYBIND_INC    = $(shell $$PYTHON_EXE -m pybind11 --includes)
 PYBIND_EXT    = $(shell $$PYTHON_EXE-config --extension-suffix)
 FF_BYBIND_LIB = flexflow/core/flexflow_pybind11_internal$(PYBIND_EXT)
+FF_BYBIND_LIB_NAME = flexflow_pybind11_internal$(PYBIND_EXT)
 INC_FLAGS     += -I${FF_HOME}
 CC_FLAGS      += -fPIC
 NVCC_FLAGS    += -Xcompiler -fPIC
@@ -116,7 +117,7 @@ flexflow/core/legion_cffi_header.py: legion_cffi_header.py.in legion_cffi_build.
 	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
 	
 flexflow/core/flexflow_cffi_header.py: flexflow_cffi_header.py.in flexflow_cffi_build.py flexflow_c.h
-	$(PYTHON_EXE) flexflow_cffi_build.py --ffhome-dir $(FF_HOME) --output-dir flexflow/core
+	$(PYTHON_EXE) flexflow_cffi_build.py --ffhome-dir $(FF_HOME) --libname $(FF_BYBIND_LIB_NAME) --output-dir flexflow/core
 
 ifeq ($(strip $(FF_USE_NATIVE_PYTHON)), 0)
 $(FF_BYBIND_LIB): bindings.cc

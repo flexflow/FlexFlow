@@ -25,7 +25,7 @@ import atexit
 import readline
 import threading
 
-from flexflow.core.legion_cffi_header import ffi, lib as c
+from .legion_cffi_header import ffi, lib as c
 
 
 # Storage for variables that apply to the top-level task.

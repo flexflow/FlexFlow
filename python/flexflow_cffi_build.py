@@ -35,14 +35,14 @@ def find_flexflow_header(ffhome_dir):
 
     raise Exception('Unable to locate flexflow_c.h and flexflow.h header file')
 
-def build(output_dir, ffhome_dir):
+def build(output_dir, libname, ffhome_dir):
     flexflow_cxxh_dir, flexflow_ch_path = find_flexflow_header(ffhome_dir)
 
     header = subprocess.check_output(['gcc', '-I', flexflow_cxxh_dir, '-E', '-P', flexflow_ch_path]).decode('utf-8')
 
     with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'flexflow_cffi_header.py.in')) as f:
         content = f.read()
-    content = content.format(header=repr(header))
+    content = content.format(header=repr(header), libname=repr(libname))
 
     if output_dir is None:
         output_dir = os.path.dirname(os.path.realpath(__file__))
@@ -53,7 +53,8 @@ def build(output_dir, ffhome_dir):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--ffhome-dir', required=True)
+    parser.add_argument('--libname', required=True)
     parser.add_argument('--output-dir', required=False)
     args = parser.parse_args()
 
-    build(args.output_dir, args.ffhome_dir)
+    build(args.output_dir, args.libname, args.ffhome_dir)

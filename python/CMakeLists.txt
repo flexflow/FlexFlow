@@ -35,7 +35,7 @@ add_custom_command(TARGET ${project_target}
 # create flexflow_cffi_header.py
 add_custom_command(TARGET ${project_target} 
   PRE_BUILD	
-  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/flexflow_cffi_build.py --ffhome-dir ${FLEXFLOW_ROOT} --output-dir ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/flexflow_cffi_build.py --ffhome-dir ${FLEXFLOW_ROOT} --libname $<TARGET_FILE_NAME:flexflow_pybind11_internal> --output-dir ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMENT "Creating flexflow_cffi_header.py..."
 )
