@@ -75,7 +75,7 @@ PYBIND_EXT    = $(shell $$PYTHON_EXE-config --extension-suffix)
 FF_BYBIND_LIB = flexflow/core/flexflow_pybind11_internal$(PYBIND_EXT)
 FF_BYBIND_LIB_NAME = flexflow_pybind11_internal$(PYBIND_EXT)
 INC_FLAGS     += -I${FF_HOME}
-CC_FLAGS      += -fPIC
+CC_FLAGS      += -g -fPIC
 NVCC_FLAGS    += -Xcompiler -fPIC
 HIPCC_FLAGS    += -Xcompiler -fPIC
 

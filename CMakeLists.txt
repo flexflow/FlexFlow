@@ -35,7 +35,7 @@ option(FF_USE_PYTHON "Enable Python" ON)
 
 # option for using Python
 option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)
-set(FF_GASNET_CONDUITS udp mpi ibv)
+set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
 set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select Gasnet conduit ${FF_GASNET_CONDUITS}")
 set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})  
 
