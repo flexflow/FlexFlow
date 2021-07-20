@@ -1379,14 +1379,16 @@ IndexSpace FFModel::get_or_create_task_is(const Domain& domain)
 IndexSpace FFModel::get_or_create_task_is(int ndims, const std::string& pcname)
 {
   ParallelConfig pc;
-  assert(config.find_parallel_config(ndims, pcname, pc));
+  bool result = config.find_parallel_config(ndims, pcname, pc);
+  assert(result);
   return get_or_create_task_is(pc);
 }
 
 IndexSpace FFModel::get_task_is(int ndims, const std::string& pcname) const
 {
   ParallelConfig pc;
-  assert(config.find_parallel_config(ndims, pcname, pc));
+  bool result = config.find_parallel_config(ndims, pcname, pc);
+  assert(result);
   return get_task_is(pc);
 }
 
@@ -1512,8 +1514,10 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
       Domain d1 = runtime->get_index_space_domain(layers[l]->task_is);
       Domain d2 = runtime->get_index_space_domain(layers[i]->task_is);
       ParallelConfig pc1, pc2;
-      assert(config.find_parallel_config(d1.get_dim(), layers[l]->name, pc1));
-      assert(config.find_parallel_config(d2.get_dim(), layers[i]->name, pc2));
+      bool result = config.find_parallel_config(d1.get_dim(), layers[l]->name, pc1);
+      assert(result);
+      result = config.find_parallel_config(d2.get_dim(), layers[i]->name, pc2);
+      assert(result);
       if (pc1 == pc2) {
         FusedOp* fused_op;
         //bool created = false;
@@ -1606,8 +1610,10 @@ void FFModel::compile(LossType loss_type,
         int dim1 = layers[l]->outputs[0].numDim;
         int dim2 = layers[l]->inputs[0].numDim;
         ParallelConfig pc1, pc2;
-        assert(config.find_parallel_config(dim1, layers[l]->name, pc1));
-        assert(config.find_parallel_config(dim2, layers[l]->inputs[0].owner_op->name, pc2));
+        bool result = config.find_parallel_config(dim1, layers[l]->name, pc1);
+        assert(result);
+        result = config.find_parallel_config(dim2, layers[l]->inputs[0].owner_op->name, pc2);
+        assert(result);
         if (pc1 == pc2) {
           // Check no others also need layers[l]->inputs[0]
           bool found = false;
