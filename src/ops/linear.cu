@@ -16,6 +16,60 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+__global__
+void print_kernel_in(const float* kernel_ptr) {
+  if(threadIdx.x == 0) {
+    printf("linear in:\n");
+    for(int i = 0; i < 100; i++) {
+      for(int j = 0; j < 20; j++)
+        printf("%.3f ", kernel_ptr[i*20+j]);
+      printf("\n");
+    }
+    printf("\n");
+  }
+}
+
+__global__
+void print_kernel_out(const float* kernel_ptr) {
+  if(threadIdx.x == 0) {
+    printf("linear output:\n");
+    for(int i = 0; i < 100; i++) {
+      for(int j = 0; j < 10; j++)
+        printf("%.3f ", kernel_ptr[i*10+j]);
+      printf("\n");
+    }
+    printf("\n");
+  }
+}
+
+__global__
+void print_kernel_ker(const float* kernel_ptr) {
+  if(threadIdx.x == 0) {
+    printf("linear kernel:\n");
+    for(int i = 0; i < 100; i++) {
+      for(int j = 0; j < 10; j++)
+        printf("%.3f ", kernel_ptr[i*10+j]);
+      printf("\n");
+    }
+    printf("\n");
+  }
+}
+
+__global__
+void print_kernel_bias(const float* kernel_ptr) {
+  if(threadIdx.x == 0) {
+    printf("linear bias:\n");
+    for(int i = 0; i < 10; i++) {
+      printf("%.3f ", kernel_ptr[i]);
+      printf("\n");
+    }
+    printf("\n");
+  }
+}
+
+
+
+
 Tensor FFModel::dense(const Tensor& input,
                       int outDim,
                       ActiMode activation,
@@ -157,7 +211,8 @@ void Linear::create_output_and_partition_with_dim(FFModel& model)
   int batch_size = inputs[0].adim[NDIM-1];
   {
     int dims[NDIM];
-    for (int i = 0; i < NDIM; i++)
+    dims[0] = inputs[0].adim[NDIM-1];
+    for (int i = 1; i < NDIM; i++)
       dims[i] = outputs[0].adim[NDIM-1-i];
     outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
     outputs[0].owner_op = this;
@@ -421,6 +476,7 @@ void Linear::init_with_dim(const FFModel& ff)
   }
 }
 
+
 /*static*/
 void Linear::forward_kernel(const LinearMeta* m,
                             const float* input_ptr,
@@ -429,14 +485,15 @@ void Linear::forward_kernel(const LinearMeta* m,
                             const float* bias_ptr,
                             int in_dim, int out_dim, int batch_size)
 {
+
   float alpha = 1.0f, beta = 0.0f;
   checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
                         out_dim, batch_size, in_dim,
                         &alpha, kernel_ptr, in_dim,
                         input_ptr, in_dim, &beta,
                         output_ptr, out_dim));
-  // use_bias = True 
-  if (bias_ptr != NULL) { 
+  // use_bias = True
+  if (bias_ptr != NULL) {
     checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
                           out_dim, batch_size, 1,
                           &alpha, bias_ptr, 1,
@@ -458,6 +515,13 @@ void Linear::forward_kernel(const LinearMeta* m,
   } else {
     assert(false && "Unsupported activation for Linear");
   }
+
+  // if(out_dim == 10) {
+  //   print_kernel_in<<<1,1>>>(input_ptr);
+  //   print_kernel_out<<<1,1>>>(output_ptr);
+  //   print_kernel_ker<<<1,1>>>(kernel_ptr);
+  //   print_kernel_bias<<<1,1>>>(bias_ptr);
+  // }
 }
 
 __host__
@@ -465,6 +529,7 @@ void Linear::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
+  //printf("linear fwd\n");
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   switch (in_domain.get_dim()) {
@@ -493,7 +558,7 @@ void Linear::forward_task_with_dim(const Task *task,
   const LinearMeta* m = *((LinearMeta**) task->local_args);
   assert(regions.size() == (3 + int(m->use_bias)));
   assert(task->regions.size() == (3 + int(m->use_bias)));
-  
+
   TensorAccessorR<float, NDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, NDIM> acc_output(
@@ -505,6 +570,7 @@ void Linear::forward_task_with_dim(const Task *task,
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
   int batch_size = acc_output.rect.volume() / out_dim;
   assert(acc_output.rect.volume() == out_dim * batch_size);
+  //printf("%d  %d=%d*%d -- %d\n", acc_input.rect.volume(), in_dim * batch_size, in_dim, batch_size, out_dim);
   assert(acc_input.rect.volume() == in_dim * batch_size);
   assert(acc_kernel.rect.volume() == in_dim * out_dim);
   const float* acc_bias_ptr = NULL;
@@ -529,6 +595,7 @@ void Linear::forward_task_with_dim(const Task *task,
 #endif
   Linear::forward_kernel(m, acc_input.ptr, acc_output.ptr,
       acc_kernel.ptr, acc_bias_ptr, in_dim, out_dim, batch_size);
+  // if(out_dim == 5) print_kernel<<<1,1>>>(acc_output.ptr);
 
   if (m->profiling) {
     cudaEventRecord(t_end);
@@ -547,6 +614,7 @@ void Linear::forward_task_with_dim(const Task *task,
 
 void Linear::forward(const FFModel& ff)
 {
+    //printf("lin fwd()\n");
   int dim = outputs[0].numDim;
   switch (dim) {
 #define DIMFUNC(DIM) \
@@ -605,6 +673,7 @@ void sigmoid_backward(float *grad_ptr, const float *output, int n)
   }
 }
 
+
 /*static*/
 void Linear::backward_kernel(const LinearMeta* m,
                              const float* input_ptr,
@@ -652,6 +721,11 @@ void Linear::backward_kernel(const LinearMeta* m,
                         &alpha, kernel_ptr, in_dim,
                         output_grad_ptr, out_dim,
                         &alpha, input_grad_ptr, in_dim));
+
+  // if(out_dim == 10) {
+  //   // printf("linear output_Grad:\n");
+  //   print_kernel_out<<<1,1>>>(output_grad_ptr);
+  // }
 }
 
 void Linear::backward_task(const Task *task,
@@ -748,6 +822,7 @@ void Linear::backward_task_with_dim(const Task *task,
       acc_output.ptr, acc_output_grad.ptr,
       acc_kernel.ptr, acc_kernel_grad.ptr,
       acc_bias_grad_ptr, in_dim, out_dim, batch_size);
+  // if(out_dim == 5) print_kernel<<<1,1>>>(acc_output_grad.ptr);
   if (m->profiling) {
     cudaEventRecord(t_end);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -1117,4 +1192,3 @@ bool Linear::is_valid_parallel_config(const FFModel& ff, const ParallelConfig& p
       return false;
   return true;
 }
-

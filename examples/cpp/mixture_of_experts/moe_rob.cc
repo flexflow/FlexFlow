@@ -25,7 +25,7 @@
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("MoE");
-int num_exp = 8;
+int num_exp = 5;
 int num_select = 2;
 int epoch = 0;
 int recompiles = 0;
@@ -90,360 +90,6 @@ bool moe_trigger(FFModel* ff) {
 }
 
 
-#ifdef MOE_CF_LOCAL
-// Alter: GroupBy, Aggregate, AggregateSpec use cached values for expert assign.
-void moe_alter(FFModel* ff) {
-  float cache_thresh = 1.0f;
-  float groupby_thresh_max = 1.0f; // 1.0f
-  float groupby_overhead_max = 1.3f;
-  float cache_score = 0.0f;
-  float max_factor = 4.0f;
-  std::vector<int> groupby_idx;
-  std::vector<float*> groupby_max;
-
-  // get cache score and groupby max
-  // TODO: normalize scores (divide by amt of futures)
-  for(size_t i = 0; i < ff->layers.size(); i++) {
-    // if(ff->layers[i]->op_type == OP_CACHE) {
-    //   std::deque<Future>* futures = &((Cache*)ff->layers[i])->score_futures;
-    //   // TODO: Here only pop one per partition
-    //   while(!futures->empty()) {
-    //     cache_score += futures->front().get_result<float>();
-    //     futures->pop_front();
-    //   }
-    // }
-    if(ff->layers[i]->op_type == OP_GROUP_BY) {
-      std::deque<Future>* futures = &((GroupBy*)ff->layers[i])->score_futures;
-      groupby_idx.push_back(i);
-      float* gb_alphas = futures->front().get_result<float*>();
-      futures->pop_front();
-      groupby_max.push_back(gb_alphas);
-    }
-  }
-
-  // printf("GB: %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f\n", groupby_max[0][0], groupby_max[0][1], groupby_max[0][2], groupby_max[0][3], groupby_max[0][4], groupby_max[0][5], groupby_max[0][6], groupby_max[0][7]);
-
-  // TODO: alter du musst auch auf scheiss 543 schauen.
-
-  // alpha 3.0, max accuracy!
-  // bool do_it;
-  //
-  // std:vector<float> new_alpha_vec;
-  // switch(recompiles)
-  // {
-  //   case 0:
-  //     // epochs 5-60
-  //     do_it = true;
-  //     for(int i = 0; i < 8; i++)
-  //       if(groupby_max[0][i] > 1.58f)
-  //         do_it = false;
-  //     if(do_it) {
-  //       SET_ALPHA(1.7f, 1.6f, 1.5f, 1.75f, 1.6f, 1.7f, 1.5f, 1.5f)
-  //     }
-  //     break;
-  //   case 1:
-  //     // 60 - 120
-  //     if(groupby_max[0][1] > 1.7f || groupby_max[0][0] > 1.8f) {
-  //       // SET_ALPHA(2.2f, 2.3f, 1.3f, 1.6f, 1.5f, 1.5f, 1.35f, 1.5f) // at around 60-70
-  //       SET_ALPHA(2.1f, 2.0f, 1.3f, 1.72f, 1.4f, 1.55f, 1.4f, 1.25f)
-  //     }
-  //     break;
-  //   case 2:
-  //     // 120 - 200
-  //     if(groupby_max[0][7] < 1.1f && groupby_max[0][2] < 1.1f && epoch > 115) { // maybe also triggers based on 6 4 2
-  //       // SET_ALPHA(2.2f, 2.3f, 1.0f /*TODO*/, 1.6f, 1.3f, 1.5f, 1.5f, 1.1f) // at around 100
-  //       SET_ALPHA(2.3f, 2.3f, 1.2f, 1.6f, 1.4f, 1.6f, 1.35f, 1.15f)
-  //     }
-  //     break;
-  //   case 3:
-  //     //  200-335
-  //     if(epoch > 190 && ((groupby_max[0][7] < 1.0f && groupby_max[0][2] < 1.0f) || groupby_max[0][1] > 1.65f)) {
-  //       SET_ALPHA(2.4f, 2.3f, 1.0f, 1.7f, 1.4f, 1.8f, 1.25f, 1.0f) // at around 200+
-  //     }
-  //     break;
-  //   case 4:
-  //     // 335-440
-  //     if(groupby_max[0][0] > 2.45f) {
-  //       SET_ALPHA(2.8f, 2.4f, 0.6f, 1.6f, 1.3f, 1.9f, 1.3f, 0.65f)
-  //     }
-  //     break;
-  //   default:
-  //     break;
-  // }
-
-  // alpha 1.0
-  std:vector<float> new_alpha_vec;
-  switch(recompiles)
-  {
-    case 0:
-      // epochs 5-60
-      if(epoch == 60) {
-        SET_ALPHA(1.34, 1.3, 0.82, 1.0, 0.87, 0.92, 0.95, 0.8)
-      }
-      break;
-    case 1:
-      // 60 - 120
-      if(epoch == 110) {
-        SET_ALPHA(1.6f, 1.5f, 0.73f, 0.95f, 0.82f, 0.85f, 0.85f, 0.7f)
-      }
-      break;
-    case 2:
-      // 120 - 200
-      if(epoch == 150) { // maybe also triggers based on 6 4 2
-        SET_ALPHA(1.75f, 1.73f, 0.6f, 0.85f, 0.75f, 0.9f, 0.75f, 0.67f)
-      }
-      break;
-    case 3:
-      //  200-335
-      if(epoch == 250) {
-        SET_ALPHA(1.81f, 1.73f, 0.39f, 0.95f, 0.75f, 1.05f, 0.82f, 0.5f) // at around 200+
-      }
-      break;
-    case 4:
-      // 335-440
-      if(epoch == 400) {
-        SET_ALPHA(2.05f, 1.8f, 0.19f, 1.0f, 0.67f, 1.15f, 0.85f, 0.29f)
-      }
-      break;
-    case 5:
-      // 335-440
-      if(epoch == 470) {
-        SET_ALPHA(2.2f, 1.9f, 0.12f, 1.0f, 0.58f, 1.18f, 0.83f, 0.19f)
-      }
-      break;
-    default:
-      break;
-  }
-
-
-  if(new_alpha_vec.size() > 0) {
-    float al_sum = 0.0f;
-    for(int j = 0; j < 8; j++) {
-      al_sum += new_alpha_vec[j];
-    }
-    printf("\n\nalter alphas:");
-    for(int j = 0; j < 8; j++) {
-      ((GroupBy*)ff->layers[groupby_idx[0]])->alpha[j] = new_alpha_vec[j];
-      printf(" %.5f (%.5f)", new_alpha_vec[j], groupby_max[0][j]);
-    }
-    printf("\nsum: %.2f; alpha: %.2f; epoch: %d\n\n\n", al_sum, al_sum/8, epoch);
-    printf("\n\n\n");
-    free(groupby_max[0]);
-
-    vector<int> changed_layers;
-    changed_layers.push_back(9);
-    ff->recompile(changed_layers);
-    glob_trace_id++;
-    recompiles++;
-  }
-  else {
-    free(groupby_max[0]);
-  }
-
-
-  return;
-
-  // // dermine if cache trigger
-  // if(cache_score > cache_thresh && false) {
-  //   printf("alter cache!!\n");
-  //   ((Cache*)ff->layers[4])->use_cached(true);
-  //   // Group by input
-  //   ff->layers[5]->inputs[1] = ff->layers[4]->outputs[0];
-  //   ff->layers[5]->input_lps[1] = ff->layers[4]->outputs[0].part;
-  //   ff->layers[5]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
-  //   // Aggregate input
-  //   ff->layers[22]->inputs[1] = ff->layers[4]->outputs[0];
-  //   ff->layers[22]->input_lps[1] = ff->layers[4]->outputs[0].part;
-  //   ff->layers[22]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
-  //   // AggregateSpec input
-  //   ff->layers[23]->inputs[1] = ff->layers[4]->outputs[0];
-  //   ff->layers[23]->input_lps[1] = ff->layers[4]->outputs[0].part;
-  //   ff->layers[23]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
-  //
-  //   remap = true;
-  // }
-
-  // return remap;
-}
-#else
-// Alter: GroupBy, Aggregate, AggregateSpec use cached values for expert assign.
-void moe_alter(FFModel* ff) {
-  float cache_thresh = 1.0f;
-  float groupby_thresh_max = 1.0f; // 1.0f
-  float groupby_overhead_max = 1.3f;
-  float cache_score = 0.0f;
-  float max_factor = 4.0f;
-  std::vector<int> groupby_idx;
-  std::vector<float> groupby_max;
-
-  // get cache score and groupby max
-  // TODO: normalize scores (divide by amt of futures)
-  for(size_t i = 0; i < ff->layers.size(); i++) {
-    if(ff->layers[i]->op_type == OP_CACHE) {
-      std::deque<Future>* futures = &((Cache*)ff->layers[i])->score_futures;
-      // TODO: Here only pop one per partition
-      while(!futures->empty()) {
-        cache_score += futures->front().get_result<float>();
-        futures->pop_front();
-      }
-    }
-    else if(ff->layers[i]->op_type == OP_GROUP_BY) {
-      std::deque<Future>* futures = &((GroupBy*)ff->layers[i])->score_futures;
-      groupby_idx.push_back(i);
-      float max_i = futures->front().get_result<float>();
-      futures->pop_front();
-      groupby_max.push_back(max_i);
-    }
-  }
-
-
-  // printf("GB: %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f\n", groupby_max[0][0], groupby_max[0][1], groupby_max[0][2], groupby_max[0][3], groupby_max[0][4], groupby_max[0][5], groupby_max[0][6], groupby_max[0][7]);
-
-  float new_alpha = -1.0f;
-  switch(recompiles)
-  {
-    case 0:
-      // if below 1.58, put 1.8
-      if(groupby_max[0] < 1.58f)
-        new_alpha = 1.8f;
-      break;
-    case 1:
-      // if above 1.82 put 2.0
-      if(groupby_max[0] > 1.82f)
-        new_alpha = 2.0f;
-      break;
-    case 2:
-      // if above 2.0 put 2.2
-      if(groupby_max[0] > 2.0f)
-        new_alpha = 2.2f;
-      break;
-    case 3:
-      // if above 2.2 put 2.5
-      if(groupby_max[0] > 2.2f)
-        new_alpha = 2.5f;
-      break;
-    case 4:
-      // ir above 2.5 put 2.75
-      if(groupby_max[0] > 2.5f)
-        new_alpha = 2.75f;
-      break;
-    case 5:
-      // if above 2.8 put 3.0
-      if(groupby_max[0] > 2.8f)
-        new_alpha = 3.0f;
-      break;
-    default:
-      break;
-  }
-
-  if(new_alpha > 0.0f && false) {
-    printf("\n\nalter alpha: %.2f\n\n\n", new_alpha);
-    ((GroupBy*)ff->layers[groupby_idx[0]])->alpha = new_alpha;
-
-    vector<int> changed_layers;
-    changed_layers.push_back(9);
-    ff->recompile(changed_layers);
-    glob_trace_id++;
-    recompiles++;
-  }
-
-  return;
-
-
-  // float cache_thresh = 1.0f;
-  // float groupby_thresh_min = 0.6f; //0.6f
-  // float groupby_thresh_max = 0.92f; // 1.0f
-  // float groupby_overhead_min = 1.25f;
-  // float groupby_overhead_max = 1.25f;
-  // float max_factor = 4.0f;
-  // float cache_score = 0.0f;
-  // std::vector<int> groupby_idx;
-  // std::vector<float> groupby_max;
-  //
-  // // get cache score and groupby max
-  // // TODO: normalize scores (divide by amt of futures)
-  // for(size_t i = 0; i < ff->layers.size(); i++) {
-  //   if(ff->layers[i]->op_type == OP_CACHE) {
-  //     std::deque<Future>* futures = &((Cache*)ff->layers[i])->score_futures;
-  //     // TODO: Here only pop one per partition
-  //     while(!futures->empty()) {
-  //       cache_score += futures->front().get_result<float>();
-  //       futures->pop_front();
-  //     }
-  //   }
-  //   else if(ff->layers[i]->op_type == OP_GROUP_BY) {
-  //     std::deque<Future>* futures = &((GroupBy*)ff->layers[i])->score_futures;
-  //     groupby_idx.push_back(i);
-  //     float max_i = 0.0f;
-  //     while(!futures->empty()) {
-  //       max_i += futures->front().get_result<float>();
-  //       futures->pop_front();
-  //     }
-  //     groupby_max.push_back(max_i);
-  //   }
-  // }
-  //
-  // // alter on condition
-  // // if(epoch > 1) {
-  //   bool remap = false;
-  //   // determine if reallocate alpha
-  //   for(size_t i = 0; i < groupby_idx.size(); i++) {
-  //     // printf("GB SCORE %d %.3f < %.3f\n", groupby_idx[i], groupby_max[i], ((GroupBy*)ff->layers[groupby_idx[i]])->alpha);
-  //     if(groupby_max[i] < groupby_thresh_min*((GroupBy*)ff->layers[groupby_idx[i]])->alpha) {
-  //       //((GroupBy*)ff->layers[groupby_idx[i]])->resize_exp_batch(ff, groupby_overhead*groupby_max[i]);
-  //       float new_alpha = groupby_overhead_min*groupby_max[i];
-  //       printf("\n\nalter alpha: %.3f -> %.3f\n\n", ((GroupBy*)ff->layers[groupby_idx[i]])->alpha, new_alpha);
-  //       ((GroupBy*)ff->layers[groupby_idx[i]])->alpha = new_alpha;
-  //       ((GroupBy*)ff->layers[groupby_idx[i]])->first_init = true;
-  //       vector<int> changed_layers;
-  //       changed_layers.push_back(9);
-  //       for(int l = 11; l < 115; l++)
-  //         changed_layers.push_back(l);
-  //
-  //       ff->recompile(changed_layers);
-  //       glob_trace_id++;
-  //     }
-  //     else if(((GroupBy*)ff->layers[groupby_idx[i]])->alpha < max_factor && groupby_max[i] > groupby_thresh_max*((GroupBy*)ff->layers[groupby_idx[i]])->alpha) {
-  //       float new_alpha = std::min(groupby_overhead_max*groupby_max[i], max_factor);
-  //       printf("\n\nalter alpha: %.3f -> %.3f\n\n", ((GroupBy*)ff->layers[groupby_idx[i]])->alpha, new_alpha);
-  //       ((GroupBy*)ff->layers[groupby_idx[i]])->alpha = new_alpha;
-  //       vector<int> changed_layers;
-  //       changed_layers.push_back(9);
-  //       for(int l = 11; l < 115; l++)
-  //         changed_layers.push_back(l);
-  //       ff->recompile(changed_layers);
-  //       glob_trace_id++;
-  //     }
-  //   }
-  // // }
-  //
-  // return;
-  //
-  // // dermine if cache trigger
-  // if(cache_score > cache_thresh && false) {
-  //   printf("alter cache!!\n");
-  //   ((Cache*)ff->layers[4])->use_cached(true);
-  //   // Group by input
-  //   ff->layers[5]->inputs[1] = ff->layers[4]->outputs[0];
-  //   ff->layers[5]->input_lps[1] = ff->layers[4]->outputs[0].part;
-  //   ff->layers[5]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
-  //   // Aggregate input
-  //   ff->layers[22]->inputs[1] = ff->layers[4]->outputs[0];
-  //   ff->layers[22]->input_lps[1] = ff->layers[4]->outputs[0].part;
-  //   ff->layers[22]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
-  //   // AggregateSpec input
-  //   ff->layers[23]->inputs[1] = ff->layers[4]->outputs[0];
-  //   ff->layers[23]->input_lps[1] = ff->layers[4]->outputs[0].part;
-  //   ff->layers[23]->input_grad_lps[1] = ff->layers[4]->outputs[0].part_grad;
-  //
-  //   remap = true;
-  // }
-
-  // return remap;
-}
-#endif
-
-
 void top_level_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime)
@@ -470,28 +116,26 @@ void top_level_task(const Task* task,
 
 //-----------------------------------------------------------------
 
-  //float alpha = 3.0f; // factor overhead tensor size for imbalance
-  // std::vector<float> alpha = {0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 4.0f, 0.1f, 4.0f};
-  //std::vector<float> alpha = {1.09f, 1.01f, 0.95f, 1.0f, 0.98f, 1.0f, 0.97f, 1.0f};
-  // std::vector<float> alpha = {4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f, 4.0f};
+  GlorotUniform* kernel_initializer = new GlorotUniform(3);
+  ZeroInitializer* bias_initializer = new ZeroInitializer();
 
-  // std::vector<float> alpha = {2.4f, 2.3f, 1.0f, 1.7f, 1.4f,1.8f, 1.25f, 1.0f};
-  float alpha = 3.0f;
 
-  float lambda = 0.03f/100.0f; // 0.06f/250.0f;  // multiplier for load balance term
+  float alpha = 4.0f;
+
+  float lambda = 0.06f/16.0f; // 0.06f/250.0f;  // multiplier for load balance term
 
   // MoE model
 #ifdef USE_CNN
-  Tensor t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
+  Tensor t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU, 1, true, NULL, kernel_initializer, bias_initializer, NULL);
   t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
+  t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU, 1, true, NULL, kernel_initializer, bias_initializer, NULL);
   t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
   Tensor gate_preds  = ff.flat(t);
-  gate_preds = ff.dense(gate_preds, 64, AC_MODE_SIGMOID);
+  gate_preds = ff.dense(gate_preds, 64, AC_MODE_SIGMOID, true, NULL, kernel_initializer, bias_initializer, NULL);
 #else
   Tensor gate_preds = input;
 #endif
-  gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_SIGMOID);
+  gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_NONE, true, NULL, kernel_initializer, bias_initializer, NULL);
   gate_preds = ff.softmax(gate_preds);
 
   Tensor topK_output[2];
@@ -508,34 +152,27 @@ void top_level_task(const Task* task,
   agg_inputs[3] = gate_preds; // full gate preds
   for(int i = 0; i < num_exp; i++) {
 #ifdef USE_CNN
-   Tensor t = ff.conv2d(exp_tensors[i], 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
-   t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
-    // Tensor t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
-    t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-    t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
-    t = ff.conv2d(t, 128, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
-    t = ff.conv2d(t, 64, 3, 3, 1, 1, 1, 1, AC_MODE_RELU);
-    t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-    t = ff.flat(t);
-    t = ff.dense(t, 128, AC_MODE_RELU/*relu*/);
-    t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
-    t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
+  Tensor t = ff.conv2d(exp_tensors[i], 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU, 1, true, NULL, kernel_initializer, bias_initializer, NULL);
+  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+  t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU, 1, true, NULL, kernel_initializer, bias_initializer, NULL);
+  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+  t  = ff.flat(t);
+  t = ff.dense(t, 64, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
 #else
     Tensor t = exp_tensors[i];
 #endif
-    Tensor exp_pred = ff.dense(t, OUT_DIM);
+    Tensor exp_pred = ff.dense(t, OUT_DIM, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
     agg_inputs[i+4] = ff.softmax(exp_pred);
     // exp_pred = ff.softmax(exp_pred);
   }
 
   Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
-  ff.get_metrics();
-  Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
+  // ff.get_metrics();
+  // Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
 
 //-----------------------------------------------------------------
 
-
-  Optimizer* optimizer = new SGDOptimizer(&ff, 0.002f);
+  Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
@@ -543,35 +180,22 @@ void top_level_task(const Task* task,
 
   // Data Loader
   DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
-  RecompileState r(&moe_trigger, &moe_alter, &ff);
   ff.init_layers();
 
-  // ff.load("j08/c10n5k2b50-fix.ff");
-  vector<int> load_layers;
-  load_layers.push_back(0);
-  load_layers.push_back(1);
-  load_layers.push_back(2);
-  load_layers.push_back(3);
-  ff.load("better_raninit.ff", load_layers);
+  std::vector<int> store_vec = {0,1,2,3};
+  ff.load("jl20/c10n5k2-100-commoninit.ff", store_vec);
+  int start_store = 11;
+  for(int i = 0; i < num_exp; i++) {
+    store_vec.clear();
+    for(int j = 0; j < 4; j++) {
+      store_vec.push_back(start_store);
+      start_store++;
+    }
+    ff.load("jl20/c10n5k2-100-commoninit.ff", store_vec);
+    start_store += 4;
+  }
 
-  // ff.load("j22/profiling.ff");
-  // ff.load("j22/c10n5k2-al1-500.ff");
-
-
-
-  // // ff.load("c10n5k2b50-shared.ff");
-  //
-  // int l = 12;
-  // for(int i = 0; i < num_exp; i++) {
-  //   load_layers.clear();
-  //   for(int j = 0; j < 4; j++) {
-  //     load_layers.push_back(l);
-  //     l++;
-  //   }
-  //   ff.load("j15/cifar100_backbone_100.ff", load_layers);
-  //   // ff.load("j15/c100n16k4-coopbetterraninit.ff", load_layers); //"cifar10_backbone_100.ff"
-  //   l += 4;
-  // }
+  // ff.load("jl20/c10n5k2-stabcoopcom-glorot1.ff-2");
 
   assert(TRAIN_SAMPLES % ffConfig.batchSize == 0 &&
     TEST_SAMPLES % ffConfig.batchSize == 0);
@@ -594,26 +218,25 @@ void top_level_task(const Task* task,
       if (epoch > 0) {
         runtime->begin_trace(ctx, glob_trace_id/*trace_id*/);
       }
-      ff.forward();
+      ff.forward_test();
       ff.zero_gradients();
       ff.backward();
       ff.update();
       if (epoch > 0) {
         runtime->end_trace(ctx, glob_trace_id/*trace_id*/);
       }
-      ff.recompile_on_condition(r);
     }
 
-    // // TODO: Do properly
-    // ff.reset_metrics();
-    // iterations = TEST_SAMPLES / ffConfig.batchSize;
-    // for (int iter = 0; iter < iterations; iter++) {
-    //   data_loader.next_batch(ff);
-    //   ff.forward_test();
-    // }
+    // TODO: Do properly
+    ff.reset_metrics();
+    iterations = TEST_SAMPLES / ffConfig.batchSize;
+    for (int iter = 0; iter < iterations; iter++) {
+      data_loader.next_batch(ff);
+      ff.forward_test();
+    }
 
-    // if(epoch%10 == 0)
-    //   ff.store("j22/profiling.ff");
+    if(epoch%10 == 0)
+      ff.store("jl20/c10n5k2-coopcom-debug2.ff");
 
   }
 
@@ -629,14 +252,7 @@ void top_level_task(const Task* task,
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s (comb. train, test)\n", run_time,
          NUM_SAMPLES * ffConfig.epochs / run_time);
 
-  ff.reset_metrics();
-  int iterations = TEST_SAMPLES / ffConfig.batchSize;
-  for (int iter = 0; iter < iterations; iter++) {
-    data_loader.next_batch(ff);
-    ff.forward_test();
-  }
-
-  // ff.store("jl08/c10n8k2-al3-statwrec.ff");
+  ff.store("jl20/c10n5k2-coopcom-debug2.ff");
 }
 
 DataLoader::DataLoader(FFModel& ff, const MoeConfig& moe,

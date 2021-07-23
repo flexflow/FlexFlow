@@ -31,11 +31,11 @@
 #include <fstream>
 #include <sstream>
 #include <ctime>
-// #include <deque> // TODO: Needed or incl elsewhere
 
 using namespace Legion;
 
 #include "ffconst.h"
+// #define MOE_CF_LOCAL
 
 enum TaskIDs {
   TOP_LEVEL_TASK_ID,
@@ -364,11 +364,19 @@ public:
                    Initializer* kernel_initializer = NULL,
                    const char* name = NULL);
   // Add a group_by layer
+#ifdef MOE_CF_LOCAL
+  void group_by(const Tensor& data,
+                const Tensor& assign,
+                Tensor* outputs,
+                int n, std::vector<float> alpha,
+                const char* name = NULL);
+#else
   void group_by(const Tensor& data,
                 const Tensor& assign,
                 Tensor* outputs,
                 int n, float alpha,
                 const char* name = NULL);
+#endif
   // Add a cache layer
   Tensor cache(const Tensor& input,
               int num_batches,
@@ -1191,15 +1199,26 @@ public:
   ~GroupByMeta(void);
   float** dev_region_ptrs;
   float* score;
+#ifdef MOE_CF_LOCAL
+  float* alpha_pass;
+#endif
 };
 
 class GroupBy : public Op {
 public:
+#ifdef MOE_CF_LOCAL
+  GroupBy(FFModel& model,
+          const Tensor& _input,
+          const Tensor& _assign,
+          int _n, std::vector<float> _alpha,
+          const char* name);
+#else
   GroupBy(FFModel& model,
           const Tensor& _input,
           const Tensor& _assign,
           int _n, float _alpha,
           const char* name);
+#endif
   ~GroupBy(void);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -1212,9 +1231,15 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+#ifdef MOE_CF_LOCAL
+  static float* forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+#else
   static float forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+#endif
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
@@ -1224,10 +1249,17 @@ public:
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);
+#ifdef MOE_CF_LOCAL
+  template<int NDIM>
+  static float* forward_task_with_dim(const Task *task,
+                                    const std::vector<PhysicalRegion> &regions,
+                                    Context ctx, Runtime *runtime);
+#else
   template<int NDIM>
   static float forward_task_with_dim(const Task *task,
                                     const std::vector<PhysicalRegion> &regions,
                                     Context ctx, Runtime *runtime);
+#endif
   template<int NDIM>
   static void backward_task_with_dim(const Task *task,
                                     const std::vector<PhysicalRegion> &regions,
@@ -1235,7 +1267,12 @@ private:
 
 public:
   int n;
+  bool first_init;
+#ifdef MOE_CF_LOCAL
+  std::vector<float> alpha;
+#else
   float alpha;
+#endif
   std::deque<Future> score_futures;
   bool profiling;
 };
@@ -1291,6 +1328,9 @@ public:
   ~AggregateMeta(void);
   float** dev_exp_preds;
   float** dev_exp_grads;
+#ifdef MOE_CF_LOCAL
+  int* exp_samples_arr;
+#endif
 };
 
 class Aggregate : public Op {
@@ -1329,6 +1369,7 @@ public:
   AggregateSpecMeta(FFHandler handle, int n);
   ~AggregateSpecMeta(void);
   float** dev_region_ptrs;
+  int* exp_samples_arr;
 };
 
 class AggregateSpec : public Op {

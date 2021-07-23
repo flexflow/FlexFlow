@@ -17,8 +17,27 @@
 #include "cuda_helper.h"
 #include <math.h>
 #include <stdio.h>
-#include "moe.h"
+//#include "moe.h"
 
+#define MAX_K 2
+#define MAX_N 5
+#define MAX_BATCH_SIZE 100
+
+// #define MOE_CP_LOCAL
+
+#ifdef MOE_CF_LOCAL
+void FFModel::group_by(const Tensor& input,
+                        const Tensor& assign,
+                        Tensor* outputs,
+                        int n, std::vector<float> alpha,
+                        const char* name)
+{
+  GroupBy* group_by = new GroupBy(*this, input, assign, n, alpha, name);
+  layers.push_back(group_by);
+  for (int i = 0; i < n; i++)
+    outputs[i] = group_by->outputs[i];
+}
+#else
 void FFModel::group_by(const Tensor& input,
                         const Tensor& assign,
                         Tensor* outputs,
@@ -30,8 +49,20 @@ void FFModel::group_by(const Tensor& input,
   for (int i = 0; i < n; i++)
     outputs[i] = group_by->outputs[i];
 }
+#endif
 
-
+#ifdef MOE_CF_LOCAL
+GroupBy::GroupBy(FFModel& model,
+                  const Tensor& _input,
+                  const Tensor& _assign,
+                  int _n, std::vector<float> _alpha,
+                  const char* name)
+: Op(model, OP_GROUP_BY, name, _input, _assign),
+  n(_n),
+  profiling(model.config.profiling)
+{
+  for(int i = 0; i < 8; i++) alpha.push_back(_alpha[i]);
+#else
 GroupBy::GroupBy(FFModel& model,
                   const Tensor& _input,
                   const Tensor& _assign,
@@ -42,6 +73,10 @@ GroupBy::GroupBy(FFModel& model,
   alpha(_alpha),
   profiling(model.config.profiling)
 {
+#endif
+
+  first_init = true;
+
   // FIXME: For now, set upper limits Better: Do as follows, but memory is
   // assigned per block, so requires to check that
   // https://stackoverflow.com/questions/5531247/allocating-shared-memory/5531640#5531640
@@ -62,7 +97,11 @@ GroupBy::GroupBy(FFModel& model,
     for(int j = 0; j < num_dim-1; j++) {
       outputs[i].adim[j] = inputs[0].adim[j];
     }
+#ifdef MOE_CF_LOCAL
+    outputs[i].adim[num_dim-1] = (int)ceil(alpha[i]*k/n*batch_size);
+#else
     outputs[i].adim[num_dim-1] = (int)ceil(alpha*k/n*batch_size);
+#endif
   }
 
   numWeights = 0;
@@ -89,11 +128,16 @@ void GroupBy::create_output_and_partition_with_dim(FFModel& model)
 
   int k = inputs[1].adim[0];
   int dims[NDIM];
+#ifndef MOE_CF_LOCAL
   dims[0] = (int)ceil(alpha*k/n*inputs[1].adim[1]);
+#endif
   for(int i = 1; i < NDIM; i++) {
     dims[i] = inputs[0].adim[NDIM-i-1];
   }
   for(int i = 0; i < n; i++) {
+#ifdef MOE_CF_LOCAL
+    dims[0] = (int)ceil(alpha[i]*k/n*inputs[1].adim[1]);
+#endif
     outputs[i] = model.create_tensor<NDIM>(dims, inputs[0].data_type, this);
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -142,7 +186,15 @@ OpMeta* GroupBy::init_task(const Task* task,
   FFHandler handle = *((FFHandler*)task->local_args);
   GroupByMeta* m = new GroupByMeta(handle, gb->n);
   m->profiling = gb->profiling;
-  cudaMemcpy(m->score, &gb->alpha, sizeof(float), cudaMemcpyHostToDevice);
+  if(gb->first_init) {
+#ifdef MOE_CF_LOCAL
+    cudaMemcpy(m->score, &gb->alpha[0], gb->n*sizeof(float), cudaMemcpyHostToDevice);
+#else
+    float init_score = gb->alpha; // TODO
+    cudaMemcpy(m->score, &init_score, sizeof(float), cudaMemcpyHostToDevice);
+#endif
+  }
+  gb->first_init = false;
   return m;
 }
 
@@ -217,6 +269,17 @@ void GroupBy::init(const FFModel& ff)
 
 
 __global__
+#ifdef MOE_CF_LOCAL
+void gb_forward_kernel(const float* input,
+        const int* exp_assign,
+        float** outputs,
+        int n, // num experts
+        int k, // chosen experts
+        float* alpha, // factor additional memory assigned
+        int batch_size,
+        int data_dim,
+        float* score)
+#else
 void gb_forward_kernel(const float* input,
         const int* exp_assign,
         float** outputs,
@@ -226,16 +289,22 @@ void gb_forward_kernel(const float* input,
         int batch_size,
         int data_dim,
         float* score)
+#endif
 {
   __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread per block
   if(threadIdx.x == 0) {
+#ifndef MOE_CF_LOCAL
     int exp_tensor_rows = ceil(alpha*k/n*batch_size);
+#endif
     int expert_idx[MAX_N] = {0};
     for(int i = 0; i < k*batch_size; i++) {
       // Get pointer to chosen expert predictions
       int expert = exp_assign[i];
+#ifdef MOE_CF_LOCAL
+    int exp_tensor_rows = ceil(alpha[expert]*k/n*batch_size);
+#endif
       if(expert_idx[expert] >= exp_tensor_rows) {
         // dropped sample
         chosen_exp_preds[i] = 0;
@@ -247,11 +316,18 @@ void gb_forward_kernel(const float* input,
     }
 
     // compute min alpha such that all samples fit
+#ifdef MOE_CF_LOCAL
+    float norm = (float)n/(k*batch_size)*0.01f;
+    for(int i = 0; i < n; i++) {
+      score[i] = 0.99f*score[i] + expert_idx[i]*norm;
+    }
+#else
     float min_alpha = -1.0f;
     for(int i = 0; i < n; i++)
       if(expert_idx[i] > min_alpha) min_alpha = expert_idx[i];
     min_alpha *= (float)n/(k*batch_size);
-    *score = 0.999f*(*score) + 0.001f*min_alpha;
+    *score = 0.5f*(*score) + 0.5f*min_alpha;
+#endif
   }
 
   __syncthreads();
@@ -267,56 +343,67 @@ void gb_forward_kernel(const float* input,
 }
 
 
-__global__
-void gb_backward_kernel(float* input_grad,
-        const int* exp_assign,
-        float** output_grads,
-        int n, // num experts
-        int k, // chosen experts
-        float alpha, // factor additional memory assigned
-        int batch_size,
-        int data_dim)
+// __global__
+// void gb_backward_kernel(float* input_grad,
+//         const int* exp_assign,
+//         float** output_grads,
+//         int n, // num experts
+//         int k, // chosen experts
+//         float alpha, // factor additional memory assigned
+//         int batch_size,
+//         int data_dim)
+// {
+//   __shared__ float* chosen_exp_grads[MAX_K*MAX_BATCH_SIZE];
+//
+//   // Get pred pointers, single thread
+//   if(blockIdx.x * blockDim.x + threadIdx.x == 0) {
+//     int exp_tensor_rows = ceil(alpha*k/n*batch_size);
+//     int expert_idx[MAX_N] = {0};
+//     for(int i = 0; i < k*batch_size; i++) {
+//       // Get pointer to chosen expert predictions
+//       int expert = exp_assign[i];
+//       if(expert_idx[expert] >= exp_tensor_rows) {
+//         // dropped sample
+//         chosen_exp_grads[i] = 0;
+//         continue;
+//       }
+//       chosen_exp_grads[i] = output_grads[expert] + expert_idx[expert]*data_dim;
+//       expert_idx[expert]++;
+//     }
+//   }
+//
+//   __syncthreads();
+//
+//   // compute output
+//   CUDA_KERNEL_LOOP(i, k*batch_size*data_dim)
+//   {
+//     if(chosen_exp_grads[i/data_dim] != 0) {
+//       input_grad[(i/(k*data_dim))*data_dim + i%data_dim] = chosen_exp_grads[i/data_dim][i%data_dim];
+//     }
+//   }
+// }
+
+#ifdef MOE_CP_LOCAL
+template<int NDIM>
+float* GroupBy::forward_task_with_dim(const Task *task,
+                            const std::vector<PhysicalRegion>& regions,
+                            Context ctx, Runtime* runtime)
 {
-  __shared__ float* chosen_exp_grads[MAX_K*MAX_BATCH_SIZE];
-
-  // Get pred pointers, single thread
-  if(blockIdx.x * blockDim.x + threadIdx.x == 0) {
-    int exp_tensor_rows = ceil(alpha*k/n*batch_size);
-    int expert_idx[MAX_N] = {0};
-    for(int i = 0; i < k*batch_size; i++) {
-      // Get pointer to chosen expert predictions
-      int expert = exp_assign[i];
-      if(expert_idx[expert] >= exp_tensor_rows) {
-        // dropped sample
-        chosen_exp_grads[i] = 0;
-        continue;
-      }
-      chosen_exp_grads[i] = output_grads[expert] + expert_idx[expert]*data_dim;
-      expert_idx[expert]++;
-    }
-  }
-
-  __syncthreads();
-
-  // compute output
-  CUDA_KERNEL_LOOP(i, k*batch_size*data_dim)
-  {
-    if(chosen_exp_grads[i/data_dim] != 0) {
-      input_grad[(i/(k*data_dim))*data_dim + i%data_dim] = chosen_exp_grads[i/data_dim][i%data_dim];
-    }
-  }
-}
-
-
+#else
 template<int NDIM>
 float GroupBy::forward_task_with_dim(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
+#endif
   // Get n, alpha
   const GroupBy* gb = (GroupBy*) task->args;
   int n = gb->n;
+#ifdef MOE_CF_LOCAL
+  std::vector<float> alpha = gb->alpha;
+#else
   float alpha = gb->alpha;
+#endif
 
   assert((int)regions.size() == n+2);
   assert((int)task->regions.size() == n+2);
@@ -361,20 +448,50 @@ float GroupBy::forward_task_with_dim(const Task *task,
 
   // call forward kernel
   cudaMemcpy(m->dev_region_ptrs, outputs, n*sizeof(float*), cudaMemcpyHostToDevice);
+#ifdef MOE_CF_LOCAL
+  cudaMemcpy(m->alpha_pass, &alpha[0], n*sizeof(float), cudaMemcpyHostToDevice);
 
-  gb_forward_kernel<<<GET_BLOCKS(batch_size*k*data_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim))>>>(
+  // TODO: several blocks
+
+  gb_forward_kernel<<<1, min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim))>>>(
+    acc_input.ptr(rect_input), acc_assign.ptr(rect_assign), m->dev_region_ptrs, n, k,
+    m->alpha_pass, batch_size, data_dim, m->score);
+
+  float* score_ptr = (float*)malloc(n*sizeof(float)); // score[n];
+  cudaMemcpy(score_ptr, m->score, n*sizeof(float), cudaMemcpyDeviceToHost);
+  // cudaDeviceSynchronize();
+  return score_ptr;
+  // cudaMemcpy(&score, m->score, n*sizeof(float), cudaMemcpyDeviceToHost);
+  // cudaDeviceSynchronize();
+  // printf("here at ret vec: ");
+  // for(int i = 0; i < n; i++) printf(" %.2f", score[i]);
+  // printf("\n");
+  // std::vector<float> score_vec(score, score+n);
+  //   printf("here at ret vec2: ");
+  //   for(int i = 0; i < n; i++) printf(" %.2f", score_vec[i]);
+  //   printf("\n");
+  // return score_vec;
+#else
+  gb_forward_kernel<<<1, min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim))>>>(
     acc_input.ptr(rect_input), acc_assign.ptr(rect_assign), m->dev_region_ptrs, n, k,
     alpha, batch_size, data_dim, m->score);
 
   float score = -1.0f; // TODO
   cudaMemcpy(&score, m->score, sizeof(float), cudaMemcpyDeviceToHost);
   return score;
+#endif
 }
 
 
+#ifdef MOE_CP_LOCAL
+float* GroupBy::forward_task(const Task *task,
+                          const std::vector<PhysicalRegion> &regions,
+                          Context ctx, Runtime *runtime)
+#else
 float GroupBy::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
+#endif
 {
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -387,84 +504,88 @@ float GroupBy::forward_task(const Task *task,
     default:
       assert(false);
   }
+#ifdef MOE_CP_LOCAL
+  return 0; // std::vector<float>();
+#else
   return -1.0f;
-}
-
-
-template<int NDIM>
-void GroupBy::backward_task_with_dim(const Task *task,
-                            const std::vector<PhysicalRegion>& regions,
-                            Context ctx, Runtime* runtime)
-{
-  // Get n, alpha
-  const GroupByMeta* m = *((GroupByMeta**)task->local_args);
-  const GroupBy* gb = (GroupBy*) task->args;
-  int n = gb->n;
-  float alpha = gb->alpha;
-
-  assert((int)regions.size() == n+2);
-  assert((int)task->regions.size() == n+2);
-
-  // get input and assign regions
-  const AccessorWO<float, NDIM> acc_input_grad(regions[0], FID_DATA);
-  const AccessorRO<int, 2> acc_assign(regions[1], FID_DATA);
-
-  Rect<NDIM> rect_input_grad = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  Rect<2> rect_assign = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-
-  int exp_batch_size = rect_input_grad.hi[NDIM-1] - rect_input_grad.hi[NDIM-1] + 1;
-  int batch_size = rect_assign.hi[1] - rect_assign.lo[1] + 1;
-  int data_dim = rect_input_grad.volume()/exp_batch_size;
-  int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
-
-  // get output
-  float* output_grads[n];
-  //int exp_output_rows = (int)ceil(alpha*k/n*batch_size);
-  for(int i = 0; i < n; i++) {
-    Domain out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[i+2].region.get_index_space());
-    output_grads[i] = helperGetTensorPointerRW<float>(
-      regions[i+2], task->regions[i+2], FID_DATA, ctx, runtime);
-
-    // //coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
-    // coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
-    // //assert((int)output_rows == exp_output_rows);
-    // assert(output_cols == input_cols);
-  }
-
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 #endif
-
-  // call forward kernel
-  cudaMemcpy(m->dev_region_ptrs, output_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
-
-  gb_backward_kernel<<<GET_BLOCKS(batch_size*k*data_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim))>>>(
-    acc_input_grad.ptr(rect_input_grad), acc_assign.ptr(rect_assign), m->dev_region_ptrs,
-    n, k, alpha, batch_size, data_dim);
 }
+
+
+// template<int NDIM>
+// void GroupBy::backward_task_with_dim(const Task *task,
+//                             const std::vector<PhysicalRegion>& regions,
+//                             Context ctx, Runtime* runtime)
+// {
+//   // Get n, alpha
+//   const GroupByMeta* m = *((GroupByMeta**)task->local_args);
+//   const GroupBy* gb = (GroupBy*) task->args;
+//   int n = gb->n;
+//   float alpha = gb->alpha;
+//
+//   assert((int)regions.size() == n+2);
+//   assert((int)task->regions.size() == n+2);
+//
+//   // get input and assign regions
+//   const AccessorWO<float, NDIM> acc_input_grad(regions[0], FID_DATA);
+//   const AccessorRO<int, 2> acc_assign(regions[1], FID_DATA);
+//
+//   Rect<NDIM> rect_input_grad = runtime->get_index_space_domain(
+//       ctx, task->regions[0].region.get_index_space());
+//   Rect<2> rect_assign = runtime->get_index_space_domain(
+//       ctx, task->regions[1].region.get_index_space());
+//
+//   int exp_batch_size = rect_input_grad.hi[NDIM-1] - rect_input_grad.hi[NDIM-1] + 1;
+//   int batch_size = rect_assign.hi[1] - rect_assign.lo[1] + 1;
+//   int data_dim = rect_input_grad.volume()/exp_batch_size;
+//   int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
+//
+//   // get output
+//   float* output_grads[n];
+//   //int exp_output_rows = (int)ceil(alpha*k/n*batch_size);
+//   for(int i = 0; i < n; i++) {
+//     Domain out_domain = runtime->get_index_space_domain(
+//       ctx, task->regions[i+2].region.get_index_space());
+//     output_grads[i] = helperGetTensorPointerRW<float>(
+//       regions[i+2], task->regions[i+2], FID_DATA, ctx, runtime);
+//
+//     // //coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
+//     // coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
+//     // //assert((int)output_rows == exp_output_rows);
+//     // assert(output_cols == input_cols);
+//   }
+//
+// #ifndef DISABLE_LEGION_CUDA_HIJACK
+//   cudaStream_t stream;
+//   checkCUDA(cudaStreamCreate(&stream));
+//   checkCUDA(cublasSetStream(m->handle.blas, stream));
+//   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+// #endif
+//
+//   // call forward kernel
+//   cudaMemcpy(m->dev_region_ptrs, output_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
+//
+//   gb_backward_kernel<<<GET_BLOCKS(batch_size*k*data_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim))>>>(
+//     acc_input_grad.ptr(rect_input_grad), acc_assign.ptr(rect_assign), m->dev_region_ptrs,
+//     n, k, alpha, batch_size, data_dim);
+// }
 
 void GroupBy::backward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
   return;
-  Domain in_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  switch (in_domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-      return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
+//   Domain in_domain = runtime->get_index_space_domain(
+//       ctx, task->regions[0].region.get_index_space());
+//   switch (in_domain.get_dim()) {
+// #define DIMFUNC(DIM) \
+//     case DIM: \
+//       return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
+//     LEGION_FOREACH_N(DIMFUNC)
+// #undef DIMFUNC
+//     default:
+//       assert(false);
+//   }
 }
 
 
@@ -541,7 +662,6 @@ void GroupBy::backward(const FFModel& ff)
   // the output of anyother operator. Else, don't propagate.
   // TODO: backward_task only supports 2D input for now.
 
-
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -596,12 +716,20 @@ GroupByMeta::GroupByMeta(FFHandler handler, int n)
 : OpMeta(handler)
 {
   checkCUDA(cudaMalloc(&dev_region_ptrs, n*sizeof(float*)));
+#ifdef MOE_CF_LOCAL
+  checkCUDA(cudaMalloc(&score, n*sizeof(float)));
+  checkCUDA(cudaMalloc(&alpha_pass, n*sizeof(float)));
+#else
   checkCUDA(cudaMalloc(&score, sizeof(float)));
+#endif
 }
 GroupByMeta::~GroupByMeta(void)
 {
   checkCUDA(cudaFree(&dev_region_ptrs));
   checkCUDA(cudaFree(&score));
+#ifdef MOE_CF_LOCAL
+  checkCUDA(cudaFree(&alpha_pass));
+#endif
 }
 
 
@@ -613,5 +741,5 @@ bool GroupBy::measure_operator_cost(Simulator* sim,
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
   cost_metrics.memory_requirement = 0;
-  return false;
+  return true;
 }

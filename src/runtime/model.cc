@@ -1590,7 +1590,7 @@ void FFModel::forward(int seq_length)
   for (size_t i = 0; i < layers.size(); i++) {
     if(i != layers.size() -2)
       layers[i]->forward(*this);
-    std::cout << i << ": " << layers[i]->name << "\n";
+    // std::cout << i << ": " << layers[i]->name << "\n";
   }
 }
 
@@ -1815,6 +1815,9 @@ void FFModel::recompile(std::vector<int>& layers_changed)
     dims[num_dims-1] = 1;
     label_type = DT_INT32;
   }
+
+  for (size_t i = 0; i < layers.size(); i++)
+    layers[i]->init(*this);
 }
 
 void FFModel::compile(LossType loss_type,
@@ -2832,11 +2835,19 @@ void register_flexflow_internal_tasks()
         registrar, "GroupBy Init Task");
   }
   {
+#ifdef MOE_CF_LOCAL
+    TaskVariantRegistrar registrar(GROUP_BY_FWD_TASK_ID, "GroupBy Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<float*, GroupBy::forward_task>(
+        registrar, "GroupBy Forward Task");
+#else
     TaskVariantRegistrar registrar(GROUP_BY_FWD_TASK_ID, "GroupBy Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<float, GroupBy::forward_task>(
         registrar, "GroupBy Forward Task");
+#endif
   }
   {
     TaskVariantRegistrar registrar(GROUP_BY_BWD_TASK_ID, "GroupBy Backward");

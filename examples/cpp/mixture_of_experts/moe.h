@@ -17,7 +17,7 @@
 
 #define MAX_K 2
 #define MAX_BATCH_SIZE 100
-#define MAX_N 8
+#define MAX_N 5
 // #define MOE_VERBOSE
 // #define SPEC_SCORE
 // #define MOE_SPEC_SCORE

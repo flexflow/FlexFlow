@@ -25,7 +25,7 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 # Put the binary file name here
 OUTFILE		?= moe
 # List all the application source files here
-GEN_SRC		= moe.cc
+GEN_SRC		= moe_rob.cc 
 GEN_GPU_SRC	= moe.cu
 
 ifndef FF_HOME

@@ -15,10 +15,14 @@
 
 #include "model.h"
 #include "cuda_helper.h"
-#include "moe.h"
+//#include "moe.h"
+
+#define MAX_K 2
+#define MAX_N 5
+#define MAX_BATCH_SIZE 100
 
 // #define MOE_DEBUG
-#define MOE_VERBOSE
+// #define MOE_VERBOSE
 
 Tensor FFModel::aggregate(const Tensor* inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
                           int n, float lambda_bal, const char* name)
@@ -105,7 +109,6 @@ void Aggregate::create_output_and_partition(FFModel& model)
   outputs[0].owner_op = this;
   outputs[0].owner_idx = 0;
 
-
   // Compute partition bound for input
   for(int i = 0; i < n+4; i++) {
     Rect<2> input_rect = runtime->get_index_partition_color_space(
@@ -185,6 +188,17 @@ void Aggregate::init(const FFModel& ff)
 
 
 __global__
+#ifdef MOE_CF_LOCAL
+void agg_forward_kernel(float** exp_preds,
+        const int* exp_assign,
+        const float* gate_net_preds,
+        float* output,
+        int n,
+        const int k, // num chosen experts
+        int* exp_samples_arr, // max samples per expert
+        const int batch_size,
+        int out_dim)
+#else
 void agg_forward_kernel(float** exp_preds,
         const int* exp_assign,
         const float* gate_net_preds,
@@ -194,6 +208,7 @@ void agg_forward_kernel(float** exp_preds,
         int exp_samples, // max samples per expert
         const int batch_size,
         int out_dim)
+#endif
 {
   __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
 
@@ -204,6 +219,9 @@ void agg_forward_kernel(float** exp_preds,
       for(int j = 0; j < k; j++) {
         // Get pointer to chosen expert predictions
         int expert = exp_assign[i*k+j];
+#ifdef MOE_CF_LOCAL
+        int exp_samples = exp_samples_arr[expert];
+#endif
         if(expert_idx[expert] >= exp_samples) {
           // dropped sample
           chosen_exp_preds[i*k+j] = 0;
@@ -355,6 +373,21 @@ void agg_backward_kernel_exp(const float* output_grad,
 
 
 __global__
+#ifdef MOE_CF_LOCAL
+void agg_backward_kernel(float** exp_preds,
+        float** exp_grads,
+        const int* exp_assign,
+        const int* true_exp_assign,
+        const float* gating_net_preds,
+        float* full_gating_grads,
+        const float* output_grads,
+        int n, // num experts
+        int k, // num chosen experts
+        int* exp_samples_arr, // max samples per expert
+        float lambda_bal,
+        int batch_size,
+        int out_dim)
+#else
 void agg_backward_kernel(float** exp_preds,
         float** exp_grads,
         const int* exp_assign,
@@ -368,6 +401,7 @@ void agg_backward_kernel(float** exp_preds,
         float lambda_bal,
         int batch_size,
         int out_dim)
+#endif
 {
   __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
   __shared__ float* chosen_exp_grads[MAX_K*MAX_BATCH_SIZE];
@@ -378,14 +412,17 @@ void agg_backward_kernel(float** exp_preds,
   if(threadIdx.x == 0) {
     // init arrays
     for(int i = 0; i < n; i++) expert_bal[i] = 0;
-    for(int i = 0; i < batch_size; i++) cache_corr[i] = true;
+    // for(int i = 0; i < batch_size; i++) cache_corr[i] = true;
 
     // Get pointer to chosen expert predictions and expert counts
     for(int i = 0; i < batch_size; i++) {
       for(int j = 0; j < k; j++) {
         int expert = true_exp_assign[k*i + j];
-        if(expert != exp_assign[k*i + j])
-          cache_corr[i] = false;
+        // if(expert != exp_assign[k*i + j])
+        //   cache_corr[i] = false;
+#ifdef MOE_CF_LOCAL
+        int exp_samples = exp_samples_arr[expert];
+#endif
         if(expert_bal[expert] >= exp_samples) {
           // dropped sample
           chosen_exp_preds[i*k+j] = 0;
@@ -481,7 +518,12 @@ void Aggregate::forward_task(const Task *task,
     ctx, task->regions[2].region.get_index_space());
   exp_preds[0] = helperGetTensorPointerWO<float>(
     regions[2], task->regions[2], FID_DATA, ctx, runtime);
+#ifdef MOE_CF_LOCAL
+  std::vector<int> exp_samples_arr;
+  exp_samples_arr.push_back(exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
+#else
   coord_t rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
+#endif
   assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
 
   for(int i = 1; i < n; i++) {
@@ -490,7 +532,11 @@ void Aggregate::forward_task(const Task *task,
     exp_preds[i] = helperGetTensorPointerWO<float>(
       regions[i+2], task->regions[i+2], FID_DATA, ctx, runtime);
 
+#ifdef MOE_CF_LOCAL
+    exp_samples_arr.push_back(exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
+#else
     assert(rows == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
+#endif
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
 
@@ -510,10 +556,16 @@ void Aggregate::forward_task(const Task *task,
   int num_threads = min(CUDA_NUM_THREADS,(int)(batch_size*k*out_dim));
   int num_blocks = GET_BLOCKS(num_threads);
   assert(num_blocks == 1);
-
+#ifdef MOE_CF_LOCAL
+  cudaMemcpy(m->exp_samples_arr, &exp_samples_arr[0], n*sizeof(int), cudaMemcpyHostToDevice);
+  agg_forward_kernel<<<num_blocks, num_threads>>>(m->dev_exp_preds,
+    acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
+    acc_output.ptr(rect_output), n, k, m->exp_samples_arr, batch_size, out_dim);
+#else
   agg_forward_kernel<<<num_blocks, num_threads>>>(m->dev_exp_preds,
     acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     acc_output.ptr(rect_output), n, k, rows, batch_size, out_dim);
+#endif
 }
 
 
@@ -563,7 +615,12 @@ void Aggregate::backward_task(const Task *task,
     ctx, task->regions[4].region.get_index_space());
   exp_preds[0] = helperGetTensorPointerRW<float>(
     regions[4], task->regions[4], FID_DATA, ctx, runtime);
+#ifdef MOE_CF_LOCAL
+  std::vector<int> exp_samples_arr;
+  exp_samples_arr.push_back(exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
+#else
   coord_t rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
+#endif
   assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
 
   for(int i = 1; i < n; i++) {
@@ -571,7 +628,12 @@ void Aggregate::backward_task(const Task *task,
       ctx, task->regions[i+4].region.get_index_space());
     exp_preds[i] = helperGetTensorPointerRW<float>(
       regions[i+4], task->regions[i+4], FID_DATA, ctx, runtime);
+
+#ifdef MOE_CF_LOCAL
+    exp_samples_arr.push_back(exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
+#else
     assert(rows == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
+#endif
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
 
@@ -582,9 +644,14 @@ void Aggregate::backward_task(const Task *task,
       ctx, task->regions[n+i+4].region.get_index_space());
     exp_grads[i] = helperGetTensorPointerRW<float>(
       regions[n+i+4], task->regions[n+i+4], FID_DATA, ctx, runtime);
+#ifdef MOE_CF_LOCAL
+    assert(exp_samples_arr[i] == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
+#else
     assert(rows == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
+#endif
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
+
 
 #ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
@@ -602,11 +669,21 @@ void Aggregate::backward_task(const Task *task,
   int num_blocks = GET_BLOCKS(num_threads);
   assert(num_blocks == 1);
 
+#ifdef MOE_CF_LOCAL
+  cudaMemcpy(m->exp_samples_arr, &exp_samples_arr[0], n*sizeof(int), cudaMemcpyHostToDevice);
+
+  agg_backward_kernel<<<num_blocks, num_threads>>>(m->dev_exp_preds,
+    m->dev_exp_grads, acc_gate_assign.ptr(rect_gate_assign),
+    acc_true_gate_assign.ptr(rect_true_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
+    full_acc_gate_grad.ptr(rect_full_gate_grad), acc_output_grad.ptr(rect_out_grad),
+    n, k, m->exp_samples_arr, lambda_bal, batch_size, out_dim);
+#else
   agg_backward_kernel<<<num_blocks, num_threads>>>(m->dev_exp_preds,
     m->dev_exp_grads, acc_gate_assign.ptr(rect_gate_assign),
     acc_true_gate_assign.ptr(rect_true_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     full_acc_gate_grad.ptr(rect_full_gate_grad), acc_output_grad.ptr(rect_out_grad),
     n, k, rows, lambda_bal, batch_size, out_dim);
+#endif
 }
 
 
@@ -748,11 +825,17 @@ AggregateMeta::AggregateMeta(FFHandler handler, int n)
 {
   checkCUDA(cudaMalloc(&dev_exp_preds, n*sizeof(float*)));
   checkCUDA(cudaMalloc(&dev_exp_grads, n*sizeof(float*)));
+#ifdef MOE_CF_LOCAL
+  checkCUDA(cudaMalloc(&exp_samples_arr, n*sizeof(int)));
+#endif
 }
 AggregateMeta::~AggregateMeta(void)
 {
   checkCUDA(cudaFree(&dev_exp_preds));
   checkCUDA(cudaFree(&dev_exp_grads));
+#ifdef MOE_CF_LOCAL
+  checkCUDA(cudaFree(&exp_samples_arr));
+#endif
 }
 
 
@@ -764,5 +847,5 @@ bool Aggregate::measure_operator_cost(Simulator* sim,
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
   cost_metrics.memory_requirement = 0;
-  return false;
+  return true;
 }
