@@ -387,6 +387,15 @@ void Embedding::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+__global__
+void rand_generate_int64(int64_t* ptr, size_t size, int64_t p)
+{
+  CUDA_KERNEL_LOOP(i, size)
+  {
+    ptr[i] = i % p;
+  }
+}
+
 bool Embedding::measure_operator_cost(Simulator* sim,
                                       const ParallelConfig& pc,
                                       CostMetrics& cost_metrics)
@@ -402,6 +411,7 @@ bool Embedding::measure_operator_cost(Simulator* sim,
   sim->free_all();
   int64_t *input_ptr = (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
   assert (input_ptr != NULL);
+  checkCUDA(cudaMemset(input_ptr, 0, sub_input.get_volume()));
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert (output_ptr != NULL);
   float *weight_ptr = (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
@@ -413,6 +423,9 @@ bool Embedding::measure_operator_cost(Simulator* sim,
 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+  // Randomly initialize the intput tensor to avoid out of index range issues
+  rand_generate_int64<<<GET_BLOCKS(sub_input.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
+      input_ptr, sub_input.get_volume(), num_entries);
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel(input_ptr, output_ptr, weight_ptr, in_dim, out_dim, batch_size, this->aggr, sub_output.get_volume(), stream);
