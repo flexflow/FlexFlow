@@ -116,31 +116,31 @@ void top_level_task(const Task* task,
 
 //-----------------------------------------------------------------
 
-  GlorotUniform* kernel_initializer = new GlorotUniform(3);
+  GlorotUniform* kernel_initializer = new GlorotUniform(4);
   ZeroInitializer* bias_initializer = new ZeroInitializer();
 
-
-  float alpha = 4.0f;
-
-  float lambda = 0.06f/16.0f; // 0.06f/250.0f;  // multiplier for load balance term
+  float alpha = 2.0f;
+  // float lambda = 0.01; // coop loss
+  float lambda = 0.09f/50.0f; // spec loss
 
   // MoE model
-#ifdef USE_CNN
+// #ifdef USE_CNN
   Tensor t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU, 1, true, NULL, kernel_initializer, bias_initializer, NULL);
   t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
   t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU, 1, true, NULL, kernel_initializer, bias_initializer, NULL);
   t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-  Tensor gate_preds  = ff.flat(t);
+  Tensor gate_preds = ff.flat(t);
   gate_preds = ff.dense(gate_preds, 64, AC_MODE_SIGMOID, true, NULL, kernel_initializer, bias_initializer, NULL);
-#else
-  Tensor gate_preds = input;
-#endif
-  gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_NONE, true, NULL, kernel_initializer, bias_initializer, NULL);
-  gate_preds = ff.softmax(gate_preds);
+// #else
+//   Tensor gate_preds = ff.dense(input, 128, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
+//   gate_preds = ff.dense(input, 64, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
+// #endif
+  gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_SIGMOID, true, NULL, kernel_initializer, bias_initializer, NULL);
+  Tensor soft_gate_preds = ff.softmax(gate_preds);
 
   Tensor topK_output[2];
   ff.top_k(gate_preds, topK_output, num_select, false);
-  // ff.cache(topK_output[1], NUM_SAMPLES / ffConfig.batchSize, moe_score);
+  ff.cache(topK_output[1], (TRAIN_SAMPLES+TEST_SAMPLES) / ffConfig.batchSize, moe_score);
 
   Tensor exp_tensors[num_exp];
   ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
@@ -149,30 +149,30 @@ void top_level_task(const Task* task,
   agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
   agg_inputs[1] = topK_output[1]; // gate assign
   agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
-  agg_inputs[3] = gate_preds; // full gate preds
+  agg_inputs[3] = soft_gate_preds; // full gate preds
   for(int i = 0; i < num_exp; i++) {
 #ifdef USE_CNN
-  Tensor t = ff.conv2d(exp_tensors[i], 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU, 1, true, NULL, kernel_initializer, bias_initializer, NULL);
-  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-  t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU, 1, true, NULL, kernel_initializer, bias_initializer, NULL);
-  t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-  t  = ff.flat(t);
-  t = ff.dense(t, 64, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
-#else
-    Tensor t = exp_tensors[i];
-#endif
+    Tensor t = ff.conv2d(exp_tensors[i], 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU, 1, true, NULL, kernel_initializer, bias_initializer, NULL);
+    t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+    t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU, 1, true, NULL, kernel_initializer, bias_initializer, NULL);
+    t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
+    t = ff.flat(t);
+    t = ff.dense(t, 64, AC_MODE_RELU/*relu*/, true, NULL, kernel_initializer, bias_initializer, NULL);
     Tensor exp_pred = ff.dense(t, OUT_DIM, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
+#else
+    Tensor exp_pred = ff.dense(exp_tensors[i], 64, AC_MODE_RELU);
+    exp_pred = ff.dense(exp_pred, OUT_DIM, AC_MODE_RELU);
+#endif
     agg_inputs[i+4] = ff.softmax(exp_pred);
-    // exp_pred = ff.softmax(exp_pred);
   }
 
   Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
-  // ff.get_metrics();
-  // Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
+  ff.get_metrics();
+  Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
 
 //-----------------------------------------------------------------
 
-  Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
+  Optimizer* optimizer = new SGDOptimizer(&ff, 0.002f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
@@ -182,20 +182,31 @@ void top_level_task(const Task* task,
   DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
   ff.init_layers();
 
-  std::vector<int> store_vec = {0,1,2,3};
-  ff.load("jl20/c10n5k2-100-commoninit.ff", store_vec);
-  int start_store = 11;
+  std::vector<int> store_vec; // = {0,1,2,3};
+  // ff.load("jl20/c10n5k2-20-newcommoninit.ff", store_vec);
+  int start_store = 12;
   for(int i = 0; i < num_exp; i++) {
     store_vec.clear();
-    for(int j = 0; j < 4; j++) {
+    for(int j = 0; j < 8; j++) {
       store_vec.push_back(start_store);
       start_store++;
     }
-    ff.load("jl20/c10n5k2-100-commoninit.ff", store_vec);
-    start_store += 4;
+    ff.load("jl20/l3d50-stabtoday-commoninit10-full-g4.ff", store_vec);
+
+    // ff.load("jl20/c10n5k2-20-newcommoninit-full.ff", store_vec);
+    // start_store += 4;
   }
 
+  // ff.load("jl20/c10n5k2-stab-specb50l3-gor2.ff");
+  // ff.load("jl20/c10n5k2-stab-speccomb50l3-gor1-currnew.ff");
+
+  // ff.load("jl20/c10n5k2-rob-fullinit-try2.ff");
+  // ff.load("jl20/c10n5k2-rob-fullinit.ff");
+  // ff.load("jl20/c10n5k2-getbal-newcommit-try2.ff");
   // ff.load("jl20/c10n5k2-stabcoopcom-glorot1.ff-2");
+      // ff.load("jl20/c10n5k2-stab-speccomb50l3-gor1-trynew.ff");
+
+
 
   assert(TRAIN_SAMPLES % ffConfig.batchSize == 0 &&
     TEST_SAMPLES % ffConfig.batchSize == 0);
@@ -218,7 +229,7 @@ void top_level_task(const Task* task,
       if (epoch > 0) {
         runtime->begin_trace(ctx, glob_trace_id/*trace_id*/);
       }
-      ff.forward_test();
+      ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
@@ -235,10 +246,13 @@ void top_level_task(const Task* task,
       ff.forward_test();
     }
 
-    if(epoch%10 == 0)
-      ff.store("jl20/c10n5k2-coopcom-debug2.ff");
+    // if(epoch%10 == 0)
+    //   ff.store("jl20/c10n5k2-stab-speccomb50l3-gor3-trynew-nozgrad.ff");
+    // first spec:
+    // ff.store("jl20/c10n5k2-rob-fullinit-try-spec.ff");
 
   }
+
 
   // End timer
   {
@@ -252,7 +266,8 @@ void top_level_task(const Task* task,
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s (comb. train, test)\n", run_time,
          NUM_SAMPLES * ffConfig.epochs / run_time);
 
-  ff.store("jl20/c10n5k2-coopcom-debug2.ff");
+  // ff.store("jl20/l3d50-stabtoday-commoninit10-full-g4.ff");
+
 }
 
 DataLoader::DataLoader(FFModel& ff, const MoeConfig& moe,

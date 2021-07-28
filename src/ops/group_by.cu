@@ -23,57 +23,47 @@
 #define MAX_N 5
 #define MAX_BATCH_SIZE 100
 
-// #define MOE_CP_LOCAL
 
-#ifdef MOE_CF_LOCAL
+// group_by with local capacity factors
 void FFModel::group_by(const Tensor& input,
                         const Tensor& assign,
                         Tensor* outputs,
                         int n, std::vector<float> alpha,
                         const char* name)
 {
-  GroupBy* group_by = new GroupBy(*this, input, assign, n, alpha, name);
+  GroupBy* group_by = new GroupBy(*this, input, assign, n, alpha, true, name);
   layers.push_back(group_by);
   for (int i = 0; i < n; i++)
     outputs[i] = group_by->outputs[i];
 }
-#else
+
+// group_by with global capacity factors
 void FFModel::group_by(const Tensor& input,
                         const Tensor& assign,
                         Tensor* outputs,
                         int n, float alpha,
                         const char* name)
 {
-  GroupBy* group_by = new GroupBy(*this, input, assign, n, alpha, name);
+  std::vector<float> alpha_vec = {alpha};
+  GroupBy* group_by = new GroupBy(*this, input, assign, n, alpha_vec, false, name);
   layers.push_back(group_by);
   for (int i = 0; i < n; i++)
     outputs[i] = group_by->outputs[i];
 }
-#endif
 
-#ifdef MOE_CF_LOCAL
+
 GroupBy::GroupBy(FFModel& model,
                   const Tensor& _input,
                   const Tensor& _assign,
                   int _n, std::vector<float> _alpha,
+                  bool _local_lambda,
                   const char* name)
 : Op(model, OP_GROUP_BY, name, _input, _assign),
-  n(_n),
+  n(_n), local_lambda(_local_lambda),
   profiling(model.config.profiling)
 {
-  for(int i = 0; i < 8; i++) alpha.push_back(_alpha[i]);
-#else
-GroupBy::GroupBy(FFModel& model,
-                  const Tensor& _input,
-                  const Tensor& _assign,
-                  int _n, float _alpha,
-                  const char* name)
-: Op(model, OP_GROUP_BY, name, _input, _assign),
-  n(_n),
-  alpha(_alpha),
-  profiling(model.config.profiling)
-{
-#endif
+  // TODO: Geht eleganter?
+  for(size_t i = 0; i < _alpha.size(); i++) alpha.push_back(_alpha[i]);
 
   first_init = true;
 
@@ -97,11 +87,11 @@ GroupBy::GroupBy(FFModel& model,
     for(int j = 0; j < num_dim-1; j++) {
       outputs[i].adim[j] = inputs[0].adim[j];
     }
-#ifdef MOE_CF_LOCAL
-    outputs[i].adim[num_dim-1] = (int)ceil(alpha[i]*k/n*batch_size);
-#else
-    outputs[i].adim[num_dim-1] = (int)ceil(alpha*k/n*batch_size);
-#endif
+    if(local_lambda) {
+      outputs[i].adim[num_dim-1] = (int)ceil(alpha[i]*k/n*batch_size);
+    } else {
+      outputs[i].adim[num_dim-1] = (int)ceil(alpha[0]*k/n*batch_size);
+    }
   }
 
   numWeights = 0;
@@ -128,16 +118,13 @@ void GroupBy::create_output_and_partition_with_dim(FFModel& model)
 
   int k = inputs[1].adim[0];
   int dims[NDIM];
-#ifndef MOE_CF_LOCAL
-  dims[0] = (int)ceil(alpha*k/n*inputs[1].adim[1]);
-#endif
+  dims[0] = (int)ceil(alpha[0]*k/n*inputs[1].adim[1]);
   for(int i = 1; i < NDIM; i++) {
     dims[i] = inputs[0].adim[NDIM-i-1];
   }
   for(int i = 0; i < n; i++) {
-#ifdef MOE_CF_LOCAL
-    dims[0] = (int)ceil(alpha[i]*k/n*inputs[1].adim[1]);
-#endif
+    if(local_lambda)
+      dims[0] = (int)ceil(alpha[i]*k/n*inputs[1].adim[1]);
     outputs[i] = model.create_tensor<NDIM>(dims, inputs[0].data_type, this);
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -184,15 +171,13 @@ OpMeta* GroupBy::init_task(const Task* task,
 {
   GroupBy* gb = (GroupBy*) task->args;
   FFHandler handle = *((FFHandler*)task->local_args);
-  GroupByMeta* m = new GroupByMeta(handle, gb->n);
+  GroupByMeta* m = new GroupByMeta(handle, gb->n, gb->local_lambda);
   m->profiling = gb->profiling;
+  /* NOTE: if this is the first time GroupBy is initalized (not a recompile),
+  init the score with alpha */
   if(gb->first_init) {
-#ifdef MOE_CF_LOCAL
-    cudaMemcpy(m->score, &gb->alpha[0], gb->n*sizeof(float), cudaMemcpyHostToDevice);
-#else
-    float init_score = gb->alpha; // TODO
-    cudaMemcpy(m->score, &init_score, sizeof(float), cudaMemcpyHostToDevice);
-#endif
+    int copy_size = gb->local_lambda ? gb->n : 1;
+    cudaMemcpy(m->score, &gb->alpha[0], copy_size*sizeof(float), cudaMemcpyHostToDevice);
   }
   gb->first_init = false;
   return m;
@@ -269,7 +254,6 @@ void GroupBy::init(const FFModel& ff)
 
 
 __global__
-#ifdef MOE_CF_LOCAL
 void gb_forward_kernel(const float* input,
         const int* exp_assign,
         float** outputs,
@@ -278,33 +262,21 @@ void gb_forward_kernel(const float* input,
         float* alpha, // factor additional memory assigned
         int batch_size,
         int data_dim,
-        float* score)
-#else
-void gb_forward_kernel(const float* input,
-        const int* exp_assign,
-        float** outputs,
-        int n, // num experts
-        int k, // chosen experts
-        float alpha, // factor additional memory assigned
-        int batch_size,
-        int data_dim,
-        float* score)
-#endif
+        float* score,
+        const bool local_lambda)
 {
   __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread per block
   if(threadIdx.x == 0) {
-#ifndef MOE_CF_LOCAL
-    int exp_tensor_rows = ceil(alpha*k/n*batch_size);
-#endif
+    int exp_tensor_rows = ceil(alpha[0]*k/n*batch_size);
+
     int expert_idx[MAX_N] = {0};
     for(int i = 0; i < k*batch_size; i++) {
       // Get pointer to chosen expert predictions
       int expert = exp_assign[i];
-#ifdef MOE_CF_LOCAL
-    int exp_tensor_rows = ceil(alpha[expert]*k/n*batch_size);
-#endif
+      if(local_lambda) exp_tensor_rows = ceil(alpha[expert]*k/n*batch_size);
+
       if(expert_idx[expert] >= exp_tensor_rows) {
         // dropped sample
         chosen_exp_preds[i] = 0;
@@ -315,19 +287,21 @@ void gb_forward_kernel(const float* input,
       expert_idx[expert]++;
     }
 
-    // compute min alpha such that all samples fit
-#ifdef MOE_CF_LOCAL
-    float norm = (float)n/(k*batch_size)*0.01f;
-    for(int i = 0; i < n; i++) {
-      score[i] = 0.99f*score[i] + expert_idx[i]*norm;
+    // compute score: min alpha such that all samples fit
+    float fact = 0.01f;
+    float fact_1 = 1.0f - fact;
+    float norm = (float)n/(k*batch_size)*fact;
+    if(local_lambda) {
+      for(int i = 0; i < n; i++) {
+        score[i] = fact_1*score[i] + norm*expert_idx[i];
+      }
+    } else {
+      float min_alpha = -1.0f;
+      for(int i = 0; i < n; i++)
+        if(expert_idx[i] > min_alpha)
+          min_alpha = expert_idx[i];
+      score[0] = fact_1*(*score) + norm*min_alpha;
     }
-#else
-    float min_alpha = -1.0f;
-    for(int i = 0; i < n; i++)
-      if(expert_idx[i] > min_alpha) min_alpha = expert_idx[i];
-    min_alpha *= (float)n/(k*batch_size);
-    *score = 0.5f*(*score) + 0.5f*min_alpha;
-#endif
   }
 
   __syncthreads();
@@ -383,27 +357,16 @@ void gb_forward_kernel(const float* input,
 //   }
 // }
 
-#ifdef MOE_CP_LOCAL
 template<int NDIM>
 float* GroupBy::forward_task_with_dim(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
-#else
-template<int NDIM>
-float GroupBy::forward_task_with_dim(const Task *task,
-                            const std::vector<PhysicalRegion>& regions,
-                            Context ctx, Runtime* runtime)
-{
-#endif
   // Get n, alpha
   const GroupBy* gb = (GroupBy*) task->args;
   int n = gb->n;
-#ifdef MOE_CF_LOCAL
   std::vector<float> alpha = gb->alpha;
-#else
-  float alpha = gb->alpha;
-#endif
+  const bool local_lambda = gb->local_lambda;
 
   assert((int)regions.size() == n+2);
   assert((int)task->regions.size() == n+2);
@@ -447,51 +410,24 @@ float GroupBy::forward_task_with_dim(const Task *task,
 #endif
 
   // call forward kernel
+  int copy_size = local_lambda ? n : 1;
   cudaMemcpy(m->dev_region_ptrs, outputs, n*sizeof(float*), cudaMemcpyHostToDevice);
-#ifdef MOE_CF_LOCAL
-  cudaMemcpy(m->alpha_pass, &alpha[0], n*sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(m->alpha_pass, &alpha[0], copy_size*sizeof(float), cudaMemcpyHostToDevice);
 
   // TODO: several blocks
-
   gb_forward_kernel<<<1, min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim))>>>(
     acc_input.ptr(rect_input), acc_assign.ptr(rect_assign), m->dev_region_ptrs, n, k,
-    m->alpha_pass, batch_size, data_dim, m->score);
+    m->alpha_pass, batch_size, data_dim, m->score, local_lambda);
 
-  float* score_ptr = (float*)malloc(n*sizeof(float)); // score[n];
-  cudaMemcpy(score_ptr, m->score, n*sizeof(float), cudaMemcpyDeviceToHost);
-  // cudaDeviceSynchronize();
+  float* score_ptr = (float*)malloc(copy_size*sizeof(float)); // needs to be freed in user code
+  cudaMemcpy(score_ptr, m->score, copy_size*sizeof(float), cudaMemcpyDeviceToHost);
   return score_ptr;
-  // cudaMemcpy(&score, m->score, n*sizeof(float), cudaMemcpyDeviceToHost);
-  // cudaDeviceSynchronize();
-  // printf("here at ret vec: ");
-  // for(int i = 0; i < n; i++) printf(" %.2f", score[i]);
-  // printf("\n");
-  // std::vector<float> score_vec(score, score+n);
-  //   printf("here at ret vec2: ");
-  //   for(int i = 0; i < n; i++) printf(" %.2f", score_vec[i]);
-  //   printf("\n");
-  // return score_vec;
-#else
-  gb_forward_kernel<<<1, min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim))>>>(
-    acc_input.ptr(rect_input), acc_assign.ptr(rect_assign), m->dev_region_ptrs, n, k,
-    alpha, batch_size, data_dim, m->score);
-
-  float score = -1.0f; // TODO
-  cudaMemcpy(&score, m->score, sizeof(float), cudaMemcpyDeviceToHost);
-  return score;
-#endif
 }
 
 
-#ifdef MOE_CP_LOCAL
 float* GroupBy::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
-#else
-float GroupBy::forward_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
-                          Context ctx, Runtime *runtime)
-#endif
 {
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -504,11 +440,7 @@ float GroupBy::forward_task(const Task *task,
     default:
       assert(false);
   }
-#ifdef MOE_CP_LOCAL
-  return 0; // std::vector<float>();
-#else
-  return -1.0f;
-#endif
+  return 0;
 }
 
 
@@ -712,24 +644,19 @@ void GroupBy::backward(const FFModel& ff)
 }
 
 
-GroupByMeta::GroupByMeta(FFHandler handler, int n)
+GroupByMeta::GroupByMeta(FFHandler handler, int n, bool local_lambda)
 : OpMeta(handler)
 {
   checkCUDA(cudaMalloc(&dev_region_ptrs, n*sizeof(float*)));
-#ifdef MOE_CF_LOCAL
-  checkCUDA(cudaMalloc(&score, n*sizeof(float)));
-  checkCUDA(cudaMalloc(&alpha_pass, n*sizeof(float)));
-#else
-  checkCUDA(cudaMalloc(&score, sizeof(float)));
-#endif
+  int copy_size = local_lambda ? n : 1;
+  checkCUDA(cudaMalloc(&score, copy_size*sizeof(float)));
+  checkCUDA(cudaMalloc(&alpha_pass, copy_size*sizeof(float)));
 }
 GroupByMeta::~GroupByMeta(void)
 {
   checkCUDA(cudaFree(&dev_region_ptrs));
   checkCUDA(cudaFree(&score));
-#ifdef MOE_CF_LOCAL
   checkCUDA(cudaFree(&alpha_pass));
-#endif
 }
 
 
