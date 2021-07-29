@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/cache.h"
 #include "cuda_helper.h"
 
 // Moving average over batches: 1 if batch is perfectly cached, 0 else.

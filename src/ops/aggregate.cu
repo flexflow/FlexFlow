@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/aggregate.h"
 #include "cuda_helper.h"
 
 #define MAX_K 4

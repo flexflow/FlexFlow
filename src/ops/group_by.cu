@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/groupby.h"
 #include "cuda_helper.h"
 #include <math.h>
 #include <stdio.h>

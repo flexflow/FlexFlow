@@ -24,6 +24,7 @@
 #include "ops/element_binary.h"
 #include "ops/batch_norm.h"
 #include "ops/batch_matmul.h"
+#include "ops/transpose.h"
 
 using namespace Legion;
 

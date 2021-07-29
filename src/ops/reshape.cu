@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/reshape.h"
 #include "cuda_helper.h"
 
 using namespace Legion;
