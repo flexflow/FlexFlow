@@ -27,8 +27,9 @@ class FFModel;
 class Loss
 {
 public:
-  Loss(const std::string& loss);
-  Loss(LossType _loss_type);
+  Loss(const std::string& loss, bool _repl_labels=false);
+  Loss(LossType _loss_type, bool _repl_labels=false);
+
   static void backward_task(const Legion::Task *task,
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
@@ -42,9 +43,10 @@ public:
 public:
   FFModel* model;
   LossType loss_type;
+  bool repl_labels; // for aggregate_spec: More predictions than labels
   // scale factor for computing the logit gradients
   // normally 1.0f / global_batch_size
-  float scale_factor; 
+  float scale_factor;
 };
 
 #endif

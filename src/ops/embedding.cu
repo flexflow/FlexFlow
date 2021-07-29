@@ -272,9 +272,10 @@ void Embedding::forward_kernel(int64_t const *input_ptr,
                                int out_dim,
                                int batch_size,
                                AggrMode aggr,
-                               int outputSize)
+                               int outputSize,
+                               cudaStream_t stream)
 {
-  embed_forward<<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS>>>(
+  embed_forward<<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
       input_ptr, output_ptr, weight_ptr, out_dim, in_dim, batch_size, aggr);
 }
 
@@ -328,7 +329,9 @@ void Embedding::forward_task_with_dim(const Task *task,
   int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
   int batch_size = accOutput.rect.volume() / out_dim;
-  forward_kernel(accInput.ptr, accOutput.ptr, accWeight.ptr, in_dim, out_dim, batch_size,  m->aggr, accOutput.rect.volume());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  forward_kernel(accInput.ptr, accOutput.ptr, accWeight.ptr, in_dim, out_dim, batch_size,  m->aggr, accOutput.rect.volume(), stream);
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
     print_tensor<int64_t>(accInput.ptr, accInput.rect.volume(), "[Embedding:forward:input]");
@@ -373,9 +376,10 @@ void Embedding::backward_kernel(int64_t const *input_ptr,
                                 int out_dim,
                                 int batch_size,
                                 AggrMode aggr,
-                                int outputSize)
+                                int outputSize,
+                                cudaStream_t stream)
 {
-  embed_backward<<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS>>>(
+  embed_backward<<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
       input_ptr, output_ptr, weight_grad_ptr, out_dim, in_dim, batch_size, aggr);
 }
 
@@ -422,7 +426,9 @@ void Embedding::backward_task_with_dim(const Task *task,
   int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
   int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
   int batch_size = accOutput.rect.volume() / out_dim;
-  backward_kernel(accInput.ptr, accOutput.ptr, accWeightGrad.ptr, in_dim, out_dim, batch_size, m->aggr, accOutput.rect.volume());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  backward_kernel(accInput.ptr, accOutput.ptr, accWeightGrad.ptr, in_dim, out_dim, batch_size, m->aggr, accOutput.rect.volume(), stream);
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
     print_tensor<float>(accOutput.ptr, accOutput.rect.volume(), "[Embedding:backward:output_grad]");
@@ -459,6 +465,15 @@ void Embedding::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+__global__
+void rand_generate_int64(int64_t* ptr, size_t size, int64_t p)
+{
+  CUDA_KERNEL_LOOP(i, size)
+  {
+    ptr[i] = i % p;
+  }
+}
+
 bool Embedding::measure_operator_cost(Simulator* sim,
                                       const ParallelConfig& pc,
                                       CostMetrics& cost_metrics) const
@@ -489,9 +504,14 @@ bool Embedding::measure_operator_cost(Simulator* sim,
   assert (sub_input.dims[1] == sub_output.dims[1]);
   int batch_size = sub_input.dims[1].size;
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  // Randomly initialize the intput tensor to avoid out of index range issues
+  rand_generate_int64<<<GET_BLOCKS(sub_input.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
+      input_ptr, sub_input.get_volume(), num_entries);
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(input_ptr, output_ptr, weight_ptr, in_dim, out_dim, batch_size, this->aggr, sub_output.get_volume());
+    forward_kernel(input_ptr, output_ptr, weight_ptr, in_dim, out_dim, batch_size, this->aggr, sub_output.get_volume(), stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *weight_grad_ptr = (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
@@ -507,7 +527,7 @@ bool Embedding::measure_operator_cost(Simulator* sim,
     }
     backward = [&] {
       backward_kernel(input_grad_ptr, output_grad_ptr, weight_grad_ptr, in_dim, out_dim, batch_size,
-        this->aggr, sub_output.get_volume());
+        this->aggr, sub_output.get_volume(), stream);
     };
   }
 

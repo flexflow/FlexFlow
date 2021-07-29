@@ -341,14 +341,12 @@ void FusedOp::forward_task(const Task* task,
       assert(metas->meta[start]->handle.blas == metas->meta[op]->handle.blas);
       assert(metas->meta[start]->handle.dnn == metas->meta[op]->handle.dnn);
     }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
+
+  cudaStream_t stream;
   if (start < fused->numOperators) {
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
-    checkCUDA(cublasSetStream(metas->meta[start]->handle.blas, stream));
-    checkCUDNN(cudnnSetStream(metas->meta[start]->handle.dnn, stream));
+    checkCUDA(get_legion_stream(&stream));
   }
-#endif
+
   int ioff = 0, woff = 0, ooff = 0;
   for (int op = 0; op < fused->numOperators; op++) {
     Domain my_id[MAX_NUM_INPUTS];
@@ -386,7 +384,7 @@ void FusedOp::forward_task(const Task* task,
         ConcatMeta* m = (ConcatMeta*) metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
         Concat::forward_kernel(my_op[0], my_ip, num_inputs, m->axis,
-            my_od[0], my_id);
+            my_od[0], my_id, stream);
         break;
       }
       case OP_CONV2D:
@@ -397,7 +395,7 @@ void FusedOp::forward_task(const Task* task,
         assert(my_wd[0].get_dim() == 4);
         assert(my_od[0].get_dim() == 4);
         Conv2DMeta* m = (Conv2DMeta*) metas->meta[op];
-        Conv2D::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1]);
+        Conv2D::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1], stream);
         break;
       }
       case OP_BATCHNORM:
@@ -409,7 +407,7 @@ void FusedOp::forward_task(const Task* task,
         assert(my_wd[0].get_dim() == 1);
         assert(my_wd[1].get_dim() == 1);
         BatchNormMeta* m = (BatchNormMeta*) metas->meta[op];
-        BatchNorm::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1]);
+        BatchNorm::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1], stream);
         break;
       }
       case OP_DROPOUT:
@@ -417,7 +415,7 @@ void FusedOp::forward_task(const Task* task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta* m = (DropoutMeta*) metas->meta[op];
-        Dropout::forward_kernel(m, my_ip[0], my_op[0]);
+        Dropout::forward_kernel(m, my_ip[0], my_op[0], stream);
         break;
       }
       case OP_LINEAR:
@@ -434,7 +432,7 @@ void FusedOp::forward_task(const Task* task,
         assert(my_wd[1].get_volume() == out_dim);
         LinearMeta* m = (LinearMeta*) metas->meta[op];
         Linear::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1],
-            in_dim, out_dim, batch_size);
+            in_dim, out_dim, batch_size, stream);
         break;
       }
       case OP_BATCHMATMUL:
@@ -462,7 +460,7 @@ void FusedOp::forward_task(const Task* task,
         }
         BatchMatmulMeta* meta = (BatchMatmulMeta*) metas->meta[op];
         BatchMatmul::forward_kernel(meta, my_op[0], my_ip[0], my_ip[1], NULL,
-          m, n, k, batch, meta->a_seq_length_dim, meta->b_seq_length_dim,
+          m, n, k, batch, stream, meta->a_seq_length_dim, meta->b_seq_length_dim,
           fused->iter_config.seq_length);
         break;
       }
@@ -477,7 +475,7 @@ void FusedOp::forward_task(const Task* task,
         assert(my_id[0] == my_id[1]);
         assert(my_id[0] == my_od[0]);
         ElementBinaryMeta* m = (ElementBinaryMeta*) metas->meta[op];
-        ElementBinary::forward_kernel(m, my_ip[0], my_ip[1], my_op[0]);
+        ElementBinary::forward_kernel(m, my_ip[0], my_ip[1], my_op[0], stream);
         break;
       }
       case OP_RELU:
@@ -490,7 +488,7 @@ void FusedOp::forward_task(const Task* task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_id[0] == my_od[0]);
         ElementUnaryMeta* m = (ElementUnaryMeta*) metas->meta[op];
-        ElementUnary::forward_kernel(m, my_ip[0], my_op[0], my_id[0].get_volume());
+        ElementUnary::forward_kernel(m, my_ip[0], my_op[0], my_id[0].get_volume(), stream);
         break;
       }
       case OP_POOL2D:
@@ -500,7 +498,7 @@ void FusedOp::forward_task(const Task* task,
         assert(fused->op_num_outputs[op] == 1);
         //assert(my_id[0] == my_od[0]);
         Pool2DMeta* m = (Pool2DMeta*) metas->meta[op];
-        Pool2D::forward_kernel(m, my_ip[0], my_op[0]);
+        Pool2D::forward_kernel(m, my_ip[0], my_op[0], stream);
         break;
       }
       case OP_FLAT:
@@ -509,7 +507,7 @@ void FusedOp::forward_task(const Task* task,
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
         assert(my_id[0].get_volume() == my_od[0].get_volume());
-        Flat::forward_kernel(my_ip[0], my_op[0], my_id[0].get_volume());
+        Flat::forward_kernel(my_ip[0], my_op[0], my_id[0].get_volume(), stream);
         break;
       }
       case OP_RESHAPE:
@@ -518,7 +516,7 @@ void FusedOp::forward_task(const Task* task,
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
         assert(my_id[0].get_volume() == my_od[0].get_volume());
-        Reshape::forward_kernel(my_ip[0], my_op[0], my_id[0].get_volume());
+        Reshape::forward_kernel(my_ip[0], my_op[0], my_id[0].get_volume(), stream);
         break;
       }
       case OP_TRANSPOSE:
@@ -528,7 +526,7 @@ void FusedOp::forward_task(const Task* task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_id[0].get_volume() == my_od[0].get_volume());
         TransposeMeta* m = (TransposeMeta*) metas->meta[op];
-        Transpose::forward_kernel(m, my_ip[0], my_op[0], my_id[0], my_od[0]);
+        Transpose::forward_kernel(m, my_ip[0], my_op[0], my_id[0], my_od[0], stream);
         break;
       }
       default:
@@ -677,14 +675,10 @@ void FusedOp::backward_task(const Task* task,
       assert(metas->meta[start]->handle.blas == metas->meta[op]->handle.blas);
       assert(metas->meta[start]->handle.dnn == metas->meta[op]->handle.dnn);
     }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  if (start < fused->numOperators) {
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
-    checkCUDA(cublasSetStream(metas->meta[start]->handle.blas, stream));
-    checkCUDNN(cudnnSetStream(metas->meta[start]->handle.dnn, stream));
-  }
-#endif
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
   int ioff = 0, woff = 0, ooff = 0;
   Domain my_id[MAX_NUM_INPUTS], my_grad_id[MAX_NUM_INPUTS];
   Domain my_wd[MAX_NUM_WEIGHTS], my_grad_wd[MAX_NUM_WEIGHTS];
@@ -747,7 +741,7 @@ void FusedOp::backward_task(const Task* task,
         ConcatMeta* m = (ConcatMeta*) metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
         Concat::backward_kernel(my_grad_op[0], my_grad_ip, num_inputs, m->axis,
-            my_grad_od[0], my_grad_id);
+            my_grad_od[0], my_grad_id, stream);
         break;
       }
       case OP_CONV2D:
@@ -759,7 +753,7 @@ void FusedOp::backward_task(const Task* task,
         assert(my_od[0].get_dim() == 4);
         Conv2DMeta* m = (Conv2DMeta*) metas->meta[op];
         Conv2D::backward_kernel(m, my_ip[0], my_grad_ip[0], my_op[0], my_grad_op[0],
-            my_wp[0], my_grad_wp[0], my_grad_wp[1]);
+            my_wp[0], my_grad_wp[0], my_grad_wp[1], stream);
         break;
       }
       case OP_BATCHNORM:
@@ -773,7 +767,7 @@ void FusedOp::backward_task(const Task* task,
         BatchNormMeta* m = (BatchNormMeta*) metas->meta[op];
         BatchNorm::backward_kernel(m, my_ip[0], my_grad_op[0], my_op[0],
             my_grad_ip[0], my_wp[0], my_grad_wp[0], my_grad_wp[1],
-            my_od[0].get_volume());
+            my_od[0].get_volume(), stream);
         break;
       }
       case OP_DROPOUT:
@@ -781,7 +775,7 @@ void FusedOp::backward_task(const Task* task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta* m = (DropoutMeta*) metas->meta[op];
-        Dropout::backward_kernel(m, my_grad_op[0], my_grad_ip[0]);
+        Dropout::backward_kernel(m, my_grad_op[0], my_grad_ip[0], stream);
         break;
       }
       case OP_LINEAR:
@@ -798,7 +792,7 @@ void FusedOp::backward_task(const Task* task,
         assert(my_wd[1].get_volume() == out_dim);
         LinearMeta* m = (LinearMeta*) metas->meta[op];
         Linear::backward_kernel(m, my_ip[0], my_grad_ip[0], my_op[0], my_grad_op[0],
-            my_wp[0], my_grad_wp[0], my_grad_wp[1], in_dim, out_dim, batch_size);
+            my_wp[0], my_grad_wp[0], my_grad_wp[1], in_dim, out_dim, batch_size, stream);
         break;
       }
       case OP_BATCHMATMUL:
@@ -827,7 +821,7 @@ void FusedOp::backward_task(const Task* task,
         }
         BatchMatmulMeta* meta = (BatchMatmulMeta*) metas->meta[op];
         BatchMatmul::backward_kernel(meta, my_op[0], my_grad_op[0], my_ip[0], my_grad_ip[0],
-            my_ip[1], my_grad_ip[1], NULL, m, n, k, batch);
+            my_ip[1], my_grad_ip[1], NULL, m, n, k, batch, stream);
         break;
       }
       case OP_EW_ADD:
@@ -842,7 +836,7 @@ void FusedOp::backward_task(const Task* task,
         assert(my_id[0] == my_od[0]);
         ElementBinaryMeta* m = (ElementBinaryMeta*) metas->meta[op];
         ElementBinary::backward_kernel(m, my_grad_op[0], my_ip[0], my_ip[1],
-            my_grad_ip[0], my_grad_ip[1]);
+            my_grad_ip[0], my_grad_ip[1], stream);
         break;
       }
       case OP_RELU:
@@ -856,7 +850,7 @@ void FusedOp::backward_task(const Task* task,
         assert(my_id[0] == my_od[0]);
         ElementUnaryMeta* m = (ElementUnaryMeta*) metas->meta[op];
         ElementUnary::backward_kernel(m, my_ip[0], my_grad_ip[0],
-            my_op[0], my_grad_op[0], my_id[0].get_volume());
+            my_op[0], my_grad_op[0], my_id[0].get_volume(), stream);
         break;
       }
       case OP_POOL2D:
@@ -867,7 +861,7 @@ void FusedOp::backward_task(const Task* task,
         //assert(my_id[0] == my_od[0]);
         Pool2DMeta* m = (Pool2DMeta*) metas->meta[op];
         Pool2D::backward_kernel(m, my_ip[0], my_grad_ip[0],
-            my_op[0], my_grad_op[0]);
+            my_op[0], my_grad_op[0], stream);
         break;
       }
       case OP_FLAT:
@@ -877,7 +871,7 @@ void FusedOp::backward_task(const Task* task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_grad_id[0].get_volume() == my_grad_od[0].get_volume());
         Flat::backward_kernel(my_grad_ip[0], my_grad_op[0],
-            my_grad_id[0].get_volume());
+            my_grad_id[0].get_volume(), stream);
         break;
       }
       case OP_RESHAPE:
@@ -887,7 +881,7 @@ void FusedOp::backward_task(const Task* task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_grad_id[0].get_volume() == my_grad_od[0].get_volume());
         Reshape::backward_kernel(my_grad_ip[0], my_grad_op[0],
-            my_grad_id[0].get_volume());
+            my_grad_id[0].get_volume(), stream);
         break;
       }
       case OP_TRANSPOSE:
@@ -898,7 +892,7 @@ void FusedOp::backward_task(const Task* task,
         assert(my_grad_id[0].get_volume() == my_grad_od[0].get_volume());
         TransposeMeta* m = (TransposeMeta*) metas->meta[op];
         Transpose::backward_kernel(m, my_grad_ip[0], my_grad_op[0],
-            my_grad_id[0], my_grad_od[0]);
+            my_grad_id[0], my_grad_od[0], stream);
         break;
       }
       default:

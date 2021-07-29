@@ -80,6 +80,13 @@ int
 flexflow_config_get_epochs(
   flexflow_config_t handle);
 
+bool
+flexflow_config_get_enable_control_replication(
+  flexflow_config_t handle);
+    
+int
+flexflow_config_get_python_data_loader_type(
+  flexflow_config_t handle);
 // -----------------------------------------------------------------------
 // FFModel
 // -----------------------------------------------------------------------
@@ -303,6 +310,30 @@ flexflow_model_add_relu(
 
 flexflow_tensor_t
 flexflow_model_add_scalar_multiply(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input,
+  const float scalar,
+  bool inplace,
+  const char *name);
+
+flexflow_tensor_t
+flexflow_model_add_scalar_add(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input,
+  const float scalar,
+  bool inplace,
+  const char *name);
+
+flexflow_tensor_t
+flexflow_model_add_scalar_sub(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input,
+  const float scalar,
+  bool inplace,
+  const char *name);
+
+flexflow_tensor_t
+flexflow_model_add_scalar_truediv(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
   const float scalar,

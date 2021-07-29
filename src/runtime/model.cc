@@ -1008,8 +1008,11 @@ bool Op::get_weight_parameter(TNParameter tnp, DIMParameter dim, int* value) con
 }
 
 OpMeta::OpMeta(FFHandler _handle)
-: handle(_handle)
-{}
+: handle(_handle), profiling(false)
+{
+  for (int i = 0; i < MAX_NUM_INPUTS; i++)
+    trainableInputs[i] = true;
+}
 
 FFModel::FFModel(FFConfig& _config)
 : op_global_guid(OP_GUID_FIRST_VALID),
@@ -1026,6 +1029,7 @@ FFModel::FFModel(FFConfig& _config)
   // Register machine views
   register_all_machine_views(config.numNodes, config.workersPerNode,
                              config.cpusPerNode, all_valid_views);
+  metrics_input = -1;
   // Load strategy file
   // Create field space
   {
@@ -2077,14 +2081,16 @@ IndexSpace FFModel::get_or_create_task_is(const Domain& domain)
 IndexSpace FFModel::get_or_create_task_is(int ndims, const std::string& pcname)
 {
   ParallelConfig pc;
-  assert(config.find_parallel_config(ndims, pcname, pc));
+  bool result = config.find_parallel_config(ndims, pcname, pc);
+  assert(result);
   return get_or_create_task_is(pc);
 }
 
 IndexSpace FFModel::get_task_is(int ndims, const std::string& pcname) const
 {
   ParallelConfig pc;
-  assert(config.find_parallel_config(ndims, pcname, pc));
+  bool result = config.find_parallel_config(ndims, pcname, pc);
+  assert(result);
   return get_task_is(pc);
 }
 */
@@ -2121,11 +2127,24 @@ void FFModel::forward(int seq_length)
     layers[i]->forward(*this);
 }
 
+
+void FFModel::recompile_on_condition(RecompileState &r)
+{
+  if(r.trigger())
+    r.alter();
+}
+
+
 void FFModel::compute_metrics()
 {
-  Op* final_layer = get_final_layer();
-  assert(final_layer->numOutputs == 1);
-  metrics_op->compute(this, final_layer->outputs[0], label_tensor_with_final_part);
+  Op* metrics_layer = layers[metrics_input];
+  assert(metrics_layer->numOutputs == 1);
+  metrics_op->compute(this, &(metrics_layer->outputs[0]), &label_tensor_with_final_part);
+}
+
+void FFModel::get_metrics()
+{
+  metrics_input = layers.size()-1;
 }
 
 void FFModel::backward(int seq_length)
@@ -2133,11 +2152,11 @@ void FFModel::backward(int seq_length)
   iter_config.seq_length = seq_length;
   assert(config.computationMode == COMP_MODE_TRAINING);
   // Compute metrics
-  Op* final_layer = get_final_layer();
-  assert(final_layer->numOutputs == 1);
-  metrics_op->compute(this, final_layer->outputs[0], label_tensor_with_final_part);
+  compute_metrics();
   // Compute the gradients of the final layer wrt loss
-  loss_op->backward(this, final_layer->outputs[0], label_tensor_with_final_part);
+  Op* final_layer = layers[layers.size()-1];
+  assert(final_layer->numOutputs == 1);
+  loss_op->backward(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
   // Perform backpropagation
   // std::set<LogicalRegion> resetedInputGrads;
   for (int l = layers.size() - 1; l >= 0; l--) {
@@ -2151,6 +2170,7 @@ void FFModel::backward(int seq_length)
         layers[l]->resetInputGrads[i] = false;
       }
 #endif
+    if(l == metrics_input && metrics_input < (int)layers.size()-1) continue; // TODO: If layer serves for metrics and for further prop
     layers[l]->backward(*this);
   }
 }
@@ -2262,6 +2282,7 @@ void FFModel::compile(LossType loss_type,
                       const std::vector<MetricsType>& metrics,
                       CompMode comp_mode)
 {
+  if(metrics_input == -1) metrics_input = layers.size()-1;
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   config.computationMode = comp_mode;
@@ -2286,7 +2307,8 @@ void FFModel::compile(LossType loss_type,
     delete best_graph;
   }
 
-  loss_op = new Loss(loss_type);
+  bool repl_labels = (layers[layers.size()-1]->op_type == OP_AGG_SPEC);
+  loss_op = new Loss(loss_type, repl_labels);
   metrics_op = new Metrics(loss_type, metrics);
 
   // Init performance metrics
@@ -2352,6 +2374,16 @@ void FFModel::compile(LossType loss_type,
       assert(op->outputs[i]->owner_op == op);
       assert(op->outputs[i]->owner_idx == i);
       assert(op->outputs[i]->ts_guid != 0);
+    }
+  }
+
+  // If an operator's input is training data
+  // No need to compute its gradients
+  for (size_t l = 0; l < layers.size(); l++) {
+    Op* op = layers[l];
+    for (int i = 0; i < op->numInputs; i++) {
+      if (op->inputs[i].owner_op == NULL)
+        op->trainableInputs[i] = false;
     }
   }
 
@@ -2457,8 +2489,13 @@ void FFModel::compile(LossType loss_type,
   ParallelDim dims[MAX_TENSOR_DIM];
   int num_dims = final_layer->outputs[0]->num_dims;
   // Note that FlexFlow's runtim internally reverse the array ordering
-  for (int i = 0; i < num_dims; i++)
-    dims[i] = final_layer->outputs[0]->dims[i];
+  Op* first_layer = layers[0];
+  int input_dims = first_layer->inputs[0].numDim;
+  // FIXME: Currently assume 1st input for 1st layer = batch_size
+  int batch_size = first_layer->inputs[0].adim[input_dims-1];
+  dims[0] = batch_size;
+  for (int i = 1; i < num_dims; i++)
+    dims[i] = final_layer->outputs[0].adim[num_dims-1-i];
   DataType label_type = DT_FLOAT;
   if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     // assign dims[num_dims-1] = 1 for sparse categorical labels
@@ -2731,7 +2768,9 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_SPLIT: return "Split";
     case OP_EMBEDDING: return "Embedding";
     case OP_GROUP_BY: return "Group_by";
-    case OP_AGGREGATE: return "Aggregate";
+    case OP_CACHE: return "Cache";
+    case OP_AGGREGATE: return "Aggregate cooperation";
+    case OP_AGG_SPEC: return "Aggregate specification";
     case OP_RESHAPE: return "Reshape";
     case OP_REVERSE: return "Reverse";
     case OP_TRANSPOSE: return "Transpose";
@@ -2805,7 +2844,6 @@ PerfMetrics FFModel::update_metrics_task(const Task *task,
                                          Context ctx, Runtime* runtime)
 {
   Metrics* m = (Metrics*) task->args;
-  //printf("in update_metrics_task\n");
   if (task->futures.size() == 0) {
     // Create an empty future
     PerfMetrics perf;
@@ -2929,6 +2967,8 @@ struct DefaultConfig {
   const static int simulator_segment_size = 16777216; // 16 MB
   const static int simulator_max_num_segments = 1;
   const static int base_optimize_threshold = 10;
+  const static bool enable_control_replication = false;
+  const static int python_data_loader_type = 1;
 };
 
 FFConfig::FFConfig()
@@ -2957,6 +2997,8 @@ FFConfig::FFConfig()
   machine_model_version = DefaultConfig::machine_model_version;
   simulator_segment_size = DefaultConfig::simulator_segment_size;
   simulator_max_num_segments = DefaultConfig::simulator_max_num_segments;
+  enable_control_replication = DefaultConfig::enable_control_replication;
+  python_data_loader_type = DefaultConfig::python_data_loader_type;
   machine_model_file = "";
   import_strategy_file = "";
   export_strategy_file = "";
@@ -3123,6 +3165,13 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if (!strcmp(argv[i], "--base-optimize-threshold")) {
       base_optimize_threshold = atoi(argv[++i]);
+    }
+    if (!strcmp(argv[i], "--control-replication")) {
+      enable_control_replication = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--python-data-loader-type")) {
+      python_data_loader_type = atoi(argv[++i]);
       continue;
     }
   }
@@ -3271,24 +3320,47 @@ void register_flexflow_internal_tasks()
         registrar, "Embedding Backward Task");
   }*/
 
+
+  // Cache task CPU
+  {
+    TaskVariantRegistrar registrar(CACHE_INIT_TASK_ID, "Cache Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Cache::init_task>(
+        registrar, "Cache Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CACHE_FWD_TASK_ID, "Cache Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Cache::forward_task>(
+        registrar, "Cache Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CACHE_UPDATE_TASK_ID, "Cache Update");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<float, Cache::update_task>(
+        registrar, "Cache Update Task");
+  }
   // Group by task CPU
   {
     TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "Group_by Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta*, Group_by::init_task>(
         registrar, "Group_by Init Task");
   }
   {
     TaskVariantRegistrar registrar(GROUP_BY_FWD_TASK_ID, "Group_by Forward");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Group_by::forward_task>(
         registrar, "Group_by Forward Task");
   }
   {
     TaskVariantRegistrar registrar(GROUP_BY_BWD_TASK_ID, "Group_by Backward");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Group_by::backward_task>(
         registrar, "Group_by Backward Task");
@@ -3297,24 +3369,47 @@ void register_flexflow_internal_tasks()
   // Aggregate task CPU
   {
     TaskVariantRegistrar registrar(AGGREGATE_INIT_TASK_ID, "Aggregate Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta*, Aggregate::init_task>(
         registrar, "Aggregate Init Task");
   }
   {
     TaskVariantRegistrar registrar(AGGREGATE_FWD_TASK_ID, "Aggregate Forward");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Aggregate::forward_task>(
         registrar, "Aggregate Forward Task");
   }
   {
     TaskVariantRegistrar registrar(AGGREGATE_BWD_TASK_ID, "Aggregate Backward");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Aggregate::backward_task>(
         registrar, "Aggregate Backward Task");
+  }
+
+  // AggregateSpec task CPU
+  {
+    TaskVariantRegistrar registrar(AGG_SPEC_INIT_TASK_ID, "Aggregate specification Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, AggregateSpec::init_task>(
+        registrar, "Aggregate specification Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(AGG_SPEC_FWD_TASK_ID, "Aggregate specification Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AggregateSpec::forward_task>(
+        registrar, "Aggregate specification Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(AGG_SPEC_BWD_TASK_ID, "Aggregate specification Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<AggregateSpec::backward_task>(
+        registrar, "Aggregate specification Backward Task");
   }
 
   // Pool2D task

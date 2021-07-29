@@ -23,15 +23,7 @@ import warnings
 import numpy as np
 from .flexflow_logger import fflogger
 from .flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
-
-assert 'FF_HOME' in os.environ
-_flexflow_cxxheader_dir= os.path.join(os.environ['FF_HOME'], 'include')
-_flexflow_cheader_file = os.path.join(os.path.join(os.environ['FF_HOME'], 'python'), 'flexflow_c.h')
-
-_flexflow_cheader = subprocess.check_output(['gcc', '-I', _flexflow_cxxheader_dir, '-E', '-P', _flexflow_cheader_file]).decode('utf-8')
-ffi = cffi.FFI()
-ffi.cdef(_flexflow_cheader)
-ffc = ffi.dlopen(None)
+from .flexflow_cffi_header import ffc, ffi
 
 ff_tracing_id = 200
 
@@ -70,21 +62,21 @@ class Op(object):
   def get_number_parameters(self):
     return ffc.flexflow_op_get_num_parameters(self.handle)
 
-  def get_parameter_tensor_by_id(self, id):
+  def get_parameter_by_id(self, id):
     handle = ffc.flexflow_op_get_parameter_by_id(self.handle, id)
     return Parameter(handle)
 
   def get_number_inputs(self):
     return ffc.flexflow_op_get_num_inputs(self.handle)
 
-  def get_input_tensor_by_id(self, id):
+  def get_input_by_id(self, id):
     handle = ffc.flexflow_op_get_input_by_id(self.handle, id)
     return Tensor(handle, False)
 
   def get_number_outputs(self):
     return ffc.flexflow_op_get_num_outputs(self.handle)
 
-  def get_output_tensor_by_id(self, id):
+  def get_output_by_id(self, id):
     handle = ffc.flexflow_op_get_output_by_id(self.handle, id)
     return Tensor(handle, False)
 
@@ -141,16 +133,16 @@ class Conv2D(Op):
     super(Conv2D, self).__init__(handle, idx, name)
 
   def get_weight_tensor(self):
-    return self.get_parameter_tensor_by_id(0)
+    return self.get_parameter_by_id(0)
 
   def get_bias_tensor(self):
-    return self.get_parameter_tensor_by_id(1)
+    return self.get_parameter_by_id(1)
 
   def get_input_tensor(self):
-    return self.get_input_tensor_by_id(0)
+    return self.get_input_by_id(0)
 
   def get_output_tensor(self):
-    return self.get_output_tensor_by_id(0)
+    return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Pool2D
@@ -160,10 +152,10 @@ class Pool2D(Op):
     super(Pool2D, self).__init__(handle, idx, name)
 
   def get_input_tensor(self):
-    return self.get_input_tensor_by_id(0)
+    return self.get_input_by_id(0)
 
   def get_output_tensor(self):
-    return self.get_output_tensor_by_id(0)
+    return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Linear
@@ -173,16 +165,16 @@ class Linear(Op):
     super(Linear, self).__init__(handle, idx, name)
 
   def get_weight_tensor(self):
-    return self.get_parameter_tensor_by_id(0)
+    return self.get_parameter_by_id(0)
 
   def get_bias_tensor(self):
-    return self.get_parameter_tensor_by_id(1)
+    return self.get_parameter_by_id(1)
 
   def get_input_tensor(self):
-    return self.get_input_tensor_by_id(0)
+    return self.get_input_by_id(0)
 
   def get_output_tensor(self):
-    return self.get_output_tensor_by_id(0)
+    return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Flat
@@ -192,10 +184,10 @@ class Flat(Op):
     super(Flat, self).__init__(handle, idx, name)
 
   def get_input_tensor(self):
-    return self.get_input_tensor_by_id(0)
+    return self.get_input_by_id(0)
 
   def get_output_tensor(self):
-    return self.get_output_tensor_by_id(0)
+    return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Softmax
@@ -238,6 +230,27 @@ class Dropout(Op):
 class ScalarMultiply(Op):
   def __init__(self, handle, idx=None, name=None):
     super(ScalarMultiply, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# ScalarAdd
+# -----------------------------------------------------------------------
+class ScalarAdd(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ScalarAdd, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# ScalarSub
+# -----------------------------------------------------------------------
+class ScalarSub(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ScalarSub, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# ScalarTrueDiv
+# -----------------------------------------------------------------------
+class ScalarTrueDiv(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ScalarTrueDiv, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Relu
@@ -362,6 +375,14 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return MSELoss(handle, idx, name)
   elif op_type == OpType.SCALAR_MULTIPLY:
     return ScalarMultiply(handle, idx, name)
+  elif op_type == OpType.SCALAR_ADD:
+      return ScalarAdd(handle, idx, name)
+  elif op_type == OpType.SCALAR_SUB:
+      return ScalarSub(handle, idx, name)
+  elif op_type == OpType.SCALAR_FLOORDIV:
+      return ScalarFloorDiv(handle, idx, name)
+  elif op_type == OpType.SCALAR_TRUEDIV:
+      return ScalarTrueDiv(handle, idx, name)
   elif op_type == OpType.GELU:
     return Gelu(handle, idx, name)
   elif op_type == OpType.RELU:
@@ -422,6 +443,14 @@ class FFConfig(object):
   @property
   def epochs(self):
     return ffc.flexflow_config_get_epochs(self.handle)
+    
+  @property
+  def enable_control_replication(self):
+    return ffc.flexflow_config_get_enable_control_replication(self.handle)
+    
+  @property
+  def python_data_loader_type(self):
+    return ffc.flexflow_config_get_python_data_loader_type(self.handle)
 
   def get_current_time(self):
     return ffc.flexflow_get_current_time(self.handle)
@@ -476,9 +505,9 @@ class Tensor(object):
     ffc.flexflow_tensor_inline_unmap(self.handle, ffconfig.handle);
     self.mapped = False
 
-  def get_array(self, ffconfig, data_type):
+  def get_array(self, ffconfig):
     assert self.mapped == True, "Tensor is not mapped."
-    raw_ptr = self.__get_raw_ptr(ffconfig, data_type)
+    raw_ptr = self.__get_raw_ptr(ffconfig, self.data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     fflogger.debug("raw_ptr: %s, %d" %( str(raw_ptr), raw_ptr_int))
     strides = None
@@ -486,13 +515,14 @@ class Tensor(object):
       shape = self.dims
     else:
       assert 0, "unknow num_dims"
-    initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
+    initializer = RegionNdarray(shape, self.data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
+    # print("stride", array.__array_interface__['strides'])
     return array
 
-  def get_flat_array(self, ffconfig, data_type):
+  def get_flat_array(self, ffconfig):
     assert self.mapped == True, "Tensor is not mapped."
-    raw_ptr = self.__get_raw_ptr(ffconfig, data_type)
+    raw_ptr = self.__get_raw_ptr(ffconfig, self.data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     fflogger.debug("raw_ptr: %s, %d" %( str(raw_ptr), raw_ptr_int))
     strides = None
@@ -501,7 +531,7 @@ class Tensor(object):
       shape = (shape_prod,)
     else:
       assert 0, "unknown num_dims"
-    initializer = RegionNdarray(shape, data_type, raw_ptr_int, strides, False)
+    initializer = RegionNdarray(shape, self.data_type, raw_ptr_int, strides, False)
     array = np.asarray(initializer)
     return array
 
@@ -1301,6 +1331,63 @@ class FFModel(object):
     self.add_layer(OpType.SCALAR_MULTIPLY, name)
     return Tensor(handle, owner_op_type=OpType.SCALAR_MULTIPLY)
 
+  def scalar_add(self, input, scalar, inplace=True, name=None):
+    """Scalar addition of a scalar to each entry of a tensor.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param input: the scalar
+    :type scalar: float
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_scalar_add(self.handle, input.handle, scalar, inplace, c_name)
+    self.add_layer(OpType.SCALAR_ADD, name)
+    return Tensor(handle, owner_op_type=OpType.SCALAR_ADD)
+
+  def scalar_sub(self, input, scalar, inplace=True, name=None):
+    """Scalar subtraction of a scalar to each entry of a tensor.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param input: the scalar
+    :type scalar: float
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_scalar_sub(self.handle, input.handle, scalar, inplace, c_name)
+    self.add_layer(OpType.SCALAR_SUB, name)
+    return Tensor(handle, owner_op_type=OpType.SCALAR_SUB)
+
+  def scalar_true_divide(self, input, scalar, inplace=True, name=None):
+    """Scalar regular division of a tensor by an scalar.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param input: the scalar
+    :type scalar: float
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_scalar_truediv(self.handle, input.handle, scalar, inplace, c_name)
+    self.add_layer(OpType.SCALAR_TRUEDIV, name)
+    return Tensor(handle, owner_op_type=OpType.SCALAR_TRUEDIV)
+
   def gelu(self, input, inplace=True, name=None):
     """Gaussian Error Linear Unit activation function.
              
@@ -1696,7 +1783,7 @@ class FFModel(object):
   def get_perf_metrics(self):
     handle = ffc.flexflow_model_get_perf_metrics(self.handle)
     return PerfMetrics(handle)
-
+    
   def create_data_loader(self, batch_tensor, full_array):
     """Create a SingleDataloader instance. 
              
@@ -1708,6 +1795,17 @@ class FFModel(object):
              
     :returns:  SingleDataloader -- returns a dataloader instance.
     """
+
+    if (self._ffconfig.enable_control_replication):
+      assert self._ffconfig.python_data_loader_type != 1, 'To enable control replication, please set --python-data-loader-type 2'
+      return self.__create_data_loader_ptr(batch_tensor, full_array)
+    else:
+      if (self._ffconfig.python_data_loader_type == 1):
+        return self.__create_data_loader_attach(batch_tensor, full_array)
+      else:
+        return self.__create_data_loader_ptr(batch_tensor, full_array)
+
+  def __create_data_loader_attach(self, batch_tensor, full_array):
     full_array_shape = full_array.shape
     num_samples = full_array_shape[0]
     num_dim = len(full_array_shape)
@@ -1733,17 +1831,7 @@ class FFModel(object):
 
     return dataloader
     
-  def create_data_loader2(self, batch_tensor, full_array):
-    """Create a SingleDataloader instance. 
-             
-    :param batch_tensor: a batch-sized tensor. Usually it is a input tensor of the model.  
-    :type batch_tensor: Tensor
-    
-    :param full_array: the entire data.
-    :type full_array: Numpy Array
-             
-    :returns:  SingleDataloader -- returns a dataloader instance.
-    """
+  def __create_data_loader_ptr(self, batch_tensor, full_array):
     full_array_shape = full_array.shape
     num_samples = full_array_shape[0]
     if (full_array.dtype == "float32"):

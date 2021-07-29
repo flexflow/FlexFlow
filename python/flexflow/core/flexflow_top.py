@@ -25,7 +25,7 @@ import atexit
 import readline
 import threading
 
-from flexflow.core.legion_cffi import ffi, lib as c
+from .legion_cffi_header import ffi, lib as c
 
 
 # Storage for variables that apply to the top-level task.
@@ -162,6 +162,7 @@ def run_path(filename, run_name=None):
 
 
 def flexflow_top_level_task(raw_args, user_data, proc):
+    print("start top-level task")
     raw_arg_ptr = ffi.new('char[]', bytes(raw_args))
     raw_arg_size = len(raw_args)
 

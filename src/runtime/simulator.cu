@@ -105,12 +105,32 @@ void Simulator::strategy_search_task(const Task *task,
   Simulator* simulator = new Simulator(model, model->handlers[0], gpu_mem, machine);
   model->simulator = simulator;
   // Set cublas/cudnn streams to allow Realm catch the events
-#ifndef DISABLE_LEGION_CUDA_HIJACK
+
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(simulator->handler.blas, stream));
   checkCUDNN(cudnnSetStream(simulator->handler.dnn, stream));
-#endif
+
+  std::map<Op*, ParallelConfig> strategies;
+  if (model->config.import_strategy_file.length() > 0) {
+    // Load the strategy from config.strategies
+    for (size_t l = 0; l < model->layers.size(); l++) {
+      MappingTagID key = FFConfig::get_hash_id(std::string(model->layers[l]->name));
+      std::map<MappingTagID, ParallelConfig>::const_iterator iter;
+      iter = model->config.strategies.find(key);
+      if (iter == model->config.strategies.end()) {
+        fprintf(stderr, "ERROR: Cannot find strategy for operator %s in "
+                "strategy file %s\n", model->layers[l]->name,
+                model->config.import_strategy_file.c_str());
+      }
+      strategies[model->layers[l]] = iter->second;
+    }
+  } else {
+    // Start from data parallel
+    for (size_t l = 0; l < model->layers.size(); l++) {
+      strategies[model->layers[l]] = model->layers[l]->get_data_parallel_config(*model);
+    }
+  }
   if (model->config.computationMode == COMP_MODE_TRAINING) {
     fprintf(stderr, "MCMC search configuration: budget(%zu) alpha(%.8lf) mode(TRAINING)\n",
         model->config.search_budget, model->config.search_alpha);

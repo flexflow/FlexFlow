@@ -668,6 +668,7 @@ float Simulator::simulate_runtime(const FFModel* model,
                 log_sim.debug("fwd xfer from %s to %s: %zu", srcT->name.c_str(), dstT->name.c_str(), xfer_size);
               }
               add_task_dependencies_with_xfer(srcT, dstT, xfer_size, force_zero_cost);
+              //add_task_dependencies_with_xfer(srcT, dstT, dstR.intersection(srcR).get_volume() * element_size);
             }
             // Backward dependency
             if (comp_mode == COMP_MODE_TRAINING) {
@@ -678,6 +679,7 @@ float Simulator::simulate_runtime(const FFModel* model,
                 log_sim.debug("bwd xfer from %s to %s: %zu", dstT->name.c_str(), srcT->name.c_str(), xfer_size);
               }
               add_task_dependencies_with_xfer(dstT, srcT, xfer_size, force_zero_cost);
+              //add_task_dependencies_with_xfer(dstT, srcT, dstR.intersection(srcR).get_volume() * element_size);
             }
           }
         }
@@ -702,6 +704,7 @@ float Simulator::simulate_runtime(const FFModel* model,
     // Step 3a: consider backpropagation and weight update are overlapped
     for (int l = model->layers.size()-1; l >= 0; l--) {
       Op* op = model->layers[l];
+      size_t element_size = data_type_size(DT_FLOAT); // assume all weights have float elements
       ParallelConfig pc = global.find(op)->second;
       size_t element_size = data_type_size(DT_FLOAT); // assume all weights have float elements
       for (int j = 0; j < op->numWeights; j++) {

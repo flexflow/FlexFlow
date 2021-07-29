@@ -138,6 +138,8 @@ public:
   tl::optional<int> search_num_nodes = tl::nullopt;
   tl::optional<int> search_num_workers = tl::nullopt;
   int base_optimize_threshold;
+  bool enable_control_replication;
+  int python_data_loader_type;
 };
 
 class FFIterationConfig {

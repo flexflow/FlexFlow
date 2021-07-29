@@ -80,6 +80,21 @@ Tensor FFModel::scalar_multiply(const Tensor x, const float scalar, bool inplace
   return this->unary(OP_SCALAR_MULTIPLY, x, inplace, name, scalar);
 }
 
+Tensor FFModel::scalar_add(const Tensor x,const float scalar ,bool inplace, const char *name)
+{
+  return this->unary(OP_SCALAR_ADD, x, inplace, name, scalar);
+}
+
+Tensor FFModel::scalar_sub(const Tensor x,const float scalar ,bool inplace, const char *name)
+{
+  return this->unary(OP_SCALAR_SUB, x, inplace, name, scalar);
+}
+
+Tensor FFModel::scalar_truediv(const Tensor x,const float scalar ,bool inplace, const char *name)
+{
+  return this->unary(OP_SCALAR_TRUE_DIV, x, inplace, name, scalar);
+}
+
 Tensor FFModel::relu(const Tensor x, bool inplace, const char *name)
 {
   return this->unary(OP_RELU, x, inplace, name);
@@ -260,6 +275,21 @@ void elewise_unary_forward_kernel(coord_t volume,
 	out[i] = in[i] * scalar;
 	break;
       }
+      case OP_SCALAR_ADD:
+      {
+	out[i] = in[i] + scalar;
+	break;
+      }
+      case OP_SCALAR_SUB:
+      {
+	out[i] = in[i] - scalar;
+	break;
+      }
+      case OP_SCALAR_TRUE_DIV:
+      {
+	out[i] = in[i] / scalar;
+	break;
+      }
       case OP_GELU:
       {
 	out[i] = in[i] * 0.5 * erfc(-in[i]*M_SQRT1_2);
@@ -275,15 +305,18 @@ void elewise_unary_forward_kernel(coord_t volume,
 void ElementUnary::forward_kernel(const ElementUnaryMeta* m,
                                   const float* input_ptr,
                                   float* output_ptr,
-                                  size_t num_elements)
+                                  size_t num_elements, 
+                                  cudaStream_t stream)
 {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   float alpha = 1.0f, beta = 0.0f;
   if (use_cudnn(m->op_type)) {
     checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
         &alpha, m->inputTensor, input_ptr,
         &beta, m->outputTensor, output_ptr));
   } else {
-    elewise_unary_forward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
+    elewise_unary_forward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
         num_elements, alpha, beta,m->scalar, m->op_type, input_ptr, output_ptr);
   }
 }
@@ -320,12 +353,10 @@ void ElementUnary::forward_task(const Task* task,
     output_ptr = helperGetTensorPointerWO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
+
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  forward_kernel(m, input_ptr, output_ptr, input_domain.get_volume());
+  checkCUDA(get_legion_stream(&stream));
+  forward_kernel(m, input_ptr, output_ptr, input_domain.get_volume(), stream);
 }
 
 void ElementUnary::forward(const FFModel& ff)
@@ -387,6 +418,21 @@ void elewise_unary_backward_kernel(coord_t volume,
 	input_grad[i] = output_grad[i]*scalar;
 	break;
       }
+      case OP_SCALAR_ADD:
+      {
+	input_grad[i] = output_grad[i];
+	break;
+      }
+      case OP_SCALAR_SUB:
+      {
+	input_grad[i] = output_grad[i];
+	break;
+      }
+      case OP_SCALAR_TRUE_DIV:
+      {
+	input_grad[i] = output_grad[i]/scalar;
+	break;
+      }
       case OP_GELU:
       {
 	input_grad[i] = output_grad[i]*(0.5 * erfc(-input[i]*M_SQRT1_2)-0.5*M_SQRT1_2*input[i]*exp(-input[i]*input[i]*0.5));
@@ -404,15 +450,18 @@ void ElementUnary::backward_kernel(const ElementUnaryMeta* m,
                                    float* input_grad_ptr,
                                    const float* output_ptr,
                                    const float* output_grad_ptr,
-                                   size_t num_elements)
+                                   size_t num_elements,
+                                   cudaStream_t stream)
 {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   float alpha = 1.0f;
   if (use_cudnn(m->op_type)) {
     checkCUDNN(cudnnActivationBackward(m->handle.dnn, m->actiDesc,
         &alpha, m->outputTensor, output_ptr, m->outputTensor, output_grad_ptr,
         m->inputTensor, input_ptr, &alpha, m->inputTensor, input_grad_ptr));
   } else {
-    elewise_unary_backward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
+    elewise_unary_backward_kernel<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
         num_elements, alpha, alpha, m->scalar, m->op_type, output_grad_ptr, input_ptr, input_grad_ptr);
   }
 }
@@ -467,12 +516,10 @@ void ElementUnary::backward_task(const Task* task,
     output_grad_ptr = helperGetTensorPointerRO<float>(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
   }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
+
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr, input_domain.get_volume());
+  checkCUDA(get_legion_stream(&stream));
+  backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr, input_domain.get_volume(), stream);
 }
 
 void ElementUnary::backward(const FFModel& ff)
@@ -588,9 +635,11 @@ bool ElementUnary::measure_operator_cost(Simulator* sim,
   }
   assert(output_ptr != NULL);
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(m, input_ptr, output_ptr, sub_output.get_volume());
+    forward_kernel(m, input_ptr, output_ptr, sub_output.get_volume(), stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -604,7 +653,7 @@ bool ElementUnary::measure_operator_cost(Simulator* sim,
     assert(output_grad_ptr != NULL);
     backward = [&] {
       backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr,
-          sub_output.get_volume());
+          sub_output.get_volume(), stream);
     };
   }
 

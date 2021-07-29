@@ -21,8 +21,12 @@ USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
-#FF_USE_NCCL  ?= 1
-#USE_CUDART_HIJACK ?= 0
+USE_HIP         ?= 0
+HIP_TARGET      ?= CUDA
+USE_GPU_REDUCTIONS ?= 0
+FF_USE_NCCL  ?= 0
+FF_USE_NATIVE_PYTHON ?= 0
+# FF_PYTHON_USE_INDEX_LOADER = 1
 
 USE_PYTHON := 1
 ifndef PYTHON_LIB
@@ -61,27 +65,34 @@ endif
 OUTFILE		  ?= flexflow_python
 
 GEN_SRC		  ?= main.cc flexflow_c.cc flexflow_dataloader.cc # .cc files
-GEN_GPU_SRC	?= flexflow_dataloader.cu # .cu files
-
-ifeq ($(strip $(FF_USE_PYBIND)),1)
-  PYBIND_INC    = $(shell $$PYTHON_EXE -m pybind11 --includes)
-  PYBIND_EXT    = $(shell $$PYTHON_EXE-config --extension-suffix)
-  FF_BYBIND_LIB = flexflow/core/flexflow_bindings$(PYBIND_EXT)
-  INC_FLAGS     += -I${FF_HOME}
-  CC_FLAGS      += -fPIC
-  NVCC_FLAGS    += -Xcompiler -fPIC
+GEN_GPU_SRC	  ?= flexflow_dataloader.cu # .cu files
+ifeq ($(strip $(HIP_TARGET)),CUDA)
+GEN_HIP_SRC	  ?= flexflow_dataloader.cu # .cu files
 endif
+
+PYBIND_INC    = $(shell $$PYTHON_EXE -m pybind11 --includes)
+PYBIND_EXT    = $(shell $$PYTHON_EXE-config --extension-suffix)
+FF_BYBIND_LIB = flexflow/core/flexflow_pybind11_internal$(PYBIND_EXT)
+FF_BYBIND_LIB_NAME = flexflow_pybind11_internal$(PYBIND_EXT)
+INC_FLAGS     += -I${FF_HOME}
+CC_FLAGS      += -fPIC
+NVCC_FLAGS    += -Xcompiler -fPIC
+HIPCC_FLAGS    += -Xcompiler -fPIC
 
 CC_FLAGS	  ?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON 
 
+#INC_FLAGS       += -DDISABLE_LEGION_CUDA_HIJACK 
+  
 ifeq ($(strip $(FF_ENABLE_DEBUG)), 1)
 CC_FLAGS   += -DFF_DEBUG
 NVCC_FLAGS += -DFF_DEBUG
+HIPCC_FLAGS += -DFF_DEBUG
 endif
 
 ifeq ($(strip $(FF_PYTHON_USE_INDEX_LOADER)), 1)
 CC_FLAGS   += -DFF_PYTHON_USE_INDEX_LOADER
 NVCC_FLAGS += -DFF_PYTHON_USE_INDEX_LOADER
+HIPCC_FLAGS += -DFF_PYTHON_USE_INDEX_LOADER
 endif
 
 ifeq ($(shell uname), Darwin)
@@ -90,22 +101,33 @@ else
 	LD_FLAGS += -Wl,--whole-archive -llegion -Wl,--no-whole-archive
 endif
 
+FF_USE_PYTHON = $(USE_PYTHON)
+
+FF_HOME ?= ../
+LG_RT_DIR ?= $(FF_HOME)/deps/legion/runtime
+
+include $(FF_HOME)/FlexFlow.mk
+
 NO_BUILD_ALL=1
 .PHONY: all
-all: $(OUTFILE) flexflow/core/legion_cffi.py $(FF_BYBIND_LIB)
+all: $(OUTFILE) flexflow/core/legion_cffi_header.py flexflow/core/flexflow_cffi_header.py $(FF_BYBIND_LIB)
 
 DEFINE_HEADERS_DIR ?= ./
 
-flexflow/core/legion_cffi.py: legion_cffi.py.in legion_cffi_build.py
+flexflow/core/legion_cffi_header.py: legion_cffi_header.py.in legion_cffi_build.py $(LG_RT_DIR)/legion.h
 	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
 	
-$(FF_BYBIND_LIB): bindings.cc flexflow_dataloader.cu.o flexflow_dataloader.cc.o
-	$(CC) $(CC_FLAGS) $(INC_FLAGS) -Wall -shared -std=c++11 -fPIC $(PYBIND_INC) bindings.cc flexflow_dataloader.cu.o flexflow_dataloader.cc.o -o $@
+flexflow/core/flexflow_cffi_header.py: flexflow_cffi_header.py.in flexflow_cffi_build.py flexflow_c.h
+	$(PYTHON_EXE) flexflow_cffi_build.py --ffhome-dir $(FF_HOME) --libname $(FF_BYBIND_LIB_NAME) --output-dir flexflow/core
+
+ifeq ($(strip $(FF_USE_NATIVE_PYTHON)), 0)
+$(FF_BYBIND_LIB): bindings.cc
+	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -std=c++11 -fPIC $< -o $@
+else
+$(FF_BYBIND_LIB): bindings.cc $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM)
+	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -L$(FF_HOME)/python $(LD_FLAGS) $(LEGION_LD_FLAGS) $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM) $< -o $@
+endif
 
 clean::
-	$(RM) -f $(OUTFILE) $(SLIB_LEGION) $(SLIB_REALM) $(GEN_OBJS) $(GEN_GPU_OBJS) $(REALM_OBJS) $(LEGION_OBJS) $(GPU_RUNTIME_OBJS) $(MAPPER_OBJS) $(ASM_OBJS) $(FF_BYBIND_LIB) legion_defines.h realm_defines.h flexflow/core/legion_cffi.py *.pyc
+	$(RM) -f $(FF_BYBIND_LIB) legion_defines.h realm_defines.h flexflow/core/legion_cffi_header.py flexflow/core/flexflow_cffi_header.py *.pyc
 	$(RM) -rf build dist *.egg-info
-
-FF_USE_PYTHON = $(USE_PYTHON)
-
-include $(FF_HOME)/FlexFlow.mk

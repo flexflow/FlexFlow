@@ -2,9 +2,9 @@ version: 2.1
 
 gpu: &gpu
   environment:
-    CUDA_VERSION: "10.1"
+    CUDA_VERSION: "11.1"
   machine:
-    image: ubuntu-1604-cuda-10.1:201909-23
+    image: ubuntu-1604-cuda-11.1:202012-01
   resource_class: gpu.large
 
 

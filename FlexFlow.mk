@@ -66,9 +66,10 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/runtime/strategy.cc\
 		${FF_HOME}/src/runtime/simulator.cc\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cc\
+		${FF_HOME}/src/recompile/recompile_state.cc\
 		${FF_HOME}/src/runtime/machine_model.cc
 
-GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
+FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/runtime/model.cu\
 		${FF_HOME}/src/ops/pool_2d.cu\
 		${FF_HOME}/src/ops/batch_norm.cu\
@@ -85,6 +86,10 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/reshape.cu\
 		${FF_HOME}/src/ops/reverse.cu\
 		${FF_HOME}/src/ops/topk.cu\
+		${FF_HOME}/src/ops/cache.cu\
+		${FF_HOME}/src/ops/group_by.cu\
+		${FF_HOME}/src/ops/aggregate.cu\
+		${FF_HOME}/src/ops/aggregate_spec.cu\
 		${FF_HOME}/src/ops/transpose.cu\
 		${FF_HOME}/src/ops/attention.cu\
 		${FF_HOME}/src/ops/fused.cu\
@@ -100,25 +105,35 @@ GEN_GPU_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/runtime/accessor_kernel.cu\
 		${FF_HOME}/src/runtime/simulator.cu\
 		${FF_HOME}/src/runtime/cuda_helper.cu
+		
+GEN_GPU_SRC += $(FF_CUDA_SRC)
+GEN_HIP_SRC += $(FF_CUDA_SRC)
 
 ifneq ($(strip $(FF_USE_PYTHON)), 1)
   GEN_SRC		+= ${FF_HOME}/src/runtime/cpp_driver.cc
 endif
 
 INC_FLAGS	+= -I${FF_HOME}/include/ -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
-LD_FLAGS	+= -lcudnn -lcublas -lcurand -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64 -L$(HOME)/hdf5-1.12.0-linux-centos7-x86_64-shared/lib
+LD_FLAGS	+= -lcudnn -lcublas -lcurand -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64
 CC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 NVCC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
+HIPCC_FLAGS     += -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 GASNET_FLAGS	+=
 # For Point and Rect typedefs
 CC_FLAGS	+= -std=c++11
 NVCC_FLAGS	+= -std=c++11
+HIPCC_FLAGS     += -std=c++11
 
 ifeq ($(strip $(FF_USE_NCCL)), 1)
 INC_FLAGS	+= -I$(MPI_HOME)/include -I$(NCCL_HOME)/include
 CC_FLAGS	+= -DFF_USE_NCCL
 NVCC_FLAGS	+= -DFF_USE_NCCL
+HIPCC_FLAGS     += -DFF_USE_NCCL
 LD_FLAGS	+= -L$(NCCL_HOME)/lib -lnccl
+endif
+
+ifeq ($(strip $(FF_USE_AVX2)), 1)
+CC_FLAGS	+= -DFF_USE_AVX2 -mavx2
 endif
 
 #ifndef HDF5

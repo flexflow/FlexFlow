@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford
+/* Copyright 2021 Stanford, Facebook, LANL
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 #include "accessor.h"
 #include "loss_functions.h"
 #include "metrics_functions.h"
+#include "recompile.h"
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <unistd.h>
@@ -61,9 +62,15 @@ enum TaskIDs {
   GROUP_BY_INIT_TASK_ID,
   GROUP_BY_FWD_TASK_ID,
   GROUP_BY_BWD_TASK_ID,
+  CACHE_INIT_TASK_ID,
+  CACHE_FWD_TASK_ID,
+  CACHE_UPDATE_TASK_ID,
   AGGREGATE_INIT_TASK_ID,
   AGGREGATE_FWD_TASK_ID,
   AGGREGATE_BWD_TASK_ID,
+  AGG_SPEC_INIT_TASK_ID,
+  AGG_SPEC_FWD_TASK_ID,
+  AGG_SPEC_BWD_TASK_ID,
   POOL2D_INIT_TASK_ID,
   POOL2D_FWD_TASK_ID,
   POOL2D_BWD_TASK_ID,
@@ -201,6 +208,16 @@ namespace Legion {
 
 class SearchHelper;
 class GraphSearchHelper;
+#ifdef LEGION_USE_HIP
+#ifdef __HIP_PLATFORM_NVCC__
+cudaError_t get_legion_stream(cudaStream_t *stream);
+#else
+hipError_t get_legion_stream(hipStream_t *stream);
+#endif
+#else
+cudaError_t get_legion_stream(cudaStream_t *stream);
+#endif
+
 class FFModel;
 class Op;
 class DataLoader;
@@ -211,6 +228,7 @@ public:
 public:
   FFHandler handle;
   bool profiling; // Measure the run time of the task
+  bool trainableInputs[MAX_NUM_INPUTS];
 };
 
 enum class MappingRecordType {
@@ -417,7 +435,8 @@ public:
   Legion::IndexSpace parallel_is;
   Tensor outputs[MAX_NUM_OUTPUTS];
   Tensor inputs[MAX_NUM_INPUTS];
-  Tensor weights[MAX_NUM_WEIGHTS];
+  Parameter weights[MAX_NUM_WEIGHTS];
+  bool trainableInputs[MAX_NUM_INPUTS];
   OpMeta* meta[MAX_NUM_WORKERS];
   int numInputs, numWeights, numOutputs;
   bool profiling;
@@ -529,6 +548,18 @@ public:
 	      const float scalar,
               bool inplace = true,
               const char *name = NULL);
+  Tensor scalar_add(const Tensor& x,
+		  const float scalar,
+		  bool inplace = true,
+		  const char *name = NULL);
+  Tensor scalar_sub(const Tensor& x,
+		  const float scalar,
+		  bool inplace = true,
+		  const char *name = NULL);
+  Tensor scalar_truediv(const Tensor& x,
+		  const float scalar,
+		  bool inplace = true,
+		  const char *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor x,
               bool inplace = true,
@@ -575,9 +606,18 @@ public:
                 Tensor* outputs,
                 int n, float alpha,
                 const char* name = NULL);
+  // Add a cache layer
+  Tensor cache(const Tensor& input,
+              int num_batches,
+              std::function<float(float*,const void*,const void*,int)> score_f = {},
+              const char* name = NULL);
   // Add aggregate layer
   Tensor aggregate(const Tensor* inputs,
-                  int n,
+                  int n, float lambda_bal,
+                  const char* name = NULL);
+  // Add aggregate_spec layer
+  Tensor aggregate_spec(const Tensor* inputs,
+                  int n, float lambda_bal,
                   const char* name = NULL);
   // Add a 2D pooling layer
   Tensor pool2d(const Tensor input,
@@ -907,6 +947,7 @@ public:
   void prefetch();
   void forward(int seq_length = -1);
   void compute_metrics();
+  void get_metrics();
   void backward(int seq_length = -1);
   void update();
   bool apply_fusion(const std::vector<Op*>& layers, std::vector<Op*>& new_layers);
@@ -936,6 +977,7 @@ public:
   void rewrite(const std::map<const Op*, ParallelConfig>& current,
                std::map<const Op*, ParallelConfig>& next,
                bool use_propagation) const;
+  void recompile_on_condition(RecompileState& r);
   void zero_gradients();
   void print_layers(int id);
   std::string get_operator_type_name(OperatorType type) const;
@@ -963,6 +1005,7 @@ public:
   Loss* loss_op;
   Metrics* metrics_op;
   Simulator* simulator;
+  int metrics_input;
   Tensor label_tensor;
 
   std::vector<Op*> layers;
@@ -1045,10 +1088,12 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(DropoutMeta *m,
                              float const *input_ptr,
-                             float *output_ptr);
+                             float *output_ptr,
+                             cudaStream_t stream);
   static void backward_kernel(DropoutMeta *m,
                               float const *output_grad_ptr,
-                              float *input_grad_ptr);
+                              float *input_grad_ptr,
+                              cudaStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
@@ -1070,7 +1115,6 @@ public:
   void *reserveSpace, *dropoutStates;
   size_t reserveSpaceSize, dropoutStateSize;
 };
-
 
 class BatchNormMeta;
 class BatchNorm : public Op {
@@ -1103,7 +1147,8 @@ public:
                              float const *input_ptr,
                              float *output_ptr,
                              float const *scale_ptr,
-                             float const *bias_ptr);
+                             float const *bias_ptr,
+                             cudaStream_t stream);
   static void backward_kernel(BatchNormMeta *m,
                               float const *input_ptr,
                               float *output_grad_ptr,
@@ -1112,7 +1157,8 @@ public:
                               float const *scale_ptr,
                               float *scale_grad_ptr,
                               float *bias_grad_ptr,
-                              size_t numElements);
+                              size_t numElements,
+                              cudaStream_t stream);
 public:
   bool relu;
   int num_replica;
@@ -1135,7 +1181,6 @@ public:
   float *runningMean, *runningVar, *saveMean, *saveVar;
   bool relu;
 };
-
 
 class BatchMatmulMeta : public OpMeta {
 public:
@@ -1170,6 +1215,7 @@ public:
                       const float* c_ptr,
                       int m, int n, int k,
                       int batch,
+                      cudaStream_t stream,
                       int a_seq_length_dim = -1,
                       int b_seq_length_dim = -1,
                       int seq_length = -1);
@@ -1181,7 +1227,8 @@ public:
                        const float* b_ptr,
                        float* b_grad_ptr,
                        float* c_grad_ptr,
-                       int m, int n, int k, int batch);
+                       int m, int n, int k, int batch,
+                       cudaStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
@@ -1196,9 +1243,11 @@ public:
   int a_seq_length_dim, b_seq_length_dim;
 };
 
-class Group_byMeta : public OpMeta {
+class GroupByMeta : public OpMeta {
 public:
-  Group_byMeta(FFHandler handle);
+  GroupByMeta(FFHandler handle, int n);
+  ~GroupByMeta(void);
+  float** dev_region_ptrs;
 };
 
 class Group_by : public Op {
@@ -1229,17 +1278,64 @@ public:
   float alpha;
 };
 
+class CacheMeta : public OpMeta {
+public:
+  CacheMeta(FFHandler handle);
+  float cache_score;
+};
+
+class Cache : public Op {
+public:
+  Cache(FFModel& model,
+      const Tensor& _input,
+      int _num_batches,
+      std::function<float(float*,const void*,const void*,int)> &_score_f,
+      const char* name);
+  ~Cache(void);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static float update_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+  void use_cached(bool cached);
+public:
+  void** batch_ptrs;
+  void* batch_cmp;
+  bool load_cached;
+  int num_batches;
+  std::function<float(float*,const void*,const void*,int)> score_f;
+  std::vector<Future> score_futures;
+  bool profiling;
+  int batch_ctr;
+};
 
 class AggregateMeta : public OpMeta {
 public:
-  AggregateMeta(FFHandler handle);
+  AggregateMeta(FFHandler handle, int n);
+  ~AggregateMeta(void);
+  float** dev_exp_preds;
+  float** dev_exp_grads;
 };
 
 class Aggregate : public Op {
 public:
   Aggregate(FFModel& model,
             const Tensor* inputs,
-            int _n, const char* name);
+            int _n, float _lambda_bal, const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -1259,7 +1355,6 @@ public:
 public:
   int n;
 };
-
 
 class TransposeMeta : public OpMeta {
 public:
@@ -1295,12 +1390,14 @@ public:
                              const float* input_ptr,
                              float* output_ptr,
                              Legion::Domain in_domain,
-                             Legion::Domain out_domain);
+                             Legion::Domain out_domain,
+			     cudaStream_t stream);
   static void backward_kernel(const TransposeMeta* m,
                               float* input_grad_ptr,
                               const float* output_grad_ptr,
                               Legion::Domain in_grad_domain,
-                              Legion::Domain out_grad_domain);
+                              Legion::Domain out_grad_domain,
+			      cudaStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
@@ -1333,13 +1430,15 @@ public:
                              Legion::coord_t num_out_blks,
                              Legion::coord_t reverse_dim_size,
                              Legion::coord_t in_blk_size,
-                             Legion::coord_t output_size);
+                             Legion::coord_t output_size,
+			     cudaStream_t stream);
   static void backward_kernel(float const *out_grad_ptr,
                               float *in_grad_ptr,
                               Legion::coord_t num_out_blks,
                               Legion::coord_t reverse_dim_size,
                               Legion::coord_t in_blk_size,
-                              Legion::coord_t input_size);
+                              Legion::coord_t input_size,
+			      cudaStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
@@ -1369,10 +1468,12 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(const float* input_ptr,
                              float* output_ptr,
-                             size_t num_elements);
+                             size_t num_elements,
+                             cudaStream_t stream);
   static void backward_kernel(float* input_grad_ptr,
                               const float* output_grad_ptr,
-                              size_t num_elements);
+                              size_t num_elements,
+                              cudaStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
@@ -1412,12 +1513,14 @@ public:
                       float* output_ptr,
                       int* indices_ptr,
                       size_t batch_size, int length, int k,
-                      bool sorted);
+                      bool sorted,
+                      cudaStream_t stream);
   static void backward_kernel(const TopKMeta* m,
                        const float* out_grad_ptr,
                        const int* indices_ptr,
                        float* in_grad_ptr,
-                       size_t batch_size, int length, int k);
+                       size_t batch_size, int length, int k,
+		       cudaStream_t stream);
 public:
   int k;
   bool sorted;

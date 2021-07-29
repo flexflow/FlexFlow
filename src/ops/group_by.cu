@@ -14,7 +14,13 @@
  */
 
 #include "model.h"
+#include "cuda_helper.h"
 #include <math.h>
+#include <stdio.h>
+
+#define MAX_K 4
+#define MAX_BATCH_SIZE 32
+#define MAX_N 12
 
 using namespace Legion;
 
@@ -38,8 +44,8 @@ Group_by::Group_by(FFModel& model,
                   const char* name)
 : Op(model, OP_GROUP_BY, name, 2/*inputs*/, 0/*weights*/, _n/*outputs*/, _input, _assign),
   n(_n),
-  alpha(_alpha)
-  //profiling(model.config.profiling)
+  alpha(_alpha),
+  profiling(model.config.profiling)
 {
   assert(_input->num_dims == 2); // NOTE: Is that a problem if you e.g. want to pass in images
   assert(_input->num_dims == 2);
@@ -61,7 +67,11 @@ OpMeta* Group_by::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
 {
-  return NULL;
+  Group_by* gb = (Group_by*) task->args;
+  FFHandler handle = *((FFHandler*)task->local_args);
+  GroupByMeta* m = new GroupByMeta(handle, gb->n);
+  m->profiling = gb->profiling;
+  return m;
 }
 
 void Group_by::init(const FFModel& ff)
@@ -93,68 +103,87 @@ void Group_by::init(const FFModel& ff)
         WRITE_ONLY, EXCLUSIVE, outputs[i]->region));
     launcher.add_field(i+2, FID_DATA);
   }
-
-  runtime->execute_index_space(ctx, launcher);
 }
 
 
-void group_by_forward(const float* input,
+__global__
+void gb_forward_kernel(const float* input,
         const int* exp_assign,
         float** outputs,
         int n, // num experts
         int k, // chosen experts
         float alpha, // factor additional memory assigned
         int batch_size,
-        int out_dim)
+        int data_dim)
 {
-  std::vector<int> expert_idx(n, 0);
-  int exp_tensor_rows = ceil(alpha*k/n*batch_size);
+  __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
 
-  for(int i = 0; i < batch_size; i++) {
-    for(int j = 0; j < k; j++) {
-      int expert = exp_assign[i*k + j];
-      int row = expert_idx[expert];
-
-      if(row >= exp_tensor_rows)
-        continue; // dropped sample
-
-      // copy over sample
-      int input_start = i*out_dim;
-      for(int l = 0; l < out_dim; l++) {
-        outputs[expert][row*out_dim + l] = input[input_start + l];
+  // Get pred pointers, single thread per block
+  if(threadIdx.x == 0) {
+    int exp_tensor_rows = ceil(alpha*k/n*batch_size);
+    int expert_idx[MAX_N] = {0};
+    for(int i = 0; i < k*batch_size; i++) {
+      // Get pointer to chosen expert predictions
+      int expert = exp_assign[i];
+      if(expert_idx[expert] >= exp_tensor_rows) {
+        // dropped sample
+        chosen_exp_preds[i] = 0;
+        continue;
       }
+      chosen_exp_preds[i] = outputs[expert] + expert_idx[expert]*data_dim;
       expert_idx[expert]++;
+    }
+  }
+
+  __syncthreads();
+
+  // compute output
+  CUDA_KERNEL_LOOP(i, k*batch_size*data_dim)
+  {
+    if(chosen_exp_preds[i/data_dim] != 0) {
+      float a = input[(i/(k*data_dim))*data_dim + i%data_dim];
+      chosen_exp_preds[i/data_dim][i%data_dim] = a;
     }
   }
 }
 
 
-void group_by_backward(float* input_grad,
+__global__
+void gb_backward_kernel(float* input_grad,
         const int* exp_assign,
         float** output_grads,
         int n, // num experts
         int k, // chosen experts
         float alpha, // factor additional memory assigned
         int batch_size,
-        int out_dim)
+        int data_dim)
 {
-  std::vector<int> expert_idx(n, 0);
-  int exp_tensor_rows = ceil(alpha*k/n*batch_size);
+  __shared__ float* chosen_exp_grads[MAX_K*MAX_BATCH_SIZE];
 
-  for(int i = 0; i < batch_size; i++) {
-    for(int j = 0; j < k; j++) {
-      int expert = exp_assign[i*k + j];
-      int row = expert_idx[expert];
-
-      if(row >= exp_tensor_rows)
-        continue; // dropped sample
-
-      // add gradient
-      int input_start = i*out_dim;
-      for(int l = 0; l < out_dim; l++) {
-        input_grad[input_start + l] += output_grads[expert][row*out_dim + l]/k;
+  // Get pred pointers, single thread
+  if(blockIdx.x * blockDim.x + threadIdx.x == 0) {
+    int exp_tensor_rows = ceil(alpha*k/n*batch_size);
+    int expert_idx[MAX_N] = {0};
+    for(int i = 0; i < k*batch_size; i++) {
+      // Get pointer to chosen expert predictions
+      int expert = exp_assign[i];
+      if(expert_idx[expert] >= exp_tensor_rows) {
+        // dropped sample
+        chosen_exp_grads[i] = 0;
+        continue;
       }
+      chosen_exp_grads[i] = output_grads[expert] + expert_idx[expert]*data_dim;
       expert_idx[expert]++;
+    }
+  }
+
+  __syncthreads();
+
+  // compute output
+  CUDA_KERNEL_LOOP(i, k*batch_size*data_dim)
+  {
+    if(chosen_exp_grads[i/data_dim] != 0) {
+      input_grad[(i/(k*data_dim))*data_dim + i%data_dim] = chosen_exp_grads[i/data_dim][i%data_dim];
     }
   }
 }
@@ -171,6 +200,8 @@ void Group_by::forward_task(const Task *task,
 
   assert((int)regions.size() == n+2);
   assert((int)task->regions.size() == n+2);
+
+  const GroupByMeta* m = *((GroupByMeta**)task->local_args);
 
   // get input and assign regions
   const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
@@ -203,8 +234,16 @@ void Group_by::forward_task(const Task *task,
     assert(output_cols == input_cols);
   }
 
-  group_by_forward(acc_input.ptr(rect_input), acc_assign.ptr(rect_assign),
-      outputs, n, k, alpha, batch_size, data_dim);
+  // TODO: why cublas/cudnn stream is needed here?
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  // call forward kernel
+  cudaMemcpy(m->dev_region_ptrs, outputs, n*sizeof(float*), cudaMemcpyHostToDevice);
+
+  gb_forward_kernel<<<GET_BLOCKS(batch_size*k*data_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim)), 0, stream>>>(
+    acc_input.ptr(rect_input), acc_assign.ptr(rect_assign), m->dev_region_ptrs, n, k,
+    alpha, batch_size, data_dim);
 }
 
 
@@ -213,6 +252,7 @@ void Group_by::backward_task(const Task *task,
                             Context ctx, Runtime* runtime)
 {
   // Get n, alpha
+  const GroupByMeta* m = *((GroupByMeta**)task->local_args);
   const Group_by* gb = (Group_by*) task->args;
   int n = gb->n;
   float alpha = gb->alpha;
@@ -251,8 +291,16 @@ void Group_by::backward_task(const Task *task,
     assert(output_cols == input_cols);
   }
 
-  group_by_backward(acc_input_grad.ptr(rect_input_grad), acc_assign.ptr(rect_assign),
-      output_grads, n, k, alpha, batch_size, data_dim);
+  // TODO: why cublas/cudnn stream is needed here
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  // call forward kernel
+  cudaMemcpy(m->dev_region_ptrs, output_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
+
+  gb_backward_kernel<<<GET_BLOCKS(batch_size*k*data_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim)), 0, stream>>>(
+    acc_input_grad.ptr(rect_input_grad), acc_assign.ptr(rect_assign), m->dev_region_ptrs,
+    n, k, alpha, batch_size, data_dim);
 }
 
 
@@ -319,6 +367,17 @@ void Group_by::backward(const FFModel& ff)
   }
 
   runtime->execute_index_space(ctx, launcher);
+}
+
+
+GroupByMeta::GroupByMeta(FFHandler handler, int n)
+: OpMeta(handler)
+{
+  checkCUDA(cudaMalloc(&dev_region_ptrs, n*sizeof(float*)));
+}
+GroupByMeta::~GroupByMeta(void)
+{
+  checkCUDA(cudaFree(&dev_region_ptrs));
 }
 
 

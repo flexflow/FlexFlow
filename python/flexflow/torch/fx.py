@@ -205,12 +205,6 @@ def parse_layernorm(op_str, node):
   op_str = op_str + enum_to_str(OpType, OpType.LAYER_NORM) + "\n"
   return op_str
 
-def parse_floordiv(op_str, node):
-  assert len(node.inedges) == 2, "wrong number of inputs"
-  op_str = op_str + enum_to_str(OpType, OpType.FLOOR_DIVIDE) + ", "
-  op_str = op_str + str(node.inedges[1]) + "\n"
-  return op_str
-
 def parse_sigmoid(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.SIGMOID) + "\n"
@@ -233,10 +227,13 @@ def parse_transpose(op_str,node):
     return op_str
 
 def parse_expand(op_str,node):
-    assert len(node.inedges) == 4, "wrong number of inputs"
-    op_str = op_str + enum_to_str(OpType, OpType.EXPAND)
-    op_str = op_str +", " + str(node.inedges[2])+", "+str(node.inedges[3])+"\n"
-    return op_str
+    assert len(node.inedges) >= 1, "wrong number of inputs"
+    op_str = op_str + enum_to_str(OpType, OpType.EXPAND)+", "
+    input_shape = node.inedges[1:]
+    for dim in input_shape[:-1]:
+        op_str = op_str + (str(dim) if type(dim) is int else (str(dim)+":"))+ ", "
+    op_str = op_str + (str(input_shape[-1]) if type(input_shape[-1]) is int else (str(input_shape[-1])+":"))+ "\n"
+    return op_str 
 
 def parse_softmax(op_str, node):
   assert len(node.inedges) == 1, "wrong number of inputs"
@@ -246,6 +243,30 @@ def parse_softmax(op_str, node):
 def parse_scalarmul(op_str,node):
   assert len(node.inedges) == 2, "wrong number of inputs"
   op_str = op_str + enum_to_str(OpType, OpType.SCALAR_MULTIPLY) + ", "
+  op_str = op_str + str(node.inedges[1]) + "\n"
+  return op_str
+
+def parse_scalaradd(op_str,node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.SCALAR_ADD) + ", "
+  op_str = op_str + str(node.inedges[1]) + "\n"
+  return op_str
+
+def parse_scalarsub(op_str,node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.SCALAR_SUB) + ", "
+  op_str = op_str + str(node.inedges[1]) + "\n"
+  return op_str
+
+def parse_scalarfloordiv(op_str, node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.SCALAR_FLOORDIV) + ", "
+  op_str = op_str + str(node.inedges[1]) + "\n"
+  return op_str
+
+def parse_scalartruediv(op_str, node):
+  assert len(node.inedges) == 2, "wrong number of inputs"
+  op_str = op_str + enum_to_str(OpType, OpType.SCALAR_TRUEDIV) + ", "
   op_str = op_str + str(node.inedges[1]) + "\n"
   return op_str
 
@@ -259,6 +280,13 @@ def parse_batchmatmul(op_str,node):
   op_str = op_str + enum_to_str(OpType, OpType.BATCH_MATMUL) + "\n"
   return op_str
 
+def parse_parameter(op_str,parameter):
+  op_str = op_str + enum_to_str(OpType, OpType.INIT_PARAM) + ", "
+  for dim in parameter.shape[:-1]:
+      op_str = op_str + str(dim)+", "
+  op_str = op_str + str(parameter.shape[-1])+"\n"
+  return op_str
+
 def parse_permute(op_str,node):
     assert len(node.inedges) >= 1
     op_str = op_str + enum_to_str(OpType, OpType.PERMUTE) + ", "
@@ -268,11 +296,15 @@ def parse_permute(op_str,node):
     return op_str
         
 def parse_reshape(op_str,node):
-    assert len(node.inedges) == 2
+    assert len(node.inedges) >= 2
     op_str = op_str + enum_to_str(OpType, OpType.RESHAPE) + ", "
-    for dim in node.inedges[1][:-1]:
+    if len(node.inedges) == 2:
+        input_shape = node.inedges[1]
+    else:
+        input_shape = node.inedges[1:]
+    for dim in input_shape[:-1]:
         op_str = op_str + (str(dim) if type(dim) is int else (str(dim)+":"))+ ", "
-    op_str = op_str + (str(node.inedges[1][-1]) if type(node.inedges[1][-1]) is int else (str(node.inedges[1][-1])+":"))+ "\n"
+    op_str = op_str + (str(input_shape[-1]) if type(input_shape[-1]) is int else (str(input_shape[-1])+":"))+ "\n"
     return op_str 
   
 def parse_inoutedge(op_str, inedges, outedges):
@@ -313,6 +345,16 @@ def torch_to_flexflow(model, filename):
 def torch_to_flexflow_str(model):
   graph = __symbolic_trace(model)
   lines = []
+
+  for name,parameter in model.named_parameters():
+      splitted_name = name.split(".")
+      if not (splitted_name[-1] in ["weight","bias"]):
+          fx_name = "_"+"_".join(splitted_name)
+          print(fx_name)
+          op_str = fx_name+", "
+          op_str = parse_inoutedge(op_str,(),())
+          op_str = parse_parameter(op_str,parameter)
+          lines.append(op_str)
   
   for node in graph:
     # op name
@@ -334,9 +376,31 @@ def torch_to_flexflow_str(model):
     if type(node) == FunctionNode:
       function_name = str(node.function)
       if function_name.find('add') >= 0:
-        op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
-        op_str = parse_add(op_str, node)
+        if type(node.inedges[1]) is float:
+            op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+            op_str = parse_scalaradd(op_str,node)
+        else:
+            op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
+            op_str = parse_add(op_str, node)
         
+      elif function_name.find('sub') >= 0:
+        if type(node.inedges[1]) is float:
+            op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+            op_str = parse_scalarsub(op_str,node)
+        else:
+            assert 0, "Unknown binary subtraction operator"
+            op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
+            op_str = parse_add(op_str, node)
+      
+      elif function_name.find('truediv') >= 0:
+        if type(node.inedges[1]) is float:
+            op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+            op_str = parse_scalartruediv(op_str,node)
+        else:
+            assert 0, "Unknown binary true division operator"
+            op_str = parse_inoutedge(op_str, node.inedges, node.outedges)
+            op_str = parse_add(op_str, node)
+      
       elif function_name.find('cat') >= 0:
         op_str = parse_inoutedge(op_str, node.inedges[0], node.outedges)
         op_str = parse_concat(op_str, node)
@@ -380,10 +444,13 @@ def torch_to_flexflow_str(model):
       elif function_name.find('expand') >= 0:
         op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
         op_str = parse_expand(op_str, node)
-
-      elif function_name.find('floordiv') >= 0:
-        op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
-        op_str = parse_floordiv(op_str,node)
+        
+      elif function_name.find('floordiv') >= 0 or function_name.find('floor_divide') >= 0:
+        if type(node.inedges[1]) is float or type(node.inedges[1]) is int:
+            op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)
+            op_str = parse_scalarfloordiv(op_str,node)
+        else:
+            assert 0, "Tensor floor division is not supported."
 
       elif function_name.find('reshape') >= 0:
         op_str = parse_inoutedge(op_str, (node.inedges[0],), node.outedges)

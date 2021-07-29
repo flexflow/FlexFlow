@@ -1,4 +1,4 @@
-# Copyright 2020 Stanford University, Los Alamos National Laboratory
+# Copyright 2021 Stanford University, Los Alamos National Laboratory
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,4 +13,5 @@
 # limitations under the License.
 #
 
-# Don't do anything here, this just tells python this is a package
+from .utils import flexflow_dir
+from .driver import flexflow_driver
