@@ -19,9 +19,9 @@
 #include <stdio.h>
 //#include "moe.h"
 
-#define MAX_K 2
-#define MAX_N 5
-#define MAX_BATCH_SIZE 100
+#define MAX_K 4
+#define MAX_N 16
+#define MAX_BATCH_SIZE 250
 
 
 // group_by with local capacity factors
@@ -95,6 +95,7 @@ GroupBy::GroupBy(FFModel& model,
   }
 
   numWeights = 0;
+  numOutputs = n;
 }
 
 
