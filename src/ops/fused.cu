@@ -20,6 +20,9 @@
 #include "ops/pool_2d.h"
 #include "ops/flat.h"
 #include "ops/concat.h"
+#include "ops/dropout.h"
+#include "ops/batch_norm.h"
+#include "ops/batch_matmul.h"
 #include "ops/element_unary.h"
 #include "ops/element_binary.h"
 

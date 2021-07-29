@@ -22,6 +22,8 @@
 #include "ops/concat.h"
 #include "ops/element_unary.h"
 #include "ops/element_binary.h"
+#include "ops/batch_norm.h"
+#include "ops/batch_matmul.h"
 
 using namespace Legion;
 

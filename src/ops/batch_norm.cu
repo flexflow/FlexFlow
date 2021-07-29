@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "ops/batch_norm.h"
 #include "cuda_helper.h"
 
 using namespace Legion;
