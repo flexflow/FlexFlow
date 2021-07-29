@@ -45,11 +45,12 @@ public:
                              CostMetrics& cost_metrics) const;
   static void forward_kernel(SoftmaxMeta const *m,
                              float const *input_ptr,
-                             float *output_ptr);
+                             float *output_ptr,
+                             cudaStream_t stream);
   static void backward_kernel(float *input_grad_ptr,
                               float const *output_grad_ptr,
-                              size_t num_elements);
-
+                              size_t num_elements,
+                              cudaStream_t stream);
   size_t get_params_hash() const override;
 private:
   template<int NDIM>

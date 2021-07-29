@@ -102,7 +102,8 @@ public:
                       float* output_ptr,
                       const float* filter_ptr,
                       const float* bias_ptr,
-                      int in_dim, int out_dim, int batch_size);
+                      int in_dim, int out_dim, int batch_size,
+                      cudaStream_t stream);
   static void backward_kernel(const LinearMeta* m,
                        const float* input_ptr,
                        float* input_grad_ptr,
@@ -111,7 +112,8 @@ public:
                        const float* kernel_ptr,
                        float* kernel_grad_ptr,
                        float* bias_ptr,
-                       int in_dim, int out_dim, int batch_size);
+                       int in_dim, int out_dim, int batch_size,
+                       cudaStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;

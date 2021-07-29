@@ -47,7 +47,7 @@ Tensor FFModel::cache(const Tensor& input, int num_batches,
   std::function<float(float*,const void*,const void*,int)> score_f, const char* name)
 {
   if(!score_f) {
-    switch(input.data_type) {
+    switch(input->data_type) {
       case DT_FLOAT:
         score_f = default_score<float>;
         break;
@@ -70,18 +70,19 @@ Cache::Cache(FFModel& model,
             int _num_batches,
             std::function<float(float*,const void*,const void*,int)> &_score_f,
             const char* name)
-: Op(model, OP_CACHE, name, _input),
+: Op(model, OP_CACHE, name, 1/*inputs*/, 0/*weights*/, 1/*outptus*/, _input),
   num_batches(_num_batches),
-  score_f(_score_f),
-  profiling(model.config.profiling)
+  score_f(_score_f)
 {
   load_cached = false;
   batch_ctr = 0;
 
-  int num_dim = inputs[0].numDim;
-  outputs[0].numDim = num_dim;
-  for(int i = 0; i < num_dim; i++)
-    outputs[0].adim[i] = inputs[0].adim[i];
+  int num_dim = inputs[0]->num_dims;
+  ParallelDim dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < num_dim; i++)
+    dims[i] = inputs[0]->dims[i];
+  numOutputs = 1;
+  outputs[0] = model.create_tensor_legion_ordering(num_dim, dims, DT_FLOAT, this);
 
   numWeights = 0;
 }
@@ -92,59 +93,6 @@ Cache::~Cache() {
   free(batch_ptrs);
   free(batch_cmp);
 }
-
-
-void Cache::create_weights(FFModel& model)
-{
-  // Do nothing
-}
-
-
-void Cache::create_output_and_partition(FFModel& model)
-{
-  // Retrieve the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-
-  // create output
-  int num_dim = inputs[0].numDim;
-  assert(num_dim == domain.get_dim());
-  int dims[num_dim];
-  for (int i = 0; i < num_dim; i++)
-    dims[i] = inputs[0].adim[num_dim-1-i];
-
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> part_rect = domain; \
-      outputs[0] = model.create_tensor<DIM>(dims, inputs[0].data_type, this); \
-      outputs[0].owner_op = this; \
-      outputs[0].owner_idx = 0; \
-      Rect<DIM> input_rect = runtime->get_index_partition_color_space( \
-          ctx, inputs[0].part.get_index_partition()); \
-      if (input_rect == part_rect) { \
-        input_lps[0] = inputs[0].part; \
-        input_grad_lps[0] = inputs[0].part_grad; \
-      } else { \
-        model.create_disjoint_partition<DIM>(inputs[0], \
-            IndexSpaceT<DIM>(task_is), input_lps[0], input_grad_lps[0]); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      fprintf(stderr, "Unsupported dimension number");
-      assert(false);
-    }
-  }
-}
-
 
 OpMeta* Cache::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
@@ -168,11 +116,10 @@ void cache_init(Cache* cache, size_t vol) {
   cache->batch_cmp = malloc(vol*sizeof(T));
 }
 
-
 void Cache::init(const FFModel& ff)
 {
-  size_t vol = inputs[0].get_volume();
-  switch(inputs[0].data_type)
+  size_t vol = inputs[0]->get_volume();
+  switch(inputs[0]->data_type)
   {
     case DT_FLOAT:
       cache_init<float>(this, vol);
@@ -187,51 +134,16 @@ void Cache::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      ParallelConfig pc; \
-      std::string pcname = name; \
-      ff.config.find_parallel_config(DIM, pcname, pc); \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        FFHandler handle = ff.handlers[pc.device_ids[idx++]]; \
-        argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-  IndexLauncher launcher(CACHE_INIT_TASK_ID, task_is,
+  set_argumentmap_for_init(ff, argmap);
+  parallel_is = outputs[0]->parallel_is;
+  IndexLauncher launcher(CACHE_INIT_TASK_ID, parallel_is,
     TaskArgument(this, sizeof(Cache)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        meta[idx++] = fm.get_result<OpMeta*>(*it); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
+  set_opmeta_from_futuremap(ff, fm);
 }
-
 
 template <typename T>
 void cache_forward(const Task *task,
@@ -251,7 +163,7 @@ void cache_forward(const Task *task,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
-  cudaMemcpy(output_ptr, batch_ptrs[batch_ctr], c->inputs[0].get_volume()*sizeof(T), cudaMemcpyHostToDevice);
+  cudaMemcpy(output_ptr, batch_ptrs[batch_ctr], c->inputs[0]->get_volume()*sizeof(T), cudaMemcpyHostToDevice);
 }
 
 
@@ -263,7 +175,7 @@ void Cache::forward_task(const Task *task,
   assert((int)regions.size() == 1);
   assert((int)task->regions.size() == 1);
 
-  switch(c->inputs[0].data_type)
+  switch(c->inputs[0]->data_type)
   {
     case DT_FLOAT:
       cache_forward<float>(task, regions, ctx, runtime);
@@ -290,10 +202,10 @@ float cache_update(const Task *task,
   const T* input_ptr = helperGetTensorPointerRW<T>(regions[0], task->regions[0],
     FID_DATA, ctx, runtime);
   T* host_input = (T*) c->batch_cmp;
-  cudaMemcpy(host_input, input_ptr, c->inputs[0].get_volume()*sizeof(T), cudaMemcpyDeviceToHost);
+  cudaMemcpy(host_input, input_ptr, c->inputs[0]->get_volume()*sizeof(T), cudaMemcpyDeviceToHost);
   float cache_score = c->score_f(&m->cache_score, host_input,
-    c->batch_ptrs[batch_ctr], c->inputs[0].get_volume());
-  memcpy(c->batch_ptrs[batch_ctr], host_input, c->inputs[0].get_volume()*sizeof(T));
+    c->batch_ptrs[batch_ctr], c->inputs[0]->get_volume());
+  memcpy(c->batch_ptrs[batch_ctr], host_input, c->inputs[0]->get_volume()*sizeof(T));
   return cache_score;
 }
 
@@ -308,7 +220,7 @@ float Cache::update_task(const Task *task,
                       Context ctx, Runtime* runtime)
 {
   Cache* c = ((Arg*)(task->args))->cache;
-  switch(c->inputs[0].data_type)
+  switch(c->inputs[0]->data_type)
   {
     case DT_FLOAT:
       return cache_update<float>(task, regions, ctx, runtime);
@@ -326,38 +238,22 @@ void Cache::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        OpMeta* mp = meta[idx++]; \
-        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-
+  set_argumentmap_for_init(ff, argmap);
+  parallel_is = outputs[0]->parallel_is;
   Arg arg = {this, batch_ctr};
   // Launch update task
-  IndexLauncher launcher_update(CACHE_UPDATE_TASK_ID, task_is,
+  IndexLauncher launcher_update(CACHE_UPDATE_TASK_ID, parallel_is,
                          TaskArgument(&arg, sizeof(Arg)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   launcher_update.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region));
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
+      READ_WRITE, EXCLUSIVE, inputs[0]->region));
   launcher_update.add_field(0, FID_DATA);
   FutureMap score_fm = runtime->execute_index_space(ctx, launcher_update);
   // add score futures to Cache future vector attribute
   score_futures.clear();
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -374,13 +270,13 @@ void Cache::forward(const FFModel& ff)
   }
   // Launch forward task
   if(load_cached) {
-    IndexLauncher launcher_fwd(CACHE_FWD_TASK_ID, task_is,
+    IndexLauncher launcher_fwd(CACHE_FWD_TASK_ID, parallel_is,
                            TaskArgument(&arg, sizeof(Arg)), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            FFConfig::get_hash_id(std::string(name)));
     launcher_fwd.add_region_requirement(
-      RegionRequirement(outputs[0].part, 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
     launcher_fwd.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher_fwd);
   }
@@ -400,7 +296,7 @@ CacheMeta::CacheMeta(FFHandler handler)
 
 bool Cache::measure_operator_cost(Simulator* sim,
                                  const ParallelConfig& pc,
-                                 CostMetrics& cost_metrics)
+                                 CostMetrics& cost_metrics) const
 {
   //TODO: implement
   cost_metrics.forward_time = 0.0f;

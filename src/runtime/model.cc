@@ -2139,7 +2139,7 @@ void FFModel::compute_metrics()
 {
   Op* metrics_layer = layers[metrics_input];
   assert(metrics_layer->numOutputs == 1);
-  metrics_op->compute(this, &(metrics_layer->outputs[0]), &label_tensor_with_final_part);
+  metrics_op->compute(this, metrics_layer->outputs[0], label_tensor_with_final_part);
 }
 
 void FFModel::get_metrics()
@@ -2156,7 +2156,7 @@ void FFModel::backward(int seq_length)
   // Compute the gradients of the final layer wrt loss
   Op* final_layer = layers[layers.size()-1];
   assert(final_layer->numOutputs == 1);
-  loss_op->backward(this, &(final_layer->outputs[0]), &label_tensor_with_final_part);
+  loss_op->backward(this, final_layer->outputs[0], label_tensor_with_final_part);
   // Perform backpropagation
   // std::set<LogicalRegion> resetedInputGrads;
   for (int l = layers.size() - 1; l >= 0; l--) {
@@ -2382,7 +2382,7 @@ void FFModel::compile(LossType loss_type,
   for (size_t l = 0; l < layers.size(); l++) {
     Op* op = layers[l];
     for (int i = 0; i < op->numInputs; i++) {
-      if (op->inputs[i].owner_op == NULL)
+      if (op->inputs[i]->owner_op == NULL)
         op->trainableInputs[i] = false;
     }
   }
@@ -2488,14 +2488,9 @@ void FFModel::compile(LossType loss_type,
   //assert(final_layer->outputs[0].num_dims == 2);
   ParallelDim dims[MAX_TENSOR_DIM];
   int num_dims = final_layer->outputs[0]->num_dims;
-  // Note that FlexFlow's runtim internally reverse the array ordering
-  Op* first_layer = layers[0];
-  int input_dims = first_layer->inputs[0].numDim;
   // FIXME: Currently assume 1st input for 1st layer = batch_size
-  int batch_size = first_layer->inputs[0].adim[input_dims-1];
-  dims[0] = batch_size;
-  for (int i = 1; i < num_dims; i++)
-    dims[i] = final_layer->outputs[0].adim[num_dims-1-i];
+  for (int i = 0; i < num_dims; i++)
+    dims[i] = final_layer->outputs[0]->dims[i];
   DataType label_type = DT_FLOAT;
   if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     // assign dims[num_dims-1] = 1 for sparse categorical labels

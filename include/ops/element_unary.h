@@ -41,13 +41,15 @@ public:
   static void forward_kernel(const ElementUnaryMeta* m,
                       const float* in_ptr,
                       float* out_ptr,
-                      size_t num_elements);
+                      size_t num_elements,
+                      cudaStream_t stream);
   static void backward_kernel(const ElementUnaryMeta* m,
                        const float* in_ptr,
                        float* in_grad_ptr,
                        const float* out_ptr,
                        const float* out_grad_ptr,
-                       size_t num_elements);
+                       size_t num_elements,
+                       cudaStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;

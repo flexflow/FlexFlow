@@ -262,11 +262,11 @@ bool Split::measure_operator_cost(Simulator* sim,
                                   CostMetrics& cost_metrics) const
 {
   //TODO: implement measure_forward
-  Tensor sub_output[MAX_NUM_OUTPUTS], sub_input;
+  TensorBase sub_output[MAX_NUM_OUTPUTS], sub_input;
   for (int i = 0; i < numOutputs; i++)
-    if (!outputs[i].get_output_sub_tensor(pc, sub_output[i], OP_SPLIT))
+    if (!outputs[i]->get_output_sub_tensor(pc, sub_output[i], OP_SPLIT))
       return false;
-  if (!inputs[0].get_input_sub_tensor(pc, sub_input, OP_SPLIT))
+  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, OP_SPLIT))
     return false;
   Domain in_domain = sub_input.get_domain();
   sim->free_all();

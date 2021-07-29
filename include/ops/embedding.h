@@ -53,7 +53,8 @@ public:
                              int out_dim,
                              int batch_size,
                              AggrMode aggr,
-                             int outputSize);
+                             int outputSize,
+                             cudaStream_t stream);
   static void backward_kernel(int64_t const *input_ptr,
                               float const *output_ptr,
                               float *weight_grad_ptr,
@@ -61,7 +62,8 @@ public:
                               int out_dim,
                               int batch_size,
                               AggrMode aggr,
-                              int outputSize);
+                              int outputSize,
+                              cudaStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;

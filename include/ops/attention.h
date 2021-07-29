@@ -49,7 +49,8 @@ public:
                       const float* key_ptr,
                       const float* value_ptr,
                       const float* weight_ptr,
-                      float* output_ptr);
+                      float* output_ptr,
+                      cudaStream_t stream);
   static void backward_kernel(const MultiHeadAttentionMeta* m,
                        const float* query_ptr,
                        float* query_grad_ptr,
@@ -59,7 +60,8 @@ public:
                        float* value_grad_ptr,
                        const float* weight_ptr,
                        float* weight_grad_ptr,
-                       const float* output_grad_ptr);
+                       const float* output_grad_ptr,
+                       cudaStream_t stream);
 public:
   int num_heads, qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;

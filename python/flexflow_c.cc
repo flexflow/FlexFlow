@@ -644,9 +644,8 @@ flexflow_model_add_scalar_add(
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->scalar_add(*input, scalar, inplace, name);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->scalar_add(input, scalar, inplace, name);
   DEBUG_PRINT("[Scalar addition] new Tensor %p, input %p, scalar %f, name %s", tensor, input, scalar,  name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -660,9 +659,8 @@ flexflow_model_add_scalar_sub(
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->scalar_sub(*input, scalar, inplace, name);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->scalar_sub(input, scalar, inplace, name);
   DEBUG_PRINT("[Scalar subtraction] new Tensor %p, input %p, scalar %f, name %s", tensor, input, scalar,  name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -676,9 +674,8 @@ flexflow_model_add_scalar_truediv(
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->scalar_truediv(*input, scalar, inplace, name);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->scalar_truediv(input, scalar, inplace, name);
   DEBUG_PRINT("[Scalar true division] new Tensor %p, input %p, scalar %f, name %s", tensor, input, scalar,  name);
   return FFCObjectWrapper::wrap(tensor);
 }

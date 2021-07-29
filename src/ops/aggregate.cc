@@ -93,19 +93,18 @@ void f_mm_back(const float* output_grad,
   }
 }
 
-
 Tensor FFModel::aggregate(const Tensor* inputs, /* gate_preds, gate_assign, n * exp_pred */
-                          int n, const char* name)
+                          int n, float lambda_bal, const char* name)
 {
-  Aggregate* aggr = new Aggregate(*this, inputs, n, name);
+  Aggregate* aggr = new Aggregate(*this, inputs, n, lambda_bal, name);
   layers.push_back(aggr);
   return aggr->outputs[0];
 }
 
 
 Aggregate::Aggregate(FFModel& model,
-                    const Tensor* _inputs,
-                    int _n, const char* name)
+                     const Tensor* _inputs,
+                     int _n, const char* name)
 : Op(model, OP_AGGREGATE, name, _n+2/*num_inputs*/, 0/*num_weights*/, 1/*outputs*/, _inputs),
   n(_n)
   //profiling(model.config.profiling)

@@ -548,18 +548,18 @@ public:
 	      const float scalar,
               bool inplace = true,
               const char *name = NULL);
-  Tensor scalar_add(const Tensor& x,
-		  const float scalar,
-		  bool inplace = true,
-		  const char *name = NULL);
-  Tensor scalar_sub(const Tensor& x,
-		  const float scalar,
-		  bool inplace = true,
-		  const char *name = NULL);
-  Tensor scalar_truediv(const Tensor& x,
-		  const float scalar,
-		  bool inplace = true,
-		  const char *name = NULL);
+  Tensor scalar_add(const Tensor x,
+                    const float scalar,
+                    bool inplace = true,
+                    const char *name = NULL);
+  Tensor scalar_sub(const Tensor x,
+                    const float scalar,
+                    bool inplace = true,
+                    const char *name = NULL);
+  Tensor scalar_truediv(const Tensor x,
+                        const float scalar,
+                        bool inplace = true,
+                        const char *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor x,
               bool inplace = true,
@@ -1310,7 +1310,7 @@ public:
                            Context ctx, Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics);
+                             CostMetrics& cost_metrics) const;
   void use_cached(bool cached);
 public:
   void** batch_ptrs;
@@ -1319,7 +1319,6 @@ public:
   int num_batches;
   std::function<float(float*,const void*,const void*,int)> score_f;
   std::vector<Future> score_futures;
-  bool profiling;
   int batch_ctr;
 };
 
@@ -1354,7 +1353,42 @@ public:
                              CostMetrics& cost_metrics) const;
 public:
   int n;
+  float lambda_bal;
 };
+
+class AggregateSpecMeta : public OpMeta {
+public:
+  AggregateSpecMeta(FFHandler handle, int n);
+  ~AggregateSpecMeta(void);
+  float** dev_region_ptrs;
+};
+
+class AggregateSpec : public Op {
+public:
+  AggregateSpec(FFModel& model,
+                const Tensor* inputs,
+                int _n, float _lambda_bal, const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  static OpMeta* init_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task(const Legion::Task *task,
+                           const std::vector<Legion::PhysicalRegion> &regions,
+                           Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics) const;
+public:
+  int n;
+  float lambda_bal;
+};
+
 
 class TransposeMeta : public OpMeta {
 public:

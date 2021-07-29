@@ -88,6 +88,7 @@ void Simulator::strategy_search_task(const Task *task,
 {
   // This method should no longer be used
   assert(false);
+#ifdef DEADCODE
   FFModel* model = *((FFModel**) task->args);
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
          .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
@@ -143,5 +144,6 @@ void Simulator::strategy_search_task(const Task *task,
   delete(simulator);
   model->simulator = NULL;
   delete(machine);
+#endif
 }
 

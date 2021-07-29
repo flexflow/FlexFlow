@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2021 Stanford, Facebook
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,95 +29,50 @@ Tensor FFModel::aggregate_spec(const Tensor* inputs, /* gate_preds, gate_assign,
   return aggr->outputs[0];
 }
 
-
 AggregateSpec::AggregateSpec(FFModel& model,
                     const Tensor* _inputs,
                     int _n, float _lambda_bal, const char* name)
-: Op(model, OP_AGG_SPEC, name, _n+4, _inputs),
-  n(_n), lambda_bal(_lambda_bal),
-  profiling(model.config.profiling)
+: Op(model, OP_AGG_SPEC, name, _n+4/*numInputs*/, 0/*numWeights*/, 1/*numOutputs*/, _inputs),
+  n(_n), lambda_bal(_lambda_bal)
 {
   // FIXME: For now, set upper limits Better: Do as follows, but memory is
   // assigned per block, so requires to check that
   // https://stackoverflow.com/questions/5531247/allocating-shared-memory/5531640#5531640
   assert(n <= MAX_N && "Increase MAX_N in #define");
-  assert(inputs[0].adim[0] <= MAX_K && "Increase MAX_K in #define");
-  assert(inputs[0].adim[1] <= MAX_BATCH_SIZE && "Increase MAX_BATCH_SIZE in #define");
+  assert(inputs[0]->dims[0].size <= MAX_K && "Increase MAX_K in #define");
+  assert(inputs[0]->dims[1].size <= MAX_BATCH_SIZE && "Increase MAX_BATCH_SIZE in #define");
 
   assert(n+4 == numInputs);
   assert(n > 0);
-  assert(inputs[0].numDim == 2);
-  assert(inputs[1].numDim == 2);
-  assert(inputs[2].numDim == 2);
-  assert(inputs[3].numDim == 2);
+  assert(inputs[0]->num_dims == 2);
+  assert(inputs[1]->num_dims == 2);
+  assert(inputs[2]->num_dims == 2);
+  assert(inputs[3]->num_dims == 2);
 
-  for(int i = 0; i < inputs[0].numDim; i++) {
-    assert(inputs[0].adim[i] == inputs[1].adim[i]);
-    assert(inputs[0].adim[i] == inputs[2].adim[i]);
+  for(int i = 0; i < inputs[0]->num_dims; i++) {
+    assert(inputs[0]->dims[i] == inputs[1]->dims[i]);
+    assert(inputs[0]->dims[i] == inputs[2]->dims[i]);
   }
-  assert(inputs[0].adim[1] == inputs[3].adim[1]);
-  assert(inputs[3].adim[0] == n);
+  assert(inputs[0]->dims[1] == inputs[3]->dims[1]);
+  assert(inputs[3]->dims[0].size == n);
 
   // expert inputs
-  int num_dim = inputs[4].numDim;
-  int out_dim = inputs[4].adim[0];
+  int num_dim = inputs[4]->num_dims;
+  int out_dim = inputs[4]->dims[0].size;
   for(int i = 1; i < n; i++) {
-    assert(inputs[i+4].numDim == num_dim);
-    assert(inputs[i+4].adim[0] == out_dim);
+    assert(inputs[i+4]->num_dims == num_dim);
+    assert(inputs[i+4]->dims[0].size == out_dim);
   }
-  // output
-  outputs[0].numDim = num_dim;
-  int k = inputs[0].adim[0];
-  for(int i = 0; i < num_dim-1; i++)
-    outputs[0].adim[i] = inputs[4].adim[i];
-  outputs[0].adim[num_dim-1] = k*inputs[0].adim[num_dim-1];
+  // Set output shape
+  ParallelDim dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < num_dim-1; i++)
+    dims[i] = inputs[4]->dims[i];
+  dims[num_dim-1] = inputs[0]->dims[num_dim-1];
+  numOutputs = 1;
+  outputs[0] = model.create_tensor_legion_ordering(num_dim, dims, DT_FLOAT, this);
 
   numWeights = 0;
 }
-
-
-void AggregateSpec::create_weights(FFModel& model)
-{
-  // Do nothing
-}
-
-
-void AggregateSpec::create_output_and_partition(FFModel& model)
-{
-  // Retrieve the task indexspace for the op
-  std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Rect<2> part_rect = runtime->get_index_space_domain(ctx, task_is);
-
-  // Can only partition over the sample dim
-  assert(part_rect.hi[0] == part_rect.lo[0]);
-
-  int batch_size = inputs[0].adim[1];
-  int out_dim = inputs[4].adim[0];
-  int k = inputs[0].adim[0];
-
-  const int dims[2] = {k*batch_size, out_dim};
-  outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
-  outputs[0].owner_op = this;
-  outputs[0].owner_idx = 0;
-
-
-  // Compute partition bound for input
-  for(int i = 0; i < n+4; i++) {
-    Rect<2> input_rect = runtime->get_index_partition_color_space(
-        ctx, inputs[i].part.get_index_partition());
-    if (input_rect == part_rect) {
-      input_lps[i] = inputs[i].part;
-      input_grad_lps[i] = inputs[i].part_grad;
-    } else {
-      model.create_disjoint_partition<2>(
-        inputs[i], (IndexSpaceT<2>)task_is, input_lps[i], input_grad_lps[i]);
-    }
-  }
-}
-
 
 OpMeta* AggregateSpec::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
@@ -136,51 +91,16 @@ void AggregateSpec::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      ParallelConfig pc; \
-      std::string pcname = name; \
-      ff.config.find_parallel_config(DIM, pcname, pc); \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        FFHandler handle = ff.handlers[pc.device_ids[idx++]]; \
-        argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-  IndexLauncher launcher(AGG_SPEC_INIT_TASK_ID, task_is,
+  set_argumentmap_for_init(ff, argmap);
+  parallel_is = outputs[0]->parallel_is;
+  IndexLauncher launcher(AGG_SPEC_INIT_TASK_ID, parallel_is,
     TaskArgument(this, sizeof(AggregateSpec)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-    FFConfig::get_hash_id(std::string(name)));
+    outputs[0]->machine_view.hash());
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        meta[idx++] = fm.get_result<OpMeta*>(*it); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
+  set_opmeta_from_futuremap(ff, fm);
 }
-
 
 __global__
 void aggspec_forward_kernel(float** exp_preds,
@@ -510,53 +430,34 @@ void AggregateSpec::forward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        OpMeta* mp = meta[idx++]; \
-        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-  IndexLauncher launcher(AGG_SPEC_FWD_TASK_ID, task_is,
+  set_argumentmap_for_init(ff, argmap);
+  parallel_is = outputs[0]->parallel_is;
+  IndexLauncher launcher(AGG_SPEC_FWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(AggregateSpec)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
-
+                         outputs[0]->machine_view.hash());
   // gate_preds
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region));
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
+      READ_WRITE, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // gate_assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[1].region));
+    RegionRequirement(inputs[1]->part, 0/*projection id*/,
+      READ_WRITE, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
-
   // exp_preds
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_lps[i+4], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i+4].region));
+      RegionRequirement(inputs[i+4]->part, 0/*projection id*/,
+        READ_WRITE, EXCLUSIVE, inputs[i+4]->region));
     launcher.add_field(i+2, FID_DATA);
   }
   // output
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+    RegionRequirement(outputs[0]->part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(n+2, FID_DATA);
-
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -566,66 +467,49 @@ void AggregateSpec::backward(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        OpMeta* mp = meta[idx++]; \
-        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-
-  IndexLauncher launcher(AGG_SPEC_BWD_TASK_ID, task_is,
+  set_argumentmap_for_backward(ff, argmap);
+  parallel_is = outputs[0]->parallel_is;
+  IndexLauncher launcher(AGG_SPEC_BWD_TASK_ID, parallel_is,
                          TaskArgument(this, sizeof(AggregateSpec)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
+                         outputs[0]->machine_view.hash());
 
   // gate_preds
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region));
+    RegionRequirement(inputs[0]->part, 0/*projection id*/,
+      READ_WRITE, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
 
   // gate_assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[1].region));
+    RegionRequirement(inputs[1]->part, 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[1]->region));
   launcher.add_field(1, FID_DATA);
 
   // true gate_assign
   launcher.add_region_requirement(
-    RegionRequirement(input_lps[2], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[2].region));
+    RegionRequirement(inputs[2]->part, 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[2]->region));
   launcher.add_field(2, FID_DATA);
 
   // gate gradients full
   launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[3], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[3].region_grad));
+    RegionRequirement(inputs[3]->part_grad, 0/*projection id*/,
+      READ_WRITE, EXCLUSIVE, inputs[3]->region_grad));
   launcher.add_field(3, FID_DATA);
 
   // exp gradients
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[i+4], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i+4].region_grad));
+      RegionRequirement(inputs[i+4]->part_grad, 0/*projection id*/,
+        READ_WRITE, EXCLUSIVE, inputs[i+4]->region_grad));
     launcher.add_field(i+4, FID_DATA);
   }
 
   // output
   launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, outputs[0].region_grad));
+    RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
+      READ_WRITE, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(n+4, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
@@ -645,7 +529,7 @@ AggregateSpecMeta::~AggregateSpecMeta(void)
 
 bool AggregateSpec::measure_operator_cost(Simulator* sim,
                                  const ParallelConfig& pc,
-                                 CostMetrics& cost_metrics)
+                                 CostMetrics& cost_metrics) const
 {
   //TODO: implement
   cost_metrics.forward_time = 0.0f;

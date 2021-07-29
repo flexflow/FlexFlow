@@ -71,86 +71,90 @@ double get_current_time(FFConfig &config)
 }
 
 //-------- Tensor --------
-py::array get_array(Tensor &t, FFConfig &config) 
+py::array get_array(Tensor t, FFConfig &config) 
 {
-  std::vector<int> dims(t.adim, &t.adim[t.numDim]); 
+  std::vector<int> dims(t->num_dims);
+  for (int i = 0; i < t->num_dims; i++)
+    dims[i] = t->dims[i].size; 
   std::reverse(dims.begin(), dims.end()); 
-  if (t.data_type == DataType::DT_FLOAT) {
-    printf("raw_ptr = %p\n", t.get_raw_ptr<float>(config));
+  if (t->data_type == DataType::DT_FLOAT) {
+    printf("raw_ptr = %p\n", t->get_raw_ptr<float>(config));
     return py::array(
         py::dtype("f"),
         {dims}, // shape
         {},     // stride
-        t.get_raw_ptr<float>(config), // the data pointer
+        t->get_raw_ptr<float>(config), // the data pointer
         NULL); 
-  } else if (t.data_type == DataType::DT_INT32) {
+  } else if (t->data_type == DataType::DT_INT32) {
     return py::array(
         py::dtype("i"),
         {dims}, // shape
         {},     // stride
-        t.get_raw_ptr<int32_t>(config), // the data pointer
+        t->get_raw_ptr<int32_t>(config), // the data pointer
         NULL); 
   } else {
     assert(0);
   }
 }
 
-void set_tensor(Tensor &t, FFModel &model, py::array &np_array, ParameterSyncType comm_type)
+void set_tensor(Tensor t, FFModel &model, py::array &np_array)
 {
   py::buffer_info info = np_array.request();
   bool retval = false;
-  assert(info.ndim == t.numDim);
-  std::vector<int> dims(t.adim, &t.adim[t.numDim]);
+  assert(info.ndim == t->num_dims);
+  std::vector<int> dims(t->num_dims);
+  for (int i = 0; i < t->num_dims; i++)
+    dims[i] = t->dims[i].size; 
   std::reverse(dims.begin(), dims.end());
   if (info.format == "f") {
-    assert(t.data_type == DataType::DT_FLOAT);
-    retval = t.set_tensor<float>(&model, dims, static_cast<float*>(info.ptr), comm_type);
+    assert(t->data_type == DataType::DT_FLOAT);
+    retval = t->set_tensor<float>(&model, dims, static_cast<float*>(info.ptr));
   } else if (info.format == "i") {
-    assert(t.data_type == DataType::DT_INT32);
-    retval = t.set_tensor<int32_t>(&model, dims, static_cast<int32_t*>(info.ptr), comm_type);
+    assert(t->data_type == DataType::DT_INT32);
+    retval = t->set_tensor<int32_t>(&model, dims, static_cast<int32_t*>(info.ptr));
   } else {
     assert(0);
   }
   assert(retval == true);
 }
 
-void attach_numpy_array(Tensor &t, FFConfig &config, py::array &np_array)
+void attach_numpy_array(Tensor t, FFConfig &config, py::array &np_array)
 {
   py::buffer_info info = np_array.request();
-  assert(info.ndim == t.numDim);
+  assert(info.ndim == t->num_dims);
   if (info.format == "f") {
-    assert(t.data_type == DataType::DT_FLOAT);
+    assert(t->data_type == DataType::DT_FLOAT);
   } else if (info.format == "i") {
-    assert(t.data_type == DataType::DT_INT32);
+    assert(t->data_type == DataType::DT_INT32);
   } else {
     assert(0);
   }
-  t.attach_raw_ptr(config, info.ptr, true);
+  t->attach_raw_ptr(config, info.ptr, true);
 }
 
-void detach_numpy_array(Tensor &t, FFConfig &config)
+void detach_numpy_array(Tensor t, FFConfig &config)
 {
-  t.detach_raw_ptr(config);
+  t->detach_raw_ptr(config);
 }
 
 //-------- Parameter --------
 
-bool get_weights(Parameter &parameter, FFModel &model, py::array &full_array) 
+bool get_weights(Parameter parameter, FFModel &model, py::array &full_array) 
 {
   py::buffer_info info = full_array.request();
   if (info.format == "f") {
-    return parameter.get_weights<float>(&model, static_cast<float*>(info.ptr));
+    return parameter->get_tensor<float>(&model, static_cast<float*>(info.ptr));
   } else {
     assert(0);
     return false;
   }
 }
 
-bool set_weights(Parameter &parameter, FFModel &model, const std::vector<int>& dims, py::array &full_array) 
+bool set_weights(Parameter parameter, FFModel &model, const std::vector<int>& dims, py::array &full_array) 
 {
   py::buffer_info info = full_array.request();
   if (info.format == "f") {
-    return parameter.set_weights<float>(&model, dims, static_cast<float*>(info.ptr));
+    return parameter->set_tensor<float>(&model, dims, static_cast<float*>(info.ptr));
   } else {
     assert(0);
     return false;
@@ -159,19 +163,19 @@ bool set_weights(Parameter &parameter, FFModel &model, const std::vector<int>& d
 
 //-------- FFModel --------
 
-Tensor *create_tensor(FFModel &model, const std::vector<int> &dims, DataType data_type, bool create_grad)
+Tensor create_tensor(FFModel &model, const std::vector<int> &dims, DataType data_type, bool create_grad)
 {
-  Tensor *tensor = new Tensor();
+  Tensor tensor = NULL;
   int num_dims = dims.size();
   if (num_dims == 2) {
-    *tensor = model.create_tensor<2>(dims.data(), data_type, NULL, create_grad);
+    tensor = model.create_tensor<2>(dims.data(), data_type, NULL, 0, create_grad);
   } else if (num_dims == 3) {
-    *tensor = model.create_tensor<3>(dims.data(), data_type, NULL, create_grad);
+    tensor = model.create_tensor<3>(dims.data(), data_type, NULL, 0, create_grad);
   } else if (num_dims == 4) {
-    *tensor = model.create_tensor<4>(dims.data(), data_type, NULL, create_grad);
+    tensor = model.create_tensor<4>(dims.data(), data_type, NULL, 0, create_grad);
 #if MAX_TENSOR_DIM >= 5
   } else if (num_dims == 5) {
-     *tensor = model.create_tensor<5>(dims.data(), data_type, NULL, create_grad);
+     tensor = model.create_tensor<5>(dims.data(), data_type, NULL, 0, create_grad);
 #endif
   } else {
     assert(0);
@@ -223,13 +227,13 @@ SingleDataLoader *create_data_loader_attach(FFModel &model, Tensor &batch_tensor
     assert(0);
   }
   ssize_t num_samples = info.shape[0];
-  full_tensor.attach_raw_ptr(model.config, info.ptr, true);
+  full_tensor->attach_raw_ptr(model.config, info.ptr, true);
   SingleDataLoader *dataloader = new SingleDataLoader(model, batch_tensor, full_tensor, num_samples, dtype);
-  full_tensor.detach_raw_ptr(model.config);
+  full_tensor->detach_raw_ptr(model.config);
   return dataloader;
 }
 
-SingleDataLoader *create_data_loader(FFModel &model, Tensor &batch_tensor, py::array &full_array) 
+SingleDataLoader *create_data_loader(FFModel &model, Tensor batch_tensor, py::array &full_array) 
 {
   if (model.config.enable_control_replication) {
     assert(model.config.python_data_loader_type != 1);
@@ -317,20 +321,19 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def("reset", &SingleDataLoader::reset)
       .def("next_batch", &SingleDataLoader::next_batch);
 
-  py::class_<Tensor>(m, "Tensor")
-      .def_readonly("data_type", &Tensor::data_type)
-      .def_property_readonly("dims", [](Tensor &t) { std::vector<int> dims(t.adim, &t.adim[t.numDim]); std::reverse(dims.begin(), dims.end()); return dims; })
-      .def_readonly("num_dims", &Tensor::numDim)
-      .def("inline_map", [](Tensor &t, FFConfig &config) { t.inline_map(config); })
-      .def("inline_unmap", [](Tensor &t, FFConfig &config) { t.inline_unmap(config); })
+  py::class_<TensorBase>(m, "TensorBase")
+      .def_readonly("data_type", &TensorBase::data_type)
+      .def_property_readonly("dims", [](TensorBase &t) { std::vector<int> dims(t.num_dims); for(int i = 0; i < t.num_dims; i++) dims[i] = t.dims[i].size; std::reverse(dims.begin(), dims.end()); return dims; })
+      .def_readonly("num_dims", &TensorBase::num_dims)
+      .def("inline_map", [](TensorBase &t, FFConfig &config) { t.inline_map(config); })
+      .def("inline_unmap", [](TensorBase &t, FFConfig &config) { t.inline_unmap(config); })
       .def("get_array", &get_array, py::return_value_policy::move)
-      .def("set_tensor", &set_tensor, "ffmodel"_a, "np_array"_a, "comm_type"_a)
+      .def("set_tensor", &set_tensor, "ffmodel"_a, "np_array"_a)
       .def("attach_numpy_array", &attach_numpy_array, "ffconfig"_a, "np_array"_a)
       .def("detach_numpy_array", &detach_numpy_array, "ffconfig"_a);
   
-  py::class_<Parameter, Tensor>(m, "Parameter")
-      .def("_get_weights", &get_weights, "ffmodel"_a, "full_array"_a)
-      .def("_set_weights", &set_weights, "ffmodel"_a, "dims"_a, "full_array"_a);
+  //py::class_<Tensor, TensorBase*>(m, "Tensor");
+  //py::class_<Parameter, TensorBase*>(m, "Parameter");
 
   py::class_<FFConfig>(m, "FFConfig")
       .def(py::init())

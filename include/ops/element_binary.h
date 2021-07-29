@@ -43,14 +43,15 @@ public:
   static void forward_kernel(const ElementBinaryMeta* m,
                       const float* in1_ptr,
                       const float* in2_ptr,
-                      float* out_ptr);
+                      float* out_ptr,
+                      cudaStream_t stream);
   static void backward_kernel(const ElementBinaryMeta* m,
                        const float* out_grad_ptr,
                        const float* in1_ptr,
                        const float* in2_ptr,
                        float* in1_grad_ptr,
-                       float* in2_grad_ptr);
-
+                       float* in2_grad_ptr,
+                       cudaStream_t stream);
   size_t get_params_hash() const override;
 public:
   bool inplace_a;

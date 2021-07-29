@@ -44,8 +44,7 @@ Group_by::Group_by(FFModel& model,
                   const char* name)
 : Op(model, OP_GROUP_BY, name, 2/*inputs*/, 0/*weights*/, _n/*outputs*/, _input, _assign),
   n(_n),
-  alpha(_alpha),
-  profiling(model.config.profiling)
+  alpha(_alpha)
 {
   assert(_input->num_dims == 2); // NOTE: Is that a problem if you e.g. want to pass in images
   assert(_input->num_dims == 2);
@@ -103,6 +102,7 @@ void Group_by::init(const FFModel& ff)
         WRITE_ONLY, EXCLUSIVE, outputs[i]->region));
     launcher.add_field(i+2, FID_DATA);
   }
+  runtime->execute_index_space(ctx, launcher);
 }
 
 
