@@ -22,15 +22,17 @@ void Op::inner_measure_operator_cost(Simulator *sim,
                                      std::function<void()> const &backward,
                                      CostMetrics& cost_metrics)
 {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   // measure forward time
   checkCUDA(cudaDeviceSynchronize());
   for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
     if (i == sim->warmup_times) {
-      checkCUDA(cudaEventRecord(sim->start_event));
+      checkCUDA(cudaEventRecord(sim->start_event, stream));
     }
     forward();
   }
-  checkCUDA(cudaEventRecord(sim->end_event));
+  checkCUDA(cudaEventRecord(sim->end_event, stream));
   checkCUDA(cudaEventSynchronize(sim->end_event));
   float milliseconds;
   cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
@@ -41,11 +43,11 @@ void Op::inner_measure_operator_cost(Simulator *sim,
     checkCUDA(cudaDeviceSynchronize());
     for (int i = 0; i < sim->warmup_times + sim->repeat_times; i++) {
       if (i == sim->warmup_times) {
-        checkCUDA(cudaEventRecord(sim->start_event));
+        checkCUDA(cudaEventRecord(sim->start_event, stream));
       }
       backward();
     }
-    checkCUDA(cudaEventRecord(sim->end_event));
+    checkCUDA(cudaEventRecord(sim->end_event, stream));
     checkCUDA(cudaEventSynchronize(sim->end_event));
     cudaEventElapsedTime(&milliseconds, sim->start_event, sim->end_event);
     cost_metrics.backward_time = milliseconds / sim->repeat_times;
@@ -259,7 +261,9 @@ void UtilityTasks::normalize_images_task(
   size_t h = rect_tensor.hi[1] - rect_tensor.lo[1] + 1;
   float *tensor_ptr = acc_tensor.ptr(rect_tensor.lo);
   const unsigned char *rgb_ptr = acc_rgb.ptr(rect_rgb.lo);
-  apply_normalize<<<GET_BLOCKS(rect_tensor.volume()), CUDA_NUM_THREADS>>>(
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  apply_normalize<<<GET_BLOCKS(rect_tensor.volume()), CUDA_NUM_THREADS, 0, stream>>>(
       tensor_ptr, rgb_ptr, rect_tensor.volume(), h * w);
 }
 
@@ -292,7 +296,9 @@ void UtilityTasks::init_images_task(const Task *task,
   assert(acc_image.accessor.is_dense_arbitrary(rect_image));
   float *image_ptr = acc_image.ptr(rect_image.lo);
   int num_blocks = (rect_image.volume() + BLKSIZE - 1) / BLKSIZE;
-  init_image_kernel<<<num_blocks, BLKSIZE>>>(image_ptr, rect_image.volume());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  init_image_kernel<<<num_blocks, BLKSIZE, 0, stream>>>(image_ptr, rect_image.volume());
 }
 
 void UtilityTasks::init_labels_task(const Task *task,
@@ -306,7 +312,9 @@ void UtilityTasks::init_labels_task(const Task *task,
   assert(acc_label.accessor.is_dense_arbitrary(rect_label));
   int *label_ptr = acc_label.ptr(rect_label.lo);
   int num_blocks = (rect_label.volume() + BLKSIZE - 1) / BLKSIZE;
-  init_label_kernel<<<num_blocks, BLKSIZE>>>(label_ptr, rect_label.volume());
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  init_label_kernel<<<num_blocks, BLKSIZE, 0, stream>>>(label_ptr, rect_label.volume());
 }
 
 //void FFModel::load_images(int batch_id)

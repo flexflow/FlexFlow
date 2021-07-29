@@ -403,12 +403,9 @@ float* GroupBy::forward_task_with_dim(const Task *task,
     // assert(output_cols == input_cols);
   }
 
-#ifndef DISABLE_LEGION_CUDA_HIJACK
+  // TODO: why cublas/cudnn stream is needed here?
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+  checkCUDA(get_legion_stream(&stream));
 
   // call forward kernel
   int copy_size = local_lambda ? n : 1;
@@ -488,17 +485,14 @@ float* GroupBy::forward_task(const Task *task,
 //     // assert(output_cols == input_cols);
 //   }
 //
-// #ifndef DISABLE_LEGION_CUDA_HIJACK
+// // TODO: why cublas/cudnn stream is needed here
 //   cudaStream_t stream;
-//   checkCUDA(cudaStreamCreate(&stream));
-//   checkCUDA(cublasSetStream(m->handle.blas, stream));
-//   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-// #endif
+//   checkCUDA(get_legion_stream(&stream));
 //
 //   // call forward kernel
 //   cudaMemcpy(m->dev_region_ptrs, output_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
 //
-//   gb_backward_kernel<<<GET_BLOCKS(batch_size*k*data_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim))>>>(
+//   gb_backward_kernel<<<GET_BLOCKS(batch_size*k*data_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim)), 0, stream>>>(
 //     acc_input_grad.ptr(rect_input_grad), acc_assign.ptr(rect_assign), m->dev_region_ptrs,
 //     n, k, alpha, batch_size, data_dim);
 // }

@@ -80,6 +80,13 @@ int
 flexflow_config_get_epochs(
   flexflow_config_t handle);
 
+bool
+flexflow_config_get_enable_control_replication(
+  flexflow_config_t handle);
+    
+int
+flexflow_config_get_python_data_loader_type(
+  flexflow_config_t handle);
 // -----------------------------------------------------------------------
 // FFModel
 // -----------------------------------------------------------------------

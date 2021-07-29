@@ -21,26 +21,25 @@ import atexit
 import os
 import sys
 
-if 'FF_USE_CFFI' in os.environ:
-  use_pybind = not int(os.environ['FF_USE_CFFI'])
-else:
-  use_pybind = True
+from .flexflow_env import *
 
-if use_pybind:
-  if 'FLEXFLOW_PYTHON' not in os.environ:
-    use_flexflow_python = 0
-  else:
-    use_flexflow_python = int(os.environ['FLEXFLOW_PYTHON'])
+# check which python binding to use
+if flexflow_python_binding() == 'pybind11':
   print("Using pybind11 flexflow bindings.")
-  from flexflow.core.flexflow_bindings import *
-  if use_flexflow_python == 0:
-    print("Using native python")
-    begin_flexflow_task(sys.argv)
-    atexit.register(finish_flexflow_task)
+  from .flexflow_pybind11 import *
 else:
   print("Using cffi flexflow bindings.")
-  from flexflow.core.flexflow_cbinding import *
-  from flexflow.core.flexflow_type import *
+  from .flexflow_cffi import *
+  from .flexflow_type import *
+
+# check if use native python interpreter
+if flexflow_python_interpreter() == 'native':  
+  from .flexflow_pybind11_internal import begin_flexflow_task, finish_flexflow_task
+  print("Using native python")
+  begin_flexflow_task(sys.argv)
+  atexit.register(finish_flexflow_task)
+else:
+  print("Using flexflow python")
 
 #from flexflow.core.flexflow_logger import *
 if 'FF_BUILD_DOCS' not in os.environ:
@@ -50,4 +49,4 @@ else:
 if build_docs == 1:
   pass
 else:
-  from flexflow.core.flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context
+  from .flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context

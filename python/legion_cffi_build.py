@@ -45,14 +45,14 @@ def build(defines_dir, output_dir, runtime_dir):
 
     header = subprocess.check_output(['gcc', '-I', prefix_dir] + build_flags + ['-DLEGION_USE_PYTHON_CFFI', '-E', '-P', legion_h_path]).decode('utf-8')
 
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'legion_cffi.py.in')) as f:
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'legion_cffi_header.py.in')) as f:
         content = f.read()
     content = content.format(header=repr(header))
 
     if output_dir is None:
         output_dir = os.path.dirname(os.path.realpath(__file__))
 
-    with open(os.path.join(output_dir, 'legion_cffi.py'), 'wb') as f:
+    with open(os.path.join(output_dir, 'legion_cffi_header.py'), 'wb') as f:
         f.write(content.encode('utf-8'))
 
 if __name__ == "__main__":

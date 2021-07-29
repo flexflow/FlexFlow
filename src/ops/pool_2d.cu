@@ -213,8 +213,11 @@ void Pool2D::init(const FFModel& ff)
 /*static*/
 void Pool2D::forward_kernel(const Pool2DMeta* m,
                             const float* input_ptr,
-                            float* output_ptr)
+                            float* output_ptr,
+                            cudaStream_t stream)
 {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(cudnnPoolingForward(m->handle.dnn, m->poolDesc,
                                  &alpha, m->inputTensor, input_ptr,
@@ -238,20 +241,19 @@ void Pool2D::forward_task(const Task *task,
   TensorAccessorW<float, 4> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  forward_kernel(m, acc_input.ptr, acc_output.ptr);
+  forward_kernel(m, acc_input.ptr, acc_output.ptr, stream);
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     //print_tensor<4, float>(acc_input.ptr, acc_input.rect, "[Pool2D:forward:input]");
     //print_tensor<4, float>(acc_output.ptr, acc_output.rect, "[Pool2D:forward:output]");
@@ -295,8 +297,11 @@ void Pool2D::backward_kernel(const Pool2DMeta* m,
                              const float* input_ptr,
                              float* input_grad_ptr,
                              const float* output_ptr,
-                             const float* output_grad_ptr)
+                             const float* output_grad_ptr,
+                             cudaStream_t stream)
 {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   float alpha = 1.0f;
   checkCUDNN(cudnnPoolingBackward(m->handle.dnn, m->poolDesc,
                                   &alpha, m->outputTensor, output_ptr,
@@ -329,20 +334,18 @@ void Pool2D::backward_task(const Task *task,
   TensorAccessorR<float, 4> acc_output_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  backward_kernel(m, acc_input.ptr, acc_input_grad.ptr, acc_output.ptr, acc_output_grad.ptr);
+  backward_kernel(m, acc_input.ptr, acc_input_grad.ptr, acc_output.ptr, acc_output_grad.ptr, stream);
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
@@ -462,9 +465,11 @@ bool Pool2D::measure_operator_cost(Simulator* sim,
   float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(m, input_ptr, output_ptr);
+    forward_kernel(m, input_ptr, output_ptr, stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -472,7 +477,7 @@ bool Pool2D::measure_operator_cost(Simulator* sim,
     float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert(output_grad_ptr != NULL);
     backward = [&] {
-      backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr);
+      backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr, stream);
     };
   }
 

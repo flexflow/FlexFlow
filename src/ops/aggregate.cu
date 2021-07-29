@@ -397,6 +397,7 @@ void agg_backward_kernel(float** exp_preds,
   if(threadIdx.x == 0) {
     // init arrays
     for(int i = 0; i < n; i++) expert_bal[i] = 0;
+    for(int i = 0; i < batch_size; i++) cache_corr[i] = true;
 
     // Get pointer to chosen expert predictions and expert counts
     int exp_samples = arr_exp_samples[0];
@@ -521,12 +522,10 @@ void Aggregate::forward_task(const Task *task,
 
   int k = (int)(rect_gate_assign.hi[0] - rect_gate_assign.lo[0] + 1);
 
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
 
   // call forward_kernel
   // FIXME: For now, enforce that only 1 thread block.
@@ -618,6 +617,7 @@ void Aggregate::backward_task(const Task *task,
       ctx, task->regions[n+i+4].region.get_index_space());
     exp_grads[i] = helperGetTensorPointerRW<float>(
       regions[n+i+4], task->regions[n+i+4], FID_DATA, ctx, runtime);
+
     if(local_lambda) {
       assert(exp_samples_arr[i] == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
     } else {
@@ -626,13 +626,8 @@ void Aggregate::backward_task(const Task *task,
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
 
-
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+  checkCUDA(get_legion_stream(&stream));
 
   // call backward kernel
   // FIXME: For now, enforce that only 1 thread block.

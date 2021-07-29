@@ -267,10 +267,10 @@ Op::Op(FFModel& model,
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input;
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -302,10 +302,10 @@ Op::Op(FFModel& model,
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input;
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -334,10 +334,10 @@ Op::Op(FFModel& model,
   std::strcpy(name, pcname.c_str());
   inputs[0] = _input1;
   inputs[1] = _input2;
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -368,10 +368,10 @@ Op::Op(FFModel& model,
   inputs[0] = _input1;
   inputs[1] = _input2;
   inputs[2] = _input3;
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -400,10 +400,10 @@ Op::Op(FFModel& model,
   std::strcpy(name, pcname.c_str());
   for (int i = 0; i < n; i++)
     inputs[i] = _inputs[i];
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -429,10 +429,10 @@ Op::Op(FFModel& model,
   pcname = pcname + "_" + std::to_string(model.op_global_guid++);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i].owner_op = this;
     outputs[i].owner_idx = i;
@@ -707,8 +707,11 @@ ncclComm_t Op::init_nccl_comms_task(const Task* task,
 #endif
 
 OpMeta::OpMeta(FFHandler _handle)
-: handle(_handle)
-{}
+: handle(_handle), profiling(false)
+{
+  for (int i = 0; i < MAX_NUM_INPUTS; i++)
+    trainableInputs[i] = true;
+}
 
 FFModel::FFModel(FFConfig& _config)
 : op_global_guid(100), config(_config),
@@ -1547,14 +1550,16 @@ IndexSpace FFModel::get_or_create_task_is(const Domain& domain)
 IndexSpace FFModel::get_or_create_task_is(int ndims, const std::string& pcname)
 {
   ParallelConfig pc;
-  assert(config.find_parallel_config(ndims, pcname, pc));
+  bool result = config.find_parallel_config(ndims, pcname, pc);
+  assert(result);
   return get_or_create_task_is(pc);
 }
 
 IndexSpace FFModel::get_task_is(int ndims, const std::string& pcname) const
 {
   ParallelConfig pc;
-  assert(config.find_parallel_config(ndims, pcname, pc));
+  bool result = config.find_parallel_config(ndims, pcname, pc);
+  assert(result);
   return get_task_is(pc);
 }
 
@@ -1647,7 +1652,7 @@ void FFModel::backward(int seq_length)
       }
 #endif
     if(l == metrics_input && metrics_input < (int)layers.size()-1) continue; // TODO: If layer serves for metrics and for further prop
-    layers[l]->backward(*this); 
+    layers[l]->backward(*this);
   }
 }
 
@@ -1692,8 +1697,10 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
       Domain d1 = runtime->get_index_space_domain(layers[l]->task_is);
       Domain d2 = runtime->get_index_space_domain(layers[i]->task_is);
       ParallelConfig pc1, pc2;
-      assert(config.find_parallel_config(d1.get_dim(), layers[l]->name, pc1));
-      assert(config.find_parallel_config(d2.get_dim(), layers[i]->name, pc2));
+      bool result = config.find_parallel_config(d1.get_dim(), layers[l]->name, pc1);
+      assert(result);
+      result = config.find_parallel_config(d2.get_dim(), layers[i]->name, pc2);
+      assert(result);
       if (pc1 == pc2) {
         FusedOp* fused_op;
         //bool created = false;
@@ -1859,8 +1866,10 @@ void FFModel::compile(LossType loss_type,
         int dim1 = layers[l]->outputs[0].numDim;
         int dim2 = layers[l]->inputs[0].numDim;
         ParallelConfig pc1, pc2;
-        assert(config.find_parallel_config(dim1, layers[l]->name, pc1));
-        assert(config.find_parallel_config(dim2, layers[l]->inputs[0].owner_op->name, pc2));
+        bool result = config.find_parallel_config(dim1, layers[l]->name, pc1);
+        assert(result);
+        result = config.find_parallel_config(dim2, layers[l]->inputs[0].owner_op->name, pc2);
+        assert(result);
         if (pc1 == pc2) {
           // Check no others also need layers[l]->inputs[0]
           bool found = false;
@@ -1907,6 +1916,16 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i < op->numOutputs; i++) {
       assert(op->outputs[i].owner_op == op);
       assert(op->outputs[i].owner_idx == i);
+    }
+  }
+
+  // If an operator's input is training data
+  // No need to compute its gradients
+  for (size_t l = 0; l < layers.size(); l++) {
+    Op* op = layers[l];
+    for (int i = 0; i < op->numInputs; i++) {
+      if (op->inputs[i].owner_op == NULL)
+        op->trainableInputs[i] = false;
     }
   }
 
@@ -2489,6 +2508,8 @@ struct DefaultConfig {
   const static int machine_model_version = 0;
   const static int simulator_segment_size = 16777216; // 16 MB
   const static int simulator_max_num_segments = 1;
+  const static bool enable_control_replication = false;
+  const static int python_data_loader_type = 1;
 };
 
 FFConfig::FFConfig()
@@ -2515,6 +2536,8 @@ FFConfig::FFConfig()
   machine_model_version = DefaultConfig::machine_model_version;
   simulator_segment_size = DefaultConfig::simulator_segment_size;
   simulator_max_num_segments = DefaultConfig::simulator_max_num_segments;
+  enable_control_replication = DefaultConfig::enable_control_replication;
+  python_data_loader_type = DefaultConfig::python_data_loader_type;
   machine_model_file = "";
   import_strategy_file = "";
   export_strategy_file = "";
@@ -2655,6 +2678,14 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if (!strcmp(argv[i], "--enable-propagation")) {
       enable_propagation = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--control-replication")) {
+      enable_control_replication = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--python-data-loader-type")) {
+      python_data_loader_type = atoi(argv[++i]);
       continue;
     }
   }

@@ -173,8 +173,11 @@ void Dropout::init(const FFModel& ff)
 
 void Dropout::forward_kernel(DropoutMeta *m,
                              float const *input_ptr,
-                             float *output_ptr)
+                             float *output_ptr,
+                             cudaStream_t stream)
 {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   checkCUDNN(cudnnDropoutForward(m->handle.dnn, m->dropoutDesc,
       m->inputTensor, input_ptr, m->outputTensor, output_ptr,
       m->reserveSpace, m->reserveSpaceSize));
@@ -194,12 +197,10 @@ void Dropout::forward_task(const Task* task,
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float* output_ptr = helperGetTensorPointerWO<float>(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
-#ifndef DISABLE_LEGION_CUDA_HIJACK
+
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  forward_kernel(m, input_ptr, output_ptr);
+  checkCUDA(get_legion_stream(&stream));
+  forward_kernel(m, input_ptr, output_ptr, stream);
 }
 
 void Dropout::forward(const FFModel& ff)
@@ -242,8 +243,11 @@ void Dropout::forward(const FFModel& ff)
 
 void Dropout::backward_kernel(DropoutMeta *m,
                               float const *output_grad_ptr,
-                              float *input_grad_ptr)
+                              float *input_grad_ptr,
+                              cudaStream_t stream)
 {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   checkCUDNN(cudnnDropoutBackward(m->handle.dnn, m->dropoutDesc,
       m->outputTensor, output_grad_ptr, m->inputTensor, input_grad_ptr,
       m->reserveSpace, m->reserveSpaceSize));
@@ -268,12 +272,9 @@ void Dropout::backward_task(const Task* task,
   const float* output_grad_ptr = helperGetTensorPointerRO<float>(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  backward_kernel(m, output_grad_ptr, input_grad_ptr);
+  checkCUDA(get_legion_stream(&stream));
+  backward_kernel(m, output_grad_ptr, input_grad_ptr, stream);
 }
 
 void Dropout::backward(const FFModel& ff)
@@ -376,9 +377,12 @@ bool Dropout::measure_operator_cost(Simulator* sim,
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert (output_ptr != NULL);
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(m, input_ptr, output_ptr);
+    forward_kernel(m, input_ptr, output_ptr, stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -386,7 +390,7 @@ bool Dropout::measure_operator_cost(Simulator* sim,
     float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert (output_grad_ptr != NULL);
     backward = [&] {
-      backward_kernel(m, output_grad_ptr, input_grad_ptr);
+      backward_kernel(m, output_grad_ptr, input_grad_ptr, stream);
     };
   }
 

@@ -41,12 +41,12 @@ make
 ```
 
 # 3. Test the FlexFlow
-1. Set the `FF_HOME` environment variable before running the FlexFlow. You can add the following line in ~/.bashrc.
+## 1. Set the `FF_HOME` environment variable before running the FlexFlow. You can add the following line in ~/.bashrc.
 ```
 export FF_HOME=/path/to/FlexFlow
 ```
 
-2. Run FlexFlow Python examples
+## 2. Run FlexFlow Python examples
 The C++ examples are in the [examples/python](https://github.com/flexflow/FlexFlow/tree/master/examples/python). 
 For example, the AlexNet can be run as:
 ```
@@ -55,7 +55,7 @@ cd python
 ``` 
 The script of running all the Python examples is `python/test.sh`
 
-3. Run FlexFlow C++ examples
+## 3. Run FlexFlow C++ examples
 
 The C++ examples are in the [examples/cpp](https://github.com/flexflow/FlexFlow/tree/master/examples/cpp). 
 For example, the AlexNet can be run as:
@@ -67,21 +67,20 @@ Size of buffers is in MBs, e.g. for an 8GB gpu `-ll:fsize 8000`
 
 # 4. Install the FlexFlow
 
-1. Install the FlexFlow binary, header file and library if using CMake. 
+## 1. Install the FlexFlow binary, header file and library if using CMake. 
 ```
 cd build
 make install
 ```
 
-2. Install the FlexFlow Python interface using pip
+## 2. Install the FlexFlow Python interface using pip
 If install from local:
 ```
-cd python
 pip install .
 ```
-
-If installing from the PyPI repository
-```
-pip install flexflow
-```
 All Python depencies will be automatically installed. 
+The default installation is configurated with `FF_USE_NCCL=OFF` `FF_USE_GASNET=OFF`and `FF_MAX_DIM=4`.
+In order to change the configuration, please use the `--global-option` of the setuptools
+```
+pip install --global-option="build_ext" --global-option="CMake options" . 
+```

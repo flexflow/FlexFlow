@@ -213,7 +213,8 @@ void Concat::forward_kernel(float* output,
                             int num_inputs,
                             int axis,
                             const Domain& out_domain,
-                            const Domain* in_domain)
+                            const Domain* in_domain,
+                            cudaStream_t stream)
 {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
@@ -239,7 +240,7 @@ void Concat::forward_kernel(float* output,
   }
 
   for (int i = 0; i < num_inputs; i++) {
-    copy_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS>>>(
+    copy_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS, 0, stream>>>(
         output, inputs[i], num_blocks, output_blk_size, input_blk_sizes[i]);
     //printf("output = %x num_blocks=%d output_blk_size=%d input_blk_size[%d]=%d\n",
     //       output, num_blocks, output_blk_size, i, input_blk_sizes[i]);
@@ -273,15 +274,19 @@ void Concat::forward_task(const Task *task,
   for (int i = 0; i < cc->numInputs; i++)
     inputs[i] = helperGetTensorPointerRO<float>(
         regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
+  
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  
   cudaEvent_t t_start, t_end;
   if (cc->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
-  forward_kernel(output, inputs, cc->numInputs, axis, out_domain, in_domain);
+  forward_kernel(output, inputs, cc->numInputs, axis, out_domain, in_domain, stream);
   if (cc->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     //print_tensor<4, float>(output - output_blk_size, output_rect, "[Concat:forward:output]");
     //printf("output_blk_size=%zu\n", output_blk_size);
@@ -322,7 +327,8 @@ void Concat::backward_kernel(const float* output_grad,
                              int num_inputs,
                              int axis,
                              const Domain& out_grad_domain,
-                             const Domain* in_grad_domain)
+                             const Domain* in_grad_domain,
+                             cudaStream_t stream)
 {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
@@ -348,7 +354,7 @@ void Concat::backward_kernel(const float* output_grad,
   }
 
   for (int i = 0; i < num_inputs; i++) {
-    add_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS>>>(
+    add_with_stride<<<GET_BLOCKS(input_blk_sizes[i]*num_blocks), CUDA_NUM_THREADS, 0, stream>>>(
         input_grads[i], output_grad, num_blocks, input_blk_sizes[i], output_blk_size);
     output_grad += input_blk_sizes[i];
   }
@@ -387,16 +393,19 @@ void Concat::backward_task(const Task *task,
     input_grads[i] = helperGetTensorPointerRW<float>(
         regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  
   cudaEvent_t t_start, t_end;
   if (cc->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
   backward_kernel(output_grad, input_grads, cc->numInputs, axis,
-      out_grad_domain, in_grad_domains);
+      out_grad_domain, in_grad_domains, stream);
   if (cc->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
@@ -466,10 +475,13 @@ bool Concat::measure_operator_cost(Simulator* sim,
   for (int i = 0; i < numInputs; i++) {
     in_domains[i] = sub_inputs[i].get_domain();
   }
+  
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
 
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(output_ptr, input_ptrs, numInputs, axis, out_domain, in_domains);
+    forward_kernel(output_ptr, input_ptrs, numInputs, axis, out_domain, in_domains, stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     for (int i = 0; i < numInputs; i++) {
@@ -480,7 +492,7 @@ bool Concat::measure_operator_cost(Simulator* sim,
     assert (output_grad_ptr != NULL);
     backward = [&] {
       backward_kernel(output_grad_ptr, input_grad_ptrs,
-        numInputs, axis, out_domain, in_domains);
+        numInputs, axis, out_domain, in_domains, stream);
     };
   }
 

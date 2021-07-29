@@ -89,7 +89,6 @@ bool moe_trigger(FFModel* ff) {
   return score >= thresh;
 }
 
-
 #ifdef MOE_CF_LOCAL
 // Alter: GroupBy, Aggregate, AggregateSpec use cached values for expert assign.
 void moe_alter(FFModel* ff) {
@@ -444,6 +443,7 @@ void moe_alter(FFModel* ff) {
 #endif
 
 
+
 void top_level_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime)
@@ -465,7 +465,6 @@ void top_level_task(const Task* task,
     const int dims[] = {ffConfig.batchSize, INPUT_DIM};
     input = ff.create_tensor<D_DIM>(dims, DT_FLOAT);
   }
-
 
 
 //-----------------------------------------------------------------
@@ -533,7 +532,6 @@ void top_level_task(const Task* task,
   Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
 
 //-----------------------------------------------------------------
-
 
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.002f);
   std::vector<MetricsType> metrics;
@@ -791,7 +789,6 @@ void read_cifar10(float* input_ptr, int* label_ptr) {
     file.close();
   }
 }
-
 
 int reverseInt (int i)
 {

@@ -217,7 +217,8 @@ void Transpose::forward_kernel(const TransposeMeta* m,
                                const float* input_ptr,
                                float* output_ptr,
                                Domain in_domain,
-                               Domain out_domain)
+                               Domain out_domain,
+                              cudaStream_t stream)
 {
   TransposeStrides info;
   info.num_dim = out_domain.get_dim();
@@ -229,7 +230,7 @@ void Transpose::forward_kernel(const TransposeMeta* m,
     info.out_strides[i] = (i == 0) ? 1 : info.out_strides[i-1] * out_dim_size;
     info.perm[i] = m->perm[i];
   }
-  transpose_simple_kernel<<<GET_BLOCKS(out_domain.get_volume()), CUDA_NUM_THREADS>>>(
+  transpose_simple_kernel<<<GET_BLOCKS(out_domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
       out_domain.get_volume(), input_ptr, output_ptr, info, 0.0f/*beta*/);
 }
 
@@ -254,7 +255,10 @@ void Transpose::forward_task(const Task* task,
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float* out_ptr = helperGetTensorPointerWO<float>(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  forward_kernel(m, in_ptr, out_ptr, in_domain, out_domain);
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  forward_kernel(m, in_ptr, out_ptr, in_domain, out_domain, stream);
 }
 
 void Transpose::forward(const FFModel& ff)
@@ -300,7 +304,8 @@ void Transpose::backward_kernel(const TransposeMeta* m,
                                 float* input_grad_ptr,
                                 const float* output_grad_ptr,
                                 Domain in_grad_domain,
-                                Domain out_grad_domain)
+                                Domain out_grad_domain,
+                                cudaStream_t stream)
 {
   TransposeStrides info;
   info.num_dim = in_grad_domain.get_dim();
@@ -312,7 +317,7 @@ void Transpose::backward_kernel(const TransposeMeta* m,
     info.out_strides[i] = (i == 0) ? 1 : info.out_strides[i-1] * out_dim_size;
     info.perm[m->perm[i]] = i;
   }
-  transpose_simple_kernel<<<GET_BLOCKS(in_grad_domain.get_volume()), CUDA_NUM_THREADS>>>(
+  transpose_simple_kernel<<<GET_BLOCKS(in_grad_domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
       in_grad_domain.get_volume(), output_grad_ptr, input_grad_ptr, info, 1.0f/*beta*/);
 }
 
@@ -337,7 +342,10 @@ void Transpose::backward_task(const Task* task,
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float* in_grad_ptr = helperGetTensorPointerRW<float>(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  backward_kernel(m, in_grad_ptr, out_grad_ptr, in_grad_domain, out_grad_domain);
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  backward_kernel(m, in_grad_ptr, out_grad_ptr, in_grad_domain, out_grad_domain, stream);
 }
 
 void Transpose::backward(const FFModel& ff)
@@ -402,9 +410,11 @@ bool Transpose::measure_operator_cost(Simulator* sim,
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert (output_ptr != NULL);
 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(m, input_ptr, output_ptr, sub_input.get_domain(), sub_output.get_domain());
+    forward_kernel(m, input_ptr, output_ptr, sub_input.get_domain(), sub_output.get_domain(), stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -412,7 +422,7 @@ bool Transpose::measure_operator_cost(Simulator* sim,
     float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert (output_grad_ptr != NULL);
     backward = [&] {
-      backward_kernel(m, input_grad_ptr, output_grad_ptr, sub_input.get_domain(), sub_output.get_domain());
+      backward_kernel(m, input_grad_ptr, output_grad_ptr, sub_input.get_domain(), sub_output.get_domain(), stream);
     };
   }
 

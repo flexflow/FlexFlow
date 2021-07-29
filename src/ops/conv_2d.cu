@@ -227,6 +227,7 @@ OpMeta* Conv2D::init_task(const Task *task,
   m->relu = conv->activation == AC_MODE_RELU;
   m->use_bias = conv->use_bias;
   m->profiling = conv->profiling;
+  m->trainableInputs[0] = conv->trainableInputs[0];
   std::strcpy(m->op_name, conv->name);
 
   int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
@@ -381,8 +382,11 @@ void Conv2D::forward_kernel(const Conv2DMeta* m,
                             const float* input_ptr,
                             float* output_ptr,
                             const float* filter_ptr,
-                            const float* bias_ptr)
+                            const float* bias_ptr,
+                            cudaStream_t stream)
 {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(cudnnConvolutionForward(m->handle.dnn, &alpha,
                                      m->inputTensor, input_ptr,
@@ -433,21 +437,19 @@ void Conv2D::forward_task(const Task *task,
   }
 
   //printf("fwdAlgo(%d), bwdFilterALgo(%d), bwdDataAlgo(%d)\n", (int)m->fwdAlgo,(int) m->bwdFilterAlgo,(int) m->bwdDataAlgo);
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
 
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  Conv2D::forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias_ptr);
+  Conv2D::forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias_ptr, stream);
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     //print_tensor<4, float>(acc_input.ptr, acc_input.rect, "[Conv2D:forward:input]");
     //print_tensor<4, float>(acc_kernel.ptr, acc_kernel.rect, "[Conv2D:forward:kernel]");
@@ -506,8 +508,11 @@ void Conv2D::backward_kernel(const Conv2DMeta* m,
                              float* output_grad_ptr,
                              const float* kernel_ptr,
                              float* kernel_grad_ptr,
-                             float* bias_grad_ptr)
+                             float* bias_grad_ptr,
+                             cudaStream_t stream)
 {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   float alpha = 1.0f;
   //float beta = 0.0f;
   if (m->relu) {
@@ -515,7 +520,7 @@ void Conv2D::backward_kernel(const Conv2DMeta* m,
     int n, c, h, w, nStride, cStride, hStride, wStride;
     checkCUDNN(cudnnGetTensor4dDescriptor(m->outputTensor, &dataType,
         &n, &c, &h, &w, &nStride, &cStride, &hStride, &wStride));
-    reluBackward<<<GET_BLOCKS(n*c*h*w), CUDA_NUM_THREADS>>>(output_grad_ptr, output_ptr, n*c*h*w);
+    reluBackward<<<GET_BLOCKS(n*c*h*w), CUDA_NUM_THREADS, 0, stream>>>(output_grad_ptr, output_ptr, n*c*h*w);
   }
   // Compute filter gradiant
   // NOTE: we use alpha for kernel_grad to accumulate gradients
@@ -531,25 +536,27 @@ void Conv2D::backward_kernel(const Conv2DMeta* m,
     checkCUDNN(cudnnConvolutionBackwardBias(m->handle.dnn, &alpha,
                                             m->outputTensor, output_grad_ptr,
                                             &alpha, m->biasTensor, bias_grad_ptr));
-                                          }
+  }
   // Compute data gradiant
   // NOTE: we use alpha for input_grad to accumulate gradients
-  checkCUDNN(cudnnConvolutionBackwardData(m->handle.dnn, &alpha,
-                                          m->filterDesc, kernel_ptr,
-                                          m->outputTensor, output_grad_ptr,
-                                          m->convDesc, m->bwdDataAlgo,
-                                          m->handle.workSpace, m->handle.workSpaceSize,
-                                          &alpha, m->inputTensor, input_grad_ptr));
+  if (input_grad_ptr != NULL) {
+    checkCUDNN(cudnnConvolutionBackwardData(m->handle.dnn, &alpha,
+                                            m->filterDesc, kernel_ptr,
+                                            m->outputTensor, output_grad_ptr,
+                                            m->convDesc, m->bwdDataAlgo,
+                                            m->handle.workSpace, m->handle.workSpaceSize,
+                                            &alpha, m->inputTensor, input_grad_ptr));
+  }
 }
 
 /*
-  regions[0](I): input
-  regions[1](I/O): input_grad
-  regions[2](I): output
-  regions[3](I/O): output_grad
-  regions[4](I): filter
-  regions[5](I/O): filter_grad
-  regions[6](I/O): bias_grad
+  region(I): input
+  region(I/O): input_grad (if trainableInputs[0])
+  region(I): output
+  region(I/O): output_grad
+  region(I): filter
+  region(I/O): filter_grad
+  region(I/O): bias_grad (if use_bias)
 */
 __host__
 void Conv2D::backward_task(const Task *task,
@@ -558,50 +565,60 @@ void Conv2D::backward_task(const Task *task,
 {
   //Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
-  assert(regions.size() == (6 + int(m->use_bias)));
-  assert(task->regions.size() == (6 + int(m->use_bias)));
+  assert(regions.size() == (5 + int(m->trainableInputs[0]) + int(m->use_bias)));
+  assert(task->regions.size() == (5 + int(m->trainableInputs[0]) + int(m->use_bias)));
+  size_t rid = 0;
   TensorAccessorR<float, 4> acc_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_input_grad(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime,
-      true/*readOutput*/);
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+  rid ++;
+  float* acc_input_grad_ptr = NULL;
+  if (m->trainableInputs[0]) {
+    TensorAccessorW<float, 4> acc_input_grad(
+        regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
+        true/*readOutput*/);
+    acc_input_grad_ptr = acc_input_grad.ptr;
+    rid ++;
+  }
   TensorAccessorR<float, 4> acc_output(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+  rid ++;
   TensorAccessorW<float, 4> acc_output_grad(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime,
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
       true/*readOutput*/);
+  rid ++;
   TensorAccessorR<float, 4> acc_kernel(
-      regions[4], task->regions[4], FID_DATA, ctx, runtime);
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+  rid ++;
   TensorAccessorW<float, 4> acc_kernel_grad(
-      regions[5], task->regions[5], FID_DATA, ctx, runtime,
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
       true/*readOutput*/);
+  rid ++;
   float* acc_bias_grad_ptr = NULL;
   if (m->use_bias) { 
     TensorAccessorW<float, 1> acc_bias_grad(
-        regions[6], task->regions[6], FID_DATA, ctx, runtime,
+        regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
         true/*readOutput*/);
     acc_bias_grad_ptr = static_cast<float*>(acc_bias_grad.ptr);
+    rid ++;
   }
-  
+  assert(rid == regions.size());
+ 
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream)); 
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
 
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  Conv2D::backward_kernel(m, acc_input.ptr, acc_input_grad.ptr,
+  Conv2D::backward_kernel(m, acc_input.ptr, acc_input_grad_ptr,
                           acc_output.ptr, acc_output_grad.ptr,
                           acc_kernel.ptr, acc_kernel_grad.ptr,
-                          acc_bias_grad_ptr);
+                          acc_bias_grad_ptr, stream);
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
@@ -632,47 +649,47 @@ void Conv2D::backward(const FFModel& ff)
                          TaskArgument(NULL, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
+  int rid = 0;
   // regions[0](I): input
   launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
-  launcher.add_field(0, FID_DATA);
+  launcher.add_field(rid++, FID_DATA);
   // regions[1](I/O): input_grad
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0].part_grad, 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
-  launcher.add_field(1, FID_DATA);
+  if (trainableInputs[0]) {
+    launcher.add_region_requirement(
+        RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+    launcher.add_field(rid++, FID_DATA);
+  }
   // regions[2](I): output
   launcher.add_region_requirement(
       RegionRequirement(outputs[0].part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, outputs[0].region));
-  launcher.add_field(2, FID_DATA);
+  launcher.add_field(rid++, FID_DATA);
   // regions[3](I/O): output_grad
   launcher.add_region_requirement(
       RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
                         READ_WRITE, EXCLUSIVE, outputs[0].region_grad));
-  launcher.add_field(3, FID_DATA);
+  launcher.add_field(rid++, FID_DATA);
   // regions[4](I): filter
   launcher.add_region_requirement(
       RegionRequirement(weights[0].part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, weights[0].region));
-  launcher.add_field(4, FID_DATA);
+  launcher.add_field(rid++, FID_DATA);
   // regions[5](I/O): filter_grad
   launcher.add_region_requirement(
       RegionRequirement(weights[0].part_grad, 0/*projection id*/,
                         READ_WRITE, EXCLUSIVE, weights[0].region_grad));
-  launcher.add_field(5, FID_DATA);
+  launcher.add_field(rid++, FID_DATA);
   if (use_bias) {
     // regions[6](I/O): bias_grad
     launcher.add_region_requirement(
         RegionRequirement(weights[1].part_grad, 0/*projection id*/,
                           READ_WRITE, EXCLUSIVE, weights[1].region_grad));
-    launcher.add_field(6, FID_DATA);
+    launcher.add_field(rid++, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
-  // TODO: remove this line
-  //if (first_layer)
-    //fm.wait_all_results();
 }
 
 #ifdef DEADCODE
@@ -1019,7 +1036,7 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
     //for (int i = 0; i < cnt; i++)
     //  printf("conv forward: algo(%d) time(%.4lf)\n", perfResults[i].algo, perfResults[i].time);
   }
-  // select forward algorithm
+  // select backward algorithm
   {
     const int reqAlgCnt = 8;
     int cnt = 0;
@@ -1033,7 +1050,7 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
     checkCUDNN(perfResults[0].status);
     cost_metrics.backward_time = perfResults[0].time;
   }
-  {
+  if (trainableInputs[0]) {
     const int reqAlgCnt = 8;
     int cnt = 0;
     cudnnConvolutionBwdDataAlgoPerf_t perfResults[reqAlgCnt];

@@ -138,6 +138,22 @@ flexflow_config_get_epochs(
   return handle->epochs;
 }
 
+bool
+flexflow_config_get_enable_control_replication(
+  flexflow_config_t handle_)
+{
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->enable_control_replication;
+}
+
+int
+flexflow_config_get_python_data_loader_type(
+  flexflow_config_t handle_)
+{
+  FFConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->python_data_loader_type;
+}
+
 // -----------------------------------------------------------------------
 // FFModel
 // -----------------------------------------------------------------------

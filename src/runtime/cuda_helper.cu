@@ -1,6 +1,35 @@
 #include "cuda_helper.h"
 #include "model.h"
 
+
+#ifdef LEGION_USE_HIP
+#ifdef __HIP_PLATFORM_NVCC__
+extern "C" {
+cudaStream_t hipGetTaskStream();
+}
+
+cudaError_t get_legion_stream(cudaStream_t *stream)
+{
+#ifdef DISABLE_LEGION_CUDA_HIJACK
+  *stream = (cudaStream_t)0;
+#else
+  *stream = hipGetTaskStream();
+#endif
+  return cudaSuccess;
+}
+#endif
+#else
+cudaError_t get_legion_stream(cudaStream_t *stream)
+{
+#ifdef DISABLE_LEGION_CUDA_HIJACK
+  *stream = (cudaStream_t)0;
+  return cudaSuccess;
+#else
+  return cudaStreamCreate(stream);
+#endif
+}
+#endif
+
 __global__
 void scale_kernel(float* ptr, coord_t size, float a, float b)
 {
@@ -120,15 +149,17 @@ __host__
 void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
                int num_replica, float learning_rate)
 {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   // Step 1: gater gradients to the first replica
   for (int i = 1; i < num_replica; i++) {
     const float *replica = grad_ptr + i * replica_size;
-    apply_add<<<GET_BLOCKS(replica_size), CUDA_NUM_THREADS>>>(
+    apply_add<<<GET_BLOCKS(replica_size), CUDA_NUM_THREADS, 0, stream>>>(
         (float*)grad_ptr, replica, replica_size);
   }
   // Step 2: scale the first replica
   float scale_factor = 1.0f / num_replica * (-learning_rate);
-  apply_add_with_scale<<<GET_BLOCKS(replica_size), CUDA_NUM_THREADS>>>(
+  apply_add_with_scale<<<GET_BLOCKS(replica_size), CUDA_NUM_THREADS, 0, stream>>>(
       para_ptr, grad_ptr, replica_size, scale_factor);
 }
 

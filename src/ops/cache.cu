@@ -245,12 +245,8 @@ void cache_forward(const Task *task,
   T* output_ptr = helperGetTensorPointerWO<T>(regions[0], task->regions[0],
     FID_DATA, ctx, runtime);
 
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
+  checkCUDA(get_legion_stream(&stream));
 
   cudaMemcpy(output_ptr, batch_ptrs[batch_ctr], c->inputs[0].get_volume()*sizeof(T), cudaMemcpyHostToDevice);
 }
@@ -358,6 +354,10 @@ void Cache::forward(const FFModel& ff)
   launcher_update.add_field(0, FID_DATA);
   FutureMap score_fm = runtime->execute_index_space(ctx, launcher_update);
   // add score futures to Cache future vector attribute
+<<<<<<< HEAD
+=======
+  score_futures.clear();
+>>>>>>> origin/master
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
     case DIM: \

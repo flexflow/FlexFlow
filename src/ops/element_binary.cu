@@ -356,8 +356,12 @@ void elewise_binary_forward_kernel(coord_t volume,
 void ElementBinary::forward_kernel(const ElementBinaryMeta* m,
                                    const float* in1_ptr,
                                    const float* in2_ptr,
-                                   float* out_ptr)
+                                   float* out_ptr,
+                                   cudaStream_t stream)
 {
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 0.0f;
   switch (m->op_type) {
     case OP_EW_SUB:
@@ -415,24 +419,22 @@ void ElementBinary::forward_task(const Task* task,
     out_ptr = helperGetTensorPointerWO<float>(
         regions[2], task->regions[2], FID_DATA, ctx, runtime);
   }
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
-    cudaEventRecord(t_start);
+    cudaEventRecord(t_start, stream);
   }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
   //print_tensor<float>(in1_ptr, in1_domain.get_volume(), "input1:");
   //print_tensor<float>(in2_ptr, in2_domain.get_volume(), "input2:");
-  forward_kernel(m, in1_ptr, in2_ptr, out_ptr);
+  forward_kernel(m, in1_ptr, in2_ptr, out_ptr, stream);
   //print_tensor<float>(out_ptr, in1_domain.get_volume(), "output:");
   if (m->profiling) {
-    cudaEventRecord(t_end);
+    cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
@@ -564,8 +566,12 @@ void ElementBinary::backward_kernel(const ElementBinaryMeta* m,
                                     const float* in1_ptr,
                                     const float* in2_ptr,
                                     float* in1_grad_ptr,
-                                    float* in2_grad_ptr)
+                                    float* in2_grad_ptr,
+                                    cudaStream_t stream)
 {
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f;
   switch (m->op_type) {
     case OP_EW_ADD:
@@ -684,13 +690,10 @@ void ElementBinary::backward_task(const Task *task,
         regions[4], task->regions[4], FID_DATA, ctx, runtime);
     }
   }
-#ifndef DISABLE_LEGION_CUDA_HIJACK
+
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  backward_kernel(m, out_grad_ptr, in0_ptr, in1_ptr, in0_grad_ptr, in1_grad_ptr);
+  checkCUDA(get_legion_stream(&stream));
+  backward_kernel(m, out_grad_ptr, in0_ptr, in1_ptr, in0_grad_ptr, in1_grad_ptr, stream);
   //elewise_binary_backward_kernel<<<GET_BLOCKS(out_grad_domain.get_volume()), CUDA_NUM_THREADS>>>(
     //out_grad_domain.get_volume(), alpha, alpha, ele->op_type, out_grad_ptr, in1_ptr, in2_ptr,
     //in1_grad_ptr, in2_grad_ptr);
@@ -831,9 +834,12 @@ bool ElementBinary::measure_operator_cost(Simulator* sim,
     output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   }
   assert(output_ptr != NULL);
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(m, input0_ptr, input1_ptr, output_ptr);
+    forward_kernel(m, input0_ptr, input1_ptr, output_ptr, stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float* input0_grad_ptr = (float*)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
@@ -848,7 +854,7 @@ bool ElementBinary::measure_operator_cost(Simulator* sim,
     }
     assert(output_grad_ptr != NULL);
     backward = [&] {
-      backward_kernel(m, output_grad_ptr, input0_ptr, input1_ptr, input0_grad_ptr, input1_grad_ptr);
+      backward_kernel(m, output_grad_ptr, input0_ptr, input1_ptr, input0_grad_ptr, input1_grad_ptr, stream);
     };
   }
 

@@ -708,13 +708,13 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel& ff, int task_id)
     IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(ff.get_or_create_task_is(NDIM, ""));
     Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
+    int idx = next_index;
+    SampleIdxs meta;
+    assert(ff.config.batchSize % (rect.hi[NDIM-1] - rect.lo[NDIM-1] + 1) == 0);
+    meta.num_samples = ff.config.batchSize / (rect.hi[NDIM-1] - rect.lo[NDIM-1] + 1);
+    for (int i = 0; i < meta.num_samples; i++)
+      meta.idxs[i] = idx++;
     for (PointInRectIterator<NDIM> it(rect); it(); it++) {
-      int idx = next_index;
-      SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[NDIM-1] - rect.lo[NDIM-1] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[NDIM-1] - rect.lo[NDIM-1] + 1);
-      for (int i = 0; i < meta.num_samples; i++)
-        meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(task_id, task_is,
@@ -776,7 +776,7 @@ void SingleDataLoader::load_entire_dataset_from_numpy_with_dim(const Task *task,
 
   DT* input_ptr = acc_input.ptr(rect_input.lo);
   const DT* input_ptr_ = acc_input_.ptr(rect_input_.lo);
-  printf("Check ptr input_ %p %lu %lu, input %p %lu %lu\n", input_ptr_, (uintptr_t)input_ptr_, rect_input_.volume(), input_ptr, (uintptr_t)input_ptr, rect_input.volume());
+  printf("Load entire dataset: ptr input_ %p %lu %lu, input %p %lu %lu\n", input_ptr_, (uintptr_t)input_ptr_, rect_input_.volume(), input_ptr, (uintptr_t)input_ptr, rect_input.volume());
   assert(rect_input.volume() == rect_input_.volume());
   memcpy(input_ptr, input_ptr_, sizeof(DT)*rect_input.volume());
   for (int i = 0; i < 32; i++) {
@@ -828,7 +828,7 @@ void SingleDataLoader::index_load_entire_dataset_from_numpy_with_dim(const Task 
   DT* input_ptr_head_ = static_cast<DT*>(meta->ptr);
   DT* input_ptr_ =  input_ptr_head_ + volume * meta->idx;
   
-  printf("Check ptr input_head_ %p, input_ %p %lu %lu, input %p %lu %lu\n", input_ptr_head_, input_ptr_, (uintptr_t)input_ptr_, volume, input_ptr, (uintptr_t)input_ptr, rect_input.volume());
+  printf("Index load entire dataset: ptr input_head_ %p, idx %d, input_ %p %lu %lu, input %p %lu %lu\n", input_ptr_head_, meta->idx, input_ptr_, (uintptr_t)input_ptr_, volume, input_ptr, (uintptr_t)input_ptr, rect_input.volume());
   assert(rect_input.volume() == volume);
   memcpy(input_ptr, input_ptr_, sizeof(DT)*volume);
   for (int i = 0; i < 32; i++) {

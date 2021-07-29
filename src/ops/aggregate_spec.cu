@@ -275,7 +275,6 @@ __device__
 void aggspec_backward_kernel_gate(const float* output_grad,
               float* full_gate_grads,
               const int* expert_assign,
-              // const bool* cache_corr,
               float* shared_sum,
               const float* gate_pred,
               int* expert_bal, float lambda_bal,
@@ -290,7 +289,6 @@ void aggspec_backward_kernel_gate(const float* output_grad,
   // get sum of expert errors
   /* NOTE: Errors just squared L2 norm of gradients. * batch_size because the
   expert gradients are /= batch_size and then it would be /= batch_size^2 here */
-
   CUDA_KERNEL_LOOP(i, batch_size*k*out_dim)
   {
     // if(cache_corr[i/(k*out_dim)]) {
@@ -393,7 +391,6 @@ void aggspec_backward_kernel_exp(const float* output_grad,
 __global__
 void aggspec_backward_kernel(float** exp_grads,
         const int* exp_assign,
-        // const int* true_exp_assign,
         const float* gating_net_preds,
         float* full_gating_grads,
         const float* output_grads,
@@ -450,7 +447,7 @@ void aggspec_backward_kernel(float** exp_grads,
 
   // get gating net gradients
   aggspec_backward_kernel_gate(output_grads, full_gating_grads, exp_assign,
-    /*cache_corr,*/ shared_sum, gating_net_preds, expert_bal, (lambda_bal*n)/batch_size,
+    shared_sum, gating_net_preds, expert_bal, (lambda_bal*n)/batch_size,
     batch_size, k, n, out_dim);
 
 #ifdef MOE_DEBUG
@@ -565,12 +562,10 @@ void AggregateSpec::forward_task(const Task *task,
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
 
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
 
   // call forward kernel
   cudaMemcpy(m->dev_region_ptrs, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
@@ -599,13 +594,12 @@ void AggregateSpec::backward_task(const Task *task,
   float lambda_bal = aggspec->lambda_bal;
   const bool local_lambda = aggspec->local_lambda;
 
-  assert((int)regions.size() == n+4);
-  assert((int)task->regions.size() == n+4);
+  assert((int)regions.size() == n+5);
+  assert((int)task->regions.size() == n+5);
 
   // get gate_pred, gate_assin, full_gate_grad, output_grad
   const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
   const AccessorRO<int, 2> acc_gate_assign(regions[1], FID_DATA);
-  // const AccessorRO<int, 2> acc_true_gate_assign(regions[2], FID_DATA);
   const AccessorRW<float, 2> acc_full_gate_grad(regions[2], FID_DATA); // TODO: WO, debug
   const AccessorRO<float, 2> acc_output_grad(regions[n+3], FID_DATA);
 
@@ -613,16 +607,13 @@ void AggregateSpec::backward_task(const Task *task,
       ctx, task->regions[0].region.get_index_space());
   Rect<2> rect_gate_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  // Rect<2> rect_true_gate_assign = runtime->get_index_space_domain(
-  //     ctx, task->regions[2].region.get_index_space());
   Rect<2> rect_full_gate_grad = runtime->get_index_space_domain(
-          ctx, task->regions[2].region.get_index_space());
+          ctx, task->regions[3].region.get_index_space());
   Rect<2> rect_out_grad = runtime->get_index_space_domain(
-      ctx, task->regions[n+3].region.get_index_space());
+      ctx, task->regions[n+4].region.get_index_space());
 
   coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;
   assert(batch_size == rect_gate_assign.hi[1] - rect_gate_assign.lo[1] + 1);
-  // assert(rect_gate_assign == rect_true_gate_assign);
   assert(batch_size == rect_full_gate_grad.hi[1] - rect_full_gate_grad.lo[1] + 1);
   coord_t k = rect_gate_assign.hi[0] - rect_gate_assign.lo[0] + 1;
   assert(k*batch_size == rect_out_grad.hi[1] - rect_out_grad.lo[1] + 1);
@@ -635,7 +626,7 @@ void AggregateSpec::backward_task(const Task *task,
   std::vector<int> exp_samples_arr;
   // get first exp_pred and row
   Domain exp_domain = runtime->get_index_space_domain(
-    ctx, task->regions[3].region.get_index_space());
+    ctx, task->regions[4].region.get_index_space());
   exp_grads[0] = helperGetTensorPointerRW<float>(
     regions[3], task->regions[3], FID_DATA, ctx, runtime);
   exp_samples_arr.push_back(exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
@@ -643,7 +634,7 @@ void AggregateSpec::backward_task(const Task *task,
 
   for(int i = 1; i < n; i++) {
     exp_domain = runtime->get_index_space_domain(
-      ctx, task->regions[i+3].region.get_index_space());
+      ctx, task->regions[i+4].region.get_index_space());
     exp_grads[i] = helperGetTensorPointerRW<float>(
       regions[i+3], task->regions[i+3], FID_DATA, ctx, runtime);
 
@@ -655,12 +646,10 @@ void AggregateSpec::backward_task(const Task *task,
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
 
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
 
   // call backward kernel
   // FIXME: For now, enforce that only 1 thread block
@@ -776,17 +765,17 @@ void AggregateSpec::backward(const FFModel& ff)
       READ_ONLY, EXCLUSIVE, inputs[1].region));
   launcher.add_field(1, FID_DATA);
 
-  // // true gate_assign
-  // launcher.add_region_requirement(
-  //   RegionRequirement(input_lps[2], 0/*projection id*/,
-  //     READ_ONLY, EXCLUSIVE, inputs[2].region));
-  // launcher.add_field(2, FID_DATA);
-
   // gate gradients full
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[3], 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[3].region_grad));
   launcher.add_field(2, FID_DATA);
+
+  // gate gradients full
+  launcher.add_region_requirement(
+    RegionRequirement(input_grad_lps[3], 0/*projection id*/,
+      READ_WRITE, EXCLUSIVE, inputs[3].region_grad));
+  launcher.add_field(3, FID_DATA);
 
   // exp gradients
   for(int i = 0; i < n; i++) {
