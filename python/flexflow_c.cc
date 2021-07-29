@@ -375,7 +375,7 @@ flexflow_model_add_conv2d(
   Initializer *bias_initializer = FFCObjectWrapper::unwrap(bias_initializer_);
   Tensor tensor = handle->conv2d(input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation, groups, use_bias, shared_op, kernel_initializer, bias_initializer, name);
   DEBUG_PRINT("[Conv2d] new Tensor 4D %p (%d, %d, %d, %d), input %p, out_channels %d, kernel(%d, %d), stride(%d, %d), padding(%d, %d), activation %d, use_bias %d, shared_op %p, kernel_init %p, bias_init %p, name %s",
-    tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], input, out_channels,
+    tensor, tensor->dims[0].size, tensor->dims[1].size, tensor->dims[2].size, tensor->dims[3].size, input, out_channels,
     kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, 
     activation, use_bias, shared_op, kernel_initializer, bias_initializer, name);
   return FFCObjectWrapper::wrap(tensor);
@@ -416,7 +416,7 @@ flexflow_model_add_pool2d(
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->pool2d(input, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, type, activation, name);
   DEBUG_PRINT("[Pool2d] new Tensor 4D %p (%d, %d, %d, %d), input %p, kernel(%d, %d), stride(%d, %d), padding(%d, %d), pool %d, activation %d, name %s", 
-    tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], input, 
+    tensor, tensor->dims[0].size, tensor->dims[1].size, tensor->dims[2].size, tensor->dims[3].size, input, 
     kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, type, activation, name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -432,7 +432,7 @@ flexflow_model_add_batch_norm(
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->batch_norm(input, relu, name);
   DEBUG_PRINT("[BatchNorm] new Tensor 4D %p (%d, %d, %d, %d), input %p, relu %d, name %s", 
-    tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], input, relu, name);
+    tensor, tensor->dims[0].size, tensor->dims[1].size, tensor->dims[2].size, tensor->dims[3].size, input, relu, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -471,7 +471,7 @@ flexflow_model_add_dense(
   Initializer *bias_initializer = FFCObjectWrapper::unwrap(bias_initializer_);
   Tensor tensor = handle->dense(input, out_dim, activation, use_bias, shared_op, kernel_initializer, bias_initializer, name);
   DEBUG_PRINT("[Dense] new Tensor 2D %p (%d, %d, %d, %d), input %p, out_dim %d, activation %d, use_bias %d, shared_op %p, kernel_init %p, bias_init %p, name %s",
-    tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], input, 
+    tensor, tensor->dims[0].size, tensor->dims[1].size, tensor->dims[2].size, tensor->dims[3].size, input, 
     out_dim, activation, use_bias, shared_op, kernel_initializer, bias_initializer, name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -879,17 +879,17 @@ flexflow_tensor_create(
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   if (num_dims == 2) {
     tensor = model->create_tensor<2>(dims, data_type, NULL, create_grad);
-    DEBUG_PRINT("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
+    DEBUG_PRINT("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->dims[0].size, tensor->dims[1].size, tensor->dims[2].size, tensor->dims[3].size);
   } else if (num_dims == 3) {
     tensor = model->create_tensor<3>(dims, data_type, NULL, create_grad);
-    DEBUG_PRINT("[Tensor] new 3D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
+    DEBUG_PRINT("[Tensor] new 3D %p (%d, %d, %d, %d)", tensor, tensor->dims[0].size, tensor->dims[1].size, tensor->dims[2].size, tensor->dims[3].size);
   } else if (num_dims == 4) {
     tensor = model->create_tensor<4>(dims, data_type, NULL, create_grad);
-    DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
+    DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->dims[0].size, tensor->dims[1].size, tensor->dims[2].size, tensor->dims[3].size);
 #if MAX_TENSOR_DIM >= 5
   } else if (num_dims == 5) {
     tensor = model->create_tensor<5>(dims, data_type, NULL, create_grad);
-    DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], tensor->adim[4]);
+    DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)", tensor, tensor->dims[0].size, tensor->dims[1].size, tensor->dims[2].size, tensor->dims[3].size, tensor->dims[4].size);
 #endif
   } else {
     assert(0);
@@ -921,17 +921,17 @@ flexflow_constant_create(
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   if (num_dims == 2) {
     tensor = model->create_constant<2>(dims, value, data_type);
-    DEBUG_PRINT("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
+    DEBUG_PRINT("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->dims[0].size, tensor->dims[1].size, tensor->dims[2].size, tensor->dims[3].size);
   } else if (num_dims == 3) {
     tensor = model->create_constant<3>(dims, value, data_type);
-    DEBUG_PRINT("[Tensor] new 3D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
+    DEBUG_PRINT("[Tensor] new 3D %p (%d, %d, %d, %d)", tensor, tensor->dims[0].size, tensor->dims[1].size, tensor->dims[2].size, tensor->dims[3].size);
   } else if (num_dims == 4) {
     tensor = model->create_constant<4>(dims, value, data_type);
-    DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3]);
+    DEBUG_PRINT("[Tensor] new 4D %p (%d, %d, %d, %d)", tensor, tensor->dims[0].size, tensor->dims[1].size, tensor->dims[2].size, tensor->dims[3].size);
 #if MAX_TENSOR_DIM >= 5
   } else if (num_dims == 5) {
     tensor = model->create_constant<5>(dims, value, data_type);
-    DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)", tensor, tensor->adim[0], tensor->adim[1], tensor->adim[2], tensor->adim[3], tensor->adim[4]);
+    DEBUG_PRINT("[Tensor] new 5D %p (%d, %d, %d, %d, %d)", tensor, tensor->dims[0].size, tensor->dims[1].size, tensor->dims[2].size, tensor->dims[3].size, tensor->dims[4].size);
 #endif
   } else {
     assert(0);
