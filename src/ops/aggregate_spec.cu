@@ -564,8 +564,6 @@ void AggregateSpec::forward_task(const Task *task,
 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   // call forward kernel
   cudaMemcpy(m->dev_region_ptrs, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
@@ -594,8 +592,8 @@ void AggregateSpec::backward_task(const Task *task,
   float lambda_bal = aggspec->lambda_bal;
   const bool local_lambda = aggspec->local_lambda;
 
-  assert((int)regions.size() == n+5);
-  assert((int)task->regions.size() == n+5);
+  assert((int)regions.size() == n+4);
+  assert((int)task->regions.size() == n+4);
 
   // get gate_pred, gate_assin, full_gate_grad, output_grad
   const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
@@ -608,9 +606,9 @@ void AggregateSpec::backward_task(const Task *task,
   Rect<2> rect_gate_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
   Rect<2> rect_full_gate_grad = runtime->get_index_space_domain(
-          ctx, task->regions[3].region.get_index_space());
+          ctx, task->regions[2].region.get_index_space());
   Rect<2> rect_out_grad = runtime->get_index_space_domain(
-      ctx, task->regions[n+4].region.get_index_space());
+      ctx, task->regions[n+3].region.get_index_space());
 
   coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;
   assert(batch_size == rect_gate_assign.hi[1] - rect_gate_assign.lo[1] + 1);
@@ -626,7 +624,7 @@ void AggregateSpec::backward_task(const Task *task,
   std::vector<int> exp_samples_arr;
   // get first exp_pred and row
   Domain exp_domain = runtime->get_index_space_domain(
-    ctx, task->regions[4].region.get_index_space());
+    ctx, task->regions[3].region.get_index_space());
   exp_grads[0] = helperGetTensorPointerRW<float>(
     regions[3], task->regions[3], FID_DATA, ctx, runtime);
   exp_samples_arr.push_back(exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
@@ -634,7 +632,7 @@ void AggregateSpec::backward_task(const Task *task,
 
   for(int i = 1; i < n; i++) {
     exp_domain = runtime->get_index_space_domain(
-      ctx, task->regions[i+4].region.get_index_space());
+      ctx, task->regions[i+3].region.get_index_space());
     exp_grads[i] = helperGetTensorPointerRW<float>(
       regions[i+3], task->regions[i+3], FID_DATA, ctx, runtime);
 
@@ -648,8 +646,6 @@ void AggregateSpec::backward_task(const Task *task,
 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   // call backward kernel
   // FIXME: For now, enforce that only 1 thread block
@@ -770,12 +766,6 @@ void AggregateSpec::backward(const FFModel& ff)
     RegionRequirement(input_grad_lps[3], 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[3].region_grad));
   launcher.add_field(2, FID_DATA);
-
-  // gate gradients full
-  launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[3], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[3].region_grad));
-  launcher.add_field(3, FID_DATA);
 
   // exp gradients
   for(int i = 0; i < n; i++) {
