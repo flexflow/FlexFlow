@@ -13,10 +13,24 @@
  * limitations under the License.
  */
 
-#include "model.h"
-#include "cuda_helper.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/cuda_helper.h"
 
-using namespace Legion;
+namespace FlexFlow {
+
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
 
 const float LOG_MIN_VALUE = 0.00000001f;
 
@@ -284,3 +298,5 @@ void Metrics::compute(FFModel* model,
   }
   model->current_metrics = runtime->execute_task(ctx, metrics_task);
 }
+
+}; // namespace FlexFlow

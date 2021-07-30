@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2021 Stanford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,49 +12,51 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "model.h"
-#include "cuda_helper.h"
-#include "mapper.h"
-#include "test_utils.h"
-#include "dirent.h"
+
+#include "flexflow/model.h"
+#include "flexflow/utils/cuda_helper.h"
+#include "flexflow/mapper.h"
+#include "flexflow/utils/test_utils.h"
+#include <dirent.h>
 #include <unordered_set>
 #include <queue>
-#include "random_utils.h"
-#include "graph.h"
-#include "substitution.h"
+#include "flexflow/utils/random_utils.h"
+#include "flexflow/graph.h"
+#include "flexflow/substitution.h"
 #include "legion/legion_utilities.h"
-#include "ops/aggregate.h"
-#include "ops/aggregate_spec.h"
-#include "ops/cache.h"
-#include "ops/reverse.h"
-#include "ops/groupby.h"
-#include "ops/transpose.h"
-#include "ops/linear.h"
-#include "ops/conv_2d.h"
-#include "ops/pool_2d.h"
-#include "ops/embedding.h"
-#include "ops/batch_norm.h"
-#include "ops/batch_matmul.h"
-#include "ops/flat.h"
-#include "ops/element_unary.h"
-#include "ops/attention.h"
-#include "ops/element_binary.h"
-#include "ops/softmax.h"
-#include "ops/dropout.h"
-#include "ops/split.h"
-#include "ops/noop.h"
-#include "ops/concat.h"
-#include "ops/reshape.h"
-#include "ops/topk.h"
-#include "ops/fused.h"
-#include "parallel_ops/combine.h"
-#include "parallel_ops/fused_parallel_op.h"
-#include "parallel_ops/partition.h"
-#include "parallel_ops/reduction.h"
-#include "parallel_ops/replicate.h"
+#include "flexflow/ops/aggregate.h"
+#include "flexflow/ops/aggregate_spec.h"
+#include "flexflow/ops/cache.h"
+#include "flexflow/ops/reverse.h"
+#include "flexflow/ops/groupby.h"
+#include "flexflow/ops/transpose.h"
+#include "flexflow/ops/linear.h"
+#include "flexflow/ops/conv_2d.h"
+#include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/embedding.h"
+#include "flexflow/ops/batch_norm.h"
+#include "flexflow/ops/batch_matmul.h"
+#include "flexflow/ops/flat.h"
+#include "flexflow/ops/element_unary.h"
+#include "flexflow/ops/attention.h"
+#include "flexflow/ops/element_binary.h"
+#include "flexflow/ops/softmax.h"
+#include "flexflow/ops/dropout.h"
+#include "flexflow/ops/split.h"
+#include "flexflow/ops/noop.h"
+#include "flexflow/ops/concat.h"
+#include "flexflow/ops/reshape.h"
+#include "flexflow/ops/topk.h"
+#include "flexflow/ops/fused.h"
+#include "flexflow/parallel_ops/combine.h"
+#include "flexflow/parallel_ops/fused_parallel_op.h"
+#include "flexflow/parallel_ops/partition.h"
+#include "flexflow/parallel_ops/reduction.h"
+#include "flexflow/parallel_ops/replicate.h"
 
 
-using namespace std;
+namespace FlexFlow {
+
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_model("Model");
@@ -434,7 +436,7 @@ void Op::solve_parallel_dim_mappings(
     const std::vector<ParallelDim *> &weights,
     const std::vector<ParallelDim *> &outputs) const
 {
-  ::solve_parallel_dim_mappings(*this->parallel_dims_mapping, inputs, weights, outputs);
+  FlexFlow::solve_parallel_dim_mappings(*this->parallel_dims_mapping, inputs, weights, outputs);
 }
 
 void solve_parallel_dim_mappings(
@@ -1033,8 +1035,8 @@ FFModel::FFModel(FFConfig& _config)
   config(_config),
   optimizer(NULL), loss_op(NULL), metrics_op(NULL), simulator(NULL)
 {
-  this->search = new SearchHelper(this);
-  this->graph_search = new GraphSearchHelper(this);
+  this->search = new PCG::SearchHelper(this);
+  this->graph_search = new PCG::GraphSearchHelper(this);
 
   Runtime *runtime = config.lg_hlr;
   Context ctx = config.lg_ctx;
@@ -1122,8 +1124,8 @@ Tensor FFModel::create_constant(const int dims[],
   return tensor;
 }
 
-Node FFModel::new_node(Op *op) {
-  Node ret;
+PCG::Node FFModel::new_node(Op *op) {
+  PCG::Node ret;
   ret.guid = this->node_global_guid++;
   ret.ptr = op;
 
@@ -2308,11 +2310,11 @@ void FFModel::compile(LossType loss_type,
         TaskArgument(&model, sizeof(FFModel*)));
     Future future = runtime->execute_task(ctx, launcher);
 
-    GraphOptimalViewSerialized ret = future.get_result<GraphOptimalViewSerialized>();
+    PCG::GraphOptimalViewSerialized ret = future.get_result<PCG::GraphOptimalViewSerialized>();
     Deserializer dez(ret.data, ret.total_bytes);
     // Reconstruct layers
-    Graph* best_graph = new Graph(this);
-    std::unordered_map<Node, MachineView> optimal_views;
+    PCG::Graph* best_graph = new PCG::Graph(this);
+    std::unordered_map<PCG::Node, MachineView> optimal_views;
     deserialize_graph_optimal_view(dez, best_graph, optimal_views);
     layers.clear();
     convert_graph_to_layers(best_graph, optimal_views);
@@ -3184,6 +3186,134 @@ void FFConfig::parse_args(char **argv, int argc)
   }
 }
 
+std::string optype_to_string(OperatorType op_type)
+{
+  switch (op_type) {
+    case OP_INPUT:
+      return "Input";
+    case OP_WEIGHT:
+      return "Weight";
+    case OP_NOOP:
+      return "Noop";
+    case OP_CONV2D:
+      return "Conv";
+    case OP_DROPOUT:
+      return "Dropout";
+    case OP_EMBEDDING:
+      return "Embedding";
+    case OP_LINEAR:
+      return "Linear";
+    case OP_POOL2D:
+      return "Pool";
+    case OP_RELU:
+      return "Relu";
+    case OP_SIGMOID:
+      return "Sigmoid";
+    case OP_TANH:
+      return "TanH";
+    case OP_BATCHNORM:
+      return "Batchnorm";
+    case OP_CONCAT:
+      return "Concat";
+    case OP_SPLIT:
+      return "Split";
+    case OP_RESHAPE:
+      return "Reshape";
+    case OP_TRANSPOSE:
+      return "Transpose";
+    case OP_EW_ADD:
+      return "Add";
+    case OP_EW_MUL:
+      return "Mul";
+    case OP_MATMUL:
+      return "MatMul";
+    case OP_MUL:
+      return "Mul";
+    case OP_ENLARGE:
+      return "Enlarge";
+    case OP_SQUEEZE:
+      return "Squeeze";
+    case OP_UNSQUEEZE:
+      return "Unsqueeze";
+    case OP_EW_SUB:
+      return "Sub";
+    case OP_EW_DIV:
+      return "Div";
+    case OP_EW_EQUAL:
+      return "Equal";
+    case OP_EW_GREATER:
+      return "Greater";
+    case OP_EW_LESS:
+      return "Less";
+    case OP_EW_MAX:
+      return "Max";
+    case OP_EW_MIN:
+      return "Min";
+    case OP_REDUCE_ARGMAX:
+      return "ArgMax";
+    case OP_REDUCE_ARGMIN:
+      return "ArgMin";
+    case OP_REDUCE_MAX:
+      return "ReduceMax";
+    case OP_REDUCE_MEAN:
+      return "ReduceMean";
+    case OP_REDUCE_MIN:
+      return "ReduceMin";
+    case OP_REDUCE_PROD:
+      return "ReduceProd";
+    case OP_REDUCE_SUM:
+      return "ReduceSum";
+    case OP_PAD:
+      return "Pad";
+    case OP_SHAPE:
+      return "Shape";
+    case OP_SIZE:
+      return "Size";
+    case OP_TOPK:
+      return "TopK";
+    case OP_WHERE:
+      return "Where";
+    case OP_CEIL:
+      return "Ceil";
+    case OP_CAST:
+      return "Cast";
+    case OP_EXP:
+      return "Exp";
+    case OP_ROUND:
+      return "Round";
+    case OP_LOG:
+      return "Log";
+    case OP_LOGICAL_NOT:
+      return "Not";
+    case OP_SQRT:
+      return "Sqrt";
+    case OP_LEAKYRELU:
+      return "LeakyRelu";
+    case OP_SLICE:
+      return "Slice";
+    case OP_RESIZE:
+      return "Resize";
+    case OP_SOFTMAX:
+      return "Softmax";
+    case OP_MULTIHEAD_ATTENTION:
+      return "MultiHeadAttn";
+    case OP_REPARTITION:
+      return "Partition";
+    case OP_REPLICATE:
+      return "Replicate";
+    case OP_REDUCTION:
+      return "Reduction";
+    case OP_COMBINE:
+      return "Combine";
+    case OP_FUSED_PARALLEL:
+      return "FusedParallel";
+    case OP_FLAT:
+      return "Flat";
+    default:
+      return "Unknown_" + std::to_string(op_type);
+  }
+}
+
 void register_flexflow_internal_tasks()
 {
   // CNN_INIT_TASK
@@ -3969,7 +4099,7 @@ void register_flexflow_internal_tasks()
                                    "Graph Optimize");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<GraphOptimalViewSerialized, Graph::graph_optimize_task>(
+    Runtime::preregister_task_variant<PCG::GraphOptimalViewSerialized, PCG::Graph::graph_optimize_task>(
         registrar, "Graph Optimize Task");
   }
   // Parameter Server Prefetch task
@@ -4016,3 +4146,5 @@ template void FFModel::map_conv_weight<1>(Tensor weight, const Op* parallel_op);
   template Tensor FFModel::create_linear_replica<D1>(const int* dims, const IndexSpaceT<D2>& part_is, DataType data_type);
   LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
+
+}; // namespace FlexFlow

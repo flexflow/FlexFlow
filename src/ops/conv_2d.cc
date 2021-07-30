@@ -1,5 +1,7 @@
-#include "ops/conv_2d.h"
+#include "flexflow/ops/conv_2d.h"
 #include "legion/legion_utilities.h"
+
+namespace FlexFlow {
 
 void Conv2D::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->out_channels);
@@ -14,6 +16,7 @@ void Conv2D::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->activation);
 }
 
+using PCG::Node;
 /*static*/
 Node Conv2D::deserialize(FFModel& ff, Legion::Deserializer& dez, Tensor inputs[], int num_inputs) {
   assert (num_inputs == 1);
@@ -43,3 +46,5 @@ Node Conv2D::deserialize(FFModel& ff, Legion::Deserializer& dez, Tensor inputs[]
       groups,
       use_bias);
 }
+
+}; // namespace FlexFlow

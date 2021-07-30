@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "ops/groupby.h"
-#include "cuda_helper.h"
+#include "flexflow/ops/groupby.h"
+#include "flexflow/utils/cuda_helper.h"
 #include <math.h>
 #include <stdio.h>
 
@@ -22,8 +22,24 @@
 #define MAX_BATCH_SIZE 32
 #define MAX_N 12
 
-using namespace Legion;
-
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
 void FFModel::group_by(const Tensor input,
                        const Tensor assign,
                        Tensor* outputs,
@@ -391,3 +407,5 @@ bool Group_by::measure_operator_cost(Simulator* sim,
   cost_metrics.memory_requirement = 0;
   return false;
 }
+
+}; // namespace FlexFlow

@@ -2,19 +2,21 @@
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 
-#include "config.h"
-#include "ffconst.h"
+#include "flexflow/config.h"
+#include "flexflow/ffconst.h"
 #include "flexflow_c.h"
-#include "mapper.h"
-#include "metrics_functions.h"
-#include "model.h"
-#include "tensor.h"
-#include "python/flexflow_dataloader.h"
+#include "flexflow/mapper.h"
+#include "flexflow/metrics_functions.h"
+#include "flexflow/model.h"
+#include "flexflow/tensor.h"
+#include "flexflow_dataloader.h"
 
 namespace py = pybind11;
 using py::literals::operator""_a;
 
 namespace {
+
+using namespace FlexFlow;
 
 static Context ctx;
 

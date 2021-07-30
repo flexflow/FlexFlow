@@ -13,10 +13,29 @@
  * limitations under the License.
  */
 
-#include "parallel_ops/fused_parallel_op.h"
-#include "hash_utils.h"
+#include "flexflow/parallel_ops/fused_parallel_op.h"
+#include "flexflow/utils/hash_utils.h"
 
-using namespace Legion;
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
+using Legion::LogicalRegion;
+using Legion::LogicalPartition;
 
 FusedParallelOp::FusedParallelOp(
     FFModel& model,
@@ -210,6 +229,7 @@ size_t FusedParallelOp::get_params_hash() const {
   return hash;
 }
 
+using PCG::Node;
 Node FFModel::get_or_create_fused_parallel_node(const Tensor input,
                                                 const std::vector<ParallelOpInfo>& parallel_ops)
 {
@@ -240,3 +260,4 @@ Node FFModel::get_or_create_fused_parallel_node(const Tensor input,
   return ret;
 }
 
+}; // namespace FlexFlow

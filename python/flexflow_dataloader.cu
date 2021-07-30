@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-#include "cuda_helper.h"
+#include "flexflow/utils/cuda_helper.h"
 #include "flexflow_dataloader.h"
 
 using namespace Legion;
+using namespace FlexFlow;
 
 void ImgDataLoader::load_label(const Task *task,
                                const std::vector<PhysicalRegion> &regions,

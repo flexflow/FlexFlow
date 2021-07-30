@@ -13,12 +13,29 @@
  * limitations under the License.
  */
 
-#include "ops/softmax.h"
-#include "cuda_helper.h"
-#include "hash_utils.h"
+#include "flexflow/ops/softmax.h"
+#include "flexflow/utils/cuda_helper.h"
+#include "flexflow/utils/hash_utils.h"
 
-using namespace Legion;
-
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
+using Legion::InlineLauncher;
 Tensor FFModel::softmax(const Tensor _input, int dim, const char *name)
 {
   if (dim < 0)
@@ -373,6 +390,7 @@ size_t Softmax::get_params_hash() const {
   return hash;
 }
 
+using PCG::Node;
 Node FFModel::get_or_create_softmax_node(const Tensor input,
                                          int softmax_dim)
 {
@@ -391,3 +409,5 @@ Node FFModel::get_or_create_softmax_node(const Tensor input,
   ret.ptr = softmax;
   return ret;
 }
+
+}; // namespace FlexFlow

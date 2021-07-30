@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
-#include "mapper.h"
+#include "flexflow/mapper.h"
+
+namespace FlexFlow {
 
 LegionRuntime::Logger::Category log_ff_mapper("Mapper");
 
@@ -1578,3 +1580,5 @@ void update_mappers(Machine machine, Runtime *runtime,
 FFMapper::~FFMapper(void)
 {
 }
+
+}; // namespace FlexFlow

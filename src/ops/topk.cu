@@ -13,11 +13,28 @@
  * limitations under the License.
  */
 
-#include "ops/topk.h"
-#include "cuda_helper.h"
+#include "flexflow/ops/topk.h"
+#include "flexflow/utils/cuda_helper.h"
 
-using namespace Legion;
-
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
+using Legion::InlineLauncher;
 // For an input tensor, computes the top k entries in each row
 // (resp. vector along the last dimension). Thus,
 // values.shape = indices.shape = input.shape[:-1] + [k]
@@ -638,3 +655,5 @@ bool TopK::measure_operator_cost(Simulator* sim,
   assert(false);
   return false;
 }
+
+}; // namespace FlexFlow

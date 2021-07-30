@@ -13,10 +13,29 @@
  * limitations under the License.
  */
 
-#include "parallel_ops/replicate.h"
-#include "hash_utils.h"
+#include "flexflow/parallel_ops/replicate.h"
+#include "flexflow/utils/hash_utils.h"
 
-using namespace Legion;
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
+using Legion::LogicalRegion;
+using Legion::LogicalPartition;
 
 Tensor FFModel::replicate(
     const Tensor input,
@@ -175,6 +194,7 @@ size_t Replicate::get_params_hash() const {
   return hash;
 }
 
+using PCG::Node;
 Node FFModel::get_or_create_replicate_node(const Tensor input,
                                            int replicate_dim,
                                            int replicate_degree)
@@ -204,3 +224,5 @@ Node FFModel::get_or_create_replicate_node(const Tensor input,
   ret.guid = node_global_guid++;
   return ret;
 }
+
+}; // namespace FlexFlow

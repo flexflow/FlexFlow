@@ -1,5 +1,7 @@
-#include "ops/element_unary.h"
+#include "flexflow/ops/element_unary.h"
 #include "legion/legion_utilities.h"
+
+namespace FlexFlow {
 
 void ElementUnary::serialize(Legion::Serializer& sez) const {
   sez.serialize(this->op_type);
@@ -9,6 +11,7 @@ void ElementUnary::serialize(Legion::Serializer& sez) const {
   }
 }
 
+using PCG::Node;
 /*static*/
 Node ElementUnary::deserialize(FFModel& ff, Legion::Deserializer& dez, Tensor inputs[], int num_inputs) {
   assert (num_inputs == 1);
@@ -28,3 +31,5 @@ Op *ElementUnary::materialize(FFModel& ff, Tensor inputs[], int num_inputs) cons
   assert (num_inputs == 1);
   return new ElementUnary(ff, this->op_type, inputs[0], this->inplace, this->name, this->scalar);
 }
+
+}; // namespace FlexFlow

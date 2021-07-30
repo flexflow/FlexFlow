@@ -16,7 +16,7 @@
 #ifndef __FLEXFLOW_C_H__
 #define __FLEXFLOW_C_H__
 
-#include "ffconst.h"
+#include "flexflow/ffconst.h"
 
 #ifdef __cplusplus
 extern "C" {

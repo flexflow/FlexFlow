@@ -13,12 +13,29 @@
  * limitations under the License.
  */
 
-#include "ops/pool_2d.h"
-#include "cuda_helper.h"
-#include "hash_utils.h"
+#include "flexflow/ops/pool_2d.h"
+#include "flexflow/utils/cuda_helper.h"
+#include "flexflow/utils/hash_utils.h"
 
-using namespace Legion;
-
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
+using Legion::InlineLauncher;
 Tensor FFModel::pool2d(const Tensor input,
                        int kernelH, int kernelW,
                        int strideH, int strideW,
@@ -99,6 +116,7 @@ size_t Pool2D::get_params_hash() const {
   return this->get_params().get_hash(this->inputs[0]);
 }
 
+using PCG::Node;
 Node FFModel::get_or_create_pool2d_node(const Tensor input,
                                         const Pool2DParams& params)
 {
@@ -634,3 +652,5 @@ bool Pool2D::measure_operator_cost(Simulator* sim,
 
   return true;
 }
+
+}; // namespace FlexFlow 

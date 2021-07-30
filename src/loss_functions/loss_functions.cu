@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
-#include "model.h"
-#include "cuda_helper.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/cuda_helper.h"
+
+namespace FlexFlow {
 
 using namespace Legion;
 
@@ -237,3 +239,5 @@ void Loss::backward_with_dim(FFModel* model,
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
+
+}; // namespace FlexFlow

@@ -16,7 +16,7 @@
 #ifndef __FLEXFLOW_DATALOADER_H__
 #define __FLEXFLOW_DATALOADER_H__
 
-#include "model.h"
+#include "flexflow/model.h"
 
 struct NetConfig {
   NetConfig(void);
@@ -42,16 +42,16 @@ public:
   void reset(void);             
 public:
   int num_samples, next_index;
-  Tensor full_input, batch_input;
-  Tensor full_label, batch_label;
+  FlexFlow::Tensor full_input, batch_input;
+  FlexFlow::Tensor full_label, batch_label;
 };
 
 class ImgDataLoader4D : public ImgDataLoader {
 public:
-  ImgDataLoader4D(FFModel& ff, Tensor input, Tensor label, 
-                  Tensor full_input_, Tensor full_label_, int num_samples_);
-  ImgDataLoader4D(FFModel& ff, const NetConfig& alexnet, 
-                  Tensor input, Tensor label);
+  ImgDataLoader4D(FlexFlow::FFModel& ff, FlexFlow::Tensor input, FlexFlow::Tensor label, 
+                  FlexFlow::Tensor full_input_, FlexFlow::Tensor full_label_, int num_samples_);
+  ImgDataLoader4D(FlexFlow::FFModel& ff, const NetConfig& alexnet, 
+                  FlexFlow::Tensor input, FlexFlow::Tensor label);
   static void load_input(const Legion::Task *task,
                          const std::vector<Legion::PhysicalRegion> &regions,
                          Legion::Context ctx,
@@ -64,15 +64,15 @@ public:
                                              const std::vector<Legion::PhysicalRegion> &regions,
                                              Legion::Context ctx,
                                              Legion::Runtime* runtime);
-  void next_batch(FFModel&);
+  void next_batch(FlexFlow::FFModel&);
 private:
   size_t get_file_size(const std::string& filename);              
 };
 
 class ImgDataLoader2D : public ImgDataLoader {
 public:
-  ImgDataLoader2D(FFModel& ff, Tensor input, Tensor label, 
-                  Tensor full_input_, Tensor full_label_, int num_samples_);
+  ImgDataLoader2D(FlexFlow::FFModel& ff, FlexFlow::Tensor input, FlexFlow::Tensor label, 
+                  FlexFlow::Tensor full_input_, FlexFlow::Tensor full_label_, int num_samples_);
   static void load_input(const Legion::Task *task,
                          const std::vector<Legion::PhysicalRegion> &regions,
                          Legion::Context ctx,
@@ -81,16 +81,16 @@ public:
                                             const std::vector<Legion::PhysicalRegion> &regions,
                                             Legion::Context ctx,
                                             Legion::Runtime* runtime);
-  void next_batch(FFModel&);
+  void next_batch(FlexFlow::FFModel&);
 };
 
 class SingleDataLoader {
 public:
-  SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_, int num_samples_, DataType datatype_);
+  SingleDataLoader(FlexFlow::FFModel& ff, FlexFlow::Tensor input, FlexFlow::Tensor full_input_, int num_samples_, DataType datatype_);
   
-  SingleDataLoader(FFModel& ff, Tensor input, void *full_input_ptr, int num_samples_, DataType datatype_);
+  SingleDataLoader(FlexFlow::FFModel& ff, FlexFlow::Tensor input, void *full_input_ptr, int num_samples_, DataType datatype_);
   
-  void next_batch(FFModel&);
+  void next_batch(FlexFlow::FFModel&);
   
   void reset(void); 
   
@@ -136,14 +136,14 @@ public:
       Legion::Runtime* runtime);
 private:
   template<int NDIM>
-  void next_batch_xd_launcher(FFModel& ff, int task_id);
+  void next_batch_xd_launcher(FlexFlow::FFModel& ff, int task_id);
   
   template<int NDIM>
-  void index_loader_xd_launcher(FFModel& ff, int task_id, void *full_input_ptr, size_t size_per_sample);
+  void index_loader_xd_launcher(FlexFlow::FFModel& ff, int task_id, void *full_input_ptr, size_t size_per_sample);
 public:
   int num_samples, next_index;
   DataType datatype;
-  Tensor full_input, batch_input;         
+  FlexFlow::Tensor full_input, batch_input;         
 };
 
 #define MAX_NUM_SAMPLES 4196

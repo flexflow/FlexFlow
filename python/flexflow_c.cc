@@ -17,6 +17,7 @@
 #include "flexflow_c.h"
 
 using namespace Legion;
+using namespace FlexFlow;
 
 class FFCObjectWrapper {
 public:

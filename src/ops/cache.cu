@@ -13,8 +13,28 @@
  * limitations under the License.
  */
 
-#include "ops/cache.h"
-#include "cuda_helper.h"
+#include "flexflow/ops/cache.h"
+#include "flexflow/utils/cuda_helper.h"
+
+namespace FlexFlow {
+
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::PointInRectIterator;
 
 // Moving average over batches: 1 if batch is perfectly cached, 0 else.
 template <typename T>
@@ -304,3 +324,5 @@ bool Cache::measure_operator_cost(Simulator* sim,
   cost_metrics.memory_requirement = 0;
   return false;
 }
+
+}; // namespace FlexFlow

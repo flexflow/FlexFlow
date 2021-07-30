@@ -1,5 +1,7 @@
-#include "ops/pool_2d.h"
+#include "flexflow/ops/pool_2d.h"
 #include "legion/legion_utilities.h"
+
+namespace FlexFlow {
 
 void Pool2D::serialize(Legion::Serializer& sez) const {
   sez.serialize(this->kernel_h);
@@ -12,6 +14,7 @@ void Pool2D::serialize(Legion::Serializer& sez) const {
   sez.serialize(this->activation);
 }
 
+using PCG::Node;
 /*static*/
 Node Pool2D::deserialize(FFModel& ff, Legion::Deserializer& dez, Tensor inputs[], int num_inputs) { 
   assert (num_inputs == 1);
@@ -37,3 +40,5 @@ Node Pool2D::deserialize(FFModel& ff, Legion::Deserializer& dez, Tensor inputs[]
       pool_type,
       activation);
 }
+
+}; // namespace FlexFlow

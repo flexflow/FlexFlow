@@ -1,6 +1,8 @@
-#include "ops/linear.h"
+#include "flexflow/ops/linear.h"
 #include "legion/legion_utilities.h"
-#include "hash_utils.h"
+#include "flexflow/utils/hash_utils.h"
+
+namespace FlexFlow {
 
 static constexpr int KERNEL_IDX = 0;
 static constexpr int BIAS_IDX = 1;
@@ -71,6 +73,7 @@ Linear::Linear(FFModel& model,
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
 
+using PCG::Node;
 Node FFModel::get_or_create_linear_node(const Tensor input,
                                         const LinearParams& params) 
 {
@@ -308,3 +311,5 @@ void LinearParams::construct_mappings(std::vector<ParallelDimMappingRecord>& map
     Op::construct_weight_parallel_dims(mappings, i, i+1, 0/*input_idx*/, BIAS_IDX);
   }
 }
+
+}; // namespace FlexFlow

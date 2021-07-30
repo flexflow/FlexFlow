@@ -1,0 +1,110 @@
+#ifndef _LEGION_CNN_HELPER_H_
+#define _LEGION_CNN_HELPER_H_
+#include "legion.h"
+#include <cudnn.h>
+
+#define FatalError(s) do {                                             \
+    std::stringstream _where, _message;                                \
+    _where << __FILE__ << ':' << __LINE__;                             \
+    _message << std::string(s) + "\n" << __FILE__ << ':' << __LINE__;  \
+    std::cerr << _message.str() << "\nAborting...\n";                  \
+    assert(false);                                                     \
+    exit(1);                                                           \
+} while(0)
+
+#define checkCUDNN(status) do {                                        \
+    std::stringstream _error;                                          \
+    if (status != CUDNN_STATUS_SUCCESS) {                              \
+      _error << "CUDNN failure: " << cudnnGetErrorString(status);      \
+      FatalError(_error.str());                                        \
+    }                                                                  \
+} while(0)
+
+#define checkCURAND(status) do {                                       \
+    std::stringstream _error;                                          \
+    if (status != CURAND_STATUS_SUCCESS) {                             \
+      _error << "CURAND failure: " << status;                          \
+      FatalError(_error.str());                                        \
+    }                                                                  \
+} while(0)
+
+#define checkCUDA(status) do {                                         \
+    std::stringstream _error;                                          \
+    if (status != 0) {                                                 \
+      _error << "Cuda failure: " << status;                            \
+      FatalError(_error.str());                                        \
+    }                                                                  \
+} while(0)
+
+#ifdef FF_USE_NCCL
+#define checkNCCL(cmd) do {                         \
+  ncclResult_t r = cmd;                             \
+  if (r!= ncclSuccess) {                            \
+    printf("Failed, NCCL error %s:%d '%s'\n",             \
+        __FILE__,__LINE__,ncclGetErrorString(r));   \
+    exit(EXIT_FAILURE);                             \
+  }                                                 \
+} while(0)
+#endif
+
+// CUDA: grid stride looping
+#define CUDA_KERNEL_LOOP(i, n) \
+  for (Legion::coord_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); i += blockDim.x * gridDim.x)
+
+// Use 1024 threads per block, which requires cuda sm_2x or above
+const int CUDA_NUM_THREADS = 1024;
+const int BLOCK_SIZE_LIMIT = 32768;
+
+// CUDA: number of blocks for threads.
+inline int GET_BLOCKS(const int N)
+{
+  int ret = (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
+  return (ret > BLOCK_SIZE_LIMIT) ? BLOCK_SIZE_LIMIT : ret;
+}
+
+__global__
+void scale_kernel(float* ptr, Legion::coord_t size, float a, float b);
+
+__global__
+void ones_kernel(float* ptr, Legion::coord_t size);
+
+template<typename DT>
+__global__
+void assign_kernel(DT* ptr, Legion::coord_t size, DT value);
+
+template<typename DT>
+__global__
+void copy_kernel(DT* dst, const DT* src, Legion::coord_t size);
+
+template<typename T>
+__global__
+void add_kernel(T* data_ptr, const T* grad_ptr, size_t size);
+
+__global__
+void reluBackward(float* grad_ptr, const float* input, int n);
+
+__global__
+void apply_add_with_scale(float *data_ptr, const float *grad_ptr,
+                          size_t size, float scale);
+
+__global__
+void gelu_forward_kernel(size_t size, float B, float C, float *input);
+
+// Use by concat and split
+__global__
+void add_with_stride(float* output, const float* input,
+                     int num_blocks, int output_blk_size, int input_blk_size);
+__global__
+void copy_with_stride(float* output, const float* input,
+                      int num_blocks, int output_blk_size, int input_blk_size);
+
+__host__
+void updateGAS(float* para_ptr, const float* grad_ptr, size_t replica_size,
+               int num_replica, float learning_rate);
+
+template<typename T>
+void print_tensor(const T* ptr, size_t num_elements, const char* prefix);
+
+cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
+                                                 Legion::Domain domain);
+#endif

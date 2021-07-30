@@ -13,23 +13,43 @@
  * limitations under the License.
  */
 
-#include "model.h"
-#include "cuda_helper.h"
-#include "ops/conv_2d.h"
-#include "ops/linear.h"
-#include "ops/pool_2d.h"
-#include "ops/flat.h"
-#include "ops/concat.h"
-#include "ops/dropout.h"
-#include "ops/batch_norm.h"
-#include "ops/batch_matmul.h"
-#include "ops/element_unary.h"
-#include "ops/element_binary.h"
-#include "ops/reshape.h"
-#include "ops/transpose.h"
-#include "ops/fused.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/cuda_helper.h"
+#include "flexflow/ops/conv_2d.h"
+#include "flexflow/ops/linear.h"
+#include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/flat.h"
+#include "flexflow/ops/concat.h"
+#include "flexflow/ops/dropout.h"
+#include "flexflow/ops/batch_norm.h"
+#include "flexflow/ops/batch_matmul.h"
+#include "flexflow/ops/element_unary.h"
+#include "flexflow/ops/element_binary.h"
+#include "flexflow/ops/reshape.h"
+#include "flexflow/ops/transpose.h"
+#include "flexflow/ops/fused.h"
 
-using namespace Legion;
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
+using Legion::PointInRectIterator;
+using Legion::LogicalRegion;
+using Legion::LogicalPartition;
 
 FusedOp::FusedOp(FFModel& model, Op* op)
 : Op(model, OP_FUSED, op->name, 0/*weights*/, 0/*weights*/, 0/*outputs*/)
@@ -977,3 +997,4 @@ bool FusedOp::measure_operator_cost(Simulator* sim,
   return false;
 }
 
+}; // namespace FlexFlow

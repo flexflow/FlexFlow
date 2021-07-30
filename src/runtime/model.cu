@@ -12,13 +12,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "model.h"
-#include "cuda_helper.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/cuda_helper.h"
 //#include "realm/runtime_impl.h"
 //#include "realm/cuda/cuda_module.h"
 
-using namespace Legion;
-
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
+using Legion::InlineLauncher;
 void Op::inner_measure_operator_cost(Simulator *sim,
                                      std::function<void()> const &forward,
                                      std::function<void()> const &backward,
@@ -68,7 +85,7 @@ void Op::inner_measure_operator_cost(Simulator *sim,
 FFHandler UtilityTasks::init_cuda_task(
               const Task *task,
               const std::vector<PhysicalRegion> &regions,
-              Context ctx, HighLevelRuntime *runtime)
+              Context ctx, Runtime *runtime)
 {
   assert(regions.size() == 0);
   assert(task->local_arglen == sizeof(FFInitInfo));
@@ -154,7 +171,7 @@ void nearest_neighbor(unsigned char* image,
 void UtilityTasks::load_images_task(
          const Task *task,
          const std::vector<PhysicalRegion> &regions,
-         Context ctx, HighLevelRuntime *runtime)
+         Context ctx, Runtime *runtime)
 {
 #ifdef USE_DATA_LOADER
   assert(regions.size() == 2);
@@ -324,3 +341,5 @@ void FFModel::prefetch()
   for (size_t i = 0; i < layers.size(); i++)
     layers[i]->prefetch(*this);
 }
+
+}; // namespace FlexFlow

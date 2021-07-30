@@ -1,8 +1,11 @@
-#include "cuda_helper.h"
-#include "model.h"
+#include "flexflow/utils/cuda_helper.h"
+#include "flexflow/model.h"
 
-using namespace Legion;
+using Legion::Domain;
+using Legion::Rect;
+using Legion::coord_t;
 
+namespace FlexFlow {
 #ifdef LEGION_USE_HIP
 #ifdef __HIP_PLATFORM_NVCC__
 extern "C" {
@@ -30,6 +33,9 @@ cudaError_t get_legion_stream(cudaStream_t *stream)
 #endif
 }
 #endif
+}; // namespace
+
+using FlexFlow::get_legion_stream;
 
 __global__
 void scale_kernel(float* ptr, coord_t size, float a, float b)
@@ -283,3 +289,4 @@ template __global__ void copy_kernel<int>(int* dst, const int* src, coord_t size
 
 template __host__ void print_tensor<float>(const float* ptr, size_t rect, const char* prefix);
 template __host__ void print_tensor<long>(const long* ptr, size_t rect, const char* prefix);
+

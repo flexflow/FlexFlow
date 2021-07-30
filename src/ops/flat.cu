@@ -13,11 +13,27 @@
  * limitations under the License.
  */
 
-#include "ops/flat.h"
-#include "cuda_helper.h"
+#include "flexflow/ops/flat.h"
+#include "flexflow/utils/cuda_helper.h"
 
-using namespace Legion;
-
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
 Tensor FFModel::flat(const Tensor input,
                      const char* name)
 {
@@ -99,6 +115,7 @@ size_t Flat::get_params_hash() const {
   return this->inputs[0]->get_owner_independent_hash();
 }
 
+using PCG::Node;
 Node FFModel::get_or_create_flat_node(const Tensor input) 
 {
   if (!is_valid(input)) {
@@ -370,3 +387,5 @@ Domain Flat::get_input_tensor_shape(const ParallelConfig& pc,
   d.rect_data[2*d.dim-2] = d.rect_data[d.dim-2] + dim_size - 1;
   return d;
 }
+
+}; // namespace FlexFlow

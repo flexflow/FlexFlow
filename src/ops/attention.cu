@@ -13,10 +13,28 @@
  * limitations under the License.
  */
 
-#include "ops/attention.h"
-#include "cuda_helper.h"
+#include "flexflow/ops/attention.h"
+#include "flexflow/utils/cuda_helper.h"
 
-using namespace Legion;
+namespace FlexFlow {
+
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
 
 Tensor FFModel::multihead_attention(const Tensor query,
                                     const Tensor key,
@@ -744,6 +762,8 @@ bool MultiHeadAttention::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
+using PCG::Node;
+
 Node FFModel::get_or_create_multihead_attn_node(const Tensor query,
                                                 const Tensor key,
                                                 const Tensor value,
@@ -782,3 +802,4 @@ Node FFModel::get_or_create_multihead_attn_node(const Tensor query,
   return ret;
 }
 
+}; // namespace FlexFlow

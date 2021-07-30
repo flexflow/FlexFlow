@@ -1,4 +1,6 @@
-#include "parallel_op.h"
+#include "flexflow/parallel_ops/parallel_op.h"
+
+namespace FlexFlow {
 
 ParallelOp::ParallelOp(FFModel& model,
                        OperatorType op_type,
@@ -46,6 +48,7 @@ ParallelOpJoinResult try_join_parallel_ops(ParallelOpInfo const &_first, Paralle
   return result;
 }
 
+using PCG::Node;
 Node FFModel::get_or_create_parallel_op_node(const Tensor input, ParallelOpInfo const &parallel_op_info) {
   int op_type = parallel_op_info.op_type;
   int parallel_dim = parallel_op_info.parallel_dim;
@@ -72,3 +75,5 @@ void swap(ParallelOpInfo &l, ParallelOpInfo &r) {
   swap(l.parallel_dim, r.parallel_dim);
   swap(l.parallel_degree, r.parallel_degree);
 }
+
+}; // namespace FlexFlow

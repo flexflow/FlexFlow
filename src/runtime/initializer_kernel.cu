@@ -13,16 +13,33 @@
  * limitations under the License.
  */
 
-#include "initializer.h"
-#include "accessor.h"
-#include "model.h"
-#include "cuda_helper.h"
+#include "flexflow/initializer.h"
+#include "flexflow/accessor.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/cuda_helper.h"
 #include <curand.h>
 #include <random>
 #include <ctime>
 
-using namespace Legion;
-
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
+using Legion::InlineLauncher;
 void UniformInitializer::init_task(const Task* task,
                                    const std::vector<PhysicalRegion>& regions,
                                    Context ctx, Runtime* runtime)
@@ -289,3 +306,5 @@ void ConstantInitializer::init_task(const Task* task,
   }
   checkCUDA(cudaDeviceSynchronize());
 }
+
+}; // namespace FlexFlow

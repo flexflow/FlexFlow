@@ -13,10 +13,27 @@
  * limitations under the License.
  */
 
-#include "ops/batch_matmul.h"
-#include "cuda_helper.h"
+#include "flexflow/ops/batch_matmul.h"
+#include "flexflow/utils/cuda_helper.h"
 
-using namespace Legion;
+namespace FlexFlow {
+
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using PCG::Node;
 
 Tensor FFModel::batch_matmul(const Tensor A,
                              const Tensor B,
@@ -630,3 +647,5 @@ bool BatchMatmul::measure_operator_cost(Simulator* sim,
 
   return true;
 }
+
+}; // namespace FlexFlow

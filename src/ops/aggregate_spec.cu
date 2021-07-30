@@ -13,13 +13,30 @@
  * limitations under the License.
  */
 
-#include "ops/aggregate_spec.h"
-#include "cuda_helper.h"
+#include "flexflow/ops/aggregate_spec.h"
+#include "flexflow/utils/cuda_helper.h"
+
+namespace FlexFlow {
+
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
 
 #define MAX_K 4
 #define MAX_BATCH_SIZE 32
 #define MAX_N 12
-
 
 Tensor FFModel::aggregate_spec(const Tensor* inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
                           int n, float lambda_bal, const char* name)
@@ -537,3 +554,5 @@ bool AggregateSpec::measure_operator_cost(Simulator* sim,
   cost_metrics.memory_requirement = 0;
   return false;
 }
+
+}; // namespace FlexFlow

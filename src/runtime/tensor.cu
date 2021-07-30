@@ -1,8 +1,10 @@
-#include "tensor.h"
-#include "cuda_helper.h"
-#include "config.h"
-#include "accessor.h"
-#include "model.h"
+#include "flexflow/tensor.h"
+#include "flexflow/utils/cuda_helper.h"
+#include "flexflow/config.h"
+#include "flexflow/accessor.h"
+#include "flexflow/model.h"
+
+namespace FlexFlow {
 
 using namespace Legion;
 
@@ -120,3 +122,4 @@ template bool TensorBase::set_tensor<float>(const FFModel* ff, const std::vector
 template bool TensorBase::get_tensor<float>(const FFModel* ff, float* data);
 template bool TensorBase::set_tensor<int>(const FFModel* ff, const std::vector<int>& dims, const int* data);
 template bool TensorBase::get_tensor<int>(const FFModel* ff, int* data);
+} // namespace FlexFlow

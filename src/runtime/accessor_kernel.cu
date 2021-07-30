@@ -1,6 +1,8 @@
-#include "accessor.h"
-#include "model.h"
-#include "cuda_helper.h"
+#include "flexflow/accessor.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/cuda_helper.h"
+
+namespace FlexFlow {
 
 using namespace Legion;
 
@@ -181,3 +183,4 @@ template int64_t* helperGetTensorPointerRW(
 template int64_t* helperGetTensorPointerWO(
   PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
 
+}; // namespace FlexFlow

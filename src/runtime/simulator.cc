@@ -13,17 +13,19 @@
  * limitations under the License.
  */
 
-#include "simulator.h"
-#include "model.h"
+#include "flexflow/simulator.h"
+#include "flexflow/model.h"
 #include "queue"
-#include "dot_file.h"
-#include "parallel_ops/partition.h"
-#include "parallel_ops/combine.h"
-#include "parallel_ops/replicate.h"
-#include "parallel_ops/reduction.h"
+#include "flexflow/utils/dot_file.h"
+#include "flexflow/parallel_ops/partition.h"
+#include "flexflow/parallel_ops/combine.h"
+#include "flexflow/parallel_ops/replicate.h"
+#include "flexflow/parallel_ops/reduction.h"
 #include <unordered_set>
 #include <memory>
-#include "hash_utils.h"
+#include "flexflow/utils/hash_utils.h"
+
+namespace FlexFlow {
 
 using namespace Legion;
 
@@ -1005,3 +1007,5 @@ float Simulator::simulate_runtime(const FFModel* model,
   //  printf("Memory penalty = %.4lf ms\n", memory_penalty);
   return sim_time + memory_penalty;
 }
+
+}; // namespace FlexFlow

@@ -13,10 +13,28 @@
  * limitations under the License.
  */
 
-#include "ops/dropout.h"
-#include "cuda_helper.h"
+#include "flexflow/ops/dropout.h"
+#include "flexflow/utils/cuda_helper.h"
 
-using namespace Legion;
+namespace FlexFlow {
+
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
 
 Tensor FFModel::dropout(const Tensor input,
                         float rate,
@@ -345,3 +363,5 @@ bool Dropout::measure_operator_cost(Simulator* sim,
   delete m;
   return true;
 }
+
+}; // namespace

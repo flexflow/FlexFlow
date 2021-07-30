@@ -19,10 +19,11 @@
 
 #include <libgen.h>
 
-using namespace Legion;
 
-#include "mapper.h"
+#include "flexflow/mapper.h"
 #include "flexflow_c.h"
+using namespace Legion;
+using namespace FlexFlow;
 
 //enum MainTaskIDs {
 //  PYTHON_TOP_LEVEL_TASK_ID = 11111,

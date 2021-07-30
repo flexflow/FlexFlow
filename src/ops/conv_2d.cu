@@ -13,11 +13,29 @@
  * limitations under the License.
  */
 
-#include "ops/conv_2d.h"
-#include "cuda_helper.h"
-#include "hash_utils.h"
+#include "flexflow/ops/conv_2d.h"
+#include "flexflow/utils/cuda_helper.h"
+#include "flexflow/utils/hash_utils.h"
 
-using namespace Legion;
+namespace FlexFlow {
+
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::InlineLauncher;
+
 Tensor FFModel::conv2d(const Tensor input,
                        int outChannels,
                        int kernelH, int kernelW,
@@ -137,6 +155,7 @@ size_t Conv2D::get_params_hash() const {
   return this->get_params().get_hash(this->inputs[0]);
 }
 
+using PCG::Node;
 Node FFModel::get_or_create_conv2d_node(const Tensor input,
                                         const Conv2DParams& params) 
 {
@@ -1251,3 +1270,5 @@ bool Conv2D::estimate_sync_cost(Simulator* sim,
 
   return true;
 }
+
+}; // namespace FlexFlow

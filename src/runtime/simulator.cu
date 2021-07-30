@@ -13,22 +13,38 @@
  * limitations under the License.
  */
 
-#include "simulator.h"
-#include "model.h"
-#include "cuda_helper.h"
-#include "ops/linear.h"
-#include "ops/conv_2d.h"
-#include "ops/pool_2d.h"
-#include "ops/concat.h"
-#include "ops/element_unary.h"
-#include "ops/element_binary.h"
-#include "ops/batch_norm.h"
-#include "ops/batch_matmul.h"
-#include "ops/transpose.h"
+#include "flexflow/simulator.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/cuda_helper.h"
+#include "flexflow/ops/linear.h"
+#include "flexflow/ops/conv_2d.h"
+#include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/concat.h"
+#include "flexflow/ops/element_unary.h"
+#include "flexflow/ops/element_binary.h"
+#include "flexflow/ops/batch_norm.h"
+#include "flexflow/ops/batch_matmul.h"
+#include "flexflow/ops/transpose.h"
 
-using namespace Legion;
-
-typedef long long int coord_t;
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
+using Legion::InlineLauncher;
 
 typedef Realm::Point<1, coord_t> Point1;
 typedef Realm::Rect<1, coord_t> Rect1;
@@ -150,3 +166,4 @@ void Simulator::strategy_search_task(const Task *task,
 #endif
 }
 
+}; // namespace FlexFlow

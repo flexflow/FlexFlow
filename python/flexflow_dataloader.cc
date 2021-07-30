@@ -19,6 +19,7 @@
 #include "flexflow_dataloader.h"
 
 using namespace Legion;
+using namespace FlexFlow;
 
 ImgDataLoader::ImgDataLoader()
 {}

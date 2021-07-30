@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
-#include "optimizer.h"
-#include "model.h"
+#include "flexflow/optimizer.h"
+#include "flexflow/model.h"
+
+namespace FlexFlow {
 
 using namespace Legion;
 
@@ -352,3 +354,5 @@ void AdamOptimizer::update(const Tensor p)
     assert(false);
   }
 }
+
+}; // namespace FlexFlow

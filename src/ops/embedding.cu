@@ -13,11 +13,27 @@
  * limitations under the License.
  */
 
-#include "ops/embedding.h"
-#include "cuda_helper.h"
+#include "flexflow/ops/embedding.h"
+#include "flexflow/utils/cuda_helper.h"
 
-using namespace Legion;
-
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
 Tensor FFModel::embedding(const Tensor input,
                           int num_entries,
                           int out_dim,
@@ -547,6 +563,7 @@ bool Embedding::measure_operator_cost(Simulator* sim,
   return true;
 }
 
+using PCG::Node;
 Node FFModel::get_or_create_embedding_node(const Tensor input,
                                            int num_entries,
                                            int out_channels,
@@ -570,3 +587,5 @@ Node FFModel::get_or_create_embedding_node(const Tensor input,
   ret.ptr = embed;
   return ret;
 }
+
+}; // namespace FlexFlow

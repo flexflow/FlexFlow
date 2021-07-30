@@ -1,19 +1,21 @@
-#include "tensor.h"
+#include "flexflow/tensor.h"
 #include <queue>
-#include "model.h"
-#include "ops/linear.h"
-#include "ops/conv_2d.h"
-#include "ops/pool_2d.h"
-#include "ops/embedding.h"
-#include "ops/flat.h"
-#include "ops/element_unary.h"
-#include "ops/attention.h"
-#include "ops/element_binary.h"
-#include "ops/softmax.h"
-#include "ops/split.h"
-#include "ops/noop.h"
-#include "ops/concat.h"
-#include "hash_utils.h"
+#include "flexflow/model.h"
+#include "flexflow/ops/linear.h"
+#include "flexflow/ops/conv_2d.h"
+#include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/embedding.h"
+#include "flexflow/ops/flat.h"
+#include "flexflow/ops/element_unary.h"
+#include "flexflow/ops/attention.h"
+#include "flexflow/ops/element_binary.h"
+#include "flexflow/ops/softmax.h"
+#include "flexflow/ops/split.h"
+#include "flexflow/ops/noop.h"
+#include "flexflow/ops/concat.h"
+#include "flexflow/utils/hash_utils.h"
+
+namespace FlexFlow {
 
 using namespace Legion;
 
@@ -439,8 +441,10 @@ std::ostream& operator<<(std::ostream &s, TensorShape const &shape) {
   return s;
 }
 
+}; // namespace FlexFlow
+
 namespace std {
-  size_t hash<TensorShape>::operator()(TensorShape const &shape) const {
+  size_t hash<FlexFlow::TensorShape>::operator()(FlexFlow::TensorShape const &shape) const {
     size_t key = 0;
     hash_combine(key, shape.num_dims);
     for (int i = 0; i < shape.num_dims; i++) {
@@ -449,7 +453,9 @@ namespace std {
     }
     return key;
   }
-}
+};
+
+namespace FlexFlow {
 
 bool TensorBase::is_valid_machine_view(const MachineView& view) const
 {
@@ -474,3 +480,5 @@ bool TensorBase::is_valid_machine_view(const MachineView& view) const
 
 template float* TensorBase::get_raw_ptr<float>(FFConfig &config);
 template int32_t* TensorBase::get_raw_ptr<int32_t>(FFConfig &config);
+
+}; // namespace FlexFlow

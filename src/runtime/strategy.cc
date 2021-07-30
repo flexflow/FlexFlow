@@ -13,11 +13,13 @@
  * limitations under the License.
  */
 
-#include "config.h"
-#include "simulator.h"
+#include "flexflow/config.h"
+#include "flexflow/simulator.h"
 #include <fstream>
 #include <iostream>
 #include <string>
+
+namespace FlexFlow {
 
 using namespace Legion;
 
@@ -191,3 +193,5 @@ bool save_strategies_to_file(const std::string& filename,
   output.close();
   return true;
 }
+
+}; // namespace FlexFlow

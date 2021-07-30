@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
-#include "initializer.h"
-#include "model.h"
+#include "flexflow/initializer.h"
+#include "flexflow/model.h"
+
+namespace FlexFlow {
 
 using namespace Legion;
 
@@ -334,3 +336,6 @@ void ConstantInitializer::init_task_cpu(const Task* task,
     }
   }
 }
+
+}; // namespace FlexFlow
+

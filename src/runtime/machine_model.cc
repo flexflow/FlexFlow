@@ -1,4 +1,6 @@
-#include "simulator.h"
+#include "flexflow/simulator.h"
+
+namespace FlexFlow {
 
 SimpleMachineModel::SimpleMachineModel(int num_nodes, int num_gpus_per_node, size_t capacity)
 {
@@ -802,3 +804,5 @@ std::string EnhancedMachineModel::to_string() const
   }
   return s;
 }
+
+}; // namespace FlexFlow

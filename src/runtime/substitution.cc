@@ -14,26 +14,28 @@
  */
 
 #include <iomanip>
-#include "substitution.h"
+#include "flexflow/substitution.h"
 #include <chrono>
-#include "dot_file.h"
-#include "dominators.h"
-#include "ops/embedding.h"
-#include "ops/linear.h"
-#include "ops/conv_2d.h"
-#include "ops/pool_2d.h"
-#include "ops/attention.h"
-#include "ops/flat.h"
-#include "ops/element_binary.h"
-#include "ops/split.h"
-#include "ops/noop.h"
-#include "ops/softmax.h"
-#include "ops/concat.h"
-#include "parallel_ops/combine.h"
-#include "parallel_ops/partition.h"
-#include "parallel_ops/replicate.h"
-#include "parallel_ops/fused_parallel_op.h"
-#include "parallel_ops/reduction.h"
+#include "flexflow/utils/dot_file.h"
+#include "flexflow/dominators.h"
+#include "flexflow/ops/embedding.h"
+#include "flexflow/ops/linear.h"
+#include "flexflow/ops/conv_2d.h"
+#include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/attention.h"
+#include "flexflow/ops/flat.h"
+#include "flexflow/ops/element_binary.h"
+#include "flexflow/ops/split.h"
+#include "flexflow/ops/noop.h"
+#include "flexflow/ops/softmax.h"
+#include "flexflow/ops/concat.h"
+#include "flexflow/parallel_ops/combine.h"
+#include "flexflow/parallel_ops/partition.h"
+#include "flexflow/parallel_ops/replicate.h"
+#include "flexflow/parallel_ops/fused_parallel_op.h"
+#include "flexflow/parallel_ops/reduction.h"
+
+namespace FlexFlow::PCG {
 
 using namespace Legion;
 
@@ -621,7 +623,7 @@ void GraphXfer::run(int depth, Graph* graph,
 }
 
 Node Graph::find_source_node() const {
-  using ::flexflow::graph::roots;
+  using FlexFlow::PCG::Utils::roots;
 
   std::unordered_set<Node> source_nodes = roots(*this);
   assert (source_nodes.size() == 1);
@@ -630,7 +632,7 @@ Node Graph::find_source_node() const {
 }
 
 Node Graph::find_sink_node() const {
-  using ::flexflow::graph::leaves;
+  using FlexFlow::PCG::Utils::leaves;
 
   std::unordered_set<Node> sink_nodes = leaves(*this);
   assert (sink_nodes.size() == 1);
@@ -1074,7 +1076,7 @@ void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineVi
 }
 
 void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const {
-  using flexflow::graph::GraphStructure;
+  using FlexFlow::PCG::Utils::GraphStructure;
 
   GraphStructure<Graph> s;
 
@@ -1297,14 +1299,14 @@ void GraphSearchHelper::load_graph_substitutions(std::vector<GraphXfer*> &xfers)
 
 Graph *GraphSearchHelper::construct_graph() {
   Graph* graph = new Graph(this->model);
-  std::unordered_map<const Op*, Node> op_to_node_map;
-  for (const Op* dstOp : this->model->layers) {
+  std::unordered_map<const FlexFlow::Op*, Node> op_to_node_map;
+  for (const FlexFlow::Op* dstOp : this->model->layers) {
     Node dstNode;
     dstNode.ptr = dstOp;
     dstNode.guid = this->model->node_global_guid++;
     op_to_node_map[dstOp] = dstNode;
     for (int j = 0; j < dstOp->numInputs; j++) {
-      const Op* srcOp = dstOp->inputs[j]->owner_op;
+      const FlexFlow::Op* srcOp = dstOp->inputs[j]->owner_op;
       assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
       Node srcNode = op_to_node_map[srcOp];
       graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
@@ -1312,14 +1314,6 @@ Graph *GraphSearchHelper::construct_graph() {
   }
 
   return graph;
-}
-
-void FFModel::graph_optimize(size_t budget,
-                             bool only_data_parallel,
-                             Graph*& best_graph,
-                             std::unordered_map<Node, MachineView>& optimal_views)
-{
-  this->graph_search->graph_optimize(budget, only_data_parallel, best_graph, optimal_views);
 }
 
 void GraphSearchHelper::graph_optimize(size_t budget,
@@ -1344,7 +1338,7 @@ void GraphSearchHelper::graph_optimize(size_t budget,
 }
 
 static void graph_log_representation(Graph const *graph, RecursiveLogger &logger) {
-  using ::flexflow::graph::topo_sort;
+  using FlexFlow::PCG::Utils::topo_sort;
 
   std::vector<Node> topo_sorted;
   topo_sort(*graph, &topo_sorted);
@@ -1366,9 +1360,9 @@ void GraphSearchHelper::find_rewrite_matches(Graph const *graph, std::vector<Gra
 }
 
 tl::optional<Node> GraphSearchHelper::find_split_node(Graph const *graph, int base_optimize_threshold) const {
-  using ::flexflow::graph::get_edges;
-  using ::flexflow::graph::nodes;
-  using ::flexflow::graph::post_dominators;
+  using FlexFlow::PCG::Utils::get_edges;
+  using FlexFlow::PCG::Utils::nodes;
+  using FlexFlow::PCG::Utils::post_dominators;
 
   this->logger->enter();
 
@@ -1755,207 +1749,6 @@ std::vector<TensorShape> GraphSearchHelper::possible_split_output_tensor_shapes(
 void GraphSearchHelper::subgraph_optimize(Graph *subgraph) 
 {
   
-}
-
-bool FFModel::convert_graph_to_layers(const Graph* graph,
-                                      const std::unordered_map<Node, MachineView>& optimal_views)
-{
-  std::unordered_map<Node, int> todos;
-  std::unordered_map<Node, Op*> node_to_op;
-  std::vector<Node> queue;
-  for (const auto& it : graph->inEdges) {
-    const auto& inList = it.second;
-    if (inList.size() == 0) {
-      queue.push_back(it.first);
-    } else {
-      todos[it.first] = (int)inList.size();
-    }
-  }
-  size_t index = 0;
-  while (index < queue.size()) {
-    Node node = queue[index++];
-    assert(node.ptr != NULL);
-    const auto& inList = graph->inEdges.find(node)->second;
-    Tensor inputs[MAX_NUM_INPUTS];
-    int num_inputs = 0;
-    for (const auto& e : inList) {
-      inputs[e.dstIdx] = node_to_op[e.srcOp]->outputs[e.srcIdx];
-      assert(e.dstIdx < (int)inList.size());
-      num_inputs++;
-    }
-    Op* new_op = NULL;
-    switch (node.ptr->op_type) {
-      case OP_INPUT:
-      {
-        new_op = new NoOp(*this, OP_INPUT, node.ptr->outputs[0]);
-        break;
-      }
-      case OP_CONCAT:
-      {
-        Concat* concat = (Concat*) node.ptr;
-        new_op = new Concat(*this, (int)inList.size(), inputs, concat->axis, NULL);
-        break;
-      }
-      case OP_EMBEDDING:
-      {
-        new_op = new Embedding(*this, *(Embedding*)node.ptr, inputs[0], true);
-        break;
-      }
-      case OP_EW_ADD:
-      {
-        assert(inList.size() == 2);
-        ElementBinary* eb = (ElementBinary*) node.ptr;
-        new_op = new ElementBinary(*this, eb->op_type, inputs[0], inputs[1],
-                                   eb->inplace_a, NULL);
-        break;
-      }
-      case OP_POOL2D:
-      {
-        new_op = new Pool2D(*this, *(Pool2D*)node.ptr, inputs[0]);
-        break;
-      }
-      case OP_CONV2D:
-      {
-        new_op = new Conv2D(*this, *(Conv2D*)node.ptr, inputs[0], true);
-        break;
-      }
-      case OP_LINEAR:
-      {
-        new_op = new Linear(*this, *(Linear*)node.ptr, inputs[0], true);
-        break;
-      }
-      case OP_MULTIHEAD_ATTENTION:
-      {
-        assert(inList.size() == 3);
-        MultiHeadAttention* attn = (MultiHeadAttention*) node.ptr;
-        // Create weight tensor
-        Tensor kernel;
-        {
-          int num_dims = inputs[0]->num_dims;
-          // Compute weight size
-          int qParas = attn->qProjSize * attn->qSize;
-          int kParas = attn->kProjSize * attn->kSize;
-          int vParas = attn->vProjSize * attn->vSize;
-          int oParas = attn->oProjSize * (attn->vProjSize > 0 ? attn->vProjSize : attn->vSize);
-          ParallelDim dims[3];
-          dims[0] = inputs[0]->dims[num_dims-2];
-          dims[0].size = dims[0].degree;
-          dims[1] = inputs[0]->dims[num_dims-1];
-          dims[1].size = attn->num_heads;
-          dims[2].size = qParas + kParas + vParas + oParas;
-          int seed = std::rand();
-          Initializer* initializer = new GlorotUniform(seed);
-#ifdef FF_USE_NCCL
-          ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-          ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-          kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
-                                    true/*create_grad*/, initializer,
-                                    comm_type);
-        }
-        new_op = new MultiHeadAttention(*this, inputs[0], inputs[1], inputs[2], kernel,
-                                        attn->oProjSize, attn->num_heads,
-                                        attn->qProjSize, attn->vProjSize,
-                                        attn->dropout, attn->bias,
-                                        attn->add_bias_kv, attn->add_zero_attn, NULL);
-        break;
-      }
-      case OP_SOFTMAX:
-      {
-        assert(inList.size() == 1);
-        Softmax* softmax = (Softmax*) node.ptr;
-        new_op = new Softmax(*this, inputs[0], softmax->dim, NULL);
-        break;
-      }
-      case OP_COMBINE:
-      {
-        assert(inList.size() == 1);
-        Combine* combine = (Combine*) node.ptr;
-        new_op = new Combine(*this, inputs[0], combine->combine_dim,
-                             combine->combine_degree);
-        break;
-      }
-      case OP_REPARTITION:
-      {
-        assert(inList.size() == 1);
-        Repartition* repart = (Repartition*) node.ptr;
-        new_op = new Repartition(*this, inputs[0], repart->repartition_dim,
-                                 repart->repartition_degree);
-        break;
-      }
-      case OP_REPLICATE:
-      {
-        assert(inList.size() == 1);
-        Replicate* replicate = (Replicate*) node.ptr;
-        new_op = new Replicate(*this, inputs[0], replicate->replicate_dim,
-                               replicate->replicate_degree);
-        break;
-      }
-      case OP_REDUCTION:
-      {
-        assert(inList.size() == 1);
-        Reduction* reduction = (Reduction*) node.ptr;
-        new_op = new Reduction(*this, inputs[0], reduction->reduction_dim,
-                               reduction->reduction_degree);
-        break;
-      }
-      case OP_FUSED_PARALLEL:
-      {
-        assert(inList.size() == 1);
-        FusedParallelOp* fused = (FusedParallelOp*) node.ptr;
-        std::vector<ParallelOpInfo> parallel_ops;
-        for (int i = 0; i < fused->num_parallel_ops; i++)
-          parallel_ops.push_back(fused->parallel_ops[i]);
-        new_op = new FusedParallelOp(*this, inputs[0], parallel_ops);
-        break;
-      }
-      default:
-      {
-        new_op = node.ptr->materialize(*this, inputs, num_inputs);
-        break;
-      }
-    }
-    // Set machine view for the output tensors of this operator
-    assert(optimal_views.find(node) != optimal_views.end());
-    MachineView view = optimal_views.find(node)->second;
-    for (int i = 0; i < new_op->numOutputs; i++) {
-      new_op->outputs[i]->machine_view = view;
-    }
-    // Set machine view for the weight tensors of this operator
-    for (int i = 0; i < new_op->numWeights; i++) {
-      new_op->weights[i]->machine_view = view;
-    }
-    node_to_op[node] = new_op;
-    layers.push_back(new_op);
-    // Decrease the todos
-    const auto& outList = graph->outEdges.find(node)->second;
-    for (const auto& it : outList) {
-      todos[it.dstOp] -= 1;
-      if (todos[it.dstOp] == 0) {
-        queue.push_back(it.dstOp);
-      }
-    }
-  }
-  assert(queue.size() == graph->inEdges.size());
-  // Remove the final parallel operators
-  while (layers[layers.size()-1]->is_parallel_op()) {
-    Op* op = layers[layers.size()-1];
-    if (op->op_type == OP_REDUCTION)
-      break;
-    if (op->op_type == OP_FUSED_PARALLEL) {
-      FusedParallelOp* fused_op = (FusedParallelOp*) op;
-      bool has_reduction = false;
-      for (int i = 0; i < fused_op->num_parallel_ops; i++) {
-        if (fused_op->parallel_ops[i].op_type == OP_REDUCTION)
-          has_reduction = true;
-      }
-      if (has_reduction)
-        break;
-    }
-    layers.pop_back();
-  }
-  return true;
 }
 
 template <>
@@ -2412,3 +2205,223 @@ GraphXfer* create_linear_relu_merge(FFModel* model, int num_dims, bool use_bias)
 
   return subst;
 }
+
+}; // namespace FlexFlow::PCG
+
+namespace FlexFlow {
+
+using PCG::Graph;
+using PCG::Node;
+using PCG::Edge;
+
+void FFModel::graph_optimize(size_t budget,
+                             bool only_data_parallel,
+                             Graph*& best_graph,
+                             std::unordered_map<Node, MachineView>& optimal_views)
+{
+  this->graph_search->graph_optimize(budget, only_data_parallel, best_graph, optimal_views);
+}
+
+bool FFModel::convert_graph_to_layers(const Graph* graph,
+                                      const std::unordered_map<Node, MachineView>& optimal_views)
+{
+  std::unordered_map<Node, int> todos;
+  std::unordered_map<Node, Op*> node_to_op;
+  std::vector<Node> queue;
+  for (const auto& it : graph->inEdges) {
+    const auto& inList = it.second;
+    if (inList.size() == 0) {
+      queue.push_back(it.first);
+    } else {
+      todos[it.first] = (int)inList.size();
+    }
+  }
+  size_t index = 0;
+  while (index < queue.size()) {
+    Node node = queue[index++];
+    assert(node.ptr != NULL);
+    const auto& inList = graph->inEdges.find(node)->second;
+    Tensor inputs[MAX_NUM_INPUTS];
+    int num_inputs = 0;
+    for (const auto& e : inList) {
+      inputs[e.dstIdx] = node_to_op[e.srcOp]->outputs[e.srcIdx];
+      assert(e.dstIdx < (int)inList.size());
+      num_inputs++;
+    }
+    Op* new_op = NULL;
+    switch (node.ptr->op_type) {
+      case OP_INPUT:
+      {
+        new_op = new NoOp(*this, OP_INPUT, node.ptr->outputs[0]);
+        break;
+      }
+      case OP_CONCAT:
+      {
+        Concat* concat = (Concat*) node.ptr;
+        new_op = new Concat(*this, (int)inList.size(), inputs, concat->axis, NULL);
+        break;
+      }
+      case OP_EMBEDDING:
+      {
+        new_op = new Embedding(*this, *(Embedding*)node.ptr, inputs[0], true);
+        break;
+      }
+      case OP_EW_ADD:
+      {
+        assert(inList.size() == 2);
+        ElementBinary* eb = (ElementBinary*) node.ptr;
+        new_op = new ElementBinary(*this, eb->op_type, inputs[0], inputs[1],
+                                   eb->inplace_a, NULL);
+        break;
+      }
+      case OP_POOL2D:
+      {
+        new_op = new Pool2D(*this, *(Pool2D*)node.ptr, inputs[0]);
+        break;
+      }
+      case OP_CONV2D:
+      {
+        new_op = new Conv2D(*this, *(Conv2D*)node.ptr, inputs[0], true);
+        break;
+      }
+      case OP_LINEAR:
+      {
+        new_op = new Linear(*this, *(Linear*)node.ptr, inputs[0], true);
+        break;
+      }
+      case OP_MULTIHEAD_ATTENTION:
+      {
+        assert(inList.size() == 3);
+        MultiHeadAttention* attn = (MultiHeadAttention*) node.ptr;
+        // Create weight tensor
+        Tensor kernel;
+        {
+          int num_dims = inputs[0]->num_dims;
+          // Compute weight size
+          int qParas = attn->qProjSize * attn->qSize;
+          int kParas = attn->kProjSize * attn->kSize;
+          int vParas = attn->vProjSize * attn->vSize;
+          int oParas = attn->oProjSize * (attn->vProjSize > 0 ? attn->vProjSize : attn->vSize);
+          ParallelDim dims[3];
+          dims[0] = inputs[0]->dims[num_dims-2];
+          dims[0].size = dims[0].degree;
+          dims[1] = inputs[0]->dims[num_dims-1];
+          dims[1].size = attn->num_heads;
+          dims[2].size = qParas + kParas + vParas + oParas;
+          int seed = std::rand();
+          Initializer* initializer = new GlorotUniform(seed);
+#ifdef FF_USE_NCCL
+          ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+          ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+          kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
+                                    true/*create_grad*/, initializer,
+                                    comm_type);
+        }
+        new_op = new MultiHeadAttention(*this, inputs[0], inputs[1], inputs[2], kernel,
+                                        attn->oProjSize, attn->num_heads,
+                                        attn->qProjSize, attn->vProjSize,
+                                        attn->dropout, attn->bias,
+                                        attn->add_bias_kv, attn->add_zero_attn, NULL);
+        break;
+      }
+      case OP_SOFTMAX:
+      {
+        assert(inList.size() == 1);
+        Softmax* softmax = (Softmax*) node.ptr;
+        new_op = new Softmax(*this, inputs[0], softmax->dim, NULL);
+        break;
+      }
+      case OP_COMBINE:
+      {
+        assert(inList.size() == 1);
+        Combine* combine = (Combine*) node.ptr;
+        new_op = new Combine(*this, inputs[0], combine->combine_dim,
+                             combine->combine_degree);
+        break;
+      }
+      case OP_REPARTITION:
+      {
+        assert(inList.size() == 1);
+        Repartition* repart = (Repartition*) node.ptr;
+        new_op = new Repartition(*this, inputs[0], repart->repartition_dim,
+                                 repart->repartition_degree);
+        break;
+      }
+      case OP_REPLICATE:
+      {
+        assert(inList.size() == 1);
+        Replicate* replicate = (Replicate*) node.ptr;
+        new_op = new Replicate(*this, inputs[0], replicate->replicate_dim,
+                               replicate->replicate_degree);
+        break;
+      }
+      case OP_REDUCTION:
+      {
+        assert(inList.size() == 1);
+        Reduction* reduction = (Reduction*) node.ptr;
+        new_op = new Reduction(*this, inputs[0], reduction->reduction_dim,
+                               reduction->reduction_degree);
+        break;
+      }
+      case OP_FUSED_PARALLEL:
+      {
+        assert(inList.size() == 1);
+        FusedParallelOp* fused = (FusedParallelOp*) node.ptr;
+        std::vector<ParallelOpInfo> parallel_ops;
+        for (int i = 0; i < fused->num_parallel_ops; i++)
+          parallel_ops.push_back(fused->parallel_ops[i]);
+        new_op = new FusedParallelOp(*this, inputs[0], parallel_ops);
+        break;
+      }
+      default:
+      {
+        new_op = node.ptr->materialize(*this, inputs, num_inputs);
+        break;
+      }
+    }
+    // Set machine view for the output tensors of this operator
+    assert(optimal_views.find(node) != optimal_views.end());
+    MachineView view = optimal_views.find(node)->second;
+    for (int i = 0; i < new_op->numOutputs; i++) {
+      new_op->outputs[i]->machine_view = view;
+    }
+    // Set machine view for the weight tensors of this operator
+    for (int i = 0; i < new_op->numWeights; i++) {
+      new_op->weights[i]->machine_view = view;
+    }
+    node_to_op[node] = new_op;
+    layers.push_back(new_op);
+    // Decrease the todos
+    const auto& outList = graph->outEdges.find(node)->second;
+    for (const auto& it : outList) {
+      todos[it.dstOp] -= 1;
+      if (todos[it.dstOp] == 0) {
+        queue.push_back(it.dstOp);
+      }
+    }
+  }
+  assert(queue.size() == graph->inEdges.size());
+  // Remove the final parallel operators
+  while (layers[layers.size()-1]->is_parallel_op()) {
+    Op* op = layers[layers.size()-1];
+    if (op->op_type == OP_REDUCTION)
+      break;
+    if (op->op_type == OP_FUSED_PARALLEL) {
+      FusedParallelOp* fused_op = (FusedParallelOp*) op;
+      bool has_reduction = false;
+      for (int i = 0; i < fused_op->num_parallel_ops; i++) {
+        if (fused_op->parallel_ops[i].op_type == OP_REDUCTION)
+          has_reduction = true;
+      }
+      if (has_reduction)
+        break;
+    }
+    layers.pop_back();
+  }
+  return true;
+}
+
+
+};

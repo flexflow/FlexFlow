@@ -13,10 +13,28 @@
  * limitations under the License.
  */
 
-#include "parallel_ops/partition.h"
-#include "cuda_helper.h"
+#include "flexflow/parallel_ops/partition.h"
+#include "flexflow/utils/cuda_helper.h"
 
-using namespace Legion;
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
+using Legion::InlineLauncher;
 
 template<typename T>
 void Repartition::forward_kernel(
@@ -91,3 +109,5 @@ void Repartition::backward_task(
 #endif
   backward_kernel<float>(output_grad_ptr, input_grad_ptr, output_grad_domain.get_volume());
 }
+
+}; // namespace FlexFlow

@@ -13,12 +13,28 @@
  * limitations under the License.
  */
 
-#include "ops/element_binary.h"
-#include "cuda_helper.h"
-#include "hash_utils.h"
+#include "flexflow/ops/element_binary.h"
+#include "flexflow/utils/cuda_helper.h"
+#include "flexflow/utils/hash_utils.h"
 
-using namespace Legion;
-
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
 Tensor FFModel::binary(OperatorType op,
                        const Tensor in1,
                        const Tensor in2,
@@ -746,6 +762,7 @@ size_t ElementBinary::get_params_hash() const {
   return hash;
 }
 
+using PCG::Node;
 Node FFModel::get_or_create_element_binary_node(const Tensor input1,
                                                 const Tensor input2,
                                                 OperatorType op_type)
@@ -766,3 +783,5 @@ Node FFModel::get_or_create_element_binary_node(const Tensor input1,
   ret.ptr = eb;
   return ret;
 }
+
+}; // namespace FlexFlow

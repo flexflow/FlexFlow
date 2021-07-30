@@ -12,27 +12,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "graph.h"
-#include "dominators.h"
+#include "flexflow/graph.h"
+#include "flexflow/dominators.h"
 #include "legion.h"
 #include "legion/legion_utilities.h"
-#include "ops/linear.h"
-#include "ops/conv_2d.h"
-#include "ops/pool_2d.h"
-#include "ops/embedding.h"
-#include "ops/element_unary.h"
-#include "ops/flat.h"
-#include "ops/attention.h"
-#include "ops/softmax.h"
-#include "ops/concat.h"
-#include "parallel_ops/partition.h"
-#include "parallel_ops/replicate.h"
-#include "parallel_ops/reduction.h"
-#include "parallel_ops/fused_parallel_op.h"
-#include "parallel_ops/combine.h"
-#include "disjoint_set.h"
+#include "flexflow/ops/linear.h"
+#include "flexflow/ops/conv_2d.h"
+#include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/embedding.h"
+#include "flexflow/ops/element_unary.h"
+#include "flexflow/ops/flat.h"
+#include "flexflow/ops/attention.h"
+#include "flexflow/ops/softmax.h"
+#include "flexflow/ops/concat.h"
+#include "flexflow/parallel_ops/partition.h"
+#include "flexflow/parallel_ops/replicate.h"
+#include "flexflow/parallel_ops/reduction.h"
+#include "flexflow/parallel_ops/fused_parallel_op.h"
+#include "flexflow/parallel_ops/combine.h"
+#include "flexflow/utils/disjoint_set.h"
+
+namespace FlexFlow::PCG {
 
 using namespace Legion;
+using FlexFlow::MachineView;
 
 LegionRuntime::Logger::Category log_dp("DP");
 LegionRuntime::Logger::Category log_graph("graph");
@@ -43,134 +46,6 @@ const Node Node::INVALID_NODE = Node();
 Node::Node(void)
 : guid(0), ptr(NULL)
 {}
-
-std::string optype_to_string(OperatorType op_type)
-{
-  switch (op_type) {
-    case OP_INPUT:
-      return "Input";
-    case OP_WEIGHT:
-      return "Weight";
-    case OP_NOOP:
-      return "Noop";
-    case OP_CONV2D:
-      return "Conv";
-    case OP_DROPOUT:
-      return "Dropout";
-    case OP_EMBEDDING:
-      return "Embedding";
-    case OP_LINEAR:
-      return "Linear";
-    case OP_POOL2D:
-      return "Pool";
-    case OP_RELU:
-      return "Relu";
-    case OP_SIGMOID:
-      return "Sigmoid";
-    case OP_TANH:
-      return "TanH";
-    case OP_BATCHNORM:
-      return "Batchnorm";
-    case OP_CONCAT:
-      return "Concat";
-    case OP_SPLIT:
-      return "Split";
-    case OP_RESHAPE:
-      return "Reshape";
-    case OP_TRANSPOSE:
-      return "Transpose";
-    case OP_EW_ADD:
-      return "Add";
-    case OP_EW_MUL:
-      return "Mul";
-    case OP_MATMUL:
-      return "MatMul";
-    case OP_MUL:
-      return "Mul";
-    case OP_ENLARGE:
-      return "Enlarge";
-    case OP_SQUEEZE:
-      return "Squeeze";
-    case OP_UNSQUEEZE:
-      return "Unsqueeze";
-    case OP_EW_SUB:
-      return "Sub";
-    case OP_EW_DIV:
-      return "Div";
-    case OP_EW_EQUAL:
-      return "Equal";
-    case OP_EW_GREATER:
-      return "Greater";
-    case OP_EW_LESS:
-      return "Less";
-    case OP_EW_MAX:
-      return "Max";
-    case OP_EW_MIN:
-      return "Min";
-    case OP_REDUCE_ARGMAX:
-      return "ArgMax";
-    case OP_REDUCE_ARGMIN:
-      return "ArgMin";
-    case OP_REDUCE_MAX:
-      return "ReduceMax";
-    case OP_REDUCE_MEAN:
-      return "ReduceMean";
-    case OP_REDUCE_MIN:
-      return "ReduceMin";
-    case OP_REDUCE_PROD:
-      return "ReduceProd";
-    case OP_REDUCE_SUM:
-      return "ReduceSum";
-    case OP_PAD:
-      return "Pad";
-    case OP_SHAPE:
-      return "Shape";
-    case OP_SIZE:
-      return "Size";
-    case OP_TOPK:
-      return "TopK";
-    case OP_WHERE:
-      return "Where";
-    case OP_CEIL:
-      return "Ceil";
-    case OP_CAST:
-      return "Cast";
-    case OP_EXP:
-      return "Exp";
-    case OP_ROUND:
-      return "Round";
-    case OP_LOG:
-      return "Log";
-    case OP_LOGICAL_NOT:
-      return "Not";
-    case OP_SQRT:
-      return "Sqrt";
-    case OP_LEAKYRELU:
-      return "LeakyRelu";
-    case OP_SLICE:
-      return "Slice";
-    case OP_RESIZE:
-      return "Resize";
-    case OP_SOFTMAX:
-      return "Softmax";
-    case OP_MULTIHEAD_ATTENTION:
-      return "MultiHeadAttn";
-    case OP_REPARTITION:
-      return "Partition";
-    case OP_REPLICATE:
-      return "Replicate";
-    case OP_REDUCTION:
-      return "Reduction";
-    case OP_COMBINE:
-      return "Combine";
-    case OP_FUSED_PARALLEL:
-      return "FusedParallel";
-    case OP_FLAT:
-      return "Flat";
-    default:
-      return "Unknown_" + std::to_string(op_type);
-  }
-}
 
 std::string Node::op_to_string(const Op* op) const
 {
@@ -593,7 +468,7 @@ void Graph::print_dot() const {
 }
 
 void Graph::print_dot(std::ostream &s) const {
-  using ::flexflow::graph::export_as_dot;
+  using FlexFlow::PCG::Utils::export_as_dot;
 
   DotFile<Node> dot(s);
 
@@ -739,45 +614,12 @@ std::vector<MachineView> SearchHelper::get_valid_machine_views(const Op* op, con
   return valid_views;
 }
 
-void FFModel::register_all_machine_views(int num_nodes,
-                                         int gpus_per_node,
-                                         int cpus_per_node,
-                                         std::vector<MachineView>& valid_views)
-{
-  // Single-parallelism-dimension views
-  for (int i = 1; i <= num_nodes * gpus_per_node; i++) {
-    if (num_nodes * gpus_per_node % i == 0) {
-      MachineView view;
-      view.device_type = MachineView::GPU;
-      view.ndims = 1;
-      view.dim[0] = i;
-      view.stride[0] = 1;
-      view.start_device_id = 0;
-      valid_views.push_back(view);
-    }
-  }
-  // Two-dimensional views
-  /* for (int i = 1; i <= num_nodes; i++) { */
-  /*   for (int j = 1; j <= gpus_per_node; j++) { */
-  /*     MachineView view; */
-  /*     view.device_type = MachineView::GPU; */
-  /*     view.ndims = 2; */
-  /*     view.dim[0] = i; */
-  /*     view.stride[0] = 1; */
-  /*     view.dim[1] = j; */
-  /*     view.stride[1] = 1; */
-  /*     view.start_device_id = 0; */
-  /*     valid_views.push_back(view); */
-  /*   } */
-  /* } */
-}
-
 Node Graph::find_bottleneck_node(const Node& sink_node, const Node& source_node) const
 {
-  using ::flexflow::graph::imm_post_dominators;
-  using ::flexflow::graph::MultisourceGraphStructure;
-  using ::flexflow::graph::GraphStructure;
-  using ::flexflow::graph::roots;
+  using FlexFlow::PCG::Utils::imm_post_dominators;
+  using FlexFlow::PCG::Utils::MultisourceGraphStructure;
+  using FlexFlow::PCG::Utils::GraphStructure;
+  using FlexFlow::PCG::Utils::roots;
 
 
   Node source(source_node);
@@ -801,7 +643,7 @@ Node Graph::find_bottleneck_node(const Node& sink_node, const Node& source_node)
 }
 
 Node Graph::find_nontrivial_bottleneck_node(const Node& sink_node, const Node& source_node) const {
-  using ::flexflow::graph::imm_post_dominators;
+  using FlexFlow::PCG::Utils::imm_post_dominators;
 
   std::unordered_map<Node, Node> ipd = imm_post_dominators(*this);
 
@@ -836,7 +678,7 @@ void Edge::replace_node(const Node& currentOp, const Node& replaceWith) {
 }
 
 Graph Graph::subgraph(std::unordered_set<Node> const &ns) const {
-  using ::flexflow::graph::nodes;
+  using FlexFlow::PCG::Utils::nodes;
 
   Graph sub(this->model);
   
@@ -893,8 +735,8 @@ void Graph::replace_subgraph(std::unordered_set<Node> const &currentNodes, Graph
 }
 
 void Graph::replace_subgraph_with_nonempty(std::unordered_set<Node> const &currentNodes, Graph const &replaceWith) {
-  using ::flexflow::graph::nodes;
-  using ::flexflow::graph::get_edges;
+  using FlexFlow::PCG::Utils::nodes;
+  using FlexFlow::PCG::Utils::get_edges;
 
   Node new_sink_node = replaceWith.find_sink_node();
   Node new_source_node = replaceWith.find_source_node();
@@ -936,7 +778,7 @@ void Graph::replace_subgraph_with_nonempty(std::unordered_set<Node> const &curre
 }
 
 void Graph::contract_out_node(Node const &node) {
-  using ::flexflow::graph::successors;
+  using FlexFlow::PCG::Utils::successors;
 
   assert (node.ptr->numOutputs == 1);
   assert (node.ptr->numInputs == 1);
@@ -956,10 +798,10 @@ void Graph::contract_out_node(Node const &node) {
 
 void Graph::simplify_parallel_ops() {
   log_simplify.debug() << "Trying to simplify parallel ops";
-  using ::flexflow::graph::nodes;
-  using ::flexflow::graph::successor;
-  using ::flexflow::graph::predecessor;
-  using ::flexflow::graph::predecessors;
+  using FlexFlow::PCG::Utils::nodes;
+  using FlexFlow::PCG::Utils::successor;
+  using FlexFlow::PCG::Utils::predecessor;
+  using FlexFlow::PCG::Utils::predecessors;
 
   std::queue<Node> work_queue;
   for (Node const &node : nodes(*this)) {
@@ -1115,7 +957,7 @@ void Graph::simplify(SimplificationSettings const &settings) {
 }
 
 std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> Graph::split_at_node(Node const &bottleneck) const {
-  using ::flexflow::graph::topo_sort;
+  using FlexFlow::PCG::Utils::topo_sort;
 
   auto first_graph = std::unique_ptr<Graph>(new Graph(this->model));
   auto second_graph = std::unique_ptr<Graph>(new Graph(this->model));
@@ -1225,48 +1067,6 @@ Graph::split_horizontal(Node const &source_node, Node const &sink_node) const
   return {std::move(first_graph), std::move(second_graph)};
 }
 
-float FFModel::graph_cost(const Graph* graph,
-                          const Node& sink_node,
-                          const MachineView& sink_view,
-                          const Node& source_node,
-                          const MachineView& source_view,
-                          const MachineResource& resources,
-                          bool include_sink_compute_time,
-                          bool constructing_optimal_view)
-{
-  assert (!graph->inEdges.empty());
-
-  return this->search->graph_cost<float>(
-      graph,
-      { source_node, source_view },
-      { sink_node, sink_view },
-      resources,
-      include_sink_compute_time
-  );
-}
-
-void FFModel::construct_optimal_view(const Graph *graph,
-                                     const Node& sink_node,
-                                     const MachineView& sink_view,
-                                     const Node& source_node,
-                                     const MachineView& source_view,
-                                     const MachineResource& resources,
-                                     bool include_sink_compute_time,
-                                     float optimal_cost,
-                                     std::unordered_map<Node, MachineView>& optimal_views)
-{
-  GraphCostResult result = this->search->graph_cost<GraphCostResult>(
-      graph,
-      { source_node, source_view },
-      { sink_node, sink_view },
-      resources,
-      include_sink_compute_time
-  );
-
-  optimal_views.insert(result.views.begin(), result.views.end());
-}
-
-
 GraphCostResult GraphCostResult::invalid() {
   return {std::numeric_limits<float>::infinity(), {}};
 }
@@ -1317,7 +1117,7 @@ bool SearchHelper::is_invalid<GraphCostResult>(GraphCostResult const &cost) cons
 
 template <>
 void SearchHelper::check_matches_graph<GraphCostResult>(Graph const *g, GraphCostResult const &r, Node const &sink) const {
-  using ::flexflow::graph::nodes;
+  using FlexFlow::PCG::Utils::nodes;
 
   if (this->is_invalid(r)) {
     return;
@@ -1500,9 +1300,9 @@ std::unordered_map<Node, MachineView> Graph::optimal_views() const {
 }
 
 Graph Graph::reduced() const {
-  using ::flexflow::graph::BasicGraph;
-  using ::flexflow::graph::transitive_reduction;
-  using ::flexflow::graph::get_edges;
+  using FlexFlow::PCG::Utils::BasicGraph;
+  using FlexFlow::PCG::Utils::transitive_reduction;
+  using FlexFlow::PCG::Utils::get_edges;
 
   BasicGraph<Node> transitive_skeleton = transitive_reduction(*this);
 
@@ -1516,14 +1316,6 @@ Graph Graph::reduced() const {
 
   return reduced_graph;
 }
-
-MachineResource::MachineResource(FFConfig const &config)
-  : num_nodes(config.numNodes),
-    all_cpus_per_node(config.cpusPerNode),
-    all_gpus_per_node(config.workersPerNode),
-    available_cpus_per_node(config.cpusPerNode),
-    available_gpus_per_node(config.workersPerNode)
-{ }
 
 template <typename T>
 T Graph::generic_optimal_cost() const
@@ -1772,7 +1564,90 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
   return ret;
 }
 
-void FFModel::deserialize_graph_optimal_view(Deserializer& dez,
+}; // namespace FlexFlow::PCG
+
+namespace FlexFlow {
+
+using PCG::Graph;
+using PCG::Node;
+using PCG::Edge;
+using PCG::GraphCostResult;
+
+void FFModel::register_all_machine_views(int num_nodes,
+                                         int gpus_per_node,
+                                         int cpus_per_node,
+                                         std::vector<MachineView>& valid_views)
+{
+  // Single-parallelism-dimension views
+  for (int i = 1; i <= num_nodes * gpus_per_node; i++) {
+    if (num_nodes * gpus_per_node % i == 0) {
+      MachineView view;
+      view.device_type = MachineView::GPU;
+      view.ndims = 1;
+      view.dim[0] = i;
+      view.stride[0] = 1;
+      view.start_device_id = 0;
+      valid_views.push_back(view);
+    }
+  }
+  // Two-dimensional views
+  /* for (int i = 1; i <= num_nodes; i++) { */
+  /*   for (int j = 1; j <= gpus_per_node; j++) { */
+  /*     MachineView view; */
+  /*     view.device_type = MachineView::GPU; */
+  /*     view.ndims = 2; */
+  /*     view.dim[0] = i; */
+  /*     view.stride[0] = 1; */
+  /*     view.dim[1] = j; */
+  /*     view.stride[1] = 1; */
+  /*     view.start_device_id = 0; */
+  /*     valid_views.push_back(view); */
+  /*   } */
+  /* } */
+}
+
+float FFModel::graph_cost(const Graph* graph,
+                          const Node& sink_node,
+                          const MachineView& sink_view,
+                          const Node& source_node,
+                          const MachineView& source_view,
+                          const MachineResource& resources,
+                          bool include_sink_compute_time,
+                          bool constructing_optimal_view)
+{
+  assert (!graph->inEdges.empty());
+
+  return this->search->graph_cost<float>(
+      graph,
+      { source_node, source_view },
+      { sink_node, sink_view },
+      resources,
+      include_sink_compute_time
+  );
+}
+
+void FFModel::construct_optimal_view(const Graph *graph,
+                                     const Node& sink_node,
+                                     const MachineView& sink_view,
+                                     const Node& source_node,
+                                     const MachineView& source_view,
+                                     const MachineResource& resources,
+                                     bool include_sink_compute_time,
+                                     float optimal_cost,
+                                     std::unordered_map<Node, MachineView>& optimal_views)
+{
+  GraphCostResult result = this->search->graph_cost<GraphCostResult>(
+      graph,
+      { source_node, source_view },
+      { sink_node, sink_view },
+      resources,
+      include_sink_compute_time
+  );
+
+  optimal_views.insert(result.views.begin(), result.views.end());
+}
+
+void FFModel::deserialize_graph_optimal_view(Legion::Deserializer& dez,
                                              Graph* graph,
                                              std::unordered_map<Node, MachineView>& optimal_views)
 {
@@ -2022,3 +1897,5 @@ void FFModel::deserialize_graph_optimal_view(Deserializer& dez,
   }
 }
 
+
+}; // namespace FlexFlow

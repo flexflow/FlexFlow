@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-#include "metrics_functions.h"
+#include "flexflow/metrics_functions.h"
 #include "legion.h"
 
-using namespace Legion;
+namespace FlexFlow {
+//using namespace Legion;
 
 PerfMetrics::PerfMetrics(void)
 : train_all(0), train_correct(0), cce_loss(0.0f), sparse_cce_loss(0.0f),
@@ -80,3 +81,4 @@ void PerfMetrics::print(const Metrics* m)
   fprintf(stderr, "%s\n", output.c_str());
 }
 
+}; // namespace FlexFlow

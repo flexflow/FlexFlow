@@ -1,4 +1,6 @@
-#include "recursive_logger.h"
+#include "flexflow/utils/recursive_logger.h"
+
+namespace FlexFlow {
 
 RecursiveLogger::RecursiveLogger(std::string const &category_name)
   : logger(category_name)
@@ -31,3 +33,5 @@ void RecursiveLogger::enter() {
 void RecursiveLogger::leave() { 
   this->depth--;
 }
+
+}; // namespace FlexFlow
