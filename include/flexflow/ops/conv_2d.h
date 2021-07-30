@@ -4,6 +4,56 @@
 #include "flexflow/model.h"
 
 namespace FlexFlow {
+  
+namespace Input {
+  static constexpr int INDEX = 0;
+
+  enum {
+    WIDTH = 0,
+    HEIGHT = 1,
+    CHANNEL = 2,
+    SAMPLE = 3,
+    REPLICA = 4,
+    NUMDIM
+  };
+}
+
+namespace Output {
+  enum {
+    WIDTH = 0,
+    HEIGHT = 1,
+    CHANNEL = 2,
+    SAMPLE = 3,
+    REPLICA = 4,
+    NUMDIM
+  };
+}
+
+namespace Kernel {
+  static constexpr int INDEX = 0;
+
+  enum {
+    WIDTH = 0,
+    HEIGHT = 1,
+    CHANNEL_IN = 2,
+    CHANNEL_OUT = 3,
+    REPLICA = 4,
+    NUMDIM
+  };
+}
+
+namespace Bias {
+  static constexpr int INDEX = 1;
+
+  enum {
+    CHANNEL = 0,
+    REPLICA_1 = 1,
+    REPLICA_2 = 2,
+    REPLICA_3 = 3,
+    REPLICA_4 = 4,
+    NUMDIM
+  };
+}
 
 struct Conv2DParams {
   int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
@@ -32,6 +82,7 @@ private:
 class Conv2DMeta : public OpMeta {
 public:
   Conv2DMeta(FFHandler handler);
+#ifdef LEGION_USE_CUDA
   cudnnTensorDescriptor_t inputTensor, biasTensor, outputTensor;
   cudnnFilterDescriptor_t filterDesc;
   cudnnActivationDescriptor_t actiDesc;
@@ -39,6 +90,7 @@ public:
   cudnnConvolutionFwdAlgo_t fwdAlgo;
   cudnnConvolutionBwdFilterAlgo_t bwdFilterAlgo;
   cudnnConvolutionBwdDataAlgo_t bwdDataAlgo;
+#endif
   bool relu, use_bias;
   char op_name[MAX_OPNAME];
 };
@@ -111,9 +163,10 @@ public:
 
   Conv2DParams get_params() const;
 public:
-  int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
-  bool use_bias;
+  int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   ActiMode activation;
+  int groups;
+  bool use_bias;
 };
 
 }; // namespace FlexFlow

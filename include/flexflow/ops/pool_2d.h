@@ -5,6 +5,24 @@
 
 namespace FlexFlow {
 
+namespace Input {
+  constexpr int NUMDIM = 5,
+                WIDTH = 0,
+                HEIGHT = 1,
+                CHANNEL = 2,
+                SAMPLE = 3,
+                REPLICA = 4;
+};
+
+namespace Output {
+  constexpr int NUMDIM = 5,
+                WIDTH = 0,
+                HEIGHT = 1,
+                CHANNEL = 2,
+                SAMPLE = 3,
+                REPLICA = 4;
+};
+
 struct Pool2DParams {
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
@@ -22,9 +40,11 @@ private:
 class Pool2DMeta : public OpMeta {
 public:
   Pool2DMeta(FFHandler handle);
+#ifdef LEGION_USE_CUDA
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
   cudnnPoolingDescriptor_t poolDesc;
+#endif
   bool relu;
   char op_name[MAX_OPNAME];
 };

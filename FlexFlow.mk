@@ -44,20 +44,21 @@ ifeq ($(strip $(USE_GASNET)),1)
 endif
 
 GEN_SRC		+= ${FF_HOME}/src/runtime/graph.cc\
-                ${FF_HOME}/src/runtime/initializer.cc\
-                ${FF_HOME}/src/runtime/machine_model.cc\
-                ${FF_HOME}/src/runtime/machine_view.cc\
-                ${FF_HOME}/src/runtime/model.cc\
+    ${FF_HOME}/src/runtime/initializer.cc\
+    ${FF_HOME}/src/runtime/machine_model.cc\
+    ${FF_HOME}/src/runtime/machine_view.cc\
+    ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/runtime/optimizer.cc\
 		${FF_HOME}/src/runtime/parallel_op.cc\
-                ${FF_HOME}/src/runtime/recursive_logger.cc\
-                ${FF_HOME}/src/runtime/simulator.cc\
-                ${FF_HOME}/src/runtime/strategy.cc\
-                ${FF_HOME}/src/runtime/substitution.cc\
-                ${FF_HOME}/src/runtime/tensor.cc\
-                ${FF_HOME}/src/mapper/mapper.cc\
-                ${FF_HOME}/src/ops/noop.cc\
+    ${FF_HOME}/src/runtime/recursive_logger.cc\
+    ${FF_HOME}/src/runtime/simulator.cc\
+    ${FF_HOME}/src/runtime/strategy.cc\
+    ${FF_HOME}/src/runtime/substitution.cc\
+    ${FF_HOME}/src/runtime/tensor.cc\
+    ${FF_HOME}/src/mapper/mapper.cc\
+    ${FF_HOME}/src/ops/noop.cc\
 		${FF_HOME}/src/ops/conv_2d.cc\
+		${FF_HOME}/src/ops/dropout.cc\
 		${FF_HOME}/src/ops/element_unary.cc\
 		${FF_HOME}/src/ops/embedding.cc\
 		${FF_HOME}/src/ops/flat.cc\
@@ -73,8 +74,8 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/graph.cc\
 
 FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/aggregate.cu\
-                ${FF_HOME}/src/ops/aggregate_spec.cu\
-                ${FF_HOME}/src/ops/pool_2d.cu\
+    ${FF_HOME}/src/ops/aggregate_spec.cu\
+    ${FF_HOME}/src/ops/pool_2d.cu\
 		${FF_HOME}/src/ops/batch_norm.cu\
 		${FF_HOME}/src/ops/linear.cu\
 		${FF_HOME}/src/ops/softmax.cu\

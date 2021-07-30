@@ -51,8 +51,10 @@ public:
               const Legion::Domain& output_domain);
   ~DropoutMeta(void);
   Realm::RegionInstance reserveInst;
+#ifdef LEGION_USE_CUDA
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnDropoutDescriptor_t dropoutDesc;
+#endif
   void *reserveSpace, *dropoutStates;
   size_t reserveSpaceSize, dropoutStateSize;
 };

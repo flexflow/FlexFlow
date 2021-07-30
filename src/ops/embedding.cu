@@ -24,159 +24,7 @@ using Legion::Domain;
 using Legion::Task;
 using Legion::Rect;
 using Legion::PhysicalRegion;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
-using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
-using Legion::Predicate;
 using Legion::coord_t;
-using Legion::Memory;
-using Legion::Machine;
-Tensor FFModel::embedding(const Tensor input,
-                          int num_entries,
-                          int out_dim,
-                          AggrMode aggr,
-                          const Op* shared_op,
-                          Initializer* kernel_initializer,
-                          const char* name)
-{
-  {
-    Embedding* embed = new Embedding(*this, input, num_entries, out_dim,
-                                     aggr, false/*allocate_weights*/, name);
-    layers.push_back(embed);
-    return embed->outputs[0];
-  }
-}
-
-namespace Weight {
-  enum {
-    OUT_CHANNELS = 0,
-    VOCAB_SIZE = 1,
-  };
-};
-
-namespace Output {
-  enum {
-    OUT_CHANNELS = 0
-  };
-};
-
-int Embedding::input_vocab_size_replica_dim() const {
-  return this->inputs[0]->num_dims - 1;
-}
-
-int Embedding::input_channel_out_replica_dim() const {
-  return this->inputs[0]->num_dims - 2;
-}
-
-int Embedding::output_vocab_size_replica_dim() const {
-  return this->inputs[0]->num_dims - 1;
-}
-
-int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
-  Tensor const &input = this->inputs[0];
-
-  const int REPLICA = this->output_vocab_size_replica_dim();
-  const int OUT_CHANNELS = Output::OUT_CHANNELS;
-
-  output_dims[OUT_CHANNELS].size = this->out_channels;
-  for (int i = 1; i < input->num_dims; i++) {
-    output_dims[i] = input->dims[i]; 
-  }
-  output_dims[REPLICA].is_replica_dim = true;
-
-  return input->num_dims;
-}
-
-int Embedding::weight_size(ParallelDim weight_dims[MAX_TENSOR_DIM]) {
-  Tensor const &input = this->inputs[0];
-
-  weight_dims[Weight::OUT_CHANNELS].size = this->out_channels;
-  weight_dims[Weight::VOCAB_SIZE].size = this->num_entries;
-  for (int i = 2; i < input->num_dims; i++) {
-    weight_dims[i].is_replica_dim = true;     
-  }
-
-  return input->num_dims;
-}
-
-void Embedding::register_output_mappings() {
-  this->register_output_parallel_dims({
-    { this->input_vocab_size_replica_dim(), this->output_vocab_size_replica_dim() },
-    { this->input_channel_out_replica_dim(), Output::OUT_CHANNELS },
-  });
-
-  for (int i = 1; i < this->inputs[0]->num_dims - 1; i++) {
-    this->register_output_parallel_dims(i - 1, i);
-  }
-}
-
-void Embedding::register_weight_mappings() {
-  this->register_weight_parallel_dims({
-    { this->input_vocab_size_replica_dim(), Weight::VOCAB_SIZE },
-    { this->input_channel_out_replica_dim(), Weight::OUT_CHANNELS },
-  });
-
-  for (int i = 2; i < this->inputs[0]->num_dims; i++) {
-    this->register_weight_parallel_dims(i - 2, i);
-  }
-}
-
-void Embedding::register_mappings() {
-  this->register_output_mappings();
-  this->register_weight_mappings();
-}
-
-Embedding::Embedding(FFModel& model,
-                     Embedding const &other,
-                     const Tensor input,
-                     bool allocate_weights) 
-: Embedding(model, input, other.num_entries, other.out_channels, other.aggr, allocate_weights, other.name) 
-{ }
-
-Embedding::Embedding(FFModel& model,
-                     const Tensor _input,
-                     int _num_entries,
-                     int _out_channels,
-                     AggrMode _aggr,
-                     bool allocate_weights,
-                     const char* name)
-: Op(model, OP_EMBEDDING, name, 1/*inputs*/, 1/*weights*/, allocate_weights, 1/*outputs*/, _input),
-  num_entries(_num_entries), out_channels(_out_channels), aggr(_aggr)
-{
-  this->register_mappings();
-
-  std::vector<ParallelDim *> weight_dim_sets;
-
-  int weight_ndim;
-  ParallelDim weight_dims[MAX_TENSOR_DIM];
-  if (allocate_weights) {
-    weight_ndim = this->weight_size(weight_dims);
-    weight_dim_sets.push_back(weight_dims);
-  }
-
-  ParallelDim output_dims[MAX_TENSOR_DIM];
-  int output_ndim = this->output_size(output_dims);
-
-  this->solve_parallel_dim_mappings(
-    { _input->dims },
-    weight_dim_sets,
-    { output_dims }
-  );
-
-  if (allocate_weights) {
-    Initializer *weight_initializer = new GlorotUniform(std::rand()/*seed*/);
-
-    weights[0] = model.create_weight_legion_ordering(
-        weight_ndim, weight_dims, DT_FLOAT, nullptr/*owner_op*/, true/*create_grad*/, weight_initializer, CHOSEN_SYNC_TYPE);
-  }
-
-  outputs[0] = model.create_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
-
-  assert (check_output_input_weight_parallel_dims(allocate_weights));
-}
 
 __host__
 OpMeta* Embedding::init_task(const Task *task,
@@ -189,43 +37,6 @@ OpMeta* Embedding::init_task(const Task *task,
   m->profiling = embed->profiling;
   m->aggr = embed->aggr;
   return m;
-}
-
-void Embedding::init(const FFModel& ff)
-{
-  assert(check_output_input_weight_same_parallel_is());
-  parallel_is = outputs[0]->parallel_is;
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(EMBED_INIT_TASK_ID, parallel_is,
-                         TaskArgument(this, sizeof(Embedding)), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  // regions[0]: input
-  //launcher.add_region_requirement(
-  //  RegionRequirement(input_lps[0], 0/*projection*/,
-  //    READ_ONLY, EXCLUSIVE, inputs[0]->region));
-  //launcher.add_field(0, FID_DATA);
-  // regions[1]: output
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0]->part, 0/*projection*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  // regions[2]: weight
-  launcher.add_region_requirement(
-    RegionRequirement(weights[0]->part, 0/*projection*/,
-      READ_ONLY, EXCLUSIVE, weights[0]->region));
-  launcher.add_field(1, FID_DATA);
-  // regions[3]: input_grad
-  launcher.add_region_requirement(
-    RegionRequirement(inputs[0]->part_grad, 0/*projection*/,
-      WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
-  launcher.add_field(2, FID_DATA);
-  FutureMap fm = runtime->execute_index_space(ctx, launcher);
-  fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
 }
 
 __global__
@@ -356,35 +167,6 @@ void Embedding::forward_task_with_dim(const Task *task,
   }
 }
 
-void Embedding::forward(const FFModel& ff)
-{
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(EMBED_FWD_TASK_ID, parallel_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  // regions[0]: input
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  // regions[1]: output
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0/*projection*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region,
-                        MAP_TO_ZC_MEMORY));
-  launcher.add_field(1, FID_DATA);
-  // regions[2]: weight
-  launcher.add_region_requirement(
-      RegionRequirement(weights[0]->part, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, weights[0]->region));
-  launcher.add_field(2, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
-}
-
 void Embedding::backward_kernel(int64_t const *input_ptr,
                                 float const *output_ptr,
                                 float *weight_grad_ptr,
@@ -451,34 +233,6 @@ void Embedding::backward_task_with_dim(const Task *task,
     print_tensor<float>(accWeightGrad.ptr, accWeightGrad.rect.volume(), "[Embedding:backward:weight_grad]");
     print_tensor<int64_t>(accInput.ptr, accInput.rect.volume(), "[Embedding:backward:input]");
   }
-}
-
-void Embedding::backward(const FFModel& ff)
-{
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(EMBED_BWD_TASK_ID, parallel_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  // regions[0]: input
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  // regions[1]: output_grad
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part_grad, 0/*projection*/,
-                        READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
-  launcher.add_field(1, FID_DATA);
-  // regions[2]: weight_grad
-  launcher.add_region_requirement(
-      RegionRequirement(weights[0]->part_grad, 0/*projection*/,
-                        READ_WRITE, EXCLUSIVE, weights[0]->region_grad));
-  launcher.add_field(2, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
 }
 
 __global__
@@ -561,31 +315,6 @@ bool Embedding::measure_operator_cost(Simulator* sim,
   }
 
   return true;
-}
-
-using PCG::Node;
-Node FFModel::get_or_create_embedding_node(const Tensor input,
-                                           int num_entries,
-                                           int out_channels,
-                                           AggrMode aggr)
-{
-  size_t hash = input->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(num_entries);
-  hash = hash * 31 + std::hash<int>()(out_channels);
-  hash = hash * 31 + std::hash<int>()(aggr);
-  const auto& it = cached_embedding_ops.find(hash);
-  Embedding* embed = NULL;
-  if (it != cached_embedding_ops.end()) {
-    embed = it->second;
-  } else {
-    embed = new Embedding(*this, input, num_entries, out_channels,
-                          aggr, false/*allocate_weights*/, NULL);
-    cached_embedding_ops[hash] = embed;
-  }
-  Node ret;
-  ret.guid = node_global_guid ++;
-  ret.ptr = embed;
-  return ret;
 }
 
 }; // namespace FlexFlow
