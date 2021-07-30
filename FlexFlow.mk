@@ -43,15 +43,20 @@ ifeq ($(strip $(USE_GASNET)),1)
   endif
 endif
 
-GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
-		${FF_HOME}/src/mapper/mapper.cc\
-		${FF_HOME}/src/runtime/initializer.cc\
+GEN_SRC		+= ${FF_HOME}/src/runtime/graph.cc\
+                ${FF_HOME}/src/runtime/initializer.cc\
+                ${FF_HOME}/src/runtime/machine_model.cc\
+                ${FF_HOME}/src/runtime/machine_view.cc\
+                ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/runtime/optimizer.cc\
-		${FF_HOME}/src/runtime/graph.cc\
-		${FF_HOME}/src/runtime/substitution.cc\
-		${FF_HOME}/src/ops/group_by.cc\
-		${FF_HOME}/src/ops/aggregate.cc\
-		${FF_HOME}/src/ops/noop.cc\
+		${FF_HOME}/src/runtime/parallel_op.cc\
+                ${FF_HOME}/src/runtime/recursive_logger.cc\
+                ${FF_HOME}/src/runtime/simulator.cc\
+                ${FF_HOME}/src/runtime/strategy.cc\
+                ${FF_HOME}/src/runtime/substitution.cc\
+                ${FF_HOME}/src/runtime/tensor.cc\
+                ${FF_HOME}/src/mapper/mapper.cc\
+                ${FF_HOME}/src/ops/noop.cc\
 		${FF_HOME}/src/ops/conv_2d.cc\
 		${FF_HOME}/src/ops/element_unary.cc\
 		${FF_HOME}/src/ops/embedding.cc\
@@ -63,15 +68,13 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/parallel_ops/replicate.cc\
 		${FF_HOME}/src/parallel_ops/reduction.cc\
 		${FF_HOME}/src/parallel_ops/fused_parallel_op.cc\
-		${FF_HOME}/src/runtime/strategy.cc\
-		${FF_HOME}/src/runtime/simulator.cc\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cc\
-		${FF_HOME}/src/recompile/recompile_state.cc\
-		${FF_HOME}/src/runtime/machine_model.cc
+		${FF_HOME}/src/recompile/recompile_state.cc
 
 FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
-		${FF_HOME}/src/runtime/model.cu\
-		${FF_HOME}/src/ops/pool_2d.cu\
+		${FF_HOME}/src/ops/aggregate.cu\
+                ${FF_HOME}/src/ops/aggregate_spec.cu\
+                ${FF_HOME}/src/ops/pool_2d.cu\
 		${FF_HOME}/src/ops/batch_norm.cu\
 		${FF_HOME}/src/ops/linear.cu\
 		${FF_HOME}/src/ops/softmax.cu\
@@ -88,8 +91,6 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/topk.cu\
 		${FF_HOME}/src/ops/cache.cu\
 		${FF_HOME}/src/ops/group_by.cu\
-		${FF_HOME}/src/ops/aggregate.cu\
-		${FF_HOME}/src/ops/aggregate_spec.cu\
 		${FF_HOME}/src/ops/transpose.cu\
 		${FF_HOME}/src/ops/attention.cu\
 		${FF_HOME}/src/ops/fused.cu\
@@ -100,11 +101,13 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/parallel_ops/fused_parallel_op.cu\
 		${FF_HOME}/src/loss_functions/loss_functions.cu\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cu\
-		${FF_HOME}/src/runtime/initializer_kernel.cu\
-		${FF_HOME}/src/runtime/optimizer_kernel.cu\
 		${FF_HOME}/src/runtime/accessor_kernel.cu\
+                ${FF_HOME}/src/runtime/cuda_helper.cu\
+                ${FF_HOME}/src/runtime/initializer_kernel.cu\
+		${FF_HOME}/src/runtime/model.cu\
+                ${FF_HOME}/src/runtime/optimizer_kernel.cu\
 		${FF_HOME}/src/runtime/simulator.cu\
-		${FF_HOME}/src/runtime/cuda_helper.cu
+		${FF_HOME}/src/runtime/tensor.cu
 		
 GEN_GPU_SRC += $(FF_CUDA_SRC)
 GEN_HIP_SRC += $(FF_CUDA_SRC)
