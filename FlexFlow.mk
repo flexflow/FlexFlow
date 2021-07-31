@@ -56,13 +56,17 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/graph.cc\
     ${FF_HOME}/src/runtime/substitution.cc\
     ${FF_HOME}/src/runtime/tensor.cc\
     ${FF_HOME}/src/mapper/mapper.cc\
-    ${FF_HOME}/src/ops/noop.cc\
+    ${FF_HOME}/src/ops/batch_matmul.cc\
+		${FF_HOME}/src/ops/batch_norm.cc\
+		${FF_HOME}/src/ops/cache.cc\
+		${FF_HOME}/src/ops/concat.cc\
 		${FF_HOME}/src/ops/conv_2d.cc\
 		${FF_HOME}/src/ops/dropout.cc\
 		${FF_HOME}/src/ops/element_unary.cc\
 		${FF_HOME}/src/ops/embedding.cc\
 		${FF_HOME}/src/ops/flat.cc\
 		${FF_HOME}/src/ops/linear.cc\
+		${FF_HOME}/src/ops/noop.cc\
 		${FF_HOME}/src/ops/pool_2d.cc\
 		${FF_HOME}/src/parallel_ops/partition.cc\
 		${FF_HOME}/src/parallel_ops/combine.cc\

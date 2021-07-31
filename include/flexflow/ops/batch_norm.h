@@ -64,9 +64,11 @@ public:
                 int output_w);
   ~BatchNormMeta(void);
   Realm::RegionInstance reserveInst;
+#ifdef LEGION_USE_CUDA
   cudnnTensorDescriptor_t inputTensor, outputTensor, biasTensor;
   cudnnActivationDescriptor_t actiDesc;
   cudnnBatchNormMode_t mode;
+#endif
   float *runningMean, *runningVar, *saveMean, *saveVar;
   bool relu;
 };
