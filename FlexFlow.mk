@@ -56,18 +56,30 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/graph.cc\
     ${FF_HOME}/src/runtime/substitution.cc\
     ${FF_HOME}/src/runtime/tensor.cc\
     ${FF_HOME}/src/mapper/mapper.cc\
+		${FF_HOME}/src/ops/aggregate.cc\
+    ${FF_HOME}/src/ops/aggregate_spec.cc\
+		${FF_HOME}/src/ops/attention.cc\
     ${FF_HOME}/src/ops/batch_matmul.cc\
 		${FF_HOME}/src/ops/batch_norm.cc\
 		${FF_HOME}/src/ops/cache.cc\
 		${FF_HOME}/src/ops/concat.cc\
 		${FF_HOME}/src/ops/conv_2d.cc\
 		${FF_HOME}/src/ops/dropout.cc\
+		${FF_HOME}/src/ops/element_binary.cc\
 		${FF_HOME}/src/ops/element_unary.cc\
 		${FF_HOME}/src/ops/embedding.cc\
 		${FF_HOME}/src/ops/flat.cc\
+		${FF_HOME}/src/ops/fused.cc\
+		${FF_HOME}/src/ops/group_by.cc\
 		${FF_HOME}/src/ops/linear.cc\
 		${FF_HOME}/src/ops/noop.cc\
 		${FF_HOME}/src/ops/pool_2d.cc\
+		${FF_HOME}/src/ops/reshape.cc\
+		${FF_HOME}/src/ops/reverse.cc\
+		${FF_HOME}/src/ops/softmax.cc\
+		${FF_HOME}/src/ops/split.cc\
+		${FF_HOME}/src/ops/topk.cc\
+		${FF_HOME}/src/ops/transpose.cc\
 		${FF_HOME}/src/parallel_ops/partition.cc\
 		${FF_HOME}/src/parallel_ops/combine.cc\
 		${FF_HOME}/src/parallel_ops/replicate.cc\
@@ -79,26 +91,26 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/graph.cc\
 FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/aggregate.cu\
     ${FF_HOME}/src/ops/aggregate_spec.cu\
-    ${FF_HOME}/src/ops/pool_2d.cu\
+		${FF_HOME}/src/ops/attention.cu\
+		${FF_HOME}/src/ops/batch_matmul.cu\
 		${FF_HOME}/src/ops/batch_norm.cu\
-		${FF_HOME}/src/ops/linear.cu\
-		${FF_HOME}/src/ops/softmax.cu\
 		${FF_HOME}/src/ops/concat.cu\
-		${FF_HOME}/src/ops/split.cu\
+		${FF_HOME}/src/ops/cache.cu\
 		${FF_HOME}/src/ops/dropout.cu\
-		${FF_HOME}/src/ops/flat.cu\
-		${FF_HOME}/src/ops/embedding.cu\
 		${FF_HOME}/src/ops/element_binary.cu\
 		${FF_HOME}/src/ops/element_unary.cu\
-		${FF_HOME}/src/ops/batch_matmul.cu\
+		${FF_HOME}/src/ops/embedding.cu\
+		${FF_HOME}/src/ops/flat.cu\
+		${FF_HOME}/src/ops/fused.cu\
+		${FF_HOME}/src/ops/group_by.cu\
+		${FF_HOME}/src/ops/linear.cu\
+		${FF_HOME}/src/ops/pool_2d.cu\
 		${FF_HOME}/src/ops/reshape.cu\
 		${FF_HOME}/src/ops/reverse.cu\
+		${FF_HOME}/src/ops/softmax.cu\
+		${FF_HOME}/src/ops/split.cu\
 		${FF_HOME}/src/ops/topk.cu\
-		${FF_HOME}/src/ops/cache.cu\
-		${FF_HOME}/src/ops/group_by.cu\
 		${FF_HOME}/src/ops/transpose.cu\
-		${FF_HOME}/src/ops/attention.cu\
-		${FF_HOME}/src/ops/fused.cu\
 		${FF_HOME}/src/parallel_ops/combine.cu\
 		${FF_HOME}/src/parallel_ops/partition.cu\
 		${FF_HOME}/src/parallel_ops/replicate.cu\

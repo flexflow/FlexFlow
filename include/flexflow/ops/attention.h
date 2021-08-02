@@ -82,8 +82,10 @@ public:
 public:
   Realm::RegionInstance reserveInst;
   size_t weightSize, reserveSpaceSize;
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnAttnDescriptor_t attnDesc;
   cudnnSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
+#endif
   int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx;
   void *reserveSpace;
 };
