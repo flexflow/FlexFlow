@@ -8,8 +8,10 @@ namespace FlexFlow {
 class ElementBinaryMeta : public OpMeta {
 public:
   ElementBinaryMeta(FFHandler handle);
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnOpTensorDescriptor_t opDesc;
+#endif
   OperatorType op_type;
   bool inplace_a;
 };
