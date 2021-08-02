@@ -9,7 +9,7 @@ namespace FlexFlow {
 class LinearMeta : public OpMeta {
 public:
   LinearMeta(FFHandler handle, int batch_size);
-#ifdef LEGION_USE_CUDA
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;
 #endif

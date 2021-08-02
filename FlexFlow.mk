@@ -144,6 +144,18 @@ ifeq ($(strip $(FF_USE_AVX2)), 1)
 CC_FLAGS	+= -DFF_USE_AVX2 -mavx2
 endif
 
+ifeq ($(strip $(USE_CUDA)),1)
+CC_FLAGS	+= -DFF_USE_CUDA
+NVCC_FLAGS	+= -DFF_USE_CUDA
+endif
+
+ifeq ($(strip $(USE_HIP)),1)
+ifeq ($(strip $(HIP_TARGET)),CUDA)
+CC_FLAGS	+= -DFF_USE_HIP_CUDA
+NVCC_FLAGS	+= -DFF_USE_HIP_CUDA
+endif
+endif
+
 #ifndef HDF5
 #HDF5_inc	?= /usr/include/hdf5/serial
 #HDF5_lib	?= /usr/lib/x86_64-linux-gnu/hdf5/serial

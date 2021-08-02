@@ -40,7 +40,7 @@ private:
 class Pool2DMeta : public OpMeta {
 public:
   Pool2DMeta(FFHandler handle);
-#ifdef LEGION_USE_CUDA
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
   cudnnPoolingDescriptor_t poolDesc;
