@@ -34,6 +34,7 @@ using Legion::Context;
 using Legion::Runtime;
 using Legion::Domain;
 using Legion::Task;
+using Legion::Rect;
 using Legion::TaskLauncher;
 using Legion::IndexLauncher;
 using Legion::FutureMap;

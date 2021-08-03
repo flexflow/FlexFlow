@@ -55,7 +55,7 @@ bool Pool2DParams::is_valid(const Tensor input) const {
   bool is_valid = true;
   is_valid &= input->check_valid();
   is_valid &= output_shape.is_valid();
-  is_valid &= (input->dims[Input::REPLICA].degree == 1);
+  is_valid &= (input->dims[Pool2DInput::REPLICA].degree == 1);
 
   return is_valid;
 }
@@ -130,18 +130,18 @@ Node FFModel::get_or_create_pool2d_node(const Tensor input,
 }
 
 int Pool2DParams::output_size(const Tensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) const { 
-  int input_w = input->dims[Input::WIDTH].size;
-  int input_h = input->dims[Input::HEIGHT].size;
-  int input_c = input->dims[Input::CHANNEL].size;
-  int input_n = input->dims[Input::SAMPLE].size;
+  int input_w = input->dims[Pool2DInput::WIDTH].size;
+  int input_h = input->dims[Pool2DInput::HEIGHT].size;
+  int input_c = input->dims[Pool2DInput::CHANNEL].size;
+  int input_n = input->dims[Pool2DInput::SAMPLE].size;
 
-  output_dims[Output::WIDTH].size = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
-  output_dims[Output::HEIGHT].size = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  output_dims[Output::CHANNEL].size = input_c;
-  output_dims[Output::SAMPLE].size = input_n;
-  output_dims[Output::REPLICA].is_replica_dim = true;
+  output_dims[Pool2DOutput::WIDTH].size = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
+  output_dims[Pool2DOutput::HEIGHT].size = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
+  output_dims[Pool2DOutput::CHANNEL].size = input_c;
+  output_dims[Pool2DOutput::SAMPLE].size = input_n;
+  output_dims[Pool2DOutput::REPLICA].is_replica_dim = true;
 
-  return Output::NUMDIM;
+  return Pool2DOutput::NUMDIM;
 }
 
 void Pool2DParams::solve_dims(const Tensor input, 
@@ -171,11 +171,11 @@ void Pool2D::construct_output_mappings(std::vector<ParallelDimMappingRecord>& ma
   Op::construct_output_parallel_dims(
     mappings,
     {
-      {Input::REPLICA, MappingOperation::PARTITION, Output::REPLICA},
-      {Input::SAMPLE, MappingOperation::PARTITION, Output::SAMPLE},
-      {Input::CHANNEL, MappingOperation::PARTITION, Output::CHANNEL},
-      {Input::HEIGHT, MappingOperation::PARTITION, Output::HEIGHT},
-      {Input::WIDTH, MappingOperation::PARTITION, Output::WIDTH},
+      {Pool2DInput::REPLICA, MappingOperation::PARTITION, Pool2DOutput::REPLICA},
+      {Pool2DInput::SAMPLE, MappingOperation::PARTITION, Pool2DOutput::SAMPLE},
+      {Pool2DInput::CHANNEL, MappingOperation::PARTITION, Pool2DOutput::CHANNEL},
+      {Pool2DInput::HEIGHT, MappingOperation::PARTITION, Pool2DOutput::HEIGHT},
+      {Pool2DInput::WIDTH, MappingOperation::PARTITION, Pool2DOutput::WIDTH},
     }
   );
 }
@@ -209,7 +209,7 @@ Pool2D::Pool2D(FFModel& model,
   padding_h(_padding_h), padding_w(_padding_w),
   pool_type(_type), activation(_activation)
 {
-  assert (_input->num_dims == Input::NUMDIM);
+  assert (_input->num_dims == Pool2DInput::NUMDIM);
 
   Pool2D::construct_output_mappings(*this->parallel_dims_mapping);
 

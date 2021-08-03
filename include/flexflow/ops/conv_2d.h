@@ -5,7 +5,7 @@
 
 namespace FlexFlow {
   
-namespace Input {
+namespace Conv2DInput {
   static constexpr int INDEX = 0;
 
   enum {
@@ -18,7 +18,7 @@ namespace Input {
   };
 }
 
-namespace Output {
+namespace Conv2DOutput {
   enum {
     WIDTH = 0,
     HEIGHT = 1,
@@ -29,7 +29,7 @@ namespace Output {
   };
 }
 
-namespace Kernel {
+namespace Conv2DKernel {
   static constexpr int INDEX = 0;
 
   enum {
@@ -42,7 +42,7 @@ namespace Kernel {
   };
 }
 
-namespace Bias {
+namespace Conv2DBias {
   static constexpr int INDEX = 1;
 
   enum {

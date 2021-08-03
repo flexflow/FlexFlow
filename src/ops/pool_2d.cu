@@ -42,9 +42,9 @@ OpMeta* Pool2D::init_task(const Task *task,
   Pool2DMeta* m = new Pool2DMeta(handle);
   m->profiling = pool->profiling;
   std::strcpy(m->op_name, pool->name);
-  TensorAccessorR<float, Input::NUMDIM> acc_input(
+  TensorAccessorR<float, Pool2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Output::NUMDIM> acc_output(
+  TensorAccessorW<float, Pool2DOutput::NUMDIM> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
 
@@ -133,9 +133,9 @@ void Pool2D::forward_task(const Task *task,
   assert(task->regions.size() == 2);
   //const Pool2D* pool = (Pool2D*) task->args;
   const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
-  TensorAccessorR<float, Input::NUMDIM> acc_input(
+  TensorAccessorR<float, Pool2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Output::NUMDIM> acc_output(
+  TensorAccessorW<float, Pool2DOutput::NUMDIM> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
 
@@ -194,14 +194,14 @@ void Pool2D::backward_task(const Task *task,
   assert(task->regions.size() == 4);
   //const Pool2D* pool = (Pool2D*) task->args;
   const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
-  TensorAccessorR<float, Input::NUMDIM> acc_input(
+  TensorAccessorR<float, Pool2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Input::NUMDIM> acc_input_grad(
+  TensorAccessorW<float, Pool2DInput::NUMDIM> acc_input_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       true/*readOutput*/);
-  TensorAccessorR<float, Output::NUMDIM> acc_output(
+  TensorAccessorR<float, Pool2DOutput::NUMDIM> acc_output(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, Output::NUMDIM> acc_output_grad(
+  TensorAccessorR<float, Pool2DOutput::NUMDIM> acc_output_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
   cudaStream_t stream;

@@ -148,44 +148,44 @@ void Conv2DParams::mark_replica_dims(const Tensor input,
                                ParallelDim bias_dims[MAX_TENSOR_DIM]) const 
 {
   if (output_dims != nullptr) {
-    output_dims[Output::REPLICA].is_replica_dim = true;
+    output_dims[Conv2DOutput::REPLICA].is_replica_dim = true;
   }
   if (kernel_dims != nullptr) {
-    kernel_dims[Output::REPLICA].is_replica_dim = true;
+    kernel_dims[Conv2DOutput::REPLICA].is_replica_dim = true;
   }
   if (bias_dims != nullptr) {
-    bias_dims[Bias::REPLICA_1].is_replica_dim = true;
-    bias_dims[Bias::REPLICA_2].is_replica_dim = true;
-    bias_dims[Bias::REPLICA_3].is_replica_dim = true;
-    bias_dims[Bias::REPLICA_4].is_replica_dim = true;
+    bias_dims[Conv2DBias::REPLICA_1].is_replica_dim = true;
+    bias_dims[Conv2DBias::REPLICA_2].is_replica_dim = true;
+    bias_dims[Conv2DBias::REPLICA_3].is_replica_dim = true;
+    bias_dims[Conv2DBias::REPLICA_4].is_replica_dim = true;
   }
 }
 
 int Conv2DParams::output_size(const Tensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) const {
-  int input_w = input->dims[Input::WIDTH].size;
-  int input_h = input->dims[Input::HEIGHT].size;
+  int input_w = input->dims[Conv2DInput::WIDTH].size;
+  int input_h = input->dims[Conv2DInput::HEIGHT].size;
 
-  output_dims[Output::SAMPLE].size = input->dims[Input::SAMPLE].size;
-  output_dims[Output::CHANNEL].size = out_channels;
-  output_dims[Output::HEIGHT].size = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
-  output_dims[Output::WIDTH].size = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
+  output_dims[Conv2DOutput::SAMPLE].size = input->dims[Conv2DInput::SAMPLE].size;
+  output_dims[Conv2DOutput::CHANNEL].size = out_channels;
+  output_dims[Conv2DOutput::HEIGHT].size = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
+  output_dims[Conv2DOutput::WIDTH].size = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
 
   return input->num_dims;
 };
 
 int Conv2DParams::kernel_size(const Tensor input, ParallelDim kernel_dims[MAX_TENSOR_DIM]) const {
-  kernel_dims[Kernel::CHANNEL_OUT].size = this->out_channels;
-  kernel_dims[Kernel::CHANNEL_IN].size = input->dims[Input::CHANNEL].size / this->groups;
-  kernel_dims[Kernel::HEIGHT].size = this->kernel_h * input->dims[Input::HEIGHT].degree;
-  kernel_dims[Kernel::WIDTH].size = this->kernel_w * input->dims[Input::WIDTH].degree;
+  kernel_dims[Conv2DKernel::CHANNEL_OUT].size = this->out_channels;
+  kernel_dims[Conv2DKernel::CHANNEL_IN].size = input->dims[Conv2DInput::CHANNEL].size / this->groups;
+  kernel_dims[Conv2DKernel::HEIGHT].size = this->kernel_h * input->dims[Conv2DInput::HEIGHT].degree;
+  kernel_dims[Conv2DKernel::WIDTH].size = this->kernel_w * input->dims[Conv2DInput::WIDTH].degree;
 
-  return Kernel::NUMDIM;
+  return Conv2DKernel::NUMDIM;
 }
 
 int Conv2DParams::bias_size(const Tensor input, ParallelDim bias_dims[MAX_TENSOR_DIM]) const {
-  bias_dims[Bias::CHANNEL].size = this->out_channels;
+  bias_dims[Conv2DBias::CHANNEL].size = this->out_channels;
 
-  return Bias::NUMDIM;
+  return Conv2DBias::NUMDIM;
 };
 
 void Conv2DParams::solve_dims(const Tensor input, 
@@ -244,11 +244,11 @@ void Conv2D::construct_output_mappings(std::vector<ParallelDimMappingRecord>& ou
   Op::construct_output_parallel_dims(
     out, 
     {
-      {Input::CHANNEL, MappingOperation::REPLICATE, Output::REPLICA},
-      {Input::SAMPLE, MappingOperation::PARTITION, Output::SAMPLE},
-      {Input::REPLICA, MappingOperation::PARTITION, Output::CHANNEL},
-      {Input::HEIGHT, MappingOperation::PARTITION, Output::HEIGHT},
-      {Input::WIDTH, MappingOperation::PARTITION, Output::WIDTH}
+      {Conv2DInput::CHANNEL, MappingOperation::REPLICATE, Conv2DOutput::REPLICA},
+      {Conv2DInput::SAMPLE, MappingOperation::PARTITION, Conv2DOutput::SAMPLE},
+      {Conv2DInput::REPLICA, MappingOperation::PARTITION, Conv2DOutput::CHANNEL},
+      {Conv2DInput::HEIGHT, MappingOperation::PARTITION, Conv2DOutput::HEIGHT},
+      {Conv2DInput::WIDTH, MappingOperation::PARTITION, Conv2DOutput::WIDTH}
     }
   );
 }
@@ -258,26 +258,26 @@ void Conv2D::construct_weight_mappings(std::vector<ParallelDimMappingRecord>& ou
   Op::construct_weight_parallel_dims(
     out,
     {
-      {Input::REPLICA, MappingOperation::PARTITION, Kernel::CHANNEL_OUT},
-      {Input::SAMPLE, MappingOperation::REPLICATE, Kernel::REPLICA},
-      {Input::CHANNEL, MappingOperation::PARTITION, Kernel::CHANNEL_IN}, 
-      {Input::HEIGHT, MappingOperation::REPLICATE, Kernel::HEIGHT}, // Kernel::{HEIGHT, WEIGHT} would both work here
-      {Input::WIDTH, MappingOperation::REPLICATE, Kernel::WIDTH}, // same as above
+      {Conv2DInput::REPLICA, MappingOperation::PARTITION, Conv2DKernel::CHANNEL_OUT},
+      {Conv2DInput::SAMPLE, MappingOperation::REPLICATE, Conv2DKernel::REPLICA},
+      {Conv2DInput::CHANNEL, MappingOperation::PARTITION, Conv2DKernel::CHANNEL_IN}, 
+      {Conv2DInput::HEIGHT, MappingOperation::REPLICATE, Conv2DKernel::HEIGHT}, // Kernel::{HEIGHT, WEIGHT} would both work here
+      {Conv2DInput::WIDTH, MappingOperation::REPLICATE, Conv2DKernel::WIDTH}, // same as above
     }, 
-    Input::INDEX, Kernel::INDEX
+    Conv2DInput::INDEX, Conv2DKernel::INDEX
   );
 
   if (use_bias) {
     Op::construct_weight_parallel_dims(
       out,
       {
-        {Input::REPLICA, Bias::REPLICA_1},
-        {Input::SAMPLE, Bias::REPLICA_2},
-        {Input::CHANNEL, Bias::CHANNEL},
-        {Input::HEIGHT, Bias::REPLICA_3},
-        {Input::WIDTH, Bias::REPLICA_4}
+        {Conv2DInput::REPLICA, Conv2DBias::REPLICA_1},
+        {Conv2DInput::SAMPLE, Conv2DBias::REPLICA_2},
+        {Conv2DInput::CHANNEL, Conv2DBias::CHANNEL},
+        {Conv2DInput::HEIGHT, Conv2DBias::REPLICA_3},
+        {Conv2DInput::WIDTH, Conv2DBias::REPLICA_4}
       }, 
-      Input::INDEX, Bias::INDEX
+      Conv2DInput::INDEX, Conv2DBias::INDEX
     );
   }
 }
@@ -331,7 +331,7 @@ Conv2D::Conv2D(FFModel& model,
                bool allocate_weights,
                const char* name)
 : Op(model, OP_CONV2D, name, 1/*inputs*/, use_bias ? 2 : 1/*weights*/, allocate_weights, 1/*outputs*/, input),
-  in_channels(input->dims[Input::CHANNEL].size),
+  in_channels(input->dims[Conv2DInput::CHANNEL].size),
   out_channels(outChannels),
   kernel_h(kernelH), kernel_w(kernelW),
   stride_h(strideH), stride_w(strideW),
@@ -340,7 +340,7 @@ Conv2D::Conv2D(FFModel& model,
   groups(groups),
   use_bias(use_bias)
 {
-  assert (input->num_dims == Input::NUMDIM);
+  assert (input->num_dims == Conv2DInput::NUMDIM);
   assert (this->stride_h > 0);
   assert (this->stride_w > 0);
 
@@ -362,13 +362,13 @@ Conv2D::Conv2D(FFModel& model,
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand()/*seed*/);
 
-    weights[Kernel::INDEX] = model.create_weight_legion_ordering(
+    weights[Conv2DKernel::INDEX] = model.create_weight_legion_ordering(
         kernel_ndims, kernel_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
     
     if (use_bias) {
       Initializer *bias_initializer = new ZeroInitializer();
 
-      weights[Bias::INDEX] = model.create_weight_legion_ordering(
+      weights[Conv2DBias::INDEX] = model.create_weight_legion_ordering(
           bias_ndims, bias_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
     }
   }
@@ -548,9 +548,9 @@ void Conv2D::print_layer(const FFModel& ff)
   PhysicalRegion bias_grad_region = runtime->map_region(ctx, bias_grad_launcher);
   bias_grad_region.wait_until_valid();
   */
-  TensorAccessorW<float, Kernel::NUMDIM> acc_kernel(kernel_region, kernel_req, FID_DATA, ctx, runtime, true);
+  TensorAccessorW<float, Conv2DKernel::NUMDIM> acc_kernel(kernel_region, kernel_req, FID_DATA, ctx, runtime, true);
 //  const AccessorRW<float, 1> acc_kernel_grad(kernel_grad_region, FID_DATA);
-  TensorAccessorW<float, Bias::NUMDIM> acc_bias(bias_region, bias_req, FID_DATA, ctx, runtime, true);
+  TensorAccessorW<float, Conv2DBias::NUMDIM> acc_bias(bias_region, bias_req, FID_DATA, ctx, runtime, true);
   //const AccessorRW<float, 1> acc_bias_grad(bias_grad_region, FID_DATA);
 
   const float *kernel_ptr = acc_kernel.ptr;

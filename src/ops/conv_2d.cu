@@ -65,16 +65,16 @@ OpMeta* Conv2D::init_task(const Task *task,
   assert(task->regions.size() == 4);
   const Conv2D* conv = (Conv2D*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
-  TensorAccessorR<float, Input::NUMDIM> acc_input(
+  TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Output::NUMDIM> acc_output(
+  TensorAccessorW<float, Conv2DOutput::NUMDIM> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
-  TensorAccessorR<float, Kernel::NUMDIM> acc_kernel(
+  TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   // TensorAccessorR<float, 1> acc_bias(
   //     regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Kernel::NUMDIM> acc_kernel_grad(
+  TensorAccessorW<float, Conv2DKernel::NUMDIM> acc_kernel_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   //TensorAccessorW<float, 4> acc_input_grad(
@@ -228,16 +228,16 @@ void Conv2D::forward_task(const Task *task,
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
   assert(regions.size() == (3 + int(m->use_bias)));
   assert(task->regions.size() == (3 + int(m->use_bias)));
-  TensorAccessorR<float, Input::NUMDIM> acc_input(
+  TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Output::NUMDIM> acc_output(
+  TensorAccessorW<float, Conv2DOutput::NUMDIM> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
-  TensorAccessorR<float, Kernel::NUMDIM> acc_kernel(
+  TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   const float* acc_bias_ptr = NULL;
   if (m->use_bias) { 
-    TensorAccessorR<float, Bias::NUMDIM> acc_bias(
+    TensorAccessorR<float, Conv2DBias::NUMDIM> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
     acc_bias_ptr = acc_bias.ptr;
   }
@@ -337,34 +337,34 @@ void Conv2D::backward_task(const Task *task,
   assert(regions.size() == (5 + int(m->trainableInputs[0]) + int(m->use_bias)));
   assert(task->regions.size() == (5 + int(m->trainableInputs[0]) + int(m->use_bias)));
   size_t rid = 0;
-  TensorAccessorR<float, Input::NUMDIM> acc_input(
+  TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid ++;
   float* acc_input_grad_ptr = NULL;
   if (m->trainableInputs[0]) {
-    TensorAccessorW<float, Input::NUMDIM> acc_input_grad(
+    TensorAccessorW<float, Conv2DInput::NUMDIM> acc_input_grad(
         regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
         true/*readOutput*/);
     acc_input_grad_ptr = acc_input_grad.ptr;
     rid ++;
   }
-  TensorAccessorR<float, Output::NUMDIM> acc_output(
+  TensorAccessorR<float, Conv2DOutput::NUMDIM> acc_output(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid ++;
-  TensorAccessorW<float, Output::NUMDIM> acc_output_grad(
+  TensorAccessorW<float, Conv2DOutput::NUMDIM> acc_output_grad(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
       true/*readOutput*/);
   rid ++;
-  TensorAccessorR<float, Kernel::NUMDIM> acc_kernel(
+  TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid ++;
-  TensorAccessorW<float, Kernel::NUMDIM> acc_kernel_grad(
+  TensorAccessorW<float, Conv2DKernel::NUMDIM> acc_kernel_grad(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
       true/*readOutput*/);
   rid ++;
   float* acc_bias_grad_ptr = NULL;
   if (m->use_bias) { 
-    TensorAccessorW<float, Bias::NUMDIM> acc_bias_grad(
+    TensorAccessorW<float, Conv2DBias::NUMDIM> acc_bias_grad(
         regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
         true/*readOutput*/);
     acc_bias_grad_ptr = static_cast<float*>(acc_bias_grad.ptr);

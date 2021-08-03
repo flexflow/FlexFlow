@@ -4,6 +4,10 @@
 #include "flexflow/model.h"
 
 namespace FlexFlow {
+  
+#define AGGREGATE_SPEC_MAX_K 4
+#define AGGREGATE_SPEC_MAX_BATCH_SIZE 32
+#define AGGREGATE_SPEC_MAX_N 12
 
 class AggregateSpecMeta : public OpMeta {
 public:

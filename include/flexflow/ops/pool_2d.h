@@ -5,7 +5,7 @@
 
 namespace FlexFlow {
 
-namespace Input {
+namespace Pool2DInput {
   constexpr int NUMDIM = 5,
                 WIDTH = 0,
                 HEIGHT = 1,
@@ -14,7 +14,7 @@ namespace Input {
                 REPLICA = 4;
 };
 
-namespace Output {
+namespace Pool2DOutput {
   constexpr int NUMDIM = 5,
                 WIDTH = 0,
                 HEIGHT = 1,

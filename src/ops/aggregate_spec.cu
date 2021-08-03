@@ -27,10 +27,6 @@ using Legion::Rect;
 using Legion::PhysicalRegion;
 using Legion::coord_t;
 
-#define MAX_K 4
-#define MAX_BATCH_SIZE 32
-#define MAX_N 12
-
 OpMeta* AggregateSpec::init_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
@@ -52,11 +48,11 @@ void aggspec_forward_kernel(float** exp_preds,
         const int batch_size,
         int out_dim)
 {
-  __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
+  __shared__ float* chosen_exp_preds[AGGREGATE_SPEC_MAX_K * AGGREGATE_SPEC_MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread per block
   if(threadIdx.x == 0) {
-    int expert_idx[MAX_N] = {0};
+    int expert_idx[AGGREGATE_SPEC_MAX_N] = {0};
     for(int i = 0; i < batch_size; i++) {
       for(int j = 0; j < k; j++) {
         // Get pointer to chosen expert predictions
@@ -97,7 +93,7 @@ void aggspec_backward_kernel_gate(const float* output_grad,
               int batch_size, int k, int n, int out_dim)
 {
 
-  __shared__ float gate_grad_sum[MAX_BATCH_SIZE];
+  __shared__ float gate_grad_sum[AGGREGATE_SPEC_MAX_BATCH_SIZE];
 
   // init gate_grad_sum to 0
   CUDA_KERNEL_LOOP(i, batch_size)
@@ -184,9 +180,9 @@ void aggspec_backward_kernel(float** exp_grads,
         int batch_size,
         int out_dim)
 {
-  __shared__ float* chosen_exp_grads[MAX_K*MAX_BATCH_SIZE];
-  __shared__ int expert_bal[MAX_N];
-  __shared__ bool cache_corr[MAX_BATCH_SIZE];
+  __shared__ float* chosen_exp_grads[AGGREGATE_SPEC_MAX_K * AGGREGATE_SPEC_MAX_BATCH_SIZE];
+  __shared__ int expert_bal[AGGREGATE_SPEC_MAX_N];
+  __shared__ bool cache_corr[AGGREGATE_SPEC_MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread per block
   if(threadIdx.x == 0) {

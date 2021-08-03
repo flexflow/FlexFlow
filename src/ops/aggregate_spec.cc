@@ -47,9 +47,9 @@ AggregateSpec::AggregateSpec(FFModel& model,
   // FIXME: For now, set upper limits Better: Do as follows, but memory is
   // assigned per block, so requires to check that
   // https://stackoverflow.com/questions/5531247/allocating-shared-memory/5531640#5531640
-  assert(n <= MAX_N && "Increase MAX_N in #define");
-  assert(inputs[0]->dims[0].size <= MAX_K && "Increase MAX_K in #define");
-  assert(inputs[0]->dims[1].size <= MAX_BATCH_SIZE && "Increase MAX_BATCH_SIZE in #define");
+  assert(n <= AGGREGATE_SPEC_MAX_N && "Increase AGGREGATE_SPEC_MAX_N in #define");
+  assert(inputs[0]->dims[0].size <= AGGREGATE_SPEC_MAX_K && "Increase AGGREGATE_SPEC_MAX_K in #define");
+  assert(inputs[0]->dims[1].size <= AGGREGATE_SPEC_MAX_BATCH_SIZE && "Increase AGGREGATE_SPEC_MAX_BATCH_SIZE in #define");
 
   assert(n+4 == numInputs);
   assert(n > 0);
