@@ -14,10 +14,97 @@
  */
 
 #include "flexflow/metrics_functions.h"
-#include "legion.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
-//using namespace Legion;
+
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::TaskLauncher;
+using Legion::IndexLauncher;
+using Legion::FutureMap;
+using Legion::ArgumentMap;
+using Legion::TaskArgument;
+using Legion::RegionRequirement;
+using Legion::Predicate;
+  
+Metrics::Metrics(LossType _loss_type, const std::vector<MetricsType>& metrics)
+: loss_type(_loss_type),
+  measure_accuracy(false),
+  measure_categorical_crossentropy(false),
+  measure_sparse_categorical_crossentropy(false),
+  measure_mean_squared_error(false),
+  measure_root_mean_squared_error(false),
+  measure_mean_absolute_error(false)
+{
+  for (size_t i = 0; i < metrics.size(); i++) {
+    switch (metrics[i]) {
+      case  METRICS_ACCURACY:
+        measure_accuracy = true;
+        continue;
+      case METRICS_CATEGORICAL_CROSSENTROPY:
+        measure_categorical_crossentropy = true;
+        continue;
+      case METRICS_SPARSE_CATEGORICAL_CROSSENTROPY:
+        measure_sparse_categorical_crossentropy = true;
+        continue;
+      case METRICS_MEAN_SQUARED_ERROR:
+        measure_mean_squared_error = true;
+        continue;
+      case METRICS_ROOT_MEAN_SQUARED_ERROR:
+        measure_root_mean_squared_error = true;
+        continue;
+      case METRICS_MEAN_ABSOLUTE_ERROR:
+        measure_mean_absolute_error = true;
+        continue;
+      default:
+        fprintf(stderr, "Unrecogonized metrics type\n");
+        assert(false);
+    }
+  }
+}
+
+void Metrics::compute(FFModel* model,
+                      const Tensor logit,
+                      const Tensor label)
+{
+  // Use the same parallel strategy as the owner of logit
+  Context ctx = model->config.lg_ctx;
+  Runtime* runtime = model->config.lg_hlr;
+  Domain part_domain = runtime->get_index_space_domain(ctx, logit->parallel_is);
+  Domain logit_domain = runtime->get_index_partition_color_space(
+      ctx, logit->part.get_index_partition());
+  Domain label_domain = runtime->get_index_partition_color_space(
+      ctx, label->part.get_index_partition());
+  if((logit_domain != part_domain) || (label_domain != part_domain)) {
+    fprintf(stderr, "Encounter inconsistency in parallelizing loss computation\n");
+    assert(false);
+  }
+  ArgumentMap argmap;
+  IndexLauncher launcher(METRICS_COMP_TASK_ID, logit->parallel_is,
+                         TaskArgument(this, sizeof(Metrics)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         logit->machine_view.hash());
+  launcher.add_region_requirement(
+      RegionRequirement(logit->part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, logit->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(label->part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, label->region));
+  launcher.add_field(1, FID_DATA);
+  FutureMap new_metrics = runtime->execute_index_space(ctx, launcher);
+  // Update metrics
+  TaskLauncher metrics_task(UPDATE_METRICS_TASK_ID, TaskArgument(this, sizeof(Metrics)));
+  metrics_task.add_future(model->current_metrics);
+  for (Domain::DomainPointIterator it(part_domain); it; it++) {
+    metrics_task.add_future(new_metrics[*it]);
+  }
+  model->current_metrics = runtime->execute_task(ctx, metrics_task);
+}
 
 PerfMetrics::PerfMetrics(void)
 : train_all(0), train_correct(0), cce_loss(0.0f), sparse_cce_loss(0.0f),

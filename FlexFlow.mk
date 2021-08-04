@@ -44,6 +44,7 @@ ifeq ($(strip $(USE_GASNET)),1)
 endif
 
 GEN_SRC		+= ${FF_HOME}/src/runtime/graph.cc\
+		${FF_HOME}/src/runtime/accessor.cc\
     ${FF_HOME}/src/runtime/initializer.cc\
     ${FF_HOME}/src/runtime/machine_model.cc\
     ${FF_HOME}/src/runtime/machine_view.cc\
@@ -85,6 +86,7 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/graph.cc\
 		${FF_HOME}/src/parallel_ops/replicate.cc\
 		${FF_HOME}/src/parallel_ops/reduction.cc\
 		${FF_HOME}/src/parallel_ops/fused_parallel_op.cc\
+		${FF_HOME}/src/loss_functions/loss_functions.cc\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cc\
 		${FF_HOME}/src/recompile/recompile_state.cc
 
@@ -119,10 +121,10 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/loss_functions/loss_functions.cu\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cu\
 		${FF_HOME}/src/runtime/accessor_kernel.cu\
-                ${FF_HOME}/src/runtime/cuda_helper.cu\
-                ${FF_HOME}/src/runtime/initializer_kernel.cu\
+		${FF_HOME}/src/runtime/cuda_helper.cu\
+		${FF_HOME}/src/runtime/initializer_kernel.cu\
 		${FF_HOME}/src/runtime/model.cu\
-                ${FF_HOME}/src/runtime/optimizer_kernel.cu\
+		${FF_HOME}/src/runtime/optimizer_kernel.cu\
 		${FF_HOME}/src/runtime/simulator.cu\
 		${FF_HOME}/src/runtime/tensor.cu
 		
