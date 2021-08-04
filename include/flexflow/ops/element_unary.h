@@ -64,10 +64,10 @@ public:
   Op *materialize(FFModel& ff, Tensor inputs[], int num_inputs) const override;
 
   size_t get_params_hash() const override;
-public:
-  float scalar;
 private:
   bool inplace;
+public:
+  float scalar;
 };
 
 }; // namespace FlexFlow

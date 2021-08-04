@@ -65,10 +65,12 @@ public:
                        const float* output_grad_ptr,
                        cudaStream_t stream);
 public:
-  int num_heads, qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
-  int qoSeqLength, kvSeqLength;
+  int num_heads;
   float dropout;
-  bool bias, add_bias_kv, add_zero_attn;
+  bool bias;
+  bool add_bias_kv, add_zero_attn;
+  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+  int qoSeqLength, kvSeqLength;
 };
 
 class MultiHeadAttentionMeta : public OpMeta {

@@ -42,7 +42,7 @@ Tensor FFModel::aggregate(const Tensor* inputs, /* gate_preds, gate_assign, full
 Aggregate::Aggregate(FFModel& model,
                      const Tensor* _inputs,
                      int _n, float _lambda_bal, const char* name)
-: Op(model, OP_AGGREGATE, name, n+4/*inputs*/, 0/*weights*/, 1/*outputs*/, _inputs),
+: Op(model, OP_AGGREGATE, name, _n+4/*inputs*/, 0/*weights*/, 1/*outputs*/, _inputs),
   n(_n), lambda_bal(_lambda_bal)
 {
   // FIXME: For now, set upper limits Better: Do as follows, but memory is
