@@ -171,6 +171,9 @@ void cache_init(Cache* cache, size_t vol) {
 
 void Cache::init(const FFModel& ff)
 {
+  // recompile
+  if(batch_ptrs != 0) return;
+
   size_t vol = inputs[0].get_volume();
   switch(inputs[0].data_type)
   {
@@ -212,6 +215,10 @@ void Cache::init(const FFModel& ff)
     TaskArgument(this, sizeof(Cache)), argmap,
     Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
     FFConfig::get_hash_id(std::string(name)));
+  launcher.add_region_requirement(
+    RegionRequirement(outputs[0].part, 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+  launcher.add_field(0, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   switch (domain.get_dim()) {
@@ -239,7 +246,6 @@ void cache_forward(const Task *task,
                   Context ctx, Runtime* runtime)
 {
   Cache* c = ((Arg*)(task->args))->cache;
-  const CacheMeta* m = *((CacheMeta**)task->local_args);
   int batch_ctr = ((Arg*)(task->args))->batch_ctr;
   T** batch_ptrs = (T**)c->batch_ptrs;
   T* output_ptr = helperGetTensorPointerWO<T>(regions[0], task->regions[0],
@@ -247,7 +253,6 @@ void cache_forward(const Task *task,
 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-
   cudaMemcpy(output_ptr, batch_ptrs[batch_ctr], c->inputs[0].get_volume()*sizeof(T), cudaMemcpyHostToDevice);
 }
 
@@ -256,6 +261,7 @@ void Cache::forward_task(const Task *task,
                         const std::vector<PhysicalRegion>& regions,
                         Context ctx, Runtime* runtime)
 {
+  // printf("cache fwd_task\n");
   Cache* c = ((Arg*)(task->args))->cache;
   assert((int)regions.size() == 1);
   assert((int)task->regions.size() == 1);
@@ -272,6 +278,7 @@ void Cache::forward_task(const Task *task,
       assert(false && "unsupported data type");
       break;
   }
+  // printf("done cache fwd_task\n");
 }
 
 
@@ -280,17 +287,19 @@ float cache_update(const Task *task,
                   const std::vector<PhysicalRegion>& regions,
                   Context ctx, Runtime* runtime)
 {
+  // printf("cache upd\n");
   Cache* c = ((Arg*)(task->args))->cache;
   int batch_ctr = ((Arg*)(task->args))->batch_ctr;
   CacheMeta* m = *((CacheMeta**)task->local_args);
 
-  const T* input_ptr = helperGetTensorPointerRW<T>(regions[0], task->regions[0],
+  const T* input_ptr = helperGetTensorPointerRO<T>(regions[0], task->regions[0],
     FID_DATA, ctx, runtime);
   T* host_input = (T*) c->batch_cmp;
   cudaMemcpy(host_input, input_ptr, c->inputs[0].get_volume()*sizeof(T), cudaMemcpyDeviceToHost);
   float cache_score = c->score_f(&m->cache_score, host_input,
     c->batch_ptrs[batch_ctr], c->inputs[0].get_volume());
   memcpy(c->batch_ptrs[batch_ctr], host_input, c->inputs[0].get_volume()*sizeof(T));
+  // printf("cache upd done\n");
   return cache_score;
 }
 
@@ -304,6 +313,7 @@ float Cache::update_task(const Task *task,
                       const std::vector<PhysicalRegion>& regions,
                       Context ctx, Runtime* runtime)
 {
+  // printf("cache upd_task\n");
   Cache* c = ((Arg*)(task->args))->cache;
   switch(c->inputs[0].data_type)
   {
@@ -315,6 +325,7 @@ float Cache::update_task(const Task *task,
       assert(false && "unsupported data type");
       return -1.0f;
   }
+  // printf("cache upd_task done\n");
 }
 
 
@@ -350,7 +361,7 @@ void Cache::forward(const FFModel& ff)
                          FFConfig::get_hash_id(std::string(name)));
   launcher_update.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region));
+      READ_ONLY, EXCLUSIVE, inputs[0].region));
   launcher_update.add_field(0, FID_DATA);
   FutureMap score_fm = runtime->execute_index_space(ctx, launcher_update);
   // add score futures to Cache future vector attribute
@@ -402,5 +413,5 @@ bool Cache::measure_operator_cost(Simulator* sim,
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
   cost_metrics.memory_requirement = 0;
-  return false;
+  return true;
 }

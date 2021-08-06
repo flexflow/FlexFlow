@@ -19,20 +19,46 @@
 
 using namespace Legion;
 
-RecompileState::RecompileState(std::function<bool(FFModel*)> _trigger_func,
-                              std::function<void(FFModel*)> _alter_func,
-                              FFModel* _ff)
-: trigger_func(_trigger_func), alter_func(_alter_func), ff(_ff)
+// TODO: Du brauchst wahrsch die parallel config
+// TODO: q_len muss mal anzahl devices etc sein
+
+RecompileState::RecompileState(FFModel* ff, std::function<bool(FFModel*, RecompileState&)> _alter_func,
+                              int _launch_ahead)
+: alter_func(_alter_func), launch_ahead(_launch_ahead)
 {
+  assert(launch_ahead > 0);
+
+  // some statistics to use in the alter function
   recompilations = 0;
+  last_recompile = 0;
+
+  // set q_len for all operators with a score
+  for(int l = 0; l < ff->layers.size(); l++) {
+    switch(ff->layers[l]->op_type) {
+      case OP_GROUP_BY:
+        ((GroupBy*)ff->layers[l])->q_len = launch_ahead;
+        break;
+      case OP_CACHE:
+        ((Cache*)ff->layers[l])->q_len = launch_ahead;
+        break;
+      default:
+        break;
+    }
+  }
 }
 
-bool RecompileState::trigger() {
-  return trigger_func(ff);
-}
-
-void RecompileState::alter() {
-  // if(recompilations == 0)
-  alter_func(ff);
-  // recompilations++;
-}
+// void RecompileState::alter(bool perform_rec)
+// {
+//   last_recompile++;
+//
+//   if(q_len < launch_ahead) return;
+//
+//   bool rec = alter_func(ff, this);
+//
+//   if(rec && perf_rec) {
+//     // TODO: Search for parallelization strategy
+//     ff->recompile();
+//     recompilations++;
+//     last_recompile = 0;
+//   }
+// }

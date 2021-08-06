@@ -254,17 +254,17 @@ void aggspec_forward_kernel(float** exp_preds,
 #ifdef MOE_DEBUG
   __syncthreads();
   if(threadIdx.x == 0) {
-    int i = 0;
-    // for(int i = 0; i < 5; i++) {
-    printf("0. expert %d preds:\n", i);
-    for(int j = 0; j < exp_samples; j++) {
+    // int i = 0;
+    for(int i = 0; i < 3; i++) {
+    printf("0. agg_Spec expert %d preds:\n", i);
+    for(int j = 0; j < 5; j++) {
       for(int l = 0; l < out_dim; l++) {
         printf("%.2f ", exp_preds[i][j*out_dim + l]);
       }
       printf("\n");
     }
     printf("\n");
-    // }
+    }
   }
 #endif
 }
@@ -276,9 +276,9 @@ void aggspec_backward_kernel_gate(const float* output_grad,
               float* full_gate_grads,
               const int* expert_assign,
               float* shared_sum,
-              const float* gate_pred,
+              /*const float* gate_pred,*/
               int* expert_bal, float lambda_bal,
-              int batch_size, int k, int n, int out_dim)
+              int batch_size, int k, int n, int out_dim, bool* cache_corr)
 {
   // TODO: Multiple blocks
   // __shared__ float shared_sum[1];
@@ -356,7 +356,7 @@ void aggspec_backward_kernel_gate(const float* output_grad,
 #ifdef MOE_DEBUG
   __syncthreads();
   if(threadIdx.x == 0) {
-    printf("4. gate grads:\n");
+    printf("4. agg_spec gate grads:\n");
     for(int i = 0; i < batch_size; i++) {
       for(int j = 0; j < n; j++) {
         printf("%.3f ", full_gate_grads[i*n+j]);
@@ -382,7 +382,7 @@ void aggspec_backward_kernel_exp(const float* output_grad,
   CUDA_KERNEL_LOOP(i, k*out_dim*batch_size)
   {
     if (exp_grads[i/out_dim] != 0) {
-      exp_grads[i/out_dim][i%out_dim] += gate_preds[i/out_dim] * output_grad[i];
+      exp_grads[i/out_dim][i%out_dim] = gate_preds[i/out_dim] * output_grad[i];
     }
   }
 }
@@ -391,7 +391,8 @@ void aggspec_backward_kernel_exp(const float* output_grad,
 __global__
 void aggspec_backward_kernel(float** exp_grads,
         const int* exp_assign,
-        const float* gating_net_preds,
+        const int* true_exp_assign,
+        const float* gating_net_preds, // TODO: Full
         float* full_gating_grads,
         const float* output_grads,
         int n, // num experts
@@ -403,13 +404,18 @@ void aggspec_backward_kernel(float** exp_grads,
         const bool local_lambda)
 {
   __shared__ float* chosen_exp_grads[MAX_K*MAX_BATCH_SIZE];
-  __shared__ int expert_bal[MAX_N];
+  __shared__ int true_expert_bal[MAX_N];
   __shared__ float shared_sum[1];
+  __shared__ bool corr_cached[MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread per block
   if(threadIdx.x == 0) {
+    int expert_bal[MAX_N];
+
     // init arrays
+    for(int i = 0; i < batch_size; i++) corr_cached[i] = true;
     for(int i = 0; i < n; i++) expert_bal[i] = 0;
+    for(int i = 0; i < n; i++) true_expert_bal[i] = 0;
     *shared_sum = 0.0f;
 
     // Get pointer to chosen expert grads and expert counts
@@ -417,6 +423,8 @@ void aggspec_backward_kernel(float** exp_grads,
     for(int i = 0; i < batch_size; i++) {
       for(int j = 0; j < k; j++) {
         int expert = exp_assign[k*i + j];
+        int true_expert = true_exp_assign[k*i + j];
+        if(expert != true_expert) corr_cached[i] = false;
         if(local_lambda) exp_samples = arr_exp_samples[expert];
 
         if(expert_bal[expert] >= exp_samples) {
@@ -427,6 +435,7 @@ void aggspec_backward_kernel(float** exp_grads,
           chosen_exp_grads[i*k+j] = exp_grads[expert] + expert_bal[expert]*out_dim;
         }
         expert_bal[expert]++;
+        true_expert_bal[true_expert]++;
       }
     }
 
@@ -447,12 +456,14 @@ void aggspec_backward_kernel(float** exp_grads,
 
   // get gating net gradients
   aggspec_backward_kernel_gate(output_grads, full_gating_grads, exp_assign,
-    shared_sum, gating_net_preds, expert_bal, (lambda_bal*n)/batch_size,
-    batch_size, k, n, out_dim);
+    shared_sum, true_expert_bal, (lambda_bal*n)/batch_size,
+    batch_size, k, n, out_dim, corr_cached);
 
 #ifdef MOE_DEBUG
   __syncthreads();
   if(threadIdx.x == 0) {
+    int exp_samples = arr_exp_samples[0];
+
     float abs_gate_sum = 0.0f;
     float gate_sum = 0.0f;
     for(int j = 0; j < batch_size*n; j++) {
@@ -460,7 +471,6 @@ void aggspec_backward_kernel(float** exp_grads,
       gate_sum += full_gating_grads[j];
     }
     printf("5. gate grad sum: %.8f %.5f\n", gate_sum, abs_gate_sum);
-    printf("5. exp samples: %d\n", exp_samples);
     float abs_exp_sum = 0.0f;
     float exp_sum = 0.0f;
     for(int i = 0; i < n; i++) {
@@ -470,7 +480,6 @@ void aggspec_backward_kernel(float** exp_grads,
       }
     }
     printf("5. average exp grad sum: %.5f %.5f\n", exp_sum/n, abs_exp_sum/n);
-
     printf("6. gate preds\n");
     for(int j = 0; j < batch_size; j++) {
       for(int l = 0; l < k; l++) {
@@ -489,9 +498,11 @@ void aggspec_backward_kernel(float** exp_grads,
     }
     printf("\n");
 
+    // __syncthreads();
+    // if(threadIdx.x == 0) {
     for(int i = 0; i < n; i++) {
       printf("8. exp grad %d\n", i);
-      for(int j = 0; j < exp_samples; j++) {
+      for(int j = 0; j < 20; j++) {
         for(int l = 0; l < out_dim; l++) {
           printf("%.4f ", exp_grads[i][j*out_dim + l]);
         }
@@ -499,6 +510,15 @@ void aggspec_backward_kernel(float** exp_grads,
       }
       printf("\n");
     }
+
+        printf("6. gate preds\n");
+        for(int j = 0; j < batch_size; j++) {
+          for(int l = 0; l < k; l++) {
+            printf("%.4f ", gating_net_preds[j*k + l]);
+          }
+          printf("\n");
+        }
+        printf("\n");
 
     printf("\n===================================================================\n\n");
   }
@@ -510,6 +530,7 @@ void AggregateSpec::forward_task(const Task *task,
                              const std::vector<PhysicalRegion>& regions,
                              Context ctx, Runtime* runtime)
 {
+  // printf("aggspec fwd task\n");
   int n = ((AggregateSpec*)task->args)->n;
   const bool local_lambda = ((AggregateSpec*)task->args)->local_lambda;
 
@@ -579,6 +600,7 @@ void AggregateSpec::forward_task(const Task *task,
   aggspec_forward_kernel<<<num_blocks, num_threads>>>(m->dev_region_ptrs,
     acc_gate_assign.ptr(rect_gate_assign), acc_output.ptr(rect_output), k,
     m->exp_samples_arr, batch_size, out_dim, local_lambda);
+  // printf("done aggspec fwd task\n");
 }
 
 
@@ -586,29 +608,33 @@ void AggregateSpec::backward_task(const Task *task,
                               const std::vector<PhysicalRegion>& regions,
                               Context ctx, Runtime* runtime)
 {
+  // printf("aggspec bwd task\n");
   const AggregateSpecMeta* m = *((AggregateSpecMeta**)task->local_args);
   int n = ((AggregateSpec*)task->args)->n;
   AggregateSpec* aggspec = (AggregateSpec*)task->args;
   float lambda_bal = aggspec->lambda_bal;
   const bool local_lambda = aggspec->local_lambda;
 
-  assert((int)regions.size() == n+4);
-  assert((int)task->regions.size() == n+4);
+  assert((int)regions.size() == n+5);
+  assert((int)task->regions.size() == n+5);
 
   // get gate_pred, gate_assin, full_gate_grad, output_grad
   const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
   const AccessorRO<int, 2> acc_gate_assign(regions[1], FID_DATA);
-  const AccessorRW<float, 2> acc_full_gate_grad(regions[2], FID_DATA); // TODO: WO, debug
-  const AccessorRO<float, 2> acc_output_grad(regions[n+3], FID_DATA);
+  const AccessorRO<int, 2> acc_true_gate_assign(regions[2], FID_DATA);
+  const AccessorRW<float, 2> acc_full_gate_grad(regions[3], FID_DATA); // TODO: WO, debug
+  const AccessorRO<float, 2> acc_output_grad(regions[n+4], FID_DATA);
 
   Rect<2> rect_gate_pred = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<2> rect_gate_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  Rect<2> rect_full_gate_grad = runtime->get_index_space_domain(
+  Rect<2> rect_true_gate_assign = runtime->get_index_space_domain(
           ctx, task->regions[2].region.get_index_space());
+  Rect<2> rect_full_gate_grad = runtime->get_index_space_domain(
+          ctx, task->regions[3].region.get_index_space());
   Rect<2> rect_out_grad = runtime->get_index_space_domain(
-      ctx, task->regions[n+3].region.get_index_space());
+      ctx, task->regions[n+4].region.get_index_space());
 
   coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;
   assert(batch_size == rect_gate_assign.hi[1] - rect_gate_assign.lo[1] + 1);
@@ -624,17 +650,17 @@ void AggregateSpec::backward_task(const Task *task,
   std::vector<int> exp_samples_arr;
   // get first exp_pred and row
   Domain exp_domain = runtime->get_index_space_domain(
-    ctx, task->regions[3].region.get_index_space());
+    ctx, task->regions[4].region.get_index_space());
   exp_grads[0] = helperGetTensorPointerRW<float>(
-    regions[3], task->regions[3], FID_DATA, ctx, runtime);
+    regions[4], task->regions[4], FID_DATA, ctx, runtime);
   exp_samples_arr.push_back(exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
   assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
 
   for(int i = 1; i < n; i++) {
     exp_domain = runtime->get_index_space_domain(
-      ctx, task->regions[i+3].region.get_index_space());
+      ctx, task->regions[i+4].region.get_index_space());
     exp_grads[i] = helperGetTensorPointerRW<float>(
-      regions[i+3], task->regions[i+3], FID_DATA, ctx, runtime);
+      regions[i+4], task->regions[i+4], FID_DATA, ctx, runtime);
 
     if(local_lambda) {
       exp_samples_arr.push_back(exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
@@ -658,9 +684,10 @@ void AggregateSpec::backward_task(const Task *task,
   cudaMemcpy(m->exp_samples_arr, &exp_samples_arr[0], copy_size*sizeof(int), cudaMemcpyHostToDevice);
 
   aggspec_backward_kernel<<<num_blocks, num_threads>>>(m->dev_region_ptrs,
-    acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
+    acc_gate_assign.ptr(rect_gate_assign), acc_true_gate_assign.ptr(rect_true_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     acc_full_gate_grad.ptr(rect_full_gate_grad), acc_output_grad.ptr(rect_out_grad),
     n, k, m->exp_samples_arr, lambda_bal, batch_size, out_dim, local_lambda);
+  // printf("done aggspec bwd task\n");
 }
 
 
@@ -692,11 +719,12 @@ void AggregateSpec::forward(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
 
-  // gate_preds
+  // gate_preds TODO: Full gate grads
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[0].region));
   launcher.add_field(0, FID_DATA);
+
   // gate_assign
   launcher.add_region_requirement(
     RegionRequirement(input_lps[1], 0/*projection id*/,
@@ -761,25 +789,31 @@ void AggregateSpec::backward(const FFModel& ff)
       READ_ONLY, EXCLUSIVE, inputs[1].region));
   launcher.add_field(1, FID_DATA);
 
+  // true gate assign
+  launcher.add_region_requirement(
+    RegionRequirement(input_lps[2], 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, inputs[2].region));
+  launcher.add_field(2, FID_DATA);
+
   // gate gradients full
   launcher.add_region_requirement(
     RegionRequirement(input_grad_lps[3], 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[3].region_grad));
-  launcher.add_field(2, FID_DATA);
+  launcher.add_field(3, FID_DATA);
 
   // exp gradients
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
       RegionRequirement(input_grad_lps[i+4], 0/*projection id*/,
         WRITE_ONLY, EXCLUSIVE, inputs[i+4].region_grad));
-    launcher.add_field(i+3, FID_DATA);
+    launcher.add_field(i+4, FID_DATA);
   }
 
   // output
   launcher.add_region_requirement(
     RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
       READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
-  launcher.add_field(n+3, FID_DATA);
+  launcher.add_field(n+4, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
 }

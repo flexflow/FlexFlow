@@ -83,12 +83,12 @@ Aggregate::Aggregate(FFModel& model, const Tensor* _inputs, int _n,
   // output
   outputs[0].numDim = num_dim;
   for(int i = 0; i < num_dim-1; i++)
-    outputs[0].adim[i] = inputs[4].adim[i];
+    outputs[0].adim[i] = inputs[5].adim[i];
   outputs[0].adim[num_dim-1] = inputs[0].adim[num_dim-1];
 
   numWeights = 0;
   numOutputs = 1;
-  lambda_bal = _lambda_bal/batch_size;
+  // lambda_bal = _lambda_bal/batch_size;
 }
 
 
@@ -114,7 +114,7 @@ void Aggregate::create_output_and_partition(FFModel& model)
   int dims[num_dim];
   dims[0] = inputs[0].adim[1];
   for (int i = 1; i < num_dim; i++)
-    dims[i] = inputs[4].adim[num_dim-1-i];
+    dims[i] = inputs[5].adim[num_dim-1-i];
 
   outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
   outputs[0].owner_op = this;
@@ -403,7 +403,8 @@ void agg_backward_kernel(float** exp_preds,
     int exp_samples = arr_exp_samples[0];
     for(int i = 0; i < batch_size; i++) {
       for(int j = 0; j < k; j++) {
-        int expert = true_exp_assign[k*i + j];
+        int expert = exp_assign[k*i + j];
+        if(expert != true_exp_assign[k*i + j]) cache_corr[i] = false;
         if(local_lambda) exp_samples = arr_exp_samples[expert];
 
         if(expert_bal[expert] >= exp_samples) {
@@ -469,6 +470,7 @@ void Aggregate::forward_task(const Task *task,
                              const std::vector<PhysicalRegion>& regions,
                              Context ctx, Runtime* runtime)
 {
+  // printf("agg fwd task\n");
   int n = ((Aggregate*)task->args)->n;
   const bool local_lambda = ((Aggregate*)task->args)->local_lambda;
 
@@ -541,6 +543,8 @@ void Aggregate::forward_task(const Task *task,
     acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     acc_output.ptr(rect_output), n, k, m->exp_samples_arr, batch_size, out_dim,
     local_lambda);
+  // printf("done agg fwd task\n");
+
 }
 
 
@@ -548,6 +552,8 @@ void Aggregate::backward_task(const Task *task,
                               const std::vector<PhysicalRegion>& regions,
                               Context ctx, Runtime* runtime)
 {
+    printf("agg bwd task\n");
+
   const AggregateMeta* m = *((AggregateMeta**)task->local_args);
   int n = ((Aggregate*)task->args)->n;
   Aggregate* agg = (Aggregate*)task->args;
@@ -646,6 +652,9 @@ void Aggregate::backward_task(const Task *task,
     acc_true_gate_assign.ptr(rect_true_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     full_acc_gate_grad.ptr(rect_full_gate_grad), acc_output_grad.ptr(rect_out_grad),
     n, k, m->exp_samples_arr, lambda_bal, batch_size, out_dim, local_lambda);
+
+    printf("done agg bwd task\n");
+
 }
 
 

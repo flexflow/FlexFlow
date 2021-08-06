@@ -27,16 +27,13 @@ class FFModel;
 class RecompileState
 {
 public:
-  RecompileState(std::function<bool(FFModel*)> _trigger_func,
-                std::function<void(FFModel*)> _alter_func,
-                FFModel* _ff);
-  bool trigger();
-  void alter();
+  RecompileState(FFModel* ff, std::function<bool(FFModel*, RecompileState&)> _alter_func,
+               int _launch_ahead=1);
 public:
   int recompilations;
-private:
-  std::function<bool(FFModel*)> trigger_func;
-  std::function<void(FFModel*)> alter_func;
-  FFModel* ff;
+  int last_recompile;
+  std::function<bool(FFModel*, RecompileState&)> alter_func;
+  // FFModel* ff;
+  int launch_ahead;
 };
 #endif

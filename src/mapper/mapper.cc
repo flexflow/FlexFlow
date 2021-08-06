@@ -294,6 +294,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
       if (num_parts == 1) {
         output.initial_proc = all_gpus[config.device_ids[0]];
         // Current assert this sould be a local proc
+        // NOTE: This fails for me if I run on several nodes and put the flag --control-replication 
         assert(output.initial_proc.address_space() == node_id);
         return;
       } else {
@@ -530,7 +531,7 @@ void FFMapper::map_task(const MapperContext ctx,
           Domain instance_domain = it->get_instance_domain();
           Domain region_domain = runtime->get_index_space_domain(
               ctx, task.regions[idx].region.get_index_space());
-          if (instance_domain.get_volume() == region_domain.get_volume()) 
+          if (instance_domain.get_volume() == region_domain.get_volume())
             valid_instances.push_back(*it);
         }
       }

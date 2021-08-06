@@ -1595,7 +1595,7 @@ void FFModel::forward(int seq_length)
   for (size_t i = 0; i < layers.size(); i++) {
     // if(i != layers.size() -2)
       layers[i]->forward(*this);
-    // std::cout << i << ": " << layers[i]->name << "\n";
+    // if(((Cache*)layers[10])->load_cached) std::cout << i << ": " << layers[i]->name << "\n";
   }
 }
 
@@ -1610,9 +1610,54 @@ void FFModel::forward_test(int seq_length)
 }
 
 
-void FFModel::recompile_on_condition(RecompileState &r)
+void FFModel::recompile_on_condition(RecompileState &r, bool perf_rec)
 {
-  r.alter();
+  r.last_recompile++;
+
+  // TODO: several group_bys
+  /*
+  NOTE GroupBy: I couldn't get Legion to have futures with dynamic size. So I
+  need to make the future a pointer. Smart pointers as futures didn't work, and
+  I cannot normally free the pointer here, because with --control-replication
+  (and executing on several nodes)the pointer would be freed twice. So we use a
+  smart pointer here. That way the future pointer will be freed once the last
+  smart pointer reference is gone.
+  */
+  std::shared_ptr<float> sptr;
+  size_t q_len;
+  for(size_t l = 0; l < layers.size(); l++) {
+    switch(layers[l]->op_type) {
+      case OP_GROUP_BY:
+        q_len = ((GroupBy*)layers[l])->score_futures.size();
+        if(q_len == r.launch_ahead) {
+          float* future_ptr = ((GroupBy*)layers[l])->score_futures.front()
+            .get_result<float*>();
+          sptr.reset(future_ptr);
+        } else if (q_len < r.launch_ahead) {
+          return;
+        }
+        else {
+          // TODO: This can happen and you should delete all old things then
+          assert(false);
+        }
+        break;
+      case OP_CACHE:
+        q_len = ((Cache*)layers[l])->score_futures.size();
+        break;
+      default:
+        break;
+    }
+  }
+
+  if(q_len < r.launch_ahead) return;
+
+  bool rec = r.alter_func(this, r);
+  if(rec && perf_rec) {
+    // TODO: Search for parallelization strategy
+    recompile();
+    r.recompilations++;
+    r.last_recompile = 0;
+  }
 }
 
 
@@ -1754,7 +1799,7 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
   return false;
 }
 
-void FFModel::recompile(std::vector<int>& layers_changed)
+void FFModel::recompile()
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -2323,8 +2368,8 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_EMBEDDING: return "Embedding";
     case OP_GROUP_BY: return "GroupBy";
     case OP_CACHE: return "Cache";
-    case OP_AGGREGATE: return "Aggregate cooperation";
-    case OP_AGG_SPEC: return "Aggregate specification";
+    case OP_AGGREGATE: return "Aggregate_cooperation";
+    case OP_AGG_SPEC: return "Aggregate_specification";
     case OP_RESHAPE: return "Reshape";
     case OP_REVERSE: return "Reverse";
     case OP_TRANSPOSE: return "Transpose";
@@ -3189,21 +3234,21 @@ void register_flexflow_internal_tasks()
   // Reverse task
   {
     TaskVariantRegistrar registrar(TOPK_INIT_TASK_ID, "TopK Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta*, TopK::init_task>(
         registrar, "TopK Init Task");
   }
   {
     TaskVariantRegistrar registrar(TOPK_FWD_TASK_ID, "TopK Forward");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<TopK::forward_task>(
         registrar, "TopK Forward Task");
   }
   {
     TaskVariantRegistrar registrar(TOPK_BWD_TASK_ID, "TopK Backward");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<TopK::backward_task>(
         registrar, "TopK Backward Task");

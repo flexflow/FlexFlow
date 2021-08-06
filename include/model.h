@@ -532,7 +532,7 @@ public:
                LossType loss_type,
                const std::vector<MetricsType>& metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
-  void recompile(std::vector<int>& layers_changed);
+  void recompile();
   void optimize(Simulator* simulator,
                 std::map<Op*, ParallelConfig>& best,
                 size_t budget, float alpha,
@@ -543,7 +543,7 @@ public:
   void rewrite(const std::map<Op*, ParallelConfig>& current,
                std::map<Op*, ParallelConfig>& next,
                bool use_propagation) const;
-  void recompile_on_condition(RecompileState& r);
+  void recompile_on_condition(RecompileState& r, bool perf_rec=true);
   void zero_gradients();
   void print_layers(int id);
   std::string get_operator_type_name(OperatorType type) const;
@@ -1275,6 +1275,7 @@ public:
   const bool local_lambda;
   std::vector<float> alpha;
   std::deque<Future> score_futures;
+  int q_len; // TODO
   bool profiling;
 };
 
@@ -1319,6 +1320,7 @@ public:
   int num_batches;
   std::function<float(float*,const void*,const void*,int)> score_f;
   std::deque<Future> score_futures;
+  int q_len;
   bool profiling;
   int batch_ctr;
 };
@@ -1755,19 +1757,19 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
-  static void forward_kernel(const TopKMeta* m,
-                      const float* input_ptr,
-                      float* output_ptr,
-                      int* indices_ptr,
-                      size_t batch_size, int length, int k,
-                      bool sorted,
-                      cudaStream_t stream);
-  static void backward_kernel(const TopKMeta* m,
-                       const float* out_grad_ptr,
-                       const int* indices_ptr,
-                       float* in_grad_ptr,
-                       size_t batch_size, int length, int k,
-                       cudaStream_t stream);
+  // static void forward_kernel(const TopKMeta* m,
+  //                     const float* input_ptr,
+  //                     float* output_ptr,
+  //                     int* indices_ptr,
+  //                     size_t batch_size, int length, int k,
+  //                     bool sorted,
+  //                     cudaStream_t stream);
+  // static void backward_kernel(const TopKMeta* m,
+  //                      const float* out_grad_ptr,
+  //                      const int* indices_ptr,
+  //                      float* in_grad_ptr,
+  //                      size_t batch_size, int length, int k,
+  //                      cudaStream_t stream);
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);

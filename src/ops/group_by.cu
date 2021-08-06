@@ -216,22 +216,22 @@ void GroupBy::init(const FFModel& ff)
                          TaskArgument(this, sizeof(GroupBy)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
-  // data
-  launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
-  launcher.add_field(0, FID_DATA);
-  // assign
-  launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[1].region));
-  launcher.add_field(1, FID_DATA);
+  // // data
+  // launcher.add_region_requirement(
+  //   RegionRequirement(input_lps[0], 0/*projection id*/,
+  //     READ_ONLY, EXCLUSIVE, inputs[0].region));
+  // launcher.add_field(0, FID_DATA);
+  // // assign
+  // launcher.add_region_requirement(
+  //   RegionRequirement(input_lps[1], 0/*projection id*/,
+  //     READ_ONLY, EXCLUSIVE, inputs[1].region));
+  // launcher.add_field(1, FID_DATA);
   // output
   for(int i = 0; i < n; i++) {
     launcher.add_region_requirement(
       RegionRequirement(outputs[i].part, 0/*projection id*/,
         WRITE_ONLY, EXCLUSIVE, outputs[i].region));
-    launcher.add_field(i+2, FID_DATA);
+    launcher.add_field(i, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -271,24 +271,24 @@ void gb_forward_kernel(const float* input,
   // Get pred pointers, single thread per block
   if(threadIdx.x == 0) {
     int exp_tensor_rows = ceil(alpha[0]*k/n*batch_size);
-
     int expert_idx[MAX_N] = {0};
     for(int i = 0; i < k*batch_size; i++) {
       // Get pointer to chosen expert predictions
       int expert = exp_assign[i];
       if(local_lambda) exp_tensor_rows = ceil(alpha[expert]*k/n*batch_size);
-
       if(expert_idx[expert] >= exp_tensor_rows) {
         // dropped sample
         chosen_exp_preds[i] = 0;
       }
       else {
-        chosen_exp_preds[i] = outputs[expert] + expert_idx[expert]*data_dim;
+        float* out = outputs[expert];
+        chosen_exp_preds[i] = out + expert_idx[expert]*data_dim;
       }
       expert_idx[expert]++;
     }
 
     // compute score: min alpha such that all samples fit
+    // TODO: You could do that in parallel with compute output
     float fact = 0.01f;
     float fact_1 = 1.0f - fact;
     float norm = (float)n/(k*batch_size)*fact;
@@ -363,6 +363,8 @@ float* GroupBy::forward_task_with_dim(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
+  // printf("gb fwd task\n");
+
   // Get n, alpha
   const GroupBy* gb = (GroupBy*) task->args;
   int n = gb->n;
@@ -403,7 +405,6 @@ float* GroupBy::forward_task_with_dim(const Task *task,
     // assert(output_cols == input_cols);
   }
 
-  // TODO: why cublas/cudnn stream is needed here?
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -417,7 +418,7 @@ float* GroupBy::forward_task_with_dim(const Task *task,
     acc_input.ptr(rect_input), acc_assign.ptr(rect_assign), m->dev_region_ptrs, n, k,
     m->alpha_pass, batch_size, data_dim, m->score, local_lambda);
 
-  float* score_ptr = (float*)malloc(copy_size*sizeof(float)); // needs to be freed in user code
+  float* score_ptr = new float[copy_size];
   cudaMemcpy(score_ptr, m->score, copy_size*sizeof(float), cudaMemcpyDeviceToHost);
   return score_ptr;
 }
@@ -562,10 +563,10 @@ void GroupBy::forward(const FFModel& ff)
         WRITE_ONLY, EXCLUSIVE, outputs[i].region));
     launcher.add_field(i+2, FID_DATA);
   }
+  // printf("groupby launches!!\n");
 
   FutureMap score_fm = runtime->execute_index_space(ctx, launcher);
-  // add score futures to Cache future vector attribute
-  // score_futures.clear();
+  // add score futures to GroupBy future vector attribute
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
     case DIM: \

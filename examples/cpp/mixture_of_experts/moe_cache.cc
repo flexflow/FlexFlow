@@ -24,9 +24,10 @@
 
 using namespace Legion;
 
+
 LegionRuntime::Logger::Category log_app("MoE");
-int num_exp = 3;
-int num_select = 1;
+int num_exp = 5;
+int num_select = 2;
 int epoch = 0;
 int recompiles = 0;
 
@@ -72,7 +73,8 @@ float moe_score(float* cached_score,
   return *cached_score;
 }
 
-// Trigger: If average score of all cache layers is above thresh
+
+// TODO: depricated. Trigger: If average score of all cache layers is above thresh
 bool moe_trigger(FFModel* ff) {
   float thresh = 1.0f;
 
@@ -87,6 +89,118 @@ bool moe_trigger(FFModel* ff) {
     }
   }
   return score >= thresh;
+}
+
+
+bool moe_alter(FFModel* ff, RecompileState& r) {
+  // cache recompile
+  float cache_thresh_up = 0.95f;
+  float cache_thresh_low = 0.85f;
+
+  // capacity factor recompile
+  float groupby_thresh_max = 1.0f;
+  float groupby_overhead_max = 1.3f;
+  float max_factor = 4.0f;
+
+  // get layers and scores
+  std::vector<int> topk_idx;
+  std::vector<int> cache_idx;
+  std::vector<int> groupby_idx;
+  std::vector<int> agg_idx;
+  std::vector<int> aggspec_idx;
+
+  std::vector<float> cache_score;
+  std::vector<float*> groupby_score;
+  // get cache score and groupby max
+  // FIXME: if cache or group by split onto several devices
+  for(size_t i = 0; i < ff->layers.size(); i++) {
+    switch(ff->layers[i]->op_type) {
+      case OP_TOPK:
+        topk_idx.push_back(i);
+        break;
+      case OP_CACHE:
+        cache_idx.push_back(i);
+        cache_score.push_back(((Cache*)ff->layers[i])->score_futures.front()
+          .get_result<float>());
+        ((Cache*)ff->layers[i])->score_futures.pop_front();
+        break;
+      case OP_GROUP_BY:
+        groupby_idx.push_back(i);
+        groupby_score.push_back(((GroupBy*)ff->layers[i])->score_futures.front()
+          .get_result<float*>());
+        ((GroupBy*)ff->layers[i])->score_futures.pop_front();
+        break;
+      case OP_AGGREGATE:
+        agg_idx.push_back(i);
+        break;
+      case OP_AGG_SPEC:
+        aggspec_idx.push_back(i);
+        break;
+      default:
+        break;
+    }
+  }
+  // recompile
+  bool rec = false;
+
+  // FIXME: for now, no hierarchical models
+  // assert(cache_score.size() == 1 && groupby_score.size() == 1);
+
+  // FIXME: If no aggspec
+  int topk_layer = topk_idx[0];
+  int cache_layer = cache_idx[0];
+  int groupby_layer = groupby_idx[0];
+  int agg_layer = agg_idx[0];
+  int aggspec_layer = aggspec_idx[0];
+
+  // cache recompile
+  if(!((Cache*)ff->layers[cache_layer])->load_cached &&
+    cache_score[0] > cache_thresh_up) {
+    printf("alter cache!!\n");
+    ((Cache*)ff->layers[cache_layer])->use_cached(true);
+    rec = true;
+
+    // Group by input
+    ff->layers[groupby_layer]->inputs[1] = ff->layers[cache_layer]->outputs[0];
+    ff->layers[groupby_layer]->input_lps[1] = ff->layers[cache_layer]->outputs[0].part;
+    ff->layers[groupby_layer]->input_grad_lps[1] = ff->layers[cache_layer]->outputs[0].part_grad;
+    // Aggregate input
+    ff->layers[agg_layer]->inputs[1] = ff->layers[cache_layer]->outputs[0];
+    ff->layers[agg_layer]->input_lps[1] = ff->layers[cache_layer]->outputs[0].part;
+    ff->layers[agg_layer]->input_grad_lps[1] = ff->layers[cache_layer]->outputs[0].part_grad;
+    // AggregateSpec input
+    ff->layers[aggspec_layer]->inputs[1] = ff->layers[cache_layer]->outputs[0];
+    ff->layers[aggspec_layer]->input_lps[1] = ff->layers[cache_layer]->outputs[0].part;
+    ff->layers[aggspec_layer]->input_grad_lps[1] = ff->layers[cache_layer]->outputs[0].part_grad;
+  }
+  else if(((Cache*)ff->layers[cache_layer])->load_cached &&
+    cache_score[0] < cache_thresh_low) {
+    printf("alter cache!!\n");
+    ((Cache*)ff->layers[cache_layer])->use_cached(false);
+    rec = true;
+
+    // Group by input
+    ff->layers[groupby_layer]->inputs[1] = ff->layers[topk_layer]->outputs[1];
+    ff->layers[groupby_layer]->input_lps[1] = ff->layers[topk_layer]->outputs[1].part;
+    ff->layers[groupby_layer]->input_grad_lps[1] = ff->layers[topk_layer]->outputs[1].part_grad;
+    // Aggregate input
+    ff->layers[agg_layer]->inputs[1] = ff->layers[topk_layer]->outputs[1];
+    ff->layers[agg_layer]->input_lps[1] = ff->layers[topk_layer]->outputs[1].part;
+    ff->layers[agg_layer]->input_grad_lps[1] = ff->layers[topk_layer]->outputs[1].part_grad;
+    // AggregateSpec input
+    ff->layers[aggspec_layer]->inputs[1] = ff->layers[topk_layer]->outputs[1];
+    ff->layers[aggspec_layer]->input_lps[1] = ff->layers[topk_layer]->outputs[1].part;
+    ff->layers[aggspec_layer]->input_grad_lps[1] = ff->layers[topk_layer]->outputs[1].part_grad;
+  }
+
+  // capacity factor recompile
+
+  // increment trace id if triggered
+  // TODO: What if test set ....
+  if(rec) {
+    glob_trace_id++;
+  }
+  return rec;
 }
 
 
@@ -121,7 +235,7 @@ void top_level_task(const Task* task,
 
   float alpha = 2.0f;
   // float lambda = 0.01; // coop loss cifar10
-  float lambda = 0.06f/250.0f; // spec loss cifar100
+  float lambda = 0.05/40.0f; // spec loss cifar100
 
   // MoE model
 // #ifdef USE_CNN
@@ -130,18 +244,18 @@ void top_level_task(const Task* task,
   t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU, 1, true, NULL, kernel_initializer, bias_initializer, NULL);
   t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
   t = ff.flat(t);
-  t = ff.dense(t, 1024, AC_MODE_RELU/*relu*/, true, NULL, kernel_initializer, bias_initializer, NULL);
-  Tensor gate_preds = ff.dense(t, 64, AC_MODE_SIGMOID/*relu*/, true, NULL, kernel_initializer, bias_initializer, NULL);
+  Tensor gate_preds = ff.dense(t, 80, AC_MODE_SIGMOID, true, NULL, kernel_initializer, bias_initializer, NULL);
 // #else
-//   Tensor gate_preds = ff.dense(input, 128, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
-//   gate_preds = ff.dense(input, 64, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
+  // Tensor gate_preds = ff.dense(input, 128, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
+  // gate_preds = ff.dense(input, 128, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
 // #endif
+  gate_preds = ff.dense(gate_preds, 64, AC_MODE_SIGMOID, true, NULL, kernel_initializer, bias_initializer, NULL);
   gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_SIGMOID, true, NULL, kernel_initializer, bias_initializer, NULL);
   Tensor soft_gate_preds = ff.softmax(gate_preds);
 
   Tensor topK_output[2];
   ff.top_k(gate_preds, topK_output, num_select, false);
-  // ff.cache(topK_output[1], (TRAIN_SAMPLES+TEST_SAMPLES) / ffConfig.batchSize, moe_score);
+  ff.cache(topK_output[1], (TRAIN_SAMPLES+TEST_SAMPLES) / ffConfig.batchSize, moe_score);
 
   Tensor exp_tensors[num_exp];
   ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
@@ -152,20 +266,21 @@ void top_level_task(const Task* task,
   agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
   agg_inputs[3] = soft_gate_preds; // full gate preds
   for(int i = 0; i < num_exp; i++) {
-#ifdef USE_CNN
+// #ifdef USE_CNN
     Tensor t = ff.conv2d(exp_tensors[i], 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU, 1, true, NULL, kernel_initializer, bias_initializer, NULL);
     t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
     t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU, 1, true, NULL, kernel_initializer, bias_initializer, NULL);
     t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
     t = ff.flat(t);
-    t = ff.dense(t, 1024, AC_MODE_RELU/*relu*/, true, NULL, kernel_initializer, bias_initializer, NULL);
-    t = ff.dense(t, 1024, AC_MODE_RELU/*relu*/, true, NULL, kernel_initializer, bias_initializer, NULL);
+    t = ff.dense(t, 64, AC_MODE_RELU/*relu*/, true, NULL, kernel_initializer, bias_initializer, NULL);
     Tensor exp_pred = ff.dense(t, OUT_DIM, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
-#else
-    Tensor exp_pred = ff.dense(exp_tensors[i], 64, AC_MODE_RELU);
-    exp_pred = ff.dense(exp_pred, OUT_DIM, AC_MODE_RELU);
-#endif
+// #else
+//     Tensor exp_pred = ff.dense(exp_tensors[i], 64, AC_MODE_RELU);
+//     exp_pred = ff.dense(exp_pred, 10, AC_MODE_RELU);
+// // #endif
     agg_inputs[i+4] = ff.softmax(exp_pred);
+    // agg_inputs[i+4] = exp_pred;
+
   }
 
   Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
@@ -174,7 +289,7 @@ void top_level_task(const Task* task,
 
 //-----------------------------------------------------------------
 
-  Optimizer* optimizer = new SGDOptimizer(&ff, 0.006f);
+  Optimizer* optimizer = new SGDOptimizer(&ff, 0.002f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
@@ -182,10 +297,13 @@ void top_level_task(const Task* task,
 
   // Data Loader
   DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
+  RecompileState r(&ff, &moe_alter);
   ff.init_layers();
 
+  // ff.load("jl27/debugckpoint.ff");
+
   // std::vector<int> store_vec; // = {0,1,2,3};
-  // ff.load("jl20/c10n5k2-20-newcommoninit.ff", store_vec);
+  // // ff.load("jl20/c10n5k2-20-newcommoninit.ff", store_vec);
   // int start_store = 12;
   // for(int i = 0; i < num_exp; i++) {
   //   store_vec.clear();
@@ -228,16 +346,17 @@ void top_level_task(const Task* task,
 
     for (int iter = 0; iter < iterations; iter++) {
       data_loader.next_batch(ff);
-      if (epoch > 0) {
-        runtime->begin_trace(ctx, glob_trace_id/*trace_id*/);
-      }
+      // if (epoch > 0) {
+      //   runtime->begin_trace(ctx, glob_trace_id/*trace_id*/);
+      // }
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      if (epoch > 0) {
-        runtime->end_trace(ctx, glob_trace_id/*trace_id*/);
-      }
+      ff.recompile_on_condition(r);
+      // if (epoch > 0) {
+      //   runtime->end_trace(ctx, glob_trace_id/*trace_id*/);
+      // }
     }
 
     // TODO: Do properly
@@ -246,16 +365,15 @@ void top_level_task(const Task* task,
     for (int iter = 0; iter < iterations; iter++) {
       data_loader.next_batch(ff);
       ff.forward_test();
+      ff.recompile_on_condition(r, false);
     }
 
-    if(epoch%100 == 0)
-      ff.store("jl27/c100n16k4-l6d250-stab-gor4.ff");
+    if(epoch%10 == 0)
+      ff.store("jl27/c10n5k2l05d40-checkscore-norec.ff");
 
     //   ff.store("jl20/c10n5k2-stab-speccomb50l3-gor3-trynew-nozgrad.ff");
     // first spec:
-
   }
-
 
   // End timer
   {
@@ -535,6 +653,7 @@ void DataLoader::next_batch(FFModel& ff)
     int idx = next_index;
     for (PointInRectIterator<D_DIM> it(rect); it(); it++) {
       SampleIdxs meta;
+      // printf("%d %d and %d\n", D_DIM, ff.config.batchSize, (rect.hi[D_DIM-1] - rect.lo[D_DIM-1] + 1));
       assert(ff.config.batchSize % (rect.hi[D_DIM-1] - rect.lo[D_DIM-1] + 1) == 0);
       meta.num_samples = ff.config.batchSize / (rect.hi[D_DIM-1] - rect.lo[D_DIM-1] + 1);
       for (int i = 0; i < meta.num_samples; i++)

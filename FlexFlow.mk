@@ -52,6 +52,7 @@ GEN_SRC		+= ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/runtime/simulator.cc\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cc\
 		${FF_HOME}/src/recompile/recompile_state.cc\
+		${FF_HOME}/src/ops/topk.cc\
 		${FF_HOME}/src/runtime/machine_model.cc
 
 FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
@@ -70,7 +71,6 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/batch_matmul.cu\
 		${FF_HOME}/src/ops/reshape.cu\
 		${FF_HOME}/src/ops/reverse.cu\
-		${FF_HOME}/src/ops/topk.cu\
 		${FF_HOME}/src/ops/cache.cu\
 		${FF_HOME}/src/ops/group_by.cu\
 		${FF_HOME}/src/ops/aggregate.cu\
@@ -85,7 +85,7 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/runtime/accessor_kernel.cu\
 		${FF_HOME}/src/runtime/simulator.cu\
 		${FF_HOME}/src/runtime/cuda_helper.cu
-		
+
 GEN_GPU_SRC += $(FF_CUDA_SRC)
 GEN_HIP_SRC += $(FF_CUDA_SRC)
 
