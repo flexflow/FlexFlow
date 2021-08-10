@@ -291,7 +291,7 @@ void aggspec_backward_kernel_gate(const float* output_grad,
   expert gradients are /= batch_size and then it would be /= batch_size^2 here */
   CUDA_KERNEL_LOOP(i, batch_size*k*out_dim)
   {
-    // if(cache_corr[i/(k*out_dim)]) {
+    if(cache_corr[i/(k*out_dim)]) {
       float res = output_grad[i] * output_grad[i] * batch_size;
       // printf("res: %.3f, out=%.3f, bs=%d \n", res, output_grad[i], batch_size);
       float* gate_grad_idx = full_gate_grads + (i/(out_dim*k))*n
@@ -299,7 +299,7 @@ void aggspec_backward_kernel_gate(const float* output_grad,
       atomicAdd(gate_grad_idx, res);
       // atomicAdd(shared_sum, res);
       thread_sum += res;
-    // }
+    }
   }
 
   // __syncthreads();
@@ -309,6 +309,7 @@ void aggspec_backward_kernel_gate(const float* output_grad,
   // TODO: Parallelize bal factor and mean = 0 looop CUDA_LOOP(if i < x, else)
   // make 0 mean
   __syncthreads();
+  assert(*shared_sum >= 0);
   CUDA_KERNEL_LOOP(i, k*batch_size)
   {
     full_gate_grads[i/k*n + expert_assign[i]] -= *shared_sum*normalizer;

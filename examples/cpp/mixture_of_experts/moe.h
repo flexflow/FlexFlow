@@ -25,7 +25,7 @@
 #define MAX_NUM_SAMPLES 60000
 
 // data set defines
-#define USE_CIFAR10
+#define USE_MNIST
 #define NUM_SAMPLES (TRAIN_SAMPLES+TEST_SAMPLES)
 
 #ifdef USE_MNIST
@@ -53,8 +53,8 @@
   #define READ_DATA read_cifar100_c
   #define USE_CNN
 #elif defined(USE_CIFAR10)
-  #define TRAIN_SAMPLES 50000
-  #define TEST_SAMPLES 10000
+  #define TRAIN_SAMPLES 50040
+  #define TEST_SAMPLES 9960
   #define INPUT_DIM 3,32,32
   #define D_DIM 4
   #define OUT_DIM 10

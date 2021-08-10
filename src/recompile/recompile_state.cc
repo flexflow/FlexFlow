@@ -23,10 +23,10 @@ using namespace Legion;
 // TODO: q_len muss mal anzahl devices etc sein
 
 RecompileState::RecompileState(FFModel* ff, std::function<bool(FFModel*, RecompileState&)> _alter_func,
-                              int _launch_ahead)
+                              size_t _launch_ahead)
 : alter_func(_alter_func), launch_ahead(_launch_ahead)
 {
-  assert(launch_ahead > 0);
+  assert(launch_ahead > 0); 
 
   // some statistics to use in the alter function
   recompilations = 0;

@@ -1312,6 +1312,8 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
+  template <typename T>
+  void cache_init();
   void use_cached(bool cached);
 public:
   void** batch_ptrs;

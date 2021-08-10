@@ -294,9 +294,9 @@ void FFMapper::select_task_options(const MapperContext ctx,
       if (num_parts == 1) {
         output.initial_proc = all_gpus[config.device_ids[0]];
         // Current assert this sould be a local proc
-        // NOTE: This fails for me if I run on several nodes and put the flag --control-replication 
-        assert(output.initial_proc.address_space() == node_id);
-        return;
+        // NOTE: This fails for me if I run on several nodes and put the flag --control-replication
+        // assert(output.initial_proc.address_space() == node_id);
+        return; 
       } else {
         output.initial_proc = all_gpus[config.device_ids[0]];
         return;

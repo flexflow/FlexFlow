@@ -88,7 +88,12 @@ Cache::Cache(FFModel& model,
 
 
 Cache::~Cache() {
-  for(int i = 0; i < num_batches; i++) free(batch_ptrs[i]);
+  for(int i = 0; i < num_batches; i++)
+#ifdef MOE_CACHE_FB
+    checkCUDA(cudaFree(&batch_ptrs[i]));
+#else
+    free(batch_ptrs[i]);
+#endif
   free(batch_ptrs);
   free(batch_cmp);
 }
@@ -104,7 +109,14 @@ void Cache::create_output_and_partition(FFModel& model)
 {
   // Retrieve the task indexspace for the op
   std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+
+  // TODO: You need to make a out_and_part_with_dim
+  if(inputs[0].data_type == DT_INT32) {
+    task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+  }
+  else {
+    task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
+  }
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, task_is);
@@ -153,6 +165,23 @@ OpMeta* Cache::init_task(const Task* task,
   Cache* c = (Cache*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   CacheMeta* m = new CacheMeta(handle);
+
+  // recompile
+  if(c->batch_ptrs != 0) return m;
+
+  switch(c->inputs[0].data_type)
+  {
+    case DT_FLOAT:
+      c->cache_init<float>();
+      break;
+    case DT_INT32:
+      c->cache_init<int32_t>();
+      break;
+    default:
+      assert(false && "unsupported data type");
+      break;
+  }
+
   m->cache_score = 0.0f;
   m->profiling = c->profiling;
   return m;
@@ -160,33 +189,22 @@ OpMeta* Cache::init_task(const Task* task,
 
 
 template <typename T>
-void cache_init(Cache* cache, size_t vol) {
+void Cache::cache_init() {
   // init pointer array
-  cache->batch_ptrs = (void**)malloc(cache->num_batches*sizeof(T*));
-  for(int i = 0; i < cache->num_batches; i++)
-    cache->batch_ptrs[i] = malloc(vol*sizeof(T));
-  cache->batch_cmp = malloc(vol*sizeof(T));
+  size_t vol = inputs[0].get_volume();
+  batch_ptrs = (void**)malloc(num_batches*sizeof(T*));
+  for(int i = 0; i < num_batches; i++)
+#ifdef MOE_CACHE_FB
+    checkCUDA(cudaMalloc(&batch_ptrs[i], vol*sizeof(T)));
+#else
+    batch_ptrs[i] = malloc(vol*sizeof(T));
+#endif
+  batch_cmp = malloc(vol*sizeof(T));
 }
 
 
 void Cache::init(const FFModel& ff)
 {
-  // recompile
-  if(batch_ptrs != 0) return;
-
-  size_t vol = inputs[0].get_volume();
-  switch(inputs[0].data_type)
-  {
-    case DT_FLOAT:
-      cache_init<float>(this, vol);
-      break;
-    case DT_INT32:
-      cache_init<int32_t>(this, vol);
-      break;
-    default:
-      assert(false && "unsupported data type");
-      break;
-  }
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -220,6 +238,25 @@ void Cache::init(const FFModel& ff)
       WRITE_ONLY, EXCLUSIVE, outputs[0].region));
   launcher.add_field(0, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
+
+  // recompile
+  if(batch_ptrs != 0) return;
+
+#ifndef MOE_CACHE_FB
+  switch(inputs[0].data_type)
+  {
+    case DT_FLOAT:
+      cache_init<float>();
+      break;
+    case DT_INT32:
+      cache_init<int32_t>();
+      break;
+    default:
+      assert(false && "unsupported data type");
+      break;
+  }
+#endif
+
   fm.wait_all_results();
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
@@ -251,9 +288,14 @@ void cache_forward(const Task *task,
   T* output_ptr = helperGetTensorPointerWO<T>(regions[0], task->regions[0],
     FID_DATA, ctx, runtime);
 
+#ifdef MOE_CACHE_FB
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+  copy_kernel<<<1, CUDA_NUM_THREADS, 0, stream>>>
+    (output_ptr, batch_ptrs[batch_ctr], c->inputs[0].get_volume());
+#else
   cudaMemcpy(output_ptr, batch_ptrs[batch_ctr], c->inputs[0].get_volume()*sizeof(T), cudaMemcpyHostToDevice);
+#endif
 }
 
 
@@ -287,19 +329,32 @@ float cache_update(const Task *task,
                   const std::vector<PhysicalRegion>& regions,
                   Context ctx, Runtime* runtime)
 {
-  // printf("cache upd\n");
   Cache* c = ((Arg*)(task->args))->cache;
   int batch_ctr = ((Arg*)(task->args))->batch_ctr;
   CacheMeta* m = *((CacheMeta**)task->local_args);
 
   const T* input_ptr = helperGetTensorPointerRO<T>(regions[0], task->regions[0],
     FID_DATA, ctx, runtime);
+
+#ifdef MOE_CACHE_FB
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  copy_kernel<<<1, CUDA_NUM_THREADS, 0, stream>>>
+    ((T*)c->batch_ptrs[batch_ctr], input_ptr, c->inputs[0].get_volume());
+#endif
+
+  // compute score FIXME: Do on GPU if MOE_CACHE_FB
   T* host_input = (T*) c->batch_cmp;
   cudaMemcpy(host_input, input_ptr, c->inputs[0].get_volume()*sizeof(T), cudaMemcpyDeviceToHost);
   float cache_score = c->score_f(&m->cache_score, host_input,
     c->batch_ptrs[batch_ctr], c->inputs[0].get_volume());
+
+  for(int i = 0; i < c->inputs[0].get_volume(); i++)
+    assert(host_input[i] >= 0);
+
+#ifndef MOE_CACHE_FB
   memcpy(c->batch_ptrs[batch_ctr], host_input, c->inputs[0].get_volume()*sizeof(T));
-  // printf("cache upd done\n");
+#endif
   return cache_score;
 }
 

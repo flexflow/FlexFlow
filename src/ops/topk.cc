@@ -42,7 +42,7 @@ TopK::TopK(FFModel& model,
 : Op(model, OP_TOPK, name, _input),
   k(_k), sorted(_sorted), profiling(model.config.profiling)
 {
-  numOutputs = 2;
+  numOutputs = 2; 
   outputs[0].numDim = inputs[0].numDim;
   outputs[1].numDim = inputs[0].numDim;
   outputs[0].adim[0] = k;

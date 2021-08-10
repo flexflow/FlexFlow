@@ -28,12 +28,12 @@ class RecompileState
 {
 public:
   RecompileState(FFModel* ff, std::function<bool(FFModel*, RecompileState&)> _alter_func,
-               int _launch_ahead=1);
+               size_t _launch_ahead=1); 
 public:
   int recompilations;
   int last_recompile;
   std::function<bool(FFModel*, RecompileState&)> alter_func;
   // FFModel* ff;
-  int launch_ahead;
+  size_t launch_ahead;
 };
 #endif

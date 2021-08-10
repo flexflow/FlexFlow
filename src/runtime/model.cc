@@ -1615,6 +1615,7 @@ void FFModel::recompile_on_condition(RecompileState &r, bool perf_rec)
   r.last_recompile++;
 
   // TODO: several group_bys
+  // TODO: It still doesn't work with --control-replication
   /*
   NOTE GroupBy: I couldn't get Legion to have futures with dynamic size. So I
   need to make the future a pointer. Smart pointers as futures didn't work, and
@@ -1625,10 +1626,16 @@ void FFModel::recompile_on_condition(RecompileState &r, bool perf_rec)
   */
   std::shared_ptr<float> sptr;
   size_t q_len;
+  std::deque<Future>* q;
   for(size_t l = 0; l < layers.size(); l++) {
     switch(layers[l]->op_type) {
       case OP_GROUP_BY:
         q_len = ((GroupBy*)layers[l])->score_futures.size();
+        // If too many entries (launch ahead was reduced or user didn't pop)
+        while(q_len > r.launch_ahead) {
+          ((GroupBy*)layers[l])->score_futures.pop_front();
+          q_len = ((GroupBy*)layers[l])->score_futures.size();
+        }
         if(q_len == r.launch_ahead) {
           float* future_ptr = ((GroupBy*)layers[l])->score_futures.front()
             .get_result<float*>();
@@ -1636,23 +1643,29 @@ void FFModel::recompile_on_condition(RecompileState &r, bool perf_rec)
         } else if (q_len < r.launch_ahead) {
           return;
         }
-        else {
-          // TODO: This can happen and you should delete all old things then
-          assert(false);
-        }
         break;
       case OP_CACHE:
         q_len = ((Cache*)layers[l])->score_futures.size();
+        // If too many entries (launch ahead was reduced or user didn't pop)
+        while(q_len > r.launch_ahead) {
+          ((Cache*)layers[l])->score_futures.pop_front();
+          q_len = ((Cache*)layers[l])->score_futures.size();
+        }
+        if(q_len == r.launch_ahead) {
+          ((Cache*)layers[l])->score_futures.front().get_result<float>();
+        } else if (q_len < r.launch_ahead) {
+          return;
+        }
         break;
       default:
         break;
     }
   }
 
-  if(q_len < r.launch_ahead) return;
+  if(!perf_rec) return;
 
   bool rec = r.alter_func(this, r);
-  if(rec && perf_rec) {
+  if(rec) {
     // TODO: Search for parallelization strategy
     recompile();
     r.recompilations++;

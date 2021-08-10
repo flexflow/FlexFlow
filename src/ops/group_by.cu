@@ -567,6 +567,7 @@ void GroupBy::forward(const FFModel& ff)
 
   FutureMap score_fm = runtime->execute_index_space(ctx, launcher);
   // add score futures to GroupBy future vector attribute
+ //TODO: Comment in for score
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \
     case DIM: \
@@ -581,6 +582,7 @@ void GroupBy::forward(const FFModel& ff)
     default:
       assert(false);
   }
+
 }
 
 void GroupBy::backward(const FFModel& ff)
