@@ -162,6 +162,7 @@ else()
 endif()
 
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+target_link_libraries(flexflow ${LEGION_LIBRARY})
 
 if(FF_USE_NCCL)
   add_dependencies(flexflow ${NCCL_NAME})

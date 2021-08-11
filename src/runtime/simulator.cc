@@ -290,7 +290,7 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
 {
   std::vector<CommDevice *> path = machine->get_comm_path(src_task->mem, dst_task->mem);
   // print the communication path
-  // printf("Path from %s to %s is: ", src_task->mem->name.c_str(), dst_task->mem->name.c_str());
+  // printf("Message: %zu B\nPath from %s to %s is: ", message_size, src_task->mem->name.c_str(), dst_task->mem->name.c_str());
   // for (size_t i = 0; i < path.size(); i++) {
   //   printf("%s ", path[i]->name.c_str());
   // }
@@ -313,6 +313,12 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
     num_segment = max_num_segments;
     seg_size = message_size / num_segment;
   }
+  // optional optimization: can reduce the simulation time, but could also impact the accuracy of the simulation
+  // (a communication can be occupied by a message for long time without be used by other concurrent communication 
+  //   if (path.size() == 1) {
+  //     num_segment = 1;
+  //     seg_size = message_size;
+  //   }
   // Create all the comm tasks
   // Divide messages into segments
   for (size_t i = 0; i < path.size(); i++) {
@@ -351,10 +357,10 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
   // overlap between upi_ins and upi_outs, and between nic_ins and nic_outs.
   if (num_segment > 1 and path.size() >= 2) {
     for (size_t i = 0; i < path.size(); i++) {
-      for (int j = 1; j < num_segment; j++) {
+      for (int j = 0; j < num_segment - 1; j++) {
         if (((CommDevice *)all_tasks[i][j]->device)->comm_type == CommDevice::NIC_OUT_COMM or
             ((CommDevice *)all_tasks[i][j]->device)->comm_type == CommDevice::UPI_OUT_COMM) {
-          all_tasks[i+1][j-1]->add_next_task(all_tasks[i][j]);
+          all_tasks[i][j]->add_next_task(all_tasks[i-1][j+1]);
         }
       }
     }
