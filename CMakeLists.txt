@@ -37,8 +37,12 @@ option(FF_USE_PYTHON "Enable Python" ON)
 # option for using Python
 option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)
 set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
-set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select Gasnet conduit ${FF_GASNET_CONDUITS}")
+set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select GASNet conduit ${FF_GASNET_CONDUITS}")
 set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})
+
+set(FF_GPU_BACKENDS cuda hip_cuda hip_rocm intel)
+set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
+set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 # option for cuda arch
 set(FF_CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
@@ -97,6 +101,24 @@ if(FF_USE_PYTHON)
     -DBINDINGS_AUGMENT_PYTHONPATH)
   list(APPEND FF_NVCC_FLAGS
     -DBINDINGS_AUGMENT_PYTHONPATH)
+endif()
+
+if (FF_GPU_BACKEND EQUAL "cuda")
+  list(APPEND FF_CC_FLAGS
+    -DFF_USE_CUDA)
+  list(APPEND FF_NVCC_FLAGS
+    -DFF_USE_CUDA)
+elseif (FF_GPU_BACKEND EQUAL "hip_cuda")
+  list(APPEND FF_CC_FLAGS
+    -DFF_USE_HIP_CUDA)
+  list(APPEND FF_HIPCC_FLAGS
+    -DFF_USE_HIP_CUDA)
+elseif (FF_GPU_BACKEND EQUAL "hip_rocm")
+  list(APPEND FF_CC_FLAGS
+    -DFF_USE_HIP_ROCM)
+  list(APPEND FF_HIPCC_FLAGS
+    -DFF_USE_HIP_ROCM)
+else()
 endif()
 
 # Start build FlexFlow

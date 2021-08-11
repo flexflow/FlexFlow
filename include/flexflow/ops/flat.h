@@ -4,6 +4,22 @@
 #include "flexflow/model.h"
 
 namespace FlexFlow {
+  
+namespace Input {
+  constexpr int NUMDIM = 5,
+                WIDTH = 0,
+                HEIGHT = 1,
+                CHANNEL = 2,
+                SAMPLE = 3,
+                REPLICA = 4;
+}
+
+namespace Output {
+  constexpr int NUMDIM = 3,
+                CHANNEL = 0,
+                SAMPLE = 1,
+                REPLICA = 2;
+}
 
 class FlatMeta : public OpMeta {
 public:

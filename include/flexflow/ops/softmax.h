@@ -12,7 +12,9 @@ public:
   SoftmaxMeta(FFHandler handle,
               const Softmax* softmax,
               const Legion::Domain& input_domain);
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor;
+#endif
   bool profiling;
   int dim;
   char op_name[MAX_OPNAME];

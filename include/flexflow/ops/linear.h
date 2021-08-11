@@ -9,8 +9,10 @@ namespace FlexFlow {
 class LinearMeta : public OpMeta {
 public:
   LinearMeta(FFHandler handle, int batch_size);
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;
+#endif
   const float *one_ptr;
   ActiMode activation;
   bool use_bias;
@@ -151,7 +153,7 @@ private:
   static void backward_task_with_dim(const Legion::Task *task,
                                      const std::vector<Legion::PhysicalRegion> &regions,
                                      Legion::Context ctx, Legion::Runtime *runtime);
-  static bool use_cudnn_activation(ActiMode mode);
+  static bool use_activation(ActiMode mode);
 
   void register_mappings();
   void register_output_mappings();
@@ -161,9 +163,9 @@ private:
   LinearParams get_params() const;
 public:
   int in_channels, out_channels;
-  Tensor replica;
-  bool use_bias;
   ActiMode activation;
+  bool use_bias;
+  Tensor replica;
 };
 
 }; // namespace FlexFlow

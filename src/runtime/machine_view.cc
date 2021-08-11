@@ -108,8 +108,8 @@ std::ostream& operator<<(std::ostream &s, MachineView const &view) {
 MachineResource::MachineResource(FFConfig const &config)
   : num_nodes(config.numNodes),
     all_cpus_per_node(config.cpusPerNode),
-    all_gpus_per_node(config.workersPerNode),
     available_cpus_per_node(config.cpusPerNode),
+    all_gpus_per_node(config.workersPerNode),
     available_gpus_per_node(config.workersPerNode)
 { }
 

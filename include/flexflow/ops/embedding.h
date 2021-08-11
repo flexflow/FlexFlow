@@ -4,6 +4,19 @@
 #include "flexflow/model.h"
 
 namespace FlexFlow {
+  
+namespace Weight {
+  enum {
+    OUT_CHANNELS = 0,
+    VOCAB_SIZE = 1,
+  };
+};
+
+namespace Output {
+  enum {
+    OUT_CHANNELS = 0
+  };
+};
 
 class EmbeddingMeta : public OpMeta {
 public:

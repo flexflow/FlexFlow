@@ -65,10 +65,12 @@ public:
                        const float* output_grad_ptr,
                        cudaStream_t stream);
 public:
-  int num_heads, qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
-  int qoSeqLength, kvSeqLength;
+  int num_heads;
   float dropout;
-  bool bias, add_bias_kv, add_zero_attn;
+  bool bias;
+  bool add_bias_kv, add_zero_attn;
+  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+  int qoSeqLength, kvSeqLength;
 };
 
 class MultiHeadAttentionMeta : public OpMeta {
@@ -82,8 +84,10 @@ public:
 public:
   Realm::RegionInstance reserveInst;
   size_t weightSize, reserveSpaceSize;
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnAttnDescriptor_t attnDesc;
   cudnnSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
+#endif
   int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx;
   void *reserveSpace;
 };

@@ -49,6 +49,11 @@ public:
   int batch_ctr;
 };
 
+struct Arg {
+  Cache* cache;
+  int batch_ctr;
+};
+
 }; // namespace FlexFlow
 
 #endif

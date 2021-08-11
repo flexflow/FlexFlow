@@ -413,7 +413,7 @@ ParallelConfig Op::view_to_pc(MachineView const &view) const {
 
   std::vector<int> device_ids = view.device_ids();
   assert (device_ids.size() <= MAX_NUM_WORKERS);
-  for (int i = 0; i < device_ids.size(); i++) {
+  for (size_t i = 0; i < device_ids.size(); i++) {
     config.device_ids[i] = device_ids[i];
   }
 
@@ -893,7 +893,7 @@ float Simulator::simulate_runtime(const FFModel* model,
     float sync_sim_time = 0.0f;
 
 
-    int syncs_processed = 0;
+    size_t syncs_processed = 0;
     while (possible_syncs.size() > 0 || !sync_ready_queue.empty()) {
       Op const *to_run = nullptr;
       for (Op const *op : possible_syncs) {

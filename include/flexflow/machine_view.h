@@ -49,8 +49,8 @@ struct MachineResource {
   bool is_valid_machine_view(const MachineView& view) const;
   size_t hash() const;
   int num_nodes;
-  int all_gpus_per_node, available_gpus_per_node;
   int all_cpus_per_node, available_cpus_per_node;
+  int all_gpus_per_node, available_gpus_per_node;
   int start_gpu_id = 0, start_cpu_id = 0;
 };
 

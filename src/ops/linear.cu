@@ -17,6 +17,7 @@
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
+
 // declare Legion names
 using Legion::Context;
 using Legion::Runtime;
@@ -24,34 +25,7 @@ using Legion::Domain;
 using Legion::Task;
 using Legion::Rect;
 using Legion::PhysicalRegion;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
-using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
-using Legion::Predicate;
 using Legion::coord_t;
-using Legion::Memory;
-using Legion::Machine;
-using Legion::InlineLauncher;
-Tensor FFModel::dense(const Tensor input,
-                      int outDim,
-                      ActiMode activation,
-                      bool use_bias,
-                      const Op* shared_op,
-                      Initializer* kernel_initializer,
-                      Initializer* bias_initializer,
-                      const char *name)
-{
-  Linear* li = new Linear(*this, input, outDim, activation, use_bias, false, name);
-  layers.push_back(li);
-  return li->outputs[0];
-}
-
-size_t Linear::get_params_hash() const {
-  return this->get_params().get_hash(this->inputs[0]);
-}
 
 /*
   regions[0](O): output
@@ -74,17 +48,6 @@ OpMeta* Linear::init_task(const Task *task,
       assert(false);
   }
   return NULL;
-}
-
-bool Linear::use_cudnn_activation(ActiMode mode)
-{
-  switch (mode) {
-    case AC_MODE_RELU:
-    case AC_MODE_SIGMOID:
-    case AC_MODE_TANH:
-      return true;
-  }
-  return false;
 }
 
 template<int NDIM>
@@ -119,7 +82,7 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
   m->trainableInputs[0] = linear->trainableInputs[0];
   std::strcpy(m->op_name, linear->name);
 
-  if (use_cudnn_activation(m->activation)) {
+  if (use_activation(m->activation)) {
     cudnnActivationMode_t mode;
     switch (linear->activation) {
       case AC_MODE_RELU:
@@ -140,47 +103,6 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
                                           batch_size, out_dim, 1, 1));
   }
   return m;
-}
-
-void Linear::init(const FFModel& ff)
-{
-  assert(check_output_input_weight_same_parallel_is());
-  //assert(check_output_input_weight_same_machine_view());
-  parallel_is = outputs[0]->parallel_is;
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(LINEAR_INIT_TASK_ID, parallel_is,
-                         TaskArgument(this, sizeof(Linear)), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  //launcher.add_region_requirement(
-  //    RegionRequirement(input_lps[0], 0/*projection id*/,
-  //                      READ_ONLY, EXCLUSIVE, inputs[0]->region));
-  //launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(weights[0]->part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, weights[0]->region));
-  launcher.add_field(1, FID_DATA);
-  // launcher.add_region_requirement(
-  //     RegionRequirement(weights[1]->part, 0/*projection id*/,
-  //                       READ_ONLY, EXCLUSIVE, weights[1]->region));
-  // launcher.add_field(3, FID_DATA);
-  if (ff.config.computationMode == COMP_MODE_TRAINING) {
-    // Add inputs[0].region_grad to avoid Legion warning
-    //launcher.add_region_requirement(
-    //    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-    //        WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
-    //launcher.add_field(2, FID_DATA);
-  }
-  FutureMap fm = runtime->execute_index_space(ctx, launcher);
-  fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
 }
 
 /*static*/
@@ -209,7 +131,7 @@ void Linear::forward_kernel(const LinearMeta* m,
                           m->one_ptr, 1, &alpha,
                           output_ptr, out_dim));
   }
-  if (use_cudnn_activation(m->activation)) {
+  if (use_activation(m->activation)) {
     checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
         &alpha, m->outputTensor, output_ptr,
         &beta, m->outputTensor, output_ptr));
@@ -306,37 +228,6 @@ void Linear::forward_task_with_dim(const Task *task,
     //print_tensor<1, float>(acc_bias.ptr, acc_bias.rect, "[Linear:forward:bias]");
     //print_tensor<NDIM, float>(acc_output.ptr, acc_output.rect, "[Linear:forward:output]");
   }
-}
-
-void Linear::forward(const FFModel& ff)
-{
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(LINEAR_FWD_TASK_ID, parallel_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
-  launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(weights[0]->part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, weights[0]->region));
-  launcher.add_field(2, FID_DATA);
-  if (use_bias) {
-    launcher.add_region_requirement(
-        RegionRequirement(weights[1]->part, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, weights[1]->region));
-    launcher.add_field(3, FID_DATA);
-  }
-  runtime->execute_index_space(ctx, launcher);
 }
 
 __global__
@@ -521,61 +412,6 @@ void Linear::backward_task_with_dim(const Task *task,
   }
 }
 
-void Linear::backward(const FFModel& ff)
-{
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  {
-    ArgumentMap argmap;
-    set_argumentmap_for_backward(ff, argmap);
-    IndexLauncher launcher(LINEAR_BWD_TASK_ID, parallel_is,
-                           TaskArgument(NULL, 0), argmap,
-                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           outputs[0]->machine_view.hash());
-    int rid = 0;
-    // regions[0](I): input
-    launcher.add_region_requirement(
-        RegionRequirement(inputs[0]->part, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, inputs[0]->region));
-    launcher.add_field(rid++, FID_DATA);
-    // regions[1](I/O): replica_grad
-    assert(replica == NULL);
-    launcher.add_region_requirement(
-        RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
-    launcher.add_field(rid++, FID_DATA);
-    // regions[2](I): output
-    launcher.add_region_requirement(
-        RegionRequirement(outputs[0]->part, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, outputs[0]->region));
-    launcher.add_field(rid++, FID_DATA);
-    // regions[3](I/O): output_grad
-    launcher.add_region_requirement(
-        RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, outputs[0]->region_grad));
-    launcher.add_field(rid++, FID_DATA);
-    // regions[4](I): filter
-    launcher.add_region_requirement(
-        RegionRequirement(weights[0]->part, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, weights[0]->region));
-    launcher.add_field(rid++, FID_DATA);
-    // regions[5](I/O): filter_grad
-    launcher.add_region_requirement(
-        RegionRequirement(weights[0]->part_grad, 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, weights[0]->region_grad));
-    launcher.add_field(rid++, FID_DATA);
-    if (use_bias) {
-      // regions[6](I/O): bias_grad
-      launcher.add_region_requirement(
-          RegionRequirement(weights[1]->part_grad, 0/*projection id*/,
-                            READ_WRITE, EXCLUSIVE, weights[1]->region_grad));
-      launcher.add_field(rid++, FID_DATA);
-    }
-    runtime->execute_index_space(ctx, launcher);
-  }
-  assert(replica == NULL);
-}
-
 /*
 __host__
 Parameter* Linear::get_parameter(int index)
@@ -591,52 +427,6 @@ Parameter* Linear::get_parameter(int index)
 }
 */
 
-__host__
-void Linear::print_layer(const FFModel& ff)
-{
-  printf("linear layer\n");
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-
-  RegionRequirement kernel_req(weights[0]->region, READ_WRITE, EXCLUSIVE, weights[0]->region);
-  kernel_req.add_field(FID_DATA);
-  InlineLauncher kernel_launcher(kernel_req);
-  PhysicalRegion kernel_region = runtime->map_region(ctx, kernel_launcher);
-  kernel_region.wait_until_valid();
-
-  RegionRequirement bias_req(weights[1]->region, READ_WRITE, EXCLUSIVE, weights[1]->region);
-  bias_req.add_field(FID_DATA);
-  InlineLauncher bias_launcher(bias_req);
-  PhysicalRegion bias_region = runtime->map_region(ctx, bias_launcher);
-  bias_region.wait_until_valid();
-
-  TensorAccessorW<float, 2> acc_kernel(kernel_region, kernel_req, FID_DATA, ctx, runtime, true);
-  TensorAccessorW<float, 1> acc_bias(bias_region, bias_req, FID_DATA, ctx, runtime, true);
-
-  const float *kernel_ptr = acc_kernel.ptr;
-  const float *bias_ptr = acc_bias.ptr;
-
-  size_t kernel_size = acc_kernel.rect.volume();
-  int kernel_dim1 = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
-  int kernel_dim2 = acc_kernel.rect.hi[1] - acc_kernel.rect.lo[1] + 1;
-  size_t bias_size = acc_bias.rect.volume();
-  printf("kernel, %p, %zu, [%d, %d]\n", kernel_ptr, kernel_size, kernel_dim1, kernel_dim2);
-  printf("bias, %p, %zu\n", bias_ptr, bias_size);
-
-  for (int i = 0; i < bias_size; i++) {
-    printf("%f ", bias_ptr[i]);
-  }
-  printf("\n");
-
-  for (int i = 0; i < kernel_size; i++) {
-    printf("%f ", kernel_ptr[i]);
-  }
-  printf("\n");
-
-  runtime->unmap_region(ctx, kernel_region);
-  runtime->unmap_region(ctx, bias_region);
-
-}
 
 LinearMeta::LinearMeta(FFHandler handler, int batch_size)
 : OpMeta(handler)
@@ -670,7 +460,7 @@ bool Linear::measure_operator_cost(Simulator* sim,
   int output_n = sub_output.get_volume() / output_c;
   LinearMeta* m = sim->linear_meta;
   m->activation = activation;
-  if (use_cudnn_activation(m->activation)) {
+  if (use_activation(m->activation)) {
     cudnnActivationMode_t mode;
     switch (activation) {
       case AC_MODE_RELU:
@@ -743,84 +533,6 @@ bool Linear::measure_operator_cost(Simulator* sim,
            name, input_n, input_c, output_n, output_c,
            cost_metrics.forward_time);
   }
-  return true;
-}
-
-bool Linear::estimate_sync_cost(Simulator* sim,
-                                const MachineView& view,
-                                CostMetrics& cost_metrics) const
-{
-  // Estimate the cost of sync weights
-  TensorShape tensor_shape;
-  tensor_shape.num_dims = 3;
-  tensor_shape.data_type = DT_FLOAT;
-  tensor_shape.dims[0] = inputs[0]->dims[0];
-  tensor_shape.dims[1] = inputs[0]->dims[inputs[0]->num_dims-1];
-  tensor_shape.dims[2] = inputs[0]->dims[inputs[0]->num_dims-2];
-  tensor_shape.dims[1].size = out_channels;
-  tensor_shape.dims[1].degree = 1;
-  tensor_shape.dims[2].degree = inputs[0]->dims[1].degree * inputs[0]->dims[2].degree;
-  tensor_shape.dims[2].size = inputs[0]->dims[1].degree * inputs[0]->dims[2].degree;
-  cost_metrics.sync_time = sim->default_estimate_sync_cost(tensor_shape, view, 1);
-  //printf("[Estimate Linear] name(%s) sync_time(%.4lf)\n", name, cost_metrics.sync_time);
-  return true;
-}
-
-ParallelConfig Linear::get_random_parallel_config(const FFModel& ff) const
-{
-  if (!ff.config.enable_parameter_parallel)
-    return Op::get_random_parallel_config(ff);
-  std::vector<int> batch_candidates;
-  std::vector<int> channel_candidates;
-  int batch = outputs[0]->dims[outputs[0]->num_dims-1].size;
-  int channel = outputs[0]->dims[0].size;
-  int total_devices = ff.config.workersPerNode * ff.config.numNodes;
-  for (int i = 1; i <= ff.config.workersPerNode; i++)
-    if (channel % i == 0)
-      for (int j = 1; i * j <= total_devices; j++)
-        if (batch % j == 0) {
-          batch_candidates.push_back(j);
-          channel_candidates.push_back(i);
-        }
-  assert(batch_candidates.size() > 0);
-  int idx = std::rand() % batch_candidates.size();
-  int num_par_c = channel_candidates[idx];
-  int num_par_b = batch_candidates[idx];
-  ParallelConfig pc;
-  pc.device_type = ParallelConfig::GPU;
-  pc.nDims = outputs[0]->num_dims;
-  pc.dim[0] = num_par_c;
-  pc.dim[pc.nDims-1] = num_par_b;
-  for (int i = 1; i < pc.nDims - 1; i++)
-    pc.dim[i] = 1;
-  int start_idx = std::rand() % (total_devices - num_par_c * num_par_b + 1);
-  start_idx = start_idx - start_idx % num_par_c;
-  for (int i = 0; i < num_par_c * num_par_b; i++)
-    pc.device_ids[i] = start_idx + i;
-  return pc;
-}
-
-bool Linear::get_int_parameter(PMParameter para, int* value) const
-{
-  switch(para) {
-    case PM_ACTI:
-      *value = (int) activation;
-      return true;
-    default:
-      return Op::get_int_parameter(para, value);
-  }
-}
-
-bool Linear::is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const
-{
-  if (!ff.config.enable_parameter_parallel)
-    return Op::is_valid_parallel_config(ff, pc);
-  // Support data and parameter parallel
-  if (pc.nDims != outputs[0]->num_dims)
-    return false;
-  for (int i = 1; i < pc.nDims-1; i++)
-    if (pc.dim[i] != 1)
-      return false;
   return true;
 }
 

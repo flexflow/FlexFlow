@@ -23,3 +23,4 @@ else()
 	find_package(Legion REQUIRED)
 	set(LEGION_LIBRARY Legion::Legion)
 endif()
+
