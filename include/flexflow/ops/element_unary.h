@@ -8,8 +8,10 @@ namespace FlexFlow {
 class ElementUnaryMeta : public OpMeta {
 public:
   ElementUnaryMeta(FFHandler handle);
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
+#endif
   OperatorType op_type;
   bool inplace;
   float scalar;
@@ -62,10 +64,10 @@ public:
   Op *materialize(FFModel& ff, Tensor inputs[], int num_inputs) const override;
 
   size_t get_params_hash() const override;
-public:
-  float scalar;
 private:
   bool inplace;
+public:
+  float scalar;
 };
 
 }; // namespace FlexFlow

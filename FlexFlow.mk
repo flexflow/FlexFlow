@@ -44,56 +44,75 @@ ifeq ($(strip $(USE_GASNET)),1)
 endif
 
 GEN_SRC		+= ${FF_HOME}/src/runtime/graph.cc\
-                ${FF_HOME}/src/runtime/initializer.cc\
-                ${FF_HOME}/src/runtime/machine_model.cc\
-                ${FF_HOME}/src/runtime/machine_view.cc\
-                ${FF_HOME}/src/runtime/model.cc\
+		${FF_HOME}/src/runtime/accessor.cc\
+    ${FF_HOME}/src/runtime/initializer.cc\
+    ${FF_HOME}/src/runtime/machine_model.cc\
+    ${FF_HOME}/src/runtime/machine_view.cc\
+    ${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/runtime/optimizer.cc\
 		${FF_HOME}/src/runtime/parallel_op.cc\
-                ${FF_HOME}/src/runtime/recursive_logger.cc\
-                ${FF_HOME}/src/runtime/simulator.cc\
-                ${FF_HOME}/src/runtime/strategy.cc\
-                ${FF_HOME}/src/runtime/substitution.cc\
-                ${FF_HOME}/src/runtime/tensor.cc\
-                ${FF_HOME}/src/mapper/mapper.cc\
-                ${FF_HOME}/src/ops/noop.cc\
+    ${FF_HOME}/src/runtime/recursive_logger.cc\
+    ${FF_HOME}/src/runtime/simulator.cc\
+    ${FF_HOME}/src/runtime/strategy.cc\
+    ${FF_HOME}/src/runtime/substitution.cc\
+    ${FF_HOME}/src/runtime/tensor.cc\
+    ${FF_HOME}/src/mapper/mapper.cc\
+		${FF_HOME}/src/ops/aggregate.cc\
+    ${FF_HOME}/src/ops/aggregate_spec.cc\
+		${FF_HOME}/src/ops/attention.cc\
+    ${FF_HOME}/src/ops/batch_matmul.cc\
+		${FF_HOME}/src/ops/batch_norm.cc\
+		${FF_HOME}/src/ops/cache.cc\
+		${FF_HOME}/src/ops/concat.cc\
 		${FF_HOME}/src/ops/conv_2d.cc\
+		${FF_HOME}/src/ops/dropout.cc\
+		${FF_HOME}/src/ops/element_binary.cc\
 		${FF_HOME}/src/ops/element_unary.cc\
 		${FF_HOME}/src/ops/embedding.cc\
 		${FF_HOME}/src/ops/flat.cc\
+		${FF_HOME}/src/ops/fused.cc\
+		${FF_HOME}/src/ops/group_by.cc\
 		${FF_HOME}/src/ops/linear.cc\
+		${FF_HOME}/src/ops/noop.cc\
 		${FF_HOME}/src/ops/pool_2d.cc\
+		${FF_HOME}/src/ops/reshape.cc\
+		${FF_HOME}/src/ops/reverse.cc\
+		${FF_HOME}/src/ops/softmax.cc\
+		${FF_HOME}/src/ops/split.cc\
+		${FF_HOME}/src/ops/topk.cc\
+		${FF_HOME}/src/ops/transpose.cc\
 		${FF_HOME}/src/parallel_ops/partition.cc\
 		${FF_HOME}/src/parallel_ops/combine.cc\
 		${FF_HOME}/src/parallel_ops/replicate.cc\
 		${FF_HOME}/src/parallel_ops/reduction.cc\
 		${FF_HOME}/src/parallel_ops/fused_parallel_op.cc\
+		${FF_HOME}/src/loss_functions/loss_functions.cc\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cc\
 		${FF_HOME}/src/recompile/recompile_state.cc
 
 FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/aggregate.cu\
-                ${FF_HOME}/src/ops/aggregate_spec.cu\
-                ${FF_HOME}/src/ops/pool_2d.cu\
+    ${FF_HOME}/src/ops/aggregate_spec.cu\
+		${FF_HOME}/src/ops/attention.cu\
+		${FF_HOME}/src/ops/batch_matmul.cu\
 		${FF_HOME}/src/ops/batch_norm.cu\
-		${FF_HOME}/src/ops/linear.cu\
-		${FF_HOME}/src/ops/softmax.cu\
 		${FF_HOME}/src/ops/concat.cu\
-		${FF_HOME}/src/ops/split.cu\
+		${FF_HOME}/src/ops/cache.cu\
 		${FF_HOME}/src/ops/dropout.cu\
-		${FF_HOME}/src/ops/flat.cu\
-		${FF_HOME}/src/ops/embedding.cu\
 		${FF_HOME}/src/ops/element_binary.cu\
 		${FF_HOME}/src/ops/element_unary.cu\
-		${FF_HOME}/src/ops/batch_matmul.cu\
+		${FF_HOME}/src/ops/embedding.cu\
+		${FF_HOME}/src/ops/flat.cu\
+		${FF_HOME}/src/ops/fused.cu\
+		${FF_HOME}/src/ops/group_by.cu\
+		${FF_HOME}/src/ops/linear.cu\
+		${FF_HOME}/src/ops/pool_2d.cu\
 		${FF_HOME}/src/ops/reshape.cu\
 		${FF_HOME}/src/ops/reverse.cu\
+		${FF_HOME}/src/ops/softmax.cu\
+		${FF_HOME}/src/ops/split.cu\
 		${FF_HOME}/src/ops/topk.cu\
-		${FF_HOME}/src/ops/cache.cu\
-		${FF_HOME}/src/ops/group_by.cu\
 		${FF_HOME}/src/ops/transpose.cu\
-		${FF_HOME}/src/ops/attention.cu\
-		${FF_HOME}/src/ops/fused.cu\
 		${FF_HOME}/src/parallel_ops/combine.cu\
 		${FF_HOME}/src/parallel_ops/partition.cu\
 		${FF_HOME}/src/parallel_ops/replicate.cu\
@@ -102,10 +121,10 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/loss_functions/loss_functions.cu\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cu\
 		${FF_HOME}/src/runtime/accessor_kernel.cu\
-                ${FF_HOME}/src/runtime/cuda_helper.cu\
-                ${FF_HOME}/src/runtime/initializer_kernel.cu\
+		${FF_HOME}/src/runtime/cuda_helper.cu\
+		${FF_HOME}/src/runtime/initializer_kernel.cu\
 		${FF_HOME}/src/runtime/model.cu\
-                ${FF_HOME}/src/runtime/optimizer_kernel.cu\
+		${FF_HOME}/src/runtime/optimizer_kernel.cu\
 		${FF_HOME}/src/runtime/simulator.cu\
 		${FF_HOME}/src/runtime/tensor.cu
 		
@@ -137,6 +156,18 @@ endif
 
 ifeq ($(strip $(FF_USE_AVX2)), 1)
 CC_FLAGS	+= -DFF_USE_AVX2 -mavx2
+endif
+
+ifeq ($(strip $(USE_CUDA)),1)
+CC_FLAGS	+= -DFF_USE_CUDA
+NVCC_FLAGS	+= -DFF_USE_CUDA
+endif
+
+ifeq ($(strip $(USE_HIP)),1)
+ifeq ($(strip $(HIP_TARGET)),CUDA)
+CC_FLAGS	+= -DFF_USE_HIP_CUDA
+NVCC_FLAGS	+= -DFF_USE_HIP_CUDA
+endif
 endif
 
 #ifndef HDF5

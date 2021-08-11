@@ -64,9 +64,11 @@ public:
                 int output_w);
   ~BatchNormMeta(void);
   Realm::RegionInstance reserveInst;
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor, biasTensor;
   cudnnActivationDescriptor_t actiDesc;
   cudnnBatchNormMode_t mode;
+#endif
   float *runningMean, *runningVar, *saveMean, *saveVar;
   bool relu;
 };
