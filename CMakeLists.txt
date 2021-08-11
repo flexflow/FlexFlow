@@ -103,17 +103,17 @@ if(FF_USE_PYTHON)
     -DBINDINGS_AUGMENT_PYTHONPATH)
 endif()
 
-if (FF_GPU_BACKEND EQUAL "cuda")
+if (FF_GPU_BACKEND STREQUAL "cuda")
   list(APPEND FF_CC_FLAGS
     -DFF_USE_CUDA)
   list(APPEND FF_NVCC_FLAGS
     -DFF_USE_CUDA)
-elseif (FF_GPU_BACKEND EQUAL "hip_cuda")
+elseif (FF_GPU_BACKEND STREQUAL "hip_cuda")
   list(APPEND FF_CC_FLAGS
     -DFF_USE_HIP_CUDA)
   list(APPEND FF_HIPCC_FLAGS
     -DFF_USE_HIP_CUDA)
-elseif (FF_GPU_BACKEND EQUAL "hip_rocm")
+elseif (FF_GPU_BACKEND STREQUAL "hip_rocm")
   list(APPEND FF_CC_FLAGS
     -DFF_USE_HIP_ROCM)
   list(APPEND FF_HIPCC_FLAGS
@@ -122,7 +122,7 @@ else()
 endif()
 
 # Start build FlexFlow
-if (CMAKE_BUILD_TYPE EQUAL "Debug")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   list(APPEND FF_CC_FLAGS
     -DFF_DEBUG)
   list(APPEND FF_NVCC_FLAGS
