@@ -92,7 +92,7 @@ float SimpleMachineModel::get_inter_node_gpu_bandwidth() const
 }
 
 
-std::vector<CommDevice *> SimpleMachineModel::get_comm_path(MemDevice *src_mem, MemDevice *tar_mem) const
+std::vector<CommDevice *> SimpleMachineModel::get_comm_path(MemDevice *src_mem, MemDevice *tar_mem)
 {
     std::vector<CommDevice *> ret;
     // on the same memory
@@ -222,9 +222,9 @@ EnhancedMachineModel::EnhancedMachineModel(std::string file, size_t gpu_fb_mem_c
           nic_bandwidth = stof(words[2]);
           printf("nic_bandwidth = %f\n", nic_bandwidth);
         }
-        else if (words[0] == "nic_distribution") {
-          nic_distribution = static_cast<NicDistribution>(stoi(words[2]));
-          printf("nic_distribution = %d\n", nic_distribution);
+        else if (words[0] == "nic_persocket") {
+          nic_persocket = stoi(words[2]);
+          printf("nic_persocket = %d\n", nic_persocket);
         }
         else if (words[0] == "pci_latency") {
           pci_latency = stof(words[2]);
@@ -345,15 +345,17 @@ EnhancedMachineModel::EnhancedMachineModel(std::string file, size_t gpu_fb_mem_c
   num_sockets = num_nodes * num_sockets_per_node;
   num_cpus = num_sockets * num_cpus_per_socket;
   num_gpus = num_sockets * num_gpus_per_socket;
+  cur_nic_local_id = 0;
   num_nvlinks_per_node = 0;
   mem_to_nvlink.clear();
   this->add_cpus();
   this->add_gpus();
   this->add_membuses(membus_latency, membus_bandwidth * 1024 * 1024);
   this->add_upis(upi_latency / 2, upi_bandwidth * 2 * 1024 * 1024);
-  this->add_nics(nic_latency / 2, nic_bandwidth * 2 * 1024 * 1024, nic_distribution);
+  this->add_nics(nic_latency / 2, nic_bandwidth * 2 * 1024 * 1024, nic_persocket);
   this->add_pcis(pci_latency, pci_bandwidth * 1024 * 1024);
   this->add_nvlinks(nvlink_latency, nvlink_bandwidth * 1024 * 1024);
+//   printf("%s", this->to_string().c_str());
 }
 
 EnhancedMachineModel::~EnhancedMachineModel()
@@ -467,9 +469,9 @@ void EnhancedMachineModel::add_upis(float latency, float bandwidth)
   }
 }
 
-void EnhancedMachineModel::add_nics(float latency, float bandwidth, NicDistribution nic_distribution)
+void EnhancedMachineModel::add_nics(float latency, float bandwidth, int nic_persocket)
 {
-  if (nic_distribution == PER_NODE) {
+  if (nic_persocket == 0) {
     for (int i = 0; i < num_nodes; i++) {
       int node_id = i;
       for (int j = 0; j < num_sockets_per_node; j++) {
@@ -480,35 +482,40 @@ void EnhancedMachineModel::add_nics(float latency, float bandwidth, NicDistribut
         if (j == 0) {
           std::string nic_in_name = "NIC_IN " + std::to_string(device_id);
           nic_in = new CommDevice(nic_in_name, CommDevice::NIC_IN_COMM, node_id, socket_id, device_id, latency, bandwidth);
-          nic_ins.push_back(nic_in);
+          nic_ins.push_back({});
+          nic_ins[socket_id].push_back(nic_in);
           std::string nic_out_name = "NIC_OUT " + std::to_string(device_id);
           nic_out = new CommDevice(nic_out_name, CommDevice::NIC_OUT_COMM, node_id, socket_id, device_id, latency, bandwidth);
-          nic_outs.push_back(nic_out);
+          nic_outs.push_back({});
+          nic_outs[socket_id].push_back(nic_out);
         }
         else {
-          nic_ins.push_back(nic_in);
-          nic_outs.push_back(nic_out);
+          nic_ins.push_back({});
+          nic_ins[socket_id].push_back(nic_in);
+          nic_outs.push_back({});
+          nic_outs[socket_id].push_back(nic_out);
         }
-      }
-    }
-  }
-  else if (nic_distribution == PER_SOCKET) {
-    for (int i = 0; i < num_nodes; i++) {
-      int node_id = i;
-      for (int j = 0; j < num_sockets_per_node; j++) {
-        int socket_id = i * num_sockets_per_node + j;
-        int device_id = socket_id;
-        std::string nic_in_name = "NIC_IN " + std::to_string(device_id);
-        CommDevice *nic_in = new CommDevice(nic_in_name, CommDevice::NIC_IN_COMM, node_id, socket_id, device_id, latency, bandwidth);
-        nic_ins.push_back(nic_in);
-        std::string nic_out_name = "NIC_OUT " + std::to_string(device_id);
-        CommDevice *nic_out = new CommDevice(nic_out_name, CommDevice::NIC_OUT_COMM, node_id, socket_id, device_id, latency, bandwidth);
-        nic_outs.push_back(nic_out);
       }
     }
   }
   else {
-    assert(false && "Unknown nic distribution type");
+    for (int i = 0; i < num_nodes; i++) {
+      int node_id = i;
+      for (int j = 0; j < num_sockets_per_node; j++) {
+        int socket_id = i * num_sockets_per_node + j;
+        nic_ins.push_back({});
+        nic_outs.push_back({});
+        for (int k = 0; k < nic_persocket; k++) {
+          int device_id = socket_id * nic_persocket + k;
+          std::string nic_in_name = "NIC_IN " + std::to_string(device_id);
+          CommDevice *nic_in = new CommDevice(nic_in_name, CommDevice::NIC_IN_COMM, node_id, socket_id, device_id, latency, bandwidth);
+          nic_ins[socket_id].push_back(nic_in);
+          std::string nic_out_name = "NIC_OUT " + std::to_string(device_id);
+          CommDevice *nic_out = new CommDevice(nic_out_name, CommDevice::NIC_OUT_COMM, node_id, socket_id, device_id, latency, bandwidth);
+          nic_outs[socket_id].push_back(nic_out);
+        }
+      }
+    }
   }
 }
 
@@ -560,7 +567,7 @@ void EnhancedMachineModel::add_nvlinks(float latency, float bandwidth)
                 local_nvlink_id--;
               }
               attach_nvlink(src_gpu_fb_mem, tar_gpu_fb_mem, nvlinks[i][local_nvlink_id]);
-              printf("add nvlink: gdb_fb_mem %d , gou_fb_mem %d, nvlink %d %d\n", src_gpu_fb_mem->device_id, tar_gpu_fb_mem->device_id, node_id, local_nvlink_id);
+              printf("add nvlink: gpu_fb_mem %d , gpu_fb_mem %d, nvlink %d %d\n", src_gpu_fb_mem->device_id, tar_gpu_fb_mem->device_id, node_id, local_nvlink_id);
             }
           }
         }
@@ -648,13 +655,42 @@ CommDevice *EnhancedMachineModel::get_nvlink(MemDevice *src_mem, MemDevice *tar_
   }
 }
 
+CommDevice *EnhancedMachineModel::get_next_nic_in(int socket_id)
+{
+  if (nic_persocket == 0) {
+      return nic_ins[socket_id][0];
+  }
+  if (socket_id < num_sockets) {
+    CommDevice *ret = nic_ins[socket_id][cur_nic_local_id];
+    cur_nic_local_id = (cur_nic_local_id + 1) % nic_persocket;
+    return ret;
+  }
+  else {
+      printf("MachineModel: get_next_nic_in - cannot find next nic_in socket_id %d cur_nic_local_id %d\n", socket_id, cur_nic_local_id);
+      assert(false);
+  }
+}
+
+CommDevice *EnhancedMachineModel::get_next_nic_out(int socket_id) const
+{
+  if (nic_persocket == 0) {
+      return nic_outs[socket_id][0];
+  }
+  if (socket_id < num_sockets) {
+    return nic_outs[socket_id][cur_nic_local_id];
+  }
+  else {
+      printf("MachineModel: get_next_nic_out - cannot find next nic_out socket_id %d cur_nic_local_id %d\n", socket_id, cur_nic_local_id);
+      assert(false);
+  }
+}
 int EnhancedMachineModel::get_num_gpus() const
 {
   return num_gpus;
 }
 
 void EnhancedMachineModel::add_comm_path(std::vector<CommDevice::CommDevType> const &comm_device_list, MemDevice *src_mem, 
-                   MemDevice *tar_mem, std::vector<CommDevice *> &ret) const
+                   MemDevice *tar_mem, std::vector<CommDevice *> &ret)
 {
   MemDevice *cur_mem = src_mem;
   for (size_t i = 0; i < comm_device_list.size(); i++) {
@@ -672,10 +708,10 @@ void EnhancedMachineModel::add_comm_path(std::vector<CommDevice::CommDevType> co
       break;
     case CommDevice::NIC_IN_COMM:
       cur_mem = tar_mem;
-      ret.emplace_back(nic_ins[cur_mem->socket_id]);
+      ret.emplace_back(get_next_nic_in(cur_mem->socket_id));
       break;
     case CommDevice::NIC_OUT_COMM:
-      ret.emplace_back(nic_outs[cur_mem->socket_id]);
+      ret.emplace_back(get_next_nic_out(cur_mem->socket_id));
       break;
     case CommDevice::PCI_TO_HOST_COMM:
       ret.emplace_back(pcis_to_host[cur_mem->socket_id]);
@@ -692,7 +728,7 @@ void EnhancedMachineModel::add_comm_path(std::vector<CommDevice::CommDevType> co
   }
 }
 
-std::vector<CommDevice *> EnhancedMachineModel::get_comm_path(MemDevice *src_mem, MemDevice *tar_mem) const
+std::vector<CommDevice *> EnhancedMachineModel::get_comm_path(MemDevice *src_mem, MemDevice *tar_mem)
 {
   std::vector<CommDevice *> ret;
   if (src_mem->device_id == tar_mem->device_id) {
@@ -790,10 +826,12 @@ std::string EnhancedMachineModel::to_string() const
       s += membuses[socket_id]->name + '\n';
       s += upi_ins[socket_id]->name + '\n';
       s += upi_outs[socket_id]->name + '\n';
-      s += nic_ins[socket_id]->name + '\n';
-      s += nic_outs[socket_id]->name + '\n';
       s += pcis_to_host[socket_id]->name + '\n';
       s += pcis_to_device[socket_id]->name + '\n';
+      for (int k = 0; k < nic_persocket; k++) {
+        s += nic_ins[socket_id][k]->name + '\n';
+        s += nic_outs[socket_id][k]->name + '\n';
+      }
     }
     s += "------------------------------------------\n";
     for (int j = 0; j < num_nvlinks_per_node * 2; j++) {

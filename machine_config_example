@@ -17,10 +17,10 @@ membus_bandwidth = 4.26623
 # inter-socket links
 upi_latency = 0.0004
 upi_bandwidth = 10.14039
-# inter-node links, the third argument means the distribution of the NICs (O means one NIC per node and 1 means one NIC per socket)
+# inter-node links, the third argument means the number of NICs per socket (O means one NIC per node)
 nic_latency = 0.000507
 nic_bandwidth = 10.9448431
-nic_distribution = 0
+nic_persocket = 0
 # pci-e between CPU and GPU
 pci_latency = 0.001
 pci_bandwidth = 12.578468749999999
