@@ -51,6 +51,9 @@ option(FF_USE_AVX2 "Run FlexFlow with AVX2" OFF)
 # option for max dim
 set(FF_MAX_DIM "4" CACHE STRING "Maximum dimention of tensors")
 
+# option for legion
+option(FF_USE_EXTERNAL_LEGION "Use pre-installed Legion" OFF)
+
 set(FLEXFLOW_EXT_LIBRARIES "")
 set(FLEXFLOW_INCLUDE_DIRS "")
 
