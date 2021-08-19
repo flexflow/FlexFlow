@@ -19,7 +19,7 @@
 
 #define MAX_K 2
 #define MAX_N 5
-#define MAX_BATCH_SIZE 100
+#define MAX_BATCH_SIZE 50
 
 // #define MOE_DEBUG
 // #define MOE_VERBOSE
@@ -100,6 +100,7 @@ void Aggregate::create_weights(FFModel& model)
 
 void Aggregate::create_output_and_partition(FFModel& model)
 {
+  printf("agg create out\n");
   // Retrieve the task indexspace for the op
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
@@ -149,6 +150,7 @@ OpMeta* Aggregate::init_task(const Task* task,
 
 void Aggregate::init(const FFModel& ff)
 {
+  printf("agg INIT\n");
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -552,7 +554,6 @@ void Aggregate::backward_task(const Task *task,
                               const std::vector<PhysicalRegion>& regions,
                               Context ctx, Runtime* runtime)
 {
-    printf("agg bwd task\n");
 
   const AggregateMeta* m = *((AggregateMeta**)task->local_args);
   int n = ((Aggregate*)task->args)->n;
@@ -652,8 +653,6 @@ void Aggregate::backward_task(const Task *task,
     acc_true_gate_assign.ptr(rect_true_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     full_acc_gate_grad.ptr(rect_full_gate_grad), acc_output_grad.ptr(rect_out_grad),
     n, k, m->exp_samples_arr, lambda_bal, batch_size, out_dim, local_lambda);
-
-    printf("done agg bwd task\n");
 
 }
 

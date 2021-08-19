@@ -1624,26 +1624,27 @@ void FFModel::recompile_on_condition(RecompileState &r, bool perf_rec)
   smart pointer here. That way the future pointer will be freed once the last
   smart pointer reference is gone.
   */
-  std::shared_ptr<float> sptr;
+  // std::shared_ptr<float> sptr;
+  // float* future_ptr;
   size_t q_len;
   std::deque<Future>* q;
   for(size_t l = 0; l < layers.size(); l++) {
     switch(layers[l]->op_type) {
-      case OP_GROUP_BY:
-        q_len = ((GroupBy*)layers[l])->score_futures.size();
-        // If too many entries (launch ahead was reduced or user didn't pop)
-        while(q_len > r.launch_ahead) {
-          ((GroupBy*)layers[l])->score_futures.pop_front();
-          q_len = ((GroupBy*)layers[l])->score_futures.size();
-        }
-        if(q_len == r.launch_ahead) {
-          float* future_ptr = ((GroupBy*)layers[l])->score_futures.front()
-            .get_result<float*>();
-          sptr.reset(future_ptr);
-        } else if (q_len < r.launch_ahead) {
-          return;
-        }
-        break;
+      // case OP_GROUP_BY:
+      //   q_len = ((GroupBy*)layers[l])->score_futures.size();
+      //   // If too many entries (launch ahead was reduced or user didn't pop)
+      //   while(q_len > r.launch_ahead) {
+      //     ((GroupBy*)layers[l])->score_futures.pop_front();
+      //     q_len = ((GroupBy*)layers[l])->score_futures.size();
+      //   }
+      //   if(q_len == r.launch_ahead) {
+      //     future_ptr = ((GroupBy*)layers[l])->score_futures.front()
+      //       .get_result<float*>();
+      //     // sptr.reset(future_ptr);
+      //   } else if (q_len < r.launch_ahead) {
+      //     return;
+      //   }
+      //   break;
       case OP_CACHE:
         q_len = ((Cache*)layers[l])->score_futures.size();
         // If too many entries (launch ahead was reduced or user didn't pop)
@@ -1665,6 +1666,7 @@ void FFModel::recompile_on_condition(RecompileState &r, bool perf_rec)
   if(!perf_rec) return;
 
   bool rec = r.alter_func(this, r);
+  // delete[] future_ptr;
   if(rec) {
     // TODO: Search for parallelization strategy
     recompile();
@@ -2915,6 +2917,13 @@ void register_flexflow_internal_tasks()
     Runtime::preregister_task_variant<float, Cache::update_task>(
         registrar, "Cache Update Task");
   }
+  {
+    TaskVariantRegistrar registrar(CACHE_BWD_TASK_ID, "Cache Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Cache::backward_task>(
+        registrar, "Cache Backward Task");
+  }
   // Group by task CPU
   {
     TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "GroupBy Init");
@@ -3247,21 +3256,21 @@ void register_flexflow_internal_tasks()
   // Reverse task
   {
     TaskVariantRegistrar registrar(TOPK_INIT_TASK_ID, "TopK Init");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta*, TopK::init_task>(
         registrar, "TopK Init Task");
   }
   {
     TaskVariantRegistrar registrar(TOPK_FWD_TASK_ID, "TopK Forward");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<TopK::forward_task>(
         registrar, "TopK Forward Task");
   }
   {
     TaskVariantRegistrar registrar(TOPK_BWD_TASK_ID, "TopK Backward");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<TopK::backward_task>(
         registrar, "TopK Backward Task");

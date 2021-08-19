@@ -67,6 +67,7 @@ enum TaskIDs {
   CACHE_INIT_TASK_ID,
   CACHE_FWD_TASK_ID,
   CACHE_UPDATE_TASK_ID,
+  CACHE_BWD_TASK_ID,
   AGGREGATE_INIT_TASK_ID,
   AGGREGATE_FWD_TASK_ID,
   AGGREGATE_BWD_TASK_ID,
@@ -1309,6 +1310,9 @@ public:
   static float update_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
@@ -1759,19 +1763,19 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
-  // static void forward_kernel(const TopKMeta* m,
-  //                     const float* input_ptr,
-  //                     float* output_ptr,
-  //                     int* indices_ptr,
-  //                     size_t batch_size, int length, int k,
-  //                     bool sorted,
-  //                     cudaStream_t stream);
-  // static void backward_kernel(const TopKMeta* m,
-  //                      const float* out_grad_ptr,
-  //                      const int* indices_ptr,
-  //                      float* in_grad_ptr,
-  //                      size_t batch_size, int length, int k,
-  //                      cudaStream_t stream);
+  static void forward_kernel(const TopKMeta* m,
+                      const float* input_ptr,
+                      float* output_ptr,
+                      int* indices_ptr,
+                      size_t batch_size, int length, int k,
+                      bool sorted,
+                      cudaStream_t stream);
+  static void backward_kernel(const TopKMeta* m,
+                       const float* out_grad_ptr,
+                       const int* indices_ptr,
+                       float* in_grad_ptr,
+                       size_t batch_size, int length, int k,
+                       cudaStream_t stream);
 private:
   template<int NDIM>
   void create_output_and_partition_with_dim(FFModel& model);

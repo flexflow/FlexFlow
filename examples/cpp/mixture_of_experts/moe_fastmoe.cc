@@ -242,25 +242,12 @@ void top_level_task(const Task* task,
   GlorotUniform* kernel_initializer = new GlorotUniform(4);
   ZeroInitializer* bias_initializer = new ZeroInitializer();
 
-  float alpha = 2.0f;
+  float alpha = 1.0f;
   // float lambda = 0.01; // coop loss cifar10
   float lambda = 0.06f/60.0f; //0.04/60.0f; // spec loss cifar100
 
   // MoE model
-// #ifdef USE_CNN
-  // Tensor t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
-  // t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-  // t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
-  // t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-  // t = ff.flat(t);
-  // Tensor gate_preds = ff.dense(t, 80, AC_MODE_SIGMOID);
-// #else
-  Tensor t = ff.dense(input, 256, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
-  t = ff.dense(t, 256, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
-  Tensor gate_preds = ff.dense(t, 128, AC_MODE_RELU, true, NULL, kernel_initializer, bias_initializer, NULL);
-// #endif
-  gate_preds = ff.dense(gate_preds, 64, AC_MODE_SIGMOID);
-  gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_SIGMOID);
+  Tensor gate_preds = ff.dense(input, num_exp, AC_MODE_RELU);
   Tensor soft_gate_preds = ff.softmax(gate_preds);
 
   Tensor topK_output[2];
@@ -276,31 +263,11 @@ void top_level_task(const Task* task,
   agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
   agg_inputs[3] = soft_gate_preds; // full gate preds
   for(int i = 0; i < num_exp; i++) {
-// #ifdef USE_CNN
-    // ff.cache(exp_tensors[i], (TRAIN_SAMPLES+TEST_SAMPLES) / ffConfig.batchSize, moe_score_gar);
-    // Tensor t = ff.conv2d(exp_tensors[i], 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
-    // t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-    // t = ff.conv2d(t, 192, 5, 5, 1, 1, 2, 2, AC_MODE_RELU);
-    // t = ff.pool2d(t, 3, 3, 2, 2, 0, 0);
-    // t = ff.flat(t);
-    // t = ff.dense(t, 64, AC_MODE_RELU);
-// #else
-    Tensor t = ff.dense(exp_tensors[i], 257, AC_MODE_RELU);
-    t = ff.dense(t, 256, AC_MODE_RELU);
-    t = ff.dense(t, 128, AC_MODE_RELU);
-    t = ff.dense(t, 64, AC_MODE_RELU);
-// // #endif
-    Tensor exp_pred = ff.dense(t, OUT_DIM, AC_MODE_RELU);
+    Tensor exp_pred = ff.dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
     agg_inputs[i+4] = ff.softmax(exp_pred);
-    // agg_inputs[i+4] = exp_pred;
-
   }
 
   Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
-  ff.get_metrics();
-  Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
-
-
 
 //-----------------------------------------------------------------
 
@@ -339,7 +306,7 @@ void top_level_task(const Task* task,
     for (int iter = 0; iter < iterations; iter++) {
       data_loader.next_batch(ff);
       // if (epoch > 0) {
-      //   runtime->begin_trace(ctx, glob_trace_id/*trace_id*/);
+        runtime->begin_trace(ctx, glob_trace_id/*trace_id*/);
       // }
       ff.forward();
       ff.zero_gradients();
@@ -347,7 +314,7 @@ void top_level_task(const Task* task,
       ff.update();
       // ff.recompile_on_condition(r);
       // if (epoch > 0) {
-      //   runtime->end_trace(ctx, glob_trace_id/*trace_id*/);
+        runtime->end_trace(ctx, glob_trace_id/*trace_id*/);
       // }
     }
 

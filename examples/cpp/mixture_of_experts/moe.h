@@ -16,7 +16,7 @@
 #include "model.h"
 
 #define MAX_K 2
-#define MAX_BATCH_SIZE 100
+#define MAX_BATCH_SIZE 50
 #define MAX_N 5
 // #define MOE_VERBOSE
 // #define SPEC_SCORE
