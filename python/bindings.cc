@@ -414,7 +414,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def("pool2d", &FFModel::pool2d, "input"_a, "kernel_h"_a, "kernel_w"_a, "stride_h"_a, "stride_w"_a, "padding_h"_a, "padding_w"_a, "pool_type"_a = PoolType::POOL_MAX, "activation"_a = ActiMode::AC_MODE_NONE, "name"_a = nullptr)
       .def("batch_norm", &FFModel::batch_norm, "input"_a, "relu"_a = true, "name"_a = nullptr)
       .def("batch_matmul", &FFModel::batch_matmul, "A"_a, "B"_a, "a_seq_length_dim"_a = -1, "b_seq_length_dim"_a = -1)
-      .def("dense", &FFModel::dense, "input"_a, "out_dim"_a, "activation"_a = ActiMode::AC_MODE_NONE, "use_bias"_a = true, "shared_op"_a = nullptr, "kernel_initializer"_a = nullptr, "bias_initializer"_a = nullptr, "name"_a = nullptr)
+      .def("dense", &FFModel::dense, "input"_a, "out_dim"_a, "activation"_a = ActiMode::AC_MODE_NONE, "use_bias"_a = true, "data_type"_a = DataType::DT_FLOAT, "shared_op"_a = nullptr, "kernel_initializer"_a = nullptr, "bias_initializer"_a = nullptr, "name"_a = nullptr)
       .def("flat", &FFModel::flat, "input"_a, "name"_a = nullptr)
       .def("softmax", &FFModel::softmax, "input"_a, "axis"_a = -1, "name"_a = nullptr)
       .def("transpose", &FFModel::transpose, "input"_a, "perm"_a, "name"_a = nullptr)

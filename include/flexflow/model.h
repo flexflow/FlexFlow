@@ -434,6 +434,7 @@ protected:
                                    const std::vector<ParallelDim *> &outputs) const;
 public:
   OperatorType op_type;
+  DataType data_type;
   size_t op_guid;
   char name[MAX_OPNAME];
   Legion::IndexSpace parallel_is;
@@ -648,6 +649,7 @@ public:
                int outDim,
                ActiMode activation = AC_MODE_NONE,
                bool use_bias = true,
+	       DataType data_type = DT_FLOAT,
                const Op* shared_op = NULL,
                Initializer* kernel_initializer = NULL,
                Initializer* bias_initializer = NULL,

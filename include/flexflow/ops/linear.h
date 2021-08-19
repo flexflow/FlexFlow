@@ -16,6 +16,7 @@ public:
   const float *one_ptr;
   ActiMode activation;
   bool use_bias;
+  DataType input_type, weight_type, output_type;
   char op_name[MAX_OPNAME];
 };
 
@@ -23,6 +24,7 @@ class LinearParams {
 public:
   int in_channels, out_channels;
   bool use_bias;
+  DataType data_type;
   ActiMode activation;
 
   bool is_valid(TensorShape const &input_shape) const;
@@ -72,6 +74,7 @@ public:
          int out_dim,
          ActiMode activation,
          bool _use_bias,
+	 DataType _data_type,
          bool allocate_weights,
          const char* name);
   Linear(NodeCache& node_cache,
@@ -79,6 +82,7 @@ public:
          int out_dim,
          ActiMode activation,
          bool use_bias,
+	 DataType _data_type,
          bool allocate_weights,
          const char* name);
   Linear(FFModel& model, 
@@ -102,22 +106,22 @@ public:
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_kernel(const LinearMeta* m,
-                      const float* input_ptr,
-                      float* output_ptr,
-                      const float* filter_ptr,
-                      const float* bias_ptr,
-                      int in_dim, int out_dim, int batch_size,
-                      cudaStream_t stream);
+                             const void* input_ptr,
+                             void* output_ptr,
+                             const void* filter_ptr,
+                             const void* bias_ptr,
+                             int in_dim, int out_dim, int batch_size,
+                             cudaStream_t stream);
   static void backward_kernel(const LinearMeta* m,
-                       const float* input_ptr,
-                       float* input_grad_ptr,
-                       const float* output_ptr,
-                       float* output_grad_ptr,
-                       const float* kernel_ptr,
-                       float* kernel_grad_ptr,
-                       float* bias_ptr,
-                       int in_dim, int out_dim, int batch_size,
-                       cudaStream_t stream);
+                              const void* input_ptr,
+                              void* input_grad_ptr,
+                              const void* output_ptr,
+                              void* output_grad_ptr,
+                              const void* kernel_ptr,
+                              void* kernel_grad_ptr,
+                              void* bias_ptr,
+                              int in_dim, int out_dim, int batch_size,
+                              cudaStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;

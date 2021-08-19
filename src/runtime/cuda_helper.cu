@@ -75,12 +75,61 @@ void copy_kernel(DT* dst, const DT* src, coord_t size)
   }
 }
 
+template<typename DT>
 __global__
-void reluBackward(float *grad_ptr, const float *output, int n)
+void reluBackward(DT *grad_ptr, const DT *output, size_t n)
 {
   CUDA_KERNEL_LOOP(i, n)
   {
     grad_ptr[i] = (output[i] > 0.0f) ? grad_ptr[i] : 0;
+  }
+}
+
+__host__
+void relu_backward_kernel(DataType data_type,
+                          void* output_grad_ptr,
+                          const void* output_ptr,
+                          size_t output_size,
+                          cudaStream_t stream)
+{
+  if (data_type == DT_FLOAT) {
+    reluBackward<float><<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
+        (float*)output_grad_ptr, (const float*)output_ptr, output_size);
+  } else if (data_type == DT_DOUBLE) {
+     reluBackward<double><<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
+        (double*)output_grad_ptr, (const double*)output_ptr, output_size);
+  } else {
+    assert(false && "Unsupported data type in Linear backward");
+    exit(1);
+  }
+}
+
+template<typename DT>
+__global__
+void sigmoid_backward_function(DT *grad_ptr, const DT *output, size_t n)
+{
+  CUDA_KERNEL_LOOP(i, n)
+  {
+    grad_ptr[i] = grad_ptr[i] * output[i] * (1.0f - output[i]);
+  }
+}
+
+__host__
+void sigmoid_backward_kernel(DataType data_type,
+                             void* output_grad_ptr,
+                             const void* output_ptr,
+                             size_t output_size,
+                             cudaStream_t stream)
+{
+  if (data_type == DT_FLOAT) {
+    sigmoid_backward_function<float><<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
+        (float*)output_grad_ptr, (const float*)output_ptr, output_size);
+  } else if (data_type == DT_DOUBLE) {
+    sigmoid_backward_function<double><<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
+        (double*)output_grad_ptr, (const double*)output_ptr, output_size);
+  } else {
+    assert(false && "Unsupported data type in Linear backward");
+    exit(1);
   }
 }
 
@@ -275,6 +324,36 @@ cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
       assert(false && "Unsupported dim number");
   }
   return CUDNN_STATUS_BAD_PARAM;
+}
+
+cudnnDataType_t ff_to_cudnn_datatype(DataType type)
+{
+  switch (type) {
+    case DT_FLOAT:
+      return CUDNN_DATA_FLOAT;
+    case DT_DOUBLE:
+      return CUDNN_DATA_DOUBLE;
+    case DT_INT32:
+      return CUDNN_DATA_INT32;
+    default:
+      assert(false && "Unsupported cudnn data type");
+  }
+  return CUDNN_DATA_FLOAT;
+}
+
+cudaDataType_t ff_to_cuda_datatype(DataType type)
+{
+  switch (type) {
+    case DT_FLOAT:
+      return CUDA_R_32F;
+    case DT_DOUBLE:
+      return CUDA_R_64F;
+    case DT_INT32:
+      return CUDA_R_32I;
+    default:
+      assert(false && "Unspoorted cuda data type");
+  }
+  return CUDA_R_32F;
 }
 
 template __global__ void assign_kernel<float>(float* ptr, coord_t size, float value);

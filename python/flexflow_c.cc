@@ -460,6 +460,7 @@ flexflow_model_add_dense(
   int out_dim,
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* true */,
+  enum DataType data_type /*DT_FLOAT*/,
   flexflow_op_t shared_op_,
   flexflow_initializer_t kernel_initializer_,
   flexflow_initializer_t bias_initializer_,
@@ -470,7 +471,7 @@ flexflow_model_add_dense(
   Op *shared_op = FFCObjectWrapper::unwrap(shared_op_);
   Initializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
   Initializer *bias_initializer = FFCObjectWrapper::unwrap(bias_initializer_);
-  Tensor tensor = handle->dense(input, out_dim, activation, use_bias, shared_op, kernel_initializer, bias_initializer, name);
+  Tensor tensor = handle->dense(input, out_dim, activation, use_bias, data_type, shared_op, kernel_initializer, bias_initializer, name);
   DEBUG_PRINT("[Dense] new Tensor 2D %p (%d, %d, %d, %d), input %p, out_dim %d, activation %d, use_bias %d, shared_op %p, kernel_init %p, bias_init %p, name %s",
     tensor, tensor->dims[0].size, tensor->dims[1].size, tensor->dims[2].size, tensor->dims[3].size, input, 
     out_dim, activation, use_bias, shared_op, kernel_initializer, bias_initializer, name);

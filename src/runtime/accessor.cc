@@ -24,6 +24,45 @@ TensorAccessorR<DT, dim>::TensorAccessorR()
 {
 }
 
+GenericTensorAccessorR::GenericTensorAccessorR(int _num_dim,
+                                               DataType _data_type,
+                                               PhysicalRegion region,
+                                               RegionRequirement req,
+                                               FieldID fid,
+                                               Context ctx,
+                                               Runtime* runtime)
+: data_type(_data_type), ptr(NULL)
+{
+  switch (_num_dim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      if (data_type == DT_FLOAT) { \
+        TensorAccessorR<float, DIM> acc(region, req, fid, ctx, runtime); \
+        domain = acc.rect; \
+        ptr = acc.ptr; \
+      } else if (data_type == DT_DOUBLE) { \
+        TensorAccessorR<double, DIM> acc(region, req, fid, ctx, runtime); \
+        domain = acc.rect; \
+        ptr = acc.ptr; \
+      } else if (data_type == DT_INT64) { \
+        TensorAccessorR<int64_t, DIM> acc(region, req, fid, ctx, runtime); \
+        domain = acc.rect; \
+        ptr = acc.ptr; \
+      } else { \
+        assert(false && "Unsupported data_type"); \
+      } \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      fprintf(stderr, "Unsupported accessor dimension");
+      assert(false);
+    }
+  }
+}
+
 template<typename DT, int dim>
 TensorAccessorW<DT, dim>::TensorAccessorW(PhysicalRegion region,
                                           RegionRequirement req,
@@ -53,6 +92,47 @@ template<typename DT, int dim>
 TensorAccessorW<DT, dim>::TensorAccessorW()
 {
 }
+
+GenericTensorAccessorW::GenericTensorAccessorW(int _num_dim,
+                                               DataType _data_type,
+                                               PhysicalRegion region,
+                                               RegionRequirement req,
+                                               FieldID fid,
+                                               Context ctx,
+                                               Runtime* runtime,
+                                               bool readOutput)
+: data_type(_data_type), ptr(NULL)
+{
+  switch (_num_dim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      if (data_type == DT_FLOAT) { \
+        TensorAccessorW<float, DIM> acc(region, req, fid, ctx, runtime, readOutput); \
+        domain = acc.rect; \
+        ptr = acc.ptr; \
+      } else if (data_type == DT_DOUBLE) { \
+        TensorAccessorW<double, DIM> acc(region, req, fid, ctx, runtime, readOutput); \
+        domain = acc.rect; \
+        ptr = acc.ptr; \
+      } else if (data_type == DT_INT64) { \
+        TensorAccessorW<int64_t, DIM> acc(region, req, fid, ctx, runtime, readOutput); \
+        domain = acc.rect; \
+        ptr = acc.ptr; \
+      } else { \
+        assert(false && "Unsupported data_type"); \
+      } \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      fprintf(stderr, "Unsupported accessor dimension");
+      assert(false);
+    }
+  }
+}
+
 
 template<typename DT>
 const DT* helperGetTensorPointerRO(PhysicalRegion region,

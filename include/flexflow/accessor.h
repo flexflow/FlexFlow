@@ -1,6 +1,7 @@
 #ifndef _FF_ACCESSOR_H_
 #define _FF_ACCESSOR_H_
 #include "legion.h"
+#include "ffconst.h"
 //using namespace Legion;
 
 namespace FlexFlow {
@@ -35,6 +36,38 @@ struct TensorAccessorW {
   Legion::Memory memory;
   DT *ptr;
 };
+
+struct GenericTensorAccessorR {
+  GenericTensorAccessorR(int num_dim,
+                         DataType data_type,
+                         Legion::PhysicalRegion region,
+                         Legion::RegionRequirement req,
+                         Legion::FieldID fid,
+                         Legion::Context ctx,
+                         Legion::Runtime* runtime);
+  GenericTensorAccessorR();
+  DataType data_type;
+  Legion::Domain domain;
+  Legion::Memory memory;
+  const void* ptr;
+};
+
+struct GenericTensorAccessorW {
+  GenericTensorAccessorW(int num_dim,
+                         DataType data_type,
+                         Legion::PhysicalRegion region,
+                         Legion::RegionRequirement req,
+                         Legion::FieldID fid,
+                         Legion::Context ctx,
+                         Legion::Runtime* runtime,
+                         bool readOutput = false);
+  GenericTensorAccessorW();
+  DataType data_type;
+  Legion::Domain domain;
+  Legion::Memory memory;
+  void* ptr;
+};
+
 
 template<typename DT>
 const DT* helperGetTensorPointerRO(Legion::PhysicalRegion region,

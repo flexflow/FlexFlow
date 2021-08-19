@@ -1,6 +1,7 @@
 #ifndef _LEGION_CNN_HELPER_H_
 #define _LEGION_CNN_HELPER_H_
 #include "legion.h"
+#include "flexflow/ffconst.h"
 #include <cudnn.h>
 
 #define FatalError(s) do {                                             \
@@ -80,8 +81,27 @@ template<typename T>
 __global__
 void add_kernel(T* data_ptr, const T* grad_ptr, size_t size);
 
+template<typename T>
 __global__
-void reluBackward(float* grad_ptr, const float* input, int n);
+void reluBackward(T* grad_ptr, const T* input, size_t n);
+
+template<typename T>
+__global__
+void sigmoid_backward_kernel(T* grad_ptr, const T* input, size_t n);
+
+__host__
+void relu_backward_kernel(DataType data_type,
+                          void* output_grad_ptr,
+                          const void* output_ptr,
+                          size_t output_size,
+                          cudaStream_t stream);
+
+__host__
+void sigmoid_backward_kernel(DataType data_type,
+                             void* output_grad_ptr,
+                             const void* output_ptr,
+                             size_t output_size,
+                             cudaStream_t stream);
 
 __global__
 void apply_add_with_scale(float *data_ptr, const float *grad_ptr,
@@ -107,4 +127,8 @@ void print_tensor(const T* ptr, size_t num_elements, const char* prefix);
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Legion::Domain domain);
+
+cudaDataType_t ff_to_cuda_datatype(DataType type);
+
+cudnnDataType_t ff_to_cudnn_datatype(DataType type);
 #endif
