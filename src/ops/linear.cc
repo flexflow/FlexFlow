@@ -24,12 +24,13 @@ Tensor FFModel::dense(const Tensor input,
                       int outDim,
                       ActiMode activation,
                       bool use_bias,
+                      DataType data_type,
                       const Op* shared_op,
                       Initializer* kernel_initializer,
                       Initializer* bias_initializer,
                       const char *name)
 {
-  Linear* li = new Linear(*this, input, outDim, activation, use_bias, false, name);
+  Linear* li = new Linear(*this, input, outDim, activation, use_bias, data_type, false, name);
   layers.push_back(li);
   return li->outputs[0];
 }
@@ -42,7 +43,8 @@ Linear::Linear(FFModel& model,
                Linear const &other, 
                const Tensor input,
                bool allocate_weights)
-: Linear(model, input, other.out_channels, other.activation, other.use_bias, allocate_weights, other.name)
+: Linear(model, input, other.out_channels, other.activation,
+         other.use_bias, other.data_type, allocate_weights, other.name)
 { }
 
 Linear::Linear(FFModel& model,
@@ -50,6 +52,7 @@ Linear::Linear(FFModel& model,
                int out_dim,
                ActiMode _activation,
                bool _use_bias,
+               DataType _data_type,
                bool allocate_weights,
                const char* name)
 : Op(
@@ -77,9 +80,9 @@ Linear::Linear(FFModel& model,
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand()/*seed*/);
 
-    weights[KERNEL_IDX] = model.create_weight_legion_ordering(kernel_shape.num_dims, 
-                                                              kernel_shape.dims, 
-                                                              DT_FLOAT, 
+    weights[KERNEL_IDX] = model.create_weight_legion_ordering(kernel_shape.num_dims,
+                                                              kernel_shape.dims,
+                                                              _data_type,
                                                               NULL/*owner_op*/,
                                                               true/*create_grad*/,
                                                               kernel_initializer,
@@ -90,7 +93,7 @@ Linear::Linear(FFModel& model,
 
       weights[BIAS_IDX] = model.create_weight_legion_ordering(bias_shape.num_dims,
                                                               bias_shape.dims,
-                                                              DT_FLOAT,
+                                                              _data_type,
                                                               NULL/*owner_op*/,
                                                               true/*create_grad*/,
                                                               bias_initializer,
@@ -99,7 +102,7 @@ Linear::Linear(FFModel& model,
   }
 
   // Create the output tensor
-  outputs[0] = model.create_tensor_legion_ordering(output_shape.num_dims, output_shape.dims, DT_FLOAT, this);
+  outputs[0] = model.create_tensor_legion_ordering(output_shape.num_dims, output_shape.dims, _data_type, this);
 
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
@@ -284,7 +287,7 @@ bool Linear::estimate_sync_cost(Simulator* sim,
   // Estimate the cost of sync weights
   TensorShape tensor_shape;
   tensor_shape.num_dims = 3;
-  tensor_shape.data_type = DT_FLOAT;
+  tensor_shape.data_type = inputs[0]->data_type;
   tensor_shape.dims[0] = inputs[0]->dims[0];
   tensor_shape.dims[1] = inputs[0]->dims[inputs[0]->num_dims-1];
   tensor_shape.dims[2] = inputs[0]->dims[inputs[0]->num_dims-2];
@@ -381,7 +384,7 @@ Node FFModel::get_or_create_linear_node(const Tensor input,
   if (it != cached_linear_ops.end()) {
     li = it->second;
   } else {
-    li = new Linear(*this, input, params.out_channels, params.activation, params.use_bias, false/*allocate_weights*/, NULL);
+    li = new Linear(*this, input, params.out_channels, params.activation, params.use_bias, params.data_type, false/*allocate_weights*/, NULL);
     cached_linear_ops[hash] = li;
   }
 
@@ -397,6 +400,7 @@ Node FFModel::get_or_create_linear_node(const Tensor input,
   params.out_channels = out_dim;
   params.activation = activation;
   params.use_bias = use_bias;
+  params.data_type = DT_FLOAT;// TODO: currently assume data type is float
 
   auto dimension_names = params.get_dimension_names(input->get_shape()); 
   params.in_channels = input->dims[dimension_names.at(LinearParams::INPUT_CHANNEL)].size;
@@ -408,6 +412,7 @@ void Linear::serialize(Legion::Serializer& sez) const {
   sez.serialize(this->out_channels); 
   sez.serialize(this->activation); 
   sez.serialize(this->use_bias); 
+  sez.serialize(this->data_type);
 } 
 
 /* static */
@@ -415,17 +420,20 @@ Node Linear::deserialize(FFModel &ff, Legion::Deserializer &dez, Tensor inputs[]
   assert (num_inputs == 1); 
   int out_channels; 
   ActiMode activation; 
-  bool use_bias; 
+  bool use_bias;
+  DataType data_type;
   dez.deserialize(out_channels); 
   dez.deserialize(activation); 
-  dez.deserialize(use_bias); 
-  return ff.get_or_create_linear_node(inputs[0], out_channels, activation, use_bias); 
+  dez.deserialize(use_bias);
+  dez.deserialize(data_type);
+  return ff.get_or_create_linear_node(inputs[0], out_channels, activation, use_bias);
 } 
 
 LinearParams Linear::get_params() const {
   LinearParams params;
   params.out_channels = this->out_channels;
   params.use_bias = this->use_bias;
+  params.data_type = this->data_type;
   params.activation = this->activation;
   params.in_channels = this->in_channels;
 
@@ -437,6 +445,7 @@ size_t LinearParams::get_hash(const Tensor input) const {
   hash_combine(hash, this->out_channels);
   hash_combine(hash, this->activation);
   hash_combine(hash, this->use_bias);
+  hash_combine(hash, this->data_type);
   // hash_combine(hash, this->in_channels); // TODO FIXME @lockshaw do we need in_channels in the hash (and in params)
   return hash;
 }

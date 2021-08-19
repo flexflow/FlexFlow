@@ -80,6 +80,9 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
   m->use_bias = linear->use_bias;
   m->profiling = linear->profiling;
   m->trainableInputs[0] = linear->trainableInputs[0];
+  m->input_type = linear->inputs[0]->data_type;
+  m->weight_type = linear->weights[0]->data_type;
+  m->output_type = linear->outputs[0]->data_type;
   std::strcpy(m->op_name, linear->name);
 
   if (use_activation(m->activation)) {
@@ -99,7 +102,7 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
                                             CUDNN_PROPAGATE_NAN, 0.0));
     checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
                                           CUDNN_TENSOR_NCHW,
-                                          CUDNN_DATA_FLOAT,
+                                          ff_to_cudnn_datatype(m->output_type),
                                           batch_size, out_dim, 1, 1));
   }
   return m;
@@ -107,29 +110,41 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
 
 /*static*/
 void Linear::forward_kernel(const LinearMeta* m,
-                            const float* input_ptr,
-                            float* output_ptr,
-                            const float* kernel_ptr,
-                            const float* bias_ptr,
+                            const void* input_ptr,
+                            void* output_ptr,
+                            const void* weight_ptr,
+                            const void* bias_ptr,
                             int in_dim, int out_dim, int batch_size,
                             cudaStream_t stream)
 {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
-                        out_dim, batch_size, in_dim,
-                        &alpha, kernel_ptr, in_dim,
-                        input_ptr, in_dim, &beta,
-                        output_ptr, out_dim));
+  cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type);
+  cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type);
+  cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type);
+#if CUDA_VERSION >= 11000 
+  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+#else
+  cudaDataType_t compute_type = CUDA_R_32F;
+#endif
+  checkCUDA(cublasGemmEx(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
+                         out_dim, batch_size, in_dim,
+                         &alpha, weight_ptr, weight_type, in_dim,
+                         input_ptr, input_type, in_dim, &beta,
+                         output_ptr, output_type, out_dim,
+                         compute_type,
+                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   // use_bias = True 
   if (bias_ptr != NULL) { 
-    checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
-                          out_dim, batch_size, 1,
-                          &alpha, bias_ptr, 1,
-                          m->one_ptr, 1, &alpha,
-                          output_ptr, out_dim));
+    checkCUDA(cublasGemmEx(m->handle.blas, CUBLAS_OP_T, CUBLAS_OP_N,
+                           out_dim, batch_size, 1,
+                           &alpha, bias_ptr, weight_type, 1,
+                           m->one_ptr, CUDA_R_32F, 1, &alpha,
+                           output_ptr, output_type, out_dim,
+                           compute_type,
+                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
   if (use_activation(m->activation)) {
     checkCUDNN(cudnnActivationForward(m->handle.dnn, m->actiDesc,
@@ -140,7 +155,7 @@ void Linear::forward_kernel(const LinearMeta* m,
     constexpr float B = 0.7978845608028654f;   // sqrt(2.0/M_PI)
     constexpr float C = 0.035677408136300125f; // 0.044715 * sqrt(2.0/M_PI)
     gelu_forward_kernel<<<GET_BLOCKS(elements), CUDA_NUM_THREADS>>>(
-        elements, B, C, output_ptr);
+        elements, B, C, (float*)output_ptr);
   } else if (m->activation == AC_MODE_NONE) {
     // Do nothing
   } else {
@@ -230,24 +245,15 @@ void Linear::forward_task_with_dim(const Task *task,
   }
 }
 
-__global__
-void sigmoid_backward(float *grad_ptr, const float *output, int n)
-{
-  CUDA_KERNEL_LOOP(i, n)
-  {
-    grad_ptr[i] = grad_ptr[i] * output[i] * (1 - output[i]);
-  }
-}
-
 /*static*/
 void Linear::backward_kernel(const LinearMeta* m,
-                             const float* input_ptr,
-                             float* input_grad_ptr,
-                             const float* output_ptr,
-                             float* output_grad_ptr,
-                             const float* kernel_ptr,
-                             float* kernel_grad_ptr,
-                             float* bias_grad_ptr,
+                             const void* input_ptr,
+                             void* input_grad_ptr,
+                             const void* output_ptr,
+                             void* output_grad_ptr,
+                             const void* kernel_ptr,
+                             void* kernel_grad_ptr,
+                             void* bias_grad_ptr,
                              int in_dim, int out_dim, int batch_size,
                              cudaStream_t stream)
 {
@@ -255,42 +261,52 @@ void Linear::backward_kernel(const LinearMeta* m,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f;
+  cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type);
+  cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type);
+  cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type);
+#if CUDA_VERSION >= 11000 
+  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+#else
+  cudaDataType_t compute_type = CUDA_R_32F;
+#endif
   int output_size = out_dim * batch_size;
   if (m->activation == AC_MODE_RELU) {
-    reluBackward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
-        output_grad_ptr, output_ptr, output_size);
+    relu_backward_kernel(m->output_type, output_grad_ptr, output_ptr, output_size, stream);
   } else if (m->activation == AC_MODE_SIGMOID) {
-    sigmoid_backward<<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
-        output_grad_ptr, output_ptr, output_size);
+    sigmoid_backward_kernel(m->output_type, output_grad_ptr, output_ptr, output_size, stream);
   } else {
     // TODO: only support relu and sigmoid for now
     assert(m->activation == AC_MODE_NONE);
   }
   // Compute weight gradiant
   // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
-  checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_T,
-                        in_dim, out_dim, batch_size,
-                        &alpha, input_ptr, in_dim,
-                        output_grad_ptr, out_dim,
-                        &alpha, kernel_grad_ptr, in_dim));
+  checkCUDA(cublasGemmEx(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_T,
+                         in_dim, out_dim, batch_size,
+                         &alpha, input_ptr, input_type, in_dim,
+                         output_grad_ptr, output_type, out_dim,
+                         &alpha, kernel_grad_ptr, weight_type, in_dim,
+                         compute_type, CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   // Compute bias gradiant
   // NOTE: we use alpha=1 for bias_grad to accumulate gradients
   // use_bias = True
   if (bias_grad_ptr != NULL) {
-    checkCUDA(cublasSgemv(m->handle.blas, CUBLAS_OP_N,
-                          out_dim, batch_size,
-                          &alpha, output_grad_ptr, out_dim,
-                          m->one_ptr, 1,
-                          &alpha, bias_grad_ptr, 1));
+    checkCUDA(cublasGemmEx(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_T,
+                           1, out_dim, batch_size,
+                           &alpha, m->one_ptr, CUDA_R_32F, 1,
+                           output_grad_ptr, output_type, out_dim,
+                           &alpha, bias_grad_ptr, weight_type, 1,
+                           compute_type, CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
   // Compute data gradiant
   // NOTE: we use alpha=1 for input_grad to accumulate gradients
   if (input_grad_ptr != NULL) {
-    checkCUDA(cublasSgemm(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_N,
-                          in_dim, batch_size, out_dim,
-                          &alpha, kernel_ptr, in_dim,
-                          output_grad_ptr, out_dim,
-                          &alpha, input_grad_ptr, in_dim));
+    checkCUDA(cublasGemmEx(m->handle.blas, CUBLAS_OP_N, CUBLAS_OP_N,
+                           in_dim, batch_size, out_dim,
+                           &alpha, kernel_ptr, weight_type, in_dim,
+                           output_grad_ptr, output_type, out_dim,
+                           &alpha, input_grad_ptr, input_type, in_dim,
+                           compute_type, CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
 }
 
@@ -460,6 +476,9 @@ bool Linear::measure_operator_cost(Simulator* sim,
   int output_n = sub_output.get_volume() / output_c;
   LinearMeta* m = sim->linear_meta;
   m->activation = activation;
+  m->input_type = inputs[0]->data_type;
+  m->weight_type = weights[0]->data_type;
+  m->output_type = outputs[0]->data_type;
   if (use_activation(m->activation)) {
     cudnnActivationMode_t mode;
     switch (activation) {
@@ -480,10 +499,10 @@ bool Linear::measure_operator_cost(Simulator* sim,
   }
   // allocate tensors in simulator
   sim->free_all();
-  float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  float* kernel_ptr = (float*)sim->allocate((size_t)output_c * input_c, DT_FLOAT);
-  float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
+  void* input_ptr = sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
+  void* output_ptr = sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
+  void* kernel_ptr = sim->allocate((size_t)output_c * input_c, weights[0]->data_type);
+  void* bias_ptr = sim->allocate(output_c, weights[1]->data_type);
   assert(bias_ptr != NULL);
 
   cudaStream_t stream;
@@ -502,13 +521,13 @@ bool Linear::measure_operator_cost(Simulator* sim,
         input_c, output_c, input_n, stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
-    float* input_grad_ptr = NULL;
+    void* input_grad_ptr = NULL;
     if (trainableInputs[0]) {
-      input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+      input_grad_ptr = sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
     }
-    float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-    float* kernel_grad_ptr = (float*)sim->allocate((size_t)output_c * input_c, DT_FLOAT);
-    float* bias_grad_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
+    void* output_grad_ptr = sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
+    void* kernel_grad_ptr = sim->allocate((size_t)output_c * input_c, weights[0]->data_type);
+    void* bias_grad_ptr = sim->allocate(output_c, weights[1]->data_type);
     out_of_memory = (input_grad_ptr == NULL) || (output_grad_ptr == NULL)
                     || (kernel_grad_ptr == NULL) || (bias_grad_ptr == NULL);
     if (out_of_memory) {
