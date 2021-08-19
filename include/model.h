@@ -1310,9 +1310,9 @@ public:
   static float update_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
+  // static void backward_task(const Task *task,
+  //                          const std::vector<PhysicalRegion> &regions,
+  //                          Context ctx, Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);

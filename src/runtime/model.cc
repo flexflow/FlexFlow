@@ -2917,13 +2917,13 @@ void register_flexflow_internal_tasks()
     Runtime::preregister_task_variant<float, Cache::update_task>(
         registrar, "Cache Update Task");
   }
-  {
-    TaskVariantRegistrar registrar(CACHE_BWD_TASK_ID, "Cache Backward");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<Cache::backward_task>(
-        registrar, "Cache Backward Task");
-  }
+  // {
+  //   TaskVariantRegistrar registrar(CACHE_BWD_TASK_ID, "Cache Backward");
+  //   registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+  //   registrar.set_leaf();
+  //   Runtime::preregister_task_variant<Cache::backward_task>(
+  //       registrar, "Cache Backward Task");
+  // }
   // Group by task CPU
   {
     TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "GroupBy Init");
