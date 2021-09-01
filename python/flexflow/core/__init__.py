@@ -46,7 +46,7 @@ if 'FF_BUILD_DOCS' not in os.environ:
   build_docs = 0
 else:
   build_docs = int(os.environ['FF_BUILD_DOCS'])
-if build_docs == 1:
-  pass
-else:
-  from .flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context
+# if build_docs == 1:
+#   pass
+# else:
+#   from .flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context

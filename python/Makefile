@@ -29,6 +29,8 @@ FF_USE_NATIVE_PYTHON ?= 0
 # FF_PYTHON_USE_INDEX_LOADER = 1
 
 USE_PYTHON := 1
+#SHARED_OBJECTS := 1 
+
 ifndef PYTHON_LIB
   ifndef PYTHON_ROOT
     PYTHON_EXE := $(shell which python3 | head -1)
@@ -62,7 +64,7 @@ ifndef PYTHON_LIB
 endif
 
 # Put the binary file name here
-OUTFILE		  ?= flexflow_python
+OUTFILE		  ?= legion_python
 
 GEN_SRC		  ?= main.cc flexflow_c.cc flexflow_dataloader.cc # .cc files
 GEN_GPU_SRC	  ?= flexflow_dataloader.cu # .cu files
@@ -110,23 +112,23 @@ include $(FF_HOME)/FlexFlow.mk
 
 NO_BUILD_ALL=1
 .PHONY: all
-all: $(OUTFILE) flexflow/core/legion_cffi_header.py flexflow/core/flexflow_cffi_header.py $(FF_BYBIND_LIB)
+all: $(OUTFILE) legion_cffi.py flexflow/core/flexflow_cffi_header.py
 
 DEFINE_HEADERS_DIR ?= ./
 
-flexflow/core/legion_cffi_header.py: legion_cffi_header.py.in legion_cffi_build.py $(LG_RT_DIR)/legion.h
-	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
+legion_cffi.py: legion_cffi_header.py.in legion_cffi_build.py $(LG_RT_DIR)/legion.h
+	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR)
 	
 flexflow/core/flexflow_cffi_header.py: flexflow_cffi_header.py.in flexflow_cffi_build.py flexflow_c.h
 	$(PYTHON_EXE) flexflow_cffi_build.py --ffhome-dir $(FF_HOME) --libname $(FF_BYBIND_LIB_NAME) --output-dir flexflow/core
 
-ifeq ($(strip $(FF_USE_NATIVE_PYTHON)), 0)
-$(FF_BYBIND_LIB): bindings.cc
-	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -std=c++11 -fPIC $< -o $@
-else
-$(FF_BYBIND_LIB): bindings.cc $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM)
-	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -L$(FF_HOME)/python $(LD_FLAGS) $(LEGION_LD_FLAGS) $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM) $< -o $@
-endif
+# ifeq ($(strip $(FF_USE_NATIVE_PYTHON)), 0)
+# $(FF_BYBIND_LIB): bindings.cc
+# 	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -std=c++11 -fPIC $< -o $@
+# else
+# $(FF_BYBIND_LIB): bindings.cc $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM)
+# 	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -L$(FF_HOME)/python $(LD_FLAGS) $(LEGION_LD_FLAGS) $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM) $< -o $@
+# endif
 
 clean::
 	$(RM) -f $(FF_BYBIND_LIB) legion_defines.h realm_defines.h flexflow/core/legion_cffi_header.py flexflow/core/flexflow_cffi_header.py *.pyc
