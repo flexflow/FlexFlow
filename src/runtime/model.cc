@@ -2250,7 +2250,7 @@ struct DefaultConfig {
   const static int machine_model_version = 0;
   const static int simulator_segment_size = 16777216; // 16 MB
   const static int simulator_max_num_segments = 1;
-  const static bool enable_control_replication = false;
+  const static bool enable_control_replication = true;
   const static int python_data_loader_type = 1;
 };
 
@@ -2422,8 +2422,8 @@ void FFConfig::parse_args(char **argv, int argc)
       enable_propagation = true;
       continue;
     }
-    if (!strcmp(argv[i], "--control-replication")) {
-      enable_control_replication = true;
+    if (!strcmp(argv[i], "--disable-control-replication")) {
+      enable_control_replication = false;
       continue;
     }
     if (!strcmp(argv[i], "--python-data-loader-type")) {
