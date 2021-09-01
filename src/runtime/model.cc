@@ -2976,7 +2976,7 @@ struct DefaultConfig {
   const static int simulator_segment_size = 16777216; // 16 MB
   const static int simulator_max_num_segments = 1;
   const static int base_optimize_threshold = 10;
-  const static bool enable_control_replication = false;
+  const static bool enable_control_replication = true;
   const static int python_data_loader_type = 1;
 };
 
@@ -3175,8 +3175,8 @@ void FFConfig::parse_args(char **argv, int argc)
     if (!strcmp(argv[i], "--base-optimize-threshold")) {
       base_optimize_threshold = atoi(argv[++i]);
     }
-    if (!strcmp(argv[i], "--control-replication")) {
-      enable_control_replication = true;
+    if (!strcmp(argv[i], "--disable-control-replication")) {
+      enable_control_replication = false;
       continue;
     }
     if (!strcmp(argv[i], "--python-data-loader-type")) {
