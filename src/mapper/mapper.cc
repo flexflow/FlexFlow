@@ -147,7 +147,7 @@ void FFMapper::register_sharding_functor(int argc, char** argv)
 {
   std::string strategyFile = "";
   std::map<MappingTagID, ParallelConfig> all_strategies;
-  int gpus_per_node = 0, cpus_per_node = 1, num_nodes = 1;
+  int gpus_per_node = 1, cpus_per_node = 1, num_nodes = 1;
   for (int i = 1; i < argc; i++) {
     if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i], "--import-strategy"))) {
       strategyFile = std::string(argv[++i]);
@@ -272,14 +272,14 @@ void FFMapper::select_task_options(const MapperContext ctx,
     }
     return;
   }
-  if (task.task_id == PYTHON_TOP_LEVEL_TASK_ID) {
-    output.initial_proc = local_pys[0];
-    // control replicate python top level task
-    if (enable_control_replication) {
-      output.replicate = true;
-    }
-    return;
-  }
+  // if (task.task_id == PYTHON_TOP_LEVEL_TASK_ID) {
+  //   output.initial_proc = local_pys[0];
+  //   // control replicate python top level task
+  //   if (enable_control_replication) {
+  //     output.replicate = true;
+  //   }
+  //   return;
+  // }
 
   if (is_parameter_server_update_task(task.task_id)
   || is_initializer_task(task.task_id)) {

@@ -178,8 +178,6 @@ enum FieldIDs {
   FID_DATA,
 };
 
-extern TaskID PYTHON_TOP_LEVEL_TASK_ID;
-
 #ifdef LEGION_USE_HIP
 #ifdef __HIP_PLATFORM_NVCC__
 cudaError_t get_legion_stream(cudaStream_t *stream);

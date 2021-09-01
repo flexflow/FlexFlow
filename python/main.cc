@@ -23,12 +23,9 @@
 using namespace Legion;
 using namespace Legion::Mapping;
 
-#include "mapper.h"
-#include "flexflow_c.h"
+void register_flexflow(int argc, char **argv);
 
-TaskID PYTHON_TOP_LEVEL_TASK_ID;
-
-static bool control_replicate = true;
+static bool control_replicate = false;
 static const char * const unique_name = "legion_python";
 static const VariantID vid = 1;
 
@@ -113,7 +110,6 @@ static void python_main_callback(Machine machine, Runtime *runtime,
   // Get an ID for the top-level task, register it with the runtime
   const TaskID top_task_id = runtime->generate_library_task_ids(unique_name, 3); 
   runtime->set_top_level_task_id(top_task_id);
-  PYTHON_TOP_LEVEL_TASK_ID = top_task_id;
   // Register a variant for the top-level task
   {
     const char *const task_name = "legion_python_main";
@@ -218,20 +214,7 @@ int main(int argc, char **argv)
     control_replicate = false;
   }
 
-#ifdef FF_USE_NCCL
-  // Set NCCL environment
-  // This needs to be set, otherwise NCCL will try to use group kernel launches,
-  // which are not compatible with the Realm CUDA hijack.
-  setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
-#endif
-
-  register_flexflow_internal_tasks();
-
-  register_c_custom_tasks();
-
-  FFMapper::register_sharding_functor(argc, argv);
-
-  Runtime::add_registration_callback(update_mappers);
+  register_flexflow(argc, argv);
 
   Runtime::add_registration_callback(python_main_callback);
 
@@ -475,3 +458,4 @@ void LegionPyMapper::configure_context(const MapperContext         ctx,
 {
   // Use the defaults currently 
 }
+

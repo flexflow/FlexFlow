@@ -17,22 +17,22 @@
 DEBUG           ?= 0		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
-USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
+USE_CUDA        ?= 0		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
-USE_HIP         ?= 0
+USE_HIP         ?= 1
 HIP_TARGET      ?= CUDA
 MAX_FIELDS      ?= 256
-USE_COMPLEX     ?=0        
-USE_HALF        ?= 0
-#USE_GPU_REDUCTIONS ?= 0
+#USE_COMPLEX     ?= 1       
+#USE_HALF        ?= 1
+USE_GPU_REDUCTIONS ?= 1
 FF_USE_NCCL  ?= 0
 FF_USE_NATIVE_PYTHON ?= 0
 # FF_PYTHON_USE_INDEX_LOADER = 1
 
 USE_PYTHON := 1
-#SHARED_OBJECTS := 1 
+SHARED_OBJECTS := 1 
 
 ifndef PYTHON_LIB
   ifndef PYTHON_ROOT
@@ -69,7 +69,7 @@ endif
 # Put the binary file name here
 OUTFILE		  ?= legion_python
 
-GEN_SRC		  ?= main.cc flexflow_c.cc flexflow_dataloader.cc # .cc files
+GEN_SRC		  ?= main.cc register.cc flexflow_c.cc flexflow_dataloader.cc # .cc files
 GEN_GPU_SRC	  ?= flexflow_dataloader.cu # .cu files
 ifeq ($(strip $(HIP_TARGET)),CUDA)
 GEN_HIP_SRC	  ?= flexflow_dataloader.cu # .cu files
