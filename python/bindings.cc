@@ -334,8 +334,10 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def("attach_numpy_array", &attach_numpy_array, "ffconfig"_a, "np_array"_a)
       .def("detach_numpy_array", &detach_numpy_array, "ffconfig"_a);
   
-  //py::class_<Tensor, TensorBase*>(m, "Tensor");
-  //py::class_<Parameter, TensorBase*>(m, "Parameter");
+  //py::class_<Tensor, TensorBase* >(m, "Tensor");
+  py::class_<Parameter>(m, "Parameter")
+      .def("_get_weights", &get_weights, "ffmodel"_a, "full_array"_a)
+      .def("_set_weights", &set_weights, "ffmodel"_a, "dims"_a, "full_array"_a);
 
   py::class_<FFConfig>(m, "FFConfig")
       .def(py::init())
