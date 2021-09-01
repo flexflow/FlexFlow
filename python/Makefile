@@ -115,7 +115,7 @@ include $(FF_HOME)/FlexFlow.mk
 
 NO_BUILD_ALL=1
 .PHONY: all
-all: $(OUTFILE) legion_cffi.py flexflow/core/flexflow_cffi_header.py
+all: $(OUTFILE) legion_cffi.py flexflow/core/flexflow_cffi_header.py $(FF_BYBIND_LIB)
 
 DEFINE_HEADERS_DIR ?= ./
 
@@ -125,13 +125,13 @@ legion_cffi.py: legion_cffi_header.py.in legion_cffi_build.py $(LG_RT_DIR)/legio
 flexflow/core/flexflow_cffi_header.py: flexflow_cffi_header.py.in flexflow_cffi_build.py flexflow_c.h
 	$(PYTHON_EXE) flexflow_cffi_build.py --ffhome-dir $(FF_HOME) --libname $(FF_BYBIND_LIB_NAME) --output-dir flexflow/core
 
-# ifeq ($(strip $(FF_USE_NATIVE_PYTHON)), 0)
-# $(FF_BYBIND_LIB): bindings.cc
-# 	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -std=c++11 -fPIC $< -o $@
-# else
-# $(FF_BYBIND_LIB): bindings.cc $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM)
-# 	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -L$(FF_HOME)/python $(LD_FLAGS) $(LEGION_LD_FLAGS) $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM) $< -o $@
-# endif
+ifeq ($(strip $(FF_USE_NATIVE_PYTHON)), 0)
+$(FF_BYBIND_LIB): bindings.cc
+	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -std=c++11 -fPIC $< -o $@
+else
+$(FF_BYBIND_LIB): bindings.cc $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM)
+	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -L$(FF_HOME)/python $(LD_FLAGS) $(LEGION_LD_FLAGS) $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM) $< -o $@
+endif
 
 clean::
 	$(RM) -f $(FF_BYBIND_LIB) legion_defines.h realm_defines.h flexflow/core/legion_cffi_header.py flexflow/core/flexflow_cffi_header.py *.pyc
