@@ -36,6 +36,9 @@ FF_USE_NCCL=OFF
 # enable GASNet
 FF_USE_GASNET=OFF
 
+# select GASNET conduit
+FF_GASNET_CONDUIT=ibv
+
 # build C++ examples
 FF_BUILD_ALL_EXAMPLES=OFF
 
