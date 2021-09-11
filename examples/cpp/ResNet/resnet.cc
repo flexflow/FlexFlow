@@ -180,8 +180,8 @@ DataLoader::DataLoader(FFModel& ff,
   } else {
     log_app.print("Start loading dataset from %s", resnet.dataset_path.c_str());
     size_t filesize = get_file_size(resnet.dataset_path);
-    assert(filesize % (3 * 64 * 64 + 1) == 0);
-    num_samples = filesize / (3 * 64 * 64 + 1);
+    assert(filesize % (3 * 32 * 32 + 1) == 0);
+    num_samples = filesize / (3 * 32 * 32 + 1);
   }
   // Create full input
   {
@@ -301,8 +301,8 @@ void DataLoader::load_entire_dataset(const Task *task,
       num_samples, resnet->dataset_path.c_str());
   int height = rect_input.hi[1] - rect_input.lo[1] + 1;
   int width = rect_input.hi[0] - rect_input.lo[0] + 1;
-  int origHeight = 64;
-  int origWidth = 64;
+  int origHeight = 32;
+  int origWidth = 32;
   float heightScale = static_cast<float>(origHeight) / height;
   float widthScale = static_cast<float>(origWidth) / width;
   FILE* file = fopen(resnet->dataset_path.c_str(), "rb");
