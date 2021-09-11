@@ -133,14 +133,12 @@ void top_level_task(const Task* task,
       } else {
         data_loader.next_batch(ff);
       }
-      if (epoch > 0)
-        runtime->begin_trace(ctx, 111/*trace_id*/);
+      runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      if (epoch > 0)
-        runtime->end_trace(ctx, 111/*trace_id*/);
+      runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
   // End timer
@@ -182,8 +180,8 @@ DataLoader::DataLoader(FFModel& ff,
   } else {
     log_app.print("Start loading dataset from %s", resnet.dataset_path.c_str());
     size_t filesize = get_file_size(resnet.dataset_path);
-    assert(filesize % (3 * 360 * 360 + 1) == 0);
-    num_samples = filesize / (3 * 360 * 360 + 1);
+    assert(filesize % (3 * 64 * 64 + 1) == 0);
+    num_samples = filesize / (3 * 64 * 64 + 1);
   }
   // Create full input
   {
@@ -303,16 +301,16 @@ void DataLoader::load_entire_dataset(const Task *task,
       num_samples, resnet->dataset_path.c_str());
   int height = rect_input.hi[1] - rect_input.lo[1] + 1;
   int width = rect_input.hi[0] - rect_input.lo[0] + 1;
-  int origHeight = 360;
-  int origWidth = 360;
+  int origHeight = 64;
+  int origWidth = 64;
   float heightScale = static_cast<float>(origHeight) / height;
   float widthScale = static_cast<float>(origWidth) / width;
   FILE* file = fopen(resnet->dataset_path.c_str(), "rb");
-  unsigned char* buffer = (unsigned char*) malloc(3 * 360 * 360 + 1);
+  unsigned char* buffer = (unsigned char*) malloc(3 * origHeight * origWidth + 1);
   unsigned char* image = (unsigned char*) malloc(3 * height * width);
   for (off_t i = 0; i < num_samples; i++) {
-    size_t ret = fread(buffer, sizeof(unsigned char), 3 * 360 * 360 + 1, file);
-    assert(ret = 3 * 360 * 360 + 1);
+    size_t ret = fread(buffer, sizeof(unsigned char), 3 * origHeight * origWidth + 1, file);
+    assert(ret = 3 * origHeight * origWidth + 1);
     if ((i+1) % 1000 == 0)
       log_app.print("Loaded %d samples", i+1);
     label_ptr[i] = buffer[0];
