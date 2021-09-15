@@ -69,6 +69,13 @@ fi
 # enable GASNET
 if [ "$FF_USE_GASNET" = "ON" ]; then
   SET_GASNET="-DFF_USE_GASNET=ON"
+  if [ "$FF_GASNET_CONDUIT" = "ibv" ]; then
+    SET_GASNET+=" -DFF_GASNET_CONDUIT=ibv"
+  elif [ "$FF_GASNET_CONDUIT" = "mpi" ]; then
+    SET_GASNET+=" -DFF_GASNET_CONDUIT=mpi"
+  elif [ "$FF_GASNET_CONDUIT" = "udp" ]; then
+    SET_GASNET+=" -DFF_GASNET_CONDUIT=udp"
+  fi
 elif [ "$FF_USE_GASNET" = "OFF" ]; then
   SET_GASNET="-DFF_USE_GASNET=OFF"
 else

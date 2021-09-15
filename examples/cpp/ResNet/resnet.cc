@@ -126,21 +126,19 @@ void top_level_task(const Task* task,
     int iterations = 128; // data_loader.num_samples / ffConfig.batchSize;
 
     for (int iter = 0; iter < iterations; iter++) {
-      /* if (resnetConfig.dataset_path.length() == 0) { */
-      /*   // Only load data once for random input */
-      /*   if (iter == 0 && epoch == 0) */
-      /*     data_loader.next_batch(ff); */
-      /* } else { */
-      /*   data_loader.next_batch(ff); */
-      /* } */
-      if (epoch > 0)
-        runtime->begin_trace(ctx, 111/*trace_id*/);
+      if (resnetConfig.dataset_path.length() == 0) {
+        // Only load data once for random input
+        if (iter == 0 && epoch == 0)
+          data_loader.next_batch(ff);
+      } else {
+        data_loader.next_batch(ff);
+      }
+      runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
       ff.zero_gradients();
-      /* ff.backward(); */
-      /* ff.update(); */
-      if (epoch > 0)
-        runtime->end_trace(ctx, 111/*trace_id*/);
+      ff.backward();
+      ff.update();
+      runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
   // End timer
