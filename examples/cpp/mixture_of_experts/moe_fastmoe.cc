@@ -26,7 +26,7 @@ using namespace Legion;
 
 
 LegionRuntime::Logger::Category log_app("MoE");
-int num_exp = 5;
+int num_exp = 16;
 int num_select = 2;
 int epoch = 0;
 int recompiles = 0; // TODO: Comment out, use the one of recompile state
@@ -69,7 +69,7 @@ float moe_score(float* cached_score,
     if(cached == input)
       *cached_score += frac;
   }
-  printf("score: %.3f\n", *cached_score);
+  // printf("score: %.3f\n", *cached_score);
   return *cached_score;
 }
 
@@ -83,6 +83,7 @@ float moe_score_gar(float* cached_score,
 
 
 bool moe_alter(FFModel* ff, RecompileState& r) {
+  // return false;
   // cache recompile hyperparams
   float cache_thresh_up = 0.95f;
   float cache_thresh_low = 0.85f;
@@ -141,7 +142,9 @@ bool moe_alter(FFModel* ff, RecompileState& r) {
   int cache_layer = cache_idx[0];
   int groupby_layer = groupby_idx[0];
   int agg_layer = agg_idx[0];
-  int aggspec_layer = aggspec_idx[0];
+  int aggspec_layer = -1;
+  if (aggspec_idx.size() > 0)
+    aggspec_layer = aggspec_idx[0];
 
   // cache recompile
 
@@ -159,9 +162,11 @@ bool moe_alter(FFModel* ff, RecompileState& r) {
     ff->layers[agg_layer]->input_lps[1] = ff->layers[cache_layer]->outputs[0].part;
     ff->layers[agg_layer]->input_grad_lps[1] = ff->layers[cache_layer]->outputs[0].part_grad;
     // AggregateSpec input
-    ff->layers[aggspec_layer]->inputs[1] = ff->layers[cache_layer]->outputs[0];
-    ff->layers[aggspec_layer]->input_lps[1] = ff->layers[cache_layer]->outputs[0].part;
-    ff->layers[aggspec_layer]->input_grad_lps[1] = ff->layers[cache_layer]->outputs[0].part_grad;
+    if(aggspec_layer > 0) {
+      ff->layers[aggspec_layer]->inputs[1] = ff->layers[cache_layer]->outputs[0];
+      ff->layers[aggspec_layer]->input_lps[1] = ff->layers[cache_layer]->outputs[0].part;
+      ff->layers[aggspec_layer]->input_grad_lps[1] = ff->layers[cache_layer]->outputs[0].part_grad;
+    }
 
     // last num_exp cache outputs are used for expert layers
     for(int i = 1; i < cache_idx.size(); i++) {
@@ -175,7 +180,7 @@ bool moe_alter(FFModel* ff, RecompileState& r) {
     }
   }
   else if(((Cache*)ff->layers[cache_layer])->load_cached &&
-    cache_score[0] < cache_thresh_low) {
+    cache_score[0] < cache_thresh_low && r.last_recompile > 2000) {
     printf("alter cache!!\n");
     ((Cache*)ff->layers[cache_layer])->use_cached(false);
 
@@ -197,9 +202,11 @@ bool moe_alter(FFModel* ff, RecompileState& r) {
     ff->layers[agg_layer]->input_lps[1] = ff->layers[topk_layer]->outputs[1].part;
     ff->layers[agg_layer]->input_grad_lps[1] = ff->layers[topk_layer]->outputs[1].part_grad;
     // AggregateSpec input
-    ff->layers[aggspec_layer]->inputs[1] = ff->layers[topk_layer]->outputs[1];
-    ff->layers[aggspec_layer]->input_lps[1] = ff->layers[topk_layer]->outputs[1].part;
-    ff->layers[aggspec_layer]->input_grad_lps[1] = ff->layers[topk_layer]->outputs[1].part_grad;
+    if(aggspec_layer > 0) {
+      ff->layers[aggspec_layer]->inputs[1] = ff->layers[topk_layer]->outputs[1];
+      ff->layers[aggspec_layer]->input_lps[1] = ff->layers[topk_layer]->outputs[1].part;
+      ff->layers[aggspec_layer]->input_grad_lps[1] = ff->layers[topk_layer]->outputs[1].part_grad;
+    }
   }
 
   // capacity factor recompile
@@ -247,12 +254,26 @@ void top_level_task(const Task* task,
   float lambda = 0.06f/60.0f; //0.04/60.0f; // spec loss cifar100
 
   // MoE model
+  // Tensor gate_preds = ff.dense(input, 4096, AC_MODE_RELU);
+  // gate_preds = ff.dense(gate_preds, 4096, AC_MODE_RELU);
+  // gate_preds = ff.dense(gate_preds, 4096, AC_MODE_RELU);
+  // gate_preds = ff.dense(gate_preds, 4096, AC_MODE_RELU);
+  // gate_preds = ff.dense(gate_preds, 4096, AC_MODE_RELU);
+  // gate_preds = ff.dense(gate_preds, 4096, AC_MODE_RELU);
+  // gate_preds = ff.dense(gate_preds, 4096, AC_MODE_RELU);
+  // gate_preds = ff.dense(gate_preds, 4096, AC_MODE_RELU);
+  // gate_preds = ff.dense(gate_preds, 4096, AC_MODE_RELU);
+  // gate_preds = ff.dense(gate_preds, 4096, AC_MODE_RELU);
+  // gate_preds = ff.dense(gate_preds, 4096, AC_MODE_RELU);
+  // gate_preds = ff.dense(gate_preds, 4096, AC_MODE_RELU);
+  // gate_preds = ff.dense(gate_preds, 4096, AC_MODE_RELU);
+  // gate_preds = ff.dense(gate_preds, 4096, AC_MODE_RELU);
   Tensor gate_preds = ff.dense(input, num_exp, AC_MODE_RELU);
-  Tensor soft_gate_preds = ff.softmax(gate_preds);
+  Tensor soft_gate_preds = ff.softmax(gate_preds); // TODO
 
   Tensor topK_output[2];
   ff.top_k(gate_preds, topK_output, num_select, false);
-  // ff.cache(topK_output[1], (TRAIN_SAMPLES+TEST_SAMPLES) / ffConfig.batchSize, moe_score);
+  // ff.cache(topK_output[1], 1 /*(TRAIN_SAMPLES+TEST_SAMPLES) / ffConfig.batchSize*/, moe_score);
 
   Tensor exp_tensors[num_exp];
   ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
@@ -261,9 +282,24 @@ void top_level_task(const Task* task,
   agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
   agg_inputs[1] = topK_output[1]; // gate assign
   agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
-  agg_inputs[3] = soft_gate_preds; // full gate preds
+  agg_inputs[3] = soft_gate_preds; // full gate preds TODO soft
   for(int i = 0; i < num_exp; i++) {
-    Tensor exp_pred = ff.dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
+    // Tensor cached_tens = ff.cache(exp_tensors[i], 1 /*(TRAIN_SAMPLES+TEST_SAMPLES) / ffConfig.batchSize*/, moe_score_gar);
+    // Tensor exp_pred = ff.dense(cached_tens, 4096, AC_MODE_RELU);
+    Tensor exp_pred = ff.dense(exp_tensors[i], 4096, AC_MODE_RELU);
+    // exp_pred = ff.dense(exp_pred, 4096, AC_MODE_RELU);
+    // exp_pred = ff.dense(exp_pred, 4096, AC_MODE_RELU);
+    // exp_pred = ff.dense(exp_pred, 4096, AC_MODE_RELU);
+    // exp_pred = ff.dense(exp_pred, 4096, AC_MODE_RELU);
+    // exp_pred = ff.dense(exp_pred, 4096, AC_MODE_RELU);
+    // exp_pred = ff.dense(exp_pred, 4096, AC_MODE_RELU);
+    // exp_pred = ff.dense(exp_pred, 4096, AC_MODE_RELU);
+    // exp_pred = ff.dense(exp_pred, 4096, AC_MODE_RELU);
+    // exp_pred = ff.dense(exp_pred, 4096, AC_MODE_RELU);
+    // exp_pred = ff.dense(exp_pred, 4096, AC_MODE_RELU);
+    // exp_pred = ff.dense(exp_pred, 4096, AC_MODE_RELU);
+    // exp_pred = ff.dense(exp_pred, 4096, AC_MODE_RELU);
+    exp_pred = ff.dense(exp_pred, 1024, AC_MODE_RELU);
     agg_inputs[i+4] = ff.softmax(exp_pred);
   }
 
@@ -290,6 +326,21 @@ void top_level_task(const Task* task,
   assert(TRAIN_SAMPLES % ffConfig.batchSize == 0 &&
     TEST_SAMPLES % ffConfig.batchSize == 0);
 
+
+  int iterations = TRAIN_SAMPLES / ffConfig.batchSize;
+
+  data_loader.reset();
+  ff.reset_metrics();
+  data_loader.next_batch(ff);
+
+  // // warm up
+  // for(int i = 0; i < 4; i++) {
+  //   ff.forward();
+  //   ff.zero_gradients();
+  //   ff.backward();
+  //   ff.update();
+  // }
+
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -298,37 +349,20 @@ void top_level_task(const Task* task,
     future.get_void_result();
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
-  for (epoch = 0; epoch < ffConfig.epochs; epoch++) {
-    data_loader.reset();
-    ff.reset_metrics();
-    int iterations = TRAIN_SAMPLES / ffConfig.batchSize;
 
-    for (int iter = 0; iter < iterations; iter++) {
-      data_loader.next_batch(ff);
-      // if (epoch > 0) {
-        runtime->begin_trace(ctx, glob_trace_id/*trace_id*/);
-      // }
-      ff.forward();
-      ff.zero_gradients();
-      ff.backward();
-      ff.update();
-      // ff.recompile_on_condition(r);
-      // if (epoch > 0) {
-        runtime->end_trace(ctx, glob_trace_id/*trace_id*/);
-      // }
-    }
 
-    // TODO: Do properly
-    ff.reset_metrics();
-    iterations = TEST_SAMPLES / ffConfig.batchSize;
-    for (int iter = 0; iter < iterations; iter++) {
-      data_loader.next_batch(ff);
-      ff.forward_test();
-      // ff.recompile_on_condition(r, false);
-    }
+  for (int iter = 0; iter < iterations; iter++) {
+    runtime->begin_trace(ctx, glob_trace_id/*trace_id*/);
+    ff.forward();
+    ff.zero_gradients();
+    ff.backward();
+    ff.update();
+    runtime->end_trace(ctx, glob_trace_id/*trace_id*/);
+    // ff.recompile_on_condition(r);
+  }
 
     // ff.store("a3/debugmorning.ff");
-  }
+
 
   // End timer
   {
@@ -511,6 +545,22 @@ int reverseInt (int i)
     c4 = (i >> 24) & 255;
 
     return ((int)c1 << 24) + ((int)c2 << 16) + ((int)c3 << 8) + c4;
+}
+
+void read_random(float* input_ptr, int* label_ptr)
+{
+  int batch_size = 50;
+  int d_model = 1024;
+
+  // random input
+  for(int i = 0; i < batch_size*d_model; i++) {
+    input_ptr[i] = (float)std::rand()/RAND_MAX;
+  }
+
+  // random labels
+  for(int i = 0; i < batch_size; i++) {
+    label_ptr[i] = std::rand() % d_model;
+  }
 }
 
 

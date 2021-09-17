@@ -20,7 +20,7 @@
 //#include "moe.h"
 
 #define MAX_K 2
-#define MAX_N 5
+#define MAX_N 16
 #define MAX_BATCH_SIZE 50
 
 
@@ -178,7 +178,9 @@ OpMeta* GroupBy::init_task(const Task* task,
   init the score with alpha */
   if(gb->first_init) {
     int copy_size = gb->local_lambda ? gb->n : 1;
-    cudaMemcpy(m->score, &gb->alpha[0], copy_size*sizeof(float), cudaMemcpyHostToDevice);
+    cudaStream_t stream;
+    checkCUDA(get_legion_stream(&stream));
+    cudaMemcpyAsync(m->score, &gb->alpha[0], copy_size*sizeof(float), cudaMemcpyHostToDevice, stream);
   }
   gb->first_init = false;
   return m;
@@ -268,6 +270,8 @@ void gb_forward_kernel(const float* input,
 {
   __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
 
+  // printf("gbker: 1\n");
+
   // Get pred pointers, single thread per block
   if(threadIdx.x == 0) {
     int exp_tensor_rows = ceil(alpha[0]*k/n*batch_size);
@@ -275,6 +279,8 @@ void gb_forward_kernel(const float* input,
     for(int i = 0; i < k*batch_size; i++) {
       // Get pointer to chosen expert predictions
       int expert = exp_assign[i];
+      // printf("gbker: expert %d\n", expert);
+      // assert(expert < 3);
       if(local_lambda) exp_tensor_rows = ceil(alpha[expert]*k/n*batch_size);
       if(expert_idx[expert] >= exp_tensor_rows) {
         // dropped sample
@@ -286,6 +292,8 @@ void gb_forward_kernel(const float* input,
       }
       expert_idx[expert]++;
     }
+
+    // printf("gbker: 2\n");
 
     // compute score: min alpha such that all samples fit
     // TODO: You could do that in parallel with compute output
@@ -305,6 +313,8 @@ void gb_forward_kernel(const float* input,
     }
   }
 
+  // printf("gbker: 3\n");
+
   __syncthreads();
 
   // compute output
@@ -315,6 +325,8 @@ void gb_forward_kernel(const float* input,
       chosen_exp_preds[i/data_dim][i%data_dim] = a;
     }
   }
+
+  // printf("gbker: 4\n");
 }
 
 
@@ -363,7 +375,7 @@ float* GroupBy::forward_task_with_dim(const Task *task,
                             const std::vector<PhysicalRegion>& regions,
                             Context ctx, Runtime* runtime)
 {
-  // printf("gb fwd task\n");
+  // printff("gb fwd task wdim\n");
 
   // Get n, alpha
   const GroupBy* gb = (GroupBy*) task->args;
@@ -390,6 +402,9 @@ float* GroupBy::forward_task_with_dim(const Task *task,
   assert(batch_size == rect_input.hi[NDIM-1] - rect_input.lo[NDIM-1] + 1);
   int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
 
+  // printf("here 1\n");
+
+
   // get output
   float* outputs[n];
   //int exp_output_rows = (int)ceil(alpha*k/n*batch_size);
@@ -405,21 +420,31 @@ float* GroupBy::forward_task_with_dim(const Task *task,
     // assert(output_cols == input_cols);
   }
 
+    // printf("here 2\n");
+
+
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
   // call forward kernel
   int copy_size = local_lambda ? n : 1;
-  cudaMemcpy(m->dev_region_ptrs, outputs, n*sizeof(float*), cudaMemcpyHostToDevice);
-  cudaMemcpy(m->alpha_pass, &alpha[0], copy_size*sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpyAsync(m->dev_region_ptrs, outputs, n*sizeof(float*), cudaMemcpyHostToDevice, stream);
+  cudaMemcpyAsync(m->alpha_pass, &alpha[0], copy_size*sizeof(float), cudaMemcpyHostToDevice, stream);
+
+  // printf("here 3\n");
 
   // TODO: several blocks
-  gb_forward_kernel<<<1, min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim))>>>(
+  gb_forward_kernel<<<1, min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim)), 0, stream>>>(
     acc_input.ptr(rect_input), acc_assign.ptr(rect_assign), m->dev_region_ptrs, n, k,
     m->alpha_pass, batch_size, data_dim, m->score, local_lambda);
 
+  // printf("here 4\n");
+
+
   float* score_ptr = new float[copy_size];
-  cudaMemcpy(score_ptr, m->score, copy_size*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpyAsync(score_ptr, m->score, copy_size*sizeof(float), cudaMemcpyDeviceToHost, stream);
+
+  // printff("gb fwd wdim leave\n");
   return score_ptr;
 }
 
@@ -428,6 +453,8 @@ float* GroupBy::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)
 {
+  // printff("gb fwd enter\n");
+
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   switch (in_domain.get_dim()) {
@@ -439,6 +466,8 @@ float* GroupBy::forward_task(const Task *task,
     default:
       assert(false);
   }
+
+  // printff("gb fwd leave\n");
   return 0;
 }
 

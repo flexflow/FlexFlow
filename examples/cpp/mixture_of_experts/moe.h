@@ -22,10 +22,10 @@
 // #define SPEC_SCORE
 // #define MOE_SPEC_SCORE
 
-#define MAX_NUM_SAMPLES 60000
+#define MAX_NUM_SAMPLES 50
 
 // data set defines
-#define USE_MNIST
+#define USE_RANDOM
 #define NUM_SAMPLES (TRAIN_SAMPLES+TEST_SAMPLES)
 
 #ifdef USE_MNIST
@@ -35,6 +35,14 @@
   #define D_DIM 2
   #define OUT_DIM 10
   #define READ_DATA read_mnist
+  #define USE_MLP
+#elif defined(USE_RANDOM)
+  #define TRAIN_SAMPLES 50000
+  #define TEST_SAMPLES 0
+  #define INPUT_DIM 1024
+  #define D_DIM 2
+  #define OUT_DIM INPUT_DIM
+  #define READ_DATA read_random
   #define USE_MLP
 #elif defined(USE_CIFAR100)
   #define TRAIN_SAMPLES 50000

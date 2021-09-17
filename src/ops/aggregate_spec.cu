@@ -21,8 +21,8 @@
 // #define MOE_DEBUG
 
 #define MAX_K 2
-#define MAX_N 5
-#define MAX_BATCH_SIZE 100
+#define MAX_N 256
+#define MAX_BATCH_SIZE 50
 
 
 #include <cmath>

@@ -1616,6 +1616,7 @@ void FFModel::recompile_on_condition(RecompileState &r, bool perf_rec)
 
   // TODO: several group_bys
   // TODO: It still doesn't work with --control-replication
+  // TODO: Multi GPU, several futures
   /*
   NOTE GroupBy: I couldn't get Legion to have futures with dynamic size. So I
   need to make the future a pointer. Smart pointers as futures didn't work, and
@@ -1625,38 +1626,38 @@ void FFModel::recompile_on_condition(RecompileState &r, bool perf_rec)
   smart pointer reference is gone.
   */
   // std::shared_ptr<float> sptr;
-  // float* future_ptr;
+  float* future_ptr;
   size_t q_len;
   std::deque<Future>* q;
   for(size_t l = 0; l < layers.size(); l++) {
     switch(layers[l]->op_type) {
-      // case OP_GROUP_BY:
-      //   q_len = ((GroupBy*)layers[l])->score_futures.size();
-      //   // If too many entries (launch ahead was reduced or user didn't pop)
-      //   while(q_len > r.launch_ahead) {
-      //     ((GroupBy*)layers[l])->score_futures.pop_front();
-      //     q_len = ((GroupBy*)layers[l])->score_futures.size();
-      //   }
-      //   if(q_len == r.launch_ahead) {
-      //     future_ptr = ((GroupBy*)layers[l])->score_futures.front()
-      //       .get_result<float*>();
-      //     // sptr.reset(future_ptr);
-      //   } else if (q_len < r.launch_ahead) {
-      //     return;
-      //   }
-      //   break;
-      case OP_CACHE:
-        q_len = ((Cache*)layers[l])->score_futures.size();
+      case OP_GROUP_BY:
+        q_len = ((GroupBy*)layers[l])->score_futures.size();
         // If too many entries (launch ahead was reduced or user didn't pop)
         while(q_len > r.launch_ahead) {
-          ((Cache*)layers[l])->score_futures.pop_front();
-          q_len = ((Cache*)layers[l])->score_futures.size();
+          ((GroupBy*)layers[l])->score_futures.pop_front();
+          q_len = ((GroupBy*)layers[l])->score_futures.size();
         }
         if(q_len == r.launch_ahead) {
-          ((Cache*)layers[l])->score_futures.front().get_result<float>();
+          future_ptr = ((GroupBy*)layers[l])->score_futures.front()
+            .get_result<float*>();
+          // sptr.reset(future_ptr);
         } else if (q_len < r.launch_ahead) {
           return;
         }
+        break;
+      case OP_CACHE:
+        q_len = ((Cache*)layers[l])->score_futures.size();
+        // If too many entries (launch ahead was reduced or user didn't pop)
+        // while(q_len > r.launch_ahead) {
+        //   ((Cache*)layers[l])->score_futures.pop_front();
+        //   q_len = ((Cache*)layers[l])->score_futures.size();
+        // }
+        // if(q_len == r.launch_ahead) {
+          ((Cache*)layers[l])->score_futures.front().get_result<float>();
+        // } else if (q_len < r.launch_ahead) {
+        //   return;
+        // }
         break;
       default:
         break;
@@ -1668,6 +1669,7 @@ void FFModel::recompile_on_condition(RecompileState &r, bool perf_rec)
   bool rec = r.alter_func(this, r);
   // delete[] future_ptr;
   if(rec) {
+    printf("rec\n");
     // TODO: Search for parallelization strategy
     recompile();
     r.recompilations++;

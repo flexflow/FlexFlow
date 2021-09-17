@@ -35,6 +35,7 @@ void DataLoader::load_input(const Task *task,
     sample_vol *= acc_batch_input.rect.hi[i] - acc_batch_input.rect.lo[i] + 1;
 
   //FIXME: currently assume continous indices
+  // printf("%d == %d\n", batch_size, meta->num_samples);
   assert(batch_size == meta->num_samples);
   for (int i = 1; i < batch_size; i++)
     assert(meta->idxs[i] == meta->idxs[0] + i);

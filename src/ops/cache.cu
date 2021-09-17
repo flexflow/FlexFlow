@@ -16,6 +16,8 @@
 #include "model.h"
 #include "cuda_helper.h"
 
+// #define MOE_CACHE_FB
+
 // Moving average over batches: 1 if batch is perfectly cached, 0 else.
 template <typename T>
 float default_score(float* cached_score,
@@ -75,7 +77,12 @@ Cache::Cache(FFModel& model,
   score_f(_score_f),
   profiling(model.config.profiling)
 {
-  load_cached = false;
+  // if(inputs[0].data_type == DT_FLOAT) {
+    load_cached = true;
+  // }
+  // else {
+  //   load_cached = false;
+  // }
   batch_ctr = 0;
 
   int num_dim = inputs[0].numDim;
@@ -111,12 +118,12 @@ void Cache::create_output_and_partition(FFModel& model)
   std::string pcname = name;
 
   // TODO: You need to make a out_and_part_with_dim
-  if(inputs[0].data_type == DT_INT32) {
+  // if(inputs[0].data_type == DT_INT32) {
     task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
-  }
-  else {
-    task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
-  }
+  // }
+  // else {
+  //   task_is = IndexSpaceT<4>(model.get_or_create_task_is(4, pcname));
+  // }
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, task_is);
@@ -192,13 +199,23 @@ template <typename T>
 void Cache::cache_init() {
   // init pointer array
   size_t vol = inputs[0].get_volume();
+  // printf("vol: %d: (%d %d)\n", vol, inputs[0].adim[1], inputs[0].adim[0]);
   batch_ptrs = (void**)malloc(num_batches*sizeof(T*));
-  for(int i = 0; i < num_batches; i++)
+  for(int i = 0; i < num_batches; i++) {
 #ifdef MOE_CACHE_FB
     checkCUDA(cudaMalloc(&batch_ptrs[i], vol*sizeof(T)));
+    // TODO: delte (init with rand data)
+    float* tmp = (float*)malloc(vol*sizeof(T));
+    for(int j = 0; j < vol; j++) {
+      tmp[j] = (float)std::rand()/RAND_MAX;
+      // if(j > vol/2) tmp[j] = 0.0f;
+    }
+    cudaMemcpy(batch_ptrs[i], tmp, vol*sizeof(T), cudaMemcpyHostToDevice);
+    free(tmp);
 #else
     batch_ptrs[i] = malloc(vol*sizeof(T));
 #endif
+  }
   batch_cmp = malloc(vol*sizeof(T));
 }
 
@@ -243,10 +260,21 @@ void Cache::init(const FFModel& ff)
   if(batch_ptrs != 0) return;
 
 #ifndef MOE_CACHE_FB
+    // TODO delete next lines
+          size_t vol = inputs[0].get_volume();
   switch(inputs[0].data_type)
   {
     case DT_FLOAT:
       cache_init<float>();
+
+      // random input TODO delete
+      for(int b  = 0; b < num_batches; b++) {
+        // printf("%d\n", b);
+        for(int i = 0; i < vol; i++) {
+          ((float*)batch_ptrs[b])[i] = (float)std::rand()/RAND_MAX;
+          if(i > vol/2) ((float*)batch_ptrs[b])[i] = 0.0f;
+        }
+      }
       break;
     case DT_INT32:
       cache_init<int32_t>();
@@ -288,13 +316,17 @@ void cache_forward(const Task *task,
   T* output_ptr = helperGetTensorPointerWO<T>(regions[0], task->regions[0],
     FID_DATA, ctx, runtime);
 
-#ifdef MOE_CACHE_FB
+  // printf("1\n");
+
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+  // printf("1 %d %d\n", batch_ctr, c->inputs[0].get_volume());
+#ifdef MOE_CACHE_FB
   copy_kernel<<<1, CUDA_NUM_THREADS, 0, stream>>>
     (output_ptr, batch_ptrs[batch_ctr], c->inputs[0].get_volume());
+  // printf("1\n");
 #else
-  cudaMemcpy(output_ptr, batch_ptrs[batch_ctr], c->inputs[0].get_volume()*sizeof(T), cudaMemcpyHostToDevice);
+  cudaMemcpyAsync(output_ptr, batch_ptrs[batch_ctr], c->inputs[0].get_volume()*sizeof(T), cudaMemcpyHostToDevice, stream);
 #endif
 }
 
@@ -303,7 +335,7 @@ void Cache::forward_task(const Task *task,
                         const std::vector<PhysicalRegion>& regions,
                         Context ctx, Runtime* runtime)
 {
-  // printf("cache fwd_task\n");
+  // printf("cache fwd_task\n"); 
   Cache* c = ((Arg*)(task->args))->cache;
   assert((int)regions.size() == 1);
   assert((int)task->regions.size() == 1);
@@ -336,21 +368,21 @@ float cache_update(const Task *task,
   const T* input_ptr = helperGetTensorPointerRO<T>(regions[0], task->regions[0],
     FID_DATA, ctx, runtime);
 
-#ifdef MOE_CACHE_FB
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+#ifdef MOE_CACHE_FB
   copy_kernel<<<1, CUDA_NUM_THREADS, 0, stream>>>
     ((T*)c->batch_ptrs[batch_ctr], input_ptr, c->inputs[0].get_volume());
 #endif
 
   // compute score FIXME: Do on GPU if MOE_CACHE_FB
   T* host_input = (T*) c->batch_cmp;
-  cudaMemcpy(host_input, input_ptr, c->inputs[0].get_volume()*sizeof(T), cudaMemcpyDeviceToHost);
+  cudaMemcpyAsync(host_input, input_ptr, c->inputs[0].get_volume()*sizeof(T), cudaMemcpyDeviceToHost, stream);
   float cache_score = c->score_f(&m->cache_score, host_input,
     c->batch_ptrs[batch_ctr], c->inputs[0].get_volume());
 
-  for(int i = 0; i < c->inputs[0].get_volume(); i++)
-    assert(host_input[i] >= 0);
+  // for(int i = 0; i < c->inputs[0].get_volume(); i++)
+  //   assert(host_input[i] >= 0);
 
 #ifndef MOE_CACHE_FB
   memcpy(c->batch_ptrs[batch_ctr], host_input, c->inputs[0].get_volume()*sizeof(T));
@@ -409,31 +441,31 @@ void Cache::forward(const FFModel& ff)
   }
 
   Arg arg = {this, batch_ctr};
-  // Launch update task
-  IndexLauncher launcher_update(CACHE_UPDATE_TASK_ID, task_is,
-                         TaskArgument(&arg, sizeof(Arg)), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
-  launcher_update.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
-  launcher_update.add_field(0, FID_DATA);
-  FutureMap score_fm = runtime->execute_index_space(ctx, launcher_update);
-  // add score futures to Cache future vector attribute
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) \
-        score_futures.push_back(score_fm[*it]); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
+//   // Launch update task
+//   IndexLauncher launcher_update(CACHE_UPDATE_TASK_ID, task_is,
+//                          TaskArgument(&arg, sizeof(Arg)), argmap,
+//                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+//                          FFConfig::get_hash_id(std::string(name)));
+//   launcher_update.add_region_requirement(
+//     RegionRequirement(input_lps[0], 0/*projection id*/,
+//       READ_ONLY, EXCLUSIVE, inputs[0].region));
+//   launcher_update.add_field(0, FID_DATA);
+//   FutureMap score_fm = runtime->execute_index_space(ctx, launcher_update);
+//   // add score futures to Cache future vector attribute
+//   switch (domain.get_dim()) {
+// #define DIMFUNC(DIM) \
+//     case DIM: \
+//     { \
+//       Rect<DIM> rect = domain; \
+//       for (PointInRectIterator<DIM> it(rect); it(); it++) \
+//         score_futures.push_back(score_fm[*it]); \
+//       break; \
+//     }
+//     LEGION_FOREACH_N(DIMFUNC)
+// #undef DIMFUNC
+//     default:
+//       assert(false);
+  // }
   // Launch forward task
   if(load_cached) {
     IndexLauncher launcher_fwd(CACHE_FWD_TASK_ID, task_is,

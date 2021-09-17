@@ -17,8 +17,9 @@
 #include "cuda_helper.h"
 //#include "moe.h"
 
+
 #define MAX_K 2
-#define MAX_N 5
+#define MAX_N 16
 #define MAX_BATCH_SIZE 50
 
 // #define MOE_DEBUG
@@ -100,7 +101,7 @@ void Aggregate::create_weights(FFModel& model)
 
 void Aggregate::create_output_and_partition(FFModel& model)
 {
-  printf("agg create out\n");
+  // printff("agg create out\n");
   // Retrieve the task indexspace for the op
   std::string pcname = name;
   task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
@@ -150,7 +151,7 @@ OpMeta* Aggregate::init_task(const Task* task,
 
 void Aggregate::init(const FFModel& ff)
 {
-  printf("agg INIT\n");
+  // printf("agg INIT\n");
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -472,7 +473,7 @@ void Aggregate::forward_task(const Task *task,
                              const std::vector<PhysicalRegion>& regions,
                              Context ctx, Runtime* runtime)
 {
-  // printf("agg fwd task\n");
+  // printff("agg fwd task\n");
   int n = ((Aggregate*)task->args)->n;
   const bool local_lambda = ((Aggregate*)task->args)->local_lambda;
 
@@ -537,15 +538,15 @@ void Aggregate::forward_task(const Task *task,
   int num_blocks = GET_BLOCKS(num_threads);
   assert(num_blocks == 1);
 
-  cudaMemcpy(m->dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
+  cudaMemcpyAsync(m->dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice, stream);
   int copy_size = local_lambda ? n : 1;
-  cudaMemcpy(m->exp_samples_arr, &exp_samples_arr[0], copy_size*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpyAsync(m->exp_samples_arr, &exp_samples_arr[0], copy_size*sizeof(int), cudaMemcpyHostToDevice, stream);
 
-  agg_forward_kernel<<<num_blocks, num_threads>>>(m->dev_exp_preds,
+  agg_forward_kernel<<<num_blocks, num_threads, 0, stream>>>(m->dev_exp_preds,
     acc_gate_assign.ptr(rect_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     acc_output.ptr(rect_output), n, k, m->exp_samples_arr, batch_size, out_dim,
     local_lambda);
-  // printf("done agg fwd task\n");
+  // printff("done agg fwd task\n");
 
 }
 
@@ -554,6 +555,7 @@ void Aggregate::backward_task(const Task *task,
                               const std::vector<PhysicalRegion>& regions,
                               Context ctx, Runtime* runtime)
 {
+    // printff("agg bwd enter\n");
 
   const AggregateMeta* m = *((AggregateMeta**)task->local_args);
   int n = ((Aggregate*)task->args)->n;
@@ -643,17 +645,18 @@ void Aggregate::backward_task(const Task *task,
   assert(num_blocks == 1);
 
   int copy_size = local_lambda ? n : 1;
-  cudaMemcpy(m->exp_samples_arr, &exp_samples_arr[0], copy_size*sizeof(int), cudaMemcpyHostToDevice);
-  cudaMemcpy(m->dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice);
-  cudaMemcpy(m->dev_exp_grads, exp_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
+  cudaMemcpyAsync(m->exp_samples_arr, &exp_samples_arr[0], copy_size*sizeof(int), cudaMemcpyHostToDevice, stream);
+  cudaMemcpyAsync(m->dev_exp_preds, exp_preds, n*sizeof(float*), cudaMemcpyHostToDevice, stream);
+  cudaMemcpyAsync(m->dev_exp_grads, exp_grads, n*sizeof(float*), cudaMemcpyHostToDevice, stream);
 
   // TODO: Delete true exp assign
-  agg_backward_kernel<<<num_blocks, num_threads>>>(m->dev_exp_preds,
+  agg_backward_kernel<<<num_blocks, num_threads, 0, stream>>>(m->dev_exp_preds,
     m->dev_exp_grads, acc_gate_assign.ptr(rect_gate_assign),
     acc_true_gate_assign.ptr(rect_true_gate_assign), acc_gate_pred.ptr(rect_gate_pred),
     full_acc_gate_grad.ptr(rect_full_gate_grad), acc_output_grad.ptr(rect_out_grad),
     n, k, m->exp_samples_arr, lambda_bal, batch_size, out_dim, local_lambda);
 
+    // printff("agg bwd leave\n");
 }
 
 

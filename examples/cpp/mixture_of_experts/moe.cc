@@ -448,6 +448,9 @@ void top_level_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime)
 {
+  printf("moe.cc heeeeeeeeere\n");
+
+
   FFConfig ffConfig;
   MoeConfig moeConfig;
   {

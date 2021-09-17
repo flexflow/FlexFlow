@@ -26,8 +26,8 @@ using namespace Legion;
 
 
 LegionRuntime::Logger::Category log_app("MoE");
-int num_exp = 5;
-int num_select = 2;
+int num_exp = 3;
+int num_select = 1;
 int epoch = 0;
 int recompiles = 0; // TODO: Comment out, use the one of recompile state
 
@@ -217,6 +217,9 @@ void top_level_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime)
 {
+
+  printf("heeeeree\n");
+
   FFConfig ffConfig;
   MoeConfig moeConfig;
   {
@@ -313,6 +316,7 @@ void top_level_task(const Task* task,
   // Data Loader
   DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
   RecompileState r(&ff, &moe_alter);
+  printf("hello\n");
   ff.init_layers();
 
   // ff.load("a3/debugmorning.ff");
@@ -331,6 +335,7 @@ void top_level_task(const Task* task,
     future.get_void_result();
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
+  printf("here\n");
   for (epoch = 0; epoch < ffConfig.epochs; epoch++) {
     data_loader.reset();
     ff.reset_metrics();
@@ -345,7 +350,7 @@ void top_level_task(const Task* task,
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      // ff.recompile_on_condition(r);
+      ff.recompile_on_condition(r);
       // if (epoch > 0) {
       //   runtime->end_trace(ctx, glob_trace_id/*trace_id*/);
       // }
@@ -357,11 +362,12 @@ void top_level_task(const Task* task,
     for (int iter = 0; iter < iterations; iter++) {
       data_loader.next_batch(ff);
       ff.forward_test();
-      // ff.recompile_on_condition(r, false);
+      ff.recompile_on_condition(r, false);
     }
 
     // ff.store("a3/debugmorning.ff");
   }
+  printf("done %d\n", ffConfig.epochs);
 
   // End timer
   {

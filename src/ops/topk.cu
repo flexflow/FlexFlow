@@ -492,14 +492,22 @@ topk_forward_kernel(const T* __restrict__ input,
     Entry<T>* top_k_heap = shared_entries + thread_count * k;
     mergeShards(thread_count, k, shared_entries, top_k_heap, batch_output,
                 batch_indices);
-    // assert(batch_indices[0] < 3 && batch_indices[1] < 3);
-    // printf("topk input:  %.3f %.3f %.3f --- output: %.2f %d %.2f %d\n", batch_input[0], batch_input[1], batch_input[2], batch_output[0], batch_indices[0], batch_output[1], batch_indices[1]);
-
+    // // assert(batch_indices[0] < 3 && batch_indices[1] < 3);
+    // if(batch_indices[0] < 0 || batch_indices[0] > 2) {
+    //   // printf("topk input:  %.3f %.3f %.3f --- output: %.2f %d %.2f %d\n", batch_input[0], batch_input[1], batch_input[2], batch_output[0], batch_indices[0], batch_output[1], batch_indices[1]);
+    //   batch_indices[0] = 0;
+    // }
+    // if(batch_indices[1] < 0 || batch_indices[1] > 2) {
+    //   // printf("topk input:  %.3f %.3f %.3f --- output: %.2f %d %.2f %d\n", batch_input[0], batch_input[1], batch_input[2], batch_output[0], batch_indices[0], batch_output[1], batch_indices[1]);
+    //   batch_indices[1] = 0;
+    // }
 
 #ifdef MOE_SPEC_SCORE
     printf("asg %d,%d,%d,%d,%d\n", batch_index, indices[batch_index*k+0], indices[batch_index*k+1], indices[batch_index*k+2], indices[batch_index*k+3]);
 #endif
   }
+
+
 
 #ifdef MOE_SPEC_SCORE
   int n = 16;
@@ -552,6 +560,7 @@ void TopK::forward_task(const Task* task,
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime* runtime)
 {
+  // printff("topk fwd\n");
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   //const TopK* topk = (const TopK*) task->args;
@@ -603,6 +612,7 @@ void TopK::forward_task(const Task* task,
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
   }
+  // printff("done topk fwd\n");
 }
 
 void TopK::forward(const FFModel& ff)
