@@ -25,7 +25,7 @@ using namespace Legion::Mapping;
 
 void register_flexflow(int argc, char **argv);
 
-static bool control_replicate = false;
+static bool control_replicate = true;
 static const char * const unique_name = "legion_python";
 static const VariantID vid = 1;
 

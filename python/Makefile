@@ -18,7 +18,7 @@ DEBUG           ?= 0		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
-USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
+USE_GASNET      ?= 1		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 USE_HIP         ?= 0
@@ -29,7 +29,7 @@ MAX_FIELDS      ?= 256
 #USE_GPU_REDUCTIONS ?= 0
 FF_USE_NCCL  ?= 0
 FF_USE_NATIVE_PYTHON ?= 0
-# FF_PYTHON_USE_INDEX_LOADER = 1
+FF_PYTHON_USE_INDEX_LOADER = 1
 
 USE_PYTHON := 1
 SHARED_OBJECTS := 1 

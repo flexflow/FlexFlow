@@ -15,11 +15,11 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import cffi
+#import cffi
 import os
 import subprocess
 import logging
-import warnings
+#import warnings
 import numpy as np
 from .flexflow_logger import fflogger
 from .flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
@@ -27,7 +27,7 @@ from .flexflow_cffi_header import ffc, ffi
 
 ff_tracing_id = 200
 
-warnings.simplefilter('always', DeprecationWarning)
+#warnings.simplefilter('always', DeprecationWarning)
 
 def get_c_name(name):
   if name is None:
