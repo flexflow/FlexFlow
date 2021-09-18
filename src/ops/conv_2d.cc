@@ -30,8 +30,32 @@ Tensor FFModel::conv2d(const Tensor input,
                        Initializer* bias_initializer,
                        char const *name)
 {
-  assert(input->num_dims == 5); /*RNCHW*/
+  assert(input->num_dims == 4); /*NCHW*/
 
+  Layer *conv = new Layer(OP_CONV2D, name, 1/*inputs*/,
+                          use_bias ? 2 : 1/*weights*/, 1/*outputs*/,
+                          input);
+  conv->outputs[0]->num_dims = 4;
+  conv->outputs[0]->dims[3] = input->dims[3];
+  conv->outputs[0]->dims[2] = outChannels;
+  conv->outputs[0]->dims[1] = 1 + (input->dims[1] + 2 * paddingH - kernelH) / strideH;
+  conv->outputs[0]->dims[0] = 1 + (input->dims[0] + 2 * paddingW - kernelW) / strideW;
+  conv->add_property("out_channels", outChannels);
+  conv->add_property("kernel_h", kernelH);
+  conv->add_property("kernel_w", kernelW);
+  conv->add_property("stride_h", strideH);
+  conv->add_property("stride_w", strideW);
+  conv->add_property("padding_h", paddingH);
+  conv->add_property("padding_w", paddingW);
+  conv->add_property("activation", activation);
+  conv->add_property("groups", groups);
+  conv->add_property("use_bias", use_bias);
+  conv->add_initializer("kernel", kernel_initializer);
+  conv->add_initializer("bias", bias_initializer);
+  layers.push_back(conv);
+  return conv->outputs[0];
+
+#ifdef DEADCODE
   Conv2D *conv = new Conv2D(
       *this, 
       input, 
@@ -47,6 +71,31 @@ Tensor FFModel::conv2d(const Tensor input,
   );
   layers.push_back(conv);
   return conv->outputs[0];
+#endif
+}
+
+Conv2D::Conv2D(FFModel& model,
+               const ParallelTensor input,
+               int outChannels,
+               int kernelH, int kernelW,
+               int strideH, int strideW, 
+               int paddingH, int paddingW,
+               ActiMode activation,
+               int groups,
+               bool use_bias,
+               bool allocate_weights,
+               const char* name)
+: ParallelOp(model, OP_CONV2D, name, 1/*inputs*/, use_bias ? 2 : 1/*weights*/, allocate_weights, 1/*outputs*/, input),
+  in_channels(input->dims[Conv2DInput::CHANNEL].size),
+  out_channels(outChannels),
+  kernel_h(kernelH), kernel_w(kernelW),
+  stride_h(strideH), stride_w(strideW),
+  padding_h(paddingH), padding_w(paddingW),
+  activation(activation),
+  groups(groups),
+  use_bias(use_bias)
+{
+  assert(false);
 }
 
 Conv2DParams Conv2D::get_params() const {
@@ -87,7 +136,7 @@ size_t Conv2D::get_params_hash() const {
 
 using PCG::Node;
 Node FFModel::get_or_create_conv2d_node(const Tensor input,
-                                        const Conv2DParams& params) 
+                                        const Conv2DParams& params)
 {
   if (!params.is_valid(input)) {
     return Node::INVALID_NODE;
@@ -320,7 +369,7 @@ bool Conv2DParams::is_valid(const Tensor input) const {
 }
 
 Conv2D::Conv2D(FFModel& model,
-               const Tensor input,
+               const ParallelTensor input,
                int outChannels,
                int kernelH, int kernelW,
                int strideH, int strideW, 
@@ -330,7 +379,7 @@ Conv2D::Conv2D(FFModel& model,
                bool use_bias,
                bool allocate_weights,
                const char* name)
-: Op(model, OP_CONV2D, name, 1/*inputs*/, use_bias ? 2 : 1/*weights*/, allocate_weights, 1/*outputs*/, input),
+: ParallelOp(model, OP_CONV2D, name, 1/*inputs*/, use_bias ? 2 : 1/*weights*/, allocate_weights, 1/*outputs*/, input),
   in_channels(input->dims[Conv2DInput::CHANNEL].size),
   out_channels(outChannels),
   kernel_h(kernelH), kernel_w(kernelW),

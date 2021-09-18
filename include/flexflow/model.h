@@ -223,8 +223,36 @@ cudaError_t get_legion_stream(cudaStream_t *stream);
 #endif
 
 class FFModel;
-class Op;
+class ParallelOp;
 class DataLoader;
+
+class Layer {
+public:
+  Layer(OperatorType type,
+        int numInputs,
+        int numWeights,
+        int numOutputs,
+        const Tensor input1 = NULL,
+        const Tensor input2 = NULL,
+        const Tensor input3 = NULL,
+        const Tensor input4 = NULL);
+  Layer(OperatorType type,
+        int numInputs,
+        int numWeights,
+        int numOutputs,
+        const Tensor* tensors = NULL);
+public:
+  OperatorType op_type;
+  DataType data_type;
+  size_t op_guid;
+  char name[MAX_OPNAME];
+  Tensor outputs[MAX_NUM_OUTPUTS];
+  Tensor inputs[MAX_NUM_INPUTS];
+  Tensor weights[MAX_NUM_WEIGHTS];
+  bool trainableInputs[MAX_NUM_INPUTS];
+  int numInputs, numWeights, numOutputs;
+  bool profiling;
+};
 
 class OpMeta {
 public:
@@ -275,7 +303,7 @@ void solve_parallel_dim_mappings(const std::vector<ParallelDimMappingRecord>& ma
 std::unordered_map<int, int> output_to_input_mapping(const std::vector<ParallelDimMappingRecord>& mapping);
 std::unordered_map<int, int> input_to_output_mapping(const std::vector<ParallelDimMappingRecord>& mapping);
 
-class Op {
+class ParallelOp {
 public:
   static void construct_weight_parallel_dims(
       std::vector<ParallelDimMappingRecord>& records, 
@@ -337,45 +365,45 @@ protected:
   bool check_output_input_weight_same_parallel_is() const;
   bool check_output_input_weight_same_machine_view() const;
 public:
-  Op(FFModel& model,
+  ParallelOp(FFModel& model,
      OperatorType type,
      const char* _name,
      int numInputs,
      int numWeights,
      bool allocate_weights,
      int numOutputs,
-     const Tensor input1 = NULL,
-     const Tensor input2 = NULL,
-     const Tensor input3 = NULL,
-     const Tensor input4 = NULL);
-  Op(FFModel& model,
+     const ParallelTensor input1 = NULL,
+     const ParallelTensor input2 = NULL,
+     const ParallelTensor input3 = NULL,
+     const ParallelTensor input4 = NULL);
+  ParallelOp(FFModel& model,
      OperatorType type,
      const char* _name,
      int numInputs,
      int numWeights,
      int numOutputs,
-     const Tensor input1 = NULL,
-     const Tensor input2 = NULL,
-     const Tensor input3 = NULL,
-     const Tensor input4 = NULL);
-  Op(int guid, 
+     const ParallelTensor input1 = NULL,
+     const ParallelTensor input2 = NULL,
+     const ParallelTensor input3 = NULL,
+     const ParallelTensor input4 = NULL);
+  ParallelOp(int guid, 
      bool profiling,
      OperatorType type,
      const char* name,
      int numInputs,
      int numWeights,
      int numOutputs,
-     const Tensor input1 = NULL,
-     const Tensor input2 = NULL,
-     const Tensor input3 = NULL,
-     const Tensor input4 = NULL);
-  Op(FFModel& model,
+     const ParallelTensor input1 = NULL,
+     const ParallelTensor input2 = NULL,
+     const ParallelTensor input3 = NULL,
+     const ParallelTensor input4 = NULL);
+  ParallelOp(FFModel& model,
      OperatorType type,
      const char* _name,
      int numInputs,
      int numWeights,
      int numOutputs,
-     const Tensor* tensors);
+     const ParallelTensor* tensors);
   // graph substitution related methods
   virtual bool get_int_parameter(PMParameter, int*) const;
   virtual bool get_tensor_parameter(TNParameter, DIMParameter, int*) const;
@@ -438,9 +466,9 @@ public:
   size_t op_guid;
   char name[MAX_OPNAME];
   Legion::IndexSpace parallel_is;
-  Tensor outputs[MAX_NUM_OUTPUTS];
-  Tensor inputs[MAX_NUM_INPUTS];
-  Parameter weights[MAX_NUM_WEIGHTS];
+  ParallelTensor outputs[MAX_NUM_OUTPUTS];
+  ParallelTensor inputs[MAX_NUM_INPUTS];
+  ParallelParameter weights[MAX_NUM_WEIGHTS];
   bool trainableInputs[MAX_NUM_INPUTS];
   OpMeta* meta[MAX_NUM_WORKERS];
   int numInputs, numWeights, numOutputs;

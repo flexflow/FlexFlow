@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef _FLEXFLOW_TENSOR_H_
-#define _FLEXFLOW_TENSOR_H_
+#pragma once
+
 #include "legion.h"
 #include "flexflow/machine_view.h"
 #include "flexflow/ffconst.h"
@@ -44,8 +44,7 @@ struct ParallelDim {
   bool is_replica_dim = false;
 };
 
-
-struct TensorShape {
+struct ParallelTensorShape {
   int num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   DataType data_type;
@@ -65,8 +64,8 @@ std::ostream& operator<<(std::ostream&, TensorShape const &);
 
 namespace std {
   template <>
-  struct hash<FlexFlow::TensorShape> {
-    size_t operator()(FlexFlow::TensorShape const &) const;
+  struct hash<FlexFlow::ParallelTensorShape> {
+    size_t operator()(FlexFlow::ParallelTensorShape const &) const;
   };
 }
 
@@ -74,9 +73,9 @@ namespace FlexFlow {
 
 class FFConfig;
 
-struct TensorBase {
-  TensorBase(void) = default;
-  TensorBase(const TensorBase& rhs);
+struct ParallelTensorBase {
+  ParallelTensorBase(void) = default;
+  ParallelTensorBase(const ParallelTensorBase& rhs);
   //Tensor& operator=(const Tensor& rhs);
   //bool operator==(const Tensor& rhs) const;
   void inline_map(FFConfig &config);
@@ -86,10 +85,10 @@ struct TensorBase {
   void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major);
   void detach_raw_ptr(FFConfig &config);
   bool get_input_sub_tensor(const ParallelConfig& pc,
-                            TensorBase& tensor,
+                            ParallelTensorBase& tensor,
                             OperatorType type);
   bool get_output_sub_tensor(const ParallelConfig& pc,
-                             TensorBase& tensor,
+                             ParallelTensorBase& tensor,
                              OperatorType type);
   size_t get_owner_independent_hash() const;
   size_t get_volume() const;
@@ -110,7 +109,7 @@ struct TensorBase {
 
 private:
   template <typename T>
-  bool get_input_sub_tensor_via_mappings(const ParallelConfig& pc, TensorBase& tensor) const;
+  bool get_input_sub_tensor_via_mappings(const ParallelConfig& pc, ParallelTensorBase& tensor) const;
 public:
 
   size_t ts_guid = 0;
@@ -135,9 +134,7 @@ public:
   Legion::PhysicalRegion physical_region;
 };
 
-typedef TensorBase* Tensor;
-typedef TensorBase* Parameter;
+typedef ParallelTensorBase* ParallelTensor;
+typedef ParallelTensorBase* ParallelParameter;
 
 }; // namespace FlexFlow
-
-#endif
