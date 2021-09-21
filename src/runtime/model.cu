@@ -463,5 +463,7 @@ template bool Tensor::set_tensor<float>(const FFModel* ff, const std::vector<int
 template bool Tensor::get_tensor<float>(const FFModel* ff, float* data, ParameterSyncType comm_type);
 template bool Tensor::set_tensor<int>(const FFModel* ff, const std::vector<int>& dims, const int* data, ParameterSyncType comm_type);
 template bool Tensor::get_tensor<int>(const FFModel* ff, int* data, ParameterSyncType comm_type);
+template bool Tensor::set_tensor<int64_t>(const FFModel* ff, const std::vector<int>& dims, const int64_t* data, ParameterSyncType comm_type);
+template bool Tensor::get_tensor<int64_t>(const FFModel* ff, int64_t* data, ParameterSyncType comm_type);
 template bool Parameter::set_weights<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
 template bool Parameter::get_weights<float>(const FFModel* ff, float* data);

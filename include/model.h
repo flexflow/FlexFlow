@@ -318,6 +318,11 @@ public:
   Tensor rsqrt(const Tensor& x,
                bool inplace = true,
                char const *name = NULL);
+  // Add a pow layer
+  Tensor pow(const Tensor& x,
+             const float exponent,
+             bool inplace = true,
+             char const *name = NULL);
   // Add a scalar operation layer
   Tensor scalar_multiply(const Tensor& x,
 	      const float scalar,
@@ -338,7 +343,7 @@ public:
   // Add a mean layer
   Tensor mean(const Tensor& x,
               const std::vector<int>& dims,
-              bool keepdim,
+              bool keepdims,
               const char *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor& x,

@@ -137,6 +137,8 @@ enum OperatorType {
   OP_MULTIHEAD_ATTENTION,
   OP_FUSED, // Fused operator type for internal fusion optimizations
   OP_RSQRT, //https://pytorch.org/docs/stable/generated/torch.rsqrt.html
+  OP_POW, //https://pytorch.org/docs/stable/generated/torch.pow.html
+  OP_MEAN, //https://pytorch.org/docs/stable/generated/torch.mean.html
 };
 
 #endif // _FLEXFLOW_CONST_H_

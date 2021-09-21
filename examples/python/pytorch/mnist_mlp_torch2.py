@@ -34,8 +34,7 @@ def top_level_task():
   
   model = MLP()
 
-  torch_model = PyTorchModel(model=model)
-  output_tensors = torch_model.apply(ffmodel, [input_tensor])
+  output_tensors = PyTorchModel.file_to_ff("_mlp.ff", ffmodel, [input_tensor])
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.optimizer = ffoptimizer

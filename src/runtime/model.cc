@@ -2109,6 +2109,9 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_PRELU: return "PReLU";
     case OP_MULTIHEAD_ATTENTION: return "MultiHeadAttention";
     case OP_FUSED: return "FusedOp";
+    case OP_RSQRT: return "Rsqrt";
+    case OP_POW: return "Pow";
+    case OP_MEAN: return "Mean";
     default: assert(false && "Not supported Operator type"); return "Unsupported";
   }
 }
