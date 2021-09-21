@@ -361,7 +361,7 @@ bool Tensor::set_tensor(const FFModel* ff,
       return false;
     volume = volume * dims[i];
   }
-  RegionRequirement req(region, READ_WRITE, EXCLUSIVE, region);
+  RegionRequirement req(region, WRITE_ONLY, EXCLUSIVE, region);
   req.add_field(FID_DATA);
   InlineLauncher launcher(req);
   PhysicalRegion pr = runtime->map_region(ctx, launcher);
@@ -370,7 +370,7 @@ bool Tensor::set_tensor(const FFModel* ff,
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      TensorAccessorW<T, DIM> acc(pr, req, FID_DATA, ctx, runtime, true); \
+      TensorAccessorW<T, DIM> acc(pr, req, FID_DATA, ctx, runtime, false); \
       assert(acc.rect.volume() == volume * num_replicas); \
       T* ptr = acc.ptr; \
       for (size_t i = 0; i < num_replicas; i++) { \
@@ -463,5 +463,7 @@ template bool Tensor::set_tensor<float>(const FFModel* ff, const std::vector<int
 template bool Tensor::get_tensor<float>(const FFModel* ff, float* data, ParameterSyncType comm_type);
 template bool Tensor::set_tensor<int>(const FFModel* ff, const std::vector<int>& dims, const int* data, ParameterSyncType comm_type);
 template bool Tensor::get_tensor<int>(const FFModel* ff, int* data, ParameterSyncType comm_type);
+template bool Tensor::set_tensor<int64_t>(const FFModel* ff, const std::vector<int>& dims, const int64_t* data, ParameterSyncType comm_type);
+template bool Tensor::get_tensor<int64_t>(const FFModel* ff, int64_t* data, ParameterSyncType comm_type);
 template bool Parameter::set_weights<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
 template bool Parameter::get_weights<float>(const FFModel* ff, float* data);

@@ -89,6 +89,10 @@ Tensor FFModel::rsqrt(const Tensor& x, bool inplace, const char *name)
 {
   return this->unary(OP_RSQRT, x, inplace, name);
 }
+Tensor FFModel::pow(const Tensor& x, const float exponent, bool inplace, const char *name)
+{
+  return this->unary(OP_POW, x, inplace, name, exponent);
+}
 
 ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
@@ -352,6 +356,11 @@ void elewise_unary_forward_kernel(coord_t volume,
         out[i] = 1.0f / sqrt(in[i]);
 	break;
       }
+      case OP_POW:
+      {
+        out[i] = powf(in[i], scalar);
+        break;
+      }
       default:
         assert(false);
     }
@@ -515,8 +524,12 @@ void elewise_unary_backward_kernel(coord_t volume,
       }
       case OP_RSQRT:
       {
-        input_grad[i] = -1.0f * output_grad[i] * output[i] * output[i] * output[i];
+        input_grad[i] = -0.5f * output_grad[i] * output[i] * output[i] * output[i];
 	break;
+      }
+      case OP_POW:
+      {
+        input_grad[i] = output_grad[i] * scalar * powf(input[i], scalar - 1);
       }
       default:
         assert(false);
