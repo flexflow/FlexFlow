@@ -3025,6 +3025,8 @@ FFConfig::FFConfig()
     int argc = command_args.argc;
     parse_args(argv, argc);
   }
+  // Use Real::Machine::get_address_space_count() to obtain the number of nodes
+  numNodes = Realm::Machine::get_machine().get_address_space_count();
 
   Runtime *runtime = Runtime::get_runtime();
   lg_hlr = runtime;
@@ -3104,6 +3106,8 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if (!strcmp(argv[i], "--nodes"))
     {
+      fprintf(stderr, "[Warning] --nodes is deprecated. "
+              "FlexFlow will automatically detect the number of nodes.\n");
       numNodes = atoi(argv[++i]);
       continue;
     }
