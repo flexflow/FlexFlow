@@ -34,6 +34,7 @@ Tensor FFModel::batch_norm(const Tensor input,
                            bool relu,
                            const char* name)
 {
+#ifdef DEADCODE
   assert(input->num_dims == 4); //Only support 4D BN for now
   Initializer* scale_initializer = new ConstantInitializer(1.0f);
   Initializer* bias_initializer = new ConstantInitializer(0.0f);
@@ -56,6 +57,7 @@ Tensor FFModel::batch_norm(const Tensor input,
   BatchNorm *bn = new BatchNorm(*this, input, scale, bias, relu, name);
   layers.push_back(bn);
   return bn->outputs[0];
+#endif
 }
 
 /*
@@ -63,9 +65,9 @@ Tensor FFModel::batch_norm(const Tensor input,
   locals[1] = bias
 */
 BatchNorm::BatchNorm(FFModel& model,
-                     const Tensor _input,
-                     const Tensor _scale,
-                     const Tensor _bias,
+                     const ParallelTensor _input,
+                     const ParallelTensor _scale,
+                     const ParallelTensor _bias,
                      bool _relu,
                      const char* name)
 : Op(model, OP_BATCHNORM, name, 1/*inputs*/, 2/*weights*/, 1/*outputs*/, _input, _scale, _bias),
@@ -76,7 +78,7 @@ BatchNorm::BatchNorm(FFModel& model,
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < _input->num_dims; i++)
     dims[i] = _input->dims[_input->num_dims-1-i];
-  outputs[0] = model.create_tensor(_input->num_dims, dims, DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor(_input->num_dims, dims, DT_FLOAT, this);
   return;
 }
 

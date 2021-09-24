@@ -6,27 +6,27 @@ namespace FlexFlow {
 class NodeCache {
 public:
   typedef PCG::Node Node;
-  Node get_or_create_noop_node(const Tensor input);
-  Node get_or_create_input_node(const TensorShape&);
+  Node get_or_create_noop_node(const ParallelTensor input);
+  Node get_or_create_input_node(const ParallelTensorShape&);
   Node get_or_create_concat_node(int num_inputs,
-                                 const Tensor* inputs,
+                                 const ParallelTensor* inputs,
                                  int axis);
-  Node get_or_create_element_binary_node(const Tensor input1,
-                                         const Tensor input2,
+  Node get_or_create_element_binary_node(const ParallelTensor input1,
+                                         const ParallelTensor input2,
                                          OperatorType type);
-  Node get_or_create_embedding_node(const Tensor input,
+  Node get_or_create_embedding_node(const ParallelTensor input,
                                     int num_entries,
                                     int out_channels,
                                     AggrMode aggr);
-  Node get_or_create_linear_node(const Tensor input,
+  Node get_or_create_linear_node(const ParallelTensor input,
                                  int out_dim,
                                  ActiMode activation,
                                  bool use_bias);
-  Node get_or_create_linear_node(const Tensor input,
+  Node get_or_create_linear_node(const ParallelTensor input,
                                  const LinearParams& params);
-  Node get_or_create_multihead_attn_node(const Tensor query,
-                                         const Tensor key,
-                                         const Tensor value,
+  Node get_or_create_multihead_attn_node(const ParallelTensor query,
+                                         const ParallelTensor key,
+                                         const ParallelTensor value,
                                          int embed_dim,
                                          int num_heads,
                                          int kdim,
@@ -35,23 +35,23 @@ public:
                                          bool bias,
                                          bool add_bias_kv,
                                          bool add_zero_attn);
-  Node get_or_create_softmax_node(const Tensor input,
+  Node get_or_create_softmax_node(const ParallelTensor input,
                                   int softmax_dim);
-  Node get_or_create_repartition_node(const Tensor input,
+  Node get_or_create_repartition_node(const ParallelTensor input,
                                       int repartition_dim,
                                       int repartition_degree);
-  Node get_or_create_replicate_node(const Tensor input,
+  Node get_or_create_replicate_node(const ParallelTensor input,
                                     int replicate_dim,
                                     int replicate_degree);
-  Node get_or_create_reduction_node(const Tensor input,
+  Node get_or_create_reduction_node(const ParallelTensor input,
                                     int reduction_dim,
                                     int reduction_degree);
-  Node get_or_create_combine_node(const Tensor input,
+  Node get_or_create_combine_node(const ParallelTensor input,
                                   int combine_dim,
                                   int combine_degree);
-  Node get_or_create_fused_parallel_node(const Tensor input,
+  Node get_or_create_fused_parallel_node(const ParallelTensor input,
                                          const std::vector<ParallelOpInfo>& parallel_ops);
-  Node get_or_create_conv2d_node(const Tensor input, 
+  Node get_or_create_conv2d_node(const ParallelTensor input,
                                  int out_channels,
                                  int kernel_h, int kernel_w,
                                  int stride_h, int stride_w, 
@@ -59,22 +59,22 @@ public:
                                  ActiMode activation, 
                                  int groups,
                                  bool use_bias);
-  Node get_or_create_conv2d_node(const Tensor input,
+  Node get_or_create_conv2d_node(const ParallelTensor input,
                                  const Conv2DParams& params);
-  Node get_or_create_pool2d_node(const Tensor input,
+  Node get_or_create_pool2d_node(const ParallelTensor input,
                                  int kernelH, int kernelW,
                                  int strideH, int strideW,
                                  int paddingH, int paddingW,
                                  PoolType type,
                                  ActiMode activation);
-  Node get_or_create_pool2d_node(const Tensor input,
+  Node get_or_create_pool2d_node(const ParallelTensor input,
                                  const Pool2DParams& params);
-  Node get_or_create_flat_node(const Tensor input);
-  Node get_or_create_element_unary_node(const Tensor input,
+  Node get_or_create_flat_node(const ParallelTensor input);
+  Node get_or_create_element_unary_node(const ParallelTensor input,
                                         OperatorType type,
                                         bool inplace, 
                                         float scalar);
-  Node get_or_create_parallel_op_node(const Tensor input, 
+  Node get_or_create_parallel_op_node(const ParallelTensor input, 
                                       ParallelOpInfo const &);
 private:
   std::unordered_map<size_t, NoOp*> cached_noop_ops;

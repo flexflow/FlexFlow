@@ -401,7 +401,7 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const ParallelConfig&
 ParallelConfig Op::view_to_pc(MachineView const &view) const {
   ParallelConfig config;
   config.device_type = (ParallelConfig::DeviceType) view.device_type;
-  const Tensor output = this->outputs[0];
+  const ParallelTensor output = this->outputs[0];
   config.nDims = output->num_dims;
   for (int i = 0; i < config.nDims; i++) {
     if (output->dims[i].parallel_idx == -1) {
@@ -432,8 +432,8 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& vi
 
 float Simulator::estimate_repartition_xfer_cost(int repartition_dim,
                                                 int repartition_degree,
-                                                const TensorShape& input_tensor_shape, 
-                                                const TensorShape& output_tensor_shape,
+                                                const ParallelTensorShape& input_tensor_shape, 
+                                                const ParallelTensorShape& output_tensor_shape,
                                                 const MachineView& source_view,
                                                 const MachineView& sink_view) const
 {
@@ -476,14 +476,14 @@ float Simulator::estimate_xfer_cost(const Op* op,
 {
   //assert(tensor->is_valid_machine_view(source_view));
   //assert(tensor->is_valid_machine_view(sink_view));
-  const Tensor input_tensor = op->inputs[input_idx];
+  const ParallelTensor input_tensor = op->inputs[input_idx];
   if (input_tensor->owner_op->op_type == OP_INPUT) {
     return 0.0f;
   }
 
   if (op->is_parallel_op()) {
     assert (input_idx == 0);
-    const Tensor output_tensor = op->outputs[0];
+    const ParallelTensor output_tensor = op->outputs[0];
     switch (op->op_type) {
       case OP_REPARTITION:
       {
@@ -495,7 +495,7 @@ float Simulator::estimate_xfer_cost(const Op* op,
       case OP_COMBINE:
       {
         Combine *combine = (Combine*)op;
-        const Tensor output_tensor = op->outputs[0];
+        const ParallelTensor output_tensor = op->outputs[0];
         return this->estimate_repartition_xfer_cost(combine->combine_dim, combine->combine_degree,
                                                     output_tensor->get_shape(), input_tensor->get_shape(),
                                                     sink_view, source_view);
@@ -503,7 +503,7 @@ float Simulator::estimate_xfer_cost(const Op* op,
       case OP_REPLICATE:
       {
         Replicate *replicate = (Replicate*)op;
-        TensorShape fake_input_shape = input_tensor->get_shape();
+        ParallelTensorShape fake_input_shape = input_tensor->get_shape();
         fake_input_shape.dims[replicate->replicate_dim].size *= replicate->replicate_degree;
         return this->estimate_repartition_xfer_cost(replicate->replicate_dim, replicate->replicate_degree,
                                                     fake_input_shape, output_tensor->get_shape(),
@@ -512,8 +512,8 @@ float Simulator::estimate_xfer_cost(const Op* op,
       case OP_REDUCTION:
       {
         Reduction *reduction = (Reduction*)op;
-        const Tensor output_tensor = op->outputs[0];
-        TensorShape fake_output_shape = output_tensor->get_shape();
+        const ParallelTensor output_tensor = op->outputs[0];
+        ParallelTensorShape fake_output_shape = output_tensor->get_shape();
         fake_output_shape.dims[reduction->reduction_dim].size *= reduction->reduction_degree;
         return this->estimate_repartition_xfer_cost(reduction->reduction_dim, reduction->reduction_degree,
                                                     fake_output_shape, input_tensor->get_shape(),
@@ -534,7 +534,7 @@ float Simulator::estimate_xfer_cost(const Op* op,
       d.rect_data[i] = 0;
       d.rect_data[i+d.dim] = source_view.dim[i]-1;
     }
-    const Tensor input_tensor = op->inputs[input_idx];
+    const ParallelTensor input_tensor = op->inputs[input_idx];
     size_t total_size = data_type_size(input_tensor->data_type);
     for (int i = 0; i < input_tensor->num_dims; i++)
       total_size *= input_tensor->dims[i].size / input_tensor->dims[i].degree;
@@ -567,7 +567,7 @@ float Simulator::default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TE
                                             int tensor_ndims, 
                                             const MachineView& view) 
 {
-  TensorBase tensor_base;
+  ParallelTensorBase tensor_base;
   tensor_base.num_dims = tensor_ndims;
   tensor_base.data_type = DT_FLOAT;
   int num_replica_dims = 0;
@@ -581,14 +581,14 @@ float Simulator::default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TE
   return this->default_estimate_sync_cost(&tensor_base, view, num_replica_dims);
 }
 
-float Simulator::default_estimate_sync_cost(const Tensor tensor,
+float Simulator::default_estimate_sync_cost(const ParallelTensor tensor,
                                             const MachineView& view,
                                             int num_replica_dims)
 {
   return this->default_estimate_sync_cost(tensor->get_shape(), view, num_replica_dims);
 }
 
-float Simulator::default_estimate_sync_cost(TensorShape const& tensor_shape,
+float Simulator::default_estimate_sync_cost(ParallelTensorShape const& tensor_shape,
                                             const MachineView& view,
                                             int num_replicate_dims)
 {
@@ -632,7 +632,7 @@ float Simulator::simulate_runtime(const FFModel* model,
   // printf("%s\n", machine->to_string().c_str());
   task_manager->reset();
   // Step 1: register forward and backward tasks
-  for (Op *op : model->layers) {
+  for (Op *op : model->operators) {
     ParallelConfig config = global.find(op)->second;
     CostMetrics cost_metrics = measure_operator_cost(op, config);
     float forward_time = cost_metrics.forward_time;
@@ -652,10 +652,10 @@ float Simulator::simulate_runtime(const FFModel* model,
     }
   }
   // Step 2: insert dependencies and comm. tasks before compute tasks
-  for (Op *op : model->layers) {
+  for (Op *op : model->operators) {
     ParallelConfig config = global.find(op)->second;
     for (int j = 0; j < op->numInputs; j++) {
-      Tensor t = op->inputs[j];
+      ParallelTensor t = op->inputs[j];
       const Op* pre_op = t->owner_op;
       if (pre_op == NULL)
         continue;
@@ -710,8 +710,8 @@ float Simulator::simulate_runtime(const FFModel* model,
 
   if (model->config.search_overlap_backward_update && comp_mode == COMP_MODE_TRAINING) {
     // Step 3a: consider backpropagation and weight update are overlapped
-    for (int l = model->layers.size()-1; l >= 0; l--) {
-      Op* op = model->layers[l];
+    for (int l = model->operators.size()-1; l >= 0; l--) {
+      Op* op = model->operators[l];
       size_t element_size = data_type_size(DT_FLOAT); // assume all weights have float elements
       ParallelConfig pc = global.find(op)->second;
       size_t element_size = data_type_size(DT_FLOAT); // assume all weights have float elements
@@ -758,16 +758,16 @@ float Simulator::simulate_runtime(const FFModel* model,
       t->run_time = 0;
       barriers.push_back(t);
     }
-    for (size_t l = 0; l < model->layers.size(); l++) {
-      Op* op = model->layers[l];
+    for (size_t l = 0; l < model->operators.size(); l++) {
+      Op* op = model->operators[l];
       ParallelConfig pc = global.find(op)->second;
       for (int j = 0; j < pc.num_parts(); j++) {
         SimTask* backT = task_manager->get_backward_task(op, j);
         backT->add_next_task(barriers[backT->device->device_id]);
       }
     }
-    for (size_t l = 0; l < model->layers.size(); l++) {
-      Op* op = model->layers[l];
+    for (size_t l = 0; l < model->operators.size(); l++) {
+      Op* op = model->operators[l];
       ParallelConfig pc = global.find(op)->second;
       size_t element_size = data_type_size(DT_FLOAT); // assume all weights have float elements
       for (int j = 0; j < op->numWeights; j++) {
@@ -870,13 +870,13 @@ float Simulator::simulate_runtime(const FFModel* model,
   assert(idx == task_manager->global_task_id);
 #ifdef FF_USE_NCCL
   if (comp_mode == COMP_MODE_TRAINING) {
-    std::unordered_set<Op const *> possible_syncs(model->layers.begin(), model->layers.end());
+    std::unordered_set<Op const *> possible_syncs(model->operators.begin(), model->operators.end());
     std::unordered_map<Op const *, std::unique_ptr<OpSyncTask>> tasks;
     assert (std::numeric_limits<float>::has_quiet_NaN);
-    for (Op const *op : model->layers) {
+    for (Op const *op : model->operators) {
       tasks[op] = std::unique_ptr<OpSyncTask>(new OpSyncTask{op, 0, std::numeric_limits<float>::quiet_NaN()});
     }
-    for (Op const *op : model->layers) {
+    for (Op const *op : model->operators) {
       for (int i = 0; i < op->numInputs; i++) {
         Op const *src = op->inputs[i]->owner_op;
         possible_syncs.erase(src);
@@ -979,7 +979,7 @@ float Simulator::simulate_runtime(const FFModel* model,
         }
       }
     }
-    assert (syncs_processed == model->layers.size());
+    assert (syncs_processed == model->operators.size());
     log_ps_sim.debug("Sync sim time: %fms", sync_sim_time);
     sim_time += sync_sim_time;
   } else {
@@ -989,8 +989,8 @@ float Simulator::simulate_runtime(const FFModel* model,
   // Step 6: add penalty to strategies that exceed the memory limits on devices
   std::vector<size_t> gpu_mem_usage(machine->get_num_gpus(), 0);
   float memory_penalty = 0.0f;
-  for (size_t l = 0; l < model->layers.size(); l++) {
-    Op* op = model->layers[l];
+  for (size_t l = 0; l < model->operators.size(); l++) {
+    Op* op = model->operators[l];
     ParallelConfig config = global.find(op)->second;
     CostMetrics cost_metrics = measure_operator_cost(op, config);
     size_t memory_requirement = cost_metrics.memory_requirement;

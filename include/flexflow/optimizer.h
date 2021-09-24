@@ -17,7 +17,7 @@
 #define _FLEXFLOW_OPTIMIZER_H_
 
 #include "legion.h"
-#include "flexflow/tensor.h"
+#include "parallel_tensor.h"
 
 namespace FlexFlow {
 
@@ -29,7 +29,7 @@ public:
   Optimizer(const FFModel* _model);
   virtual void init(void) = 0;
   virtual void next(void) = 0;
-  virtual void update(const Tensor p) = 0;
+  virtual void update(const ParallelTensor p) = 0;
   const FFModel* model;
 };
 
@@ -41,7 +41,7 @@ public:
                bool nesterov = false, double weight_decay = 0.0f);
   void init(void);
   void next(void);
-  void update(const Tensor p);
+  void update(const ParallelTensor p);
   void set_weight_decay(double _weight_decay);
   static void ps_update_task(const Legion::Task* task,
                           const std::vector<Legion::PhysicalRegion>& regions,
@@ -55,7 +55,7 @@ public:
   bool nesterov;
   double weight_decay;
   ParameterSyncType comm_type;
-  std::map<Legion::LogicalRegion, Tensor> v_values;
+  std::map<Legion::LogicalRegion, ParallelTensor> v_values;
 };
 
 class AdamOptimizer : public Optimizer
@@ -67,7 +67,7 @@ public:
                 double _epsilon = 1e-8);
   void init(void);
   void next(void);
-  void update(const Tensor p);
+  void update(const ParallelTensor p);
   void set_weight_decay(double _weight_decay);
   static void ps_update_task(const Legion::Task* task,
                           const std::vector<Legion::PhysicalRegion>& regions,
@@ -79,7 +79,7 @@ public:
 #endif
   double alpha, beta1, beta2, weight_decay, epsilon;
   double alpha_t, beta1_t, beta2_t;
-  std::map<Legion::LogicalRegion, Tensor> v_values, m_values;
+  std::map<Legion::LogicalRegion, ParallelTensor> v_values, m_values;
 };
 
 }; // namespace FlexFlow

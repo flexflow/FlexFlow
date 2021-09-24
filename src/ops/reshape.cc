@@ -34,13 +34,16 @@ Tensor FFModel::reshape(const Tensor input,
                         const std::vector<int>& shape,
                         const char* name)
 {
+  assert(false);
+#ifdef DEADCODE
   Reshape* reshape = new Reshape(*this, input, shape, name);
   layers.push_back(reshape);
   return reshape->outputs[0];
+#endif
 }
 
 Reshape::Reshape(FFModel& model,
-                 const Tensor input,
+                 const ParallelTensor input,
                  const std::vector<int>& shape,
                  const char* name)
 : Op(model, OP_RESHAPE, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, input)
@@ -57,7 +60,7 @@ Reshape::Reshape(FFModel& model,
       break;
     dims[numdim-1-i] = input->dims[input->num_dims-1-i];
   }
-  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, input->data_type, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(numdim, dims, input->data_type, this);
   assert(outputs[0]->get_volume() == inputs[0]->get_volume());
 }
 

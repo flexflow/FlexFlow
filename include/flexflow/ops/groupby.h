@@ -15,8 +15,8 @@ public:
 class Group_by : public Op {
 public:
   Group_by(FFModel& model,
-          const Tensor _input,
-          const Tensor _assign,
+          const ParallelTensor _input,
+          const ParallelTensor _assign,
           int _n, float _alpha,
           const char* name);
   void init(const FFModel&);

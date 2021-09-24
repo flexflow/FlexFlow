@@ -338,8 +338,8 @@ void UtilityTasks::init_labels_task(const Task *task,
 
 void FFModel::prefetch()
 {
-  for (size_t i = 0; i < layers.size(); i++)
-    layers[i]->prefetch(*this);
+  for (size_t i = 0; i < operators.size(); i++)
+    operators[i]->prefetch(*this);
 }
 
 }; // namespace FlexFlow

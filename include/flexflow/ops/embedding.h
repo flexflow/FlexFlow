@@ -27,7 +27,7 @@ public:
 class Embedding : public Op {
 public:
   Embedding(FFModel& model,
-            const Tensor _input,
+            const ParallelTensor _input,
             int _num_entries,
             int _out_channels,
             AggrMode _aggr,
@@ -35,7 +35,7 @@ public:
             const char* name);
   Embedding(FFModel& model,
             Embedding const &other,
-            const Tensor input,
+            const ParallelTensor input,
             bool allocate_weights);
   void init(const FFModel&);
   void forward(const FFModel&);

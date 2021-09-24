@@ -8,7 +8,7 @@ namespace FlexFlow {
 class Split : public Op {
 public:
   Split(FFModel& model,
-        const Tensor input,
+        const ParallelTensor input,
         const std::vector<int>& split,
         int axis,
         const char* name);

@@ -8,7 +8,7 @@ namespace FlexFlow {
 class Reverse : public Op {
 public:
   Reverse(FFModel& model,
-          const Tensor input,
+          const ParallelTensor input,
           int axis,
           const char* name);
   void init(const FFModel&);

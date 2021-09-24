@@ -25,14 +25,17 @@ Tensor FFModel::dense(const Tensor input,
                       ActiMode activation,
                       bool use_bias,
                       DataType data_type,
-                      const Op* shared_op,
+                      const Layer* shared_op,
                       Initializer* kernel_initializer,
                       Initializer* bias_initializer,
                       const char *name)
 {
+  assert(false);
+#ifdef DEADCODE
   Linear* li = new Linear(*this, input, outDim, activation, use_bias, data_type, false, name);
   layers.push_back(li);
   return li->outputs[0];
+#endif
 }
 
 size_t Linear::get_params_hash() const {
@@ -41,14 +44,14 @@ size_t Linear::get_params_hash() const {
 
 Linear::Linear(FFModel& model,
                Linear const &other, 
-               const Tensor input,
+               const ParallelTensor input,
                bool allocate_weights)
 : Linear(model, input, other.out_channels, other.activation,
          other.use_bias, other.data_type, allocate_weights, other.name)
 { }
 
 Linear::Linear(FFModel& model,
-               const Tensor _input,
+               const ParallelTensor _input,
                int out_dim,
                ActiMode _activation,
                bool _use_bias,
@@ -71,8 +74,8 @@ Linear::Linear(FFModel& model,
   auto dimension_names = this->get_params().get_dimension_names(_input->get_shape());
   this->in_channels = _input->dims[dimension_names.at(LinearParams::INPUT_CHANNEL)].size;
     
-  TensorShape input_shape = this->inputs[0]->get_shape();
-  TensorShape output_shape, kernel_shape, bias_shape;
+  ParallelTensorShape input_shape = this->inputs[0]->get_shape();
+  ParallelTensorShape output_shape, kernel_shape, bias_shape;
   LinearParams params = this->get_params();
   params.construct_mappings(*this->parallel_dims_mapping, input_shape);
   params.solve_dims(input_shape, output_shape, kernel_shape, bias_shape);
@@ -80,7 +83,7 @@ Linear::Linear(FFModel& model,
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand()/*seed*/);
 
-    weights[KERNEL_IDX] = model.create_weight_legion_ordering(kernel_shape.num_dims,
+    weights[KERNEL_IDX] = model.create_parallel_weight_legion_ordering(kernel_shape.num_dims,
                                                               kernel_shape.dims,
                                                               _data_type,
                                                               NULL/*owner_op*/,
@@ -91,7 +94,7 @@ Linear::Linear(FFModel& model,
     if (use_bias) {
       Initializer *bias_initializer = new ZeroInitializer();
 
-      weights[BIAS_IDX] = model.create_weight_legion_ordering(bias_shape.num_dims,
+      weights[BIAS_IDX] = model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
                                                               bias_shape.dims,
                                                               _data_type,
                                                               NULL/*owner_op*/,
@@ -102,7 +105,7 @@ Linear::Linear(FFModel& model,
   }
 
   // Create the output tensor
-  outputs[0] = model.create_tensor_legion_ordering(output_shape.num_dims, output_shape.dims, _data_type, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(output_shape.num_dims, output_shape.dims, _data_type, this);
 
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
@@ -285,7 +288,7 @@ bool Linear::estimate_sync_cost(Simulator* sim,
                                 CostMetrics& cost_metrics) const
 {
   // Estimate the cost of sync weights
-  TensorShape tensor_shape;
+  ParallelTensorShape tensor_shape;
   tensor_shape.num_dims = 3;
   tensor_shape.data_type = inputs[0]->data_type;
   tensor_shape.dims[0] = inputs[0]->dims[0];
@@ -370,7 +373,7 @@ bool Linear::use_activation(ActiMode mode)
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_linear_node(const Tensor input,
+Node FFModel::get_or_create_linear_node(const ParallelTensor input,
                                         const LinearParams& params) 
 {
   if (!params.is_valid(input->get_shape())) {
@@ -391,7 +394,7 @@ Node FFModel::get_or_create_linear_node(const Tensor input,
   return this->new_node(li);
 }
 
-Node FFModel::get_or_create_linear_node(const Tensor input,
+Node FFModel::get_or_create_linear_node(const ParallelTensor input,
                                         int out_dim,
                                         ActiMode activation,
                                         bool use_bias)
@@ -416,7 +419,7 @@ void Linear::serialize(Legion::Serializer& sez) const {
 } 
 
 /* static */
-Node Linear::deserialize(FFModel &ff, Legion::Deserializer &dez, Tensor inputs[], int num_inputs) { 
+Node Linear::deserialize(FFModel &ff, Legion::Deserializer &dez, ParallelTensor inputs[], int num_inputs) { 
   assert (num_inputs == 1); 
   int out_channels; 
   ActiMode activation; 
@@ -440,7 +443,7 @@ LinearParams Linear::get_params() const {
   return params;
 }
 
-size_t LinearParams::get_hash(const Tensor input) const {
+size_t LinearParams::get_hash(const ParallelTensor input) const {
   size_t hash = input->get_owner_independent_hash();
   hash_combine(hash, this->out_channels);
   hash_combine(hash, this->activation);
@@ -450,8 +453,8 @@ size_t LinearParams::get_hash(const Tensor input) const {
   return hash;
 }
 
-bool LinearParams::is_valid(TensorShape const &input_shape) const {
-  TensorShape output_shape, kernel_shape, bias_shape;
+bool LinearParams::is_valid(ParallelTensorShape const &input_shape) const {
+  ParallelTensorShape output_shape, kernel_shape, bias_shape;
   this->solve_dims(input_shape,
                    output_shape.dims, &output_shape.num_dims,
                    kernel_shape.dims, &kernel_shape.num_dims,
@@ -466,7 +469,7 @@ bool LinearParams::is_valid(TensorShape const &input_shape) const {
   return is_valid;
 }
 
-void LinearParams::solve_dims(const Tensor input,
+void LinearParams::solve_dims(const ParallelTensor input,
                               ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
                               ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
                               ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const {
@@ -476,17 +479,17 @@ void LinearParams::solve_dims(const Tensor input,
                    bias_dims, bias_ndims);
 }
 
-void LinearParams::solve_dims(TensorShape const &input_shape,
-                              TensorShape& output_shape,
-                              TensorShape& kernel_shape,
-                              TensorShape& bias_shape) const {
+void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
+                              ParallelTensorShape& output_shape,
+                              ParallelTensorShape& kernel_shape,
+                              ParallelTensorShape& bias_shape) const {
   this->solve_dims(input_shape, 
                    output_shape.dims, &output_shape.num_dims,
                    kernel_shape.dims, &kernel_shape.num_dims,
                    bias_shape.dims, &bias_shape.num_dims);
 }
 
-void LinearParams::solve_dims(TensorShape const &input_shape,
+void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
                               ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
                               ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
                               ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const {
@@ -513,7 +516,7 @@ void LinearParams::solve_dims(TensorShape const &input_shape,
                                        bias_dims, bias_ndims);
 }
 
-std::unordered_map<LinearParams::NamedDimensions, int> LinearParams::get_dimension_names(TensorShape const &input_shape) const {
+std::unordered_map<LinearParams::NamedDimensions, int> LinearParams::get_dimension_names(ParallelTensorShape const &input_shape) const {
   int num_dims = input_shape.num_dims;
 
   return {
@@ -529,7 +532,7 @@ std::unordered_map<LinearParams::NamedDimensions, int> LinearParams::get_dimensi
   };
 }
 
-void LinearParams::calculate_nonreplica_dim_sizes(TensorShape const &input_shape,
+void LinearParams::calculate_nonreplica_dim_sizes(ParallelTensorShape const &input_shape,
                                                   ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
                                                   ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
                                                   ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const {
@@ -555,7 +558,7 @@ void LinearParams::calculate_nonreplica_dim_sizes(TensorShape const &input_shape
 }
 
 
-void LinearParams::mark_replica_dims(TensorShape const &input_shape,
+void LinearParams::mark_replica_dims(ParallelTensorShape const &input_shape,
                                      ParallelDim output_dims[MAX_TENSOR_DIM], 
                                      ParallelDim kernel_dims[MAX_TENSOR_DIM],
                                      ParallelDim bias_dims[MAX_TENSOR_DIM]) const 
@@ -577,7 +580,7 @@ void LinearParams::mark_replica_dims(TensorShape const &input_shape,
   }
 }
 
-void LinearParams::construct_mappings(std::vector<ParallelDimMappingRecord>& mappings, TensorShape const &input_shape) const {
+void LinearParams::construct_mappings(std::vector<ParallelDimMappingRecord>& mappings, ParallelTensorShape const &input_shape) const {
   std::unordered_map<NamedDimensions, int> dimension_names = this->get_dimension_names(input_shape);
 
   Op::construct_output_parallel_dims( 

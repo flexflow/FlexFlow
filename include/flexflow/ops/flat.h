@@ -29,7 +29,7 @@ public:
 class Flat : public Op {
 public:
   Flat(FFModel& model,
-       const Tensor input,
+       const ParallelTensor input,
        const char* name);
 
   void init(const FFModel&);
@@ -60,8 +60,8 @@ public:
   Legion::Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const;
 
   void serialize(Legion::Serializer&) const override;
-  static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
-  Op *materialize(FFModel& ff, Tensor inputs[], int num_inputs) const override;
+  static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);
+  Op *materialize(FFModel& ff, ParallelTensor inputs[], int num_inputs) const override;
   static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
 
   size_t get_params_hash() const override;

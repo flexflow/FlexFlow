@@ -5,7 +5,7 @@ namespace FlexFlow {
 ParallelOp::ParallelOp(FFModel& model,
                        OperatorType op_type,
                        const char* name,
-                       const Tensor input)
+                       const ParallelTensor input)
 : Op(model, op_type, name, 1/*num_inputs*/, 0/*num_weights*/, 1/*num_ouputs*/, input)
 {}
 
@@ -49,7 +49,7 @@ ParallelOpJoinResult try_join_parallel_ops(ParallelOpInfo const &_first, Paralle
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_parallel_op_node(const Tensor input, ParallelOpInfo const &parallel_op_info) {
+Node FFModel::get_or_create_parallel_op_node(const ParallelTensor input, ParallelOpInfo const &parallel_op_info) {
   int op_type = parallel_op_info.op_type;
   int parallel_dim = parallel_op_info.parallel_dim;
   int parallel_degree = parallel_op_info.parallel_degree;

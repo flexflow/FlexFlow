@@ -36,16 +36,18 @@ Tensor FFModel::batch_matmul(const Tensor A,
                              int a_seq_length_dim,
                              int b_seq_length_dim)
 {
+#ifdef DEADCODE
   BatchMatmul* bmm = new BatchMatmul(*this, A, B,
       a_seq_length_dim, b_seq_length_dim);
   layers.push_back(bmm);
   return bmm->outputs[0];
+#endif
 }
 
 // return A*B
 BatchMatmul::BatchMatmul(FFModel& model,
-                         const Tensor A,
-                         const Tensor B,
+                         const ParallelTensor A,
+                         const ParallelTensor B,
                          int _a_seq_length_dim,
                          int _b_seq_length_dim)
 : Op(model, OP_BATCHMATMUL, "BatchMatmul_", 2/*inputs*/, 0/*weights*/, 1/*outputs*/, A, B),
@@ -63,7 +65,7 @@ BatchMatmul::BatchMatmul(FFModel& model,
     dims[i] = A->dims[i];
   dims[0] = B->dims[0];
   numOutputs = 1;
-  outputs[0] = model.create_tensor_legion_ordering(A->num_dims, dims, DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(A->num_dims, dims, DT_FLOAT, this);
   // C is not none
   //if (C != Tensor::NO_TENSOR) {
   //  numInputs = 3;

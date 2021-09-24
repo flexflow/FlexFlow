@@ -18,7 +18,7 @@
 
 #include "legion.h"
 #include "ffconst.h"
-#include "tensor.h"
+#include "parallel_tensor.h"
 
 namespace FlexFlow {
 
@@ -37,9 +37,9 @@ public:
   static void backward_task_with_dim(const Legion::Task *task,
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
-  void backward(FFModel* model, const Tensor logit, const Tensor label);
+  void backward(FFModel* model, const ParallelTensor logit, const ParallelTensor label);
   template<int NDIM>
-  void backward_with_dim(FFModel* model, const Tensor logit, const Tensor label);
+  void backward_with_dim(FFModel* model, const ParallelTensor logit, const ParallelTensor label);
 public:
   FFModel* model;
   LossType loss_type;

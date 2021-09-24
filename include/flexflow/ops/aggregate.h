@@ -20,7 +20,7 @@ public:
 class Aggregate : public Op {
 public:
   Aggregate(FFModel& model,
-            const Tensor* inputs,
+            const ParallelTensor* inputs,
             int _n, float _lambda_bal, const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);

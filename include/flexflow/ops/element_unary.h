@@ -21,7 +21,7 @@ class ElementUnary : public Op {
 public:
   ElementUnary(FFModel& model,
                OperatorType type,
-               const Tensor x,
+               const ParallelTensor x,
                bool inplace,
                const char* name,
 	       float scalar);
@@ -60,8 +60,8 @@ public:
   static bool use_cudnn(OperatorType type);
 
   void serialize(Legion::Serializer&) const override;
-  static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
-  Op *materialize(FFModel& ff, Tensor inputs[], int num_inputs) const override;
+  static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);
+  Op *materialize(FFModel& ff, ParallelTensor inputs[], int num_inputs) const override;
 
   size_t get_params_hash() const override;
 private:

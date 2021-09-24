@@ -37,18 +37,21 @@ void FFModel::group_by(const Tensor input,
                        int n, float alpha,
                        const char* name)
 {
+  assert(false);
+#ifdef DEADCODE
   Group_by* group_by = new Group_by(*this, input, assign, n, alpha, name);
   layers.push_back(group_by);
   for (int i = 0; i < n; i++)
     outputs[i] = group_by->outputs[i];
+#endif
 }
 
 
 Group_by::Group_by(FFModel& model,
-                  const Tensor _input,
-                  const Tensor _assign,
-                  int _n, float _alpha,
-                  const char* name)
+                   const ParallelTensor _input,
+                   const ParallelTensor _assign,
+                   int _n, float _alpha,
+                   const char* name)
 : Op(model, OP_GROUP_BY, name, 2/*inputs*/, 0/*weights*/, _n/*outputs*/, _input, _assign),
   n(_n),
   alpha(_alpha)

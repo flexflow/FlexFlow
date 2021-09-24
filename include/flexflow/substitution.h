@@ -16,7 +16,7 @@
 #ifndef _FLEXFLOW_SUBSTITUTION_H_
 #define _FLEXFLOW_SUBSTITUTION_H_
 #include "flexflow/ffconst.h"
-#include "flexflow/tensor.h"
+#include "flexflow/parallel_tensor.h"
 #include "flexflow/graph.h"
 #include <queue>
 #include "tl/optional.h"
@@ -59,7 +59,7 @@ struct TensorX {
   static const TensorX NO_TX;
   TensorX(void): op(NULL), idx(0) {}
   TensorX(OpX* _op, int _idx): op(_op), idx(_idx) {}
-  tl::optional<Tensor> to_tensor(const GraphXfer* xfer) const;
+  tl::optional<ParallelTensor> to_tensor(const GraphXfer* xfer) const;
   OpX* op;
   int idx;
 };
@@ -218,15 +218,15 @@ public:
 private:
   float sequence_optimize(Graph const *graph, 
                           Node const &sink_node, 
-                          tl::optional<TensorShape> const &output_shape, 
-                          tl::optional<TensorShape> const &input_shape);
+                          tl::optional<ParallelTensorShape> const &output_shape, 
+                          tl::optional<ParallelTensorShape> const &input_shape);
   void load_graph_substitutions(std::vector<GraphXfer*> &xfers) const;
   Graph *construct_graph();
   void subgraph_optimize(Graph *subgraph);
 
   std::unique_ptr<Graph> base_optimize(Graph const *, SimplificationSettings const &simplification_settings);
 
-  std::vector<TensorShape> possible_split_output_tensor_shapes(Node const &) const;
+  std::vector<ParallelTensorShape> possible_split_output_tensor_shapes(Node const &) const;
   
   void find_rewrite_matches(Graph const *graph, std::vector<GraphXferMatch>& matches) const;
   tl::optional<Node> find_split_node(Graph const *graph, int base_optimize_threshold) const;

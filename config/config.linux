@@ -22,10 +22,10 @@ BUILD_TYPE=Release
 #FF_CUDA_ARCH=xx
 
 # set CUDNN dir in case cmake cannot autodetect a path
-CUDNN_DIR=/usr/local/cuda
+CUDNN_DIR=/usr/local/cuda-11.0
 
 # set CUDA dir in case cmake cannot autodetect a path
-#CUDA_DIR=/usr/local/cuda
+CUDA_DIR=/usr/local/cuda-11.0
 
 # enable Python
 FF_USE_PYTHON=ON

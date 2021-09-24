@@ -39,7 +39,7 @@ using Legion::LogicalPartition;
 
 FusedParallelOp::FusedParallelOp(
     FFModel& model,
-    const Tensor _input,
+    const ParallelTensor _input,
     const std::vector<ParallelOpInfo>& _parallel_ops)
 : ParallelOp(model, OP_FUSED_PARALLEL, NULL, _input),
   num_parallel_ops(0)
@@ -83,9 +83,9 @@ FusedParallelOp::FusedParallelOp(
         assert(false && "Unsupported parallel op");
       }
     }
-    TensorBase::update_parallel_ids(numdim, dims);
+    ParallelTensorBase::update_parallel_ids(numdim, dims);
   }
-  outputs[0] = model.create_tensor_legion_ordering(
+  outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, inputs[0]->data_type, this);
 }
 
@@ -230,7 +230,7 @@ size_t FusedParallelOp::get_params_hash() const {
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_fused_parallel_node(const Tensor input,
+Node FFModel::get_or_create_fused_parallel_node(const ParallelTensor input,
                                                 const std::vector<ParallelOpInfo>& parallel_ops)
 {
   // Try to combine _parallel_ops's dimensions

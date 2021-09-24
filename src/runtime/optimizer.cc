@@ -23,12 +23,12 @@ using namespace Legion;
 Optimizer::Optimizer(const FFModel* _model)
 : model(_model) {}
 
-Tensor create_replica_parameter(const FFModel* model,
-                                const Tensor p)
+ParallelTensor create_replica_parameter(const FFModel* model,
+                                        const ParallelTensor p)
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  Tensor v = new TensorBase();
+  ParallelTensor v = new ParallelTensorBase();
   v->sync_type = p->sync_type;
   v->owner_op = p->owner_op;
   v->region = runtime->create_logical_region(
@@ -57,7 +57,7 @@ void SGDOptimizer::init(void)
   Runtime* runtime = model->config.lg_hlr;
   Initializer* initializer = new ZeroInitializer();
   for (size_t i = 0; i < model->parameters.size(); i++) {
-    Tensor p = model->parameters[i];
+    ParallelTensor p = model->parameters[i];
     Domain domain = runtime->get_index_space_domain(
         ctx, p->region.get_index_space());
     switch (domain.get_dim()) {
@@ -94,7 +94,7 @@ void SGDOptimizer::next(void)
 {
 }
 
-void SGDOptimizer::update(const Tensor p)
+void SGDOptimizer::update(const ParallelTensor p)
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
@@ -208,7 +208,7 @@ void AdamOptimizer::init(void)
   Runtime* runtime = model->config.lg_hlr;
   Initializer* initializer = new ZeroInitializer();
   for (size_t i = 0; i < model->parameters.size(); i++) {
-    Tensor p = model->parameters[i];
+    ParallelTensor p = model->parameters[i];
     Domain domain = runtime->get_index_space_domain(
         ctx, p->region.get_index_space());
     switch (domain.get_dim()) {
@@ -254,7 +254,7 @@ void AdamOptimizer::next(void)
   //fprintf(stderr, "lr = %.4lf alpha_t = %.4lf\n", alpha, alpha_t);
 }
 
-void AdamOptimizer::update(const Tensor p)
+void AdamOptimizer::update(const ParallelTensor p)
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;

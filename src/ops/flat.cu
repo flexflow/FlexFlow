@@ -110,7 +110,7 @@ bool Flat::measure_operator_cost(Simulator* sim,
                                  const ParallelConfig& pc,
                                  CostMetrics& cost_metrics) const
 {
-  TensorBase sub_input, sub_output;
+  ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
     return false;
   }

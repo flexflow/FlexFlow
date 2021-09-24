@@ -37,14 +37,17 @@ Tensor FFModel::concat(int n,
                        int axis,
                        const char *name)
 {
+  assert(false);
+#ifdef DEADCODE
   assert(axis < 0);
   Concat *cat = new Concat(*this, n, tensors, -1-axis, name);
   layers.push_back(cat);
   return cat->outputs[0];
+#endif
 }
 
 Concat::Concat(FFModel& model,
-               int _n, const Tensor* _tensors,
+               int _n, const ParallelTensor* _tensors,
                int _legion_axis,
                const char* name)
 : Op(model, OP_CONCAT, name, _n/*inputs*/, 0/*weights*/, 1/*outputs*/, _tensors),
@@ -70,7 +73,7 @@ Concat::Concat(FFModel& model,
     }
   }
   numOutputs = 1;
-  outputs[0] = model.create_tensor(num_dim, dims, inputs[0]->data_type, this);
+  outputs[0] = model.create_parallel_tensor(num_dim, dims, inputs[0]->data_type, this);
 }
 
 void Concat::init_meta(ConcatMeta *m) const
@@ -171,7 +174,7 @@ bool Concat::get_int_parameter(PMParameter para, int* value) const
 }
 
 Node FFModel::get_or_create_concat_node(int num_inputs,
-                                        const Tensor* inputs,
+                                        const ParallelTensor* inputs,
                                         int axis)
 {
   size_t hash = std::hash<int>()(num_inputs);

@@ -52,9 +52,9 @@ public:
   static PerfMetrics compute_task_with_dim(const Legion::Task *task,
                                   const std::vector<Legion::PhysicalRegion> &regions,
                                   Legion::Context ctx, Legion::Runtime *runtime);
-  void compute(FFModel* model, const Tensor logit, const Tensor label);
+  void compute(FFModel* model, const ParallelTensor logit, const ParallelTensor label);
   template<int NDIM>
-  void compute_with_dim(FFModel* model, const Tensor logit, const Tensor label);
+  void compute_with_dim(FFModel* model, const ParallelTensor logit, const ParallelTensor label);
 public:
   LossType loss_type;
   bool measure_accuracy;

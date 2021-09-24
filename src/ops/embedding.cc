@@ -38,16 +38,17 @@ Tensor FFModel::embedding(const Tensor input,
                           int num_entries,
                           int out_dim,
                           AggrMode aggr,
-                          const Op* shared_op,
+                          const Layer* shared_op,
                           Initializer* kernel_initializer,
                           const char* name)
 {
-  {
-    Embedding* embed = new Embedding(*this, input, num_entries, out_dim,
-                                     aggr, false/*allocate_weights*/, name);
-    layers.push_back(embed);
-    return embed->outputs[0];
-  }
+  assert(false);
+#ifdef DEADCODE
+  Embedding* embed = new Embedding(*this, input, num_entries, out_dim,
+                                   aggr, false/*allocate_weights*/, name);
+  layers.push_back(embed);
+  return embed->outputs[0];
+#endif
 }
 
 int Embedding::input_vocab_size_replica_dim() const {
@@ -63,7 +64,7 @@ int Embedding::output_vocab_size_replica_dim() const {
 }
 
 int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
-  Tensor const &input = this->inputs[0];
+  ParallelTensor const &input = this->inputs[0];
 
   const int REPLICA = this->output_vocab_size_replica_dim();
   const int OUT_CHANNELS = Output::OUT_CHANNELS;
@@ -78,7 +79,7 @@ int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
 }
 
 int Embedding::weight_size(ParallelDim weight_dims[MAX_TENSOR_DIM]) {
-  Tensor const &input = this->inputs[0];
+  ParallelTensor const &input = this->inputs[0];
 
   weight_dims[Weight::OUT_CHANNELS].size = this->out_channels;
   weight_dims[Weight::VOCAB_SIZE].size = this->num_entries;
@@ -118,13 +119,13 @@ void Embedding::register_mappings() {
 
 Embedding::Embedding(FFModel& model,
                      Embedding const &other,
-                     const Tensor input,
+                     const ParallelTensor input,
                      bool allocate_weights) 
 : Embedding(model, input, other.num_entries, other.out_channels, other.aggr, allocate_weights, other.name) 
 { }
 
 Embedding::Embedding(FFModel& model,
-                     const Tensor _input,
+                     const ParallelTensor _input,
                      int _num_entries,
                      int _out_channels,
                      AggrMode _aggr,
@@ -156,11 +157,11 @@ Embedding::Embedding(FFModel& model,
   if (allocate_weights) {
     Initializer *weight_initializer = new GlorotUniform(std::rand()/*seed*/);
 
-    weights[0] = model.create_weight_legion_ordering(
+    weights[0] = model.create_parallel_weight_legion_ordering(
         weight_ndim, weight_dims, DT_FLOAT, nullptr/*owner_op*/, true/*create_grad*/, weight_initializer, CHOSEN_SYNC_TYPE);
   }
 
-  outputs[0] = model.create_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
 
   assert (check_output_input_weight_parallel_dims(allocate_weights));
 }
@@ -260,7 +261,7 @@ void Embedding::backward(const FFModel& ff)
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_embedding_node(const Tensor input,
+Node FFModel::get_or_create_embedding_node(const ParallelTensor input,
                                            int num_entries,
                                            int out_channels,
                                            AggrMode aggr)

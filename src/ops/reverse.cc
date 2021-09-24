@@ -34,13 +34,16 @@ Tensor FFModel::reverse(const Tensor input,
                         int axis,
                         const char* name)
 {
+  assert(false);
+#ifdef DEADCODE
   Reverse* reverse = new Reverse(*this, input, axis, name);
   layers.push_back(reverse);
   return reverse->outputs[0];
+#endif
 }
 
 Reverse::Reverse(FFModel& model,
-                 const Tensor input,
+                 const ParallelTensor input,
                  int _axis,
                  const char* name)
 : Op(model, OP_REVERSE, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, input), axis(_axis)
@@ -50,7 +53,7 @@ Reverse::Reverse(FFModel& model,
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++)
     dims[i] = input->dims[i];
-  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, input->data_type, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(numdim, dims, input->data_type, this);
 }
 
 #ifdef DEADCODE

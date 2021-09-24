@@ -526,8 +526,8 @@ bool Graph::check_correctness(void)
       if (!has_edge(e)) assert(false);
       if (e.srcOp.ptr == NULL) continue;
       assert (e.srcOp != e.dstOp);
-      Tensor srcTensor = e.srcOp.ptr->outputs[e.srcIdx];
-      Tensor dstTensor = e.dstOp.ptr->inputs[e.dstIdx];
+      ParallelTensor srcTensor = e.srcOp.ptr->outputs[e.srcIdx];
+      ParallelTensor dstTensor = e.dstOp.ptr->inputs[e.dstIdx];
       if (srcTensor->num_dims != dstTensor->num_dims) assert(false);
       for (int i = 0; i < srcTensor->num_dims; i++) {
         assert(srcTensor->dims[i] == dstTensor->dims[i]);
@@ -1459,7 +1459,7 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
         sez.serialize(op->outputs[0]->data_type);
         sez.serialize(op->outputs[0]->num_dims);
         for (int i = 0; i < op->outputs[0]->num_dims; i++)
-          sez.serialize(op->outputs[0]->dims[i].size);
+          sez.serialize(op->outputs[0]->dims[i]);
         break;
       }
       case OP_NOOP:
@@ -1658,7 +1658,7 @@ void FFModel::deserialize_graph_optimal_view(Legion::Deserializer& dez,
   //best_graph = new Graph(this);
   for (size_t node_idx = 0; node_idx < num_nodes; node_idx++) {
     Edge inedges[MAX_NUM_INPUTS];
-    Tensor inputs[MAX_NUM_INPUTS];
+    ParallelTensor inputs[MAX_NUM_INPUTS];
     size_t num_inputs;
     dez.deserialize(num_inputs);
     for (size_t j = 0; j < num_inputs; j++) {
@@ -1688,7 +1688,8 @@ void FFModel::deserialize_graph_optimal_view(Legion::Deserializer& dez,
       case OP_INPUT:
       {
         assert(num_inputs == 0);
-        int num_dims, dims[MAX_TENSOR_DIM];
+        int num_dims;
+        ParallelDim dims[MAX_TENSOR_DIM];
         OperatorType op_type;
         dez.deserialize(op_type);
         DataType data_type;
@@ -1696,7 +1697,7 @@ void FFModel::deserialize_graph_optimal_view(Legion::Deserializer& dez,
         dez.deserialize(num_dims);
         for (int i = 0; i < num_dims; i++)
           dez.deserialize(dims[i]);
-        Tensor t = create_tensor_legion_ordering(num_dims, dims, data_type);
+        ParallelTensor t = create_parallel_tensor_legion_ordering(num_dims, dims, data_type);
         node.ptr = t->owner_op;
         node.guid = node_global_guid ++;
         break;

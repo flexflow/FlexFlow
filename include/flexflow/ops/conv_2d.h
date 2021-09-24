@@ -60,22 +60,22 @@ struct Conv2DParams {
   ActiMode activation;
   bool use_bias;
 
-  bool is_valid(const Tensor input) const;
-  void solve_dims(const Tensor input,
+  bool is_valid(const ParallelTensor input) const;
+  void solve_dims(const ParallelTensor input,
                   ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
                   ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
                   ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const;
-  size_t get_hash(const Tensor input) const;
+  size_t get_hash(const ParallelTensor input) const;
 private:
-  void mark_replica_dims(const Tensor input, 
+  void mark_replica_dims(const ParallelTensor input, 
                          ParallelDim output_dims[MAX_TENSOR_DIM],
                          ParallelDim kernel_dims[MAX_TENSOR_DIM],
                          ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
-  int output_size(const Tensor input,
+  int output_size(const ParallelTensor input,
                   ParallelDim output_dims[MAX_TENSOR_DIM]) const; 
-  int kernel_size(const Tensor input,
+  int kernel_size(const ParallelTensor input,
                   ParallelDim kernel_dims[MAX_TENSOR_DIM]) const; 
-  int bias_size(const Tensor input,
+  int bias_size(const ParallelTensor input,
                 ParallelDim bias_dims[MAX_TENSOR_DIM]) const; 
 };
 
@@ -98,7 +98,7 @@ public:
 class Conv2D : public Op {
 public:
   Conv2D(FFModel& model,
-         const Tensor input,
+         const ParallelTensor input,
          int outChannels,
          int kernelH, int kernelW,
          int strideH, int strideW,
@@ -110,7 +110,7 @@ public:
          const char* name);
   Conv2D(FFModel& model,
          Conv2D const &other, 
-         const Tensor input,
+         const ParallelTensor input,
          bool allocate_weights);
   void init(const FFModel&);
   void forward(const FFModel&);
@@ -153,7 +153,7 @@ public:
                           CostMetrics& cost_metrics) const override;
 
   void serialize(Legion::Serializer& s) const override;
-  static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
+  static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);
 
   static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
   static void construct_mappings(std::vector<ParallelDimMappingRecord> &, bool use_bias);

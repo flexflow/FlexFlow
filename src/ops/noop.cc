@@ -38,7 +38,7 @@ using Legion::InlineLauncher;
 
 NoOp::NoOp(FFModel& model,
            OperatorType _type,
-           const Tensor _output,
+           const ParallelTensor _output,
            const char* _name)
 : Op(model, _type, _name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/)
 {
@@ -130,7 +130,7 @@ size_t NoOp::get_params_hash() const {
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_noop_node(const Tensor input)
+Node FFModel::get_or_create_noop_node(const ParallelTensor input)
 {
   size_t hash = input->get_owner_independent_hash();
   NoOp* noop = NULL;
@@ -147,15 +147,15 @@ Node FFModel::get_or_create_noop_node(const Tensor input)
   return ret;
 }
 
-Node FFModel::get_or_create_input_node(const TensorShape& output_shape)
+Node FFModel::get_or_create_input_node(const ParallelTensorShape& output_shape)
 {
-  size_t hash = std::hash<TensorShape>{}(output_shape); 
+  size_t hash = std::hash<ParallelTensorShape>{}(output_shape); 
   NoOp* input = NULL;
   const auto& it = cached_input_ops.find(hash);
   if (it != cached_input_ops.end()) {
     input = it->second;
   } else {
-    Tensor tensor = new TensorBase();
+    ParallelTensor tensor = new ParallelTensorBase();
     tensor->ts_guid = tensor_global_guid++;
     tensor->data_type = DT_FLOAT; // TODO FIXME @lockshaw
     tensor->num_dims = output_shape.num_dims;

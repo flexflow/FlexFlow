@@ -9,7 +9,7 @@ class DropoutMeta;
 class Dropout : public Op {
 public:
   Dropout(FFModel& model,
-          const Tensor input,
+          const ParallelTensor input,
           float rate,
           unsigned long long seed,
           const char* name);

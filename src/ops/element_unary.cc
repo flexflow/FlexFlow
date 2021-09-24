@@ -21,11 +21,19 @@ Tensor FFModel::unary(OperatorType op,
                       const Tensor x,
                       bool inplace,
                       const char *name,
-		      float scalar)
+                      float scalar)
 {
+  Layer *ele = new Layer(op, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, x);
+  ele->outputs[0]->num_dims = x->num_dims;
+  for (int i = 0; i < x->num_dims; i++)
+    ele->outputs[0]->dims[i] = x->dims[i];
+  layers.push_back(ele);
+  return ele->outputs[0];
+#ifdef DEADCODE
   ElementUnary *ele = new ElementUnary(*this, op, x, inplace, name, scalar);
   layers.push_back(ele);
   return ele->outputs[0];
+#endif
 }
 
 size_t ElementUnary::get_params_hash() const {
@@ -40,7 +48,7 @@ size_t ElementUnary::get_params_hash() const {
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_element_unary_node(const Tensor input,
+Node FFModel::get_or_create_element_unary_node(const ParallelTensor input,
                                                OperatorType op,
                                                bool inplace,
                                                float scalar)
@@ -128,7 +136,7 @@ Tensor FFModel::elu(const Tensor x, bool inplace, const char *name)
 
 ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
-                           const Tensor x,
+                           const ParallelTensor x,
                            bool _inplace,
                            const char* name,
                            float _scalar)
@@ -140,7 +148,7 @@ ElementUnary::ElementUnary(FFModel& model,
   for (int i = 0; i < numdim; i++) {
     dims[i] = x->dims[i];
   }
-  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, x->data_type, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(numdim, dims, x->data_type, this);
 }
 
 void ElementUnary::init(const FFModel& ff)
@@ -259,7 +267,7 @@ void ElementUnary::serialize(Legion::Serializer& sez) const {
 
 using PCG::Node;
 /*static*/
-Node ElementUnary::deserialize(FFModel& ff, Legion::Deserializer& dez, Tensor inputs[], int num_inputs) {
+Node ElementUnary::deserialize(FFModel& ff, Legion::Deserializer& dez, ParallelTensor inputs[], int num_inputs) {
   assert (num_inputs == 1);
   OperatorType op_type;
   float scalar;
@@ -273,7 +281,7 @@ Node ElementUnary::deserialize(FFModel& ff, Legion::Deserializer& dez, Tensor in
   return ff.get_or_create_element_unary_node(inputs[0], op_type, inplace, scalar);
 }
 
-Op *ElementUnary::materialize(FFModel& ff, Tensor inputs[], int num_inputs) const {
+Op *ElementUnary::materialize(FFModel& ff, ParallelTensor inputs[], int num_inputs) const {
   assert (num_inputs == 1);
   return new ElementUnary(ff, this->op_type, inputs[0], this->inplace, this->name, this->scalar);
 }

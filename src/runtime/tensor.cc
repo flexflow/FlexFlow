@@ -19,7 +19,7 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-bool TensorShape::is_valid() const {
+bool ParallelTensorShape::is_valid() const {
   bool used[MAX_TENSOR_DIM];
   std::fill_n(used, MAX_TENSOR_DIM, false);
 
@@ -46,7 +46,7 @@ bool TensorShape::is_valid() const {
   return true;
 }
 
-bool TensorShape::operator==(const TensorShape& other) const {
+bool ParallelTensorShape::operator==(const ParallelTensorShape& other) const {
   if (this->num_dims != other.num_dims) {
     return false;
   }
@@ -69,11 +69,11 @@ bool TensorShape::operator==(const TensorShape& other) const {
   return true;
 }
 
-bool TensorShape::operator!=(const TensorShape& other) const {
+bool ParallelTensorShape::operator!=(const ParallelTensorShape& other) const {
   return !(*this == other);
 }
 
-size_t TensorShape::get_piece_size() const {
+size_t ParallelTensorShape::get_piece_size() const {
   size_t piece_size = data_type_size(this->data_type);
   for (int i = 0; i < this->num_dims; i++) {
     piece_size *= this->dims[i].size / this->dims[i].degree;
@@ -81,7 +81,7 @@ size_t TensorShape::get_piece_size() const {
   return piece_size;
 }
 
-std::unordered_map<int, int> TensorShape::get_mv_dim_to_tensor_dim_mapping() const {
+std::unordered_map<int, int> ParallelTensorShape::get_mv_dim_to_tensor_dim_mapping() const {
   std::unordered_map<int, int> result;
   for (int i = 0; i < this->num_dims; i++) {
     int machine_view_dim = this->dims[i].parallel_idx;
@@ -93,7 +93,7 @@ std::unordered_map<int, int> TensorShape::get_mv_dim_to_tensor_dim_mapping() con
   return result;
 }
 
-std::unordered_map<int, int> TensorShape::get_tensor_dim_to_mv_dim_mapping() const {
+std::unordered_map<int, int> ParallelTensorShape::get_tensor_dim_to_mv_dim_mapping() const {
   std::unordered_map<int, int> result;
   for (auto const &kv : this->get_mv_dim_to_tensor_dim_mapping()) {
     assert (result.find(kv.second) == result.end());
@@ -102,7 +102,7 @@ std::unordered_map<int, int> TensorShape::get_tensor_dim_to_mv_dim_mapping() con
   return result;
 }
 
-bool TensorBase::update_parallel_ids(
+bool ParallelTensorBase::update_parallel_ids(
     int numdim,
     ParallelDim* dims)
 {
@@ -119,7 +119,7 @@ bool TensorBase::update_parallel_ids(
   return true;
 }
 
-TensorBase::TensorBase(const TensorBase& rhs)
+ParallelTensorBase::ParallelTensorBase(const ParallelTensorBase& rhs)
 {
   ts_guid = rhs.ts_guid;
   num_dims = rhs.num_dims;
@@ -139,7 +139,7 @@ TensorBase::TensorBase(const TensorBase& rhs)
   create_gradients = rhs.create_gradients;
 }
 
-void TensorBase::inline_map(FFConfig &config)
+void ParallelTensorBase::inline_map(FFConfig &config)
 {
   printf("inline map tensor\n");
   Context ctx = config.lg_ctx;
@@ -152,7 +152,7 @@ void TensorBase::inline_map(FFConfig &config)
   physical_region.wait_until_valid();
 }
 
-void TensorBase::inline_unmap(FFConfig &config)
+void ParallelTensorBase::inline_unmap(FFConfig &config)
 {
   printf("inline unmap tensor\n");
   Context ctx = config.lg_ctx;
@@ -162,7 +162,7 @@ void TensorBase::inline_unmap(FFConfig &config)
 }
 
 template<typename T>
-T* TensorBase::get_raw_ptr(FFConfig &config)
+T* ParallelTensorBase::get_raw_ptr(FFConfig &config)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -188,7 +188,7 @@ T* TensorBase::get_raw_ptr(FFConfig &config)
   return raw_ptr;
 }
 
-void TensorBase::attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major)
+void ParallelTensorBase::attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -203,7 +203,7 @@ void TensorBase::attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_maj
   physical_region = runtime->attach_external_resource(ctx, launcher);
 }
 
-void TensorBase::detach_raw_ptr(FFConfig &config)
+void ParallelTensorBase::detach_raw_ptr(FFConfig &config)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -211,7 +211,7 @@ void TensorBase::detach_raw_ptr(FFConfig &config)
 }
 
 template <typename T>
-bool TensorBase::get_input_sub_tensor_via_mappings(const ParallelConfig& pc, TensorBase& tensor) const
+bool ParallelTensorBase::get_input_sub_tensor_via_mappings(const ParallelConfig& pc, ParallelTensorBase& tensor) const
 {
   if (pc.nDims != num_dims) {
     printf("Could not get input subtensor because the number of dimensions do not match: %d != %d\n", pc.nDims, num_dims);
@@ -229,9 +229,9 @@ bool TensorBase::get_input_sub_tensor_via_mappings(const ParallelConfig& pc, Ten
   return true;
 }
 
-bool TensorBase::get_input_sub_tensor(
+bool ParallelTensorBase::get_input_sub_tensor(
     const ParallelConfig& pc,
-    TensorBase& tensor,
+    ParallelTensorBase& tensor,
     OperatorType type)
 {
   //TODO: consider reduction dim for conv2d and linear
@@ -313,9 +313,9 @@ bool TensorBase::get_input_sub_tensor(
   return true;
 }
 
-bool TensorBase::get_output_sub_tensor(
+bool ParallelTensorBase::get_output_sub_tensor(
     const ParallelConfig& pc,
-    TensorBase& tensor,
+    ParallelTensorBase& tensor,
     OperatorType type)
 {
   if (pc.nDims != num_dims) {
@@ -335,7 +335,7 @@ bool TensorBase::get_output_sub_tensor(
   return true;
 }
 
-size_t TensorBase::get_owner_independent_hash() const
+size_t ParallelTensorBase::get_owner_independent_hash() const
 {
   size_t hash = 17 * 31 + std::hash<int>()((int)data_type);
   hash = hash * 31 + std::hash<int>()((int)sync_type);
@@ -348,7 +348,7 @@ size_t TensorBase::get_owner_independent_hash() const
   return hash;
 }
 
-size_t TensorBase::get_volume() const
+size_t ParallelTensorBase::get_volume() const
 {
   size_t volume = 1;
   for (int i = 0; i < num_dims; i++)
@@ -356,7 +356,7 @@ size_t TensorBase::get_volume() const
   return volume;
 }
 
-size_t TensorBase::get_total_num_parts() const
+size_t ParallelTensorBase::get_total_num_parts() const
 {
   size_t parts = 1;
   for (int i = 0; i < num_dims; i++)
@@ -364,7 +364,7 @@ size_t TensorBase::get_total_num_parts() const
   return parts;
 }
 
-Domain TensorBase::get_domain() const
+Domain ParallelTensorBase::get_domain() const
 {
   Domain d;
   d.dim = this->num_dims;
@@ -375,7 +375,7 @@ Domain TensorBase::get_domain() const
   return d;
 }
 
-bool TensorBase::check_valid() const
+bool ParallelTensorBase::check_valid() const
 {
   bool used[MAX_TENSOR_DIM];
   for (int i = 0; i < MAX_TENSOR_DIM; i++)
@@ -403,7 +403,7 @@ bool TensorBase::check_valid() const
   return true;
 }
 
-void TensorBase::print(const std::string& name) const
+void ParallelTensorBase::print(const std::string& name) const
 {
   printf("%s: sizes[", name.c_str());
 
@@ -420,8 +420,8 @@ void TensorBase::print(const std::string& name) const
 
 }
 
-TensorShape TensorBase::get_shape() const {
-  TensorShape shape;
+ParallelTensorShape ParallelTensorBase::get_shape() const {
+  ParallelTensorShape shape;
   shape.num_dims = this->num_dims;
   shape.data_type = this->data_type;
   for (int i = 0; i < this->num_dims; i++) {
@@ -431,7 +431,7 @@ TensorShape TensorBase::get_shape() const {
   return shape;
 }
 
-std::ostream& operator<<(std::ostream &s, TensorShape const &shape) {
+std::ostream& operator<<(std::ostream &s, ParallelTensorShape const &shape) {
   s << "[ ";
   for (int i = 0; i < shape.num_dims; i++) {
     s << shape.dims[i].size << "/" << shape.dims[i].degree << " ";
@@ -444,7 +444,7 @@ std::ostream& operator<<(std::ostream &s, TensorShape const &shape) {
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::TensorShape>::operator()(FlexFlow::TensorShape const &shape) const {
+  size_t hash<FlexFlow::ParallelTensorShape>::operator()(FlexFlow::ParallelTensorShape const &shape) const {
     size_t key = 0;
     hash_combine(key, shape.num_dims);
     for (int i = 0; i < shape.num_dims; i++) {
@@ -457,7 +457,7 @@ namespace std {
 
 namespace FlexFlow {
 
-bool TensorBase::is_valid_machine_view(const MachineView& view) const
+bool ParallelTensorBase::is_valid_machine_view(const MachineView& view) const
 {
   int is_dim = 0;
   for (int i = 0; i < num_dims; i++)
@@ -478,7 +478,7 @@ bool TensorBase::is_valid_machine_view(const MachineView& view) const
   return true;
 }
 
-template float* TensorBase::get_raw_ptr<float>(FFConfig &config);
-template int32_t* TensorBase::get_raw_ptr<int32_t>(FFConfig &config);
+template float* ParallelTensorBase::get_raw_ptr<float>(FFConfig &config);
+template int32_t* ParallelTensorBase::get_raw_ptr<int32_t>(FFConfig &config);
 
 }; // namespace FlexFlow

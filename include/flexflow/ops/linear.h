@@ -27,21 +27,21 @@ public:
   DataType data_type;
   ActiMode activation;
 
-  bool is_valid(TensorShape const &input_shape) const;
-  void solve_dims(const Tensor input,
+  bool is_valid(ParallelTensorShape const &input_shape) const;
+  void solve_dims(const ParallelTensor input,
                   ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
                   ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
                   ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const;
-  void solve_dims(TensorShape const &input_shape, 
-                  TensorShape& output_shape,
-                  TensorShape& kernel_shape,
-                  TensorShape& bias_shape) const;
-  void solve_dims(TensorShape const &input_shape,
+  void solve_dims(ParallelTensorShape const &input_shape, 
+                  ParallelTensorShape& output_shape,
+                  ParallelTensorShape& kernel_shape,
+                  ParallelTensorShape& bias_shape) const;
+  void solve_dims(ParallelTensorShape const &input_shape,
                   ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
                   ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
                   ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const;
-  void construct_mappings(std::vector<ParallelDimMappingRecord>&, TensorShape const &) const;
-  size_t get_hash(const Tensor input) const;
+  void construct_mappings(std::vector<ParallelDimMappingRecord>&, ParallelTensorShape const &) const;
+  size_t get_hash(const ParallelTensor input) const;
 
   enum NamedDimensions {
     INPUT_CHANNEL,
@@ -55,13 +55,13 @@ public:
     BIAS_CHANNEL_OUT 
   };
 
-  std::unordered_map<NamedDimensions, int> get_dimension_names(TensorShape const &input_name) const;
+  std::unordered_map<NamedDimensions, int> get_dimension_names(ParallelTensorShape const &input_name) const;
 private:
-  void mark_replica_dims(TensorShape const &input_shape,
+  void mark_replica_dims(ParallelTensorShape const &input_shape,
                          ParallelDim output_dims[MAX_TENSOR_DIM],
                          ParallelDim kernel_dims[MAX_TENSOR_DIM],
                          ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
-  void calculate_nonreplica_dim_sizes(TensorShape const &input_shape,
+  void calculate_nonreplica_dim_sizes(ParallelTensorShape const &input_shape,
                                       ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
                                       ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
                                       ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const;
@@ -70,7 +70,7 @@ private:
 class Linear : public Op {
 public:
   Linear(FFModel& model,
-         const Tensor input,
+         const ParallelTensor input,
          int out_dim,
          ActiMode activation,
          bool _use_bias,
@@ -78,7 +78,7 @@ public:
          bool allocate_weights,
          const char* name);
   Linear(NodeCache& node_cache,
-         const Tensor input,
+         const ParallelTensor input,
          int out_dim,
          ActiMode activation,
          bool use_bias,
@@ -87,7 +87,7 @@ public:
          const char* name);
   Linear(FFModel& model, 
          Linear const &other, 
-         Tensor const input, 
+         ParallelTensor const input, 
          bool allocate_weights);
 
   void init(const FFModel&);
@@ -132,13 +132,13 @@ public:
   bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
 
   void serialize(Legion::Serializer&) const override;
-  static PCG::Node deserialize(FFModel &ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
+  static PCG::Node deserialize(FFModel &ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);
 
   size_t get_params_hash() const override;
 private:
   Linear(int guid,
          bool profiling,
-         const Tensor input,
+         const ParallelTensor input,
          int out_dim,
          ActiMode activation,
          bool use_bias,
@@ -169,7 +169,7 @@ public:
   int in_channels, out_channels;
   ActiMode activation;
   bool use_bias;
-  Tensor replica;
+  ParallelTensor replica;
 };
 
 }; // namespace FlexFlow

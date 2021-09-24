@@ -275,8 +275,8 @@ public:
 
   Node find_sink_node() const;
   Node find_source_node() const;
-  void reshape_output_tensor(TensorShape const &shape);
-  std::unique_ptr<Graph> with_output_tensor_reshaped_to(TensorShape const &shape) const;
+  void reshape_output_tensor(ParallelTensorShape const &shape);
+  std::unique_ptr<Graph> with_output_tensor_reshaped_to(ParallelTensorShape const &shape) const;
 
   void simplify(SimplificationSettings const &);
   void simplify_parallel_ops();

@@ -101,7 +101,7 @@ TNConstraint::TNConstraint(Compare c, TNParameter p1, DIMParameter d1,
                            TNParameter p2, DIMParameter d2)
 : singlePara(false), comp(c), para1(p1), para2(p2), dim1(d1), dim2(d2) {}
 
-tl::optional<Tensor> TensorX::to_tensor(const GraphXfer* xfer) const
+tl::optional<ParallelTensor> TensorX::to_tensor(const GraphXfer* xfer) const
 {
   if (op != NULL) {
     assert(op->mapOp.ptr != NULL);
@@ -640,11 +640,11 @@ Node Graph::find_sink_node() const {
   return *sink_nodes.begin();
 }
 
-void Graph::reshape_output_tensor(TensorShape const &desired_shape) {
+void Graph::reshape_output_tensor(ParallelTensorShape const &desired_shape) {
   Node output_node = this->find_sink_node();
 
   assert (output_node.ptr->numOutputs == 1);
-  Tensor output_tensor = output_node.ptr->outputs[0];
+  ParallelTensor output_tensor = output_node.ptr->outputs[0];
 
   assert (output_tensor->num_dims == desired_shape.num_dims);
 
@@ -693,7 +693,7 @@ void Graph::reshape_output_tensor(TensorShape const &desired_shape) {
   }
 }
 
-std::unique_ptr<Graph> Graph::with_output_tensor_reshaped_to(TensorShape const &shape) const {
+std::unique_ptr<Graph> Graph::with_output_tensor_reshaped_to(ParallelTensorShape const &shape) const {
   auto g = std::unique_ptr<Graph>(new Graph(*this));
   g->reshape_output_tensor(shape);
   return g;
@@ -766,9 +766,9 @@ Graph* GraphXfer::create_new_graph(Graph const *graph, SimplificationSettings co
 
 bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
 {
-  Tensor inputs[MAX_NUM_INPUTS];
+  ParallelTensor inputs[MAX_NUM_INPUTS];
   for (size_t i = 0; i < opx->inputs.size(); i++) {
-    tl::optional<Tensor> mapped = opx->inputs[i].to_tensor(this);
+    tl::optional<ParallelTensor> mapped = opx->inputs[i].to_tensor(this);
     if (!mapped.has_value()) {
       return false;
     }
@@ -1286,9 +1286,9 @@ void GraphSearchHelper::load_graph_substitutions(std::vector<GraphXfer*> &xfers)
     }
     {
       std::unordered_set<int> concat_num_inputs;
-      for (size_t i = 0; i < this->model->layers.size(); i++)
-        if (this->model->layers[i]->op_type == OP_CONCAT)
-          concat_num_inputs.insert(this->model->layers[i]->numInputs);
+      for (size_t i = 0; i < this->model->operators.size(); i++)
+        if (this->model->operators[i]->op_type == OP_CONCAT)
+          concat_num_inputs.insert(this->model->operators[i]->numInputs);
       for (const auto& it2 : concat_num_inputs) {
         xfers.push_back(create_partition_concat_combine(this->model, it2/*num_inputs*/, 0/*concat_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
         xfers.push_back(create_partition_concat_combine(this->model, it2/*num_inputs*/, 2/*concat_dim*/, 3/*parallel_dims*/, it/*num_parts*/));
@@ -1300,7 +1300,7 @@ void GraphSearchHelper::load_graph_substitutions(std::vector<GraphXfer*> &xfers)
 Graph *GraphSearchHelper::construct_graph() {
   Graph* graph = new Graph(this->model);
   std::unordered_map<const FlexFlow::Op*, Node> op_to_node_map;
-  for (const FlexFlow::Op* dstOp : this->model->layers) {
+  for (const FlexFlow::Op* dstOp : this->model->operators) {
     Node dstNode;
     dstNode.ptr = dstOp;
     dstNode.guid = this->model->node_global_guid++;
@@ -1528,8 +1528,8 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph, Si
 
 size_t gs_dp_state_hash(Graph const *graph, 
                         Node const &sink_node,
-                        tl::optional<TensorShape> const &output_shape,
-                        tl::optional<TensorShape> const &input_shape)
+                        tl::optional<ParallelTensorShape> const &output_shape,
+                        tl::optional<ParallelTensorShape> const &input_shape)
 {
   size_t key = graph->hash();
   hash_combine(key, sink_node.ptr);
@@ -1541,8 +1541,8 @@ size_t gs_dp_state_hash(Graph const *graph,
 float GraphSearchHelper::sequence_optimize(
     Graph const *graph, 
     Node const &sink_node, 
-    tl::optional<TensorShape> const &output_shape, 
-    tl::optional<TensorShape> const &input_shape)
+    tl::optional<ParallelTensorShape> const &output_shape, 
+    tl::optional<ParallelTensorShape> const &input_shape)
 {
   /* int starting_depth = this->logger->get_depth(); */
 
@@ -1599,7 +1599,7 @@ float GraphSearchHelper::sequence_optimize(
       input_graph.add_edge(e);
 
       Node old_source_node = graph->find_source_node();
-      TensorShape old_source_output_shape = old_source_node.ptr->outputs[0]->get_shape();
+      ParallelTensorShape old_source_output_shape = old_source_node.ptr->outputs[0]->get_shape();
       input_graph.reshape_output_tensor(old_source_output_shape);
 
       Node new_sink_node = input_graph.find_sink_node();
@@ -1628,9 +1628,9 @@ float GraphSearchHelper::sequence_optimize(
     std::vector<MachineView> valid_machine_views = this->model->search->get_valid_machine_views(bottleneck.value().ptr, resources);
 
     float best_cost = std::numeric_limits<float>::infinity();
-    tl::optional<TensorShape> best_shape = tl::nullopt;
+    tl::optional<ParallelTensorShape> best_shape = tl::nullopt;
     this->logger->enter();
-    for (TensorShape const &bottleneck_output_shape : this->possible_split_output_tensor_shapes(bottleneck.value())) {
+    for (ParallelTensorShape const &bottleneck_output_shape : this->possible_split_output_tensor_shapes(bottleneck.value())) {
       this->logger->debug() << "Considering boundary shape " << bottleneck_output_shape;
       this->logger->enter();
       // TODO @lockshaw we really should create the merged graph here since it's possible though unlikely for there 
@@ -1672,23 +1672,23 @@ float GraphSearchHelper::sequence_optimize(
   return return_value;
 }
 
-std::vector<TensorShape> GraphSearchHelper::possible_split_output_tensor_shapes(Node const &source_node) const {
+std::vector<ParallelTensorShape> GraphSearchHelper::possible_split_output_tensor_shapes(Node const &source_node) const {
   this->logger->enter();
 
   this->logger->debug() << "Finding possible output tensor shapes for node " << source_node.guid;
   assert (source_node.ptr->numOutputs == 1);
-  Tensor output_tensor = source_node.ptr->outputs[0];
+  ParallelTensor output_tensor = source_node.ptr->outputs[0];
   for (int i = 0; i < output_tensor->num_dims; i++) {
     assert (output_tensor->dims[i].degree == 1);
   }
 
-  std::vector<TensorShape> without_replicas;
+  std::vector<ParallelTensorShape> without_replicas;
 
   int num_devices = this->config.numNodes * this->config.workersPerNode;
   int degrees[MAX_TENSOR_DIM];
   std::fill_n(degrees, MAX_TENSOR_DIM, 1);
 
-  TensorShape base_shape;
+  ParallelTensorShape base_shape;
   base_shape.num_dims = output_tensor->num_dims;
   for (int i = 0; i < output_tensor->num_dims; i++) {
     base_shape.dims[i].degree = 1;
@@ -1719,7 +1719,7 @@ std::vector<TensorShape> GraphSearchHelper::possible_split_output_tensor_shapes(
 
     bool is_valid = true;
     int total_degree = 1;
-    TensorShape shape;
+    ParallelTensorShape shape;
     shape.num_dims = output_tensor->num_dims;
     for (int i = 0; i < output_tensor->num_dims; i++) {
       total_degree *= degrees[i];
@@ -2222,7 +2222,7 @@ void FFModel::graph_optimize(size_t budget,
   this->graph_search->graph_optimize(budget, only_data_parallel, best_graph, optimal_views);
 }
 
-bool FFModel::convert_graph_to_layers(const Graph* graph,
+bool FFModel::convert_graph_to_operators(const Graph* graph,
                                       const std::unordered_map<Node, MachineView>& optimal_views)
 {
   std::unordered_map<Node, int> todos;
@@ -2241,7 +2241,7 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
     Node node = queue[index++];
     assert(node.ptr != NULL);
     const auto& inList = graph->inEdges.find(node)->second;
-    Tensor inputs[MAX_NUM_INPUTS];
+    ParallelTensor inputs[MAX_NUM_INPUTS];
     int num_inputs = 0;
     for (const auto& e : inList) {
       inputs[e.dstIdx] = node_to_op[e.srcOp]->outputs[e.srcIdx];
@@ -2294,7 +2294,7 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
         assert(inList.size() == 3);
         MultiHeadAttention* attn = (MultiHeadAttention*) node.ptr;
         // Create weight tensor
-        Tensor kernel;
+        ParallelTensor kernel;
         {
           int num_dims = inputs[0]->num_dims;
           // Compute weight size
@@ -2315,9 +2315,9 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
 #else
           ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-          kernel = create_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
-                                    true/*create_grad*/, initializer,
-                                    comm_type);
+          kernel = create_parallel_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
+                                             true/*create_grad*/, initializer,
+                                             comm_type);
         }
         new_op = new MultiHeadAttention(*this, inputs[0], inputs[1], inputs[2], kernel,
                                         attn->oProjSize, attn->num_heads,
@@ -2392,7 +2392,7 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
       new_op->weights[i]->machine_view = view;
     }
     node_to_op[node] = new_op;
-    layers.push_back(new_op);
+    operators.push_back(new_op);
     // Decrease the todos
     const auto& outList = graph->outEdges.find(node)->second;
     for (const auto& it : outList) {
@@ -2404,8 +2404,8 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
   }
   assert(queue.size() == graph->inEdges.size());
   // Remove the final parallel operators
-  while (layers[layers.size()-1]->is_parallel_op()) {
-    Op* op = layers[layers.size()-1];
+  while (operators[operators.size()-1]->is_parallel_op()) {
+    Op* op = operators[operators.size()-1];
     if (op->op_type == OP_REDUCTION)
       break;
     if (op->op_type == OP_FUSED_PARALLEL) {
@@ -2418,7 +2418,7 @@ bool FFModel::convert_graph_to_layers(const Graph* graph,
       if (has_reduction)
         break;
     }
-    layers.pop_back();
+    operators.pop_back();
   }
   return true;
 }

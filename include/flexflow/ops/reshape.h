@@ -8,7 +8,7 @@ namespace FlexFlow {
 class Reshape : public Op {
 public:
   Reshape(FFModel& model,
-          const Tensor input,
+          const ParallelTensor input,
           const std::vector<int>& shape,
           const char* name);
   void init(const FFModel&);

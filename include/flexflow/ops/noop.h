@@ -9,7 +9,7 @@ class NoOp : public Op {
 public:
   NoOp(FFModel& model,
        OperatorType type,
-       const Tensor output,
+       const ParallelTensor output,
        const char* name = NULL);
   void init(const FFModel&);
   void forward(const FFModel&);

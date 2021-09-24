@@ -19,7 +19,7 @@ public:
 class AggregateSpec : public Op {
 public:
   AggregateSpec(FFModel& model,
-                const Tensor* inputs,
+                const ParallelTensor* inputs,
                 int _n, float _lambda_bal, const char* name);
   void init(const FFModel&);
   void forward(const FFModel&);

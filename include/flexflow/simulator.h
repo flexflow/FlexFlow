@@ -17,7 +17,7 @@
 
 #include "ffconst.h"
 #include "config.h"
-#include "tensor.h"
+#include "parallel_tensor.h"
 #include <memory>
 #include <fstream>
 #include <unordered_map>
@@ -325,10 +325,10 @@ public:
   float default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TENSOR_DIM],
                                    int tensor_ndims,
                                    const MachineView& view);
-  float default_estimate_sync_cost(TensorShape const &tensor_shape,
+  float default_estimate_sync_cost(ParallelTensorShape const &tensor_shape,
                                    const MachineView& view,
                                    int num_replicate_dims);
-  float default_estimate_sync_cost(const Tensor tensor,
+  float default_estimate_sync_cost(const ParallelTensor tensor,
                                    const MachineView& view,
                                    int num_replicate_dims);
   float simulate_runtime(const FFModel* model,
@@ -371,8 +371,8 @@ public:
 private:
   float estimate_repartition_xfer_cost(int repartition_dim,
                                        int repartition_degree,
-                                       const TensorShape& input_tensor_shape,
-                                       const TensorShape& output_tensor_shape,
+                                       const ParallelTensorShape& input_tensor_shape,
+                                       const ParallelTensorShape& output_tensor_shape,
                                        const MachineView& source_view,
                                        const MachineView& target_view) const;
 };

@@ -23,11 +23,14 @@ Tensor FFModel::pool2d(const Tensor input,
                        PoolType type, ActiMode activation,
                        char const *name)
 {
+  assert(false);
+#ifdef DEACODE
   Pool2D *pool = new Pool2D(*this, input, kernelH, kernelW,
                       strideH, strideW, paddingH, paddingW,
                       type, activation, name);
   layers.push_back(pool);
   return pool->outputs[0];
+#endif
 }
 
 Pool2DParams Pool2D::get_params() const {
@@ -44,8 +47,8 @@ Pool2DParams Pool2D::get_params() const {
   return params;
 }
 
-bool Pool2DParams::is_valid(const Tensor input) const {
-  TensorShape output_shape;
+bool Pool2DParams::is_valid(const ParallelTensor input) const {
+  ParallelTensorShape output_shape;
 
   this->solve_dims(
       input, 
@@ -60,7 +63,7 @@ bool Pool2DParams::is_valid(const Tensor input) const {
   return is_valid;
 }
 
-size_t Pool2DParams::get_hash(const Tensor input) const {
+size_t Pool2DParams::get_hash(const ParallelTensor input) const {
   size_t hash = input->get_owner_independent_hash();
   hash_combine(hash, this->kernel_h);
   hash_combine(hash, this->kernel_w);
@@ -79,7 +82,7 @@ size_t Pool2D::get_params_hash() const {
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_pool2d_node(const Tensor input,
+Node FFModel::get_or_create_pool2d_node(const ParallelTensor input,
                                         const Pool2DParams& params)
 {
   if (!params.is_valid(input)) {
@@ -109,7 +112,7 @@ Node FFModel::get_or_create_pool2d_node(const Tensor input,
   return this->new_node(pool);
 }
 
-Node FFModel::get_or_create_pool2d_node(const Tensor input,
+Node FFModel::get_or_create_pool2d_node(const ParallelTensor input,
                                         int kernelH, int kernelW,
                                         int strideH, int strideW,
                                         int paddingH, int paddingW,
@@ -129,7 +132,7 @@ Node FFModel::get_or_create_pool2d_node(const Tensor input,
   return this->get_or_create_pool2d_node(input, params);
 }
 
-int Pool2DParams::output_size(const Tensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) const { 
+int Pool2DParams::output_size(const ParallelTensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) const { 
   int input_w = input->dims[Pool2DInput::WIDTH].size;
   int input_h = input->dims[Pool2DInput::HEIGHT].size;
   int input_c = input->dims[Pool2DInput::CHANNEL].size;
@@ -144,7 +147,7 @@ int Pool2DParams::output_size(const Tensor input, ParallelDim output_dims[MAX_TE
   return Pool2DOutput::NUMDIM;
 }
 
-void Pool2DParams::solve_dims(const Tensor input, 
+void Pool2DParams::solve_dims(const ParallelTensor input, 
                 ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims) const 
 {
   assert ((output_dims == nullptr) == (output_ndims == nullptr));
@@ -182,7 +185,7 @@ void Pool2D::construct_output_mappings(std::vector<ParallelDimMappingRecord>& ma
 
 Pool2D::Pool2D(FFModel& model,
                Pool2D const &other,
-               Tensor const input) 
+               ParallelTensor const input) 
 : Pool2D(model,
          input,
          other.kernel_h,
@@ -197,7 +200,7 @@ Pool2D::Pool2D(FFModel& model,
 { }
 
 Pool2D::Pool2D(FFModel& model,
-               const Tensor _input,
+               const ParallelTensor _input,
                int _kernel_h, int _kernel_w,
                int _stride_h, int _stride_w,
                int _padding_h, int _padding_w,
@@ -221,7 +224,7 @@ Pool2D::Pool2D(FFModel& model,
       &output_ndims
   );
 
-  outputs[0] = model.create_tensor_legion_ordering(output_ndims, output_dims, DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(output_ndims, output_dims, DT_FLOAT, this);
 }
 
 void Pool2D::init(const FFModel& ff)
@@ -318,7 +321,7 @@ void Pool2D::serialize(Legion::Serializer& sez) const {
 
 using PCG::Node;
 /*static*/
-Node Pool2D::deserialize(FFModel& ff, Legion::Deserializer& dez, Tensor inputs[], int num_inputs) { 
+Node Pool2D::deserialize(FFModel& ff, Legion::Deserializer& dez, ParallelTensor inputs[], int num_inputs) { 
   assert (num_inputs == 1);
 
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;

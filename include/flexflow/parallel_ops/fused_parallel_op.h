@@ -8,7 +8,7 @@ namespace FlexFlow {
 class FusedParallelOp : public ParallelOp {
 public:
   FusedParallelOp(FFModel& model,
-                  const Tensor input,
+                  const ParallelTensor input,
                   const std::vector<ParallelOpInfo>& parallel_ops);
   void init(const FFModel&);
   void forward(const FFModel&);

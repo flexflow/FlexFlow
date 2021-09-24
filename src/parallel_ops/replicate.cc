@@ -37,21 +37,24 @@ using Legion::Machine;
 using Legion::LogicalRegion;
 using Legion::LogicalPartition;
 
-Tensor FFModel::replicate(
-    const Tensor input,
+ParallelTensor FFModel::replicate(
+    const ParallelTensor input,
     int replicate_legion_dim,
     int replicate_degree,
     const char* name)
 {
+  assert(false);
+#ifdef DEADCODE
   Replicate *repl = new Replicate(*this, input,
       replicate_legion_dim, replicate_degree, name);
   layers.push_back(repl);
   return repl->outputs[0];
+#endif
 }
 
 Replicate::Replicate(
     FFModel& model,
-    const Tensor _input,
+    const ParallelTensor _input,
     int _replicate_legion_dim,
     int _replicate_degree,
     const char* name)
@@ -66,8 +69,8 @@ Replicate::Replicate(
   }
   dims[replicate_dim].size *= replicate_degree;
   dims[replicate_dim].degree *= replicate_degree;
-  TensorBase::update_parallel_ids(numdim, dims);
-  outputs[0] = model.create_tensor_legion_ordering(
+  ParallelTensorBase::update_parallel_ids(numdim, dims);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, DT_FLOAT, this);
   //inputs[0]->print("Replicate::input");
   //outputs[0]->print("Replicate::output");
@@ -195,7 +198,7 @@ size_t Replicate::get_params_hash() const {
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_replicate_node(const Tensor input,
+Node FFModel::get_or_create_replicate_node(const ParallelTensor input,
                                            int replicate_dim,
                                            int replicate_degree)
 {

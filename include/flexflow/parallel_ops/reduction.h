@@ -8,7 +8,7 @@ namespace FlexFlow {
 class Reduction : public ParallelOp {
 public:
   Reduction(FFModel& model,
-      const Tensor input,
+      const ParallelTensor input,
       int reduction_legion_dim,
       int reduction_degree,
       const char* name = NULL);

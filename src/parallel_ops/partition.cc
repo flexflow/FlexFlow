@@ -37,21 +37,24 @@ using Legion::Machine;
 using Legion::LogicalRegion;
 using Legion::LogicalPartition;
 
-Tensor FFModel::repartition(
-    const Tensor input,
+ParallelTensor FFModel::repartition(
+    const ParallelTensor input,
     int repartition_legion_dim,
     int repartition_degree,
     const char* name)
 {
+  assert(false);
+#ifdef DEADCODE
   Repartition *part = new Repartition(*this, input,
       repartition_legion_dim, repartition_degree, name);
   layers.push_back(part);
   return part->outputs[0];
+#endif
 }
 
 Repartition::Repartition(
     FFModel& model,
-    const Tensor _input,
+    const ParallelTensor _input,
     int _repartition_legion_dim,
     int _repartition_degree,
     const char* name)
@@ -65,8 +68,8 @@ Repartition::Repartition(
     dims[i] = _input->dims[i];
   }
   dims[repartition_dim].degree *= repartition_degree;
-  TensorBase::update_parallel_ids(numdim, dims);
-  outputs[0] = model.create_tensor_legion_ordering(
+  ParallelTensorBase::update_parallel_ids(numdim, dims);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, inputs[0]->data_type, this);
   //inputs[0]->print("Repartition::input");
   //outputs[0]->print("Repartition::output");
@@ -192,7 +195,7 @@ size_t Repartition::get_params_hash() const {
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_repartition_node(const Tensor input,
+Node FFModel::get_or_create_repartition_node(const ParallelTensor input,
                                              int repartition_dim,
                                              int repartition_degree)
 {

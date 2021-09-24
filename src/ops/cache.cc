@@ -55,6 +55,8 @@ float default_score(float* cached_score,
 Tensor FFModel::cache(const Tensor& input, int num_batches,
   std::function<float(float*,const void*,const void*,int)> score_f, const char* name)
 {
+  assert(false);
+#ifdef DEADCODE
   if(!score_f) {
     switch(input->data_type) {
       case DT_FLOAT:
@@ -71,10 +73,11 @@ Tensor FFModel::cache(const Tensor& input, int num_batches,
   Cache* cache = new Cache(*this, input, num_batches, score_f, name);
   layers.push_back(cache);
   return cache->outputs[0];
+#endif
 }
 
 Cache::Cache(FFModel& model,
-            const Tensor& _input,
+            const ParallelTensor& _input,
             int _num_batches,
             std::function<float(float*,const void*,const void*,int)> &_score_f,
             const char* name)
@@ -90,7 +93,7 @@ Cache::Cache(FFModel& model,
   for (int i = 0; i < num_dim; i++)
     dims[i] = inputs[0]->dims[i];
   numOutputs = 1;
-  outputs[0] = model.create_tensor_legion_ordering(num_dim, dims, DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(num_dim, dims, DT_FLOAT, this);
 
   numWeights = 0;
 }

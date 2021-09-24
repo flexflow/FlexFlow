@@ -8,7 +8,7 @@ namespace FlexFlow {
 class Combine : public ParallelOp {
 public:
   Combine(FFModel& model,
-      const Tensor input,
+      const ParallelTensor input,
       int combine_legion_dim,
       int combine_degree,
       const char* name = NULL);

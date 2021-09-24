@@ -15,7 +15,7 @@ public:
 class Transpose : public Op {
 public:
   Transpose(FFModel& model,
-            const Tensor input,
+            const ParallelTensor input,
             const std::vector<int>& perm,
             const char* name);
   void init(const FFModel&);

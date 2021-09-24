@@ -1,4 +1,4 @@
-#include "flexflow/tensor.h"
+#include "flexflow/parallel_tensor.h"
 #include "flexflow/utils/cuda_helper.h"
 #include "flexflow/config.h"
 #include "flexflow/accessor.h"
@@ -9,7 +9,7 @@ namespace FlexFlow {
 using namespace Legion;
 
 template <typename T>
-bool TensorBase::set_tensor(
+bool ParallelTensorBase::set_tensor(
     const FFModel* ff,
     const std::vector<int>& dim_sizes,
     const T* data)
@@ -64,7 +64,7 @@ bool TensorBase::set_tensor(
 }
 
 template <typename T>
-bool TensorBase::get_tensor(
+bool ParallelTensorBase::get_tensor(
     const FFModel* ff,
     T* data)
 {
@@ -118,8 +118,8 @@ bool TensorBase::get_tensor(
   return true;
 }
 
-template bool TensorBase::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
-template bool TensorBase::get_tensor<float>(const FFModel* ff, float* data);
-template bool TensorBase::set_tensor<int>(const FFModel* ff, const std::vector<int>& dims, const int* data);
-template bool TensorBase::get_tensor<int>(const FFModel* ff, int* data);
+template bool ParallelTensorBase::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
+template bool ParallelTensorBase::get_tensor<float>(const FFModel* ff, float* data);
+template bool ParallelTensorBase::set_tensor<int>(const FFModel* ff, const std::vector<int>& dims, const int* data);
+template bool ParallelTensorBase::get_tensor<int>(const FFModel* ff, int* data);
 } // namespace FlexFlow

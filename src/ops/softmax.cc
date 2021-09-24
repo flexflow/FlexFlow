@@ -32,15 +32,18 @@ using Legion::Predicate;
 
 Tensor FFModel::softmax(const Tensor _input, int dim, const char *name)
 {
+  assert(false);
+#ifdef DEADCODE
   if (dim < 0)
     dim += _input->num_dims;
   Softmax *sm = new Softmax(*this, _input, _input->num_dims-1-dim, name);
   layers.push_back(sm);
   return sm->outputs[0];
+#endif
 }
 
 Softmax::Softmax(FFModel& model,
-                 const Tensor _input,
+                 const ParallelTensor _input,
                  int _dim,
                  const char* name)
 : Op(model, OP_SOFTMAX, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, _input),
@@ -52,7 +55,7 @@ Softmax::Softmax(FFModel& model,
   int numdim = _input->num_dims;
   for (int i = 0; i < numdim; i++)
     dims[i] = _input->dims[numdim-1-i];
-  outputs[0] = model.create_tensor(numdim, dims, DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor(numdim, dims, DT_FLOAT, this);
 }
 
 void Softmax::init(const FFModel& ff)
@@ -141,7 +144,7 @@ size_t Softmax::get_params_hash() const {
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_softmax_node(const Tensor input,
+Node FFModel::get_or_create_softmax_node(const ParallelTensor input,
                                          int softmax_dim)
 {
   size_t hash = input->get_owner_independent_hash();

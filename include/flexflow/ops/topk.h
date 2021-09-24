@@ -14,7 +14,7 @@ public:
 class TopK : public Op {
 public:
   TopK(FFModel& model,
-       const Tensor input,
+       const ParallelTensor input,
        int k, bool sorted,
        const char* name);
   void init(const FFModel&);

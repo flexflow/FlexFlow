@@ -70,10 +70,10 @@ Op::Op(FFModel& model,
        int numWeights,
        bool allocate_weights,
        int numOutputs,
-       const Tensor input1,
-       const Tensor input2,
-       const Tensor input3,
-       const Tensor input4)
+       const ParallelTensor input1,
+       const ParallelTensor input2,
+       const ParallelTensor input3,
+       const ParallelTensor input4)
 : Op(model, 
      op_type, 
      name, 
@@ -92,17 +92,17 @@ Op::Op(FFModel& model,
        int _numInputs,
        int _numWeights,
        int _numOutputs,
-       const Tensor _input1,
-       const Tensor _input2,
-       const Tensor _input3,
-       const Tensor _input4)
+       const ParallelTensor _input1,
+       const ParallelTensor _input2,
+       const ParallelTensor _input3,
+       const ParallelTensor _input4)
 : op_type(_op_type), op_guid(model.op_global_guid++),
   numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
   profiling(model.config.profiling)
 {
   for (int i = 0; i < MAX_NUM_INPUTS; i++)
     inputs[i] = NULL;
-  std::vector<Tensor> tensors;
+  std::vector<ParallelTensor> tensors;
   tensors.push_back(_input1);
   tensors.push_back(_input2);
   tensors.push_back(_input3);
@@ -138,7 +138,7 @@ Op::Op(FFModel& model,
        int _numInputs,
        int _numWeights,
        int _numOutputs,
-       const Tensor* _inputs)
+       const ParallelTensor* _inputs)
 : op_type(_op_type), op_guid(model.op_global_guid++),
   numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
   profiling(model.config.profiling)
@@ -199,7 +199,7 @@ tl::optional<RecordFormatter> Op::as_dot() const {
   return tl::nullopt;
 }
 
-Tensor Op::get_parameter(int index)
+ParallelTensor Op::get_parameter(int index)
 {
   assert(index < numWeights);
   return weights[index];
@@ -214,7 +214,7 @@ void Op::serialize(Legion::Serializer& serializer) const
   assert (false && "This op does not support serialization");
 }
 
-Op *Op::materialize(FFModel& ff, Tensor inputs[], int num_inputs) const {
+Op *Op::materialize(FFModel& ff, ParallelTensor inputs[], int num_inputs) const {
   fprintf(stderr, "The following operator type is currently not supported"
           " for layer materialization: %s\n"
           "Report the issue to the FlexFlow developers",
@@ -720,8 +720,8 @@ void Op::register_output_parallel_dims(
 }
 
 int Op::get_output_to_input_dim_mapping(
-    const Tensor output, int output_dim,
-    const Tensor input)
+    const ParallelTensor output, int output_dim,
+    const ParallelTensor input)
 {
   int output_idx = -1, input_idx = -1;
   for (int i = 0; i < numOutputs; i++)
@@ -746,8 +746,8 @@ int Op::get_output_to_input_dim_mapping(
 }
 
 int Op::get_output_to_weight_dim_mapping(
-    const Tensor output, int output_dim,
-    const Tensor weight)
+    const ParallelTensor output, int output_dim,
+    const ParallelTensor weight)
 {
   int output_idx = -1, weight_idx = -1;
   for (int i = 0; i < numOutputs; i++)
@@ -1110,6 +1110,8 @@ Tensor FFModel::create_constant(const int dims[],
   ConstantInitializer* init =  new ConstantInitializer(value);
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
+  assert(false);
+#ifdef DEADCODE
   ArgumentMap argmap;
   IndexLauncher launcher(CONSTANT_INIT_TASK_ID, tensor->parallel_is,
       TaskArgument(init, sizeof(ConstantInitializer)), argmap,
@@ -1122,6 +1124,7 @@ Tensor FFModel::create_constant(const int dims[],
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   return tensor;
+#endif
 }
 
 PCG::Node FFModel::new_node(Op *op) {
@@ -1136,14 +1139,14 @@ Tensor FFModel::create_tensor(
     int numdim,
     const int dims[],
     DataType data_type,
-    const Op* op,
+    const Layer* layer,
     int idx,
     bool create_grad)
 {
   switch (numdim) {
 #define DIMFUNC(DIM) \
     case DIM: \
-      return create_tensor<DIM>(dims, data_type, op, idx, create_grad);
+      return create_tensor<DIM>(dims, data_type, layer, idx, create_grad);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -1151,7 +1154,7 @@ Tensor FFModel::create_tensor(
   }
 }
 
-Tensor FFModel::create_tensor(
+ParallelTensor FFModel::create_parallel_tensor(
     int numdim,
     const ParallelDim dims[],
     DataType data_type,
@@ -1162,7 +1165,7 @@ Tensor FFModel::create_tensor(
   switch (numdim) {
 #define DIMFUNC(DIM) \
     case DIM: \
-      return create_tensor<DIM>(dims, data_type, op, idx, create_grad);
+      return create_parallel_tensor<DIM>(dims, data_type, op, idx, create_grad);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -1174,17 +1177,17 @@ Tensor FFModel::create_tensor_legion_ordering(
     int numdim,
     const int dims[],
     DataType data_type,
-    const Op* op,
+    const Layer* layer,
     int idx,
     bool create_grad)
 {
   int c_dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++)
     c_dims[i] = dims[numdim-1-i];
-  return create_tensor(numdim, c_dims, data_type, op, idx, create_grad);
+  return create_tensor(numdim, c_dims, data_type, layer, idx, create_grad);
 }
 
-Tensor FFModel::create_tensor_legion_ordering(
+ParallelTensor FFModel::create_parallel_tensor_legion_ordering(
     int numdim,
     const ParallelDim dims[],
     DataType data_type,
@@ -1195,40 +1198,51 @@ Tensor FFModel::create_tensor_legion_ordering(
   ParallelDim c_dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++)
     c_dims[i] = dims[numdim-1-i];
-  return create_tensor(numdim, c_dims, data_type, op, idx, create_grad);
+  return create_parallel_tensor(numdim, c_dims, data_type, op, idx, create_grad);
 }
 
 template<int NDIM>
 Tensor FFModel::create_tensor(
     const int dims[],
     DataType data_type,
-    const Op* owner_op,
+    const Layer* owner_layer,
     int owner_idx,
     bool create_grad)
 {
-  ParallelDim pdims[NDIM];
-  for (int i = 0; i < NDIM; i++) {
-    pdims[i].size = dims[i];
-    pdims[i].degree = 1;
-    pdims[i].parallel_idx = -1;
+  Tensor tensor = new TensorBase();
+  //tensor->ts_guid = tensor_global_guid ++;
+  tensor->data_type = data_type;
+  if (owner_layer == NULL) {
+    Layer* input_layer = new Layer(OP_INPUT, NULL, 0/*inputs*/, 0/*weight*/, 1/*outputs*/, NULL, NULL);
+    layers.push_back(input_layer);
+    tensor->owner_layer = input_layer;
+    tensor->owner_idx = 0;
+  } else {
+    tensor->owner_layer = owner_layer;
+    tensor->owner_idx = owner_idx;
   }
-  return create_tensor<NDIM>(pdims, data_type, owner_op, owner_idx, create_grad);
+  tensor->create_gradients = create_grad;
+  tensor->num_dims = NDIM;
+  for (int i = 0; i < NDIM; i++) {
+    tensor->dims[i] = dims[NDIM-1-i];
+  }
+  return tensor;
 }
 
 template<int NDIM>
-Tensor FFModel::create_tensor(
+ParallelTensor FFModel::create_parallel_tensor(
     const ParallelDim dims[],
     DataType data_type,
     const Op* owner_op,
     int owner_idx,
     bool create_grad)
 {
-  Tensor tensor = new TensorBase();
+  ParallelTensor tensor = new ParallelTensorBase();
   tensor->ts_guid = tensor_global_guid ++;
   tensor->data_type = data_type;
   if (owner_op == NULL) {
     NoOp* input_op = new NoOp(*this, OP_INPUT, tensor);
-    layers.push_back(input_op);
+    operators.push_back(input_op);
     tensor->owner_op = input_op;
     tensor->owner_idx = 0;
   } else {
@@ -1248,20 +1262,34 @@ template<int NDIM>
 Parameter FFModel::create_weight(
     const int dims[],
     DataType data_type,
-    const Op* owner_op,
+    const Layer* owner_layer,
     bool create_grad,
     Initializer* initializer,
     ParameterSyncType sync_type)
 {
-  ParallelDim pdims[NDIM];
-  for (int i = 0; i < NDIM; i++)
-    pdims[i].size = dims[i];
-  return create_weight<NDIM>(pdims, data_type, owner_op,
-      create_grad, initializer, sync_type);
+  Parameter p = new TensorBase();
+  p->data_type = data_type;
+  if (owner_layer == NULL) {
+    Layer* weight_layer = new Layer(OP_WEIGHT, NULL, 0/*inputs*/, 0/*weights*/, 1/*outputs*/, NULL/*in1*/, NULL/*in2*/);
+    layers.push_back(weight_layer);
+    p->owner_layer = weight_layer;
+    p->owner_idx = 0;
+  } else {
+    p->owner_layer = owner_layer;
+  }
+  p->create_gradients = create_grad;
+  p->initializer = initializer;
+  p->sync_type = sync_type;
+  p->num_dims = NDIM;
+  for (int i = 0; i < NDIM; i++) {
+    p->dims[i] = dims[NDIM-1-i];
+  }
+  assert(p->get_volume() > 0);
+  return p;
 }
 
 template<int NDIM>
-Parameter FFModel::create_weight(
+ParallelParameter FFModel::create_parallel_weight(
     const ParallelDim dims[],
     DataType data_type,
     const Op* owner_op,
@@ -1269,12 +1297,12 @@ Parameter FFModel::create_weight(
     Initializer* initializer,
     ParameterSyncType sync_type)
 {
-  Parameter p = new TensorBase();
+  ParallelParameter p = new ParallelTensorBase();
   p->ts_guid = tensor_global_guid ++;
   p->data_type = data_type;
   if (owner_op == NULL) {
     NoOp* weight_op = new NoOp(*this, OP_WEIGHT, p);
-    layers.push_back(weight_op);
+    operators.push_back(weight_op);
     p->owner_op = weight_op;
     p->owner_idx = 0;
   } else {
@@ -1292,7 +1320,7 @@ Parameter FFModel::create_weight(
   return p;
 }
 
-Parameter FFModel::create_weight(
+ParallelParameter FFModel::create_parallel_weight(
     int numdim,
     const ParallelDim dims[],
     DataType data_type,
@@ -1304,7 +1332,7 @@ Parameter FFModel::create_weight(
   switch (numdim) {
 #define DIMFUNC(DIM) \
     case DIM: \
-      return create_weight<DIM>(dims, data_type, owner_op, create_grad, initializer, sync_type);
+      return create_parallel_weight<DIM>(dims, data_type, owner_op, create_grad, initializer, sync_type);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -1312,7 +1340,7 @@ Parameter FFModel::create_weight(
   }
 }
 
-Parameter FFModel::create_weight_legion_ordering(
+ParallelParameter FFModel::create_parallel_weight_legion_ordering(
     int numdim,
     const ParallelDim dims[],
     DataType data_type,
@@ -1324,10 +1352,10 @@ Parameter FFModel::create_weight_legion_ordering(
   ParallelDim c_dims[MAX_TENSOR_DIM];
   std::reverse_copy(dims, dims+numdim, c_dims);
 
-  return this->create_weight(numdim, c_dims, data_type, owner_op, create_grad, initializer, sync_type);
+  return this->create_parallel_weight(numdim, c_dims, data_type, owner_op, create_grad, initializer, sync_type);
 }
 
-void FFModel::map_tensor(Tensor tensor, const Op* op)
+void FFModel::map_tensor(ParallelTensor tensor, const Op* op)
 {
   switch (tensor->num_dims) {
 #define DIMFUNC(NDIM) \
@@ -1348,7 +1376,7 @@ void FFModel::map_tensor(Tensor tensor, const Op* op)
 
 // Map tensor using parallelization strategies described in parallel_op
 template<int NDIM>
-void FFModel::map_tensor_with_dim(Tensor tensor, const Op* parallel_op)
+void FFModel::map_tensor_with_dim(ParallelTensor tensor, const Op* parallel_op)
 {
   tensor->parallel_is = get_or_create_task_is(tensor);
   assert(tensor->owner_op != NULL);
@@ -1372,7 +1400,7 @@ void FFModel::map_tensor_with_dim(Tensor tensor, const Op* parallel_op)
 }
 
 template<int NDIM, int TDIM>
-void FFModel::map_tensor_with_dim2(Tensor tensor, const Op* parallel_op)
+void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
 {
   // Step 0: check we are the owner or the owner is NULL
   // in which case set the owner to us
@@ -1448,7 +1476,7 @@ void FFModel::map_tensor_with_dim2(Tensor tensor, const Op* parallel_op)
   }
 }
 
-void FFModel::map_weight(Tensor weight, const Op* op)
+void FFModel::map_weight(ParallelTensor weight, const Op* op)
 {
   switch (weight->num_dims) {
 #define DIMFUNC(DIM) \
@@ -1468,7 +1496,7 @@ void FFModel::map_weight(Tensor weight, const Op* op)
 }
 
 template<int NDIM>
-void FFModel::map_weight_with_dim(Tensor weight, const Op* parallel_op)
+void FFModel::map_weight_with_dim(ParallelTensor weight, const Op* parallel_op)
 {
   // Step 0: check we are the owner or the owner is NULL
   // in which case set the owner to us
@@ -1630,7 +1658,7 @@ void FFModel::create_aliased_partition_with_dim2(const ParallelDim dims[],
 }
 
 template<int NDIM>
-void FFModel::create_disjoint_partition(const Tensor tensor,
+void FFModel::create_disjoint_partition(const ParallelTensor tensor,
                                         const IndexSpaceT<NDIM>& part_is,
                                         LogicalPartition& part_fwd,
                                         LogicalPartition& part_bwd)
@@ -1673,7 +1701,7 @@ void FFModel::create_disjoint_partition(const Tensor tensor,
 }
 
 template<int NDIM, int TDIM>
-void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor tensor,
+void FFModel::create_data_parallel_partition_with_diff_dims(const ParallelTensor tensor,
                                                             const IndexSpaceT<TDIM>& part_is,
                                                             LogicalPartition& part_fwd,
                                                             LogicalPartition& part_bwd)
@@ -1721,7 +1749,7 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor tensor,
 
 template<int NDIM, int TDIM>
 void FFModel::map_linear_weight(
-    Tensor weight,
+    ParallelTensor weight,
     const Op* op)
 {
   assert(op->op_type == OP_LINEAR);
@@ -1839,7 +1867,7 @@ void FFModel::map_linear_weight(
 
 template<int NDIM>
 void FFModel::map_conv_weight(
-    Tensor weight,
+    ParallelTensor weight,
     const Op* op)
 {
   Context ctx = config.lg_ctx;
@@ -1949,7 +1977,7 @@ void FFModel::map_conv_weight(
 }
 
 template<int NDIM, int TDIM>
-Tensor FFModel::create_linear_replica(const int dims[],
+ParallelTensor FFModel::create_linear_replica(const int dims[],
                                       const IndexSpaceT<TDIM>& task_is,
                                       DataType data_type)
 {
@@ -1962,7 +1990,7 @@ Tensor FFModel::create_linear_replica(const int dims[],
   int num_parts[TDIM];
   for (int i = 0; i < TDIM; i++)
     num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
-  Tensor replica = new TensorBase();
+  ParallelTensor replica = new ParallelTensorBase();
   replica->ts_guid = tensor_global_guid ++;
   replica->num_dims = NDIM;
   replica->data_type = data_type;
@@ -2026,7 +2054,7 @@ IndexSpace FFModel::get_task_is(const ParallelConfig& pc) const
   return get_task_is(view);
 }
 
-IndexSpace FFModel::get_or_create_task_is(const Tensor tensor)
+IndexSpace FFModel::get_or_create_task_is(const ParallelTensor tensor)
 {
   MachineView view;
   view.ndims = 0;
@@ -2128,17 +2156,17 @@ void FFModel::reset_metrics()
   current_metrics = runtime->execute_task(ctx, launcher);
 }
 
-void FFModel::init_layers()
+void FFModel::init_operators()
 {
-  for (size_t i = 0; i < layers.size(); i++)
-    layers[i]->init(*this);
+  for (size_t i = 0; i < operators.size(); i++)
+    operators[i]->init(*this);
 }
 
 void FFModel::forward(int seq_length)
 {
   iter_config.seq_length = seq_length;
-  for (size_t i = 0; i < layers.size(); i++)
-    layers[i]->forward(*this);
+  for (size_t i = 0; i < operators.size(); i++)
+    operators[i]->forward(*this);
 }
 
 
@@ -2151,14 +2179,14 @@ void FFModel::recompile_on_condition(RecompileState &r)
 
 void FFModel::compute_metrics()
 {
-  Op* metrics_layer = layers[metrics_input];
-  assert(metrics_layer->numOutputs == 1);
-  metrics_op->compute(this, metrics_layer->outputs[0], label_tensor_with_final_part);
+  Op* metrics_operator = operators[metrics_input];
+  assert(metrics_operator->numOutputs == 1);
+  metrics_op->compute(this, metrics_operator->outputs[0], label_tensor_with_final_part);
 }
 
 void FFModel::get_metrics()
 {
-  metrics_input = layers.size()-1;
+  metrics_input = operators.size()-1;
 }
 
 void FFModel::backward(int seq_length)
@@ -2167,25 +2195,25 @@ void FFModel::backward(int seq_length)
   assert(config.computationMode == COMP_MODE_TRAINING);
   // Compute metrics
   compute_metrics();
-  // Compute the gradients of the final layer wrt loss
-  Op* final_layer = layers[layers.size()-1];
-  assert(final_layer->numOutputs == 1);
-  loss_op->backward(this, final_layer->outputs[0], label_tensor_with_final_part);
+  // Compute the gradients of the final operator wrt loss
+  Op* final_operator = operators[operators.size()-1];
+  assert(final_operator->numOutputs == 1);
+  loss_op->backward(this, final_operator->outputs[0], label_tensor_with_final_part);
   // Perform backpropagation
   // std::set<LogicalRegion> resetedInputGrads;
-  for (int l = layers.size() - 1; l >= 0; l--) {
+  for (int l = operators.size() - 1; l >= 0; l--) {
 #ifdef ENABLE_RESNET_INPUT_GRADIENT_OPTIMIZATION
-    for (int i = 0; i < layers[l]->numInputs; i++)
-      if (resetedInputGrads.find(layers[l]->inputs[i]->region) == resetedInputGrads.end()) {
-        resetedInputGrads.insert(layers[l]->inputs[i]->region);
+    for (int i = 0; i < operators[l]->numInputs; i++)
+      if (resetedInputGrads.find(operators[l]->inputs[i]->region) == resetedInputGrads.end()) {
+        resetedInputGrads.insert(operators[l]->inputs[i]->region);
       } else {
-        // This input's gradients has been reseted by other layers
+        // This input's gradients has been reseted by other operators
         // So we should not do it again
-        layers[l]->resetInputGrads[i] = false;
+        operators[l]->resetInputGrads[i] = false;
       }
 #endif
-    if(l == metrics_input && metrics_input < (int)layers.size()-1) continue; // TODO: If layer serves for metrics and for further prop
-    layers[l]->backward(*this);
+    if(l == metrics_input && metrics_input < (int)operators.size()-1) continue; // TODO: If operator serves for metrics and for further prop
+    operators[l]->backward(*this);
   }
 }
 
@@ -2197,12 +2225,12 @@ void FFModel::update()
   }
 }
 
-Op* FFModel::get_final_layer() const
+Op* FFModel::get_final_operator() const
 {
-  int idx = layers.size() - 1;
-  while (layers[idx]->op_type == OP_INPUT || layers[idx]->op_type == OP_WEIGHT)
+  int idx = operators.size() - 1;
+  while (operators[idx]->op_type == OP_INPUT || operators[idx]->op_type == OP_WEIGHT)
     idx --;
-  return layers[idx];
+  return operators[idx];
 }
 
 void FFModel::compile(Optimizer* _optimizer,
@@ -2214,19 +2242,19 @@ void FFModel::compile(Optimizer* _optimizer,
   compile(loss_type, metrics, comp_mode);
 }
 
-bool FFModel::apply_fusion(const std::vector<Op*>& layers,
-                           std::vector<Op*>& new_layers)
+bool FFModel::apply_fusion(const std::vector<Op*>& operators,
+                           std::vector<Op*>& new_operators)
 {
   //Context ctx = config.lg_ctx;
   //Runtime* runtime = config.lg_hlr;
-  for (size_t l = 1; l < layers.size() - 1; l++) {
+  for (size_t l = 1; l < operators.size() - 1; l++) {
     size_t start = 0;
     {
-      Op* opl = layers[l];
+      Op* opl = operators[l];
       for (int idx = 0; idx < opl->numInputs; idx++) {
         bool found = false;
         for (size_t i = 0; i < l; i++)
-          if (opl->inputs[idx]->owner_op == layers[i]) {
+          if (opl->inputs[idx]->owner_op == operators[i]) {
             assert(!found);
             found = true;
             if (i > start) start = i;
@@ -2235,34 +2263,34 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
       }
     }
     for (size_t i = start; i < l; i++) {
-      //Domain d1 = runtime->get_index_space_domain(layers[l]->outputs[0]->parallel_is);
-      //Domain d2 = runtime->get_index_space_domain(layers[i]->outputs[0]->parallel_is);
-      MachineView view1 = layers[l]->outputs[0]->machine_view;
-      MachineView view2 = layers[i]->outputs[0]->machine_view;
+      //Domain d1 = runtime->get_index_space_domain(operators[l]->outputs[0]->parallel_is);
+      //Domain d2 = runtime->get_index_space_domain(operators[i]->outputs[0]->parallel_is);
+      MachineView view1 = operators[l]->outputs[0]->machine_view;
+      MachineView view2 = operators[i]->outputs[0]->machine_view;
       if (view1 == view2) {
         FusedOp* fused_op;
         //bool created = false;
-        if (layers[i]->op_type == OP_FUSED)
-          fused_op = (FusedOp*) layers[i];
+        if (operators[i]->op_type == OP_FUSED)
+          fused_op = (FusedOp*) operators[i];
         else {
           //created = true;
           // cannot be an in-place operator
-          if (layers[i]->has_inplace_output()) continue;
-          fused_op = new FusedOp(*this, layers[i]);
+          if (operators[i]->has_inplace_output()) continue;
+          fused_op = new FusedOp(*this, operators[i]);
         }
-        if (fused_op->add_operator(*this, layers[l])) {
-          // Construct new layers
-          new_layers.clear();
+        if (fused_op->add_operator(*this, operators[l])) {
+          // Construct new operators
+          new_operators.clear();
           for (size_t j = 0; j < i; j++)
-            new_layers.push_back(layers[j]);
-          new_layers.push_back(fused_op);
-          for (size_t j = i+1; j < layers.size(); j++) {
+            new_operators.push_back(operators[j]);
+          new_operators.push_back(fused_op);
+          for (size_t j = i+1; j < operators.size(); j++) {
             if (j == l) continue; // l and i are fused
-            Op* op = layers[j];
-            // Update input tensors that belong to layer[l] or layer[i]
+            Op* op = operators[j];
+            // Update input tensors that belong to operator[l] or operator[i]
             for (int idx = 0; idx < op->numInputs; idx++) {
-              if ((op->inputs[idx]->owner_op == layers[l])
-              || (op->inputs[idx]->owner_op == layers[i]))
+              if ((op->inputs[idx]->owner_op == operators[l])
+              || (op->inputs[idx]->owner_op == operators[i]))
               {
                 int found = -1;
                 for (int k = 0; k < fused_op->numOutputs; k++)
@@ -2275,10 +2303,10 @@ bool FFModel::apply_fusion(const std::vector<Op*>& layers,
               }
             }
             // Insert op
-            new_layers.push_back(op);
+            new_operators.push_back(op);
           }
-          // We are exact one layer fewer than the original
-          assert(new_layers.size() + 1 == layers.size());
+          // We are exact one operator fewer than the original
+          assert(new_operators.size() + 1 == operators.size());
           return true;
         } else {
           //TODO: delete fused_op to avoid memory leakage
@@ -2296,7 +2324,7 @@ void FFModel::compile(LossType loss_type,
                       const std::vector<MetricsType>& metrics,
                       CompMode comp_mode)
 {
-  if(metrics_input == -1) metrics_input = layers.size()-1;
+  if(metrics_input == -1) metrics_input = operators.size()-1;
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   config.computationMode = comp_mode;
@@ -2312,16 +2340,16 @@ void FFModel::compile(LossType loss_type,
 
     PCG::GraphOptimalViewSerialized ret = future.get_result<PCG::GraphOptimalViewSerialized>();
     Deserializer dez(ret.data, ret.total_bytes);
-    // Reconstruct layers
+    // Reconstruct operators
     PCG::Graph* best_graph = new PCG::Graph(this);
     std::unordered_map<PCG::Node, MachineView> optimal_views;
     deserialize_graph_optimal_view(dez, best_graph, optimal_views);
-    layers.clear();
-    convert_graph_to_layers(best_graph, optimal_views);
+    operators.clear();
+    convert_graph_to_operators(best_graph, optimal_views);
     delete best_graph;
   }
 
-  bool repl_labels = (layers[layers.size()-1]->op_type == OP_AGG_SPEC);
+  bool repl_labels = (operators[operators.size()-1]->op_type == OP_AGG_SPEC);
   loss_op = new Loss(loss_type, repl_labels);
   metrics_op = new Metrics(loss_type, metrics);
 
@@ -2331,30 +2359,30 @@ void FFModel::compile(LossType loss_type,
 
   // Perform inplace optimizations
   if (config.enable_inplace_optimizations) {
-    for (size_t l = 1; l < layers.size(); l++) {
-      if (layers[l]->can_inplace_output()) {
+    for (size_t l = 1; l < operators.size(); l++) {
+      if (operators[l]->can_inplace_output()) {
         // Assume outputs[0] is inplace with inputs[0]
-        assert(layers[l]->numOutputs == 1);
-        if (layers[l]->inputs[0]->owner_op != NULL) {
-          //int dim1 = layers[l]->outputs[0]->num_dims;
-          //int dim2 = layers[l]->inputs[0]->num_dims;
-          MachineView view1 = layers[l]->outputs[0]->machine_view;
-          MachineView view2 = layers[l]->inputs[0]->machine_view;
+        assert(operators[l]->numOutputs == 1);
+        if (operators[l]->inputs[0]->owner_op != NULL) {
+          //int dim1 = operators[l]->outputs[0]->num_dims;
+          //int dim2 = operators[l]->inputs[0]->num_dims;
+          MachineView view1 = operators[l]->outputs[0]->machine_view;
+          MachineView view2 = operators[l]->inputs[0]->machine_view;
           if (view1 == view2) {
-            // Check no others also need layers[l]->inputs[0]
+            // Check no others also need operators[l]->inputs[0]
             bool found = false;
-            for (size_t i = 0; i < layers.size(); i++) {
+            for (size_t i = 0; i < operators.size(); i++) {
               if (i == l) continue;
-              for (int j = 0; j < layers[i]->numInputs; j++) {
-                if ((layers[i]->inputs[j]->owner_op == layers[l]->inputs[0]->owner_op)
-                &&(layers[i]->inputs[j]->owner_idx == layers[l]->inputs[0]->owner_idx)) {
+              for (int j = 0; j < operators[i]->numInputs; j++) {
+                if ((operators[i]->inputs[j]->owner_op == operators[l]->inputs[0]->owner_op)
+                &&(operators[i]->inputs[j]->owner_idx == operators[l]->inputs[0]->owner_idx)) {
                   found = true;
                 }
               }
             }
             if (!found) {
               // Perform inplace
-              layers[l]->do_inplace_output();
+              operators[l]->do_inplace_output();
             }
           }
         }
@@ -2362,8 +2390,8 @@ void FFModel::compile(LossType loss_type,
     }
   }
 
-  for (size_t l = 0; l < layers.size(); l++) {
-    Op* op = layers[l];
+  for (size_t l = 0; l < operators.size(); l++) {
+    Op* op = operators[l];
     for (int i = 0; i < op->numInputs; i++) {
       assert(op->inputs[i]->owner_op != NULL);
     }
@@ -2382,8 +2410,8 @@ void FFModel::compile(LossType loss_type,
   }
 
   // Check correctness
-  for (size_t l = 0; l < layers.size(); l++) {
-    Op* op = layers[l];
+  for (size_t l = 0; l < operators.size(); l++) {
+    Op* op = operators[l];
     for (int i = 0; i < op->numOutputs; i++) {
       assert(op->outputs[i]->owner_op == op);
       assert(op->outputs[i]->owner_idx == i);
@@ -2393,8 +2421,8 @@ void FFModel::compile(LossType loss_type,
 
   // If an operator's input is training data
   // No need to compute its gradients
-  for (size_t l = 0; l < layers.size(); l++) {
-    Op* op = layers[l];
+  for (size_t l = 0; l < operators.size(); l++) {
+    Op* op = operators[l];
     for (int i = 0; i < op->numInputs; i++) {
       if (op->inputs[i]->owner_op == NULL)
         op->trainableInputs[i] = false;
@@ -2404,21 +2432,21 @@ void FFModel::compile(LossType loss_type,
   // Perform fusion optimizations
   if (config.perform_fusion) {
     fprintf(stderr, "Applying fusion optimizations during compilation...\n");
-    fprintf(stderr, "%zu layers before fusion...\n", layers.size());
-    std::vector<Op*> new_layers;
-    std::vector<Op*> old_layers = layers;
-    while (apply_fusion(layers, new_layers)) {
-      for (size_t i = 0; i < new_layers.size(); i++)
-        for (int idx = 0; idx < new_layers[i]->numInputs; idx++)
-          for (size_t j = i+1; j < new_layers.size(); j++)
-            if (new_layers[i]->inputs[idx]->owner_op == new_layers[j])
+    fprintf(stderr, "%zu operators before fusion...\n", operators.size());
+    std::vector<Op*> new_operators;
+    std::vector<Op*> old_operators = operators;
+    while (apply_fusion(operators, new_operators)) {
+      for (size_t i = 0; i < new_operators.size(); i++)
+        for (int idx = 0; idx < new_operators[i]->numInputs; idx++)
+          for (size_t j = i+1; j < new_operators.size(); j++)
+            if (new_operators[i]->inputs[idx]->owner_op == new_operators[j])
               assert(false);
-      layers = new_layers;
+      operators = new_operators;
     }
     // Check integrity
-    for (size_t l = 0; l < layers.size(); l++) {
-      if (layers[l]->op_type == OP_FUSED) {
-        FusedOp* fused = (FusedOp*) layers[l];
+    for (size_t l = 0; l < operators.size(); l++) {
+      if (operators[l]->op_type == OP_FUSED) {
+        FusedOp* fused = (FusedOp*) operators[l];
         int ioff = 0, woff = 0, ooff = 0;
         for (int op = 0; op < fused->numOperators; op++) {
           Op* old_op = fused->operators[op];
@@ -2447,8 +2475,8 @@ void FFModel::compile(LossType loss_type,
         }
       } else {
         bool found = false;
-        for (size_t i = 0; i < old_layers.size(); i++) {
-          if (old_layers[i] == layers[l]) {
+        for (size_t i = 0; i < old_operators.size(); i++) {
+          if (old_operators[i] == operators[l]) {
             assert(!found);
             found = true;
           }
@@ -2456,10 +2484,10 @@ void FFModel::compile(LossType loss_type,
         assert(found);
       }
     }
-    fprintf(stderr, "%zu layers after fusion...\n", layers.size());
-    for (size_t i = 0; i < layers.size(); i++) {
-        Op* op = layers[i];
-        printf("layer[%zu]: type(%s) guid(%lu)\n", i, optype_to_string(layers[i]->op_type).c_str(), layers[i]->op_guid);
+    fprintf(stderr, "%zu operators after fusion...\n", operators.size());
+    for (size_t i = 0; i < operators.size(); i++) {
+        Op* op = operators[i];
+        printf("operator[%zu]: type(%s) guid(%lu)\n", i, optype_to_string(operators[i]->op_type).c_str(), operators[i]->op_guid);
         for (int j = 0; j < op->numInputs; j++) {
           LogicalRegion handle = op->inputs[j]->region;
           printf("inputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
@@ -2480,12 +2508,12 @@ void FFModel::compile(LossType loss_type,
         }
     }
   }
-  Op* final_layer = get_final_layer();
-  // FIXME: currently assume the final layer has exactly one output
-  assert(final_layer->numOutputs == 1);
-  for (size_t i = 0; i < layers.size(); i++) {
-      Op* op = layers[i];
-      printf("layer[%zu]: type(%d)\n", i, layers[i]->op_type);
+  Op* final_operator = get_final_operator();
+  // FIXME: currently assume the final operator has exactly one output
+  assert(final_operator->numOutputs == 1);
+  for (size_t i = 0; i < operators.size(); i++) {
+      Op* op = operators[i];
+      printf("operator[%zu]: type(%d)\n", i, operators[i]->op_type);
       for (int j = 0; j < op->numInputs; j++) {
         LogicalRegion handle = op->inputs[j]->region;
         printf("inputs[%d] region(%d,%d,%d)\n", j, handle.get_index_space().get_id(),
@@ -2499,12 +2527,12 @@ void FFModel::compile(LossType loss_type,
                           handle.get_tree_id());
       }
   }
-  //assert(final_layer->outputs[0].num_dims == 2);
+  //assert(final_operator->outputs[0].num_dims == 2);
   ParallelDim dims[MAX_TENSOR_DIM];
-  int num_dims = final_layer->outputs[0]->num_dims;
-  // FIXME: Currently assume 1st input for 1st layer = batch_size
+  int num_dims = final_operator->outputs[0]->num_dims;
+  // FIXME: Currently assume 1st input for 1st operator = batch_size
   for (int i = 0; i < num_dims; i++)
-    dims[i] = final_layer->outputs[0]->dims[i];
+    dims[i] = final_operator->outputs[0]->dims[i];
   DataType label_type = DT_FLOAT;
   if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     // assign dims[num_dims-1] = 1 for sparse categorical labels
@@ -2517,8 +2545,8 @@ void FFModel::compile(LossType loss_type,
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      label_tensor = create_tensor_legion_ordering(num_dims, dims, label_type); \
-      label_tensor->machine_view = final_layer->outputs[0]->machine_view; \
+      label_tensor = create_parallel_tensor_legion_ordering(num_dims, dims, label_type); \
+      label_tensor->machine_view = final_operator->outputs[0]->machine_view; \
       map_tensor(label_tensor, label_tensor->owner_op); \
       label_tensor_with_final_part = label_tensor; \
       break; \
@@ -2537,10 +2565,10 @@ void FFModel::compile(LossType loss_type,
 #ifdef FF_USE_NCCL
   if (config.computationMode == COMP_MODE_TRAINING) {
     // init all nccl communicators
-    for (size_t l = 0; l < layers.size(); l++) {
+    for (size_t l = 0; l < operators.size(); l++) {
       // Only create nccl for weights
-      if (layers[l]->op_type != OP_WEIGHT) continue;
-      MachineView view = layers[l]->outputs[0]->machine_view;
+      if (operators[l]->op_type != OP_WEIGHT) continue;
+      MachineView view = operators[l]->outputs[0]->machine_view;
       if (view_hash_to_nccl_comms.find(view.hash())==view_hash_to_nccl_comms.end()) {
         TaskLauncher launcher(NCCL_GETUNIQUEID_TASK_ID, TaskArgument(NULL, 0));
         Future future = runtime->execute_task(ctx, launcher);
@@ -2579,16 +2607,16 @@ float randf() {
 void FFModel::propagate(std::map<Op*, ParallelConfig> const &current,
                         std::map<Op*, ParallelConfig> &next) const {
   next = current;
-  size_t opId = std::rand() % (layers.size() - 1);
-  //TODO: need to make sure opId is not an output layer of the model
-  assert (opId != layers.size() - 1);
+  size_t opId = std::rand() % (operators.size() - 1);
+  //TODO: need to make sure opId is not an output operator of the model
+  assert (opId != operators.size() - 1);
 
   std::vector<PropagationEdgeInfo> choosable_edges;
   std::unordered_set<Op *> opsSeen;
 
   auto bwd_edge_map = this->get_bwd_edge_map();
 
-  Op *selected_op = this->layers[opId];
+  Op *selected_op = this->operators[opId];
   do {
     opsSeen.insert(selected_op);
     choosable_edges.clear();
@@ -2669,11 +2697,11 @@ void FFModel::rewrite(const std::map<const Op*, ParallelConfig>& current,
     this->propagate(current, next);
 #endif
   } else {
-    size_t opId = std::rand() % layers.size();
-    //TODO: need to make sure opId is not an output layer of the model
-    if (opId == layers.size() - 1)
+    size_t opId = std::rand() % operators.size();
+    //TODO: need to make sure opId is not an output operator of the model
+    if (opId == operators.size() - 1)
       return;
-    next[layers[opId]] = layers[opId]->get_random_parallel_config(*this);
+    next[operators[opId]] = operators[opId]->get_random_parallel_config(*this);
   }
 }
 
@@ -2743,18 +2771,18 @@ void FFModel::mcmc_optimize(std::map<const Op*, ParallelConfig>& best,
 
 void FFModel::zero_gradients(void)
 {
-  for (int l = layers.size() - 1; l >= 0; l--)
-    layers[l]->zero_grad(*this);
+  for (int l = operators.size() - 1; l >= 0; l--)
+    operators[l]->zero_grad(*this);
 }
 
 void FFModel::print_layers(int id)
 {
   if (id == -1) {
     for (size_t i = 0; i < layers.size(); i++) {
-      layers[i]->print_layer(*this);
+      layers[i]->print();
     }
   } else {
-    layers[id]->print_layer(*this);
+    layers[id]->print();
   }
 }
 
@@ -2838,10 +2866,10 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
 
 std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> FFModel::get_bwd_edge_map() const {
   std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> bwd_edge_map;
-  for (auto const &layer : this->layers) {
-    for (int i = 0; i < layer->numInputs; i++) {
-      Op *src = (Op*) layer->inputs[i]->owner_op;
-      bwd_edge_map[src].push_back({layer, layer->inputs[i]->get_volume()});
+  for (auto const &op : this->operators) {
+    for (int i = 0; i < op->numInputs; i++) {
+      Op *src = (Op*) op->inputs[i]->owner_op;
+      bwd_edge_map[src].push_back({op, op->inputs[i]->get_volume()});
     }
   }
 
@@ -4117,37 +4145,37 @@ void register_flexflow_internal_tasks()
 
 // template instantiations
 #define DIMFUNC(DIM) \
-  template Tensor FFModel::create_tensor<DIM>(const int dims[], DataType data_type, const Op* owner_op, int owner_idx, bool create_grad); \
-  template Tensor FFModel::create_tensor<DIM>(const ParallelDim dims[], DataType data_type, const Op* owner_op, int owner_idx, bool create_grad); \
-  template Parameter FFModel::create_weight<DIM>(const int dims[], DataType data_type, const Op* owner_op, bool create_grad,\
+  template Tensor FFModel::create_tensor<DIM>(const int dims[], DataType data_type, const Layer* owner_op, int owner_idx, bool create_grad); \
+  template ParallelTensor FFModel::create_parallel_tensor<DIM>(const ParallelDim dims[], DataType data_type, const Op* owner_op, int owner_idx, bool create_grad); \
+  template Parameter FFModel::create_weight<DIM>(const int dims[], DataType data_type, const Layer* owner_op, bool create_grad,\
     Initializer* initializer, ParameterSyncType sync_type);\
-  template Parameter FFModel::create_weight<DIM>(const ParallelDim dims[], DataType data_type, const Op* owner_op, bool create_grad,\
+  template ParallelParameter FFModel::create_parallel_weight<DIM>(const ParallelDim dims[], DataType data_type, const Op* owner_op, bool create_grad,\
     Initializer* initializer, ParameterSyncType sync_type);\
-  template void FFModel::map_tensor_with_dim<DIM>(Tensor tensor, const Op* parallel_op); \
-  template void FFModel::map_weight_with_dim<DIM>(Tensor weight, const Op* parallel_op); \
+  template void FFModel::map_tensor_with_dim<DIM>(ParallelTensor tensor, const Op* parallel_op); \
+  template void FFModel::map_weight_with_dim<DIM>(ParallelTensor weight, const Op* parallel_op); \
   template Tensor FFModel::create_constant<DIM>(const int* dims, float value, DataType data_type); \
-  template void FFModel::create_disjoint_partition<DIM>(const Tensor tensor, const IndexSpaceT<DIM>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
+  template void FFModel::create_disjoint_partition<DIM>(const ParallelTensor tensor, const IndexSpaceT<DIM>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
   LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
 
 #define DIMFUNC(D1,D2) \
-  template void FFModel::map_tensor_with_dim2<D1,D2>(Tensor tensor, const Op* parallel_op); \
+  template void FFModel::map_tensor_with_dim2<D1,D2>(ParallelTensor tensor, const Op* parallel_op); \
   template void FFModel::create_disjoint_partition_with_dim2<D1,D2>(const ParallelDim dims[], const IndexSpaceT<D2>& part_is, const LogicalRegion& region, LogicalPartition& part); \
   template void FFModel::create_aliased_partition_with_dim2<D1,D2>(const ParallelDim dims[], int aliased_dim, const IndexSpaceT<D2>& part_is, const LogicalRegion& region, LogicalPartition& part); \
-  template void FFModel::create_data_parallel_partition_with_diff_dims<D1, D2>(const Tensor tensor, const IndexSpaceT<D2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
+  template void FFModel::create_data_parallel_partition_with_diff_dims<D1, D2>(const ParallelTensor tensor, const IndexSpaceT<D2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
   LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 
-template void FFModel::map_conv_weight<4>(Tensor weight, const Op* parallel_op);
-template void FFModel::map_conv_weight<1>(Tensor weight, const Op* parallel_op);
+template void FFModel::map_conv_weight<4>(ParallelTensor weight, const Op* parallel_op);
+template void FFModel::map_conv_weight<1>(ParallelTensor weight, const Op* parallel_op);
 
 #define DIMFUNC(D1,D2) \
-  template void FFModel::map_linear_weight<D1, D2>(Tensor p, const Op* op);
+  template void FFModel::map_linear_weight<D1, D2>(ParallelTensor p, const Op* op);
   LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 
 #define DIMFUNC(D1,D2) \
-  template Tensor FFModel::create_linear_replica<D1>(const int* dims, const IndexSpaceT<D2>& part_is, DataType data_type);
+  template ParallelTensor FFModel::create_linear_replica<D1>(const int* dims, const IndexSpaceT<D2>& part_is, DataType data_type);
   LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 

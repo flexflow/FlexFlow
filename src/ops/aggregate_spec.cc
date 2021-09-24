@@ -33,13 +33,15 @@ using Legion::Predicate;
 Tensor FFModel::aggregate_spec(const Tensor* inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
                           int n, float lambda_bal, const char* name)
 {
+#ifdef DEADCODE
   AggregateSpec* aggr = new AggregateSpec(*this, inputs, n, lambda_bal, name);
   layers.push_back(aggr);
   return aggr->outputs[0];
+#endif
 }
 
 AggregateSpec::AggregateSpec(FFModel& model,
-                    const Tensor* _inputs,
+                    const ParallelTensor* _inputs,
                     int _n, float _lambda_bal, const char* name)
 : Op(model, OP_AGG_SPEC, name, _n+4/*numInputs*/, 0/*numWeights*/, 1/*numOutputs*/, _inputs),
   n(_n), lambda_bal(_lambda_bal)
@@ -78,7 +80,7 @@ AggregateSpec::AggregateSpec(FFModel& model,
     dims[i] = inputs[4]->dims[i];
   dims[num_dim-1] = inputs[0]->dims[num_dim-1];
   numOutputs = 1;
-  outputs[0] = model.create_tensor_legion_ordering(num_dim, dims, DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(num_dim, dims, DT_FLOAT, this);
 
   numWeights = 0;
 }

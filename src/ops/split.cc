@@ -36,10 +36,13 @@ void FFModel::split(const Tensor input,
                     int axis,
                     const char* name)
 {
+  assert(false);
+#ifdef DEADCODE
   Split* split = new Split(*this, input, splits, axis, name);
   layers.push_back(split);
   for (size_t i = 0; i < splits.size(); i++)
     outputs[i] = split->outputs[i];
+#endif
 }
 
 size_t Split::get_params_hash() const {
@@ -53,7 +56,7 @@ size_t Split::get_params_hash() const {
 }
 
 Split::Split(FFModel& model,
-             const Tensor input,
+             const ParallelTensor input,
              const std::vector<int>& splits,
              int _axis,
              const char* name)
@@ -76,7 +79,7 @@ Split::Split(FFModel& model,
     // Assert the _axis dim cannot be parallelized
     assert(dims[axis].degree == 1);
     assert(dims[axis].parallel_idx == -1);
-    outputs[i] = model.create_tensor_legion_ordering(
+    outputs[i] = model.create_parallel_tensor_legion_ordering(
         numdim, dims, input->data_type,
         this/*owner_op*/, i/*owner_idx*/);
   }

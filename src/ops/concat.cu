@@ -247,7 +247,7 @@ bool Concat::measure_operator_cost(Simulator* sim,
                                    CostMetrics& cost_metrics) const
 {
   assert (numInputs <= MAX_NUM_INPUTS);
-  TensorBase sub_inputs[MAX_NUM_INPUTS], sub_output;
+  ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_output;
   if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
     return false;
   }

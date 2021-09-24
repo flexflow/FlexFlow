@@ -21,6 +21,8 @@ Tensor FFModel::dropout(const Tensor input,
                         unsigned long long seed,
                         const char* name)
 {
+  assert(false);
+#ifdef DEADCODE
   // see = 0 is preserved as None, so we use a random seed
   if (seed == 0) {
     seed = std::rand();
@@ -28,10 +30,11 @@ Tensor FFModel::dropout(const Tensor input,
   Dropout *dropout = new Dropout(*this, input, rate, seed, name);
   layers.push_back(dropout);
   return dropout->outputs[0];
+#endif
 }
 
 Dropout::Dropout(FFModel& model,
-                 const Tensor _input,
+                 const ParallelTensor _input,
                  float _rate,
                  unsigned long long _seed,
                  const char* name)
@@ -43,7 +46,7 @@ Dropout::Dropout(FFModel& model,
   for (int i = 0; i < _input->num_dims; i++)
     dims[i] = _input->dims[i];
   numOutputs = 1;
-  outputs[0] = model.create_tensor_legion_ordering(_input->num_dims, dims, DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(_input->num_dims, dims, DT_FLOAT, this);
 }
 
 #ifdef DEADCODE

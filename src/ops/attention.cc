@@ -44,6 +44,7 @@ Tensor FFModel::multihead_attention(const Tensor query,
                                     Initializer* kernel_initializer,
                                     const char* name)
 {
+#ifdef DEADCODE
   {
     MultiHeadAttention* attn = new MultiHeadAttention(*this, query, key, value,
                                                       embed_dim, num_heads,
@@ -53,12 +54,13 @@ Tensor FFModel::multihead_attention(const Tensor query,
     layers.push_back(attn);
     return attn->outputs[0];
   }
+#endif
 }
 
 MultiHeadAttention::MultiHeadAttention(FFModel& model,
-                                       const Tensor _query,
-                                       const Tensor _key,
-                                       const Tensor _value,
+                                       const ParallelTensor _query,
+                                       const ParallelTensor _key,
+                                       const ParallelTensor _value,
                                        int _embed_dim, int _num_heads,
                                        int _kdim, int _vdim,
                                        float _dropout, bool _bias,
@@ -85,7 +87,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
   // Currently require no parallelism along this dim
   assert(dims[0].degree == 1);
 
-  outputs[0] = model.create_tensor_legion_ordering(_query->num_dims,
+  outputs[0] = model.create_parallel_tensor_legion_ordering(_query->num_dims,
                                                    dims, DT_FLOAT, this);
   /* for (int i = 0; i < numdim; i++) { */
   /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
@@ -95,10 +97,10 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
 }
 
 MultiHeadAttention::MultiHeadAttention(FFModel& model,
-                                       const Tensor _query,
-                                       const Tensor _key,
-                                       const Tensor _value,
-                                       const Tensor _weight,
+                                       const ParallelTensor _query,
+                                       const ParallelTensor _key,
+                                       const ParallelTensor _value,
+                                       const ParallelTensor _weight,
                                        int _embed_dim, int _num_heads,
                                        int _kdim, int _vdim,
                                        float _dropout, bool _bias,
@@ -127,7 +129,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
   // Currently require no parallelism along this dim
   assert(dims[0].degree == 1);
 
-  outputs[0] = model.create_tensor_legion_ordering(_query->num_dims,
+  outputs[0] = model.create_parallel_tensor_legion_ordering(_query->num_dims,
                                                    dims, DT_FLOAT, this);
   /* for (int i = 0; i < numdim; i++) { */
   /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
@@ -279,9 +281,9 @@ bool MultiHeadAttention::get_int_parameter(PMParameter para, int* value) const
 
 using PCG::Node;
 
-Node FFModel::get_or_create_multihead_attn_node(const Tensor query,
-                                                const Tensor key,
-                                                const Tensor value,
+Node FFModel::get_or_create_multihead_attn_node(const ParallelTensor query,
+                                                const ParallelTensor key,
+                                                const ParallelTensor value,
                                                 int embed_dim,
                                                 int num_heads,
                                                 int kdim,

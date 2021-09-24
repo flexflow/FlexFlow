@@ -68,8 +68,8 @@ Metrics::Metrics(LossType _loss_type, const std::vector<MetricsType>& metrics)
 }
 
 void Metrics::compute(FFModel* model,
-                      const Tensor logit,
-                      const Tensor label)
+                      const ParallelTensor logit,
+                      const ParallelTensor label)
 {
   // Use the same parallel strategy as the owner of logit
   Context ctx = model->config.lg_ctx;

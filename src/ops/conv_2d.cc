@@ -1,6 +1,7 @@
 #include "flexflow/ops/conv_2d.h"
 #include "legion/legion_utilities.h"
 #include "flexflow/utils/hash_utils.h"
+#include "flexflow/layer.h"
 
 namespace FlexFlow {
   
@@ -25,7 +26,7 @@ Tensor FFModel::conv2d(const Tensor input,
                        ActiMode activation,
                        int groups,
                        bool use_bias,
-                       const Op* shared_op,
+                       const Layer* shared_op,
                        Initializer* kernel_initializer,
                        Initializer* bias_initializer,
                        char const *name)
@@ -74,30 +75,6 @@ Tensor FFModel::conv2d(const Tensor input,
 #endif
 }
 
-Conv2D::Conv2D(FFModel& model,
-               const ParallelTensor input,
-               int outChannels,
-               int kernelH, int kernelW,
-               int strideH, int strideW, 
-               int paddingH, int paddingW,
-               ActiMode activation,
-               int groups,
-               bool use_bias,
-               bool allocate_weights,
-               const char* name)
-: ParallelOp(model, OP_CONV2D, name, 1/*inputs*/, use_bias ? 2 : 1/*weights*/, allocate_weights, 1/*outputs*/, input),
-  in_channels(input->dims[Conv2DInput::CHANNEL].size),
-  out_channels(outChannels),
-  kernel_h(kernelH), kernel_w(kernelW),
-  stride_h(strideH), stride_w(strideW),
-  padding_h(paddingH), padding_w(paddingW),
-  activation(activation),
-  groups(groups),
-  use_bias(use_bias)
-{
-  assert(false);
-}
-
 Conv2DParams Conv2D::get_params() const {
   Conv2DParams params;
   params.out_channels = this->out_channels;
@@ -114,7 +91,7 @@ Conv2DParams Conv2D::get_params() const {
   return params;
 }
 
-size_t Conv2DParams::get_hash(const Tensor input) const {
+size_t Conv2DParams::get_hash(const ParallelTensor input) const {
   size_t hash = input->get_owner_independent_hash();
   hash_combine(hash, this->out_channels);
   hash_combine(hash, this->kernel_h);
@@ -135,7 +112,7 @@ size_t Conv2D::get_params_hash() const {
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_conv2d_node(const Tensor input,
+Node FFModel::get_or_create_conv2d_node(const ParallelTensor input,
                                         const Conv2DParams& params)
 {
   if (!params.is_valid(input)) {
@@ -167,7 +144,7 @@ Node FFModel::get_or_create_conv2d_node(const Tensor input,
   return this->new_node(conv);
 }
 
-Node FFModel::get_or_create_conv2d_node(const Tensor input,
+Node FFModel::get_or_create_conv2d_node(const ParallelTensor input,
                                         int outChannels,
                                         int kernelH, int kernelW,
                                         int strideH, int strideW,
@@ -191,10 +168,10 @@ Node FFModel::get_or_create_conv2d_node(const Tensor input,
   return this->get_or_create_conv2d_node(input, params);
 }
 
-void Conv2DParams::mark_replica_dims(const Tensor input,
-                               ParallelDim output_dims[MAX_TENSOR_DIM], 
-                               ParallelDim kernel_dims[MAX_TENSOR_DIM], 
-                               ParallelDim bias_dims[MAX_TENSOR_DIM]) const 
+void Conv2DParams::mark_replica_dims(const ParallelTensor input,
+                                     ParallelDim output_dims[MAX_TENSOR_DIM], 
+                                     ParallelDim kernel_dims[MAX_TENSOR_DIM], 
+                                     ParallelDim bias_dims[MAX_TENSOR_DIM]) const 
 {
   if (output_dims != nullptr) {
     output_dims[Conv2DOutput::REPLICA].is_replica_dim = true;
@@ -210,7 +187,8 @@ void Conv2DParams::mark_replica_dims(const Tensor input,
   }
 }
 
-int Conv2DParams::output_size(const Tensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) const {
+int Conv2DParams::output_size(const ParallelTensor input,
+                              ParallelDim output_dims[MAX_TENSOR_DIM]) const {
   int input_w = input->dims[Conv2DInput::WIDTH].size;
   int input_h = input->dims[Conv2DInput::HEIGHT].size;
 
@@ -222,7 +200,8 @@ int Conv2DParams::output_size(const Tensor input, ParallelDim output_dims[MAX_TE
   return input->num_dims;
 };
 
-int Conv2DParams::kernel_size(const Tensor input, ParallelDim kernel_dims[MAX_TENSOR_DIM]) const {
+int Conv2DParams::kernel_size(const ParallelTensor input,
+                              ParallelDim kernel_dims[MAX_TENSOR_DIM]) const {
   kernel_dims[Conv2DKernel::CHANNEL_OUT].size = this->out_channels;
   kernel_dims[Conv2DKernel::CHANNEL_IN].size = input->dims[Conv2DInput::CHANNEL].size / this->groups;
   kernel_dims[Conv2DKernel::HEIGHT].size = this->kernel_h * input->dims[Conv2DInput::HEIGHT].degree;
@@ -231,13 +210,14 @@ int Conv2DParams::kernel_size(const Tensor input, ParallelDim kernel_dims[MAX_TE
   return Conv2DKernel::NUMDIM;
 }
 
-int Conv2DParams::bias_size(const Tensor input, ParallelDim bias_dims[MAX_TENSOR_DIM]) const {
+int Conv2DParams::bias_size(const ParallelTensor input,
+                            ParallelDim bias_dims[MAX_TENSOR_DIM]) const {
   bias_dims[Conv2DBias::CHANNEL].size = this->out_channels;
 
   return Conv2DBias::NUMDIM;
 };
 
-void Conv2DParams::solve_dims(const Tensor input, 
+void Conv2DParams::solve_dims(const ParallelTensor input, 
                               ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
                               ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,  
                               ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const 
@@ -333,7 +313,7 @@ void Conv2D::construct_weight_mappings(std::vector<ParallelDimMappingRecord>& ou
 
 Conv2D::Conv2D(FFModel& model,
                Conv2D const &other,
-               const Tensor input,
+               const ParallelTensor input,
                bool allocate_weights)
 : Conv2D(model, 
          input, 
@@ -351,8 +331,8 @@ Conv2D::Conv2D(FFModel& model,
          other.name) 
 { }
 
-bool Conv2DParams::is_valid(const Tensor input) const {
-  TensorShape output_shape, kernel_shape, bias_shape;
+bool Conv2DParams::is_valid(const ParallelTensor input) const {
+  ParallelTensorShape output_shape, kernel_shape, bias_shape;
   this->solve_dims(input, 
                    output_shape.dims, &output_shape.num_dims,
                    kernel_shape.dims, &kernel_shape.num_dims,
@@ -379,7 +359,7 @@ Conv2D::Conv2D(FFModel& model,
                bool use_bias,
                bool allocate_weights,
                const char* name)
-: ParallelOp(model, OP_CONV2D, name, 1/*inputs*/, use_bias ? 2 : 1/*weights*/, allocate_weights, 1/*outputs*/, input),
+: Op(model, OP_CONV2D, name, 1/*inputs*/, use_bias ? 2 : 1/*weights*/, allocate_weights, 1/*outputs*/, input),
   in_channels(input->dims[Conv2DInput::CHANNEL].size),
   out_channels(outChannels),
   kernel_h(kernelH), kernel_w(kernelW),
@@ -411,18 +391,18 @@ Conv2D::Conv2D(FFModel& model,
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand()/*seed*/);
 
-    weights[Conv2DKernel::INDEX] = model.create_weight_legion_ordering(
+    weights[Conv2DKernel::INDEX] = model.create_parallel_weight_legion_ordering(
         kernel_ndims, kernel_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
     
     if (use_bias) {
       Initializer *bias_initializer = new ZeroInitializer();
 
-      weights[Conv2DBias::INDEX] = model.create_weight_legion_ordering(
+      weights[Conv2DBias::INDEX] = model.create_parallel_weight_legion_ordering(
           bias_ndims, bias_dims, DT_FLOAT, NULL/*owner_op*/, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
     }
   }
 
-  outputs[0] = model.create_tensor_legion_ordering(output_ndims, output_dims, DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(output_ndims, output_dims, DT_FLOAT, this);
 
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
@@ -690,7 +670,7 @@ void Conv2D::serialize(Legion::Serializer &sez) const {
 
 using PCG::Node;
 /*static*/
-Node Conv2D::deserialize(FFModel& ff, Legion::Deserializer& dez, Tensor inputs[], int num_inputs) {
+Node Conv2D::deserialize(FFModel& ff, Legion::Deserializer& dez, ParallelTensor inputs[], int num_inputs) {
   assert (num_inputs == 1);
 
   int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;

@@ -26,7 +26,7 @@ public:
   ParallelOp(FFModel& model,
              OperatorType type,
              const char* _name,
-             const Tensor input);
+             const ParallelTensor input);
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
   virtual void backward(const FFModel&) = 0;

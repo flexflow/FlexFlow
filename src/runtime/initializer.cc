@@ -33,7 +33,7 @@ GlorotUniform::~GlorotUniform(void)
 {}
 
 void GlorotUniform::init(const FFModel* ff,
-                         const Tensor p)
+                         const ParallelTensor p)
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
@@ -73,7 +73,7 @@ ZeroInitializer::~ZeroInitializer(void)
 {}
 
 void ZeroInitializer::init(const FFModel* ff,
-                           const Tensor p)
+                           const ParallelTensor p)
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
@@ -164,7 +164,7 @@ UniformInitializer::~UniformInitializer(void)
 {}
 
 void UniformInitializer::init(const FFModel* ff,
-                              const Tensor p)
+                              const ParallelTensor p)
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
@@ -201,7 +201,7 @@ NormInitializer::~NormInitializer(void)
 {}
 
 void NormInitializer::init(const FFModel* ff,
-                           const Tensor p)
+                           const ParallelTensor p)
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
@@ -249,7 +249,7 @@ ConstantInitializer::~ConstantInitializer(void)
 {}
 
 void ConstantInitializer::init(const FFModel* ff,
-                               const Tensor p)
+                               const ParallelTensor p)
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;

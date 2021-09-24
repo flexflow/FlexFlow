@@ -8,7 +8,7 @@ namespace FlexFlow {
 class Replicate : public ParallelOp {
 public:
   Replicate(FFModel& model,
-      const Tensor input,
+      const ParallelTensor input,
       int replicate_legion_dim,
       int replicate_degree,
       const char* name = NULL);

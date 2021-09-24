@@ -49,7 +49,7 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_zero_initializer_t, ZeroInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_uniform_initializer_t, UniformInitializer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_norm_initializer_t, NormInitializer *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_op_t, Op *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_op_t, Layer *);
   //FF_NEW_OPAQUE_WRAPPER(flexflow_parameter_t, Parameter *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_perf_metrics_t, PerfMetrics *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_net_config_t, NetConfig *);
@@ -193,7 +193,7 @@ flexflow_model_init_layers(
   flexflow_model_t handle_)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->init_layers();
+  handle->init_operators();
 }
 
 void
@@ -258,9 +258,12 @@ flexflow_tensor_t
 flexflow_model_get_label_tensor(
   flexflow_model_t handle_)
 {
+  assert(false);
+#ifdef DEADCODE
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor tensor = handle->label_tensor;
   return FFCObjectWrapper::wrap(tensor);
+#endif
 }
 
 void
@@ -371,7 +374,7 @@ flexflow_model_add_conv2d(
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap_const(input_);
-  Op *shared_op = FFCObjectWrapper::unwrap(shared_op_);
+  Layer *shared_op = FFCObjectWrapper::unwrap(shared_op_);
   Initializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
   Initializer *bias_initializer = FFCObjectWrapper::unwrap(bias_initializer_);
   Tensor tensor = handle->conv2d(input, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, activation, groups, use_bias, shared_op, kernel_initializer, bias_initializer, name);
@@ -394,7 +397,7 @@ flexflow_model_add_embedding(
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap_const(input_);
-  Op *shared_op = FFCObjectWrapper::unwrap(shared_op_);
+  Layer *shared_op = FFCObjectWrapper::unwrap(shared_op_);
   Initializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
   Tensor tensor = handle->embedding(input, num_entires, out_dim, aggr, shared_op, kernel_initializer, name);
   DEBUG_PRINT("[Embedding] new Tensor %p, input %p, num_entires %d, out_dim %d, aggr %d, shared_op %p, kernel_init %p, name %s", 
@@ -468,7 +471,7 @@ flexflow_model_add_dense(
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap_const(input_);
-  Op *shared_op = FFCObjectWrapper::unwrap(shared_op_);
+  Layer *shared_op = FFCObjectWrapper::unwrap(shared_op_);
   Initializer *kernel_initializer = FFCObjectWrapper::unwrap(kernel_initializer_);
   Initializer *bias_initializer = FFCObjectWrapper::unwrap(bias_initializer_);
   Tensor tensor = handle->dense(input, out_dim, activation, use_bias, data_type, shared_op, kernel_initializer, bias_initializer, name);
@@ -840,7 +843,7 @@ flexflow_model_get_layer_by_id(
   int layer_id)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Op* layer = handle->layers[layer_id];
+  Layer* layer = handle->layers[layer_id];
   return FFCObjectWrapper::wrap(layer);
 }
 
@@ -849,9 +852,12 @@ flexflow_model_get_parameter_by_id(
   flexflow_model_t handle_,
   int layer_id)
 {
+  assert(false);
+#ifdef DEADCODE
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor tensor = handle->parameters[layer_id];
   return FFCObjectWrapper::wrap(tensor);
+#endif
 }
 
 flexflow_perf_metrics_t
@@ -905,10 +911,13 @@ flexflow_tensor_map(
   flexflow_tensor_t tensor_,
   flexflow_op_t op_)
 {
+  assert(false);
+#ifdef DEADCODE
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   Tensor tensor = FFCObjectWrapper::unwrap(tensor_);
-  Op* op = FFCObjectWrapper::unwrap(op_);
+  Layer* op = FFCObjectWrapper::unwrap(op_);
   model->map_tensor(tensor, op);
+#endif
 }
 
 flexflow_tensor_t
@@ -1007,8 +1016,8 @@ flexflow_tensor_get_dim(
   int legion_axis)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
-  DEBUG_PRINT("[Tensor] get dims [%d, %d, %d, %d]", handle->dims[3].size, handle->dims[2].size, handle->dims[1].size, handle->dims[0].size);
-  return handle->dims[legion_axis].size;
+  DEBUG_PRINT("[Tensor] get dims [%d, %d, %d, %d]", handle->dims[3], handle->dims[2], handle->dims[1], handle->dims[0]);
+  return handle->dims[legion_axis];
 }
 
 int
@@ -1024,7 +1033,7 @@ flexflow_tensor_get_owner_op(
   flexflow_tensor_t handle_)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
-  return FFCObjectWrapper::wrap_const(handle->owner_op);
+  return FFCObjectWrapper::wrap_const(handle->owner_layer);
 }
 
 void
@@ -1749,7 +1758,7 @@ int
 flexflow_op_get_num_parameters(
   flexflow_op_t handle_)
 {
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  Layer *handle = FFCObjectWrapper::unwrap(handle_);
   return handle->numWeights;
 }
 
@@ -1758,7 +1767,7 @@ flexflow_op_get_parameter_by_id(
   flexflow_op_t handle_,
   int id)
 {
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  Layer *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor tensor = handle->get_parameter(id);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1767,7 +1776,7 @@ int
 flexflow_op_get_num_inputs(
   flexflow_op_t handle_)
 {
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  Layer *handle = FFCObjectWrapper::unwrap(handle_);
   return handle->numInputs;
 }
 
@@ -1776,7 +1785,7 @@ flexflow_op_get_input_by_id(
   flexflow_op_t handle_,
   int id)
 {
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  Layer *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor tensor = handle->inputs[id];
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1785,7 +1794,7 @@ int
 flexflow_op_get_num_outputs(
   flexflow_op_t handle_)
 {
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  Layer *handle = FFCObjectWrapper::unwrap(handle_);
   return handle->numOutputs;
 }
 
@@ -1794,7 +1803,7 @@ flexflow_op_get_output_by_id(
   flexflow_op_t handle_,
   int id)
 {
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  Layer *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor tensor = handle->outputs[id];
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1804,7 +1813,7 @@ flexflow_op_init(
   flexflow_op_t handle_,
   flexflow_model_t model_)
 {
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  Layer *handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   handle->init(*model);
 }
@@ -1814,7 +1823,7 @@ flexflow_op_forward(
   flexflow_op_t handle_,
   flexflow_model_t model_)
 {
-  Op *handle = FFCObjectWrapper::unwrap(handle_);
+  Layer *handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   handle->forward(*model);
 }

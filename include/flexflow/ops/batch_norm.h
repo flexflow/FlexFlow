@@ -9,9 +9,9 @@ class BatchNormMeta;
 class BatchNorm : public Op {
 public:
   BatchNorm(FFModel& model,
-            const Tensor input,
-            const Tensor scale,
-            const Tensor bias,
+            const ParallelTensor input,
+            const ParallelTensor scale,
+            const ParallelTensor bias,
             bool relu,
             const char* name);
   void init(const FFModel&);

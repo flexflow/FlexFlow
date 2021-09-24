@@ -23,7 +23,7 @@ public:
 class Softmax : public Op {
 public:
   Softmax(FFModel& model,
-          const Tensor logit,
+          const ParallelTensor logit,
           int dim,
           const char* name);
   void init(const FFModel&);

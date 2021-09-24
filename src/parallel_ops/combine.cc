@@ -37,21 +37,24 @@ using Legion::Machine;
 using Legion::LogicalRegion;
 using Legion::LogicalPartition;
 
-Tensor FFModel::combine(
-    const Tensor input,
+ParallelTensor FFModel::combine(
+    const ParallelTensor input,
     int combine_legion_dim,
     int combine_degree,
     const char* name)
 {
+  assert(false);
+#ifdef DEADCODE
   Combine* comb = new Combine(*this, input,
       combine_legion_dim, combine_degree, name);
   layers.push_back(comb);
   return comb->outputs[0];
+#endif
 }
 
 Combine::Combine(
     FFModel& model,
-    const Tensor _input,
+    const ParallelTensor _input,
     int _combine_legion_dim,
     int _combine_degree,
     const char* name)
@@ -67,8 +70,8 @@ Combine::Combine(
   assert (combine_degree > 0 && "Must use combine_degree > 0");
   assert(dims[combine_dim].degree % combine_degree == 0);
   dims[combine_dim].degree /= combine_degree;
-  TensorBase::update_parallel_ids(numdim, dims);
-  outputs[0] = model.create_tensor_legion_ordering(
+  ParallelTensorBase::update_parallel_ids(numdim, dims);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, DT_FLOAT, this);
   //inputs[0]->print("Combine::input");
   //outputs[0]->print("Combine::output");
@@ -177,7 +180,7 @@ size_t Combine::get_params_hash() const {
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_combine_node(const Tensor input,
+Node FFModel::get_or_create_combine_node(const ParallelTensor input,
                                          int combine_dim,
                                          int combine_degree)
 {

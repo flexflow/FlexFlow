@@ -15,7 +15,7 @@ class Concat : public Op {
 public:
   Concat(FFModel& model,
          int n,
-         const Tensor* inputs,
+         const ParallelTensor* inputs,
          int axis,
          const char* name);
   void init(const FFModel&);

@@ -416,7 +416,7 @@ bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
                                                const ParallelConfig& pc,
                                                CostMetrics& cost_metrics) const
 {
-  TensorBase sub_output, sub_query, sub_key, sub_value;
+  ParallelTensorBase sub_output, sub_query, sub_key, sub_value;
   if (!inputs[0]->get_input_sub_tensor(pc, sub_query, OP_MULTIHEAD_ATTENTION))
     return false;
   if (!inputs[1]->get_input_sub_tensor(pc, sub_key, OP_MULTIHEAD_ATTENTION))

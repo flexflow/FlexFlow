@@ -38,15 +38,18 @@ void FFModel::top_k(const Tensor input,
                     bool sorted,
                     const char *name)
 {
+  assert(false);
+#ifdef DEADCODE
   TopK* topk = new TopK(*this, input, k, sorted, name);
   layers.push_back(topk);
   assert(topk->numOutputs == 2);
   outputs[0] = topk->outputs[0];
   outputs[1] = topk->outputs[1];
+#endif
 }
 
 TopK::TopK(FFModel& model,
-           const Tensor _input,
+           const ParallelTensor _input,
            int _k, bool _sorted,
            const char* name)
 : Op(model, OP_TOPK, name, 1/*inputs*/, 0/*weights*/, 2/*outputs*/, _input),
@@ -59,10 +62,10 @@ TopK::TopK(FFModel& model,
   dims[0].size = k;
   assert(inputs[0]->dims[0].degree == 1);
   assert(inputs[0]->dims[0].parallel_idx == -1);
-  outputs[0] = model.create_tensor_legion_ordering(
+  outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, _input->data_type,
       this, 0/*owner_idx*/);
-  outputs[1] = model.create_tensor_legion_ordering(
+  outputs[1] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, DT_INT32,
       this, 1/*owner_idx*/);
 }

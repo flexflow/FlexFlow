@@ -33,13 +33,16 @@ Tensor FFModel::transpose(const Tensor input,
                           const std::vector<int>& perm,
                           const char* name)
 {
+  assert(false);
+#ifdef DEADCODE
   Transpose* transpose = new Transpose(*this, input, perm, name);
   layers.push_back(transpose);
   return transpose->outputs[0];
+#endif
 }
 
 Transpose::Transpose(FFModel& model,
-                     const Tensor input,
+                     const ParallelTensor input,
                      const std::vector<int>& _perm,
                      const char* name)
 : Op(model, OP_TRANSPOSE, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, input)
@@ -52,7 +55,7 @@ Transpose::Transpose(FFModel& model,
   int numdim = input->num_dims;
   for (int i = 0; i < numdim; i++)
     dims[i] = input->dims[perm[i]];
-  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, input->data_type, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(numdim, dims, input->data_type, this);
 }
 
 void Transpose::init(const FFModel& ff)

@@ -23,9 +23,20 @@ Tensor FFModel::binary(OperatorType op,
                        bool inplace_a,
                        char const *name)
 {
+  Layer *ele = new Layer(op, name, 2/*inputs*/, 0/*weights*/, 1/*outputs*/, in1, in2);
+  assert(in1->num_dims == in2->num_dims);
+  ele->outputs[0]->num_dims = in1->num_dims;
+  for (int i = 0; i < in1->num_dims; i++) {
+    assert(in1->dims[i] == in2->dims[i]);
+    ele->outputs[0]->dims[i] = in1->dims[i];
+  }
+  layers.push_back(ele);
+  return ele->outputs[0];
+#ifdef DEADCODE
   ElementBinary *ele = new ElementBinary(*this, op, in1, in2, inplace_a, name);
   layers.push_back(ele);
   return ele->outputs[0];
+#endif
 }
 
 Tensor FFModel::add(const Tensor in1,
@@ -62,8 +73,8 @@ Tensor FFModel::divide(const Tensor in1,
 
 ElementBinary::ElementBinary(FFModel& model,
                              OperatorType _op_type,
-                             const Tensor in1,
-                             const Tensor in2,
+                             const ParallelTensor in1,
+                             const ParallelTensor in2,
                              bool _inplace_a,
                              const char* name)
 : Op(
@@ -89,7 +100,7 @@ ElementBinary::ElementBinary(FFModel& model,
     assert(in1->dims[i] == in2->dims[i]);
     dims[i] = in1->dims[i];
   }
-  outputs[0] = model.create_tensor_legion_ordering(numdim, dims, in1->data_type, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(numdim, dims, in1->data_type, this);
 }
 
 void ElementBinary::init(const FFModel& ff)
@@ -249,8 +260,8 @@ size_t ElementBinary::get_params_hash() const {
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_element_binary_node(const Tensor input1,
-                                                const Tensor input2,
+Node FFModel::get_or_create_element_binary_node(const ParallelTensor input1,
+                                                const ParallelTensor input2,
                                                 OperatorType op_type)
 {
   size_t hash = input1->get_owner_independent_hash();

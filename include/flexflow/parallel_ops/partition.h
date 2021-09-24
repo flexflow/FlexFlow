@@ -8,7 +8,7 @@ namespace FlexFlow {
 class Repartition : public ParallelOp {
 public:
   Repartition(FFModel& model,
-              const Tensor input,
+              const ParallelTensor input,
               int repartition_legion_dim,
               int repartition_degree,
               const char* name = NULL);

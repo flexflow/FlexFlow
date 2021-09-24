@@ -17,14 +17,17 @@ using Legion::Predicate;
 Tensor FFModel::flat(const Tensor input,
                      const char* name)
 {
+  assert(false);
+#ifdef DEADCODE
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
   Flat *flat = new Flat(*this, input, name);
   layers.push_back(flat);
   return flat->outputs[0];
+#endif
 }
 
-int output_size(const Tensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) {
+int output_size(const ParallelTensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) {
   output_dims[Output::REPLICA].is_replica_dim = true;
   output_dims[Output::SAMPLE].size = input->dims[Input::SAMPLE].size;
   output_dims[Output::CHANNEL].size = (
@@ -35,7 +38,7 @@ int output_size(const Tensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) {
 }
 
 
-void solve_dims(const Tensor input, 
+void solve_dims(const ParallelTensor input, 
                 ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims) 
 {
   assert ((output_dims == nullptr) == (output_ndims == nullptr));
@@ -57,9 +60,9 @@ void solve_dims(const Tensor input,
   );
 }
 
-bool is_valid(const Tensor input) 
+bool is_valid(const ParallelTensor input) 
 {
-  TensorShape output_shape;
+  ParallelTensorShape output_shape;
 
   solve_dims(
       input,
@@ -80,7 +83,7 @@ size_t Flat::get_params_hash() const {
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_flat_node(const Tensor input) 
+Node FFModel::get_or_create_flat_node(const ParallelTensor input) 
 {
   if (!is_valid(input)) {
     return Node::INVALID_NODE;
@@ -114,7 +117,7 @@ void Flat::construct_output_mappings(std::vector<ParallelDimMappingRecord>& mapp
 }
 
 Flat::Flat(FFModel& model,
-           const Tensor _input,
+           const ParallelTensor _input,
            const char* name)
 : Op(model, OP_FLAT, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, _input)
 {
@@ -129,7 +132,7 @@ Flat::Flat(FFModel& model,
       output_dims, &output_ndims
   );
 
-  outputs[0] = model.create_tensor_legion_ordering(output_ndims, output_dims, _input->data_type, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(output_ndims, output_dims, _input->data_type, this);
 
   assert(check_output_input_weight_parallel_dims());
 }
@@ -228,12 +231,12 @@ void Flat::serialize(Legion::Serializer& sez) const {
 
 using PCG::Node;
 /*static*/
-Node Flat::deserialize(FFModel& ff, Legion::Deserializer& dez, Tensor inputs[], int num_inputs) {
+Node Flat::deserialize(FFModel& ff, Legion::Deserializer& dez, ParallelTensor inputs[], int num_inputs) {
   assert (num_inputs == 1);
   return ff.get_or_create_flat_node(inputs[0]);
 }
 
-Op *Flat::materialize(FFModel& ff, Tensor inputs[], int num_inputs) const {
+Op *Flat::materialize(FFModel& ff, ParallelTensor inputs[], int num_inputs) const {
   assert (num_inputs == 1);
   return new Flat(ff, inputs[0], this->name);
 }

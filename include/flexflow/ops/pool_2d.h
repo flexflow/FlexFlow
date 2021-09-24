@@ -28,12 +28,12 @@ struct Pool2DParams {
   PoolType pool_type;
   ActiMode activation;
 
-  bool is_valid(const Tensor input) const;
-  void solve_dims(const Tensor input, 
+  bool is_valid(const ParallelTensor input) const;
+  void solve_dims(const ParallelTensor input, 
                   ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims) const;
-  size_t get_hash(const Tensor input) const;
+  size_t get_hash(const ParallelTensor input) const;
 private:
-  int output_size(const Tensor input,
+  int output_size(const ParallelTensor input,
                   ParallelDim output_dims[MAX_TENSOR_DIM]) const; 
 };
 
@@ -52,7 +52,7 @@ public:
 class Pool2D : public Op {
 public:
   Pool2D(FFModel& model,
-         const Tensor input,
+         const ParallelTensor input,
          int kernelH, int kernelW,
          int strideH, int strideW,
          int paddingH, int paddingW,
@@ -61,7 +61,7 @@ public:
          const char* name);
   Pool2D(FFModel& model,
          Pool2D const &other,
-         Tensor const input);
+         ParallelTensor const input);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -92,7 +92,7 @@ public:
                              CostMetrics& cost_metrics) const;
 
   void serialize(Legion::Serializer &) const override;
-  static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, Tensor inputs[], int num_inputs);
+  static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);
 
   static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
 

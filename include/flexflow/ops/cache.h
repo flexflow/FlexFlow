@@ -14,7 +14,7 @@ public:
 class Cache : public Op {
 public:
   Cache(FFModel& model,
-      const Tensor& _input,
+      const ParallelTensor& _input,
       int _num_batches,
       std::function<float(float*,const void*,const void*,int)> &_score_f,
       const char* name);

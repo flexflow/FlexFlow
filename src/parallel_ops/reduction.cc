@@ -37,21 +37,24 @@ using Legion::Machine;
 using Legion::LogicalRegion;
 using Legion::LogicalPartition;
 
-Tensor FFModel::reduction(
-    const Tensor input,
+ParallelTensor FFModel::reduction(
+    const ParallelTensor input,
     int reduction_legion_dim,
     int reduction_degree,
     const char* name)
 {
+  assert(false);
+#ifdef DEADCODE
   Reduction* reduce = new Reduction(*this, input,
       reduction_legion_dim, reduction_degree, name);
   layers.push_back(reduce);
   return reduce->outputs[0];
+#endif
 }
 
 Reduction::Reduction(
     FFModel& model,
-    const Tensor _input,
+    const ParallelTensor _input,
     int _reduction_legion_dim,
     int _reduction_degree,
     const char* name)
@@ -68,8 +71,8 @@ Reduction::Reduction(
   assert(dims[reduction_dim].size % reduction_degree == 0);
   dims[reduction_dim].degree /= reduction_degree;
   dims[reduction_dim].size /= reduction_degree;
-  TensorBase::update_parallel_ids(numdim, dims);
-  outputs[0] = model.create_tensor_legion_ordering(
+  ParallelTensorBase::update_parallel_ids(numdim, dims);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, DT_FLOAT, this);
 }
 
@@ -177,7 +180,7 @@ size_t Reduction::get_params_hash() const {
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_reduction_node(const Tensor input,
+Node FFModel::get_or_create_reduction_node(const ParallelTensor input,
                                            int reduction_dim,
                                            int reduction_degree)
 {

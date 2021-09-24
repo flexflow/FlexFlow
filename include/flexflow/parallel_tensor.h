@@ -49,8 +49,8 @@ struct ParallelTensorShape {
   ParallelDim dims[MAX_TENSOR_DIM];
   DataType data_type;
 
-  bool operator==(const TensorShape& other) const;
-  bool operator!=(const TensorShape& other) const;
+  bool operator==(const ParallelTensorShape& other) const;
+  bool operator!=(const ParallelTensorShape& other) const;
 
   size_t get_piece_size() const;
   bool is_valid() const;
@@ -58,7 +58,7 @@ struct ParallelTensorShape {
   std::unordered_map<int, int> get_mv_dim_to_tensor_dim_mapping() const;
   std::unordered_map<int, int> get_tensor_dim_to_mv_dim_mapping() const;
 };
-std::ostream& operator<<(std::ostream&, TensorShape const &);
+std::ostream& operator<<(std::ostream&, ParallelTensorShape const &);
 
 }; // namespace FlexFlow
 
@@ -105,7 +105,7 @@ struct ParallelTensorBase {
   template <typename T>
   bool get_tensor(const FFModel* model,
                   T* data);
-  TensorShape get_shape() const;
+  ParallelTensorShape get_shape() const;
 
 private:
   template <typename T>

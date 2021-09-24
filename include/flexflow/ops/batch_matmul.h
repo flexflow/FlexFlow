@@ -14,8 +14,8 @@ public:
 class BatchMatmul : public Op {
 public:
   BatchMatmul(FFModel& model,
-              const Tensor A,
-              const Tensor B,
+              const ParallelTensor A,
+              const ParallelTensor B,
               int a_seq_length_dim,
               int b_seq_length_dim);
   void init(const FFModel&);

@@ -20,8 +20,8 @@ class ElementBinary : public Op {
 public:
   ElementBinary(FFModel& model,
                 OperatorType type,
-                const Tensor x,
-                const Tensor y,
+                const ParallelTensor x,
+                const ParallelTensor y,
                 bool inplace_a,
                 const char* name);
   void init(const FFModel&);

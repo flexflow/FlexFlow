@@ -38,8 +38,8 @@ Loss::Loss(LossType _loss_type, bool _repl_labels)
 {}
 
 void Loss::backward(FFModel* model,
-                    const Tensor logit,
-                    const Tensor label)
+                    const ParallelTensor logit,
+                    const ParallelTensor label)
 #ifdef DEADCODE
 {
   assert(logit->num_dims == label->num_dims);
@@ -62,8 +62,8 @@ void Loss::backward(FFModel* model,
 
 template<int NDIM>
 void Loss::backward_with_dim(FFModel* model,
-                             const Tensor logit,
-                             const Tensor label)
+                             const ParallelTensor logit,
+                             const ParallelTensor label)
 #endif
 {
   // Compute scale factor for loss backpropagation
