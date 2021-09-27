@@ -1063,8 +1063,11 @@ bool
 flexflow_tensor_is_mapped(
   flexflow_tensor_t handle_)
 {
+  assert(false && "Deprecated API");
+#ifdef DEADCODE
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   return handle->physical_region.is_mapped();
+#endif
 }
 
 bool
@@ -1767,9 +1770,12 @@ flexflow_op_get_parameter_by_id(
   flexflow_op_t handle_,
   int id)
 {
+  assert(false && "TODO: implement a mapping function from parameter to parallel parameter");
+#ifdef DEADCODE
   Layer *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor tensor = handle->get_parameter(id);
   return FFCObjectWrapper::wrap(tensor);
+#endif
 }
 
 int
@@ -1813,9 +1819,12 @@ flexflow_op_init(
   flexflow_op_t handle_,
   flexflow_model_t model_)
 {
+  assert(false && "Deprecated API");
+#ifdef DEADCODE
   Layer *handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   handle->init(*model);
+#endif
 }
 
 void
@@ -1823,9 +1832,12 @@ flexflow_op_forward(
   flexflow_op_t handle_,
   flexflow_model_t model_)
 {
+  assert(false && "Deprecated API");
+#ifdef DEADCODE
   Layer *handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   handle->forward(*model);
+#endif
 }
 
 // -----------------------------------------------------------------------
