@@ -314,6 +314,10 @@ public:
                 const Tensor& y,
                 bool inplace_a = false,
                 char const *name = NULL);
+  // Add a rsqrt layer
+  Tensor rsqrt(const Tensor& x,
+               bool inplace = true,
+               char const *name = NULL);
   // Add a scalar operation layer
   Tensor scalar_multiply(const Tensor& x,
 	      const float scalar,
