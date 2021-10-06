@@ -335,6 +335,11 @@ public:
 		  const float scalar,
 		  bool inplace = true,
 		  const char *name = NULL);
+  // Add a mean layer
+  Tensor mean(const Tensor& x,
+              const std::vector<int>& dims,
+              bool keepdim,
+              const char *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor& x,
               bool inplace = true,
@@ -1839,6 +1844,35 @@ public:
   //IndexSpace task_is;
   //bool profiling;
 };
+
+class Mean : public Op {
+public:
+  Mean(FFModel& model,
+       const Tensor& input,
+       const std::vector<int>& dims,
+       bool keepdims,
+       const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+};
+
 
 class FusedOp;
 class FusedOpMeta {
