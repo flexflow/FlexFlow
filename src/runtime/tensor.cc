@@ -19,6 +19,21 @@ namespace FlexFlow {
 
 using namespace Legion;
 
+TensorBase::TensorBase(const ParallelTensorBase& rhs)
+{
+  ts_guid = rhs.ts_guid;
+  num_dims = rhs.num_dims;
+  for (int i = 0; i < num_dims; i++)
+    dims[i] = rhs.dims[i];
+  data_type = rhs.data_type;
+  sync_type = rhs.sync_type;
+  initializer = rhs.initializer;
+  parallel_tensor = rhs.parallel_tensor;
+  owner_layer = rhs.owner_layer;
+  owner_idx = rhs.owner_idx;
+  create_gradients = rhs.create_gradients;
+}
+
 size_t TensorBase::get_volume() const
 {
   size_t volume = 1;
