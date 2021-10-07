@@ -19,9 +19,8 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-TensorBase::TensorBase(const ParallelTensorBase& rhs)
+TensorBase::TensorBase(const TensorBase& rhs)
 {
-  ts_guid = rhs.ts_guid;
   num_dims = rhs.num_dims;
   for (int i = 0; i < num_dims; i++)
     dims[i] = rhs.dims[i];
