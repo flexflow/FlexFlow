@@ -27,6 +27,7 @@ extern "C" {
 FF_NEW_OPAQUE_TYPE(flexflow_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_model_t);
 FF_NEW_OPAQUE_TYPE(flexflow_tensor_t);
+FF_NEW_OPAQUE_TYPE(flexflow_parallel_tensor_t);
 FF_NEW_OPAQUE_TYPE(flexflow_sgd_optimizer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_adam_optimizer_t);
 FF_NEW_OPAQUE_TYPE(flexflow_initializer_t);
@@ -458,21 +459,25 @@ flexflow_tensor_destroy(
 void
 flexflow_tensor_inline_map(
   flexflow_tensor_t handle,
+  flexflow_model_t model,
   flexflow_config_t config);
 
 void
 flexflow_tensor_inline_unmap(
   flexflow_tensor_t handle,
+  flexflow_model_t model,
   flexflow_config_t config);
 
 float*
 flexflow_tensor_get_raw_ptr_float(
   flexflow_tensor_t handle,
+  flexflow_model_t model,
   flexflow_config_t config);
 
 int32_t*
 flexflow_tensor_get_raw_ptr_int32(
   flexflow_tensor_t handle,
+  flexflow_model_t model,
   flexflow_config_t config);
 
 int
@@ -495,6 +500,7 @@ flexflow_tensor_get_owner_op(
 void
 flexflow_tensor_attach_raw_ptr(
   flexflow_tensor_t handle,
+  flexflow_model_t model,
   flexflow_config_t config,
   void *raw_ptr,
   bool column_major);
@@ -502,6 +508,7 @@ flexflow_tensor_attach_raw_ptr(
 void
 flexflow_tensor_detach_raw_ptr(
   flexflow_tensor_t handle,
+  flexflow_model_t model,
   flexflow_config_t config);
 
 bool
@@ -739,16 +746,16 @@ flexflow_dataloader_4d_t
 flexflow_dataloader_4d_create(
   flexflow_model_t ffmodel,
   flexflow_net_config_t netconfig,
-  flexflow_tensor_t input,
-  flexflow_tensor_t label);
+  flexflow_parallel_tensor_t input,
+  flexflow_parallel_tensor_t label);
 
 flexflow_dataloader_4d_t
 flexflow_dataloader_4d_create_v2(
   flexflow_model_t ffmodel,
-  flexflow_tensor_t input,
-  flexflow_tensor_t label,
-  flexflow_tensor_t full_input,
-  flexflow_tensor_t full_label,
+  flexflow_parallel_tensor_t input,
+  flexflow_parallel_tensor_t label,
+  flexflow_parallel_tensor_t full_input,
+  flexflow_parallel_tensor_t full_label,
   int num_samples);
 
 void
@@ -776,10 +783,10 @@ flowflow_dataloader_4d_next_batch(
 flexflow_dataloader_2d_t
 flexflow_dataloader_2d_create_v2(
   flexflow_model_t ffmodel,
-  flexflow_tensor_t input,
-  flexflow_tensor_t label,
-  flexflow_tensor_t full_input,
-  flexflow_tensor_t full_label,
+  flexflow_parallel_tensor_t input,
+  flexflow_parallel_tensor_t label,
+  flexflow_parallel_tensor_t full_input,
+  flexflow_parallel_tensor_t full_label,
   int num_samples);
 
 void
@@ -811,15 +818,15 @@ flowflow_dataloader_2d_next_batch(
 flexflow_single_dataloader_t
 flexflow_single_dataloader_create(
   flexflow_model_t ffmodel,
-  flexflow_tensor_t input,
-  flexflow_tensor_t full_input,
+  flexflow_parallel_tensor_t input,
+  flexflow_parallel_tensor_t full_input,
   int num_samples,
   enum DataType data_type);
   
 flexflow_single_dataloader_t
 flexflow_single_dataloader_create2(
   flexflow_model_t ffmodel,
-  flexflow_tensor_t input,
+  flexflow_parallel_tensor_t input,
   void *full_input_ptr,
   int num_samples,
   enum DataType data_type);

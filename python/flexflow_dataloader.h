@@ -42,16 +42,19 @@ public:
   void reset(void);             
 public:
   int num_samples, next_index;
-  FlexFlow::Tensor full_input, batch_input;
-  FlexFlow::Tensor full_label, batch_label;
+  FlexFlow::ParallelTensor full_input, batch_input;
+  FlexFlow::ParallelTensor full_label, batch_label;
 };
 
 class ImgDataLoader4D : public ImgDataLoader {
 public:
-  ImgDataLoader4D(FlexFlow::FFModel& ff, FlexFlow::Tensor input, FlexFlow::Tensor label, 
-                  FlexFlow::Tensor full_input_, FlexFlow::Tensor full_label_, int num_samples_);
+  ImgDataLoader4D(FlexFlow::FFModel& ff,
+                  FlexFlow::ParallelTensor input,
+                  FlexFlow::ParallelTensor label, 
+                  FlexFlow::ParallelTensor full_input_,
+                  FlexFlow::ParallelTensor full_label_, int num_samples_);
   ImgDataLoader4D(FlexFlow::FFModel& ff, const NetConfig& alexnet, 
-                  FlexFlow::Tensor input, FlexFlow::Tensor label);
+                  FlexFlow::ParallelTensor input, FlexFlow::ParallelTensor label);
   static void load_input(const Legion::Task *task,
                          const std::vector<Legion::PhysicalRegion> &regions,
                          Legion::Context ctx,
@@ -71,8 +74,12 @@ private:
 
 class ImgDataLoader2D : public ImgDataLoader {
 public:
-  ImgDataLoader2D(FlexFlow::FFModel& ff, FlexFlow::Tensor input, FlexFlow::Tensor label, 
-                  FlexFlow::Tensor full_input_, FlexFlow::Tensor full_label_, int num_samples_);
+  ImgDataLoader2D(FlexFlow::FFModel& ff,
+                  FlexFlow::ParallelTensor input,
+                  FlexFlow::ParallelTensor label, 
+                  FlexFlow::ParallelTensor full_input_,
+                  FlexFlow::ParallelTensor full_label_,
+                  int num_samples_);
   static void load_input(const Legion::Task *task,
                          const std::vector<Legion::PhysicalRegion> &regions,
                          Legion::Context ctx,
@@ -86,9 +93,17 @@ public:
 
 class SingleDataLoader {
 public:
-  SingleDataLoader(FlexFlow::FFModel& ff, FlexFlow::Tensor input, FlexFlow::Tensor full_input_, int num_samples_, DataType datatype_);
+  SingleDataLoader(FlexFlow::FFModel& ff,
+                   FlexFlow::ParallelTensor input,
+                   FlexFlow::ParallelTensor full_input_,
+                   int num_samples_,
+                   DataType datatype_);
   
-  SingleDataLoader(FlexFlow::FFModel& ff, FlexFlow::Tensor input, void *full_input_ptr, int num_samples_, DataType datatype_);
+  SingleDataLoader(FlexFlow::FFModel& ff,
+                   FlexFlow::ParallelTensor input,
+                   void *full_input_ptr,
+                   int num_samples_,
+                   DataType datatype_);
   
   void next_batch(FlexFlow::FFModel&);
   
@@ -143,7 +158,7 @@ private:
 public:
   int num_samples, next_index;
   DataType datatype;
-  FlexFlow::Tensor full_input, batch_input;         
+  FlexFlow::ParallelTensor full_input, batch_input;         
 };
 
 #define MAX_NUM_SAMPLES 4196

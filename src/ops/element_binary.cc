@@ -23,7 +23,7 @@ Tensor FFModel::binary(OperatorType op,
                        bool inplace_a,
                        char const *name)
 {
-  Layer *ele = new Layer(op, name, 2/*inputs*/, 0/*weights*/, 1/*outputs*/, in1, in2);
+  Layer *ele = new Layer(this, op, name, 2/*inputs*/, 0/*weights*/, 1/*outputs*/, in1, in2);
   assert(in1->num_dims == in2->num_dims);
   ele->outputs[0]->num_dims = in1->num_dims;
   for (int i = 0; i < in1->num_dims; i++) {

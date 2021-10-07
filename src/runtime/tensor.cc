@@ -19,6 +19,14 @@ namespace FlexFlow {
 
 using namespace Legion;
 
+size_t TensorBase::get_volume() const
+{
+  size_t volume = 1;
+  for (int i = 0; i < num_dims; i++)
+    volume *= dims[i];
+  return volume;
+}
+
 bool ParallelTensorShape::is_valid() const {
   bool used[MAX_TENSOR_DIM];
   std::fill_n(used, MAX_TENSOR_DIM, false);

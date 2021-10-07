@@ -1213,7 +1213,7 @@ Tensor FFModel::create_tensor(
   //tensor->ts_guid = tensor_global_guid ++;
   tensor->data_type = data_type;
   if (owner_layer == NULL) {
-    Layer* input_layer = new Layer(OP_INPUT, NULL, 0/*inputs*/, 0/*weight*/, 1/*outputs*/, NULL, NULL);
+    Layer* input_layer = new Layer(this, OP_INPUT, NULL, 0/*inputs*/, 0/*weight*/, 1/*outputs*/, NULL, NULL);
     layers.push_back(input_layer);
     tensor->owner_layer = input_layer;
     tensor->owner_idx = 0;
@@ -1270,7 +1270,7 @@ Parameter FFModel::create_weight(
   Parameter p = new TensorBase();
   p->data_type = data_type;
   if (owner_layer == NULL) {
-    Layer* weight_layer = new Layer(OP_WEIGHT, NULL, 0/*inputs*/, 0/*weights*/, 1/*outputs*/, NULL/*in1*/, NULL/*in2*/);
+    Layer* weight_layer = new Layer(this, OP_WEIGHT, NULL, 0/*inputs*/, 0/*weights*/, 1/*outputs*/, NULL/*in1*/, NULL/*in2*/);
     layers.push_back(weight_layer);
     p->owner_layer = weight_layer;
     p->owner_idx = 0;
@@ -1543,6 +1543,15 @@ void FFModel::map_weight_with_dim(ParallelTensor weight, const Op* parallel_op)
       assert(false && "Unsupported type for mapping weight");
     }
   }
+}
+
+bool FFModel::get_parallel_tensor_from_tensor(const Tensor tensor,
+                                              ParallelTensor& parallel_tensor)
+{
+  // To be implemented
+  assert(tensor->parallel_tensor != nullptr);
+  parallel_tensor = tensor->parallel_tensor;
+  return true;
 }
 
 void FFModel::create_disjoint_partition(int num_dims,

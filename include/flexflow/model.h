@@ -769,6 +769,8 @@ public:
 
   void map_tensor(ParallelTensor tensor, const Op* parallel_op);
   void map_weight(ParallelTensor tensor, const Op* parallel_op);
+  bool get_parallel_tensor_from_tensor(const Tensor tensor,
+                                       ParallelTensor& parallel_tensor);
 
   template<int NDIM>
   Tensor create_constant(const int dims[],

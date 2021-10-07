@@ -23,7 +23,7 @@ Tensor FFModel::unary(OperatorType op,
                       const char *name,
                       float scalar)
 {
-  Layer *ele = new Layer(op, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, x);
+  Layer *ele = new Layer(this, op, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, x);
   ele->outputs[0]->num_dims = x->num_dims;
   for (int i = 0; i < x->num_dims; i++)
     ele->outputs[0]->dims[i] = x->dims[i];

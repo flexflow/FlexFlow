@@ -29,8 +29,9 @@ void ImgDataLoader::reset()
   next_index = 0;
 }
 
-ImgDataLoader4D::ImgDataLoader4D(FFModel& ff, Tensor input, Tensor label,
-                                 Tensor full_input_, Tensor full_label_,
+ImgDataLoader4D::ImgDataLoader4D(FFModel& ff,
+                                 ParallelTensor input, ParallelTensor label,
+                                 ParallelTensor full_input_, ParallelTensor full_label_,
                                  int num_samples_)
 {
   Context ctx = ff.config.lg_ctx;
@@ -39,15 +40,21 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff, Tensor input, Tensor label,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {num_samples, input->dims[2].size, input->dims[1].size, input->dims[0].size};
-    full_input = ff.create_tensor<4>(dims, DT_FLOAT);
+    ParallelDim dims[4];
+    dims[0].size = num_samples;
+    dims[1].size = input->dims[2].size;
+    dims[2].size = input->dims[1].size;
+    dims[3].size = input->dims[0].size;
+    full_input = ff.create_parallel_tensor<4>(dims, DT_FLOAT);
     ff.map_tensor(full_input, NULL/*parallel_op*/);
   }
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {num_samples, label->dims[0].size};
-    full_label = ff.create_tensor<2>(dims, DT_INT32);
+    ParallelDim dims[2];
+    dims[0].size = num_samples;
+    dims[1].size = label->dims[0].size;
+    full_label = ff.create_parallel_tensor<2>(dims, DT_INT32);
     ff.map_tensor(full_label, NULL/*parallel_op*/);
   }
   // Load entire dataset
@@ -84,7 +91,7 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff, Tensor input, Tensor label,
 
 ImgDataLoader4D::ImgDataLoader4D(FFModel& ff,
                                  const NetConfig& alexnet,
-                                 Tensor input, Tensor label)
+                                 ParallelTensor input, ParallelTensor label)
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -102,15 +109,21 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel& ff,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {num_samples, input->dims[2].size, input->dims[1].size, input->dims[0].size};
-    full_input = ff.create_tensor<4>(dims, DT_FLOAT);
+    ParallelDim dims[4];
+    dims[0].size = num_samples;
+    dims[1].size = input->dims[2].size;
+    dims[2].size = input->dims[1].size;
+    dims[3].size = input->dims[0].size;
+    full_input = ff.create_parallel_tensor<4>(dims, DT_FLOAT);
     ff.map_tensor(full_input, NULL/*parallel_op*/);
   }
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {num_samples, label->dims[0].size};
-    full_label = ff.create_tensor<2>(dims, DT_INT32);
+    ParallelDim dims[2];
+    dims[0].size = num_samples;
+    dims[1].size = label->dims[0].size;
+    full_label = ff.create_parallel_tensor<2>(dims, DT_INT32);
     ff.map_tensor(full_label, NULL/*parallel_op*/);
   }
   // Load entire dataset
@@ -338,8 +351,11 @@ size_t ImgDataLoader4D::get_file_size(const std::string& filename)
   return filesize;
 }
 
-ImgDataLoader2D::ImgDataLoader2D(FFModel& ff, Tensor input, Tensor label,
-                                 Tensor full_input_, Tensor full_label_,
+ImgDataLoader2D::ImgDataLoader2D(FFModel& ff,
+                                 ParallelTensor input,
+                                 ParallelTensor label,
+                                 ParallelTensor full_input_,
+                                 ParallelTensor full_label_,
                                  int num_samples_)
 {
   Context ctx = ff.config.lg_ctx;
@@ -348,15 +364,19 @@ ImgDataLoader2D::ImgDataLoader2D(FFModel& ff, Tensor input, Tensor label,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {num_samples, input->dims[0].size};
-    full_input = ff.create_tensor<2>(dims, DT_FLOAT);
+    ParallelDim dims[2];
+    dims[0].size = num_samples;
+    dims[1].size = input->dims[0].size;
+    full_input = ff.create_parallel_tensor<2>(dims, DT_FLOAT);
     ff.map_tensor(full_input, NULL);
   }
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {num_samples, label->dims[0].size};
-    full_label = ff.create_tensor<2>(dims, DT_INT32);
+    ParallelDim dims[2];
+    dims[0].size = num_samples;
+    dims[1].size = label->dims[0].size;
+    full_label = ff.create_parallel_tensor<2>(dims, DT_INT32);
     ff.map_tensor(full_label, NULL);
   }
   // Load entire dataset
@@ -492,7 +512,11 @@ void ImgDataLoader2D::next_batch(FFModel& ff)
   next_index += ff.config.batchSize;
 }
 
-SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_, int num_samples_, DataType datatype_)
+SingleDataLoader::SingleDataLoader(FFModel& ff,
+                                   ParallelTensor input,
+                                   ParallelTensor full_input_,
+                                   int num_samples_,
+                                   DataType datatype_)
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
@@ -503,15 +527,15 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_
   for (int i = 0; i < input->num_dims-1; i++)
     assert(full_input_->dims[i].size == input->dims[i].size);
   batch_input = input;
-  int dims[MAX_TENSOR_DIM];
-  dims[0] = num_samples;
+  ParallelDim dims[MAX_TENSOR_DIM];
+  dims[0].size = num_samples;
   for (int i = 1; i < input->num_dims; i++)
-    dims[i] = input->dims[input->num_dims-1-i].size;
+    dims[i].size = input->dims[input->num_dims-1-i].size;
   switch (input->num_dims) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      full_input = ff.create_tensor<DIM>(dims, datatype); \
+      full_input = ff.create_parallel_tensor<DIM>(dims, datatype); \
       ff.map_tensor(full_input, NULL); \
       break; \
     }
@@ -549,16 +573,20 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_
   next_batch(ff);
 }
 
-SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, void *full_input_ptr, int num_samples_, DataType datatype_)
+SingleDataLoader::SingleDataLoader(FFModel& ff,
+                                   ParallelTensor input,
+                                   void *full_input_ptr,
+                                   int num_samples_,
+                                   DataType datatype_)
 {
   num_samples = num_samples_;
   datatype = datatype_;
   // Create full input
   batch_input = input;
-  int dims[MAX_TENSOR_DIM];
-  dims[0] = num_samples;
+  ParallelDim dims[MAX_TENSOR_DIM];
+  dims[0].size = num_samples;
   for (int i = 1; i < input->num_dims; i++)
-    dims[i] = input->dims[input->num_dims-1-i].size;
+    dims[i].size = input->dims[input->num_dims-1-i].size;
   
   int task_id = -1;
   if (datatype == DT_FLOAT) {
@@ -571,14 +599,14 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, void *full_input_p
 
   size_t size_per_sample = 1;
   for (int i = 1; i < input->num_dims; i++) {
-    assert (dims[i] != 0);
-    size_per_sample *= dims[i];
+    assert (dims[i].size != 0);
+    size_per_sample *= dims[i].size;
   }
   switch (input->num_dims) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      full_input = ff.create_tensor<DIM>(dims, datatype); \
+      full_input = ff.create_parallel_tensor<DIM>(dims, datatype); \
       ff.map_tensor(full_input, NULL); \
       index_loader_xd_launcher<DIM>(ff, task_id, full_input_ptr, size_per_sample); \
       break; \

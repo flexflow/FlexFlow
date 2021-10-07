@@ -494,9 +494,9 @@ class Tensor(object):
       self.__get_owner_op(owner_op_type)
       assert self.owner_op != None
 
-  def inline_map(self, ffconfig):
+  def inline_map(self, ffmodel, ffconfig):
     assert self.mapped == False, "Tensor is already mapped."
-    ffc.flexflow_tensor_inline_map(self.handle, ffconfig.handle);
+    ffc.flexflow_tensor_inline_map(self.handle, ffmodel.handle, ffconfig.handle);
     self.mapped = True
     assert self.num_dims > 0, "check dims"
 

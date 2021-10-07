@@ -42,6 +42,7 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_config_t, FFConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_model_t, FFModel *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_tensor_t, Tensor);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_parallel_tensor_t, ParallelTensor);
   FF_NEW_OPAQUE_WRAPPER(flexflow_sgd_optimizer_t, SGDOptimizer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_adam_optimizer_t, AdamOptimizer *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_initializer_t, Initializer *);
@@ -963,42 +964,58 @@ flexflow_tensor_destroy(
 void
 flexflow_tensor_inline_map(
   flexflow_tensor_t handle_,
+  flexflow_model_t model_,
   flexflow_config_t config_)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  ParallelTensor tensor;
+  model->get_parallel_tensor_from_tensor(handle, tensor);
   FFConfig *config = FFCObjectWrapper::unwrap(config_);
-  handle->inline_map(*config);
+  tensor->inline_map(*config);
 }
 
 void
 flexflow_tensor_inline_unmap(
   flexflow_tensor_t handle_,
+  flexflow_model_t model_,
   flexflow_config_t config_)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  ParallelTensor tensor;
+  model->get_parallel_tensor_from_tensor(handle, tensor);
   FFConfig *config = FFCObjectWrapper::unwrap(config_);
-  handle->inline_unmap(*config);
+  tensor->inline_unmap(*config);
 }
 
 float*
 flexflow_tensor_get_raw_ptr_float(
   flexflow_tensor_t handle_,
+  flexflow_model_t model_,
   flexflow_config_t config_)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
   FFConfig *config = FFCObjectWrapper::unwrap(config_);
-  float *raw_ptr = handle->get_raw_ptr<float>(*config);
+  ParallelTensor ptensor;
+  model->get_parallel_tensor_from_tensor(handle, ptensor);
+  float *raw_ptr = ptensor->get_raw_ptr<float>(*config);
   return raw_ptr;
 }
 
 int32_t*
 flexflow_tensor_get_raw_ptr_int32(
   flexflow_tensor_t handle_,
+  flexflow_model_t model_,
   flexflow_config_t config_)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
   FFConfig *config = FFCObjectWrapper::unwrap(config_);
-  int32_t *raw_ptr = handle->get_raw_ptr<int32_t>(*config);
+  ParallelTensor ptensor;
+  model->get_parallel_tensor_from_tensor(handle, ptensor);
+  int32_t *raw_ptr = ptensor->get_raw_ptr<int32_t>(*config);
   return raw_ptr;
 }
 
@@ -1039,24 +1056,32 @@ flexflow_tensor_get_owner_op(
 void
 flexflow_tensor_attach_raw_ptr(
   flexflow_tensor_t handle_,
+  flexflow_model_t model_,
   flexflow_config_t config_,
   void *raw_ptr,
   bool column_major)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel* model = FFCObjectWrapper::unwrap(model_);
   FFConfig *config = FFCObjectWrapper::unwrap(config_);
-  handle->attach_raw_ptr(*config, raw_ptr, column_major);
+  ParallelTensor ptensor;
+  model->get_parallel_tensor_from_tensor(handle, ptensor);
+  ptensor->attach_raw_ptr(*config, raw_ptr, column_major);
   DEBUG_PRINT("[Tensor] attach numpy array: ptr %p, column_major %d", raw_ptr, column_major);
 }
 
 void
 flexflow_tensor_detach_raw_ptr(
   flexflow_tensor_t handle_,
+  flexflow_model_t model_,
   flexflow_config_t config_)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel* model = FFCObjectWrapper::unwrap(model_);
   FFConfig *config = FFCObjectWrapper::unwrap(config_);
-  handle->detach_raw_ptr(*config);
+  ParallelTensor ptensor;
+  model->get_parallel_tensor_from_tensor(handle, ptensor);
+  ptensor->detach_raw_ptr(*config);
 }
 
 bool
@@ -1079,12 +1104,14 @@ flexflow_tensor_set_tensor_float(
   const float *data)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
-  const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
   std::vector<int> dims_vec;
   for (int i = 0; i < num_dim; i++ ) {
     dims_vec.push_back(dims[i]);
   }
-  return handle->set_tensor<float>(model, dims_vec, data);
+  ParallelTensor ptensor;
+  model->get_parallel_tensor_from_tensor(handle, ptensor);
+  return ptensor->set_tensor<float>(model, dims_vec, data);
 }
 
 bool
@@ -1094,8 +1121,10 @@ flexflow_tensor_get_tensor_float(
   float *data)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
-  const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
-  return handle->get_tensor<float>(model, data);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  ParallelTensor ptensor;
+  model->get_parallel_tensor_from_tensor(handle, ptensor);
+  return ptensor->get_tensor<float>(model, data);
 }
   
 bool
@@ -1107,12 +1136,14 @@ flexflow_tensor_set_tensor_int(
   const int *data)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
-  const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
   std::vector<int> dims_vec;
   for (int i = 0; i < num_dim; i++ ) {
     dims_vec.push_back(dims[i]);
   }
-  return handle->set_tensor<int>(model, dims_vec, data);
+  ParallelTensor ptensor;
+  model->get_parallel_tensor_from_tensor(handle, ptensor);
+  return ptensor->set_tensor<int>(model, dims_vec, data);
 }
 
 bool
@@ -1122,8 +1153,10 @@ flexflow_tensor_get_tensor_int(
   int *data)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
-  const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
-  return handle->get_tensor<int>(model, data);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  ParallelTensor ptensor;
+  model->get_parallel_tensor_from_tensor(handle, ptensor);
+  return ptensor->get_tensor<int>(model, data);
 }
 
 // -----------------------------------------------------------------------
@@ -1501,13 +1534,13 @@ flexflow_dataloader_4d_t
 flexflow_dataloader_4d_create(
   flexflow_model_t ffmodel_,
   flexflow_net_config_t netconfig_,
-  flexflow_tensor_t input_,
-  flexflow_tensor_t label_)
+  flexflow_parallel_tensor_t input_,
+  flexflow_parallel_tensor_t label_)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
   NetConfig *netconfig = FFCObjectWrapper::unwrap(netconfig_);
-  Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor label = FFCObjectWrapper::unwrap(label_);
+  ParallelTensor input = FFCObjectWrapper::unwrap(input_);
+  ParallelTensor label = FFCObjectWrapper::unwrap(label_);
   ImgDataLoader4D *dataloader = new ImgDataLoader4D(*ffmodel, *netconfig, input, label);
   return FFCObjectWrapper::wrap(dataloader);
 }
@@ -1515,17 +1548,17 @@ flexflow_dataloader_4d_create(
 flexflow_dataloader_4d_t
 flexflow_dataloader_4d_create_v2(
   flexflow_model_t ffmodel_,
-  flexflow_tensor_t input_,
-  flexflow_tensor_t label_,
-  flexflow_tensor_t full_input_,
-  flexflow_tensor_t full_label_,
+  flexflow_parallel_tensor_t input_,
+  flexflow_parallel_tensor_t label_,
+  flexflow_parallel_tensor_t full_input_,
+  flexflow_parallel_tensor_t full_label_,
   int num_samples)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor label = FFCObjectWrapper::unwrap(label_);
-  Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
-  Tensor full_label = FFCObjectWrapper::unwrap(full_label_);
+  ParallelTensor input = FFCObjectWrapper::unwrap(input_);
+  ParallelTensor label = FFCObjectWrapper::unwrap(label_);
+  ParallelTensor full_input = FFCObjectWrapper::unwrap(full_input_);
+  ParallelTensor full_label = FFCObjectWrapper::unwrap(full_label_);
   ImgDataLoader4D *dataloader = new ImgDataLoader4D(*ffmodel, input, label, full_input, full_label, num_samples);
   return FFCObjectWrapper::wrap(dataloader);
 }
@@ -1577,17 +1610,17 @@ flowflow_dataloader_4d_next_batch(
 flexflow_dataloader_2d_t
 flexflow_dataloader_2d_create_v2(
   flexflow_model_t ffmodel_,
-  flexflow_tensor_t input_,
-  flexflow_tensor_t label_,
-  flexflow_tensor_t full_input_,
-  flexflow_tensor_t full_label_,
+  flexflow_parallel_tensor_t input_,
+  flexflow_parallel_tensor_t label_,
+  flexflow_parallel_tensor_t full_input_,
+  flexflow_parallel_tensor_t full_label_,
   int num_samples)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor label = FFCObjectWrapper::unwrap(label_);
-  Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
-  Tensor full_label = FFCObjectWrapper::unwrap(full_label_);
+  ParallelTensor input = FFCObjectWrapper::unwrap(input_);
+  ParallelTensor label = FFCObjectWrapper::unwrap(label_);
+  ParallelTensor full_input = FFCObjectWrapper::unwrap(full_input_);
+  ParallelTensor full_label = FFCObjectWrapper::unwrap(full_label_);
   ImgDataLoader2D *dataloader = new ImgDataLoader2D(*ffmodel, input, label, full_input, full_label, num_samples);
   return FFCObjectWrapper::wrap(dataloader);
 }
@@ -1643,14 +1676,14 @@ flowflow_dataloader_2d_next_batch(
 flexflow_single_dataloader_t
 flexflow_single_dataloader_create(
   flexflow_model_t ffmodel_,
-  flexflow_tensor_t input_,
-  flexflow_tensor_t full_input_,
+  flexflow_parallel_tensor_t input_,
+  flexflow_parallel_tensor_t full_input_,
   int num_samples,
   enum DataType data_type)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
+  ParallelTensor input = FFCObjectWrapper::unwrap(input_);
+  ParallelTensor full_input = FFCObjectWrapper::unwrap(full_input_);
   SingleDataLoader *dataloader = new SingleDataLoader(*ffmodel, input, full_input, num_samples, data_type);
   return FFCObjectWrapper::wrap(dataloader);
 }
@@ -1658,13 +1691,13 @@ flexflow_single_dataloader_create(
 flexflow_single_dataloader_t
 flexflow_single_dataloader_create2(
   flexflow_model_t ffmodel_,
-  flexflow_tensor_t input_,
+  flexflow_parallel_tensor_t input_,
   void* full_input_ptr,
   int num_samples,
   enum DataType data_type)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  Tensor input = FFCObjectWrapper::unwrap(input_);
+  ParallelTensor input = FFCObjectWrapper::unwrap(input_);
   SingleDataLoader *dataloader = new SingleDataLoader(*ffmodel, input, full_input_ptr, num_samples, data_type);
   return FFCObjectWrapper::wrap(dataloader);
 }

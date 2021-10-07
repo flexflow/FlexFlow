@@ -33,7 +33,7 @@ Tensor FFModel::conv2d(const Tensor input,
 {
   assert(input->num_dims == 4); /*NCHW*/
 
-  Layer *conv = new Layer(OP_CONV2D, name, 1/*inputs*/,
+  Layer *conv = new Layer(this, OP_CONV2D, name, 1/*inputs*/,
                           use_bias ? 2 : 1/*weights*/, 1/*outputs*/,
                           input);
   conv->outputs[0]->num_dims = 4;
