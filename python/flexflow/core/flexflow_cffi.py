@@ -487,8 +487,8 @@ class Tensor(object):
     self.__get_data_type()
     # if (deallocate == True):
     #   self._handle = ffi.gc(self.handle, ffc.flexflow_tensor_destroy)
-    if (self.is_mapped() == True):
-      self.mapped = True
+    # if (self.is_mapped() == True):
+    #   self.mapped = True
 
     if owner_op_type != None:
       self.__get_owner_op(owner_op_type)
@@ -1106,7 +1106,9 @@ class FFModel(object):
 
   def dense(self, input, out_dim, 
             activation=ActiMode.AC_MODE_NONE, 
-            use_bias=True, shared_op=None,
+            use_bias=True, 
+            datatype=DataType.DT_FLOAT, 
+            shared_op=None,
             kernel_initializer=None, bias_initializer=None, name=None):
     """Dense implements the operation: :attr:`output = activation(dot(input, kernel) + bias)` where 
     :attr:`activation` is the element-wise activation function passed as the activation argument, 
@@ -1145,9 +1147,10 @@ class FFModel(object):
     c_name = get_c_name(name)
     shared_op_handle = self.__get_op_handle(shared_op)
     c_activation = enum_to_int(ActiMode, activation)
+    c_datatype = enum_to_int(DataType, datatype)
     kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
     bias_init_handle = self.__get_initializer_handle(bias_initializer)
-    handle = ffc.flexflow_model_add_dense(self.handle,  input.handle, out_dim, c_activation, use_bias, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
+    handle = ffc.flexflow_model_add_dense(self.handle,  input.handle, out_dim, c_activation, use_bias, c_datatype, shared_op_handle, kernel_init_handle, bias_init_handle, c_name)
     self.add_layer(OpType.LINEAR, name)
     return Tensor(handle, owner_op_type=OpType.LINEAR)
 

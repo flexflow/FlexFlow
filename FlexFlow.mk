@@ -43,9 +43,10 @@ ifeq ($(strip $(USE_GASNET)),1)
   endif
 endif
 
-GEN_SRC		+= ${FF_HOME}/src/runtime/graph.cc\
-		${FF_HOME}/src/runtime/accessor.cc\
+GEN_SRC += ${FF_HOME}/src/runtime/accessor.cc\
+		${FF_HOME}/src/runtime/graph.cc\
     ${FF_HOME}/src/runtime/initializer.cc\
+    ${FF_HOME}/src/runtime/layer.cc\
     ${FF_HOME}/src/runtime/machine_model.cc\
     ${FF_HOME}/src/runtime/machine_view.cc\
     ${FF_HOME}/src/runtime/model.cc\

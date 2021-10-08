@@ -243,6 +243,7 @@ flexflow_model_add_dense(
   int out_dim,
   enum ActiMode activation /* AC_MODE_NONE */,
   bool use_bias /* true */,
+	enum DataType data_type /*DT_FLOAT*/,
   flexflow_op_t shared_op,
   flexflow_initializer_t kernel_initializer,
   flexflow_initializer_t bias_initializer,
