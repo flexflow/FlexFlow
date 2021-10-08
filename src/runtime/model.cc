@@ -2251,7 +2251,7 @@ struct DefaultConfig {
   const static int simulator_segment_size = 16777216; // 16 MB
   const static int simulator_max_num_segments = 1;
   const static bool enable_control_replication = true;
-  const static int python_data_loader_type = 1;
+  const static int python_data_loader_type = 2;
 };
 
 FFConfig::FFConfig()
