@@ -15,6 +15,8 @@
 
 from flexflow.type import ActiMode, AggrMode, PoolType, DataType, LossType, MetricsType, OpType, str_to_enum, int_to_enum
 import flexflow.torch.fx as fx
+from flexflow.config import flexflow_python_binding
+assert flexflow_python_binding() == "cffi", "Please export FF_USE_CFFI=1, the file you are using only supports CFFI"
 
 class FXTensor(object):
   def __init__(self, fftensor):

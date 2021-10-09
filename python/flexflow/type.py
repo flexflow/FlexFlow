@@ -1,5 +1,4 @@
 from .config import *
-assert flexflow_python_binding() == "cffi", "Please export FF_USE_CFFI=1, the file you are using only supports CFFI"
 
 from enum import Enum
 
