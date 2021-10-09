@@ -1,3 +1,6 @@
+from .config import *
+assert flexflow_python_binding() == "cffi", "Please export FF_USE_CFFI=1, the file you are using only supports CFFI"
+
 from enum import Enum
 
 class ActiMode(Enum):
@@ -88,6 +91,7 @@ class OpType(Enum):
   SCALAR_SUB = 2090
   SCALAR_TRUEDIV = 2091
   INIT_PARAM = 2092
+
 def enum_to_int(enum, enum_item):
   for item in enum:
     if (enum_item == item):

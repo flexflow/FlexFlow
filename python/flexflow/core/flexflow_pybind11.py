@@ -16,7 +16,7 @@
 
 import numpy as np
 from .flexflow_logger import fflogger
-# from .flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
+# from flexflow.type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
 from .flexflow_pybind11_internal import ActiMode, CompMode, DataType, LossType, MetricsType, PoolType, ParameterSyncType
 from .flexflow_pybind11_internal import Initializer, GlorotUniformInitializer, UniformInitializer, ZeroInitializer
 from .flexflow_pybind11_internal import Optimizer, SGDOptimizer, AdamOptimizer

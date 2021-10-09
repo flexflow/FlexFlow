@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 
-from flexflow.core.flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, MetricsType, OpType, str_to_enum, int_to_enum
+from flexflow.type import ActiMode, AggrMode, PoolType, DataType, LossType, MetricsType, OpType, str_to_enum, int_to_enum
 import flexflow.torch.fx as fx
 
 class FXTensor(object):

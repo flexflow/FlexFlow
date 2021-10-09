@@ -15,7 +15,7 @@
 
 import torch.fx
 import torch
-from flexflow.core.flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, MetricsType, OpType, enum_to_int, enum_to_str
+from flexflow.type import ActiMode, AggrMode, PoolType, DataType, LossType, MetricsType, OpType, enum_to_int, enum_to_str
 #import onnx
 #from onnx import helper
 

@@ -15,7 +15,7 @@
 
 from __future__ import print_function
 import argparse, json, os, platform, subprocess, sys
-from .utils import flexflow_dir
+from .config import flexflow_dir
 
 _version = sys.version_info
 
