@@ -46,9 +46,16 @@ Embedding::Embedding(FFModel& model,
   kernel_initializer(_kernel_initializer)
 {
   assert(_input.numDim == 2);
-  outputs[0].numDim = 2;
-  outputs[0].adim[0] = out_channels;
-  outputs[0].adim[1] = inputs[0].adim[1];
+  if (aggr == AGGR_MODE_NONE) {
+    outputs[0].numDim = 3;
+    outputs[0].adim[0] = out_channels;
+    outputs[0].adim[1] = inputs[0].adim[0];
+    outputs[0].adim[2] = inputs[0].adim[1];
+  } else {
+    outputs[0].numDim = 2;
+    outputs[0].adim[0] = out_channels;
+    outputs[0].adim[1] = inputs[0].adim[1];
+  }
   weights[0].numDim = 2;
   weights[0].adim[0] = num_entries;
   weights[0].adim[1] = out_channels;
