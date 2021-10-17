@@ -48,8 +48,9 @@ Softmax::Softmax(FFModel& model,
   // Currently assume we always perform softmax along the inner most dim
   assert(dim == 0);
   outputs[0].numDim = _input.numDim;
-  outputs[0].adim[0] = _input.adim[0];
-  outputs[0].adim[1] = _input.adim[1];
+  for (int i = 0; i < _input.numDim; i++) {
+    outputs[0].adim[i] = _input.adim[i];
+  }
 }
 
 
