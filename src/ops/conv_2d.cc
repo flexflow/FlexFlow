@@ -36,21 +36,24 @@ Tensor FFModel::conv2d(const Tensor input,
   Layer *conv = new Layer(this, OP_CONV2D, name, 1/*inputs*/,
                           use_bias ? 2 : 1/*weights*/, 1/*outputs*/,
                           input);
-  conv->outputs[0]->num_dims = 4;
-  conv->outputs[0]->dims[3] = input->dims[3];
-  conv->outputs[0]->dims[2] = outChannels;
-  conv->outputs[0]->dims[1] = 1 + (input->dims[1] + 2 * paddingH - kernelH) / strideH;
-  conv->outputs[0]->dims[0] = 1 + (input->dims[0] + 2 * paddingW - kernelW) / strideW;
-  conv->add_property("out_channels", outChannels);
-  conv->add_property("kernel_h", kernelH);
-  conv->add_property("kernel_w", kernelW);
-  conv->add_property("stride_h", strideH);
-  conv->add_property("stride_w", strideW);
-  conv->add_property("padding_h", paddingH);
-  conv->add_property("padding_w", paddingW);
-  conv->add_property("activation", activation);
-  conv->add_property("groups", groups);
-  conv->add_property("use_bias", use_bias);
+  int numdims = 4;
+  int dims[MAX_TENSOR_DIM];
+  dims[3] = input->dims[3];
+  dims[2] = outChannels;
+  dims[1] = 1 + (input->dims[1] + 2 * paddingH - kernelH) / strideH;
+  dims[0] = 1 + (input->dims[0] + 2 * paddingW - kernelW) / strideW;
+  conv->outputs[0] = create_tensor_legion_ordering(numdims, dims, DT_FLOAT,
+                                                   conv, 0, true/*create_grad*/);
+  conv->add_int_property("out_channels", outChannels);
+  conv->add_int_property("kernel_h", kernelH);
+  conv->add_int_property("kernel_w", kernelW);
+  conv->add_int_property("stride_h", strideH);
+  conv->add_int_property("stride_w", strideW);
+  conv->add_int_property("padding_h", paddingH);
+  conv->add_int_property("padding_w", paddingW);
+  conv->add_int_property("activation", activation);
+  conv->add_int_property("groups", groups);
+  conv->add_int_property("use_bias", use_bias);
   conv->add_initializer("kernel", kernel_initializer);
   conv->add_initializer("bias", bias_initializer);
   layers.push_back(conv);

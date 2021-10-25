@@ -30,7 +30,19 @@ Tensor FFModel::dense(const Tensor input,
                       Initializer* bias_initializer,
                       const char *name)
 {
-  assert(false);
+  Layer* li = new Layer(this, OP_LINEAR, name, 1/*inputs*/,
+                        use_bias ? 2 : 1 /*weights*/, 1/*outputs*/,
+                        input);
+  int numdims = input->num_dims;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdims; i++)
+    dims[i] = input->dims[i];
+  dims[0] = outDim;
+  li->outputs[0] = create_tensor_legion_ordering(numdims, dims, data_type,
+                                                 li, 0, true/*create_grad*/);
+  li->add_int_property("use_bias", use_bias);
+  layers.push_back(li);
+  return li->outputs[0];
 #ifdef DEADCODE
   Linear* li = new Linear(*this, input, outDim, activation, use_bias, data_type, false, name);
   layers.push_back(li);

@@ -25,8 +25,10 @@ public:
         int numWeights,
         int numOutputs,
         const Tensor* tensors = NULL);
-  void add_property(const std::string& key,
-                    int value);
+  void add_int_property(const std::string& key,
+                        long long value);
+  void add_float_property(const std::string& key,
+                          float value);
   void add_initializer(const std::string& key,
                        Initializer* initializer);
   void print();
@@ -42,7 +44,8 @@ public:
   int numInputs, numWeights, numOutputs;
   bool profiling;
 private:
-  std::unordered_map<std::string, int> properties;
+  std::unordered_map<std::string, long long> int_properties;
+  std::unordered_map<std::string, float> float_properties;
   std::unordered_map<std::string, Initializer*> initializers;
 };
 

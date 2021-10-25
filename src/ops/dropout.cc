@@ -21,7 +21,18 @@ Tensor FFModel::dropout(const Tensor input,
                         unsigned long long seed,
                         const char* name)
 {
-  assert(false);
+  Layer* dropout = new Layer(this, OP_DROPOUT, name, 1/*inputs*/,
+                             0/*weights*/, 1/*outputs*/, input);
+  int numdims = input->num_dims;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdims; i++)
+    dims[i] = input->dims[i];
+  dropout->outputs[0] = create_tensor_legion_ordering(numdims, dims, DT_FLOAT,
+                                                      dropout, 0, true/*create_grad*/);
+  dropout->add_float_property("rate", rate);
+  dropout->add_int_property("seed", seed);
+  layers.push_back(dropout);
+  return dropout->outputs[0];
 #ifdef DEADCODE
   // see = 0 is preserved as None, so we use a random seed
   if (seed == 0) {

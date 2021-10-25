@@ -67,9 +67,14 @@ Layer::Layer(FFModel* model,
   }
 }
 
-void Layer::add_property(const std::string& key, int value)
+void Layer::add_int_property(const std::string& key, long long value)
 {
-  properties[key] = value;
+  int_properties[key] = value;
+}
+
+void Layer::add_float_property(const std::string& key, float value)
+{
+  float_properties[key] = value;
 }
 
 void Layer::add_initializer(const std::string& key,

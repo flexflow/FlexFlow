@@ -32,7 +32,17 @@ using Legion::Predicate;
 
 Tensor FFModel::softmax(const Tensor _input, int dim, const char *name)
 {
-  assert(false);
+  Layer *sm = new Layer(this, OP_SOFTMAX, name, 1/*inputs*/,
+                        0/*weights*/, 1/*outputs*/, _input);
+  int numdims = _input->num_dims;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdims; i++)
+    dims[i] = _input->dims[i];
+  sm->outputs[0] = create_tensor_legion_ordering(numdims, dims, DT_FLOAT,
+                                                 sm, 0, true/*create_grad*/);
+  sm->add_int_property("softmax_dim", dim);
+  layers.push_back(sm);
+  return sm->outputs[0];
 #ifdef DEADCODE
   if (dim < 0)
     dim += _input->num_dims;

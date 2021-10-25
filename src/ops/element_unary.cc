@@ -24,9 +24,12 @@ Tensor FFModel::unary(OperatorType op,
                       float scalar)
 {
   Layer *ele = new Layer(this, op, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, x);
-  ele->outputs[0]->num_dims = x->num_dims;
-  for (int i = 0; i < x->num_dims; i++)
-    ele->outputs[0]->dims[i] = x->dims[i];
+  int numdims = x->num_dims;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdims; i++)
+    dims[i] = x->dims[i];
+  ele->outputs[0] = create_tensor_legion_ordering(numdims, dims, DT_FLOAT,
+                                                  ele, 0, true/*create_grad*/);
   layers.push_back(ele);
   return ele->outputs[0];
 #ifdef DEADCODE
