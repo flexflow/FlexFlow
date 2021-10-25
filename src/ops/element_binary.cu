@@ -74,15 +74,24 @@ ElementBinary::ElementBinary(FFModel& model,
   ),
   inplace_a(_inplace_a)
 {
-  //TODO: implement broadcast op
   numOutputs = 1;
   numWeights = 0;
-  assert(in1.numDim == in2.numDim);
-  int dim = in1.numDim;
-  outputs[0].numDim = in1.numDim;
+  int dim = std::max(in1.numDim, in2.numDim);
+  outputs[0].numDim = dim;
   for (int i = 0; i < dim; i++) {
-    assert(in1.adim[i] == in2.adim[i]);
-    outputs[0].adim[i] = in1.adim[i];
+    if (i >= in1.numDim) {
+      outputs[0].adim[i] = in2.adim[i];
+    } else if (i >= in2.numDim) {
+      outputs[0].adim[i] = in1.adim[i];
+    } else if (in1.adim[i] == in2.adim[i]) {
+      outputs[0].adim[i] = in1.adim[i];
+    } else if (in1.adim[i] == 1 || in2.adim[i] == 1) {
+      // This is okay since one of them is 1
+      outputs[0].adim[i] = in1.adim[i] * in2.adim[i];
+    } else {
+      assert(false && "Operands could not be broadcast together");
+      exit(0);
+    }
   }
 }
 
