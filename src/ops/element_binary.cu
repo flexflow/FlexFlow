@@ -121,72 +121,73 @@ void ElementBinary::create_weights(FFModel& model)
 
 void ElementBinary::create_output_and_partition(FFModel& model)
 {
-  //TODO: implement broadcast op
-  assert(inputs[0].numDim == inputs[1].numDim);
-  int dim = inputs[0].numDim;
-  for (int i = 0; i < dim; i++)
-    assert(inputs[0].adim[i] == inputs[1].adim[i]);
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      create_output_and_partition_with_dim<DIM>(model); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
+  int odim = outputs[0].numDim;
+  for (int idx = 0; idx < 2; idx ++) {
+    int idim = inputs[idx].numDim;
+    switch (odim * MAX_TENSOR_DIM + idim) {
+#define DIMFUNC(ODIM, IDIM) \
+      case ODIM * MAX_TENSOR_DIM + IDIM: \
+      { \
+        create_output_and_partition_with_dim<ODIM, IDIM>(model, idx); \
+        break; \
+      }
+      LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
-    default:
-    {
-      // Unsupported dim for ElementWiseBinary operator
-      assert(false);
+      default:
+      {
+        // Unsupported dim for ElementWiseBinary operator
+        assert(false);
+      }
     }
   }
 }
 
-template<int NDIM>
-void ElementBinary::create_output_and_partition_with_dim(FFModel& model)
+template<int ODIM, int IDIM>
+void ElementBinary::create_output_and_partition_with_dim(FFModel& model, int idx)
 {
   // Retrive the task indexspace for the op
-  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
+  task_is = IndexSpaceT<ODIM>(model.get_or_create_task_is(ODIM, name));
   Context ctx = model.config.lg_ctx;
   Runtime* runtime = model.config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  if (inplace_a) {
+  Domain part_rect = runtime->get_index_space_domain(ctx, task_is);
+  if (inplace_a && idx == 0) {
+    assert(IDIM == ODIM);
     outputs[0] = inputs[0];
     outputs[0].owner_op = this;
     outputs[0].owner_idx = 0;
-    for (int i = 0; i < 2; i++) {
-      Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
-        ctx, inputs[i].part.get_index_partition());
-      // inplace_a require part_rect == inputs[0].part_rect
-      if (i == 0)
-        assert(input_rect == part_rect);
-      if (input_rect == part_rect) {
-        input_lps[i] = inputs[i].part;
-        input_grad_lps[i] = inputs[i].part_grad;
-      } else {
-        model.create_disjoint_partition<NDIM>(
-            inputs[i], IndexSpaceT<NDIM>(task_is), input_lps[i], input_grad_lps[i]);
-      }
+    Domain input_rect = runtime->get_index_partition_color_space(
+      ctx, inputs[idx].part.get_index_partition());
+    // inplace_a require part_rect == inputs[0].part_rect
+    assert(input_rect == part_rect);
+    if (input_rect == part_rect) {
+      input_lps[idx] = inputs[idx].part;
+      input_grad_lps[idx] = inputs[idx].part_grad;
+    } else {
+      model.create_disjoint_partition<ODIM>(
+          inputs[idx], IndexSpaceT<ODIM>(task_is), input_lps[idx], input_grad_lps[idx]);
     }
     return;
   }
-  int dims[NDIM];
-  for (int i = 0; i < NDIM; i++)
-    dims[i] = inputs[0].adim[NDIM-1-i];
-  outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
-  outputs[0].owner_op = this;
-  outputs[0].owner_idx = 0;
-  for (int i = 0; i < 2; i++) {
-    Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
-        ctx, inputs[i].part.get_index_partition());
-    if (input_rect == part_rect) {
-      input_lps[i] = inputs[i].part;
-      input_grad_lps[i] = inputs[i].part_grad;
-    } else {
-      model.create_disjoint_partition<NDIM>(
-          inputs[i], IndexSpaceT<NDIM>(task_is), input_lps[i], input_grad_lps[i]);
-    }
+  // Create output tensor when idx == 0
+  if (idx == 0) {
+    int dims[ODIM];
+    for (int i = 0; i < ODIM; i++)
+      dims[i] = outputs[0].adim[ODIM-1-i];
+    outputs[0] = model.create_tensor<ODIM>(dims, DT_FLOAT, this);
+    outputs[0].owner_op = this;
+    outputs[0].owner_idx = 0;
+  }
+  Domain input_rect = runtime->get_index_partition_color_space(
+      ctx, inputs[idx].part.get_index_partition());
+  if (input_rect == part_rect) {
+    input_lps[idx] = inputs[idx].part;
+    input_grad_lps[idx] = inputs[idx].part_grad;
+  } else if (IDIM == ODIM) {
+    model.create_disjoint_partition<IDIM>(
+        inputs[idx], IndexSpaceT<IDIM>(task_is), input_lps[idx], input_grad_lps[idx]);
+  } else {
+    model.create_data_parallel_partition_with_diff_dims<IDIM, ODIM>(
+        inputs[idx], (IndexSpaceT<ODIM>)task_is, input_lps[idx], input_grad_lps[idx]);
   }
 }
 

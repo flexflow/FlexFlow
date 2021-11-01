@@ -651,8 +651,8 @@ public:
                        float* in2_grad_ptr,
                        cudaStream_t stream);
 private:
-  template<int NDIM>
-  void create_output_and_partition_with_dim(FFModel& model);
+  template<int ODIM, int IDIM>
+  void create_output_and_partition_with_dim(FFModel& model, int idx);
 public:
   bool inplace_a;
 };
