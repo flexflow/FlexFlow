@@ -57,12 +57,54 @@ void Mean::create_weights(FFModel& model)
 }
 
 void Mean::create_output_and_partition(FFModel& model)
-{}
+{
+  int odim = outputs[0].numDim;
+  int idim = inputs[0].numDim;
+  switch (odim * MAX_TENSOR_DIM + idim) {
+#define DIMFUNC(ODIM, IDIM) \
+    case ODIM * MAX_TENSOR_DIM + IDIM: \
+    { \
+      task_is = model.get_or_create_task_is(ODIM, name); \
+      create_output_and_partition_with_dim<ODIM, IDIM>(model); \
+      break; \
+    }
+    LEGION_FOREACH_NN(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dim for Mean operator
+      assert(false);
+    }
+  }
+}
 
-OpMeta* init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime)
-{}
+template<int ODIM, int IDIM>
+void Mean::create_output_and_partition_with_dim(FFModel& model)
+{
+  Context ctx = model.config.lg_ctx;
+  Runtime* runtime = model.config.lg_hlr;
+  Rect<ODIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
+  // Create output tensor
+  {
+    int dims[ODIM];
+    for (int i = 0; i < ODIM; i++)
+      dims[i] = outputs[0].adim[ODIM-1-i];
+    outputs[0] = model.create_tensor<ODIM>(dims, DT_FLOAT, this);
+    outputs[0].owner_op = this;
+    outputs[0].owner_idx = 0;
+  }
+  model.create_data_parallel_partition_with_diff_dims<IDIM, ODIM>(
+      inputs[0], (IndexSpaceT<ODIM>)task_is, input_lps[0], input_grad_lps[0]);
+}
+
+OpMeta* Mean::init_task(const Task *task,
+                        const std::vector<PhysicalRegion> &regions,
+                        Context ctx, Runtime *runtime)
+{
+  FFHandler handler = *((const FFHandler*) task->local_args);
+  OpMeta* m = new OpMeta(handler);
+  return m;
+}
 
 void Mean::init(const FFModel& ff)
 {

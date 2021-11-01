@@ -1871,6 +1871,9 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
+private:
+  template<int ODIM, int IDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
 };
 
 
