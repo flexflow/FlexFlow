@@ -205,6 +205,10 @@ if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/InceptionV3)
 endif()
 
+if(FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/SimpleNet)
+endif()
+
 #TODO: Once functional add to BUILD_ALL_EXAMPLES
 if(FF_BUILD_CANDLE_UNO)
   add_subdirectory(examples/cpp/candle_uno)
