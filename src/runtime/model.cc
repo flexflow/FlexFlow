@@ -893,6 +893,21 @@ Tensor FFModel::create_tensor(const int dims[],
         transform[i][j] = 0;
   IndexPartition ip = runtime->create_partition_by_restriction(
       ctx, is, part_is, transform, extent);
+  std::map<DomainPoint, Domain> domain_map;
+  for (PointInRectIterator<NDIM> pir(part_rect); pir(); pir++) {
+    DomainPoint point(*pir);
+    DomainPoint lo(rect.lo);
+    DomainPoint hi(rect.lo);
+    for (int i = 0; i < NDIM; i++) {
+      int nparts = part_rect.hi[i] - part_rect.lo[i] + 1;
+      lo.point_data[i] += point.point_data[i] * ((rect.hi[i] - rect.lo[i]) / nparts + 1);
+      hi.point_data[i] += (point.point_data[i] + 1) * (rect.hi[i] - rect.lo[i]) / nparts;
+    }
+    Domain part(lo, hi);
+    domain_map[point] = part;
+  }
+  ip = runtime->create_partition_by_domain(
+      ctx, is, domain_map, part_is);
   assert(runtime->is_index_partition_disjoint(ctx, ip));
   assert(runtime->is_index_partition_complete(ctx, ip));
   tensor.part = runtime->get_logical_partition(ctx, tensor.region, ip);
