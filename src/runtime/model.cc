@@ -1414,8 +1414,10 @@ void FFModel::reset_metrics()
 
 void FFModel::init_layers()
 {
-  for (size_t i = 0; i < layers.size(); i++)
+  for (size_t i = 0; i < layers.size(); i++) {
+    printf("Initializing layer %s\n", layers[i]->name);
     layers[i]->init(*this);
+  }
 }
 
 void FFModel::forward(int seq_length)
@@ -1637,7 +1639,7 @@ void FFModel::compile(LossType loss_type,
 
   for (size_t l = 0; l < layers.size(); l++) {
     Op* op = layers[l];
-    printf("Initializing layer %s\n", op->name);
+    printf("Compiling layer %s\n", op->name);
     for (int i = 0; i < op->numInputs; i++) {
       if (op->inputs[i].owner_op == NULL) {
         // User created tensor

@@ -26,6 +26,10 @@ import torch
 from torch.fx.immutable_collections import immutable_dict
 
 
+# Set to `True` to print layer shape information
+VERBOSE = False
+
+
 class Comparator(Enum):
     EQ = 0
     GEQ = 1
@@ -266,13 +270,17 @@ class LinearNode(ModuleNode):
 
     def to_ff(self, ffmodel, node_to_output):
         input_tensor = node_to_output[self.innodes[0].name]
-        return ffmodel.dense(
+        out = ffmodel.dense(
             input=input_tensor,
             out_dim=self.module.out_features,
             activation=self.acti_mode,
             use_bias=(self.module.bias is not None),
             name=self.name,
         )
+        if VERBOSE:
+            print(f"[Linear] in: {input_tensor.dims}")
+            print(f"[Linear] out: {out.dims}")
+        return out
 
 
 class Conv2dNode(ModuleNode):
@@ -630,7 +638,7 @@ class LayerNormNode(ModuleNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self.string = ", ".join(s)
+        self._string = ", ".join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -642,11 +650,74 @@ class LayerNormNode(ModuleNode):
 
     def to_ff(self, ffmodel, node_to_output):
         input_tensor = node_to_output[self.innodes[0].name]
-        return ffmodel.identity(
-            input=input_tensor,
-            name=self.name
-        )
+        return ffmodel.identity(input=input_tensor, name=self.name)
         # TODO: Change to ffmodel.layernorm() once supported
+
+
+class T5LayerNormNode(Node):
+    """
+    This coalesces the `T5LayerNorm` primitive operation nodes into a single
+    node to forward to FlexFlow's layer norm operation.
+
+    NOTE: This forwarding deviates from the `T5LayerNorm` implementation which
+    does not subtract the mean or add a bias.
+    """
+    def __init__(self, to_node, mul_node):
+        """
+        The symbolic trace of `T5LayerNorm` follows the sequence `to()`,
+        `pow()`, `mean()`, `scalar_add()`, `rsqrt()`, `multiply()`, attribute,
+        and `multiply()`.
+
+        Args:
+            name (str): Name for the node.
+            to_node (ToNode): Node giving the first operation in the layer norm
+                sequence.
+            mul_node (MultiplyNode): Node giving the last operation in the
+                layer norm sequence.
+        """
+        assert isinstance(to_node, ToNode)
+        assert isinstance(mul_node, MulNode)
+        self._string = None
+        # Take the input/output from the first/last nodes in the op sequence
+        self.innodes = (to_node.innodes[0],)
+        self.outnodes = mul_node.outnodes
+        # Adopt the last node's name to respect later dependencies
+        self.name = mul_node.name
+        self.op_type = OpType.LAYER_NORM
+
+    def parse(self):
+        s = [self.name]
+        s.append(self.parse_inoutnodes(self.innodes))
+        s.append(self.parse_inoutnodes(self.outnodes))
+        s.append(enum_to_str(OpType, self.op_type))
+        self._string = ", ".join(s)
+
+    @staticmethod
+    def string_to_ff(string, ffmodel, node_to_output):
+        data = Node.StringData(string)
+        name = data.name
+        input_tensor = node_to_output[data.innodes[0]]
+        # Normalize over the last dimension
+        axes = [len(input_tensor.dims) - 1]
+        return ffmodel.layer_norm(
+            input=input_tensor,
+            axes=axes,
+            elementwise_affine=True,
+            eps=1e-6,
+            name=name,
+        )
+
+    def to_ff(self, ffmodel, node_to_output):
+        input_tensor = node_to_output[self.innodes[0].name]
+        # Normalize over the last dimension
+        axes = [len(input_tensor.dims) - 1]
+        return ffmodel.layer_norm(
+            input=input_tensor,
+            axes=axes,
+            elementwise_affine=True,
+            eps=1e-6,
+            name=self.name,
+        )
 
 
 class SigmoidNode(ModuleNode):
@@ -671,7 +742,7 @@ class SigmoidNode(ModuleNode):
 
     def to_ff(self, ffmodel, node_to_output):
         input_tensor = node_to_output[self.innodes[0].name]
-        ffmodel.sigmoid(
+        return ffmodel.sigmoid(
             input=input_tensor,
             name=self.name,
         )
@@ -764,13 +835,16 @@ class EmbeddingNode(ModuleNode):
         embedding_dim = self.module.embedding_dim
         assert type(num_embeddings) is int
         assert type(embedding_dim) is int
-        return ffmodel.embedding(
+        out = ffmodel.embedding(
             input=input_tensor,
             num_embeddings=num_embeddings,
             embedding_dim=embedding_dim,
             aggr=AggrMode.AGGR_MODE_NONE,
             name=self.name,
         )
+        if VERBOSE:
+            print(f"[Embedding] out: {out.dims}")
+        return out
 
 
 class FunctionNode(Node):
@@ -1032,9 +1106,12 @@ class ScalarAddNode(FunctionNode):
     def to_ff(self, ffmodel, node_to_output):
         input_tensor, scalar = \
             FunctionNode.parse_scalar_op(self, node_to_output)
-        return ffmodel.scalar_add(
+        out = ffmodel.scalar_add(
             input=input_tensor, scalar=scalar, name=self.name,
         )
+        if VERBOSE:
+            print(f"[ScalarAdd] out: {out.dims}")
+        return out
 
 
 class AddNode(FunctionNode):
@@ -1063,12 +1140,8 @@ class AddNode(FunctionNode):
     def to_ff(self, ffmodel, node_to_output):
         input_tensor1 = node_to_output[self.innodes[0].name]
         input_tensor2 = node_to_output[self.innodes[1].name]
-        # x, y = FunctionNode.broadcast_tensors(
-        #     input_tensor1, input_tensor2, ffmodel,
-        # )
-        x = input_tensor1
-        y = input_tensor2
-        return ffmodel.add(x=x, y=y, name=self.name)
+        res = ffmodel.add(x=input_tensor1, y=input_tensor2, name=self.name)
+        return res
 
 
 class ScalarSubNode(FunctionNode):
@@ -1309,6 +1382,7 @@ class GetItemNode(FunctionNode):
         def is_colon(slice_elem):
             """Returns if the slice element is equivalent to `:`."""
             return slice_elem == slice(None, None, None)
+
         def is_unsqueeze(slice_elem):
             """Returns if the slice element is equivalent to unsqueezing
             that dimension."""
@@ -1358,9 +1432,12 @@ class BatchMatMulNode(FunctionNode):
     def to_ff(self, ffmodel, node_to_output):
         input_tensor1 = node_to_output[self.innodes[0].name]
         input_tensor2 = node_to_output[self.innodes[1].name]
-        return ffmodel.batch_matmul(
+        out = ffmodel.batch_matmul(
             A=input_tensor1, B=input_tensor2, name=self.name,
         )
+        if VERBOSE:
+            print(f"[BatchMatMul] out: {out.dims}")
+        return out
 
 
 class ScalarMulNode(FunctionNode):
@@ -1428,12 +1505,12 @@ class MulNode(FunctionNode):
     def to_ff(self, ffmodel, node_to_output):
         input_tensor1 = node_to_output[self.innodes[0].name]
         input_tensor2 = node_to_output[self.innodes[1].name]
-        # x, y = FunctionNode.broadcast_tensors(
-        #     input_tensor1, input_tensor2, ffmodel,
-        # )
-        x = input_tensor1
-        y = input_tensor2
-        return ffmodel.multiply(x=x, y=y, name=self.name)
+        out = ffmodel.multiply(
+            x=input_tensor1, y=input_tensor2, name=self.name
+        )
+        if VERBOSE:
+            print(f"[Multiply] out: {out.dims}")
+        return out
 
 
 class GetAttrNode(FunctionNode):
@@ -1505,9 +1582,13 @@ class TransposeNode(FunctionNode):
         assert type(dim0) is int and type(dim1) is int
         perm = list(range(len(input_tensor.dims)))
         perm[dim0], perm[dim1] = perm[dim1], perm[dim0]
-        return ffmodel.transpose(
+        out = ffmodel.transpose(
             input=input_tensor, perm=perm, name=self.name,
         )
+        if VERBOSE:
+            print(f"[Transpose] in: {input_tensor.dims}")
+            print(f"[Transpose] out: {out.dims}")
+        return out
 
 
 class ExpandNode(FunctionNode):
@@ -1740,8 +1821,13 @@ class ViewNode(FunctionNode):
         view_shape = self.innodes[1:]
         shape = FunctionNode.get_view_shape(input_tensor, view_shape)
         # Treat as a special case of `reshape()`
-        return ffmodel.reshape(
-            input=input_tensor, shape=shape, name=self.name)
+        out = ffmodel.reshape(
+            input=input_tensor, shape=shape, name=self.name
+        )
+        if VERBOSE:
+            print(f"[View] in: {input_tensor.dims}")
+            print(f"[View] out: {out.dims}")
+        return out
 
 
 class ToNode(FunctionNode):
@@ -1860,9 +1946,12 @@ class MeanNode(FunctionNode):
             if dims[i] == -1:
                 dims[i] = len(input_tensor.dims) - 1
             assert dims[i] >= 0 and dims[i] < len(input_tensor.dims)
-        return ffmodel.mean(
+        out = ffmodel.mean(
             input=input_tensor, dims=dims, keepdims=keepdims, name=self.name,
         )
+        if VERBOSE:
+            print(f"[Mean] out: {out.dims}")
+        return out
 
 
 class RsqrtNode(FunctionNode):
@@ -2149,10 +2238,16 @@ class OutputNode(Node):
             innodes = self.innodes[0]
             s.append(self.parse_inoutnodes(innodes))
             s.append(self.parse_inoutnodes(self.outnodes))
+        # NOTE: This case targets MT5Model
         elif type(self.innodes[0]) is immutable_dict and \
                 "last_hidden_state" in self.innodes[0]:
-            # TODO: Revisit this hard-coding
             innodes = (self.innodes[0]["last_hidden_state"],)
+            s.append(self.parse_inoutnodes(innodes))
+            s.append(self.parse_inoutnodes(self.outnodes))
+        # NOTE: This case targets MT5ForConditionalGeneration
+        elif type(self.innodes[0]) is immutable_dict and \
+                "logits" in self.innodes[0]:
+            innodes = (self.innodes[0]["logits"],)
             s.append(self.parse_inoutnodes(innodes))
             s.append(self.parse_inoutnodes(self.outnodes))
         else:
@@ -2172,28 +2267,51 @@ class OutputNode(Node):
         for other in self.innodes:
             # Destructively modify `output_tensors`
             if type(other) is immutable_dict:
-                assert "last_hidden_state" in other
-                output_tensors[:] += [node_to_output[other["last_hidden_state"].name]]
+                assert "last_hidden_state" in other or "logits" in other
+                # NOTE: This case targets MT5Model
+                if "last_hidden_state" in other:
+                    output_tensors[:] += \
+                        [node_to_output[other["last_hidden_state"].name]]
+                # NOTE: This case targets MT5ForConditionalGeneration
+                elif "logits" in other:
+                    output_tensors[:] += [node_to_output[other["logits"].name]]
             else:
                 output_tensors[:] += [node_to_output[other.name]]
 
 
 class PyTorchModel():
-    def __init__(self, model, is_hf_model=False, seq_length=None):
+    def __init__(self, model, is_hf_model=False, batch_size=None, seq_length=None):
         assert isinstance(model, torch.nn.Module)
         self.model = model
         self.is_hf_model = is_hf_model
+        self.batch_size = batch_size
         self.seq_length = seq_length
 
     @staticmethod
-    def trace_model(model, is_hf_model=False, seq_length=None):
+    def trace_model(model, is_hf_model=False, batch_size=None, seq_length=None):
         if is_hf_model:
             from transformers.utils.fx import symbolic_trace as \
                 hf_symbolic_trace
-            traced = hf_symbolic_trace(model) if seq_length is None \
-                else hf_symbolic_trace(model, sequence_length=seq_length)
+            batch_size = 1 if batch_size is None else batch_size
+            # NOTE: We pass in a fixed `input_names` based on what is needed
+            # for MT5ForConditionalGeneration's forward pass
+            input_names = ["input_ids", "attention_mask", "decoder_input_ids"]
+            traced = hf_symbolic_trace(
+                model,
+                input_names=input_names,
+                batch_size=batch_size,
+            ) \
+                if seq_length is None \
+                else hf_symbolic_trace(
+                    model,
+                    input_names=input_names,
+                    batch_size=batch_size,
+                    sequence_length=seq_length,
+                )
         else:
             traced = torch.fx.symbolic_trace(model)
+
+        # Convert the fx graph to an internal graph representation
         name_to_module = {}
         for name, module in model.named_modules():
             name_to_module[name] = module
@@ -2214,21 +2332,47 @@ class PyTorchModel():
             else:
                 assert 0, f"Unknown operator type: {fx_node.op}"
             graph.append(node)
-        return graph
+        if not is_hf_model:
+            return graph
 
-    def to_ff(self, ffmodel, input_tensors):
+        # Replace `T5LayerNorm` primitives with `LayerNormNode`
+        layer_norm_graph = []
+        i = 0
+        while i < len(graph):
+            # Check for the `T5LayerNorm` sequence and coalesce if found
+            if i + 7 < len(graph) and \
+                    isinstance(graph[i], ToNode) and \
+                    isinstance(graph[i + 1], PowNode) and \
+                    isinstance(graph[i + 2], MeanNode) and \
+                    isinstance(graph[i + 3], ScalarAddNode) and \
+                    isinstance(graph[i + 4], RsqrtNode) and \
+                    isinstance(graph[i + 5], MulNode) and \
+                    isinstance(graph[i + 6], AttributeNode) and \
+                    isinstance(graph[i + 7], MulNode):
+                layer_norm_graph.append(
+                    T5LayerNormNode(graph[i], graph[i + 7])
+                )
+                i += 7
+            else:
+                layer_norm_graph.append(graph[i])
+            i += 1
+        return layer_norm_graph
+        # return graph
+
+    def to_ff(self, ffmodel, input_tensors, verbose=False):
         """
         :type input_tensors: list[Tensor]
         """
         graph = PyTorchModel.trace_model(
-            self.model, self.is_hf_model, self.seq_length
+            self.model, self.is_hf_model, self.batch_size, self.seq_length,
         )
         output_tensors = []
         node_to_output = {}
         input_index = 0
 
         for node in graph:
-            print(f"{node.string}")
+            if verbose:
+                print(f"{node.string}")
             if isinstance(node, InputNode):
                 node_output = node.to_ff(input_tensors, input_index)
                 input_index += 1
@@ -2278,9 +2422,9 @@ class PyTorchModel():
         return output_tensors
 
     @staticmethod
-    def torch_to_string(model, is_hf_model=False, seq_length=None):
+    def torch_to_string(model, is_hf_model=False, batch_size=None, seq_length=None):
         """:return type: list[str]"""
-        graph = PyTorchModel.trace_model(model, is_hf_model, seq_length)
+        graph = PyTorchModel.trace_model(model, is_hf_model, batch_size, seq_length)
         s = [node.string for node in graph]
         return s
 
