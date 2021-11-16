@@ -1011,21 +1011,39 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor& tensor
   // Assume it is data parallel
   for (int i = 0; i < TDIM - 1; i++)
     assert(part_rect.lo[i] == part_rect.hi[i]);
-  Transform<NDIM, TDIM> transform;
-  Point<NDIM> ext_hi;
-  for (int i = 0; i < NDIM; i++) {
-    int nparts = 1;
-    if (i == NDIM - 1)
-      nparts = part_rect.hi[TDIM-1] - part_rect.lo[TDIM-1] + 1;
-    ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
+//  Transform<NDIM, TDIM> transform;
+//  Point<NDIM> ext_hi;
+//  for (int i = 0; i < NDIM; i++) {
+//    int nparts = 1;
+//    if (i == NDIM - 1)
+//      nparts = part_rect.hi[TDIM-1] - part_rect.lo[TDIM-1] + 1;
+//    ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
+//  }
+//  Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
+//  for (int i = 0; i < NDIM; i++)
+//    for (int j = 0; j < TDIM; j++)
+//      transform[i][j] = 0;
+//  transform[NDIM-1][TDIM-1] = extent.hi[NDIM-1] - extent.lo[NDIM-1] + 1;
+//  IndexPartition ip = runtime->create_partition_by_restriction(
+//      ctx, tensor.region.get_index_space(), part_is, transform, extent);
+  std::map<DomainPoint, Domain> domain_map;
+  int part_idx = 0;
+  for (PointInRectIterator<TDIM> pir(part_rect); pir(); pir++) {
+    DomainPoint point(*pir);
+    DomainPoint lo(rect.lo);
+    DomainPoint hi(rect.hi);
+    if (point.point_data[TDIM - 1] == 0) {
+      hi.point_data[NDIM - 1] = (rect.hi[NDIM - 1] - rect.lo[NDIM - 1]) / 4;
+    } else {
+      lo.point_data[NDIM - 1] = 1 + (rect.hi[NDIM - 1] - rect.lo[NDIM - 1]) / 4;
+      hi.point_data[NDIM - 1] = rect.hi[NDIM - 1];
+    }
+    part_idx++;
+    Domain part(lo, hi);
+    domain_map[point] = part;
   }
-  Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
-  for (int i = 0; i < NDIM; i++)
-    for (int j = 0; j < TDIM; j++)
-      transform[i][j] = 0;
-  transform[NDIM-1][TDIM-1] = extent.hi[NDIM-1] - extent.lo[NDIM-1] + 1;
-  IndexPartition ip = runtime->create_partition_by_restriction(
-      ctx, tensor.region.get_index_space(), part_is, transform, extent);
+  IndexPartition ip = runtime->create_partition_by_domain(
+      ctx, tensor.region.get_index_space(), domain_map, part_is);
   assert(runtime->is_index_partition_disjoint(ctx, ip));
   assert(runtime->is_index_partition_complete(ctx, ip));
   part_fwd = runtime->get_logical_partition(ctx, tensor.region, ip);
