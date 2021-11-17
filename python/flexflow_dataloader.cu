@@ -151,4 +151,5 @@ void SingleDataLoader::load_input_with_dim(const Task *task,
 }
 
 template void SingleDataLoader::load_input<float>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
-template void SingleDataLoader::load_input<int>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
+template void SingleDataLoader::load_input<int32_t>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
+template void SingleDataLoader::load_input<int64_t>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);

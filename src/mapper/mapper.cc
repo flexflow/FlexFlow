@@ -322,9 +322,11 @@ void FFMapper::select_task_options(const MapperContext ctx,
   }
 
   if ((task.task_id == PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID)
-    || (task.task_id == PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID)
+    || (task.task_id == PY_DL_INT32_LOAD_ENTIRE_CPU_TASK_ID)
+    || (task.task_id == PY_DL_INT64_LOAD_ENTIRE_CPU_TASK_ID)
     || (task.task_id == PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)
-    || (task.task_id == PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID))
+    || (task.task_id == PY_DL_INT32_INDEX_LOAD_ENTIRE_CPU_TASK_ID)
+    || (task.task_id == PY_DL_INT64_INDEX_LOAD_ENTIRE_CPU_TASK_ID))
   {
     if (!task.is_index_space) {
       output.initial_proc = all_cpus[0];
@@ -360,7 +362,8 @@ void FFMapper::slice_task(const MapperContext ctx,
     printf("num_parts %d", config.num_parts());
     devices = &all_cpus;
   } else if ((task.task_id == PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)
-  || (task.task_id == PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)) {
+  || (task.task_id == PY_DL_INT32_INDEX_LOAD_ENTIRE_CPU_TASK_ID)
+  || (task.task_id == PY_DL_INT64_INDEX_LOAD_ENTIRE_CPU_TASK_ID)) {
     // FIXME: even though it is a CPU task, we use data parallelism
     assert(enable_control_replication);
     int ndim = input.domain.get_dim();
@@ -790,7 +793,8 @@ void FFMapper::select_sharding_functor(const MapperContext ctx,
     return;
   }
   if ((task.task_id == PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)
-  || (task.task_id == PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID)) {
+  || (task.task_id == PY_DL_INT32_INDEX_LOAD_ENTIRE_CPU_TASK_ID)
+  || (task.task_id == PY_DL_INT64_INDEX_LOAD_ENTIRE_CPU_TASK_ID)) {
     // FIXME: even though it is a CPU task, we use data parallelism
     assert(enable_control_replication);
     output.chosen_functor = FFConfig::DataParallelism_GPU_1D;

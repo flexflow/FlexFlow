@@ -1809,6 +1809,8 @@ class FFModel(object):
       datatype = DataType.DT_FLOAT
     elif (full_array.dtype == "int32"):
       datatype = DataType.DT_INT32
+    elif (full_array.dtype == "int64"):
+       datatype = DataType.DT_INT64
     else:
       assert 0, "unsupported datatype"
 
@@ -1832,6 +1834,8 @@ class FFModel(object):
       datatype = DataType.DT_FLOAT
     elif (full_array.dtype == "int32"):
       datatype = DataType.DT_INT32
+    elif (full_array.dtype == "int64"):
+       datatype = DataType.DT_INT64
     else:
       assert 0, "unsupported datatype"
     np_raw_ptr = full_array.__array_interface__['data']
