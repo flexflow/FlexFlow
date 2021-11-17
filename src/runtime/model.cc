@@ -2738,6 +2738,28 @@ void register_flexflow_internal_tasks()
     Runtime::preregister_task_variant<BatchMatmul::backward_task>(
         registrar, "BatchMatmul Backward Task");
   }
+  // LayerNorm task
+  {
+    TaskVariantRegistrar registrar(LAYERNORM_INIT_TASK_ID, "layernorm_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, LayerNorm::init_task>(
+        registrar, "layernorm_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(LAYERNORM_FWD_TASK_ID, "layernorm_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<LayerNorm::forward_task>(
+        registrar, "layernorm_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(LAYERNORM_BWD_TASK_ID, "layernorm_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<LayerNorm::backward_task>(
+        registrar, "layernorm_bwd_task");
+  }
   // Linear task
   {
     TaskVariantRegistrar registrar(LINEAR_INIT_TASK_ID, "Linear Init");
