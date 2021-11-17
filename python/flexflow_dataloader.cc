@@ -518,7 +518,9 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, Tensor full_input_
   if (datatype == DT_FLOAT) {
     task_id = PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID;
   } else if (datatype == DT_INT32) {
-    task_id = PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID;
+    task_id = PY_DL_INT32_LOAD_ENTIRE_CPU_TASK_ID;
+  } else if (datatype == DT_INT64) {
+    task_id = PY_DL_INT64_LOAD_ENTIRE_CPU_TASK_ID;
   } else {
     assert(0);
   }
@@ -558,7 +560,9 @@ SingleDataLoader::SingleDataLoader(FFModel& ff, Tensor input, void *full_input_p
   if (datatype == DT_FLOAT) {
     task_id = PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID;
   } else if (datatype == DT_INT32) {
-    task_id = PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID;
+    task_id = PY_DL_INT32_INDEX_LOAD_ENTIRE_CPU_TASK_ID;
+  } else if (datatype == DT_INT64) {
+    task_id = PY_DL_INT64_INDEX_LOAD_ENTIRE_CPU_TASK_ID;
   } else {
     assert(0);
   }
@@ -652,7 +656,9 @@ void SingleDataLoader::next_batch(FFModel& ff)
   if (datatype == DT_FLOAT)
     task_id = PY_DL_FLOAT_LOAD_BATCH_GPU_TASK_ID;
   else if (datatype == DT_INT32)
-    task_id = PY_DL_INT_LOAD_BATCH_GPU_TASK_ID;
+    task_id = PY_DL_INT32_LOAD_BATCH_GPU_TASK_ID;
+  else if (datatype == DT_INT64)
+    task_id = PY_DL_INT64_LOAD_BATCH_GPU_TASK_ID;
   else
     assert(0);
   switch (full_input.numDim) {
@@ -847,13 +853,21 @@ void SingleDataLoader::register_cpu_tasks(void)
     Runtime::preregister_task_variant<SingleDataLoader::load_entire_dataset_from_numpy<float>>(
         registrar, "Float Load Entire Dataset Task Numpy");
   }
-  // int Load entire dataset from numpy
+  // int32 Load entire dataset from numpy
   {
-    TaskVariantRegistrar registrar(PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID, "Int32 Load Entire Dataset Numpy");
+    TaskVariantRegistrar registrar(PY_DL_INT32_LOAD_ENTIRE_CPU_TASK_ID, "Int32 Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<SingleDataLoader::load_entire_dataset_from_numpy<int>>(
+    Runtime::preregister_task_variant<SingleDataLoader::load_entire_dataset_from_numpy<int32_t>>(
         registrar, "Int32 Load Entire Dataset Task Numpy");
+  }
+  // int64 Load entire dataset from numpy
+  {
+    TaskVariantRegistrar registrar(PY_DL_INT64_LOAD_ENTIRE_CPU_TASK_ID, "Int64 Load Entire Dataset Numpy");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<SingleDataLoader::load_entire_dataset_from_numpy<int64_t>>(
+        registrar, "Int64 Load Entire Dataset Task Numpy");
   }
   // float Index load entire dataset from numpy
   {
@@ -863,13 +877,21 @@ void SingleDataLoader::register_cpu_tasks(void)
     Runtime::preregister_task_variant<SingleDataLoader::index_load_entire_dataset_from_numpy<float>>(
         registrar, "Float Index Load Entire Dataset Task Numpy");
   }
-  // int Index load entire dataset from numpy
+  // int32 Index load entire dataset from numpy
   {
-    TaskVariantRegistrar registrar(PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID, "Int32 Index Load Entire Dataset Numpy");
+    TaskVariantRegistrar registrar(PY_DL_INT32_INDEX_LOAD_ENTIRE_CPU_TASK_ID, "Int32 Index Load Entire Dataset Numpy");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<SingleDataLoader::index_load_entire_dataset_from_numpy<int>>(
+    Runtime::preregister_task_variant<SingleDataLoader::index_load_entire_dataset_from_numpy<int32_t>>(
         registrar, "Int32 Index Load Entire Dataset Task Numpy");
+  }
+  // int64 Index load entire dataset from numpy
+  {
+    TaskVariantRegistrar registrar(PY_DL_INT64_INDEX_LOAD_ENTIRE_CPU_TASK_ID, "Int64 Index Load Entire Dataset Numpy");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<SingleDataLoader::index_load_entire_dataset_from_numpy<int64_t>>(
+        registrar, "Int64 Index Load Entire Dataset Task Numpy");
   }
 }
 
@@ -883,13 +905,21 @@ void SingleDataLoader::register_gpu_tasks(void)
     Runtime::preregister_task_variant<SingleDataLoader::load_input<float>>(
         registrar, "Float Load Input Task");
   }
-  // int load input
+  // int32 load input
   {
-    TaskVariantRegistrar registrar(PY_DL_INT_LOAD_BATCH_GPU_TASK_ID, "Int32 Load Inputs");
+    TaskVariantRegistrar registrar(PY_DL_INT32_LOAD_BATCH_GPU_TASK_ID, "Int32 Load Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<SingleDataLoader::load_input<int>>(
+    Runtime::preregister_task_variant<SingleDataLoader::load_input<int32_t>>(
         registrar, "Int32 Load Input Task");
+  }
+  // int64 load input
+  {
+    TaskVariantRegistrar registrar(PY_DL_INT64_LOAD_BATCH_GPU_TASK_ID, "Int64 Load Inputs");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<SingleDataLoader::load_input<int64_t>>(
+        registrar, "Int64 Load Input Task");
   }
 }
 
@@ -898,6 +928,8 @@ template void SingleDataLoader::next_batch_xd_launcher<4>(FFModel& ff, int task_
 template void SingleDataLoader::index_loader_xd_launcher<2>(FFModel& ff, int task_id, void *full_input_ptr, size_t size_per_sample);
 template void SingleDataLoader::index_loader_xd_launcher<4>(FFModel& ff, int task_id, void *full_input_ptr, size_t size_per_sample);
 template void SingleDataLoader::load_entire_dataset_from_numpy<float>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
-template void SingleDataLoader::load_entire_dataset_from_numpy<int>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
+template void SingleDataLoader::load_entire_dataset_from_numpy<int32_t>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
+template void SingleDataLoader::load_entire_dataset_from_numpy<int64_t>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
 template void SingleDataLoader::index_load_entire_dataset_from_numpy<float>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
-template void SingleDataLoader::index_load_entire_dataset_from_numpy<int>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
+template void SingleDataLoader::index_load_entire_dataset_from_numpy<int32_t>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
+template void SingleDataLoader::index_load_entire_dataset_from_numpy<int64_t>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);

@@ -187,6 +187,8 @@ SingleDataLoader *create_data_loader_ptr(FFModel &model, Tensor &batch_tensor, p
     dtype = DataType::DT_FLOAT;
   } else if (info.format == "i") {
     dtype = DataType::DT_INT32;
+  } else if (info.format == "l") {
+    dtype = DataType::DT_INT64;
   }
 
   ssize_t num_samples = info.shape[0];
@@ -201,6 +203,8 @@ SingleDataLoader *create_data_loader_attach(FFModel &model, Tensor &batch_tensor
     dtype = DataType::DT_FLOAT;
   } else if (info.format == "i") {
     dtype = DataType::DT_INT32;
+  } else if (info.format == "l") {
+    dtype = DataType::DT_INT64;
   }
 
   int num_dims = info.shape.size();

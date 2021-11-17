@@ -254,7 +254,8 @@ template __global__ void assign_kernel<int32_t>(int32_t* ptr, coord_t size, int3
 template __global__ void assign_kernel<int64_t>(int64_t* ptr, coord_t size, int64_t value);
 
 template __global__ void copy_kernel<float>(float* dst, const float* src, coord_t size);
-template __global__ void copy_kernel<int>(int* dst, const int* src, coord_t size);
+template __global__ void copy_kernel<int32_t>(int32_t* dst, const int32_t* src, coord_t size);
+template __global__ void copy_kernel<int64_t>(int64_t* dst, const int64_t* src, coord_t size);
 
 template __host__ void print_tensor<float>(const float* ptr, size_t rect, const char* prefix);
 template __host__ void print_tensor<long>(const long* ptr, size_t rect, const char* prefix);
