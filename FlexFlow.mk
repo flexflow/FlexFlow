@@ -58,6 +58,7 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/runtime/model.cu\
 		${FF_HOME}/src/ops/pool_2d.cu\
 		${FF_HOME}/src/ops/batch_norm.cu\
+		${FF_HOME}/src/ops/layer_norm.cu\
 		${FF_HOME}/src/ops/linear.cu\
 		${FF_HOME}/src/ops/softmax.cu\
 		${FF_HOME}/src/ops/concat.cu\
