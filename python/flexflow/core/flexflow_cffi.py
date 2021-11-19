@@ -403,9 +403,9 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
   elif op_type == OpType.DROPOUT:
     return Dropout(handle, idx, name)
   elif op_type == OpType.BATCH_NORM:
-    return Batch_Norm(handle, idx, name)
+    return BatchNorm(handle, idx, name)
   elif op_type == OpType.LAYER_NORM:
-    return Layer_Norm(handle, idx, name)
+    return LayerNorm(handle, idx, name)
   elif op_type == OpType.BATCH_MATMUL:
     return Batch_Matmul(handle, idx, name)
   elif op_type == OpType.SPLIT:
