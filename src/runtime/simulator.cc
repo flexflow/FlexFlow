@@ -714,7 +714,6 @@ float Simulator::simulate_runtime(const FFModel* model,
       Op* op = model->operators[l];
       size_t element_size = data_type_size(DT_FLOAT); // assume all weights have float elements
       ParallelConfig pc = global.find(op)->second;
-      size_t element_size = data_type_size(DT_FLOAT); // assume all weights have float elements
       for (int j = 0; j < op->numWeights; j++) {
         std::set<int> synched;
         for (int firstId = 0; firstId < pc.num_parts(); firstId++) {

@@ -315,7 +315,7 @@ public:
   void free_all();
   void* allocate(size_t num_elements, DataType type);
   void add_task_dependencies_with_xfer(
-      SimTask* src_task, SimTask* dst_task, size_t message_size, bool force_zero_cost);
+      SimTask* src_task, SimTask* dst_task, size_t message_size, bool force_zero_cost = false);
   CostMetrics measure_operator_cost(const Op* op, const ParallelConfig& config);
   CostMetrics measure_operator_cost(const Op* op, const MachineView& view);
   float estimate_xfer_cost(const Op* op,
