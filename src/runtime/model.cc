@@ -846,7 +846,8 @@ void Op::set_argumentmap_for_init(const FFModel& ff,
   Runtime* runtime = ff.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, this->parallel_is);
   switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
+#ifdef FF_USE_NCCL
+  #define DIMFUNC(DIM) \
     case DIM: \
     { \
       Rect<DIM> rect = domain; \
@@ -863,7 +864,23 @@ void Op::set_argumentmap_for_init(const FFModel& ff,
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
+  #undef DIMFUNC
+#else
+  #define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      MachineView view = outputs[0]->machine_view; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        FFHandler handle = ff.handlers[view.get_device_id(*it)]; \
+        argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+  #undef DIMFUNC
+#endif
     default:
       assert(false);
   }
