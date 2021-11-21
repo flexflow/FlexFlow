@@ -167,7 +167,7 @@ endif
 ifeq ($(strip $(USE_HIP)),1)
 ifeq ($(strip $(HIP_TARGET)),CUDA)
 CC_FLAGS	+= -DFF_USE_HIP_CUDA
-NVCC_FLAGS	+= -DFF_USE_HIP_CUDA
+HIPCC_FLAGS	+= -DFF_USE_HIP_CUDA
 endif
 endif
 
