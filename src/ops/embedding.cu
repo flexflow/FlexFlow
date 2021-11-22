@@ -46,6 +46,7 @@ Embedding::Embedding(FFModel& model,
   kernel_initializer(_kernel_initializer)
 {
   assert(_input.numDim == 2);
+  outputs[0].data_type = DT_FLOAT;
   if (aggr == AGGR_MODE_NONE) {
     outputs[0].numDim = 3;
     outputs[0].adim[0] = out_channels;
@@ -91,8 +92,21 @@ void Embedding::create_output_and_partition(FFModel& model)
   // Currently assume we can only partition over the sample dim
   assert(part_rect.hi[0] == part_rect.lo[0]);
   {
-    const int dims[2] = {inputs[0].adim[1], out_channels};
-    outputs[0] = model.create_tensor<2>(dims, DT_FLOAT, this);
+    //const int dims[2] = {inputs[0].adim[1], out_channels};
+    int dims[MAX_TENSOR_DIM];
+    int ndims = outputs[0].numDim;
+    for (int i = 0; i < outputs[0].numDim; i++)
+      dims[i] = outputs[0].adim[ndims-1-i];
+    switch (ndims) {
+#define DIMFUNC(DIM) \
+      case DIM: \
+      { \
+        outputs[0] = model.create_tensor<DIM>(dims, outputs[0].data_type, this); \
+        break; \
+      }
+      LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    }
     outputs[0].owner_op = this;
     outputs[0].owner_idx = 0;
   }

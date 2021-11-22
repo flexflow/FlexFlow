@@ -100,7 +100,7 @@ void LayerNorm::create_output_and_partition(FFModel& model)
 #define DIMFUNC(DIM) \
       case DIM: \
       { \
-        outputs[0] = model.create_tensor<DIM>(dims, DT_FLOAT, this); \
+        outputs[0] = model.create_tensor<DIM>(dims, outputs[0].data_type, this); \
         break; \
       }
       LEGION_FOREACH_N(DIMFUNC)
