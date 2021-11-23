@@ -1239,6 +1239,8 @@ public:
   //Parameter* get_parameter(int index);
   void create_weights(FFModel& model);
   void create_output_and_partition(FFModel& model);
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
