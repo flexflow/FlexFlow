@@ -232,10 +232,10 @@ void Embedding::init_with_dim(const FFModel& ff)
       READ_ONLY, EXCLUSIVE, weights[0].region));
   launcher.add_field(1, FID_DATA);
   // regions[3]: input_grad
-  launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[0], 0/*projection*/,
-      WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
-  launcher.add_field(2, FID_DATA);
+  //launcher.add_region_requirement(
+  //  RegionRequirement(input_grad_lps[0], 0/*projection*/,
+  //    WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+  //launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;
