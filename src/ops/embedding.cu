@@ -65,9 +65,31 @@ Embedding::Embedding(FFModel& model,
 
 void Embedding::create_weights(FFModel& model)
 {
+  // Retrive the task indexspace
+  int dim = outputs[0].numDim;
+  switch (dim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      create_weights_with_dim<DIM>(model); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dim for BatchMatmul operator
+      assert(false);
+    }
+  }
+}
+
+template<int NDIM>
+void Embedding::create_weights_with_dim(FFModel& model)
+{
   // Retrive the task indexspace for the op
   std::string pcname = name;
-  task_is = IndexSpaceT<2>(model.get_or_create_task_is(2, pcname));
+  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, pcname));
 #ifdef FF_USE_NCCL
   ParameterSyncType comm_type = ParameterSyncType::NCCL;  
 #else
@@ -76,7 +98,7 @@ void Embedding::create_weights(FFModel& model)
   {
     const int dims[2] = {out_channels, num_entries};
     // Embeddding weights and linear weights can be partitioned in the same way
-    weights[0] = model.create_linear_weight<2, 2>(this, dims, DT_FLOAT, kernel_initializer, true/*create_grad*/, comm_type);
+    weights[0] = model.create_linear_weight<2, NDIM>(this, dims, DT_FLOAT, kernel_initializer, true/*create_grad*/, comm_type);
     assert(numWeights == 1);
   }
 }
@@ -153,15 +175,37 @@ OpMeta* Embedding::init_task(const Task *task,
 
 void Embedding::init(const FFModel& ff)
 {
+  // Retrive the task indexspace
+  int dim = outputs[0].numDim;
+  switch (dim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      init_with_dim<DIM>(ff); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dim for BatchMatmul operator
+      assert(false);
+    }
+  }
+}
+
+template<int NDIM>
+void Embedding::init_with_dim(const FFModel& ff)
+{
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
   ParallelConfig pc;
   std::string pcname = name;
-  ff.config.find_parallel_config(2, pcname, pc);
+  ff.config.find_parallel_config(NDIM, pcname, pc);
   int idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
+  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
     FFHandler handle = ff.handlers[pc.device_ids[idx++]];
 #ifdef FF_USE_NCCL
     handle.ncclComm = pc.nccl_comms[idx-1];
@@ -195,7 +239,7 @@ void Embedding::init(const FFModel& ff)
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
+  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
     meta[idx++] = fm.get_result<OpMeta*>(*it);
   }
 }
@@ -310,12 +354,34 @@ void Embedding::forward_task(const Task *task,
 
 void Embedding::forward(const FFModel& ff)
 {
+  // Retrive the task indexspace
+  int dim = outputs[0].numDim;
+  switch (dim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      forward_with_dim<DIM>(ff); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dim for BatchMatmul operator
+      assert(false);
+    }
+  }
+}
+
+template<int NDIM>
+void Embedding::forward_with_dim(const FFModel& ff)
+{
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
+  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }
@@ -392,12 +458,34 @@ void Embedding::backward_task(const Task *task,
 
 void Embedding::backward(const FFModel& ff)
 {
+  // Retrive the task indexspace
+  int dim = outputs[0].numDim;
+  switch (dim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      backward_with_dim<DIM>(ff); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dim for BatchMatmul operator
+      assert(false);
+    }
+  }
+}
+
+template<int NDIM>
+void Embedding::backward_with_dim(const FFModel& ff)
+{
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
   int idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
+  for (PointInRectIterator<NDIM> it(rect); it(); it++) {
     OpMeta* mp = meta[idx++];
     argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*)));
   }

@@ -1239,8 +1239,6 @@ public:
   //Parameter* get_parameter(int index);
   void create_weights(FFModel& model);
   void create_output_and_partition(FFModel& model);
-  template<int NDIM>
-  void create_output_and_partition_with_dim(FFModel& model);
 
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
@@ -1278,6 +1276,17 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
+private:
+  template<int NDIM>
+  void create_weights_with_dim(FFModel& model);
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
+  template<int NDIM>
+  void init_with_dim(const FFModel&);
+  template<int NDIM>
+  void forward_with_dim(const FFModel&);
+  template<int NDIM>
+  void backward_with_dim(const FFModel&);
 public:
   //IndexSpaceT<2> task_is;
   int num_entries, out_channels;
