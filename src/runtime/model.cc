@@ -979,7 +979,8 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor& tensor
   assert(tensor.numDim == NDIM);
   if (config.computationMode == COMP_MODE_TRAINING) {
     // Current assume forward and grad share the same index space
-    assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
+    if (tensor.region_grad != LogicalRegion::NO_REGION)
+      assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
   }
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -1007,7 +1008,8 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor& tensor
   assert(runtime->is_index_partition_complete(ctx, ip));
   part_fwd = runtime->get_logical_partition(ctx, tensor.region, ip);
   if (config.computationMode == COMP_MODE_TRAINING) {
-    part_bwd = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
+    if (tensor.region_grad != LogicalRegion::NO_REGION)
+      part_bwd = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
   } else {
     part_bwd = LogicalPartition::NO_PART;
   }
