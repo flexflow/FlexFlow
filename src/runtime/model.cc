@@ -1230,7 +1230,8 @@ Tensor FFModel::create_tensor(
   //tensor->ts_guid = tensor_global_guid ++;
   tensor->data_type = data_type;
   if (owner_layer == NULL) {
-    Layer* input_layer = new Layer(this, OP_INPUT, NULL, 0/*inputs*/, 0/*weight*/, 1/*outputs*/, NULL, NULL);
+    Layer* input_layer = new Layer(this, OP_INPUT, "input", 0/*inputs*/, 0/*weight*/, 1/*outputs*/, NULL, NULL);
+    input_layer->outputs[0] = tensor;
     layers.push_back(input_layer);
     tensor->owner_layer = input_layer;
     tensor->owner_idx = 0;
@@ -2346,6 +2347,65 @@ bool FFModel::apply_fusion(const std::vector<Op*>& operators,
   return false;
 }
 
+Op* FFModel::create_operator_from_layer(const Layer* layer,
+                                        const std::vector<ParallelTensor>& inputs) {
+  switch (layer->op_type) {
+    case OP_INPUT:
+    {
+      // Input op cannot have an input
+      assert(inputs.size() == 0);
+      // Current assume we add one dimension before each tensor
+      const Tensor tensor = layer->outputs[0];
+      int num_dims = tensor->num_dims;
+      ParallelDim dims[MAX_TENSOR_DIM];
+      for (int j = 0; j < num_dims; j++) {
+        dims[j].size = tensor->dims[j];
+	dims[j].degree = 1;
+	dims[j].parallel_idx = -1;
+      }
+      dims[num_dims].size = 1;
+      dims[num_dims].degree = 1;
+      dims[num_dims].parallel_idx = -1;
+      // create_parallel_tensor adds an NoOp into operators
+      create_parallel_tensor_legion_ordering(
+          num_dims + 1, dims, tensor->data_type);
+      return operators[operators.size()-1];
+    }
+    case OP_LINEAR:
+    {
+      Op* op = Linear::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_SOFTMAX:
+    {
+      Op* op = Softmax::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    default:
+      assert(false);
+  }
+}
+
+void FFModel::create_operators_from_layers() {
+  std::map<const Tensor, ParallelTensor> tensors_to_parallel_tensors;
+  for (const auto& l : layers) {
+    std::vector<ParallelTensor> inputs;
+    for (int i = 0; i < l->numInputs; i++) {
+      // create new input tensors
+      assert(tensors_to_parallel_tensors.find(l->inputs[i])
+             != tensors_to_parallel_tensors.end());
+      inputs.push_back(tensors_to_parallel_tensors[l->inputs[i]]);
+    }
+    Op* op = create_operator_from_layer(l, inputs);
+    assert(op->numOutputs == l->numOutputs);
+    for (int i = 0; i < op->numOutputs; i++) {
+      tensors_to_parallel_tensors[l->outputs[i]] = op->outputs[i];
+    }
+  }
+}
+
 void FFModel::compile(LossType loss_type,
                       const std::vector<MetricsType>& metrics,
                       CompMode comp_mode)
@@ -2357,6 +2417,8 @@ void FFModel::compile(LossType loss_type,
   //if (config.import_strategy_file.length() > 0) {
   //  load_strategies_from_file(config.import_strategy_file, config.strategies);
   //}
+  // Construct
+  create_operators_from_layers();
   // Launch the graph optimize task
   {
     FFModel* model = this;

@@ -38,9 +38,12 @@ Tensor FFModel::dense(const Tensor input,
   for (int i = 0; i < numdims; i++)
     dims[i] = input->dims[i];
   dims[0] = outDim;
+  li->data_type = data_type;
   li->outputs[0] = create_tensor_legion_ordering(numdims, dims, data_type,
                                                  li, 0, true/*create_grad*/);
   li->add_int_property("use_bias", use_bias);
+  li->add_int_property("out_dim", outDim);
+  li->add_int_property("activation", activation);
   layers.push_back(li);
   return li->outputs[0];
 #ifdef DEADCODE
@@ -48,6 +51,21 @@ Tensor FFModel::dense(const Tensor input,
   layers.push_back(li);
   return li->outputs[0];
 #endif
+}
+
+Op* Linear::create_operator_from_layer(FFModel& model,
+                                       const Layer* layer,
+                                       const std::vector<ParallelTensor>& inputs)
+{
+  long long value;
+  layer->get_int_property("use_bias", value);
+  bool use_bias = (bool) value;
+  layer->get_int_property("out_dim", value);
+  int outdim = value;
+  layer->get_int_property("activation", value);
+  ActiMode activation = (ActiMode) value;
+  return new Linear(model, inputs[0], outdim, activation, use_bias,
+                    layer->data_type, false/*allocate_weights*/, layer->name);
 }
 
 size_t Linear::get_params_hash() const {
@@ -83,6 +101,7 @@ Linear::Linear(FFModel& model,
   activation(_activation),
   use_bias(_use_bias)
 {
+  data_type = _data_type;
   auto dimension_names = this->get_params().get_dimension_names(_input->get_shape());
   this->in_channels = _input->dims[dimension_names.at(LinearParams::INPUT_CHANNEL)].size;
     

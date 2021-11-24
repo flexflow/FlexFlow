@@ -52,6 +52,17 @@ Tensor FFModel::softmax(const Tensor _input, int dim, const char *name)
 #endif
 }
 
+Op* Softmax::create_operator_from_layer(FFModel& model,
+                                        const Layer* layer,
+                                        const std::vector<ParallelTensor>& inputs)
+{
+  long long value;
+  layer->get_int_property("softmax_dim", value);
+  int dim = (int) value;
+  return new Softmax(model, inputs[0], (inputs[0]->num_dims-1-dim) % inputs[0]->num_dims, layer->name);
+}
+
+
 Softmax::Softmax(FFModel& model,
                  const ParallelTensor _input,
                  int _dim,

@@ -1005,6 +1005,9 @@ public:
   Legion::IndexSpace get_task_is(const Legion::Domain& domain) const;
   Legion::IndexSpace get_task_is(const ParallelConfig& pc) const;
   Legion::IndexSpace get_task_is(const MachineView& view) const;
+  void create_operators_from_layers();
+  Op* create_operator_from_layer(const Layer* layer,
+                                 const std::vector<ParallelTensor>& inputs);
   // APIs for setting iteration configs
 public:
   void set_iteration_config_sequence_length(int seq_length);

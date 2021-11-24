@@ -83,6 +83,43 @@ void Layer::add_initializer(const std::string& key,
   initializers[key] = initializer;
 }
 
+bool Layer::get_int_property(const std::string& key, long long& value) const
+{
+  const auto& it = int_properties.find(key);
+  if (it == int_properties.end()) {
+    assert(false);
+    return false;
+  } else {
+    value = it->second;
+    return true;
+  }
+}
+
+bool Layer::get_float_property(const std::string& key, float& value) const
+{
+  const auto& it = float_properties.find(key);
+  if (it == float_properties.end()) {
+    assert(false);
+    return false;
+  } else {
+    value = it->second;
+    return true;
+  }
+}
+
+bool Layer::get_initializer(const std::string& key,
+                            Initializer*& initializer) const
+{
+  const auto& it = initializers.find(key);
+  if (it == initializers.end()) {
+    assert(false);
+    return false;
+  } else {
+    initializer = it->second;
+    return true;
+  }
+}
+
 void Layer::print()
 {}
 

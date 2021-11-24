@@ -31,6 +31,12 @@ public:
                           float value);
   void add_initializer(const std::string& key,
                        Initializer* initializer);
+  bool get_int_property(const std::string& key,
+                        long long& value) const;
+  bool get_float_property(const std::string& key,
+                          float& value) const;
+  bool get_initializer(const std::string& key,
+                       Initializer* &initializer) const;
   void print();
 public:
   OperatorType op_type;

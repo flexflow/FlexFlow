@@ -477,7 +477,7 @@ bool Linear::measure_operator_cost(Simulator* sim,
   LinearMeta* m = sim->linear_meta;
   m->activation = activation;
   m->input_type = inputs[0]->data_type;
-  m->weight_type = weights[0]->data_type;
+  m->weight_type = this->data_type;
   m->output_type = outputs[0]->data_type;
   if (use_activation(m->activation)) {
     cudnnActivationMode_t mode;
@@ -501,8 +501,8 @@ bool Linear::measure_operator_cost(Simulator* sim,
   sim->free_all();
   void* input_ptr = sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
   void* output_ptr = sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
-  void* kernel_ptr = sim->allocate((size_t)output_c * input_c, weights[0]->data_type);
-  void* bias_ptr = sim->allocate(output_c, weights[1]->data_type);
+  void* kernel_ptr = sim->allocate((size_t)output_c * input_c, this->data_type);
+  void* bias_ptr = sim->allocate(output_c, this->data_type);
   assert(bias_ptr != NULL);
 
   cudaStream_t stream;
@@ -526,8 +526,8 @@ bool Linear::measure_operator_cost(Simulator* sim,
       input_grad_ptr = sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
     }
     void* output_grad_ptr = sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
-    void* kernel_grad_ptr = sim->allocate((size_t)output_c * input_c, weights[0]->data_type);
-    void* bias_grad_ptr = sim->allocate(output_c, weights[1]->data_type);
+    void* kernel_grad_ptr = sim->allocate((size_t)output_c * input_c, this->data_type);
+    void* bias_grad_ptr = sim->allocate(output_c, this->data_type);
     out_of_memory = (input_grad_ptr == NULL) || (output_grad_ptr == NULL)
                     || (kernel_grad_ptr == NULL) || (bias_grad_ptr == NULL);
     if (out_of_memory) {
