@@ -1963,7 +1963,7 @@ class FFModel(object):
       assert 0, "unsupported datatype"
     np_raw_ptr = full_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-    print("numpy array: %s, %s, %s" %( str(np_raw_ptr), str(raw_ptr), hex(np_raw_ptr[0])))
+    print("numpy array: %s, %s, %s" % (str(np_raw_ptr), str(raw_ptr), hex(np_raw_ptr[0])))
     dataloader = SingleDataLoader(self, batch_tensor, raw_ptr, num_samples, datatype)
 
     return dataloader
