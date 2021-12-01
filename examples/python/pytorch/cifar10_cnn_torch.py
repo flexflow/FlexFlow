@@ -39,5 +39,6 @@ class CNN(nn.Module):
     return (yo, y)
 
 model = CNN()
-PyTorchModel.torch_to_file("cnn.ff", model)
+ff_torch_model = PyTorchModel(model)
+ff_torch_model.torch_to_file("cnn.ff")
 

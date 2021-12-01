@@ -22,8 +22,11 @@ from flexflow.type import (ActiMode, AggrMode, DataType, OpType,
                            enum_to_str, int_to_enum, str_to_enum)
 from flexflow.core.flexflow_cffi import Tensor
 
-import torch
-from torch.fx.immutable_collections import immutable_dict
+try:
+    import torch
+    from torch.fx.immutable_collections import immutable_dict
+except:
+    pass
 
 
 class Comparator(Enum):
@@ -2261,40 +2264,40 @@ class OutputNode(Node):
 
 
 class PyTorchModel():
-    def __init__(self, model, is_hf_model=False, batch_size=None, seq_length=None):
+    def __init__(self, model, is_hf_model=False, batch_size=1, seq_length=None):
         assert isinstance(model, torch.nn.Module)
         self.model = model
         self.is_hf_model = is_hf_model
         self.batch_size = batch_size
         self.seq_length = seq_length
 
-    @staticmethod
-    def trace_model(model, is_hf_model=False, batch_size=None, seq_length=None):
-        if is_hf_model:
+    def _trace_model(self):
+        assert torch.cuda.is_available() == False, \
+          "FlexFlow can not work with CUDA version of PyTorch, please install the CPU version."
+        if self.is_hf_model:
             from transformers.utils.fx import symbolic_trace as \
                 hf_symbolic_trace
-            batch_size = 1 if batch_size is None else batch_size
             # NOTE: We pass in a fixed `input_names` based on what is needed
             # for MT5ForConditionalGeneration's forward pass
             input_names = ["input_ids", "attention_mask", "decoder_input_ids"]
             traced = hf_symbolic_trace(
-                model,
+                self.model,
                 input_names=input_names,
-                batch_size=batch_size,
+                batch_size=self.batch_size,
             ) \
-                if seq_length is None \
+                if self.seq_length is None \
                 else hf_symbolic_trace(
                     model,
                     input_names=input_names,
-                    batch_size=batch_size,
-                    sequence_length=seq_length,
+                    batch_size=self.batch_size,
+                    sequence_length=self.seq_length,
                 )
         else:
-            traced = torch.fx.symbolic_trace(model)
+            traced = torch.fx.symbolic_trace(self.model)
 
         # Convert the fx graph to an internal graph representation
         name_to_module = {}
-        for name, module in model.named_modules():
+        for name, module in self.model.named_modules():
             name_to_module[name] = module
         graph = []
         for fx_node in traced.graph.nodes:
@@ -2305,7 +2308,7 @@ class PyTorchModel():
             elif fx_node.op == "placeholder":
                 node = InputNode(fx_node)
             elif fx_node.op == "get_attr":
-                node = AttributeNode(fx_node, model)
+                node = AttributeNode(fx_node, self.model)
             elif fx_node.op == "call_function" or fx_node.op == "call_method":
                 node = FunctionNode.construct_node(fx_node)
             elif fx_node.op == "output":
@@ -2315,7 +2318,7 @@ class PyTorchModel():
             graph.append(node)
         
         # For none hf_model
-        if not is_hf_model:
+        if not self.is_hf_model:
             return graph
 
         # For hf_model
@@ -2343,7 +2346,7 @@ class PyTorchModel():
         return layer_norm_graph
         # return graph
 
-    def to_ff(self, ffmodel, input_tensors, verbose=False):
+    def torch_to_ff(self, ffmodel, input_tensors, verbose=False):
         """
         Traces the PyTorch model wrapped by this ``PyTorchModel`` instance,
         and adds operators to ``ffmodel`` coresponding to the computational
@@ -2360,9 +2363,7 @@ class PyTorchModel():
         Returns:
             output_tensors (List[Tensor]): Output tensors of the model.
         """
-        graph = PyTorchModel.trace_model(
-            self.model, self.is_hf_model, self.batch_size, self.seq_length,
-        )
+        graph = self._trace_model()
         output_tensors = []
         node_to_output = {}
         input_index = 0
@@ -2422,13 +2423,7 @@ class PyTorchModel():
 
         return output_tensors
 
-    @staticmethod
-    def torch_to_string(
-        model,
-        is_hf_model=False,
-        batch_size=None,
-        seq_length=None
-    ):
+    def torch_to_string(self):
         """
         Args:
             model (torch.nn.Module): PyTorch model.
@@ -2445,25 +2440,14 @@ class PyTorchModel():
             s (List[str]): List of each computational graph node's string
                 representation (in topological order).
         """
-        graph = PyTorchModel.trace_model(
-            model, is_hf_model, batch_size, seq_length,
-        )
+        graph = self._trace_model()
         s = [node.string for node in graph]
         return s
 
-    @staticmethod
-    def torch_to_file(
-        filename,
-        model,
-        is_hf_model=False,
-        batch_size=None,
-        seq_length=None
-    ):
+    def torch_to_file(self, filename):
         """Writes the result of :meth:`torch_to_string` to the file given by
         ``filename``."""
-        s = PyTorchModel.torch_to_string(
-            model, is_hf_model, batch_size, seq_length,
-        )
+        s = self.torch_to_string()
         with open(filename, "w") as f:
             for line in s:
                 f.write(line + "\n")

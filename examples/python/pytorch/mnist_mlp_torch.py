@@ -20,5 +20,6 @@ class MLP(nn.Module):
     return y
 
 model = MLP()
-PyTorchModel.torch_to_file("mlp.ff", model)
+ff_torch_model = PyTorchModel(model)
+ff_torch_model.torch_to_file("mlp.ff")
 
