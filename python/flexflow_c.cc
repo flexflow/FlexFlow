@@ -444,6 +444,28 @@ flexflow_model_add_batch_norm(
 }
 
 flexflow_tensor_t
+flexflow_model_add_layer_norm(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  int n,
+  int* axes,
+  bool elementwise_affine,
+  float eps, 
+  const char *name)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  Tensor *tensor = new Tensor();
+  std::vector<int> axes_vec;
+  for (int i = 0; i < n; i++ ) {
+    axes_vec.push_back(axes[i]);
+  }
+  *tensor = handle->layer_norm(*input, axes_vec, elementwise_affine, eps, name);
+  DEBUG_PRINT("[LayerNorm] new Tensor %p, input %p, elementwise_affine %d, eps %f, name %s", tensor, input, elementwise_affine, eps, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t
 flexflow_model_add_batch_matmul(
   flexflow_model_t handle_,
   const flexflow_tensor_t a_,

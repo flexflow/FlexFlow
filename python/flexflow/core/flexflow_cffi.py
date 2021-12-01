@@ -216,6 +216,13 @@ class Concat(Op):
 class BatchNorm(Op):
   def __init__(self, handle, idx=None, name=None):
     super(BatchNorm, self).__init__(handle, idx, name)
+    
+# -----------------------------------------------------------------------
+# LayerNorm
+# -----------------------------------------------------------------------
+class LayerNorm(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(LayerNorm, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Dropout
@@ -396,7 +403,9 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
   elif op_type == OpType.DROPOUT:
     return Dropout(handle, idx, name)
   elif op_type == OpType.BATCH_NORM:
-    return Batch_Norm(handle, idx, name)
+    return BatchNorm(handle, idx, name)
+  elif op_type == OpType.LAYER_NORM:
+    return LayerNorm(handle, idx, name)
   elif op_type == OpType.BATCH_MATMUL:
     return Batch_Matmul(handle, idx, name)
   elif op_type == OpType.SPLIT:
@@ -1071,6 +1080,13 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_batch_norm(self.handle, input.handle, relu, c_name)
     self.add_layer(OpType.BATCH_NORM, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
+    
+  def layer_norm(self, input, axes, elementwise_affine=True, eps=1e-5, name=None):
+    c_name = get_c_name(name)
+    c_axes = ffi.new("int[]", axes)
+    handle = ffc.flexflow_model_add_layer_norm(self.handle, input.handle, len(axes), c_axes, elementwise_affine, eps, c_name)
+    self.add_layer(OpType.LAYER_NORM, name)
+    return Tensor(handle, owner_op_type=OpType.LAYER_NORM)
 
   def batch_matmul(self, A, B, a_seq_length_dim=None, b_seq_length_dim=None, name=None):
     """Layer that applied batched matrix multiplication onto two input Tensors, :attr:`output = x * y`.
@@ -1809,6 +1825,8 @@ class FFModel(object):
       datatype = DataType.DT_FLOAT
     elif (full_array.dtype == "int32"):
       datatype = DataType.DT_INT32
+    elif (full_array.dtype == "int64"):
+       datatype = DataType.DT_INT64
     else:
       assert 0, "unsupported datatype"
 
@@ -1832,6 +1850,8 @@ class FFModel(object):
       datatype = DataType.DT_FLOAT
     elif (full_array.dtype == "int32"):
       datatype = DataType.DT_INT32
+    elif (full_array.dtype == "int64"):
+       datatype = DataType.DT_INT64
     else:
       assert 0, "unsupported datatype"
     np_raw_ptr = full_array.__array_interface__['data']

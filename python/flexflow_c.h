@@ -228,6 +228,16 @@ flexflow_model_add_batch_norm(
   const char *name);
 
 flexflow_tensor_t
+flexflow_model_add_layer_norm(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input,
+  int n,
+  int* axes,
+  bool elementwise_affine,
+  float eps, 
+  const char *name);
+
+flexflow_tensor_t
 flexflow_model_add_batch_matmul(
   flexflow_model_t handle,
   const flexflow_tensor_t a,

@@ -1025,7 +1025,8 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor& tensor
   assert(tensor.numDim == NDIM);
   if (config.computationMode == COMP_MODE_TRAINING) {
     // Current assume forward and grad share the same index space
-    assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
+    if (tensor.region_grad != LogicalRegion::NO_REGION)
+      assert(tensor.region.get_index_space() == tensor.region_grad.get_index_space());
   }
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -1071,7 +1072,8 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const Tensor& tensor
   assert(runtime->is_index_partition_complete(ctx, ip));
   part_fwd = runtime->get_logical_partition(ctx, tensor.region, ip);
   if (config.computationMode == COMP_MODE_TRAINING) {
-    part_bwd = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
+    if (tensor.region_grad != LogicalRegion::NO_REGION)
+      part_bwd = runtime->get_logical_partition(ctx, tensor.region_grad, ip);
   } else {
     part_bwd = LogicalPartition::NO_PART;
   }
@@ -2801,6 +2803,28 @@ void register_flexflow_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<BatchMatmul::backward_task>(
         registrar, "BatchMatmul Backward Task");
+  }
+  // LayerNorm task
+  {
+    TaskVariantRegistrar registrar(LAYERNORM_INIT_TASK_ID, "layernorm_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, LayerNorm::init_task>(
+        registrar, "layernorm_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(LAYERNORM_FWD_TASK_ID, "layernorm_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<LayerNorm::forward_task>(
+        registrar, "layernorm_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(LAYERNORM_BWD_TASK_ID, "layernorm_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<LayerNorm::backward_task>(
+        registrar, "layernorm_bwd_task");
   }
   // Linear task
   {

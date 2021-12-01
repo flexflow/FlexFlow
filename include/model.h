@@ -80,6 +80,9 @@ enum TaskIDs {
   BATCHMATMUL_INIT_TASK_ID,
   BATCHMATMUL_FWD_TASK_ID,
   BATCHMATMUL_BWD_TASK_ID,
+  LAYERNORM_INIT_TASK_ID,
+  LAYERNORM_FWD_TASK_ID,
+  LAYERNORM_BWD_TASK_ID,
   LINEAR_INIT_TASK_ID,
   LINEAR_INIT_PARA_TASK_ID,
   LINEAR_FWD_TASK_ID,
@@ -143,11 +146,14 @@ enum TaskIDs {
   STRATEGY_SEARCH_TASK_ID,
   // Python data loader
   PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID,
-  PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID,
+  PY_DL_INT32_LOAD_ENTIRE_CPU_TASK_ID,
+  PY_DL_INT64_LOAD_ENTIRE_CPU_TASK_ID,
   PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
-  PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
+  PY_DL_INT32_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
+  PY_DL_INT64_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
   PY_DL_FLOAT_LOAD_BATCH_GPU_TASK_ID,
-  PY_DL_INT_LOAD_BATCH_GPU_TASK_ID,
+  PY_DL_INT32_LOAD_BATCH_GPU_TASK_ID,
+  PY_DL_INT64_LOAD_BATCH_GPU_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
   CUSTOM_GPU_TASK_ID_1,
@@ -410,6 +416,11 @@ public:
   // Add a batch_norm layer
   Tensor batch_norm(const Tensor& input,
                     bool relu = true,
+                    const char* name = NULL);
+  Tensor layer_norm(const Tensor& input,
+                    const std::vector<int>& axes,
+                    bool elementwise_affine = true,
+                    float eps = 1e-5,
                     const char* name = NULL);
   // Add a batch_matmul layer
   Tensor batch_matmul(const Tensor& A,
@@ -976,6 +987,68 @@ public:
   bool relu;
 };
 
+class LayerNormMeta;
+
+class LayerNorm : public Op {
+public:
+  LayerNorm(FFModel& model,
+            const Tensor& _input,
+            const std::vector<int>& axes,
+            bool _elementwise_affine,
+            float _eps,
+            const char *name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  //Parameter* get_parameter(int index) {assert(0);return NULL;}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void backward_task(const Task *task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+  template<typename T>
+  static void forward_kernel(const LayerNormMeta *m,
+                             const T *input_ptr,
+                             T *output_ptr,
+                             T *gamma_ptr,
+                             T *beta_ptr,
+                             cudaStream_t stream);
+  template<typename T>
+  static void backward_kernel(const LayerNormMeta *m,
+                              const T* output_grad_ptr,
+                              const T* input_ptr,
+                              T *input_grad_ptr,
+                              const T *gamma_ptr,
+                              T *gamma_grad_ptr,
+                              T *beta_grad_ptr,
+                              cudaStream_t stream);
+public:
+  bool elementwise_affine;
+  int64_t effective_batch_size, effective_num_elements;
+  float eps;
+};
+
+class LayerNormMeta : public OpMeta {
+public:
+  LayerNormMeta(FFHandler handle, const LayerNorm* ln);
+public:
+  bool elementwise_affine;
+  int64_t effective_batch_size, effective_num_elements;
+  float eps;
+  float *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
+};
+
 class LinearMeta : public OpMeta {
 public:
   LinearMeta(FFHandler handle, int batch_size);
@@ -1198,6 +1271,17 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
+private:
+  template<int NDIM>
+  void create_weights_with_dim(FFModel& model);
+  template<int NDIM>
+  void create_output_and_partition_with_dim(FFModel& model);
+  template<int NDIM>
+  void init_with_dim(const FFModel&);
+  template<int NDIM>
+  void forward_with_dim(const FFModel&);
+  template<int NDIM>
+  void backward_with_dim(const FFModel&);
 public:
   //IndexSpaceT<2> task_is;
   int num_entries, out_channels;

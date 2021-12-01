@@ -187,6 +187,8 @@ SingleDataLoader *create_data_loader_ptr(FFModel &model, Tensor &batch_tensor, p
     dtype = DataType::DT_FLOAT;
   } else if (info.format == "i") {
     dtype = DataType::DT_INT32;
+  } else if (info.format == "l") {
+    dtype = DataType::DT_INT64;
   }
 
   ssize_t num_samples = info.shape[0];
@@ -201,6 +203,8 @@ SingleDataLoader *create_data_loader_attach(FFModel &model, Tensor &batch_tensor
     dtype = DataType::DT_FLOAT;
   } else if (info.format == "i") {
     dtype = DataType::DT_INT32;
+  } else if (info.format == "l") {
+    dtype = DataType::DT_INT64;
   }
 
   int num_dims = info.shape.size();
@@ -408,6 +412,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def("dropout", &FFModel::dropout, "input"_a, "rate"_a, "seed"_a = 0, "name"_a = nullptr)
       .def("pool2d", &FFModel::pool2d, "input"_a, "kernel_h"_a, "kernel_w"_a, "stride_h"_a, "stride_w"_a, "padding_h"_a, "padding_w"_a, "pool_type"_a = PoolType::POOL_MAX, "activation"_a = ActiMode::AC_MODE_NONE, "name"_a = nullptr)
       .def("batch_norm", &FFModel::batch_norm, "input"_a, "relu"_a = true, "name"_a = nullptr)
+      .def("layer_norm", &FFModel::layer_norm, "input"_a, "axes"_a, "elementwise_affine"_a, "eps"_a, "name"_a = nullptr)
       .def("batch_matmul", &FFModel::batch_matmul, "A"_a, "B"_a, "a_seq_length_dim"_a = -1, "b_seq_length_dim"_a = -1)
       .def("dense", &FFModel::dense, "input"_a, "out_dim"_a, "activation"_a = ActiMode::AC_MODE_NONE, "use_bias"_a = true, "shared_op"_a = nullptr, "kernel_initializer"_a = nullptr, "bias_initializer"_a = nullptr, "name"_a = nullptr)
       .def("flat", &FFModel::flat, "input"_a, "name"_a = nullptr)
