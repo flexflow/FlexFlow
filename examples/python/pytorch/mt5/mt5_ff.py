@@ -83,7 +83,7 @@ def top_level_task():
         model, is_hf_model=True, batch_size=ffconfig.batch_size,
         seq_length=seq_length,
     )
-    output_tensors = hf_model.to_ff(ffmodel, input_tensors, verbose=True)
+    output_tensors = hf_model.torch_to_ff(ffmodel, input_tensors, verbose=True)
     ffoptimizer = SGDOptimizer(ffmodel, lr=0.01)
     print("Compiling the model...")
     ffmodel.compile(

@@ -2272,8 +2272,9 @@ class PyTorchModel():
         self.seq_length = seq_length
 
     def _trace_model(self):
-        assert torch.cuda.is_available() == False, \
-          "FlexFlow can not work with CUDA version of PyTorch, please install the CPU version."
+        assert not torch.cuda.is_available(), \
+            "FlexFlow cannot work with CUDA version of PyTorch; " \
+            "please install the CPU version."
         if self.is_hf_model:
             from transformers.utils.fx import symbolic_trace as \
                 hf_symbolic_trace
@@ -2287,7 +2288,7 @@ class PyTorchModel():
             ) \
                 if self.seq_length is None \
                 else hf_symbolic_trace(
-                    model,
+                    self.model,
                     input_names=input_names,
                     batch_size=self.batch_size,
                     sequence_length=self.seq_length,
@@ -2316,12 +2317,12 @@ class PyTorchModel():
             else:
                 assert 0, f"Unknown operator type: {fx_node.op}"
             graph.append(node)
-        
-        # For none hf_model
+
+        # For non-HuggingFace model
         if not self.is_hf_model:
             return graph
 
-        # For hf_model
+        # For HuggingFace model
         # Replace `T5LayerNorm` primitives with `LayerNormNode`
         layer_norm_graph = []
         i = 0
@@ -2370,7 +2371,7 @@ class PyTorchModel():
 
         for node in graph:
             if verbose:
-                print(f"{node.string}")
+                print(f"{node.ir_string}")
             if isinstance(node, InputNode):
                 node_output = node.to_ff(input_tensors, input_index)
                 input_index += 1
