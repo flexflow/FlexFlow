@@ -26,16 +26,14 @@ import torch
 from torch.fx.immutable_collections import immutable_dict
 
 
-# Set to `True` to print layer shape information
-VERBOSE = False
-
-
 class Comparator(Enum):
     EQ = 0
     GEQ = 1
 
 
 class Node():
+    """This base class represents a node in the model computational graph (to
+    be used internally for PyTorch to FlexFlow conversion)."""
     def __init__(self, node):
         self.name = node.name
         self.op_type = None
@@ -104,8 +102,6 @@ class Node():
 
     @staticmethod
     def string_to_node_class(string):
-        # TODO: Revisit this way of getting the op type since it is somewhat
-        # hacky/inefficient
         data = Node.StringData(string)
         op_type = data.op_type
         if op_type == OpType.CONV2D: return Conv2dNode
@@ -178,7 +174,7 @@ class Node():
         elif numpy_dtype in (np.int64, np.long, "int64", "long"):
             return DataType.DT_INT64
         else:
-            assert 0, f"Unknown dtype: {torch_dtype}"
+            assert 0, f"Unknown dtype: {numpy_dtype}"
 
 
 class ModuleNode(Node):
@@ -270,17 +266,13 @@ class LinearNode(ModuleNode):
 
     def to_ff(self, ffmodel, node_to_output):
         input_tensor = node_to_output[self.innodes[0].name]
-        out = ffmodel.dense(
+        return ffmodel.dense(
             input=input_tensor,
             out_dim=self.module.out_features,
             activation=self.acti_mode,
             use_bias=(self.module.bias is not None),
             name=self.name,
         )
-        if VERBOSE:
-            print(f"[Linear] in: {input_tensor.dims}")
-            print(f"[Linear] out: {out.dims}")
-        return out
 
 
 class Conv2dNode(ModuleNode):
@@ -656,17 +648,17 @@ class LayerNormNode(ModuleNode):
 
 class T5LayerNormNode(Node):
     """
-    This coalesces the `T5LayerNorm` primitive operation nodes into a single
+    This coalesces the ``T5LayerNorm`` primitive operation nodes into a single
     node to forward to FlexFlow's layer norm operation.
 
-    NOTE: This forwarding deviates from the `T5LayerNorm` implementation which
-    does not subtract the mean or add a bias.
+    NOTE: This forwarding deviates from the ``T5LayerNorm`` implementation,
+    which does not subtract the mean or add a bias.
     """
     def __init__(self, to_node, mul_node):
         """
-        The symbolic trace of `T5LayerNorm` follows the sequence `to()`,
-        `pow()`, `mean()`, `scalar_add()`, `rsqrt()`, `multiply()`, attribute,
-        and `multiply()`.
+        The symbolic trace of ``T5LayerNorm`` follows the sequence ``to()``,
+        ``pow()``, ``mean()``, ``scalar_add()``, ``rsqrt()``, ``multiply()``,
+        attribute, and ``multiply()``.
 
         Args:
             name (str): Name for the node.
@@ -835,16 +827,13 @@ class EmbeddingNode(ModuleNode):
         embedding_dim = self.module.embedding_dim
         assert type(num_embeddings) is int
         assert type(embedding_dim) is int
-        out = ffmodel.embedding(
+        return ffmodel.embedding(
             input=input_tensor,
             num_embeddings=num_embeddings,
             embedding_dim=embedding_dim,
             aggr=AggrMode.AGGR_MODE_NONE,
             name=self.name,
         )
-        if VERBOSE:
-            print(f"[Embedding] out: {out.dims}")
-        return out
 
 
 class FunctionNode(Node):
@@ -865,7 +854,11 @@ class FunctionNode(Node):
 
     @staticmethod
     def construct_node(node):
-        """:type node: torch.fx.node.Node"""
+        """
+        Args:
+            node (torch.fx.node.Node): ``torch.fx`` node from which to
+                construct a corresponding :class:`Node`.
+        """
         name = node.name
         if name.find("add") >= 0:
             if FunctionNode.is_right_scalar_op(node):
@@ -927,7 +920,10 @@ class FunctionNode(Node):
 
     @staticmethod
     def is_right_scalar_op(node):
-        """:type node: torch.fx.node.Node"""
+        """
+        Args:
+            node (torch.fx.node.Node): ``torch.fx`` node to check.
+        """
         innodes = node.args
         if len(innodes) != 2:
             return False
@@ -936,7 +932,10 @@ class FunctionNode(Node):
 
     @staticmethod
     def is_left_scalar_op(node):
-        """:type node: torch.fx.node.Node"""
+        """
+        Args:
+            node (torch.fx.node.Node): ``torch.fx`` node to check.
+        """
         innodes = node.args
         if len(innodes) != 2:
             return False
@@ -945,7 +944,10 @@ class FunctionNode(Node):
 
     @staticmethod
     def is_elemwise_op(node):
-        """:type node: torch.fx.node.Node"""
+        """
+        Args:
+            node (torch.fx.node.Node): ``torch.fx`` node to check.
+        """
         innodes = node.args
         if len(innodes) != 2:
             return False
@@ -1106,12 +1108,9 @@ class ScalarAddNode(FunctionNode):
     def to_ff(self, ffmodel, node_to_output):
         input_tensor, scalar = \
             FunctionNode.parse_scalar_op(self, node_to_output)
-        out = ffmodel.scalar_add(
+        return ffmodel.scalar_add(
             input=input_tensor, scalar=scalar, name=self.name,
         )
-        if VERBOSE:
-            print(f"[ScalarAdd] out: {out.dims}")
-        return out
 
 
 class AddNode(FunctionNode):
@@ -1432,12 +1431,9 @@ class BatchMatMulNode(FunctionNode):
     def to_ff(self, ffmodel, node_to_output):
         input_tensor1 = node_to_output[self.innodes[0].name]
         input_tensor2 = node_to_output[self.innodes[1].name]
-        out = ffmodel.batch_matmul(
+        return ffmodel.batch_matmul(
             A=input_tensor1, B=input_tensor2, name=self.name,
         )
-        if VERBOSE:
-            print(f"[BatchMatMul] out: {out.dims}")
-        return out
 
 
 class ScalarMulNode(FunctionNode):
@@ -1505,12 +1501,9 @@ class MulNode(FunctionNode):
     def to_ff(self, ffmodel, node_to_output):
         input_tensor1 = node_to_output[self.innodes[0].name]
         input_tensor2 = node_to_output[self.innodes[1].name]
-        out = ffmodel.multiply(
+        return ffmodel.multiply(
             x=input_tensor1, y=input_tensor2, name=self.name
         )
-        if VERBOSE:
-            print(f"[Multiply] out: {out.dims}")
-        return out
 
 
 class GetAttrNode(FunctionNode):
@@ -1582,13 +1575,9 @@ class TransposeNode(FunctionNode):
         assert type(dim0) is int and type(dim1) is int
         perm = list(range(len(input_tensor.dims)))
         perm[dim0], perm[dim1] = perm[dim1], perm[dim0]
-        out = ffmodel.transpose(
+        return ffmodel.transpose(
             input=input_tensor, perm=perm, name=self.name,
         )
-        if VERBOSE:
-            print(f"[Transpose] in: {input_tensor.dims}")
-            print(f"[Transpose] out: {out.dims}")
-        return out
 
 
 class ExpandNode(FunctionNode):
@@ -1783,8 +1772,7 @@ class SoftmaxFNode(FunctionNode):
 
     def to_ff(self, ffmodel, node_to_output):
         input_tensor = node_to_output[self.innodes[0].name]
-        out = ffmodel.softmax(input=input_tensor, name=self.name)
-        return out
+        return ffmodel.softmax(input=input_tensor, name=self.name)
 
 
 class ViewNode(FunctionNode):
@@ -1821,13 +1809,9 @@ class ViewNode(FunctionNode):
         view_shape = self.innodes[1:]
         shape = FunctionNode.get_view_shape(input_tensor, view_shape)
         # Treat as a special case of `reshape()`
-        out = ffmodel.reshape(
+        return ffmodel.reshape(
             input=input_tensor, shape=shape, name=self.name
         )
-        if VERBOSE:
-            print(f"[View] in: {input_tensor.dims}")
-            print(f"[View] out: {out.dims}")
-        return out
 
 
 class ToNode(FunctionNode):
@@ -1946,12 +1930,9 @@ class MeanNode(FunctionNode):
             if dims[i] == -1:
                 dims[i] = len(input_tensor.dims) - 1
             assert dims[i] >= 0 and dims[i] < len(input_tensor.dims)
-        out = ffmodel.mean(
+        return ffmodel.mean(
             input=input_tensor, dims=dims, keepdims=keepdims, name=self.name,
         )
-        if VERBOSE:
-            print(f"[Mean] out: {out.dims}")
-        return out
 
 
 class RsqrtNode(FunctionNode):
@@ -2178,7 +2159,7 @@ class AttributeNode(Node):
         np_tensor = torch_tensor.detach().numpy() if requires_grad \
             else torch_tensor.numpy()
 
-        # TODO: Remove cast down to 32-bit if 64-bit dtype once supported
+        # TODO: Remove cast down to 32-bit once 64-bit dtype is supported
         if ff_dtype == DataType.DT_INT64:
             ff_dtype = DataType.DT_INT32
             np_tensor = np_tensor.astype(np.int32)
@@ -2361,7 +2342,20 @@ class PyTorchModel():
 
     def to_ff(self, ffmodel, input_tensors, verbose=False):
         """
-        :type input_tensors: list[Tensor]
+        Traces the PyTorch model wrapped by this ``PyTorchModel`` instance,
+        and adds operators to ``ffmodel`` coresponding to the computational
+        graph nodes from the trace.
+
+        Args:
+            ffmodel (FFModel): ``FFModel`` to which to add operators
+                corresponding to the computational graph nodes.
+            input_tensors (List[Tensor]): Input tensors to the model.
+            verbose (bool, optional): If ``True``, then prints the string
+                representation of each computational graph node. Default:
+                ``False``.
+
+        Returns:
+            output_tensors (List[Tensor]): Output tensors of the model.
         """
         graph = PyTorchModel.trace_model(
             self.model, self.is_hf_model, self.batch_size, self.seq_length,
@@ -2391,8 +2385,12 @@ class PyTorchModel():
     @staticmethod
     def file_to_ff(filename, ffmodel, input_tensors):
         """
-        :param filename: Name of the file from which to load the model; should
-        be the output of :meth:`torch_to_file`.
+        Args:
+            filename (string): Name of the file from which to load the model
+                information; should be the output of :meth:`torch_to_file`.
+            ffmodel (FFModel): ``FFModel`` to which to add operators
+                corresponding to the computational graph nodes.
+            input_tensors (List[Tensor]): Input tensors to the model.
         """
         with open(filename, "r") as f:
             lines = f.readlines()
@@ -2422,15 +2420,47 @@ class PyTorchModel():
         return output_tensors
 
     @staticmethod
-    def torch_to_string(model, is_hf_model=False, batch_size=None, seq_length=None):
-        """:return type: list[str]"""
-        graph = PyTorchModel.trace_model(model, is_hf_model, batch_size, seq_length)
+    def torch_to_string(
+        model,
+        is_hf_model=False,
+        batch_size=None,
+        seq_length=None
+    ):
+        """
+        Args:
+            model (torch.nn.Module): PyTorch model.
+            is_hf_model (bool, optional): ``True`` if ``model`` is a
+                HuggingFace model and hence requires a different symbolic
+                trace. Default: ``False``.
+            batch_size (int, optional): Batch size used for the HuggingFace
+                symbolic trace. Default: ``None``.
+            seq_length (Tuple[int]): Length-two tuple giving the encoder and
+                decoder sequence lengths; used for the HuggingFace symbolic
+                trace. Default: ``None``.
+
+        Returns:
+            s (List[str]): List of each computational graph node's string
+                representation (in topological order).
+        """
+        graph = PyTorchModel.trace_model(
+            model, is_hf_model, batch_size, seq_length,
+        )
         s = [node.string for node in graph]
         return s
 
     @staticmethod
-    def torch_to_file(filename, model, is_hf_model=False, seq_length=None):
-        s = PyTorchModel.torch_to_string(model, is_hf_model, seq_length)
+    def torch_to_file(
+        filename,
+        model,
+        is_hf_model=False,
+        batch_size=None,
+        seq_length=None
+    ):
+        """Writes the result of :meth:`torch_to_string` to the file given by
+        ``filename``."""
+        s = PyTorchModel.torch_to_string(
+            model, is_hf_model, batch_size, seq_length,
+        )
         with open(filename, "w") as f:
             for line in s:
                 f.write(line + "\n")
