@@ -17,7 +17,16 @@ using Legion::Predicate;
 Tensor FFModel::flat(const Tensor input,
                      const char* name)
 {
-  assert(false);
+  assert(input->num_dims == 4);
+  Layer *flat = new Layer(this, OP_FLAT, name, 1/*inputs*/, 0/*weights*/,
+                          1/*outputs*/, input);
+  int dims[MAX_TENSOR_DIM];
+  dims[1] = input->dims[3];
+  dims[0] = input->dims[2] * input->dims[1] * input->dims[0];
+  flat->outputs[0] = create_tensor_legion_ordering(2, dims, DT_FLOAT,
+                                                   flat, 0, true/*create_grad*/);
+  layers.push_back(flat);
+  return flat->outputs[0];
 #ifdef DEADCODE
   //assert(strategies.find(name) != strategies.end());
   //ParallelConfig pc = strategies[name];
