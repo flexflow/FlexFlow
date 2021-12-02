@@ -78,6 +78,47 @@ Tensor FFModel::conv2d(const Tensor input,
 #endif
 }
 
+Op* Conv2D::create_operator_from_layer(
+    FFModel& model,
+    const Layer* layer,
+    const std::vector<ParallelTensor>& inputs) {
+  long long value;
+  layer->get_int_property("out_channels", value);
+  int out_channels = value;
+  layer->get_int_property("kernel_h", value);
+  int kernelH = value;
+  layer->get_int_property("kernel_w", value);
+  int kernelW = value;
+  layer->get_int_property("stride_h", value);
+  int strideH = value;
+  layer->get_int_property("stride_w", value);
+  int strideW = value;
+  layer->get_int_property("padding_h", value);
+  int paddingH = value;
+  layer->get_int_property("padding_w", value);
+  int paddingW = value;
+  layer->get_int_property("activation", value);
+  ActiMode activation = (ActiMode) value;
+  layer->get_int_property("groups", value);
+  int groups = value;
+  layer->get_int_property("use_bias", value);
+  bool use_bias = value;
+  Initializer *kernel_initializer, *bias_initializer;
+  layer->get_initializer("kernel", kernel_initializer);
+  layer->get_initializer("bias", bias_initializer);
+  return new Conv2D(model, 
+      inputs[0],
+      out_channels,
+      kernelH, kernelW,
+      strideH, strideW, 
+      paddingH, paddingW, 
+      activation,
+      groups,
+      false, // use_bias, // TODO FIXME @lockshaw
+      false, // allocate_weights
+      layer->name);
+}
+
 Conv2DParams Conv2D::get_params() const {
   Conv2DParams params;
   params.out_channels = this->out_channels;

@@ -2371,6 +2371,18 @@ Op* FFModel::create_operator_from_layer(const Layer* layer,
           num_dims + 1, dims, tensor->data_type);
       return operators[operators.size()-1];
     }
+    case OP_CONV2D:
+    {
+      Op* op = Conv2D::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_FLAT:
+    {
+      Op* op = Flat::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_LINEAR:
     {
       Op* op = Linear::create_operator_from_layer(*this, layer, inputs);

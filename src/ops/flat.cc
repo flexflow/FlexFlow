@@ -36,6 +36,13 @@ Tensor FFModel::flat(const Tensor input,
 #endif
 }
 
+Op* Flat::create_operator_from_layer(
+    FFModel& model,
+    const Layer* layer,
+    const std::vector<ParallelTensor>& inputs) {
+  return new Flat(model, inputs[0], layer->name);
+}
+
 int output_size(const ParallelTensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) {
   output_dims[Output::REPLICA].is_replica_dim = true;
   output_dims[Output::SAMPLE].size = input->dims[Input::SAMPLE].size;
