@@ -524,6 +524,8 @@ bool Linear::measure_operator_cost(Simulator* sim,
     void* input_grad_ptr = NULL;
     if (trainableInputs[0]) {
       input_grad_ptr = sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
+    } else {
+      input_grad_ptr = sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
     }
     void* output_grad_ptr = sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
     void* kernel_grad_ptr = sim->allocate((size_t)output_c * input_c, this->data_type);
