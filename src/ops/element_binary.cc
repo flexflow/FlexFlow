@@ -30,6 +30,7 @@ Tensor FFModel::binary(OperatorType op,
     assert(in1->dims[i] == in2->dims[i]);
     ele->outputs[0]->dims[i] = in1->dims[i];
   }
+  ele->add_int_property("inplace_a", inplace_a);
   layers.push_back(ele);
   return ele->outputs[0];
 #ifdef DEADCODE
@@ -37,6 +38,17 @@ Tensor FFModel::binary(OperatorType op,
   layers.push_back(ele);
   return ele->outputs[0];
 #endif
+}
+
+Op* ElementBinary::create_operator_from_layer(
+    FFModel& model,
+    const Layer* layer,
+    const std::vector<ParallelTensor>& inputs) {
+  long long value;
+  layer->get_int_property("inplace_a", value);
+  bool inplace_a = (bool) value;
+  return new ElementBinary(model, layer->op_type, inputs[0], inputs[1],
+      inplace_a, layer->name);
 }
 
 Tensor FFModel::add(const Tensor in1,

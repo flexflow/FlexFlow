@@ -30,6 +30,8 @@ Tensor FFModel::unary(OperatorType op,
     dims[i] = x->dims[i];
   ele->outputs[0] = create_tensor_legion_ordering(numdims, dims, DT_FLOAT,
                                                   ele, 0, true/*create_grad*/);
+  ele->add_int_property("inplace", inplace);
+  ele->add_float_property("scalar", scalar);
   layers.push_back(ele);
   return ele->outputs[0];
 #ifdef DEADCODE
@@ -37,6 +39,19 @@ Tensor FFModel::unary(OperatorType op,
   layers.push_back(ele);
   return ele->outputs[0];
 #endif
+}
+
+Op* ElementUnary::create_operator_from_layer(
+    FFModel& model,
+    const Layer* layer,
+    const std::vector<ParallelTensor>& inputs) {
+  long long value;
+  layer->get_int_property("inplace", value);
+  bool inplace = (bool) value;
+  float scalar;
+  layer->get_float_property("scalar", scalar);
+  return new ElementUnary(model, layer->op_type, inputs[0], inplace,
+      layer->name, scalar);
 }
 
 size_t ElementUnary::get_params_hash() const {

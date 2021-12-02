@@ -2377,6 +2377,31 @@ Op* FFModel::create_operator_from_layer(const Layer* layer,
       operators.push_back(op);
       return op;
     }
+    case OP_EW_ADD:
+    case OP_EW_SUB:
+    case OP_EW_MUL:
+    case OP_EW_DIV:
+    {
+      Op* op = ElementBinary::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_EXP:
+    case OP_SCALAR_MULTIPLY:
+    case OP_SCALAR_ADD:
+    case OP_SCALAR_SUB:
+    case OP_SCALAR_TRUE_DIV:
+    case OP_RELU:
+    case OP_SIGMOID:
+    case OP_TANH:
+    case OP_IDENTITY:
+    case OP_GELU:
+    case OP_ELU:
+    {
+      Op* op = ElementUnary::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_FLAT:
     {
       Op* op = Flat::create_operator_from_layer(*this, layer, inputs);

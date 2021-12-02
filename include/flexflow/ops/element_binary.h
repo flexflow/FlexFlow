@@ -31,6 +31,10 @@ public:
   bool can_inplace_output();
   bool has_inplace_output();
   void do_inplace_output();
+  static Op* create_operator_from_layer(
+      FFModel& model,
+      const Layer* layer,
+      const std::vector<ParallelTensor>& inputs);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
