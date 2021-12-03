@@ -643,7 +643,7 @@ void LinearParams::construct_mappings(std::vector<ParallelDimMappingRecord>& map
       {dimension_names.at(INPUT_REPLICA), dimension_names.at(BIAS_CHANNEL_OUT)},
     }, 0/*input_idx*/, BIAS_IDX
   );
-  for (int i = 1; i < input_shape.num_dims; i++) {
+  for (int i = 0; i < input_shape.num_dims - 1; i++) {
     Op::construct_weight_parallel_dims(mappings, i, i+1, 0/*input_idx*/, BIAS_IDX);
   }
 }
