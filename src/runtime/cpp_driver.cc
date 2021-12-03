@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
-#include "model.h"
-#include "mapper.h"
+#include "flexflow/model.h"
+#include "flexflow/mapper.h"
 #include "dirent.h"
 
 using namespace Legion;
+using namespace FlexFlow;
 
 // ========================================================
 // Task and mapper registrations

@@ -1075,6 +1075,11 @@ bool GraphCostResult::operator<(GraphCostResult const &other) const {
   return this->cost < other.cost;
 }
 
+std::ostream& operator<<(std::ostream &s, GraphCostResult const &r) {
+  s << "GraphCostResult{cost=" << r.cost << "}";
+  return s;
+}
+
 template <>
 GraphCostResult sequence_cost<GraphCostResult>(GraphCostResult const &first, GraphCostResult const &second) {
   GraphCostResult result;
@@ -1115,6 +1120,14 @@ bool SearchHelper::is_invalid<GraphCostResult>(GraphCostResult const &cost) cons
   return cost.cost == std::numeric_limits<float>::infinity();
 }
 
+/**
+ * @brief Asserts that the results of graph optimization are valid for the graph 
+ * 
+ * @param g the graph to check against
+ * @param r the results to check
+ * @param sink the sink node of the graph g
+ * @param include_sink whether or not to include the sink node
+ */
 template <>
 void SearchHelper::check_matches_graph<GraphCostResult>(Graph const *g, GraphCostResult const &r, Node const &sink) const {
   using FlexFlow::PCG::Utils::nodes;
@@ -1153,7 +1166,7 @@ std::pair<bool, GraphCostResult> SearchHelper::try_get_cost_from_cache<GraphCost
 
 template <>
 void SearchHelper::try_cache_result<float>(size_t hash, float const &value) const {
-  this->debug() << "cached_graph_costs[" << hash << "=" << value << "]";
+  this->debug() << "cached_graph_costs[" << hash << "] = " << value;
   this->cached_graph_costs[hash] = value;
 }
 
@@ -1201,6 +1214,13 @@ T SearchHelper::estimate_xfer_cost(
       op_cost += estimated_xfer_cost;
     }
     this->add_operator_cost<T>(source, op_cost, &result);
+  } else {
+    Node real_source = graph->find_source_node();
+    assert (real_source.ptr->op_type == OP_INPUT);
+    this->add_operator_cost(
+      {real_source, MachineView::NO_VIEW},
+      0.0f, 
+      &result);
   }
 
   return result;
@@ -1317,10 +1337,30 @@ Graph Graph::reduced() const {
   return reduced_graph;
 }
 
+/**
+ * @brief A generic cost function for a graph capable of finding both the cost and the optimal views
+ * 
+ * @note A templated function is used here because while the caching behaviors of the cost and the optimal views 
+ * are different, much of the code between the two versions is almost identical. By using a few template specializations 
+ * we can avoid duplicating all this code.
+ * 
+ * @tparam T the result type (can be either float or GraphCostResult)
+ * @return T the cost of the graph (along with any additional data in the return type)
+ */
 template <typename T>
 T Graph::generic_optimal_cost() const
 {
+  using FlexFlow::PCG::Utils::GraphStructure;
+
   Graph reduced_graph = this->reduced();
+  Node source_node = reduced_graph.find_source_node();
+  GraphStructure<Graph> s;
+  //if (source_node.ptr->op_type == OP_INPUT) {
+  //  for (auto const &e : s.get_outgoing_edges(reduced_graph, source_node)) {
+  //    reduced_graph.remove_edge(e, false/*remove_node_if_unused*/);
+  //  }
+  //  reduced_graph.remove_node(source_node);
+  //}
 
   Node sink_node = reduced_graph.find_sink_node();
   log_dp.info() << "Found sink node: " << sink_node.to_string();

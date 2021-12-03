@@ -106,6 +106,8 @@ struct GraphCostResult {
   static GraphCostResult invalid();
 
   bool operator<(GraphCostResult const &other) const;
+
+  friend std::ostream& operator<<(std::ostream &, GraphCostResult const &);
 };
 
 template <typename T>
@@ -283,13 +285,14 @@ public:
 
   static Graph singleton(FFModel *, Node const &);
   bool empty() const;
+
+  template <typename T>
+  T generic_optimal_cost() const;
 public:
   FFModel* model;
   SearchHelper* search;
   std::unordered_map<Node, std::unordered_set<Edge> > inEdges, outEdges;
 private:
-  template <typename T>
-  T generic_optimal_cost() const;
 
   void remove_inverse_parallel_ops();
   void replace_subgraph_with_nonempty(std::unordered_set<Node> const &currentNodes, const Graph& replaceWith);
