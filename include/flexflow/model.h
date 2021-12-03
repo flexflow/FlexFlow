@@ -1022,7 +1022,8 @@ public:
   Metrics* metrics_op;
   Simulator* simulator;
   int metrics_input;
-  ParallelTensor label_tensor;
+  ParallelTensor parallel_label_tensor;
+  Tensor label_tensor;
 
   std::vector<Layer*> layers;
   std::vector<Op*> operators;
@@ -1053,7 +1054,7 @@ public:
 #endif
 private:
   bool debug;
-  ParallelTensor label_tensor_with_final_part;//FIXME: to be removed
+  //ParallelTensor label_tensor_with_final_part;//FIXME: to be removed
   std::map<MachineView, Legion::IndexSpace, MachineViewDimCompare> all_task_is;
 
   template<int NDIM>

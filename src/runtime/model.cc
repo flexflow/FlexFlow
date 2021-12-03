@@ -1566,7 +1566,6 @@ void FFModel::map_weight_with_dim(ParallelTensor weight, const Op* parallel_op)
 bool FFModel::get_parallel_tensor_from_tensor(const Tensor tensor,
                                               ParallelTensor& parallel_tensor)
 {
-  // To be implemented
   assert(tensor->parallel_tensor != nullptr);
   parallel_tensor = tensor->parallel_tensor;
   return true;
@@ -2208,7 +2207,7 @@ void FFModel::compute_metrics()
 {
   Op* metrics_operator = operators[metrics_input];
   assert(metrics_operator->numOutputs == 1);
-  metrics_op->compute(this, metrics_operator->outputs[0], label_tensor_with_final_part);
+  metrics_op->compute(this, metrics_operator->outputs[0], parallel_label_tensor);
 }
 
 void FFModel::get_metrics()
@@ -2225,7 +2224,7 @@ void FFModel::backward(int seq_length)
   // Compute the gradients of the final operator wrt loss
   Op* final_operator = operators[operators.size()-1];
   assert(final_operator->numOutputs == 1);
-  loss_op->backward(this, final_operator->outputs[0], label_tensor_with_final_part);
+  loss_op->backward(this, final_operator->outputs[0], parallel_label_tensor);
   // Perform backpropagation
   // std::set<LogicalRegion> resetedInputGrads;
   for (int l = operators.size() - 1; l >= 0; l--) {
@@ -2362,10 +2361,12 @@ Op* FFModel::create_operator_from_layer(const Layer* layer,
         dims[j].size = tensor->dims[j];
 	dims[j].degree = 1;
 	dims[j].parallel_idx = -1;
+        dims[j].is_replica_dim = false;
       }
       dims[num_dims].size = 1;
       dims[num_dims].degree = 1;
       dims[num_dims].parallel_idx = -1;
+      dims[num_dims].is_replica_dim = true;
       // create_parallel_tensor adds an NoOp into operators
       create_parallel_tensor_legion_ordering(
           num_dims + 1, dims, tensor->data_type);
@@ -2659,16 +2660,22 @@ void FFModel::compile(LossType loss_type,
       }
   }
   //assert(final_operator->outputs[0].num_dims == 2);
-  ParallelDim dims[MAX_TENSOR_DIM];
-  int num_dims = final_operator->outputs[0]->num_dims;
+  ParallelDim p_dims[MAX_TENSOR_DIM];
+  int dims[MAX_TENSOR_DIM];
+  int num_p_dims = final_operator->outputs[0]->num_dims;
+  int num_dims = 0;
   // FIXME: Currently assume 1st input for 1st operator = batch_size
-  for (int i = 0; i < num_dims; i++)
-    dims[i] = final_operator->outputs[0]->dims[i];
+  for (int i = 0; i < num_p_dims; i++) {
+    p_dims[i] = final_operator->outputs[0]->dims[i];
+    if (!p_dims[i].is_replica_dim)
+      dims[num_dims++] = p_dims[i].size;
+  }
   DataType label_type = DT_FLOAT;
   if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     // assign dims[num_dims-1] = 1 for sparse categorical labels
-    assert(dims[0].degree == 1);
-    dims[0].size = 1;
+    assert(p_dims[0].degree == 1);
+    p_dims[0].size = 1;
+    dims[0] = 1;
     label_type = DT_INT32;
   }
   // create label tensor
@@ -2676,10 +2683,11 @@ void FFModel::compile(LossType loss_type,
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
-      label_tensor = create_parallel_tensor_legion_ordering(num_dims, dims, label_type); \
-      label_tensor->machine_view = final_operator->outputs[0]->machine_view; \
-      map_tensor(label_tensor, label_tensor->owner_op); \
-      label_tensor_with_final_part = label_tensor; \
+      label_tensor = create_tensor_legion_ordering(num_dims, dims, label_type, NULL, 0/*idx*/, false/*create_grad*/); \
+      parallel_label_tensor = create_parallel_tensor_legion_ordering(num_p_dims, p_dims, label_type); \
+      label_tensor->parallel_tensor = parallel_label_tensor; \
+      parallel_label_tensor->machine_view = final_operator->outputs[0]->machine_view; \
+      map_tensor(parallel_label_tensor, parallel_label_tensor->owner_op); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)

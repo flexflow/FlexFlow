@@ -259,12 +259,9 @@ flexflow_tensor_t
 flexflow_model_get_label_tensor(
   flexflow_model_t handle_)
 {
-  assert(false);
-#ifdef DEADCODE
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor tensor = handle->label_tensor;
   return FFCObjectWrapper::wrap(tensor);
-#endif
 }
 
 void
@@ -1534,32 +1531,39 @@ flexflow_dataloader_4d_t
 flexflow_dataloader_4d_create(
   flexflow_model_t ffmodel_,
   flexflow_net_config_t netconfig_,
-  flexflow_parallel_tensor_t input_,
-  flexflow_parallel_tensor_t label_)
+  flexflow_tensor_t input_,
+  flexflow_tensor_t label_)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
   NetConfig *netconfig = FFCObjectWrapper::unwrap(netconfig_);
-  ParallelTensor input = FFCObjectWrapper::unwrap(input_);
-  ParallelTensor label = FFCObjectWrapper::unwrap(label_);
-  ImgDataLoader4D *dataloader = new ImgDataLoader4D(*ffmodel, *netconfig, input, label);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor label = FFCObjectWrapper::unwrap(label_);
+  assert(input->parallel_tensor != nullptr);
+  assert(label->parallel_tensor != nullptr);
+  ImgDataLoader4D *dataloader = new ImgDataLoader4D(*ffmodel, *netconfig, input->parallel_tensor, label->parallel_tensor);
   return FFCObjectWrapper::wrap(dataloader);
 }
 
 flexflow_dataloader_4d_t
 flexflow_dataloader_4d_create_v2(
   flexflow_model_t ffmodel_,
-  flexflow_parallel_tensor_t input_,
-  flexflow_parallel_tensor_t label_,
-  flexflow_parallel_tensor_t full_input_,
-  flexflow_parallel_tensor_t full_label_,
+  flexflow_tensor_t input_,
+  flexflow_tensor_t label_,
+  flexflow_tensor_t full_input_,
+  flexflow_tensor_t full_label_,
   int num_samples)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  ParallelTensor input = FFCObjectWrapper::unwrap(input_);
-  ParallelTensor label = FFCObjectWrapper::unwrap(label_);
-  ParallelTensor full_input = FFCObjectWrapper::unwrap(full_input_);
-  ParallelTensor full_label = FFCObjectWrapper::unwrap(full_label_);
-  ImgDataLoader4D *dataloader = new ImgDataLoader4D(*ffmodel, input, label, full_input, full_label, num_samples);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor label = FFCObjectWrapper::unwrap(label_);
+  Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
+  Tensor full_label = FFCObjectWrapper::unwrap(full_label_);
+  assert(input->parallel_tensor != nullptr);
+  assert(label->parallel_tensor != nullptr);
+  assert(full_input->parallel_tensor != nullptr);
+  assert(full_label->parallel_tensor != nullptr);
+  ImgDataLoader4D *dataloader = new ImgDataLoader4D(*ffmodel, input->parallel_tensor,
+      label->parallel_tensor, full_input->parallel_tensor, full_label->parallel_tensor, num_samples);
   return FFCObjectWrapper::wrap(dataloader);
 }
 
@@ -1610,18 +1614,24 @@ flowflow_dataloader_4d_next_batch(
 flexflow_dataloader_2d_t
 flexflow_dataloader_2d_create_v2(
   flexflow_model_t ffmodel_,
-  flexflow_parallel_tensor_t input_,
-  flexflow_parallel_tensor_t label_,
-  flexflow_parallel_tensor_t full_input_,
-  flexflow_parallel_tensor_t full_label_,
+  flexflow_tensor_t input_,
+  flexflow_tensor_t label_,
+  flexflow_tensor_t full_input_,
+  flexflow_tensor_t full_label_,
   int num_samples)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  ParallelTensor input = FFCObjectWrapper::unwrap(input_);
-  ParallelTensor label = FFCObjectWrapper::unwrap(label_);
-  ParallelTensor full_input = FFCObjectWrapper::unwrap(full_input_);
-  ParallelTensor full_label = FFCObjectWrapper::unwrap(full_label_);
-  ImgDataLoader2D *dataloader = new ImgDataLoader2D(*ffmodel, input, label, full_input, full_label, num_samples);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor label = FFCObjectWrapper::unwrap(label_);
+  Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
+  Tensor full_label = FFCObjectWrapper::unwrap(full_label_);
+  assert(input->parallel_tensor != nullptr);
+  assert(label->parallel_tensor != nullptr);
+  assert(full_input->parallel_tensor != nullptr);
+  assert(full_label->parallel_tensor != nullptr);
+  ImgDataLoader2D *dataloader = new ImgDataLoader2D(*ffmodel,
+      input->parallel_tensor, label->parallel_tensor,
+      full_input->parallel_tensor, full_label->parallel_tensor, num_samples);
   return FFCObjectWrapper::wrap(dataloader);
 }
 
@@ -1676,29 +1686,32 @@ flowflow_dataloader_2d_next_batch(
 flexflow_single_dataloader_t
 flexflow_single_dataloader_create(
   flexflow_model_t ffmodel_,
-  flexflow_parallel_tensor_t input_,
-  flexflow_parallel_tensor_t full_input_,
+  flexflow_tensor_t input_,
+  flexflow_tensor_t full_input_,
   int num_samples,
   enum DataType data_type)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  ParallelTensor input = FFCObjectWrapper::unwrap(input_);
-  ParallelTensor full_input = FFCObjectWrapper::unwrap(full_input_);
-  SingleDataLoader *dataloader = new SingleDataLoader(*ffmodel, input, full_input, num_samples, data_type);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
+  assert(input->parallel_tensor != nullptr);
+  assert(full_input->parallel_tensor != nullptr);
+  SingleDataLoader *dataloader = new SingleDataLoader(*ffmodel, input->parallel_tensor, full_input->parallel_tensor, num_samples, data_type);
   return FFCObjectWrapper::wrap(dataloader);
 }
 
 flexflow_single_dataloader_t
 flexflow_single_dataloader_create2(
   flexflow_model_t ffmodel_,
-  flexflow_parallel_tensor_t input_,
+  flexflow_tensor_t input_,
   void* full_input_ptr,
   int num_samples,
   enum DataType data_type)
 {
   FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  ParallelTensor input = FFCObjectWrapper::unwrap(input_);
-  SingleDataLoader *dataloader = new SingleDataLoader(*ffmodel, input, full_input_ptr, num_samples, data_type);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  assert(input->parallel_tensor != nullptr);
+  SingleDataLoader *dataloader = new SingleDataLoader(*ffmodel, input->parallel_tensor, full_input_ptr, num_samples, data_type);
   return FFCObjectWrapper::wrap(dataloader);
 }
 
