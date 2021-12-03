@@ -425,6 +425,16 @@ bool ParallelTensorBase::check_valid() const
   return true;
 }
 
+void TensorBase::print(const std::string& name) const 
+{
+  printf("%s: sizes[", name.c_str());
+
+  for (int i = 0; i < num_dims; i++) {
+    printf("%d ", dims[i]);
+  }
+  printf("]\n");
+}
+
 void ParallelTensorBase::print(const std::string& name) const
 {
   printf("%s: sizes[", name.c_str());

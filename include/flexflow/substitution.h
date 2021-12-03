@@ -216,10 +216,25 @@ public:
                       Graph*& best_graph,
                       std::unordered_map<Node, MachineView>& optimal_views);
 private:
+  template <typename T>
+  T generic_sequence_optimize(Graph const *graph,
+                              Node const &sink_node,
+                              tl::optional<ParallelTensorShape> const &output_shape,
+                              tl::optional<ParallelTensorShape> const &input_shape);
+
   float sequence_optimize(Graph const *graph, 
                           Node const &sink_node, 
                           tl::optional<ParallelTensorShape> const &output_shape, 
                           tl::optional<ParallelTensorShape> const &input_shape);
+
+  template <typename T>
+  T execute_sequence_split(std::unique_ptr<Graph> const &pre_graph,
+                           std::unique_ptr<Graph> const &post_graph,
+                           tl::optional<ParallelTensorShape> const &output_shape,
+                           tl::optional<ParallelTensorShape> const &input_shape,
+                           Node const &sink_node,
+                           Node const &bottleneck, 
+                           ParallelTensorShape const &bottleneck_output_shape);
   void load_graph_substitutions(std::vector<GraphXfer*> &xfers) const;
   Graph *construct_graph();
   void subgraph_optimize(Graph *subgraph);
@@ -230,6 +245,12 @@ private:
   
   void find_rewrite_matches(Graph const *graph, std::vector<GraphXferMatch>& matches) const;
   tl::optional<Node> find_split_node(Graph const *graph, int base_optimize_threshold) const;
+
+  template <typename T>
+  tl::optional<T> try_get_cost_from_cache(size_t hash) const;
+
+  template <typename T>
+  void try_cache_result(size_t hash, T const &value);
 private:
   std::unordered_map<size_t, float> cached_optimized_graphs;
 
