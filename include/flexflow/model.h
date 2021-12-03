@@ -974,7 +974,7 @@ public:
                CompMode comp_mode = COMP_MODE_TRAINING);
   void graph_optimize(size_t budget,
                       bool only_data_parallel,
-                      PCG::Graph*& best_graph,
+                      std::unique_ptr<PCG::Graph>& best_graph,
                       std::unordered_map<PCG::Node, MachineView>& optimal_view);
   void mcmc_optimize(std::map<const Op*, ParallelConfig>& best,
                      size_t budget, float alpha,

@@ -213,8 +213,13 @@ public:
   GraphSearchHelper(FFModel *model);
   void graph_optimize(size_t budget, 
                       bool only_data_parallel,
-                      Graph*& best_graph,
+                      std::unique_ptr<Graph>& best_graph,
                       std::unordered_map<Node, MachineView>& optimal_views);
+  void graph_optimize_no_split(
+      size_t budget, 
+      bool only_data_parallel,
+      std::unique_ptr<Graph>& best_graph,
+      std::unordered_map<Node, MachineView>& optimal_views);
 private:
   float sequence_optimize(Graph const *graph, 
                           Node const &sink_node, 

@@ -1412,7 +1412,7 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
   // Assume this task is running on GPU0
   Simulator* simulator = new Simulator(model, model->handlers[0], gpu_mem, machine);
   model->simulator = simulator;
-  Graph* best_graph = NULL;
+  std::unique_ptr<Graph> best_graph;
   std::unordered_map<Node, MachineView> optimal_views;
   model->graph_optimize(model->config.search_budget,
                         model->config.only_data_parallel,
@@ -1560,7 +1560,7 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
   ret.total_bytes = sez.get_used_bytes();
   memcpy(ret.data, sez.get_buffer(), ret.total_bytes);
   // Deallocate best_graph
-  delete best_graph;
+  //delete best_graph;
   return ret;
 }
 

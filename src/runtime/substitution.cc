@@ -1318,7 +1318,7 @@ Graph *GraphSearchHelper::construct_graph() {
 
 void GraphSearchHelper::graph_optimize(size_t budget,
                              bool only_data_parallel,
-                             Graph*& best_graph,
+                             std::unique_ptr<Graph>& best_graph,
                              std::unordered_map<Node, MachineView>& optimal_views)
 {
   // Construct graph structure
@@ -1335,6 +1335,29 @@ void GraphSearchHelper::graph_optimize(size_t budget,
   this->logger->debug() << "Total cache size: " << this->cached_optimized_graphs.size();
   std::cout << "Optimal cost: " << optimal_cost << std::endl;
   std::exit(1);
+}
+
+void GraphSearchHelper::graph_optimize_no_split(
+         size_t budget,
+         bool only_data_parallel,
+         std::unique_ptr<Graph>& best_graph,
+         std::unordered_map<Node, MachineView>& optimal_views) {
+  // Construct graph structure
+  this->logger->debug() << "Starting graph optimization without split";
+
+  Graph *graph = this->construct_graph();
+  std::unordered_map<Node, MachineView> empty_strategy;
+  if (!this->config.export_strategy_computation_graph_file.empty()) {
+    graph->export_strategy_computation_graph(empty_strategy, this->config.export_strategy_computation_graph_file);
+  }
+  
+  SimplificationSettings settings;
+  settings.simplify_parallel_ops = true;
+  best_graph = this->base_optimize(graph, settings);
+  optimal_views = best_graph->optimal_views();
+
+  this->logger->debug() << "Total cache size: " << this->cached_optimized_graphs.size();
+  std::cout << "Optimal cost: " << best_graph->optimal_cost() << std::endl;
 }
 
 static void graph_log_representation(Graph const *graph, RecursiveLogger &logger) {
@@ -2216,10 +2239,10 @@ using PCG::Edge;
 
 void FFModel::graph_optimize(size_t budget,
                              bool only_data_parallel,
-                             Graph*& best_graph,
+                             std::unique_ptr<Graph>& best_graph,
                              std::unordered_map<Node, MachineView>& optimal_views)
 {
-  this->graph_search->graph_optimize(budget, only_data_parallel, best_graph, optimal_views);
+  this->graph_search->graph_optimize_no_split(budget, only_data_parallel, best_graph, optimal_views);
 }
 
 bool FFModel::convert_graph_to_operators(const Graph* graph,
