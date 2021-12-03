@@ -1,4 +1,4 @@
-#include "model.h"
+#include "flexflow/model.h"
 
 using namespace Legion;
 

@@ -62,12 +62,12 @@ class TensorShapePrinter:
 def build_pretty_printer():
     pp = gdb.printing.RegexpCollectionPrettyPrinter(
         "flexflow")
-    pp.add_printer('Node', '^Node$', NodePrinter)
-    pp.add_printer('Edge', '^Edge$', EdgePrinter)
-    pp.add_printer('MachineView', '^MachineView$', MachineViewPrinter)
+    pp.add_printer('Node', '^FlexFlow::PCG::Node$', NodePrinter)
+    pp.add_printer('Edge', '^FlexFlow::PCG::Edge$', EdgePrinter)
+    pp.add_printer('MachineView', '^FlexFlow::MachineView$', MachineViewPrinter)
     pp.add_printer('Domain', '^Legion::Domain$', DomainPrinter)
-    pp.add_printer('TensorShape', '^TensorShape$', TensorShapePrinter)
+    pp.add_printer('ParallelTensorShape', '^FlexFlow::ParallelTensorShape$', TensorShapePrinter)
     return pp
 
 gdb.printing.register_pretty_printer(
-        gdb.current_objfile(), build_pretty_printer())
+        gdb.current_objfile(), build_pretty_printer(), replace=True)

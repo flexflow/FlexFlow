@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 4196
 
 using namespace Legion;

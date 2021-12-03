@@ -34,6 +34,7 @@
 #include "flexflow/parallel_ops/replicate.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/reduction.h"
+#include "flexflow/graph.h"
 
 namespace FlexFlow::PCG {
 
@@ -1331,9 +1332,13 @@ void GraphSearchHelper::graph_optimize(size_t budget,
   }
   
   Node sink_node = graph->find_sink_node();
-  float optimal_cost = this->sequence_optimize(graph, sink_node, tl::nullopt/*output_shape*/, tl::nullopt/*input_shape*/);
+  GraphCostResult optimal = this->generic_sequence_optimize<GraphCostResult>(graph, sink_node, tl::nullopt/*output_shape*/, tl::nullopt/*input_shape*/);
   this->logger->debug() << "Total cache size: " << this->cached_optimized_graphs.size();
-  std::cout << "Optimal cost: " << optimal_cost << std::endl;
+  std::cout << "Optimal cost: " << optimal.cost << std::endl;
+  //graph->optimal_views();
+  for (auto const &kv : optimal.views) {
+    std::cout << "Node " << kv.first.to_string() << " View " << kv.second << std::endl;
+  }
   std::exit(1);
 }
 
@@ -1540,6 +1545,54 @@ size_t gs_dp_state_hash(Graph const *graph,
 
 float GraphSearchHelper::sequence_optimize(
     Graph const *graph, 
+    Node const &sink_node,
+    tl::optional<ParallelTensorShape> const &output_shape,
+    tl::optional<ParallelTensorShape> const &input_shape) 
+{
+  return this->generic_sequence_optimize<float>(graph, sink_node, output_shape, input_shape);
+}
+
+template <>
+tl::optional<float> GraphSearchHelper::try_get_cost_from_cache<float>(size_t hash) const {
+  if (this->cached_optimized_graphs.find(hash) == this->cached_optimized_graphs.end()) {
+    return tl::nullopt;
+  } else {
+    return this->cached_optimized_graphs.at(hash);
+  }
+}
+
+template <>
+tl::optional<GraphCostResult> GraphSearchHelper::try_get_cost_from_cache<GraphCostResult>(size_t hash) const {
+  return tl::nullopt;
+}
+
+template <>
+void GraphSearchHelper::try_cache_result<float>(size_t hash, float const &value) {
+  this->cached_optimized_graphs[hash] = value;
+}
+
+template <>
+void GraphSearchHelper::try_cache_result<GraphCostResult>(size_t hash, GraphCostResult const &value) { }
+
+template <typename T>
+T GraphSearchHelper::execute_sequence_split(
+    std::unique_ptr<Graph> const &pre_graph,
+    std::unique_ptr<Graph> const &post_graph,
+    tl::optional<ParallelTensorShape> const &output_shape,
+    tl::optional<ParallelTensorShape> const &input_shape,
+    Node const &sink_node,
+    Node const &bottleneck, 
+    ParallelTensorShape const &bottleneck_output_shape)
+{
+  return sequence_cost<T>(
+    this->generic_sequence_optimize<T>(pre_graph.get(), bottleneck, bottleneck_output_shape, input_shape),
+    this->generic_sequence_optimize<T>(post_graph.get(), sink_node, output_shape, bottleneck_output_shape)
+  );
+}
+
+template <typename T>
+T GraphSearchHelper::generic_sequence_optimize(
+    Graph const *graph, 
     Node const &sink_node, 
     tl::optional<ParallelTensorShape> const &output_shape, 
     tl::optional<ParallelTensorShape> const &input_shape)
@@ -1549,20 +1602,20 @@ float GraphSearchHelper::sequence_optimize(
   this->logger->enter();
 
   size_t hash = gs_dp_state_hash(graph, sink_node, output_shape, input_shape);
-  if (this->cached_optimized_graphs.find(hash) != this->cached_optimized_graphs.end()) {
+  tl::optional<T> cached = this->try_get_cost_from_cache<T>(hash);
+  if (cached.has_value()) {
     this->logger->spew() << "Optimizing graph with " << graph->inEdges.size() << " nodes";
     this->logger->enter();
     this->logger->spew() << "Nodes: ";
     this->logger->enter();
     graph_log_representation(graph, *this->logger);
     this->logger->leave();
-    float cached_value = this->cached_optimized_graphs.at(hash);
-    this->logger->spew() << "Retrived value from cache: " << cached_value;
+    this->logger->spew() << "Retrieved value from cache: " << cached.value();
     this->logger->leave();
     this->logger->leave();
 
     /* this->logger->check_same_as(starting_depth); */
-    return cached_value;
+    return cached.value();
   }
 
   this->logger->debug() << "Optimizing graph with " << graph->inEdges.size() << " nodes";
@@ -1587,7 +1640,7 @@ float GraphSearchHelper::sequence_optimize(
   tl::optional<Node> bottleneck = this->find_split_node(graph, this->config.base_optimize_threshold);
   /* Node bottleneck = graph->find_nontrivial_bottleneck_node(sink_node, source_node); */
 
-  float return_value;
+  T return_value;
   if (!bottleneck.has_value()) {
     this->logger->debug() << "Applying base case";
     Graph to_optimize(*graph);
@@ -1618,7 +1671,7 @@ float GraphSearchHelper::sequence_optimize(
     settings.simplify_parallel_ops = true;
     std::unique_ptr<Graph> optimized = this->base_optimize(&to_optimize, settings);
     this->logger->leave();
-    return_value = optimized->optimal_cost();
+    return_value = optimized->generic_optimal_cost<T>();
   } else {
     this->logger->debug() << "Applying recursive case on bottleneck " << bottleneck.value().guid;
     std::unique_ptr<Graph> pre_graph, post_graph;
@@ -1640,13 +1693,22 @@ float GraphSearchHelper::sequence_optimize(
       // and keep processing the pure computation graph
       // The bottleneck node is kept in the postgraph purely as a placeholder and will be replaced with an Input/NoOp
       // sequence before any rewrites are actually performed
-      this->logger->debug() << "Finding cost of pre_graph (" << bottleneck_output_shape << ")";
-      float pre_cost = this->sequence_optimize(pre_graph.get(), bottleneck.value(), bottleneck_output_shape, input_shape);
-      this->logger->debug() << "Cost of pre_graph (" << bottleneck_output_shape << "): " << pre_cost;
-      this->logger->debug() << "Finding cost of post_graph (" << bottleneck_output_shape << ")";
-      float post_cost = this->sequence_optimize(post_graph.get(), sink_node, output_shape, bottleneck_output_shape);
-      this->logger->debug() << "Cost of post_graph (" << bottleneck_output_shape << "): " << post_cost;
-      float current_cost = pre_cost + post_cost;
+      //this->logger->debug() << "Finding cost of pre_graph (" << bottleneck_output_shape << ")";
+      //float pre_cost = this->generic_sequence_optimize<float>(pre_graph.get(), bottleneck.value(), bottleneck_output_shape, input_shape);
+      //this->logger->debug() << "Cost of pre_graph (" << bottleneck_output_shape << "): " << pre_cost;
+      //this->logger->debug() << "Finding cost of post_graph (" << bottleneck_output_shape << ")";
+      //float post_cost = this->generic_sequence_optimize<float>(post_graph.get(), sink_node, output_shape, bottleneck_output_shape);
+      //this->logger->debug() << "Cost of post_graph (" << bottleneck_output_shape << "): " << post_cost;
+      //float current_cost = pre_cost + post_cost;
+      float current_cost = this->execute_sequence_split<float>(
+        pre_graph,
+        post_graph,
+        output_shape,
+        input_shape,
+        sink_node,
+        bottleneck.value(),
+        bottleneck_output_shape
+      );
 
       if (current_cost < best_cost) {
         best_cost = current_cost;
@@ -1663,10 +1725,20 @@ float GraphSearchHelper::sequence_optimize(
       this->logger->debug() << "No valid intermediate shapes found";
     }
 
-    return_value = best_cost;
+    if (best_cost != std::numeric_limits<float>::infinity()) {
+      return_value = this->execute_sequence_split<T>(
+        pre_graph,
+        post_graph,
+        output_shape,
+        input_shape,
+        sink_node,
+        bottleneck.value(),
+        best_shape.value()
+      );
+    }
   }
 
-  this->cached_optimized_graphs[hash] = return_value;
+  this->try_cache_result<T>(hash, return_value);
   this->logger->leave();
   this->logger->leave();
   return return_value;
