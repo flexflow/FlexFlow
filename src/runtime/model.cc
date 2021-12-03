@@ -2414,6 +2414,12 @@ Op* FFModel::create_operator_from_layer(const Layer* layer,
       operators.push_back(op);
       return op;
     }
+    case OP_POOL2D:
+    {
+      Op* op = Pool2D::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_SOFTMAX:
     {
       Op* op = Softmax::create_operator_from_layer(*this, layer, inputs);

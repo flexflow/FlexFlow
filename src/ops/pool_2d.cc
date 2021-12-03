@@ -23,7 +23,28 @@ Tensor FFModel::pool2d(const Tensor input,
                        PoolType type, ActiMode activation,
                        char const *name)
 {
-  assert(false);
+  assert(input->num_dims == 4); /*NCHW*/
+  Layer *pool = new Layer(this, OP_POOL2D, name, 1/*inputs*/,
+                          0/*weights*/, 1/*outputs*/, input);
+  int numdims = 4;
+  int dims[MAX_TENSOR_DIM];
+  dims[3] = input->dims[3];
+  dims[2] = input->dims[2];
+  dims[1] = 1 + (input->dims[1] + 2 * paddingH - kernelH) / strideH;
+  dims[0] = 1 + (input->dims[0] + 2 * paddingW - kernelW) / strideW;
+  pool->outputs[0] = create_tensor_legion_ordering(numdims, dims, DT_FLOAT,
+                                                   pool, 0, true/*create_grad*/);
+  pool->add_int_property("kernel_h", kernelH);
+  pool->add_int_property("kernel_w", kernelW);
+  pool->add_int_property("stride_h", strideH);
+  pool->add_int_property("stride_w", strideW);
+  pool->add_int_property("padding_h", paddingH);
+  pool->add_int_property("padding_w", paddingW);
+  pool->add_int_property("pool_type", type);
+  pool->add_int_property("activation", activation);
+  layers.push_back(pool);
+  return pool->outputs[0];
+
 #ifdef DEACODE
   Pool2D *pool = new Pool2D(*this, input, kernelH, kernelW,
                       strideH, strideW, paddingH, paddingW,
@@ -31,6 +52,31 @@ Tensor FFModel::pool2d(const Tensor input,
   layers.push_back(pool);
   return pool->outputs[0];
 #endif
+}
+
+Op* Pool2D::create_operator_from_layer(
+    FFModel& model,
+    const Layer* layer,
+    const std::vector<ParallelTensor>& inputs) {
+  long long value;
+  layer->get_int_property("kernel_h", value);
+  int kernelH = value;
+  layer->get_int_property("kernel_w", value);
+  int kernelW = value;
+  layer->get_int_property("stride_h", value);
+  int strideH = value;
+  layer->get_int_property("stride_w", value);
+  int strideW = value;
+  layer->get_int_property("padding_h", value);
+  int paddingH = value;
+  layer->get_int_property("padding_w", value);
+  int paddingW = value;
+  layer->get_int_property("pool_type", value);
+  PoolType type = (PoolType) value;
+  layer->get_int_property("activation", value);
+  ActiMode activation = (ActiMode) value;
+  return new Pool2D(model, inputs[0], kernelH, kernelW,
+      strideH, strideW, paddingH, paddingW, type, activation, layer->name);
 }
 
 Pool2DParams Pool2D::get_params() const {
