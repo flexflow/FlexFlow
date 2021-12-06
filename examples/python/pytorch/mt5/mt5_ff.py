@@ -1,21 +1,31 @@
+import itertools
 import os
+import sys
 
 import numpy as np
 from flexflow.core import *
 from flexflow.torch.model import PyTorchModel
 from transformers import MT5ForConditionalGeneration, T5Tokenizer
 
-import sys
 sys.path.append("./examples/python/pytorch/mt5")
-from mt5_torch import get_dataloaders, set_seed
+from mt5_torch import DataPreparer, get_dataloaders, set_seed
 
 BASE_DIR = "examples/python/pytorch/mt5"
 DATA_DIR = os.path.join(BASE_DIR, "data")
 NUMPY_DIR = os.path.join(DATA_DIR, "numpy")
 
 
-# Only to be called once to generate the .npy files
 def data_to_numpy() -> None:
+    """
+    Generates the files:
+        - `train_source_ids.npy`
+        - `train_source_mask.npy`
+        - `train_target_ids.npy`
+        - `eval_source_ids.npy`
+        - `eval_source_mask.npy`
+        - `eval_target_ids.npy`
+    This function should only need to be called once (to generate these files).
+    """
     model_params = {
         "SEED": 42,
         "MODEL": "google/mt5-small",
@@ -40,8 +50,13 @@ def data_to_numpy() -> None:
         np.save(os.path.join(NUMPY_DIR, f"eval_{k}.npy"), v.numpy())
 
 
-# Only to be called once to generate the .npy files
 def preprocess_train() -> None:
+    """
+    Generates the files:
+        - `train_y_ids.npy`
+        - `train_lm_labels.npy`
+    This function should only need to be called once (to generate these files).
+    """
     y = np.load(os.path.join(NUMPY_DIR, "train_target_ids.npy"))
     y_shape = y.shape
     assert len(y.shape) == 2, \
@@ -119,9 +134,22 @@ def top_level_task():
 
 
 if __name__ == "__main__":
+    # Generate the .tsv files if needed
+    if not os.path.exists(os.path.join(DATA_DIR, "train.tsv")) or \
+            not os.path.exists(os.path.join(DATA_DIR, "eval.tsv")):
+        DataPreparer.data_to_tsv()
     # Convert the .tsv files to .npy if needed
     if not os.path.exists(NUMPY_DIR):
         os.mkdir(NUMPY_DIR)
+    prefixes = ["train_", "eval_"]
+    suffixes = ["source_ids.npy", "source_mask.npy", "target_ids.npy"]
+    npy_filenames = [
+        pre + suf for pre, suf in itertools.product(prefixes, suffixes)
+    ]
+    if any(
+        not os.path.exists(os.path.join(NUMPY_DIR, filename))
+        for filename in npy_filenames
+    ):
         data_to_numpy()
     # Preprocess the training data if needed
     if not os.path.exists(os.path.join(NUMPY_DIR, "train_y_ids.npy")) or \
