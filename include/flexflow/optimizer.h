@@ -46,10 +46,20 @@ public:
   static void ps_update_task(const Legion::Task* task,
                           const std::vector<Legion::PhysicalRegion>& regions,
                           Legion::Context ctx, Legion::Runtime* runtime);
+  static void ps_update_task_kernel(const SGDOptimizer* op,
+                          const float *w_grad_ptr,
+                          size_t size, 
+                          int num_replicas,
+                          float *w_ptr, float *v_ptr);
 #ifdef FF_USE_NCCL
   static void nccl_update_task(const Legion::Task* task,
                           const std::vector<Legion::PhysicalRegion>& regions,
                           Legion::Context ctx, Legion::Runtime* runtime);
+  static void nccl_update_task_kernel(const SGDOptimizer* op,
+                          const OpMeta* meta,
+                          const float *w_grad_ptr,
+                          size_t size,
+                          float *w_ptr, float *v_ptr);
 #endif
   double lr, momentum;
   bool nesterov;
@@ -72,10 +82,20 @@ public:
   static void ps_update_task(const Legion::Task* task,
                           const std::vector<Legion::PhysicalRegion>& regions,
                           Legion::Context ctx, Legion::Runtime* runtime);
+  static void ps_update_task_kernel(const AdamOptimizer* op,
+                          const float *w_grad_ptr,
+                          size_t size, 
+                          int num_replicas,
+                          float *w_ptr, float *v_ptr, float *m_ptr);
 #ifdef FF_USE_NCCL
   static void nccl_update_task(const Legion::Task* task,
                           const std::vector<Legion::PhysicalRegion>& regions,
                           Legion::Context ctx, Legion::Runtime* runtime);
+  static void nccl_update_task_kernel(const AdamOptimizer* op,
+                          const OpMeta* meta,
+                          const float *w_grad_ptr,
+                          size_t size, 
+                          float *w_ptr, float *v_ptr, float *m_ptr);
 #endif
   double alpha, beta1, beta2, weight_decay, epsilon;
   double alpha_t, beta1_t, beta2_t;

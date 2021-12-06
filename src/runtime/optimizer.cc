@@ -189,6 +189,118 @@ void SGDOptimizer::update(const ParallelTensor p)
   }
 }
 
+void SGDOptimizer::ps_update_task(const Task* task,
+                                  const std::vector<PhysicalRegion>& regions,
+                                  Context ctx, Runtime* runtime)
+{
+  const SGDOptimizer* op = (SGDOptimizer*) task->args;
+  if (op->momentum > 0.0f) {
+    assert(regions.size() == 3);
+    assert(task->regions.size() == 3);
+  } else {
+    assert(regions.size() == 2);
+    assert(task->regions.size() == 2);
+  }
+  Domain domain = runtime->get_index_space_domain(ctx,
+      task->regions[1].region.get_index_space());
+  const float *w_grad_ptr = NULL;
+  float *w_ptr = NULL, *v_ptr = NULL;
+  size_t size = 0, num_replicas = 0;
+  switch(domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorR<float, DIM> accWGrad( \
+          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
+      TensorAccessorW<float, DIM> accW( \
+          regions[1], task->regions[1], FID_DATA, ctx, runtime, \
+          true/*readOutput*/); \
+      for (int i = 0; i < domain.get_dim()-1; i++) { \
+        assert(accW.rect.lo[i] == accWGrad.rect.lo[i]); \
+        assert(accW.rect.hi[i] == accWGrad.rect.hi[i]); \
+      } \
+      size = accW.rect.volume(); \
+      assert(accWGrad.rect.volume() % accW.rect.volume() == 0); \
+      num_replicas = accWGrad.rect.volume() / accW.rect.volume(); \
+      w_grad_ptr = accWGrad.ptr; \
+      w_ptr = accW.ptr; \
+      if (op->momentum > 0.0f) { \
+        TensorAccessorW<float, DIM> accV( \
+            regions[2], task->regions[2], FID_DATA, ctx, runtime, \
+            true/*readOutput*/); \
+        assert(accW.rect == accV.rect); \
+        v_ptr = accV.ptr; \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dims
+      assert(false);
+    }
+  }
+  
+  ps_update_task_kernel(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr);
+}
+
+#ifdef FF_USE_NCCL
+void SGDOptimizer::nccl_update_task(
+    const Task* task,
+    const std::vector<PhysicalRegion>& regions,
+    Context ctx, Runtime* runtime)
+{
+  const SGDOptimizer* op = (SGDOptimizer*) task->args;
+  const OpMeta* meta = *((OpMeta**) task->local_args);
+  //FFHandler handler = *((FFHandler*) task->local_args);
+  if (op->momentum > 0.0f) {
+    assert(regions.size() == 3);
+    assert(task->regions.size() == 3);
+  } else {
+    assert(regions.size() == 2);
+    assert(task->regions.size() == 2);
+  }
+  Domain domain = runtime->get_index_space_domain(ctx,
+      task->regions[1].region.get_index_space());
+  const float *w_grad_ptr = NULL;
+  float *w_ptr = NULL, *v_ptr = NULL;
+  size_t size = 0;
+  switch(domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorR<float, DIM> accWGrad( \
+          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
+      TensorAccessorW<float, DIM> accW( \
+          regions[1], task->regions[1], FID_DATA, ctx, runtime, \
+          true/*readOutput*/); \
+      assert(accW.rect == accWGrad.rect); \
+      size = accW.rect.volume(); \
+      w_grad_ptr = accWGrad.ptr; \
+      w_ptr = accW.ptr; \
+      if (op->momentum > 0.0f) { \
+        TensorAccessorW<float, DIM> accV( \
+            regions[2], task->regions[2], FID_DATA, ctx, runtime, \
+            true/*readOutput*/); \
+        assert(accW.rect == accV.rect); \
+        v_ptr = accV.ptr; \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dims
+      assert(false);
+    }
+  }
+
+  nccl_update_task_kernel(op, meta, w_grad_ptr, size, w_ptr, v_ptr);
+}
+#endif
+
 // ------------------------------------------------------------------
 //                        Adam Optimizer
 // ------------------------------------------------------------------
@@ -354,5 +466,106 @@ void AdamOptimizer::update(const ParallelTensor p)
     assert(false);
   }
 }
+
+void AdamOptimizer::ps_update_task(const Task* task,
+                                   const std::vector<PhysicalRegion>& regions,
+                                   Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
+  const AdamOptimizer* op = (AdamOptimizer*) task->args;
+  Domain domain = runtime->get_index_space_domain(ctx,
+      task->regions[1].region.get_index_space());
+  const float *w_grad_ptr = NULL;
+  float *w_ptr = NULL, *v_ptr = NULL, *m_ptr = NULL;
+  size_t size = 0, num_replicas = 0;
+  switch(domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorR<float, DIM> accWGrad( \
+          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
+      TensorAccessorW<float, DIM> accW( \
+          regions[1], task->regions[1], FID_DATA, ctx, runtime, \
+          true/*readOutput*/); \
+      TensorAccessorW<float, DIM> accV( \
+          regions[2], task->regions[2], FID_DATA, ctx, runtime, \
+          true/*readOutput*/); \
+      TensorAccessorW<float, DIM> accM( \
+          regions[3], task->regions[3], FID_DATA, ctx, runtime, \
+          true/*readOutput*/); \
+      size = accW.rect.volume(); \
+      assert(accWGrad.rect.volume() % accW.rect.volume() == 0); \
+      num_replicas = accWGrad.rect.volume() / accW.rect.volume(); \
+      w_grad_ptr = accWGrad.ptr; \
+      w_ptr = accW.ptr; \
+      v_ptr = accV.ptr; \
+      m_ptr = accM.ptr; \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dims
+      assert(false);
+    }
+  }
+
+  ps_update_task_kernel(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr, m_ptr);
+}
+
+#ifdef FF_USE_NCCL
+void AdamOptimizer::nccl_update_task(const Task* task,
+                                     const std::vector<PhysicalRegion>& regions,
+                                     Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
+  const AdamOptimizer* op = (AdamOptimizer*) task->args;
+  const OpMeta* meta = *((OpMeta**) task->local_args);
+  //FFHandler handler = *((FFHandler*) task->local_args);
+  Domain domain = runtime->get_index_space_domain(ctx,
+      task->regions[1].region.get_index_space());
+  const float *w_grad_ptr = NULL;
+  float *w_ptr = NULL, *v_ptr = NULL, *m_ptr = NULL;
+  size_t size = 0;
+  switch(domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorR<float, DIM> accWGrad( \
+          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
+      TensorAccessorW<float, DIM> accW( \
+          regions[1], task->regions[1], FID_DATA, ctx, runtime, \
+          true/*readOutput*/); \
+      TensorAccessorW<float, DIM> accV( \
+          regions[2], task->regions[2], FID_DATA, ctx, runtime, \
+          true/*readOutput*/); \
+      TensorAccessorW<float, DIM> accM( \
+          regions[3], task->regions[3], FID_DATA, ctx, runtime, \
+          true/*readOutput*/); \
+      size = accW.rect.volume(); \
+      assert(accWGrad.rect == accW.rect); \
+      assert(accWGrad.rect == accV.rect); \
+      assert(accWGrad.rect == accM.rect); \
+      w_grad_ptr = accWGrad.ptr; \
+      w_ptr = accW.ptr; \
+      v_ptr = accV.ptr; \
+      m_ptr = accM.ptr; \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dims
+      assert(false);
+    }
+  }
+  
+  nccl_update_task_kernel(op, meta, w_grad_ptr, size, w_ptr, v_ptr, m_ptr);
+}
+#endif
 
 }; // namespace FlexFlow

@@ -19,24 +19,7 @@
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
-using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
-using Legion::Predicate;
-using Legion::coord_t;
-using Legion::Memory;
-using Legion::Machine;
-using Legion::InlineLauncher;
+
 LegionRuntime::Logger::Category log_optimizer("optimizer");
 
 __global__
@@ -60,59 +43,12 @@ void sgd_update(size_t count, float lr, float weight_decay,
 }
 
 __host__
-void SGDOptimizer::ps_update_task(const Task* task,
-                                  const std::vector<PhysicalRegion>& regions,
-                                  Context ctx, Runtime* runtime)
+void SGDOptimizer::ps_update_task_kernel(const SGDOptimizer* op,
+                                         const float *w_grad_ptr,
+                                         size_t size,
+                                         int num_replicas,
+                                         float *w_ptr, float *v_ptr)
 {
-  const SGDOptimizer* op = (SGDOptimizer*) task->args;
-  if (op->momentum > 0.0f) {
-    assert(regions.size() == 3);
-    assert(task->regions.size() == 3);
-  } else {
-    assert(regions.size() == 2);
-    assert(task->regions.size() == 2);
-  }
-  Domain domain = runtime->get_index_space_domain(ctx,
-      task->regions[1].region.get_index_space());
-  const float *w_grad_ptr = NULL;
-  float *w_ptr = NULL, *v_ptr = NULL;
-  size_t size = 0, num_replicas = 0;
-  switch(domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      TensorAccessorR<float, DIM> accWGrad( \
-          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
-      TensorAccessorW<float, DIM> accW( \
-          regions[1], task->regions[1], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      for (int i = 0; i < domain.get_dim()-1; i++) { \
-        assert(accW.rect.lo[i] == accWGrad.rect.lo[i]); \
-        assert(accW.rect.hi[i] == accWGrad.rect.hi[i]); \
-      } \
-      size = accW.rect.volume(); \
-      assert(accWGrad.rect.volume() % accW.rect.volume() == 0); \
-      num_replicas = accWGrad.rect.volume() / accW.rect.volume(); \
-      w_grad_ptr = accWGrad.ptr; \
-      w_ptr = accW.ptr; \
-      if (op->momentum > 0.0f) { \
-        TensorAccessorW<float, DIM> accV( \
-            regions[2], task->regions[2], FID_DATA, ctx, runtime, \
-            true/*readOutput*/); \
-        assert(accW.rect == accV.rect); \
-        v_ptr = accV.ptr; \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      // Unsupported dims
-      assert(false);
-    }
-  }
-
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   // Step 1: Gather gradients in the first replica
@@ -131,57 +67,12 @@ void SGDOptimizer::ps_update_task(const Task* task,
 
 #ifdef FF_USE_NCCL
 __host__
-void SGDOptimizer::nccl_update_task(
-    const Task* task,
-    const std::vector<PhysicalRegion>& regions,
-    Context ctx, Runtime* runtime)
+void SGDOptimizer::nccl_update_task_kernel(const SGDOptimizer* op,
+                                           const OpMeta* meta,
+                                           const float *w_grad_ptr,
+                                           size_t size,
+                                           float *w_ptr, float *v_ptr)
 {
-  const SGDOptimizer* op = (SGDOptimizer*) task->args;
-  const OpMeta* meta = *((OpMeta**) task->local_args);
-  //FFHandler handler = *((FFHandler*) task->local_args);
-  if (op->momentum > 0.0f) {
-    assert(regions.size() == 3);
-    assert(task->regions.size() == 3);
-  } else {
-    assert(regions.size() == 2);
-    assert(task->regions.size() == 2);
-  }
-  Domain domain = runtime->get_index_space_domain(ctx,
-      task->regions[1].region.get_index_space());
-  const float *w_grad_ptr = NULL;
-  float *w_ptr = NULL, *v_ptr = NULL;
-  size_t size = 0;
-  switch(domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      TensorAccessorR<float, DIM> accWGrad( \
-          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
-      TensorAccessorW<float, DIM> accW( \
-          regions[1], task->regions[1], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      assert(accW.rect == accWGrad.rect); \
-      size = accW.rect.volume(); \
-      w_grad_ptr = accWGrad.ptr; \
-      w_ptr = accW.ptr; \
-      if (op->momentum > 0.0f) { \
-        TensorAccessorW<float, DIM> accV( \
-            regions[2], task->regions[2], FID_DATA, ctx, runtime, \
-            true/*readOutput*/); \
-        assert(accW.rect == accV.rect); \
-        v_ptr = accV.ptr; \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      // Unsupported dims
-      assert(false);
-    }
-  }
-
   // Use NCCL to sync gradients
   //fprintf(stderr, "weight(%p) Before ncclAllReduce...\n", w_grad_ptr);
   cudaStream_t stream;
@@ -245,51 +136,12 @@ void adam_update(int count, float alpha_t,
 }
 
 __host__
-void AdamOptimizer::ps_update_task(const Task* task,
-                                   const std::vector<PhysicalRegion>& regions,
-                                   Context ctx, Runtime* runtime)
+void AdamOptimizer::ps_update_task_kernel(const AdamOptimizer* op,
+                                          const float *w_grad_ptr,
+                                          size_t size,
+                                          int num_replicas, 
+                                          float *w_ptr, float *v_ptr, float *m_ptr)
 {
-  assert(regions.size() == 4);
-  assert(task->regions.size() == 4);
-  const AdamOptimizer* op = (AdamOptimizer*) task->args;
-  Domain domain = runtime->get_index_space_domain(ctx,
-      task->regions[1].region.get_index_space());
-  const float *w_grad_ptr = NULL;
-  float *w_ptr = NULL, *v_ptr = NULL, *m_ptr = NULL;
-  size_t size = 0, num_replicas = 0;
-  switch(domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      TensorAccessorR<float, DIM> accWGrad( \
-          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
-      TensorAccessorW<float, DIM> accW( \
-          regions[1], task->regions[1], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      TensorAccessorW<float, DIM> accV( \
-          regions[2], task->regions[2], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      TensorAccessorW<float, DIM> accM( \
-          regions[3], task->regions[3], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      size = accW.rect.volume(); \
-      assert(accWGrad.rect.volume() % accW.rect.volume() == 0); \
-      num_replicas = accWGrad.rect.volume() / accW.rect.volume(); \
-      w_grad_ptr = accWGrad.ptr; \
-      w_ptr = accW.ptr; \
-      v_ptr = accV.ptr; \
-      m_ptr = accM.ptr; \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      // Unsupported dims
-      assert(false);
-    }
-  }
-
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   // Step 1: Gather gradients in the first replica
@@ -311,53 +163,12 @@ void AdamOptimizer::ps_update_task(const Task* task,
 
 #ifdef FF_USE_NCCL
 __host__
-void AdamOptimizer::nccl_update_task(const Task* task,
-                                     const std::vector<PhysicalRegion>& regions,
-                                     Context ctx, Runtime* runtime)
+void AdamOptimizer::nccl_update_task_kernel(const AdamOptimizer* op,
+                                            const OpMeta* meta,
+                                            const float *w_grad_ptr,
+                                            size_t size, 
+                                            float *w_ptr, float *v_ptr, float *m_ptr)
 {
-  assert(regions.size() == 4);
-  assert(task->regions.size() == 4);
-  const AdamOptimizer* op = (AdamOptimizer*) task->args;
-  const OpMeta* meta = *((OpMeta**) task->local_args);
-  //FFHandler handler = *((FFHandler*) task->local_args);
-  Domain domain = runtime->get_index_space_domain(ctx,
-      task->regions[1].region.get_index_space());
-  const float *w_grad_ptr = NULL;
-  float *w_ptr = NULL, *v_ptr = NULL, *m_ptr = NULL;
-  size_t size = 0;
-  switch(domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      TensorAccessorR<float, DIM> accWGrad( \
-          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
-      TensorAccessorW<float, DIM> accW( \
-          regions[1], task->regions[1], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      TensorAccessorW<float, DIM> accV( \
-          regions[2], task->regions[2], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      TensorAccessorW<float, DIM> accM( \
-          regions[3], task->regions[3], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      size = accW.rect.volume(); \
-      assert(accWGrad.rect == accW.rect); \
-      assert(accWGrad.rect == accV.rect); \
-      assert(accWGrad.rect == accM.rect); \
-      w_grad_ptr = accWGrad.ptr; \
-      w_ptr = accW.ptr; \
-      v_ptr = accV.ptr; \
-      m_ptr = accM.ptr; \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      // Unsupported dims
-      assert(false);
-    }
-  }
   // Use NCCL to sync gradients
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
