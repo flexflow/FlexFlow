@@ -228,4 +228,56 @@ Node FFModel::get_or_create_replicate_node(const ParallelTensor input,
   return ret;
 }
 
+void Replicate::forward_task(
+    const Task *task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  Domain input_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain output_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  // Currently only support the outter most dimension
+  for (int i = 0; i < output_domain.get_dim()-1; i++) {
+    assert(output_domain.lo()[i] == input_domain.lo()[i]);
+    assert(output_domain.hi()[i] == input_domain.hi()[i]);
+  }
+  assert(input_domain.get_volume() == output_domain.get_volume());
+  const float* input_ptr = helperGetTensorPointerRO<float>(
+    regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float* output_ptr = helperGetTensorPointerRW<float>(
+    regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  
+  forward_kernel<float>(input_ptr, output_ptr, input_domain.get_volume());
+}
+
+void Replicate::backward_task(
+    const Task *task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  Domain output_grad_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain input_grad_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  // Currently only support the outter most dimension
+  for (int i = 0; i < output_grad_domain.get_dim()-1; i++) {
+    assert(output_grad_domain.lo()[i] == input_grad_domain.lo()[i]);
+    assert(output_grad_domain.hi()[i] == input_grad_domain.hi()[i]);
+  }
+  size_t num_elements = input_grad_domain.get_volume();
+  size_t num_replicas = output_grad_domain.get_volume() / num_elements;
+  const float* output_grad_ptr = helperGetTensorPointerRO<float>(
+    regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float* input_grad_ptr = helperGetTensorPointerRW<float>(
+    regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  backward_kernel<float>(output_grad_ptr, input_grad_ptr,
+      num_elements, num_replicas);
+}
+
 }; // namespace FlexFlow

@@ -10,11 +10,11 @@ public:
   FusedParallelOp(FFModel& model,
                   const ParallelTensor input,
                   const std::vector<ParallelOpInfo>& parallel_ops);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const;
-  void create_input_partition(FFModel& model);
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const override;
+  void create_input_partition(FFModel& model) override;
   static void forward_task(
       const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,
@@ -36,7 +36,7 @@ public:
   bool measure_operator_cost(
       Simulator* sim,
       const ParallelConfig& pc,
-      CostMetrics& cost_metrics) const;
+      CostMetrics& cost_metrics) const override;
   void set_parallel_ops(const std::vector<ParallelOpInfo>& _parallel_ops);
   bool check_no_redundant_parallel_ops(void) const;
 
