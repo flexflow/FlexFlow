@@ -260,6 +260,27 @@ class ScalarTrueDiv(Op):
     super(ScalarTrueDiv, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Rsqrt
+# -----------------------------------------------------------------------
+class Rsqrt(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Rsqrt, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Pow
+# -----------------------------------------------------------------------
+class Pow(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Pow, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Mean
+# -----------------------------------------------------------------------
+class Mean(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Mean, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # Relu
 # -----------------------------------------------------------------------
 class Relu(Op):
@@ -420,8 +441,14 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Reverse(handle, idx, name)
   elif op_type == OpType.MULTIHEAD_ATTENTION:
     return Reverse(handle, idx, name)
+  elif op_type == OpType.RSQRT:
+    return Rsqrt(handle, idx, name)
+  elif op_type == OpType.POW:
+    return Pow(handle, idx, name)
+  elif op_type == OpType.MEAN:
+    return Mean(handle, idx, name)
   else:
-    assert 0, "unknow layer type {}".format(op_type)
+    assert 0, "unknown layer type {}".format(op_type)
     return None
 
 # -----------------------------------------------------------------------
@@ -591,8 +618,10 @@ class Tensor(object):
       np_array = np.empty(shape, dtype=np.float32)
     elif self.data_type == DataType.DT_INT32:
       np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
     else:
-      assert 0, "Unsupported datatype"
+      assert 0, f"Unsupported datatype: {self.data_type}"
     np_raw_ptr = np_array.__array_interface__['data']
     c_comm_type = enum_to_int(ParameterSyncType, comm_type)
     if np_array.dtype == np.float32:
@@ -601,6 +630,9 @@ class Tensor(object):
     elif np_array.dtype == np.int32:
       raw_ptr = ffi.cast("int*", np_raw_ptr[0])
       ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, c_comm_type)
+    elif np_array.dtype == np.int64:
+      raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, c_comm_type)
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     assert ret_val == True
     return np_array
@@ -705,7 +737,7 @@ class Parameter(Tensor):
 class FFModel(object):
   """
   """
-  __slots__ = ['handle', '_handle', '_layers', '_nb_layers', '_ffconfig', '_tracing_id']
+  __slots__ = ['handle', '_handle', '_layers', '_nb_layers', '_ffconfig', '_tracing_id', 'initializers']
   def __init__(self, ffconfig):
     """Constructor of FFModel.
            
@@ -722,6 +754,7 @@ class FFModel(object):
     global ff_tracing_id
     self._tracing_id = ff_tracing_id
     ff_tracing_id += 1
+    self.initializers = {}
 
   def get_layers(self):
     return self._layers
@@ -853,6 +886,67 @@ class FFModel(object):
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
 
+  def rsqrt(self, input, name=None):
+    """Layer that computes the element-wise reciprocal square-root.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_rsqrt(self.handle, input.handle, c_name)
+    self.add_layer(OpType.RSQRT, name)
+    return Tensor(handle, owner_op_type=OpType.RSQRT)
+
+  def pow(self, input, exponent, name=None):
+    """Layer that computes the element-wise power.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param exponent: exponent to raise each element in the input tensor.
+    :type exponent: float
+
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_pow(self.handle, input.handle, exponent, c_name)
+    self.add_layer(OpType.POW, name)
+    return Tensor(handle, owner_op_type=OpType.POW)
+
+  def mean(self, input, dims, keepdims=False, name=None):
+    """Layer that computes the mean of the input tensor across the given
+    dimensions.
+
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param dims: dimensions to take the mean over.
+    :type dims: list
+
+    :param keepdims: keeps the dimensions in :attr:`dims` as size 1 if True and
+                     collapses the dimension if False. Default is False.
+    :type keepdims: bool
+
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    dims = list(dims)
+    c_dims = ffi.new("int[]", dims)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_mean(self.handle, input.handle, c_dims, len(dims), keepdims, c_name)
+    self.add_layer(OpType.MEAN, name)
+    return Tensor(handle, owner_op_type=OpType.MEAN)
+
   def conv2d(self, input, out_channels, 
              kernel_h, kernel_w, 
              stride_h, stride_w, 
@@ -949,18 +1043,18 @@ class FFModel(object):
     self.add_layer(OpType.CONV2D, name)
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 
-  def embedding(self, input, num_entires, out_dim, 
+  def embedding(self, input, num_embeddings, embedding_dim, 
                 aggr, shared_op=None, kernel_initializer=None, name=None):
     """Layer that turns positive integers into dense vectors of fixed size
              
     :param input: the input Tensor.
     :type input: Tensor
     
-    :param num_entires: size of the vocabulary, i.e. maximum integer index + 1
-    :type num_entires: int
+    :param num_embeddings: size of the vocabulary, i.e. maximum integer index + 1
+    :type num_embeddings: int
                 
-    :param out_dim: dimension of the dense embedding.
-    :type out_dim: int
+    :param embedding_dim: dimension of the dense embedding.
+    :type embedding_dim: int
                 
     :param aggr: aggregation mode. Options are AGGR_MODE_NONE, AGGR_MODE_SUM and AGGR_MODE_AVG.
     :type aggr: AggrMode
@@ -979,8 +1073,20 @@ class FFModel(object):
     c_name = get_c_name(name)
     shared_op_handle = self.__get_op_handle(shared_op)
     c_aggr = enum_to_int(AggrMode, aggr)
-    assert (type(kernel_initializer) is GlorotUniformInitializer) or (type(kernel_initializer) is ZeroInitializer) or (type(kernel_initializer) is UniformInitializer) or (type(kernel_initializer) is NormInitializer), "unknow initializer type"
-    handle = ffc.flexflow_model_add_embedding(self.handle,  input.handle, num_entires, out_dim, c_aggr, shared_op_handle, kernel_initializer.handle, c_name)
+    if kernel_initializer is None:
+      kernel_initializer = GlorotUniformInitializer(42)
+    assert (type(kernel_initializer) is GlorotUniformInitializer) or \
+      (type(kernel_initializer) is ZeroInitializer) or \
+      (type(kernel_initializer) is UniformInitializer) or \
+      (type(kernel_initializer) is NormInitializer), \
+      f"Unknown initializer type: {kernel_initializer}"
+    handle = ffc.flexflow_model_add_embedding(
+      self.handle, input.handle, num_embeddings, embedding_dim, c_aggr,
+      shared_op_handle, kernel_initializer.handle, c_name,
+    )
+    # NOTE: We must keep a reference to the initializer or else it will be
+    # immediately destructed
+    self.initializers[name] = kernel_initializer
     self.add_layer(OpType.EMBEDDING, name)
     return Tensor(handle, owner_op_type=OpType.EMBEDDING)
 
@@ -1664,6 +1770,7 @@ class FFModel(object):
       comp_mode = CompMode.TRAINING
     c_comp_mode = enum_to_int(CompMode, comp_mode)
     ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics), c_comp_mode)
+    print("Compiled ffmodel!")
 
   def fit(self, x=None, y=None, batch_size=None, epochs=1):
     """Trains the model for a fixed number of epochs (iterations on a dataset).
@@ -1856,7 +1963,7 @@ class FFModel(object):
       assert 0, "unsupported datatype"
     np_raw_ptr = full_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-    print("numpy array: %s, %s, %s" %( str(np_raw_ptr), str(raw_ptr), hex(np_raw_ptr[0])))
+    print("numpy array: %s, %s, %s" % (str(np_raw_ptr), str(raw_ptr), hex(np_raw_ptr[0])))
     dataloader = SingleDataLoader(self, batch_tensor, raw_ptr, num_samples, datatype)
 
     return dataloader

@@ -1416,8 +1416,10 @@ void FFModel::reset_metrics()
 
 void FFModel::init_layers()
 {
-  for (size_t i = 0; i < layers.size(); i++)
+  for (size_t i = 0; i < layers.size(); i++) {
+    printf("Initializing layer %s\n", layers[i]->name);
     layers[i]->init(*this);
+  }
 }
 
 void FFModel::forward(int seq_length)
@@ -1639,6 +1641,7 @@ void FFModel::compile(LossType loss_type,
 
   for (size_t l = 0; l < layers.size(); l++) {
     Op* op = layers[l];
+    printf("Compiling layer %s\n", op->name);
     for (int i = 0; i < op->numInputs; i++) {
       if (op->inputs[i].owner_op == NULL) {
         // User created tensor
@@ -2111,6 +2114,9 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_PRELU: return "PReLU";
     case OP_MULTIHEAD_ATTENTION: return "MultiHeadAttention";
     case OP_FUSED: return "FusedOp";
+    case OP_RSQRT: return "Rsqrt";
+    case OP_POW: return "Pow";
+    case OP_MEAN: return "Mean";
     default: assert(false && "Not supported Operator type"); return "Unsupported";
   }
 }

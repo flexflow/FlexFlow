@@ -79,6 +79,7 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/transpose.cu\
 		${FF_HOME}/src/ops/attention.cu\
 		${FF_HOME}/src/ops/fused.cu\
+		${FF_HOME}/src/ops/mean.cu\
 		${FF_HOME}/src/loss_functions/loss_functions.cu\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cu\
 		${FF_HOME}/src/runtime/initializer_kernel.cu\

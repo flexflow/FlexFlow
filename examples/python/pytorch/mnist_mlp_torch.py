@@ -1,5 +1,5 @@
 import torch.nn as nn
-import flexflow.torch.fx as fx
+from flexflow.torch.model import PyTorchModel
 
 class MLP(nn.Module):
   def __init__(self):
@@ -20,4 +20,6 @@ class MLP(nn.Module):
     return y
 
 model = MLP()
-fx.torch_to_flexflow(model, "mlp.ff")
+ff_torch_model = PyTorchModel(model)
+ff_torch_model.torch_to_file("mlp.ff")
+
