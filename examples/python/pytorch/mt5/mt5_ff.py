@@ -66,9 +66,10 @@ def top_level_task():
     y_ids = np.load(os.path.join(NUMPY_DIR, "train_y_ids.npy"))
     lm_labels = np.load(os.path.join(NUMPY_DIR, "train_lm_labels.npy"))
 
-    input_ids_shape = (ffconfig.batch_size, ids.shape[1])
-    attention_mask_shape = (ffconfig.batch_size, mask.shape[1])
-    decoder_input_ids_shape = (ffconfig.batch_size, y_ids.shape[1])
+    batch_size = ffconfig.batch_size
+    input_ids_shape = (batch_size, ids.shape[1])
+    attention_mask_shape = (batch_size, mask.shape[1])
+    decoder_input_ids_shape = (batch_size, y_ids.shape[1])
     input_tensors = [
         ffmodel.create_tensor(input_ids_shape, DataType.DT_INT64),          # input_ids
         ffmodel.create_tensor(attention_mask_shape, DataType.DT_INT64),     # attention_mask
@@ -85,6 +86,7 @@ def top_level_task():
     )
     output_tensors = hf_model.torch_to_ff(ffmodel, input_tensors, verbose=True)
     ffoptimizer = SGDOptimizer(ffmodel, lr=0.01)
+
     print("Compiling the model...")
     ffmodel.compile(
         optimizer=ffoptimizer,
@@ -107,6 +109,13 @@ def top_level_task():
 
     print("Initializing model layers...")
     ffmodel.init_layers()
+
+    print("Training...")
+    epochs = ffconfig.epochs
+    ffmodel.fit(
+        x=[input_ids_dl, attention_mask_dl, decoder_input_ids_dl],
+        y=labels_dl, batch_size=batch_size, epochs=epochs,
+    )
 
 
 if __name__ == "__main__":
