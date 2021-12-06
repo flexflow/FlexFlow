@@ -620,7 +620,7 @@ public:
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnOpTensorDescriptor_t opDesc;
   OperatorType op_type;
-  bool inplace_a;
+  bool inplace_a, has_same_operands;
 };
 
 class ElementBinary : public Op {
@@ -670,7 +670,7 @@ private:
   template<int ODIM, int IDIM>
   void create_output_and_partition_with_dim(FFModel& model, int idx);
 public:
-  bool inplace_a;
+  bool inplace_a, has_same_operands;
 };
 
 class ElementUnaryMeta : public OpMeta {

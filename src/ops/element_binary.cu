@@ -72,7 +72,8 @@ ElementBinary::ElementBinary(FFModel& model,
     in1,
     in2
   ),
-  inplace_a(_inplace_a)
+  inplace_a(_inplace_a),
+  has_same_operands(false)
 {
   numOutputs = 1;
   numWeights = 0;
@@ -208,20 +209,24 @@ OpMeta* ElementBinary::init_task(const Task* task,
   m->op_type = eb->op_type;
   m->profiling = eb->profiling;
   m->inplace_a = eb->inplace_a;
+  m->has_same_operands = eb->has_same_operands;
   Domain input_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain output_domain;
+  size_t num_regions = 1;
+  if (!m->inplace_a)
+    num_regions ++;
+  if (!m->has_same_operands)
+    num_regions ++;
+  assert(task->regions.size() == regions.size());
+  assert(regions.size() == num_regions);
   if (m->inplace_a) {
-    assert(regions.size() == 2);
-    assert(task->regions.size() == regions.size());
     output_domain = runtime->get_index_space_domain(
-        ctx, task->regions[1].region.get_index_space());
+        ctx, task->regions[num_regions-1].region.get_index_space());
     assert(output_domain == input_domain);
   } else {
-    assert(regions.size() == 3);
-    assert(task->regions.size() == regions.size());
     output_domain = runtime->get_index_space_domain(
-        ctx, task->regions[2].region.get_index_space());
+        ctx, task->regions[num_regions-1].region.get_index_space());
     // check that input can broadcast to output
     for (int i = 0; i < input_domain.dim; i++) {
       int input_dim_size = input_domain.hi()[i] - input_domain.lo()[i] + 1;
@@ -274,23 +279,30 @@ void ElementBinary::init(const FFModel& ff)
     default:
       assert(false);
   }
+  if (inputs[0].region == inputs[1].region) {
+    // same oprands
+    has_same_operands = true;
+  }
   IndexLauncher launcher(ELEMENTBINARY_INIT_TASK_ID, task_is,
                          TaskArgument(this, sizeof(ElementBinary)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
+  int rid = 0;
   launcher.add_region_requirement(
     RegionRequirement(input_lps[0], 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[0].region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-    RegionRequirement(input_lps[1], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[1].region));
-  launcher.add_field(1, FID_DATA);
+  launcher.add_field(rid++, FID_DATA);
+  if (!has_same_operands) {
+    launcher.add_region_requirement(
+      RegionRequirement(input_lps[1], 0/*projection id*/,
+        READ_WRITE, EXCLUSIVE, inputs[1].region));
+    launcher.add_field(rid++, FID_DATA);
+  }
   if (!inplace_a) {
     launcher.add_region_requirement(
       RegionRequirement(outputs[0].part, 0/*projection id*/,
         WRITE_ONLY, EXCLUSIVE, outputs[0].region));
-    launcher.add_field(2, FID_DATA);
+    launcher.add_field(rid++, FID_DATA);
   } else {
     assert(outputs[0].part == input_lps[0]);
     assert(outputs[0].region == inputs[0].region);
