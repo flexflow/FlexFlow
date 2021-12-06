@@ -426,31 +426,55 @@ void ElementBinary::forward_task(const Task* task,
   const ElementBinaryMeta* m = *((ElementBinaryMeta**) task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
-  Domain in2_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
-  assert(in1_domain == in2_domain);
+  if (!m->has_same_operands) {
+    Domain in2_domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+    assert(in1_domain == in2_domain);
+  }
   const float* in1_ptr = NULL, *in2_ptr = NULL;
   float *out_ptr = NULL;
   if (m->inplace_a) {
-    assert(regions.size() == 2);
-    assert(task->regions.size() == 2);
-    out_ptr = helperGetTensorPointerRW<float>(
-        regions[0], task->regions[0], FID_DATA, ctx, runtime);
-    in2_ptr = helperGetTensorPointerRO<float>(
-        regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    in1_ptr = out_ptr;
+    if (m->has_same_operands) {
+      assert(regions.size() == 1);
+      assert(task->regions.size() == 1);
+      out_ptr = helperGetTensorPointerRW<float>(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      in2_ptr = out_ptr;
+      in1_ptr = out_ptr;
+    } else {
+      assert(regions.size() == 2);
+      assert(task->regions.size() == 2);
+      out_ptr = helperGetTensorPointerRW<float>(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      in2_ptr = helperGetTensorPointerRO<float>(
+          regions[1], task->regions[1], FID_DATA, ctx, runtime);
+      in1_ptr = out_ptr;
+    }
   } else {
-    assert(regions.size() == 3);
-    assert(task->regions.size() == 3);
-    Domain out_domain = runtime->get_index_space_domain(
-        ctx, task->regions[2].region.get_index_space());
-    assert(out_domain == in1_domain);
-    in1_ptr = helperGetTensorPointerRO<float>(
-        regions[0], task->regions[0], FID_DATA, ctx, runtime);
-    in2_ptr = helperGetTensorPointerRO<float>(
-        regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    out_ptr = helperGetTensorPointerWO<float>(
-        regions[2], task->regions[2], FID_DATA, ctx, runtime);
+    if (m->has_same_operands) {
+      assert(regions.size() == 2);
+      assert(task->regions.size() == 2);
+      Domain out_domain = runtime->get_index_space_domain(
+          ctx, task->regions[1].region.get_index_space());
+      assert(out_domain == in1_domain);
+      in1_ptr = helperGetTensorPointerRO<float>(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      in2_ptr = in1_ptr;
+      out_ptr = helperGetTensorPointerWO<float>(
+          regions[2], task->regions[2], FID_DATA, ctx, runtime);
+    } else {
+      assert(regions.size() == 3);
+      assert(task->regions.size() == 3);
+      Domain out_domain = runtime->get_index_space_domain(
+          ctx, task->regions[2].region.get_index_space());
+      assert(out_domain == in1_domain);
+      in1_ptr = helperGetTensorPointerRO<float>(
+          regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      in2_ptr = helperGetTensorPointerRO<float>(
+          regions[1], task->regions[1], FID_DATA, ctx, runtime);
+      out_ptr = helperGetTensorPointerWO<float>(
+          regions[2], task->regions[2], FID_DATA, ctx, runtime);
+    }
   }
 
   cudaStream_t stream;
@@ -528,23 +552,34 @@ void ElementBinary::forward(const FFModel& ff)
       RegionRequirement(input_lps[0], 0/*projection id*/,
         READ_WRITE, EXCLUSIVE, inputs[0].region));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(
-      RegionRequirement(input_lps[1], 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[1].region));
-    launcher.add_field(1, FID_DATA);
+    if (has_same_operands) {
+      // do nothing else
+    } else {
+      launcher.add_region_requirement(
+        RegionRequirement(input_lps[1], 0/*projection id*/,
+          READ_ONLY, EXCLUSIVE, inputs[1].region));
+      launcher.add_field(1, FID_DATA);
+    }
   } else {
     launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
         READ_ONLY, EXCLUSIVE, inputs[0].region));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(
-      RegionRequirement(input_lps[1], 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[1].region));
-    launcher.add_field(1, FID_DATA);
-    launcher.add_region_requirement(
-      RegionRequirement(outputs[0].part, 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, outputs[0].region));
-    launcher.add_field(2, FID_DATA);
+    if (has_same_operands) {
+      launcher.add_region_requirement(
+        RegionRequirement(outputs[0].part, 0/*projection id*/,
+          WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+      launcher.add_field(1, FID_DATA);
+    } else {
+      launcher.add_region_requirement(
+        RegionRequirement(input_lps[1], 0/*projection id*/,
+          READ_ONLY, EXCLUSIVE, inputs[1].region));
+      launcher.add_field(1, FID_DATA);
+      launcher.add_region_requirement(
+        RegionRequirement(outputs[0].part, 0/*projection id*/,
+          WRITE_ONLY, EXCLUSIVE, outputs[0].region));
+      launcher.add_field(2, FID_DATA);
+    }
   }
   runtime->execute_index_space(ctx, launcher);
 }
@@ -665,7 +700,7 @@ void ElementBinary::backward_task(const Task *task,
   if (m->inplace_a) {
     in0_grad_ptr = helperGetTensorPointerRW<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-    if (regions.size() == 2 || regions.size() == 4);
+    assert(regions.size() == 2 || regions.size() == 4);
     assert(task->regions.size() == regions.size());
     if (regions.size() == 2) {
       Domain in0_domain = runtime->get_index_space_domain(
@@ -771,7 +806,7 @@ void ElementBinary::backward(const FFModel& ff)
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
     launcher.add_field(1, FID_DATA);
-    if (inputs[0].region == inputs[1].region) {
+    if (inputs[0].region != inputs[1].region) {
       // regions[3](I): input1
       launcher.add_region_requirement(
         RegionRequirement(input_lps[1], 0/*projection id*/,
@@ -799,7 +834,7 @@ void ElementBinary::backward(const FFModel& ff)
       RegionRequirement(input_grad_lps[0], 0/*projection id*/,
                         READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
     launcher.add_field(2, FID_DATA);
-    if (inputs[0].region == inputs[1].region) {
+    if (inputs[0].region != inputs[1].region) {      
       // regions[3](I): input1
       launcher.add_region_requirement(
         RegionRequirement(input_lps[1], 0/*projection id*/,
