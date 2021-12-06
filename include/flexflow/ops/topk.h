@@ -34,6 +34,7 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   static void forward_kernel(const TopKMeta* m,
                       const float* input_ptr,
                       float* output_ptr,
@@ -46,7 +47,22 @@ public:
                        const int* indices_ptr,
                        float* in_grad_ptr,
                        size_t batch_size, int length, int k,
-		       cudaStream_t stream);
+		                   cudaStream_t stream);
+#else
+  static void forward_kernel(const TopKMeta* m,
+                      const float* input_ptr,
+                      float* output_ptr,
+                      int* indices_ptr,
+                      size_t batch_size, int length, int k,
+                      bool sorted,
+                      hipStream_t stream);
+  static void backward_kernel(const TopKMeta* m,
+                       const float* out_grad_ptr,
+                       const int* indices_ptr,
+                       float* in_grad_ptr,
+                       size_t batch_size, int length, int k,
+                       hipStream_t stream);
+#endif
 public:
   int k;
   bool sorted;

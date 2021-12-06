@@ -61,6 +61,7 @@ public:
   static void backward_task_cpu(const Legion::Task *task,
                                 const std::vector<Legion::PhysicalRegion> &regions,
                                 Legion::Context ctx, Legion::Runtime *runtime);
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   static void forward_kernel(int64_t const *input_ptr,
                              float *output_ptr,
                              float const *weight_ptr,
@@ -79,6 +80,26 @@ public:
                               AggrMode aggr,
                               int outputSize,
                               cudaStream_t stream);
+#else
+  static void forward_kernel(int64_t const *input_ptr,
+                             float *output_ptr,
+                             float const *weight_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int batch_size,
+                             AggrMode aggr,
+                             int outputSize,
+                             hipStream_t stream);
+  static void backward_kernel(int64_t const *input_ptr,
+                              float const *output_ptr,
+                              float *weight_grad_ptr,
+                              int in_dim,
+                              int out_dim,
+                              int batch_size,
+                              AggrMode aggr,
+                              int outputSize,
+                              hipStream_t stream);
+#endif
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;

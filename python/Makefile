@@ -17,12 +17,12 @@
 DEBUG           ?= 0		# Include debugging symbols
 MAX_DIM         ?= 5		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
-USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
+USE_CUDA        ?= 0		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
-USE_HIP         ?= 0		# Include HIP support (requires HIP)
-HIP_TARGET      ?= CUDA
+USE_HIP         ?= 1		# Include HIP support (requires HIP)
+HIP_TARGET      ?= ROCM
 USE_GPU_REDUCTIONS ?= 0
 FF_USE_NCCL  ?= 0
 FF_USE_NATIVE_PYTHON ?= 0
@@ -68,6 +68,8 @@ GEN_SRC		  ?= main.cc flexflow_c.cc flexflow_dataloader.cc # .cc files
 GEN_GPU_SRC	  ?= flexflow_dataloader.cu # .cu files
 ifeq ($(strip $(HIP_TARGET)),CUDA)
 GEN_HIP_SRC	  ?= flexflow_dataloader.cu # .cu files
+else
+GEN_HIP_SRC	  ?= flexflow_dataloader.cpp # .cpp files
 endif
 
 PYBIND_INC    = $(shell $$PYTHON_EXE -m pybind11 --includes)
@@ -77,7 +79,13 @@ FF_BYBIND_LIB_NAME = flexflow_pybind11_internal$(PYBIND_EXT)
 INC_FLAGS     += -I${FF_HOME}
 CC_FLAGS      += -fPIC
 NVCC_FLAGS    += -Xcompiler -fPIC
+ifeq ($(strip $(USE_HIP)),1)
+ifeq ($(strip $(HIP_TARGET)),CUDA)
 HIPCC_FLAGS    += -Xcompiler -fPIC
+else
+HIPCC_FLAGS    += -fPIC
+endif
+endif
 
 CC_FLAGS	  ?= -DBINDINGS_AUGMENT_PYTHONPATH -DFF_USE_PYTHON 
 

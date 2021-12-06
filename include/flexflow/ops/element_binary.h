@@ -48,6 +48,7 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   static void forward_kernel(const ElementBinaryMeta* m,
                       const float* in1_ptr,
                       const float* in2_ptr,
@@ -60,6 +61,20 @@ public:
                        float* in1_grad_ptr,
                        float* in2_grad_ptr,
                        cudaStream_t stream);
+#else
+  static void forward_kernel(const ElementBinaryMeta* m,
+                      const float* in1_ptr,
+                      const float* in2_ptr,
+                      float* out_ptr,
+                      hipStream_t stream);
+  static void backward_kernel(const ElementBinaryMeta* m,
+                       const float* out_grad_ptr,
+                       const float* in1_ptr,
+                       const float* in2_ptr,
+                       float* in1_grad_ptr,
+                       float* in2_grad_ptr,
+                       hipStream_t stream);
+#endif
   size_t get_params_hash() const override;
 public:
   bool inplace_a;

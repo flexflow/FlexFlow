@@ -278,7 +278,7 @@ void ConstantInitializer::init_task(const Task* task,
       {
         float* w = helperGetTensorPointerWO<float>(
             regions[i], task->regions[i], FID_DATA, ctx, runtime);
-        assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
+        assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
             w, domain.get_volume(), initializer->float_value);
         break;
       }
@@ -286,7 +286,7 @@ void ConstantInitializer::init_task(const Task* task,
       {
         int64_t* w = helperGetTensorPointerWO<int64_t>(
             regions[i], task->regions[i], FID_DATA, ctx, runtime);
-        assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
+        assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
             w, domain.get_volume(), initializer->int64_value);
         break;
       }
@@ -294,7 +294,7 @@ void ConstantInitializer::init_task(const Task* task,
       {
         int* w = helperGetTensorPointerWO<int>(
             regions[i], task->regions[i], FID_DATA, ctx, runtime);
-        assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS>>>(
+        assign_kernel<<<GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
             w, domain.get_volume(), initializer->int32_value);
         break;
       }

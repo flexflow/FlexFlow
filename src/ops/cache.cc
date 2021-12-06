@@ -14,7 +14,6 @@
  */
 
 #include "flexflow/ops/cache.h"
-#include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 

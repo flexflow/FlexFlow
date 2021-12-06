@@ -25,8 +25,13 @@
 #include "loss_functions.h"
 #include "metrics_functions.h"
 #include "recompile.h"
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
 #include <cuda_runtime.h>
 #include <curand.h>
+#else
+#include <hip/hip_runtime.h>
+#include <hiprand.h>
+#endif
 #include <unistd.h>
 #include <functional>
 #include "tl/optional.h"
@@ -214,14 +219,10 @@ namespace PCG {
   class Graph;
 };
 
-#ifdef LEGION_USE_HIP
-#ifdef __HIP_PLATFORM_NVCC__
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
 cudaError_t get_legion_stream(cudaStream_t *stream);
 #else
 hipError_t get_legion_stream(hipStream_t *stream);
-#endif
-#else
-cudaError_t get_legion_stream(cudaStream_t *stream);
 #endif
 
 class FFModel;

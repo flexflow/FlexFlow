@@ -11,6 +11,9 @@ public:
 #if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
+#else
+  miopenTensorDescriptor_t inputTensor, outputTensor;
+  miopenActivationDescriptor_t actiDesc;
 #endif
   OperatorType op_type;
   bool inplace;
@@ -46,6 +49,7 @@ public:
   static void backward_task(const Legion::Task *task,
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   static void forward_kernel(const ElementUnaryMeta* m,
                       const float* in_ptr,
                       float* out_ptr,
@@ -58,6 +62,20 @@ public:
                        const float* out_grad_ptr,
                        size_t num_elements,
                        cudaStream_t stream);
+#else
+  static void forward_kernel(const ElementUnaryMeta* m,
+                      const float* in_ptr,
+                      float* out_ptr,
+                      size_t num_elements,
+                      hipStream_t stream);
+  static void backward_kernel(const ElementUnaryMeta* m,
+                       const float* in_ptr,
+                       float* in_grad_ptr,
+                       const float* out_ptr,
+                       const float* out_grad_ptr,
+                       size_t num_elements,
+                       hipStream_t stream);
+#endif
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;

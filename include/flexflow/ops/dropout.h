@@ -27,6 +27,7 @@ public:
   static void backward_task(const Legion::Task *task,
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   static void forward_kernel(DropoutMeta *m,
                              float const *input_ptr,
                              float *output_ptr,
@@ -35,6 +36,16 @@ public:
                               float const *output_grad_ptr,
                               float *input_grad_ptr,
                               cudaStream_t stream);
+#else
+  static void forward_kernel(DropoutMeta *m,
+                             float const *input_ptr,
+                             float *output_ptr,
+                             hipStream_t stream);
+  static void backward_kernel(DropoutMeta *m,
+                              float const *output_grad_ptr,
+                              float *input_grad_ptr,
+                              hipStream_t stream);
+#endif
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
@@ -54,6 +65,9 @@ public:
 #if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnDropoutDescriptor_t dropoutDesc;
+#else
+  miopenTensorDescriptor_t inputTensor, outputTensor;
+  miopenDropoutDescriptor_t dropoutDesc;
 #endif
   void *reserveSpace, *dropoutStates;
   size_t reserveSpaceSize, dropoutStateSize;
