@@ -140,14 +140,26 @@ void Softmax::init(const FFModel& ff)
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
-  ParallelConfig pc;
-  std::string pcname = name;
-  ff.config.find_parallel_config(2, pcname, pc);
-  int idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
-    FFHandler handle = ff.handlers[pc.device_ids[idx++]];
-    argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));
+  Domain domain = runtime->get_index_space_domain(ctx, task_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      ParallelConfig pc; \
+      std::string pcname = name; \
+      ff.config.find_parallel_config(DIM, pcname, pc); \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        FFHandler handle = ff.handlers[pc.device_ids[idx++]]; \
+        argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
   }
   IndexLauncher launcher(SOFTMAX_INIT_TASK_ID, task_is,
                          TaskArgument(this, sizeof(Softmax)), argmap,
@@ -163,9 +175,21 @@ void Softmax::init(const FFModel& ff)
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  idx = 0;
-  for (PointInRectIterator<2> it(rect); it(); it++) {
-    meta[idx++] = fm.get_result<OpMeta*>(*it);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      Rect<DIM> rect = domain; \
+      int idx = 0; \
+      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
+        meta[idx++] = fm.get_result<OpMeta*>(*it); \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
   }
 }
 
