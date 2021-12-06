@@ -58,6 +58,8 @@ LayerNorm::LayerNorm(FFModel& model,
   int M = 1;
   for (int i = 0; i < axes.size(); i++)
     M *= inputs[0].adim[inputs[0].numDim-1-axes[i]];
+  effective_num_elements = M;
+  effective_batch_size = inputs[0].get_volume() / M;
   if (elementwise_affine) {
     numWeights = 2;
     weights[0].numDim = 1;
