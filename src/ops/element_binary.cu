@@ -97,10 +97,16 @@ ElementBinary::ElementBinary(FFModel& model,
 
 bool ElementBinary::can_inplace_output(void)
 {
-  if (op_type == OP_EW_ADD)
+  if (op_type == OP_EW_ADD || op_type == OP_EW_MUL) {
+    // TODO: Currently assume that we always inplace_a
+    if (outputs[0].numDim != inputs[0].numDim)
+      return false;
+    for (int i = 0; i < inputs[0].numDim; i++) {
+      if (inputs[0].adim[i] != outputs[0].adim[i])
+        return false;
+    }
     return true;
-  if (op_type == OP_EW_MUL)
-    return true;
+  }
   return false;
 }
 
