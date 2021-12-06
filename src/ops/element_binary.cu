@@ -222,7 +222,12 @@ OpMeta* ElementBinary::init_task(const Task* task,
     assert(task->regions.size() == regions.size());
     output_domain = runtime->get_index_space_domain(
         ctx, task->regions[2].region.get_index_space());
-    assert(output_domain == input_domain);
+    // check that input can broadcast to output
+    for (int i = 0; i < input_domain.dim; i++) {
+      int input_dim_size = input_domain.hi()[i] - input_domain.lo()[i] + 1;
+      int output_dim_size = output_domain.hi()[i] - output_domain.lo()[i] + 1;
+      assert(input_dim_size == output_dim_size || input_dim_size == 1);
+    }
   }
   cudnnOpTensorOp_t mode;
   switch (eb->op_type) {
