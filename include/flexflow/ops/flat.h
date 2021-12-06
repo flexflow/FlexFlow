@@ -32,10 +32,10 @@ public:
        const ParallelTensor input,
        const char* name);
 
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  void print_layer(const FFModel& model) override {assert(0);}
   static Op* create_operator_from_layer(FFModel& model,
                                         const Layer* layer,
                                         const std::vector<ParallelTensor>& inputs);
@@ -70,8 +70,8 @@ public:
 #endif
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
-  Legion::Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const;
+                             CostMetrics& cost_metrics) const override;
+  Legion::Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const override;
 
   void serialize(Legion::Serializer&) const override;
   static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);

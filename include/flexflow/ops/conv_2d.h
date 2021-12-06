@@ -112,11 +112,11 @@ public:
          Conv2D const &other, 
          const ParallelTensor input,
          bool allocate_weights);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
   //void update(const FFModel&);
-  void print_layer(const FFModel& model);
+  void print_layer(const FFModel& model) override;
   //Parameter* get_parameter(int index);
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
@@ -168,7 +168,7 @@ public:
 #endif
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
   bool estimate_sync_cost(Simulator* sim,
                           const MachineView& pc,
                           CostMetrics& cost_metrics) const override;

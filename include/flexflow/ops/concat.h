@@ -18,11 +18,11 @@ public:
          const ParallelTensor* inputs,
          int axis,
          const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  bool get_int_parameter(PMParameter, int*) const;
-  void print_layer(const FFModel& model) {assert(0);}
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  bool get_int_parameter(PMParameter, int*) const override;
+  void print_layer(const FFModel& model) override {assert(0);}
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -67,7 +67,7 @@ public:
 #endif
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
 
   size_t get_params_hash() const override;
 public:

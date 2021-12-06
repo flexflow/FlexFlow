@@ -93,11 +93,11 @@ public:
          ParallelTensor const input, 
          bool allocate_weights);
 
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model);
-  bool get_int_parameter(PMParameter, int*) const;
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  void print_layer(const FFModel& model) override;
+  bool get_int_parameter(PMParameter, int*) const override;
   static Op* create_operator_from_layer(FFModel& model,
                                         const Layer* layer,
                                         const std::vector<ParallelTensor>& inputs);
@@ -149,12 +149,12 @@ public:
 #endif
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
   bool estimate_sync_cost(Simulator* sim,
                           const MachineView& pc,
                           CostMetrics& cost_metrics) const override;
-  ParallelConfig get_random_parallel_config(const FFModel& ff) const;
-  bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
+  ParallelConfig get_random_parallel_config(const FFModel& ff) const override;
+  bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const override;
 
   void serialize(Legion::Serializer&) const override;
   static PCG::Node deserialize(FFModel &ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);

@@ -14,11 +14,11 @@ public:
             const ParallelTensor bias,
             bool relu,
             const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
   void update(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
+  void print_layer(const FFModel& model) override {assert(0);}
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -31,7 +31,7 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
 #if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   static void forward_kernel(BatchNormMeta *m,
                              float const *input_ptr,

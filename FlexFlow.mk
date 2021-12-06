@@ -220,7 +220,7 @@ INC_FLAGS	+= -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
 LD_FLAGS	+= -lcudnn -lcublas -lcurand -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64
 else
 CC_FLAGS	+= -DFF_USE_HIP_ROCM
-HIPCC_FLAGS	+= -DFF_USE_HIP_ROCM -Winconsistent-missing-override
+HIPCC_FLAGS	+= -DFF_USE_HIP_ROCM
 INC_FLAGS	+= -I$(HIPLIB_HOME)/include -I$(HIPLIB_HOME)/include/miopen -I$(HIPLIB_HOME)/include/rocrand -I$(HIPLIB_HOME)/include/hiprand 
 LD_FLAGS	+= -lMIOpen -lhipblas -lhiprand -L$(HIPLIB_HOME)/lib
 endif

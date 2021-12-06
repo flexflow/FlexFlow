@@ -28,13 +28,13 @@ public:
                bool inplace,
                const char* name,
 	       float scalar);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
-  bool can_inplace_output();
-  bool has_inplace_output();
-  void do_inplace_output();
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  void print_layer(const FFModel& model) override {assert(0);}
+  bool can_inplace_output() override;
+  bool has_inplace_output() override;
+  void do_inplace_output() override;
   static Op* create_operator_from_layer(
       FFModel& model,
       const Layer* layer,
@@ -78,7 +78,7 @@ public:
 #endif
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
   static bool use_cudnn(OperatorType type);
 
   void serialize(Legion::Serializer&) const override;

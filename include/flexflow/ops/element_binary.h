@@ -24,13 +24,13 @@ public:
                 const ParallelTensor y,
                 bool inplace_a,
                 const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
-  bool can_inplace_output();
-  bool has_inplace_output();
-  void do_inplace_output();
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  void print_layer(const FFModel& model) override {assert(0);}
+  bool can_inplace_output() override;
+  bool has_inplace_output() override;
+  void do_inplace_output() override;
   static Op* create_operator_from_layer(
       FFModel& model,
       const Layer* layer,
@@ -47,7 +47,7 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
 #if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   static void forward_kernel(const ElementBinaryMeta* m,
                       const float* in1_ptr,
