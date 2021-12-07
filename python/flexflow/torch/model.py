@@ -1367,7 +1367,7 @@ class GetItemNode(FunctionNode):
         return input_tensor[index]
 
     def to_ff(self, ffmodel, node_to_output):
-        input_tensor = node_to_output[self.innodes[0].name]  
+        input_tensor = node_to_output[self.innodes[0].name]
         if type(input_tensor) is Tensor:
             _slice = self.innodes[1]
             assert type(_slice) is tuple

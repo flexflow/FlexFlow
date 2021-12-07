@@ -105,10 +105,16 @@ notable code snippets):
     ```
     ffmodel.init_layers()
     ```
-- **TODO:** model initialization currently fails
+- Train the model, passing the appropriate dataloaders into `fit()`:
+    ```
+    ffmodel.fit(
+        x=[input_ids_dl, attention_mask_dl, decoder_ids_dl],
+        y=labels_dl, batch_size=batch_size, epochs=epochs,
+    )
+    ```
 
 A base implementation may be found in `mt5_ff.py`.
 ```
-./python/flexflow_python examples/python/pytorch/mt5/mt5_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 8000 -ll:zsize 4096
+./python/flexflow_python examples/python/pytorch/mt5/mt5_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 14000 -ll:zsize 4096
 ```
 _Note:_ Running `mt5_ff.py` requires a CPU-version of PyTorch.
