@@ -43,11 +43,11 @@ void sgd_update(size_t count, float lr, float weight_decay,
 }
 
 __host__
-void SGDOptimizer::ps_update_task_kernel(const SGDOptimizer* op,
-                                         const float *w_grad_ptr,
-                                         size_t size,
-                                         int num_replicas,
-                                         float *w_ptr, float *v_ptr)
+void SGDOptimizer::ps_update_task_gpu(const SGDOptimizer* op,
+                                      const float *w_grad_ptr,
+                                      size_t size,
+                                      int num_replicas,
+                                      float *w_ptr, float *v_ptr)
 {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -67,11 +67,11 @@ void SGDOptimizer::ps_update_task_kernel(const SGDOptimizer* op,
 
 #ifdef FF_USE_NCCL
 __host__
-void SGDOptimizer::nccl_update_task_kernel(const SGDOptimizer* op,
-                                           const OpMeta* meta,
-                                           const float *w_grad_ptr,
-                                           size_t size,
-                                           float *w_ptr, float *v_ptr)
+void SGDOptimizer::nccl_update_task_gpu(const SGDOptimizer* op,
+                                        const OpMeta* meta,
+                                        const float *w_grad_ptr,
+                                        size_t size,
+                                        float *w_ptr, float *v_ptr)
 {
   // Use NCCL to sync gradients
   //fprintf(stderr, "weight(%p) Before ncclAllReduce...\n", w_grad_ptr);
@@ -136,11 +136,11 @@ void adam_update(int count, float alpha_t,
 }
 
 __host__
-void AdamOptimizer::ps_update_task_kernel(const AdamOptimizer* op,
-                                          const float *w_grad_ptr,
-                                          size_t size,
-                                          int num_replicas, 
-                                          float *w_ptr, float *v_ptr, float *m_ptr)
+void AdamOptimizer::ps_update_task_gpu(const AdamOptimizer* op,
+                                       const float *w_grad_ptr,
+                                       size_t size,
+                                       int num_replicas, 
+                                       float *w_ptr, float *v_ptr, float *m_ptr)
 {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -163,11 +163,11 @@ void AdamOptimizer::ps_update_task_kernel(const AdamOptimizer* op,
 
 #ifdef FF_USE_NCCL
 __host__
-void AdamOptimizer::nccl_update_task_kernel(const AdamOptimizer* op,
-                                            const OpMeta* meta,
-                                            const float *w_grad_ptr,
-                                            size_t size, 
-                                            float *w_ptr, float *v_ptr, float *m_ptr)
+void AdamOptimizer::nccl_update_task_gpu(const AdamOptimizer* op,
+                                         const OpMeta* meta,
+                                         const float *w_grad_ptr,
+                                         size_t size, 
+                                         float *w_ptr, float *v_ptr, float *m_ptr)
 {
   // Use NCCL to sync gradients
   cudaStream_t stream;

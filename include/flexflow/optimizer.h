@@ -46,7 +46,7 @@ public:
   static void ps_update_task(const Legion::Task* task,
                           const std::vector<Legion::PhysicalRegion>& regions,
                           Legion::Context ctx, Legion::Runtime* runtime);
-  static void ps_update_task_kernel(const SGDOptimizer* op,
+  static void ps_update_task_gpu(const SGDOptimizer* op,
                           const float *w_grad_ptr,
                           size_t size, 
                           int num_replicas,
@@ -55,7 +55,7 @@ public:
   static void nccl_update_task(const Legion::Task* task,
                           const std::vector<Legion::PhysicalRegion>& regions,
                           Legion::Context ctx, Legion::Runtime* runtime);
-  static void nccl_update_task_kernel(const SGDOptimizer* op,
+  static void nccl_update_task_gpu(const SGDOptimizer* op,
                           const OpMeta* meta,
                           const float *w_grad_ptr,
                           size_t size,
@@ -82,7 +82,7 @@ public:
   static void ps_update_task(const Legion::Task* task,
                           const std::vector<Legion::PhysicalRegion>& regions,
                           Legion::Context ctx, Legion::Runtime* runtime);
-  static void ps_update_task_kernel(const AdamOptimizer* op,
+  static void ps_update_task_gpu(const AdamOptimizer* op,
                           const float *w_grad_ptr,
                           size_t size, 
                           int num_replicas,
@@ -91,7 +91,7 @@ public:
   static void nccl_update_task(const Legion::Task* task,
                           const std::vector<Legion::PhysicalRegion>& regions,
                           Legion::Context ctx, Legion::Runtime* runtime);
-  static void nccl_update_task_kernel(const AdamOptimizer* op,
+  static void nccl_update_task_gpu(const AdamOptimizer* op,
                           const OpMeta* meta,
                           const float *w_grad_ptr,
                           size_t size, 

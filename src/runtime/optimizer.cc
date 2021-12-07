@@ -242,7 +242,7 @@ void SGDOptimizer::ps_update_task(const Task* task,
     }
   }
   
-  ps_update_task_kernel(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr);
+  ps_update_task_gpu(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr);
 }
 
 #ifdef FF_USE_NCCL
@@ -297,7 +297,7 @@ void SGDOptimizer::nccl_update_task(
     }
   }
 
-  nccl_update_task_kernel(op, meta, w_grad_ptr, size, w_ptr, v_ptr);
+  nccl_update_task_gpu(op, meta, w_grad_ptr, size, w_ptr, v_ptr);
 }
 #endif
 
@@ -512,7 +512,7 @@ void AdamOptimizer::ps_update_task(const Task* task,
     }
   }
 
-  ps_update_task_kernel(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr, m_ptr);
+  ps_update_task_gpu(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr, m_ptr);
 }
 
 #ifdef FF_USE_NCCL
@@ -564,7 +564,7 @@ void AdamOptimizer::nccl_update_task(const Task* task,
     }
   }
   
-  nccl_update_task_kernel(op, meta, w_grad_ptr, size, w_ptr, v_ptr, m_ptr);
+  nccl_update_task_gpu(op, meta, w_grad_ptr, size, w_ptr, v_ptr, m_ptr);
 }
 #endif
 
