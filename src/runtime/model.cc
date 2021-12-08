@@ -2208,12 +2208,11 @@ void FFModel::recompile_on_condition(RecompileState &r)
     r.alter();
 }
 
-
 void FFModel::compute_metrics()
 {
-  Op* metrics_operator = operators[metrics_input];
-  assert(metrics_operator->numOutputs == 1);
-  metrics_op->compute(this, metrics_operator->outputs[0], parallel_label_tensor);
+  Op* final_operator = get_final_operator();
+  assert(final_operator->numOutputs == 1);
+  metrics_op->compute(this, final_operator->outputs[0], parallel_label_tensor);
 }
 
 void FFModel::get_metrics()
@@ -2228,7 +2227,7 @@ void FFModel::backward(int seq_length)
   // Compute metrics
   compute_metrics();
   // Compute the gradients of the final operator wrt loss
-  Op* final_operator = operators[operators.size()-1];
+  Op* final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
   loss_op->backward(this, final_operator->outputs[0], parallel_label_tensor);
   // Perform backpropagation
@@ -2262,6 +2261,8 @@ Op* FFModel::get_final_operator() const
   int idx = operators.size() - 1;
   while (operators[idx]->op_type == OP_INPUT || operators[idx]->op_type == OP_WEIGHT)
     idx --;
+  // assert that the final operator has exactly one output
+  assert(operators[idx]->numOutputs == 1);
   return operators[idx];
 }
 
@@ -2582,7 +2583,8 @@ void FFModel::compile(LossType loss_type,
   for (size_t l = 0; l < operators.size(); l++) {
     Op* op = operators[l];
     for (int i = 0; i < op->numInputs; i++) {
-      if (op->inputs[i]->owner_op == NULL)
+      assert(op->inputs[i]->owner_op != nullptr);
+      if (op->inputs[i]->owner_op->op_type == OP_INPUT)
         op->trainableInputs[i] = false;
     }
   }
