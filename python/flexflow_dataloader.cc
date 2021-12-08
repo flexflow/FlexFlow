@@ -585,8 +585,13 @@ SingleDataLoader::SingleDataLoader(FFModel& ff,
   batch_input = input;
   ParallelDim dims[MAX_TENSOR_DIM];
   dims[0].size = num_samples;
-  for (int i = 1; i < input->num_dims; i++)
+  for (int i = 1; i < input->num_dims; i++) {
     dims[i].size = input->dims[input->num_dims-1-i].size;
+  }
+  for (int i = 0; i < input->num_dims; i++) {
+    dims[i].parallel_idx = -1;
+    dims[i].degree = 1;
+  }
   
   int task_id = -1;
   if (datatype == DT_FLOAT) {

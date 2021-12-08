@@ -710,7 +710,8 @@ public:
       DataType data_type,
       const Op* owner_op = NULL,
       int owner_idx = 0,
-      bool create_grad = true);
+      bool create_grad = true,
+      size_t input_tensor_guid = 0);
   Tensor create_tensor(int num_dim,
                        const int dims[],
                        DataType data_type,
@@ -722,7 +723,8 @@ public:
                        DataType data_type,
                        const Op* owner_op = NULL,
                        int owner_idx = 0,
-                       bool create_grad = true);
+                       bool create_grad = true,
+                       size_t input_tensor_guid = 0);
   template<int NDIM>
   Tensor create_tensor(const int dims[],
                        DataType data_type,
@@ -734,7 +736,8 @@ public:
                        DataType data_type,
                        const Op* owner_op = NULL,
                        int owner_idx = 0,
-                       bool create_grad = true);
+                       bool create_grad = true,
+                       size_t input_tensor_guid = 0);
   template<int NDIM>
   Parameter create_weight(const int dims[],
       DataType data_type,
@@ -819,9 +822,10 @@ public:
                               bool include_sink_compute_time,
                               float optimal_cost,
                               std::unordered_map<PCG::Node, MachineView>& optimal_views);
-  void deserialize_graph_optimal_view(Legion::Deserializer& dez,
-                                      PCG::Graph* graph,
-                                      std::unordered_map<PCG::Node, MachineView>& optimal_views);
+  void deserialize_graph_optimal_view(
+      Legion::Deserializer& dez,
+      PCG::Graph* graph,
+      std::unordered_map<PCG::Node, MachineView>& optimal_views);
   bool convert_graph_to_operators(const PCG::Graph* graph,
                                const std::unordered_map<PCG::Node, MachineView>& optimal_views);
   static void register_all_machine_views(int num_nodes,
@@ -1006,13 +1010,13 @@ public:
   Legion::IndexSpace get_task_is(const ParallelConfig& pc) const;
   Legion::IndexSpace get_task_is(const MachineView& view) const;
   void create_operators_from_layers();
-  Op* create_operator_from_layer(const Layer* layer,
+  Op* create_operator_from_layer(Layer* layer,
                                  const std::vector<ParallelTensor>& inputs);
   // APIs for setting iteration configs
 public:
   void set_iteration_config_sequence_length(int seq_length);
 public:
-  size_t op_global_guid, tensor_global_guid, node_global_guid;
+  size_t op_global_guid, tensor_global_guid, parallel_tensor_global_guid, node_global_guid;
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer* optimizer;

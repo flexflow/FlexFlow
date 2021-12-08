@@ -2347,7 +2347,8 @@ bool FFModel::convert_graph_to_operators(const Graph* graph,
     switch (node.ptr->op_type) {
       case OP_INPUT:
       {
-        new_op = new NoOp(*this, OP_INPUT, node.ptr->outputs[0]);
+        NoOp* noop = (NoOp*) node.ptr;
+        new_op = new NoOp(*this, OP_INPUT, noop->input_tensor_guid, node.ptr->outputs[0]);
         break;
       }
       case OP_CONCAT:

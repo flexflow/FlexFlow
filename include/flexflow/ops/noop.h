@@ -11,6 +11,11 @@ public:
        OperatorType type,
        const ParallelTensor output,
        const char* name = NULL);
+  NoOp(FFModel& model,
+       OperatorType type,
+       size_t input_tensor_guid,
+       const ParallelTensor output,
+       const char* name = NULL);
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
@@ -24,6 +29,8 @@ public:
   
   size_t get_params_hash() const override;
   tl::optional<RecordFormatter> as_dot() const override;
+public:
+  size_t input_tensor_guid;
 };
 
 }; // namespace FlexFlow
