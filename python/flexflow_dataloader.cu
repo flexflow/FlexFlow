@@ -109,19 +109,43 @@ void SingleDataLoader::load_input(const Task *task,
                                   Context ctx,
                                   Runtime* runtime)
 {
-  Domain domain = runtime->get_index_space_domain(
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  SampleIdxs* meta = (SampleIdxs*) task->local_args;
+  Domain full_input_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-      return load_input_with_dim<DT, DIM>(task, regions, ctx, runtime);
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
+  Domain batch_input_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  const DT* full_input_ptr = helperGetTensorPointerRO<DT>(
+    regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  DT* batch_input_ptr = helperGetTensorPointerWO<DT>(
+    regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  // add one dim since the batch input has a leading replica dim
+  int num_dims = full_input_domain.get_dim();
+  assert(num_dims + 1 == batch_input_domain.get_dim());
+  // assert the leading replica dim has a degree of one
+  assert(batch_input_domain.hi()[num_dims] == batch_input_domain.lo()[num_dims]);
+  coord_t batch_size = batch_input_domain.hi()[num_dims-1]
+                       - batch_input_domain.lo()[num_dims-1] + 1;
+  coord_t num_elements_per_batch = batch_input_domain.get_volume() / batch_size;
+  //FIXME: currently assume continous indices
+  assert(batch_size == meta->num_samples);
+  for (int i = 1; i < batch_size; i++)
+    assert(meta->idxs[i] == meta->idxs[0] + i);
+  coord_t start_idx = meta->idxs[0];
+  const DT* input_zc = full_input_ptr + start_idx * num_elements_per_batch;
+  // const int point = task->index_point.point_data[0];
+  // printf("Load batch point %d, start_idx %ld, ptr %p\n", point, start_idx, input_zc);
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  //printf("ptr(%p, %p), idx0 %d nb_elements_per_batch %d, batch_size %d, %d\n", acc_full_input.ptr, input_zc, start_idx, num_elements_per_batch, batch_size, start_idx * num_elements_per_batch);
+  copy_kernel<DT><<<GET_BLOCKS(batch_input_domain.get_volume()), CUDA_NUM_THREADS, 0, stream>>>(
+      batch_input_ptr, input_zc, batch_input_domain.get_volume());
+  checkCUDA(cudaDeviceSynchronize());
 }
 
+#ifdef DEADCODE
 template<typename DT, int NDIM>
 void SingleDataLoader::load_input_with_dim(const Task *task,
                                      const std::vector<PhysicalRegion> &regions,
@@ -133,9 +157,12 @@ void SingleDataLoader::load_input_with_dim(const Task *task,
   SampleIdxs* meta = (SampleIdxs*) task->local_args;
   TensorAccessorR<DT, NDIM> acc_full_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<DT, NDIM> acc_batch_input(
+  // add one dim since the batch input has a leading replica dim
+  TensorAccessorW<DT, NDIM+1> acc_batch_input(
       regions[1], task->regions[1], FID_DATA, ctx, runtime, false/*readOutput*/);
-  coord_t batch_size = acc_batch_input.rect.hi[NDIM-1] - acc_batch_input.rect.lo[NDIM-1] + 1;
+  coord_t batch_size = acc_batch_input.rect.hi[NDIM-2] - acc_batch_input.rect.lo[NDIM-2] + 1;
+  // assert the leading replica dim has a degree of one
+  assert(acc_batch_input.rect.hi[NDIM-1] == acc_batch_input.rect.lo[NDIM-1]);
   coord_t num_elements_per_batch = acc_batch_input.rect.volume() / batch_size;
   //FIXME: currently assume continous indices
   assert(batch_size == meta->num_samples);
@@ -152,6 +179,7 @@ void SingleDataLoader::load_input_with_dim(const Task *task,
       acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());
   checkCUDA(cudaDeviceSynchronize());
 }
+#endif
 
 template void SingleDataLoader::load_input<float>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);
 template void SingleDataLoader::load_input<int>(const Task *task, const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime);

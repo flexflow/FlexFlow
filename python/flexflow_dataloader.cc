@@ -527,11 +527,17 @@ SingleDataLoader::SingleDataLoader(FFModel& ff,
   for (int i = 0; i < input->num_dims-1; i++)
     assert(full_input_->dims[i].size == input->dims[i].size);
   batch_input = input;
+  // Currently assume that the leading dim of input is a replica dim of degree 1
+  assert(input->dims[input->num_dims-1].is_replica_dim);
+  assert(input->dims[input->num_dims-1].size == 1);
   ParallelDim dims[MAX_TENSOR_DIM];
+  for (int i = 1; i < input->num_dims-1; i++) {
+    dims[i-1].size = input->dims[input->num_dims-2-i].size;
+    dims[i-1].degree = 1;
+    dims[i-1].parallel_idx = -1;
+  }
   dims[0].size = num_samples;
-  for (int i = 1; i < input->num_dims; i++)
-    dims[i].size = input->dims[input->num_dims-1-i].size;
-  switch (input->num_dims) {
+  switch (input->num_dims-1) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
@@ -581,17 +587,18 @@ SingleDataLoader::SingleDataLoader(FFModel& ff,
 {
   num_samples = num_samples_;
   datatype = datatype_;
-  // Create full input
+  // Currently assume that the leading dim of input is a replica dim of degree 1
+  assert(input->dims[input->num_dims-1].is_replica_dim);
+  assert(input->dims[input->num_dims-1].size == 1);
+
   batch_input = input;
   ParallelDim dims[MAX_TENSOR_DIM];
-  dims[0].size = num_samples;
   for (int i = 1; i < input->num_dims; i++) {
-    dims[i].size = input->dims[input->num_dims-1-i].size;
+    dims[i-1].size = input->dims[input->num_dims-1-i].size;
+    dims[i-1].parallel_idx = -1;
+    dims[i-1].degree = 1;
   }
-  for (int i = 0; i < input->num_dims; i++) {
-    dims[i].parallel_idx = -1;
-    dims[i].degree = 1;
-  }
+  dims[0].size = num_samples;
   
   int task_id = -1;
   if (datatype == DT_FLOAT) {
@@ -603,11 +610,11 @@ SingleDataLoader::SingleDataLoader(FFModel& ff,
   }
 
   size_t size_per_sample = 1;
-  for (int i = 1; i < input->num_dims; i++) {
+  for (int i = 1; i < input->num_dims-1; i++) {
     assert (dims[i].size != 0);
     size_per_sample *= dims[i].size;
   }
-  switch (input->num_dims) {
+  switch (input->num_dims-1) {
 #define DIMFUNC(DIM) \
     case DIM: \
     { \
@@ -715,8 +722,6 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel& ff, int task_id)
   // Load input
 #if 1
   {
-    // We should have an extra replica dim
-    assert(full_input->num_dims == NDIM + 1);
     Domain domain = runtime->get_index_space_domain(ctx, full_input->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;

@@ -35,6 +35,8 @@ using Legion::coord_t;
 using Legion::Memory;
 using Legion::Machine;
 using Legion::InlineLauncher;
+using Legion::LogicalRegion;
+using Legion::LogicalPartition;
 
 NoOp::NoOp(FFModel& model,
            OperatorType _type,
@@ -89,6 +91,9 @@ void NoOp::init(const FFModel& ff)
   parallel_is = outputs[0]->parallel_is;
   // For OP_INPUT, initialize tensor to zero
   if (op_type == OP_INPUT) {
+    assert(outputs[0]->region != LogicalRegion::NO_REGION);
+    if (outputs[0]->part == LogicalPartition::NO_PART)
+      return;
     ConstantInitializer* initializer = NULL;
     if (outputs[0]->data_type == DT_FLOAT) {
       initializer = new ConstantInitializer(0.0f);
