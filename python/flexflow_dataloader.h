@@ -119,12 +119,12 @@ public:
       const std::vector<Legion::PhysicalRegion> &regions,
       Legion::Context ctx,
       Legion::Runtime* runtime);
-  template<typename DT, int NDIM>
-  static void load_input_with_dim(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
-      Legion::Context ctx,
-      Legion::Runtime* runtime);
+  //template<typename DT, int NDIM>
+  //static void load_input_with_dim(
+  //    const Legion::Task *task,
+  //    const std::vector<Legion::PhysicalRegion> &regions,
+  //    Legion::Context ctx,
+  //    Legion::Runtime* runtime);
   template<typename DT>
   static void load_entire_dataset_from_numpy(
       const Legion::Task *task,

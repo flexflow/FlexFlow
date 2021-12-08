@@ -61,6 +61,7 @@ private:
   //template <typename T>
   //bool get_input_sub_tensor_via_mappings(const ParallelConfig& pc, TensorBase& tensor) const;
 public:
+  size_t tensor_guid = 0;
   int num_dims = 0;
   //int adim[MAX_TENSOR_DIM];
   int dims[MAX_TENSOR_DIM];

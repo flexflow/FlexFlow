@@ -35,13 +35,37 @@ using Legion::coord_t;
 using Legion::Memory;
 using Legion::Machine;
 using Legion::InlineLauncher;
+using Legion::LogicalRegion;
+using Legion::LogicalPartition;
 
 NoOp::NoOp(FFModel& model,
            OperatorType _type,
            const ParallelTensor _output,
            const char* _name)
-: Op(model, _type, _name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/)
+: Op(model, _type, _name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/),
+  input_tensor_guid(0)
 {
+  assert(op_type != OP_INPUT);
+  // NOOP takes one input and has one output
+  // both of them are _output
+  if (op_type == OP_NOOP) {
+    numInputs = 1;
+    inputs[0] = _output;
+  }
+  outputs[0] = _output;
+  outputs[0]->owner_op = this;
+  outputs[0]->owner_idx = 0;
+}
+
+NoOp::NoOp(FFModel& model,
+           OperatorType _type,
+           size_t _input_tensor_guid,
+           const ParallelTensor _output,
+           const char* _name)
+: Op(model, _type, _name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/),
+  input_tensor_guid(_input_tensor_guid)
+{
+  assert(op_type == OP_INPUT);
   // NOOP takes one input and has one output
   // both of them are _output
   if (op_type == OP_NOOP) {
@@ -67,6 +91,9 @@ void NoOp::init(const FFModel& ff)
   parallel_is = outputs[0]->parallel_is;
   // For OP_INPUT, initialize tensor to zero
   if (op_type == OP_INPUT) {
+    assert(outputs[0]->region != LogicalRegion::NO_REGION);
+    if (outputs[0]->part == LogicalPartition::NO_PART)
+      return;
     ConstantInitializer* initializer = NULL;
     if (outputs[0]->data_type == DT_FLOAT) {
       initializer = new ConstantInitializer(0.0f);
@@ -156,7 +183,7 @@ Node FFModel::get_or_create_input_node(const ParallelTensorShape& output_shape)
     input = it->second;
   } else {
     ParallelTensor tensor = new ParallelTensorBase();
-    tensor->ts_guid = tensor_global_guid++;
+    tensor->parallel_tensor_guid = parallel_tensor_global_guid++;
     tensor->data_type = DT_FLOAT; // TODO FIXME @lockshaw
     tensor->num_dims = output_shape.num_dims;
     int parallel_idx = 0;

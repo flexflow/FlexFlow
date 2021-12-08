@@ -16,6 +16,7 @@
 #include "flexflow/dominators.h"
 #include "legion.h"
 #include "legion/legion_utilities.h"
+#include "flexflow/ops/noop.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/conv_2d.h"
 #include "flexflow/ops/pool_2d.h"
@@ -1495,11 +1496,13 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
       case OP_INPUT:
       {
         assert(op->numOutputs == 1);
-        sez.serialize(op->op_type);
-        sez.serialize(op->outputs[0]->data_type);
-        sez.serialize(op->outputs[0]->num_dims);
-        for (int i = 0; i < op->outputs[0]->num_dims; i++)
-          sez.serialize(op->outputs[0]->dims[i]);
+        NoOp* noop = (NoOp*) op;
+        sez.serialize(noop->op_type);
+        sez.serialize(noop->input_tensor_guid);
+        sez.serialize(noop->outputs[0]->data_type);
+        sez.serialize(noop->outputs[0]->num_dims);
+        for (int i = 0; i < noop->outputs[0]->num_dims; i++)
+          sez.serialize(noop->outputs[0]->dims[i]);
         break;
       }
       case OP_NOOP:
@@ -1589,12 +1592,29 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
   }
   assert(node_idx == best_graph->inEdges.size());
   // Second, serialize optimal machine view
+  printf("opotimal_views.size = %zu\n", optimal_views.size());
   sez.serialize(optimal_views.size());
   for (const auto & it : optimal_views) {
     sez.serialize((size_t) 98765432); // safe guard
     sez.serialize(it.first.guid);
     sez.serialize(it.second);
   }
+#ifdef DEADCODE
+  // Third, serialize input mappings
+  sez.serialize((size_t)23456789);
+  size_t num_inputs = 0;
+  for (size_t i = 0; i < model->layers.size(); i++)
+    if (model->layers[i]->op_type == OP_INPUT)
+      num_inputs ++;
+  sez.serialize(num_inputs);
+  for (size_t i = 0; i < model->layers.size(); i++) {
+    if (model->layers[i]->op_type == OP_INPUT) {
+      Tensor tensor = model->layers[i]->outputs[i];
+      sez.serialize(tensor->tensor_guid);
+      sez.serialize(tensor->parallel_tensor->parallel_tensor_guid);
+    }
+  }
+#endif
   assert(sez.get_used_bytes() < GraphOptimalViewSerialized::buffer_size);
   GraphOptimalViewSerialized ret;
   ret.total_bytes = sez.get_used_bytes();
@@ -1687,10 +1707,10 @@ void FFModel::construct_optimal_view(const Graph *graph,
   optimal_views.insert(result.views.begin(), result.views.end());
 }
 
-void FFModel::deserialize_graph_optimal_view(Legion::Deserializer& dez,
-                                             Graph* graph,
-                                             std::unordered_map<Node, MachineView>& optimal_views)
-{
+void FFModel::deserialize_graph_optimal_view(
+    Legion::Deserializer& dez,
+    Graph* graph,
+    std::unordered_map<Node, MachineView>& optimal_views) {
   //Deserializer dez(serialized.data, serialized.total_bytes);
   std::unordered_map<size_t, Node> guid_to_nodes;
   size_t num_nodes;
@@ -1732,12 +1752,16 @@ void FFModel::deserialize_graph_optimal_view(Legion::Deserializer& dez,
         ParallelDim dims[MAX_TENSOR_DIM];
         OperatorType op_type;
         dez.deserialize(op_type);
+        size_t input_tensor_guid;
+        dez.deserialize(input_tensor_guid);
         DataType data_type;
         dez.deserialize(data_type);
         dez.deserialize(num_dims);
         for (int i = 0; i < num_dims; i++)
           dez.deserialize(dims[i]);
-        ParallelTensor t = create_parallel_tensor_legion_ordering(num_dims, dims, data_type);
+        ParallelTensor t = create_parallel_tensor_legion_ordering(
+            num_dims, dims, data_type, nullptr, 0, true/*create_grad*/,
+            input_tensor_guid);
         node.ptr = t->owner_op;
         node.guid = node_global_guid ++;
         break;
@@ -1911,6 +1935,7 @@ void FFModel::deserialize_graph_optimal_view(Legion::Deserializer& dez,
   // Second, deserialize optimal machine view
   size_t num_views;
   dez.deserialize(num_views);
+  printf("views.size() = %zu\n", num_views);
   for (size_t i = 0; i < num_views; i++) {
     size_t safecode, guid;
     MachineView view;
@@ -1921,6 +1946,20 @@ void FFModel::deserialize_graph_optimal_view(Legion::Deserializer& dez,
     dez.deserialize(view);
     optimal_views[guid_to_nodes[guid]] = view;
   }
+#ifdef DEADCODE
+  // Third, deserialize input mappings
+  size_t num_inputs, safecode;
+  dez.deserialize(safecode);
+  assert(safecode == 23456789);
+  dez.deserialize(num_inputs);
+  for (size_t i = 0; i < num_inputs; i++) {
+    size_t tensor_id, parallel_tensor_id;
+    dez.deserialize(tensor_id);
+    dez.deserialize(parallel_tensor_id);
+    input_tensorid_to_ptensorid_mapping.push_back(
+        std::make_pair(tensor_id, parallel_tensor_id));
+  }
+#endif
   assert(dez.get_remaining_bytes() == 0);
   printf("Deserialized Views...\n");
   for (const auto& it : optimal_views) {
@@ -1937,6 +1976,5 @@ void FFModel::deserialize_graph_optimal_view(Legion::Deserializer& dez,
     printf("\n");
   }
 }
-
 
 }; // namespace FlexFlow

@@ -21,6 +21,7 @@ using namespace Legion;
 
 TensorBase::TensorBase(const TensorBase& rhs)
 {
+  tensor_guid = rhs.tensor_guid;
   num_dims = rhs.num_dims;
   for (int i = 0; i < num_dims; i++)
     dims[i] = rhs.dims[i];
@@ -143,7 +144,7 @@ bool ParallelTensorBase::update_parallel_ids(
 
 ParallelTensorBase::ParallelTensorBase(const ParallelTensorBase& rhs)
 {
-  ts_guid = rhs.ts_guid;
+  parallel_tensor_guid = rhs.parallel_tensor_guid;
   num_dims = rhs.num_dims;
   for (int i = 0; i < num_dims; i++)
     dims[i] = rhs.dims[i];
