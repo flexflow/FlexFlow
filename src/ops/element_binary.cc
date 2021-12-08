@@ -25,11 +25,11 @@ Tensor FFModel::binary(OperatorType op,
 {
   Layer *ele = new Layer(this, op, name, 2/*inputs*/, 0/*weights*/, 1/*outputs*/, in1, in2);
   assert(in1->num_dims == in2->num_dims);
-  ele->outputs[0]->num_dims = in1->num_dims;
   for (int i = 0; i < in1->num_dims; i++) {
     assert(in1->dims[i] == in2->dims[i]);
-    ele->outputs[0]->dims[i] = in1->dims[i];
   }
+  ele->outputs[0] = create_tensor_legion_ordering(
+      in1->num_dims, in1->dims, DT_FLOAT, ele, 0, true/*create_grad*/);
   ele->add_int_property("inplace_a", inplace_a);
   layers.push_back(ele);
   return ele->outputs[0];

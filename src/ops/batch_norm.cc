@@ -34,6 +34,15 @@ Tensor FFModel::batch_norm(const Tensor input,
                            bool relu,
                            const char* name)
 {
+  assert(input->num_dims == 4); /*NCHW*/
+  Layer *bm = new Layer(this, OP_BATCHNORM, name, 1/*inputs*/,
+                        2/*weights*/, 1/*outputs*/, input);
+  int numdims = 4;
+  bm->outputs[0] = create_tensor_legion_ordering(
+      numdims, input->dims, DT_FLOAT, bm, 0, true/*create_grad*/);
+  bm->add_int_property("relu", relu);
+  layers.push_back(bm);
+  return bm->outputs[0];
 #ifdef DEADCODE
   assert(input->num_dims == 4); //Only support 4D BN for now
   Initializer* scale_initializer = new ConstantInitializer(1.0f);
