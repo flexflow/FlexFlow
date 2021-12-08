@@ -232,10 +232,12 @@ void Linear::backward(const FFModel& ff)
     launcher.add_field(rid++, FID_DATA);
     // regions[1](I/O): replica_grad
     assert(replica == NULL);
-    launcher.add_region_requirement(
-        RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
-    launcher.add_field(rid++, FID_DATA);
+    if (trainableInputs[0]) {
+      launcher.add_region_requirement(
+          RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
+                            READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
+      launcher.add_field(rid++, FID_DATA);
+    }
     // regions[2](I): output
     launcher.add_region_requirement(
         RegionRequirement(outputs[0]->part, 0/*projection id*/,
