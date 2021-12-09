@@ -57,6 +57,10 @@ GraphXfer* create_partition_linear_combine(FFModel* model,
                                            ActiMode activation,
                                            bool use_bias);
 
+GraphXfer* create_partition_conv2d_combine(FFModel* model,
+                                           int num_dims,
+                                           int num_parts);
+
 GraphXfer* create_partition_attention_combine(FFModel* model,
                                               int num_heads,
                                               int num_parts);
@@ -600,7 +604,7 @@ void GraphXfer::run(int depth, Graph* graph,
       if (hashmap.find(newGraph->hash()) == hashmap.end()) {
         hashmap.insert(newGraph->hash());
         log_xfers.spew() << "Found new candidate";
-        newGraph->print_dot();
+        // newGraph->print_dot();
         candidates.push(newGraph);
       }
     } else {
@@ -1224,9 +1228,15 @@ GraphSearchHelper::GraphSearchHelper(FFModel *model)
   : model(model), config(model->config)
 { 
   this->logger = std::unique_ptr<RecursiveLogger>(new RecursiveLogger("gs"));
+  generate_all_pcg_xfers();
 }
 
-void GraphSearchHelper::load_graph_substitutions(std::vector<GraphXfer*> &xfers) const 
+void GraphSearchHelper::load_graph_substitutions(std::vector<GraphXfer*> &xfers) const
+{
+  xfers = all_pcg_xfers;
+}
+
+void GraphSearchHelper::generate_all_pcg_xfers()
 {
   std::vector<int> all_parallel_degrees, single_node_parallel_degrees;
   for (int i = 2; i <= this->model->config.workersPerNode; i++) {
@@ -1241,17 +1251,17 @@ void GraphSearchHelper::load_graph_substitutions(std::vector<GraphXfer*> &xfers)
     }
   }
   for (const auto& it : single_node_parallel_degrees) {
-    xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_RELU, false));
-    xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_SIGMOID, false));
-    xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_NONE, false));
+    all_pcg_xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_RELU, false));
+    all_pcg_xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_SIGMOID, false));
+    all_pcg_xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_NONE, false));
     if (16 % it == 0) {
-      xfers.push_back(create_replicate_attention_reduce(this->model, 16/*num_heads*/, it));
+      all_pcg_xfers.push_back(create_replicate_attention_reduce(this->model, 16/*num_heads*/, it));
     }
   }
 
   {
     std::ostringstream oss;
-    oss << "Generating xfers for all parallel degrees: ";
+    oss << "Generating all_pcg_xfers for all parallel degrees: ";
     for (int parallel_degree : all_parallel_degrees) { 
       oss << parallel_degree << " ";
     }
@@ -1260,30 +1270,31 @@ void GraphSearchHelper::load_graph_substitutions(std::vector<GraphXfer*> &xfers)
   }
 
   for (int num_dims = 3; num_dims <=4; num_dims++) {
-    xfers.push_back(create_linear_relu_merge(this->model, num_dims, true));
-    xfers.push_back(create_linear_relu_merge(this->model, num_dims, false));
+    all_pcg_xfers.push_back(create_linear_relu_merge(this->model, num_dims, true));
+    all_pcg_xfers.push_back(create_linear_relu_merge(this->model, num_dims, false));
   }
   for (const int degree : all_parallel_degrees) {
-    create_mapping_xfers<Conv2D>(this->model, degree, xfers);
-    create_mapping_xfers<Pool2D>(this->model, degree, xfers);
-    create_mapping_xfers<Flat>(this->model, degree, xfers);
+    create_mapping_xfers<Conv2D>(this->model, degree, all_pcg_xfers);
+    create_mapping_xfers<Pool2D>(this->model, degree, all_pcg_xfers);
+    create_mapping_xfers<Flat>(this->model, degree, all_pcg_xfers);
   }
   for (const auto& it : all_parallel_degrees) {
-    xfers.push_back(create_partition_attention_combine(this->model, 16/*num_heads*/, it));
-    xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_RELU, false));
-    xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_SIGMOID, false));
-    xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_NONE, false));
-    xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_RELU, false));
-    xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_SIGMOID, false));
-    xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_NONE, false));
-    xfers.push_back(create_partition_add_combine(this->model, 2/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_partition_add_combine(this->model, 1/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_partition_add_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_partition_relu_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
-    xfers.push_back(create_partition_softmax_combine(this->model, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
+    all_pcg_xfers.push_back(create_partition_attention_combine(this->model, 16/*num_heads*/, it));
+    all_pcg_xfers.push_back(create_partition_conv2d_combine(this->model, 5/*num_dims*/, it));
+    all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_RELU, false));
+    all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_SIGMOID, false));
+    all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_NONE, false));
+    all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_RELU, false));
+    all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_SIGMOID, false));
+    all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_NONE, false));
+    all_pcg_xfers.push_back(create_partition_add_combine(this->model, 2/*parallel_dims*/, it/*num_parts*/));
+    all_pcg_xfers.push_back(create_partition_add_combine(this->model, 1/*parallel_dims*/, it/*num_parts*/));
+    all_pcg_xfers.push_back(create_partition_add_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
+    all_pcg_xfers.push_back(create_partition_relu_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
+    all_pcg_xfers.push_back(create_partition_softmax_combine(this->model, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
     for (int num_combines = 1; num_combines < 5; num_combines++) {
-      xfers.push_back(leading_relu_branch_combine(this->model, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
-      xfers.push_back(leading_relu_branch_partition(this->model, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
+      all_pcg_xfers.push_back(leading_relu_branch_combine(this->model, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
+      all_pcg_xfers.push_back(leading_relu_branch_partition(this->model, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
     }
     {
       std::unordered_set<int> concat_num_inputs;
@@ -1291,8 +1302,8 @@ void GraphSearchHelper::load_graph_substitutions(std::vector<GraphXfer*> &xfers)
         if (this->model->operators[i]->op_type == OP_CONCAT)
           concat_num_inputs.insert(this->model->operators[i]->numInputs);
       for (const auto& it2 : concat_num_inputs) {
-        xfers.push_back(create_partition_concat_combine(this->model, it2/*num_inputs*/, 0/*concat_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
-        xfers.push_back(create_partition_concat_combine(this->model, it2/*num_inputs*/, 2/*concat_dim*/, 3/*parallel_dims*/, it/*num_parts*/));
+        all_pcg_xfers.push_back(create_partition_concat_combine(this->model, it2/*num_inputs*/, 0/*concat_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
+        all_pcg_xfers.push_back(create_partition_concat_combine(this->model, it2/*num_inputs*/, 2/*concat_dim*/, 3/*parallel_dims*/, it/*num_parts*/));
       }
     }
   }
@@ -1380,7 +1391,7 @@ void GraphSearchHelper::find_rewrite_matches(Graph const *graph, std::vector<Gra
   std::vector<GraphXfer*> xfers;
   this->load_graph_substitutions(xfers);
 
-  for (GraphXfer *xfer : xfers) {
+  for (GraphXfer* xfer : xfers) {
     log_xfer_matches.debug() << "Finding matches for xfer: " << xfer->get_name();
     xfer->find_matches(graph, matches);
   }
@@ -1497,7 +1508,7 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph, Si
   this->logger->debug() << "Optimizing base graph: ";
   this->logger->enter();
   /* graph_log_representation(r_graph, *this->logger); */
-  r_graph->print_dot();
+  // r_graph->print_dot();
   this->logger->leave();
   this->logger->debug() << "Starting cost: " << r_graph->optimal_cost();
 
@@ -1549,7 +1560,7 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph, Si
   }
 
   this->logger->debug() << "Optimized cost: " << best_graph->optimal_cost();
-  best_graph->print_dot();
+  //best_graph->print_dot();
   this->logger->leave();
   return std::unique_ptr<Graph>(best_graph);
 }
@@ -1891,6 +1902,32 @@ GraphXfer* create_partition_linear_combine(FFModel* model,
       << ",num_parts=" << num_parts
       << ",activation=" << activation
       << ",use_bias=" << use_bias
+      << "]";
+  subst->name = oss.str();
+
+  return subst;
+}
+
+GraphXfer* create_partition_conv2d_combine(FFModel* model,
+                                           int num_dims,
+                                           int num_parts) {
+  assert(num_dims == 5);
+  GraphXfer* subst = new GraphXfer(model);
+  TensorX input = subst->new_tensor();
+  OpX* conv1 = subst->create_conv2d(input, NULL/*matchOpX*/);
+  OpX* repartition = subst->create_repartition(input, num_dims-2, num_parts);
+  OpX* conv2 = subst->create_conv2d(repartition->outputs[0], conv1/*matchOpX*/);
+  OpX* combine = subst->create_combine(conv2->outputs[0], num_dims-2, num_parts);
+  subst->map_output(conv1->outputs[0], combine->outputs[0]);
+  subst->srcOps.push_back(conv1);
+  subst->dstOps.push_back(repartition);
+  subst->dstOps.push_back(conv2);
+  subst->dstOps.push_back(combine);
+
+  std::ostringstream oss;
+  oss << "partition_conv2d_combine["
+      << "num_dims=" << num_dims
+      << ",num_parts=" << num_parts
       << "]";
   subst->name = oss.str();
 

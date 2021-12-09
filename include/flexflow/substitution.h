@@ -240,6 +240,7 @@ private:
                            Node const &sink_node,
                            Node const &bottleneck, 
                            ParallelTensorShape const &bottleneck_output_shape);
+  void generate_all_pcg_xfers();
   void load_graph_substitutions(std::vector<GraphXfer*> &xfers) const;
   Graph *construct_graph();
   void subgraph_optimize(Graph *subgraph);
@@ -258,7 +259,7 @@ private:
   void try_cache_result(size_t hash, T const &value);
 private:
   std::unordered_map<size_t, float> cached_optimized_graphs;
-
+  std::vector<GraphXfer*> all_pcg_xfers;
   FFModel* model;
   FFConfig const &config;
   std::unique_ptr<RecursiveLogger> logger;
