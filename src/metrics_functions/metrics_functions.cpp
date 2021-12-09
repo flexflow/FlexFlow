@@ -187,7 +187,9 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     TensorAccessorR<int, NDIM> acc_label(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    int num_samples = acc_logit.rect.hi[NDIM-1] - acc_logit.rect.lo[NDIM-1] + 1;
+    // assume that the leading dim is replica dim
+    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
+    int num_samples = acc_logit.rect.hi[NDIM-2] - acc_logit.rect.lo[NDIM-2] + 1;
     int num_classes = acc_logit.rect.volume() / num_samples;
     for (int i = 1; i < NDIM; i++) {
       assert(acc_label.rect.hi[i] == acc_logit.rect.hi[i]);
@@ -206,7 +208,9 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     // other loss require label and logit have identical shape
     assert(acc_logit.rect == acc_label.rect);
-    int num_samples = acc_logit.rect.hi[NDIM-1] - acc_logit.rect.lo[NDIM-1] + 1;
+    // assume that the leading dim is replica dim
+    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
+    int num_samples = acc_logit.rect.hi[NDIM-2] - acc_logit.rect.lo[NDIM-2] + 1;
     int num_classes = acc_logit.rect.volume() / num_samples;
     // Use CUDA_NUM_THREADS may result in out of resources so we set #threads=256
     hipLaunchKernelGGL(update_metrics_label_kernel, GET_BLOCKS(num_samples), 256, 0, stream, 
