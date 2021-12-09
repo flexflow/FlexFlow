@@ -28,8 +28,8 @@ struct ResNetConfig {
 
 class DataLoader {
 public:
-  DataLoader(FFModel& ff, const ResNetConfig& resnet,
-             Tensor _input, Tensor _label);
+  DataLoader(FlexFlow::FFModel& ff, const ResNetConfig& resnet,
+             FlexFlow::Tensor _input, FlexFlow::Tensor _label);
   static void load_input(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx,
@@ -42,12 +42,12 @@ public:
                                   const std::vector<PhysicalRegion> &regions,
                                   Context ctx,
                                   Runtime* runtime);
-  void next_batch(FFModel&);
+  void next_batch(FlexFlow::FFModel&);
   void reset(void);
 public:
   int num_samples, next_index;
-  Tensor full_input, batch_input;
-  Tensor full_label, batch_label;
+  FlexFlow::Tensor full_input, batch_input;
+  FlexFlow::Tensor full_label, batch_label;
 };
 
 struct SampleIdxs {

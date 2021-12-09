@@ -1,6 +1,11 @@
 #include "flexflow/model.h"
 
 using namespace Legion;
+using FlexFlow::Tensor;
+using FlexFlow::FFModel;
+using FlexFlow::Optimizer;
+using FlexFlow::SGDOptimizer;
+using FlexFlow::FFConfig;
 
 LegionRuntime::Logger::Category log_app("resnext");
 
@@ -33,7 +38,7 @@ Tensor resnext_block(FFModel &ff, Tensor input, int stride_h, int stride_w, int 
       AC_MODE_NONE
   );
 
-  if (stride_h > 1 || input->dims[2].size != out_channels * 2) {
+  if (stride_h > 1 || input->dims[2] != out_channels * 2) {
     input = ff.conv2d(
         input, 
         2 * out_channels,
@@ -47,7 +52,7 @@ Tensor resnext_block(FFModel &ff, Tensor input, int stride_h, int stride_w, int 
   return ff.relu(ff.add(input, t), false);
 }
 
-void top_level_task(const Task* task,
+void FlexFlow::top_level_task(const Task* task,
                     const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime)
 {
@@ -64,8 +69,8 @@ void top_level_task(const Task* task,
 
   Tensor input;
   {
-    const int dims[] = {1, ffConfig.batchSize, 3, 224, 224};
-    input = ff.create_tensor<5>(dims, DT_FLOAT);
+    const int dims[] = {ffConfig.batchSize, 3, 224, 224};
+    input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
 
   Tensor t = input;
@@ -110,7 +115,7 @@ void top_level_task(const Task* task,
   t = ff.relu(t, false);
   t = ff.pool2d(
       t, 
-      t->dims[0].size, t->dims[1].size, 
+      t->dims[0], t->dims[1], 
       1, 1, 
       0, 0, 
       POOL_AVG
@@ -126,7 +131,7 @@ void top_level_task(const Task* task,
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
   // Data Loader
   /* DataLoader data_loader(ff, resnetConfig, input, ff.label_tensor); */
-  ff.init_layers();
+  ff.init_operators();
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -169,6 +174,6 @@ void top_level_task(const Task* task,
          128 * ffConfig.batchSize * ffConfig.epochs / run_time);
 }
 
-void register_custom_tasks()
+void FlexFlow::register_custom_tasks()
 {
 }

@@ -18,6 +18,11 @@
 #include <fstream>
 #include <string>
 using namespace Legion;
+using FlexFlow::FFModel;
+using FlexFlow::Tensor;
+using FlexFlow::FFConfig;
+using FlexFlow::Optimizer;
+using FlexFlow::SGDOptimizer;
 
 LegionRuntime::Logger::Category log_app("ResNet");
 
@@ -45,8 +50,8 @@ Tensor BottleneckBlock(FFModel& ff,
   t = ff.conv2d(t, 4*out_channels, 1, 1, 1, 1, 0, 0);
   //t = ff.batch_norm(t, false);
   
-  if ((stride > 1) || (input->dims[2].size != out_channels * 4)) {
-    printf("input->dims = %d out_channels*4 = %d\n", input->dims[2].size, out_channels*4);
+  if ((stride > 1) || (input->dims[2] != out_channels * 4)) {
+    printf("input->dims = %d out_channels*4 = %d\n", input->dims[2], out_channels*4);
     input = ff.conv2d(input, 4*out_channels, 1, 1, stride, stride, 0, 0, AC_MODE_NONE);
     //input = ff.batch_norm(input, false);
   }
@@ -54,7 +59,7 @@ Tensor BottleneckBlock(FFModel& ff,
   return ff.relu(t, false);
 }
 
-void top_level_task(const Task* task,
+void FlexFlow::top_level_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime)
 {
@@ -72,8 +77,8 @@ void top_level_task(const Task* task,
 
   Tensor input;
   {
-    const int dims[] = {1, ffConfig.batchSize, 3, 229, 229};
-    input = ff.create_tensor<5>(dims, DT_FLOAT);
+    const int dims[] = {ffConfig.batchSize, 3, 229, 229};
+    input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
   // Tensor label;
   // {
@@ -111,7 +116,7 @@ void top_level_task(const Task* task,
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
   // Data Loader
   /* DataLoader data_loader(ff, resnetConfig, input, ff.label_tensor); */
-  ff.init_layers();
+  ff.init_operators();
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -128,10 +133,10 @@ void top_level_task(const Task* task,
     for (int iter = 0; iter < iterations; iter++) {
       if (resnetConfig.dataset_path.length() == 0) {
         // Only load data once for random input
-        if (iter == 0 && epoch == 0)
-          data_loader.next_batch(ff);
+        //if (iter == 0 && epoch == 0)
+        //  data_loader.next_batch(ff);
       } else {
-        data_loader.next_batch(ff);
+        // data_loader.next_batch(ff);
       }
       runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
@@ -366,7 +371,7 @@ void nearest_neigh(unsigned char* image,
 /*   next_index = 0; */
 /* } */
 
-void register_custom_tasks()
+void FlexFlow::register_custom_tasks()
 {
 }
 

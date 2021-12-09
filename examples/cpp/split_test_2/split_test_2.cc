@@ -50,7 +50,7 @@ void top_level_task(const Task* task,
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
   GraphSearchHelper gsh(&ff);
-  Graph *best_graph;
+  std::unique_ptr<Graph> best_graph;
   std::unordered_map<Node, MachineView> optimal_views;
   gsh.graph_optimize(10, false, best_graph, optimal_views);
   // {

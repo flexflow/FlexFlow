@@ -1,10 +1,11 @@
-#include "model.h"
+#include "flexflow/model.h"
 
 using namespace Legion;
+using namespace FlexFlow;
 
 LegionRuntime::Logger::Category log_app("split_test");
 
-void top_level_task(const Task* task, 
+void FlexFlow::top_level_task(const Task* task, 
                     const std::vector<PhysicalRegion> &regions,
                     Context ctx, Runtime *runtime) 
 {
@@ -42,7 +43,7 @@ void top_level_task(const Task* task,
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
-  ff.init_layers();
+  ff.init_operators();
   {
     runtime->issue_execution_fence(ctx);
     TimingLauncher timer(MEASURE_MICRO_SECONDS);
@@ -76,6 +77,6 @@ void top_level_task(const Task* task,
          128 * ffConfig.batchSize * ffConfig.epochs / run_time);
 }
 
-void register_custom_tasks()
+void FlexFlow::register_custom_tasks()
 {
 }

@@ -18,6 +18,12 @@
 #include <fstream>
 #include <string>
 using namespace Legion;
+using FlexFlow::FFModel;
+using FlexFlow::Tensor;
+using FlexFlow::FFConfig;
+using FlexFlow::Optimizer;
+using FlexFlow::SGDOptimizer;
+
 
 LegionRuntime::Logger::Category log_app("AlexNet");
 
@@ -31,7 +37,7 @@ void parse_input_args(char **argv, int argc, AlexNetConfig& config)
   }
 }
 
-void top_level_task(const Task* task,
+void FlexFlow::top_level_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime)
 {
@@ -81,7 +87,7 @@ void top_level_task(const Task* task,
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
   // Data Loader
   DataLoader data_loader(ff, &alexnetConfig, input, ff.label_tensor);
-  ff.init_layers();
+  ff.init_operators();
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -156,31 +162,31 @@ DataLoader::DataLoader(FFModel& ff,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {num_samples, input->adim[2], input->adim[1], input->adim[0]};
+    const int dims[] = {num_samples, input->dims[2], input->dims[1], input->dims[0]};
     full_input = ff.create_tensor<4>(dims, DT_FLOAT);
-    ff.map_tensor(full_input, NULL);
+    //ff.map_tensor(full_input, NULL);
   }
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {num_samples, label->adim[0]};
+    const int dims[] = {num_samples, label->dims[0]};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
-    ff.map_tensor(full_label, NULL);
+    //ff.map_tensor(full_label, NULL);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
-  TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
+  TaskLauncher launcher(FlexFlow::CUSTOM_CPU_TASK_ID_1,
       TaskArgument(alexnet, sizeof(AlexNetConfig)));
   // regions[0]: full_input
   launcher.add_region_requirement(
-      RegionRequirement(full_input->region, WRITE_ONLY,
-                        EXCLUSIVE, full_input->region,
+      RegionRequirement(full_input->parallel_tensor->region, WRITE_ONLY,
+                        EXCLUSIVE, full_input->parallel_tensor->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_label
   launcher.add_region_requirement(
-      RegionRequirement(full_label->region, WRITE_ONLY,
-                        EXCLUSIVE, full_label->region,
+      RegionRequirement(full_label->parallel_tensor->region, WRITE_ONLY,
+                        EXCLUSIVE, full_label->parallel_tensor->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   runtime->execute_task(ctx, launcher);
@@ -220,8 +226,8 @@ void DataLoader::load_entire_dataset(const Task *task,
   const AlexNetConfig* alexnet = (AlexNetConfig*)task->args;
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
-  const AccessorWO<float, 4> acc_input(regions[0], FID_DATA);
-  const AccessorWO<int, 2> acc_label(regions[1], FID_DATA);
+  const FlexFlow::AccessorWO<float, 4> acc_input(regions[0], FID_DATA);
+  const FlexFlow::AccessorWO<int, 2> acc_label(regions[1], FID_DATA);
   Rect<4> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
@@ -273,8 +279,7 @@ void DataLoader::next_batch(FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   // Load input
   {
-    std::string pcname = batch_input->owner_op->name;
-    IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, pcname));
+    IndexSpaceT<4> task_is = (IndexSpaceT<4>) batch_input->parallel_tensor->parallel_is;
     Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
     int idx = next_index;
@@ -286,25 +291,24 @@ void DataLoader::next_batch(FFModel& ff)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is,
+    IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_1, task_is,
                            TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(pcname));
+                           batch_input->parallel_tensor->machine_view.hash());
     launcher.add_region_requirement(
-        RegionRequirement(full_input->region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_input->region,
+        RegionRequirement(full_input->parallel_tensor->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input->parallel_tensor->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_input->part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_input->region));
+        RegionRequirement(batch_input->parallel_tensor->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
   // Load label
   {
-    std::string pcname = batch_label->owner_op->name;
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, pcname));
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(batch_label->parallel_tensor->parallel_is);
     Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
     int idx = next_index;
@@ -316,18 +320,18 @@ void DataLoader::next_batch(FFModel& ff)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
+    IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_2, task_is,
                            TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(pcname));
+                           batch_label->parallel_tensor->machine_view.hash());
     launcher.add_region_requirement(
-        RegionRequirement(full_label->region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_label->region,
+        RegionRequirement(full_label->parallel_tensor->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_label->parallel_tensor->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_label->part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_label->region));
+        RegionRequirement(batch_label->parallel_tensor->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_label->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -339,11 +343,11 @@ void DataLoader::reset()
   next_index = 0;
 }
 
-void register_custom_tasks()
+void FlexFlow::register_custom_tasks()
 {
   // Load entire dataset
   {
-    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_1, "Load Entire Dataset");
+    TaskVariantRegistrar registrar(FlexFlow::CUSTOM_CPU_TASK_ID_1, "Load Entire Dataset");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<DataLoader::load_entire_dataset>(
@@ -351,7 +355,7 @@ void register_custom_tasks()
   }
   // Load input
   {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_1, "Load Inputs");
+    TaskVariantRegistrar registrar(FlexFlow::CUSTOM_GPU_TASK_ID_1, "Load Inputs");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<DataLoader::load_input>(
@@ -359,7 +363,7 @@ void register_custom_tasks()
   }
   // Load label
   {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_2, "Load Labels");
+    TaskVariantRegistrar registrar(FlexFlow::CUSTOM_GPU_TASK_ID_2, "Load Labels");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<DataLoader::load_label>(

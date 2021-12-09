@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-#include "model.h"
 #include "inception.h"
 #include <sstream>
 #include <fstream>
 #include <string>
 
 using namespace Legion;
+using namespace FlexFlow;
 
 LegionRuntime::Logger::Category log_app("Inceptionv3");
 
@@ -112,7 +112,7 @@ Tensor InceptionE(FFModel& ff, Tensor input)
 }
 
 
-void top_level_task(const Task* task,
+void FlexFlow::top_level_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime)
 {
@@ -171,7 +171,7 @@ void top_level_task(const Task* task,
 
   // Data Loader
   /* DataLoader data_loader(ff, inceptionConfig, input, ff.label_tensor); */
-  ff.init_layers();
+  ff.init_operators();
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -217,7 +217,7 @@ void top_level_task(const Task* task,
          8192 * ffConfig.epochs / run_time);
 }
 
-void register_custom_tasks()
+void FlexFlow::register_custom_tasks()
 {
 }
 

@@ -14,7 +14,7 @@
  */
 
 #include "dlrm.h"
-#include "cuda_helper.h"
+#include "flexflow/utils/cuda_helper.h"
 
 void DataLoader::load_sparse_input(const Task *task,
                                    const std::vector<PhysicalRegion> &regions,
