@@ -40,7 +40,7 @@ Tensor InceptionA(FFModel& ff, Tensor input, int pool_features)
 
   Tensor concat[4];
   concat[0] = t1; concat[1] = t2; concat[2] = t3; concat[3] = t4;
-  Tensor output = ff.concat(4, concat, -3);
+  Tensor output = ff.concat(4, concat, 1);
 
   return output;
 }
@@ -54,7 +54,7 @@ Tensor InceptionB(FFModel& ff, Tensor input)
   Tensor t3 = ff.pool2d(input, 3, 3, 2, 2, 0, 0);
   Tensor concat[3];
   concat[0] = t1; concat[1] = t2; concat[2] = t3;
-  Tensor output = ff.concat(3, concat, -3);
+  Tensor output = ff.concat(3, concat, 1);
   return output;
 }
 
@@ -73,7 +73,7 @@ Tensor InceptionC(FFModel& ff, Tensor input, int channels)
   t4 = ff.conv2d(t4, 192, 1, 1, 1, 1, 0, 0);
   Tensor concat[4];
   concat[0] = t1; concat[1] = t2; concat[2] = t3; concat[3] = t4;
-  Tensor output = ff.concat(4, concat, -3);
+  Tensor output = ff.concat(4, concat, 1);
   return output;
 }
 
@@ -88,7 +88,7 @@ Tensor InceptionD(FFModel& ff, Tensor input)
   Tensor t3 = ff.pool2d(input, 3, 3, 2, 2, 0, 0);
   Tensor concat[3];
   concat[0] = t1; concat[1] = t2; concat[2] = t3;
-  Tensor output = ff.concat(3, concat, -3);
+  Tensor output = ff.concat(3, concat, 1);
   return output;
 }
 
@@ -107,7 +107,7 @@ Tensor InceptionE(FFModel& ff, Tensor input)
   Tensor concat[6];
   concat[0] = t1; concat[1] = t2; concat[2] = t3;
   concat[3] = t4; concat[4] = t5; concat[5] = t6;
-  Tensor output = ff.concat(6, concat, -3);
+  Tensor output = ff.concat(6, concat, 1);
   return output;
 }
 
@@ -129,8 +129,8 @@ void FlexFlow::top_level_task(const Task* task,
 
   Tensor input;
   {
-    const int dims[] = {1, ffConfig.batchSize, 3, 299, 299};
-    input = ff.create_tensor<5>(dims, DT_FLOAT);
+    const int dims[] = {ffConfig.batchSize, 3, 299, 299};
+    input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
   //Tensor label;
   //{
