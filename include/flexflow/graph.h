@@ -239,7 +239,7 @@ public:
                 int dstIdx);
   void add_node(const Node&);
   void add_edge(const Edge& e);
-  void remove_node(const Node&);
+  void remove_node(const Node&, bool purge_edges = false);
   void remove_edge(const Edge& e, bool remove_node_if_unused = true);
   bool has_edge(const Node& srcOp,
                 const Node& dstOp,

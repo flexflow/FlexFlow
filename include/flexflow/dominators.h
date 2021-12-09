@@ -284,14 +284,6 @@ namespace FlexFlow::PCG::Utils {
   }
 
   template <typename G, typename Structure = GraphStructure<G>>
-  std::unordered_map<typename Structure::vertex_type, typename Structure::vertex_type> imm_post_dominators(G const &g) {
-    return imm_dominators<G, ReverseStructure<Structure>>(g);
-  }
-
-  /* template <typename G, typename Structure> */
-  /* using DFSVisitor = ; */
-
-  template <typename G, typename Structure = GraphStructure<G>>
   void dfs(
       G const &g,
       typename Structure::vertex_type const &n,
@@ -332,6 +324,49 @@ namespace FlexFlow::PCG::Utils {
     }
 
     return;
+  }
+
+
+  template <typename G, typename Structure = GraphStructure<G>>
+  std::unordered_set<typename Structure::vertex_type> descendants(G const &g, typename Structure::vertex_type const &n) {
+    using N = typename Structure::vertex_type;
+    using E = typename Structure::edge_type;
+
+    std::unordered_set<N> descendants;
+    
+    auto dfs_visitor = [&](G const &gg, Structure const &ss, N const &dfs_src, N const &current_node) {
+      descendants.insert(current_node);
+    };
+
+    dfs<G, Structure>(g, n, dfs_visitor);
+
+    return descendants;
+  }
+
+  template <typename G, typename Structure = GraphStructure<G>>
+  std::vector<std::unordered_set<typename Structure::vertex_type>> weakly_connected_components(G const &g) {
+    using N = typename Structure::vertex_type;
+    using E = typename Structure::edge_type;
+
+    std::vector<std::unordered_set<N>> result;
+    std::unordered_set<N> seen;
+
+    for (N const &n : nodes<G, UndirectedStructure<G, Structure>>(g)) {
+      if (seen.find(n) != seen.end()) {
+        continue;
+      }
+
+      auto component = descendants<G, UndirectedStructure<G, Structure>>(g, n);
+      seen.insert(component.begin(), component.end());
+      result.emplace_back(component);
+    }
+
+    return result;
+  }
+
+  template <typename G, typename Structure = GraphStructure<G>>
+  std::unordered_map<typename Structure::vertex_type, typename Structure::vertex_type> imm_post_dominators(G const &g) {
+    return imm_dominators<G, ReverseStructure<Structure>>(g);
   }
 
   template <typename G, typename Structure = GraphStructure<G>>
@@ -375,6 +410,7 @@ namespace FlexFlow::PCG::Utils {
 
     return reduction;
   }
+
 
   template <typename N>
   void inplace_transitive_reduction(BasicGraph<N> &g) {
@@ -424,6 +460,7 @@ namespace FlexFlow::PCG::Utils {
 
     dotfile.close();
   }
+
 }
 
 #endif // _DOMINATORS_H

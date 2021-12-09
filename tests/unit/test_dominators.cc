@@ -1,11 +1,11 @@
 #include "gtest/gtest.h"
-#include "dominators.h"
-#include "hash_utils.h"
-#include "graph.h"
+#include "flexflow/dominators.h"
+#include "flexflow/utils/hash_utils.h"
+#include "flexflow/basic_graph.h"
 
-using namespace flexflow::graph;
+using namespace FlexFlow::PCG::Utils;
 
-namespace flexflow::graph {
+namespace FlexFlow::PCG::Utils {
   template <>
   struct invalid_node<::BasicGraph<int>, GraphStructure<::BasicGraph<int>>> {
     int operator()() const {
@@ -327,4 +327,81 @@ TEST(leaves, basic) {
   auto result = leaves(g);
 
   EXPECT_EQ(result, answer);
+}
+
+TEST(descendants, directed) {
+  BasicGraph<int> g(
+    {1, 2, 3, 4, 5, 6},
+    {
+      {1, 2},
+      {2, 3},
+      {2, 4},
+      {3, 5},
+      {4, 5}
+    }
+  );
+
+  std::unordered_set<int> answer { 2, 3, 4, 5 };
+
+  auto result = descendants(g, 2);
+
+  EXPECT_EQ(result, answer);
+}
+
+TEST(descendants, undirected) {
+  BasicGraph<int> g(
+    {1, 2, 3, 4, 5, 6},
+    {
+      {1, 2},
+      {2, 3},
+      {2, 4},
+      {3, 5},
+      {4, 5}
+    }
+  );
+
+  std::unordered_set<int> answer { 1, 2, 3, 4, 5 };
+
+  auto result = descendants<decltype(g), UndirectedStructure<decltype(g)>>(g, 2);
+
+  EXPECT_EQ(result, answer);
+}
+
+TEST(weakly_connected_components, basic) {
+  BasicGraph<int> g(
+    {1, 2, 3, 4, 5, 6},
+    {
+      {1, 3},
+      {2, 3}, 
+      {4, 5},
+      {5, 4}
+    }
+  );
+
+
+  std::unordered_set<int> component1 { 1, 2, 3 };
+  std::unordered_set<int> component2 { 4, 5 };
+  std::unordered_set<int> component3 { 6 };
+  auto result = weakly_connected_components(g);
+
+  EXPECT_EQ(result.size(), 3);
+  bool component1_found = false;
+  bool component2_found = false;
+  bool component3_found = false;
+  for (std::unordered_set<int> &component : result) {
+    if (component.size() == component1.size()) {
+      component1_found = true;
+      EXPECT_EQ(component, component1);
+    } else if (component.size() == component2.size()) {
+      component2_found = true;
+      EXPECT_EQ(component, component2);
+    } else if (component.size() == component3.size()) {
+      component3_found = true;
+      EXPECT_EQ(component, component3);
+    }
+  }
+
+  EXPECT_TRUE(component1_found);
+  EXPECT_TRUE(component2_found);
+  EXPECT_TRUE(component3_found);
 }
