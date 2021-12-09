@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "dot_file.h"
+#include "flexflow/utils/dot_file.h"
 
 TEST(record_formatters, basic) {
   RecordFormatter rf, rf2, rf3;

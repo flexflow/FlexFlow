@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "random_utils.h"
+#include "flexflow/utils/random_utils.h"
 
 TEST(select_random, basic) {
   std::vector<int> values { 1, 2, 3, 4 };

@@ -207,7 +207,7 @@ option(FF_BUILD_SPLIT_TEST_2 "build split test 2 example" OFF)
 option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
 option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
 
-if(FF_BUILD_TESTS)
+if(FF_BUILD_UNIT_TESTS)
   set(BUILD_GMOCK OFF)
   add_subdirectory(deps/googletest)
   enable_testing()

@@ -700,9 +700,20 @@ Graph Graph::subgraph(std::unordered_set<Node> const &ns) const {
   return sub;
 }
 
-void Graph::remove_node(Node const &node) {
-  assert (this->inEdges.at(node).empty());
-  assert (this->outEdges.at(node).empty());
+void Graph::remove_node(Node const &node, bool purge_edges) {
+  if (purge_edges) {
+    std::unordered_set<Edge> out_edges = this->outEdges.at(node);
+    for (auto const &e : out_edges) {
+      this->remove_edge(e, false/*remove_node_if_unused*/);
+    }
+    std::unordered_set<Edge> in_edges = this->outEdges.at(node);
+    for (auto const &e : in_edges) {
+      this->remove_edge(e, false/*remove_node_if_unused*/);
+    }
+  } else {
+    assert (this->inEdges.at(node).empty());
+    assert (this->outEdges.at(node).empty());
+  }
   this->inEdges.erase(node);
   this->outEdges.erase(node);
 }
@@ -1004,68 +1015,33 @@ std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> Graph::split_at_node(N
 std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>>
 Graph::split_horizontal(Node const &source_node, Node const &sink_node) const
 {
-  auto first_graph = std::unique_ptr<Graph>(new Graph(this->model));
-  auto second_graph = std::unique_ptr<Graph>(new Graph(this->model));
-  Node bn_node = Node::INVALID_NODE;
-  // Find sink_node's first input
-  {
-    const auto& inList = this->inEdges.find(sink_node)->second;
-    int minIdx = MAX_NUM_INPUTS;
-    for (const auto& it2 : inList) {
-      //if (it2.dstIdx != 0) continue;
-      //if (it2.weightEdge) continue;
-      if (it2.dstIdx < minIdx) {
-        minIdx = it2.dstIdx;
-        bn_node = it2.srcOp;
-      }
-    }
-  }
-  assert(bn_node != Node::INVALID_NODE);
-  std::unordered_set<Node> used_nodes;
-  std::vector<Node> queue;
-  queue.push_back(bn_node);
-  used_nodes.insert(bn_node);
-  size_t i = 0;
-  while (i < queue.size()) {
-    Node node = queue[i++];
-    const auto& inList = this->inEdges.find(node)->second;
-    for (const auto& it2 : inList) {
-      if (used_nodes.find(it2.srcOp) == used_nodes.end()) {
-        used_nodes.insert(it2.srcOp);
-        queue.push_back(it2.srcOp);
-      }
-    }
-  }
-  for (const auto& it : this->inEdges) {
-    if (it.first == sink_node) continue;
-    const auto& inList = it.second;
-    if (used_nodes.find(it.first) != used_nodes.end()) {
-      // Add all in-edges of used_nodes in to the first_graph
-      for (const auto& e : inList) {
-        first_graph->add_edge(e);
-      }
-    } else {
-      // Add all in-edges of not_used_nodes into the second_graph
-      for (const auto& e : inList) {
-        second_graph->add_edge(e);
-      }
-    }
-  }
-  // Split sink_node's inedges between the two graphs
-  {
-    const auto& inList = this->inEdges.find(sink_node)->second;
-    for (const auto& e : inList) {
-      if (used_nodes.find(e.srcOp) != used_nodes.end()) {
-        first_graph->add_edge(e);
-      } else {
-        second_graph->add_edge(e);
-      }
-    }
-  }
-  // Assert there must be at least on sink_source's inEdges in the second graph
-  assert(second_graph->inEdges.find(sink_node) != second_graph->inEdges.end());
+  using FlexFlow::PCG::Utils::weakly_connected_components;
 
-  return {std::move(first_graph), std::move(second_graph)};
+  Graph trimmed_graph(*this);
+  assert (sink_node != Node::INVALID_NODE); // sink node should never be invalid node
+  if (source_node != Node::INVALID_NODE) {
+    trimmed_graph.remove_node(source_node, true/*purge_edges*/); 
+  }
+  trimmed_graph.remove_node(sink_node, true/*purge_edges*/);
+  std::vector<std::unordered_set<Node>> wccs = weakly_connected_components(trimmed_graph);
+  assert (wccs.size() >= 2);
+  std::unordered_set<Node> first_branch = wccs.back();
+  wccs.pop_back();
+  std::unordered_set<Node> rest;
+  for (auto const &wcc : wccs) {
+    rest.insert(wcc.begin(), wcc.end());
+  }
+  if (source_node != Node::INVALID_NODE) {
+    first_branch.insert(source_node);
+    rest.insert(source_node);
+  }
+  first_branch.insert(sink_node);
+  rest.insert(sink_node);
+
+  auto first_graph = std::unique_ptr<Graph>(new Graph(this->subgraph(first_branch)));
+  auto second_graph = std::unique_ptr<Graph>(new Graph(this->subgraph(rest)));
+
+  return { std::move(first_graph), std::move(second_graph) };
 }
 
 GraphCostResult GraphCostResult::invalid() {
