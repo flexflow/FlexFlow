@@ -16,10 +16,11 @@
 #include <sstream>
 #include <fstream>
 #include <string>
-#include "model.h"
+#include "flexflow/model.h"
 using namespace Legion;
+using namespace FlexFlow;
 
-void top_level_task(const Task* task,
+void FlexFlow::top_level_task(const Task* task,
                     const std::vector<PhysicalRegion>& regions,
                     Context ctx, Runtime* runtime)
 {
@@ -31,13 +32,13 @@ void top_level_task(const Task* task,
   std::vector<int> hidden_dims = {4096};
   Tensor input1, input2;
   {
-    const int dims[] = {1, ffConfig.batchSize, 1024};
-    input1 = ff.create_tensor<3>(dims, DT_FLOAT);
-    input2 = ff.create_tensor<3>(dims, DT_FLOAT);
+    const int dims[] = {ffConfig.batchSize, 1024};
+    input1 = ff.create_tensor<2>(dims, DT_FLOAT);
+    input2 = ff.create_tensor<2>(dims, DT_FLOAT);
   }
   Tensor t1 = input1, t2 = input2;
   for (size_t i = 0; i < hidden_dims.size(); i++) {
-    const int dims[] = {1, hidden_dims[i], t1->dims[0].size};
+    const int dims[] = {hidden_dims[i], t1->dims[0]};
     ActiMode acti_mode = (i+1 == hidden_dims.size()) ? AC_MODE_NONE: AC_MODE_RELU;
     t1 = ff.dense(t1, hidden_dims[i], acti_mode, false);
     t2 = ff.dense(t2, hidden_dims[i], acti_mode, false);
@@ -52,7 +53,7 @@ void top_level_task(const Task* task,
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
-  ff.init_layers();
+  ff.init_operators();
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -86,6 +87,6 @@ void top_level_task(const Task* task,
          ffConfig.batchSize * 128 * ffConfig.epochs / run_time);
 }
 
-void register_custom_tasks()
+void FlexFlow::register_custom_tasks()
 {
 }

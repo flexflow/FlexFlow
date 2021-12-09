@@ -227,7 +227,6 @@ hipError_t get_legion_stream(hipStream_t *stream);
 
 class FFModel;
 class ParallelOp;
-class DataLoader;
 
 class OpMeta {
 public:

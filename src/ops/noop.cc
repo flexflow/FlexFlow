@@ -45,7 +45,6 @@ NoOp::NoOp(FFModel& model,
 : Op(model, _type, _name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/),
   input_tensor_guid(0)
 {
-  assert(op_type != OP_INPUT);
   // NOOP takes one input and has one output
   // both of them are _output
   if (op_type == OP_NOOP) {
@@ -65,7 +64,6 @@ NoOp::NoOp(FFModel& model,
 : Op(model, _type, _name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/),
   input_tensor_guid(_input_tensor_guid)
 {
-  assert(op_type == OP_INPUT);
   // NOOP takes one input and has one output
   // both of them are _output
   if (op_type == OP_NOOP) {

@@ -2387,6 +2387,12 @@ Op* FFModel::create_operator_from_layer(Layer* layer,
       tensor->parallel_tensor = pt;
       return operators[operators.size()-1];
     }
+    case OP_CONCAT:
+    {
+      Op* op = Concat::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_CONV2D:
     {
       Op* op = Conv2D::create_operator_from_layer(*this, layer, inputs);

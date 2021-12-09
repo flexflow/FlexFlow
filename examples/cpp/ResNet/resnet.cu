@@ -16,6 +16,11 @@
 #include "resnet.h"
 #include "flexflow/utils/cuda_helper.h"
 
+using FlexFlow::Tensor;
+using FlexFlow::FFModel;
+using FlexFlow::TensorAccessorR;
+using FlexFlow::TensorAccessorW;
+
 void DataLoader::load_input(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx,
@@ -24,10 +29,10 @@ void DataLoader::load_input(const Task *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs* meta = (SampleIdxs*) task->local_args;
-  TensorAccessorR<float, 4> acc_full_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_batch_input(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime, false/*readOutput*/);
+  TensorAccessorR<float, 5> acc_full_input(
+      regions[0], task->regions[0], FlexFlow::FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 5> acc_batch_input(
+      regions[1], task->regions[1], FlexFlow::FID_DATA, ctx, runtime, false/*readOutput*/);
   coord_t batch_size = acc_batch_input.rect.hi[3] - acc_batch_input.rect.lo[3] + 1;
   coord_t channels = acc_batch_input.rect.hi[2] - acc_batch_input.rect.lo[2] + 1;
   coord_t height = acc_batch_input.rect.hi[1] - acc_batch_input.rect.lo[1] + 1;
@@ -51,10 +56,10 @@ void DataLoader::load_label(const Task *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs* meta = (SampleIdxs*) task->local_args;
-  TensorAccessorR<int, 2> acc_full_label(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<int, 2> acc_batch_label(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime, false/*readOutput*/);
+  TensorAccessorR<int, 3> acc_full_label(
+      regions[0], task->regions[0], FlexFlow::FID_DATA, ctx, runtime);
+  TensorAccessorW<int, 3> acc_batch_label(
+      regions[1], task->regions[1], FlexFlow::FID_DATA, ctx, runtime, false/*readOutput*/);
   int batch_size = acc_batch_label.rect.hi[1] - acc_batch_label.rect.lo[1] + 1;
   //FIXME: currently assume continous indices
   assert(batch_size == meta->num_samples);

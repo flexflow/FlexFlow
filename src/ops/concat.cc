@@ -37,7 +37,28 @@ Tensor FFModel::concat(int n,
                        int axis,
                        const char *name)
 {
-  assert(false);
+  Layer* concat = new Layer(this, OP_CONCAT, name, n/*inputs*/,
+                            0/*weights*/, 1/*outputs*/, tensors);
+  int numdim = tensors[0]->num_dims;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++)
+    dims[i] = tensors[0]->dims[i];
+  for (int i = 1; i < n; i++) {
+    assert(tensors[i]->data_type == tensors[0]->data_type);
+    assert(tensors[i]->num_dims == tensors[0]->num_dims);
+    for (int j = 0; j < numdim; j++) {
+      if (j != numdim - axis - 1) {
+        assert(tensors[i]->dims[j] == tensors[0]->dims[j]);
+      } else {
+        dims[j] += tensors[i]->dims[j];
+      }
+    }
+  }
+  concat->outputs[0] = create_tensor_legion_ordering(
+      numdim, dims, tensors[0]->data_type, concat, 0, true/*create_grad*/);
+  concat->add_int_property("legion_axis", numdim-axis-1);
+  layers.push_back(concat);
+  return concat->outputs[0];
 #ifdef DEADCODE
   assert(axis < 0);
   Concat *cat = new Concat(*this, n, tensors, -1-axis, name);
@@ -45,6 +66,17 @@ Tensor FFModel::concat(int n,
   return cat->outputs[0];
 #endif
 }
+
+Op* Concat::create_operator_from_layer(
+    FFModel& model,
+    const Layer* layer,
+    const std::vector<ParallelTensor>& inputs) {
+  long long value;
+  layer->get_int_property("legion_axis", value);
+  int legion_axis = value;
+  return new Concat(model, inputs.size(), inputs.data(), legion_axis, layer->name);
+}
+
 
 Concat::Concat(FFModel& model,
                int _n, const ParallelTensor* _tensors,

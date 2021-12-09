@@ -23,7 +23,10 @@ public:
   void backward(const FFModel&) override;
   bool get_int_parameter(PMParameter, int*) const override;
   void print_layer(const FFModel& model) override {assert(0);}
-
+  static Op* create_operator_from_layer(
+      FFModel& model,
+      const Layer* layer,
+      const std::vector<ParallelTensor>& inputs);
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);

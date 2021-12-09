@@ -2314,7 +2314,7 @@ void FFModel::graph_optimize(size_t budget,
                              std::unique_ptr<Graph>& best_graph,
                              std::unordered_map<Node, MachineView>& optimal_views)
 {
-  this->graph_search->graph_optimize_no_split(budget, only_data_parallel, best_graph, optimal_views);
+  this->graph_search->graph_optimize(budget, only_data_parallel, best_graph, optimal_views);
 }
 
 bool FFModel::convert_graph_to_operators(const Graph* graph,

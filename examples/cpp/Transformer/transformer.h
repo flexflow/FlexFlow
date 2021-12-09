@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 65536
 
 using namespace Legion;
+using namespace FlexFlow;
 
 struct TransformerConfig {
   TransformerConfig(void);

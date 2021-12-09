@@ -14,7 +14,7 @@
  */
 
 #include "alexnet.h"
-#include "cuda_helper.h"
+#include "flexflow/utils/cuda_helper.h"
 
 void DataLoader::load_input(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
