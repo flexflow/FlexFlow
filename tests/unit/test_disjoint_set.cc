@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "disjoint_set.h"
+#include "flexflow/utils/disjoint_set.h"
 
 TEST(disjoint_set, basic) {
   int ctr = 0;

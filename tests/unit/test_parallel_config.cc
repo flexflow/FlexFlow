@@ -1,6 +1,8 @@
 #include "gtest/gtest.h"
-#include "config.h"
-#include "model.h"
+#include "flexflow/config.h"
+#include "flexflow/model.h"
+
+using namespace FlexFlow;
 
 TEST(change_data_parallel_dimensionality, basic_reduce) {
   ParallelConfig pc = get_basic_data_parallel_config(8, 4);

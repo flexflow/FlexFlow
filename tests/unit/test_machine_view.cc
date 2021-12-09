@@ -1,8 +1,9 @@
 #include "gtest/gtest.h"
-#include "config.h"
-#include "machine_view.h"
+#include "flexflow/config.h"
+#include "flexflow/machine_view.h"
 
 using namespace Legion;
+using namespace FlexFlow;
 
 TEST(machine_view_get_domain, basic) {
   MachineView mv;  
