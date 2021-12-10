@@ -5,7 +5,12 @@ class NodePrinter:
         self.val = val
 
     def to_string(self):
-        return f'Node<guid={self.val["guid"]} ptr={self.val["ptr"]}>'
+        ptr = self.val["ptr"]
+        if ptr != 0:
+            op_type = ptr.referenced_value()['op_type']
+            return f'Node<guid={self.val["guid"]} ptr={ptr} op_type={op_type}>'
+        else:
+            return f'Node<guid={self.val["guid"]} ptr={self.val["ptr"]}>'
 
 class EdgePrinter:
     def __init__(self, val):
@@ -59,6 +64,22 @@ class TensorShapePrinter:
             toks.append(f'{i}=[s={size} d={degree} pi={parallel_idx}]')
         return f'TensorShape<{" ".join(toks)}>'
 
+class ParallelTensorBasePrinter:
+    def __init__(self, val):
+        self.val = val
+    
+    def to_string(self):
+        toks = []
+        toks.append(f'guid={self.val["parallel_tensor_guid"]}')
+        ndim = self.val['num_dims']
+        for i in range(ndim):
+            dim = self.val['dims'][i]
+            size = dim['size']
+            degree = dim['degree']
+            parallel_idx = dim['parallel_idx']
+            toks.append(f'{i}=[s={size} d={degree} pi={parallel_idx}]')
+        return f'ParallelTensorBase<{" ".join(toks)}>'
+
 def build_pretty_printer():
     pp = gdb.printing.RegexpCollectionPrettyPrinter(
         "flexflow")
@@ -67,6 +88,7 @@ def build_pretty_printer():
     pp.add_printer('MachineView', '^FlexFlow::MachineView$', MachineViewPrinter)
     pp.add_printer('Domain', '^Legion::Domain$', DomainPrinter)
     pp.add_printer('ParallelTensorShape', '^FlexFlow::ParallelTensorShape$', TensorShapePrinter)
+    pp.add_printer('ParallelTensorBase', '^FlexFlow::ParallelTensorBase$', ParallelTensorBasePrinter)
     return pp
 
 gdb.printing.register_pretty_printer(

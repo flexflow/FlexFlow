@@ -179,6 +179,16 @@ Realm::LoggerMessage SearchHelper::debug() const {
   return msg;
 }
 
+Realm::LoggerMessage SearchHelper::spew() const {
+  Realm::LoggerMessage msg = log_dp.spew();
+  msg << this->depth;
+  for (int i = 0; i < this->depth; i++) {
+    msg << "  ";
+  }
+
+  return msg;
+}
+
 template <typename T>
 T SearchHelper::execute_nonsequence_split(
   std::unique_ptr<Graph> const &first_graph,
@@ -923,7 +933,7 @@ void Graph::simplify(SimplificationSettings const &settings) {
     // Remove final parallel ops
     std::vector<Node> candidates;
     for (const auto& it : this->outEdges) {
-      if (it.second.size() == 0 && it.first.ptr->is_parallel_op()) {
+      if (it.second.size() == 0 && it.first.ptr->op_type != OP_REDUCTION && it.first.ptr->op_type != OP_FUSED_PARALLEL) {
         candidates.push_back(it.first);
       }
     }
@@ -1214,6 +1224,16 @@ void SearchHelper::add_operator_cost<GraphCostResult>(NodeAssignment const &node
   cost->views[node.node] = node.view;
 }
 
+template<>
+float SearchHelper::get_cost<float>(float const &f) const {
+  return f;
+}
+
+template <>
+float SearchHelper::get_cost<GraphCostResult>(GraphCostResult const &gcr) const {
+  return gcr.cost;
+}
+
 template <typename T>
 T SearchHelper::graph_cost(const Graph* graph,
                           const NodeAssignment& source,
@@ -1228,7 +1248,7 @@ T SearchHelper::graph_cost(const Graph* graph,
                  << "source.view(" << source.view.ndims << " " << source.view.start_device_id << " " << source.view.dim[0] << ") "
                  << "resources(" << resources.num_nodes << " " << resources.start_gpu_id << " " << resources.available_gpus_per_node << ")";
   if (this->model->config.profiling) {
-    graph->print();
+    graph->print_dot();
   }
 
   assert(graph->inEdges.find(sink.node) != graph->inEdges.end());
@@ -1247,6 +1267,7 @@ T SearchHelper::graph_cost(const Graph* graph,
   } else {
     if (graph->inEdges.size() <= 2) {
       result = this->estimate_xfer_cost<T>(graph, source, sink);
+      this->debug() << "Estimated xfer cost is " << this->get_cost(result);
     } else {
       Node bn_node = graph->find_bottleneck_node(sink.node, source.node);
       if (bn_node != Node::INVALID_NODE) {
@@ -1281,6 +1302,10 @@ T SearchHelper::graph_cost(const Graph* graph,
 
   if (include_sink_compute_time) {
     CostMetrics metrics = this->model->simulator->measure_operator_cost(sink.node.ptr, sink.view);
+    this->debug() << "Sink node cost: " 
+                  << "forward(" << metrics.forward_time << ") "
+                  << "backward(" << metrics.backward_time << ") " 
+                  << "sync(" << metrics.sync_time << ")";
     this->add_operator_cost<T>(sink, metrics.forward_time + metrics.backward_time + metrics.sync_time, &result);
   }
 
