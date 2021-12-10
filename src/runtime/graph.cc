@@ -933,7 +933,7 @@ void Graph::simplify(SimplificationSettings const &settings) {
     // Remove final parallel ops
     std::vector<Node> candidates;
     for (const auto& it : this->outEdges) {
-      if (it.second.size() == 0 && it.first.ptr->op_type != OP_REDUCTION && it.first.ptr->op_type != OP_FUSED_PARALLEL) {
+      if (it.second.size() == 0 && it.first.ptr->op_type != OP_REDUCTION && it.first.ptr->op_type != OP_FUSED_PARALLEL && it.first.ptr->is_parallel_op()) {
         candidates.push_back(it.first);
       }
     }
