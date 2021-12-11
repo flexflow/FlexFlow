@@ -393,7 +393,7 @@ void GraphXfer::unmatch(OpX* srcOp, const Node& op, Graph const *graph)
       }
     }
   }
-  log_xfer_matches.spew() << "Finished the umatch loop";
+  log_xfer_matches.spew() << "Finished the unmatch loop";
   // Unmap op
   mappedOps.erase(op);
   srcOp->mapOp.guid = 0;
@@ -1239,15 +1239,22 @@ void GraphSearchHelper::load_graph_substitutions(std::vector<GraphXfer*> &xfers)
 void GraphSearchHelper::generate_all_pcg_xfers()
 {
   std::vector<int> all_parallel_degrees, single_node_parallel_degrees;
-  for (int i = 2; i <= this->model->config.workersPerNode; i++) {
-    if (this->model->config.workersPerNode % i == 0) {
+  auto const &config = this->model->config;
+  int workersPerNode = config.search_num_workers.value_or(config.workersPerNode);
+  int numNodes = config.search_num_nodes.value_or(config.numNodes);
+  log_xfers.debug() << "Generating parallel degrees for workersPerNode " 
+                    << workersPerNode
+                    << " and numNodes "
+                    << numNodes;
+  for (int i = 2; i <= workersPerNode; i++) {
+    if (workersPerNode % i == 0) {
       single_node_parallel_degrees.push_back(i);
       all_parallel_degrees.push_back(i);
     }
   }
-  for (int i = 2; i <= this->model->config.numNodes; i++) {
-    if (this->model->config.numNodes % i == 0) {
-      all_parallel_degrees.push_back(i * this->model->config.workersPerNode);
+  for (int i = 2; i <= numNodes; i++) {
+    if (numNodes % i == 0) {
+      all_parallel_degrees.push_back(i * workersPerNode);
     }
   }
   for (const auto& it : single_node_parallel_degrees) {
@@ -1527,7 +1534,11 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph, Si
   const float alpha = this->model->config.search_alpha;
 
   int budget = model->config.search_budget;
-  for (int iter = 0; iter < budget; iter++) {
+  if (budget == 0) {
+    log_xfers.warning() << "Base search budget is set to 0. This is probably not what you want (use the --budget flag to set the base search budget)";
+  }
+  for (int iter = 0; iter < budget || budget == -1; iter++) {
+    log_xfers.spew() << "Considering " << candidates.size() << " candidates";
     if (candidates.empty()) {
       break;
     }
@@ -1545,6 +1556,7 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph, Si
     log_xfers.info("[%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)",
            counter, cur_graph->optimal_cost(), best_cost, candidates.size());
 
+    log_xfers.debug() << "Considering " << xfers.size() << " possible xfers";
     for (size_t i = 0; i < xfers.size(); i++) {
       int num_matches_found = 0,
           num_matches_rejected = 0;
@@ -1695,13 +1707,15 @@ T GraphSearchHelper::generic_sequence_optimize(
 
       to_optimize.replace_subgraph({old_source_node}, input_graph);
     }
+    SimplificationSettings settings;
     if (output_shape.has_value()) {
       to_optimize.reshape_output_tensor(output_shape.value());
       Node sink_node = to_optimize.find_sink_node();
       Node noop_node = this->model->get_or_create_noop_node(sink_node.ptr->outputs[0]);
       to_optimize.add_edge(sink_node, noop_node, 0, 0);
+    } else {
+      settings.remove_trailing_parallel_ops = true;
     }
-    SimplificationSettings settings;
     settings.simplify_parallel_ops = true;
     std::unique_ptr<Graph> optimized = this->base_optimize(&to_optimize, settings);
     this->logger->leave();

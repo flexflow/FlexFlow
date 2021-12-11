@@ -3167,7 +3167,7 @@ struct DefaultConfig {
   const static int numNodes = 1;
   const static int workersPerNode = 0;
   const static int cpusPerNode = 0;
-  const static size_t searchBudget = 0;
+  const static size_t searchBudget = -1;
   const static size_t simulatorWorkSpaceSize = (size_t)2 * 1024 * 1024 * 1024; //2GB
   constexpr static float searchAlpha = 1.2f;
   const static bool searchOverlapBackwardUpdate = false;

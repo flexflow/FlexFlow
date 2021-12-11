@@ -195,6 +195,9 @@ public:
   void add_operator_cost(NodeAssignment const &, float, T *) const;
 
   template <typename T>
+  float get_cost(T const &) const;
+
+  template <typename T>
   void check_matches_graph(Graph const *, T const &, Node const &) const;
 private:
   template <typename T>
@@ -216,6 +219,7 @@ private:
   FFModel *model;
 
   Realm::LoggerMessage debug() const;
+  Realm::LoggerMessage spew() const;
 
   mutable int depth = 0;
 
