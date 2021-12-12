@@ -257,6 +257,9 @@ private:
 
   template <typename T>
   void try_cache_result(size_t hash, T const &value);
+
+  template <typename T>
+  T get_optimal_cost(std::unique_ptr<Graph> optimized) const;
 private:
   std::unordered_map<size_t, float> cached_optimized_graphs;
   std::vector<GraphXfer*> all_pcg_xfers;
