@@ -1067,19 +1067,34 @@ std::ostream& operator<<(std::ostream &s, GraphCostResult const &r) {
   return s;
 }
 
+std::ostream& operator<<(std::ostream &s, GraphOptimizeResult const &r) {
+  s << "GraphOptimizeResult{cost=" << r.cost << "}";
+}
+
 template <>
 GraphCostResult sequence_cost<GraphCostResult>(GraphCostResult const &first, GraphCostResult const &second) {
-  GraphCostResult result;
-  result.cost = first.cost + second.cost;
-  result.views.insert(first.views.cbegin(), first.views.cend());
+  GraphCostResult result(first);
+  result.cost += second.cost;
   result.views.insert(second.views.cbegin(), second.views.cend());
-
   return result;
 }
 
 template <>
 float sequence_cost<float>(float const &first, float const &second) {
   return first + second;
+}
+
+template <>
+GraphOptimizeResult sequence_cost<GraphOptimizeResult>(GraphOptimizeResult const &first, GraphOptimizeResult const &second) {
+  GraphOptimizeResult result;
+  result.cost = first.cost + second.cost;
+  result.views.insert(first.views.cbegin(), first.views.cend());
+  result.views.insert(second.views.cbegin(), second.views.cend());
+
+  result.graph = second.graph;
+  Node second_src = result.graph.value().find_source_node();
+  result.graph.value().replace_subgraph({second_src}, first.graph.value());
+  return result;
 }
 
 template <>

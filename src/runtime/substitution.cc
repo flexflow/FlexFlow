@@ -1074,6 +1074,11 @@ OpX* GraphXfer::create_combine(const TensorX& input,
 
 /* } */
 
+void Graph::print_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy) const {
+  DotFile<Node> dot(std::cout);
+  this->export_strategy_computation_graph(strategy, dot);
+}
+
 void Graph::export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::string const &out_filename) const {
   DotFile<Node> dot(out_filename);
 
@@ -1350,13 +1355,20 @@ void GraphSearchHelper::graph_optimize(size_t budget,
   }
   
   Node sink_node = graph->find_sink_node();
-  GraphCostResult optimal = this->generic_sequence_optimize<GraphCostResult>(graph, sink_node, tl::nullopt/*output_shape*/, tl::nullopt/*input_shape*/);
+  GraphOptimizeResult optimal = this->generic_sequence_optimize<GraphOptimizeResult>(graph, sink_node, tl::nullopt/*output_shape*/, tl::nullopt/*input_shape*/);
   this->logger->debug() << "Total cache size: " << this->cached_optimized_graphs.size();
   std::cout << "Optimal cost: " << optimal.cost << std::endl;
-  //graph->optimal_views();
-  for (auto const &kv : optimal.views) {
-    std::cout << "Node " << kv.first.to_string() << " View " << kv.second << std::endl;
-  }
+  SimplificationSettings settings;
+  settings.fuse_parallel_ops = true;
+  settings.remove_noops = true;
+  settings.remove_trailing_parallel_ops = true;
+  settings.simplify_parallel_ops = true;
+  best_graph = std::unique_ptr<Graph>(new Graph(optimal.graph.value()));
+  best_graph->simplify(settings);
+  best_graph->print_strategy_computation_graph(optimal.views);
+  // for (auto const &kv : optimal.views) {
+  //   std::cout << "Node " << kv.first.to_string() << " View " << kv.second << std::endl;
+  // }
   std::exit(1);
 }
 
@@ -1608,7 +1620,32 @@ tl::optional<float> GraphSearchHelper::try_get_cost_from_cache<float>(size_t has
 }
 
 template <>
+float GraphSearchHelper::get_optimal_cost<float>(std::unique_ptr<Graph> optimized) const {
+  return optimized->generic_optimal_cost<float>(); 
+}
+
+template <>
+GraphCostResult GraphSearchHelper::get_optimal_cost<GraphCostResult>(std::unique_ptr<Graph> optimized) const {
+  return optimized->generic_optimal_cost<GraphCostResult>();
+}
+
+template <>
+GraphOptimizeResult GraphSearchHelper::get_optimal_cost<GraphOptimizeResult>(std::unique_ptr<Graph> optimized) const {
+  GraphOptimizeResult result;
+  result.graph = *optimized;
+  GraphCostResult gcr = optimized->generic_optimal_cost<GraphCostResult>();
+  result.cost = gcr.cost;
+  result.views = gcr.views;
+  return result;
+}
+
+template <>
 tl::optional<GraphCostResult> GraphSearchHelper::try_get_cost_from_cache<GraphCostResult>(size_t hash) const {
+  return tl::nullopt;
+}
+
+template <>
+tl::optional<GraphOptimizeResult> GraphSearchHelper::try_get_cost_from_cache<GraphOptimizeResult>(size_t hash) const {
   return tl::nullopt;
 }
 
@@ -1619,6 +1656,9 @@ void GraphSearchHelper::try_cache_result<float>(size_t hash, float const &value)
 
 template <>
 void GraphSearchHelper::try_cache_result<GraphCostResult>(size_t hash, GraphCostResult const &value) { }
+
+template <>
+void GraphSearchHelper::try_cache_result<GraphOptimizeResult>(size_t hash, GraphOptimizeResult const &value) { }
 
 template <typename T>
 T GraphSearchHelper::execute_sequence_split(
@@ -1719,7 +1759,7 @@ T GraphSearchHelper::generic_sequence_optimize(
     settings.simplify_parallel_ops = true;
     std::unique_ptr<Graph> optimized = this->base_optimize(&to_optimize, settings);
     this->logger->leave();
-    return_value = optimized->generic_optimal_cost<T>();
+    return_value = get_optimal_cost<T>(std::move(optimized)); //optimized->generic_optimal_cost<T>();
   } else {
     this->logger->debug() << "Applying recursive case on bottleneck " << bottleneck.value().guid;
     std::unique_ptr<Graph> pre_graph, post_graph;

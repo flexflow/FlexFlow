@@ -270,6 +270,7 @@ public:
              Legion::Context ctx, Legion::Runtime *runtime);
   Node find_bottleneck_node(const Node& sink_node, const Node& source_node) const;
   Node find_nontrivial_bottleneck_node(const Node& sink_node, const Node& source_node) const;
+  void print_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::string const &out_filename) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const;
 
@@ -300,6 +301,14 @@ private:
 
   void remove_inverse_parallel_ops();
   void replace_subgraph_with_nonempty(std::unordered_set<Node> const &currentNodes, const Graph& replaceWith);
+};
+
+struct GraphOptimizeResult {
+  tl::optional<Graph> graph;
+  float cost;
+  std::unordered_map<Node, MachineView> views;
+
+  friend std::ostream& operator<<(std::ostream &, GraphOptimizeResult const &);
 };
 
 namespace Utils {
