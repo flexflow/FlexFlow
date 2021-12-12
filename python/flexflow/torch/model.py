@@ -14,7 +14,7 @@
 #
 
 from enum import Enum
-from typing import Any, Dict
+from typing import List
 
 import numpy as np
 from flexflow.type import (ActiMode, AggrMode, DataType, OpType,
@@ -27,6 +27,10 @@ try:
     from torch.fx.immutable_collections import immutable_dict
 except:
     pass
+
+
+IR_DELIMITER = "; "
+INOUT_NODE_DELIMITER = ','
 
 
 class Comparator(Enum):
@@ -49,7 +53,8 @@ class Node():
             return ""
         assert type(nodes) is list or type(nodes) is tuple or \
             type(nodes) is dict
-        return ','.join([node.name for node in nodes]) + ','
+        return INOUT_NODE_DELIMITER.join([node.name for node in nodes]) + \
+            INOUT_NODE_DELIMITER
 
     def assert_num_args(self, num_args, cmp):
         if cmp == Comparator.EQ:
@@ -78,13 +83,19 @@ class Node():
         ``self.string``."""
         def __init__(self, string):
             self.items = [i.strip() for i in string.strip().split(';')]
+            n = len(self.items)
             self.name = self.items[0]
-            self.innodes = self.get_inout_nodes(self.items[1])
-            self.outnodes = self.get_inout_nodes(self.items[2])
-            self.op_type = str_to_enum(OpType, self.items[3])
+            if n < 4:
+                assert n == 2
+                self.op_type = str_to_enum(OpType, self.items[1])
+                assert self.op_type == OpType.ATTRIBUTE
+            else:
+                self.innodes = self.get_inout_nodes(self.items[1])
+                self.outnodes = self.get_inout_nodes(self.items[2])
+                self.op_type = str_to_enum(OpType, self.items[3])
 
         def get_inout_nodes(self, inout_string):
-            node_list = inout_string.split(',')
+            node_list = inout_string.split(INOUT_NODE_DELIMITER)
             filtered_node_list = []
             for node in node_list:
                 node_stripped = node.strip()
@@ -137,7 +148,7 @@ class Node():
         elif op_type == OpType.LAYER_NORM: return LayerNormNode
         elif op_type == OpType.FLOOR_DIVIDE: return ScalarFloorDivNode
         elif op_type == OpType.IDENTITY: return IdentityNode
-        elif op_type == OpType.GELU: return GELUNode
+        elif op_type == OpType.GELU: return GeluMNode
         elif op_type == OpType.PERMUTE: return PermuteNode
         elif op_type == OpType.SCALAR_MULTIPLY: return ScalarMulNode
         elif op_type == OpType.SCALAR_FLOORDIV: return ScalarFloorDivNode
@@ -223,7 +234,7 @@ class ModuleNode(Node):
         elif type(module) is torch.nn.Identity:
             return IdentityNode(node, module)
         elif type(module) is torch.nn.GELU:
-            return GELUNode(node, module)
+            return GeluMNode(node, module)
         elif isinstance(module, torch.nn.Embedding):
             return EmbeddingNode(node, module)
         else:
@@ -248,7 +259,7 @@ class LinearNode(ModuleNode):
             s.append("1")
         else:
             s.append("0")
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -303,7 +314,7 @@ class Conv2dNode(ModuleNode):
             s.append("1")
         else:
             s.append("0")
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -367,7 +378,7 @@ class Pool2dNode(ModuleNode):
         s.append(str(self.module.padding))
         s.append(str(enum_to_int(PoolType, self.pool_type)))
         s.append(str(enum_to_int(ActiMode, ActiMode.AC_MODE_NONE)))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -422,7 +433,7 @@ class AdaptivePool2dNode(ModuleNode):
         s += ["3", "1", "0"]
         s.append(str(enum_to_int(PoolType, self.pool_type)))
         s.append(str(enum_to_int(ActiMode, ActiMode.AC_MODE_NONE)))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -443,7 +454,7 @@ class BatchNorm2dNode(ModuleNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -471,7 +482,7 @@ class SoftmaxMNode(ModuleNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -499,7 +510,7 @@ class DropoutMNode(ModuleNode):
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
         s.append(str(self.module.p))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -530,7 +541,7 @@ class FlattenMNode(ModuleNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -555,7 +566,7 @@ class ReLUMNode(ModuleNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -580,7 +591,7 @@ class IdentityNode(ModuleNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -597,7 +608,7 @@ class IdentityNode(ModuleNode):
         )
 
 
-class GELUNode(ModuleNode):
+class GeluMNode(ModuleNode):
     def __init__(self, node, module):
         super().__init__(node, module)
         self.op_type = OpType.GELU
@@ -608,7 +619,7 @@ class GELUNode(ModuleNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -633,7 +644,7 @@ class LayerNormNode(ModuleNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -685,7 +696,7 @@ class T5LayerNormNode(Node):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -726,7 +737,7 @@ class SigmoidNode(ModuleNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -754,7 +765,7 @@ class TanhMNode(ModuleNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -779,7 +790,7 @@ class ELUNode(ModuleNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -806,7 +817,7 @@ class EmbeddingNode(ModuleNode):
         s.append(enum_to_str(OpType, self.op_type))
         s.append(str(self.module.num_embeddings))
         s.append(str(self.module.embedding_dim))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -919,6 +930,7 @@ class FunctionNode(Node):
         elif name.find("dropout") >= 0: return DropoutFNode(node)
         elif name.find("contiguous") >= 0: return ContiguousNode(node)
         elif name.find("tanh") >= 0: return TanhFNode(node)
+        elif name.find("gelu") >= 0: return GeluFNode(node)
         assert 0, f"Unknown function or method: {name}"
 
     @staticmethod
@@ -1096,7 +1108,7 @@ class ScalarAddNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
         s.append(str(scalar))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1127,7 +1139,7 @@ class AddNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1165,7 +1177,7 @@ class ScalarSubNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
         s.append(str(scalar))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1199,7 +1211,7 @@ class ScalarTrueDivNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
         s.append(str(scalar))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1237,7 +1249,7 @@ class ConcatNode(FunctionNode):
             s.append("1")
         else:
             s.append(str(self.innodes[1]))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1276,7 +1288,7 @@ class SplitNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
         s.append(str(self.innodes[1]))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1311,7 +1323,7 @@ class FlattenFNode(FunctionNode):
         s.append(self.parse_inoutnodes(innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1333,7 +1345,7 @@ class ReLUFNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1356,22 +1368,38 @@ class GetItemNode(FunctionNode):
         s.append(self.parse_inoutnodes(innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        s.append(str(self.innodes[1]))
-        self._ir_string = "; ".join(s)
+        if type(self.innodes[1]) is int:
+            s.append(str(self.innodes[1]))
+        else:
+            # Append each slice separately
+            for sl in self.innodes[1]:
+                s.append(str(sl))
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
         data = Node.StringData(string)
         input_tensor = node_to_output[data.innodes[0]]
-        index = int(data.items[4])
-        return input_tensor[index]
+        try:
+            # Get item from a tuple
+            index = int(data.items[4])
+            return input_tensor[index]
+        except ValueError:
+            # Get item from a tensor by slicing
+            slice_strings = data.items[4:]
+            slices = GetItemNode.strings_to_slices(slice_strings)
+            return GetItemNode.slice_tensor(
+                ffmodel, input_tensor, slices, data.name,
+            )
 
     def to_ff(self, ffmodel, node_to_output):
         input_tensor = node_to_output[self.innodes[0].name]
         if type(input_tensor) is Tensor:
-            _slice = self.innodes[1]
-            assert type(_slice) is tuple
-            return self.get_tensor_slice(ffmodel, input_tensor, _slice, self.name)
+            slices = self.innodes[1]
+            assert type(slices) is tuple
+            return GetItemNode.slice_tensor(
+                ffmodel, input_tensor, slices, self.name,
+            )
         assert type(input_tensor) is list or \
             type(input_tensor) is tuple, \
             f"Expected list or tuple but got {type(input_tensor)}"
@@ -1379,21 +1407,22 @@ class GetItemNode(FunctionNode):
         assert type(index) is int
         return input_tensor[index]
 
-    def get_tensor_slice(self, ffmodel, tensor, _slice, name):
-        """Returns a reshaped tensor based on the given slice."""
+    @staticmethod
+    def slice_tensor(ffmodel, tensor, slices, name):
+        """Returns a reshaped tensor based on the given slices."""
         def is_colon(slice_elem):
-            """Returns if the slice element is equivalent to `:`."""
+            """Returns if the slice is equivalent to `:`."""
             return slice_elem == slice(None, None, None)
 
         def is_unsqueeze(slice_elem):
-            """Returns if the slice element is equivalent to unsqueezing
-            that dimension."""
+            """Returns if the slice is equivalent to unsqueezing that
+            dimension."""
             return slice_elem is None
         shape = tensor.dims
         # Match dimensions from right to left
         new_shape = []  # append then reverse
         j = len(shape) - 1
-        for slice_elem in reversed(_slice):
+        for slice_elem in reversed(slices):
             if is_colon(slice_elem):
                 assert j >= 0
                 new_shape.append(shape[j])
@@ -1407,6 +1436,46 @@ class GetItemNode(FunctionNode):
             input=tensor, shape=new_shape, name=name,
         )
 
+    @staticmethod
+    def strings_to_slices(strings: List[str]):
+        # Extract slice elements
+        slices = [sl.strip() for sl in strings]
+
+        def string_to_slice_val(s):
+            """Converts the string representation of a slice value (i.e. either
+            start, stop, or step) to the actual value."""
+            if s == "None":
+                return None
+            try:
+                return int(s)
+            except ValueError:
+                assert 0, f"Invalid slice value: {s}"
+
+        def string_to_slice(s):
+            """Converts the string representation of a slice to the actual
+            slice object."""
+            if s == "None":
+                return None
+            elif s.startswith("slice"):
+                # The slice should contain three elements: start, stop, step
+                s = s[5:]
+                # Remove left and right parentheses
+                assert s[0] == '('
+                assert s[-1] == ')'
+                s = s[1:-1]
+                # Extract slice values
+                sls = [v.strip() for v in s.split(',')]
+                assert len(sls) == 3
+                # Convert the slice elements from string
+                sls = [string_to_slice_val(v) for v in sls]
+                return slice(*sls)
+            else:
+                assert 0, f"Invalid slice: {s}"
+
+        # Convert the slices from string
+        slices = [string_to_slice(sl) for sl in slices]
+        return tuple(slices)
+
 
 class BatchMatMulNode(FunctionNode):
     def __init__(self, node):
@@ -1419,7 +1488,7 @@ class BatchMatMulNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1458,7 +1527,7 @@ class ScalarMulNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
         s.append(str(scalar))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1489,7 +1558,7 @@ class MulNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1522,7 +1591,7 @@ class GetAttrNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
         s.append(str(self.innodes[1]))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1557,7 +1626,7 @@ class TransposeNode(FunctionNode):
         s.append(enum_to_str(OpType, self.op_type))
         s.append(str(self.innodes[1]))
         s.append(str(self.innodes[2]))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1606,7 +1675,7 @@ class ExpandNode(FunctionNode):
         else:
             for dim in args:
                 s.append(str(dim))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1642,7 +1711,7 @@ class ScalarFloorDivNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
         s.append(str(scalar))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1688,8 +1757,8 @@ class ReshapeNode(FunctionNode):
             for other in shape:
                 assert type(other) is torch.fx.node.Node
                 tensors.append(other.name)
-            s.append(','.join(tensors) + ',')
-        self._ir_string = "; ".join(s)
+            s.append(INOUT_NODE_DELIMITER.join(tensors) + INOUT_NODE_DELIMITER)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1737,7 +1806,7 @@ class PermuteNode(FunctionNode):
         dims = self.innodes[1] if dims_as_list else self.innodes[1:]
         for dim in dims:
             s.append(str(dim))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1767,7 +1836,7 @@ class SoftmaxFNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1793,14 +1862,14 @@ class ViewNode(FunctionNode):
         for dim in self.innodes[1:]:
             assert type(dim) is int
             s.append(str(dim))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
         data = Node.StringData(string)
         name = data.name
         input_tensor = node_to_output[data.innodes[0]]
-        view_shape = data.innodes[1:]
+        view_shape = data.items[4:]
         for dim, dim_size in enumerate(view_shape):
             view_shape[dim] = int(dim_size)
         shape = FunctionNode.get_view_shape(input_tensor, view_shape)
@@ -1838,7 +1907,7 @@ class ToNode(FunctionNode):
             s.append(str(self.kwargs["dtype"]))
         else:
             assert 0, "FlexFlow only supports a dtype argument for `to()`"
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1864,7 +1933,7 @@ class PowNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
         s.append(str(self.innodes[1]))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1898,7 +1967,7 @@ class MeanNode(FunctionNode):
             s.append(str(dim))
         if "keepdim" in self.kwargs:
             s.append(str(self.kwargs["keepdim"]))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1950,7 +2019,7 @@ class RsqrtNode(FunctionNode):
         s.append(self.parse_inoutnodes(innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -1977,7 +2046,7 @@ class UnsqueezeNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
         s.append(str(self.innodes[1]))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -2010,7 +2079,7 @@ class FloatNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -2034,7 +2103,7 @@ class TypeAsNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -2059,7 +2128,7 @@ class DropoutFNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
         s.append(str(self.kwargs["p"]))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -2084,7 +2153,7 @@ class ContiguousNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -2108,7 +2177,7 @@ class TanhFNode(FunctionNode):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
@@ -2117,6 +2186,28 @@ class TanhFNode(FunctionNode):
     def to_ff(self, ffmodel, node_to_output):
         input_tensor = node_to_output[self.innodes[0].name]
         return ffmodel.tanh(input=input_tensor, name=self.name)
+
+
+class GeluFNode(FunctionNode):
+    def __init__(self, node):
+        super().__init__(node)
+        self.op_type = OpType.GELU
+        self.assert_num_args(1, Comparator.EQ)
+
+    def parse(self):
+        s = [self.name]
+        s.append(self.parse_inoutnodes(self.innodes))
+        s.append(self.parse_inoutnodes(self.outnodes))
+        s.append(enum_to_str(OpType, self.op_type))
+        self._ir_string = IR_DELIMITER.join(s)
+
+    @staticmethod
+    def string_to_ff(string, ffmodel, node_to_output):
+        return GeluMNode.string_to_ff(string, ffmodel, node_to_output)
+
+    def to_ff(self, ffmodel, node_to_output):
+        input_tensor = node_to_output[self.innodes[0].name]
+        return ffmodel.gelu(input=input_tensor, name=self.name)
 
 
 class AttributeNode(Node):
@@ -2143,13 +2234,17 @@ class AttributeNode(Node):
     def parse(self):
         s = [self.name]
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, ffmodel, node_to_output):
-        print("[Warning] `string_to_ff()` is not supported with"
-              "`AttributeNode`s")
-        return ""
+        # NOTE: The string IR does not support attributes since they need the
+        # tensor values themselves, which are not easily representable as a
+        # string
+        raise RuntimeError(
+            "[Error] `string_to_ff()` is not supported with `AttributeNode`s "
+            "since attributes require access to the PyTorch model"
+        )
 
     def to_ff(self, ffmodel, node_to_output):
         return self.attr_to_ff_tensor(ffmodel)
@@ -2194,7 +2289,7 @@ class InputNode(Node):
         s.append(self.parse_inoutnodes(self.innodes))
         s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, input_tensors, input_index):
@@ -2238,7 +2333,7 @@ class OutputNode(Node):
             s.append(self.parse_inoutnodes(self.innodes))
             s.append(self.parse_inoutnodes(self.outnodes))
         s.append(enum_to_str(OpType, self.op_type))
-        self._ir_string = "; ".join(s)
+        self._ir_string = IR_DELIMITER.join(s)
 
     @staticmethod
     def string_to_ff(string, node_to_output, output_tensors):
@@ -2264,12 +2359,23 @@ class OutputNode(Node):
 
 
 class PyTorchModel():
-    def __init__(self, model, is_hf_model=False, batch_size=1, seq_length=None):
+    def __init__(
+        self,
+        model,
+        is_hf_model=False,
+        input_names=None,
+        batch_size=1,
+        seq_length=None,
+    ):
         assert isinstance(model, torch.nn.Module)
         self.model = model
         self.is_hf_model = is_hf_model
+        self.input_names = input_names
         self.batch_size = batch_size
         self.seq_length = seq_length
+        # NOTE: We default `seq_length` to `None` instead of matching
+        # the HuggingFace `symbolic_trace()`'s default of `(128, 128)` to
+        # decouple the two implementations
 
     def _trace_model(self):
         assert not torch.cuda.is_available(), \
@@ -2278,18 +2384,15 @@ class PyTorchModel():
         if self.is_hf_model:
             from transformers.utils.fx import symbolic_trace as \
                 hf_symbolic_trace
-            # NOTE: We pass in a fixed `input_names` based on what is needed
-            # for MT5ForConditionalGeneration's forward pass
-            input_names = ["input_ids", "attention_mask", "decoder_input_ids"]
             traced = hf_symbolic_trace(
                 self.model,
-                input_names=input_names,
+                input_names=self.input_names,
                 batch_size=self.batch_size,
             ) \
                 if self.seq_length is None \
                 else hf_symbolic_trace(
                     self.model,
-                    input_names=input_names,
+                    input_names=self.input_names,
                     batch_size=self.batch_size,
                     sequence_length=self.seq_length,
                 )

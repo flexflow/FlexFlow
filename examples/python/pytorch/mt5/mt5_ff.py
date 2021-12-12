@@ -93,11 +93,12 @@ def top_level_task():
     encoder_seq_length = ids.shape[1]
     decoder_seq_length = y_ids.shape[1]
     seq_length = (encoder_seq_length, decoder_seq_length)
+    input_names = ["input_ids", "attention_mask", "decoder_input_ids"]
 
     print("Tracing the model...")
     hf_model = PyTorchModel(
-        model, is_hf_model=True, batch_size=ffconfig.batch_size,
-        seq_length=seq_length,
+        model, is_hf_model=True, input_names=input_names,
+        batch_size=batch_size, seq_length=seq_length,
     )
     output_tensors = hf_model.torch_to_ff(ffmodel, input_tensors, verbose=True)
     ffoptimizer = SGDOptimizer(ffmodel, lr=0.01)
