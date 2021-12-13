@@ -24,6 +24,13 @@ public:
   AggrMode aggr;
 };
 
+struct EmbeddingParams {
+  int num_entries, out_channels;
+  AggrMode aggr;
+
+  size_t get_hash(const ParallelTensor input) const;
+};
+
 class Embedding : public Op {
 public:
   Embedding(FFModel& model,
@@ -85,6 +92,10 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
+
+  size_t get_params_hash() const override;  
+
+  EmbeddingParams get_params() const;
 private:
   template<int NDIM>
   static void forward_task_with_dim(const Legion::Task *task,

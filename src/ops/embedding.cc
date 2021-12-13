@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/embedding.h"
+#include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
 
@@ -64,6 +65,28 @@ Tensor FFModel::embedding(const Tensor input,
   layers.push_back(embed);
   return embed->outputs[0];
 #endif
+}
+
+EmbeddingParams Embedding::get_params() const {
+  EmbeddingParams params;
+  params.num_entries = this->num_entries;
+  params.out_channels = this->out_channels;
+  params.aggr = this->aggr;
+
+  return params;
+}
+
+size_t EmbeddingParams::get_hash(const ParallelTensor input) const {
+  size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, this->num_entries);
+  hash_combine(hash, this->out_channels);
+  hash_combine(hash, this->aggr);
+
+  return hash;
+}
+
+size_t Embedding::get_params_hash() const {
+  return this->get_params().get_hash(this->inputs[0]);
 }
 
 Op* Embedding::create_operator_from_layer(
