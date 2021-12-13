@@ -100,9 +100,13 @@ bool load_strategies_from_file(const std::string& filename,
     std::cerr << "Failed to open strategy file for reading" << std::endl;
     return false;
   }
+  int num_lines = std::count(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>(), '\n');
+  input.clear();
+  input.seekg(0);
 
   int ops_size = 0;
-  input >> ops_size; 
+  input >> ops_size;
+  bool nonuniform = ((num_lines - 1) / ops_size == 7); 
   for (int i = 0; i < ops_size; i++) {
     ParallelConfig config;
     char op_name[MAX_OPNAME];
@@ -136,6 +140,11 @@ bool load_strategies_from_file(const std::string& filename,
     for (int j = 0; j < device_ids_size; j++) {
       input >> config.device_ids[j];
       //printf("%d\t", config.device_ids[j]);
+    }
+    if (nonuniform) {
+      for(int j = 0; j < device_ids_size; j++) {
+        input >> config.device_relative_compute[j];
+      }
     }
     //printf("\n");
     MappingTagID hash = FFConfig::get_hash_id(op_name);

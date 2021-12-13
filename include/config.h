@@ -67,6 +67,7 @@ struct ParallelConfig {
   DeviceType device_type;
   int nDims, dim[MAX_TENSOR_DIM];
   int device_ids[MAX_NUM_WORKERS];
+  float device_relative_compute[MAX_NUM_WORKERS];
 #ifdef FF_USE_NCCL
   ncclComm_t nccl_comms[MAX_NUM_WORKERS];
 #endif
