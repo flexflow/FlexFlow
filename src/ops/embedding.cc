@@ -42,13 +42,46 @@ Tensor FFModel::embedding(const Tensor input,
                           Initializer* kernel_initializer,
                           const char* name)
 {
-  assert(false);
+  Layer* embed = new Layer(this, OP_EMBEDDING, name, 1/*inputs*/,
+                           1/*weights*/, 1/*outputs*/, input);
+  int numdims = input->num_dims;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdims; i++)
+    dims[i] = input->dims[i];
+  dims[0] = out_dim;
+  embed->data_type = DT_FLOAT;
+  embed->outputs[0] = create_tensor_legion_ordering(
+      numdims, dims, embed->data_type, embed, 0, false/*create_grad*/);
+  embed->add_int_property("num_entries", num_entries);
+  embed->add_int_property("out_dim", out_dim);
+  embed->add_int_property("aggr_mode", aggr);
+  embed->add_initializer("kernel", kernel_initializer);
+  layers.push_back(embed);
+  return embed->outputs[0];
 #ifdef DEADCODE
   Embedding* embed = new Embedding(*this, input, num_entries, out_dim,
                                    aggr, false/*allocate_weights*/, name);
   layers.push_back(embed);
   return embed->outputs[0];
 #endif
+}
+
+Op* Embedding::create_operator_from_layer(
+    FFModel& model,
+    const Layer* layer,
+    const std::vector<ParallelTensor>& inputs) {
+  long long value;
+  layer->get_int_property("num_entries", value);
+  int num_entries = value;
+  layer->get_int_property("out_dim", value);
+  int out_dim = value;
+  layer->get_int_property("aggr_mode", value);
+  AggrMode aggr = (AggrMode) value;
+  Initializer *kernel_initializer;
+  layer->get_initializer("kernel", kernel_initializer);
+  return new Embedding(model,
+      inputs[0], num_entries, out_dim, aggr,
+      false/*allocate_weights*/, layer->name);
 }
 
 int Embedding::input_vocab_size_replica_dim() const {

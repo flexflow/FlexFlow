@@ -2378,9 +2378,12 @@ Op* FFModel::create_operator_from_layer(Layer* layer,
       ParallelTensor pt = create_parallel_tensor_legion_ordering(
           num_dims + 1, dims, tensor->data_type, nullptr, 0,
           true/*gradients*/, tensor->tensor_guid);
-      // assert that this tensor has been mapped before
+      // assert that this tensor hasn't been mapped before
       assert(tensor->parallel_tensor == nullptr);
       tensor->parallel_tensor = pt;
+      // start from data parllel tensor
+      //Repartition* part = new Repartition(*this, pt, num_dims-1, config.numNodes * config.workersPerNode);
+      //operators.push_back(part);
       return operators[operators.size()-1];
     }
     case OP_CONCAT:
@@ -2392,6 +2395,12 @@ Op* FFModel::create_operator_from_layer(Layer* layer,
     case OP_CONV2D:
     {
       Op* op = Conv2D::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_EMBEDDING:
+    {
+      Op* op = Embedding::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
