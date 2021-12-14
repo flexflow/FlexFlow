@@ -45,6 +45,15 @@ LegionRuntime::Logger::Category log_xfer_matches("xfer_matches");
 
 const TensorX TensorX::NO_TX = TensorX();
 
+GraphXfer* create_combine_inceptionA(FFModel* model,
+                                     int num_dims,
+                                     int num_parts);
+
+GraphXfer* create_combine_concat(FFModel* model,
+                                 int num_inputs,
+                                 int num_dims,
+                                 int num_parts);
+
 GraphXfer* create_replicate_linear_combine(FFModel* model,
                                            int num_dims,
                                            int num_parts,
@@ -1005,6 +1014,13 @@ OpX* GraphXfer::create_conv2d(const TensorX& input,
   return conv;
 }
 
+OpX* GraphXfer::create_pool2d(const TensorX& input,
+                              const OpX* matchOpX) {
+  OpX* pool = new OpX(OP_POOL2D, 1, 1, input);
+  pool->matchOpX = matchOpX;
+  return pool;
+}
+
 OpX* GraphXfer::create_attention(const TensorX& query,
                                  const TensorX& key,
                                  const TensorX& value,
@@ -1292,7 +1308,9 @@ void GraphSearchHelper::generate_all_pcg_xfers()
   }
   for (const auto& it : all_parallel_degrees) {
     all_pcg_xfers.push_back(create_partition_attention_combine(this->model, 16/*num_heads*/, it));
-    all_pcg_xfers.push_back(create_partition_conv2d_combine(this->model, 5/*num_dims*/, it));
+    all_pcg_xfers.push_back(create_combine_inceptionA(this->model, 5/*num_dims*/, it));
+    all_pcg_xfers.push_back(create_combine_concat(this->model, 4/*num_inputs*/, 5/*num_dims*/, it));
+    //all_pcg_xfers.push_back(create_partition_conv2d_combine(this->model, 5/*num_dims*/, it));
     all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_RELU, false));
     all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_SIGMOID, false));
     all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_NONE, false));
@@ -1722,7 +1740,6 @@ T GraphSearchHelper::generic_sequence_optimize(
     this->logger->debug() << "Output shape: <none>";
   }
 
-  Node source_node = graph->find_source_node();
   tl::optional<Node> bottleneck = this->find_split_node(graph, this->config.base_optimize_threshold);
   /* Node bottleneck = graph->find_nontrivial_bottleneck_node(sink_node, source_node); */
 
@@ -1985,6 +2002,74 @@ GraphXfer* create_partition_conv2d_combine(FFModel* model,
       << "]";
   subst->name = oss.str();
 
+  return subst;
+}
+
+GraphXfer* create_combine_inceptionA(FFModel* model,
+                                     int num_dims,
+                                     int num_parts) {
+  // 3 convs and 1 pool2d
+  assert(num_dims == 5);
+  GraphXfer* subst = new GraphXfer(model);
+  TensorX input = subst->new_tensor();
+  OpX* src_combine = subst->create_combine(input, num_dims-2, num_parts);
+  OpX* src_conv1 = subst->create_conv2d(src_combine->outputs[0], NULL/*matchOpX*/);
+  OpX* src_conv2 = subst->create_conv2d(src_combine->outputs[0], NULL/*matchOpX*/);
+  OpX* src_conv3 = subst->create_conv2d(src_combine->outputs[0], NULL/*matchOpX*/);
+  OpX* src_pool = subst->create_pool2d(src_combine->outputs[0], NULL/*matchOpX*/);
+  subst->srcOps.push_back(src_combine);
+  subst->srcOps.push_back(src_conv1);
+  subst->srcOps.push_back(src_conv2);
+  subst->srcOps.push_back(src_conv3);
+  subst->srcOps.push_back(src_pool);
+  // dst ops
+  OpX* dst_conv1 = subst->create_conv2d(input, src_conv1/*matchOpX*/);
+  OpX* dst_comb1 = subst->create_combine(dst_conv1->outputs[0], num_dims-2, num_parts);
+  OpX* dst_conv2 = subst->create_conv2d(input, src_conv2/*matchOpX*/);
+  OpX* dst_comb2 = subst->create_combine(dst_conv2->outputs[0], num_dims-2, num_parts);
+  OpX* dst_conv3 = subst->create_conv2d(input, src_conv3/*matchOpX*/);
+  OpX* dst_comb3 = subst->create_combine(dst_conv3->outputs[0], num_dims-2, num_parts);
+  OpX* dst_pool = subst->create_pool2d(input, src_pool/*matchOpX*/);
+  OpX* dst_comb4 = subst->create_combine(dst_pool->outputs[0], num_dims-2, num_parts);
+  subst->dstOps.push_back(dst_conv1);
+  subst->dstOps.push_back(dst_conv2);
+  subst->dstOps.push_back(dst_conv3);
+  subst->dstOps.push_back(dst_pool);
+  subst->dstOps.push_back(dst_comb1);
+  subst->dstOps.push_back(dst_comb2);
+  subst->dstOps.push_back(dst_comb3);
+  subst->dstOps.push_back(dst_comb4);
+  subst->map_output(src_conv1->outputs[0], dst_comb1->outputs[0]);
+  subst->map_output(src_conv2->outputs[0], dst_comb2->outputs[0]);
+  subst->map_output(src_conv3->outputs[0], dst_comb3->outputs[0]);
+  subst->map_output(src_pool->outputs[0], dst_comb4->outputs[0]);
+  subst->name = "create_combine_inceptionA";
+  return subst;
+}
+
+GraphXfer* create_combine_concat(FFModel* model,
+                                 int num_inputs,
+                                 int num_dims,
+                                 int num_parts) {
+  // assert 5D
+  assert(num_dims == 5);
+  GraphXfer* subst = new GraphXfer(model);
+  std::vector<TensorX> inputs, concat_inputs;
+  std::vector<OpX*> combines;
+  for (int i = 0; i < num_inputs; i++) {
+    inputs.push_back(subst->new_tensor());
+    combines.push_back(subst->create_combine(inputs[i], num_dims-2, num_parts));
+    concat_inputs.push_back(combines[i]->outputs[0]);
+    subst->srcOps.push_back(combines[i]);
+  }
+  OpX* concat1 = subst->create_concat(concat_inputs.data(), num_inputs, NULL/*matchOpX*/, 2);
+  subst->srcOps.push_back(concat1);
+  OpX* concat2 = subst->create_concat(inputs.data(), num_inputs, concat1/*matchOpX*/, 2);
+  OpX* combine = subst->create_combine(concat2->outputs[0], num_dims-2, num_parts);
+  subst->dstOps.push_back(concat2);
+  subst->dstOps.push_back(combine);
+  subst->map_output(concat1->outputs[0], combine->outputs[0]);
+  subst->name = "create_combine_concat";
   return subst;
 }
 

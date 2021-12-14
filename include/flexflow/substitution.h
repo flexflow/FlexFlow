@@ -158,6 +158,8 @@ public:
                      bool use_bias);
   OpX* create_conv2d(const TensorX& input,
                      const OpX* match_opx);
+  OpX* create_pool2d(const TensorX& input,
+                     const OpX* match_opx);
   OpX* create_attention(const TensorX& query,
                         const TensorX& key,
                         const TensorX& value,

@@ -24,6 +24,13 @@ public:
   AggrMode aggr;
 };
 
+struct EmbeddingParams {
+  int num_entries, out_channels;
+  AggrMode aggr;
+
+  size_t get_hash(const ParallelTensor input) const;
+};
+
 class Embedding : public Op {
 public:
   Embedding(FFModel& model,
@@ -45,6 +52,9 @@ public:
   //Parameter* get_parameter(int index);
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
+  static Op* create_operator_from_layer(FFModel& model,
+                                        const Layer* layer,
+                                        const std::vector<ParallelTensor>& inputs);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -103,6 +113,10 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
+
+  size_t get_params_hash() const override;  
+
+  EmbeddingParams get_params() const;
 private:
   template<int NDIM>
   static void forward_task_with_dim(const Legion::Task *task,
