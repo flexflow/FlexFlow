@@ -146,6 +146,11 @@ bool load_strategies_from_file(const std::string& filename,
         input >> config.device_relative_compute[j];
       }
     }
+    else {
+      for(int j = 0; j < device_ids_size; j++) { 
+	config.device_relative_compute[j] = 1 / static_cast<float>(device_ids_size);
+      }
+    }
     //printf("\n");
     MappingTagID hash = FFConfig::get_hash_id(op_name);
     assert(strategies.find(hash) == strategies.end());
