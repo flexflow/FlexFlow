@@ -733,8 +733,10 @@ FFModel::FFModel(FFConfig& _config)
     for (int j = 0; j < pc.nDims; j++)
       pc.dim[j] = 1;
     pc.dim[pc.nDims-1] = config.workersPerNode * config.numNodes;
-    for (int j = 0; j < pc.dim[pc.nDims-1]; j++)
+    for (int j = 0; j < pc.dim[pc.nDims-1]; j++) {
       pc.device_ids[j] = j;
+      pc.device_relative_compute[j] = 1 / static_cast<float>(pc.dim[pc.nDims-1]);
+    }
     config.strategies[FFConfig::DataParallelism_GPU_1D+i-1] = pc;
   }
   for (int i = start_dim; i <= end_dim; i++) {
