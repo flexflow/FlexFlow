@@ -897,14 +897,8 @@ Tensor FFModel::create_tensor(const int dims[],
     for (int j = 0; j < point.point_data[NDIM - 1]; j++) {
       fraction += pc.device_relative_compute[point.point_data[j]];
     }
-    lo.point_data[NDIM - 1] += static_cast<int>(std::round(fraction * rect.hi[NDIM - 1]));
-    hi.point_data[NDIM - 1] += static_cast<int>(std::round((fraction + pc.device_relative_compute[point.point_data[NDIM - 1]]) * rect.hi[NDIM - 1]));
-//    if (point.point_data[NDIM - 1] == 0) {
-//      hi.point_data[NDIM - 1] += (rect.hi[NDIM - 1] - rect.lo[NDIM - 1]) / 4;
-//    } else {
-//      lo.point_data[NDIM - 1] += 1 + (rect.hi[NDIM - 1] - rect.lo[NDIM - 1]) / 4;
-//      hi.point_data[NDIM - 1] += rect.hi[NDIM - 1];
-//    }
+    lo.point_data[NDIM - 1] += static_cast<int>(std::round(fraction * (rect.hi[NDIM - 1] - rect.lo[NDIM - 1] + 1)));
+    hi.point_data[NDIM - 1] += static_cast<int>(std::round((fraction + pc.device_relative_compute[point.point_data[NDIM - 1]]) * (rect.hi[NDIM - 1] - rect.lo[NDIM - 1] + 1))) - 1;
     part_idx++;
     Domain part(lo, hi);
     domain_map[point] = part;

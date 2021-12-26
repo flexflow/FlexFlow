@@ -275,9 +275,7 @@ void DataLoader::next_batch(FFModel& ff)
     for (PointInRectIterator<4> it(rect); it(); it++) {
       SampleIdxs meta;
       assert(ff.config.batchSize % (rect.hi[3] - rect.lo[3] + 1) == 0);
-//      meta.num_samples = ff.config.batchSize / (rect.hi[3] - rect.lo[3] + 1);
-      // HARDCODE
-      meta.num_samples = (*it)[3] == 0 ? ff.config.batchSize / 4 : 3 * ff.config.batchSize / 4; 
+      meta.num_samples = ff.config.batchSize / (rect.hi[3] - rect.lo[3] + 1);
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
@@ -306,9 +304,7 @@ void DataLoader::next_batch(FFModel& ff)
     for (PointInRectIterator<2> it(rect); it(); it++) {
       SampleIdxs meta;
       assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-//      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
-      // HARDCODE
-      meta.num_samples = (*it)[1] == 0 ? ff.config.batchSize / 4 : 3 * ff.config.batchSize / 4;
+      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));

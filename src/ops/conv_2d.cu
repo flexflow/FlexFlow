@@ -160,7 +160,8 @@ void Conv2D::create_output_and_partition(FFModel& model)
       ctx, inputs[0].part.get_index_partition());
   // Currently assume we didn't split across the channel dimension
   assert(num_par_c == 1);
-  if (input_rect == part_rect) {
+  // HACK
+  if (input_rect == part_rect && false) {
     input_lps[0] = inputs[0].part;
     input_grad_lps[0] = inputs[0].part_grad;
   } else {
