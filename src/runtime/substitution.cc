@@ -1744,7 +1744,6 @@ T GraphSearchHelper::generic_sequence_optimize(
     this->logger->debug() << "Output shape: <none>";
   }
 
-  Node source_node = graph->find_source_node();
   tl::optional<Node> bottleneck = this->find_split_node(graph, this->config.base_optimize_threshold);
   /* Node bottleneck = graph->find_nontrivial_bottleneck_node(sink_node, source_node); */
 
