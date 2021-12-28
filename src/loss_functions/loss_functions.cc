@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford
+/* Copyright 2022 CMU, Stanford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,34 +40,12 @@ Loss::Loss(LossType _loss_type, bool _repl_labels)
 void Loss::backward(FFModel* model,
                     const ParallelTensor logit,
                     const ParallelTensor label)
-#ifdef DEADCODE
-{
-  assert(logit->num_dims == label->num_dims);
-  int dim = logit->num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      backward_with_dim<DIM>(model, logit, label); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      assert(false);
-    }
-  }
-}
-
-template<int NDIM>
-void Loss::backward_with_dim(FFModel* model,
-                             const ParallelTensor logit,
-                             const ParallelTensor label)
-#endif
 {
   // Compute scale factor for loss backpropagation
-  scale_factor = 1.0f/ logit->dims[logit->num_dims-1].size;
+  int last_non_replica_dim = logit->num_dims-1;
+  while (logit->dims[last_non_replica_dim].is_replica_dim)
+    last_non_replica_dim -= 1;
+  scale_factor = 1.0f/ logit->dims[last_non_replica_dim].size;
   //scale_factor = 1.0f;
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
