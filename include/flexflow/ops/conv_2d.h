@@ -90,6 +90,14 @@ public:
   cudnnConvolutionFwdAlgo_t fwdAlgo;
   cudnnConvolutionBwdFilterAlgo_t bwdFilterAlgo;
   cudnnConvolutionBwdDataAlgo_t bwdDataAlgo;
+#else
+  miopenTensorDescriptor_t inputTensor, biasTensor, outputTensor;
+  miopenTensorDescriptor_t filterDesc;
+  miopenActivationDescriptor_t actiDesc;
+  miopenConvolutionDescriptor_t convDesc;
+  miopenConvFwdAlgorithm_t fwdAlgo;
+  miopenConvBwdWeightsAlgorithm_t bwdFilterAlgo;
+  miopenConvBwdDataAlgorithm_t bwdDataAlgo;
 #endif
   bool relu, use_bias;
   char op_name[MAX_OPNAME];

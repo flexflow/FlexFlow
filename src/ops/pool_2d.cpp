@@ -113,12 +113,11 @@ void Pool2D::forward_kernel(const Pool2DMeta* m,
 {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-#if 0
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDNN(hipdnnPoolingForward(m->handle.dnn, m->poolDesc,
-                                 &alpha, m->inputTensor, input_ptr,
-                                 &beta, m->outputTensor, output_ptr));
-#endif
+  checkCUDNN(miopenPoolingForward(m->handle.dnn, m->poolDesc,
+                                  &alpha, m->inputTensor, input_ptr,
+                                  &beta, m->outputTensor, output_ptr,
+                                  true, m->handle.workSpace, m->handle.workSpaceSize));
 }
 
 /*
@@ -172,14 +171,14 @@ void Pool2D::backward_kernel(const Pool2DMeta* m,
 {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-#if 0
   float alpha = 1.0f;
-  checkCUDNN(hipdnnPoolingBackward(m->handle.dnn, m->poolDesc,
-                                  &alpha, m->outputTensor, output_ptr,
-                                  m->outputTensor, output_grad_ptr,
-                                  m->inputTensor, input_ptr,
-                                  &alpha, m->inputTensor, input_grad_ptr));
-#endif
+  checkCUDNN(miopenPoolingBackward(m->handle.dnn, m->poolDesc,
+                                   &alpha, m->outputTensor, output_ptr,
+                                   m->outputTensor, output_grad_ptr,
+                                   m->inputTensor, input_ptr,
+                                   &alpha, m->inputTensor, input_grad_ptr,
+                                   m->handle.workSpace));
+
 }
 
 /*
