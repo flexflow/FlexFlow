@@ -21,6 +21,7 @@
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/conv_2d.h"
+#include "flexflow/ops/dropout.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/flat.h"
@@ -1388,10 +1389,10 @@ void GraphSearchHelper::graph_optimize(size_t budget,
   best_graph = std::unique_ptr<Graph>(new Graph(optimal.graph.value()));
   best_graph->simplify(settings);
   best_graph->print_strategy_computation_graph(optimal.views);
+  optimal_views = best_graph->optimal_views();
   // for (auto const &kv : optimal.views) {
   //   std::cout << "Node " << kv.first.to_string() << " View " << kv.second << std::endl;
   // }
-  std::exit(1);
 }
 
 void GraphSearchHelper::graph_optimize_no_split(
@@ -2552,6 +2553,11 @@ bool FFModel::convert_graph_to_operators(const Graph* graph,
       case OP_CONV2D:
       {
         new_op = new Conv2D(*this, *(Conv2D*)node.ptr, inputs[0], true);
+        break;
+      }
+      case OP_DROPOUT:
+      {
+        new_op = new Dropout(*this, *(Dropout*)node.ptr, inputs[0]);
         break;
       }
       case OP_LINEAR:

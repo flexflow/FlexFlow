@@ -19,6 +19,7 @@
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/conv_2d.h"
+#include "flexflow/ops/dropout.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/element_unary.h"
@@ -1816,6 +1817,11 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_CONV2D:
       { 
         node = Conv2D::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_DROPOUT:
+      {
+        node = Dropout::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_POOL2D:

@@ -74,6 +74,7 @@ namespace FlexFlow {
 class FFConfig;
 
 struct ParallelTensorBase {
+  static constexpr ParallelTensorBase* NO_TENSOR = nullptr;
   ParallelTensorBase(void) = default;
   ParallelTensorBase(const ParallelTensorBase& rhs);
   //Tensor& operator=(const Tensor& rhs);
