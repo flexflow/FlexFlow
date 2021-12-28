@@ -100,7 +100,9 @@ void Loss::backward_task_with_dim(const Task *task,
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     TensorAccessorR<int, NDIM> acc_label(
         regions[2], task->regions[2], FID_DATA, ctx, runtime);
-    int num_samples = acc_logit.rect.hi[NDIM-1] - acc_logit.rect.lo[NDIM-1] + 1;
+    // assertion the outter-most dim is replica dim and replica degree is 1
+    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
+    int num_samples = acc_logit.rect.hi[NDIM-2] - acc_logit.rect.lo[NDIM-2] + 1;
     int num_classes = acc_logit.rect.volume() / num_samples;
     assert(acc_logit_grad.rect == acc_logit.rect);
     int k = 1;
@@ -135,7 +137,9 @@ void Loss::backward_task_with_dim(const Task *task,
     // other loss require label and logit have identical shape
     assert(acc_logit.rect == acc_label.rect);
     assert(acc_logit_grad.rect == acc_logit.rect);
-    int num_samples = acc_label.rect.hi[NDIM-1] - acc_label.rect.lo[NDIM-1] + 1;
+    // assertion the outter-most dim is replica dim and replica degree is 1
+    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
+    int num_samples = acc_label.rect.hi[NDIM-2] - acc_label.rect.lo[NDIM-2] + 1;
     int num_channels = acc_logit.rect.volume() / num_samples;
     if (loss->loss_type == LOSS_CATEGORICAL_CROSSENTROPY) {
       hipLaunchKernelGGL(categorical_crossentropy_loss_backward, GET_BLOCKS(acc_logit.rect.volume()), CUDA_NUM_THREADS, 0, stream,

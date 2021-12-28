@@ -61,10 +61,7 @@ public:
 #endif
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-<<<<<<< HEAD
                              CostMetrics& cost_metrics) const override;
-=======
-                             CostMetrics& cost_metrics) const;
 
   void serialize(Legion::Serializer& s) const override;
   static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);
@@ -72,7 +69,6 @@ public:
   size_t get_params_hash() const override;
 
   DropoutParams get_params() const;
->>>>>>> upstream/unify
 public:
   float rate;
   unsigned long long seed;

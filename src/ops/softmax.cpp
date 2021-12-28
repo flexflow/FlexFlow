@@ -57,7 +57,24 @@ OpMeta* Softmax::init_task(const Task *task,
   Domain output_domain = runtime->get_index_space_domain(
     ctx, task->regions[1].region.get_index_space());
   assert(input_domain == output_domain);
-  SoftmaxMeta* m = new SoftmaxMeta(handle, softmax, output_domain);
+  int ndims = input_domain.get_dim();
+  Domain domain;
+  for (int i = 0; i < ndims-1; i++)
+    assert(!softmax->outputs[0]->dims[i].is_replica_dim);
+  // Only the outter-most dim can be a replica_dim
+  if (softmax->outputs[0]->dims[ndims-1].is_replica_dim) {
+    int replica_degree = softmax->outputs[0]->dims[ndims-1].size;
+    domain.dim = ndims-1;
+    for (int i = 0; i < ndims-1; i++) {
+      domain.rect_data[i] = input_domain.rect_data[i];
+      domain.rect_data[i+ndims-1] = input_domain.rect_data[i+ndims];
+    }
+    domain.rect_data[2*ndims-3] = (domain.rect_data[2*ndims-3]+1)*replica_degree-1;
+    assert(domain.get_volume() == input_domain.get_volume());
+  } else {
+    domain = input_domain;
+  }
+  SoftmaxMeta* m = new SoftmaxMeta(handle, softmax, domain);
   //checkCUDNN(hipdnnCreateTensorDescriptor(&m->outputTensor));
   return m;
 }
@@ -130,8 +147,8 @@ void Softmax::forward_task_with_dim(
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
-    //print_tensor<2, float>(acc_input.ptr, acc_input.rect, "[Softmax:forward:input]");
-    //print_tensor<2, float>(acc_output.ptr, acc_output.rect, "[Softmax:forward:output]");
+    print_tensor<float>(acc_input.ptr, acc_input.rect.volume(), "[Softmax:forward:input]");
+    print_tensor<float>(acc_output.ptr, acc_output.rect.volume(), "[Softmax:forward:output]");
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
     hipEventDestroy(t_start);
@@ -207,8 +224,8 @@ void Softmax::backward_task_with_dim(
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
-    //print_tensor<2, float>(acc_output_grad.ptr, acc_output_grad.rect, "[Softmax:backward:output_grad]");
-    //print_tensor<2, float>(acc_input_grad.ptr, acc_input_grad.rect, "[Softmax:backward:input_grad]");
+    print_tensor<float>(acc_output_grad.ptr, acc_output_grad.rect.volume(), "[Softmax:backward:output_grad]");
+    print_tensor<float>(acc_input_grad.ptr, acc_input_grad.rect.volume(), "[Softmax:backward:input_grad]");
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
     hipEventDestroy(t_start);
