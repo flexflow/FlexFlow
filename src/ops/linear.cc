@@ -99,7 +99,8 @@ Linear::Linear(FFModel& model,
     _input),
   out_channels(out_dim),
   activation(_activation),
-  use_bias(_use_bias)
+  use_bias(_use_bias),
+  replica(ParallelTensorBase::NO_TENSOR)
 {
   data_type = _data_type;
   auto dimension_names = this->get_params().get_dimension_names(_input->get_shape());
