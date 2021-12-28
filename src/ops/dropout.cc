@@ -44,6 +44,65 @@ Tensor FFModel::dropout(const Tensor input,
 #endif
 }
 
+Op* Dropout::create_operator_from_layer(
+        FFModel& model,
+        const Layer* layer,
+        const std::vector<ParallelTensor>& inputs) {
+  long long value;
+  layer->get_int_property("seed", value);
+  int seed = value;
+  float rate;
+  layer->get_float_property("rate", rate);
+  return new Dropout(model, 
+      inputs[0],
+      rate,
+      seed,
+      layer->name);
+}
+
+DropoutParams Dropout::get_params() const {
+  DropoutParams params;
+  params.rate = this->rate;
+  params.seed = this->seed;
+
+  return params;
+}
+
+size_t DropoutParams::get_hash(const ParallelTensor input) const {
+  size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, this->rate);
+  hash_combine(hash, this->seed);
+
+  return hash;
+}
+
+size_t Dropout::get_params_hash() const {
+  return this->get_params().get_hash(this->inputs[0]);
+}
+
+using PCG::Node;
+Node FFModel::get_or_create_dropout_node(const ParallelTensor input,
+                                         const DropoutParams& params)
+{
+  // Don't check is_valid since all inputs should be valid for dropout
+  //if (!params.is_valid(input)) {
+  //  return Node::INVALID_NODE;
+  //}
+
+  size_t hash = params.get_hash(input);
+
+  Dropout *dropout = nullptr;
+  const auto &it = this->cached_dropout_ops.find(hash);
+  if (it != this->cached_dropout_ops.end()) {
+    dropout = it->second;
+  } else {
+    dropout = new Dropout(*this, input, params.rate, params.seed, nullptr);
+    cached_dropout_ops[hash] = dropout;
+  }
+
+  return this->new_node(dropout);
+}
+
 Dropout::Dropout(FFModel& model,
                  const ParallelTensor _input,
                  float _rate,
@@ -59,6 +118,12 @@ Dropout::Dropout(FFModel& model,
   numOutputs = 1;
   outputs[0] = model.create_parallel_tensor_legion_ordering(_input->num_dims, dims, DT_FLOAT, this);
 }
+
+Dropout::Dropout(FFModel& model,
+                 Dropout const &other,
+                 const ParallelTensor input)
+: Dropout(model, input, other.rate, other.seed, other.name)
+{}
 
 #ifdef DEADCODE
 void Dropout::map_output_tensors(FFModel& model)
@@ -175,5 +240,21 @@ void Dropout::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Dropout::serialize(Legion::Serializer &sez) const {
+  sez.serialize(this->rate);
+  sez.serialize(this->seed);
+}
+
+Node Dropout::deserialize(FFModel& ff, Legion::Deserializer& dez, ParallelTensor inputs[], int num_inputs) {
+  assert (num_inputs == 1);
+  unsigned long long seed;
+  float rate;
+  dez.deserialize(rate);
+  dez.deserialize(seed);
+  DropoutParams params;
+  params.rate = rate;
+  params.seed = seed;
+  return ff.get_or_create_dropout_node(inputs[0], params);
+}
 
 }; // namespace FlexFlow

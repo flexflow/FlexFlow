@@ -6,6 +6,13 @@
 namespace FlexFlow {
 
 class DropoutMeta;
+
+struct DropoutParams {
+  float rate;
+  unsigned long long seed;
+  size_t get_hash(const ParallelTensor input) const;
+};
+
 class Dropout : public Op {
 public:
   Dropout(FFModel& model,
@@ -13,10 +20,16 @@ public:
           float rate,
           unsigned long long seed,
           const char* name);
+  Dropout(FFModel& model,
+          Dropout const &other,
+          const ParallelTensor input);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
   void print_layer(const FFModel& model) override {assert(0);}
+  static Op* create_operator_from_layer(FFModel& model,
+                                        const Layer* layer,
+                                        const std::vector<ParallelTensor>& inputs);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -48,7 +61,18 @@ public:
 #endif
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
+<<<<<<< HEAD
                              CostMetrics& cost_metrics) const override;
+=======
+                             CostMetrics& cost_metrics) const;
+
+  void serialize(Legion::Serializer& s) const override;
+  static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);
+
+  size_t get_params_hash() const override;
+
+  DropoutParams get_params() const;
+>>>>>>> upstream/unify
 public:
   float rate;
   unsigned long long seed;

@@ -504,6 +504,8 @@ ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
 class Concat;
 class Conv2D;
 class Conv2DParams;
+class Dropout;
+class DropoutParams;
 class ElementBinary;
 class ElementUnary;
 class Embedding;
@@ -890,6 +892,8 @@ public:
                                       bool use_bias);
   PCG::Node get_or_create_conv2d_node(const ParallelTensor input,
                                       const Conv2DParams& params);
+  PCG::Node get_or_create_dropout_node(const ParallelTensor input,
+                                       const DropoutParams& params);
   PCG::Node get_or_create_pool2d_node(const ParallelTensor input,
                                       int kernelH, int kernelW,
                                       int strideH, int strideW,
@@ -1038,11 +1042,12 @@ public:
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
   std::unordered_map<size_t, NoOp*> cached_input_ops;
   std::unordered_map<size_t, Concat*> cached_concat_ops;
+  std::unordered_map<size_t, Conv2D*> cached_conv2d_ops;
+  std::unordered_map<size_t, Dropout*> cached_dropout_ops;
   std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
   std::unordered_map<size_t, ElementUnary*> cached_element_unary_ops;
   std::unordered_map<size_t, Embedding*> cached_embedding_ops;
   std::unordered_map<size_t, Linear*> cached_linear_ops;
-  std::unordered_map<size_t, Conv2D*> cached_conv2d_ops;
   std::unordered_map<size_t, Pool2D*> cached_pool2d_ops;
   std::unordered_map<size_t, Flat*> cached_flat_ops;
   std::unordered_map<size_t, MultiHeadAttention*> cached_multihead_attn_ops;

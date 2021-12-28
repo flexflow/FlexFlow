@@ -124,10 +124,10 @@ Op::Op(FFModel& model,
     assert(tensors[i] != NULL);
     inputs[i] = tensors[i];
   }
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i] = NULL;
   }
@@ -167,10 +167,10 @@ Op::Op(FFModel& model,
       weights[i - numInputs] = _inputs[i];
     }
   }
-  //for (int i = 0; i < numInputs; i++) {
-  //  trainableInputs[i] = true;
-  //  resetInputGrads[i] = true;
-  //}
+  for (int i = 0; i < numInputs; i++) {
+    trainableInputs[i] = true;
+    //resetInputGrads[i] = true;
+  }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i] = NULL;
   }
@@ -2247,7 +2247,9 @@ void FFModel::backward(int seq_length)
         operators[l]->resetInputGrads[i] = false;
       }
 #endif
-    if(l == metrics_input && metrics_input < (int)operators.size()-1) continue; // TODO: If operator serves for metrics and for further prop
+    // TODO: If operator serves for metrics and for further prop
+    //if(l == metrics_input && metrics_input < (int)operators.size()-1)
+    //  continue;
     operators[l]->backward(*this);
   }
 }
@@ -2399,6 +2401,12 @@ Op* FFModel::create_operator_from_layer(Layer* layer,
     case OP_CONV2D:
     {
       Op* op = Conv2D::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_DROPOUT:
+    {
+      Op* op = Dropout::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -3191,7 +3199,8 @@ struct DefaultConfig {
   const static int simulator_max_num_segments = 1;
   const static int base_optimize_threshold = 10;
   const static bool enable_control_replication = true;
-  const static int python_data_loader_type = 1;
+  // The default python data loader type is 2 to enable control replication
+  const static int python_data_loader_type = 2;
 };
 
 FFConfig::FFConfig()

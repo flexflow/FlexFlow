@@ -21,6 +21,7 @@
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/conv_2d.h"
+#include "flexflow/ops/dropout.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/flat.h"
@@ -45,9 +46,10 @@ LegionRuntime::Logger::Category log_xfer_matches("xfer_matches");
 
 const TensorX TensorX::NO_TX = TensorX();
 
-GraphXfer* create_combine_inceptionA(FFModel* model,
-                                     int num_dims,
-                                     int num_parts);
+GraphXfer* create_combine_inception(FFModel* model,
+                                    int num_convs,
+                                    int num_dims,
+                                    int num_parts);
 
 GraphXfer* create_combine_concat(FFModel* model,
                                  int num_inputs,
@@ -1308,8 +1310,11 @@ void GraphSearchHelper::generate_all_pcg_xfers()
   }
   for (const auto& it : all_parallel_degrees) {
     all_pcg_xfers.push_back(create_partition_attention_combine(this->model, 16/*num_heads*/, it));
-    all_pcg_xfers.push_back(create_combine_inceptionA(this->model, 5/*num_dims*/, it));
-    all_pcg_xfers.push_back(create_combine_concat(this->model, 4/*num_inputs*/, 5/*num_dims*/, it));
+    // rewrites for the inception model
+    for (int i = 3; i <= 6; i++) {
+      all_pcg_xfers.push_back(create_combine_inception(this->model, i-1/*num_convs*/, 5/*num_dims*/, it));
+      all_pcg_xfers.push_back(create_combine_concat(this->model, i/*num_inputs*/, 5/*num_dims*/, it));
+    }
     //all_pcg_xfers.push_back(create_partition_conv2d_combine(this->model, 5/*num_dims*/, it));
     all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_RELU, false));
     all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_SIGMOID, false));
@@ -1384,10 +1389,10 @@ void GraphSearchHelper::graph_optimize(size_t budget,
   best_graph = std::unique_ptr<Graph>(new Graph(optimal.graph.value()));
   best_graph->simplify(settings);
   best_graph->print_strategy_computation_graph(optimal.views);
+  optimal_views = best_graph->optimal_views();
   // for (auto const &kv : optimal.views) {
   //   std::cout << "Node " << kv.first.to_string() << " View " << kv.second << std::endl;
   // }
-  std::exit(1);
 }
 
 void GraphSearchHelper::graph_optimize_no_split(
@@ -2005,44 +2010,38 @@ GraphXfer* create_partition_conv2d_combine(FFModel* model,
   return subst;
 }
 
-GraphXfer* create_combine_inceptionA(FFModel* model,
-                                     int num_dims,
-                                     int num_parts) {
+GraphXfer* create_combine_inception(FFModel* model,
+                                    int num_convs,
+                                    int num_dims,
+                                    int num_parts) {
   // 3 convs and 1 pool2d
   assert(num_dims == 5);
   GraphXfer* subst = new GraphXfer(model);
   TensorX input = subst->new_tensor();
   OpX* src_combine = subst->create_combine(input, num_dims-2, num_parts);
-  OpX* src_conv1 = subst->create_conv2d(src_combine->outputs[0], NULL/*matchOpX*/);
-  OpX* src_conv2 = subst->create_conv2d(src_combine->outputs[0], NULL/*matchOpX*/);
-  OpX* src_conv3 = subst->create_conv2d(src_combine->outputs[0], NULL/*matchOpX*/);
-  OpX* src_pool = subst->create_pool2d(src_combine->outputs[0], NULL/*matchOpX*/);
   subst->srcOps.push_back(src_combine);
-  subst->srcOps.push_back(src_conv1);
-  subst->srcOps.push_back(src_conv2);
-  subst->srcOps.push_back(src_conv3);
+  std::vector<OpX*> src_convs;
+  for (int i = 0; i < num_convs; i++) {
+    OpX* conv = subst->create_conv2d(src_combine->outputs[0], NULL/*matchOpX*/);
+    src_convs.push_back(conv);
+    subst->srcOps.push_back(conv);
+  }
+  OpX* src_pool = subst->create_pool2d(src_combine->outputs[0], NULL/*matchOpX*/);
   subst->srcOps.push_back(src_pool);
   // dst ops
-  OpX* dst_conv1 = subst->create_conv2d(input, src_conv1/*matchOpX*/);
-  OpX* dst_comb1 = subst->create_combine(dst_conv1->outputs[0], num_dims-2, num_parts);
-  OpX* dst_conv2 = subst->create_conv2d(input, src_conv2/*matchOpX*/);
-  OpX* dst_comb2 = subst->create_combine(dst_conv2->outputs[0], num_dims-2, num_parts);
-  OpX* dst_conv3 = subst->create_conv2d(input, src_conv3/*matchOpX*/);
-  OpX* dst_comb3 = subst->create_combine(dst_conv3->outputs[0], num_dims-2, num_parts);
+  std::vector<OpX*> dst_convs;
+  for (int i = 0; i < num_convs; i++) {
+    OpX* conv = subst->create_conv2d(input, src_convs[i]/*matchOpX*/);
+    OpX* comb = subst->create_combine(conv->outputs[0], num_dims-2, num_parts);
+    subst->dstOps.push_back(conv);
+    subst->dstOps.push_back(comb);
+    subst->map_output(src_convs[i]->outputs[0], comb->outputs[0]);
+  }
   OpX* dst_pool = subst->create_pool2d(input, src_pool/*matchOpX*/);
-  OpX* dst_comb4 = subst->create_combine(dst_pool->outputs[0], num_dims-2, num_parts);
-  subst->dstOps.push_back(dst_conv1);
-  subst->dstOps.push_back(dst_conv2);
-  subst->dstOps.push_back(dst_conv3);
+  OpX* dst_comb = subst->create_combine(dst_pool->outputs[0], num_dims-2, num_parts);
   subst->dstOps.push_back(dst_pool);
-  subst->dstOps.push_back(dst_comb1);
-  subst->dstOps.push_back(dst_comb2);
-  subst->dstOps.push_back(dst_comb3);
-  subst->dstOps.push_back(dst_comb4);
-  subst->map_output(src_conv1->outputs[0], dst_comb1->outputs[0]);
-  subst->map_output(src_conv2->outputs[0], dst_comb2->outputs[0]);
-  subst->map_output(src_conv3->outputs[0], dst_comb3->outputs[0]);
-  subst->map_output(src_pool->outputs[0], dst_comb4->outputs[0]);
+  subst->dstOps.push_back(dst_comb);
+  subst->map_output(src_pool->outputs[0], dst_comb->outputs[0]);
   subst->name = "create_combine_inceptionA";
   return subst;
 }
@@ -2554,6 +2553,11 @@ bool FFModel::convert_graph_to_operators(const Graph* graph,
       case OP_CONV2D:
       {
         new_op = new Conv2D(*this, *(Conv2D*)node.ptr, inputs[0], true);
+        break;
+      }
+      case OP_DROPOUT:
+      {
+        new_op = new Dropout(*this, *(Dropout*)node.ptr, inputs[0]);
         break;
       }
       case OP_LINEAR:
