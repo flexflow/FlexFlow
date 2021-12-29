@@ -58,8 +58,8 @@ Embedding::Embedding(FFModel& model,
     outputs[0].adim[1] = inputs[0].adim[1];
   }
   weights[0].numDim = 2;
-  weights[0].adim[0] = num_entries;
-  weights[0].adim[1] = out_channels;
+  weights[0].adim[0] = out_channels;
+  weights[0].adim[1] = num_entries;
   numWeights = 1;
 }
 
@@ -96,7 +96,7 @@ void Embedding::create_weights_with_dim(FFModel& model)
   ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
   {
-    const int dims[2] = {out_channels, num_entries};
+    const int dims[2] = {num_entries, out_channels};
     // Embeddding weights and linear weights can be partitioned in the same way
     weights[0] = model.create_linear_weight<2, NDIM>(this, dims, DT_FLOAT, kernel_initializer, true/*create_grad*/, comm_type);
     assert(numWeights == 1);
@@ -344,30 +344,56 @@ void Embedding::forward_task_with_type(const Task *task,
   assert(task->regions.size() == 3);
   //const Embedding* embed = (Embedding*) task->args;
   const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
-  TensorAccessorR<TI, 2> accInput(
+  Domain input_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain output_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  Domain kernel_domain = runtime->get_index_space_domain(
+    ctx, task->regions[2].region.get_index_space());
+  if (m->aggr == AGGR_MODE_NONE) {
+    assert(kernel_domain.get_dim() == 2);
+    assert(input_domain.get_dim() + 1 == output_domain.get_dim());
+    for (size_t i = 0; i < input_domain.get_dim(); i++) {
+      assert(input_domain.hi()[i] == output_domain.hi()[i+1]);
+      assert(input_domain.lo()[i] == output_domain.lo()[i+1]);
+    }
+    assert(kernel_domain.hi()[0] - kernel_domain.lo()[0]
+        == output_domain.hi()[0] - output_domain.lo()[0]);
+  } else {
+    assert(kernel_domain.get_dim() == 2);
+    assert(input_domain.get_dim() + 1 == output_domain.get_dim());
+    for (size_t i = 1; i < input_domain.get_dim(); i++) {
+      assert(input_domain.hi()[i] == output_domain.hi()[i]);
+      assert(input_domain.lo()[i] == output_domain.lo()[i]);
+    }
+    assert(kernel_domain.hi()[0] - kernel_domain.lo()[0]
+        == output_domain.hi()[0] - output_domain.lo()[0]);
+  }
+  const TI* input_ptr = helperGetTensorPointerRO<TI>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> accOutput(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime, false/*readOutput*/);
-  TensorAccessorR<float, 2> accWeight(
+  float* output_ptr = helperGetTensorPointerWO<float>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  const float* kernel_ptr = helperGetTensorPointerRO<float>(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  // Input matches Output
-  assert(accInput.rect.hi[1] == accOutput.rect.hi[1]);
-  assert(accInput.rect.lo[1] == accOutput.rect.lo[1]);
-  // Weight matches Output
-  assert(accWeight.rect.hi[1] - accWeight.rect.lo[1]
-      == accOutput.rect.hi[0] - accOutput.rect.lo[0]);
-  int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
-  int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
-  int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
 
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  forward_kernel<TI>(accInput.ptr, accOutput.ptr, accWeight.ptr, in_dim, out_dim, batch_size,  m->aggr, accOutput.rect.volume(), stream);
+  if (m->aggr == AGGR_MODE_NONE) {
+    //TODO: to be implemented
+    fprintf(stderr, "To be implemented...\n");
+  } else {
+    int in_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
+    int out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
+    int effective_batch_size = input_domain.get_volume() / in_dim;
+    cudaStream_t stream;
+    checkCUDA(get_legion_stream(&stream));
+    forward_kernel<TI>(input_ptr, output_ptr, kernel_ptr,
+        in_dim, out_dim, effective_batch_size,
+        m->aggr, output_domain.get_volume(), stream);
+  }
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
-    print_tensor<TI>(accInput.ptr, accInput.rect.volume(), "[Embedding:forward:input]");
-    print_tensor<float>(accWeight.ptr, accWeight.rect.volume(), "[Embedding:forward:weight]");
-    print_tensor<float>(accOutput.ptr, accOutput.rect.volume(), "[Embedding:forward:output]");
+    //print_tensor<TI>(input_ptr, input_domain.get_volume(), "[Embedding:forward:input]");
+    //print_tensor<float>(kernel_ptr, kernel_domain.get_volume(), "[Embedding:forward:weight]");
+    //print_tensor<float>(output_ptr, output_domain.get_volume(), "[Embedding:forward:output]");
   }
 }
 
@@ -466,29 +492,57 @@ void Embedding::backward_task_with_type(const Task *task,
   assert(task->regions.size() == 3);
   //const Embedding* embed = (Embedding*) task->args;
   const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
-  TensorAccessorR<TI, 2> accInput(
+  Domain input_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain output_grad_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  Domain kernel_grad_domain = runtime->get_index_space_domain(
+    ctx, task->regions[2].region.get_index_space());
+  if (m->aggr == AGGR_MODE_NONE) {
+    assert(kernel_grad_domain.get_dim() == 2);
+    assert(input_domain.get_dim() + 1 == output_grad_domain.get_dim());
+    for (size_t i = 0; i < input_domain.get_dim(); i++) {
+      assert(input_domain.hi()[i] == output_grad_domain.hi()[i+1]);
+      assert(input_domain.lo()[i] == output_grad_domain.lo()[i+1]);
+    }
+    assert(kernel_grad_domain.hi()[0] - kernel_grad_domain.lo()[0]
+        == output_grad_domain.hi()[0] - output_grad_domain.lo()[0]);
+  } else {
+    assert(kernel_grad_domain.get_dim() == 2);
+    assert(input_domain.get_dim() + 1 == output_grad_domain.get_dim());
+    for (size_t i = 1; i < input_domain.get_dim(); i++) {
+      assert(input_domain.hi()[i] == output_grad_domain.hi()[i]);
+      assert(input_domain.lo()[i] == output_grad_domain.lo()[i]);
+    }
+    assert(kernel_grad_domain.hi()[0] - kernel_grad_domain.lo()[0]
+        == output_grad_domain.hi()[0] - output_grad_domain.lo()[0]);
+  }
+  const TI* input_ptr = helperGetTensorPointerRO<TI>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 2> accOutput(
+  const float* output_grad_ptr = helperGetTensorPointerWO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> accWeightGrad(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime, true/*readOutput*/);
-  // Input matches Output
-  assert(accInput.rect.hi[1] == accOutput.rect.hi[1]);
-  assert(accInput.rect.lo[1] == accOutput.rect.lo[1]);
-  // WeightGrad matches Output
-  assert(accWeightGrad.rect.hi[1] - accWeightGrad.rect.lo[1] == accOutput.rect.hi[0] - accOutput.rect.lo[0]);
-  int in_dim = accInput.rect.hi[0] - accInput.rect.lo[0] + 1;
-  int out_dim = accOutput.rect.hi[0] - accOutput.rect.lo[0] + 1;
-  int batch_size = accOutput.rect.hi[1] - accOutput.rect.lo[1] + 1;
+  float* kernel_grad_ptr = helperGetTensorPointerRW<float>(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  backward_kernel<TI>(accInput.ptr, accOutput.ptr, accWeightGrad.ptr, in_dim, out_dim, batch_size, m->aggr, accOutput.rect.volume(), stream);
+  if (m->aggr == AGGR_MODE_NONE) {
+    //TODO: to be implemented
+    fprintf(stderr, "To be implemented...\n");
+  } else {
+    int in_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
+    int out_dim = output_grad_domain.hi()[0] - output_grad_domain.lo()[0] + 1;
+    int effective_batch_size = input_domain.get_volume() / in_dim;
+    cudaStream_t stream;
+    checkCUDA(get_legion_stream(&stream));
+    backward_kernel<TI>(input_ptr, output_grad_ptr, kernel_grad_ptr,
+        in_dim, out_dim, effective_batch_size,
+        m->aggr, output_grad_domain.get_volume(), stream);
+  }
+
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
-    print_tensor<float>(accOutput.ptr, accOutput.rect.volume(), "[Embedding:backward:output_grad]");
-    print_tensor<float>(accWeightGrad.ptr, accWeightGrad.rect.volume(), "[Embedding:backward:weight_grad]");
-    print_tensor<TI>(accInput.ptr, accInput.rect.volume(), "[Embedding:backward:input]");
+    //print_tensor<float>(output_grad_ptr, output_grad_domain.volume(), "[Embedding:backward:output_grad]");
+    //print_tensor<float>(kernel_grad_ptr, kernel_grad_domain.get_volume(), "[Embedding:backward:weight_grad]");
+    //print_tensor<TI>(input_ptr, input_domain.get_volume(), "[Embedding:backward:input]");
   }
 }
 
