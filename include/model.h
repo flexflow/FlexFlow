@@ -617,8 +617,9 @@ private:
 class ElementBinaryMeta : public OpMeta {
 public:
   ElementBinaryMeta(FFHandler handle);
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
+  cudnnTensorDescriptor_t input1Tensor, input2Tensor, outputTensor;
   cudnnOpTensorDescriptor_t opDesc;
+  cudnnReduceTensorDescriptor_t reduceAddDesc;
   OperatorType op_type;
   bool inplace_a, has_same_operands;
 };

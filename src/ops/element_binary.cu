@@ -210,30 +210,38 @@ OpMeta* ElementBinary::init_task(const Task* task,
   m->profiling = eb->profiling;
   m->inplace_a = eb->inplace_a;
   m->has_same_operands = eb->has_same_operands;
-  Domain input_domain = runtime->get_index_space_domain(
+  Domain input1_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
-  Domain output_domain;
+  Domain input2_domain, output_domain;
   size_t num_regions = 1;
-  if (!m->inplace_a)
+  if (!m->has_same_operands) {
+    input2_domain = runtime->get_index_space_domain(
+        ctx, task->regions[num_regions].region.get_index_space());
     num_regions ++;
-  if (!m->has_same_operands)
+  } else {
+    input2_domain = input1_domain;
+  }
+  if (!m->inplace_a) {
+    output_domain = runtime->get_index_space_domain(
+        ctx, task->regions[num_regions].region.get_index_space());
     num_regions ++;
+    // check that input can broadcast to output
+    for (int i = 0; i < output_domain.dim; i++) {
+      int output_dim_size = output_domain.hi()[i] - output_domain.lo()[i] + 1;
+      if (i < input1_domain.dim) {
+        int input1_dim_size = input1_domain.hi()[i] - input1_domain.lo()[i] + 1;
+        assert(input1_dim_size == output_dim_size || input1_dim_size == 1);
+      }
+      if (i < input2_domain.dim) {
+        int input2_dim_size = input2_domain.hi()[i] - input2_domain.lo()[i] + 1;
+        assert(input2_dim_size == output_dim_size || input2_dim_size == 1);
+      }
+    }
+  } else {
+    output_domain = input1_domain;
+  }
   assert(task->regions.size() == regions.size());
   assert(regions.size() == num_regions);
-  if (m->inplace_a) {
-    output_domain = runtime->get_index_space_domain(
-        ctx, task->regions[num_regions-1].region.get_index_space());
-    assert(output_domain == input_domain);
-  } else {
-    output_domain = runtime->get_index_space_domain(
-        ctx, task->regions[num_regions-1].region.get_index_space());
-    // check that input can broadcast to output
-    for (int i = 0; i < input_domain.dim; i++) {
-      int input_dim_size = input_domain.hi()[i] - input_domain.lo()[i] + 1;
-      int output_dim_size = output_domain.hi()[i] - output_domain.lo()[i] + 1;
-      assert(input_dim_size == output_dim_size || input_dim_size == 1);
-    }
-  }
   cudnnOpTensorOp_t mode;
   switch (eb->op_type) {
     case OP_EW_ADD:
@@ -248,7 +256,10 @@ OpMeta* ElementBinary::init_task(const Task* task,
   }
   checkCUDNN(cudnnSetOpTensorDescriptor(m->opDesc, mode,
       CUDNN_DATA_FLOAT, CUDNN_PROPAGATE_NAN));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
+  checkCUDNN(cudnnSetReduceTensorDescriptor(m->reduceAddDesc, CUDNN_REDUCE_TENSOR_ADD,
+      CUDNN_DATA_FLOAT, CUDNN_PROPAGATE_NAN, CUDNN_REDUCE_TENSOR_NO_INDICES, CUDNN_32BIT_INDICES));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->input1Tensor, input1_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->input2Tensor, input2_domain));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
   return m;
 }
@@ -407,8 +418,8 @@ void ElementBinary::forward_kernel(const ElementBinaryMeta* m,
       assert(false);
   }
   checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
-      &alpha1, m->inputTensor, in1_ptr,
-      &alpha2, m->inputTensor, in2_ptr,
+      &alpha1, m->input1Tensor, in1_ptr,
+      &alpha2, m->input2Tensor, in2_ptr,
       &beta, m->outputTensor, out_ptr));
 }
 
@@ -429,7 +440,10 @@ void ElementBinary::forward_task(const Task* task,
   if (!m->has_same_operands) {
     Domain in2_domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-    assert(in1_domain == in2_domain);
+    // Currently only support broadcast for add and sub
+    if (in1_domain != in2_domain) {
+      assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD);
+    }
   }
   const float* in1_ptr = NULL, *in2_ptr = NULL;
   float *out_ptr = NULL;
@@ -640,44 +654,33 @@ void ElementBinary::backward_kernel(const ElementBinaryMeta* m,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
-  float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f;
-  switch (m->op_type) {
-    case OP_EW_ADD:
-      alpha1 = 1.0f;
-      alpha2 = 0.0f;
-      break;
-    case OP_EW_SUB:
-      alpha1 = -1.0f;
-      alpha2 = 0.0f;
-      break;
-    case OP_EW_MUL:
-      alpha1 = 1.0f;
-      alpha2 = 1.0f;
-      break;
-    default:
-      assert(false);
+  if (m->op_type == OP_EW_ADD || m->op_type == OP_EW_SUB) {
+    float alpha = 1.0f, beta = 1.0f;
+    checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
+        nullptr/*indices*/, 0/*indicesSizeInBytes*/,
+        m->handle.workSpace, m->handle.workSpaceSize,
+        &alpha, m->outputTensor, out_grad_ptr,
+        &beta, m->input1Tensor, in1_grad_ptr));
+    if (m->op_type == OP_EW_SUB)
+      alpha = -1.0f;
+    checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
+        nullptr/*indices*/, 0/*indicesSizeInBytes*/,
+        m->handle.workSpace, m->handle.workSpaceSize,
+        &alpha, m->outputTensor, out_grad_ptr,
+        &beta, m->input2Tensor, in2_grad_ptr));
+  } else if (m->op_type == OP_EW_MUL) {
+    float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f;
+    checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
+        &alpha1, m->outputTensor, out_grad_ptr,
+        &alpha2, m->input2Tensor, in2_ptr,
+        &beta, m->input1Tensor, in1_grad_ptr));
+    checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
+        &alpha1, m->outputTensor, out_grad_ptr,
+        &alpha2, m->input2Tensor, in1_ptr,
+        &beta, m->input1Tensor, in2_grad_ptr));
+  } else {
+    assert(false && "Unsupported ElementWise Binary Type");
   }
-  checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
-      &alpha1, m->outputTensor, out_grad_ptr,
-      &alpha2, m->inputTensor, in1_ptr,
-      &beta, m->inputTensor, in2_grad_ptr));
-  switch (m->op_type) {
-    case OP_EW_ADD:
-    case OP_EW_SUB:
-      alpha1 = 1.0f;
-      alpha2 = 0.0f;
-      break;
-    case OP_EW_MUL:
-      alpha1 = 1.0f;
-      alpha2 = 1.0f;
-      break;
-    default:
-      assert(false);
-  }
-  checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
-      &alpha1, m->outputTensor, out_grad_ptr,
-      &alpha2, m->inputTensor, in2_ptr,
-      &beta, m->inputTensor, in1_grad_ptr));
 }
 
 /*
@@ -853,9 +856,11 @@ void ElementBinary::backward(const FFModel& ff)
 ElementBinaryMeta::ElementBinaryMeta(FFHandler handler)
 : OpMeta(handler)
 {
-  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&input1Tensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&input2Tensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateOpTensorDescriptor(&opDesc));
+  checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceAddDesc));
   op_type = OP_ANY;
 }
 
@@ -863,12 +868,12 @@ bool ElementBinary::measure_operator_cost(Simulator* sim,
                                           const ParallelConfig& pc,
                                           CostMetrics& cost_metrics)
 {
-  Tensor sub_output, sub_input1, sub_input0;
+  Tensor sub_output, sub_input1, sub_input2;
   if (!outputs[0].get_output_sub_tensor(pc, sub_output, op_type))
     return false;
-  if (!inputs[0].get_input_sub_tensor(pc, sub_input0, op_type))
+  if (!inputs[0].get_input_sub_tensor(pc, sub_input1, op_type))
     return false;
-  if (!inputs[1].get_input_sub_tensor(pc, sub_input1, op_type))
+  if (!inputs[1].get_input_sub_tensor(pc, sub_input2, op_type))
     return false;
   ElementBinaryMeta* m = sim->ele_binary_meta;
   m->op_type = op_type;
@@ -886,18 +891,20 @@ bool ElementBinary::measure_operator_cost(Simulator* sim,
   }
   checkCUDNN(cudnnSetOpTensorDescriptor(m->opDesc, mode,
       CUDNN_DATA_FLOAT, CUDNN_PROPAGATE_NAN));
-  Domain input_domain = sub_input0.get_domain();
+  Domain input1_domain = sub_input1.get_domain();
+  Domain input2_domain = sub_input2.get_domain();
   Domain output_domain = sub_output.get_domain();
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->input1Tensor, input1_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->input2Tensor, input2_domain));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
   sim->free_all();
-  float* input0_ptr = (float*)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
-  assert(input0_ptr != NULL);
   float* input1_ptr = (float*)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
   assert(input1_ptr != NULL);
+  float* input2_ptr = (float*)sim->allocate(sub_input2.get_volume(), DT_FLOAT);
+  assert(input2_ptr != NULL);
   float* output_ptr = NULL;
   if (inplace_a) {
-    output_ptr = input0_ptr;
+    output_ptr = input1_ptr;
   } else {
     output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   }
@@ -907,22 +914,22 @@ bool ElementBinary::measure_operator_cost(Simulator* sim,
   checkCUDA(get_legion_stream(&stream));
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(m, input0_ptr, input1_ptr, output_ptr, stream);
+    forward_kernel(m, input1_ptr, input2_ptr, output_ptr, stream);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
-    float* input0_grad_ptr = (float*)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
-    assert(input0_grad_ptr != NULL);
-    float* input1_grad_ptr = (float*)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
+    float* input1_grad_ptr = (float*)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
     assert(input1_grad_ptr != NULL);
+    float* input2_grad_ptr = (float*)sim->allocate(sub_input2.get_volume(), DT_FLOAT);
+    assert(input2_grad_ptr != NULL);
     float* output_grad_ptr = NULL;
     if (inplace_a) {
-      output_grad_ptr = input0_grad_ptr;
+      output_grad_ptr = input1_grad_ptr;
     } else {
       output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     }
     assert(output_grad_ptr != NULL);
     backward = [&] {
-      backward_kernel(m, output_grad_ptr, input0_ptr, input1_ptr, input0_grad_ptr, input1_grad_ptr, stream);
+      backward_kernel(m, output_grad_ptr, input1_ptr, input2_ptr, input1_grad_ptr, input2_grad_ptr, stream);
     };
   }
 
