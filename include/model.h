@@ -1244,36 +1244,54 @@ public:
   static OpMeta* init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime);
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, Runtime *runtime);
-  static void forward_task_cpu(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
-                               Context ctx, Runtime *runtime);
-  static void backward_task_cpu(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
-                                Context ctx, Runtime *runtime);
-  static void forward_kernel(int64_t const *input_ptr,
-                             float *output_ptr,
-                             float const *weight_ptr,
-                             int in_dim,
-                             int out_dim,
-                             int batch_size,
-                             AggrMode aggr,
-                             int outputSize,
-                             cudaStream_t stream);
-  static void backward_kernel(int64_t const *input_ptr,
-                              float const *output_ptr,
-                              float *weight_grad_ptr,
-                              int in_dim,
-                              int out_dim,
-                              int batch_size,
-                              AggrMode aggr,
-                              int outputSize,
-                              cudaStream_t stream);
+  static void forward_task(
+      const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
+  static void backward_task(
+      const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
+  template<typename TI>
+  static void forward_task_with_type(
+      const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
+  template<typename TI>
+  static void backward_task_with_type(
+      const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
+  static void forward_task_cpu(
+      const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
+  static void backward_task_cpu(
+      const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
+  template<typename TI>
+  static void forward_kernel(
+      TI const *input_ptr,
+      float *output_ptr,
+      float const *weight_ptr,
+      int in_dim,
+      int out_dim,
+      int batch_size,
+      AggrMode aggr,
+      int outputSize,
+      cudaStream_t stream);
+  template<typename TI>
+  static void backward_kernel(
+      TI const *input_ptr,
+      float const *output_ptr,
+      float *weight_grad_ptr,
+      int in_dim,
+      int out_dim,
+      int batch_size,
+      AggrMode aggr,
+      int outputSize,
+      cudaStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics);
@@ -1299,6 +1317,7 @@ public:
 class EmbeddingMeta : public OpMeta {
 public:
   EmbeddingMeta(FFHandler handle): OpMeta(handle) {}
+  DataType input_data_type;
   AggrMode aggr;
 };
 

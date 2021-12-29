@@ -168,6 +168,7 @@ OpMeta* Embedding::init_task(const Task *task,
   const Embedding* embed = (Embedding*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   EmbeddingMeta* m = new EmbeddingMeta(handle);
+  m->input_data_type = embed->inputs[0].data_type;
   m->profiling = embed->profiling;
   m->aggr = embed->aggr;
   return m;
@@ -244,8 +245,9 @@ void Embedding::init_with_dim(const FFModel& ff)
   }
 }
 
+template<typename TI>
 __global__
-void embed_forward(const int64_t* input,
+void embed_forward(const TI* input,
                    float* output,
                    const float* embed,
                    int out_dim,
@@ -259,7 +261,7 @@ void embed_forward(const int64_t* input,
     int idx = i / out_dim;
     int off = i % out_dim;
     for (int j = 0; j < in_dim; j++) {
-      int64_t wordIdx = input[idx * in_dim + j];
+      TI wordIdx = input[idx * in_dim + j];
       output[i] += embed[wordIdx * out_dim + off];
       if (aggr == AGGR_MODE_SUM) {
       } else {
@@ -270,8 +272,9 @@ void embed_forward(const int64_t* input,
   }
 }
 
+template<typename TI>
 __global__
-void embed_backward(const int64_t* input,
+void embed_backward(const TI* input,
                     const float* output,
                     float* embed,
                     int out_dim,
@@ -291,13 +294,14 @@ void embed_backward(const int64_t* input,
       gradient = output[i] / in_dim;
     }
     for (int j = 0; j < in_dim; j++) {
-      int64_t wordIdx = input[idx * in_dim + j];
+      TI wordIdx = input[idx * in_dim + j];
       atomicAdd(embed + wordIdx * out_dim + off, gradient);
     }
   }
 }
 
-void Embedding::forward_kernel(int64_t const *input_ptr,
+template<typename TI>
+void Embedding::forward_kernel(const TI* input_ptr,
                                float *output_ptr,
                                float const *weight_ptr,
                                int in_dim,
@@ -307,7 +311,7 @@ void Embedding::forward_kernel(int64_t const *input_ptr,
                                int outputSize,
                                cudaStream_t stream)
 {
-  embed_forward<<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
+  embed_forward<TI><<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
       input_ptr, output_ptr, weight_ptr, out_dim, in_dim, batch_size, aggr);
 }
 
@@ -316,16 +320,31 @@ void Embedding::forward_kernel(int64_t const *input_ptr,
   regions[1](O): output
   regions[2](I): kernel
 */
-__host__
-void Embedding::forward_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+
+void Embedding::forward_task(const Task*task,
+                             const std::vector<PhysicalRegion>& regions,
                              Context ctx, Runtime* runtime)
+{
+  const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
+  if (m->input_data_type == DT_INT32) {
+    forward_task_with_type<int32_t>(task, regions, ctx, runtime);
+  } else if (m->input_data_type == DT_INT64) {
+    forward_task_with_type<int64_t>(task, regions, ctx, runtime);
+  } else {
+    assert(false && "Unsupported data type in Embedding forward");
+  }
+}
+
+template<typename TI>
+void Embedding::forward_task_with_type(const Task *task,
+                                       const std::vector<PhysicalRegion> &regions,
+                                       Context ctx, Runtime* runtime)
 {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   //const Embedding* embed = (Embedding*) task->args;
   const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
-  TensorAccessorR<int64_t, 2> accInput(
+  TensorAccessorR<TI, 2> accInput(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, 2> accOutput(
       regions[1], task->regions[1], FID_DATA, ctx, runtime, false/*readOutput*/);
@@ -343,10 +362,10 @@ void Embedding::forward_task(const Task *task,
 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  forward_kernel(accInput.ptr, accOutput.ptr, accWeight.ptr, in_dim, out_dim, batch_size,  m->aggr, accOutput.rect.volume(), stream);
+  forward_kernel<TI>(accInput.ptr, accOutput.ptr, accWeight.ptr, in_dim, out_dim, batch_size,  m->aggr, accOutput.rect.volume(), stream);
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
-    print_tensor<int64_t>(accInput.ptr, accInput.rect.volume(), "[Embedding:forward:input]");
+    print_tensor<TI>(accInput.ptr, accInput.rect.volume(), "[Embedding:forward:input]");
     print_tensor<float>(accWeight.ptr, accWeight.rect.volume(), "[Embedding:forward:weight]");
     print_tensor<float>(accOutput.ptr, accOutput.rect.volume(), "[Embedding:forward:output]");
   }
@@ -408,7 +427,8 @@ void Embedding::forward_with_dim(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Embedding::backward_kernel(int64_t const *input_ptr,
+template<typename TI>
+void Embedding::backward_kernel(const TI *input_ptr,
                                 float const *output_ptr,
                                 float *weight_grad_ptr,
                                 int in_dim,
@@ -418,19 +438,35 @@ void Embedding::backward_kernel(int64_t const *input_ptr,
                                 int outputSize,
                                 cudaStream_t stream)
 {
-  embed_backward<<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
+  embed_backward<TI><<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
       input_ptr, output_ptr, weight_grad_ptr, out_dim, in_dim, batch_size, aggr);
 }
 
-void Embedding::backward_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
-                              Context ctx, Runtime *runtime)
+__host__
+void Embedding::backward_task(const Task*task,
+                             const std::vector<PhysicalRegion>& regions,
+                             Context ctx, Runtime* runtime)
+{
+  const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
+  if (m->input_data_type == DT_INT32) {
+    backward_task_with_type<int32_t>(task, regions, ctx, runtime);
+  } else if (m->input_data_type == DT_INT64) {
+    backward_task_with_type<int64_t>(task, regions, ctx, runtime);
+  } else {
+    assert(false && "Unsupported data type in Embedding forward");
+  }
+}
+
+template<typename TI>
+void Embedding::backward_task_with_type(const Task *task,
+                                        const std::vector<PhysicalRegion> &regions,
+                                        Context ctx, Runtime *runtime)
 {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   //const Embedding* embed = (Embedding*) task->args;
   const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
-  TensorAccessorR<int64_t, 2> accInput(
+  TensorAccessorR<TI, 2> accInput(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorR<float, 2> accOutput(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
@@ -447,12 +483,12 @@ void Embedding::backward_task(const Task *task,
 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  backward_kernel(accInput.ptr, accOutput.ptr, accWeightGrad.ptr, in_dim, out_dim, batch_size, m->aggr, accOutput.rect.volume(), stream);
+  backward_kernel<TI>(accInput.ptr, accOutput.ptr, accWeightGrad.ptr, in_dim, out_dim, batch_size, m->aggr, accOutput.rect.volume(), stream);
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
     print_tensor<float>(accOutput.ptr, accOutput.rect.volume(), "[Embedding:backward:output_grad]");
     print_tensor<float>(accWeightGrad.ptr, accWeightGrad.rect.volume(), "[Embedding:backward:weight_grad]");
-    print_tensor<int64_t>(accInput.ptr, accInput.rect.volume(), "[Embedding:backward:input]");
+    print_tensor<TI>(accInput.ptr, accInput.rect.volume(), "[Embedding:backward:input]");
   }
 }
 
