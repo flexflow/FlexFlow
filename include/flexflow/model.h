@@ -34,6 +34,7 @@
 #include "layer.h"
 
 #include "ffconst.h"
+#include "fftype.h"
 
 namespace FlexFlow {
 
@@ -436,6 +437,9 @@ protected:
 public:
   OperatorType op_type;
   DataType data_type;
+  // the guid of the layer associated with the current operator
+  // layer_guid is used to match layer with op
+  LayerID layer_guid; 
   size_t op_guid;
   char name[MAX_OPNAME];
   Legion::IndexSpace parallel_is;
@@ -739,8 +743,17 @@ public:
                        int owner_idx = 0,
                        bool create_grad = true,
                        size_t input_tensor_guid = 0);
-  template<int NDIM>
-  Parameter create_weight(const int dims[],
+  Parameter create_weight(
+      int numdim,
+      const int dims[],
+      DataType data_type,
+      const Layer* owner_op = NULL,
+      bool create_grad = true,
+      Initializer* initializer = NULL,
+      ParameterSyncType sync_type = ParameterSyncType::NONE);
+  Parameter create_weight_legion_ordering(
+      int numdim,
+      const int dims[],
       DataType data_type,
       const Layer* owner_op = NULL,
       bool create_grad = true,
@@ -848,7 +861,8 @@ public:
                                          int num_entries,
                                          int out_channels,
                                          AggrMode aggr);
-  PCG::Node get_or_create_linear_node(const ParallelTensor input,
+  PCG::Node get_or_create_linear_node(const LayerID& layer_guid,
+                                      const ParallelTensor input,
                                       int out_dim,
                                       ActiMode activation,
                                       bool use_bias);
@@ -881,7 +895,8 @@ public:
                                        int combine_degree);
   PCG::Node get_or_create_fused_parallel_node(const ParallelTensor input,
                                               const std::vector<ParallelOpInfo>& parallel_ops);
-  PCG::Node get_or_create_conv2d_node(const ParallelTensor input, 
+  PCG::Node get_or_create_conv2d_node(const LayerID& layer_guid,
+                                      const ParallelTensor input,
                                       int out_channels,
                                       int kernel_h, int kernel_w,
                                       int stride_h, int stride_w, 
@@ -1019,7 +1034,8 @@ public:
 public:
   void set_iteration_config_sequence_length(int seq_length);
 public:
-  size_t op_global_guid, tensor_global_guid, parallel_tensor_global_guid, node_global_guid;
+  size_t op_global_guid, layer_global_guid;
+  size_t tensor_global_guid, parallel_tensor_global_guid, node_global_guid;
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer* optimizer;

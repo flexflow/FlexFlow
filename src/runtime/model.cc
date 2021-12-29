@@ -1047,6 +1047,7 @@ OpMeta::OpMeta(FFHandler _handle)
 
 FFModel::FFModel(FFConfig& _config)
 : op_global_guid(OP_GUID_FIRST_VALID),
+  layer_global_guid(LAYER_GUID_FIRST_VALID),
   tensor_global_guid(TENSOR_GUID_FIRST_VALID),
   parallel_tensor_global_guid(PARALLEL_TENSOR_GUID_FIRST_VALID),
   node_global_guid(NODE_GUID_FIRST_VALID),
@@ -1280,8 +1281,24 @@ ParallelTensor FFModel::create_parallel_tensor(
   return tensor;
 }
 
-template<int NDIM>
+Parameter FFModel::create_weight_legion_ordering(
+    int numdim,
+    const int dims[],
+    DataType data_type,
+    const Layer* layer,
+    bool create_grad,
+    Initializer* initializer,
+    ParameterSyncType sync_type)
+{
+  int c_dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++)
+    c_dims[i] = dims[numdim-1-i];
+  return create_weight(numdim, c_dims, data_type, layer, create_grad, initializer, sync_type);
+}
+
+
 Parameter FFModel::create_weight(
+    int numdim,
     const int dims[],
     DataType data_type,
     const Layer* owner_layer,
@@ -1291,6 +1308,7 @@ Parameter FFModel::create_weight(
 {
   Parameter p = new TensorBase();
   p->data_type = data_type;
+  assert(owner_layer != NULL);
   if (owner_layer == NULL) {
     Layer* weight_layer = new Layer(this, OP_WEIGHT, NULL, 0/*inputs*/, 0/*weights*/, 1/*outputs*/, NULL/*in1*/, NULL/*in2*/);
     layers.push_back(weight_layer);
@@ -1298,13 +1316,14 @@ Parameter FFModel::create_weight(
     p->owner_idx = 0;
   } else {
     p->owner_layer = owner_layer;
+    p->owner_idx = 0;
   }
   p->create_gradients = create_grad;
   p->initializer = initializer;
   p->sync_type = sync_type;
-  p->num_dims = NDIM;
-  for (int i = 0; i < NDIM; i++) {
-    p->dims[i] = dims[NDIM-1-i];
+  p->num_dims = numdim;
+  for (int i = 0; i < numdim; i++) {
+    p->dims[i] = dims[numdim-1-i];
   }
   assert(p->get_volume() > 0);
   return p;
@@ -2514,6 +2533,7 @@ void FFModel::compile(LossType loss_type,
     convert_graph_to_operators(best_graph, optimal_views);
     delete best_graph;
     for (const auto& layer : layers) {
+      // map inputs to parallel tensor
       if (layer->op_type == OP_INPUT) {
         Tensor tensor = layer->outputs[0];
         ParallelTensor parallel_tensor = nullptr;
@@ -2527,6 +2547,21 @@ void FFModel::compile(LossType loss_type,
         }
         assert(parallel_tensor != nullptr);
         tensor->parallel_tensor = parallel_tensor;
+      }
+      // map weights to parallel_tensor
+      for (int i = 0; i < layer->numWeights; i++) {
+        assert(layer->weights[i] != nullptr);
+        Tensor weight = layer->weights[i];
+        ParallelTensor parallel_weight = nullptr;
+        for (const auto& op : operators) {
+          if (op->layer_guid == layer->layer_guid) {
+            assert(op->op_type == layer->op_type);
+            assert(op->numWeights == layer->numWeights);
+            parallel_weight = op->weights[i];
+          }
+        }
+        assert(parallel_weight != nullptr);
+        weight->parallel_tensor = parallel_weight;
       }
     }
   }
@@ -4338,8 +4373,6 @@ void register_flexflow_internal_tasks()
 #define DIMFUNC(DIM) \
   template Tensor FFModel::create_tensor<DIM>(const int dims[], DataType data_type, const Layer* owner_op, int owner_idx, bool create_grad); \
   template ParallelTensor FFModel::create_parallel_tensor<DIM>(const ParallelDim dims[], DataType data_type, const Op* owner_op, int owner_idx, bool create_grad, size_t input_tensor_guid); \
-  template Parameter FFModel::create_weight<DIM>(const int dims[], DataType data_type, const Layer* owner_op, bool create_grad,\
-    Initializer* initializer, ParameterSyncType sync_type);\
   template ParallelParameter FFModel::create_parallel_weight<DIM>(const ParallelDim dims[], DataType data_type, const Op* owner_op, bool create_grad,\
     Initializer* initializer, ParameterSyncType sync_type);\
   template void FFModel::map_tensor_with_dim<DIM>(ParallelTensor tensor, const Op* parallel_op); \

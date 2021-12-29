@@ -31,19 +31,34 @@ Tensor FFModel::conv2d(const Tensor input,
                        Initializer* bias_initializer,
                        char const *name)
 {
+  //FIXME: temporarily disable use_bias
+  use_bias = false;
   assert(input->num_dims == 4); /*NCHW*/
 
   Layer *conv = new Layer(this, OP_CONV2D, name, 1/*inputs*/,
                           use_bias ? 2 : 1/*weights*/, 1/*outputs*/,
                           input);
-  int numdims = 4;
-  int dims[MAX_TENSOR_DIM];
-  dims[3] = input->dims[3];
-  dims[2] = outChannels;
-  dims[1] = 1 + (input->dims[1] + 2 * paddingH - kernelH) / strideH;
-  dims[0] = 1 + (input->dims[0] + 2 * paddingW - kernelW) / strideW;
-  conv->outputs[0] = create_tensor_legion_ordering(numdims, dims, DT_FLOAT,
-                                                   conv, 0, true/*create_grad*/);
+  {
+    int numdims = 4;
+    int dims[MAX_TENSOR_DIM];
+    dims[3] = input->dims[3];
+    dims[2] = outChannels;
+    dims[1] = 1 + (input->dims[1] + 2 * paddingH - kernelH) / strideH;
+    dims[0] = 1 + (input->dims[0] + 2 * paddingW - kernelW) / strideW;
+    conv->outputs[0] = create_tensor_legion_ordering(numdims, dims, DT_FLOAT,
+                                                     conv, 0, true/*create_grad*/);
+  }
+  {
+    int dims[4] = {kernelW, kernelH, input->dims[2], outChannels};
+    conv->weights[0] = create_weight_legion_ordering(4, dims, DT_FLOAT,
+        conv, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
+  }
+  if (use_bias)
+  {
+    int dims[1] = {outChannels};
+    conv->weights[1] = create_weight_legion_ordering(1, dims, DT_FLOAT,
+        conv, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
+  }
   conv->add_int_property("out_channels", outChannels);
   conv->add_int_property("kernel_h", kernelH);
   conv->add_int_property("kernel_w", kernelW);
@@ -107,6 +122,7 @@ Op* Conv2D::create_operator_from_layer(
   layer->get_initializer("kernel", kernel_initializer);
   layer->get_initializer("bias", bias_initializer);
   return new Conv2D(model, 
+      layer->layer_guid,
       inputs[0],
       out_channels,
       kernelH, kernelW,
@@ -121,6 +137,7 @@ Op* Conv2D::create_operator_from_layer(
 
 Conv2DParams Conv2D::get_params() const {
   Conv2DParams params;
+  params.layer_guid = this->layer_guid;
   params.out_channels = this->out_channels;
   params.kernel_h = this->kernel_h;
   params.kernel_w = this->kernel_w;
@@ -137,6 +154,7 @@ Conv2DParams Conv2D::get_params() const {
 
 size_t Conv2DParams::get_hash(const ParallelTensor input) const {
   size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, this->layer_guid.id);
   hash_combine(hash, this->out_channels);
   hash_combine(hash, this->kernel_h);
   hash_combine(hash, this->kernel_w);
@@ -171,7 +189,8 @@ Node FFModel::get_or_create_conv2d_node(const ParallelTensor input,
   if (it != cached_conv2d_ops.end()) {
     conv = it->second;
   } else {
-    conv = new Conv2D(*this, 
+    conv = new Conv2D(*this,
+                      params.layer_guid,
                       input, 
                       params.out_channels, 
                       params.kernel_h, params.kernel_w, 
@@ -188,7 +207,8 @@ Node FFModel::get_or_create_conv2d_node(const ParallelTensor input,
   return this->new_node(conv);
 }
 
-Node FFModel::get_or_create_conv2d_node(const ParallelTensor input,
+Node FFModel::get_or_create_conv2d_node(const LayerID& layer_guid,
+                                        const ParallelTensor input,
                                         int outChannels,
                                         int kernelH, int kernelW,
                                         int strideH, int strideW,
@@ -198,6 +218,7 @@ Node FFModel::get_or_create_conv2d_node(const ParallelTensor input,
                                         bool use_bias) 
 {
   Conv2DParams params;
+  params.layer_guid = layer_guid;
   params.out_channels = outChannels;
   params.kernel_h = kernelH;
   params.kernel_w = kernelW;
@@ -359,7 +380,8 @@ Conv2D::Conv2D(FFModel& model,
                Conv2D const &other,
                const ParallelTensor input,
                bool allocate_weights)
-: Conv2D(model, 
+: Conv2D(model,
+         other.layer_guid,
          input, 
          other.out_channels, 
          other.kernel_h,
@@ -393,6 +415,7 @@ bool Conv2DParams::is_valid(const ParallelTensor input) const {
 }
 
 Conv2D::Conv2D(FFModel& model,
+               const LayerID& _layer_guid,
                const ParallelTensor input,
                int outChannels,
                int kernelH, int kernelW,
@@ -413,6 +436,8 @@ Conv2D::Conv2D(FFModel& model,
   groups(groups),
   use_bias(use_bias)
 {
+  // overwrite layer_guid
+  layer_guid = _layer_guid;
   assert (input->num_dims == Conv2DInput::NUMDIM);
   assert (this->stride_h > 0);
   assert (this->stride_w > 0);
@@ -696,6 +721,7 @@ bool Conv2D::estimate_sync_cost(Simulator* sim,
 }
 
 void Conv2D::serialize(Legion::Serializer &sez) const {
+  sez.serialize(this->layer_guid.id);
   sez.serialize(this->out_channels);
   sez.serialize(this->kernel_h);
   sez.serialize(this->kernel_w);
@@ -716,7 +742,9 @@ Node Conv2D::deserialize(FFModel& ff, Legion::Deserializer& dez, ParallelTensor 
   int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
   bool use_bias;
   ActiMode activation;
-
+  size_t id;
+  dez.deserialize(id);
+  LayerID layer_guid(id);
   dez.deserialize(out_channels);
   dez.deserialize(kernel_h);
   dez.deserialize(kernel_w);
@@ -729,6 +757,7 @@ Node Conv2D::deserialize(FFModel& ff, Legion::Deserializer& dez, ParallelTensor 
   dez.deserialize(activation);
 
   return ff.get_or_create_conv2d_node(
+      layer_guid,
       inputs[0],
       out_channels,
       kernel_h, kernel_w,

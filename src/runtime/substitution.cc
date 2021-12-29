@@ -849,7 +849,7 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
       Linear* linear = (Linear*)opx->matchOpX->mapOp.ptr;
       //assert(opx->get_pm_constraint(PM_OUTPUT_CHANNELS, output_channels));
       assert(opx->get_pm_constraint(PM_ACTI, activation));
-      op = model->get_or_create_linear_node(inputs[0], linear->out_channels,
+      op = model->get_or_create_linear_node(linear->layer_guid, inputs[0], linear->out_channels,
                                             (ActiMode)activation, false);
       break;
     }

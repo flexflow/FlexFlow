@@ -2,6 +2,7 @@
 
 #include "tensor.h"
 #include "ffconst.h"
+#include "fftype.h"
 
 namespace FlexFlow {
 
@@ -37,11 +38,12 @@ public:
                           float& value) const;
   bool get_initializer(const std::string& key,
                        Initializer* &initializer) const;
+  Tensor get_parameter(int index);
   void print();
 public:
   OperatorType op_type;
   DataType data_type;
-  size_t op_guid;
+  LayerID layer_guid;
   char name[MAX_OPNAME];
   Tensor outputs[MAX_NUM_OUTPUTS];
   Tensor inputs[MAX_NUM_INPUTS];

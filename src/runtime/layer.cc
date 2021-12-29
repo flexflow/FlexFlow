@@ -13,16 +13,17 @@ Layer::Layer(FFModel* model,
              const Tensor _input2,
              const Tensor _input3,
              const Tensor _input4)
-: op_type(_type), numInputs(_numInputs), numWeights(_numWeights),
+: op_type(_type), layer_guid(model->layer_global_guid++),
+  numInputs(_numInputs), numWeights(_numWeights),
   numOutputs(_numOutputs)
 {
   std::string pcname;
-  if (_name == NULL) {
+  if (_name == nullptr) {
     pcname = model->get_operator_type_name(op_type);
   } else {
     pcname = std::string(_name);
   }
-  pcname = pcname + "_" + std::to_string(op_guid);
+  pcname = pcname + "_" + std::to_string(this->layer_guid.id);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   std::vector<Tensor> tensors;
@@ -31,11 +32,11 @@ Layer::Layer(FFModel* model,
   tensors.push_back(_input3);
   tensors.push_back(_input4);
   for (int i = 0; i < numInputs; i++) {
-    assert(tensors[i] != NULL);
+    assert(tensors[i] != nullptr);
     inputs[i] = tensors[i];
   }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    outputs[i] = NULL;
+    outputs[i] = nullptr;
   }
 }
 
@@ -46,24 +47,25 @@ Layer::Layer(FFModel* model,
              int _numWeights,
              int _numOutputs,
              const Tensor* _tensors)
-: op_type(_type), numInputs(_numInputs), numWeights(_numWeights),
+: op_type(_type), layer_guid(model->layer_global_guid++),
+  numInputs(_numInputs), numWeights(_numWeights),
   numOutputs(_numOutputs)
 {
   std::string pcname;
-  if (_name == NULL) {
+  if (_name == nullptr) {
     pcname = model->get_operator_type_name(op_type);
   } else {
     pcname = std::string(_name);
   }
-  pcname = pcname + "_" + std::to_string(op_guid);
+  pcname = pcname + "_" + std::to_string(layer_guid.id);
   assert(pcname.length() < MAX_OPNAME);
   std::strcpy(name, pcname.c_str());
   for (int i = 0; i < numInputs; i++) {
-    assert(_tensors[i] != NULL);
+    assert(_tensors[i] != nullptr);
     inputs[i] = _tensors[i];
   }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    outputs[i] = NULL;
+    outputs[i] = nullptr;
   }
 }
 
@@ -122,5 +124,11 @@ bool Layer::get_initializer(const std::string& key,
 
 void Layer::print()
 {}
+
+Tensor Layer::get_parameter(int index)
+{
+  assert(index < numWeights);
+  return weights[index];
+}
 
 }; // namespace FlexFlow
