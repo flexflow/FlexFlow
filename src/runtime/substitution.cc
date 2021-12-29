@@ -2495,6 +2495,8 @@ void FFModel::graph_optimize(size_t budget,
 bool FFModel::convert_graph_to_operators(const Graph* graph,
                                       const std::unordered_map<Node, MachineView>& optimal_views)
 {
+  // Clear operators
+  operators.clear();
   std::unordered_map<Node, int> todos;
   std::unordered_map<Node, Op*> node_to_op;
   std::vector<Node> queue;
