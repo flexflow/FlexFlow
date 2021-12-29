@@ -200,13 +200,14 @@ void Reshape::init(const FFModel& ff)
 }
 
 /*static*/
-void Reshape::forward_kernel(const float* input_ptr,
-                             float* output_ptr,
+template<typename T>
+void Reshape::forward_kernel(const T* input_ptr,
+                             T* output_ptr,
                              size_t num_elements,
                              cudaStream_t stream)
 {
   checkCUDA(cudaMemcpyAsync(output_ptr, input_ptr,
-      num_elements * sizeof(float), cudaMemcpyDeviceToDevice, stream));
+      num_elements * sizeof(T), cudaMemcpyDeviceToDevice, stream));
 }
 
 void Reshape::forward_task(const Task *task,
@@ -216,19 +217,41 @@ void Reshape::forward_task(const Task *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   //const Reshape* reshape = (const Reshape*) task->args;
+  DataType type = *((DataType*) task->args);
   Domain in_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain out_domain = runtime->get_index_space_domain(
     ctx, task->regions[1].region.get_index_space());
   assert(in_domain.get_volume() == out_domain.get_volume());
-  const float* in_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* out_ptr = helperGetTensorPointerWO<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  forward_kernel(in_ptr, out_ptr, in_domain.get_volume(), stream);
+  if (type == DT_FLOAT) {
+    const float* in_ptr = helperGetTensorPointerRO<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    float* out_ptr = helperGetTensorPointerWO<float>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    forward_kernel<float>(in_ptr, out_ptr, in_domain.get_volume(), stream);
+  } else if (type == DT_DOUBLE) {
+    const double* in_ptr = helperGetTensorPointerRO<double>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    double* out_ptr = helperGetTensorPointerWO<double>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    forward_kernel<double>(in_ptr, out_ptr, in_domain.get_volume(), stream);
+  } else if (type == DT_INT32) {
+    const int32_t* in_ptr = helperGetTensorPointerRO<int32_t>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    int32_t* out_ptr = helperGetTensorPointerWO<int32_t>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    forward_kernel<int32_t>(in_ptr, out_ptr, in_domain.get_volume(), stream);
+  } else if (type == DT_INT64) {
+    const int64_t* in_ptr = helperGetTensorPointerRO<int64_t>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    int64_t* out_ptr = helperGetTensorPointerWO<int64_t>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    forward_kernel<int64_t>(in_ptr, out_ptr, in_domain.get_volume(), stream);
+  } else {
+    assert(false && "Unsupported data type in Reshape forward");
+  }
 }
 
 void Reshape::forward(const FFModel& ff)
@@ -237,7 +260,7 @@ void Reshape::forward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   IndexLauncher launcher(RESHAPE_FWD_TASK_ID, task_is,
-      TaskArgument(NULL, 0), argmap,
+      TaskArgument(&inputs[0].data_type, sizeof(inputs[0].data_type)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       FFConfig::get_hash_id(std::string(name)));
   launcher.add_region_requirement(
@@ -259,7 +282,6 @@ void Reshape::backward_kernel(float* input_grad_ptr,
   float alpha = 1.0f;
   apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
       input_grad_ptr, output_grad_ptr, num_elements, alpha);
-
 }
 
 void Reshape::backward_task(const Task *task,
@@ -291,7 +313,7 @@ void Reshape::backward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   IndexLauncher launcher(RESHAPE_BWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap,
+                         TaskArgument(&inputs[0].data_type, sizeof(inputs[0].data_type)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   // regions[0](I): output_grad

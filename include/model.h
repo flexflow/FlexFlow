@@ -1767,8 +1767,9 @@ public:
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
                             Context ctx, Runtime *runtime);
-  static void forward_kernel(const float* input_ptr,
-                             float* output_ptr,
+  template<typename T>
+  static void forward_kernel(const T* input_ptr,
+                             T* output_ptr,
                              size_t num_elements,
                              cudaStream_t stream);
   static void backward_kernel(float* input_grad_ptr,
