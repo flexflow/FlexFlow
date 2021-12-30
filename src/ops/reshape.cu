@@ -35,6 +35,7 @@ Reshape::Reshape(FFModel& model,
   numOutputs = 1;
   numWeights = 0;
   outputs[0].numDim = (int)shape.size();
+  outputs[0].data_type = input.data_type;
   size_t volume = 1;
   for (int i = 0; i < outputs[0].numDim; i++) {
     outputs[0].adim[i] = shape[outputs[0].numDim-1-i];
@@ -165,7 +166,7 @@ void Reshape::create_output_and_partition_with_dim(FFModel& model)
   int output_shape[ODIM];
   for (int i = 0; i < ODIM; i++)
     output_shape[i] = outputs[0].adim[ODIM-1-i];
-  outputs[0] = model.create_tensor<ODIM>(output_shape, DT_FLOAT, this);
+  outputs[0] = model.create_tensor<ODIM>(output_shape, outputs[0].data_type, this);
   outputs[0].owner_op = this;
   outputs[0].owner_idx = 0;
   model.create_data_parallel_partition_with_diff_dims<IDIM, ODIM>(
