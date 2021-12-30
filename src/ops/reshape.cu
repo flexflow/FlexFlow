@@ -274,14 +274,15 @@ void Reshape::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Reshape::backward_kernel(float* input_grad_ptr,
-                              const float* output_grad_ptr,
+template<typename T>
+void Reshape::backward_kernel(T* input_grad_ptr,
+                              const T* output_grad_ptr,
                               size_t num_elements,
                               cudaStream_t stream)
 {
   float alpha = 1.0f;
-  apply_add_with_scale<<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
-      input_grad_ptr, output_grad_ptr, num_elements, alpha);
+  apply_add_with_scale<T><<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
+      input_grad_ptr, output_grad_ptr, num_elements, (T)alpha);
 }
 
 void Reshape::backward_task(const Task *task,
@@ -291,20 +292,41 @@ void Reshape::backward_task(const Task *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   //const Reshape* reshape = (const Reshape*) task->args;
+  DataType type = *((DataType*) task->args);
   Domain out_grad_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain in_grad_domain = runtime->get_index_space_domain(
     ctx, task->regions[1].region.get_index_space());
   assert(in_grad_domain.get_volume() == out_grad_domain.get_volume());
-
-  const float* out_grad_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* in_grad_ptr = helperGetTensorPointerRW<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  backward_kernel(in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume(), stream);
+  if (type == DT_FLOAT) {
+    const float* out_grad_ptr = helperGetTensorPointerRO<float>(
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    float* in_grad_ptr = helperGetTensorPointerRW<float>(
+        regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    backward_kernel<float>(in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume(), stream);
+  } else if (type == DT_DOUBLE) {
+    const double* out_grad_ptr = helperGetTensorPointerRO<double>(
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    double* in_grad_ptr = helperGetTensorPointerRW<double>(
+        regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    backward_kernel<double>(in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume(), stream);
+  } else if (type == DT_INT32) {
+    const int32_t* out_grad_ptr = helperGetTensorPointerRO<int32_t>(
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    int32_t* in_grad_ptr = helperGetTensorPointerRW<int32_t>(
+        regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    backward_kernel<int32_t>(in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume(), stream);
+  } else if (type == DT_INT64) {
+    const int64_t* out_grad_ptr = helperGetTensorPointerRO<int64_t>(
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    int64_t* in_grad_ptr = helperGetTensorPointerRW<int64_t>(
+        regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    backward_kernel<int64_t>(in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume(), stream);
+  } else {
+    assert(false && "Unsupported data type in Reshape backward");
+  }
 }
 
 void Reshape::backward(const FFModel& ff)
@@ -380,3 +402,5 @@ bool Reshape::measure_operator_cost(Simulator* sim,
   return true;
 }
 
+
+template void Reshape::backward_kernel<float>(float* in_grad_ptr, const float* out_grad_ptr, size_t volume, cudaStream_t stream);

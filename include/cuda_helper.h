@@ -79,9 +79,10 @@ void copy_kernel(DT* dst, const DT* src, coord_t size);
 __global__
 void reluBackward(float* grad_ptr, const float* input, int n);
 
+template<typename DT>
 __global__
-void apply_add_with_scale(float *data_ptr, const float *grad_ptr,
-                          size_t size, float scale);
+void apply_add_with_scale(DT *data_ptr, const DT *grad_ptr,
+                          size_t size, DT scale);
 
 __global__
 void gelu_forward_kernel(size_t size, float B, float C, float *input);
