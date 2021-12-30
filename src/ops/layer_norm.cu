@@ -77,12 +77,21 @@ void LayerNorm::create_weights(FFModel& model)
   std::string pcname = name;
   task_is = model.get_or_create_task_is(outputs[0].numDim, pcname);
 
+  // TODO: temp work, will let users to pick either NCCL or PS
+#ifdef FF_USE_NCCL
+  ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+  ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+
   // Create scale and bias
   Initializer* scale_initializer = new ConstantInitializer(1.0f);
   Initializer* bias_initializer = new ConstantInitializer(0.0f);
   const int dims[1] = {weights[0].adim[0]};
-  weights[0] = model.create_conv_weight<1>(this, dims, DT_FLOAT, scale_initializer);
-  weights[1] = model.create_conv_weight<1>(this, dims, DT_FLOAT, bias_initializer);
+  weights[0] = model.create_conv_weight<1>(this, dims, DT_FLOAT, scale_initializer,
+      true/*create_grad*/, comm_type);
+  weights[1] = model.create_conv_weight<1>(this, dims, DT_FLOAT, bias_initializer,
+      true/*create_grad*/, comm_type);
 }
 
 void LayerNorm::create_output_and_partition(FFModel& model)
