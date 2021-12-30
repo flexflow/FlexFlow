@@ -88,10 +88,19 @@ void LayerNorm::create_weights(FFModel& model)
   Initializer* scale_initializer = new ConstantInitializer(1.0f);
   Initializer* bias_initializer = new ConstantInitializer(0.0f);
   const int dims[1] = {weights[0].adim[0]};
-  weights[0] = model.create_conv_weight<1>(this, dims, DT_FLOAT, scale_initializer,
-      true/*create_grad*/, comm_type);
-  weights[1] = model.create_conv_weight<1>(this, dims, DT_FLOAT, bias_initializer,
-      true/*create_grad*/, comm_type);
+  switch (outputs[0].numDim) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      weights[0] = model.create_linear_weight<1, DIM>(this, dims, DT_FLOAT, \
+          scale_initializer, true/*create_grad*/, comm_type); \
+      weights[1] = model.create_linear_weight<1, DIM>(this, dims, DT_FLOAT, \
+          bias_initializer, true/*create_grad*/, comm_type); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+  }
 }
 
 void LayerNorm::create_output_and_partition(FFModel& model)
