@@ -17,6 +17,7 @@
 #define _INITIALIZER_H_
 
 #include "legion.h"
+#include "ffconst.h"
 
 using namespace Legion;
 
@@ -42,6 +43,12 @@ public:
                         const std::vector<PhysicalRegion> &regions,
                         Context ctx, Runtime *runtime);
   int seed;
+};
+
+struct ZeroInitMeta {
+  static const int MAX_NUM_REGIONS = 64;
+  int num_regions;
+  DataType data_types[MAX_NUM_REGIONS];
 };
 
 class ZeroInitializer : public Initializer

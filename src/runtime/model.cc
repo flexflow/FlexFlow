@@ -468,8 +468,15 @@ void Op::zero_grad(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   Context ctx = ff.config.lg_ctx;
   ArgumentMap argmap;
+  ZeroInitMeta meta;
+  meta.num_regions = numWeights + numOutputs;
+  assert(meta.num_regions <= ZeroInitMeta::MAX_NUM_REGIONS);
+  for (int i = 0; i < numWeights; i++)
+    meta.data_types[i] = weights[i].data_type;
+  for (int i = 0; i < numOutputs; i++)
+    meta.data_types[i + numWeights] = outputs[i].data_type;
   IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap,
+                         TaskArgument(&meta, sizeof(ZeroInitMeta)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));
   for (int i = 0; i < numWeights; i++) {
@@ -905,25 +912,6 @@ Tensor FFModel::create_tensor(const int dims[],
     //tensor.pdim[i] = extent.hi[i] - extent.lo[i] + 1;
   }
 
-#ifdef DEADCODE
-  // Initialize tensor with zero
-  ArgumentMap argmap;
-  IndexLauncher launcher(ZERO_INIT_TASK_ID, part_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false, 0,
-                         FFConfig::get_hash_id(name));
-  launcher.add_region_requirement(
-      RegionRequirement(tensor.part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, tensor.region));
-  launcher.add_field(0, FID_DATA);
-  if (create_grad) {
-    launcher.add_region_requirement(
-        RegionRequirement(tensor.part_grad, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, tensor.region_grad));
-    launcher.add_field(1, FID_DATA);
-  }
-  runtime->execute_index_space(ctx, launcher);
-#endif
   return tensor;
 }
 
@@ -2018,25 +2006,6 @@ void FFModel::zero_gradients(void)
 {
   for (int l = layers.size() - 1; l >= 0; l--)
     layers[l]->zero_grad(*this);
-#ifdef DEADCODE
-  ArgumentMap arg_map;
-  Context ctx = config.lg_ctx;
-  Runtime* runtime = config.lg_hlr;
-  for (size_t p = 0; p < parameters.size(); p++) {
-    Domain domain = runtime->get_index_partition_color_space(
-        ctx, parameters[p].part_grad.get_index_partition());
-    IndexSpace task_is = get_or_create_task_is(domain);
-    IndexLauncher launcher(ZERO_INIT_TASK_ID, task_is,
-                           TaskArgument(NULL, 0), arg_map,
-                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           FFConfig::get_hash_id(std::string(parameters[p].pcname)));
-    launcher.add_region_requirement(
-        RegionRequirement(parameters[p].part_grad, 0/*projection*/,
-                          WRITE_ONLY, EXCLUSIVE, parameters[p].region_grad));
-    launcher.add_field(0, FID_DATA);
-    runtime->execute_index_space(ctx, launcher);
-  }
-#endif
 }
 
 void FFModel::print_layers(int id)
