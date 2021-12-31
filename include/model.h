@@ -64,6 +64,9 @@ enum TaskIDs {
   CACHE_INIT_TASK_ID,
   CACHE_FWD_TASK_ID,
   CACHE_UPDATE_TASK_ID,
+  CAST_INIT_TASK_ID,
+  CAST_FWD_TASK_ID,
+  CAST_BWD_TASK_ID,
   AGGREGATE_INIT_TASK_ID,
   AGGREGATE_FWD_TASK_ID,
   AGGREGATE_BWD_TASK_ID,
@@ -366,6 +369,9 @@ public:
   Tensor elu(const Tensor& x,
              bool inplace = true,
              const char *name = NULL);
+  Tensor cast(const Tensor& input,
+              DataType dtype,
+	      const char *name = NULL);
   // Add a 2D convolutional layer
   Tensor conv2d(const Tensor& input,
                 int outChannels,
@@ -1819,6 +1825,71 @@ public:
 private:
   template<int IDIM, int ODIM>
   void create_output_and_partition_with_dim(FFModel& model);
+};
+
+class CastMeta : public OpMeta {
+public:
+  CastMeta(FFHandler handle);
+  DataType input_data_type, output_data_type;
+};
+
+class Cast : public Op {
+public:
+  Cast(FFModel& model,
+       const Tensor& input,
+       DataType dtype,
+       const char* name);
+  void init(const FFModel&);
+  void forward(const FFModel&);
+  void backward(const FFModel&);
+  void print_layer(const FFModel& model) {assert(0);}
+  void create_weights(FFModel& model);
+  void create_output_and_partition(FFModel& model);
+  static OpMeta* init_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  static void forward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime);
+  template<typename IDT>
+  static void forward_task_with_1_type(
+      const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
+  template<typename IDT, typename ODT>
+  static void forward_task_with_2_type(
+      const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
+  static void backward_task(
+      const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
+  template<typename IDT>
+  static void backward_task_with_1_type(
+      const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
+  template<typename IDT, typename ODT>
+  static void backward_task_with_2_type(
+      const Task *task,
+      const std::vector<PhysicalRegion> &regions,
+      Context ctx, Runtime *runtime);
+  bool measure_operator_cost(Simulator* sim,
+                             const ParallelConfig& pc,
+                             CostMetrics& cost_metrics);
+  template<typename IDT, typename ODT>
+  static void forward_kernel(
+      const IDT* input_ptr,
+      ODT* output_ptr,
+      size_t volume,
+      cudaStream_t stream);
+  template<typename IDT, typename ODT>
+  static void backward_kernel(
+      const IDT* src_ptr,
+      ODT* dst_ptr,
+      size_t volume,
+      cudaStream_t stream);
 };
 
 class TopKMeta : public OpMeta {

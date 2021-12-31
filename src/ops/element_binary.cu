@@ -22,7 +22,17 @@ Tensor FFModel::binary(OperatorType op,
                        bool inplace_a,
                        char const *name)
 {
-  ElementBinary *ele = new ElementBinary(*this, op, in1, in2, inplace_a, name);
+  ElementBinary *ele = nullptr;
+  // automatically cast inputs' data types to match
+  if (in1.data_type < in2.data_type) {
+    Tensor new_in1 = cast(in1, in2.data_type);
+    ele = new ElementBinary(*this, op, new_in1, in2, inplace_a, name);
+  } else if (in1.data_type > in2.data_type) {
+    Tensor new_in2 = cast(in2, in1.data_type);
+    ele = new ElementBinary(*this, op, in1, new_in2, inplace_a, name);
+  } else {
+    ele = new ElementBinary(*this, op, in1, in2, inplace_a, name);
+  }
   layers.push_back(ele);
   return ele->outputs[0];
 }

@@ -21,11 +21,11 @@ enum PoolType {
 };
 
 enum DataType {
-  DT_FLOAT = 40,
-  DT_DOUBLE = 41,
-  DT_INT32 = 42,
-  DT_INT64 = 43,
-  DT_BOOLEAN = 44,
+  DT_BOOLEAN = 40,
+  DT_INT32 = 41,
+  DT_INT64 = 42,
+  DT_FLOAT = 43,
+  DT_DOUBLE = 44,
   DT_NONE = 49,
 };
 

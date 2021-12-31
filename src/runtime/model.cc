@@ -2468,6 +2468,28 @@ void register_flexflow_internal_tasks()
     Runtime::preregister_task_variant<ElementBinary::backward_task>(
         registrar, "ElementWiseBinary Backward Task");
   }
+  // Cast
+  {
+    TaskVariantRegistrar registrar(CAST_INIT_TASK_ID, "Cast Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Cast::init_task>(
+        registrar, "Cast Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CAST_FWD_TASK_ID, "Cast Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Cast::forward_task>(
+        registrar, "Cast Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CAST_BWD_TASK_ID, "Cast Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Cast::backward_task>(
+        registrar, "Cast Backward Task");
+  }
   // Conv2D task
   {
     TaskVariantRegistrar registrar(CONV2D_INIT_TASK_ID, "Conv2D Init");
