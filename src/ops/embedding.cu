@@ -247,13 +247,34 @@ void Embedding::init_with_dim(const FFModel& ff)
 
 template<typename TI>
 __global__
-void embed_forward(const TI* input,
-                   float* output,
-                   const float* embed,
-                   int out_dim,
-                   int in_dim,
-                   int batch_size,
-                   AggrMode aggr)
+void embed_forward_no_aggr(
+    const TI* input,
+    float* output,
+    const float* embed,
+    int out_dim,
+    int batch_size)
+{
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim)
+  {
+    output[i] = 0;
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    TI wordIdx = input[idx];
+    output[i] = embed[wordIdx * out_dim + off];
+  }
+}
+
+
+template<typename TI>
+__global__
+void embed_forward_with_aggr(
+    const TI* input,
+    float* output,
+    const float* embed,
+    int out_dim,
+    int in_dim,
+    int batch_size,
+    AggrMode aggr)
 {
   CUDA_KERNEL_LOOP(i, batch_size * out_dim)
   {
@@ -274,13 +295,31 @@ void embed_forward(const TI* input,
 
 template<typename TI>
 __global__
-void embed_backward(const TI* input,
-                    const float* output,
-                    float* embed,
-                    int out_dim,
-                    int in_dim,
-                    int batch_size,
-                    AggrMode aggr)
+void embed_backward_no_aggr(
+    const TI* input,
+    const float* output,
+    float* embed,
+    int out_dim,
+    int batch_size) {
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim)
+  {
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    TI wordIdx = input[idx];
+    atomicAdd(embed + wordIdx * out_dim + off, output[i]);
+  }
+}
+
+template<typename TI>
+__global__
+void embed_backward_with_aggr(
+    const TI* input,
+    const float* output,
+    float* embed,
+    int out_dim,
+    int in_dim,
+    int batch_size,
+    AggrMode aggr)
 {
   CUDA_KERNEL_LOOP(i, batch_size * out_dim)
   {
@@ -311,8 +350,13 @@ void Embedding::forward_kernel(const TI* input_ptr,
                                int outputSize,
                                cudaStream_t stream)
 {
-  embed_forward<TI><<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
-      input_ptr, output_ptr, weight_ptr, out_dim, in_dim, batch_size, aggr);
+  if (aggr == AGGR_MODE_NONE) {
+    embed_forward_no_aggr<TI><<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
+        input_ptr, output_ptr, weight_ptr,out_dim, batch_size);
+  } else {
+    embed_forward_with_aggr<TI><<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
+        input_ptr, output_ptr, weight_ptr, out_dim, in_dim, batch_size, aggr);
+  }
 }
 
 /*
@@ -376,19 +420,24 @@ void Embedding::forward_task_with_type(const Task *task,
   const float* kernel_ptr = helperGetTensorPointerRO<float>(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
+  int in_dim, out_dim, effective_batch_size;
   if (m->aggr == AGGR_MODE_NONE) {
-    //TODO: to be implemented
-    fprintf(stderr, "To be implemented...\n");
+    in_dim = 1;
+    out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
+    effective_batch_size = output_domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input_domain.get_volume());
   } else {
-    int in_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
-    int out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
-    int effective_batch_size = input_domain.get_volume() / in_dim;
-    cudaStream_t stream;
-    checkCUDA(get_legion_stream(&stream));
-    forward_kernel<TI>(input_ptr, output_ptr, kernel_ptr,
-        in_dim, out_dim, effective_batch_size,
-        m->aggr, output_domain.get_volume(), stream);
+    in_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
+    out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
+    effective_batch_size = output_domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input_domain.get_volume());
   }
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  forward_kernel<TI>(input_ptr, output_ptr, kernel_ptr,
+      in_dim, out_dim, effective_batch_size,
+      m->aggr, output_domain.get_volume(), stream);
+
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
     //print_tensor<TI>(input_ptr, input_domain.get_volume(), "[Embedding:forward:input]");
@@ -464,8 +513,13 @@ void Embedding::backward_kernel(const TI *input_ptr,
                                 int outputSize,
                                 cudaStream_t stream)
 {
-  embed_backward<TI><<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
-      input_ptr, output_ptr, weight_grad_ptr, out_dim, in_dim, batch_size, aggr);
+  if (aggr == AGGR_MODE_NONE) {
+    embed_backward_no_aggr<TI><<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
+        input_ptr, output_ptr, weight_grad_ptr, out_dim, batch_size);
+  } else {
+    embed_backward_with_aggr<TI><<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
+        input_ptr, output_ptr, weight_grad_ptr, out_dim, in_dim, batch_size, aggr);
+  }
 }
 
 __host__
@@ -524,19 +578,24 @@ void Embedding::backward_task_with_type(const Task *task,
   float* kernel_grad_ptr = helperGetTensorPointerRW<float>(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
+  int in_dim, out_dim, effective_batch_size;
   if (m->aggr == AGGR_MODE_NONE) {
-    //TODO: to be implemented
-    fprintf(stderr, "To be implemented...\n");
+    in_dim = 1;
+    out_dim = output_grad_domain.hi()[0] - output_grad_domain.lo()[0] + 1;
+    effective_batch_size = output_grad_domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input_domain.get_volume());
   } else {
-    int in_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
-    int out_dim = output_grad_domain.hi()[0] - output_grad_domain.lo()[0] + 1;
-    int effective_batch_size = input_domain.get_volume() / in_dim;
-    cudaStream_t stream;
-    checkCUDA(get_legion_stream(&stream));
-    backward_kernel<TI>(input_ptr, output_grad_ptr, kernel_grad_ptr,
-        in_dim, out_dim, effective_batch_size,
-        m->aggr, output_grad_domain.get_volume(), stream);
+    in_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
+    out_dim = output_grad_domain.hi()[0] - output_grad_domain.lo()[0] + 1;
+    effective_batch_size = output_grad_domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input_domain.get_volume());
   }
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  backward_kernel<TI>(input_ptr, output_grad_ptr, kernel_grad_ptr,
+      in_dim, out_dim, effective_batch_size,
+      m->aggr, output_grad_domain.get_volume(), stream);
 
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
