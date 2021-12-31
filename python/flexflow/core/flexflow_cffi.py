@@ -666,15 +666,15 @@ class Tensor(object):
   def __get_data_type(self):
     dtype = ffc.flexflow_tensor_get_data_type(self.handle)
     if (dtype == 40):
-      self.data_type = DataType.DT_FLOAT
-    elif (dtype == 41):
-      self.data_type = DataType.DT_DOUBLE
-    elif (dtype == 42):
-      self.data_type = DataType.DT_INT32
-    elif (dtype == 43):
-      self.data_type = DataType.DT_INT64
-    elif (dtype == 44):
       self.data_type = DataType.DT_BOOLEAN
+    elif (dtype == 41):
+      self.data_type = DataType.DT_INT32
+    elif (dtype == 42):
+      self.data_type = DataType.DT_INT64
+    elif (dtype == 43):
+      self.data_type = DataType.DT_FLOAT
+    elif (dtype == 44):
+      self.data_type = DataType.DT_DOUBLE
     else:
       assert 0, "unknown data type"
 
