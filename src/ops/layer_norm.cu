@@ -143,6 +143,7 @@ void LayerNorm::create_output_and_partition(FFModel& model)
 LayerNormMeta::LayerNormMeta(FFHandler handle, const LayerNorm* ln)
 : OpMeta(handle)
 {
+  elementwise_affine = ln->elementwise_affine;
   effective_batch_size = ln->effective_batch_size;
   effective_num_elements = ln->effective_num_elements;
   eps = ln->eps;
