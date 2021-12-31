@@ -19,11 +19,12 @@ class PoolType(Enum):
   POOL_AVG = 31
 
 class DataType(Enum):
-  DT_FLOAT = 40
-  DT_DOUBLE = 41
-  DT_INT32 = 42
-  DT_INT64 = 43
-  DT_BOOLEAN = 44
+  DT_BOOLEAN = 40
+  DT_INT32 = 41
+  DT_INT64 = 42
+  DT_FLOAT = 43
+  DT_DOUBLE = 44
+  DT_NONE = 49
 
 class LossType(Enum):
   LOSS_CATEGORICAL_CROSSENTROPY = 50
