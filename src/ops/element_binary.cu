@@ -485,7 +485,7 @@ void ElementBinary::forward_task(const Task* task,
           regions[0], task->regions[0], FID_DATA, ctx, runtime);
       in2_ptr = in1_ptr;
       out_ptr = helperGetTensorPointerWO<float>(
-          regions[2], task->regions[2], FID_DATA, ctx, runtime);
+          regions[1], task->regions[1], FID_DATA, ctx, runtime);
     } else {
       assert(regions.size() == 3);
       assert(task->regions.size() == 3);
