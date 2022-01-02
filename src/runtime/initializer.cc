@@ -78,7 +78,10 @@ void ZeroInitializer::init(const FFModel* ff,
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
   if (p->sync_type == ParameterSyncType::PS) {
-    TaskLauncher launcher(ZERO_INIT_TASK_ID, TaskArgument(NULL, 0));
+    ZeroInitMeta meta;
+    meta.num_regions = 1;
+    meta.data_types[0] = p->data_type;
+    TaskLauncher launcher(ZERO_INIT_TASK_ID, TaskArgument(&meta, sizeof(ZeroInitMeta)));
     // regions[0]: p->region
     launcher.add_region_requirement(
         RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
@@ -88,8 +91,11 @@ void ZeroInitializer::init(const FFModel* ff,
     //assert(p->owner_op != NULL);
     assert(p->parallel_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
+    ZeroInitMeta meta;
+    meta.num_regions = 1;
+    meta.data_types[0] = p->data_type;
     IndexLauncher launcher(ZERO_INIT_TASK_ID, p->parallel_is,
-       TaskArgument(NULL, 0), argmap,
+       TaskArgument(&meta, sizeof(ZeroInitMeta)), argmap,
        Predicate::TRUE_PRED, false, 0,
        p->machine_view.hash());
     launcher.add_region_requirement(

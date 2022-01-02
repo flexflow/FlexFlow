@@ -33,9 +33,9 @@ def top_level_task():
   num_samples = 60000
   
   model = MLP()
-
-  torch_model = PyTorchModel(model=model)
-  output_tensors = torch_model.apply(ffmodel, [input_tensor])
+  
+  ff_torch_model = PyTorchModel(model)
+  output_tensors = ff_torch_model.torch_to_ff(ffmodel, [input_tensor])
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.optimizer = ffoptimizer

@@ -153,9 +153,10 @@ void apply_add(float *data_ptr, const float *replica_ptr, size_t size)
   }
 }
 
+template<typename T>
 __global__
-void apply_add_with_scale(float *data_ptr, const float *grad_ptr,
-                          size_t size, float scale)
+void apply_add_with_scale(T *data_ptr, const T *grad_ptr,
+                          size_t size, T scale)
 {
   CUDA_KERNEL_LOOP(i, size)
   {
@@ -364,8 +365,14 @@ template __global__ void add_kernel<float>(float* dst, const float* src, size_t 
 template __global__ void add_kernel<double>(double* dst, const double* src, size_t size);
 
 template __global__ void copy_kernel<float>(float* dst, const float* src, coord_t size);
-template __global__ void copy_kernel<int>(int* dst, const int* src, coord_t size);
+template __global__ void copy_kernel<int32_t>(int32_t* dst, const int32_t* src, coord_t size);
+template __global__ void copy_kernel<int64_t>(int64_t* dst, const int64_t* src, coord_t size);
+
+template __global__ void apply_add_with_scale<float>(float *data_ptr, const float *grad_ptr, size_t size, float scale);
+template __global__ void apply_add_with_scale<double>(double *data_ptr, const double *grad_ptr, size_t size, double scale);
+template __global__ void apply_add_with_scale<int32_t>(int32_t *data_ptr, const int32_t *grad_ptr, size_t size, int32_t scale);
+template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr, const int64_t *grad_ptr, size_t size, int64_t scale);
 
 template __host__ void print_tensor<float>(const float* ptr, size_t rect, const char* prefix);
-template __host__ void print_tensor<long>(const long* ptr, size_t rect, const char* prefix);
-
+template __host__ void print_tensor<int32_t>(const int32_t* ptr, size_t rect, const char* prefix);
+template __host__ void print_tensor<int64_t>(const int64_t* ptr, size_t rect, const char* prefix);

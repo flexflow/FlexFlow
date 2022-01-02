@@ -16,8 +16,7 @@ def top_level_task():
   dims_input = [ffconfig.batch_size, 3, 224, 224]
   input = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
-  torch_model = PyTorchModel("resnet18.ff")
-  output_tensors = torch_model.apply(ffmodel, [input])
+  output_tensors = PyTorchModel.file_to_ff("resnet18.ff", ffmodel, [input])
   t = ffmodel.softmax(output_tensors[0])
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)

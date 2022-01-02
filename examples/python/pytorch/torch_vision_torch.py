@@ -1,27 +1,21 @@
 import torch.nn as nn
 import torchvision.models as models
-import flexflow.torch.fx as fx
+from flexflow.torch.model import PyTorchModel
 
-# alexnet = models.alexnet()
-# fx.torch_to_flexflow(alexnet, "alexnet.ff")
-#
-# vgg16 = models.vgg16()
-# fx.torch_to_flexflow(vgg16, "vgg16.ff")
-#
-# squeezenet = models.squeezenet1_0()
-# fx.torch_to_flexflow(squeezenet, "squeezenet.ff")
+# model = models.alexnet()
 
-# densenet = models.densenet161()
-# fx.torch_to_flexflow(densenet, "densenet.ff")
+# model = models.vgg16()
 
-# inception = models.inception_v3()
-# fx.torch_to_flexflow(inception, "inception.ff")
+# model = models.squeezenet1_0()
 
-googlenet = models.googlenet()
-fx.torch_to_flexflow(googlenet, "googlenet.ff")
+# model = models.densenet161()
 
-# shufflenet = models.shufflenet_v2_x1_0()
-# fx.torch_to_flexflow(shufflenet, "shufflenet.ff")
+# model = models.inception_v3()
 
-# mobilenet = models.mobilenet_v2()
-# fx.torch_to_flexflow(mobilenet, "mobilenet.ff")
+model = models.googlenet()
+
+# model = models.shufflenet_v2_x1_0()
+
+# model = models.mobilenet_v2()
+ff_torch_model = PyTorchModel(model)
+ff_torch_model.torch_to_file("googlenet.ff")

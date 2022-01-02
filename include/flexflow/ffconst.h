@@ -21,11 +21,11 @@ enum PoolType {
 };
 
 enum DataType {
-  DT_FLOAT = 40,
-  DT_DOUBLE = 41,
-  DT_INT32 = 42,
-  DT_INT64 = 43,
-  DT_BOOLEAN = 44,
+  DT_BOOLEAN = 40,
+  DT_INT32 = 41,
+  DT_INT64 = 42,
+  DT_FLOAT = 43,
+  DT_DOUBLE = 44,
   DT_NONE = 49,
 };
 
@@ -136,6 +136,10 @@ enum OperatorType {
   OP_GELU,
   OP_MULTIHEAD_ATTENTION,
   OP_FUSED, // Fused operator type for internal fusion optimizations
+  OP_RSQRT, //https://pytorch.org/docs/stable/generated/torch.rsqrt.html
+  OP_POW, //https://pytorch.org/docs/stable/generated/torch.pow.html
+  OP_MEAN, //https://pytorch.org/docs/stable/generated/torch.mean.html
+  OP_LAYERNORM,
   // Parallel Ops
   OP_REPARTITION,
   OP_COMBINE,

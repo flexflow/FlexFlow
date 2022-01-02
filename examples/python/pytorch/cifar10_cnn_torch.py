@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch
-import flexflow.torch.fx as fx
+from flexflow.torch.model import PyTorchModel
 
 class CNN(nn.Module):
   def __init__(self):
@@ -39,4 +39,6 @@ class CNN(nn.Module):
     return (yo, y)
 
 model = CNN()
-fx.torch_to_flexflow(model, "cnn.ff")
+ff_torch_model = PyTorchModel(model)
+ff_torch_model.torch_to_file("cnn.ff")
+

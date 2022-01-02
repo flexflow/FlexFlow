@@ -23,7 +23,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import cffi, os
 
-from .flexflow_env import flexflow_python_interpreter
+from flexflow.config import flexflow_python_interpreter
 
 header = {header}
 libname = {libname}

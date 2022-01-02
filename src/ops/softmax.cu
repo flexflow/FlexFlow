@@ -78,7 +78,6 @@ OpMeta* Softmax::init_task(const Task *task,
   return m;
 }
 
-
 /* static */
 void Softmax::forward_kernel(SoftmaxMeta const *m,
                              float const *input_ptr,

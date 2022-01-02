@@ -1,7 +1,8 @@
 import classy_vision.models.regnet as rgn
-import flexflow.torch.fx as fx
+from flexflow.torch.model import PyTorchModel
 import torch.nn as nn
 
 model = rgn.RegNetX32gf()
 model = nn.Sequential(model,nn.Flatten(),nn.Linear(2520*7*7,1000))
-fx.torch_to_flexflow(model, "regnetX32gf.ff")
+ff_torch_model = PyTorchModel(model)
+ff_torch_model.torch_to_file("regnetX32gf.ff")
