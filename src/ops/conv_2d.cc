@@ -31,8 +31,6 @@ Tensor FFModel::conv2d(const Tensor input,
                        Initializer* bias_initializer,
                        char const *name)
 {
-  //FIXME: temporarily disable use_bias
-  use_bias = false;
   assert(input->num_dims == 4); /*NCHW*/
 
   Layer *conv = new Layer(this, OP_CONV2D, name, 1/*inputs*/,
@@ -112,7 +110,7 @@ Op* Conv2D::create_operator_from_layer(
       paddingH, paddingW, 
       activation,
       groups,
-      false, // use_bias, // TODO FIXME @lockshaw
+      use_bias, 
       false, // allocate_weights
       layer->name);
 }

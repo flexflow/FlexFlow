@@ -36,11 +36,7 @@ using Legion::coord_t;
 Tensor FFModel::aggregate_spec(const Tensor* inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
                           int n, float lambda_bal, const char* name)
 {
-#ifdef DEADCODE
-  AggregateSpec* aggr = new AggregateSpec(*this, inputs, n, lambda_bal, name);
-  layers.push_back(aggr);
-  return aggr->outputs[0];
-#endif
+  assert (false);
 }
 
 AggregateSpec::AggregateSpec(FFModel& model,

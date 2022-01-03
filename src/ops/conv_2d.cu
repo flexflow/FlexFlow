@@ -72,8 +72,8 @@ OpMeta* Conv2D::init_task(const Task *task,
       false/*readOutput*/);
   TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  // TensorAccessorR<float, 1> acc_bias(
-  //     regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, Conv2DBias::NUMDIM> acc_bias(
+      regions[3], task->regions[3], FID_DATA, ctx, runtime);
   TensorAccessorW<float, Conv2DKernel::NUMDIM> acc_kernel_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime,
       false/*readOutput*/);
